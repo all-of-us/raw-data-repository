@@ -37,3 +37,9 @@ credential file> &
 ### Run a MySQL instance locally
 
 TODO: try this and document it.
+
+When setting up a database, create the database manually "pmi_rdr".
+
+Run schema.sql to create the table(s).
+
+Create the "api" user manually. Then `GRANT ALL on pmi_rdr.* to 'api';`
