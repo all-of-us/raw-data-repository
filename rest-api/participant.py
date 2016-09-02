@@ -52,8 +52,8 @@ class ParticipantCollection(messages.Message):
 
 def GetParticipant(id):
   """Retrieves a participant by id."""
+  conn = db.GetConn()
   try:
-    conn = db.GetConn()
     return conn.GetObject(Participant, id)
   finally:
     conn.Release()
@@ -61,8 +61,8 @@ def GetParticipant(id):
 def InsertParticipant(participant):
   """Creates a participant."""
   participant.id = str(uuid.uuid4())
+  conn = db.GetConn()
   try:
-    conn = db.GetConn()
     obj = conn.InsertObject(Participant, participant)
     conn.Commit()
     return obj
@@ -74,8 +74,8 @@ def UpdateParticipant(participant):
 
   All other fields are untouched.
   """
+  conn = db.GetConn()
   try:
-    conn = db.GetConn()
     obj = conn.InsertObject(Participant, participant, update=True)
     conn.Commit()
     return obj
@@ -83,8 +83,8 @@ def UpdateParticipant(participant):
     conn.Release()
 
 def ListParticipants():
+  conn = db.GetConn()
   try:
-    conn = db.GetConn()
     return conn.ListObjects(Participant)
   finally:
     conn.Release()
