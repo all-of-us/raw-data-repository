@@ -1,15 +1,17 @@
 '''The definition of the participant object and DB marshalling.
 '''
-import db
 import uuid
 
+from data_access_object import DataAccessObject
 from protorpc import message_types
 from protorpc import messages
+from db import connection
+
+KEY_COLUMNS = ['participant_id']
 
 # For now, the participant fields map directly to the db columns, so do a simple
 # mapping.
-PARTICIPANT_COLUMNS = [
-    'id',
+COLUMNS = KEY_COLUMNS + [
     'name',
     'address',
     'date_of_birth',
@@ -34,9 +36,9 @@ class EnrollmentStatus(messages.Enum):
   ENGAGED = 3
 
 
-class Participant(messages.Message):
+class ParticipantResource(messages.Message):
   """The participant resource definition"""
-  id = messages.StringField(1)
+  participant_id = messages.StringField(1)
   name = messages.StringField(2)
   address = messages.StringField(3)
   date_of_birth = message_types.DateTimeField(4)
@@ -47,46 +49,13 @@ class Participant(messages.Message):
 
 class ParticipantCollection(messages.Message):
   """Collection of Participants."""
-  items = messages.MessageField(Participant, 1, repeated=True)
+  items = messages.MessageField(ParticipantResource, 1, repeated=True)
 
 
-def GetParticipant(id):
-  """Retrieves a participant by id."""
-  conn = db.GetConn()
-  try:
-    return conn.GetObject(Participant, id)
-  finally:
-    conn.Release()
-
-def InsertParticipant(participant):
-  """Creates a participant."""
-  participant.id = str(uuid.uuid4())
-  conn = db.GetConn()
-  try:
-    obj = conn.InsertObject(Participant, participant)
-    conn.Commit()
-    return obj
-  finally:
-    conn.Release()
-
-def UpdateParticipant(participant):
-  """Sets only the specified fields on the participant.
-
-  All other fields are untouched.
-  """
-  conn = db.GetConn()
-  try:
-    obj = conn.InsertObject(Participant, participant, update=True)
-    conn.Commit()
-    return obj
-  finally:
-    conn.Release()
-
-def ListParticipants():
-  conn = db.GetConn()
-  try:
-    return conn.ListObjects(Participant)
-  finally:
-    conn.Release()
-
-db.RegisterType(Participant, 'participant', PARTICIPANT_COLUMNS)
+class Participant(DataAccessObject):
+  def __init__(self):
+    super(Participant, self).__init__(resource=ParticipantResource,
+                                      collection=ParticipantCollection,
+                                      table='participant',
+                                      columns=COLUMNS,
+                                      key_columns=KEY_COLUMNS)

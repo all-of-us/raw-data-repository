@@ -1,3 +1,4 @@
+import datetime
 import httplib2
 import pprint
 import sys
@@ -9,8 +10,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 CREDS_FILE = './test-client-cert.json'
-API_ROOT = 'https://pmi-rdr-api-test.appspot.com/_ah/api'
-# API_ROOT = 'http://localhost:8080/_ah/api'
+# API_ROOT = 'https://pmi-rdr-api-test.appspot.com/_ah/api'
+API_ROOT = 'http://localhost:8080/_ah/api'
 
 
 def main(argv):
@@ -25,8 +26,8 @@ def main(argv):
   version = 'v1'
   discovery_url = '%s/discovery/v1/apis/%s/%s/rest' % (API_ROOT, api, version)
   pprint.pprint(discovery_url)
-  service = discovery.build(
-      api, version, discoveryServiceUrl=discovery_url, http=http, cache_discovery=False)
+  service = discovery.build( api, version, discoveryServiceUrl=discovery_url,
+                             http=http, cache_discovery=False)
 
   name = 'Mr Foo'
 
@@ -40,10 +41,10 @@ def main(argv):
   pprint.pprint(response)
   if response['name'] != name:
     raise StandardError()
-  id = response['id']
+  participant_id = response['participant_id']
 
   # Fetch that participant and print it out.
-  response = service.participants().get(id=id).execute()
+  response = service.participants().get(participant_id=participant_id).execute()
   pprint.pprint(response)
   if response['name'] != name:
     raise StandardError()
@@ -51,7 +52,8 @@ def main(argv):
   # Add a field to the participant update it.
   address = '123 Some Street, Cambridge, MA 02142'
   response['address'] = address
-  response = service.participants().update(id=id, body=response).execute()
+  response = service.participants().update(participant_id=participant_id,
+                                           body=response).execute()
   if response['address'] != address:
     raise StandardError()
   pprint.pprint(response)
@@ -59,12 +61,51 @@ def main(argv):
   response = service.participants().list().execute()
   # Make sure the newly created participant is in the list.
   for p in response['items']:
-    if p['id'] == id:
+    if p['participant_id'] == participant_id:
       break
   else:
     raise StandardError()
 
+  evaluation_id = "5"
+  # Now add an evaluation for that participant.
+  evaluation = {
+      'participant_id': participant_id,
+      'evaluation_id': evaluation_id,
+  }
+  response = service.evaluations().insert(participant_id=id,
+                                          body=evaluation).execute()
+  if response['evaluation_id'] != evaluation_id:
+    raise StandardError()
+
+  time = datetime.datetime(2016, 9, 2, 10, 30, 15)
+  evaluation_data = "{'some_key': 'someval'}"
+  response['completed'] = time.isoformat()
+  response['evaluation_data'] = evaluation_data
+  response = service.evaluations().update(participant_id=participant_id,
+                                          evaluation_id=evaluation_id,
+                                          body=response).execute()
+  pprint.pprint(response)
+  if response['completed'] != '2016-09-02T10:30:15':
+    raise StandardError()
+
+  if response['evaluation_data'] != evaluation_data:
+    raise StandardError()
+
+  response = service.evaluations().list(
+      participant_id=participant_id).execute()
+  for eval in response['items']:
+    if (eval['participant_id'] == participant_id
+        and eval['evaluation_id'] == evaluation_id):
+      break
+  else:
+    raise StandardError()
+
+  response = service.evaluations().list(participant_id='NOT_AN_ID').execute()
+  if 'items' in response and len(response['items']):
+    raise StandardError()
+
   print "It worked!!!"
+
 
 if __name__ == '__main__':
   main(sys.argv)
