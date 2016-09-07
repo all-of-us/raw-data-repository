@@ -25,24 +25,12 @@ NUMERIC_TYPES = (
 
 class DbException(BaseException):
   """Exception thrown when a DB error is encounterd"""
-  def __init__(self, msg):
-    BaseException.__init__(self)
-    self.msg = msg
-
-  def __str__(self):
-    return 'DbException: {}'.format(self.msg)
-
 
 class MissingKeyException(BaseException):
   """Exception thrown when a Get request doesn't conain all required keys."""
-  def __init__(self, msg):
-    BaseException.__init__(self)
-    self.msg = msg
 
-  def __str__(self):
-    return 'MissingKeyException: {}'.format(self.msg)
-
-
+class NotFoundException(BaseException):
+  """Exception thrown when a db object is not found."""
 
 class DataAccessObject(object):
   """A DataAccessObject handles the mapping of object to the datbase.
@@ -70,7 +58,10 @@ class DataAccessObject(object):
           self.table, self.primary_key.columns()))
 
     results = self._query(where_clause, keys)
-    if not results or len(results) != 1:
+    if not results:
+      raise NotFoundException("Object not found. {} {}".format(where_clause,
+                                                               keys))
+    if len(results) == 0:
       raise DbException("Get returned {} results. {} {}".format(
           len(results), where_clause, keys))
     return results[0]

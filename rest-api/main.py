@@ -4,6 +4,7 @@ This defines the APIs and the handlers for the APIs.
 """
 
 import config
+import data_access_object
 import endpoints
 import evaluation
 import participant
@@ -100,7 +101,7 @@ class ParticipantApi(remote.Service):
     try:
       # request.participant_id is used to access the URL parameter.
       return PARTICIPANT_DAO.get(request)
-    except IndexError:
+    except IndexError, data_access_object.NotFoundException:
       raise endpoints.NotFoundException('Participant {} not found'.format(
           request.participant_id))
 
@@ -130,7 +131,12 @@ class ParticipantApi(remote.Service):
       http_method='PUT',
       name='evaluations.update')
   def update_evaluation(self, request):
-    return EVALUATION_DAO.update(request)
+    try:
+      return EVALUATION_DAO.update(request)
+    except data_access_object.NotFoundException:
+      raise endpoints.NotFoundException(
+          'Evaluation participant_id: {} evaluation_id: not found'.format(
+              request.participant_id, request.evaluation_id))
 
   @endpoints.method(
       # Use the ResourceContainer defined above to accept an empty body
@@ -146,7 +152,7 @@ class ParticipantApi(remote.Service):
   def get_evaluation(self, request):
     try:
       return EVALUATION_DAO.get(request)
-    except IndexError:
+    except (IndexError, data_access_object.NotFoundException):
       raise endpoints.NotFoundException(
           'Evaluation participant_id: {} evaluation_id: not found'.format(
               request.participant_id, request.evaluation_id))

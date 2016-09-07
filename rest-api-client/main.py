@@ -1,6 +1,7 @@
 """Simple end to end test to exercise each of the REST APIs.
 """
 import datetime
+import googleapiclient
 import httplib2
 import pprint
 
@@ -85,6 +86,17 @@ def main():
   pprint.pprint(response)
   if response['completed'] != '2016-09-02T10:30:15':
     raise StandardError()
+
+  # Try updating a bad id.
+  response['evaluation_id'] = 'BAD_ID'
+  try:
+    response = service.evaluations().update(participant_id=participant_id,
+                                            evaluation_id='BAD_ID',
+                                            body=response).execute()
+    raise StandardError() # Should throw.
+  except googleapiclient.errors.HttpError, e:
+    if e.resp.status != 404:
+      raise StandardError()
 
   if response['evaluation_data'] != evaluation_data:
     raise StandardError()
