@@ -4,17 +4,17 @@ from data_access_object import DataAccessObject
 from protorpc import message_types
 from protorpc import messages
 
-KEY_COLUMNS = ['participant_id']
+KEY_COLUMNS = ('participant_id',)
 
 # For now, the participant fields map directly to the db columns, so do a simple
 # mapping.
-COLUMNS = KEY_COLUMNS + [
+COLUMNS = KEY_COLUMNS + (
     'name',
     'address',
     'date_of_birth',
     'enrollment_status',
     'physical_exam_status',
-]
+)
 
 
 class PhysicalExamStatus(messages.Enum):

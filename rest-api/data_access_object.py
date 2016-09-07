@@ -11,16 +11,16 @@ from protorpc import messages
 
 
 # Types that should be represented in a query format with '%s'
-STRING_TYPES = [
+STRING_TYPES = (
     messages.StringField,
     message_types.DateTimeField,
-]
+)
 
 # Types that should be represented in a query format with '%d'
-NUMERIC_TYPES = [
+NUMERIC_TYPES = (
     messages.EnumField,
     messages.IntegerField,
-]
+)
 
 
 class DbException(BaseException):
@@ -64,22 +64,20 @@ class DataAccessObject(object):
     return self._insert_or_update(obj, update=True)
 
   def get(self, obj):
-    where_clause = self.primary_key.where_clause()
-    ids = self.primary_key.keys(obj)
-    if len(ids) != len(self.primary_key.columns()):
+    where_clause, keys = self.primary_key.where_clause(obj)
+    if len(keys) != len(self.primary_key.columns()):
       raise MissingKeyException('Get {} requires of {} to be specified'.format(
           self.table, self.primary_key.columns()))
 
-    results = self._query(where_clause, ids)
+    results = self._query(where_clause, keys)
     if not results or len(results) != 1:
       raise DbException("Get returned {} results. {} {}".format(
-          len(results), where_clause, ids))
+          len(results), where_clause, keys))
     return results[0]
 
   def list(self, obj):
-    where_clause = self.primary_key.where_clause(obj)
-    ids = self.primary_key.keys(obj)
-    return self._query(where_clause, ids)
+    where_clause, keys = self.primary_key.where_clause(obj)
+    return self._query(where_clause, keys)
 
   @db.connection
   def _insert_or_update(self, connection, obj, update=False):
@@ -95,13 +93,13 @@ class DataAccessObject(object):
         placeholders.append(_placeholder_for_type(field_type))
         vals.append(_convert_field(field_type, val))
 
-    keys = self.primary_key.keys(obj)
+    where_clause, keys = self.primary_key.where_clause(obj)
     if update:
       vals += keys
       assignments = ','.join(
           '{}={}'.format(k, v) for k, v in zip(cols, placeholders))
       query = 'UPDATE {} SET {} {}'.format(self.table, assignments,
-                                       self.primary_key.where_clause())
+                                           where_clause)
     else:
       query = 'INSERT INTO {} ({}) VALUES ({})'.format(
           self.table, ','.join(cols), ','.join(placeholders))
@@ -142,40 +140,35 @@ class _PrimaryKey(object):
     self.key_columns = keys
     self.resource = resource
 
-  def where_clause(self, obj=None):
+  def where_clause(self, obj):
     """Builds a where clause for this resource.
 
     Args:
-      obj: If specified, the genereated where clause will only contain
+      obj: If specified, the generated where clause will only contain
           fields present in this object.
 
     Returns:
-      A where clause for selecting this object using its primary key(s).
+     A tuple containing a where clause with placeholders and the values
+      for those placeholders.
     """
     placeholders = []
     cols = []
+    keys = []
     for col in self.key_columns:
-      if obj == None or (hasattr(obj, col) and getattr(obj, col) != None):
+      val = getattr(obj, col, None)
+      if val:
         field_type = type(getattr(self.resource, col))
         placeholders.append(_placeholder_for_type(field_type))
         cols.append(col)
+        keys.append(_convert_field(field_type, val))
 
     if len(cols):
-      return 'where ' + ' and '.join(
+      clause = 'where ' + ' and '.join(
           '{}={}'.format(k, v) for k, v in zip(cols, placeholders))
     else:
-      return ''
+      clause = ''
 
-  def keys(self, obj):
-    """Returns: the primary keys as an array."""
-    keys = []
-    for col in self.key_columns:
-      if hasattr(obj, col):
-        val = getattr(obj, col)
-        if val != None:
-          field_type = type(getattr(self.resource, col))
-          keys.append(_convert_field(field_type, val))
-    return keys
+    return (clause, keys)
 
   def columns(self):
     return self.key_columns

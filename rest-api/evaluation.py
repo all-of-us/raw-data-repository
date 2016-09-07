@@ -6,18 +6,18 @@ from protorpc import message_types
 from protorpc import messages
 
 
-KEY_COLUMNS = [
+KEY_COLUMNS = (
     'evaluation_id',
     'participant_id',
-]
+)
 
 # For now, the evaluation fields map directly to the db columns, so do a simple
 # mapping.
-COLUMNS = KEY_COLUMNS + [
+COLUMNS = KEY_COLUMNS + (
     'completed',
     'evaluation_version',
     'evaluation_data',
-]
+)
 
 
 class EvaluationResource(messages.Message):
