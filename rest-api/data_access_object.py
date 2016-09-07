@@ -5,10 +5,6 @@ a SQL database.
 """
 
 import db
-import config
-import MySQLdb
-import sys
-import threading
 
 from protorpc import message_types
 from protorpc import messages
@@ -27,14 +23,14 @@ NUMERIC_TYPES = [
 ]
 
 
-class DbConfigurationException(BaseException):
-  """Exception thrown when the DB isn't configured correctly"""
+class DbException(BaseException):
+  """Exception thrown when a DB error is encounterd"""
   def __init__(self, msg):
     BaseException.__init__(self)
     self.msg = msg
 
   def __str__(self):
-    return 'DbConfigurationException: {}'.format(self.msg)
+    return 'DbException: {}'.format(self.msg)
 
 
 class MissingKeyException(BaseException):
@@ -49,36 +45,44 @@ class MissingKeyException(BaseException):
 
 
 class DataAccessObject(object):
+  """A DataAccessObject handles the mapping of object to the datbase.
 
-  def __init__(self, resource, collection, table, columns, key_columns):
+  Args:
+    resource: The resource object. (The object containing the data).
+  """
+  def __init__(self, resource, table, columns, key_columns):
     self.resource = resource
     self.table = table
-    self.collection = collection
     self.columns = columns
     self.primary_key = _PrimaryKey(resource, key_columns)
 
-  def Insert(self, obj):
-    return self._InsertOrUpdate(obj, update=False)
+  def insert(self, obj):
+    """Inserts this object into the database"""
+    return self._insert_or_update(obj, update=False)
 
-  def Update(self, obj):
-    return self._InsertOrUpdate(obj, update=True)
+  def update(self, obj):
+    return self._insert_or_update(obj, update=True)
 
-  def Get(self, obj):
-    where_clause = self.primary_key.WhereClause()
-    ids = self.primary_key.Keys(obj)
-    if len(ids) != len(self.primary_key.Columns()):
-      raise MissingKeyException(
-          'Get {} requires of {} to be specified'.format(self.table,
-                                                         self.key_columns))
-    return self._Query(where_clause, ids)[0]
+  def get(self, obj):
+    where_clause = self.primary_key.where_clause()
+    ids = self.primary_key.keys(obj)
+    if len(ids) != len(self.primary_key.columns()):
+      raise MissingKeyException('Get {} requires of {} to be specified'.format(
+          self.table, self.primary_key.columns()))
 
-  def List(self, obj):
-    where_clause = self.primary_key.WhereClause(obj)
-    ids = self.primary_key.Keys(obj)
-    return self.collection(items=self._Query(where_clause, ids))
+    results = self._query(where_clause, ids)
+    if not results or len(results) != 1:
+      raise DbException("Get returned {} results. {} {}".format(
+          len(results), where_clause, ids))
+    return results[0]
+
+  def list(self, obj):
+    where_clause = self.primary_key.where_clause(obj)
+    ids = self.primary_key.keys(obj)
+    return self._query(where_clause, ids)
 
   @db.connection
-  def _InsertOrUpdate(self, connection, obj, update=False):
+  def _insert_or_update(self, connection, obj, update=False):
     placeholders = []
     vals = []
     cols = []
@@ -86,36 +90,37 @@ class DataAccessObject(object):
       field_type = type(getattr(self.resource, col))
       val = getattr(obj, col)
       # Only use values that are present, and don't update the primary keys.
-      if val and not (update and col in self.primary_key.Columns()):
+      if val and not (update and col in self.primary_key.columns()):
         cols.append(col)
-        placeholders.append(_PlaceholderForType(field_type))
-        vals.append(_ConvertField(field_type, val))
+        placeholders.append(_placeholder_for_type(field_type))
+        vals.append(_convert_field(field_type, val))
 
-    keys = self.primary_key.Keys(obj)
+    keys = self.primary_key.keys(obj)
     if update:
       vals += keys
       assignments = ','.join(
-          '{}={}'.format(k,v) for k, v in zip(cols, placeholders))
-      q = 'UPDATE {} SET {} {}'.format(self.table, assignments,
-                                       self.primary_key.WhereClause())
+          '{}={}'.format(k, v) for k, v in zip(cols, placeholders))
+      query = 'UPDATE {} SET {} {}'.format(self.table, assignments,
+                                       self.primary_key.where_clause())
     else:
-      q = 'INSERT INTO {} ({}) VALUES ({})'.format(
+      query = 'INSERT INTO {} ({}) VALUES ({})'.format(
           self.table, ','.join(cols), ','.join(placeholders))
 
-    print q
-    print vals
-    connection.cursor().execute(q, vals)
+    connection.cursor().execute(query, vals)
     connection.commit()
-    return self.Get(obj)
+    return self.get(obj)
 
   @db.connection
-  def _Query(self, connection, where='', where_vals=[]):
-    q = 'SELECT {} from {} {}'.format(','.join(self.columns), self.table, where)
-    print q
-    print where_vals
+  def _query(self, connection, where='', where_vals=None):
+    """Loads object that match the given where clause and values.
 
+    If no where clause is specified, all objects are loaded.
+    """
+    where_vals = where_vals or []
+    query = 'SELECT {} from {} {}'.format(','.join(self.columns), self.table,
+                                          where)
     cursor = connection.cursor()
-    cursor.execute(q, where_vals)
+    cursor.execute(query, where_vals)
     results = cursor.fetchall()
     objs = []
     for result in results:
@@ -137,7 +142,7 @@ class _PrimaryKey(object):
     self.key_columns = keys
     self.resource = resource
 
-  def WhereClause(self, obj=None):
+  def where_clause(self, obj=None):
     """Builds a where clause for this resource.
 
     Args:
@@ -152,16 +157,16 @@ class _PrimaryKey(object):
     for col in self.key_columns:
       if obj == None or (hasattr(obj, col) and getattr(obj, col) != None):
         field_type = type(getattr(self.resource, col))
-        placeholders.append(_PlaceholderForType(field_type))
+        placeholders.append(_placeholder_for_type(field_type))
         cols.append(col)
 
     if len(cols):
       return 'where ' + ' and '.join(
-          '{}={}'.format(k,v) for k, v in zip(cols, placeholders))
+          '{}={}'.format(k, v) for k, v in zip(cols, placeholders))
     else:
       return ''
 
-  def Keys(self, obj):
+  def keys(self, obj):
     """Returns: the primary keys as an array."""
     keys = []
     for col in self.key_columns:
@@ -169,14 +174,14 @@ class _PrimaryKey(object):
         val = getattr(obj, col)
         if val != None:
           field_type = type(getattr(self.resource, col))
-          keys.append(_ConvertField(field_type, val))
+          keys.append(_convert_field(field_type, val))
     return keys
 
-  def Columns(self):
+  def columns(self):
     return self.key_columns
 
 
-def _PlaceholderForType(field_type):
+def _placeholder_for_type(field_type):
   """Returns: The proper placeholder for the given field."""
 
   if field_type in STRING_TYPES:
@@ -184,10 +189,10 @@ def _PlaceholderForType(field_type):
   elif field_type in NUMERIC_TYPES:
     return '%s'
   else:
-    raise DbConfigurationException(
+    raise DbException(
         'Can\'t handle type: {}'.format(field_type))
 
-def _ConvertField(field_type, val):
+def _convert_field(field_type, val):
   """Converts a field value to db representation.
 
   For most objects it just returns the object. For Enums, for example, it

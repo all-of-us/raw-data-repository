@@ -1,6 +1,5 @@
 '''The definition of the evaluation object and DB marshalling.
 '''
-import db
 import data_access_object
 
 from protorpc import message_types
@@ -38,7 +37,6 @@ class EvaluationCollection(messages.Message):
 class Evaluation(data_access_object.DataAccessObject):
   def __init__(self):
     super(Evaluation, self).__init__(resource=EvaluationResource,
-                                     collection=EvaluationCollection,
                                      table='evaluation',
                                      columns=COLUMNS,
                                      key_columns=KEY_COLUMNS)

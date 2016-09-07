@@ -1,23 +1,21 @@
+"""Simple end to end test to exercise each of the REST APIs.
+"""
 import datetime
 import httplib2
 import pprint
-import sys
 
 from apiclient import discovery
-from oauth2client import tools
-import oauth2client
 from oauth2client.service_account import ServiceAccountCredentials
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 CREDS_FILE = './test-client-cert.json'
-# API_ROOT = 'https://pmi-rdr-api-test.appspot.com/_ah/api'
+#API_ROOT = 'https://pmi-rdr-api-test.appspot.com/_ah/api'
 API_ROOT = 'http://localhost:8080/_ah/api'
 
 
-def main(argv):
+def main():
   credentials = ServiceAccountCredentials.from_json_keyfile_name(CREDS_FILE,
                                                                  [SCOPE])
-
   http = httplib2.Http()
   http = credentials.authorize(http)
 
@@ -26,7 +24,7 @@ def main(argv):
   version = 'v1'
   discovery_url = '%s/discovery/v1/apis/%s/%s/rest' % (API_ROOT, api, version)
   pprint.pprint(discovery_url)
-  service = discovery.build( api, version, discoveryServiceUrl=discovery_url,
+  service = discovery.build(api, version, discoveryServiceUrl=discovery_url,
                              http=http, cache_discovery=False)
 
   name = 'Mr Foo'
@@ -60,8 +58,8 @@ def main(argv):
 
   response = service.participants().list().execute()
   # Make sure the newly created participant is in the list.
-  for p in response['items']:
-    if p['participant_id'] == participant_id:
+  for participant in response['items']:
+    if participant['participant_id'] == participant_id:
       break
   else:
     raise StandardError()
@@ -93,9 +91,9 @@ def main(argv):
 
   response = service.evaluations().list(
       participant_id=participant_id).execute()
-  for eval in response['items']:
-    if (eval['participant_id'] == participant_id
-        and eval['evaluation_id'] == evaluation_id):
+  for evaluations in response['items']:
+    if (evaluations['participant_id'] == participant_id
+        and evaluations['evaluation_id'] == evaluation_id):
       break
   else:
     raise StandardError()
@@ -108,4 +106,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-  main(sys.argv)
+  main()

@@ -1,11 +1,8 @@
 '''The definition of the participant object and DB marshalling.
 '''
-import uuid
-
 from data_access_object import DataAccessObject
 from protorpc import message_types
 from protorpc import messages
-from db import connection
 
 KEY_COLUMNS = ['participant_id']
 
@@ -55,7 +52,6 @@ class ParticipantCollection(messages.Message):
 class Participant(DataAccessObject):
   def __init__(self):
     super(Participant, self).__init__(resource=ParticipantResource,
-                                      collection=ParticipantCollection,
                                       table='participant',
                                       columns=COLUMNS,
                                       key_columns=KEY_COLUMNS)
