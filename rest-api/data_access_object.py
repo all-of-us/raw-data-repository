@@ -76,8 +76,7 @@ class DataAccessObject(object):
     return results[0]
 
   def list(self, obj):
-    where_clause, keys = self.primary_key.where_clause(obj)
-    return self._query(where_clause, keys)
+    return self._query(*self.primary_key.where_clause(obj))
 
   @db.connection
   def _insert_or_update(self, connection, obj, update=False):

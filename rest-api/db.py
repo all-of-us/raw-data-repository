@@ -72,7 +72,7 @@ def connection(func):
 
   This decorator will reserve a DB connection for the duration of the method.
   The connection will be passed as the first argument of the method.  The
-  wrapped function should call commit() if any changes are to be committed, the
+  wrapped function should call commit() if any changes are to be committed. The
   decorator will call rollback() on every connection before releasing it.
   """
   def wrapped(self, *args, **kwargs):
