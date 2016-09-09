@@ -8,6 +8,7 @@ import data_access_object
 import endpoints
 import evaluation
 import participant
+import questionnaire
 import uuid
 
 from protorpc import message_types
@@ -45,10 +46,20 @@ UPDATE_EVALUATION_RESOURCE = endpoints.ResourceContainer(
     evaluation_id=messages.StringField(1, variant=messages.Variant.STRING),
     participant_id=messages.StringField(2, variant=messages.Variant.STRING))
 
+INSERT_QUESTIONNAIRE_RESOURCE = endpoints.ResourceContainer(
+    questionnaire.QuestionnaireResource,
+    ppi_type=messages.StringField(1, variant=messages.Variant.STRING))
+
+GET_QUESTIONNAIRE_RESOURCE = endpoints.ResourceContainer(
+    questionnaire.QuestionnaireResource,
+    ppi_type=messages.StringField(1, variant=messages.Variant.STRING),
+    id=messages.StringField(2, variant=messages.Variant.STRING))
+
+
 # Data Access Objects
 PARTICIPANT_DAO = participant.Participant()
 EVALUATION_DAO = evaluation.Evaluation()
-
+QUESTIONNAIRE_DAO = questionnaire.Questionnaire()
 
 @endpoints.api(name='participant',
                version='v1',
@@ -156,5 +167,36 @@ class ParticipantApi(remote.Service):
       raise endpoints.NotFoundException(
           'Evaluation participant_id: {} evaluation_id: not found'.format(
               request.participant_id, request.evaluation_id))
+
+  @endpoints.method(
+      INSERT_QUESTIONNAIRE_RESOURCE,
+      questionnaire.QuestionnaireResource,
+      path='ppi/fhir/{ppi_type}',
+      http_method='POST',
+      name='ppi.insert')
+  def insert_questionnaire(self, request):
+    if not getattr(request, 'id', None):
+      request.id = str(uuid.uuid4())
+    return QUESTIONNAIRE_DAO.insert(request)
+
+  @endpoints.method(
+      # Use the ResourceContainer defined above to accept an empty body
+      # but an ID in the query string.
+      GET_QUESTIONNAIRE_RESOURCE,
+      # This method returns a evaluation.
+      questionnaire.QuestionnaireResource,
+      # The path defines the source of the URL parameter 'id'. If not
+      # specified here, it would need to be in the query string.
+      path='ppi/fhir/{ppi_type}/{id}',
+      http_method='GET',
+      name='ppi.get')
+  def get_questionnaire(self, request):
+    try:
+      return QUESTIONNAIRE_DAO.get(request)
+    except (IndexError, data_access_object.NotFoundException):
+      raise endpoints.NotFoundException(
+          'Questionnaire questionnaire_id: {} not found'.format(
+              request.participant_id, request.evaluation_id))
+
 
 api = endpoints.api_server([ParticipantApi])

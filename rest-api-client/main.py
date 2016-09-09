@@ -1,4 +1,4 @@
-"""Simple end to end test to exercise each of the REST APIs.
+"""Simple end to end test to exercise the participant and evaluation APIs.
 """
 import datetime
 import googleapiclient
