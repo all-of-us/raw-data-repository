@@ -38,11 +38,12 @@ class DataAccessObject(object):
   Args:
     resource: The resource object. (The object containing the data).
   """
-  def __init__(self, resource, table, columns, key_columns):
+  def __init__(self, resource, table, columns, key_columns, column_map=None):
     self.resource = resource
     self.table = table
     self.columns = columns
     self.primary_key = _PrimaryKey(resource, key_columns)
+    self.column_map = column_map or {}
 
   def insert(self, obj):
     """Inserts this object into the database"""
@@ -75,8 +76,9 @@ class DataAccessObject(object):
     vals = []
     cols = []
     for col in self.columns:
-      field_type = type(getattr(self.resource, col))
-      val = getattr(obj, col)
+      field = self._column_to_field(col)
+      field_type = type(getattr(self.resource, field))
+      val = getattr(obj, field)
       # Only use values that are present, and don't update the primary keys.
       if val and not (update and col in self.primary_key.columns()):
         cols.append(col)
@@ -114,14 +116,19 @@ class DataAccessObject(object):
     for result in results:
       obj = self.resource()
       for i, col in enumerate(self.columns):
-        field = getattr(obj, col)
-        field_type = type(getattr(self.resource, col))
+        field = self._column_to_field(col)
+        val = getattr(obj, field)
+        field_type = type(getattr(self.resource, field))
         if field_type == messages.EnumField:
-          setattr(obj, col, type(field)(result[i]))
+          setattr(obj, field, type(val)(result[i]))
         else:
-          setattr(obj, col, result[i])
+          setattr(obj, field, result[i])
       objs.append(obj)
     return objs
+
+  def _column_to_field(self, col):
+    """Maps the column name to the resource field."""
+    return self.column_map.get(col, col)
 
 
 class _PrimaryKey(object):
