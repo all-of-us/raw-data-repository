@@ -128,7 +128,7 @@ class DataAccessObject(object):
 
   def _column_to_field(self, col):
     """Maps the column name to the resource field."""
-    return getattr(self.column_map, col, col)
+    return self.column_map.get(col, col)
 
 
 class _PrimaryKey(object):
