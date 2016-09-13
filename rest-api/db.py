@@ -10,6 +10,11 @@ import threading
 from protorpc import message_types
 from protorpc import messages
 
+
+def get_connection():
+  """This at the module level makes it easier to mock out for testing."""
+  return _Connection.get_connection()
+
 class _Connection(object):
   """A wrapper around the MySQLdb connection.
 
@@ -44,7 +49,7 @@ class _Connection(object):
     return True
 
   @classmethod
-  def get_connection(cls):
+  def _get_connection(cls):
     """Get a connection.
 
     Locks the db_lock, and then tries to find a connection that is not in use.
@@ -76,7 +81,7 @@ def connection(func):
   decorator will call rollback() on every connection before releasing it.
   """
   def wrapped(self, *args, **kwargs):
-    conn = _Connection.get_connection()
+    conn = get_connection()
     try:
       return func(self, conn.conn, *args, **kwargs)
     finally:
