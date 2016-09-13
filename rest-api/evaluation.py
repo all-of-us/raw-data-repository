@@ -40,3 +40,5 @@ class Evaluation(data_access_object.DataAccessObject):
                                      table='evaluation',
                                      columns=COLUMNS,
                                      key_columns=KEY_COLUMNS)
+
+DAO = Evaluation()

@@ -39,7 +39,7 @@ GET_EVALUATION_RESOURCE = endpoints.ResourceContainer(
 LIST_EVALUATION_RESOURCE = endpoints.ResourceContainer(
     # The request body should be empty.
     message_types.VoidMessage,
-    participant_id=messages.StringField(2, variant=messages.Variant.STRING))
+    participant_id=messages.StringField(1, variant=messages.Variant.STRING))
 
 UPDATE_EVALUATION_RESOURCE = endpoints.ResourceContainer(
     evaluation.EvaluationResource,
@@ -51,15 +51,11 @@ INSERT_QUESTIONNAIRE_RESOURCE = endpoints.ResourceContainer(
     ppi_type=messages.StringField(1, variant=messages.Variant.STRING))
 
 GET_QUESTIONNAIRE_RESOURCE = endpoints.ResourceContainer(
-    questionnaire.QuestionnaireResource,
-    ppi_type=messages.StringField(1, variant=messages.Variant.STRING),
-    id=messages.StringField(2, variant=messages.Variant.STRING))
+    message_types.VoidMessage,
+    id=messages.StringField(1, variant=messages.Variant.STRING))
 
 
-# Data Access Objects
-PARTICIPANT_DAO = participant.Participant()
-EVALUATION_DAO = evaluation.Evaluation()
-QUESTIONNAIRE_DAO = questionnaire.Questionnaire()
+
 
 @endpoints.api(name='participant',
                version='v1',
@@ -76,7 +72,7 @@ class ParticipantApi(remote.Service):
       http_method='GET',
       name='participants.list')
   def list_participants(self, request):
-    return participant.ParticipantCollection(items=PARTICIPANT_DAO.list({}))
+    return participant.ParticipantCollection(items=participant.DAO.list({}))
 
   @endpoints.method(
       participant.ParticipantResource,
@@ -86,7 +82,7 @@ class ParticipantApi(remote.Service):
       name='participants.insert')
   def insert_participant(self, request):
     request.participant_id = str(uuid.uuid4())
-    return PARTICIPANT_DAO.insert(request)
+    return participant.DAO.insert(request)
 
   @endpoints.method(
       UPDATE_PARTICIPANT_RESOURCE,
@@ -95,7 +91,7 @@ class ParticipantApi(remote.Service):
       http_method='PUT',
       name='participants.update')
   def update_participant(self, request):
-    return PARTICIPANT_DAO.update(request)
+    return participant.DAO.update(request)
 
   @endpoints.method(
       # Use the ResourceContainer defined above to accept an empty body
@@ -111,7 +107,7 @@ class ParticipantApi(remote.Service):
   def get_participant(self, request):
     try:
       # request.participant_id is used to access the URL parameter.
-      return PARTICIPANT_DAO.get(request)
+      return participant.DAO.get(request)
     except IndexError, data_access_object.NotFoundException:
       raise endpoints.NotFoundException('Participant {} not found'.format(
           request.participant_id))
@@ -124,7 +120,7 @@ class ParticipantApi(remote.Service):
       http_method='GET',
       name='evaluations.list')
   def list_evaluations(self, request):
-    return evaluation.EvaluationCollection(items=EVALUATION_DAO.list(request))
+    return evaluation.EvaluationCollection(items=evaluation.DAO.list(request))
 
   @endpoints.method(
       UPDATE_EVALUATION_RESOURCE,
@@ -133,7 +129,7 @@ class ParticipantApi(remote.Service):
       http_method='POST',
       name='evaluations.insert')
   def insert_evaluation(self, request):
-    return EVALUATION_DAO.insert(request)
+    return evaluation.DAO.insert(request)
 
   @endpoints.method(
       UPDATE_EVALUATION_RESOURCE,
@@ -143,7 +139,7 @@ class ParticipantApi(remote.Service):
       name='evaluations.update')
   def update_evaluation(self, request):
     try:
-      return EVALUATION_DAO.update(request)
+      return evaluation.DAO.update(request)
     except data_access_object.NotFoundException:
       raise endpoints.NotFoundException(
           'Evaluation participant_id: {} evaluation_id: not found'.format(
@@ -162,7 +158,7 @@ class ParticipantApi(remote.Service):
       name='evaluations.get')
   def get_evaluation(self, request):
     try:
-      return EVALUATION_DAO.get(request)
+      return evaluation.DAO.get(request)
     except (IndexError, data_access_object.NotFoundException):
       raise endpoints.NotFoundException(
           'Evaluation participant_id: {} evaluation_id: not found'.format(
@@ -177,22 +173,17 @@ class ParticipantApi(remote.Service):
   def insert_questionnaire(self, request):
     if not getattr(request, 'id', None):
       request.id = str(uuid.uuid4())
-    return QUESTIONNAIRE_DAO.insert(request)
+    return questionnaire.DAO.insert(request)
 
   @endpoints.method(
-      # Use the ResourceContainer defined above to accept an empty body
-      # but an ID in the query string.
       GET_QUESTIONNAIRE_RESOURCE,
-      # This method returns a evaluation.
       questionnaire.QuestionnaireResource,
-      # The path defines the source of the URL parameter 'id'. If not
-      # specified here, it would need to be in the query string.
-      path='ppi/fhir/{ppi_type}/{id}',
+      path='ppi/fhir/{id}',
       http_method='GET',
       name='ppi.get')
   def get_questionnaire(self, request):
     try:
-      return QUESTIONNAIRE_DAO.get(request)
+      return questionnaire.DAO.get(request)
     except (IndexError, data_access_object.NotFoundException):
       raise endpoints.NotFoundException(
           'Questionnaire questionnaire_id: {} not found'.format(

@@ -55,3 +55,6 @@ class Participant(DataAccessObject):
                                       table='participant',
                                       columns=COLUMNS,
                                       key_columns=KEY_COLUMNS)
+
+
+DAO = Participant()

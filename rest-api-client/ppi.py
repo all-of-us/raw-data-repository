@@ -41,8 +41,8 @@ def main():
     raise StandardError()
   questionnaire_id = response['id']
 
-  response = service.ppi().get(ppi_type='questionnaire',
-                               id=questionnaire_id).execute()
+  print questionnaire_id
+  response = service.ppi().get(id=questionnaire_id).execute()
   pprint.pprint(response)
 
 

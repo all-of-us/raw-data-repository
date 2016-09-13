@@ -30,8 +30,9 @@ CREATE TABLE evaluation
 
 create table question
 (
-    question_id VARCHAR(200) NOT NULL,
     questionnaire_id VARCHAR(200) NOT NULL,
+    parent_id VARCHAR(200) NOT NULL,
+    ordinal INTEGER NOT NULL,
     linkId MEDIUMTEXT NULL,
     concept MEDIUMTEXT NULL,
     text MEDIUMTEXT NULL,
@@ -41,13 +42,15 @@ create table question
     options MEDIUMTEXT NULL,
     option_col MEDIUMTEXT NULL,
 
-    PRIMARY KEY (questionnaire_id, question_id)
+    PRIMARY KEY (questionnaire_id, parent_id, ordinal)
 );
 
 create table questionnaire_group
 (
-    questionnaire_group_id VARCHAR(200) NOT NULL,
     questionnaire_id VARCHAR(200) NOT NULL,
+    questionnaire_group_id VARCHAR(200) NOT NULL,
+    parent_id VARCHAR(200) NOT NULL,
+    ordinal integer NOT NULL,
     linkId MEDIUMTEXT NULL,
     concept MEDIUMTEXT NULL,
     text MEDIUMTEXT NULL,
@@ -55,7 +58,7 @@ create table questionnaire_group
     required BOOLEAN NULL,
     repeats BOOLEAN NULL,
 
-    PRIMARY KEY (questionnaire_id, questionnaire_group_id)
+    PRIMARY KEY (questionnaire_id, questionnaire_group_id, parent_id, ordinal)
 );
 
 
