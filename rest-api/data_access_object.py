@@ -5,10 +5,11 @@ a SQL database.
 """
 
 import db
+import json
 
 from protorpc import message_types
 from protorpc import messages
-
+from protorpc import protojson
 
 # Types that should be represented in a query format with '%s'
 STRING_TYPES = (
@@ -18,6 +19,7 @@ STRING_TYPES = (
 
 # Types that should be represented in a query format with '%d'
 NUMERIC_TYPES = (
+    messages.BooleanField,
     messages.EnumField,
     messages.IntegerField,
 )
@@ -35,15 +37,46 @@ class NotFoundException(BaseException):
 class DataAccessObject(object):
   """A DataAccessObject handles the mapping of object to the datbase.
 
-  Args:
-    resource: The resource object. (The object containing the data).
   """
   def __init__(self, resource, table, columns, key_columns, column_map=None):
+    """Constructs a DataAccessObject.
+
+    Note: If a field in the resource contains an optionally repeating child
+    object, it can be persisted two ways.  By specifying the field in the list
+    of columns, the child object(s) will be converted to JSON and stored in that
+    column.  If the child object is to be stored in a seperate table, the field
+    should not be in the list of columns.  Instead, a DAO should be created for
+    the child object type, and add_child_message function should be called to
+    register it.  In addition, a link() should be overridden on the child DAO,
+    and assemble() should be overridden on the parent DAO.
+
+    Args:
+    resource: The resource object. (The object containing the data).
+    table: The table that these objects are stored in.
+    columns: The columns of the database table that map to fields that should
+        be persisted. The names of the columns should match the columns.  If
+        that is not possible, pass in a column map.
+    key_columns: The columns that are part of the object's primary key.
+    column_map: A dictionary containing a map of column names to field values.
+        Entries in this map are only necessary if they differ.  If all fields
+        match the column names, this can be omitted.
+    """
     self.resource = resource
     self.table = table
     self.columns = columns
     self.primary_key = _PrimaryKey(resource, key_columns)
     self.column_map = column_map or {}
+    self.children = []
+
+  def add_child_message(self, field_name, dao):
+    """Registers a field as containing child messages.
+
+    Args:
+      field_name: The name of the field in the resource.
+      dao: An instance of the Data Access Object that is responsible for the
+          child object.
+    """
+    self.children.append((field_name, dao))
 
   def insert(self, obj):
     """Inserts this object into the database"""
@@ -52,10 +85,10 @@ class DataAccessObject(object):
   def update(self, obj):
     return self._insert_or_update(obj, update=True)
 
-  def get(self, obj):
-    where_clause, keys = self.primary_key.where_clause(obj)
+  def get(self, request_obj):
+    where_clause, keys = self.primary_key.where_clause(request_obj)
     if len(keys) != len(self.primary_key.columns()):
-      raise MissingKeyException('Get {} requires of {} to be specified'.format(
+      raise MissingKeyException('Get {} requires {} to be specified'.format(
           self.table, self.primary_key.columns()))
 
     results = self._query(where_clause, keys)
@@ -67,23 +100,28 @@ class DataAccessObject(object):
           len(results), where_clause, keys))
     return results[0]
 
-  def list(self, obj):
-    return self._query(*self.primary_key.where_clause(obj))
+  def list(self, request_obj):
+    return self._query(*self.primary_key.where_clause(request_obj))
 
   @db.connection
   def _insert_or_update(self, connection, obj, update=False):
+    self._insert_or_update_with_connection(connection, obj, update)
+    connection.commit()
+    return self.get(obj)
+
+  def _insert_or_update_with_connection(self, connection, obj, update):
     placeholders = []
     vals = []
     cols = []
     for col in self.columns:
-      field = self._column_to_field(col)
-      field_type = type(getattr(self.resource, field))
-      val = getattr(obj, field)
+      field_name = self._column_to_field(col)
+      field = getattr(self.resource, field_name)
+      val = getattr(obj, field_name)
       # Only use values that are present, and don't update the primary keys.
-      if val and not (update and col in self.primary_key.columns()):
+      if val is not None and not (update and col in self.primary_key.columns()):
         cols.append(col)
-        placeholders.append(_placeholder_for_type(field_type))
-        vals.append(_convert_field(field_type, val))
+        placeholders.append(_placeholder_for_type(type(field), col))
+        vals.append(_marshall_field(field, val))
 
     where_clause, keys = self.primary_key.where_clause(obj)
     if update:
@@ -95,10 +133,52 @@ class DataAccessObject(object):
     else:
       query = 'INSERT INTO {} ({}) VALUES ({})'.format(
           self.table, ','.join(cols), ','.join(placeholders))
+      connection.cursor().execute(query, vals)
 
-    connection.cursor().execute(query, vals)
-    connection.commit()
-    return self.get(obj)
+    for field, dao in self.children:
+      val = getattr(obj, field, None)
+      if val is not None:
+        field_def = getattr(self.resource, field)
+        if field_def.repeated:
+          children = val
+        else:
+          children = [val]
+        for i, child in enumerate(children):
+          dao.link(child, obj, ordinal=i)
+          dao._insert_or_update_with_connection(connection, child, update)
+
+  def link(self, obj, parent, ordinal):
+    """Override this to propagate information across an object hierarchy.
+
+    The default implementation does nothing.
+
+    This is called once for every child object in an object hierarchy before
+    insert or update.  This can be used to set the parent_id field of a child
+    object to match parent.id.
+
+    This can also be used to set ordinal fields to ensure that child object
+    order is preserved.
+
+    Args:
+      obj: The child object.
+      parent: The parent of this child object.
+      ordinal: The order of this child object within the parent.
+    """
+    pass
+
+  def assemble(self, obj):
+    """Override this on the DAO to assemble the object hierarchy.
+
+    Override this only for the root object in the hierarchy.
+
+    This function should query all the child objects for the entire hierarchy
+    and assemble them.  It is also the responsibility of this object to ensure
+    that all child objects appear in the correct order.
+
+    Args:
+     obj: The root object.
+    """
+    pass
 
   @db.connection
   def _query(self, connection, where='', where_vals=None):
@@ -116,13 +196,11 @@ class DataAccessObject(object):
     for result in results:
       obj = self.resource()
       for i, col in enumerate(self.columns):
-        field = self._column_to_field(col)
-        val = getattr(obj, field)
-        field_type = type(getattr(self.resource, field))
-        if field_type == messages.EnumField:
-          setattr(obj, field, type(val)(result[i]))
-        else:
-          setattr(obj, field, result[i])
+        field_name = self._column_to_field(col)
+        field = getattr(self.resource, field_name)
+        setattr(obj, field_name, _unmarshall_field(field, result[i]))
+
+      self.assemble(obj)
       objs.append(obj)
     return objs
 
@@ -154,10 +232,10 @@ class _PrimaryKey(object):
     for col in self.key_columns:
       val = getattr(obj, col, None)
       if val:
-        field_type = type(getattr(self.resource, col))
-        placeholders.append(_placeholder_for_type(field_type))
+        field = getattr(self.resource, col)
+        placeholders.append(_placeholder_for_type(type(field), col))
         cols.append(col)
-        keys.append(_convert_field(field_type, val))
+        keys.append(_marshall_field(field, val))
 
     if len(cols):
       clause = 'where ' + ' and '.join(
@@ -171,24 +249,54 @@ class _PrimaryKey(object):
     return self.key_columns
 
 
-def _placeholder_for_type(field_type):
+def _placeholder_for_type(field_type, field_name):
   """Returns: The proper placeholder for the given field."""
 
   if field_type in STRING_TYPES:
     return '%s'
   elif field_type in NUMERIC_TYPES:
+    return '%d'
+  elif field_type == messages.MessageField:
     return '%s'
   else:
     raise DbException(
-        'Can\'t handle type: {}'.format(field_type))
+        'Can\'t handle type: {} {}'.format(field_type, field_name))
 
-def _convert_field(field_type, val):
+def _marshall_field(field, val):
   """Converts a field value to db representation.
 
   For most objects it just returns the object. For Enums, for example, it
   converts to an int.
   """
-  if field_type == messages.EnumField:
+  field_type = type(field)
+  if field_type == messages.EnumField or field_type == messages.BooleanField:
     return int(val)
 
+  # If we are saving a message to a column, convert to JSON.
+  # Json encoder doesn't do protos. Proto encoder doesn't do arrays.
+  if field_type == messages.MessageField:
+    if field.repeated:
+      return json.dumps([json.loads(protojson.encode_message(m)) for m in val])
+    else:
+      return protojson.encode_message(val)
   return val
+
+
+def _unmarshall_field(field, result):
+  if result == None:
+    return None
+
+  if type(field) == messages.EnumField:
+    return field.type(result)
+  elif type(field) == messages.MessageField:
+    if field.repeated:
+      # Json decoder doesn't do protos. Proto decoder doesn't do arrays. Use
+      # json to parse the array, dumps() each element, then parse as proto.
+      return [protojson.decode_message(field.message_type, json.dumps(sub_obj))
+              for sub_obj in json.loads(result)]
+    else:
+      return protojson.decode_message(field.message_type, result)
+  elif type(field) == messages.BooleanField:
+    return bool(result)
+  else:
+    return result
