@@ -102,7 +102,7 @@ class TestDataAccessObjects(unittest.TestCase):
   def test_simple(self):
     fake_db = db_fake.db_fake()
     fake_db.add_expectation(
-        'INSERT INTO l3 (id,parent_id,l1_id,ordinal) VALUES (%s,%s,%s,%d)',
+        'INSERT INTO l3 (id,parent_id,l1_id,ordinal) VALUES (%s,%s,%s,%s)',
         ('c', 'b', 'a', 1))
     fake_db.add_expectation(
         'SELECT id,parent_id,l1_id,ordinal from'
@@ -135,20 +135,20 @@ class TestDataAccessObjects(unittest.TestCase):
     fake_db.add_expectation('SELECT id from l1 where id=%s', ('p1',), [['p1']])
 
     fake_db.add_expectation(
-        'INSERT INTO l2 (id,parent_id,ordinal) VALUES (%s,%s,%d)',
+        'INSERT INTO l2 (id,parent_id,ordinal) VALUES (%s,%s,%s)',
         ('c1', 'p1', 0))
     fake_db.add_expectation(
-        'INSERT INTO l2 (id,parent_id,ordinal) VALUES (%s,%s,%d)',
+        'INSERT INTO l2 (id,parent_id,ordinal) VALUES (%s,%s,%s)',
         ('c2', 'p1', 1))
 
     fake_db.add_expectation(
-        'INSERT INTO l3 (id,parent_id,l1_id,ordinal) VALUES (%s,%s,%s,%d)',
+        'INSERT INTO l3 (id,parent_id,l1_id,ordinal) VALUES (%s,%s,%s,%s)',
         ('gc1a', 'c1', 'p1', 0))
     fake_db.add_expectation(
-        'INSERT INTO l3 (id,parent_id,l1_id,ordinal) VALUES (%s,%s,%s,%d)',
+        'INSERT INTO l3 (id,parent_id,l1_id,ordinal) VALUES (%s,%s,%s,%s)',
         ('gc1b', 'c1', 'p1', 1))
     fake_db.add_expectation(
-        'INSERT INTO l3 (id,parent_id,l1_id,ordinal) VALUES (%s,%s,%s,%d)',
+        'INSERT INTO l3 (id,parent_id,l1_id,ordinal) VALUES (%s,%s,%s,%s)',
         ('gc2a', 'c2', 'p1', 0))
 
     # Then the selects.
