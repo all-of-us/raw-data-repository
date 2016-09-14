@@ -37,10 +37,30 @@ class NotFoundException(BaseException):
 class DataAccessObject(object):
   """A DataAccessObject handles the mapping of object to the datbase.
 
-  Args:
-    resource: The resource object. (The object containing the data).
   """
   def __init__(self, resource, table, columns, key_columns, column_map=None):
+    """Constructs a DataAccessObject.
+
+    Note: If a field in the resource contains an optionally repeating child
+    object, it can be persisted two ways.  By specifying the field in the list
+    of columns, the child object(s) will be converted to JSON and stored in that
+    column.  If the child object is to be stored in a seperate table, the field
+    should not be in the list of columns.  Instead, a DAO should be created for
+    the child object type, and add_child_message function should be called to
+    register it.  In addition, a link() should be overridden on the child DAO,
+    and assemble() should be overridden on the parent DAO.
+
+    Args:
+    resource: The resource object. (The object containing the data).
+    table: The table that these objects are stored in.
+    columns: The columns of the database table that map to fields that should
+        be persisted. The names of the columns should match the columns.  If
+        that is not possible, pass in a column map.
+    key_columns: The columns that are part of the object's primary key.
+    column_map: A dictionary containing a map of column names to field values.
+        Entries in this map are only necessary if they differ.  If all fields
+        match the column names, this can be omitted.
+    """
     self.resource = resource
     self.table = table
     self.columns = columns
@@ -49,6 +69,13 @@ class DataAccessObject(object):
     self.children = []
 
   def add_child_message(self, field_name, dao):
+    """Registers a field as containing child messages.
+
+    Args:
+      field_name: The name of the field in the resource.
+      dao: An instance of the Data Access Object that is responsible for the
+          child object.
+    """
     self.children.append((field_name, dao))
 
   def insert(self, obj):
@@ -74,10 +101,7 @@ class DataAccessObject(object):
     return results[0]
 
   def list(self, request_obj):
-    results = self._query(*self.primary_key.where_clause(request_obj))
-    return results
-
-
+    return self._query(*self.primary_key.where_clause(request_obj))
 
   @db.connection
   def _insert_or_update(self, connection, obj, update=False):
@@ -148,7 +172,8 @@ class DataAccessObject(object):
     Override this only for the root object in the hierarchy.
 
     This function should query all the child objects for the entire hierarchy
-    and assemble them.
+    and assemble them.  It is also the responsibility of this object to ensure
+    that all child objects appear in the correct order.
 
     Args:
      obj: The root object.
@@ -157,7 +182,6 @@ class DataAccessObject(object):
 
   @db.connection
   def _query(self, connection, where='', where_vals=None):
-
     """Loads object that match the given where clause and values.
 
     If no where clause is specified, all objects are loaded.
@@ -178,7 +202,6 @@ class DataAccessObject(object):
 
       self.assemble(obj)
       objs.append(obj)
-
     return objs
 
   def _column_to_field(self, col):
@@ -246,11 +269,11 @@ def _marshall_field(field, val):
   converts to an int.
   """
   field_type = type(field)
-  if (field_type == messages.EnumField or
-      field_type == messages.BooleanField):
+  if field_type == messages.EnumField or field_type == messages.BooleanField:
     return int(val)
 
   # If we are saving a message to a column, convert to JSON.
+  # Json encoder doesn't do protos. Proto encoder doesn't do arrays.
   if field_type == messages.MessageField:
     if field.repeated:
       result_list = []

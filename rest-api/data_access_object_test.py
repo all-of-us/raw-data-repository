@@ -74,10 +74,10 @@ class L1DAO(DataAccessObject):
     for l3 in l3_objects:
       l2_to_l3[l3.parent_id].append(l3)
 
-    obj.children = l1_to_l2[obj.id]
+    obj.children = sorted(l1_to_l2[obj.id], key=lambda l2: l2.ordinal)
 
     for l2 in l2_objects:
-      l2.children = l2_to_l3[l2.id]
+      l2.children = sorted(l2_to_l3[l2.id], key=lambda l3: l3.ordinal)
 
 
 GRANDCHILD_DAO = L3DAO()
@@ -87,6 +87,14 @@ CHILD_DAO.add_child_message('children', GRANDCHILD_DAO)
 
 PARENT_DAO = L1DAO()
 PARENT_DAO.add_child_message('children', CHILD_DAO)
+
+
+class L1ChildAsJsonDAO(DataAccessObject):
+  def __init__(self):
+    super(L1ChildAsJsonDAO, self).__init__(
+        resource=L1Resource,
+        table='l1',
+        columns=['id', 'children'], key_columns=['id'])
 
 
 class TestDataAccessObjects(unittest.TestCase):
@@ -158,6 +166,40 @@ class TestDataAccessObjects(unittest.TestCase):
 
     result = PARENT_DAO.insert(p_1)
     self.assertEqual(result, p_1)
+
+  def test_child_as_json(self):
+    gc1a = L3Resource(id='gc1a')
+    gc1b = L3Resource(id='gc1b')
+
+    gc2a = L3Resource(id='gc2a')
+
+    c_1 = L2Resource(id='c1')
+    c_2 = L2Resource(id='c2')
+
+    p_1 = L1Resource(id='p1')
+
+    p_1.children = [c_1, c_2]
+    c_1.children = [gc1a, gc1b]
+    c_2.children = [gc2a]
+
+    fake_db = db_fake.db_fake()
+    # First the inserts.
+    fake_db.add_expectation(
+        'INSERT INTO l1 (id,children) VALUES (%s,%s)',
+        ('p1',
+         '[{"id": "c1", "children": [{"id": "gc1a"}, {"id": "gc1b"}]},'
+         + ' {"id": "c2", "children": [{"id": "gc2a"}]}]'))
+    fake_db.add_expectation(
+        'SELECT id,children from l1 where id=%s',
+        ('p1',),
+        (('p1',
+          '[{"id": "c1", "children": [{"id": "gc1a"}, {"id": "gc1b"}]},'
+          + ' {"id": "c2", "children": [{"id": "gc2a"}]}]'),))
+
+    dao = L1ChildAsJsonDAO()
+    result = dao.insert(p_1)
+    self.assertEqual(result, p_1)
+
 
 if __name__ == '__main__':
   unittest.main()
