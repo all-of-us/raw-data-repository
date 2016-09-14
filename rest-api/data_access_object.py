@@ -276,10 +276,7 @@ def _marshall_field(field, val):
   # Json encoder doesn't do protos. Proto encoder doesn't do arrays.
   if field_type == messages.MessageField:
     if field.repeated:
-      result_list = []
-      for msg in val:
-        result_list.append(json.loads(protojson.encode_message(msg)))
-      return json.dumps(result_list)
+      return json.dumps([json.loads(protojson.encode_message(m)) for m in val])
     else:
       return protojson.encode_message(val)
   return val

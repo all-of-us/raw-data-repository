@@ -4,6 +4,7 @@ Provides a decorator for access to a threadsafe connection.
 """
 
 import config
+import logging
 import MySQLdb
 import threading
 
@@ -68,6 +69,8 @@ class _Connection(object):
 
       new_conn = _Connection()
       cls._connections.append(new_conn)
+      logging.info('Creating database connection. There are now {}.'.format(
+          len(cls._connections)))
       return new_conn
     finally:
       cls._db_lock.release()
