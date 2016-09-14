@@ -105,11 +105,11 @@ class DataAccessObject(object):
 
   @db.connection
   def _insert_or_update(self, connection, obj, update=False):
-    self._insert_update_with_connection(connection, obj, update)
+    self._insert_or_update_with_connection(connection, obj, update)
     connection.commit()
     return self.get(obj)
 
-  def _insert_update_with_connection(self, connection, obj, update):
+  def _insert_or_update_with_connection(self, connection, obj, update):
     placeholders = []
     vals = []
     cols = []
@@ -145,7 +145,7 @@ class DataAccessObject(object):
           children = [val]
         for i, child in enumerate(children):
           dao.link(child, obj, ordinal=i)
-          dao._insert_update_with_connection(connection, child, update)
+          dao._insert_or_update_with_connection(connection, child, update)
 
   def link(self, obj, parent, ordinal):
     """Override this to propagate information across an object hierarchy.
