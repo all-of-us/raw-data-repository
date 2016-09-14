@@ -50,7 +50,7 @@ class _Connection(object):
     return True
 
   @classmethod
-  def _get_connection(cls):
+  def get_connection(cls):
     """Get a connection.
 
     Locks the db_lock, and then tries to find a connection that is not in use.

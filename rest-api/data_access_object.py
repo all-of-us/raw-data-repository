@@ -110,7 +110,6 @@ class DataAccessObject(object):
     return self.get(obj)
 
   def _insert_or_update_with_connection(self, connection, obj, update):
-    placeholders = []
     vals = []
     cols = []
     for col in self.columns:
@@ -120,20 +119,19 @@ class DataAccessObject(object):
       # Only use values that are present, and don't update the primary keys.
       if val is not None and not (update and col in self.primary_key.columns()):
         cols.append(col)
-        placeholders.append(_placeholder_for_type(type(field), col))
         vals.append(_marshall_field(field, val))
 
     where_clause, keys = self.primary_key.where_clause(obj)
     if update:
       vals += keys
-      assignments = ','.join(
-          '{}={}'.format(k, v) for k, v in zip(cols, placeholders))
+      assignments = ','.join('{}=%s'.format(c) for c in cols)
       query = 'UPDATE {} SET {} {}'.format(self.table, assignments,
                                            where_clause)
     else:
       query = 'INSERT INTO {} ({}) VALUES ({})'.format(
-          self.table, ','.join(cols), ','.join(placeholders))
-      connection.cursor().execute(query, vals)
+          self.table, ','.join(cols), ','.join(['%s']*len(cols)))
+
+    connection.cursor().execute(query, vals)
 
     for field, dao in self.children:
       val = getattr(obj, field, None)
@@ -226,20 +224,17 @@ class _PrimaryKey(object):
      A tuple containing a where clause with placeholders and the values
       for those placeholders.
     """
-    placeholders = []
     cols = []
     keys = []
     for col in self.key_columns:
       val = getattr(obj, col, None)
       if val:
         field = getattr(self.resource, col)
-        placeholders.append(_placeholder_for_type(type(field), col))
         cols.append(col)
         keys.append(_marshall_field(field, val))
 
-    if len(cols):
-      clause = 'where ' + ' and '.join(
-          '{}={}'.format(k, v) for k, v in zip(cols, placeholders))
+    if cols:
+      clause = 'where ' + ' and '.join('{}=%s'.format(c) for c in cols)
     else:
       clause = ''
 
@@ -247,20 +242,6 @@ class _PrimaryKey(object):
 
   def columns(self):
     return self.key_columns
-
-
-def _placeholder_for_type(field_type, field_name):
-  """Returns: The proper placeholder for the given field."""
-
-  if field_type in STRING_TYPES:
-    return '%s'
-  elif field_type in NUMERIC_TYPES:
-    return '%d'
-  elif field_type == messages.MessageField:
-    return '%s'
-  else:
-    raise DbException(
-        'Can\'t handle type: {} {}'.format(field_type, field_name))
 
 def _marshall_field(field, val):
   """Converts a field value to db representation.
