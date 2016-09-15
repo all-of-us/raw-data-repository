@@ -1,7 +1,10 @@
 """Tests for data_access_object."""
 
 import collections
+import copy
+import pprint
 import unittest
+
 import db_fake
 
 from data_access_object import DataAccessObject
@@ -23,6 +26,7 @@ class L3DAO(DataAccessObject):
                                 table='l3',
                                 columns=L3_COLUMNS,
                                 key_columns=L3_KEY_COLUMNS)
+    self.set_synthetic_fields(['parent_id', 'l1_id', 'ordinal'])
 
   def link(self, obj, parent, ordinal):
     obj.parent_id = parent.id
@@ -46,6 +50,7 @@ class L2DAO(DataAccessObject):
                                 table='l2',
                                 columns=L2_COLUMNS,
                                 key_columns=L2_KEY_COLUMNS)
+    self.set_synthetic_fields(['parent_id', 'ordinal'])
 
   def link(self, obj, parent, ordinal):
     obj.parent_id = parent.id
@@ -129,6 +134,8 @@ class TestDataAccessObjects(unittest.TestCase):
     c_1.children = [gc1a, gc1b]
     c_2.children = [gc2a]
 
+    p_1_orig = copy.deepcopy(p_1)
+
     fake_db = db_fake.db_fake()
     # First the inserts.
     fake_db.add_expectation('INSERT INTO l1 (id) VALUES (%s)', ('p1',))
@@ -166,6 +173,10 @@ class TestDataAccessObjects(unittest.TestCase):
 
     result = PARENT_DAO.insert(p_1)
     self.assertEqual(result, p_1)
+
+    result = PARENT_DAO.insert(p_1, strip=True)
+
+    self.assertEqual(result, p_1_orig)
 
   def test_child_as_json(self):
     gc1a = L3Resource(id='gc1a')
