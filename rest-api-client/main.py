@@ -9,7 +9,7 @@ from apiclient import discovery
 from oauth2client.service_account import ServiceAccountCredentials
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
-CREDS_FILE = './test-client-cert.json'
+CREDS_FILE = './test-data/test-client-cert.json'
 #API_ROOT = 'https://pmi-rdr-api-test.appspot.com/_ah/api'
 API_ROOT = 'http://localhost:8080/_ah/api'
 

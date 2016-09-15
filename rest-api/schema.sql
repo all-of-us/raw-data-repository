@@ -64,6 +64,7 @@ create table questionnaire_group
 
 create table questionnaire
 (
+    resourceType TEXT NULL,
     id VARCHAR(200) NOT NULL,
     identifier MEDIUMTEXT NULL,
     version MEDIUMTEXT NULL,
@@ -72,6 +73,8 @@ create table questionnaire
     publisher MEDIUMTEXT NULL,
     telecom MEDIUMTEXT NULL,
     subjectType MEDIUMTEXT NULL,
+    text MEDIUMTEXT NULL,
+    contained MEDIUMTEXT NULL,
 
     PRIMARY KEY (id)
 );

@@ -1,7 +1,6 @@
 '''The definition of the questionnaire object and DB marshalling.
 '''
 import collections
-import pprint
 import uuid
 
 from data_access_object import DataAccessObject
@@ -20,6 +19,25 @@ class CodingResource(messages.Message):
 class ReferenceResource(messages.Message):
   reference = messages.StringField(1)
   display = messages.StringField(2)
+
+class MetaResource(messages.Message):
+  version_id = messages.StringField(1)
+  last_updated = message_types.DateTimeField(2)
+  profile = messages.StringField(3, repeated=True)
+  security = messages.MessageField(CodingResource, 4, repeated=True)
+  tag = messages.MessageField(CodingResource, 5, repeated=True)
+
+class NarrativeResource(messages.Message):
+  status = messages.StringField(1)
+  div = messages.StringField(2)
+
+class DomainUsageResourceResource(messages.Message):
+  resourceType = messages.StringField(1)
+  id = messages.StringField(2)
+  meta = messages.MessageField(MetaResource, 3, repeated=False)
+  implicitRules = messages.StringField(4)
+  language = messages.StringField(5)
+  text = messages.MessageField(NarrativeResource, 6, repeated=False)
 
 
 QUESTION_KEY_COLUMNS = ('questionnaire_id', 'parent_id', 'ordinal')
@@ -46,7 +64,7 @@ class QuestionResource(messages.Message):
   required = messages.BooleanField(9)
   repeats = messages.BooleanField(10)
   options = messages.MessageField(ReferenceResource, 11, repeated=False)
-  option = messages.StringField(12)
+  option = messages.MessageField(CodingResource, 12, repeated=True)
   group = messages.MessageField('QuestionnaireGroupResource', 13, repeated=True)
 
 class Question(DataAccessObject):
@@ -57,6 +75,7 @@ class Question(DataAccessObject):
                                    columns=QUESTION_COLUMNS,
                                    key_columns=QUESTION_KEY_COLUMNS,
                                    column_map={'option_col': 'option'})
+    self.set_synthetic_fields(QUESTION_KEY_COLUMNS)
 
   def link(self, obj, parent, ordinal):
     parent_type = type(parent)
@@ -113,6 +132,7 @@ class QuestionnaireGroup(DataAccessObject):
         table='questionnaire_group',
         columns=QUESTIONNAIRE_GROUP_COLUMNS,
         key_columns=QUESTIONNAIRE_GROUP_KEY_COLUMNS)
+    self.set_synthetic_fields(QUESTIONNAIRE_GROUP_KEY_COLUMNS)
 
   def link(self, obj, parent, ordinal):
     parent_type = type(parent)
@@ -134,27 +154,33 @@ class QuestionnaireGroup(DataAccessObject):
 
 QUESTIONNAIRE_KEY_COLUMNS = ('id',)
 QUESTIONNAIRE_COLUMNS = QUESTIONNAIRE_KEY_COLUMNS + (
+    'resourceType',
     'identifier',
     'version',
     'status',
     'date',
     'publisher',
     'telecom',
+    'text',
+    'contained',
 )
 
 
 class QuestionnaireResource(messages.Message):
   """The questionnaire resource definition"""
-  id = messages.StringField(1)
-  identifier = messages.StringField(2)
-  version = messages.StringField(3)
-  status = messages.StringField(4)
-  date = messages.StringField(5)
-  publisher = messages.StringField(6)
-  telecom = messages.StringField(7)
-  subjectType = messages.StringField(8)
-  group = messages.MessageField(QuestionnaireGroupResource, 9, repeated=False)
-
+  resourceType = messages.StringField(1)
+  id = messages.StringField(2)
+  identifier = messages.StringField(3)
+  version = messages.StringField(4)
+  status = messages.StringField(5)
+  date = messages.StringField(6)
+  publisher = messages.StringField(7)
+  telecom = messages.StringField(8)
+  subjectType = messages.StringField(9)
+  group = messages.MessageField(QuestionnaireGroupResource, 10, repeated=False)
+  text = messages.MessageField(NarrativeResource, 11, repeated=True)
+  contained = messages.MessageField(DomainUsageResourceResource, 12,
+                                    repeated=True)
 
 class QuestionnaireCollection(messages.Message):
   """Collection of Questionnaires."""
@@ -186,7 +212,6 @@ class Questionnaire(DataAccessObject):
     # Questionnaires have a single group.
     groups = parent_to_groups[questionnaire.id]
     if len(groups) > 1:
-      pprint.pprint(groups)
       raise BaseException("Found questionnaire with multiple groups")
     if groups:
       questionnaire.group = groups[0]
@@ -194,14 +219,16 @@ class Questionnaire(DataAccessObject):
     # QuestionnaireGroups may contain multiple QuestionnaireGroups and multiple
     # questions.
     for group in questionnaire_groups:
-      group.group = parent_to_groups[group.questionnaire_group_id]
-      group.question = parent_to_questions[group.questionnaire_group_id]
+      group.group = sorted(parent_to_groups[group.questionnaire_group_id],
+                           key=lambda g: g.ordinal)
+
+      group.question = sorted(parent_to_questions[group.questionnaire_group_id],
+                              key=lambda q: q.ordinal)
 
     # Questions may contain multiple QuestionnaireGroups.
     for question in questions:
-      question.group = parent_to_groups[question.question_id]
-
-
+      question.group = sorted(parent_to_groups[question.question_id],
+                              key=lambda g: g.ordinal)
 
 QUESTION_DAO = Question()
 QUESTIONNAIRE_GROUP_DAO = QuestionnaireGroup()

@@ -173,7 +173,7 @@ class ParticipantApi(remote.Service):
   def insert_questionnaire(self, request):
     if not getattr(request, 'id', None):
       request.id = str(uuid.uuid4())
-    return questionnaire.DAO.insert(request)
+    return questionnaire.DAO.insert(request, strip=True)
 
   @endpoints.method(
       GET_QUESTIONNAIRE_RESOURCE,
@@ -183,7 +183,7 @@ class ParticipantApi(remote.Service):
       name='ppi.get')
   def get_questionnaire(self, request):
     try:
-      return questionnaire.DAO.get(request)
+      return questionnaire.DAO.get(request, strip=True)
     except (IndexError, data_access_object.NotFoundException):
       raise endpoints.NotFoundException(
           'Questionnaire questionnaire_id: {} not found'.format(
