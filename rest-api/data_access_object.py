@@ -67,6 +67,7 @@ class DataAccessObject(object):
     self.primary_key = _PrimaryKey(resource, key_columns)
     self.column_map = column_map or {}
     self.children = []
+    self.synthetic_fields = []
 
   def add_child_message(self, field_name, dao):
     """Registers a field as containing child messages.
@@ -78,20 +79,47 @@ class DataAccessObject(object):
     """
     self.children.append((field_name, dao))
 
-  def insert(self, obj):
-    """Inserts this object into the database"""
-    return self._insert_or_update(obj, update=False)
+  def set_synthetic_fields(self, fields):
+    """Sets a list of fields that should be stripped.
 
-  def update(self, obj):
-    return self._insert_or_update(obj, update=True)
+    Not all model fields need to go out to the client.  Some are used for
+    linking child objects with parent objects in separate tables.  These fields
+    should be specified here.
+    """
+    self.synthetic_fields = fields
 
-  def get(self, request_obj):
+
+  def insert(self, obj, strip=False):
+    """Inserts this object into the database
+
+    Args:
+      obj: The object to insert.
+      strip: If set to true, the returned object will have all of it's synthetic
+          fields removed.  Use this to remove intenal identifiers, etc.
+    """
+    return self._insert_or_update(obj, update=False, strip=strip)
+
+  def update(self, obj, strip=False):
+    return self._insert_or_update(obj, update=True, strip=strip)
+
+  def get(self, request_obj, strip=False):
+    """Retrieves an object.
+
+    Loads an object based on the key fields set in request_obj.
+
+    Args:
+      request_obj: An instance of the resource object with the primary key
+          fields filled in.
+      strip: If set to true, the object will have all of it's synthetic fields
+          removed.  Use this to remove intenal identifiers, etc.
+    Returns: The retrieved object.
+    """
     where_clause, keys = self.primary_key.where_clause(request_obj)
     if len(keys) != len(self.primary_key.columns()):
       raise MissingKeyException('Get {} requires {} to be specified'.format(
           self.table, self.primary_key.columns()))
 
-    results = self._query(where_clause, keys)
+    results = self._query(where_clause, keys, strip=strip)
     if not results:
       raise NotFoundException("Object not found. {} {}".format(where_clause,
                                                                keys))
@@ -100,14 +128,26 @@ class DataAccessObject(object):
           len(results), where_clause, keys))
     return results[0]
 
-  def list(self, request_obj):
-    return self._query(*self.primary_key.where_clause(request_obj))
+  def list(self, request_obj, strip=False):
+    """Retrieves a list of objects.
+
+    Loads a list of objects based on the key fields set in request_obj.
+
+    Args:
+      request_obj: An instance of the resource object with some of the primary
+          key fields filled in (or empty if all objects should be returned)
+      strip: If set to True, the returned objects will have all of their
+          synthetic fields removed.  Use this to remove intenal
+          identifiers, etc.
+    Returns: The retrieved object.
+    """
+    return self._query(*self.primary_key.where_clause(request_obj), strip=strip)
 
   @db.connection
-  def _insert_or_update(self, connection, obj, update=False):
+  def _insert_or_update(self, connection, obj, update=False, strip=False):
     self._insert_or_update_with_connection(connection, obj, update)
     connection.commit()
-    return self.get(obj)
+    return self.get(obj, strip)
 
   def _insert_or_update_with_connection(self, connection, obj, update):
     vals = []
@@ -134,16 +174,9 @@ class DataAccessObject(object):
     connection.cursor().execute(query, vals)
 
     for field, dao in self.children:
-      val = getattr(obj, field, None)
-      if val is not None:
-        field_def = getattr(self.resource, field)
-        if field_def.repeated:
-          children = val
-        else:
-          children = [val]
-        for i, child in enumerate(children):
-          dao.link(child, obj, ordinal=i)
-          dao._insert_or_update_with_connection(connection, child, update)
+      for i, child in enumerate(self._child_objects(obj, field)):
+        dao.link(child, obj, ordinal=i)
+        dao._insert_or_update_with_connection(connection, child, update)
 
   def link(self, obj, parent, ordinal):
     """Override this to propagate information across an object hierarchy.
@@ -178,8 +211,20 @@ class DataAccessObject(object):
     """
     pass
 
+  def strip(self, obj):
+    """Clears out any data from synthetic fields.
+
+    Will also traverse the object hierarchy.
+    """
+    for field, dao in self.children:
+      for child in self._child_objects(obj, field):
+        dao.strip(child)
+
+    for field in self.synthetic_fields:
+      setattr(obj, field, None)
+
   @db.connection
-  def _query(self, connection, where='', where_vals=None):
+  def _query(self, connection, where='', where_vals=None, strip=False):
     """Loads object that match the given where clause and values.
 
     If no where clause is specified, all objects are loaded.
@@ -199,12 +244,24 @@ class DataAccessObject(object):
         setattr(obj, field_name, _unmarshall_field(field, result[i]))
 
       self.assemble(obj)
+      if strip:
+        self.strip(obj)
       objs.append(obj)
     return objs
 
   def _column_to_field(self, col):
     """Maps the column name to the resource field."""
     return self.column_map.get(col, col)
+
+  def _child_objects(self, obj, field):
+    children = []
+    val = getattr(obj, field, None)
+    if val is not None:
+      children = val
+      if not getattr(self.resource, field).repeated:
+        children = [val]
+
+    return children
 
 
 class _PrimaryKey(object):
