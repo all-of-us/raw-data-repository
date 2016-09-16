@@ -317,6 +317,10 @@ def _marshall_field(field, val):
       return json.dumps([json.loads(protojson.encode_message(m)) for m in val])
     else:
       return protojson.encode_message(val)
+
+  if field_type == message_types.DateTimeField:
+    return val.strftime('%Y-%m-%d %H:%M:%S')
+
   return val
 
 

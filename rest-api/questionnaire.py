@@ -3,44 +3,14 @@
 import collections
 import uuid
 
+import fhir_resources
+
 from data_access_object import DataAccessObject
 from protorpc import message_types
 from protorpc import messages
 
 
-class CodingResource(messages.Message):
-  system = messages.StringField(1)
-  version = messages.StringField(2)
-  code = messages.StringField(3)
-  display = messages.StringField(4)
-  userSelected = messages.StringField(5)
-
-
-class ReferenceResource(messages.Message):
-  reference = messages.StringField(1)
-  display = messages.StringField(2)
-
-class MetaResource(messages.Message):
-  version_id = messages.StringField(1)
-  last_updated = message_types.DateTimeField(2)
-  profile = messages.StringField(3, repeated=True)
-  security = messages.MessageField(CodingResource, 4, repeated=True)
-  tag = messages.MessageField(CodingResource, 5, repeated=True)
-
-class NarrativeResource(messages.Message):
-  status = messages.StringField(1)
-  div = messages.StringField(2)
-
-class DomainUsageResourceResource(messages.Message):
-  resourceType = messages.StringField(1)
-  id = messages.StringField(2)
-  meta = messages.MessageField(MetaResource, 3, repeated=False)
-  implicitRules = messages.StringField(4)
-  language = messages.StringField(5)
-  text = messages.MessageField(NarrativeResource, 6, repeated=False)
-
-
-QUESTION_KEY_COLUMNS = ('questionnaire_id', 'parent_id', 'ordinal')
+QUESTION_KEY_COLUMNS = ('questionnaire_id', 'parent_id')
 QUESTION_COLUMNS = QUESTION_KEY_COLUMNS + (
     'linkId',
     'concept',
@@ -50,6 +20,7 @@ QUESTION_COLUMNS = QUESTION_KEY_COLUMNS + (
     'repeats',
     'options',
     'option_col',
+    'ordinal',
 )
 
 class QuestionResource(messages.Message):
@@ -58,13 +29,16 @@ class QuestionResource(messages.Message):
   parent_id = messages.StringField(3)
   ordinal = messages.IntegerField(4)
   linkId = messages.StringField(5)
-  concept = messages.MessageField(CodingResource, 6, repeated=True)
+  concept = messages.MessageField(fhir_resources.CodingResource, 6,
+                                  repeated=True)
   text = messages.StringField(7)
   type = messages.StringField(8)
   required = messages.BooleanField(9)
   repeats = messages.BooleanField(10)
-  options = messages.MessageField(ReferenceResource, 11, repeated=False)
-  option = messages.MessageField(CodingResource, 12, repeated=True)
+  options = messages.MessageField(fhir_resources.ReferenceResource, 11,
+                                  repeated=False)
+  option = messages.MessageField(fhir_resources.CodingResource, 12,
+                                 repeated=True)
   group = messages.MessageField('QuestionnaireGroupResource', 13, repeated=True)
 
 class Question(DataAccessObject):
@@ -75,7 +49,7 @@ class Question(DataAccessObject):
                                    columns=QUESTION_COLUMNS,
                                    key_columns=QUESTION_KEY_COLUMNS,
                                    column_map={'option_col': 'option'})
-    self.set_synthetic_fields(QUESTION_KEY_COLUMNS)
+    self.set_synthetic_fields(QUESTION_KEY_COLUMNS + ('ordinal',))
 
   def link(self, obj, parent, ordinal):
     parent_type = type(parent)
@@ -98,8 +72,8 @@ class Question(DataAccessObject):
 QUESTIONNAIRE_GROUP_KEY_COLUMNS = (
     'questionnaire_id',
     'questionnaire_group_id',
-    'parent_id',
-    'ordinal')
+    'parent_id')
+
 QUESTIONNAIRE_GROUP_COLUMNS = QUESTIONNAIRE_GROUP_KEY_COLUMNS + (
     'linkId',
     'concept',
@@ -107,6 +81,7 @@ QUESTIONNAIRE_GROUP_COLUMNS = QUESTIONNAIRE_GROUP_KEY_COLUMNS + (
     'type',
     'required',
     'repeats',
+    'ordinal',
 )
 
 class QuestionnaireGroupResource(messages.Message):
@@ -117,7 +92,8 @@ class QuestionnaireGroupResource(messages.Message):
   parent_id = messages.StringField(3)
   ordinal = messages.IntegerField(4)
   linkId = messages.StringField(5)
-  concept = messages.MessageField(CodingResource, 6, repeated=True)
+  concept = messages.MessageField(fhir_resources.CodingResource, 6,
+                                  repeated=True)
   text = messages.StringField(7)
   type = messages.StringField(8)
   required = messages.BooleanField(9)
@@ -132,7 +108,7 @@ class QuestionnaireGroup(DataAccessObject):
         table='questionnaire_group',
         columns=QUESTIONNAIRE_GROUP_COLUMNS,
         key_columns=QUESTIONNAIRE_GROUP_KEY_COLUMNS)
-    self.set_synthetic_fields(QUESTIONNAIRE_GROUP_KEY_COLUMNS)
+    self.set_synthetic_fields(QUESTIONNAIRE_GROUP_KEY_COLUMNS + ('ordinal',))
 
   def link(self, obj, parent, ordinal):
     parent_type = type(parent)
@@ -170,17 +146,20 @@ class QuestionnaireResource(messages.Message):
   """The questionnaire resource definition"""
   resourceType = messages.StringField(1)
   id = messages.StringField(2)
-  identifier = messages.StringField(3)
+  identifier = messages.MessageField(fhir_resources.IdentifierResource, 3,
+                                     repeated=True)
   version = messages.StringField(4)
   status = messages.StringField(5)
   date = messages.StringField(6)
   publisher = messages.StringField(7)
-  telecom = messages.StringField(8)
+  telecom = messages.MessageField(fhir_resources.ContactPointResource, 8,
+                                  repeated=True)
   subjectType = messages.StringField(9)
   group = messages.MessageField(QuestionnaireGroupResource, 10, repeated=False)
-  text = messages.MessageField(NarrativeResource, 11, repeated=True)
-  contained = messages.MessageField(DomainUsageResourceResource, 12,
-                                    repeated=True)
+  text = messages.MessageField(fhir_resources.NarrativeResource, 11,
+                               repeated=True)
+  contained = messages.MessageField(fhir_resources.DomainUsageResourceResource,
+                                    12, repeated=True)
 
 class QuestionnaireCollection(messages.Message):
   """Collection of Questionnaires."""

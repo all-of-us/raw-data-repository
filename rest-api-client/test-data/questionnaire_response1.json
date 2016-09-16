@@ -1,0 +1,72 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "id": "3141",
+  "text": {
+    "status": "generated",
+    "div": "<div>\n      \n      \n      <pre>\n            Comorbidity? YES\n              Cardial Comorbidity? YES\n                Angina? YES\n                MI? NO\n              Vascular Comorbidity?\n                (no answers)\n              ...\n            Histopathology\n              Abdominal\n                pT category: 1a\n              ...\n          </pre>\n    \n    \n    </div>"
+  },
+  "status": "completed",
+  "subject": {
+    "reference": "#patsub"
+  },
+  "author": {
+    "reference": "#questauth"
+  },
+  "authored": "2013-02-19T14:15:00",
+  "group": {
+    "title": "Cancer Quality Forum Questionnaire 2012",
+    "group": [
+      {
+        "question": [
+          {
+            "answer": [
+              {
+                "valueCoding": {
+                  "system": "http://cancer.questionnaire.org/system/code/yesno",
+                  "code": "1",
+                  "display": "Yes"
+                },
+                "group": [
+                  {
+                    "question": [
+                      {
+                        "answer": [
+                          {
+                            "valueCoding": {
+                              "system": "http://cancer.questionnaire.org/system/code/yesno",
+                              "code": "1"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "answer": [
+                          {
+                            "valueCoding": {
+                              "system": "http://cancer.questionnaire.org/system/code/yesno",
+                              "code": "1"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "answer": [
+                          {
+                            "valueCoding": {
+                              "system": "http://cancer.questionnaire.org/system/code/yesno",
+                              "code": "0"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

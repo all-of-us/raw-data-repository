@@ -42,19 +42,41 @@ class TestPPI(unittest.TestCase):
         questionnaire = json.load(f)
         self.round_trip_questionnaire(questionnaire)
 
+  def test_questionnaire_responses(self):
+    questionnaire_response_files = [
+        'test-data/questionnaire_response1.json',
+    ]
+
+    for json_file in questionnaire_response_files:
+      with open(json_file) as f:
+        questionnaire_response = json.load(f)
+        self.round_trip_questionnaire_responses(questionnaire_response)
 
   def round_trip_questionnaire(self, questionnaire):
     questionnaire['id'] = None
-    # Create a participant.
-    response = self.service.ppi().insert(body=questionnaire,
-                                         ppi_type='questionnaire').execute()
+    questionnaire_service = self.service.ppi().fhir().questionnaire()
+
+    response = questionnaire_service.insert(body=questionnaire).execute()
     questionnaire_id = response['id']
     print questionnaire_id
 
-    response = self.service.ppi().get(id=questionnaire_id).execute()
+    response = questionnaire_service.get(id=questionnaire_id).execute()
     # Clear out the ID before checking.
     response['id'] = None
     self.assertMultiLineEqual(pretty(questionnaire), pretty(response))
+
+  def round_trip_questionnaire_responses(self, questionnaire_response):
+    questionnaire_response['id'] = None
+    response_service = self.service.ppi().fhir().questionnaire_response()
+
+    response = response_service.insert(body=questionnaire_response).execute()
+    questionnaire_response_id = response['id']
+    print questionnaire_response_id
+
+    response = response_service.get(id=questionnaire_response_id).execute()
+    # Clear out the ID before checking.
+    response['id'] = None
+    self.assertMultiLineEqual(pretty(questionnaire_response), pretty(response))
 
 
 def pretty(obj):
