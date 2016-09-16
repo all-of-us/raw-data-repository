@@ -116,9 +116,9 @@ class DataAccessObject(object):
     """
     where_clause, keys = self.primary_key.where_clause(request_obj)
     if len(keys) != len(self.primary_key.columns()):
-      raise MissingKeyException(
-          'Get from {} requires {} columns to be specified. '
-          + 'Current where clause contains only "{}".'.format(
+      msg = ('Get from {} requires {} columns to be specified. '
+             + 'Current where clause contains only "{}".')
+      raise MissingKeyException(msg.format(
               self.table, self.primary_key.columns(), where_clause))
 
     results = self._query(where_clause, keys, strip=strip)
@@ -173,6 +173,8 @@ class DataAccessObject(object):
       query = 'INSERT INTO {} ({}) VALUES ({})'.format(
           self.table, ','.join(cols), ','.join(['%s']*len(cols)))
 
+    print query
+    print vals
     connection.cursor().execute(query, vals)
 
     for field, dao in self.children:
