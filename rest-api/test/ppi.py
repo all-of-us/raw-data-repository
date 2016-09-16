@@ -63,8 +63,8 @@ class TestPPI(unittest.TestCase):
     print questionnaire_id
 
     response = questionnaire_service.get(id=questionnaire_id).execute()
-    self.assertTrue(response['id']) # Make sure that an id was set.
-    response['id'] = None # Now clear it out so that the comparison will pass.
+    # Clear out the ID before checking.
+    response['id'] = None
     self.assertMultiLineEqual(pretty(questionnaire), pretty(response))
 
   def round_trip_questionnaire_responses(self, questionnaire_response):
@@ -76,8 +76,8 @@ class TestPPI(unittest.TestCase):
     print questionnaire_response_id
 
     response = response_service.get(id=questionnaire_response_id).execute()
-    self.assertTrue(response['id']) # Make sure that an id was set.
-    response['id'] = None # Now clear it out so that the comparison will pass.
+    # Clear out the ID before checking.
+    response['id'] = None
     self.assertMultiLineEqual(pretty(questionnaire_response), pretty(response))
 
 

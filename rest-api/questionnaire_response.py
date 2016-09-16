@@ -1,7 +1,7 @@
 import collections
 import uuid
 
-import fhir_resources
+import fhir_datatypes
 import questionnaire
 
 from data_access_object import DataAccessObject
@@ -27,7 +27,7 @@ ANSWER_COLUMNS = ANSWER_KEY_COLUMNS + ('parent_id',
                                        'valueReference')
 
 
-class AnswerResource(messages.Message):
+class Answer(messages.Message):
   answer_id = messages.StringField(1)
   parent_id = messages.StringField(2)
   questionnaire_response_id = messages.StringField(3)
@@ -41,20 +41,18 @@ class AnswerResource(messages.Message):
   valueTime = message_types.DateTimeField(11)
   valueString = messages.StringField(12)
   valueUri = messages.StringField(13)
-  valueAttachment = messages.MessageField(fhir_resources.AttachmentResource, 14,
+  valueAttachment = messages.MessageField(fhir_datatypes.Attachment, 14,
                                           repeated=False)
-  valueCoding = messages.MessageField(fhir_resources.CodingResource, 15,
-                                      repeated=False)
-  valueQuantity = messages.MessageField(fhir_resources.QuantityResource, 16,
+  valueCoding = messages.MessageField(fhir_datatypes.Coding, 15, repeated=False)
+  valueQuantity = messages.MessageField(fhir_datatypes.Quantity, 16,
                                         repeated=False)
-  valueReference = messages.MessageField(fhir_resources.ReferenceResource, 17,
+  valueReference = messages.MessageField(fhir_datatypes.Reference, 17,
                                          repeated=False)
-  group = messages.MessageField('QuestionnaireResponseGroupResource', 18,
-                               repeated=True)
+  group = messages.MessageField('QuestionnaireResponseGroup', 18, repeated=True)
 
-class Answer(DataAccessObject):
+class AnswerDao(DataAccessObject):
   def __init__(self):
-    super(Answer, self).__init__(resource=AnswerResource,
+    super(AnswerDao, self).__init__(resource=Answer,
                                    table='answer',
                                    columns=ANSWER_COLUMNS,
                                    key_columns=ANSWER_KEY_COLUMNS)
@@ -72,20 +70,20 @@ QUESTION_RESPONSE_KEY_COLUMNS = ('question_response_id',
                                  'questionnaire_response_id')
 QUESTION_RESPONSE_COLUMNS = QUESTION_RESPONSE_KEY_COLUMNS + (
     'ordinal', 'parent_id', 'linkId', 'text')
-class QuestionResponseResource(messages.Message):
+class QuestionResponse(messages.Message):
   question_response_id = messages.StringField(1)
   parent_id = messages.StringField(2)
   questionnaire_response_id = messages.StringField(3)
   ordinal = messages.IntegerField(4)
   linkId = messages.StringField(5)
   text = messages.StringField(6)
-  answer = messages.MessageField(AnswerResource, 7, repeated=True)
+  answer = messages.MessageField(Answer, 7, repeated=True)
 
 
-class QuestionResponse(DataAccessObject):
+class QuestionResponseDao(DataAccessObject):
   def __init__(self):
-    super(QuestionResponse, self).__init__(
-        resource=QuestionResponseResource,
+    super(QuestionResponseDao, self).__init__(
+        resource=QuestionResponse,
         table='question_response',
         columns=QUESTION_RESPONSE_COLUMNS,
         key_columns=QUESTION_RESPONSE_KEY_COLUMNS)
@@ -106,7 +104,7 @@ QUESTIONNAIRE_RESPONSE_GROUP_COLUMNS = \
     QUESTIONNAIRE_RESPONSE_GROUP_KEY_COLUMNS + (
         'parent_id', 'ordinal', 'linkId', 'title', 'text', 'subject')
 
-class QuestionnaireResponseGroupResource(messages.Message):
+class QuestionnaireResponseGroup(messages.Message):
   questionnaire_response_group_id = messages.StringField(1)
   parent_id = messages.StringField(2)
   questionnaire_response_id = messages.StringField(3)
@@ -114,17 +112,15 @@ class QuestionnaireResponseGroupResource(messages.Message):
   linkId = messages.StringField(5)
   title = messages.StringField(6)
   text = messages.StringField(7)
-  subject = messages.MessageField(fhir_resources.ReferenceResource, 8,
-                                  repeated=False)
-  group = messages.MessageField('QuestionnaireResponseGroupResource', 9,
-                                repeated=True)
-  question = messages.MessageField(QuestionResponseResource, 10, repeated=True)
+  subject = messages.MessageField(fhir_datatypes.Reference, 8, repeated=False)
+  group = messages.MessageField('QuestionnaireResponseGroup', 9, repeated=True)
+  question = messages.MessageField(QuestionResponse, 10, repeated=True)
 
 
-class QuestionnaireResponseGroup(DataAccessObject):
+class QuestionnaireResponseGroupDao(DataAccessObject):
   def __init__(self):
-    super(QuestionnaireResponseGroup, self).__init__(
-        resource=QuestionnaireResponseGroupResource,
+    super(QuestionnaireResponseGroupDao, self).__init__(
+        resource=QuestionnaireResponseGroup,
         table='questionnaire_response_group',
         columns=QUESTIONNAIRE_RESPONSE_GROUP_COLUMNS,
         key_columns=QUESTIONNAIRE_RESPONSE_GROUP_KEY_COLUMNS)
@@ -132,14 +128,14 @@ class QuestionnaireResponseGroup(DataAccessObject):
                               + ('parent_id', 'ordinal',))
 
   def link(self, obj, parent, ordinal):
-    if type(parent) == QuestionnaireResponseResource:
+    if type(parent) == QuestionnaireResponse:
       obj.parent_id = parent.id
       obj.questionnaire_response_id = parent.id
     else:
       obj.questionnaire_response_id = parent.questionnaire_response_id
-      if type(parent) == AnswerResource:
+      if type(parent) == Answer:
         obj.parent_id = parent.answer_id
-      elif type(parent) == QuestionnaireResponseGroupResource:
+      elif type(parent) == QuestionnaireResponseGroup:
         obj.parent_id = parent.questionnaire_response_group_id
     obj.ordinal = ordinal
     if not obj.questionnaire_response_group_id:
@@ -162,38 +158,33 @@ QUESTIONNAIRE_RESPONSE_COLUMNS = QUESTIONNAIRE_RESPONSE_KEY_COLUMNS + (
     'source',
     'encounter')
 
-class QuestionnaireResponseResource(messages.Message):
+class QuestionnaireResponse(messages.Message):
   resourceType = messages.StringField(1)
   id = messages.StringField(2)
-  meta = messages.MessageField(fhir_resources.MetaResource, 3, repeated=False)
+  meta = messages.MessageField(fhir_datatypes.Meta, 3, repeated=False)
   implicitRules = messages.StringField(4)
   language = messages.StringField(5)
-  text = messages.MessageField(fhir_resources.NarrativeResource, 6,
-                               repeated=False)
-  contained = messages.MessageField(fhir_resources.DomainUsageResourceResource,
-                                    7, repeated=True)
-  identifier = messages.MessageField(fhir_resources.IdentifierResource, 8,
+  text = messages.MessageField(fhir_datatypes.Narrative, 6, repeated=False)
+  contained = messages.MessageField(fhir_datatypes.DomainUsageResource, 7,
+                                    repeated=True)
+  identifier = messages.MessageField(fhir_datatypes.Identifier, 8,
                                      repeated=True)
-  questionnaire = messages.MessageField(fhir_resources.ReferenceResource, 9,
+  questionnaire = messages.MessageField(fhir_datatypes.Reference, 9,
                                         repeated=False)
   status = messages.StringField(10)
-  subject = messages.MessageField(fhir_resources.ReferenceResource, 11,
-                                  repeated=False)
-  author = messages.MessageField(fhir_resources.ReferenceResource, 12,
-                                 repeated=False)
+  subject = messages.MessageField(fhir_datatypes.Reference, 11, repeated=False)
+  author = messages.MessageField(fhir_datatypes.Reference, 12, repeated=False)
   authored = message_types.DateTimeField(13)
-  source = messages.MessageField(fhir_resources.ReferenceResource, 14,
-                                 repeated=False)
-  encounter = messages.MessageField(fhir_resources.ReferenceResource, 15,
+  source = messages.MessageField(fhir_datatypes.Reference, 14, repeated=False)
+  encounter = messages.MessageField(fhir_datatypes.Reference, 15,
                                     repeated=False)
-  group = messages.MessageField(QuestionnaireResponseGroupResource, 16,
-                                repeated=False)
+  group = messages.MessageField(QuestionnaireResponseGroup, 16, repeated=False)
 
 
-class QuestionnaireResponse(DataAccessObject):
+class QuestionnaireResponseDao(DataAccessObject):
   def __init__(self):
-    super(QuestionnaireResponse, self).__init__(
-        resource=QuestionnaireResponseResource,
+    super(QuestionnaireResponseDao, self).__init__(
+        resource=QuestionnaireResponse,
         table='questionnaire_response',
         columns=QUESTIONNAIRE_RESPONSE_COLUMNS,
         key_columns=QUESTIONNAIRE_RESPONSE_KEY_COLUMNS)
@@ -202,10 +193,10 @@ class QuestionnaireResponse(DataAccessObject):
     qid = questionnaire_response.id
     # Request_obj here should have the questionnaire id set in the field 'id'.
     question_responses = QUESTION_RESPONSE_DAO.list(
-        QuestionResponseResource(questionnaire_response_id=qid))
+        QuestionResponse(questionnaire_response_id=qid))
     groups = QUESTIONNAIRE_RESPONSE_GROUP_DAO.list(
-        QuestionnaireResponseGroupResource(questionnaire_response_id=qid))
-    answers = ANSWER_DAO.list(AnswerResource(questionnaire_response_id=qid))
+        QuestionnaireResponseGroup(questionnaire_response_id=qid))
+    answers = ANSWER_DAO.list(Answer(questionnaire_response_id=qid))
 
     parent_to_question_responses = collections.defaultdict(list)
     parent_to_groups = collections.defaultdict(list)
@@ -247,11 +238,11 @@ class QuestionnaireResponse(DataAccessObject):
       answer.group = sorted(parent_to_groups[answer.answer_id],
                             key=lambda g: g.ordinal)
 
-QUESTIONNAIRE_RESPONSE_GROUP_DAO = QuestionnaireResponseGroup()
-QUESTION_RESPONSE_DAO = QuestionResponse()
-ANSWER_DAO = Answer()
+QUESTIONNAIRE_RESPONSE_GROUP_DAO = QuestionnaireResponseGroupDao()
+QUESTION_RESPONSE_DAO = QuestionResponseDao()
+ANSWER_DAO = AnswerDao()
 
-DAO = QuestionnaireResponse()
+DAO = QuestionnaireResponseDao()
 
 
 QUESTIONNAIRE_RESPONSE_GROUP_DAO.add_child_message(

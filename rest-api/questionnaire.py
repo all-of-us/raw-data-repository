@@ -3,7 +3,7 @@
 import collections
 import uuid
 
-import fhir_resources
+import fhir_datatypes
 
 from data_access_object import DataAccessObject
 from protorpc import message_types
@@ -23,40 +23,37 @@ QUESTION_COLUMNS = QUESTION_KEY_COLUMNS + (
     'ordinal',
 )
 
-class QuestionResource(messages.Message):
+class Question(messages.Message):
   questionnaire_id = messages.StringField(1)
   question_id = messages.StringField(2)
   parent_id = messages.StringField(3)
   ordinal = messages.IntegerField(4)
   linkId = messages.StringField(5)
-  concept = messages.MessageField(fhir_resources.CodingResource, 6,
-                                  repeated=True)
+  concept = messages.MessageField(fhir_datatypes.Coding, 6, repeated=True)
   text = messages.StringField(7)
   type = messages.StringField(8)
   required = messages.BooleanField(9)
   repeats = messages.BooleanField(10)
-  options = messages.MessageField(fhir_resources.ReferenceResource, 11,
-                                  repeated=False)
-  option = messages.MessageField(fhir_resources.CodingResource, 12,
-                                 repeated=True)
-  group = messages.MessageField('QuestionnaireGroupResource', 13, repeated=True)
+  options = messages.MessageField(fhir_datatypes.Reference, 11, repeated=False)
+  option = messages.MessageField(fhir_datatypes.Coding, 12, repeated=True)
+  group = messages.MessageField('QuestionnaireGroup', 13, repeated=True)
 
-class Question(DataAccessObject):
+class QuestionDao(DataAccessObject):
   def __init__(self):
     # Option is a keyword in MySQL, we have to map it to option_col.
-    super(Question, self).__init__(resource=QuestionResource,
-                                   table='question',
-                                   columns=QUESTION_COLUMNS,
-                                   key_columns=QUESTION_KEY_COLUMNS,
-                                   column_map={'option_col': 'option'})
+    super(QuestionDao, self).__init__(resource=Question,
+                                      table='question',
+                                      columns=QUESTION_COLUMNS,
+                                      key_columns=QUESTION_KEY_COLUMNS,
+                                      column_map={'option_col': 'option'})
     self.set_synthetic_fields(QUESTION_KEY_COLUMNS + ('ordinal',))
 
   def link(self, obj, parent, ordinal):
     parent_type = type(parent)
-    if parent_type == QuestionnaireGroupResource:
+    if parent_type == QuestionnaireGroup:
       obj.parent_id = parent.questionnaire_group_id
       obj.questionnaire_id = parent.questionnaire_id
-    elif parent_type == QuestionResource:
+    elif parent_type == Question:
       obj.parent_id = parent.question_id
       obj.questionnaire_id = parent.questionnaire_id
     else: # Either Questionnaire or the ResourceContainer.
@@ -84,7 +81,7 @@ QUESTIONNAIRE_GROUP_COLUMNS = QUESTIONNAIRE_GROUP_KEY_COLUMNS + (
     'ordinal',
 )
 
-class QuestionnaireGroupResource(messages.Message):
+class QuestionnaireGroup(messages.Message):
   """A group of questions in a questionnaire."""
   questionnaire_id = messages.StringField(1)
   questionnaire_group_id = messages.StringField(2)
@@ -92,19 +89,18 @@ class QuestionnaireGroupResource(messages.Message):
   parent_id = messages.StringField(3)
   ordinal = messages.IntegerField(4)
   linkId = messages.StringField(5)
-  concept = messages.MessageField(fhir_resources.CodingResource, 6,
-                                  repeated=True)
+  concept = messages.MessageField(fhir_datatypes.Coding, 6, repeated=True)
   text = messages.StringField(7)
   type = messages.StringField(8)
   required = messages.BooleanField(9)
   repeats = messages.BooleanField(10)
-  group = messages.MessageField('QuestionnaireGroupResource', 11, repeated=True)
-  question = messages.MessageField(QuestionResource, 12, repeated=True)
+  group = messages.MessageField('QuestionnaireGroup', 11, repeated=True)
+  question = messages.MessageField(Question, 12, repeated=True)
 
-class QuestionnaireGroup(DataAccessObject):
+class QuestionnaireGroupDao(DataAccessObject):
   def __init__(self):
-    super(QuestionnaireGroup, self).__init__(
-        resource=QuestionnaireGroupResource,
+    super(QuestionnaireGroupDao, self).__init__(
+        resource=QuestionnaireGroup,
         table='questionnaire_group',
         columns=QUESTIONNAIRE_GROUP_COLUMNS,
         key_columns=QUESTIONNAIRE_GROUP_KEY_COLUMNS)
@@ -112,10 +108,10 @@ class QuestionnaireGroup(DataAccessObject):
 
   def link(self, obj, parent, ordinal):
     parent_type = type(parent)
-    if parent_type == QuestionnaireGroupResource:
+    if parent_type == QuestionnaireGroup:
       obj.parent_id = parent.questionnaire_group_id
       obj.questionnaire_id = parent.questionnaire_id
-    elif parent_type == QuestionResource:
+    elif parent_type == Question:
       obj.parent_id = parent.question_id
       obj.questionnaire_id = parent.questionnaire_id
     else: # Either Questionnaire or the ResourceContainer.
@@ -142,42 +138,40 @@ QUESTIONNAIRE_COLUMNS = QUESTIONNAIRE_KEY_COLUMNS + (
 )
 
 
-class QuestionnaireResource(messages.Message):
+class Questionnaire(messages.Message):
   """The questionnaire resource definition"""
   resourceType = messages.StringField(1)
   id = messages.StringField(2)
-  identifier = messages.MessageField(fhir_resources.IdentifierResource, 3,
+  identifier = messages.MessageField(fhir_datatypes.Identifier, 3,
                                      repeated=True)
   version = messages.StringField(4)
   status = messages.StringField(5)
   date = messages.StringField(6)
   publisher = messages.StringField(7)
-  telecom = messages.MessageField(fhir_resources.ContactPointResource, 8,
-                                  repeated=True)
+  telecom = messages.MessageField(fhir_datatypes.ContactPoint, 8, repeated=True)
   subjectType = messages.StringField(9)
-  group = messages.MessageField(QuestionnaireGroupResource, 10, repeated=False)
-  text = messages.MessageField(fhir_resources.NarrativeResource, 11,
-                               repeated=True)
-  contained = messages.MessageField(fhir_resources.DomainUsageResourceResource,
+  group = messages.MessageField(QuestionnaireGroup, 10, repeated=False)
+  text = messages.MessageField(fhir_datatypes.Narrative, 11, repeated=True)
+  contained = messages.MessageField(fhir_datatypes.DomainUsageResource,
                                     12, repeated=True)
 
 class QuestionnaireCollection(messages.Message):
   """Collection of Questionnaires."""
-  items = messages.MessageField(QuestionnaireResource, 1, repeated=True)
+  items = messages.MessageField(Questionnaire, 1, repeated=True)
 
 
-class Questionnaire(DataAccessObject):
+class QuestionnaireDao(DataAccessObject):
   def __init__(self):
-    super(Questionnaire, self).__init__(resource=QuestionnaireResource,
-                                        table='questionnaire',
-                                        columns=QUESTIONNAIRE_COLUMNS,
-                                        key_columns=QUESTIONNAIRE_KEY_COLUMNS)
+    super(QuestionnaireDao, self).__init__(
+        resource=Questionnaire,
+        table='questionnaire',
+        columns=QUESTIONNAIRE_COLUMNS,
+        key_columns=QUESTIONNAIRE_KEY_COLUMNS)
   def assemble(self, questionnaire):
     # Request_obj here should have the questionnaire id set in the field 'id'.
-    questions = QUESTION_DAO.list(
-        QuestionResource(questionnaire_id=questionnaire.id))
+    questions = QUESTION_DAO.list(Question(questionnaire_id=questionnaire.id))
     questionnaire_groups = QUESTIONNAIRE_GROUP_DAO.list(
-        QuestionnaireGroupResource(questionnaire_id=questionnaire.id))
+        QuestionnaireGroup(questionnaire_id=questionnaire.id))
 
     parent_to_questions = collections.defaultdict(list)
     parent_to_groups = collections.defaultdict(list)
@@ -209,8 +203,8 @@ class Questionnaire(DataAccessObject):
       question.group = sorted(parent_to_groups[question.question_id],
                               key=lambda g: g.ordinal)
 
-QUESTION_DAO = Question()
-QUESTIONNAIRE_GROUP_DAO = QuestionnaireGroup()
+QUESTION_DAO = QuestionDao()
+QUESTIONNAIRE_GROUP_DAO = QuestionnaireGroupDao()
 
 
 QUESTION_DAO.add_child_message('group', QUESTIONNAIRE_GROUP_DAO)
@@ -218,5 +212,5 @@ QUESTION_DAO.add_child_message('group', QUESTIONNAIRE_GROUP_DAO)
 QUESTIONNAIRE_GROUP_DAO.add_child_message('group', QUESTIONNAIRE_GROUP_DAO)
 QUESTIONNAIRE_GROUP_DAO.add_child_message('question', QUESTION_DAO)
 
-DAO = Questionnaire()
+DAO = QuestionnaireDao()
 DAO.add_child_message('group', QUESTIONNAIRE_GROUP_DAO)

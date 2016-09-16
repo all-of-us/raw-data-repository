@@ -116,8 +116,10 @@ class DataAccessObject(object):
     """
     where_clause, keys = self.primary_key.where_clause(request_obj)
     if len(keys) != len(self.primary_key.columns()):
-      raise MissingKeyException('Get {} requires {} to be specified'.format(
-          self.table, self.primary_key.columns()))
+      raise MissingKeyException(
+          'Get from {} requires {} columns to be specified. '
+          + 'Current where clause contains only "{}".'.format(
+              self.table, self.primary_key.columns(), where_clause))
 
     results = self._query(where_clause, keys, strip=strip)
     if not results:

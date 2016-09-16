@@ -20,7 +20,7 @@ COLUMNS = KEY_COLUMNS + (
 )
 
 
-class EvaluationResource(messages.Message):
+class Evaluation(messages.Message):
   """The evaluation resource definition"""
   evaluation_id = messages.StringField(1)
   participant_id = messages.StringField(2)
@@ -31,14 +31,14 @@ class EvaluationResource(messages.Message):
 
 class EvaluationCollection(messages.Message):
   """Collection of Evaluations."""
-  items = messages.MessageField(EvaluationResource, 1, repeated=True)
+  items = messages.MessageField(Evaluation, 1, repeated=True)
 
 
-class Evaluation(data_access_object.DataAccessObject):
+class EvaluationDao(data_access_object.DataAccessObject):
   def __init__(self):
-    super(Evaluation, self).__init__(resource=EvaluationResource,
+    super(EvaluationDao, self).__init__(resource=Evaluation,
                                      table='evaluation',
                                      columns=COLUMNS,
                                      key_columns=KEY_COLUMNS)
 
-DAO = Evaluation()
+DAO = EvaluationDao()

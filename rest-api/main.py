@@ -27,7 +27,7 @@ GET_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
     participant_id=messages.StringField(1, variant=messages.Variant.STRING))
 
 UPDATE_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
-    participant.ParticipantResource,
+    participant.Participant,
     # Accept one URL parameter: a string named 'id'
     participant_id=messages.StringField(1, variant=messages.Variant.STRING))
 
@@ -43,7 +43,7 @@ LIST_EVALUATION_RESOURCE = endpoints.ResourceContainer(
     participant_id=messages.StringField(1, variant=messages.Variant.STRING))
 
 UPDATE_EVALUATION_RESOURCE = endpoints.ResourceContainer(
-    evaluation.EvaluationResource,
+    evaluation.Evaluation,
     evaluation_id=messages.StringField(1, variant=messages.Variant.STRING),
     participant_id=messages.StringField(2, variant=messages.Variant.STRING))
 
@@ -76,8 +76,8 @@ class ParticipantApi(remote.Service):
     return participant.ParticipantCollection(items=participant.DAO.list({}))
 
   @endpoints.method(
-      participant.ParticipantResource,
-      participant.ParticipantResource,
+      participant.Participant,
+      participant.Participant,
       path='participants',
       http_method='POST',
       name='participants.insert')
@@ -87,7 +87,7 @@ class ParticipantApi(remote.Service):
 
   @endpoints.method(
       UPDATE_PARTICIPANT_RESOURCE,
-      participant.ParticipantResource,
+      participant.Participant,
       path='participants/{participant_id}',
       http_method='PUT',
       name='participants.update')
@@ -99,7 +99,7 @@ class ParticipantApi(remote.Service):
       # but an ID in the query string.
       GET_PARTICIPANT_RESOURCE,
       # This method returns a participant.
-      participant.ParticipantResource,
+      participant.Participant,
       # The path defines the source of the URL parameter 'id'. If not
       # specified here, it would need to be in the query string.
       path='participants/{participant_id}',
@@ -125,7 +125,7 @@ class ParticipantApi(remote.Service):
 
   @endpoints.method(
       UPDATE_EVALUATION_RESOURCE,
-      evaluation.EvaluationResource,
+      evaluation.Evaluation,
       path='participants/{participant_id}/evaluations',
       http_method='POST',
       name='evaluations.insert')
@@ -134,7 +134,7 @@ class ParticipantApi(remote.Service):
 
   @endpoints.method(
       UPDATE_EVALUATION_RESOURCE,
-      evaluation.EvaluationResource,
+      evaluation.Evaluation,
       path='participants/{participant_id}/evaluations/{evaluation_id}',
       http_method='PUT',
       name='evaluations.update')
@@ -151,7 +151,7 @@ class ParticipantApi(remote.Service):
       # but an ID in the query string.
       GET_EVALUATION_RESOURCE,
       # This method returns a evaluation.
-      evaluation.EvaluationResource,
+      evaluation.Evaluation,
       # The path defines the source of the URL parameter 'id'. If not
       # specified here, it would need to be in the query string.
       path='participants/{participant_id}/evaluations/{evaluation_id}',
@@ -166,9 +166,9 @@ class ParticipantApi(remote.Service):
               request.participant_id, request.evaluation_id))
 
   @endpoints.method(
-      questionnaire.QuestionnaireResource,
-      questionnaire.QuestionnaireResource,
-      path='ppi/fhir/questionnaire',
+      questionnaire.Questionnaire,
+      questionnaire.Questionnaire,
+      path='ppi/fhir/Questionnaire',
       http_method='POST',
       name='ppi.fhir.questionnaire.insert')
   def insert_questionnaire(self, request):
@@ -178,8 +178,8 @@ class ParticipantApi(remote.Service):
 
   @endpoints.method(
       GET_QUESTIONNAIRE_RESOURCE,
-      questionnaire.QuestionnaireResource,
-      path='ppi/fhir/questionnaire/{id}',
+      questionnaire.Questionnaire,
+      path='ppi/fhir/Questionnaire/{id}',
       http_method='GET',
       name='ppi.fhir.questionnaire.get')
   def get_questionnaire(self, request):
@@ -191,9 +191,9 @@ class ParticipantApi(remote.Service):
               request.participant_id, request.evaluation_id))
 
   @endpoints.method(
-      questionnaire_response.QuestionnaireResponseResource,
-      questionnaire_response.QuestionnaireResponseResource,
-      path='ppi/fhir/questionnaire_response',
+      questionnaire_response.QuestionnaireResponse,
+      questionnaire_response.QuestionnaireResponse,
+      path='ppi/fhir/QuestionnaireResponse',
       http_method='POST',
       name='ppi.fhir.questionnaire_response.insert')
   def insert_questionnaire_response(self, request):
@@ -204,8 +204,8 @@ class ParticipantApi(remote.Service):
 
   @endpoints.method(
       GET_QUESTIONNAIRE_RESPONSE_RESOURCE,
-      questionnaire_response.QuestionnaireResponseResource,
-      path='ppi/fhir/questionnaire_response/{id}',
+      questionnaire_response.QuestionnaireResponse,
+      path='ppi/fhir/QuestionnaireResponse/{id}',
       http_method='GET',
       name='ppi.fhir.questionnaire_response.get')
   def get_questionnaire_response(self, request):
