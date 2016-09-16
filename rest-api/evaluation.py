@@ -8,7 +8,7 @@ from protorpc import messages
 
 KEY_COLUMNS = (
     'evaluation_id',
-    'participant_id',
+    'participant_drc_id',
 )
 
 # For now, the evaluation fields map directly to the db columns, so do a simple
@@ -23,7 +23,7 @@ COLUMNS = KEY_COLUMNS + (
 class Evaluation(messages.Message):
   """The evaluation resource definition"""
   evaluation_id = messages.StringField(1)
-  participant_id = messages.StringField(2)
+  participant_drc_id = messages.StringField(2)
   completed = message_types.DateTimeField(3)
   evaluation_version = messages.StringField(4)
   evaluation_data = messages.StringField(5)

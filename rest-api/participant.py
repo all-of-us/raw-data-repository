@@ -4,13 +4,17 @@ from data_access_object import DataAccessObject
 from protorpc import message_types
 from protorpc import messages
 
-KEY_COLUMNS = ('participant_id',)
+KEY_COLUMNS = ('drc_internal_id',)
 
 # For now, the participant fields map directly to the db columns, so do a simple
 # mapping.
 COLUMNS = KEY_COLUMNS + (
-    'name',
-    'address',
+    'participant_id',
+    'biobank_id',
+    'first_name',
+    'middle_name',
+    'last_name',
+    'zip_code',
     'date_of_birth',
     'enrollment_status',
     'physical_exam_status',
@@ -32,16 +36,29 @@ class EnrollmentStatus(messages.Enum):
   CONSENTED = 2
   ENGAGED = 3
 
+class GenderIdentity(messages.Enum):
+  """The gender identity of the participant."""
+  NONE = 0
+  FEMALE = 1
+  MALE = 2
+  NEITHER = 3
+  OTHER = 4
+  PREFER_NOT_TO_SAY = 5
 
 class Participant(messages.Message):
   """The participant resource definition"""
   participant_id = messages.StringField(1)
-  name = messages.StringField(2)
-  address = messages.StringField(3)
-  date_of_birth = message_types.DateTimeField(4)
-  enrollment_status = messages.EnumField(EnrollmentStatus, 5, default='NONE')
+  drc_internal_id = messages.StringField(2)
+  biobank_id = messages.StringField(3)
+  first_name = messages.StringField(4)
+  middle_name = messages.StringField(5)
+  last_name = messages.StringField(6)
+  zip_code = messages.StringField(7)
+  date_of_birth = message_types.DateTimeField(8)
+  gender_identity = messages.EnumField(GenderIdentity, 9, default='NONE')
+  enrollment_status = messages.EnumField(EnrollmentStatus, 10, default='NONE')
   physical_exam_status = messages.EnumField(
-      PhysicalExamStatus, 6, default='NONE')
+      PhysicalExamStatus, 11, default='NONE')
 
 
 class ParticipantCollection(messages.Message):
