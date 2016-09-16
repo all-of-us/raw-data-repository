@@ -1,0 +1,53 @@
+{
+  "resourceType":"Questionnaire",
+  "status":"published",
+  "date":"2016-09-13T10:19:52-04:00",
+  "publisher":"admin",
+  "group":{"linkId":"root",
+           "required":true,
+           "repeats":false,
+           "group":[{"linkId":"1"},
+                    {"linkId":"2",
+                     "group":[
+                       {"linkId":"2.1",
+                        "question":[
+                          {"linkId":"2.1.1",
+                           "text":"Do you have allergies?",
+                           "type":"choice",
+                           "option":[
+                             {"code":"1","display":"Yes"},
+                             {"code":"2","display":"No"}]}]},
+                       {"linkId":"2.2","question":[
+                         {"linkId":"2.2.1",
+                          "text":"What is your gender?",
+                          "type":"choice",
+                          "option":[
+                            {"code":"1","display":"Male"},
+                            {"code":"2","display":"Female"}]},
+                         {"linkId":"2.2.2",
+                          "text":"What is your date of birth?",
+                          "type":"date"},
+                         {"linkId":"2.2.3",
+                          "text":"What is your country of birth?",
+                          "type":"text"},
+                         {"linkId":"2.2.4",
+                          "text":"What is your marital status?",
+                          "type":"choice",
+                          "option":[
+                            {"code":"1","display":"Married"},
+                            {"code":"2","display":"Option 2"},
+                            {"code":"3","display":"Divorced"}]}]},
+                       {"linkId":"2.3",
+                        "question":[
+                          {"linkId":"2.3.1",
+                           "text":"Do you smoke?",
+                           "type":"choice",
+                           "option":[
+                             {"code":"1","display":"Yes"},
+                             {"code":"2","display":"No"}]},
+                          {"linkId":"2.3.2",
+                           "text":"Do you drink alcohol",
+                           "type":"choice",
+                           "option":[
+                             {"code":"1","display":"Yes"},
+                             {"code":"2","display":"No"}]}]}]}]}}

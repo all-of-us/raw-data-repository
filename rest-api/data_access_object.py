@@ -116,8 +116,10 @@ class DataAccessObject(object):
     """
     where_clause, keys = self.primary_key.where_clause(request_obj)
     if len(keys) != len(self.primary_key.columns()):
-      raise MissingKeyException('Get {} requires {} to be specified'.format(
-          self.table, self.primary_key.columns()))
+      raise MissingKeyException(
+          'Get from {} requires {} columns to be specified. '
+          + 'Current where clause contains only "{}".'.format(
+              self.table, self.primary_key.columns(), where_clause))
 
     results = self._query(where_clause, keys, strip=strip)
     if not results:
@@ -317,6 +319,10 @@ def _marshall_field(field, val):
       return json.dumps([json.loads(protojson.encode_message(m)) for m in val])
     else:
       return protojson.encode_message(val)
+
+  if field_type == message_types.DateTimeField:
+    return val.strftime('%Y-%m-%d %H:%M:%S')
+
   return val
 
 

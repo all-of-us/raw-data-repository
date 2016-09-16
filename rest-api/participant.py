@@ -33,7 +33,7 @@ class EnrollmentStatus(messages.Enum):
   ENGAGED = 3
 
 
-class ParticipantResource(messages.Message):
+class Participant(messages.Message):
   """The participant resource definition"""
   participant_id = messages.StringField(1)
   name = messages.StringField(2)
@@ -46,12 +46,15 @@ class ParticipantResource(messages.Message):
 
 class ParticipantCollection(messages.Message):
   """Collection of Participants."""
-  items = messages.MessageField(ParticipantResource, 1, repeated=True)
+  items = messages.MessageField(Participant, 1, repeated=True)
 
 
-class Participant(DataAccessObject):
+class ParticipantDao(DataAccessObject):
   def __init__(self):
-    super(Participant, self).__init__(resource=ParticipantResource,
+    super(ParticipantDao, self).__init__(resource=Participant,
                                       table='participant',
                                       columns=COLUMNS,
                                       key_columns=KEY_COLUMNS)
+
+
+DAO = ParticipantDao()
