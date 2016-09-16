@@ -2,6 +2,7 @@
 
 Aslo serves as end to end test to exercise each of these REST APIs.
 """
+import copy
 import httplib2
 import pprint
 import json
@@ -63,9 +64,7 @@ class TestPPI(unittest.TestCase):
     print questionnaire_id
 
     response = questionnaire_service.get(id=questionnaire_id).execute()
-    # Clear out the ID before checking.
-    response['id'] = None
-    self.assertMultiLineEqual(pretty(questionnaire), pretty(response))
+    self._compare_json(questionnaire, response)
 
   def round_trip_questionnaire_responses(self, questionnaire_response):
     questionnaire_response['id'] = None
@@ -76,9 +75,18 @@ class TestPPI(unittest.TestCase):
     print questionnaire_response_id
 
     response = response_service.get(id=questionnaire_response_id).execute()
-    # Clear out the ID before checking.
-    response['id'] = None
-    self.assertMultiLineEqual(pretty(questionnaire_response), pretty(response))
+    self._compare_json(questionnaire_response, response)
+
+  def _compare_json(self, obj_a, obj_b):
+    obj_b = copy.deepcopy(obj_b)
+    # Clear out the id and fields added by the server before checking.
+    obj_b['id'] = None
+    if 'etag' in obj_b:
+      del obj_b['etag']
+    if 'kind' in obj_b:
+      del obj_b['kind']
+    self.assertMultiLineEqual(pretty(obj_a), pretty(obj_b))
+
 
 
 def pretty(obj):

@@ -57,7 +57,6 @@ GET_QUESTIONNAIRE_RESPONSE_RESOURCE = endpoints.ResourceContainer(
 
 
 
-
 @endpoints.api(name='participant',
                version='v1',
                allowed_client_ids=config.ALLOWED_CLIENT_IDS,
@@ -73,6 +72,7 @@ class ParticipantApi(remote.Service):
       http_method='GET',
       name='participants.list')
   def list_participants(self, request):
+    _check_auth()
     return participant.ParticipantCollection(items=participant.DAO.list({}))
 
   @endpoints.method(
@@ -82,6 +82,7 @@ class ParticipantApi(remote.Service):
       http_method='POST',
       name='participants.insert')
   def insert_participant(self, request):
+    _check_auth()
     request.participant_id = str(uuid.uuid4())
     return participant.DAO.insert(request)
 
@@ -92,6 +93,7 @@ class ParticipantApi(remote.Service):
       http_method='PUT',
       name='participants.update')
   def update_participant(self, request):
+    _check_auth()
     return participant.DAO.update(request)
 
   @endpoints.method(
@@ -106,6 +108,7 @@ class ParticipantApi(remote.Service):
       http_method='GET',
       name='participants.get')
   def get_participant(self, request):
+    _check_auth()
     try:
       # request.participant_id is used to access the URL parameter.
       return participant.DAO.get(request)
@@ -121,6 +124,7 @@ class ParticipantApi(remote.Service):
       http_method='GET',
       name='evaluations.list')
   def list_evaluations(self, request):
+    _check_auth()
     return evaluation.EvaluationCollection(items=evaluation.DAO.list(request))
 
   @endpoints.method(
@@ -130,6 +134,7 @@ class ParticipantApi(remote.Service):
       http_method='POST',
       name='evaluations.insert')
   def insert_evaluation(self, request):
+    _check_auth()
     return evaluation.DAO.insert(request)
 
   @endpoints.method(
@@ -139,6 +144,7 @@ class ParticipantApi(remote.Service):
       http_method='PUT',
       name='evaluations.update')
   def update_evaluation(self, request):
+    _check_auth()
     try:
       return evaluation.DAO.update(request)
     except data_access_object.NotFoundException:
@@ -158,6 +164,7 @@ class ParticipantApi(remote.Service):
       http_method='GET',
       name='evaluations.get')
   def get_evaluation(self, request):
+    _check_auth()
     try:
       return evaluation.DAO.get(request)
     except (IndexError, data_access_object.NotFoundException):
@@ -172,6 +179,7 @@ class ParticipantApi(remote.Service):
       http_method='POST',
       name='ppi.fhir.questionnaire.insert')
   def insert_questionnaire(self, request):
+    _check_auth()
     if not getattr(request, 'id', None):
       request.id = str(uuid.uuid4())
     return questionnaire.DAO.insert(request, strip=True)
@@ -183,6 +191,7 @@ class ParticipantApi(remote.Service):
       http_method='GET',
       name='ppi.fhir.questionnaire.get')
   def get_questionnaire(self, request):
+    _check_auth()
     try:
       return questionnaire.DAO.get(request, strip=True)
     except (IndexError, data_access_object.NotFoundException):
@@ -197,6 +206,7 @@ class ParticipantApi(remote.Service):
       http_method='POST',
       name='ppi.fhir.questionnaire_response.insert')
   def insert_questionnaire_response(self, request):
+    _check_auth()
     if not getattr(request, 'id', None):
       request.id = str(uuid.uuid4())
     return questionnaire_response.DAO.insert(request, strip=True)
@@ -209,12 +219,19 @@ class ParticipantApi(remote.Service):
       http_method='GET',
       name='ppi.fhir.questionnaire_response.get')
   def get_questionnaire_response(self, request):
+    _check_auth()
     try:
       return questionnaire_response.DAO.get(request, strip=True)
     except (IndexError, data_access_object.NotFoundException):
       raise endpoints.NotFoundException(
           'Questionnaire questionnaire_id: {} not found'.format(
               request.participant_id, request.evaluation_id))
+
+
+def _check_auth():
+  current_user = endpoints.get_current_user()
+  if current_user is None or current_user.email() not in config.ALLOWED_USERS:
+    raise endpoints.UnauthorizedException('Forbidden.')
 
 
 api = endpoints.api_server([ParticipantApi])
