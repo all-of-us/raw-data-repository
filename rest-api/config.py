@@ -8,6 +8,10 @@ CLOUDSQL_SOCKET = '/cloudsql/' + CLOUDSQL_INSTANCE
 CLOUDSQL_USER = 'api'
 
 
-WEB_CLIENT_ID = 'pmi-rdr-test'
 PYTHON_TEST_CLIENT_ID = '116540421226121250670'
-ALLOWED_CLIENT_IDS = [PYTHON_TEST_CLIENT_ID, WEB_CLIENT_ID]
+ALLOWED_CLIENT_IDS = [PYTHON_TEST_CLIENT_ID]
+
+# TODO: Move all authentication into the datastore.
+ALLOWED_USERS = [
+    'test-client@pmi-rdr-api-test.iam.gserviceaccount.com',
+]
