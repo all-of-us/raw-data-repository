@@ -10,8 +10,9 @@ from protorpc import message_types
 from protorpc import messages
 
 
-QUESTION_KEY_COLUMNS = ('questionnaire_id', 'parent_id')
+QUESTION_KEY_COLUMNS = ('questionnaire_id', 'question_id')
 QUESTION_COLUMNS = QUESTION_KEY_COLUMNS + (
+    'parent_id',
     'linkId',
     'concept',
     'text',
@@ -21,6 +22,7 @@ QUESTION_COLUMNS = QUESTION_KEY_COLUMNS + (
     'options',
     'option_col',
     'ordinal',
+    'extension',
 )
 
 class Question(messages.Message):
@@ -37,6 +39,7 @@ class Question(messages.Message):
   options = messages.MessageField(fhir_datatypes.Reference, 11, repeated=False)
   option = messages.MessageField(fhir_datatypes.Coding, 12, repeated=True)
   group = messages.MessageField('QuestionnaireGroup', 13, repeated=True)
+  extension = messages.MessageField(fhir_datatypes.Extension, 14, repeated=True)
 
 class QuestionDao(DataAccessObject):
   def __init__(self):
@@ -46,7 +49,7 @@ class QuestionDao(DataAccessObject):
                                       columns=QUESTION_COLUMNS,
                                       key_columns=QUESTION_KEY_COLUMNS,
                                       column_map={'option_col': 'option'})
-    self.set_synthetic_fields(QUESTION_KEY_COLUMNS + ('ordinal',))
+    self.set_synthetic_fields(QUESTION_KEY_COLUMNS + ('parent_id', 'ordinal',))
 
   def link(self, obj, parent, ordinal):
     parent_type = type(parent)
@@ -68,11 +71,12 @@ class QuestionDao(DataAccessObject):
 
 QUESTIONNAIRE_GROUP_KEY_COLUMNS = (
     'questionnaire_id',
-    'questionnaire_group_id',
-    'parent_id')
+    'questionnaire_group_id')
 
 QUESTIONNAIRE_GROUP_COLUMNS = QUESTIONNAIRE_GROUP_KEY_COLUMNS + (
+    'parent_id',
     'linkId',
+    'title',
     'concept',
     'text',
     'type',
@@ -89,13 +93,14 @@ class QuestionnaireGroup(messages.Message):
   parent_id = messages.StringField(3)
   ordinal = messages.IntegerField(4)
   linkId = messages.StringField(5)
-  concept = messages.MessageField(fhir_datatypes.Coding, 6, repeated=True)
-  text = messages.StringField(7)
-  type = messages.StringField(8)
-  required = messages.BooleanField(9)
-  repeats = messages.BooleanField(10)
-  group = messages.MessageField('QuestionnaireGroup', 11, repeated=True)
-  question = messages.MessageField(Question, 12, repeated=True)
+  title = messages.StringField(6)
+  concept = messages.MessageField(fhir_datatypes.Coding, 7, repeated=True)
+  text = messages.StringField(8)
+  type = messages.StringField(9)
+  required = messages.BooleanField(10)
+  repeats = messages.BooleanField(11)
+  group = messages.MessageField('QuestionnaireGroup', 12, repeated=True)
+  question = messages.MessageField(Question, 13, repeated=True)
 
 class QuestionnaireGroupDao(DataAccessObject):
   def __init__(self):
@@ -104,7 +109,8 @@ class QuestionnaireGroupDao(DataAccessObject):
         table='questionnaire_group',
         columns=QUESTIONNAIRE_GROUP_COLUMNS,
         key_columns=QUESTIONNAIRE_GROUP_KEY_COLUMNS)
-    self.set_synthetic_fields(QUESTIONNAIRE_GROUP_KEY_COLUMNS + ('ordinal',))
+    self.set_synthetic_fields(QUESTIONNAIRE_GROUP_KEY_COLUMNS + ('parent_id',
+                                                                 'ordinal',))
 
   def link(self, obj, parent, ordinal):
     parent_type = type(parent)
@@ -135,6 +141,7 @@ QUESTIONNAIRE_COLUMNS = QUESTIONNAIRE_KEY_COLUMNS + (
     'telecom',
     'text',
     'contained',
+    'extension',
 )
 
 
@@ -154,6 +161,7 @@ class Questionnaire(messages.Message):
   text = messages.MessageField(fhir_datatypes.Narrative, 11, repeated=True)
   contained = messages.MessageField(fhir_datatypes.DomainUsageResource,
                                     12, repeated=True)
+  extension = messages.MessageField(fhir_datatypes.Extension, 13, repeated=True)
 
 class QuestionnaireCollection(messages.Message):
   """Collection of Questionnaires."""

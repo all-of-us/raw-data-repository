@@ -35,7 +35,7 @@ class Answer(messages.Message):
   valueBoolean = messages.BooleanField(5)
   valueDecimal = messages.FloatField(6)
   valueInteger = messages.IntegerField(7)
-  valueDate = message_types.DateTimeField(8)
+  valueDate = messages.StringField(8) # Not a valid JSON date.
   valueDateTime = message_types.DateTimeField(9)
   valueInstant = message_types.DateTimeField(10)
   valueTime = message_types.DateTimeField(11)
@@ -156,7 +156,8 @@ QUESTIONNAIRE_RESPONSE_COLUMNS = QUESTIONNAIRE_RESPONSE_KEY_COLUMNS + (
     'author',
     'authored',
     'source',
-    'encounter')
+    'encounter',
+    'extension')
 
 class QuestionnaireResponse(messages.Message):
   resourceType = messages.StringField(1)
@@ -178,7 +179,8 @@ class QuestionnaireResponse(messages.Message):
   source = messages.MessageField(fhir_datatypes.Reference, 14, repeated=False)
   encounter = messages.MessageField(fhir_datatypes.Reference, 15,
                                     repeated=False)
-  group = messages.MessageField(QuestionnaireResponseGroup, 16, repeated=False)
+  extension = messages.MessageField(fhir_datatypes.Extension, 16, repeated=True)
+  group = messages.MessageField(QuestionnaireResponseGroup, 17, repeated=False)
 
 
 class QuestionnaireResponseDao(DataAccessObject):
