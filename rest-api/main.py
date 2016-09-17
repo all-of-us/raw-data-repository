@@ -2,8 +2,9 @@
 
 This defines the APIs and the handlers for the APIs.
 """
-import pprint
+
 import config
+import datetime
 import data_access_object
 import endpoints
 import evaluation
@@ -14,6 +15,7 @@ import uuid
 
 from protorpc import message_types
 from protorpc import messages
+from protorpc import protojson
 from protorpc import remote
 
 
@@ -25,6 +27,12 @@ GET_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
     message_types.VoidMessage,
     # Accept one URL parameter: a string named 'id'
     drc_internal_id=messages.StringField(1, variant=messages.Variant.STRING))
+
+LIST_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    first_name=messages.StringField(1, variant=messages.Variant.STRING),
+    last_name=messages.StringField(2, variant=messages.Variant.STRING),
+    date_of_birth=messages.StringField(3, variant=messages.Variant.STRING))
 
 UPDATE_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
     participant.Participant,
@@ -64,16 +72,28 @@ GET_QUESTIONNAIRE_RESPONSE_RESOURCE = endpoints.ResourceContainer(
 class ParticipantApi(remote.Service):
 
   @endpoints.method(
-      # This method does not take a request message.
-      message_types.VoidMessage,
-      # This method returns a ParticipantCollection message.
+      LIST_PARTICIPANT_RESOURCE,
       participant.ParticipantCollection,
       path='participants',
       http_method='GET',
       name='participants.list')
   def list_participants(self, request):
     _check_auth()
-    return participant.ParticipantCollection(items=participant.DAO.list({}))
+
+    # In order to do a query, at least the last name and the birthdate must be
+    # specified.
+    first_name = getattr(request, 'first_name', None)
+    last_name = getattr(request, 'last_name', None)
+    date_of_birth = getattr(request, 'date_of_birth', None)
+    if (not last_name  or not date_of_birth):
+      raise endpoints.ForbiddenException(
+          'Last name and date of birth must be specified.')
+    request_obj = participant.Participant(
+        first_name=first_name, last_name=last_name,
+        date_of_birth=_parse_date(date_of_birth))
+
+    return participant.ParticipantCollection(
+        items=participant.DAO.list(request_obj))
 
   @endpoints.method(
       participant.Participant,
@@ -232,6 +252,26 @@ def _check_auth():
   current_user = endpoints.get_current_user()
   if current_user is None or current_user.email() not in config.ALLOWED_USERS:
     raise endpoints.UnauthorizedException('Forbidden.')
+
+
+class DateHolder(messages.Message):
+  date = message_types.DateTimeField(1)
+
+def _parse_date(date_str, date_only=True):
+  """Parses JSON dates.
+
+  Dates that come in as query params are strings.  Use the proto converter so
+  they get the same handling as the rest of the dates in the system.
+  """
+  json_str = '{{"date": "{}"}}'.format(date_str)
+  holder = protojson.decode_message(DateHolder, json_str)
+
+  date_obj = holder.date
+  if date_only:
+    if (date_obj != datetime.datetime.combine(date_obj.date(),
+                                              datetime.datetime.min.time())):
+      raise endpoints.BadRequestException('Date contains non zero time fields')
+  return date_obj
 
 
 api = endpoints.api_server([ParticipantApi])

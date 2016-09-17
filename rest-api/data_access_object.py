@@ -64,7 +64,7 @@ class DataAccessObject(object):
     self.resource = resource
     self.table = table
     self.columns = columns
-    self.primary_key = _PrimaryKey(resource, key_columns)
+    self.key_columns = key_columns
     self.column_map = column_map or {}
     self.children = []
     self.synthetic_fields = []
@@ -114,12 +114,12 @@ class DataAccessObject(object):
           removed.  Use this to remove intenal identifiers, etc.
     Returns: The retrieved object.
     """
-    where_clause, keys = self.primary_key.where_clause(request_obj)
-    if len(keys) != len(self.primary_key.columns()):
+    where_clause, keys = self._where_clause(request_obj, key=True)
+    if len(keys) != len(self.key_columns):
       msg = ('Get from {} requires {} columns to be specified. '
              + 'Current where clause contains only "{}".')
       raise MissingKeyException(msg.format(
-              self.table, self.primary_key.columns(), where_clause))
+              self.table, self.key_columns, where_clause))
 
     results = self._query(where_clause, keys, strip=strip)
     if not results:
@@ -143,7 +143,7 @@ class DataAccessObject(object):
           identifiers, etc.
     Returns: The retrieved object.
     """
-    return self._query(*self.primary_key.where_clause(request_obj), strip=strip)
+    return self._query(*self._where_clause(request_obj), strip=strip)
 
   @db.connection
   def _insert_or_update(self, connection, obj, update=False, strip=False):
@@ -159,11 +159,11 @@ class DataAccessObject(object):
       field = getattr(self.resource, field_name)
       val = getattr(obj, field_name)
       # Only use values that are present, and don't update the primary keys.
-      if val is not None and not (update and col in self.primary_key.columns()):
+      if val is not None and not (update and col in self.key_columns):
         cols.append(col)
         vals.append(_marshall_field(field, val))
 
-    where_clause, keys = self.primary_key.where_clause(obj)
+    where_clause, keys = self._where_clause(obj, key=True)
     if update:
       vals += keys
       assignments = ','.join('{}=%s'.format(c) for c in cols)
@@ -173,8 +173,6 @@ class DataAccessObject(object):
       query = 'INSERT INTO {} ({}) VALUES ({})'.format(
           self.table, ','.join(cols), ','.join(['%s']*len(cols)))
 
-    print query
-    print vals
     connection.cursor().execute(query, vals)
 
     for field, dao in self.children:
@@ -267,27 +265,27 @@ class DataAccessObject(object):
 
     return children
 
-
-class _PrimaryKey(object):
-  """A potentially multi-column primary key."""
-  def __init__(self, resource, keys):
-    self.key_columns = keys
-    self.resource = resource
-
-  def where_clause(self, obj):
+  def _where_clause(self, obj, key=False):
     """Builds a where clause for this resource.
 
     Args:
       obj: If specified, the generated where clause will only contain
           fields present in this object.
+      key: If True, only builds a where clause that specifies the primary key
+          columns.
 
     Returns:
      A tuple containing a where clause with placeholders and the values
       for those placeholders.
+
     """
     cols = []
     keys = []
-    for col in self.key_columns:
+    obj_columns = self.columns
+    if key:
+      obj_columns = self.key_columns
+
+    for col in obj_columns:
       val = getattr(obj, col, None)
       if val:
         field = getattr(self.resource, col)
@@ -300,9 +298,6 @@ class _PrimaryKey(object):
       clause = ''
 
     return (clause, keys)
-
-  def columns(self):
-    return self.key_columns
 
 def _marshall_field(field, val):
   """Converts a field value to db representation.
