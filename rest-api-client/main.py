@@ -28,24 +28,29 @@ def main():
   service = discovery.build(api, version, discoveryServiceUrl=discovery_url,
                              http=http, cache_discovery=False)
 
-  name = 'Mr Foo'
+  first_name = 'Mister'
+  last_name = 'Pants'
+  date_of_birth = datetime.datetime(1975, 8, 21).isoformat();
 
   # Create a new participant.
   participant = {
-      'first_name': name,
+      'first_name': first_name,
+      'last_name': last_name,
+      'date_of_birth': date_of_birth,
   }
 
   # Create a participant.
   response = service.participants().insert(body=participant).execute()
   pprint.pprint(response)
-  if response['first_name'] != name:
+  if response['first_name'] != first_name:
     raise StandardError()
   drc_internal_id = response['drc_internal_id']
 
   # Fetch that participant and print it out.
-  response = service.participants().get(drc_internal_id=drc_internal_id).execute()
+  response = service.participants().get(
+      drc_internal_id=drc_internal_id).execute()
   pprint.pprint(response)
-  if response['first_name'] != name:
+  if response['first_name'] != first_name:
     raise StandardError()
 
   # Add a field to the participant update it.
@@ -57,9 +62,22 @@ def main():
     raise StandardError()
   pprint.pprint(response)
 
-  response = service.participants().list().execute()
+  try:
+    # List request must contain at least last name and birth date.
+    response = service.participants().list().execute()
+  except googleapiclient.errors.HttpError, e:
+    if e.resp.status != 403:
+      raise StandardError()
+
+  response = service.participants().list(last_name=last_name,
+                                         date_of_birth=date_of_birth).execute()
   # Make sure the newly created participant is in the list.
   for participant in response['items']:
+    if (participant['first_name'] != first_name
+        or participant['last_name'] != last_name
+        or participant['date_of_birth'] != date_of_birth):
+      raise StandardError()
+
     if participant['drc_internal_id'] == drc_internal_id:
       break
   else:
