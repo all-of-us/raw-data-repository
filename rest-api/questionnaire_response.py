@@ -35,7 +35,7 @@ class Answer(messages.Message):
   valueBoolean = messages.BooleanField(5)
   valueDecimal = messages.FloatField(6)
   valueInteger = messages.IntegerField(7)
-  valueDate = messages.StringField(8) # Not a valid JSON date.
+  valueDate = messages.StringField(8) # Not a valid javascript format date.
   valueDateTime = message_types.DateTimeField(9)
   valueInstant = message_types.DateTimeField(10)
   valueTime = message_types.DateTimeField(11)
