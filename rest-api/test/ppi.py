@@ -38,6 +38,8 @@ class TestPPI(unittest.TestCase):
   def test_questionnaires(self):
     questionnaire_files = [
         'test-data/questionnaire1.json',
+        # Example from vibrent.
+        'test-data/questionnaire2.json',
     ]
 
     for json_file in questionnaire_files:
@@ -47,7 +49,10 @@ class TestPPI(unittest.TestCase):
 
   def test_questionnaire_responses(self):
     questionnaire_response_files = [
+        # Stripped down version of the official FHIR example
         'test-data/questionnaire_response1.json',
+        # Example response from vibrent.
+        'test-data/questionnaire_response2.json',
     ]
 
     for json_file in questionnaire_response_files:

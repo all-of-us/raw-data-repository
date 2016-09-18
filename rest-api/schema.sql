@@ -37,6 +37,7 @@ CREATE TABLE evaluation
 create table question
 (
     questionnaire_id VARCHAR(200) NOT NULL,
+    question_id VARCHAR(200) NOT NULL,
     parent_id VARCHAR(200) NOT NULL,
     ordinal INTEGER NOT NULL,
     linkId MEDIUMTEXT NULL,
@@ -47,8 +48,9 @@ create table question
     repeats BOOLEAN NULL,
     options MEDIUMTEXT NULL,
     option_col MEDIUMTEXT NULL,
-
-    PRIMARY KEY (questionnaire_id, parent_id)
+    extension MEDIUMTEXT NULL,
+    
+    PRIMARY KEY (questionnaire_id, question_id)
 );
 
 create table questionnaire_group
@@ -58,6 +60,7 @@ create table questionnaire_group
     parent_id VARCHAR(200) NOT NULL,
     ordinal INTEGER NOT NULL,
     linkId MEDIUMTEXT NULL,
+    title MEDIUMTEXT NULL,
     concept MEDIUMTEXT NULL,
     text MEDIUMTEXT NULL,
     type MEDIUMTEXT NULL,
@@ -81,6 +84,7 @@ create table questionnaire
     subjectType MEDIUMTEXT NULL,
     text MEDIUMTEXT NULL,
     contained MEDIUMTEXT NULL,
+    extension MEDIUMTEXT NULL,
 
     PRIMARY KEY (id)
 );
@@ -102,6 +106,7 @@ create table questionnaire_response
     authored DATETIME(6) NULL,
     source MEDIUMTEXT NULL,
     encounter MEDIUMTEXT NULL,
+    extension MEDIUMTEXT NULL,
 
     PRIMARY KEY (id)
 );
