@@ -14,4 +14,5 @@ ALLOWED_CLIENT_IDS = [PYTHON_TEST_CLIENT_ID]
 # TODO: Move all authentication into the datastore.
 ALLOWED_USERS = [
     'test-client@pmi-rdr-api-test.iam.gserviceaccount.com',
+    'pmi-hpo-staging@appspot.gserviceaccount.com',
 ]
