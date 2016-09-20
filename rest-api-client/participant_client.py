@@ -1,32 +1,15 @@
 """Simple end to end test to exercise the participant and evaluation APIs.
 """
+
 import datetime
 import googleapiclient
-import httplib2
 import pprint
 
-from apiclient import discovery
-from oauth2client.service_account import ServiceAccountCredentials
-
-SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
-CREDS_FILE = '../rest-api/test/test-data/test-client-cert.json'
-#API_ROOT = 'https://pmi-rdr-api-test.appspot.com/_ah/api'
-API_ROOT = 'http://localhost:8080/_ah/api'
-
+import common
 
 def main():
-  credentials = ServiceAccountCredentials.from_json_keyfile_name(CREDS_FILE,
-                                                                 [SCOPE])
-  http = httplib2.Http()
-  http = credentials.authorize(http)
-
-  # Build a service object for interacting with the API.
-  api = 'participant'
-  version = 'v1'
-  discovery_url = '%s/discovery/v1/apis/%s/%s/rest' % (API_ROOT, api, version)
-  pprint.pprint(discovery_url)
-  service = discovery.build(api, version, discoveryServiceUrl=discovery_url,
-                             http=http, cache_discovery=False)
+  args = common.parse_args()
+  service = common.get_service('participant', 'v1', args)
 
   first_name = 'Mister'
   last_name = 'Pants'
@@ -56,6 +39,7 @@ def main():
   # Add a field to the participant update it.
   zip_code = '02142'
   response['zip_code'] = zip_code
+  response['enrollment_status'] = 'CONSENTED'
   response = service.participants().update(drc_internal_id=drc_internal_id,
                                            body=response).execute()
   if response['zip_code'] != zip_code:
@@ -69,15 +53,19 @@ def main():
     if e.resp.status != 403:
       raise StandardError()
 
-  response = service.participants().list(last_name=last_name,
+  response = service.participants().list(first_name=first_name,
+                                         last_name=last_name,
                                          date_of_birth=date_of_birth).execute()
   # Make sure the newly created participant is in the list.
-  for participant in response['items']:
+  pprint.pprint(response)
+  for i, participant in enumerate(response['items']):
+    print i
     if (participant['first_name'] != first_name
         or participant['last_name'] != last_name
         or participant['date_of_birth'] != date_of_birth):
       raise StandardError()
 
+    print '{} {}'.format(participant['drc_internal_id'], drc_internal_id)
     if participant['drc_internal_id'] == drc_internal_id:
       break
   else:
