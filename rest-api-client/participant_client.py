@@ -58,14 +58,12 @@ def main():
                                          date_of_birth=date_of_birth).execute()
   # Make sure the newly created participant is in the list.
   pprint.pprint(response)
-  for i, participant in enumerate(response['items']):
-    print i
+  for participant in response['items']:
     if (participant['first_name'] != first_name
         or participant['last_name'] != last_name
         or participant['date_of_birth'] != date_of_birth):
       raise StandardError()
 
-    print '{} {}'.format(participant['drc_internal_id'], drc_internal_id)
     if participant['drc_internal_id'] == drc_internal_id:
       break
   else:
