@@ -1,6 +1,7 @@
 """Implementation of the metrics API"""
 
 import db
+import participant
 
 from protorpc import message_types
 from protorpc import messages
@@ -31,7 +32,7 @@ _metric_map = {
     },
     Metrics.PARTICIPANT_MEMBERSHIP_TIER: {
         'column': 'enrollment_status',
-        'enum': Metrics,
+        'enum': participant.EnrollmentStatus,
         'table': 'participant',
     },
 }
