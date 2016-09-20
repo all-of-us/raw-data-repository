@@ -287,8 +287,10 @@ class DataAccessObject(object):
 
     for col in obj_columns:
       val = getattr(obj, col, None)
-      if val:
-        field = getattr(self.resource, col)
+      field = getattr(self.resource, col)
+      # Enums will always have a default value. Only add an enum val to the
+      # query if the value is not the default.
+      if (type(field) != messages.EnumField and val) or val != field.default:
         cols.append(col)
         keys.append(_marshall_field(field, val))
 
