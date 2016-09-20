@@ -8,6 +8,7 @@ import datetime
 import data_access_object
 import endpoints
 import evaluation
+import metrics
 import participant
 import questionnaire
 import questionnaire_response
@@ -70,6 +71,15 @@ GET_QUESTIONNAIRE_RESPONSE_RESOURCE = endpoints.ResourceContainer(
                allowed_client_ids=config.ALLOWED_CLIENT_IDS,
                scopes=[endpoints.EMAIL_SCOPE])
 class ParticipantApi(remote.Service):
+  @endpoints.method(
+      metrics.MetricsRequest,
+      metrics.MetricsResponse,
+      path='metrics',
+      http_method='POST',
+      name='metrics.calculate')
+  def get_metric(self, request):
+    _check_auth()
+    return metrics.SERVICE.get_metrics(request)
 
   @endpoints.method(
       LIST_PARTICIPANT_RESOURCE,
