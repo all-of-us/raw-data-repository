@@ -65,12 +65,12 @@ GET_QUESTIONNAIRE_RESPONSE_RESOURCE = endpoints.ResourceContainer(
     message_types.VoidMessage,
     id=messages.StringField(1, variant=messages.Variant.STRING))
 
+participants_api = endpoints.api(name='participant',
+                                version='v1',
+                                allowed_client_ids=config.ALLOWED_CLIENT_IDS,
+                                scopes=[endpoints.EMAIL_SCOPE])
 
-
-@endpoints.api(name='participant',
-               version='v1',
-               allowed_client_ids=config.ALLOWED_CLIENT_IDS,
-               scopes=[endpoints.EMAIL_SCOPE])
+@participants_api
 class ParticipantApi(remote.Service):
   @endpoints.method(
       LIST_PARTICIPANT_RESOURCE,

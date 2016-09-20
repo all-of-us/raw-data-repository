@@ -8,5 +8,5 @@ import participants_api
 import metrics_api
 
 
-api = endpoints.api_server([participants_api.ParticipantApi,
-                            metrics_api.MetricsApi])
+api = endpoints.api_server([participants_api.participants_api,
+                            metrics_api.metrics_api])
