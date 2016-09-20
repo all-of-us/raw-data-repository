@@ -13,11 +13,11 @@ from protorpc import messages
 from protorpc import protojson
 from protorpc import remote
 
-
-@endpoints.api(name='metrics',
-               version='v1',
-               allowed_client_ids=config.ALLOWED_CLIENT_IDS,
-               scopes=[endpoints.EMAIL_SCOPE])
+metrics_api = endpoints.api(name='metrics',
+                            version='v1',
+                            allowed_client_ids=config.ALLOWED_CLIENT_IDS,
+                            scopes=[endpoints.EMAIL_SCOPE])
+@metrics_api
 class MetricsApi(remote.Service):
   @endpoints.method(
       metrics.MetricsRequest,
