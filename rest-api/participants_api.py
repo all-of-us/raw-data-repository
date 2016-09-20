@@ -3,12 +3,12 @@
 This defines the APIs and the handlers for the APIs.
 """
 
+import config
 import datetime
 import endpoints
 import uuid
 
 import api_util
-import config
 import data_access_object
 import evaluation
 import participant
@@ -65,10 +65,12 @@ GET_QUESTIONNAIRE_RESPONSE_RESOURCE = endpoints.ResourceContainer(
     message_types.VoidMessage,
     id=messages.StringField(1, variant=messages.Variant.STRING))
 
-participants_api = endpoints.api(name='participant',
-                                version='v1',
-                                allowed_client_ids=config.ALLOWED_CLIENT_IDS,
-                                scopes=[endpoints.EMAIL_SCOPE])
+participants_api = endpoints.api(
+    name='participant',
+    version='v1',
+    allowed_client_ids=config.getSettingList(config.ALLOWED_CLIENT_ID),
+    scopes=[endpoints.EMAIL_SCOPE],
+    auth_level=endpoints.AUTH_LEVEL.REQUIRED)
 
 @participants_api
 class ParticipantApi(remote.Service):

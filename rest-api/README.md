@@ -43,3 +43,21 @@ When setting up a database, create the database manually "pmi_rdr".
 Run schema.sql to create the table(s).
 
 Create the "api" user manually. Then `GRANT ALL on pmi_rdr.* to 'api';`
+
+### Configuring your instance
+
+When the instance comes up for the first time, it will check for the existance
+of the configuration values in the datastore.  If there are none found, then
+development defaults will be written. (The instance may need to try to service
+its first request before it does this)
+
+In order to modify the configuration:
+
+If running a local dev_appserver, navigate to the
+[datastore viewer](http://localhost:8000/datastore?kind=Config).
+You should be able to modify config settings using the fancy UI.
+
+If running in produciton, go to the
+[cloud console](https://console.cloud.google.com).  Select the app engine
+project and then click on "datastore" in the left hand navigation bar.
+

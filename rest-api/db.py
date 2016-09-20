@@ -30,10 +30,11 @@ class _Connection(object):
 
 
   def __init__(self):
+    socket = '/cloudsql/' + config.getSetting(config.CLOUDSQL_INSTANCE)
     self.conn = MySQLdb.connect(
-      unix_socket=config.CLOUDSQL_SOCKET,
-      user=config.CLOUDSQL_USER,
-      passwd='ApiPants123',
+      unix_socket=socket,
+      user=config.getSetting(config.CLOUDSQL_USER),
+      passwd=config.getSetting(config.CLOUDSQL_PASSWORD),
       db='pmi_rdr')
     self.in_use = True
 

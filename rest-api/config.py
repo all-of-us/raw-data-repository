@@ -3,17 +3,60 @@
 Contains things such as the database to connect to.
 """
 
-CLOUDSQL_INSTANCE = 'pmi-drc-api-test:us-central1:pmi-rdr'
-CLOUDSQL_SOCKET = '/cloudsql/' + CLOUDSQL_INSTANCE
-CLOUDSQL_USER = 'api'
+from google.appengine.ext import ndb
 
 
-PYTHON_TEST_CLIENT_ID = '116540421226121250670'
-STAGING_CLIENT_ID = '101582376895035372811'
-ALLOWED_CLIENT_IDS = [PYTHON_TEST_CLIENT_ID, STAGING_CLIENT_ID]
+class Config(ndb.Model):
+  config_key = ndb.StringProperty()
+  value = ndb.StringProperty()
 
-# TODO: Move all authentication into the datastore.
-ALLOWED_USERS = [
-    'test-client@pmi-rdr-api-test.iam.gserviceaccount.com',
-    'pmi-hpo-staging@appspot.gserviceaccount.com',
-]
+
+CLOUDSQL_INSTANCE = 'cloudsql_instance'
+CLOUDSQL_USER = 'cloudsql_user'
+CLOUDSQL_PASSWORD = 'cloudsql_password'
+
+ALLOWED_USER = 'allowed_user'
+ALLOWED_CLIENT_ID = 'allowed_client_id'
+
+class MissingConfigException(BaseException):
+  """Exception raised if the setting does not exist"""
+
+class InvalidConfigException(BaseException):
+  """Exception raised when the config setting is a not in the expected form."""
+
+
+def getSettingList(key):
+  """Gets all config settings for a given key."""
+  query = Config.query(Config.config_key==key)
+  iterator = query.iter()
+  if not iterator.has_next():
+    raise MissingConfigException(
+        'Config key "{}" is not in datastore.'.format(key))
+
+  return [config.value for config in iterator]
+
+def getSetting(key):
+  """Gets a config where there is only be a single setting for a given key."""
+  settings_list = getSettingList(key)
+  if len(settings_list) != 1:
+    raise InvalidConfigException(
+        'Config key {} has multiple entries in datastore.'.format(key))
+  return settings_list[0]
+
+# Create the config 'table' if it doesn't exist.
+print "Checking the config datastore is initialized..."
+try:
+  setting = getSetting('initialized')
+except MissingConfigException:
+  print "Creating and setting sane defaults for development..."
+  Config(config_key='initialized', value='True').put()
+  Config(config_key='allowed_client_id', value='101582376895035372811').put()
+  Config(config_key='allowed_client_id', value='116540421226121250670').put()
+  Config(config_key='allowed_user',
+         value='pmi-hpo-staging@appspot.gserviceaccount.com').put()
+  Config(config_key='allowed_user',
+         value='test-client@pmi-rdr-api-test.iam.gserviceaccount.com').put()
+  Config(config_key='cloudsql_instance',
+         value='pmi-drc-api-test:us-central1:pmi-rdr-eng-test').put()
+  Config(config_key='cloudsql_user', value='api').put()
+  Config(config_key='cloudsql_password', value='PrecisionPants123').put()
