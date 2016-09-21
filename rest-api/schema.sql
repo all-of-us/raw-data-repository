@@ -1,8 +1,8 @@
-DROP TABLE participant;
-DROP TABLE evaluation;
-DROP TABLE question;
-DROP TABLE questionnaire_group;
-DROP TABLE questionnaire;
+DROP TABLE IF EXISTS participant;
+DROP TABLE IF EXISTS evaluation;
+DROP TABLE IF EXISTS question;
+DROP TABLE IF EXISTS questionnaire_group;
+DROP TABLE IF EXISTS questionnaire;
 
 
 CREATE TABLE participant

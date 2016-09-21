@@ -7,6 +7,7 @@ import config
 import logging
 import MySQLdb
 import threading
+import os
 
 from protorpc import message_types
 from protorpc import messages
@@ -30,11 +31,18 @@ class _Connection(object):
 
 
   def __init__(self):
-    self.conn = MySQLdb.connect(
-      unix_socket=config.CLOUDSQL_SOCKET,
-      user=config.CLOUDSQL_USER,
-      passwd='ApiPants123',
-      db='pmi_rdr')
+    if os.getenv('SERVER_SOFTWARE', '').startswith('Google App Engine/'):
+      self.conn = MySQLdb.connect(
+        unix_socket=config.CLOUDSQL_SOCKET,
+        user=config.CLOUDSQL_USER,
+        passwd='ApiPants123',
+        db='pmi_rdr')
+    else:
+      self.conn = MySQLdb.connect(
+        host='localhost',
+        read_default_file='~/.my.cnf',
+        db='pmi_rdr')
+
     self.in_use = True
 
   def release(self):
