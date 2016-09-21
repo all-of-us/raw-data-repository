@@ -31,8 +31,8 @@ _metric_map = {
         'table': 'participant'
     },
     Metrics.PARTICIPANT_MEMBERSHIP_TIER: {
-        'column': 'enrollment_status',
-        'enum': participant.EnrollmentStatus,
+        'column': 'membership_tier',
+        'enum': participant.MembershipTier,
         'table': 'participant',
     },
 }

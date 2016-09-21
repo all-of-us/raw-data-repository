@@ -39,10 +39,16 @@ def main():
   # Add a field to the participant update it.
   zip_code = '02142'
   response['zip_code'] = zip_code
-  response['enrollment_status'] = 'CONSENTED'
+  response['membership_tier'] = 'CONSENTED'
+  response['consent_time'] = datetime.datetime.now().isoformat()
+  response['hpo_id'] = '1234'
   response = service.participants().update(drc_internal_id=drc_internal_id,
                                            body=response).execute()
-  if response['zip_code'] != zip_code:
+  if (response['zip_code'] != zip_code
+      or response['membership_tier'] != 'CONSENTED'
+      or not 'sign_up_time' in response
+      or response['hpo_id'] != '1234'):
+    pprint.pprint(response)
     raise StandardError()
   pprint.pprint(response)
 
@@ -57,7 +63,6 @@ def main():
                                          last_name=last_name,
                                          date_of_birth=date_of_birth).execute()
   # Make sure the newly created participant is in the list.
-  pprint.pprint(response)
   for participant in response['items']:
     if (participant['first_name'] != first_name
         or participant['last_name'] != last_name

@@ -1,10 +1,3 @@
-DROP TABLE participant;
-DROP TABLE evaluation;
-DROP TABLE question;
-DROP TABLE questionnaire_group;
-DROP TABLE questionnaire;
-
-
 CREATE TABLE participant
 (
     participant_id VARCHAR(200) NULL,
@@ -15,8 +8,12 @@ CREATE TABLE participant
     last_name VARCHAR(2048) NULL,
     zip_code VARCHAR(2048) NULL,
     date_of_birth DATETIME(6) NULL,
-    enrollment_status INT NULL,
+    membership_tier INT NULL,
     physical_exam_status INT NULL,
+    sign_up_time DATETIME(6) NULL,
+    consent_time DATETIME(6) NULL,
+    hpo_id VARCHAR(200) NULL,
+    recruitment_source INT NULL,
 
     PRIMARY KEY (drc_internal_id),
     CONSTRAINT unique_participant_id UNIQUE (participant_id),
