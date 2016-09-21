@@ -61,3 +61,13 @@ If running in produciton, go to the
 [cloud console](https://console.cloud.google.com).  Select the app engine
 project and then click on "datastore" in the left hand navigation bar.
 
+### Setting up a new DB
+```Sql
+mysql> create database pmi_rdr;
+mysql> use pmi_rdr;
+mysql> create user api identified by '<password>';
+mysql> grant all privileges on pmi_rdr.* to api;
+mysql> source schema.sql
+```
+
+

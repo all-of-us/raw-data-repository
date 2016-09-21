@@ -107,6 +107,8 @@ class ParticipantApi(remote.Service):
   def insert_participant(self, request):
     api_util.check_auth()
     request.drc_internal_id = str(uuid.uuid4())
+    if not request.sign_up_time:
+      request.sign_up_time = datetime.datetime.now()
     return participant.DAO.insert(request)
 
   @endpoints.method(

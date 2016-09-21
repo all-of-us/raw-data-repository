@@ -16,8 +16,12 @@ COLUMNS = KEY_COLUMNS + (
     'last_name',
     'zip_code',
     'date_of_birth',
-    'enrollment_status',
+    'membership_tier',
     'physical_exam_status',
+    'sign_up_time',
+    'consent_time',
+    'hpo_id',
+    'recruitment_source',
 )
 
 
@@ -29,7 +33,7 @@ class PhysicalExamStatus(messages.Enum):
   RESULT_READY = 3
 
 
-class EnrollmentStatus(messages.Enum):
+class MembershipTier(messages.Enum):
   """The state of the participant"""
   NONE = 0
   INTERESTED = 1
@@ -45,6 +49,12 @@ class GenderIdentity(messages.Enum):
   OTHER = 4
   PREFER_NOT_TO_SAY = 5
 
+class RecruitmentSource(messages.Enum):
+  NONE = 0
+  HPO = 1
+  DIRECT_VOLUNTEER = 2
+
+
 class Participant(messages.Message):
   """The participant resource definition"""
   participant_id = messages.StringField(1)
@@ -56,10 +66,13 @@ class Participant(messages.Message):
   zip_code = messages.StringField(7)
   date_of_birth = message_types.DateTimeField(8)
   gender_identity = messages.EnumField(GenderIdentity, 9, default='NONE')
-  enrollment_status = messages.EnumField(EnrollmentStatus, 10, default='NONE')
+  membership_tier = messages.EnumField(MembershipTier, 10, default='NONE')
   physical_exam_status = messages.EnumField(
       PhysicalExamStatus, 11, default='NONE')
-
+  sign_up_time = message_types.DateTimeField(12)
+  consent_time = message_types.DateTimeField(13)
+  hpo_id = messages.StringField(14)
+  recruitment_source = messages.EnumField(RecruitmentSource, 16, default='NONE')
 
 class ParticipantCollection(messages.Message):
   """Collection of Participants."""
