@@ -13,6 +13,13 @@ from protorpc import messages
 from protorpc import protojson
 from protorpc import remote
 
+# Note that auth_level is missing.  This makes sure that the user is
+# authenticated before the endpoint is called.  This is unnecessary as this
+# check is insufficient, and we we are doing a string account whitelisting in
+# check_auth().  Ideally we would turn it on anyway, but at the moment, it
+# causes errors saying that this API is not enabled for the service account's
+# project... And there is no way to enable the API. This API enabling should
+# work fine once we upgrade to Cloud Endpoints 2.0.
 metrics_api = endpoints.api(
     name='metrics',
     version='v1',
