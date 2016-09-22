@@ -17,8 +17,7 @@ metrics_api = endpoints.api(
     name='metrics',
     version='v1',
     allowed_client_ids=config.getSettingList(config.ALLOWED_CLIENT_ID),
-    scopes=[endpoints.EMAIL_SCOPE],
-    auth_level=endpoints.AUTH_LEVEL.REQUIRED)
+    scopes=[endpoints.EMAIL_SCOPE])
 @metrics_api
 class MetricsApi(remote.Service):
   @endpoints.method(

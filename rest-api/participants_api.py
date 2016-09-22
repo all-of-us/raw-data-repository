@@ -69,8 +69,7 @@ participants_api = endpoints.api(
     name='participant',
     version='v1',
     allowed_client_ids=config.getSettingList(config.ALLOWED_CLIENT_ID),
-    scopes=[endpoints.EMAIL_SCOPE],
-    auth_level=endpoints.AUTH_LEVEL.REQUIRED)
+    scopes=[endpoints.EMAIL_SCOPE])
 
 @participants_api
 class ParticipantApi(remote.Service):
