@@ -80,72 +80,58 @@ participants_api = endpoints.api(
 # work fine once we upgrade to Cloud Endpoints 2.0.
 @participants_api
 class ParticipantApi(remote.Service):
-  @endpoints.method(
-      LIST_PARTICIPANT_RESOURCE,
-      participant.ParticipantCollection,
+  @participant.Participant.query_method(
+      user_required=True,
       path='participants',
       http_method='GET',
       name='participants.list')
-  def list_participants(self, request):
+  def list_participants(self, query):
     api_util.check_auth()
 
     # In order to do a query, at least the last name and the birthdate must be
     # specified.
-    first_name = getattr(request, 'first_name', None)
-    last_name = getattr(request, 'last_name', None)
-    date_of_birth = getattr(request, 'date_of_birth', None)
-    if (not last_name  or not date_of_birth):
+    last_name = getattr(query, 'last_name', None)
+    date_of_birth = getattr(query, 'date_of_birth', None)
+    if (not last_name or not date_of_birth):
       raise endpoints.ForbiddenException(
           'Last name and date of birth must be specified.')
-    request_obj = participant.Participant(
-        first_name=first_name, last_name=last_name,
-        date_of_birth=_parse_date(date_of_birth))
+    return query
 
-    return participant.ParticipantCollection(
-        items=participant.DAO.list(request_obj))
-
-  @endpoints.method(
-      participant.Participant,
-      participant.Participant,
+  @participant.Participant.method(
+      user_required=True,
       path='participants',
       http_method='POST',
       name='participants.insert')
-  def insert_participant(self, request):
+  def insert_participant(self, model):
     api_util.check_auth()
-    request.drc_internal_id = str(uuid.uuid4())
-    if not request.sign_up_time:
-      request.sign_up_time = datetime.datetime.now()
-    return participant.DAO.insert(request)
 
-  @endpoints.method(
-      UPDATE_PARTICIPANT_RESOURCE,
-      participant.Participant,
+    model.drc_internal_id = str(uuid.uuid4())
+    if not model.sign_up_time:
+      model.sign_up_time = datetime.datetime.now()
+
+    model.put()
+    return model
+
+  @participant.Participant.method(
+      request_fields=('drc_internal_id',),
+      user_required=True,
       path='participants/{drc_internal_id}',
       http_method='PUT',
       name='participants.update')
-  def update_participant(self, request):
+  def update_participant(self, model):
     api_util.check_auth()
-    return participant.DAO.update(request)
+    if not model.from_datastore:
+      raise endpoints.NotFoundException('Participant not found.')
+    model.put()
 
-  @endpoints.method(
-      # Use the ResourceContainer defined above to accept an empty body
-      # but an ID in the query string.
-      GET_PARTICIPANT_RESOURCE,
-      # This method returns a participant.
-      participant.Participant,
-      # The path defines the source of the URL parameter 'id'. If not
-      # specified here, it would need to be in the query string.
+  @participant.Participant.method(
+      request_message=participant.Participant.proto_model(),
       path='participants/{drc_internal_id}',
       http_method='GET',
       name='participants.get')
   def get_participant(self, request):
     api_util.check_auth()
-    try:
-      # request.drc_internal_id is used to access the URL parameter.
-      return participant.DAO.get(request)
-    except (IndexError, data_access_object.NotFoundException):
-      raise endpoints.NotFoundException('Participant {} not found'.format(
-          request.drc_internal_id))
+    return participant.get(request.drc_internal_id)
 
   @endpoints.method(
       GET_EVALUATION_RESOURCE,

@@ -13,7 +13,7 @@ def main():
 
   first_name = 'Mister'
   last_name = 'Pants'
-  date_of_birth = datetime.datetime(1975, 8, 21).isoformat();
+  date_of_birth = '1975-08-21'
 
   # Create a new participant.
   participant = {
