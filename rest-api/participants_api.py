@@ -192,32 +192,32 @@ class ParticipantApi(remote.Service):
           'Evaluation participant_drc_id: {} evaluation_id: not found'.format(
               request.participant_drc_id, request.evaluation_id))
 
-  @endpoints.method(
-      questionnaire.Questionnaire,
-      questionnaire.Questionnaire,
+  @questionnaire.Questionnaire.method(
       path='ppi/fhir/Questionnaire',
       http_method='POST',
-      name='ppi.fhir.questionnaire.insert')
-  def insert_questionnaire(self, request):
+      name='ppi.fhir.questionnaire.insert',
+      user_required=True)
+  def insert_questionnaire(self, model):
     api_util.check_auth()
-    if not getattr(request, 'id', None):
-      request.id = str(uuid.uuid4())
-    return questionnaire.DAO.insert(request, strip=True)
+    if not model.id:
+      model.id = str(uuid.uuid4())
+    model.put()
+    return model
 
-  @endpoints.method(
-      GET_QUESTIONNAIRE_RESOURCE,
-      questionnaire.Questionnaire,
-      path='ppi/fhir/Questionnaire/{id}',
-      http_method='GET',
-      name='ppi.fhir.questionnaire.get')
-  def get_questionnaire(self, request):
-    api_util.check_auth()
-    try:
-      return questionnaire.DAO.get(request, strip=True)
-    except (IndexError, data_access_object.NotFoundException):
-      raise endpoints.NotFoundException(
-          'Questionnaire questionnaire_id: {} not found'.format(
-              request.id, request.evaluation_id))
+  # @endpoints.method(
+  #     GET_QUESTIONNAIRE_RESOURCE,
+  #     questionnaire.Questionnaire,
+  #     path='ppi/fhir/Questionnaire/{id}',
+  #     http_method='GET',
+  #     name='ppi.fhir.questionnaire.get')
+  # def get_questionnaire(self, request):
+  #   api_util.check_auth()
+  #   try:
+  #     return questionnaire.DAO.get(request, strip=True)
+  #   except (IndexError, data_access_object.NotFoundException):
+  #     raise endpoints.NotFoundException(
+  #         'Questionnaire questionnaire_id: {} not found'.format(
+  #             request.id, request.evaluation_id))
 
   @endpoints.method(
       questionnaire_response.QuestionnaireResponse,
