@@ -6,6 +6,7 @@ This defines the APIs and the handlers for the APIs.
 import config
 import datetime
 import endpoints
+import pprint
 import uuid
 
 import api_util
@@ -80,22 +81,27 @@ participants_api = endpoints.api(
 # work fine once we upgrade to Cloud Endpoints 2.0.
 @participants_api
 class ParticipantApi(remote.Service):
-  @participant.Participant.query_method(
+  # Using a query_method would make this quite a bit simpler, but it allows the
+  # client to query anything.  We need to enforce that last_name and
+  # date_of_birth are set.
+  @participant.Participant.method(
+      request_fields=('first_name', 'last_name', 'date_of_birth'),
+      response_message=participant.Participant.ProtoCollection(),
       user_required=True,
       path='participants',
       http_method='GET',
       name='participants.list')
-  def list_participants(self, query):
+  def list_participants(self, model):
     api_util.check_auth()
 
     # In order to do a query, at least the last name and the birthdate must be
     # specified.
-    last_name = getattr(query, 'last_name', None)
-    date_of_birth = getattr(query, 'date_of_birth', None)
+    last_name = model.last_name
+    date_of_birth = model.date_of_birth
     if (not last_name or not date_of_birth):
       raise endpoints.ForbiddenException(
           'Last name and date of birth must be specified.')
-    return query
+    return participant.list(model)
 
   @participant.Participant.method(
       user_required=True,
@@ -113,25 +119,22 @@ class ParticipantApi(remote.Service):
     return model
 
   @participant.Participant.method(
-      request_fields=('drc_internal_id',),
       user_required=True,
       path='participants/{drc_internal_id}',
       http_method='PUT',
       name='participants.update')
   def update_participant(self, model):
     api_util.check_auth()
-    if not model.from_datastore:
-      raise endpoints.NotFoundException('Participant not found.')
-    model.put()
+    return participant.update(model)
 
   @participant.Participant.method(
-      request_message=participant.Participant.proto_model(),
+      request_message=participant.Participant.ProtoModel(),
       path='participants/{drc_internal_id}',
       http_method='GET',
       name='participants.get')
-  def get_participant(self, request):
+  def get_participant(self, model):
     api_util.check_auth()
-    return participant.get(request.drc_internal_id)
+    return participant.get(model.drc_internal_id)
 
   @endpoints.method(
       GET_EVALUATION_RESOURCE,

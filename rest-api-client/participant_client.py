@@ -44,11 +44,11 @@ def main():
   response['hpo_id'] = '1234'
   response = service.participants().update(drc_internal_id=drc_internal_id,
                                            body=response).execute()
+  pprint.pprint(response)
   if (response['zip_code'] != zip_code
       or response['membership_tier'] != 'CONSENTED'
       or not 'sign_up_time' in response
       or response['hpo_id'] != '1234'):
-    pprint.pprint(response)
     raise StandardError()
   pprint.pprint(response)
 

@@ -1,5 +1,8 @@
 '''The definition of the participant object and DB marshalling.
 '''
+
+import pprint
+
 from data_access_object import DataAccessObject
 from protorpc import message_types
 from protorpc import messages
@@ -9,7 +12,6 @@ from endpoints_proto_datastore.ndb import EndpointsModel
 
 class PhysicalExamStatus(messages.Enum):
   """The state of the participant's physical exam"""
-  NONE = 0
   SCHEDULED = 1
   COMPLETED = 2
   RESULT_READY = 3
@@ -17,14 +19,12 @@ class PhysicalExamStatus(messages.Enum):
 
 class MembershipTier(messages.Enum):
   """The state of the participant"""
-  NONE = 0
   INTERESTED = 1
   CONSENTED = 2
   ENGAGED = 3
 
 class GenderIdentity(messages.Enum):
   """The gender identity of the participant."""
-  NONE = 0
   FEMALE = 1
   MALE = 2
   NEITHER = 3
@@ -32,7 +32,6 @@ class GenderIdentity(messages.Enum):
   PREFER_NOT_TO_SAY = 5
 
 class RecruitmentSource(messages.Enum):
-  NONE = 0
   HPO = 1
   DIRECT_VOLUNTEER = 2
 
@@ -56,17 +55,38 @@ class Participant(EndpointsModel):
   recruitment_source = ndb.StringProperty()
 
 
+def update(model):
+  # Get the existing entity from the datastore by the drc_internal_id.  We just
+  # need the key so we can update it.
+  participant = get(model.drc_internal_id)
+  # This fills in all unset fields in entity with thier corresponding values
+  # from participant.
+  model.EntityKeySet(participant.entityKey)
+  # Write back the merged entity.
+  model.put()
+  return model
+
 def get(drc_internal_id):
   query = Participant.query(Participant.drc_internal_id == drc_internal_id)
   iterator = query.iter()
   if not iterator.has_next():
     raise endpoints.NotFoundException(
         'Participant with id {} not found.'.format(drc_internal_id))
-  participant = query.next()
-  if participant.has_next():
+  participant = iterator.next()
+  if iterator.has_next():
     raise endpoints.InternalServerErrorException(
         'More that one participant with id {} found.'.format(drc_internal_id))
   return participant
+
+def list(model):
+  query = Participant.query(
+      Participant.last_name == model.last_name,
+      Participant.date_of_birth == model.date_of_birth)
+  if model.first_name:
+    query = query.filter(Participant.first_name == model.first_name)
+
+  return Participant.ToMessageCollection(query.fetch())
+
 
 # class ParticipantCollection(messages.Message):
 #   """Collection of Participants."""
