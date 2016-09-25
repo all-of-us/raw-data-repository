@@ -13,8 +13,6 @@ import api_util
 import data_access_object
 import evaluation
 import participant
-import questionnaire
-import questionnaire_response
 
 from protorpc import message_types
 from protorpc import messages
@@ -57,14 +55,6 @@ UPDATE_EVALUATION_RESOURCE = endpoints.ResourceContainer(
     evaluation.Evaluation,
     evaluation_id=messages.StringField(1, variant=messages.Variant.STRING),
     participant_drc_id=messages.StringField(2, variant=messages.Variant.STRING))
-
-GET_QUESTIONNAIRE_RESOURCE = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    id=messages.StringField(1, variant=messages.Variant.STRING))
-
-GET_QUESTIONNAIRE_RESPONSE_RESOURCE = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    id=messages.StringField(1, variant=messages.Variant.STRING))
 
 participants_api = endpoints.api(
     name='participant',
@@ -191,63 +181,6 @@ class ParticipantApi(remote.Service):
       raise endpoints.NotFoundException(
           'Evaluation participant_drc_id: {} evaluation_id: not found'.format(
               request.participant_drc_id, request.evaluation_id))
-
-  @questionnaire.Questionnaire.method(
-      path='ppi/fhir/Questionnaire',
-      http_method='POST',
-      name='ppi.fhir.questionnaire.insert',
-      user_required=True)
-  def insert_questionnaire(self, model):
-    api_util.check_auth()
-    if not model.id:
-      model.id = str(uuid.uuid4())
-    model.put()
-    return model
-
-  # @endpoints.method(
-  #     GET_QUESTIONNAIRE_RESOURCE,
-  #     questionnaire.Questionnaire,
-  #     path='ppi/fhir/Questionnaire/{id}',
-  #     http_method='GET',
-  #     name='ppi.fhir.questionnaire.get')
-  # def get_questionnaire(self, request):
-  #   api_util.check_auth()
-  #   try:
-  #     return questionnaire.DAO.get(request, strip=True)
-  #   except (IndexError, data_access_object.NotFoundException):
-  #     raise endpoints.NotFoundException(
-  #         'Questionnaire questionnaire_id: {} not found'.format(
-  #             request.id, request.evaluation_id))
-
-  @endpoints.method(
-      questionnaire_response.QuestionnaireResponse,
-      questionnaire_response.QuestionnaireResponse,
-      path='ppi/fhir/QuestionnaireResponse',
-      http_method='POST',
-      name='ppi.fhir.questionnaire_response.insert')
-  def insert_questionnaire_response(self, request):
-    api_util.check_auth()
-    if not getattr(request, 'id', None):
-      request.id = str(uuid.uuid4())
-    return questionnaire_response.DAO.insert(request, strip=True)
-
-
-  @endpoints.method(
-      GET_QUESTIONNAIRE_RESPONSE_RESOURCE,
-      questionnaire_response.QuestionnaireResponse,
-      path='ppi/fhir/QuestionnaireResponse/{id}',
-      http_method='GET',
-      name='ppi.fhir.questionnaire_response.get')
-  def get_questionnaire_response(self, request):
-    api_util.check_auth()
-    try:
-      return questionnaire_response.DAO.get(request, strip=True)
-    except (IndexError, data_access_object.NotFoundException):
-      raise endpoints.NotFoundException(
-          'Questionnaire questionnaire_id: {} not found'.format(
-              request.id, request.evaluation_id))
-
-
 
 class DateHolder(messages.Message):
   date = message_types.DateTimeField(1)

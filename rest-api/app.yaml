@@ -10,7 +10,9 @@ handlers:
 # those requests to /_ah/spi.
 - url: /_ah/spi/.*
   script: main.api
-
+- url: /.*
+  script: main.flask_app
+  
 libraries:
 - name: pycrypto
   version: 2.6
