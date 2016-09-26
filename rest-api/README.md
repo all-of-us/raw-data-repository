@@ -21,6 +21,13 @@ The GCS bucket for biobank manifest testing is pmi-drc-biobank-test.
 
 You can either use the Cloud SQL proxy or run a MySQL instance locally.
 
+### Installing dependencies
+From the rest-api directory, run
+'''Shell
+pip install -r requirements.txt -t lib/
+'''
+This will install all the needed dependencies in the 'lib' directory.
+
 ### Use the Cloud SQL Proxy
 
 [Install the proxy](https://cloud.google.com/sql/docs/external#proxy) (make sure
