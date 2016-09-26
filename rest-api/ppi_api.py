@@ -8,8 +8,8 @@ import uuid
 
 import questionnaire
 import questionnaire_response
-import fhir.questionnaire
-import fhir.questionnaireresponse
+import fhirclient.models.questionnaire
+import fhirclient.models.questionnaireresponse
 
 from google.appengine.ext import ndb
 from flask import Flask, request
@@ -21,7 +21,7 @@ class Questionnaire(Resource):
   def post(self):
     api_util.check_auth_flask()
     resource = request.get_json(force=True)
-    model = fhir.questionnaire.Questionnaire(resource)
+    model = fhirclient.models.questionnaire.Questionnaire(resource)
     if not model.id:
       model.id = str(uuid.uuid4())
     model_json = model.as_json()
@@ -38,7 +38,8 @@ class QuestionnaireResponse(Resource):
   def post(self):
     api_util.check_auth_flask()
     resource = request.get_json(force=True)
-    model = fhir.questionnaireresponse.QuestionnaireResponse(resource)
+    model = fhirclient.models.questionnaireresponse.QuestionnaireResponse(
+        resource)
     if not model.id:
       model.id = str(uuid.uuid4())
     model_json = model.as_json()

@@ -20,26 +20,6 @@ from protorpc import protojson
 from protorpc import remote
 
 
-# ResourceContainers are used to encapsulate a request body and URL
-# parameters. This one is used to represent the participant ID for the
-# participant_get method.
-GET_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
-    # The request body should be empty.
-    message_types.VoidMessage,
-    # Accept one URL parameter: a string named 'id'
-    drc_internal_id=messages.StringField(1, variant=messages.Variant.STRING))
-
-LIST_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    first_name=messages.StringField(1, variant=messages.Variant.STRING),
-    last_name=messages.StringField(2, variant=messages.Variant.STRING),
-    date_of_birth=messages.StringField(3, variant=messages.Variant.STRING))
-
-UPDATE_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
-    participant.Participant,
-    # Accept one URL parameter: a string named 'id'
-    drc_internal_id=messages.StringField(1, variant=messages.Variant.STRING))
-
 GET_EVALUATION_RESOURCE = endpoints.ResourceContainer(
     # The request body should be empty.
     message_types.VoidMessage,
@@ -88,7 +68,7 @@ class ParticipantApi(remote.Service):
     # specified.
     last_name = model.last_name
     date_of_birth = model.date_of_birth
-    if (not last_name or not date_of_birth):
+    if not last_name or not date_of_birth:
       raise endpoints.ForbiddenException(
           'Last name and date of birth must be specified.')
     return participant.list(model)
@@ -102,6 +82,7 @@ class ParticipantApi(remote.Service):
     api_util.check_auth()
 
     model.drc_internal_id = str(uuid.uuid4())
+    model.id = model.drc_internal_id # Use the drc_internal_id as the key.
     if not model.sign_up_time:
       model.sign_up_time = datetime.datetime.now()
 
@@ -124,6 +105,7 @@ class ParticipantApi(remote.Service):
       name='participants.get')
   def get_participant(self, model):
     api_util.check_auth()
+    q = ndb.Key(participant.Participant, model.drc_internal_id).get()
     return participant.get(model.drc_internal_id)
 
   @endpoints.method(
