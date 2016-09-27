@@ -52,7 +52,7 @@ class ParticipantAPI(Resource):
     return participant.to_json(p)
 
   @api_util.auth_required
-  def put(self, p_id):
+  def patch(self, p_id):
     old_p = ndb.Key(participant.Participant, p_id).get()
     new_p = participant.from_json(request.get_json(force=True))
     api_util.update_model(old_model=old_p, new_model=new_p)
@@ -89,7 +89,7 @@ class EvaluationAPI(Resource):
     return evaluation.to_json(e)
 
   @api_util.auth_required
-  def put(self, p_id, e_id):
+  def patch(self, p_id, e_id):
     old_e = ndb.Key(
         participant.Participant, p_id, evaluation.Evaluation, e_id).get()
     new_e = evaluation.from_json(request.get_json(force=True), p_id, e_id)

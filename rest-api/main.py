@@ -20,14 +20,14 @@ api.add_resource(participants_api.ParticipantAPI,
                  '/participant/v1/participants/<string:p_id>',
                  '/participant/v1/participants',
                  endpoint='participants',
-                 methods=['GET', 'POST', 'PUT'])
+                 methods=['GET', 'POST', 'PATCH'])
 
 api.add_resource(
     participants_api.EvaluationAPI,
     '/participant/v1/participants/<string:p_id>/evaluation',
     '/participant/v1/participants/<string:p_id>/evaluation/<string:e_id>',
     endpoint='evaluations',
-    methods=['GET', 'POST', 'PUT'])
+    methods=['GET', 'POST', 'PATCH'])
 
 api.add_resource(ppi_api.QuestionnaireAPI,
                  '/ppi/fhir/Questionnaire',

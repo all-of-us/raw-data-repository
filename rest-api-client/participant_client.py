@@ -41,7 +41,7 @@ def main():
   response['consent_time'] = datetime.datetime.now().isoformat()
   response['hpo_id'] = '1234'
   response = client.request_json(
-      'participants/{}'.format(drc_internal_id), 'PUT', response)
+      'participants/{}'.format(drc_internal_id), 'PATCH', response)
   pprint.pprint(response)
   if (response['zip_code'] != zip_code
       or response['membership_tier'] != 'CONSENTED'
@@ -93,7 +93,7 @@ def main():
   response['completed'] = time.isoformat()
   response['evaluation_data'] = evaluation_data
   response = client.request_json('participants/{}/evaluation/{}'.format(
-      drc_internal_id, evaluation_id), 'PUT', response)
+      drc_internal_id, evaluation_id), 'PATCH', response)
   pprint.pprint(response)
   if response['completed'] != '2016-09-02T10:30:15':
     raise StandardError(response['completed'])
