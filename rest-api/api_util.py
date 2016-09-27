@@ -10,6 +10,8 @@ from protorpc import messages
 from google.appengine.api import oauth
 from werkzeug.exceptions import Unauthorized, BadRequest
 
+SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
+
 def auth_required(func):
   """A decorator that keeps the function from being called without auth."""
   def wrapped(self, *args, **kwargs):
@@ -18,7 +20,7 @@ def auth_required(func):
   return wrapped
 
 def check_auth():
-  user = oauth.get_current_user()
+  user = oauth.get_current_user(SCOPE)
   return is_user_whitelisted(user)
 
 def is_user_whitelisted(user):

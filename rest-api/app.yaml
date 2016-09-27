@@ -1,5 +1,3 @@
-application: pmi-rdr-api-test-ds
-version: 1
 threadsafe: true
 runtime: python27
 api_version: 1
