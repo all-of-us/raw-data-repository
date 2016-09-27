@@ -5,9 +5,6 @@ runtime: python27
 api_version: 1
 
 handlers:
-# The endpoints handler must be mapped to /_ah/spi.
-# Apps send requests to /_ah/api, but the endpoints service handles mapping
-# those requests to /_ah/spi.
 - url: /.*
   script: main.app
   

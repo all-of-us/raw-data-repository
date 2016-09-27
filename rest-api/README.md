@@ -40,6 +40,10 @@ If running a local dev_appserver, navigate to the
 [datastore viewer](http://localhost:8000/datastore?kind=Config).
 You should be able to modify config settings using the fancy UI.
 
+For local development, add an "allowed_user" entry with a value of
+"example@example.com".  This is what a oauth user appears as under the
+dev_appserver.
+
 If running in produciton, go to the
 [cloud console](https://console.cloud.google.com).  Select the app engine
 project and then click on "datastore" in the left hand navigation bar.
