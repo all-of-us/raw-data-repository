@@ -1,14 +1,15 @@
 '''The definition of the participant object and DB marshalling.
 '''
 
-import pprint
+import api_util
+import datetime
+import copy
 
-from data_access_object import DataAccessObject
-from protorpc import message_types
 from protorpc import messages
 from google.appengine.ext import ndb
-from endpoints_proto_datastore.ndb import EndpointsModel
 
+
+DATE_OF_BIRTH_FORMAT = '%Y-%m-%d'
 
 class PhysicalExamStatus(messages.Enum):
   """The state of the participant's physical exam"""
@@ -36,7 +37,7 @@ class RecruitmentSource(messages.Enum):
   DIRECT_VOLUNTEER = 2
 
 
-class Participant(EndpointsModel):
+class Participant(ndb.Model):
   """The participant resource definition"""
   participant_id = ndb.StringProperty()
   drc_internal_id = ndb.StringProperty()
@@ -54,51 +55,46 @@ class Participant(EndpointsModel):
   hpo_id = ndb.StringProperty()
   recruitment_source = ndb.StringProperty()
 
+def from_json(json, id=None):
+  json = copy.deepcopy(json)
 
-def update(model):
-  # Get the existing entity from the datastore by the drc_internal_id.  We just
-  # need the key so we can update it.
-  participant = get(model.drc_internal_id)
-  # This fills in all unset fields in entity with thier corresponding values
-  # from participant.
-  model.EntityKeySet(participant.entityKey)
-  # Write back the merged entity.
-  model.put()
-  return model
+  if id:
+    json['drc_internal_id'] = id
 
-def get(drc_internal_id):
-  query = Participant.query(Participant.drc_internal_id == drc_internal_id)
-  iterator = query.iter()
-  if not iterator.has_next():
-    raise endpoints.NotFoundException(
-        'Participant with id {} not found.'.format(drc_internal_id))
-  participant = iterator.next()
-  if iterator.has_next():
-    raise endpoints.InternalServerErrorException(
-        'More that one participant with id {} found.'.format(drc_internal_id))
-  return participant
+  p=Participant(id=id)
 
-def list(model):
-  query = Participant.query(
-      Participant.last_name == model.last_name,
-      Participant.date_of_birth == model.date_of_birth)
-  if model.first_name:
-    query = query.filter(Participant.first_name == model.first_name)
+  if 'date_of_birth' in json:
+    json['date_of_birth'] = _parse_date_of_birth(json['date_of_birth'])
+  if 'sign_up_time' in json:
+    json['sign_up_time'] = api_util.parse_date(json['sign_up_time'])
+  if 'consent_time' in json:
+    json['consent_time'] = api_util.parse_date(json['consent_time'])
+  p.populate(**json)
+  return p
 
-  return Participant.ToMessageCollection(query.fetch())
+def to_json(p):
+  dict = p.to_dict()
+  dict = copy.deepcopy(dict)
+  if dict['date_of_birth']:
+    dict['date_of_birth'] = dict['date_of_birth'].strftime(DATE_OF_BIRTH_FORMAT)
+  if dict['sign_up_time']:
+    dict['sign_up_time'] = dict['sign_up_time'].isoformat()
+  if dict['consent_time']:
+    dict['consent_time'] = dict['consent_time'].isoformat()
+  return dict
 
+def list(first_name, last_name, dob_string):
+  date_of_birth = _parse_date_of_birth(dob_string)
+  query = Participant.query(Participant.last_name == last_name,
+                            Participant.date_of_birth == date_of_birth)
+  if first_name:
+    query = query.filter(Participant.first_name == first_name)
 
-# class ParticipantCollection(messages.Message):
-#   """Collection of Participants."""
-#   items = messages.MessageField(Participant, 1, repeated=True)
-
-
-# class ParticipantDao(DataAccessObject):
-#   def __init__(self):
-#     super(ParticipantDao, self).__init__(resource=Participant,
-#                                       table='participant',
-#                                       columns=COLUMNS,
-#                                       key_columns=KEY_COLUMNS)
+  items = []
+  for p in query.fetch():
+    items.append(to_json(p))
+  return {"items": items}
 
 
-#DAO = ParticipantDao()
+def _parse_date_of_birth(dob_string):
+  return datetime.datetime.strptime(dob_string, DATE_OF_BIRTH_FORMAT)

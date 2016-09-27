@@ -12,14 +12,13 @@ import fhirclient.models.questionnaire
 import fhirclient.models.questionnaireresponse
 
 from google.appengine.ext import ndb
-from flask import Flask, request
-from flask.ext.restful import Resource, reqparse, abort
+from flask import request
+from flask.ext.restful import Resource
 
 
-class Questionnaire(Resource):
-
+class QuestionnaireInsertAPI(Resource):
   def post(self):
-    api_util.check_auth_flask()
+    api_util.check_auth()
     resource = request.get_json(force=True)
     model = fhirclient.models.questionnaire.Questionnaire(resource)
     if not model.id:
@@ -28,15 +27,15 @@ class Questionnaire(Resource):
     questionnaire.Questionnaire(id=model.id, resource=model_json).put()
     return model_json
 
+class QuestionnaireGetAPI(Resource):
   def get(self, q_id):
-    api_util.check_auth_flask()
+    api_util.check_auth()
     q = ndb.Key(questionnaire.Questionnaire, q_id).get()
     return q.resource
 
-class QuestionnaireResponse(Resource):
-
+class QuestionnaireResponseInsertAPI(Resource):
   def post(self):
-    api_util.check_auth_flask()
+    api_util.check_auth()
     resource = request.get_json(force=True)
     model = fhirclient.models.questionnaireresponse.QuestionnaireResponse(
         resource)
@@ -47,7 +46,8 @@ class QuestionnaireResponse(Resource):
                                                  resource=model_json).put()
     return model_json
 
+class QuestionnaireResponseGetAPI(Resource):
   def get(self, q_id):
-    api_util.check_auth_flask()
+    api_util.check_auth()
     q = ndb.Key(questionnaire_response.QuestionnaireResponse, q_id).get()
     return q.resource

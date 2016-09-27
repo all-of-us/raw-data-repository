@@ -17,6 +17,9 @@ SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 CREDS_FILE = './test-data/test-client-cert.json'
 #API_ROOT = 'https://pmi-rdr-api-test.appspot.com/_ah/api'
 API_ROOT = 'http://localhost:8080'
+POST_HEADERS = {
+    'Content-Type': 'application/json; charset=UTF-8',
+}
 
 class TestPPI(unittest.TestCase):
 
@@ -26,9 +29,6 @@ class TestPPI(unittest.TestCase):
                                                                  [SCOPE])
     self.http = credentials.authorize(httplib2.Http())
     self.base_url = '{}/ppi/fhir'.format(API_ROOT)
-    self.headers = {
-        'Content-Type': 'application/json; charset=UTF-8',
-    }
 
   def test_questionnaires(self):
     questionnaire_files = [
@@ -58,7 +58,9 @@ class TestPPI(unittest.TestCase):
   def round_trip(self, path, resource):
     url = '{}/{}'.format(self.base_url, path)
     _, content = self.http.request(
-        url, 'POST', headers=self.headers, body=json.dumps(resource))
+        url, 'POST', headers=POST_HEADERS, body=json.dumps(resource))
+    print _
+    print content
     response = json.loads(content)
     q_id = response['id']
     if 'id' not in resource:

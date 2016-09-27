@@ -2,14 +2,13 @@
 """
 
 import datetime
-import googleapiclient
 import pprint
 
 import common
 
+
 def main():
-  args = common.parse_args()
-  service = common.get_service('participant', 'v1', args)
+  client = common.Client('participant/v1')
 
   first_name = 'Mister'
   last_name = 'Pants'
@@ -23,15 +22,14 @@ def main():
   }
 
   # Create a participant.
-  response = service.participants().insert(body=participant).execute()
+  response = client.request_json('participants', 'POST', participant)
   pprint.pprint(response)
   if response['first_name'] != first_name:
     raise StandardError()
   drc_internal_id = response['drc_internal_id']
 
   # Fetch that participant and print it out.
-  response = service.participants().get(
-      drc_internal_id=drc_internal_id).execute()
+  response = client.request_json('participants/{}'.format(drc_internal_id))
   pprint.pprint(response)
   if response['first_name'] != first_name:
     raise StandardError()
@@ -42,8 +40,8 @@ def main():
   response['membership_tier'] = 'CONSENTED'
   response['consent_time'] = datetime.datetime.now().isoformat()
   response['hpo_id'] = '1234'
-  response = service.participants().update(drc_internal_id=drc_internal_id,
-                                           body=response).execute()
+  response = client.request_json(
+      'participants/{}'.format(drc_internal_id), 'PUT', response)
   pprint.pprint(response)
   if (response['zip_code'] != zip_code
       or response['membership_tier'] != 'CONSENTED'
@@ -54,14 +52,19 @@ def main():
 
   try:
     # List request must contain at least last name and birth date.
-    response = service.participants().list().execute()
-  except googleapiclient.errors.HttpError, e:
-    if e.resp.status != 403:
-      raise StandardError()
+    response = client.request_json('participants',
+                                   query_args={"last_name": last_name})
+  except common.HttpException, e:
+    if e.code != 400:
+      raise StandardError('Code is {}'.format(e.code))
 
-  response = service.participants().list(first_name=first_name,
-                                         last_name=last_name,
-                                         date_of_birth=date_of_birth).execute()
+  args = {
+      "first_name": first_name,
+      "last_name": last_name,
+      "date_of_birth": date_of_birth,
+      }
+
+  response = client.request_json('participants', query_args=args)
   # Make sure the newly created participant is in the list.
   for participant in response['items']:
     if (participant['first_name'] != first_name
@@ -80,8 +83,8 @@ def main():
       'participant_drc_id': drc_internal_id,
       'evaluation_id': evaluation_id,
   }
-  response = service.evaluations().insert(participant_drc_id=id,
-                                          body=evaluation).execute()
+  response = client.request_json(
+      'participants/{}/evaluation'.format(drc_internal_id), 'POST', evaluation)
   if response['evaluation_id'] != evaluation_id:
     raise StandardError()
 
@@ -89,29 +92,27 @@ def main():
   evaluation_data = "{'some_key': 'someval'}"
   response['completed'] = time.isoformat()
   response['evaluation_data'] = evaluation_data
-  response = service.evaluations().update(participant_drc_id=drc_internal_id,
-                                          evaluation_id=evaluation_id,
-                                          body=response).execute()
+  response = client.request_json('participants/{}/evaluation/{}'.format(
+      drc_internal_id, evaluation_id), 'PUT', response)
   pprint.pprint(response)
   if response['completed'] != '2016-09-02T10:30:15':
-    raise StandardError()
+    raise StandardError(response['completed'])
 
   # Try updating a bad id.
   response['evaluation_id'] = 'BAD_ID'
   try:
-    response = service.evaluations().update(participant_drc_id=drc_internal_id,
-                                            evaluation_id='BAD_ID',
-                                            body=response).execute()
+    response = client.request_json(
+        'participants/{}/evaluation/BAD_ID'.format(drc_internal_id))
     raise StandardError() # Should throw.
-  except googleapiclient.errors.HttpError, e:
-    if e.resp.status != 404:
+  except common.HttpException, e:
+    if e.code != 404:
       raise StandardError()
 
   if response['evaluation_data'] != evaluation_data:
     raise StandardError()
 
-  response = service.evaluations().list(
-      participant_drc_id=drc_internal_id).execute()
+  response = client.request_json(
+      'participants/{}/evaluation'.format(drc_internal_id))
   for evaluations in response['items']:
     if (evaluations['participant_drc_id'] == drc_internal_id
         and evaluations['evaluation_id'] == evaluation_id):
@@ -119,7 +120,8 @@ def main():
   else:
     raise StandardError()
 
-  response = service.evaluations().list(participant_drc_id='NOT_AN_ID').execute()
+  response = client.request_json(
+            'participants/NOT_AN_ID/evaluation'.format(drc_internal_id))
   if 'items' in response and len(response['items']):
     raise StandardError()
 

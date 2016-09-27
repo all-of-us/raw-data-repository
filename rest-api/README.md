@@ -28,29 +28,6 @@ pip install -r requirements.txt -t lib/
 '''
 This will install all the needed dependencies in the 'lib' directory.
 
-### Use the Cloud SQL Proxy
-
-[Install the proxy](https://cloud.google.com/sql/docs/external#proxy) (make sure
-to set up a service account)
-
-Next, run the proxy:
-
-```Shell
-sudo ${HOME}/bin/cloud_sql_proxy -dir=/cloudsql \
--instances=pmi-drc-api-test:us-central1:pmi-rdr -credential_file \ <path to
-credential file> &
-```
-
-### Run a MySQL instance locally
-
-TODO: try this and document it.
-
-When setting up a database, create the database manually "pmi_rdr".
-
-Run schema.sql to create the table(s).
-
-Create the "api" user manually. Then `GRANT ALL on pmi_rdr.* to 'api';`
-
 ### Configuring your instance
 
 When the instance comes up for the first time, it will check for the existance
@@ -68,13 +45,5 @@ If running in produciton, go to the
 [cloud console](https://console.cloud.google.com).  Select the app engine
 project and then click on "datastore" in the left hand navigation bar.
 
-### Setting up a new DB
-```Sql
-mysql> create database pmi_rdr;
-mysql> use pmi_rdr;
-mysql> create user api identified by '<password>';
-mysql> grant all privileges on pmi_rdr.* to api;
-mysql> source schema.sql
-```
 
 

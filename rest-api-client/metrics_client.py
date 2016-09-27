@@ -6,15 +6,13 @@ import pprint
 import common
 
 def main():
-  args = common.parse_args()
-  service = common.get_service('metrics', 'v1', args)
+  client = common.Client('metrics/v1')
 
   total_request = {
       'metric': 'PARTICIPANT_TOTAL',
   }
 
-  response = service.metrics().calculate(
-      body=total_request).execute()
+  response = client.request_json('metrics', 'POST', total_request)
   pprint.pprint(response)
 
 
@@ -22,8 +20,7 @@ def main():
       'metric': 'PARTICIPANT_MEMBERSHIP_TIER',
   }
 
-  response = service.metrics().calculate(
-      body=enrollment_request).execute()
+  response = client.request_json('metrics', 'POST', enrollment_request)
   pprint.pprint(response)
 
 

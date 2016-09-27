@@ -1,6 +1,5 @@
 """Implementation of the metrics API"""
 
-import db
 import participant
 
 from protorpc import message_types
