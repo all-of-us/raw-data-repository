@@ -2,8 +2,7 @@
 
 ## Cloud projects for testing
 
-This api is implemented using Google Cloud Endpoints. They are served by a
-AppEngine instance.
+This api is implemented using Flask. They are served by a AppEngine instance.
 
 The App Engine project used for testing is pmi-rdr-api-test (Note that this is
 not the same project set up! Creating an app engine instance requires creating a
@@ -21,28 +20,12 @@ The GCS bucket for biobank manifest testing is pmi-drc-biobank-test.
 
 You can either use the Cloud SQL proxy or run a MySQL instance locally.
 
-### Use the Cloud SQL Proxy
-
-[Install the proxy](https://cloud.google.com/sql/docs/external#proxy) (make sure
-to set up a service account)
-
-Next, run the proxy:
-
-```Shell
-sudo ${HOME}/bin/cloud_sql_proxy -dir=/cloudsql \
--instances=pmi-drc-api-test:us-central1:pmi-rdr -credential_file \ <path to
-credential file> &
-```
-
-### Run a MySQL instance locally
-
-TODO: try this and document it.
-
-When setting up a database, create the database manually "pmi_rdr".
-
-Run schema.sql to create the table(s).
-
-Create the "api" user manually. Then `GRANT ALL on pmi_rdr.* to 'api';`
+### Installing dependencies
+From the rest-api directory, run
+'''Shell
+pip install -r requirements.txt -t lib/
+'''
+This will install all the needed dependencies in the 'lib' directory.
 
 ### Configuring your instance
 
@@ -57,17 +40,13 @@ If running a local dev_appserver, navigate to the
 [datastore viewer](http://localhost:8000/datastore?kind=Config).
 You should be able to modify config settings using the fancy UI.
 
+For local development, add an "allowed_user" entry with a value of
+"example@example.com".  This is what a oauth user appears as under the
+dev_appserver.
+
 If running in produciton, go to the
 [cloud console](https://console.cloud.google.com).  Select the app engine
 project and then click on "datastore" in the left hand navigation bar.
 
-### Setting up a new DB
-```Sql
-mysql> create database pmi_rdr;
-mysql> use pmi_rdr;
-mysql> create user api identified by '<password>';
-mysql> grant all privileges on pmi_rdr.* to api;
-mysql> source schema.sql
-```
 
 

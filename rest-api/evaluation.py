@@ -1,44 +1,52 @@
 '''The definition of the evaluation object and DB marshalling.
 '''
-import data_access_object
+
+import copy
+
+import api_util
+import participant
 
 from protorpc import message_types
 from protorpc import messages
+from google.appengine.ext import ndb
 
 
-KEY_COLUMNS = (
-    'evaluation_id',
-    'participant_drc_id',
-)
-
-# For now, the evaluation fields map directly to the db columns, so do a simple
-# mapping.
-COLUMNS = KEY_COLUMNS + (
-    'completed',
-    'evaluation_version',
-    'evaluation_data',
-)
-
-
-class Evaluation(messages.Message):
+class Evaluation(ndb.Model):
   """The evaluation resource definition"""
-  evaluation_id = messages.StringField(1)
-  participant_drc_id = messages.StringField(2)
-  completed = message_types.DateTimeField(3)
-  evaluation_version = messages.StringField(4)
-  evaluation_data = messages.StringField(5)
+  evaluation_id = ndb.StringProperty()
+  participant_drc_id = ndb.StringProperty()
+  completed = ndb.DateTimeProperty()
+  evaluation_version = ndb.StringProperty()
+  evaluation_data = ndb.StringProperty()
 
+def from_json(json, participant_id, evaluation_id=None):
+  json = copy.deepcopy(json)
 
-class EvaluationCollection(messages.Message):
-  """Collection of Evaluations."""
-  items = messages.MessageField(Evaluation, 1, repeated=True)
+  if evaluation_id:
+    key = ndb.Key(participant.Participant, participant_id,
+                  Evaluation, evaluation_id)
+  else:
+    key = ndb.Key(participant.Participant, participant_id)
+  e = Evaluation(key=key)
 
+  if 'completed' in json:
+    json['completed'] = api_util.parse_date(json['completed'])
 
-class EvaluationDao(data_access_object.DataAccessObject):
-  def __init__(self):
-    super(EvaluationDao, self).__init__(resource=Evaluation,
-                                     table='evaluation',
-                                     columns=COLUMNS,
-                                     key_columns=KEY_COLUMNS)
+  e.populate(**json)
+  return e
 
-DAO = EvaluationDao()
+def to_json(e):
+  dict = e.to_dict()
+  dict = copy.deepcopy(dict)
+  if dict['completed']:
+    dict['completed'] = dict['completed'].isoformat()
+  return dict
+
+def list(participant_id):
+  p_key = ndb.Key(participant.Participant, participant_id)
+  query = Evaluation.query(ancestor=p_key)
+
+  items = []
+  for p in query.fetch():
+    items.append(to_json(p))
+  return {"items": items}

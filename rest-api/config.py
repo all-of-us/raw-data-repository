@@ -50,13 +50,7 @@ try:
 except MissingConfigException:
   print "Creating and setting sane defaults for development..."
   Config(config_key='initialized', value='True').put()
-  Config(config_key='allowed_client_id', value='101582376895035372811').put()
-  Config(config_key='allowed_client_id', value='116540421226121250670').put()
   Config(config_key='allowed_user',
          value='pmi-hpo-staging@appspot.gserviceaccount.com').put()
   Config(config_key='allowed_user',
          value='test-client@pmi-rdr-api-test.iam.gserviceaccount.com').put()
-  Config(config_key='cloudsql_instance',
-         value='pmi-drc-api-test:us-central1:pmi-rdr-eng-test').put()
-  Config(config_key='cloudsql_user', value='api').put()
-  Config(config_key='cloudsql_password', value='PrecisionPants123').put()

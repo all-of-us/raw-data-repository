@@ -1,13 +1,92 @@
 """Utilities used by the API definition.
 """
 
-import endpoints
-
 import config
+import datetime
+
+from protorpc import message_types
+from protorpc import protojson
+from protorpc import messages
+from google.appengine.api import oauth
+from werkzeug.exceptions import Unauthorized, BadRequest
+
+def auth_required(func):
+  """A decorator that keeps the function from being called without auth."""
+  def wrapped(self, *args, **kwargs):
+    check_auth()
+    return func(self, *args, **kwargs)
+  return wrapped
 
 def check_auth():
-  user = endpoints.get_current_user()
+  user = oauth.get_current_user()
+  return is_user_whitelisted(user)
+
+def is_user_whitelisted(user):
   if user and user.email() in config.getSettingList(config.ALLOWED_USER):
     return
 
-  raise endpoints.UnauthorizedException('Forbidden.')
+  raise Unauthorized('Forbidden.')
+
+
+def update_model(old_model, new_model):
+  """Updates a model.
+  For all fields that are set in new_model, copy them into old_model.
+
+  Args:
+    old_model: The ndb model object retrieved from the datastore.
+    new_model_dict: A json object containing the new values.
+  """
+
+  for k, v in new_model.to_dict().iteritems():
+    if v is not None:
+      setattr(old_model, k, v)
+
+class DateHolder(messages.Message):
+  date = message_types.DateTimeField(1)
+
+def parse_date(date_str, format=None, date_only=False):
+  """Parses JSON dates.
+
+  Args:
+    format: If specified, use this date format, otherwise uses the proto
+      converter's date handling logic.
+   date_only: If specified, and true, will raise an exception if the parsed
+     timestamp isn't midnight.
+  """
+  if format:
+    return datetime.datetime.strptime(date_str, format)
+  else:
+    json_str = '{{"date": "{}"}}'.format(date_str)
+    holder = protojson.decode_message(DateHolder, json_str)
+
+    date_obj = holder.date
+    if date_only:
+      if (date_obj != datetime.datetime.combine(date_obj.date(),
+                                                datetime.datetime.min.time())):
+        raise BadRequest('Date contains non zero time fields')
+    return date_obj
+
+
+def parse_json_date(obj, field_name, format=None):
+  """Converts a field of a dictionary from a string to a datetime."""
+  if field_name in obj:
+    obj[field_name] = parse_date(obj[field_name], format)
+
+def format_json_date(obj, field_name, format=None):
+  """Converts a field of a dictionary from a datetime to a string."""
+  if field_name in obj and obj[field_name] is not None:
+    if format:
+      obj[field_name] = obj[field_name].strftime(format)
+    else:
+      obj[field_name] = obj[field_name].isoformat()
+
+def parse_json_enum(obj, field_name, enum):
+  """Converts a field of a dictionary from a string to an enum."""
+  if field_name in obj and obj[field_name] is not None:
+    obj[field_name] = enum(obj[field_name])
+
+
+def format_json_enum(obj, field_name):
+  """Converts a field of a dictionary from a enum to an string."""
+  if field_name in obj and obj[field_name] is not None:
+    obj[field_name] = str(obj[field_name])

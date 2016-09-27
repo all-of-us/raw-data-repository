@@ -1,20 +1,16 @@
-application: pmi-rdr-api-test
+application: pmi-rdr-api-test-ds
 version: 1
 threadsafe: true
 runtime: python27
 api_version: 1
 
 handlers:
-# The endpoints handler must be mapped to /_ah/spi.
-# Apps send requests to /_ah/api, but the endpoints service handles mapping
-# those requests to /_ah/spi.
-- url: /_ah/spi/.*
-  script: main.api
-
+- url: /.*
+  script: main.app
+  
 libraries:
 - name: pycrypto
   version: 2.6
-- name: endpoints
+- name: protorpc
   version: 1.0
-- name: MySQLdb
-  version: "latest"
+

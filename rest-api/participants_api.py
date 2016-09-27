@@ -3,278 +3,96 @@
 This defines the APIs and the handlers for the APIs.
 """
 
-import config
 import datetime
-import endpoints
 import uuid
 
 import api_util
-import data_access_object
 import evaluation
 import participant
-import questionnaire
-import questionnaire_response
 
 from protorpc import message_types
 from protorpc import messages
-from protorpc import protojson
-from protorpc import remote
 
+from google.appengine.ext import ndb
+from flask import Flask, request
+from flask.ext.restful import Resource, reqparse, abort
+from werkzeug.exceptions import BadRequest, NotFound
 
-# ResourceContainers are used to encapsulate a request body and URL
-# parameters. This one is used to represent the participant ID for the
-# participant_get method.
-GET_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
-    # The request body should be empty.
-    message_types.VoidMessage,
-    # Accept one URL parameter: a string named 'id'
-    drc_internal_id=messages.StringField(1, variant=messages.Variant.STRING))
+class ParticipantAPI(Resource):
+  @api_util.auth_required
+  def get(self, p_id=None):
+    if not p_id:
+      return self.list()
+    p = ndb.Key(participant.Participant, p_id).get()
+    if not p:
+      raise NotFound('Participant with id {} not found.', p_id)
+    return participant.to_json(p)
 
-LIST_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    first_name=messages.StringField(1, variant=messages.Variant.STRING),
-    last_name=messages.StringField(2, variant=messages.Variant.STRING),
-    date_of_birth=messages.StringField(3, variant=messages.Variant.STRING))
-
-UPDATE_PARTICIPANT_RESOURCE = endpoints.ResourceContainer(
-    participant.Participant,
-    # Accept one URL parameter: a string named 'id'
-    drc_internal_id=messages.StringField(1, variant=messages.Variant.STRING))
-
-GET_EVALUATION_RESOURCE = endpoints.ResourceContainer(
-    # The request body should be empty.
-    message_types.VoidMessage,
-    evaluation_id=messages.StringField(1, variant=messages.Variant.STRING),
-    participant_drc_id=messages.StringField(2, variant=messages.Variant.STRING))
-
-LIST_EVALUATION_RESOURCE = endpoints.ResourceContainer(
-    # The request body should be empty.
-    message_types.VoidMessage,
-    participant_drc_id=messages.StringField(1, variant=messages.Variant.STRING))
-
-UPDATE_EVALUATION_RESOURCE = endpoints.ResourceContainer(
-    evaluation.Evaluation,
-    evaluation_id=messages.StringField(1, variant=messages.Variant.STRING),
-    participant_drc_id=messages.StringField(2, variant=messages.Variant.STRING))
-
-GET_QUESTIONNAIRE_RESOURCE = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    id=messages.StringField(1, variant=messages.Variant.STRING))
-
-GET_QUESTIONNAIRE_RESPONSE_RESOURCE = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    id=messages.StringField(1, variant=messages.Variant.STRING))
-
-participants_api = endpoints.api(
-    name='participant',
-    version='v1',
-    allowed_client_ids=config.getSettingList(config.ALLOWED_CLIENT_ID),
-    scopes=[endpoints.EMAIL_SCOPE])
-
-# Note that auth_level is missing.  This makes sure that the user is
-# authenticated before the endpoint is called.  This is unnecessary as this
-# check is insufficient, and we we are doing a string account whitelisting in
-# check_auth().  Ideally we would turn it on anyway, but at the moment, it
-# causes errors saying that this API is not enabled for the service account's
-# project... And there is no way to enable the API. This API enabling should
-# work fine once we upgrade to Cloud Endpoints 2.0.
-@participants_api
-class ParticipantApi(remote.Service):
-  @endpoints.method(
-      LIST_PARTICIPANT_RESOURCE,
-      participant.ParticipantCollection,
-      path='participants',
-      http_method='GET',
-      name='participants.list')
-  def list_participants(self, request):
-    api_util.check_auth()
-
+  @api_util.auth_required
+  def list(self):
     # In order to do a query, at least the last name and the birthdate must be
     # specified.
-    first_name = getattr(request, 'first_name', None)
-    last_name = getattr(request, 'last_name', None)
-    date_of_birth = getattr(request, 'date_of_birth', None)
-    if (not last_name  or not date_of_birth):
-      raise endpoints.ForbiddenException(
+    last_name = request.args.get('last_name', None)
+    date_of_birth = request.args.get('date_of_birth', None)
+    first_name = request.args.get('first_name', None)
+    zip_code = request.args.get('zip_code', None)
+    if not last_name or not date_of_birth:
+      raise BadRequest(
           'Last name and date of birth must be specified.')
-    request_obj = participant.Participant(
-        first_name=first_name, last_name=last_name,
-        date_of_birth=_parse_date(date_of_birth))
+    return participant.list(first_name, last_name, date_of_birth, zip_code)
 
-    return participant.ParticipantCollection(
-        items=participant.DAO.list(request_obj))
+  @api_util.auth_required
+  def post(self):
+    resource = request.get_json(force=True)
+    p = participant.from_json(resource, id=str(uuid.uuid4()))
+    if not p.sign_up_time:
+      p.sign_up_time = datetime.datetime.now()
 
-  @endpoints.method(
-      participant.Participant,
-      participant.Participant,
-      path='participants',
-      http_method='POST',
-      name='participants.insert')
-  def insert_participant(self, request):
-    api_util.check_auth()
-    request.drc_internal_id = str(uuid.uuid4())
-    if not request.sign_up_time:
-      request.sign_up_time = datetime.datetime.now()
-    return participant.DAO.insert(request)
+    p.put()
+    return participant.to_json(p)
 
-  @endpoints.method(
-      UPDATE_PARTICIPANT_RESOURCE,
-      participant.Participant,
-      path='participants/{drc_internal_id}',
-      http_method='PUT',
-      name='participants.update')
-  def update_participant(self, request):
-    api_util.check_auth()
-    return participant.DAO.update(request)
-
-  @endpoints.method(
-      # Use the ResourceContainer defined above to accept an empty body
-      # but an ID in the query string.
-      GET_PARTICIPANT_RESOURCE,
-      # This method returns a participant.
-      participant.Participant,
-      # The path defines the source of the URL parameter 'id'. If not
-      # specified here, it would need to be in the query string.
-      path='participants/{drc_internal_id}',
-      http_method='GET',
-      name='participants.get')
-  def get_participant(self, request):
-    api_util.check_auth()
-    try:
-      # request.drc_internal_id is used to access the URL parameter.
-      return participant.DAO.get(request)
-    except (IndexError, data_access_object.NotFoundException):
-      raise endpoints.NotFoundException('Participant {} not found'.format(
-          request.drc_internal_id))
-
-  @endpoints.method(
-      GET_EVALUATION_RESOURCE,
-      # This method returns a ParticipantCollection message.
-      evaluation.EvaluationCollection,
-      path='participants/{participant_drc_id}/evaluations',
-      http_method='GET',
-      name='evaluations.list')
-  def list_evaluations(self, request):
-    api_util.check_auth()
-    return evaluation.EvaluationCollection(items=evaluation.DAO.list(request))
-
-  @endpoints.method(
-      UPDATE_EVALUATION_RESOURCE,
-      evaluation.Evaluation,
-      path='participants/{participant_drc_id}/evaluations',
-      http_method='POST',
-      name='evaluations.insert')
-  def insert_evaluation(self, request):
-    api_util.check_auth()
-    return evaluation.DAO.insert(request)
-
-  @endpoints.method(
-      UPDATE_EVALUATION_RESOURCE,
-      evaluation.Evaluation,
-      path='participants/{participant_drc_id}/evaluations/{evaluation_id}',
-      http_method='PUT',
-      name='evaluations.update')
-  def update_evaluation(self, request):
-    api_util.check_auth()
-    try:
-      return evaluation.DAO.update(request)
-    except data_access_object.NotFoundException:
-      raise endpoints.NotFoundException(
-          'Evaluation participant_drc_id: {} evaluation_id: not found'.format(
-              request.participant_drc_id, request.evaluation_id))
-
-  @endpoints.method(
-      # Use the ResourceContainer defined above to accept an empty body
-      # but an ID in the query string.
-      GET_EVALUATION_RESOURCE,
-      # This method returns a evaluation.
-      evaluation.Evaluation,
-      # The path defines the source of the URL parameter 'id'. If not
-      # specified here, it would need to be in the query string.
-      path='participants/{participant_drc_id}/evaluations/{evaluation_id}',
-      http_method='GET',
-      name='evaluations.get')
-  def get_evaluation(self, request):
-    api_util.check_auth()
-    try:
-      return evaluation.DAO.get(request)
-    except (IndexError, data_access_object.NotFoundException):
-      raise endpoints.NotFoundException(
-          'Evaluation participant_drc_id: {} evaluation_id: not found'.format(
-              request.participant_drc_id, request.evaluation_id))
-
-  @endpoints.method(
-      questionnaire.Questionnaire,
-      questionnaire.Questionnaire,
-      path='ppi/fhir/Questionnaire',
-      http_method='POST',
-      name='ppi.fhir.questionnaire.insert')
-  def insert_questionnaire(self, request):
-    api_util.check_auth()
-    if not getattr(request, 'id', None):
-      request.id = str(uuid.uuid4())
-    return questionnaire.DAO.insert(request, strip=True)
-
-  @endpoints.method(
-      GET_QUESTIONNAIRE_RESOURCE,
-      questionnaire.Questionnaire,
-      path='ppi/fhir/Questionnaire/{id}',
-      http_method='GET',
-      name='ppi.fhir.questionnaire.get')
-  def get_questionnaire(self, request):
-    api_util.check_auth()
-    try:
-      return questionnaire.DAO.get(request, strip=True)
-    except (IndexError, data_access_object.NotFoundException):
-      raise endpoints.NotFoundException(
-          'Questionnaire questionnaire_id: {} not found'.format(
-              request.id, request.evaluation_id))
-
-  @endpoints.method(
-      questionnaire_response.QuestionnaireResponse,
-      questionnaire_response.QuestionnaireResponse,
-      path='ppi/fhir/QuestionnaireResponse',
-      http_method='POST',
-      name='ppi.fhir.questionnaire_response.insert')
-  def insert_questionnaire_response(self, request):
-    api_util.check_auth()
-    if not getattr(request, 'id', None):
-      request.id = str(uuid.uuid4())
-    return questionnaire_response.DAO.insert(request, strip=True)
+  @api_util.auth_required
+  def patch(self, p_id):
+    old_p = ndb.Key(participant.Participant, p_id).get()
+    new_p = participant.from_json(request.get_json(force=True))
+    api_util.update_model(old_model=old_p, new_model=new_p)
+    old_p.put()
+    return participant.to_json(old_p)
 
 
-  @endpoints.method(
-      GET_QUESTIONNAIRE_RESPONSE_RESOURCE,
-      questionnaire_response.QuestionnaireResponse,
-      path='ppi/fhir/QuestionnaireResponse/{id}',
-      http_method='GET',
-      name='ppi.fhir.questionnaire_response.get')
-  def get_questionnaire_response(self, request):
-    api_util.check_auth()
-    try:
-      return questionnaire_response.DAO.get(request, strip=True)
-    except (IndexError, data_access_object.NotFoundException):
-      raise endpoints.NotFoundException(
-          'Questionnaire questionnaire_id: {} not found'.format(
-              request.id, request.evaluation_id))
+class EvaluationAPI(Resource):
+  @api_util.auth_required
+  def get(self, p_id, e_id=None):
+    if not e_id:
+      return self.list(p_id)
+    e = ndb.Key(participant.Participant, p_id,
+                evaluation.Evaluation, e_id).get()
+    if not e:
+      raise NotFound(
+          'Evaluation with participant id {} and id {} not found.'.format(
+              p_id, e_id))
+    return evaluation.to_json(e)
 
+  @api_util.auth_required
+  def list(self, p_id):
+    return evaluation.list(p_id)
 
+  @api_util.auth_required
+  def post(self, p_id):
+    resource = request.get_json(force=True)
+    if 'evaluation_id' in resource:
+      id = resource['evaluation_id']
+    else:
+      id = str(uuid.uuid4())
+    e = evaluation.from_json(resource, p_id, id)
+    e.put()
+    return evaluation.to_json(e)
 
-class DateHolder(messages.Message):
-  date = message_types.DateTimeField(1)
-
-def _parse_date(date_str, date_only=True):
-  """Parses JSON dates.
-
-  Dates that come in as query params are strings.  Use the proto converter so
-  they get the same handling as the rest of the dates in the system.
-  """
-  json_str = '{{"date": "{}"}}'.format(date_str)
-  holder = protojson.decode_message(DateHolder, json_str)
-
-  date_obj = holder.date
-  if date_only:
-    if (date_obj != datetime.datetime.combine(date_obj.date(),
-                                              datetime.datetime.min.time())):
-      raise endpoints.BadRequestException('Date contains non zero time fields')
-  return date_obj
+  @api_util.auth_required
+  def patch(self, p_id, e_id):
+    old_e = ndb.Key(
+        participant.Participant, p_id, evaluation.Evaluation, e_id).get()
+    new_e = evaluation.from_json(request.get_json(force=True), p_id, e_id)
+    api_util.update_model(old_model=old_e, new_model=new_e)
+    old_e.put()
+    return evaluation.to_json(old_e)
