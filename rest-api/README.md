@@ -2,8 +2,7 @@
 
 ## Cloud projects for testing
 
-This api is implemented using Google Cloud Endpoints. They are served by a
-AppEngine instance.
+This api is implemented using Flask. They are served by a AppEngine instance.
 
 The App Engine project used for testing is pmi-rdr-api-test (Note that this is
 not the same project set up! Creating an app engine instance requires creating a
