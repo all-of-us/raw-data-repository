@@ -12,8 +12,8 @@ from flask import request
 from flask.ext.restful import Resource
 
 class MetricsApi(Resource):
+  @api_util.auth_required
   def post(self):
-    api_util.check_auth()
     resource = request.get_data()
     metrics_request = protojson.decode_message(metrics.MetricsRequest, resource)
 

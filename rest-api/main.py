@@ -16,61 +16,32 @@ from werkzeug.exceptions import default_exceptions
 app = Flask(__name__)
 api = Api(app)
 
-api.add_resource(participants_api.ParticipantListAPI,
-                 '/participant/v1/participants',
-                 endpoint='participants.list',
-                 methods=['GET'])
-api.add_resource(participants_api.ParticipantInsertAPI,
-                 '/participant/v1/participants',
-                 endpoint='participants.insert',
-                 methods=['POST'])
-api.add_resource(participants_api.ParticipantGetAPI,
+api.add_resource(participants_api.ParticipantAPI,
                  '/participant/v1/participants/<string:p_id>',
-                 methods=['GET'],
-                 endpoint='participants.get')
-api.add_resource(participants_api.ParticipantUpdateAPI,
-                 '/participant/v1/participants/<string:p_id>',
-                 methods=['PUT'],
-                 endpoint='participants.update')
+                 '/participant/v1/participants',
+                 endpoint='participants',
+                 methods=['GET', 'POST', 'PUT'])
 
-api.add_resource(participants_api.EvaluationListAPI,
-                 '/participant/v1/participants/<string:p_id>/evaluation',
-                 endpoint='evaluations.list',
-                 methods=['GET'])
-api.add_resource(participants_api.EvaluationInsertAPI,
-                 '/participant/v1/participants/<string:p_id>/evaluation',
-                 endpoint='evaluations.insert',
-                 methods=['POST'])
 api.add_resource(
-    participants_api.EvaluationGetAPI,
+    participants_api.EvaluationAPI,
+    '/participant/v1/participants/<string:p_id>/evaluation',
     '/participant/v1/participants/<string:p_id>/evaluation/<string:e_id>',
-    methods=['GET'],
-    endpoint='evaluations.get')
-api.add_resource(
-    participants_api.EvaluationUpdateAPI,
-    '/participant/v1/participants/<string:p_id>/evaluation/<string:e_id>',
-    methods=['PUT'],
-    endpoint='evaluations.update')
+    endpoint='evaluations',
+    methods=['GET', 'POST', 'PUT'])
 
-api.add_resource(ppi_api.QuestionnaireInsertAPI,
+api.add_resource(ppi_api.QuestionnaireAPI,
                  '/ppi/fhir/Questionnaire',
-                 endpoint='ppi.fhir.questionnaire.insert',
-                 methods=['POST'])
-api.add_resource(ppi_api.QuestionnaireGetAPI,
                  '/ppi/fhir/Questionnaire/<string:q_id>',
-                 endpoint='ppi.fhir.questionnaire.get',
-                 methods=['GET'])
+                 endpoint='ppi.fhir.questionnaire',
+                 methods=['POST', 'GET'])
 
-api.add_resource(ppi_api.QuestionnaireResponseGetAPI,
+api.add_resource(ppi_api.QuestionnaireResponseAPI,
                  '/ppi/fhir/QuestionnaireResponse/<string:q_id>',
-                 endpoint='ppi.fhir.questionnaire_response.insert',
-                 methods=['GET'])
-api.add_resource(ppi_api.QuestionnaireResponseInsertAPI,
                  '/ppi/fhir/QuestionnaireResponse',
-                 endpoint='ppi.fhir.questionnaire_response.get',
-                 methods=['POST'])
+                 endpoint='ppi.fhir.questionnaire_response',
+                 methods=['POST', 'GET'])
 
 api.add_resource(metrics_api.MetricsApi,
                  '/metrics/v1/metrics',
-                 endpoint='metrics.calculate',
+                 endpoint='metrics',
                  methods=['POST'])

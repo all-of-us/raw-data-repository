@@ -16,9 +16,9 @@ from flask import request
 from flask.ext.restful import Resource
 
 
-class QuestionnaireInsertAPI(Resource):
+class QuestionnaireAPI(Resource):
+  @api_util.auth_required
   def post(self):
-    api_util.check_auth()
     resource = request.get_json(force=True)
     model = fhirclient.models.questionnaire.Questionnaire(resource)
     if not model.id:
@@ -27,15 +27,14 @@ class QuestionnaireInsertAPI(Resource):
     questionnaire.Questionnaire(id=model.id, resource=model_json).put()
     return model_json
 
-class QuestionnaireGetAPI(Resource):
+  @api_util.auth_required
   def get(self, q_id):
-    api_util.check_auth()
     q = ndb.Key(questionnaire.Questionnaire, q_id).get()
     return q.resource
 
-class QuestionnaireResponseInsertAPI(Resource):
+class QuestionnaireResponseAPI(Resource):
+  @api_util.auth_required
   def post(self):
-    api_util.check_auth()
     resource = request.get_json(force=True)
     model = fhirclient.models.questionnaireresponse.QuestionnaireResponse(
         resource)
@@ -46,8 +45,7 @@ class QuestionnaireResponseInsertAPI(Resource):
                                                  resource=model_json).put()
     return model_json
 
-class QuestionnaireResponseGetAPI(Resource):
+  @api_util.auth_required
   def get(self, q_id):
-    api_util.check_auth()
     q = ndb.Key(questionnaire_response.QuestionnaireResponse, q_id).get()
     return q.resource
