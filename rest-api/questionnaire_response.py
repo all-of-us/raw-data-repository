@@ -1,10 +1,14 @@
-
 import data_access_object
-import participant
+
+import extraction
+
+from questionnaire import DAO as QuestionnaireDAO
+
+from extraction import QuestionnaireExtractor, QuestionnaireResponseExtractor
 
 import fhirclient.models.questionnaireresponse
 from google.appengine.ext import ndb
-
+from participant import Participant
 
 class QuestionnaireResponse(ndb.Model):
   """The questionnaire response."""
@@ -12,7 +16,7 @@ class QuestionnaireResponse(ndb.Model):
 
 class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
   def __init__(self):
-    super(QuestionnaireResponseDAO, self).__init__(QuestionnaireResponse, participant.Participant)
+    super(QuestionnaireResponseDAO, self).__init__(QuestionnaireResponse, Participant)
 
   def properties_to_json(self, m):
     return m['resource']
@@ -23,5 +27,22 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
     return {
         "resource": model.as_json()
     }
+
+
+def extract_race(history_object):
+  return extract_field(history_object, extraction.RACE_CONCEPT)
+
+def extract_ethnicity(history_object):
+  return extract_field(history_object, extraction.ETHNICITY_CONCEPT)
+
+def extract_field(history_object, concept):
+  resource = history_object.obj.resource
+  response_extractor = QuestionnaireResponseExtractor(resource)
+  questionnaire_id = response_extractor.extract_questionnaire_id()
+  questionnaire = QuestionnaireDAO.load(questionnaire_id)
+  questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
+  link_id = questionnaire_extractor.extract_link_id_for_concept(concept)
+  return response_extractor.extract_answer(link_id, concept)
+
 
 DAO = QuestionnaireResponseDAO()

@@ -2,7 +2,7 @@ import copy
 import json
 import random
 
-response_text = open("questionnaire_response_example.json").read()
+response_text = open("test-data/questionnaire_response_example.json").read()
 
 def random_race():
     return random.choice([
