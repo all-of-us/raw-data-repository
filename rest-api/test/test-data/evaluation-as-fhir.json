@@ -210,7 +210,7 @@
     }, 
     {
       "fullUrl": "urn:example:blood-pressure-3", 
-      "resoruce": {
+      "resource": {
         "bodySite": {
           "coding": [
             {
@@ -279,7 +279,7 @@
     }, 
     {
       "fullUrl": "urn:example:height", 
-      "resoruce": {
+      "resource": {
         "code": {
           "coding": [
             {
@@ -306,7 +306,7 @@
     }, 
     {
       "fullUrl": "urn:example:weight", 
-      "resoruce": {
+      "resource": {
         "code": {
           "coding": [
             {
@@ -333,7 +333,7 @@
     }, 
     {
       "fullUrl": "urn:example:bmi", 
-      "resoruce": {
+      "resource": {
         "code": {
           "coding": [
             {
@@ -360,7 +360,7 @@
     }, 
     {
       "fullUrl": "urn:example:heart-rate", 
-      "resoruce": {
+      "resource": {
         "code": {
           "coding": [
             {
@@ -387,7 +387,7 @@
     }, 
     {
       "fullUrl": "urn:example:hip-circumference-1", 
-      "resoruce": {
+      "resource": {
         "code": {
           "coding": [
             {
@@ -414,7 +414,7 @@
     }, 
     {
       "fullUrl": "urn:example:hip-circumference-2", 
-      "resoruce": {
+      "resource": {
         "code": {
           "coding": [
             {
@@ -441,7 +441,7 @@
     }, 
     {
       "fullUrl": "urn:example:hip-circumference-3", 
-      "resoruce": {
+      "resource": {
         "code": {
           "coding": [
             {
@@ -468,7 +468,7 @@
     }, 
     {
       "fullUrl": "urn:example:waist-circumference-1", 
-      "resoruce": {
+      "resource": {
         "code": {
           "coding": [
             {
@@ -495,7 +495,7 @@
     }, 
     {
       "fullUrl": "urn:example:waist-circumference-2", 
-      "resoruce": {
+      "resource": {
         "code": {
           "coding": [
             {
@@ -522,7 +522,7 @@
     }, 
     {
       "fullUrl": "urn:example:waist-circumference-3", 
-      "resoruce": {
+      "resource": {
         "code": {
           "coding": [
             {
