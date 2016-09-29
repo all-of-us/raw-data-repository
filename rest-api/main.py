@@ -7,6 +7,7 @@ import metrics_api
 import participants_api
 import ppi_api
 
+
 from flask import Flask, jsonify
 from flask_restful import Api
 
@@ -45,3 +46,9 @@ api.add_resource(metrics_api.MetricsApi,
                  '/metrics/v1/metrics',
                  endpoint='metrics',
                  methods=['POST'])
+
+import extraction
+api.add_resource(extraction.Extraction,
+                 '/extraction',
+                 endpoint='extraction',
+                 methods=['get'])
