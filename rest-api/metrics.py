@@ -50,8 +50,8 @@ class MetricService(object):
 
     response = MetricsResponse()
     if enum:
-      for name in enum.to_dict().keys() + [None]:
-        query = model.query(column == name)
+      for name, val in enum.to_dict().iteritems():
+        query = model.query(column == enum(val))
         bucket = MetricsResponseBucket()
         bucket.value = float(query.count())
         bucket.name = str(name)

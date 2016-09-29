@@ -1,13 +1,12 @@
 {
   "resourceType": "QuestionnaireResponse",
-  "id": "3141",
   "text": {
     "status": "generated",
     "div": "<div>\n      \n      \n      <pre>\n            Comorbidity? YES\n              Cardial Comorbidity? YES\n                Angina? YES\n                MI? NO\n              Vascular Comorbidity?\n                (no answers)\n              ...\n            Histopathology\n              Abdominal\n                pT category: 1a\n              ...\n          </pre>\n    \n    \n    </div>"
   },
   "status": "completed",
   "subject": {
-    "reference": "#patsub"
+    "reference": "Patient/{participant_id}"
   },
   "author": {
     "reference": "#questauth"

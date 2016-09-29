@@ -9,7 +9,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 CREDS_FILE = '../rest-api/test/test-data/test-client-cert.json'
-
+DEFAULT_INSTANCE = 'https://pmi-rdr-api-test.appspot.com'
 POST_HEADERS = {
     'Content-Type': 'application/json; charset=UTF-8',
 }
@@ -23,25 +23,27 @@ class HttpException(BaseException):
 
 
 class Client(object):
-  def __init__(self, base_path):
-    args = self.parse_args()
+  def __init__(self, base_path, creds_file=CREDS_FILE, default_instance=None):
+    default_instance = default_instance or DEFAULT_INSTANCE
+    args = self.parse_args(default_instance)
     self.instance = args.instance
     self.base_path = base_path
+    self.creds_file = creds_file
     self.fetcher = self._get_fetcher()
 
-  def parse_args(self):
+  def parse_args(self, default_instance):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--instance',
         type=str,
         help='The instance to hit, either https://xxx.appspot.com, '
         'or http://localhost:8080',
-        default='https://pmi-rdr-api-test.appspot.com')
+        default=default_instance)
     return parser.parse_args()
 
   def _get_fetcher(self):
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(CREDS_FILE,
-                                                                   [SCOPE])
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(
+        self.creds_file, [SCOPE])
     return credentials.authorize(httplib2.Http())
 
   def request(self, path, method='GET', body=None, query_args=None):
