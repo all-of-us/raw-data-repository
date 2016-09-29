@@ -15,11 +15,12 @@ from flask.ext.restful import Resource
 class MetricsApi(Resource):
   @api_util.auth_required_cron_or_admin
   def get(self):
-    print "=========== Starting Pipeline ============"
     in_progress = metrics.get_in_progress_version()
     if in_progress:
+      print "=========== Pipeline already running ============"
       return "Pipeline already running."
     else:
+      print "=========== Starting Pipeline ============"
       offline.metrics_pipeline.MetricsPipeline().start()
 
 

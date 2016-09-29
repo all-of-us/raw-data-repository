@@ -60,7 +60,8 @@ class DataAccessObjectTest(unittest.TestCase):
       PARENT_DAO.store(obj, dates[i])
       self.assertEquals(obj, PARENT_DAO.load("1"))
 
-    actual_history = PARENT_DAO.get_all_history("1")
+    key = ndb.Key(ParentModel, "1")
+    actual_history = PARENT_DAO.get_all_history(key)
     self.assertEquals(sorted(dates), sorted(h.date for h in actual_history))
     self.assertEquals(range(3), sorted(int(h.obj.foo) for h in actual_history))
 
@@ -76,7 +77,8 @@ class DataAccessObjectTest(unittest.TestCase):
       CHILD_DAO.store(obj, dates[i])
       self.assertEquals(obj, CHILD_DAO.load("1", parent_id))
 
-    actual_history = CHILD_DAO.get_all_history("1", parent_id)
+    key = ndb.Key(ParentModel, parent_id, ChildModel, "1")
+    actual_history = CHILD_DAO.get_all_history(key)
     self.assertEquals(sorted(dates), sorted(h.date for h in actual_history))
     self.assertEquals(range(3), sorted(int(h.obj.bar) for h in actual_history))
 

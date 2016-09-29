@@ -2,10 +2,13 @@
 '''
 
 import api_util
+import copy
 
 import data_access_object
 import identifier
 
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from protorpc import messages
 from google.appengine.ext import ndb
 from google.appengine.ext.ndb import msgprop
@@ -114,5 +117,66 @@ class ParticipantDAO(data_access_object.DataAccessObject):
   def allocate_id(self):
     _id = identifier.get_id()
     return 'P{:d}'.format(_id).zfill(9)
+
+def load_history_entities(participant_key, now):
+  """Loads all related history entries.
+
+  Details:
+    - Loads all history objects for this participant.
+    - Injects synthetic entries for when the participant's age changes.
+    - Loads related QuestionnaireResponseHistory objects.
+  """
+  history = list(DAO.get_all_history(participant_key))
+  modify_participant_history(history, participant_key, now)
+  return history
+
+def modify_participant_history(history, participant_key, now):
+  """Modifies the participant history before summaries are created.
+
+  This is used as part of the metrics pipeline to ensure that we capture when
+  participant's age changes.
+  """
+  inject_age_change_records(history, now)
+  insert_questionnaire_responses(participant_key, history)
+
+def insert_questionnaire_responses(participant_key, history):
+  """Joins in the questionnaire response history for this participant."""
+  import questionnaire_response
+  history.extend(questionnaire_response.DAO.get_all_history(participant_key))
+
+def inject_age_change_records(history, now):
+  """Inject history records when a participant's age changes.
+
+ Args:
+  history: The list of history objects for this participant.  This function
+      assumes that this list is sorted chronologically.
+  now: The datetime to use for "now".
+
+  """
+  # In the case of database upgrade, we may not get history entries.
+  if not history:
+    return
+
+  # Assume that the birthdate on the newest history record is the correct one.
+  date = history[-1].obj.date_of_birth
+
+  # Don't inject any history records before the first existing one.
+  start_date = history[0].date
+  year = relativedelta(years=1)
+  dates_to_inject = []
+  while date and date < now.date():
+    if date > start_date.date():
+      dates_to_inject.append(date)
+    date = date + year
+
+  new_objs = []
+  for hist_obj in reversed(history):
+    while dates_to_inject and dates_to_inject[-1] > hist_obj.date.date():
+      new_obj = copy.deepcopy(hist_obj)
+      new_obj.date = datetime.combine(dates_to_inject[-1], datetime.min.time())
+      new_objs.append(new_obj)
+      del dates_to_inject[-1]
+
+  history.extend(new_objs)
 
 DAO = ParticipantDAO()
