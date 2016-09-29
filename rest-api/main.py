@@ -27,7 +27,7 @@ api.add_resource(
     '/participant/v1/participants/<string:a_id>/evaluation',
     '/participant/v1/participants/<string:a_id>/evaluation/<string:id_>',
     endpoint='evaluations',
-    methods=['GET', 'POST', 'PATCH'])
+    methods=['GET', 'POST',])
 
 api.add_resource(ppi_api.QuestionnaireAPI,
                  '/ppi/fhir/Questionnaire',

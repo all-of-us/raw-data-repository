@@ -4,7 +4,7 @@ import api_util
 import uuid
 
 from flask import Flask, request
-from flask.ext.restful import Resource, reqparse, abort
+from flask.ext.restful import Resource
 
 class BaseApi(Resource):
   """Base class for API handlers.
@@ -30,7 +30,7 @@ class BaseApi(Resource):
     """
     if not id_:
       return self.list(a_id)
-    return self.dao.to_json(self.dao.load(id_))
+    return self.dao.to_json(self.dao.load(id_, a_id))
 
   @api_util.auth_required
   def list(self, a_id=None):

@@ -21,8 +21,7 @@ class QuestionnaireDAO(data_access_object.DataAccessObject):
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     model = fhirclient.models.questionnaire.Questionnaire(dict_)
-    if id_:
-      model.id = id_
+    model.id = id_
     return {
         "resource": model.as_json()
     }

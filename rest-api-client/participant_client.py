@@ -76,52 +76,6 @@ def main():
       break
   else:
     raise StandardError()
-
-  # Now add an evaluation for that participant.
-  evaluation = {
-      'participant_drc_id': drc_internal_id,
-  }
-  response = client.request_json(
-      'participants/{}/evaluation'.format(drc_internal_id), 'POST', evaluation)
-  evaluation_id = response['evaluation_id']
-
-  time = datetime.datetime(2016, 9, 2, 10, 30, 15)
-  evaluation_data = "{'some_key': 'someval'}"
-  response['completed'] = time.isoformat()
-  response['evaluation_data'] = evaluation_data
-  response = client.request_json('participants/{}/evaluation/{}'.format(
-      drc_internal_id, evaluation_id), 'PATCH', response)
-  pprint.pprint(response)
-  if response['completed'] != '2016-09-02T10:30:15':
-    raise StandardError(response['completed'])
-
-  # Try updating a bad id.
-  response['evaluation_id'] = 'BAD_ID'
-  try:
-    response = client.request_json(
-        'participants/{}/evaluation/BAD_ID'.format(drc_internal_id))
-    raise StandardError() # Should throw.
-  except HttpException, e:
-    if e.code != 404:
-      raise StandardError()
-
-  if response['evaluation_data'] != evaluation_data:
-    raise StandardError()
-
-  response = client.request_json(
-      'participants/{}/evaluation'.format(drc_internal_id))
-  for evaluations in response['items']:
-    if (evaluations['participant_drc_id'] == drc_internal_id
-        and evaluations['evaluation_id'] == evaluation_id):
-      break
-  else:
-    raise StandardError()
-
-  response = client.request_json(
-            'participants/NOT_AN_ID/evaluation'.format(drc_internal_id))
-  if 'items' in response and len(response['items']):
-    raise StandardError()
-
   print "It worked!!!"
 
 
