@@ -10,7 +10,7 @@
         ], 
         "date": "2016-09-02T20:59:41Z", 
         "resourceType": "Composition", 
-        "section": {
+        "section": [{
           "entry": [
             {
               "reference": "urn:example:blood-pressure-1"
@@ -52,7 +52,7 @@
               "reference": "urn:example:hip-circumference-3"
             }
           ]
-        }, 
+        }], 
         "status": "final", 
         "subject": {
           "reference": "Patient/1000"
