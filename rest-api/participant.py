@@ -2,13 +2,12 @@
 '''
 
 import api_util
-import datetime
-import copy
+
+import data_access_object
 
 from protorpc import messages
 from google.appengine.ext import ndb
 from google.appengine.ext.ndb import msgprop
-
 
 DATE_OF_BIRTH_FORMAT = '%Y-%m-%d'
 
@@ -56,48 +55,49 @@ class Participant(ndb.Model):
   hpo_id = ndb.StringProperty()
   recruitment_source = msgprop.EnumProperty(RecruitmentSource)
 
-def from_json(dict, id=None):
-  dict = copy.deepcopy(dict)
 
-  if id:
-    dict['drc_internal_id'] = id
 
-  p=Participant(id=id)
-  api_util.parse_json_date(dict, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
-  api_util.parse_json_date(dict, 'sign_up_time')
-  api_util.parse_json_date(dict, 'consent_time')
-  api_util.parse_json_enum(dict, 'gender_identity', GenderIdentity)
-  api_util.parse_json_enum(dict, 'membership_tier', MembershipTier)
-  api_util.parse_json_enum(dict, 'physical_exam_status', PhysicalExamStatus)
-  api_util.parse_json_enum(dict, 'recruitment_source', RecruitmentSource)
+class ParticipantDAO(data_access_object.DataAccessObject):
+  def __init__(self):
+    super(ParticipantDAO, self).__init__(Participant)
 
-  p.populate(**dict)
-  return p
+  def properties_from_json(self, dict_, ancestor_id, id_):
+    if id_:
+      dict_['drc_internal_id'] = id_
 
-def to_json(p):
-  dict = p.to_dict()
-  dict = copy.deepcopy(dict)
-  api_util.format_json_date(dict, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
-  api_util.format_json_date(dict, 'sign_up_time')
-  api_util.format_json_date(dict, 'consent_time')
-  api_util.format_json_enum(dict, 'gender_identity')
-  api_util.format_json_enum(dict, 'membership_tier')
-  api_util.format_json_enum(dict, 'physical_exam_status')
-  api_util.format_json_enum(dict, 'recruitment_source')
+    api_util.parse_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
+    api_util.parse_json_date(dict_, 'sign_up_time')
+    api_util.parse_json_date(dict_, 'consent_time')
+    api_util.parse_json_enum(dict_, 'gender_identity', GenderIdentity)
+    api_util.parse_json_enum(dict_, 'membership_tier', MembershipTier)
+    api_util.parse_json_enum(dict_, 'physical_exam_status', PhysicalExamStatus)
+    api_util.parse_json_enum(dict_, 'recruitment_source', RecruitmentSource)
+    return dict_
 
-  return dict
+  def properties_to_json(self, dict_):
+    api_util.format_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
+    api_util.format_json_date(dict_, 'sign_up_time')
+    api_util.format_json_date(dict_, 'consent_time')
+    api_util.format_json_enum(dict_, 'gender_identity')
+    api_util.format_json_enum(dict_, 'membership_tier')
+    api_util.format_json_enum(dict_, 'physical_exam_status')
+    api_util.format_json_enum(dict_, 'recruitment_source')
+    return dict_
 
-def list(first_name, last_name, dob_string, zip_code):
-  date_of_birth = api_util.parse_date(dob_string, DATE_OF_BIRTH_FORMAT)
-  query = Participant.query(Participant.last_name == last_name,
-                            Participant.date_of_birth == date_of_birth)
-  if first_name:
-    query = query.filter(Participant.first_name == first_name)
 
-  if zip_code:
-    query = query.filter(Participant.zip_code == zip_code)
+  def list(self, first_name, last_name, dob_string, zip_code):
+    date_of_birth = api_util.parse_date(dob_string, DATE_OF_BIRTH_FORMAT)
+    query = Participant.query(Participant.last_name == last_name,
+                                Participant.date_of_birth == date_of_birth)
+    if first_name:
+      query = query.filter(Participant.first_name == first_name)
 
-  items = []
-  for p in query.fetch():
-    items.append(to_json(p))
-  return {"items": items}
+    if zip_code:
+      query = query.filter(Participant.zip_code == zip_code)
+
+    items = []
+    for p in query.fetch():
+      items.append(self.to_json(p))
+    return {"items": items}
+
+DAO = ParticipantDAO()

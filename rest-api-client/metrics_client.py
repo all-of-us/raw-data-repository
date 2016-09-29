@@ -3,10 +3,10 @@
 
 import pprint
 
-import common
+from client.client import Client
 
 def main():
-  client = common.Client('metrics/v1')
+  client = Client('metrics/v1')
 
   total_request = {
       'metric': 'PARTICIPANT_TOTAL',

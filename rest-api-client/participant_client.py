@@ -4,11 +4,11 @@
 import datetime
 import pprint
 
-import common
+from client.client import Client, HttpException
 
 
 def main():
-  client = common.Client('participant/v1')
+  client = Client('participant/v1')
 
   first_name = 'Mister'
   last_name = 'Pants'
@@ -54,7 +54,7 @@ def main():
     # List request must contain at least last name and birth date.
     response = client.request_json('participants',
                                    query_args={"last_name": last_name})
-  except common.HttpException, e:
+  except HttpException, e:
     if e.code != 400:
       raise StandardError('Code is {}'.format(e.code))
 
@@ -77,16 +77,13 @@ def main():
   else:
     raise StandardError()
 
-  evaluation_id = "5"
   # Now add an evaluation for that participant.
   evaluation = {
       'participant_drc_id': drc_internal_id,
-      'evaluation_id': evaluation_id,
   }
   response = client.request_json(
       'participants/{}/evaluation'.format(drc_internal_id), 'POST', evaluation)
-  if response['evaluation_id'] != evaluation_id:
-    raise StandardError()
+  evaluation_id = response['evaluation_id']
 
   time = datetime.datetime(2016, 9, 2, 10, 30, 15)
   evaluation_data = "{'some_key': 'someval'}"
@@ -104,7 +101,7 @@ def main():
     response = client.request_json(
         'participants/{}/evaluation/BAD_ID'.format(drc_internal_id))
     raise StandardError() # Should throw.
-  except common.HttpException, e:
+  except HttpException, e:
     if e.code != 404:
       raise StandardError()
 

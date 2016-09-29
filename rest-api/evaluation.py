@@ -1,13 +1,10 @@
 '''The definition of the evaluation object and DB marshalling.
 '''
 
-import copy
-
 import api_util
+import data_access_object
 import participant
 
-from protorpc import message_types
-from protorpc import messages
 from google.appengine.ext import ndb
 
 
@@ -19,34 +16,30 @@ class Evaluation(ndb.Model):
   evaluation_version = ndb.StringProperty()
   evaluation_data = ndb.StringProperty()
 
-def from_json(json, participant_id, evaluation_id=None):
-  json = copy.deepcopy(json)
+class EvaluationDAO(data_access_object.DataAccessObject):
+  def __init__(self):
+    super(EvaluationDAO, self).__init__(Evaluation, participant.Participant)
 
-  if evaluation_id:
-    key = ndb.Key(participant.Participant, participant_id,
-                  Evaluation, evaluation_id)
-  else:
-    key = ndb.Key(participant.Participant, participant_id)
-  e = Evaluation(key=key)
+  def properties_from_json(self, dict, ancestor_id, id):
+    if id:
+      dict['evaluation_id'] = id
 
-  if 'completed' in json:
-    json['completed'] = api_util.parse_date(json['completed'])
+    if 'completed' in dict:
+      dict['completed'] = api_util.parse_date(dict['completed'])
+    return dict
 
-  e.populate(**json)
-  return e
+  def properties_to_json(self, dict):
+    if dict['completed']:
+      dict['completed'] = dict['completed'].isoformat()
+    return dict
 
-def to_json(e):
-  dict = e.to_dict()
-  dict = copy.deepcopy(dict)
-  if dict['completed']:
-    dict['completed'] = dict['completed'].isoformat()
-  return dict
+  def list(self, participant_id):
+    p_key = ndb.Key(participant.Participant, participant_id)
+    query = Evaluation.query(ancestor=p_key)
 
-def list(participant_id):
-  p_key = ndb.Key(participant.Participant, participant_id)
-  query = Evaluation.query(ancestor=p_key)
+    items = []
+    for p in query.fetch():
+      items.append(self.to_json(p))
+    return {"items": items}
 
-  items = []
-  for p in query.fetch():
-    items.append(to_json(p))
-  return {"items": items}
+DAO = EvaluationDAO()

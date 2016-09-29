@@ -1,34 +1,21 @@
 """Simple example for calling the ppi/fhir endpoints.
 
-Aslo serves as end to end test to exercise each of these REST APIs.
+Also serves as end to end test to exercise each of these REST APIs.
 """
 import copy
-import httplib2
 import json
-import StringIO
 import unittest
-from email.generator import Generator
 
-
-from apiclient import discovery
-from oauth2client.service_account import ServiceAccountCredentials
-
-SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
-CREDS_FILE = './test-data/test-client-cert.json'
-#API_ROOT = 'https://pmi-rdr-api-test.appspot.com/_ah/api'
-API_ROOT = 'http://localhost:8080'
-POST_HEADERS = {
-    'Content-Type': 'application/json; charset=UTF-8',
-}
+from client.client import Client
 
 class TestPPI(unittest.TestCase):
-
   def setUp(self):
     self.maxDiff = None
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(CREDS_FILE,
-                                                                 [SCOPE])
-    self.http = credentials.authorize(httplib2.Http())
-    self.base_url = '{}/ppi/fhir'.format(API_ROOT)
+    creds_file = './test-data/test-client-cert.json'
+    default_instance = 'http://localhost:8080'
+    self.client = Client('ppi/fhir', creds_file, default_instance)
+    self.participant_client = Client('participant/v1', creds_file,
+                                     default_instance)
 
   def test_questionnaires(self):
     questionnaire_files = [
@@ -49,29 +36,34 @@ class TestPPI(unittest.TestCase):
         # Example response from vibrent.  Doesn't pass validation.
         #'test-data/questionnaire_response2.json',
     ]
-
+    participant_id = self.create_participant()
     for json_file in questionnaire_response_files:
       with open(json_file) as f:
-        questionnaire_response = json.load(f)
-        self.round_trip('QuestionnaireResponse', questionnaire_response)
+        resource = json.load(f)
+        resource['subject']['reference'] = \
+            resource['subject']['reference'].format(
+                participant_id=participant_id)
+        self.round_trip('QuestionnaireResponse', resource)
 
   def round_trip(self, path, resource):
-    url = '{}/{}'.format(self.base_url, path)
-    _, content = self.http.request(
-        url, 'POST', headers=POST_HEADERS, body=json.dumps(resource))
-    print _
-    print content
-    response = json.loads(content)
+    response = self.client.request_json(path, 'POST', resource)
     q_id = response['id']
-    if 'id' not in resource:
-      del response['id']
+    del response['id']
     self._compare_json(resource, response)
 
-    _, content = self.http.request('{}/{}'.format(url, q_id), 'GET')
-    response = json.loads(content)
-    if 'id' not in resource:
-      del response['id']
+    response = self.client.request_json('{}/{}'.format(path, q_id), 'GET')
+    del response['id']
     self._compare_json(resource, response)
+
+  def create_participant(self):
+    participant = {
+        'first_name': 'Mother',
+        'last_name': 'Shorts',
+        'date_of_birth': '1975-08-21',
+    }
+    response = self.participant_client.request_json(
+        'participants', 'POST', participant)
+    return response['drc_internal_id']
 
   def _compare_json(self, obj_a, obj_b):
     obj_b = copy.deepcopy(obj_b)
