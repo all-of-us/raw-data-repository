@@ -61,28 +61,28 @@ class ParticipantDAO(data_access_object.DataAccessObject):
   def __init__(self):
     super(ParticipantDAO, self).__init__(Participant)
 
-  def fields_from_json(self, dict, ancestor_id=None, id=None):
-    if id:
-      dict['drc_internal_id'] = id
+  def properties_from_json(self, dict_, ancestor_id, id_):
+    if id_:
+      dict_['drc_internal_id'] = id_
 
-    api_util.parse_json_date(dict, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
-    api_util.parse_json_date(dict, 'sign_up_time')
-    api_util.parse_json_date(dict, 'consent_time')
-    api_util.parse_json_enum(dict, 'gender_identity', GenderIdentity)
-    api_util.parse_json_enum(dict, 'membership_tier', MembershipTier)
-    api_util.parse_json_enum(dict, 'physical_exam_status', PhysicalExamStatus)
-    api_util.parse_json_enum(dict, 'recruitment_source', RecruitmentSource)
-    return dict
+    api_util.parse_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
+    api_util.parse_json_date(dict_, 'sign_up_time')
+    api_util.parse_json_date(dict_, 'consent_time')
+    api_util.parse_json_enum(dict_, 'gender_identity', GenderIdentity)
+    api_util.parse_json_enum(dict_, 'membership_tier', MembershipTier)
+    api_util.parse_json_enum(dict_, 'physical_exam_status', PhysicalExamStatus)
+    api_util.parse_json_enum(dict_, 'recruitment_source', RecruitmentSource)
+    return dict_
 
-  def fields_to_json(self, dict):
-    api_util.format_json_date(dict, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
-    api_util.format_json_date(dict, 'sign_up_time')
-    api_util.format_json_date(dict, 'consent_time')
-    api_util.format_json_enum(dict, 'gender_identity')
-    api_util.format_json_enum(dict, 'membership_tier')
-    api_util.format_json_enum(dict, 'physical_exam_status')
-    api_util.format_json_enum(dict, 'recruitment_source')
-    return dict
+  def properties_to_json(self, dict_):
+    api_util.format_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
+    api_util.format_json_date(dict_, 'sign_up_time')
+    api_util.format_json_date(dict_, 'consent_time')
+    api_util.format_json_enum(dict_, 'gender_identity')
+    api_util.format_json_enum(dict_, 'membership_tier')
+    api_util.format_json_enum(dict_, 'physical_exam_status')
+    api_util.format_json_enum(dict_, 'recruitment_source')
+    return dict_
 
 
   def list(self, first_name, last_name, dob_string, zip_code):

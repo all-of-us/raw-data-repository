@@ -16,13 +16,13 @@ class QuestionnaireDAO(data_access_object.DataAccessObject):
   def __init__(self):
     super(QuestionnaireDAO, self).__init__(Questionnaire)
 
-  def fields_to_json(self, m):
+  def properties_to_json(self, m):
     return m['resource']
 
-  def fields_from_json(self, dict, ancestor_id=None, id=None):
-    model = fhirclient.models.questionnaire.Questionnaire(dict)
-    if id:
-      model.id = id
+  def properties_from_json(self, dict_, ancestor_id, id_):
+    model = fhirclient.models.questionnaire.Questionnaire(dict_)
+    if id_:
+      model.id = id_
     return {
         "resource": model.as_json()
     }

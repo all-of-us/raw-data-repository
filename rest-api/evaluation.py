@@ -20,7 +20,7 @@ class EvaluationDAO(data_access_object.DataAccessObject):
   def __init__(self):
     super(EvaluationDAO, self).__init__(Evaluation, participant.Participant)
 
-  def fields_from_json(self, dict, ancestor_id=None, id=None):
+  def properties_from_json(self, dict, ancestor_id, id):
     if id:
       dict['evaluation_id'] = id
 
@@ -28,7 +28,7 @@ class EvaluationDAO(data_access_object.DataAccessObject):
       dict['completed'] = api_util.parse_date(dict['completed'])
     return dict
 
-  def fields_to_json(self, dict):
+  def properties_to_json(self, dict):
     if dict['completed']:
       dict['completed'] = dict['completed'].isoformat()
     return dict

@@ -19,13 +19,30 @@ class BaseApi(Resource):
     self.dao = dao
 
   @api_util.auth_required
-  def get(self, id=None, a_id=None):
-    if not id:
+  def get(self, id_=None, a_id=None):
+    """Handle a GET request.
+
+    Args:
+      id_: If provided this is the id of the object to fetch.  If this is not
+        present, this is assumed to be a "list" request, and the list() function
+        will be called.
+      a_id: The ancestor id.
+    """
+    if not id_:
       return self.list(a_id)
-    return self.dao.to_json(self.dao.load(id))
+    return self.dao.to_json(self.dao.load(id_))
 
   @api_util.auth_required
   def list(self, a_id=None):
+    """Handle a list request.
+
+    Subclasses should pull the query parameters from the request with
+    request.args.get().
+
+    Args:
+      a_id: The ancestor id.
+
+    """
     pass
 
   def validate_object(self, obj):
@@ -38,6 +55,11 @@ class BaseApi(Resource):
 
   @api_util.auth_required
   def post(self, a_id=None):
+    """Handles a POST request.
+
+    Args:
+      a_id: The ancestor id.
+    """
     resource = request.get_json(force=True)
     m = self.dao.from_json(resource, a_id, str(uuid.uuid4()))
     self.validate_object(m)
@@ -45,9 +67,15 @@ class BaseApi(Resource):
     return self.dao.to_json(m)
 
   @api_util.auth_required
-  def patch(self, id, a_id=None):
-    old_m = self.dao.load(id, a_id)
-    new_m = self.dao.from_json(request.get_json(force=True), a_id, id)
+  def patch(self, id_, a_id=None):
+    """Handles a PATCH (update) request.
+
+    Args:
+      id_: The id of the object to update.
+      a_id: The ancestor id.
+    """
+    old_m = self.dao.load(id_, a_id)
+    new_m = self.dao.from_json(request.get_json(force=True), a_id, id_)
     self.validate_object(new_m)
     api_util.update_model(old_model=old_m, new_model=new_m)
     self.dao.store(old_m)

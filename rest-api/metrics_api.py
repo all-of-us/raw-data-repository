@@ -4,7 +4,6 @@ This defines the APIs and the handlers for the APIs.
 """
 
 import api_util
-import config
 import metrics
 
 from protorpc import protojson
