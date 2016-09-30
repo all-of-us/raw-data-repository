@@ -1,15 +1,17 @@
-from client.client import Client
-from faker import Faker, Factory
-
 import argparse
-import random
 import datetime
 import copy
 import sys
+from client.client import Client
+from fake_questionnaire import random_questionnaire
 
+from faker import Faker, Factory
+import random
 random.seed(1)
 fake = Factory.create()
 fake.random.seed(1)
+
+
 
 
 two_months = datetime.timedelta(60)
@@ -62,7 +64,12 @@ def participant():
     engaged_time = fake.date_time_between(start_date=consent_time, end_date=consent_time + one_year, tzinfo=None)
     engaged_participant = copy.deepcopy(consented_participant)
     engaged_participant['membership_tier'] =  'ENGAGED'
-    return [initial_participant, consented_participant, engaged_participant]
+
+    questionnaire_time = fake.date_time_between(start_date=sign_up_time, end_date=sign_up_time + one_year, tzinfo=None)
+    return {
+            'participant': [initial_participant, consented_participant, engaged_participant],
+            'questionnaire_time': questionnaire_time.isoformat()
+    }
 
 
 def parse_args(default_instance=None):
@@ -84,13 +91,20 @@ def parse_args(default_instance=None):
 
 def main():
   args = parse_args()
-  client = Client('participant/v1', default_instance=args.instance, parse_cli=False)
+  client = Client('', default_instance=args.instance, parse_cli=False)
   for i in range(args.count):
-    participant_calls = participant()
-    response = client.request_json('participants', 'POST', participant_calls[0])
+    details = participant()
+    participant_calls = details['participant']
+
+    response = client.request_json('participant/v1/participants', 'POST', participant_calls[0])
     drc_internal_id = response['drc_internal_id']
-    for p in participant_calls[1:]:
-      client.request_json('participants/{}'.format(drc_internal_id), 'PATCH', p)
+    for p in participant_calls[1:3]:
+      client.request_json('participant/v1/participants/{}'.format(drc_internal_id), 'PATCH', p)
+
+    q = random_questionnaire(response, details['questionnaire_time'])
+    q_response = client.request_json('ppi/fhir/QuestionnaireResponse', 'POST', q)
+    print("Q response")
+    print(q_response)
 
 if __name__ == '__main__':
   main()
