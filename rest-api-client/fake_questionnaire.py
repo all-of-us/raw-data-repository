@@ -22,37 +22,12 @@ def random_ethnicity():
         ['http://hl7.org/fhir/v3/NullFlavor', 'ASKU', 'Asked but no answer'],
     ])
 
-def random_ethnicity():
-    return random.choice([
-        ['http://hl7.org/fhir/v3/Ethnicity', '2135-2', 'Hispanic or Latino'],
-        ['http://hl7.org/fhir/v3/Ethnicity', '2186-5', 'Not Hispanic or Latino'],
-        ['http://hl7.org/fhir/v3/Ethnicity', '2028-9', 'Asian']
-    ])
-
-def random_questionnaire(participant, response_time):
-    q = copy.copy(response_text)
-    race = random_race()
-    ethnicity = ethnicity_race()
-    for k,v in {
-        '$participant_id': participant['drc_internal_id'],
-        '$race_code': race[0],
-        '$race_system': race[1],
-        '$race_display': race[2],
-        '$ethnicity_code': ethnicity[0],
-        '$ethnicity_system': ethnicity[1],
-        '$ethnicity_display': ethnicity[2],
-        '$ethnicity_code': random_ethnicity(),
-        '$authored': response_time
-        }.iteritems():
-        q = q.replace(k,v)
-    print q
-    return json.loads(q)
-
-def random_questionnaire(participant, response_time):
+def random_questionnaire(participant, response_time, questionnaire_id):
     q = copy.copy(response_text)
     race = random_race()
     ethnicity = random_ethnicity()
     for k,v in {
+        '$questionnaire_id': questionnaire_id,
         '$participant_id': participant['drc_internal_id'],
         '$race_code': race[0],
         '$race_system': race[1],
