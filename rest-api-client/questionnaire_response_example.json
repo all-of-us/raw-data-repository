@@ -16,7 +16,9 @@
         "answer": [
           {
             "valueCoding": {
-              "code": "$race_code"
+              "code": "$race_code",
+              "system": "$race_system",
+              "display": "$race_display"
             }
           }
         ]
@@ -26,7 +28,9 @@
       "answer": [
         {
           "valueCoding": {
-            "code": "$ethnicity_code"
+             "code": "$ethnicity_code",
+             "system": "$ethnicity_system",
+             "display": "$ethnicity_display"
           }
         }
       ]
