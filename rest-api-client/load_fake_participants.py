@@ -1,6 +1,7 @@
 import argparse
-import datetime
 import copy
+import datetime
+import json
 import sys
 from client.client import Client
 from fake_questionnaire import random_questionnaire
@@ -92,6 +93,10 @@ def parse_args(default_instance=None):
 def main():
   args = parse_args()
   client = Client('', default_instance=args.instance, parse_cli=False)
+
+  questionnaire = json.load(open('questionnaire_example.json'))
+  q_id = client.request_json('ppi/fhir/Questionnaire', 'POST', questionnaire)['id']
+
   for i in range(args.count):
     details = participant()
     participant_calls = details['participant']
@@ -101,7 +106,7 @@ def main():
     for p in participant_calls[1:3]:
       client.request_json('participant/v1/participants/{}'.format(drc_internal_id), 'PATCH', p)
 
-    q = random_questionnaire(response, details['questionnaire_time'])
+    q = random_questionnaire(response, details['questionnaire_time'], q_id)
     q_response = client.request_json('ppi/fhir/QuestionnaireResponse', 'POST', q)
     print("Q response")
     print(q_response)
