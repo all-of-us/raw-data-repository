@@ -24,6 +24,7 @@ class MembershipTier(messages.Enum):
   CONSENTED = 2
   ENGAGED = 3
 
+
 class GenderIdentity(messages.Enum):
   """The gender identity of the participant."""
   FEMALE = 1
@@ -31,6 +32,7 @@ class GenderIdentity(messages.Enum):
   NEITHER = 3
   OTHER = 4
   PREFER_NOT_TO_SAY = 5
+
 
 class RecruitmentSource(messages.Enum):
   HPO = 1
@@ -54,7 +56,6 @@ class Participant(ndb.Model):
   consent_time = ndb.DateTimeProperty()
   hpo_id = ndb.StringProperty()
   recruitment_source = msgprop.EnumProperty(RecruitmentSource)
-
 
 
 class ParticipantDAO(data_access_object.DataAccessObject):
@@ -88,7 +89,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
   def list(self, first_name, last_name, dob_string, zip_code):
     date_of_birth = api_util.parse_date(dob_string, DATE_OF_BIRTH_FORMAT)
     query = Participant.query(Participant.last_name == last_name,
-                                Participant.date_of_birth == date_of_birth)
+                              Participant.date_of_birth == date_of_birth)
     if first_name:
       query = query.filter(Participant.first_name == first_name)
 

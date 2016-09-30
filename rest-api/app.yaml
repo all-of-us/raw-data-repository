@@ -2,7 +2,14 @@ threadsafe: true
 runtime: python27
 api_version: 1
 
+includes:
+  - appengine-mapreduce/python/src/mapreduce/include.yaml
+  
+
 handlers:
+- url: /_ah/pipeline.*
+  script: lib.pipeline.handlers._APP
+  login: admin
 - url: /.*
   script: main.app
   

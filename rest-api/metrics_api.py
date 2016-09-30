@@ -10,8 +10,15 @@ import json
 from protorpc import protojson
 from flask import request
 from flask.ext.restful import Resource
+from offline.metrics_pipeline import MetricsPipeline
 
 class MetricsApi(Resource):
+  # TODO: Remove this unauthenticated handler.
+  def get(self):
+    pipeline = MetricsPipeline()
+    print "=========== Starting Pipeline ============"
+    pipeline.start()
+
   @api_util.auth_required
   def post(self):
     resource = request.get_data()

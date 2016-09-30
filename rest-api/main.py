@@ -44,4 +44,4 @@ api.add_resource(ppi_api.QuestionnaireResponseAPI,
 api.add_resource(metrics_api.MetricsApi,
                  '/metrics/v1/metrics',
                  endpoint='metrics',
-                 methods=['POST'])
+                 methods=['POST', 'GET'])

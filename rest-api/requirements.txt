@@ -3,3 +3,9 @@ flask-restful==0.3.5
 Werkzeug==0.11.11
 isodate==0.5.4
 fhirclient==1.0.3
+GoogleAppEngineCloudStorageClient>=1.9.21
+GoogleAppEnginePipeline>=1.9.21
+Graphy>=1.0.0
+simplejson>=3.6.5
+mock>=1.0.1
+mox>=0.5.3
