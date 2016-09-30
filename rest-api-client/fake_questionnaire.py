@@ -1,43 +1,8 @@
 import copy
+import json
 import random
 
-example = {
-    "resourceType": "QuestionnaireResponse",
-    "status": "completed",
-    "subject": {
-        "reference": "Patient/{participant_id}"
-        },
-    "questionnaire": {
-        "reference": "Questionnaire/{questionnaire_id}"
-        },
-    "authored": "2013-02-19T14:15:00+10:00",
-
-    "group": {
-        "question": [
-            {
-                "linkId": "race",
-                "text": "What is your race?",
-                "answer": [
-                    {
-                        "valueCoding": {
-                            "code": "asian"
-                            }
-                        }
-                    ]
-                }, {
-                    "linkId": "ethnicity",
-                    "text": "What is your ethnicity?",
-                    "answer": [
-                        {
-                            "valueCoding": {
-                                "code": "hispanic"
-                                }
-                            }
-                        ]
-                    }
-                ]
-        }
-    }
+response_text = open("questionnaire_response_example.json").read()
 
 def random_race():
     return random.choice([
@@ -58,9 +23,13 @@ def random_ethnicity():
     ])
 
 def random_questionnaire(participant, response_time):
-    ret = copy.deepcopy(example)
-    ret['subject']['reference'] = 'Patient/{}'.format(participant['drc_internal_id'])
-    ret['group']['question'][0]['answer'][0]['valueCoding']['code'] = random_race()
-    ret['group']['question'][1]['answer'][0]['valueCoding']['code'] = random_ethnicity()
-    ret['authored'] = response_time
-    return ret
+    q = copy.copy(response_text)
+    for k,v in {
+        '$participant_id': participant['drc_internal_id'],
+        '$race_code': random_race(),
+        '$ethnicity_code': random_ethnicity(),
+        '$authored': response_time
+        }.iteritems():
+        q = q.replace(k,v)
+    print q
+    return json.loads(q)

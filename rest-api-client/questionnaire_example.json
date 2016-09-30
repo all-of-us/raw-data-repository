@@ -1,0 +1,24 @@
+{
+  "resourceType": "Questionnaire",
+  "group": {
+    "question": [
+      {
+        "linkId": "race",
+        "text": "What is your race?",
+        "concept": [{
+          "system": "http://loinc.org",
+          "code": "72826-1",
+          "display": "Race OMB"
+        }]
+      }, {
+        "linkId": "ethnicity",
+        "text": "What is your ethnicity?",
+        "concept": [{
+          "system": "http://loinc.org",
+          "code": "69490-1",
+          "display":"Ethnicity OMB"
+        }]
+      }
+    ]
+  }
+}
