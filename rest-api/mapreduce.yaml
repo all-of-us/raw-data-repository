@@ -1,9 +1,0 @@
-mapreduce:
-- name: Extract Participant History
-  mapper:
-    input_reader: mapreduce.input_readers.DatastoreInputReader
-    handler: path_to_my.touch
-    params:
-    - name: entity_kind
-      default: path_to_my.MyModel
-                                  
