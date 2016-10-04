@@ -18,6 +18,8 @@ class PipelineAlreadyRunningException(BaseException):
 
 START_DATE = datetime.date(2016, 9, 1)
 
+TOTAL_SENTINEL = '_total'
+
 class MetricsBucket(ndb.Model):
   date = ndb.DateProperty()
   metrics = ndb.PickleProperty()
@@ -40,10 +42,13 @@ class BucketBy(messages.Enum):
   WEEK = 2
   MONTH = 3
 
+class MetricsResponseBucketEntry(messages.Message):
+  name = messages.StringField(1)
+  value = messages.FloatField(2)
+
 class MetricsResponseBucket(messages.Message):
   date = message_types.DateTimeField(1)
-  name = messages.StringField(2)
-  value = messages.FloatField(3)
+  entries = messages.MessageField(MetricsResponseBucketEntry, 2, repeated=True)
 
 class MetricsResponse(messages.Message):
   bucket = messages.MessageField(MetricsResponseBucket, 1, repeated=True)
@@ -55,11 +60,12 @@ class MetricsRequest(messages.Message):
 _metric_map = {
     Metrics.PARTICIPANT_TOTAL: {
         'model': participant.Participant,
+        'name': 'Participant.' + TOTAL_SENTINEL,
     },
     Metrics.MEMBERSHIP_TIER: {
         'model': participant.Participant,
         'column': participant.Participant.membership_tier,
-        'column_name': 'membership_tier',
+        'prefix': 'Participant.membership_tier',
         'enum': participant.MembershipTier,
     },
 }
@@ -72,19 +78,25 @@ class MetricService(object):
           '{} is not a valid metric.'.format(request.metric))
 
     metric_config = _metric_map[request.metric]
-    model = metric_config['model']
-    column = metric_config['column'] if 'column' in metric_config else None
-    enum = metric_config['enum'] if 'enum' in metric_config else None
-
     buckets = _make_buckets(request.bucket_by)
+    serving_version = get_serving_version()
 
-    for db_bucket in MetricsBucket.query(parent=get_active_version()).fetch():
+    for db_bucket in MetricsBucket.query(ancestor=serving_version).fetch():
       for bucket in buckets:
         if db_bucket.date >= bucket.start and db_bucket.date < bucket.end:
           counts = pickle.loads(db_bucket.metrics)
           for metric, count in counts.iteritems():
-            if metric == metric_config['column_name']:
-              bucket.cnt += count
+            prefix, suffix = metric.rsplit('.', 1)
+            metric_prefix = metric_config.get('prefix', None)
+            metric_name = metric_config.get('name', None)
+
+            if ((metric_prefix and prefix == metric_prefix)
+                or metric_name == metric):
+              # Metric is of the form Participant.membership_tier.ENGAGED
+              # we want just the last part.
+              if suffix == TOTAL_SENTINEL:
+                suffix = 'TOTAL'
+              bucket.cnt[suffix] += count
 
     response = MetricsResponse()
     for bucket in buckets:
@@ -92,8 +104,11 @@ class MetricService(object):
       start_midnight = datetime.datetime.combine(bucket.start,
                                                  datetime.datetime.min.time())
       resp_bucket.date = start_midnight
-      resp_bucket.name = str(request.metric)
-      resp_bucket.value = float(bucket.cnt[request.metric])
+      for k, val in bucket.cnt.iteritems():
+        entry = MetricsResponseBucketEntry()
+        entry.name = str(k)
+        entry.value = float(val)
+        resp_bucket.entries.append(entry)
       response.bucket.append(resp_bucket)
 
     return response
@@ -114,8 +129,8 @@ def get_in_progress_version():
   return None
 
 def get_serving_version():
-  query = MetricsVersion.query(completed=True, limit=1)
-  running = query.order(MetricsVersion.date).fetch()
+  query = MetricsVersion.query(MetricsVersion.complete==True)
+  running = query.order(-MetricsVersion.date).fetch(1)
   if running:
     return running[0].key
   return None
@@ -138,8 +153,8 @@ def _make_buckets(bucket_by):
   }
 
   buckets = []
-  end_date = datetime.datetime.now().date()
-  if bucket_by == BucketBy.NONE:
+  end_date = (datetime.datetime.now() + relativedelta(days=1)).date()
+  if not bucket_by or bucket_by == BucketBy.NONE:
     buckets.append(Bucket(START_DATE, end_date))
   else:
     last_date = START_DATE

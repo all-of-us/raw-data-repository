@@ -3,6 +3,7 @@
 
 import datetime
 import json
+import metrics
 import metrics_pipeline
 import pickle
 import participant
@@ -59,7 +60,7 @@ class MetricsPipelineTest(unittest.TestCase):
     hist_json = json.dumps(participant.DAO.history_to_json(self.p1r1))
     date, obj = metrics_pipeline.key_by_date(hist_json).next()
     self.assertEqual(self.p1r1.date.isoformat(), date)
-    self._compare_json(participant.DAO.to_json(self.p1r1.obj), obj)
+    self._compare_json(participant.DAO.history_to_json(self.p1r1), obj)
 
   def test_map_to_id(self):
     group_key, hist_obj = metrics_pipeline.map_to_id(self.p1r1).next()
@@ -72,14 +73,15 @@ class MetricsPipelineTest(unittest.TestCase):
     results = list(metrics_pipeline.reduce_by_id('ParticipantHistory:1',
                                                  history_json))
     expected1 = {
-        "date": "2016-09-01T11:00:01",
+        "date": "2016-09-01",
         "summary": {
             "Participant.membership_tier.INTERESTED": 1,
             "Participant.zip_code.12345": 1,
+            "Participant._total": 1,
         }
     }
     expected2 = {
-        "date": "2016-09-01T11:00:02",
+        "date": "2016-09-01",
         "summary": {
             "Participant.membership_tier.INTERESTED": -1,
             "Participant.membership_tier.ENGAGED": 1,
@@ -87,7 +89,7 @@ class MetricsPipelineTest(unittest.TestCase):
         }
     }
     expected3 = {
-        "date": "2016-09-01T11:00:03",
+        "date": "2016-09-01",
         "summary": {
             "Participant.membership_tier.ENGAGED": -1,
             "Participant.membership_tier.INTERESTED": 1,
@@ -95,7 +97,7 @@ class MetricsPipelineTest(unittest.TestCase):
         }
     }
     expected4 = {
-        "date": "2016-09-10T00:00:00",
+        "date": "2016-09-10",
         "summary": {
             "Participant.membership_tier.INTERESTED": -1,
             "Participant.membership_tier.CONSENTED": 1,
@@ -123,6 +125,7 @@ class MetricsPipelineTest(unittest.TestCase):
         '  { "Participant.membership_tier.ENGAGED": -1,'
         '    "Participant.membership_tier.INTERESTED": 1}}',
     ]
+    metrics.set_pipeline_in_progress()
     results = list(metrics_pipeline.reduce_date("2016-09-10", reduce_input))
     self.assertEquals(len(results), 1)
     expected_cnt = Counter(('Participant.membership_tier.INTERESTED',))
@@ -131,7 +134,6 @@ class MetricsPipelineTest(unittest.TestCase):
     self.assertEquals(expected.date, results[0].entity.date)
     self.assertEquals(pickle.loads(expected.metrics),
                       pickle.loads(results[0].entity.metrics))
-
 
   def _compare_json(self, a, b):
     if isinstance(a, str):

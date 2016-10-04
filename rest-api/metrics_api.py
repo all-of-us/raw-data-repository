@@ -16,7 +16,12 @@ class MetricsApi(Resource):
   @api_util.auth_required
   def get(self):
     print "=========== Starting Pipeline ============"
-    offline.metrics_pipeline.MetricsPipeline().start()
+    in_progress = metrics.get_in_progress_version()
+    if in_progress:
+      return "Pipeline already running."
+    else:
+      offline.metrics_pipeline.MetricsPipeline().start()
+
 
   @api_util.auth_required
   def post(self):
