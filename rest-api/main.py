@@ -45,3 +45,9 @@ api.add_resource(metrics_api.MetricsApi,
                  '/metrics/v1/metrics',
                  endpoint='metrics',
                  methods=['POST', 'GET'])
+
+# TODO(geoffreyb): Remove this once we have a cron job running.
+api.add_resource(metrics_api.MetricsApi,
+                 '/metrics/v1/metrics_recalculate',
+                 endpoint='metrics_recalc',
+                 methods=['GET'])

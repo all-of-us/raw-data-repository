@@ -8,7 +8,7 @@ includes:
 
 handlers:
 - url: /_ah/pipeline.*
-  script: lib.pipeline.handlers._APP
+  script: pipeline.handlers._APP
   login: admin
 - url: /.*
   script: main.app

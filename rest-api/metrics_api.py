@@ -6,24 +6,22 @@ This defines the APIs and the handlers for the APIs.
 import api_util
 import metrics
 import json
+import offline.metrics_pipeline
 
 from protorpc import protojson
 from flask import request
 from flask.ext.restful import Resource
-from offline.metrics_pipeline import MetricsPipeline
 
 class MetricsApi(Resource):
-  # TODO: Remove this unauthenticated handler.
+  @api_util.auth_required
   def get(self):
-    pipeline = MetricsPipeline()
     print "=========== Starting Pipeline ============"
-    pipeline.start()
+    offline.metrics_pipeline.MetricsPipeline().start()
 
   @api_util.auth_required
   def post(self):
     resource = request.get_data()
     metrics_request = protojson.decode_message(metrics.MetricsRequest, resource)
-
     metrics_response = metrics.SERVICE.get_metrics(metrics_request)
 
     return json.loads(protojson.encode_message(metrics_response))
