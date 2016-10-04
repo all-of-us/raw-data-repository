@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Runs the offline unit tests.  (The ones that don't involve hitting the server)
+
 if [ -z "$1" ];
 then
   echo "Usage: run_test.sh /path/to/google/cloud/sdk_dir"
