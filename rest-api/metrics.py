@@ -33,7 +33,7 @@ class Metrics(messages.Enum):
   """Predefined metric types"""
   NONE = 0
   PARTICIPANT_TOTAL = 1
-  MEMBERSHIP_TIER = 2
+  PARTICIPANT_MEMBERSHIP_TIER = 2
 
 class BucketBy(messages.Enum):
   """How to bucket the results"""
@@ -62,7 +62,7 @@ _metric_map = {
         'model': participant.Participant,
         'name': 'Participant.' + TOTAL_SENTINEL,
     },
-    Metrics.MEMBERSHIP_TIER: {
+    Metrics.PARTICIPANT_MEMBERSHIP_TIER: {
         'model': participant.Participant,
         'column': participant.Participant.membership_tier,
         'prefix': 'Participant.membership_tier',

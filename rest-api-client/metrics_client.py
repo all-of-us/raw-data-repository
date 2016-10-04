@@ -16,7 +16,7 @@ def main():
   pprint.pprint(response)
 
   request = {
-      'metric': 'MEMBERSHIP_TIER',
+      'metric': 'PARTICIPANT_MEMBERSHIP_TIER',
       'bucket_by': 'WEEK',
   }
 
