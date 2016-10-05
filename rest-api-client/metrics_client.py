@@ -9,6 +9,14 @@ def main():
   client = Client('metrics/v1')
 
   request = {
+      'metric': 'PARTICIPANT_ZIP_CODE',
+      'bucket_by': 'MONTH',
+  }
+
+  response = client.request_json('metrics', 'POST', request)
+  pprint.pprint(response)
+
+  request = {
       'metric': 'PARTICIPANT_TOTAL',
   }
 

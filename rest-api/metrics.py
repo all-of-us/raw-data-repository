@@ -34,6 +34,7 @@ class Metrics(messages.Enum):
   NONE = 0
   PARTICIPANT_TOTAL = 1
   PARTICIPANT_MEMBERSHIP_TIER = 2
+  PARTICIPANT_ZIP_CODE = 3
 
 class BucketBy(messages.Enum):
   """How to bucket the results"""
@@ -67,6 +68,11 @@ _metric_map = {
         'column': participant.Participant.membership_tier,
         'prefix': 'Participant.membership_tier',
         'enum': participant.MembershipTier,
+    },
+    Metrics.PARTICIPANT_ZIP_CODE: {
+        'model': participant.Participant,
+        'column': participant.Participant.zip_code,
+        'prefix': 'Participant.zip_code',
     },
 }
 

@@ -114,7 +114,8 @@ class MetricsPipelineTest(unittest.TestCase):
   def test_reduce_date(self):
     reduce_input = [
         '{"date": "2016-09-10T11:00:01", "summary": '
-        '{"Participant.membership_tier.INTERESTED": 1}}',
+        '{"Participant.membership_tier.INTERESTED": 1,'
+        ' "Participant.zip_code.12345": 1}}',
 
         # Flips to ENGAGED and back.
         '{"date": "2016-09-10T11:00:02", "summary": '
@@ -128,7 +129,8 @@ class MetricsPipelineTest(unittest.TestCase):
     metrics.set_pipeline_in_progress()
     results = list(metrics_pipeline.reduce_date("2016-09-10", reduce_input))
     self.assertEquals(len(results), 1)
-    expected_cnt = Counter(('Participant.membership_tier.INTERESTED',))
+    expected_cnt = Counter(('Participant.zip_code.12345',
+                            'Participant.membership_tier.INTERESTED'))
     expected = metrics_pipeline.MetricsBucket(
         date=datetime.datetime(2016, 9, 10), metrics=pickle.dumps(expected_cnt))
     self.assertEquals(expected.date, results[0].entity.date)
