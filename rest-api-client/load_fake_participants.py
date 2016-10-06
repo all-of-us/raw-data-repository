@@ -21,7 +21,7 @@ hpo_ids = (
     "chicago",
     "tucson",
     "pittsburgh",
-    "knoxbille",
+    "knoxville",
     "middletown",
     "peekskill",
     "jackson",
@@ -57,18 +57,20 @@ def participant():
       del initial_participant['hpo_id']
       initial_participant['recruitment_source'] = 'DIRECT_VOLUNTEER'
 
-    consent_time = fake.date_time_between(start_date=sign_up_time, end_date=sign_up_time + two_months, tzinfo=None)
+    consented_time = fake.date_time_between(start_date=sign_up_time, end_date=sign_up_time + two_months, tzinfo=None)
     consented_participant = copy.deepcopy(initial_participant)
-    consented_participant['consent_time'] =  consent_time.isoformat()
+    consented_participant['consent_time'] =  consented_time.isoformat()
     consented_participant['membership_tier'] =  'CONSENTED'
 
-    engaged_time = fake.date_time_between(start_date=consent_time, end_date=consent_time + one_year, tzinfo=None)
+    engaged_time = fake.date_time_between(start_date=consented_time, end_date=consented_time + one_year, tzinfo=None)
     engaged_participant = copy.deepcopy(consented_participant)
     engaged_participant['membership_tier'] =  'ENGAGED'
 
     questionnaire_time = fake.date_time_between(start_date=sign_up_time, end_date=sign_up_time + one_year, tzinfo=None)
     return {
-            'participant': [initial_participant, consented_participant, engaged_participant],
+        'participant': [(initial_participant, sign_up_time.isoformat()),
+                        (consented_participant, consented_time.isoformat()),
+                        (engaged_participant, engaged_time.isoformat())],
             'questionnaire_time': questionnaire_time.isoformat()
     }
 
@@ -101,14 +103,15 @@ def main():
     details = participant()
     participant_calls = details['participant']
 
-    response = client.request_json('participant/v1/participants', 'POST', participant_calls[0])
+    p, when = participant_calls[0]
+    response = client.request_json('participant/v1/participants', 'POST', p, headers={'X-Pretend-Date': when})
     participant_id = response['participant_id']
-    for p in participant_calls[1:3]:
-      client.request_json('participant/v1/participants/{}'.format(participant_id), 'PATCH', p)
+    for p, when in participant_calls[1:]:
+      client.request_json('participant/v1/participants/{}'.format(participant_id), 'PATCH', p, headers={'X-Pretend-Date': when})
 
     q = random_questionnaire(response, details['questionnaire_time'], q_id)
-    q_response = client.request_json('ppi/fhir/QuestionnaireResponse', 'POST', q)
-    print("Q response")
+    q_response = client.request_json('ppi/fhir/QuestionnaireResponse', 'POST', q, headers={'X-Pretend-Date': details['questionnaire_time']})
+
     print(q_response)
 
 if __name__ == '__main__':

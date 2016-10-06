@@ -4,6 +4,7 @@
 import argparse
 import httplib2
 import json
+import copy
 
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -49,16 +50,18 @@ class Client(object):
         self.creds_file, [SCOPE])
     return credentials.authorize(httplib2.Http())
 
-  def request(self, path, method='GET', body=None, query_args=None):
+  def request(self, path, method='GET', body=None, query_args=None, headers=None):
     url = '{}/{}/{}'.format(self.instance, self.base_path, path)
     if query_args:
       args_str = '&'.join(
           '{}={}'.format(k,v) for k, v in query_args.iteritems())
       url = '{}?{}'.format(url, args_str)
 
-    headers = {}
+    headers = copy.deepcopy(headers or {})
+
     if method == 'POST':
-      headers = POST_HEADERS
+      headers.update(POST_HEADERS)
+
     print '{} to {}'.format(method, url)
     resp, content = self.fetcher.request(
         url, method, headers=headers, body=body)
@@ -70,10 +73,10 @@ class Client(object):
 
     return content
 
-  def request_json(self, path, method='GET', body=None, query_args=None):
+  def request_json(self, path, method='GET', body=None, query_args=None, headers=None):
     json_body = None
     if body:
       json_body = json.dumps(body)
-    response = self.request(path, method, body=json_body, query_args=query_args)
+    response = self.request(path, method, body=json_body, query_args=query_args, headers=headers)
     print response
     return json.loads(response)

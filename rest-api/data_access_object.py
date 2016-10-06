@@ -128,8 +128,11 @@ class DataAccessObject(object):
           self.model_name, ancestor_id, id_))
     return m
 
-  def store(self, model):
-    self.history_model(obj=model).put()
+  def store(self, model, date=None):
+    h = self.history_model(obj=model)
+    if date:
+      h.populate(date=date)
+    h.put()
     model.put()
 
   def allocate_id(self):
