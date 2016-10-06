@@ -28,19 +28,13 @@ hpo_ids = (
     "san-ysidro"
 )
 
-zip_codes = (
-    "12345",
-    "11111",
-    "02142",
-    )
-
 def participant():
     birth_sex = random.choice(["MALE", "FEMALE"])
     first_name_fn = fake.first_name_male if birth_sex == "MALE" else fake.first_name_female
     (first_name, middle_name, last_name) = (first_name_fn(), first_name_fn(), fake.last_name())
 
     hpo_id = random.choice(hpo_ids)
-    zip_code = random.choice(zip_codes)
+    zip_code = fake.zipcode()
     gender_identity = birth_sex
     date_of_birth = fake.date(pattern="%Y-%m-%d")
     if random.random() < 0.05:
