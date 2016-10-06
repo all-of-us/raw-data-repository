@@ -99,7 +99,6 @@ class MetricService(object):
             if total_metric:
               suffix = 'TOTAL'
 
-            print total_metric, metric , count, db_bucket.date
             if ((total_metric and metric_prefix == metric)
                 or (not total_metric and  metric.startswith(metric_prefix))):
               bucket.cnt[suffix] += count
