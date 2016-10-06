@@ -1,5 +1,5 @@
 """Base object for Datastore data access objects."""
-
+import api_util
 import copy
 
 from google.appengine.ext import ndb
@@ -32,21 +32,35 @@ class DataAccessObject(object):
     self.model_name = model_type.__name__
 
     history_props = {
-        "date": ndb.DateTimeProperty(auto_now_add=True),
-        "obj": ndb.StructuredProperty(model_type, repeated=False),
+        'date': ndb.DateTimeProperty(auto_now_add=True),
+        'obj': ndb.StructuredProperty(model_type, repeated=False),
     }
     self.history_model = type(
         self.model_name + 'History', (ndb.Model,), history_props)
 
   def to_json(self, m):
-    json_obj = copy.deepcopy(m.to_dict())
-    return self.properties_to_json(json_obj)
+    properties_obj = copy.deepcopy(m.to_dict())
+    return self.properties_to_json(properties_obj)
 
-  def from_json(self, dict_, ancestor_id, id_):
+  def history_from_json(self, dict_):
+    dict_ = copy.deepcopy(dict_)
+    dict_['obj'] = self.from_json(dict_['obj'])
+    api_util.parse_json_date(dict_, 'date')
+    m = self.history_model()
+    m.populate(**dict_)
+    return m
+
+  def history_to_json(self, m):
+    json_obj = copy.deepcopy(m.to_dict())
+    json_obj['obj'] = self.to_json(m.obj)
+    api_util.format_json_date(json_obj, 'date')
+    return json_obj
+
+  def from_json(self, dict_, ancestor_id=None, id_=None):
     dict_ = copy.deepcopy(dict_)
 
     key_path = []
-    if self.ancestor_type:
+    if self.ancestor_type and ancestor_id:
       key_path.append(self.ancestor_type)
       key_path.append(ancestor_id)
     if id_:

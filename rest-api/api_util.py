@@ -76,11 +76,14 @@ def parse_json_date(obj, field_name, format=None):
 
 def format_json_date(obj, field_name, format=None):
   """Converts a field of a dictionary from a datetime to a string."""
-  if field_name in obj and obj[field_name] is not None:
-    if format:
-      obj[field_name] = obj[field_name].strftime(format)
+  if field_name in obj:
+    if obj[field_name] is None:
+      del obj[field_name]
     else:
-      obj[field_name] = obj[field_name].isoformat()
+      if format:
+        obj[field_name] = obj[field_name].strftime(format)
+      else:
+        obj[field_name] = obj[field_name].isoformat()
 
 def parse_json_enum(obj, field_name, enum):
   """Converts a field of a dictionary from a string to an enum."""

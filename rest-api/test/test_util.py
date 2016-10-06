@@ -9,7 +9,7 @@ CREDS_FILE = './test-data/test-client-cert.json'
 DEFAULT_INSTANCE = 'http://localhost:8080'
 
 def get_client(base_path):
-  return Client(base_path, CREDS_FILE, DEFAULT_INSTANCE)
+  return Client(base_path, False, CREDS_FILE, DEFAULT_INSTANCE)
 
 def create_participant(first, last, birthday):
   participant = {
@@ -17,7 +17,8 @@ def create_participant(first, last, birthday):
       'last_name': last,
       'date_of_birth': birthday,
   }
-  participant_client = Client('participant/v1', CREDS_FILE, DEFAULT_INSTANCE)
+  participant_client = Client(
+      'participant/v1', False, CREDS_FILE, DEFAULT_INSTANCE)
   response = participant_client.request_json(
       'participants', 'POST', participant)
   return response['drc_internal_id']
