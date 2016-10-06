@@ -2,8 +2,8 @@
 
 import collections
 import datetime
+import json
 import participant
-import pickle
 
 from dateutil.relativedelta import relativedelta
 from google.appengine.ext import ndb
@@ -18,11 +18,9 @@ class PipelineAlreadyRunningException(BaseException):
 
 START_DATE = datetime.date(2016, 9, 1)
 
-TOTAL_SENTINEL = '_total'
-
 class MetricsBucket(ndb.Model):
   date = ndb.DateProperty()
-  metrics = ndb.PickleProperty()
+  metrics = ndb.JsonProperty()
 
 class MetricsVersion(ndb.Model):
   in_progress = ndb.BooleanProperty()
@@ -61,17 +59,15 @@ class MetricsRequest(messages.Message):
 _metric_map = {
     Metrics.PARTICIPANT_TOTAL: {
         'model': participant.Participant,
-        'name': 'Participant.' + TOTAL_SENTINEL,
+        'prefix': 'Participant',
     },
     Metrics.PARTICIPANT_MEMBERSHIP_TIER: {
         'model': participant.Participant,
-        'column': participant.Participant.membership_tier,
         'prefix': 'Participant.membership_tier',
         'enum': participant.MembershipTier,
     },
     Metrics.PARTICIPANT_ZIP_CODE: {
         'model': participant.Participant,
-        'column': participant.Participant.zip_code,
         'prefix': 'Participant.zip_code',
     },
 }
@@ -83,25 +79,29 @@ class MetricService(object):
       raise InvalidMetricException(
           '{} is not a valid metric.'.format(request.metric))
 
-    metric_config = _metric_map[request.metric]
+    metric_prefix = _metric_map[request.metric]['prefix']
+
     buckets = _make_buckets(request.bucket_by)
     serving_version = get_serving_version()
 
     for db_bucket in MetricsBucket.query(ancestor=serving_version).fetch():
       for bucket in buckets:
         if db_bucket.date >= bucket.start and db_bucket.date < bucket.end:
-          counts = pickle.loads(db_bucket.metrics)
+          counts = collections.Counter(json.loads(db_bucket.metrics))
           for metric, count in counts.iteritems():
-            prefix, suffix = metric.rsplit('.', 1)
-            metric_prefix = metric_config.get('prefix', None)
-            metric_name = metric_config.get('name', None)
+            # If the prefix is for the total, it won't have a '.'.
+            total_metric = '.' not in metric_prefix
 
-            if ((metric_prefix and prefix == metric_prefix)
-                or metric_name == metric):
-              # Metric is of the form Participant.membership_tier.ENGAGED
-              # we want just the last part.
-              if suffix == TOTAL_SENTINEL:
-                suffix = 'TOTAL'
+            # Metric is of the form Participant.membership_tier.ENGAGED
+            # we want just the last part.
+            suffix = metric.rsplit('.', 1)[-1]
+            # Unless this is a total metric.
+            if total_metric:
+              suffix = 'TOTAL'
+
+            print total_metric, metric , count, db_bucket.date
+            if ((total_metric and metric_prefix == metric)
+                or (not total_metric and  metric.startswith(metric_prefix))):
               bucket.cnt[suffix] += count
 
     response = MetricsResponse()

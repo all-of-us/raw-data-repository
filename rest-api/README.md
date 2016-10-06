@@ -24,6 +24,8 @@ You can either use the Cloud SQL proxy or run a MySQL instance locally.
 From the rest-api directory, run
 '''Shell
 pip install -r requirements.txt -t lib/
+
+git submodule update --init
 '''
 This will install all the needed dependencies in the 'lib' directory.
 

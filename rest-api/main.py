@@ -44,7 +44,7 @@ api.add_resource(ppi_api.QuestionnaireResponseAPI,
 api.add_resource(metrics_api.MetricsApi,
                  '/metrics/v1/metrics',
                  endpoint='metrics',
-                 methods=['POST', 'GET'])
+                 methods=['POST'])
 
 # TODO(geoffreyb): Remove this once we have a cron job running.
 api.add_resource(metrics_api.MetricsApi,

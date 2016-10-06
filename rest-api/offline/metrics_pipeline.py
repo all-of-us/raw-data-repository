@@ -6,10 +6,10 @@ summaries into MetricsBucket entities.
 In order to segregate metrics from one run from another, a MetricsVersion record
 is created at the beginning of each run.  At the end of the run its 'completed'
 property is set to true.  For every MetricsBucket that is created by this
-pipeline, it's parent is set to the current MetricsVersion.
+pipeline, its parent is set to the current MetricsVersion.
 
 The metrics to be collected are specified in the CONFIGS dict.  In addition to
-the fields specified there, for evey entity, a synthetic '_total' metric is
+the fields specified there, for evey entity, a synthetic 'total' metric is
 generated.  This is to record the total number of entities over time.
 
 
@@ -46,10 +46,10 @@ date, adds them up, and writes out the aggregated counts for each day.
 
 import datetime
 import json
-import pickle
 import pipeline
 
 import api_util
+import config
 import metrics
 import participant
 
@@ -70,7 +70,7 @@ class PipelineNotRunningException(BaseException):
 
 DATE_FORMAT = '%Y-%m-%d'
 
-CONFIGS = {
+METRICS_CONFIGS = {
     'ParticipantHistory': {
         'name': 'Participant',
         'id_field': 'drc_internal_id',
@@ -86,7 +86,7 @@ class MetricsPipeline(pipeline.Pipeline):
     print "========== Starting ============="
     metrics.set_pipeline_in_progress()
     futures = []
-    for config_name in CONFIGS.keys():
+    for config_name in METRICS_CONFIGS.keys():
       future = yield SingleMetricPipeline(config_name)
       futures.append(future)
     yield FinalizeMetrics(*futures)
@@ -102,10 +102,10 @@ class FinalizeMetrics(pipeline.Pipeline):
 
 class SingleMetricPipeline(pipeline.Pipeline):
   def run(self, config_name):
-    config = CONFIGS[config_name]
-    print '======= Starting {} Pipeline'.format(config['name'])
+    metrics_config = METRICS_CONFIGS[config_name]
+    print '======= Starting {} Pipeline'.format(metrics_config['name'])
     mapper_params = {
-        'entity_kind': config['model_name'],
+        'entity_kind': metrics_config['model_name'],
     }
     bucket_name = app_identity.get_default_gcs_bucket_name()
     reducer_params = {
@@ -113,6 +113,9 @@ class SingleMetricPipeline(pipeline.Pipeline):
           "bucket_name": bucket_name,
       },
     }
+    num_shards = int(config.getSetting(config.METRICS_SHARDS))
+    # The result of yield is a future that will contian the files that were
+    # produced by MapreducePipeline.
     by_id = yield mapreduce_pipeline.MapreducePipeline(
         "Extract Metrics",
         mapper_spec='offline.metrics_pipeline.map_to_id',
@@ -121,7 +124,7 @@ class SingleMetricPipeline(pipeline.Pipeline):
         reducer_spec="offline.metrics_pipeline.reduce_by_id",
         reducer_params=reducer_params,
         output_writer_spec="mapreduce.output_writers.GoogleCloudStorageRecordOutputWriter",
-        shards=2)
+        shards=num_shards)
     yield SingleMetricsPhaseTwo(by_id)
 
 class SingleMetricsPhaseTwo(pipeline.Pipeline):
@@ -136,13 +139,14 @@ class SingleMetricsPhaseTwo(pipeline.Pipeline):
         },
     }
 
+    num_shards = int(config.getSetting(config.METRICS_SHARDS))
     yield mapreduce_pipeline.MapreducePipeline(
         "Aggregate Days",
         mapper_spec='offline.metrics_pipeline.key_by_date',
         mapper_params=mapper_params,
         input_reader_spec="mapreduce.input_readers.GoogleCloudStorageRecordInputReader",
         reducer_spec="offline.metrics_pipeline.reduce_date",
-        shards=2)
+        shards=num_shards)
 
 
 def key_by_date(json_string):
@@ -152,42 +156,41 @@ def key_by_date(json_string):
 
 def map_to_id(hist_obj):
   kind = hist_obj._get_kind()
-  config = CONFIGS[kind]
-  yield ('{}:{}'.format(kind, getattr(hist_obj.obj, config['id_field'])),
-         json.dumps(config['dao'].history_to_json(hist_obj)))
+  metrics_config = METRICS_CONFIGS[kind]
+  yield ('{}:{}'.format(kind, getattr(hist_obj.obj, metrics_config['id_field'])),
+         json.dumps(metrics_config['dao'].history_to_json(hist_obj)))
 
 def reduce_by_id(obj_id, history_objects):
   kind = obj_id.split(':')[0]
-  config = CONFIGS[kind]
+  metrics_config = METRICS_CONFIGS[kind]
   history = []
   for obj in history_objects:
-    history.append(config['dao'].history_from_json(json.loads(obj)))
+    history.append(metrics_config['dao'].history_from_json(json.loads(obj)))
 
   history = sorted(history, key=lambda o: o.date)
   last = None
   for hist_obj in history:
-    if hist_obj == last:
-      print "Hit duplicate history entry, skipping..."
-      continue
     obj = hist_obj.obj
     summary = {}
-    # Put out a single '_total' field for the first time this object shows up.
+    # Put out a single 'total' entry for the first time this object shows up.
     if last is None:
-      summary_key = '{}.{}'.format(config['name'], metrics.TOTAL_SENTINEL)
-      summary[summary_key] = 1
+      summary[metrics_config['name']] = 1
 
-    for field in config['fields']:
+    for field in metrics_config['fields']:
       val = getattr(obj, field)
       val_str = str(val)
-      if type(getattr(config['model'].obj, field)) == messages.EnumField:
-        if val == None:
-          val_str = 'NONE'
-      summary_key = '{}.{}.{}'.format(config['name'], field, val_str)
-      summary[summary_key] = 1
-      if last and getattr(obj, field) != getattr(last, field):
-        old_summary_key = '{}.{}.{}'.format(
-            config['name'], field, getattr(last, field))
-        summary[old_summary_key] = -1
+
+      # Only output a delta for this field if it is either the first value we
+      # have, or if it has changed.
+      if not last or (last and getattr(obj, field) != getattr(last, field)):
+        summary_key = '{}.{}.{}'.format(metrics_config['name'], field, val_str)
+        summary[summary_key] = 1
+
+        if last:
+          # If the value changed, output a -1 delta for the old value.
+          old_summary_key = '{}.{}.{}'.format(
+              metrics_config['name'], field, getattr(last, field))
+          summary[old_summary_key] = -1
 
     emitted = {"date": hist_obj.date.date().isoformat(), 'summary': summary}
     yield (json.dumps(emitted))
@@ -201,10 +204,10 @@ def reduce_date(date, deltas):
       cnt[k] += val
 
   # Remove zeros
-  cnt = Counter({k:v for k, v in cnt.iteritems() if v})
+  cnt = Counter({k:v for k, v in cnt.iteritems() if v is not 0})
 
   current_version = metrics.get_in_progress_version()
   bucket = MetricsBucket(parent=current_version.key)
   bucket.date = datetime.datetime.strptime(date, DATE_FORMAT)
-  bucket.metrics = pickle.dumps(cnt)
+  bucket.metrics = json.dumps(cnt)
   yield op.db.Put(bucket)

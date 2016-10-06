@@ -32,15 +32,15 @@ class DataAccessObject(object):
     self.model_name = model_type.__name__
 
     history_props = {
-        "date": ndb.DateTimeProperty(auto_now_add=True),
-        "obj": ndb.StructuredProperty(model_type, repeated=False),
+        'date': ndb.DateTimeProperty(auto_now_add=True),
+        'obj': ndb.StructuredProperty(model_type, repeated=False),
     }
     self.history_model = type(
         self.model_name + 'History', (ndb.Model,), history_props)
 
   def to_json(self, m):
-    json_obj = copy.deepcopy(m.to_dict())
-    return self.properties_to_json(json_obj)
+    properties_obj = copy.deepcopy(m.to_dict())
+    return self.properties_to_json(properties_obj)
 
   def history_from_json(self, dict_):
     dict_ = copy.deepcopy(dict_)
@@ -52,7 +52,7 @@ class DataAccessObject(object):
 
   def history_to_json(self, m):
     json_obj = copy.deepcopy(m.to_dict())
-    json_obj["obj"] = self.to_json(m.obj)
+    json_obj['obj'] = self.to_json(m.obj)
     api_util.format_json_date(json_obj, 'date')
     return json_obj
 

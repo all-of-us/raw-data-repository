@@ -5,7 +5,6 @@ import datetime
 import json
 import metrics
 import metrics_pipeline
-import pickle
 import participant
 import unittest
 
@@ -77,7 +76,7 @@ class MetricsPipelineTest(unittest.TestCase):
         "summary": {
             "Participant.membership_tier.INTERESTED": 1,
             "Participant.zip_code.12345": 1,
-            "Participant._total": 1,
+            "Participant": 1,
         }
     }
     expected2 = {
@@ -85,7 +84,6 @@ class MetricsPipelineTest(unittest.TestCase):
         "summary": {
             "Participant.membership_tier.INTERESTED": -1,
             "Participant.membership_tier.ENGAGED": 1,
-            "Participant.zip_code.12345": 1,
         }
     }
     expected3 = {
@@ -93,7 +91,6 @@ class MetricsPipelineTest(unittest.TestCase):
         "summary": {
             "Participant.membership_tier.ENGAGED": -1,
             "Participant.membership_tier.INTERESTED": 1,
-            "Participant.zip_code.12345": 1,
         }
     }
     expected4 = {
@@ -132,10 +129,10 @@ class MetricsPipelineTest(unittest.TestCase):
     expected_cnt = Counter(('Participant.zip_code.12345',
                             'Participant.membership_tier.INTERESTED'))
     expected = metrics_pipeline.MetricsBucket(
-        date=datetime.datetime(2016, 9, 10), metrics=pickle.dumps(expected_cnt))
+        date=datetime.datetime(2016, 9, 10), metrics=json.dumps(expected_cnt))
     self.assertEquals(expected.date, results[0].entity.date)
-    self.assertEquals(pickle.loads(expected.metrics),
-                      pickle.loads(results[0].entity.metrics))
+    self.assertEquals(json.loads(expected.metrics),
+                      json.loads(results[0].entity.metrics))
 
   def _compare_json(self, a, b):
     if isinstance(a, str):

@@ -1,6 +1,6 @@
 """Configuration parameters.
 
-Contains things such as the database to connect to.
+Contains things such as the accounts allowed access to the system.
 """
 
 from google.appengine.ext import ndb
@@ -10,13 +10,11 @@ class Config(ndb.Model):
   config_key = ndb.StringProperty()
   value = ndb.StringProperty()
 
-
-CLOUDSQL_INSTANCE = 'cloudsql_instance'
-CLOUDSQL_USER = 'cloudsql_user'
-CLOUDSQL_PASSWORD = 'cloudsql_password'
+_CONFIG_INITIALIZED = 'initialized'
 
 ALLOWED_USER = 'allowed_user'
-ALLOWED_CLIENT_ID = 'allowed_client_id'
+METRICS_SHARDS = 'metrics_shards'
+
 
 class MissingConfigException(BaseException):
   """Exception raised if the setting does not exist"""
@@ -54,12 +52,12 @@ def check_initialized():
   # Create the config 'table' if it doesn't exist.
   print "Checking the config datastore is initialized..."
   try:
-    setting = getSetting('initialized')
+    setting = getSetting(_CONFIG_INITIALIZED)
   except MissingConfigException:
     print "Creating and setting sane defaults for development..."
-    Config(config_key='initialized', value='True').put()
-    Config(config_key='allowed_user',
+    Config(config_key=_CONFIG_INITIALIZED, value='True').put()
+    Config(config_key=METRICS_SHARDS, value='2').put()
+    Config(config_key=ALLOWED_USER,
            value='pmi-hpo-staging@appspot.gserviceaccount.com').put()
-    Config(config_key='allowed_user',
+    Config(config_key=ALLOWED_USER,
            value='test-client@pmi-rdr-api-test.iam.gserviceaccount.com').put()
-  _initialized = True
