@@ -11,6 +11,8 @@ def main():
   request = {
       'metric': 'PARTICIPANT_ZIP_CODE',
       'bucket_by': 'MONTH',
+      'start_date': '2016-10-01',
+      'end_date': '2017-10-01',
   }
 
   response = client.request_json('metrics', 'POST', request)
