@@ -1,6 +1,6 @@
 """Tests for metrics_pipeline."""
 
-
+import copy
 import datetime
 import json
 import metrics
@@ -22,6 +22,8 @@ class MetricsPipelineTest(unittest.TestCase):
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
     ndb.get_context().clear_cache()
+
+    self.saved_configs = copy.deepcopy(metrics_pipeline.METRICS_CONFIGS)
 
     # One participant signs up on 9/1
     self.p1r1 = participant.DAO.history_model(
@@ -49,11 +51,16 @@ class MetricsPipelineTest(unittest.TestCase):
     self.p1r4 = participant.DAO.history_model(
         date=datetime.datetime(2016, 9, 10),
         obj=participant.Participant(
+            sign_up_time=datetime.datetime(2016, 9, 1, 11, 0, 2),
             drc_internal_id='1',
             zip_code='11111',
             membership_tier=participant.MembershipTier.CONSENTED))
 
     self.history1 = [self.p1r1, self.p1r2, self.p1r3, self.p1r4]
+
+  def tearDown(self):
+    metrics_pipeline.METRICS_CONFIGS = self.saved_configs
+
 
   def test_key_by_date(self):
     hist_json = json.dumps(participant.DAO.history_to_json(self.p1r1))
@@ -66,7 +73,11 @@ class MetricsPipelineTest(unittest.TestCase):
     self.assertEqual('ParticipantHistory:1', group_key)
     self._compare_json(participant.DAO.history_to_json(self.p1r1), hist_obj)
 
-  def test_reduce_by_id(self):
+  def test_reduce_by_id_history(self):
+    config = metrics_pipeline.METRICS_CONFIGS['ParticipantHistory']
+    config['use_history'] = True
+    config['date_func'] = metrics_pipeline.HISTORY_DATE_FUNC
+
     history_json = [json.dumps(
         participant.DAO.history_to_json(h)) for h in self.history1]
     results = list(metrics_pipeline.reduce_by_id('ParticipantHistory:1',
@@ -107,6 +118,22 @@ class MetricsPipelineTest(unittest.TestCase):
     self._compare_json(expected2, results[1])
     self._compare_json(expected3, results[2])
     self._compare_json(expected4, results[3])
+
+  def test_reduce_by_id_no_history(self):
+    history_json = [json.dumps(
+        participant.DAO.history_to_json(h)) for h in self.history1]
+    results = list(metrics_pipeline.reduce_by_id('ParticipantHistory:1',
+                                                 history_json))
+    expected1 = {
+        "date": "2016-09-01",
+        "summary": {
+            "Participant": 1,
+            "Participant.membership_tier.CONSENTED": 1,
+            "Participant.zip_code.11111": 1,
+        }
+    }
+    self.assertEqual(1, len(results))
+    self._compare_json(expected1, results[0])
 
   def test_reduce_date(self):
     reduce_input = [
