@@ -120,6 +120,10 @@ class MetricsPipelineTest(unittest.TestCase):
     self._compare_json(expected4, results[3])
 
   def test_reduce_by_id_no_history(self):
+    config = metrics_pipeline.METRICS_CONFIGS['ParticipantHistory']
+    config['use_history'] = False
+    config['date_func'] = lambda ph: ph.obj.sign_up_time.date()
+
     history_json = [json.dumps(
         participant.DAO.history_to_json(h)) for h in self.history1]
     results = list(metrics_pipeline.reduce_by_id('ParticipantHistory:1',
