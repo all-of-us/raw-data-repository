@@ -1,0 +1,5 @@
+cron:
+- description: Hourly metrics
+  url: /metrics/v1/metrics_recalculate
+  schedule: every 1 hours
+  

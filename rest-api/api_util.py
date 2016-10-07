@@ -3,6 +3,8 @@
 
 import config
 import datetime
+from google.appengine.api import users
+
 
 from protorpc import message_types
 from protorpc import protojson
@@ -12,6 +14,7 @@ from werkzeug.exceptions import Unauthorized, BadRequest
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 
+
 def auth_required(func):
   """A decorator that keeps the function from being called without auth."""
   def wrapped(self, *args, **kwargs):
@@ -19,9 +22,27 @@ def auth_required(func):
     return func(self, *args, **kwargs)
   return wrapped
 
+def auth_required_cron_or_admin(func):
+  """A decorator that ensures that the user is an admin or cron job."""
+  def wrapped(self, *args, **kwargs):
+    check_auth_cron_or_admin()
+    return func(self, *args, **kwargs)
+  return wrapped
+
 def check_auth():
   user = oauth.get_current_user(SCOPE)
   return is_user_whitelisted(user)
+
+def check_auth_cron_or_admin():
+  """Returns true if the current user is a cron job or an admin.
+
+  Only members of the cloud project can be admin users:
+  https://cloud.google.com/appengine/docs/python/users/adminusers
+
+  Cron jobs also appear as admin users.
+  """
+  return users.is_current_user_admin()
+
 
 def is_user_whitelisted(user):
   if user and user.email() in config.getSettingList(config.ALLOWED_USER):
