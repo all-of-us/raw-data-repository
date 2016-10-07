@@ -9,7 +9,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 CREDS_FILE = '../rest-api/test/test-data/test-client-cert.json'
-DEFAULT_INSTANCE = 'https://pmi-rdr-api-test.appspot.com'
+DEFAULT_INSTANCE = 'https://pmi-drc-api-test.appspot.com'
 POST_HEADERS = {
     'Content-Type': 'application/json; charset=UTF-8',
 }
