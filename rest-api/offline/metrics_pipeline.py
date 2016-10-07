@@ -70,14 +70,33 @@ class PipelineNotRunningException(BaseException):
 
 DATE_FORMAT = '%Y-%m-%d'
 
+HISTORY_DATE_FUNC = lambda ph: ph.date.date()
+
+# Configuration for each type of object that we are collecting metrics on.
+#  name: The name of the ndb model object.
+#  date_func: A function that presented with the history object, will return the
+#    date that should be associated  with the changes.  This needs to return a
+#    datetime.date object.  In most cases this should be HISTORY_DATE_FUNC.  If
+#    some other date is used, make sure that use_history is False.
+#  id_field: The field that contains the unique id for this object.
+#  model_name: The type of the history object as a string.
+#  model: The type of the history object.
+#  fields: The fields of the model to collect metrics on.
+#  dao: The data access object associated with this model.
+#  use_history: Compute deltas across the entire history of this object.  If
+#    False, will only use the latest version of the object.  If use_history is
+#    True, the date_func must return the date from the history object, otherwise
+#    out of order dates could yield corrupt metrics.
 METRICS_CONFIGS = {
     'ParticipantHistory': {
         'name': 'Participant',
+        'date_func': HISTORY_DATE_FUNC,
         'id_field': 'drc_internal_id',
         'model_name': 'participant.DAO.history_model',
         'model': participant.DAO.history_model,
         'fields': ['membership_tier', 'zip_code'],
         'dao': participant.DAO,
+        'use_history': True,
     },
 }
 
@@ -168,6 +187,10 @@ def reduce_by_id(obj_id, history_objects):
     history.append(metrics_config['dao'].history_from_json(json.loads(obj)))
 
   history = sorted(history, key=lambda o: o.date)
+
+  # Look at just the latest?
+  if not metrics_config['use_history']:
+    history = history[-1:]
   last = None
   for hist_obj in history:
     obj = hist_obj.obj
@@ -192,7 +215,8 @@ def reduce_by_id(obj_id, history_objects):
               metrics_config['name'], field, getattr(last, field))
           summary[old_summary_key] = -1
 
-    emitted = {"date": hist_obj.date.date().isoformat(), 'summary': summary}
+    emitted = {
+        "date": metrics_config['date_func'](hist_obj).isoformat(), 'summary': summary}
     yield (json.dumps(emitted))
     last = obj
 
