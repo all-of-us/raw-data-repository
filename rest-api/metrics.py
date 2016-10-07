@@ -5,6 +5,8 @@ import datetime
 import json
 import participant
 
+import api_util
+
 from dateutil.relativedelta import relativedelta
 from google.appengine.ext import ndb
 from protorpc import message_types
@@ -17,6 +19,8 @@ class PipelineAlreadyRunningException(BaseException):
   """Exception thrown when starting pipeline if it is already running."""
 
 START_DATE = datetime.date(2016, 9, 1)
+
+DATE_FORMAT = '%Y-%m-%d'
 
 class MetricsBucket(ndb.Model):
   date = ndb.DateProperty()
@@ -55,6 +59,8 @@ class MetricsResponse(messages.Message):
 class MetricsRequest(messages.Message):
   metric = messages.EnumField(Metrics, 1, default='NONE')
   bucket_by = messages.EnumField(BucketBy, 2, default='NONE')
+  start_date = messages.StringField(3)
+  end_date = messages.StringField(4)
 
 _metric_map = {
     Metrics.PARTICIPANT_TOTAL: {
@@ -81,7 +87,14 @@ class MetricService(object):
 
     metric_prefix = _metric_map[request.metric]['prefix']
 
-    buckets = _make_buckets(request.bucket_by)
+    start_date = None
+    if request.start_date:
+      start_date = api_util.parse_date(request.start_date, DATE_FORMAT, True).date()
+
+    end_date = None
+    if request.end_date:
+      end_date = api_util.parse_date(request.end_date, DATE_FORMAT, True).date()
+    buckets = _make_buckets(request.bucket_by, start_date, end_date)
     serving_version = get_serving_version()
 
     for db_bucket in MetricsBucket.query(ancestor=serving_version).fetch():
@@ -150,7 +163,7 @@ def _convert_name(result, enum):
     return str(enum(result))
 
 
-def _make_buckets(bucket_by):
+def _make_buckets(bucket_by, start_date, end_date):
   increments = {
       BucketBy.DAY: relativedelta(days=1),
       BucketBy.WEEK: relativedelta(days=7),
@@ -158,11 +171,12 @@ def _make_buckets(bucket_by):
   }
 
   buckets = []
-  end_date = (datetime.datetime.now() + relativedelta(days=1)).date()
+  end_date = end_date or (datetime.datetime.now() + relativedelta(days=1)).date()
+  start_date = start_date or START_DATE
   if not bucket_by or bucket_by == BucketBy.NONE:
     buckets.append(Bucket(START_DATE, end_date))
   else:
-    last_date = START_DATE
+    last_date = start_date
     increment = increments[bucket_by]
     date = last_date
     while date < end_date:
