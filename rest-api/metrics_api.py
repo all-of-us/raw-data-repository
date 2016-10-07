@@ -23,7 +23,7 @@ class MetricsApi(Resource):
       offline.metrics_pipeline.MetricsPipeline().start()
 
 
-  @api_util.auth_required
+  @api_util.auth_required_cron_or_admin
   def post(self):
     resource = request.get_data()
     metrics_request = protojson.decode_message(metrics.MetricsRequest, resource)
