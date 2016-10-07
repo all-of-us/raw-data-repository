@@ -9,3 +9,9 @@ indexes:
   - name: class_path
   - name: start_time
     direction: desc
+- kind: MetricsVersion
+  properties:
+  - name: complete
+  - name: date
+    direction: desc
+    
