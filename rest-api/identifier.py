@@ -18,7 +18,7 @@ MAX_ID = 9999999
 
 
 class IdReservation(ndb.Model):
-  reserved = ndb.BooleanProperty()
+  pass
 
 def get_id():
   """Reserve a globally unique ID.
@@ -56,16 +56,9 @@ def _reserve_candidate(candidate, testing_sleep=0):
     return False
 
   reservation = IdReservation(key=key)
-  reservation.put()
-
-  key = ndb.Key(IdReservation, candidate)
-  existing = key.get()
-  if existing.reserved == True:
-    return False
 
   time.sleep(testing_sleep)
-  existing.reserved = True
-  existing.put()
+  reservation.put()
   return True
 
 
