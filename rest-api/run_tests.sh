@@ -10,4 +10,5 @@ fi
 
 export PYTHONPATH=$PYTHONPATH:`pwd`:lib
 python test/runner.py --test-path offline/ $1
+python test/runner.py --test-path test/ $1
 
