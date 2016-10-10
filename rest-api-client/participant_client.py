@@ -26,10 +26,10 @@ def main():
   pprint.pprint(response)
   if response['first_name'] != first_name:
     raise StandardError()
-  drc_internal_id = response['drc_internal_id']
+  participant_id = response['participant_id']
 
   # Fetch that participant and print it out.
-  response = client.request_json('participants/{}'.format(drc_internal_id))
+  response = client.request_json('participants/{}'.format(participant_id))
   pprint.pprint(response)
   if response['first_name'] != first_name:
     raise StandardError()
@@ -41,7 +41,7 @@ def main():
   response['consent_time'] = datetime.datetime.now().isoformat()
   response['hpo_id'] = '1234'
   response = client.request_json(
-      'participants/{}'.format(drc_internal_id), 'PATCH', response)
+      'participants/{}'.format(participant_id), 'PATCH', response)
   pprint.pprint(response)
   if (response['zip_code'] != zip_code
       or response['membership_tier'] != 'CONSENTED'
@@ -72,7 +72,7 @@ def main():
         or participant['date_of_birth'] != date_of_birth):
       raise StandardError()
 
-    if participant['drc_internal_id'] == drc_internal_id:
+    if participant['participant_id'] == participant_id:
       break
   else:
     raise StandardError()

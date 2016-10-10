@@ -102,9 +102,9 @@ def main():
     participant_calls = details['participant']
 
     response = client.request_json('participant/v1/participants', 'POST', participant_calls[0])
-    drc_internal_id = response['drc_internal_id']
+    participant_id = response['participant_id']
     for p in participant_calls[1:3]:
-      client.request_json('participant/v1/participants/{}'.format(drc_internal_id), 'PATCH', p)
+      client.request_json('participant/v1/participants/{}'.format(participant_id), 'PATCH', p)
 
     q = random_questionnaire(response, details['questionnaire_time'], q_id)
     q_response = client.request_json('ppi/fhir/QuestionnaireResponse', 'POST', q)

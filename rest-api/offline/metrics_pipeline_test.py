@@ -29,21 +29,21 @@ class MetricsPipelineTest(unittest.TestCase):
     self.p1r1 = participant.DAO.history_model(
         date=datetime.datetime(2016, 9, 1, 11, 0, 1),
         obj=participant.Participant(
-            drc_internal_id='1',
+            participant_id='1',
             zip_code='12345',
             membership_tier=participant.MembershipTier.INTERESTED))
     # Accidentally changes status to ENGAGED
     self.p1r2 = participant.DAO.history_model(
         date=datetime.datetime(2016, 9, 1, 11, 0, 2),
         obj=participant.Participant(
-            drc_internal_id='1',
+            participant_id='1',
             zip_code='12345',
             membership_tier=participant.MembershipTier.ENGAGED))
     # Fixes it back to INTERESTED
     self.p1r3 = participant.DAO.history_model(
         date=datetime.datetime(2016, 9, 1, 11, 0, 3),
         obj=participant.Participant(
-            drc_internal_id='1',
+            participant_id='1',
             zip_code='12345',
             membership_tier=participant.MembershipTier.INTERESTED))
 
@@ -52,7 +52,7 @@ class MetricsPipelineTest(unittest.TestCase):
         date=datetime.datetime(2016, 9, 10),
         obj=participant.Participant(
             sign_up_time=datetime.datetime(2016, 9, 1, 11, 0, 2),
-            drc_internal_id='1',
+            participant_id='1',
             zip_code='11111',
             membership_tier=participant.MembershipTier.CONSENTED))
 

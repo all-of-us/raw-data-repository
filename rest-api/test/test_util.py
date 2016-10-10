@@ -21,7 +21,7 @@ def create_participant(first, last, birthday):
       'participant/v1', False, CREDS_FILE, DEFAULT_INSTANCE)
   response = participant_client.request_json(
       'participants', 'POST', participant)
-  return response['drc_internal_id']
+  return response['participant_id']
 
 
 def round_trip(test, client, path, resource):

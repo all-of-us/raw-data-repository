@@ -1,5 +1,6 @@
 """Base object for Datastore data access objects."""
 import api_util
+import uuid
 import copy
 
 from google.appengine.ext import ndb
@@ -130,3 +131,10 @@ class DataAccessObject(object):
   def store(self, model):
     self.history_model(obj=model).put()
     model.put()
+
+  def allocate_id(self):
+    """Creates a new id for this object.
+
+    Override this to use something other than a uuid.
+    """
+    return str(uuid.uuid4())

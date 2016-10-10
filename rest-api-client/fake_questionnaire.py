@@ -28,7 +28,7 @@ def random_questionnaire(participant, response_time, questionnaire_id):
     ethnicity = random_ethnicity()
     for k,v in {
         '$questionnaire_id': questionnaire_id,
-        '$participant_id': participant['drc_internal_id'],
+        '$participant_id': participant['participant_id'],
         '$race_code': race[0],
         '$race_system': race[1],
         '$race_display': race[2],
