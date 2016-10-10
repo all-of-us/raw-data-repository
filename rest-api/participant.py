@@ -4,6 +4,7 @@
 import api_util
 
 import data_access_object
+import identifier
 
 from protorpc import messages
 from google.appengine.ext import ndb
@@ -42,7 +43,6 @@ class RecruitmentSource(messages.Enum):
 class Participant(ndb.Model):
   """The participant resource definition"""
   participant_id = ndb.StringProperty()
-  drc_internal_id = ndb.StringProperty()
   biobank_id = ndb.StringProperty()
   first_name = ndb.StringProperty()
   middle_name = ndb.StringProperty()
@@ -64,7 +64,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:
-      dict_['drc_internal_id'] = id_
+      dict_['participant_id'] = id_
 
     api_util.parse_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
     api_util.parse_json_date(dict_, 'sign_up_time')
@@ -100,5 +100,11 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     for p in query.fetch():
       items.append(self.to_json(p))
     return {"items": items}
+
+  def allocate_id(self):
+    id = identifier.get_id()
+    n = '{:x}'.format(id).zfill(9)
+    with_dashes = n[:-6] + '-' + n[-6:-3] + '-' + n[-3:]
+    return with_dashes
 
 DAO = ParticipantDAO()

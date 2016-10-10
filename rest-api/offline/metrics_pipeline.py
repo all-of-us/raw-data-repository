@@ -91,7 +91,7 @@ METRICS_CONFIGS = {
     'ParticipantHistory': {
         'name': 'Participant',
         'date_func': HISTORY_DATE_FUNC,
-        'id_field': 'drc_internal_id',
+        'id_field': 'participant_id',
         'model_name': 'participant.DAO.history_model',
         'model': participant.DAO.history_model,
         'fields': ['membership_tier', 'zip_code'],

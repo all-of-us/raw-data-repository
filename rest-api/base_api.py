@@ -1,7 +1,6 @@
 """Base class for API handlers."""
 
 import api_util
-import uuid
 
 from flask import Flask, request
 from flask.ext.restful import Resource
@@ -61,7 +60,7 @@ class BaseApi(Resource):
       a_id: The ancestor id.
     """
     resource = request.get_json(force=True)
-    m = self.dao.from_json(resource, a_id, str(uuid.uuid4()))
+    m = self.dao.from_json(resource, a_id, self.dao.allocate_id())
     self.validate_object(m)
     self.dao.store(m)
     return self.dao.to_json(m)
