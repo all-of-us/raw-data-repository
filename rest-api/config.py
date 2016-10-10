@@ -13,6 +13,7 @@ class Config(ndb.Model):
 _CONFIG_INITIALIZED = 'initialized'
 
 ALLOWED_USER = 'allowed_user'
+ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
 METRICS_SHARDS = 'metrics_shards'
 
 

@@ -1,6 +1,7 @@
 """Base class for API handlers."""
 
 import api_util
+import config
 
 from flask import Flask, request
 from flask.ext.restful import Resource
@@ -62,7 +63,7 @@ class BaseApi(Resource):
     resource = request.get_json(force=True)
     m = self.dao.from_json(resource, a_id, self.dao.allocate_id())
     self.validate_object(m)
-    self.dao.store(m, get_fake_date())
+    self.dao.store(m, date=consider_fake_date())
     return self.dao.to_json(m)
 
   @api_util.auth_required
@@ -77,13 +78,14 @@ class BaseApi(Resource):
     new_m = self.dao.from_json(request.get_json(force=True), a_id, id_)
     self.validate_object(new_m)
     api_util.update_model(old_model=old_m, new_model=new_m)
-    self.dao.store(old_m, get_fake_date())
+    self.dao.store(old_m, date=consider_fake_date())
     return self.dao.to_json(old_m)
 
-def get_fake_date():
-  date = request.headers.get('x-pretend-date', None)
-  if date:
-    date = api_util.parse_date(date)
-    print("Pretending fake date is %s"%date)
-  return date
-
+def consider_fake_date():
+  try:
+    if "True" == config.getSetting(config.ALLOW_FAKE_HISTORY_DATES):
+      date = request.headers.get('x-pretend-date', None)
+      if date:
+        return api_util.parse_date(date)
+  except:
+    return None
