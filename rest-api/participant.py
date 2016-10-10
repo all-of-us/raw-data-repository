@@ -103,8 +103,6 @@ class ParticipantDAO(data_access_object.DataAccessObject):
 
   def allocate_id(self):
     id = identifier.get_id()
-    n = '{:x}'.format(id).zfill(9)
-    with_dashes = n[:-6] + '-' + n[-6:-3] + '-' + n[-3:]
-    return with_dashes
+    return '{:x}'.format(id).zfill(9)
 
 DAO = ParticipantDAO()
