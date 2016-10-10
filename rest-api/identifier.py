@@ -12,9 +12,9 @@ from google.appengine.api.datastore_errors import TransactionFailedError
 from google.appengine.ext import ndb
 
 
-# Start with a range between 1M and 100M.
-MIN_ID = 100000
-MAX_ID = 9999999
+# Start with a range between 100M and 1B.
+MIN_ID = 100000000
+MAX_ID = 999999999
 
 
 class IdReservation(ndb.Model):
