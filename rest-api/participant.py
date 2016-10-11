@@ -45,8 +45,12 @@ class Participant(ndb.Model):
   participant_id = ndb.StringProperty()
   biobank_id = ndb.StringProperty()
   first_name = ndb.StringProperty()
+  first_name_lower = ndb.ComputedProperty(
+      lambda self: self.first_name and self.first_name.lower())
   middle_name = ndb.StringProperty()
   last_name = ndb.StringProperty()
+  last_name_lower = ndb.ComputedProperty(
+      lambda self: self.last_name and self.last_name.lower())
   zip_code = ndb.StringProperty()
   date_of_birth = ndb.DateProperty()
   gender_identity = msgprop.EnumProperty(GenderIdentity)
@@ -83,15 +87,17 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     api_util.format_json_enum(dict_, 'membership_tier')
     api_util.format_json_enum(dict_, 'physical_exam_status')
     api_util.format_json_enum(dict_, 'recruitment_source')
+    api_util.remove_field(dict_, 'first_name_lower')
+    api_util.remove_field(dict_, 'last_name_lower')
     return dict_
 
 
   def list(self, first_name, last_name, dob_string, zip_code):
     date_of_birth = api_util.parse_date(dob_string, DATE_OF_BIRTH_FORMAT)
-    query = Participant.query(Participant.last_name == last_name,
+    query = Participant.query(Participant.last_name_lower == last_name.lower(),
                               Participant.date_of_birth == date_of_birth)
     if first_name:
-      query = query.filter(Participant.first_name == first_name)
+      query = query.filter(Participant.first_name_lower == first_name.lower())
 
     if zip_code:
       query = query.filter(Participant.zip_code == zip_code)

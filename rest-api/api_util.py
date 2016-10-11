@@ -4,6 +4,7 @@
 import config
 import datetime
 from google.appengine.api import users
+from google.appengine.ext import ndb
 
 
 from protorpc import message_types
@@ -61,7 +62,7 @@ def update_model(old_model, new_model):
   """
 
   for k, v in new_model.to_dict().iteritems():
-    if v is not None:
+    if type(getattr(type(new_model), k)) != ndb.ComputedProperty and v is not None:
       setattr(old_model, k, v)
 
 class DateHolder(messages.Message):
@@ -116,3 +117,8 @@ def format_json_enum(obj, field_name):
   """Converts a field of a dictionary from a enum to an string."""
   if field_name in obj and obj[field_name] is not None:
     obj[field_name] = str(obj[field_name])
+
+def remove_field(dict_, field_name):
+  """Removes a field from the dict if it exists."""
+  if field_name in dict_:
+    del dict_[field_name]

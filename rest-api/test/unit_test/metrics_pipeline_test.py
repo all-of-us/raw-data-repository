@@ -4,10 +4,10 @@ import copy
 import datetime
 import json
 import metrics
-import metrics_pipeline
 import participant
 import unittest
 
+from offline import metrics_pipeline
 from collections import Counter
 from google.appengine.api import memcache
 from google.appengine.ext import ndb
