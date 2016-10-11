@@ -3,6 +3,8 @@
 
 import config
 import datetime
+import string
+
 from google.appengine.api import users
 from google.appengine.ext import ndb
 
@@ -122,3 +124,14 @@ def remove_field(dict_, field_name):
   """Removes a field from the dict if it exists."""
   if field_name in dict_:
     del dict_[field_name]
+
+def searchable_representation(str_):
+  """Takes a string, and returns a searchabe representation.
+
+  The string is lowercased and punctuation is removed.
+  """
+  if not str_:
+    return str_
+
+  str_ = str(str_)
+  return str_.lower().translate(string.maketrans("", ""), string.punctuation)

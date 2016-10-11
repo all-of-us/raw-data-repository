@@ -16,7 +16,7 @@ class ParticipantTest(unittest.TestCase):
 
   def testCreateAndModifyParticipant(self):
     first_name = 'Mister'
-    last_name = 'Pants'
+    last_name = 'O\'Pants'
     date_of_birth = '1975-08-21'
 
     # Create a new participant.
