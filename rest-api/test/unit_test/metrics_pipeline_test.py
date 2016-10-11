@@ -31,21 +31,21 @@ class MetricsPipelineTest(unittest.TestCase):
         obj=participant.Participant(
             participant_id='1',
             zip_code='12345',
-            membership_tier=participant.MembershipTier.INTERESTED))
-    # Accidentally changes status to ENGAGED
+            membership_tier=participant.MembershipTier.REGISTERED))
+    # Accidentally changes status to FULL_PARTICIPANT
     self.p1r2 = participant.DAO.history_model(
         date=datetime.datetime(2016, 9, 1, 11, 0, 2),
         obj=participant.Participant(
             participant_id='1',
             zip_code='12345',
-            membership_tier=participant.MembershipTier.ENGAGED))
-    # Fixes it back to INTERESTED
+            membership_tier=participant.MembershipTier.FULL_PARTICIPANT))
+    # Fixes it back to REGISTERED
     self.p1r3 = participant.DAO.history_model(
         date=datetime.datetime(2016, 9, 1, 11, 0, 3),
         obj=participant.Participant(
             participant_id='1',
             zip_code='12345',
-            membership_tier=participant.MembershipTier.INTERESTED))
+            membership_tier=participant.MembershipTier.REGISTERED))
 
     # On 9/10, participant 1 changes their tier, and their zip code.
     self.p1r4 = participant.DAO.history_model(
@@ -54,7 +54,7 @@ class MetricsPipelineTest(unittest.TestCase):
             sign_up_time=datetime.datetime(2016, 9, 1, 11, 0, 2),
             participant_id='1',
             zip_code='11111',
-            membership_tier=participant.MembershipTier.CONSENTED))
+            membership_tier=participant.MembershipTier.VOLUNTEER))
 
     self.history1 = [self.p1r1, self.p1r2, self.p1r3, self.p1r4]
 
@@ -85,7 +85,7 @@ class MetricsPipelineTest(unittest.TestCase):
     expected1 = {
         "date": "2016-09-01",
         "summary": {
-            "Participant.membership_tier.INTERESTED": 1,
+            "Participant.membership_tier.REGISTERED": 1,
             "Participant.zip_code.12345": 1,
             "Participant": 1,
         }
@@ -93,22 +93,22 @@ class MetricsPipelineTest(unittest.TestCase):
     expected2 = {
         "date": "2016-09-01",
         "summary": {
-            "Participant.membership_tier.INTERESTED": -1,
-            "Participant.membership_tier.ENGAGED": 1,
+            "Participant.membership_tier.REGISTERED": -1,
+            "Participant.membership_tier.FULL_PARTICIPANT": 1,
         }
     }
     expected3 = {
         "date": "2016-09-01",
         "summary": {
-            "Participant.membership_tier.ENGAGED": -1,
-            "Participant.membership_tier.INTERESTED": 1,
+            "Participant.membership_tier.FULL_PARTICIPANT": -1,
+            "Participant.membership_tier.REGISTERED": 1,
         }
     }
     expected4 = {
         "date": "2016-09-10",
         "summary": {
-            "Participant.membership_tier.INTERESTED": -1,
-            "Participant.membership_tier.CONSENTED": 1,
+            "Participant.membership_tier.REGISTERED": -1,
+            "Participant.membership_tier.VOLUNTEER": 1,
             "Participant.zip_code.12345": -1,
             "Participant.zip_code.11111": 1,
         }
@@ -132,7 +132,7 @@ class MetricsPipelineTest(unittest.TestCase):
         "date": "2016-09-01",
         "summary": {
             "Participant": 1,
-            "Participant.membership_tier.CONSENTED": 1,
+            "Participant.membership_tier.VOLUNTEER": 1,
             "Participant.zip_code.11111": 1,
         }
     }
@@ -142,23 +142,23 @@ class MetricsPipelineTest(unittest.TestCase):
   def test_reduce_date(self):
     reduce_input = [
         '{"date": "2016-09-10T11:00:01", "summary": '
-        '{"Participant.membership_tier.INTERESTED": 1,'
+        '{"Participant.membership_tier.REGISTERED": 1,'
         ' "Participant.zip_code.12345": 1}}',
 
         # Flips to ENGAGED and back.
         '{"date": "2016-09-10T11:00:02", "summary": '
-        '  { "Participant.membership_tier.ENGAGED": 1,'
-        '    "Participant.membership_tier.INTERESTED": -1}}',
+        '  { "Participant.membership_tier.FULL_PARTICIPANT": 1,'
+        '    "Participant.membership_tier.REGISTERED": -1}}',
 
         '{"date": "2016-09-10T11:00:03", "summary": '
-        '  { "Participant.membership_tier.ENGAGED": -1,'
-        '    "Participant.membership_tier.INTERESTED": 1}}',
+        '  { "Participant.membership_tier.FULL_PARTICIPANT": -1,'
+        '    "Participant.membership_tier.REGISTERED": 1}}',
     ]
     metrics.set_pipeline_in_progress()
     results = list(metrics_pipeline.reduce_date("2016-09-10", reduce_input))
     self.assertEquals(len(results), 1)
     expected_cnt = Counter(('Participant.zip_code.12345',
-                            'Participant.membership_tier.INTERESTED'))
+                            'Participant.membership_tier.REGISTERED'))
     expected = metrics_pipeline.MetricsBucket(
         date=datetime.datetime(2016, 9, 10), metrics=json.dumps(expected_cnt))
     self.assertEquals(expected.date, results[0].entity.date)

@@ -38,13 +38,13 @@ class ParticipantTest(unittest.TestCase):
     # Add fields to the participant.
     zip_code = '02142'
     response['zip_code'] = zip_code
-    response['membership_tier'] = 'CONSENTED'
+    response['membership_tier'] = 'VOLUNTEER'
     response['consent_time'] = datetime.datetime.now().isoformat()
     response['hpo_id'] = '1234'
     response = self.client.request_json(
         'participants/{}'.format(participant_id), 'PATCH', response)
     self.assertEqual(response['zip_code'], zip_code)
-    self.assertEqual(response['membership_tier'], 'CONSENTED')
+    self.assertEqual(response['membership_tier'], 'VOLUNTEER')
     self.assertTrue('sign_up_time' in response)
     self.assertEqual(response['hpo_id'], '1234')
 
