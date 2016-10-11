@@ -134,4 +134,4 @@ def searchable_representation(str_):
     return str_
 
   str_ = str(str_)
-  return str_.lower().translate(string.maketrans("", ""), string.punctuation)
+  return str_.lower().translate(None, string.punctuation)
