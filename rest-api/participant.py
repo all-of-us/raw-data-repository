@@ -111,6 +111,6 @@ class ParticipantDAO(data_access_object.DataAccessObject):
 
   def allocate_id(self):
     id = identifier.get_id()
-    return '{:x}'.format(id).zfill(9)
+    return '{:X}'.format(id).zfill(8)
 
 DAO = ParticipantDAO()
