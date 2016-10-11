@@ -74,6 +74,7 @@ class DataAccessObject(object):
 
     m = self.model_type(key=key)
     dict_ = self.properties_from_json(dict_, ancestor_id, id_)
+
     m.populate(**dict_)
     return m
 
