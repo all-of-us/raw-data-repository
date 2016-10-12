@@ -12,13 +12,19 @@ then
   exit 1
 fi
 
-export PYTHONPATH=$PYTHONPATH:`pwd`/..:../lib
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+export PYTHONPATH=$PYTHONPATH:${SCRIPT_DIR}/..:${SCRIPT_DIR}/../lib
+
+
+
 # This must be run from the base directory of the appengine app.
-(cd ..; python test/runner.py --test-path test/unit_test/ $1)
+(cd ${SCRIPT_DIR}/..; python test/runner.py --test-path test/unit_test/ $1)
 
 
 # By default these run against a local dev_server.
-python client_test/ppi.py
-python client_test/participant.py
-python client_test/evaluation.py
+#(cd ${SCRIPT_DIR}; python client_test/ppi.py)
+#(cd ${SCRIPT_DIR}; python client_test/participant.py)
+#(cd ${SCRIPT_DIR}; python client_test/evaluation.py)
+(cd ${SCRIPT_DIR}; python client_test/metrics.py)
 
