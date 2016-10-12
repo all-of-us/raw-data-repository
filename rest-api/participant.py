@@ -24,7 +24,8 @@ class MembershipTier(messages.Enum):
   REGISTERED = 1
   VOLUNTEER = 2
   FULL_PARTICIPANT = 3
-  ENROLLEE = 4 # Note that these are out of order.
+  ENROLLEE = 4
+  # Note that these are out of order; ENROLEE was added after FULL_PARTICIPANT.
 
 
 class GenderIdentity(messages.Enum):
