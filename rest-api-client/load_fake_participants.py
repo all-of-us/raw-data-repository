@@ -40,7 +40,7 @@ def participant():
     if random.random() < 0.05:
         gender_identity = random.choice(["MALE", "FEMALE", "NEITHER", "OTHER", "PREFER_NOT_TO_SAY"])
 
-    membership_tier = "INTERESTED"
+    membership_tier = "REGISTERED"
     sign_up_time = fake.date_time_between(start_date="2016-11-15", end_date="+1y", tzinfo=None)
 
     initial_participant = {
@@ -60,11 +60,11 @@ def participant():
     consented_time = fake.date_time_between(start_date=sign_up_time, end_date=sign_up_time + two_months, tzinfo=None)
     consented_participant = copy.deepcopy(initial_participant)
     consented_participant['consent_time'] =  consented_time.isoformat()
-    consented_participant['membership_tier'] =  'CONSENTED'
+    consented_participant['membership_tier'] =  'VOLUNTEER'
 
     engaged_time = fake.date_time_between(start_date=consented_time, end_date=consented_time + one_year, tzinfo=None)
     engaged_participant = copy.deepcopy(consented_participant)
-    engaged_participant['membership_tier'] =  'ENGAGED'
+    engaged_participant['membership_tier'] =  'FULL_PARTICIPANT'
 
     questionnaire_time = fake.date_time_between(start_date=sign_up_time, end_date=sign_up_time + one_year, tzinfo=None)
     return {
