@@ -47,7 +47,7 @@ The reducer for phase two, 'reduce_facets', takes all of the entries for a given
 combination of facets, adds them up, and writes out the aggregated counts.
 """
 
-import datetime
+import copy
 import json
 import pipeline
 
@@ -57,8 +57,9 @@ import metrics
 import participant
 
 
-from dateutil import relativedelta
+from dateutil.relativedelta import relativedelta
 from collections import Counter
+from datetime import datetime
 from google.appengine.api import app_identity
 from google.appengine.ext import ndb
 from mapreduce import mapreduce_pipeline
@@ -85,8 +86,39 @@ def extract_bucketed_age(hist_obj):
   today = hist_obj.date
   if not hist_obj.obj.date_of_birth:
     return None
-  age = relativedelta.relativedelta(today, hist_obj.obj.date_of_birth).years
+  age = relativedelta(today, hist_obj.obj.date_of_birth).years
   return _bucket_age(age)
+
+
+def modify_participant_history(history, now):
+  """Inject history records when a participant's age changes.
+
+ Args:
+  history: The list of history objects for this participant.  This function
+      assumes that this list is sorted chronologically.
+  now: The datetime to use for "now".
+  """
+  # Assume that the birthdate on the newest history record is the correct one.
+  date = history[-1].obj.date_of_birth
+
+  # Don't inject any history records before the first existing one.
+  start_date = history[0].date
+  year = relativedelta(years=1)
+  dates_to_inject = []
+  while date and date < now:
+    if date > start_date:
+      dates_to_inject.append(date)
+    date = date + year
+
+  new_objs = []
+  for hist_obj in reversed(history):
+    while dates_to_inject and dates_to_inject[-1] > hist_obj.date:
+      new_obj = copy.deepcopy(hist_obj)
+      new_obj.date = dates_to_inject[-1]
+      new_objs.append(new_obj)
+      del dates_to_inject[-1]
+
+  history.extend(new_objs)
 
 # Configuration for each type of object that we are collecting metrics on.
 #  name: The name of the ndb model object.
@@ -95,6 +127,11 @@ def extract_bucketed_age(hist_obj):
 #    string (datetime.date.isoformat()).  In most cases this should be
 #    HISTORY_DATE_FUNC.  If some other date is used, make sure that use_history
 #    is False.
+#  history_func: A function that can modify the history before processing.  It
+#    is passed a first argument which is the list of history objects, in
+#    chronological order. The second argument is the date time to use as 'now'
+#    This function can add or remove or modify items in the list.  It does not
+#    need to keep the list sorted.
 #  facets: A list of functions for extracting the different facets to aggregate
 #    on.  The function will be passed a model object, its return value must be
 #    convertible to a string.
@@ -111,6 +148,7 @@ METRICS_CONFIGS = {
     'ParticipantHistory': {
         'name': 'Participant',
         'date_func': HISTORY_DATE_FUNC,
+        'history_func': modify_participant_history,
         'facets': [
             {'type': metrics.FacetType.HPO_ID, 'func': HPO_ID_FUNC}
         ],
@@ -219,7 +257,7 @@ def map_to_id(hist_obj):
   yield ('{}:{}'.format(kind, getattr(hist_obj.obj, metrics_config['id_field'])),
          json.dumps(metrics_config['dao'].history_to_json(hist_obj)))
 
-def reduce_by_id(obj_id, history_objects):
+def reduce_by_id(obj_id, history_objects, now=datetime.now()):
   kind = obj_id.split(':')[0]
   metrics_config = METRICS_CONFIGS[kind]
   history = []
@@ -227,29 +265,44 @@ def reduce_by_id(obj_id, history_objects):
     history.append(metrics_config['dao'].history_from_json(json.loads(obj)))
 
   history = sorted(history, key=lambda o: o.date)
+  if 'history_func' in metrics_config:
+    metrics_config['history_func'](history, now)
+    # The history func may have modified the list, sort it again.
+    history = sorted(history, key=lambda o: o.date)
 
   # Look at just the latest?
   if not metrics_config['use_history']:
     history = history[-1:]
   last = None
+  last_facets_key = None
   for hist_obj in history:
     summary = {}
     old_summary = {}
+    date = None
+    if metrics_config['use_history']:
+      date = metrics_config['date_func'](hist_obj)
+    facets_key = _get_facets_key(date, metrics_config, hist_obj)
+    facets_change = (last_facets_key is None
+                     or last_facets_key['facets'] != facets_key['facets'])
+
     # Put out a single 'total' entry for the first time this object shows up.
-    if last is None:
+    if facets_change:
       summary[metrics_config['name']] = 1
+      if last:
+        old_summary[metrics_config['name']] = -1
 
     for field in metrics_config['fields']:
       func = field['func']
       val = func(hist_obj)
       val_str = str(val)
 
-      # Only output a delta for this field if it is either the first value we
-      # have, or if it has changed.
+      # Output a delta for this field if it is either the first value we have,
+      # or if it has changed.  In the case that one of the facets has changed,
+      # we need deltas for all fields.
       old_val = None
       if last:
         old_val = func(last)
-      if not last or (last and val != old_val):
+      if not last or (last and val != old_val) or facets_change:
         summary_key = '{}.{}.{}'.format(metrics_config['name'], field['name'], val_str)
         summary[summary_key] = 1
 
@@ -258,23 +311,17 @@ def reduce_by_id(obj_id, history_objects):
           old_summary_key = '{}.{}.{}'.format(metrics_config['name'], field['name'], old_val)
           old_summary[old_summary_key] = -1
 
-    date = None
-    if metrics_config['use_history']:
-      date = metrics_config['date_func'](hist_obj)
 
     if old_summary:
       old_emitted = {'summary': old_summary}
-      if date:
-        old_emitted['date'] = date
-      old_emitted['facets_key'] = _get_facets_key(date, metrics_config, last)
+      old_emitted['facets_key'] = json.dumps(_get_facets_key(date, metrics_config, last))
       yield json.dumps(old_emitted)
 
     emitted = {'summary': summary}
-    if date:
-      emitted['date'] = date
-    emitted['facets_key'] = _get_facets_key(date, metrics_config, hist_obj)
+    emitted['facets_key'] = json.dumps(facets_key)
     yield json.dumps(emitted)
     last = hist_obj
+    last_facets_key = facets_key
 
 def reduce_facets(facets_key_json, deltas):
   facets_key = json.loads(facets_key_json)
@@ -299,6 +346,11 @@ def reduce_facets(facets_key_json, deltas):
   yield op.db.Put(bucket)
 
 def _get_facets_key(date, metrics_config, hist_obj):
+  """Creates a string that can be used as a key specifying the facets.
+
+  The key is a json encoded object of the form:
+      {'date': '2016-10-02', 'facets': [{'type': 'foo', 'value': 'bar'}]}
+  """
   key_parts = []
   facets = metrics_config['facets']
   for axis in facets:
@@ -306,10 +358,10 @@ def _get_facets_key(date, metrics_config, hist_obj):
   key = {'facets': key_parts}
   if date:
     key['date'] = date
-  return json.dumps(key)
+  return key
 
 def _bucket_age(age):
   ages = [0, 18, 26, 36, 46, 56, 66, 76, 86]
   for begin, end in zip(ages, [a - 1 for a in ages[1:]] + ['']):
-    if age >= begin and not end or age <= end:
+    if (age >= begin) and (not end or age <= end):
       return str(begin) + '-' + str(end)

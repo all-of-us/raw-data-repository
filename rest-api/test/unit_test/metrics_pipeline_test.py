@@ -17,6 +17,7 @@ from google.appengine.ext import testbed
 class MetricsPipelineTest(unittest.TestCase):
   def setUp(self):
     self.maxDiff = None
+    self.longMessage = True
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.testbed.init_datastore_v3_stub()
@@ -95,96 +96,234 @@ class MetricsPipelineTest(unittest.TestCase):
     self._compare_json(participant.DAO.history_to_json(self.p1r1), hist_obj)
 
   def test_reduce_by_id_history(self):
-    config = metrics_pipeline.METRICS_CONFIGS['ParticipantHistory']
-    config['use_history'] = True
-    config['date_func'] = metrics_pipeline.HISTORY_DATE_FUNC
-
     history_json = [json.dumps(
         participant.DAO.history_to_json(h)) for h in self.history1]
     results = list(metrics_pipeline.reduce_by_id('ParticipantHistory:1',
                                                  history_json))
-    expected1 = {
-        'date': '2016-09-01',
-        'facets_key': json.dumps({
-            'date': '2016-09-01',
-            'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+    expected = [
+        {
+            'facets_key': json.dumps({
+                'date': '2016-09-01',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
             }),
-        'summary': {
-            'Participant.age_range.36-45': 1,
-            'Participant.gender_identity.MALE': 1,
-            'Participant.hpo_id.HPO1': 1,
-            'Participant.membership_tier.REGISTERED': 1,
-            'Participant': 1,
-        }
-    }
-    expected2 = {
-        'date': '2016-09-01',
-        'facets_key': json.dumps({
-            'date': '2016-09-01',
-            'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
-        }),
-        'summary': {
-            'Participant.membership_tier.REGISTERED': -1,
-        }
-    }
-    expected3 = {
-        'date': '2016-09-01',
-        'facets_key': json.dumps({
-            'date': '2016-09-01',
-            'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
-        }),
-        'summary': {
-            'Participant.membership_tier.FULL_PARTICIPANT': 1,
-        }
-    }
-    expected4 = {
-        'date': '2016-09-01',
-        'facets_key': json.dumps({
-            'date': '2016-09-01',
-            'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
-        }),
-        'summary': {
-            'Participant.membership_tier.FULL_PARTICIPANT': -1,
-        }
-    }
-    expected5 = {
-        'date': '2016-09-01',
-        'facets_key': json.dumps({
-            'date': '2016-09-01',
-            'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
-        }),
-        'summary': {
-            'Participant.membership_tier.REGISTERED': 1,
-        }
-    }
-    expected6 = {
-        'date': '2016-09-10',
-        'facets_key': json.dumps({
-            'date': '2016-09-10',
-            'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
-        }),
-        'summary': {
-            'Participant.membership_tier.REGISTERED': -1,
-        }
-    }
-    expected7 = {
-        'date': '2016-09-10',
-        'facets_key': json.dumps({
-            'date': '2016-09-10',
-            'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
-        }),
-        'summary': {
-            'Participant.membership_tier.VOLUNTEER': 1,
-        }
-    }
-    self.assertEqual(7, len(results))
-    self._compare_json(expected1, results[0])
-    self._compare_json(expected2, results[1])
-    self._compare_json(expected3, results[2])
-    self._compare_json(expected4, results[3])
-    self._compare_json(expected5, results[4])
-    self._compare_json(expected6, results[5])
-    self._compare_json(expected7, results[6])
+            'summary': {
+                'Participant.age_range.36-45': 1,
+                'Participant.gender_identity.MALE': 1,
+                'Participant.hpo_id.HPO1': 1,
+                'Participant.membership_tier.REGISTERED': 1,
+                'Participant': 1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2016-09-01',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.membership_tier.REGISTERED': -1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2016-09-01',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.membership_tier.FULL_PARTICIPANT': 1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2016-09-01',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.membership_tier.FULL_PARTICIPANT': -1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2016-09-01',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.membership_tier.REGISTERED': 1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2016-09-10',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.membership_tier.REGISTERED': -1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2016-09-10',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.membership_tier.VOLUNTEER': 1,
+            }
+        },
+    ]
+
+    self._compare_json_list(expected, results)
+
+  def test_reduce_by_id_history_participant_ages(self):
+    history = [
+    # One participant signs up in 2013.
+    participant.DAO.history_model(
+        date=datetime.datetime(2013, 9, 1, 11, 0, 1),
+        obj=participant.Participant(
+            date_of_birth=datetime.datetime(1970, 8, 21),
+            gender_identity=participant.GenderIdentity.MALE,
+            membership_tier=participant.MembershipTier.REGISTERED,
+            hpo_id='HPO1')),
+    # One state change in 2012.
+    participant.DAO.history_model(
+        date=datetime.datetime(2015, 9, 1, 11, 0, 2),
+        obj=participant.Participant(
+            date_of_birth=datetime.datetime(1970, 8, 21),
+            gender_identity=participant.GenderIdentity.MALE,
+            membership_tier=participant.MembershipTier.FULL_PARTICIPANT,
+            hpo_id='HPO1')),
+    ]
+
+    history_json = [json.dumps(participant.DAO.history_to_json(h)) for h in history]
+    results = list(metrics_pipeline.reduce_by_id(
+        'ParticipantHistory:1', history_json, datetime.datetime(2016, 10, 17)))
+    expected = [
+        {
+            'facets_key': json.dumps({
+                'date': '2013-09-01',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.age_range.36-45': 1,
+                'Participant.gender_identity.MALE': 1,
+                'Participant.hpo_id.HPO1': 1,
+                'Participant.membership_tier.REGISTERED': 1,
+                'Participant': 1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2014-08-21',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {}
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2015-08-21',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {}
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2015-09-01',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.membership_tier.REGISTERED': -1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2015-09-01',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.membership_tier.FULL_PARTICIPANT': 1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2016-08-21',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.age_range.36-45': -1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2016-08-21',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.age_range.46-55': 1,
+            }
+        },
+    ]
+    self._compare_json_list(expected, results)
+
+  def test_reduce_by_id_history_hpo_changes(self):
+    history = [
+    # One participant signs up in 2013.
+    participant.DAO.history_model(
+        date=datetime.datetime(2016, 9, 1),
+        obj=participant.Participant(
+            date_of_birth=datetime.datetime(1970, 8, 21),
+            gender_identity=participant.GenderIdentity.MALE,
+            hpo_id='HPO1')),
+    # One state change in 2012.
+    participant.DAO.history_model(
+        date=datetime.datetime(2016, 9, 2),
+        obj=participant.Participant(
+            date_of_birth=datetime.datetime(1970, 8, 21),
+            gender_identity=participant.GenderIdentity.MALE,
+            hpo_id='HPO2')),
+    ]
+
+    history_json = [json.dumps(participant.DAO.history_to_json(h)) for h in history]
+    results = list(metrics_pipeline.reduce_by_id('ParticipantHistory:1', history_json))
+    expected = [
+        {
+            'facets_key': json.dumps({
+                'date': '2016-09-01',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.age_range.46-55': 1,
+                'Participant.gender_identity.MALE': 1,
+                'Participant.hpo_id.HPO1': 1,
+                'Participant.membership_tier.None': 1,
+                'Participant': 1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2016-09-02',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}],
+            }),
+            'summary': {
+                'Participant.age_range.46-55': -1,
+                'Participant.gender_identity.MALE': -1,
+                'Participant.hpo_id.HPO1': -1,
+                'Participant.membership_tier.None': -1,
+                'Participant': -1,
+            }
+        },
+        {
+            'facets_key': json.dumps({
+                'date': '2016-09-02',
+                'facets': [{'type': 'HPO_ID', 'value': 'HPO2'}],
+            }),
+            'summary': {
+                'Participant.age_range.46-55': 1,
+                'Participant.gender_identity.MALE': 1,
+                'Participant.hpo_id.HPO2': 1,
+                'Participant.membership_tier.None': 1,
+                'Participant': 1,
+            }
+        },
+    ]
+    self._compare_json_list(expected, results)
 
   def test_reduce_by_id_no_history(self):
     config = metrics_pipeline.METRICS_CONFIGS['ParticipantHistory']
@@ -211,8 +350,7 @@ class MetricsPipelineTest(unittest.TestCase):
   def test_reduce_facets(self):
     reduce_input = [
         json.dumps({
-            'date': '2016-09-10T11:00:01',
-            'facets': json.dumps([{'type': 'HPO_ID', 'value': 'HPO1'}]),
+            'facets_key': json.dumps({'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]}),
             'summary': {
                 'Participant.membership_tier.REGISTERED': 1,
                 'Participant.zip_code.12345': 1,
@@ -220,16 +358,14 @@ class MetricsPipelineTest(unittest.TestCase):
 
         # Flips to ENGAGED and back.
         json.dumps({
-            'date': '2016-09-10T11:00:02',
-            'facets': json.dumps([{'type': 'HPO_ID', 'value': 'HPO1'}]),
+            'facets_key': json.dumps({'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]}),
             'summary': {
                 'Participant.membership_tier.FULL_PARTICIPANT': 1,
                 'Participant.membership_tier.REGISTERED': -1,
             }}),
 
         json.dumps({
-            'date': '2016-09-10T11:00:03',
-            'facets': json.dumps([{'type': 'HPO_ID', 'value': 'HPO1'}]),
+            'facets_key': json.dumps({'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]}),
             'summary': {
                 'Participant.membership_tier.FULL_PARTICIPANT': -1,
                 'Participant.membership_tier.REGISTERED': 1,
@@ -260,7 +396,7 @@ class MetricsPipelineTest(unittest.TestCase):
     self.assertEqual('86-', metrics_pipeline._bucket_age(100))
 
 
-  def _compare_json(self, a, b):
+  def _compare_json(self, a, b, msg=None):
     if isinstance(a, str):
       a = json.loads(a)
 
@@ -270,7 +406,14 @@ class MetricsPipelineTest(unittest.TestCase):
     a = json.dumps(a, sort_keys=True, indent=2)
     b = json.dumps(b, sort_keys=True, indent=2)
 
-    self.assertMultiLineEqual(a, b)
+    self.assertMultiLineEqual(a, b, msg=msg)
+
+  def _compare_json_list(self, a_list, b_list):
+    self.assertEqual(len(a_list), len(b_list))
+    for i, (a, b) in enumerate(zip(a_list, b_list)):
+      msg = 'Comparing element {}'.format(i)
+      self._compare_json(a, b, msg)
+
 
 if __name__ == '__main__':
   unittest.main()

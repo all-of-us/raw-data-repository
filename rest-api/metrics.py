@@ -37,12 +37,11 @@ class MetricsVersion(ndb.Model):
 class FacetType(messages.Enum):
   """The Facets (dimensions) to bucket by"""
   NONE = 0
-  DATE = 1
-  HPO_ID = 2
+  HPO_ID = 1
 
 class Facet(messages.Message):
   """Used in the response to describe what the aggregated value represents."""
-  facet_type = messages.EnumField(FacetType, 1, repeated=False)
+  facet_type = messages.EnumField(FacetType, 1)
   value = messages.StringField(2)
 
 class MetricsResponseBucketEntry(messages.Message):
@@ -65,15 +64,23 @@ class ResultsBuckets(object):
   def __init__(self):
     self.buckets_by_facet_key = {}
 
-  def find_or_create(self, facet_types, db_bucket):
-    facets = []
-    for facet_type in facet_types:
-      for db_facet in json.loads(db_bucket.facets):
-        if str(facet_type) == db_facet['type']:
-          facets.append(Facet(facet_type=facet_type, value=db_facet['value']))
+  def find_or_create(self, request_facets, db_bucket):
+    # The facets in the db bucket are stored as a json encoded list of
+    # [{'type': 'HPO_ID', 'value': 'foo'}]
+    db_facets_json = json.loads(db_bucket.facets)
+    facets_in_this_bucket = {FacetType(f['type']): f['value'] for f in db_facets_json}
 
-    json_key_parts = [protojson.encode_message(part) for part in facets]
-    facet_key = json.dumps(json_key_parts)
+    # On the request, the facets to group by are specified as a list of
+    # FacetType values.  Get the intersection of the two.
+    facet_types = sorted(set(facets_in_this_bucket.keys()) & set(request_facets))
+
+    # We need to store the intersected list of FacetTypes
+    facets = [Facet(facet_type=ft, value=facets_in_this_bucket[ft]) for ft in facet_types]
+
+    # The results bucket needs to be keyed by the sorted list of the facets,
+    # however that list isn't hashable, so create a string representation of it
+    # and use that.
+    facet_key = json.dumps([protojson.encode_message(part) for part in facets])
 
     if facet_key not in self.buckets_by_facet_key:
       self.buckets_by_facet_key[facet_key] = ResultsBucket(facets)
@@ -90,14 +97,11 @@ class ResultsBucket(object):
 
   def __init__(self, facets):
     self.facets = facets
-    self.counts_by_date = {}
+    self.counts_by_date = collections.defaultdict(collections.Counter)
 
   def add_counts(self, date, counts):
     date = date or self.no_date
-    if date:
-      if date not in self.counts_by_date:
-        self.counts_by_date[date] = collections.Counter()
-      self.counts_by_date[date] += counts
+    self.counts_by_date[date] += counts
 
   def aggregated_dates(self):
     """Goes through the deltas in date order and adds up the deltas."""
@@ -119,9 +123,8 @@ class MetricService(object):
     results_buckets = ResultsBuckets()
     for db_bucket in MetricsBucket.query(ancestor=serving_version).fetch():
       results_bucket = results_buckets.find_or_create(request.facets, db_bucket)
-      if results_bucket is not None:
-        counts = collections.Counter(json.loads(db_bucket.metrics))
-        results_bucket.add_counts(db_bucket.date, counts)
+      counts = collections.Counter(json.loads(db_bucket.metrics))
+      results_bucket.add_counts(db_bucket.date, counts)
 
     response = MetricsResponse()
     for bucket in results_buckets.list():
