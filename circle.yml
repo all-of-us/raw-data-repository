@@ -1,0 +1,12 @@
+dependencies:
+  override:
+    # chmod to address a Circle "bug", since gcloud lives at /opt
+    # and wants to make a .staging directory (as a sibling!)
+    # when upgrading or installing new components.
+    - sudo chmod o+w /opt
+    - pip install --upgrade httplib2
+    - pip install --upgrade oauth2client
+
+test:
+  override:
+    - ./ci/test.sh
