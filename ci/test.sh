@@ -10,8 +10,10 @@ git submodule update --init
 
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
-# consider adding --clear_datastore=yes
-dev_appserver.py . &
+dev_appserver.py \
+  --datastore_path=/tmp/rdr_test_db \
+  --clear_datastore=yes \
+  . &
 
 until $(curl -s --fail http://localhost:8000); do
     printf '.'
