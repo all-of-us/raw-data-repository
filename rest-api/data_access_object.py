@@ -118,23 +118,27 @@ class DataAccessObject(object):
     return dict_
 
   def load(self, id_, ancestor_id=None):
-    if ancestor_id:
-      key = ndb.Key(self.ancestor_type, ancestor_id, self.model_type, id_)
-    else:
-      key = ndb.Key(self.model_type, id_)
-
-    m = key.get()
+    m = self._make_key(id_, ancestor_id).get()
     if not m:
       raise NotFound('{} with id {}:{} not found.'.format(
           self.model_name, ancestor_id, id_))
     return m
 
   def store(self, model, date=None):
-    h = self.history_model(obj=model)
+    h = self.history_model(parent=model.key, obj=model)
     if date:
       h.populate(date=date)
     h.put()
     model.put()
+
+  def get_all_history(self, id_, ancestor_id=None):
+    return self.history_model.query(ancestor=self._make_key(id_, ancestor_id)).fetch()
+
+  def _make_key(self, id_, ancestor_id):
+    if ancestor_id:
+      return ndb.Key(self.ancestor_type, ancestor_id, self.model_type, id_)
+    else:
+      return ndb.Key(self.model_type, id_)
 
   def allocate_id(self):
     """Creates a new id for this object.
