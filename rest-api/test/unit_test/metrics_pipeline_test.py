@@ -325,28 +325,6 @@ class MetricsPipelineTest(unittest.TestCase):
     ]
     self._compare_json_list(expected, results)
 
-  def test_reduce_by_id_no_history(self):
-    config = metrics_pipeline.METRICS_CONFIGS['ParticipantHistory']
-    config['use_history'] = False
-    config['date_func'] = lambda ph: ph.obj.sign_up_time.date()
-
-    history_json = [json.dumps(
-        participant.DAO.history_to_json(h)) for h in self.history1]
-    results = list(metrics_pipeline.reduce_by_id('ParticipantHistory:1',
-                                                 history_json))
-    expected1 = {
-        'facets_key': json.dumps({'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]}),
-        'summary': {
-            'Participant': 1,
-            'Participant.age_range.36-45': 1,
-            'Participant.gender_identity.MALE': 1,
-            'Participant.hpo_id.HPO1': 1,
-            'Participant.membership_tier.VOLUNTEER': 1,
-        }
-    }
-    self.assertEqual(1, len(results))
-    self._compare_json(expected1, results[0])
-
   def test_reduce_facets(self):
     reduce_input = [
         json.dumps({
