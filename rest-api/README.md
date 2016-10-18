@@ -29,6 +29,33 @@ git submodule update --init
 '''
 This will install all the needed dependencies in the 'lib' directory.
 
+### Running the development app server
+Make sure that you have google [cloud SDK](https://cloud.google.com/sdk/downloads) installed.
+
+From the rest-api directory, run:
+
+'''Shell
+dev_appserver.py .
+'''
+
+
+### Running the tests
+Make sure that the dev_appserver is running.
+
+Run 
+'''Shell
+test/run_tests.sh $sdk_dir
+'''
+
+If you want to be super slick, and have the tests run every time you change a
+source file, you can do this.
+
+(You will have to install ack-grep and entr if you haven't already.)
+
+'''Shell
+until ack-grep -f --python | entr -r test/run_tests.sh $sdk_dir unit;do sleep 1; done
+'''
+
 ### Configuring your instance
 
 When the instance comes up for the first time, it will check for the existance
