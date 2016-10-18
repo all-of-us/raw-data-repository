@@ -6,7 +6,7 @@ import pprint
 from client.client import Client
 
 def main():
-  client = Client('metrics/v1')
+  client = Client('rdr/v1')
 
   request = {
       'metric': 'PARTICIPANT_ZIP_CODE',

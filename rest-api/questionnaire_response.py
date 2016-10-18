@@ -1,5 +1,6 @@
 
 import data_access_object
+import participant
 
 import fhirclient.models.questionnaireresponse
 from google.appengine.ext import ndb
@@ -11,7 +12,7 @@ class QuestionnaireResponse(ndb.Model):
 
 class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
   def __init__(self):
-    super(QuestionnaireResponseDAO, self).__init__(QuestionnaireResponse)
+    super(QuestionnaireResponseDAO, self).__init__(QuestionnaireResponse, participant.Participant)
 
   def properties_to_json(self, m):
     return m['resource']

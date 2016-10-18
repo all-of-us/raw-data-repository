@@ -16,38 +16,41 @@ from werkzeug.exceptions import default_exceptions
 app = Flask(__name__)
 api = Api(app)
 
+PREFIX = '/rdr/v1/'
+
+
 api.add_resource(participants_api.ParticipantAPI,
-                 '/participant/v1/participants/<string:id_>',
-                 '/participant/v1/participants',
-                 endpoint='participants',
+                 PREFIX + 'Participant/<string:id_>',
+                 PREFIX + 'Participant',
+                 endpoint='participant',
                  methods=['GET', 'POST', 'PATCH'])
 
 api.add_resource(
     participants_api.EvaluationAPI,
-    '/participant/v1/participants/<string:a_id>/evaluation',
-    '/participant/v1/participants/<string:a_id>/evaluation/<string:id_>',
-    endpoint='evaluations',
+    PREFIX + 'Participant/<string:a_id>/PhysicalEvaluation',
+    PREFIX + 'Participant/<string:a_id>/PhysicalEvaluation/<string:id_>',
+    endpoint='participant.evaluation',
     methods=['GET', 'POST',])
 
 api.add_resource(ppi_api.QuestionnaireAPI,
-                 '/ppi/fhir/Questionnaire',
-                 '/ppi/fhir/Questionnaire/<string:id_>',
-                 endpoint='ppi.fhir.questionnaire',
+                 PREFIX + 'Questionnaire',
+                 PREFIX + 'Questionnaire/<string:id_>',
+                 endpoint='questionnaire',
                  methods=['POST', 'GET'])
 
 api.add_resource(ppi_api.QuestionnaireResponseAPI,
-                 '/ppi/fhir/QuestionnaireResponse/<string:id_>',
-                 '/ppi/fhir/QuestionnaireResponse',
-                 endpoint='ppi.fhir.questionnaire_response',
+                 PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse/<string:id_>',
+                 PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse',
+                 endpoint='participant.questionnaire_response',
                  methods=['POST', 'GET'])
 
 api.add_resource(metrics_api.MetricsApi,
-                 '/metrics/v1/metrics',
+                 PREFIX + 'metrics',
                  endpoint='metrics',
                  methods=['POST'])
 
 # TODO(geoffreyb): Remove this once we have a cron job running.
 api.add_resource(metrics_api.MetricsApi,
-                 '/metrics/v1/metrics_recalculate',
+                 PREFIX + 'metrics_recalculate',
                  endpoint='metrics_recalc',
                  methods=['GET'])
