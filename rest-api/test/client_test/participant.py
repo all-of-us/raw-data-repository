@@ -12,7 +12,7 @@ from client.client import Client, HttpException
 class ParticipantTest(unittest.TestCase):
   def setUp(self):
     self.maxDiff = None
-    self.client = test_util.get_client('participant/v1')
+    self.client = test_util.get_client('rdr/v1')
 
   def testCreateAndModifyParticipant(self):
     first_name = 'Mister'
@@ -26,13 +26,13 @@ class ParticipantTest(unittest.TestCase):
         'date_of_birth': date_of_birth,
     }
 
-    response = self.client.request_json('participants', 'POST', participant)
+    response = self.client.request_json('Participant', 'POST', participant)
     self.assertEqual(response['first_name'], first_name)
 
     participant_id = response['participant_id']
 
     # Fetch that participant.
-    response = self.client.request_json('participants/{}'.format(participant_id))
+    response = self.client.request_json('participant`<s/{}'.format(participant_id))
     self.assertEqual(response['first_name'], first_name)
 
     # Add fields to the participant.
@@ -42,7 +42,7 @@ class ParticipantTest(unittest.TestCase):
     response['consent_time'] = datetime.datetime.now().isoformat()
     response['hpo_id'] = '1234'
     response = self.client.request_json(
-        'participants/{}'.format(participant_id), 'PATCH', response)
+        'Participant/{}'.format(participant_id), 'PATCH', response)
     self.assertEqual(response['zip_code'], zip_code)
     self.assertEqual(response['membership_tier'], 'VOLUNTEER')
     self.assertTrue('sign_up_time' in response)
@@ -50,7 +50,7 @@ class ParticipantTest(unittest.TestCase):
 
     try:
       # List request must contain at least last name and birth date.
-      response = self.client.request_json('participants',
+      response = self.client.request_json('Participant',
                                           query_args={"last_name": last_name})
       self.fail('List request without last name and birth date should fail.')
     except HttpException, e:
@@ -62,7 +62,7 @@ class ParticipantTest(unittest.TestCase):
         "date_of_birth": date_of_birth,
     }
 
-    response = self.client.request_json('participants', query_args=args)
+    response = self.client.request_json('Participant', query_args=args)
     # Make sure the newly created participant is in the list.
     for participant in response['items']:
       self.assertEqual(participant['first_name'], first_name)

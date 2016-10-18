@@ -12,7 +12,7 @@ import test_util
 class TestPPI(unittest.TestCase):
   def setUp(self):
     self.maxDiff = None
-    self.client = test_util.get_client('ppi/fhir')
+    self.client = test_util.get_client('rdr/v1')
 
   def test_questionnaires(self):
     questionnaire_files = [

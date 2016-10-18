@@ -13,7 +13,7 @@ import test_util
 class MetricsTest(unittest.TestCase):
   def setUp(self):
     self.maxDiff = None
-    self.client = test_util.get_client('metrics/v1')
+    self.client = test_util.get_client('rdr/v1')
 
   def testMembershipTier(self):
     request = {

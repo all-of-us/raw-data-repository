@@ -94,23 +94,27 @@ def parse_args(default_instance=None):
 
 def main():
   args = parse_args()
-  client = Client('', default_instance=args.instance, parse_cli=False)
+  client = Client('rdr/v1', default_instance=args.instance, parse_cli=False)
 
   questionnaire = json.load(open('questionnaire_example.json'))
-  q_id = client.request_json('ppi/fhir/Questionnaire', 'POST', questionnaire)['id']
+  q_id = client.request_json('Questionnaire', 'POST', questionnaire)['id']
 
   for i in range(args.count):
     details = participant()
     participant_calls = details['participant']
 
     p, when = participant_calls[0]
-    response = client.request_json('participant/v1/participants', 'POST', p, headers={'X-Pretend-Date': when})
+    response = client.request_json('Participant', 'POST', p, headers={'X-Pretend-Date': when})
     participant_id = response['participant_id']
     for p, when in participant_calls[1:]:
-      client.request_json('participant/v1/participants/{}'.format(participant_id), 'PATCH', p, headers={'X-Pretend-Date': when})
+      client.request_json('Participant/{}'.format(participant_id), 'PATCH', p, headers={'X-Pretend-Date': when})
 
     q = random_questionnaire(response, details['questionnaire_time'], q_id)
-    q_response = client.request_json('ppi/fhir/QuestionnaireResponse', 'POST', q, headers={'X-Pretend-Date': details['questionnaire_time']})
+    q_response = client.request_json(
+        'Participant/{}/QuestionnaireResponse'.format(participant_id),
+        'POST',
+        q,
+        headers={'X-Pretend-Date': details['questionnaire_time']})
 
     print(q_response)
 
