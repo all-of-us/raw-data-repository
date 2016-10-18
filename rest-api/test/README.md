@@ -6,6 +6,15 @@ These tests can be run with the run_tests.sh script.
 ./run_tests.sh ${sdk_dir}
 '''
 
+You can optionally only run the unit tests or client tests with 
+'''Shell
+./run_tests.sh ${sdk_dir} unit
+'''
+or
+'''Shell
+./run_tests.sh ${sdk_dir} client
+'''
+
 ## Directory Structure
 
 The tests are split into two directories:
