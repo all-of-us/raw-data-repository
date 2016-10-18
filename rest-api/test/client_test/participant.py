@@ -18,21 +18,25 @@ class ParticipantTest(unittest.TestCase):
     first_name = 'Mister'
     last_name = 'O\'Pants'
     date_of_birth = '1975-08-21'
+    physical_evaluation_status = 'COMPLETED'
 
     # Create a new participant.
     participant = {
         'first_name': first_name,
         'last_name': last_name,
         'date_of_birth': date_of_birth,
+        'physical_evaluation_status': physical_evaluation_status,
     }
 
     response = self.client.request_json('Participant', 'POST', participant)
     self.assertEqual(response['first_name'], first_name)
+    self.assertEqual(response['physical_evaluation_status'], 
+        physical_evaluation_status)
 
     participant_id = response['participant_id']
 
     # Fetch that participant.
-    response = self.client.request_json('participant`<s/{}'.format(participant_id))
+    response = self.client.request_json('Participant/{}'.format(participant_id))
     self.assertEqual(response['first_name'], first_name)
 
     # Add fields to the participant.

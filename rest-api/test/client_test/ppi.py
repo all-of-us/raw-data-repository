@@ -42,7 +42,9 @@ class TestPPI(unittest.TestCase):
             resource['subject']['reference'].format(
                 participant_id=participant_id)
         test_util.round_trip(
-            self, self.client, 'QuestionnaireResponse', resource)
+            self, self.client, 
+            'Participant/' + participant_id + '/QuestionnaireResponse', 
+            resource)
 
 
 if __name__ == '__main__':
