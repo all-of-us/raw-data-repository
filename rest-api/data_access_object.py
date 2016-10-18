@@ -58,6 +58,7 @@ class DataAccessObject(object):
     return json_obj
 
   def from_json(self, dict_, ancestor_id=None, id_=None):
+    assert(bool(ancestor_id) == bool(self.ancestor_type))
     dict_ = copy.deepcopy(dict_)
 
     key_path = []
@@ -118,6 +119,7 @@ class DataAccessObject(object):
     return dict_
 
   def load(self, id_, ancestor_id=None):
+    assert(bool(ancestor_id) == bool(self.ancestor_type))
     m = self._make_key(id_, ancestor_id).get()
     if not m:
       raise NotFound('{} with id {}:{} not found.'.format(
@@ -132,6 +134,7 @@ class DataAccessObject(object):
     model.put()
 
   def get_all_history(self, id_, ancestor_id=None):
+    assert(bool(ancestor_id) == bool(self.ancestor_type))
     return self.history_model.query(ancestor=self._make_key(id_, ancestor_id)).fetch()
 
   def _make_key(self, id_, ancestor_id):

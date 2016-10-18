@@ -1,13 +1,9 @@
 """Tests for data_access_object."""
 
-import copy
-
 import data_access_object
-import threading
 import unittest
 
 from datetime import datetime
-from pprint import pprint
 
 from google.appengine.api.datastore_errors import TransactionFailedError
 from google.appengine.api import memcache
@@ -65,9 +61,24 @@ class DataAccessObjectTest(unittest.TestCase):
       self.assertEquals(obj, PARENT_DAO.load("1"))
 
     actual_history = PARENT_DAO.get_all_history("1")
-    pprint(actual_history)
     self.assertEquals(sorted(dates), sorted(h.date for h in actual_history))
     self.assertEquals(range(3), sorted(int(h.obj.foo) for h in actual_history))
+
+  def test_history_child(self):
+    dates = [datetime(2016, 10, 1) for i in range(3)]
+    parent_id = "p1"
+    parent = ParentModel(key=ndb.Key(ParentModel, parent_id))
+    PARENT_DAO.store(parent)
+
+    for i in range(3):
+      obj = ChildModel(key=ndb.Key(ParentModel, parent_id, ChildModel, "1"))
+      obj.bar = str(i)
+      CHILD_DAO.store(obj, dates[i])
+      self.assertEquals(obj, CHILD_DAO.load("1", parent_id))
+
+    actual_history = CHILD_DAO.get_all_history("1", parent_id)
+    self.assertEquals(sorted(dates), sorted(h.date for h in actual_history))
+    self.assertEquals(range(3), sorted(int(h.obj.bar) for h in actual_history))
 
 if __name__ == '__main__':
   unittest.main()
