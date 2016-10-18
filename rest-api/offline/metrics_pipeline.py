@@ -125,8 +125,7 @@ def modify_participant_history(history, now):
 #  date_func: A function that presented with the history object, will return the
 #    date that should be associated  with the changes.  This needs to return a
 #    string (datetime.date.isoformat()).  In most cases this should be
-#    HISTORY_DATE_FUNC.  If some other date is used, make sure that use_history
-#    is False.
+#    HISTORY_DATE_FUNC.
 #  history_func: A function that can modify the history before processing.  It
 #    is passed a first argument which is the list of history objects, in
 #    chronological order. The second argument is the date time to use as 'now'
@@ -140,10 +139,6 @@ def modify_participant_history(history, now):
 #  model: The type of the history object.
 #  fields: The fields of the model to collect metrics on.
 #  dao: The data access object associated with this model.
-#  use_history: Compute deltas across the entire history of this object.  If
-#    False, will only use the latest version of the object.  If use_history is
-#    True, the date_func must return the date from the history object, otherwise
-#    out of order dates could yield corrupt metrics.
 METRICS_CONFIGS = {
     'ParticipantHistory': {
         'name': 'Participant',
@@ -174,7 +169,6 @@ METRICS_CONFIGS = {
             },
         ],
         'dao': participant.DAO,
-        'use_history': True,
     },
 }
 
@@ -271,16 +265,12 @@ def reduce_by_id(obj_id, history_objects, now=datetime.now()):
     history = sorted(history, key=lambda o: o.date)
 
   # Look at just the latest?
-  if not metrics_config['use_history']:
-    history = history[-1:]
   last = None
   last_facets_key = None
   for hist_obj in history:
     summary = {}
     old_summary = {}
-    date = None
-    if metrics_config['use_history']:
-      date = metrics_config['date_func'](hist_obj)
+    date = metrics_config['date_func'](hist_obj)
     facets_key = _get_facets_key(date, metrics_config, hist_obj)
     facets_change = (last_facets_key is None
                      or last_facets_key['facets'] != facets_key['facets'])
