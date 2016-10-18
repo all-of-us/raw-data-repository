@@ -1,6 +1,7 @@
 """Implementation of the metrics API"""
 
 import collections
+import copy
 import datetime
 import json
 import participant
@@ -11,6 +12,7 @@ from dateutil.relativedelta import relativedelta
 from google.appengine.ext import ndb
 from protorpc import message_types
 from protorpc import messages
+from protorpc import protojson
 
 class InvalidMetricException(BaseException):
   """Exception thrown when a invalid metric is specified."""
@@ -23,7 +25,8 @@ START_DATE = datetime.date(2016, 9, 1)
 DATE_FORMAT = '%Y-%m-%d'
 
 class MetricsBucket(ndb.Model):
-  date = ndb.DateProperty()
+  date = ndb.DateProperty() # Used on metrics where we are tracking history.
+  facets = ndb.StringProperty()
   metrics = ndb.JsonProperty()
 
 class MetricsVersion(ndb.Model):
@@ -31,19 +34,15 @@ class MetricsVersion(ndb.Model):
   complete = ndb.BooleanProperty()
   date = ndb.DateTimeProperty(auto_now=True)
 
-class Metrics(messages.Enum):
-  """Predefined metric types"""
+class FacetType(messages.Enum):
+  """The Facets (dimensions) to bucket by"""
   NONE = 0
-  PARTICIPANT_TOTAL = 1
-  PARTICIPANT_MEMBERSHIP_TIER = 2
-  PARTICIPANT_ZIP_CODE = 3
+  HPO_ID = 1
 
-class BucketBy(messages.Enum):
-  """How to bucket the results"""
-  NONE = 0
-  DAY = 1
-  WEEK = 2
-  MONTH = 3
+class Facet(messages.Message):
+  """Used in the response to describe what the aggregated value represents."""
+  facet_type = messages.EnumField(FacetType, 1)
+  value = messages.StringField(2)
 
 class MetricsResponseBucketEntry(messages.Message):
   name = messages.StringField(1)
@@ -51,83 +50,96 @@ class MetricsResponseBucketEntry(messages.Message):
 
 class MetricsResponseBucket(messages.Message):
   date = message_types.DateTimeField(1)
-  entries = messages.MessageField(MetricsResponseBucketEntry, 2, repeated=True)
+  facets = messages.MessageField(Facet, 2, repeated=True)
+  entries = messages.MessageField(MetricsResponseBucketEntry, 3, repeated=True)
 
 class MetricsResponse(messages.Message):
   bucket = messages.MessageField(MetricsResponseBucket, 1, repeated=True)
 
 class MetricsRequest(messages.Message):
-  metric = messages.EnumField(Metrics, 1, default='NONE')
-  bucket_by = messages.EnumField(BucketBy, 2, default='NONE')
-  start_date = messages.StringField(3)
-  end_date = messages.StringField(4)
+  facets = messages.EnumField(FacetType, 1, repeated=True)
 
-_metric_map = {
-    Metrics.PARTICIPANT_TOTAL: {
-        'model': participant.Participant,
-        'prefix': 'Participant',
-    },
-    Metrics.PARTICIPANT_MEMBERSHIP_TIER: {
-        'model': participant.Participant,
-        'prefix': 'Participant.membership_tier',
-        'enum': participant.MembershipTier,
-    },
-    Metrics.PARTICIPANT_ZIP_CODE: {
-        'model': participant.Participant,
-        'prefix': 'Participant.zip_code',
-    },
-}
+class ResultsBuckets(object):
+  """Collects all the results buckets for a request"""
+  def __init__(self):
+    self.buckets_by_facet_key = {}
+
+  def find_or_create(self, request_facets, db_bucket):
+    # The facets in the db bucket are stored as a json encoded list of
+    # [{'type': 'HPO_ID', 'value': 'foo'}]
+    db_facets_json = json.loads(db_bucket.facets)
+    facets_in_this_bucket = {FacetType(f['type']): f['value'] for f in db_facets_json}
+
+    # On the request, the facets to group by are specified as a list of
+    # FacetType values.  Get the intersection of the two.
+    facet_types = sorted(set(facets_in_this_bucket.keys()) & set(request_facets))
+
+    # We need to store the intersected list of FacetTypes
+    facets = [Facet(facet_type=ft, value=facets_in_this_bucket[ft]) for ft in facet_types]
+
+    # The results bucket needs to be keyed by the sorted list of the facets,
+    # however that list isn't hashable, so create a string representation of it
+    # and use that.
+    facet_key = json.dumps([protojson.encode_message(part) for part in facets])
+
+    if facet_key not in self.buckets_by_facet_key:
+      self.buckets_by_facet_key[facet_key] = ResultsBucket(facets)
+
+    return self.buckets_by_facet_key[facet_key]
+
+  def list(self):
+    return self.buckets_by_facet_key.values()
+
+
+class ResultsBucket(object):
+  """Used to aggregate data for a given set of facets."""
+  no_date = 'no_date'  # Used in place of a date for non date based metrics.
+
+  def __init__(self, facets):
+    self.facets = facets
+    self.counts_by_date = collections.defaultdict(collections.Counter)
+
+  def add_counts(self, date, counts):
+    date = date or self.no_date
+    self.counts_by_date[date] += counts
+
+  def aggregated_dates(self):
+    """Goes through the deltas in date order and adds up the deltas."""
+    sorted_by_date = sorted(self.counts_by_date.iteritems())
+    aggregated = collections.Counter()
+    aggregated_by_date = []
+    for date, counter in sorted_by_date:
+      aggregated += counter
+      date = None if date == self.no_date else date
+      aggregated_by_date.append((date, copy.deepcopy(aggregated)))
+    return aggregated_by_date
+
 
 class MetricService(object):
 
   def get_metrics(self, request):
-    if request.metric not in _metric_map:
-      raise InvalidMetricException(
-          '{} is not a valid metric.'.format(request.metric))
-
-    metric_prefix = _metric_map[request.metric]['prefix']
-
-    start_date = None
-    if request.start_date:
-      start_date = api_util.parse_date(request.start_date, DATE_FORMAT, True).date()
-
-    end_date = None
-    if request.end_date:
-      end_date = api_util.parse_date(request.end_date, DATE_FORMAT, True).date()
-    buckets = _make_buckets(request.bucket_by, start_date, end_date)
     serving_version = get_serving_version()
 
+    results_buckets = ResultsBuckets()
     for db_bucket in MetricsBucket.query(ancestor=serving_version).fetch():
-      for bucket in buckets:
-        if db_bucket.date >= bucket.start and db_bucket.date < bucket.end:
-          counts = collections.Counter(json.loads(db_bucket.metrics))
-          for metric, count in counts.iteritems():
-            # If the prefix is for the total, it won't have a '.'.
-            total_metric = '.' not in metric_prefix
-
-            # Metric is of the form Participant.membership_tier.ENGAGED
-            # we want just the last part.
-            suffix = metric.rsplit('.', 1)[-1]
-            # Unless this is a total metric.
-            if total_metric:
-              suffix = 'TOTAL'
-
-            if ((total_metric and metric_prefix == metric)
-                or (not total_metric and  metric.startswith(metric_prefix))):
-              bucket.cnt[suffix] += count
+      results_bucket = results_buckets.find_or_create(request.facets, db_bucket)
+      counts = collections.Counter(json.loads(db_bucket.metrics))
+      results_bucket.add_counts(db_bucket.date, counts)
 
     response = MetricsResponse()
-    for bucket in buckets:
-      resp_bucket = MetricsResponseBucket()
-      start_midnight = datetime.datetime.combine(bucket.start,
-                                                 datetime.datetime.min.time())
-      resp_bucket.date = start_midnight
-      for k, val in bucket.cnt.iteritems():
-        entry = MetricsResponseBucketEntry()
-        entry.name = str(k)
-        entry.value = float(val)
-        resp_bucket.entries.append(entry)
-      response.bucket.append(resp_bucket)
+    for bucket in results_buckets.list():
+      for date, counts in bucket.aggregated_dates():
+        resp_bucket = MetricsResponseBucket(facets=bucket.facets)
+        response.bucket.append(resp_bucket)
+
+        if date:
+          resp_bucket.date = datetime.datetime.combine(date, datetime.datetime.min.time())
+
+        for k, val in counts.iteritems():
+          entry = MetricsResponseBucketEntry()
+          entry.name = str(k)
+          entry.value = float(val)
+          resp_bucket.entries.append(entry)
 
     return response
 
@@ -161,35 +173,5 @@ def _convert_name(result, enum):
     return 'NULL'
   else:
     return str(enum(result))
-
-
-def _make_buckets(bucket_by, start_date, end_date):
-  increments = {
-      BucketBy.DAY: relativedelta(days=1),
-      BucketBy.WEEK: relativedelta(days=7),
-      BucketBy.MONTH: relativedelta(months=1),
-  }
-
-  buckets = []
-  end_date = end_date or (datetime.datetime.now() + relativedelta(days=1)).date()
-  start_date = start_date or START_DATE
-  if not bucket_by or bucket_by == BucketBy.NONE:
-    buckets.append(Bucket(START_DATE, end_date))
-  else:
-    last_date = start_date
-    increment = increments[bucket_by]
-    date = last_date
-    while date < end_date:
-      date = date + increment
-      buckets.append(Bucket(last_date, date))
-      last_date = date
-
-  return buckets
-
-class Bucket(object):
-  def __init__(self, start, end):
-    self.start = start
-    self.end = end
-    self.cnt = collections.Counter()
 
 SERVICE = MetricService()
