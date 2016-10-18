@@ -12,8 +12,8 @@ from google.appengine.ext.ndb import msgprop
 
 DATE_OF_BIRTH_FORMAT = '%Y-%m-%d'
 
-class PhysicalExamStatus(messages.Enum):
-  """The state of the participant's physical exam"""
+class PhysicalEvaluationStatus(messages.Enum):
+  """The state of the participant's physical evaluation"""
   SCHEDULED = 1
   COMPLETED = 2
   RESULT_READY = 3
@@ -57,7 +57,7 @@ class Participant(ndb.Model):
   date_of_birth = ndb.DateProperty()
   gender_identity = msgprop.EnumProperty(GenderIdentity)
   membership_tier = msgprop.EnumProperty(MembershipTier)
-  physical_exam_status = msgprop.EnumProperty(PhysicalExamStatus)
+  physical_evaluation_status = msgprop.EnumProperty(PhysicalEvaluationStatus)
   sign_up_time = ndb.DateTimeProperty()
   consent_time = ndb.DateTimeProperty()
   hpo_id = ndb.StringProperty()
@@ -77,7 +77,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     api_util.parse_json_date(dict_, 'consent_time')
     api_util.parse_json_enum(dict_, 'gender_identity', GenderIdentity)
     api_util.parse_json_enum(dict_, 'membership_tier', MembershipTier)
-    api_util.parse_json_enum(dict_, 'physical_exam_status', PhysicalExamStatus)
+    api_util.parse_json_enum(dict_, 'physical_evaluation_status', PhysicalEvaluationStatus)
     api_util.parse_json_enum(dict_, 'recruitment_source', RecruitmentSource)
     return dict_
 
@@ -87,7 +87,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     api_util.format_json_date(dict_, 'consent_time')
     api_util.format_json_enum(dict_, 'gender_identity')
     api_util.format_json_enum(dict_, 'membership_tier')
-    api_util.format_json_enum(dict_, 'physical_exam_status')
+    api_util.format_json_enum(dict_, 'physical_evaluation_status')
     api_util.format_json_enum(dict_, 'recruitment_source')
     api_util.remove_field(dict_, 'first_name_search')
     api_util.remove_field(dict_, 'last_name_search')
