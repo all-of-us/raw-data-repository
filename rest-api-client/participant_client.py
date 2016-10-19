@@ -5,7 +5,7 @@ import pprint
 from client.client import Client, HttpException
 
 def main():
-  client = Client('participant/v1')
+  client = Client('rdr/v1')
 
   first_name = 'Mister'
   last_name = 'Pants'
@@ -18,12 +18,12 @@ def main():
       'date_of_birth': date_of_birth,
   }
 
-  response = client.request_json('participants', 'POST', participant)
+  response = client.request_json('Participant', 'POST', participant)
   pprint.pprint(response)
 
   participant_id = response['participant_id']
   # Fetch that participant and print it out.
-  response = client.request_json('participants/{}'.format(participant_id))
+  response = client.request_json('Participant/{}'.format(participant_id))
   pprint.pprint(response)
 
 
