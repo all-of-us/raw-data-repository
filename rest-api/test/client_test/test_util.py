@@ -18,9 +18,9 @@ def create_participant(first, last, birthday):
       'date_of_birth': birthday,
   }
   participant_client = Client(
-      'participant/v1', False, CREDS_FILE, DEFAULT_INSTANCE)
+      'rdr/v1', False, CREDS_FILE, DEFAULT_INSTANCE)
   response = participant_client.request_json(
-      'participants', 'POST', participant)
+      'Participant', 'POST', participant)
   return response['participant_id']
 
 
