@@ -11,32 +11,30 @@ new project.)
 -   Currently doesn't have billing (should be fine for a while, but will need to
     be eventually set up.)
 
-The cloud SQL instance is under the original pmi-drc-api-test project. The
-instance is named 'pmi-rdr'
-
 The GCS bucket for biobank manifest testing is pmi-drc-biobank-test.
 
 ## Configuring a Ubuntu workstation for API development:
 
-You can either use the Cloud SQL proxy or run a MySQL instance locally.
+Follow the instructions in the client directory first to set up a
+virtual Python environment, then follow the instructions here.
 
 ### Installing dependencies
 From the rest-api directory, run
-'''Shell
+```Shell
 pip install -r requirements.txt -t lib/
 
 git submodule update --init
-'''
-This will install all the needed dependencies in the 'lib' directory.
+```
+This will install all the needed dependencies in the `lib` directory.
 
 ### Running the development app server
 Make sure that you have google [cloud SDK](https://cloud.google.com/sdk/downloads) installed.
 
 From the rest-api directory, run:
 
-'''Shell
-dev_appserver.py .
-'''
+```Shell
+dev_appserver.py . &
+```
 
 ### Configuring your instance
 
@@ -51,11 +49,11 @@ If running a local dev_appserver, navigate to the
 [datastore viewer](http://localhost:8000/datastore?kind=Config).
 You should be able to modify config settings using the fancy UI.
 
-For local development, add an "allowed_user" entry with a value of
-"example@example.com".  This is what a oauth user appears as under the
+For local development, add an `allowed_user` entry with a value of
+`example@example.com`.  This is what a oauth user appears as under the
 dev_appserver.
 
-If running in produciton, go to the
+If running in production, go to the
 [cloud console](https://console.cloud.google.com).  Select the app engine
 project and then click on "datastore" in the left hand navigation bar.
 
@@ -63,15 +61,15 @@ project and then click on "datastore" in the left hand navigation bar.
 Make sure that the dev_appserver is running.
 
 Run 
-'''Shell
+```Shell
 test/run_tests.sh $sdk_dir
-'''
+```
 
 If you want to be super slick, and have the tests run every time you change a
 source file, you can do this.
 
 (You will have to install ack-grep and entr if you haven't already.)
 
-'''Shell
+```Shell
 until ack-grep -f --python | entr -r test/run_tests.sh $sdk_dir unit;do sleep 1; done
-'''
+```
