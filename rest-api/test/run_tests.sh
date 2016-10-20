@@ -40,5 +40,6 @@ then
   (cd ${SCRIPT_DIR}; python client_test/participant.py)
   (cd ${SCRIPT_DIR}; python client_test/evaluation.py)
   (cd ${SCRIPT_DIR}; python client_test/metrics.py)
+  (cd ${SCRIPT_DIR}; python client_test/biobank_order.py)
 fi
 

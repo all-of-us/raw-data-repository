@@ -3,6 +3,7 @@
 This defines the APIs and the handlers for the APIs.
 """
 import flask
+import biobank_orders_api
 import metrics_api
 import participants_api
 import ppi_api
@@ -42,6 +43,12 @@ api.add_resource(ppi_api.QuestionnaireResponseAPI,
                  PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse/<string:id_>',
                  PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse',
                  endpoint='participant.questionnaire_response',
+                 methods=['POST', 'GET'])
+
+api.add_resource(biobank_orders_api.BiobankOrderAPI,
+                 PREFIX + 'Participant/<string:a_id>/BiobankOrder/<string:id_>',
+                 PREFIX + 'Participant/<string:a_id>/BiobankOrder',
+                 endpoint='participant.biobank_order',
                  methods=['POST', 'GET'])
 
 api.add_resource(metrics_api.MetricsApi,
