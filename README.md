@@ -8,3 +8,5 @@ This repository contains code for the APIs that run the RDR. The structure is:
 
 -   rest-api: The API implementation
 -   rest-api-client: An example client that tests the API
+
+The README.md file in each directory has details on building and testing the code.
