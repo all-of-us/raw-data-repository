@@ -152,7 +152,7 @@ class SummaryPipeline(pipeline.Pipeline):
     mapper_params = {
         'entity_kind': config_name,
     }
-    num_shards = int(config.getSetting(config.METRICS_SHARDS))
+    num_shards = int(config.getSetting(config.METRICS_SHARDS, 1))
     # The result of yield is a future that will contian the files that were
     # produced by MapreducePipeline.
     yield mapreduce_pipeline.MapreducePipeline(
