@@ -27,7 +27,7 @@ cd rest-api/test
 GCLOUD_PATH=$(which gcloud)
 SDK_PATH=${GCLOUD_PATH%/bin/gcloud}
 
-./run_tests.sh $SDK_PATH
+./run_tests.sh -g $SDK_PATH
 
 cd ../../rest-api-client
 pip install virtualenv
