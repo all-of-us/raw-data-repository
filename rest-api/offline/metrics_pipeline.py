@@ -39,7 +39,7 @@ objects, a summary containing all fields is emitted twice, once for the old
 facet (with all -1s), and once for the new facet, (with all 1s).
 
 The output from the mapper is objects of the form: (for Participant)
-Key: {'date': '2016-10-02', 'facets': [{'type': 'foo', 'value': 'bar'}]}
+Key: {'date': '2016-10-02', 'facets': [{'type': 'hpo_id', 'value': 'jackson'}]}
 Value:
 {
   summary: {
@@ -107,11 +107,12 @@ def extract_bucketed_age(hist_obj):
 #  model: The type of the history object.
 #  fields: The fields of the model to collect metrics on.
 FieldDef = namedtuple('FieldDef', ['name', 'func'])
+FacetDef = namedtuple('FacetDef', ['type', 'func'])
 METRICS_CONFIGS = {
     'Participant': {
         'load_history_func': participant.load_history_entities,
         'facets': [
-            {'type': metrics.FacetType.HPO_ID, 'func': lambda s: s['hpo_id']}
+            FacetDef(metrics.FacetType.HPO_ID, lambda s: s['hpo_id']),
         ],
         'fields': {
             'ParticipantHistory': [
@@ -165,7 +166,14 @@ class SummaryPipeline(pipeline.Pipeline):
 
 
 def map_key_to_summary(entity_key, now=None):
-  """Takes a key for the entity. Emits deltas for all state changes."""
+  """Takes a key for the entity. Emits deltas for all state changes.
+
+  Args:
+    entity_key: The key of the entity to process.  The key read by the
+      DatastoreKeyInputReader is the old format, not a ndb.Key, so it needs to
+      be converted.
+    now: Used to set the clock for testing.
+  """
   entity_key = ndb.Key.from_old_key(entity_key)
   now = now or datetime.now()
   kind = entity_key.kind()
@@ -242,12 +250,12 @@ def _get_facets_key(date, metrics_config, state):
   """Creates a string that can be used as a key specifying the facets.
 
   The key is a json encoded object of the form:
-      {'date': '2016-10-02', 'facets': [{'type': 'foo', 'value': 'bar'}]}
+      {'date': '2016-10-02', 'facets': [{'type': 'hpo_id', 'value': 'jackson'}]}
   """
   key_parts = []
   facets = metrics_config['facets']
   for axis in facets:
-    key_parts.append({'type': str(axis['type']), 'value': axis['func'](state)})
+    key_parts.append({'type': str(axis.type), 'value': axis.func(state)})
   key = {'facets': key_parts}
   if date:
     key['date'] = date.isoformat()

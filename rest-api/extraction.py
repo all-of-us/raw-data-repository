@@ -32,20 +32,20 @@ class FhirExtractor(Extractor):
 class QuestionnaireExtractor(FhirExtractor):
   def extract_link_id_for_concept(self, concept):
     assert isinstance(concept, Concept)
-    ret = self.extract_link_id_for_concept_(self.r_fhir, concept)
+    ret = self.extract_link_id_for_concept_(self.r_fhir.group, concept)
     assert len(ret) == 1, \
            '{} questions match concept {}'.format(len(ret), concept)
     return ret[0]
 
   def extract_link_id_for_concept_(self, qr, concept):
     # Sometimes concept is an existing attr with a value of None.
-    for node in getattr(qr, 'concept', None) or []:
-      if concept == Concept(getattr(node, 'system', None), getattr(node, 'code', None)):
+    for node in qr.concept or []:
+      if concept == Concept(node.system, node.code):
         return [qr.linkId]
 
     ret = []
     for prop in ('question', 'group'):
-      if hasattr(qr, prop):
+      if getattr(qr, prop, None):
         ret += [v
                 for q in _as_list(getattr(qr, prop))
                 for v in self.extract_link_id_for_concept_(q, concept)]
