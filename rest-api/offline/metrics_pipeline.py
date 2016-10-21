@@ -39,11 +39,7 @@ objects, a summary containing all fields is emitted twice, once for the old
 facet (with all -1s), and once for the new facet, (with all 1s).
 
 The output from the mapper is objects of the form: (for Participant)
-<<<<<<< HEAD
 Key: {'date': '2016-10-02', 'facets': [{'type': 'hpo_id', 'value': 'jackson'}]}
-=======
-Key: {'date': '2016-10-02', 'facets': [{'type': 'foo', 'value': 'bar'}]}
->>>>>>> 174864326b5c5cf1a4e5eddea49e24997307d5c7
 Value:
 {
   summary: {
@@ -111,19 +107,12 @@ def extract_bucketed_age(hist_obj):
 #  model: The type of the history object.
 #  fields: The fields of the model to collect metrics on.
 FieldDef = namedtuple('FieldDef', ['name', 'func'])
-<<<<<<< HEAD
 FacetDef = namedtuple('FacetDef', ['type', 'func'])
-=======
->>>>>>> 174864326b5c5cf1a4e5eddea49e24997307d5c7
 METRICS_CONFIGS = {
     'Participant': {
         'load_history_func': participant.load_history_entities,
         'facets': [
-<<<<<<< HEAD
             FacetDef(metrics.FacetType.HPO_ID, lambda s: s['hpo_id']),
-=======
-            {'type': metrics.FacetType.HPO_ID, 'func': lambda s: s['hpo_id']}
->>>>>>> 174864326b5c5cf1a4e5eddea49e24997307d5c7
         ],
         'fields': {
             'ParticipantHistory': [
