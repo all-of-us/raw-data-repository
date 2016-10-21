@@ -52,27 +52,21 @@ class BiobankOrderDAO(data_access_object.DataAccessObject):
       dict_['id'] = id_
     api_util.parse_json_date(dict_, 'created')
     for sample_dict in dict_['samples']:
-      if 'collected' in sample_dict:
-        api_util.parse_json_date(sample_dict, 'collected')
-      if 'processed' in sample_dict:
-        api_util.parse_json_date(sample_dict, 'processed')
-      if 'finalized' in sample_dict:
-        api_util.parse_json_date(sample_dict, 'finalized')
+      api_util.parse_json_date(sample_dict, 'collected')
+      api_util.parse_json_date(sample_dict, 'processed')
+      api_util.parse_json_date(sample_dict, 'finalized')
     return dict_
 
   def properties_to_json(self, dict_):
     api_util.format_json_date(dict_, 'created',
                               format=BiobankOrderDAO.DATE_TIME_FORMAT)
     for sample_dict in dict_['samples']:
-      if 'collected' in sample_dict:
-        api_util.format_json_date(sample_dict, 'collected',
-                                  format=BiobankOrderDAO.DATE_TIME_FORMAT)
-      if 'processed' in sample_dict:
-        api_util.format_json_date(sample_dict, 'processed',
-                                 format=BiobankOrderDAO.DATE_TIME_FORMAT)
-      if 'finalized' in sample_dict:
-        api_util.format_json_date(sample_dict, 'finalized',
-                                  format=BiobankOrderDAO.DATE_TIME_FORMAT)
+      api_util.format_json_date(sample_dict, 'collected',
+                                format=BiobankOrderDAO.DATE_TIME_FORMAT)
+      api_util.format_json_date(sample_dict, 'processed',
+                                format=BiobankOrderDAO.DATE_TIME_FORMAT)
+      api_util.format_json_date(sample_dict, 'finalized',
+                                format=BiobankOrderDAO.DATE_TIME_FORMAT)
     return dict_
   
   def find_by_identifier(self, identifier):
