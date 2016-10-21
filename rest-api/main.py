@@ -7,6 +7,7 @@ import metrics_api
 import participants_api
 import ppi_api
 
+
 from flask import Flask, jsonify
 from flask_restful import Api
 
@@ -49,7 +50,6 @@ api.add_resource(metrics_api.MetricsApi,
                  endpoint='metrics',
                  methods=['POST'])
 
-# TODO(geoffreyb): Remove this once we have a cron job running.
 api.add_resource(metrics_api.MetricsApi,
                  PREFIX + 'metrics_recalculate',
                  endpoint='metrics_recalc',

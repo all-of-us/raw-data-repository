@@ -96,7 +96,7 @@ def main():
   args = parse_args()
   client = Client('rdr/v1', default_instance=args.instance, parse_cli=False)
 
-  questionnaire = json.load(open('questionnaire_example.json'))
+  questionnaire = json.load(open('test-data/questionnaire_example.json'))
   q_id = client.request_json('Questionnaire', 'POST', questionnaire)['id']
 
   for i in range(args.count):

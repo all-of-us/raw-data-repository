@@ -29,9 +29,10 @@ class TestPPI(unittest.TestCase):
   def test_questionnaire_responses(self):
     questionnaire_response_files = [
         # Stripped down version of the official FHIR example
-        'test-data/questionnaire_response1.json',
+        #'test-data/questionnaire_response1.json',
         # Example response from vibrent.  Doesn't pass validation.
         #'test-data/questionnaire_response2.json',
+        'test-data/questionnaire_response3.json',
     ]
     participant_id = test_util.create_participant(
         'Bovine', 'Knickers', '1970-10-10')

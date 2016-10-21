@@ -25,20 +25,48 @@ class InvalidConfigException(BaseException):
 
 _initialized = False
 
-def getSettingList(key):
-  """Gets all config settings for a given key."""
+def getSettingList(key, default=None):
+  """Gets all config settings for a given key.
+
+  Args:
+    key: The config key to retrieve entries for.
+    default: What to return if the key does not exist in the datastore.
+
+  Returns:
+    A list of all config entries matching this key.
+
+  Raises:
+    MissingConfigException: If the config key does not exist in the datastore,
+      and a default is not provided.
+  """
   check_initialized()
   query = Config.query(Config.config_key==key)
   iterator = query.iter()
   if not iterator.has_next():
+    if default is not None:
+      return default
     raise MissingConfigException(
         'Config key "{}" is not in datastore.'.format(key))
 
   return [config.value for config in iterator]
 
-def getSetting(key):
-  """Gets a config where there is only be a single setting for a given key."""
-  settings_list = getSettingList(key)
+def getSetting(key, default=None):
+  """Gets a config where there is only a single setting for a given key.
+
+  Args:
+    key: The config key to look up.
+    default: If the config key is not found in the datastore, this will be
+      returned.
+
+  Raises:
+    InvalidConfigException: If the key has multiple entries in the datastore.
+    MissingConfigException: If the config key does not exist in the datastore,
+     and a default is not provided.
+  """
+  if default:
+    default = [default]
+  settings_list = getSettingList(key, default)
+
   if len(settings_list) != 1:
     raise InvalidConfigException(
         'Config key {} has multiple entries in datastore.'.format(key))

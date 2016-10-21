@@ -43,20 +43,6 @@ class DataAccessObject(object):
     properties_obj = copy.deepcopy(m.to_dict())
     return self.properties_to_json(properties_obj)
 
-  def history_from_json(self, dict_):
-    dict_ = copy.deepcopy(dict_)
-    dict_['obj'] = self.from_json(dict_['obj'])
-    api_util.parse_json_date(dict_, 'date')
-    m = self.history_model()
-    m.populate(**dict_)
-    return m
-
-  def history_to_json(self, m):
-    json_obj = copy.deepcopy(m.to_dict())
-    json_obj['obj'] = self.to_json(m.obj)
-    api_util.format_json_date(json_obj, 'date')
-    return json_obj
-
   def from_json(self, dict_, ancestor_id=None, id_=None):
     assert bool(ancestor_id) == bool(self.ancestor_type), "Requires an ancestor_id"
     dict_ = copy.deepcopy(dict_)
@@ -133,9 +119,8 @@ class DataAccessObject(object):
     h.put()
     model.put()
 
-  def get_all_history(self, id_, ancestor_id=None):
-    assert bool(ancestor_id) == bool(self.ancestor_type), "Requires an ancestor_id"
-    return self.history_model.query(ancestor=self._make_key(id_, ancestor_id)).fetch()
+  def get_all_history(self, ancestor_key):
+    return self.history_model.query(ancestor=ancestor_key).fetch()
 
   def _make_key(self, id_, ancestor_id):
     if ancestor_id:
