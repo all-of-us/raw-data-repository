@@ -21,12 +21,9 @@ def get_questions_by_link_id(qr, target_link_id):
               for v in get_questions_by_link_id(q, target_link_id)]
   return ret
 
-class Extractor(object):
-  pass
-
-class FhirExtractor(Extractor):
-  def __init__(self, r):
-    self.r_fhir = FHIRElementFactory.instantiate(r['resourceType'], r)
+class FhirExtractor(object):
+  def __init__(self, resource):
+    self.r_fhir = FHIRElementFactory.instantiate(resource['resourceType'], resource)
 
 
 class QuestionnaireExtractor(FhirExtractor):
