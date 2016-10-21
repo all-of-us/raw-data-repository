@@ -1,11 +1,11 @@
 {
-  "subject": "Patient/P124820391",
+  "subject": "Patient/{}",
   "identifier": [{
     "system": "http://health-pro.org",
-    "value": "healthpro-order-id-123"
+    "value": "healthpro-order-id-123{}"
   },{
     "system": "https://orders.mayomedicallaboratories.com",
-    "value": "mayolink-order-id-456"
+    "value": "mayolink-order-id-456{}"
   }],
   "created": "2016-01-04T09:40:21Z",
   "samples": [{
