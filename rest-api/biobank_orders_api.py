@@ -45,11 +45,12 @@ class BiobankOrderAPI(base_api.BaseApi):
        if not sample.test in BiobankOrderAPI.valid_tests:
          raise BadRequest('Invalid test value: {}'.format(sample.test))  
      # Verify that all order identifiers are not in use by another order
-     if order.identifier:
-       for identifier in order.identifier:
-          other_order = biobank_order.DAO.find_by_identifier(identifier)
-          if other_order and other_order.id != order.id:
-            raise BadRequest('Identifier {} is already in use by another order'.format(identifier))       
+     if not order.identifier or len(order.identifier) < 1:
+       raise BadRequest('At least one identifier is required')
+     for identifier in order.identifier:
+       other_order = biobank_order.DAO.find_by_identifier(identifier)
+       if other_order and other_order.id != order.id:
+         raise BadRequest('Identifier {} is already in use by another order'.format(identifier))       
      # This will raise if the participant can't be found.  Loading for validation
      # only.
      participant.DAO.load(a_id)   
