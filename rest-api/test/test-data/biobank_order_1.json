@@ -1,0 +1,50 @@
+{
+  "subject": "Patient/{}",
+  "identifier": [{
+    "system": "http://health-pro.org",
+    "value": "healthpro-order-id-123{}"
+  },{
+    "system": "https://orders.mayomedicallaboratories.com",
+    "value": "mayolink-order-id-456{}"
+  }],
+  "created": "2016-01-04T09:40:21Z",
+  "samples": [{
+    "test": "1ED10",
+    "description": "EDTA 10 mL (1)",
+    "processingRequired": false,
+    "collected": "2016-01-04T09:45:49Z",
+    "finalized": "2016-01-04T10:55:41Z"
+  }, {
+    "test": "1PST8",
+    "description": "Plasma Separator 8 mL",
+    "collected": "2016-01-04T09:45:49Z",
+    "processingRequired":true,
+    "processed": "2016-01-04T10:28:50Z",
+    "finalized": "2016-01-04T10:55:41Z"
+  }, {
+    "test": "2ED10",
+    "description": "Test 2ED10",    
+    "processingRequired":true   
+  }, {
+    "test": "1SST8",
+    "description": "Test 1SST8",    
+    "processingRequired":false    
+  }, {
+    "test": "1HEP4",
+    "description": "Test IHEP4",    
+    "processingRequired":false    
+  }, {
+    "test": "1UR10",
+    "description": "Test 1UR10",    
+    "processingRequired":false    
+  }, {
+    "test": "1SAL",
+    "description": "Test 1SAL",    
+    "processingRequired":false    
+  }],
+  "notes": {
+    "collected": "Only got 7mL in the ED10 tubes",
+    "processed": "Centrifuge was not cooled to the proper temperature",
+    "finalized": "Prepped samples in 4C fridge, Room 520A"
+  }
+}

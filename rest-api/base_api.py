@@ -45,7 +45,7 @@ class BaseApi(Resource):
     """
     pass
 
-  def validate_object(self, obj):
+  def validate_object(self, obj, a_id=None):
     """Override this function to validate the passed object.
 
     This function should raise an exception if the object doesn't pass
@@ -62,7 +62,7 @@ class BaseApi(Resource):
     """
     resource = request.get_json(force=True)
     m = self.dao.from_json(resource, a_id, self.dao.allocate_id())
-    self.validate_object(m)
+    self.validate_object(m, a_id)
     self.dao.store(m, date=consider_fake_date())
     return self.dao.to_json(m)
 
@@ -76,7 +76,7 @@ class BaseApi(Resource):
     """
     old_m = self.dao.load(id_, a_id)
     new_m = self.dao.from_json(request.get_json(force=True), a_id, id_)
-    self.validate_object(new_m)
+    self.validate_object(new_m, a_id)
     api_util.update_model(old_model=old_m, new_model=new_m)
     self.dao.store(old_m, date=consider_fake_date())
     return self.dao.to_json(old_m)

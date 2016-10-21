@@ -36,7 +36,7 @@ class ParticipantAPI(base_api.BaseApi):
           'Last name and date of birth must be specified.')
     return participant.DAO.list(first_name, last_name, date_of_birth, zip_code)
 
-  def validate_object(self, p):
+  def validate_object(self, p, a_id=None):
     if not p.sign_up_time:
       p.sign_up_time = datetime.datetime.now()
 

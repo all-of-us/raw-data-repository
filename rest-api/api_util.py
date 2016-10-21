@@ -8,10 +8,10 @@ import string
 from google.appengine.api import users
 from google.appengine.ext import ndb
 
-
 from protorpc import message_types
 from protorpc import protojson
 from protorpc import messages
+from dateutil.parser import parse
 from google.appengine.api import oauth
 from werkzeug.exceptions import Unauthorized, BadRequest
 
@@ -82,10 +82,11 @@ def parse_date(date_str, format=None, date_only=False):
   if format:
     return datetime.datetime.strptime(date_str, format)
   else:
-    json_str = '{{"date": "{}"}}'.format(date_str)
-    holder = protojson.decode_message(DateHolder, json_str)
-
-    date_obj = holder.date
+    date_obj = parse(date_str)
+    if date_obj.utcoffset():
+      date_obj = date_obj.replace(tzinfo=None) - date_obj.utcoffset()
+    else:
+      date_obj = date_obj.replace(tzinfo=None)
     if date_only:
       if (date_obj != datetime.datetime.combine(date_obj.date(),
                                                 datetime.datetime.min.time())):

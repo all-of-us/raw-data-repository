@@ -91,4 +91,5 @@ then
   run_client_test "client_test/participant.py"
   run_client_test "client_test/evaluation.py"
   run_client_test "client_test/metrics.py"
+  run_client_test "client_test/biobank_order.py"
 fi
