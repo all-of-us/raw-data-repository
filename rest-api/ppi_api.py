@@ -24,15 +24,14 @@ class QuestionnaireResponseAPI(base_api.BaseApi):
   def __init__(self):
     super(QuestionnaireResponseAPI, self).__init__(questionnaire_response.DAO)
 
-  def validate_object(self, q):
+  def validate_object(self, q, a_id=None):
     """Makes sure that the questionnaire response is for a valid participant"""
     model = fhirclient.models.questionnaireresponse.QuestionnaireResponse(
         q.resource)
     participant_id = model.subject.reference
-    parts = participant_id.split('Patient/')
-    if len(parts) != 2 or parts[0]:
+    if participant_id != 'Patient/{}'.format(a_id):
       raise BadRequest('Participant id {} invalid.'.format(participant_id))
 
     # This will raise if the participant can't be found.  Loading for validation
     # only.
-    participant.DAO.load(parts[1])
+    participant.DAO.load(a_id)

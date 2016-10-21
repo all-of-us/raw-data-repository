@@ -36,12 +36,12 @@ class BiobankOrder(ndb.Model):
   id = ndb.StringProperty()
   subject = ndb.StringProperty()
   created = ndb.DateTimeProperty()
-  identifier = ndb.LocalStructuredProperty(BiobankOrderIdentifier, repeated=True)
+  identifier = ndb.StructuredProperty(BiobankOrderIdentifier, repeated=True)
   samples = ndb.LocalStructuredProperty(BiobankOrderSample, repeated=True)
   notes = ndb.LocalStructuredProperty(BiobankOrderNotes, repeated=False)
   
   
-class BiobankOrderDAO(data_access_object.DataAccessObject):
+class BiobankOrderDAO(data_access_object.DataAccessObject):  
   DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
   
   def __init__(self):
@@ -50,18 +50,14 @@ class BiobankOrderDAO(data_access_object.DataAccessObject):
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:
       dict_['id'] = id_
-    api_util.parse_json_date(dict_, 'created', 
-                             format=BiobankOrderDAO.DATE_TIME_FORMAT)
+    api_util.parse_json_date(dict_, 'created')
     for sample_dict in dict_['samples']:
       if 'collected' in sample_dict:
-        api_util.parse_json_date(sample_dict, 'collected',
-                                 format=BiobankOrderDAO.DATE_TIME_FORMAT)
+        api_util.parse_json_date(sample_dict, 'collected')
       if 'processed' in sample_dict:
-        api_util.parse_json_date(sample_dict, 'processed',
-                                 format=BiobankOrderDAO.DATE_TIME_FORMAT)
+        api_util.parse_json_date(sample_dict, 'processed')
       if 'finalized' in sample_dict:
-        api_util.parse_json_date(sample_dict, 'finalized',
-                                 format=BiobankOrderDAO.DATE_TIME_FORMAT)
+        api_util.parse_json_date(sample_dict, 'finalized')
     return dict_
 
   def properties_to_json(self, dict_):
@@ -78,5 +74,13 @@ class BiobankOrderDAO(data_access_object.DataAccessObject):
         api_util.format_json_date(sample_dict, 'finalized',
                                   format=BiobankOrderDAO.DATE_TIME_FORMAT)
     return dict_
+  
+  def find_by_identifier(self, identifier):
+    query = BiobankOrder.query(BiobankOrder.identifier.system == identifier.system,
+                               BiobankOrder.identifier.value == identifier.value)
+    results = query.fetch()
+    if len(results) == 0:
+      return None
+    return results[0]
   
 DAO = BiobankOrderDAO()
