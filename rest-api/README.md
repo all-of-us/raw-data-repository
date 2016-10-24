@@ -4,12 +4,7 @@
 
 This api is implemented using Flask. They are served by a AppEngine instance.
 
-The App Engine project used for testing is pmi-rdr-api-test (Note that this is
-not the same project set up! Creating an app engine instance requires creating a
-new project.)
-
--   Currently doesn't have billing (should be fine for a while, but will need to
-    be eventually set up.)
+The App Engine project used for testing is pmi-drc-api-test, billed to Vanderbilt. 
 
 The GCS bucket for biobank manifest testing is pmi-drc-biobank-test.
 
@@ -61,15 +56,15 @@ project and then click on "datastore" in the left hand navigation bar.
 Make sure that the dev_appserver is running.
 
 Run 
-'''Shell
+```Shell
 test/run_tests.sh -g $sdk_dir
-'''
+```
 
 If you want to be super slick, and have the tests run every time you change a
 source file, you can do this.
 
 (You will have to install ack-grep and entr if you haven't already.)
 
-'''Shell
+```Shell
 until ack-grep -f --python | entr -r test/run_tests.sh -g $sdk_dir unit;do sleep 1; done
-'''
+```

@@ -15,14 +15,14 @@ def main():
       'end_date': '2017-10-01',
   }
 
-  response = client.request_json('metrics', 'POST', request)
+  response = client.request_json('Metrics', 'POST', request)
   pprint.pprint(response)
 
   request = {
       'metric': 'PARTICIPANT_TOTAL',
   }
 
-  response = client.request_json('metrics', 'POST', request)
+  response = client.request_json('Metrics', 'POST', request)
   pprint.pprint(response)
 
   request = {
@@ -30,7 +30,7 @@ def main():
       'bucket_by': 'WEEK',
   }
 
-  response = client.request_json('metrics', 'POST', request)
+  response = client.request_json('Metrics', 'POST', request)
   pprint.pprint(response)
 
 

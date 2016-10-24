@@ -53,11 +53,11 @@ api.add_resource(biobank_orders_api.BiobankOrderAPI,
                  methods=['POST', 'GET'])
 
 api.add_resource(metrics_api.MetricsApi,
-                 PREFIX + 'metrics',
+                 PREFIX + 'Metrics',
                  endpoint='metrics',
                  methods=['POST'])
 
 api.add_resource(metrics_api.MetricsApi,
-                 PREFIX + 'metrics_recalculate',
+                 PREFIX + 'MetricsRecalculate',
                  endpoint='metrics_recalc',
                  methods=['GET'])
