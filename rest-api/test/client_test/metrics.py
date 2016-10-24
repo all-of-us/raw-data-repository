@@ -20,7 +20,7 @@ class MetricsTest(unittest.TestCase):
         'metric': 'PARTICIPANT_MEMBERSHIP_TIER',
         'facets': ['HPO_ID'],
     }
-    response = self.client.request_json('metrics', 'POST', request)
+    response = self.client.request_json('Metrics', 'POST', request)
     pprint.pprint(response)
 
 if __name__ == '__main__':
