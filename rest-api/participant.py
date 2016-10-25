@@ -72,9 +72,11 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     super(ParticipantDAO, self).__init__(Participant)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
+    if not dict_.get('participant_id'):
+      # Assign a unique biobank ID to this participant when creating it 
+      dict_['biobank_id'] = 'B{:d}'.format(identifier.get_id()).zfill(9)
     if id_:
       dict_['participant_id'] = id_
-
     api_util.parse_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
     api_util.parse_json_date(dict_, 'sign_up_time')
     api_util.parse_json_date(dict_, 'consent_time')
