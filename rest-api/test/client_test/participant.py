@@ -48,6 +48,7 @@ class ParticipantTest(unittest.TestCase):
     response['membership_tier'] = 'VOLUNTEER'
     response['consent_time'] = datetime.datetime.now().isoformat()
     response['hpo_id'] = '1234'
+    response['biobank_id'] = None
     response = self.client.request_json(
         'Participant/{}'.format(participant_id), 'PATCH', response)
     self.assertEqual(response['zip_code'], zip_code)
