@@ -7,6 +7,7 @@ from client.client import Client
 
 CREDS_FILE = './test-data/test-client-cert.json'
 DEFAULT_INSTANCE = 'http://localhost:8080'
+# 'https://pmi-drc-api-test.appspot.com/'
 
 def get_client(base_path):
   return Client(base_path, False, CREDS_FILE, DEFAULT_INSTANCE)

@@ -55,6 +55,7 @@ key, adds them up, and writes out the aggregated counts.
 
 import copy
 import json
+import logging
 import pipeline
 
 import api_util
@@ -182,19 +183,28 @@ def map_key_to_summary(entity_key, now=None):
   history = metrics_config['load_history_func'](entity_key, datetime.now())
   history = sorted(history, key=lambda o: o.date)
 
-  last_state = None
-  current_state = {}
+  last_state = {}
   last_facets_key = None
   for hist_obj in history:
     summary = {}
     old_summary = {}
     date = hist_obj.date.date()
 
+    new_state = copy.deepcopy(last_state)
     hist_kind = hist_obj.key.kind()
     for field in metrics_config['fields'][hist_kind]:
-      current_state[field.name] = field.func(hist_obj)
+      try:
+        new_state[field.name] = field.func(hist_obj)
+      except Exception as e:
+        logging.error('Failure parsing history field: {}'.format(e))
+        new_state = last_state  # Restore to previous state and abort loop
+        break
 
-    facets_key = _get_facets_key(date, metrics_config, current_state)
+    if new_state == last_state:
+      # Either no changes or skipping a bad history object.
+      continue
+
+    facets_key = _get_facets_key(date, metrics_config, new_state)
     facets_change = last_facets_key is None or last_facets_key['facets'] != facets_key['facets']
 
     # Put out a single 'total' entry for the first time this object shows up.
@@ -203,7 +213,7 @@ def map_key_to_summary(entity_key, now=None):
       if last_state:
         old_summary[kind] = -1
 
-    for k, v in current_state.iteritems():
+    for k, v in new_state.iteritems():
       # Output a delta for this field if it is either the first value we have,
       # or if it has changed. In the case that one of the facets has changed,
       # we need deltas for all fields.
@@ -222,7 +232,7 @@ def map_key_to_summary(entity_key, now=None):
       yield json.dumps(_get_facets_key(date, metrics_config, last_state)), json.dumps(old_summary, sort_keys=True)
 
     yield json.dumps(facets_key), json.dumps(summary, sort_keys=True)
-    last_state = copy.deepcopy(current_state)
+    last_state = new_state
     last_facets_key = facets_key
 
 def reduce_facets(facets_key_json, deltas):

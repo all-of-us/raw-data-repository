@@ -104,8 +104,6 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.REGISTERED': 1,
              'Participant': 1,
         }),
-        ({'date': '2014-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]}, {}),
-        ({'date': '2015-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]}, {}),
         ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.REGISTERED': -1,
