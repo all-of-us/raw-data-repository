@@ -69,7 +69,7 @@ source file, you can do this.
 until ack-grep -f --python | entr -r test/run_tests.sh -g $sdk_dir unit;do sleep 1; done
 ```
 
-### Adding test participants to local appserver
+### Adding fake participants to local appserver
 
 Use the [local datastore viewer](http://localhost:8000/datastore?kind=Config) 
 to create a Config entity with
@@ -77,7 +77,7 @@ to create a Config entity with
 
 Then execute the following from the rest-api-client directory:
 ```Shell
-python load_fake_participants.py --instance=http://localhost:8080
+python load_fake_participants.py --instance=http://localhost:8080 --count=10
 ```
-You can run it repeatedly in order to have more fake participants.
+Running it repeatedly just adds more fake participants.
 
