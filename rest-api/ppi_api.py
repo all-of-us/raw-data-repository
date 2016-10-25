@@ -25,13 +25,23 @@ class QuestionnaireResponseAPI(base_api.BaseApi):
     super(QuestionnaireResponseAPI, self).__init__(questionnaire_response.DAO)
 
   def validate_object(self, q, a_id=None):
-    """Makes sure that the questionnaire response is for a valid participant"""
+    """Makes sure that the questionnaire response has valid references."""
     model = fhirclient.models.questionnaireresponse.QuestionnaireResponse(
         q.resource)
-    participant_id = model.subject.reference
-    if participant_id != 'Patient/{}'.format(a_id):
-      raise BadRequest('Participant id {} invalid.'.format(participant_id))
 
-    # This will raise if the participant can't be found.  Loading for validation
-    # only.
-    participant.DAO.load(a_id)
+    # The participant id must match a_id and be present.
+    participant_id = model.subject.reference
+    if (participant_id != 'Patient/{}'.format(a_id) or
+        not participant.DAO.load_if_present(a_id)):
+      raise BadRequest(
+          'Participant id {} invalid or missing.'.format(participant_id))
+
+    # The questionnaire ID must be valid and present in the datastore.
+    questionnaire_id = model.questionnaire.reference
+    if not questionnaire_id.startswith('Questionnaire/'):
+      raise BadRequest(
+          'Questionnaire id {} invalid or missing.'.format(questionnaire_id))
+    questionnaire_id = questionnaire_id.replace('Questionnaire/','')
+    if not questionnaire.DAO.load_if_present(questionnaire_id):
+      raise BadRequest(
+          'Questionnaire id {} invalid or missing.'.format(questionnaire_id))

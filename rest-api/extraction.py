@@ -75,6 +75,9 @@ class QuestionnaireResponseExtractor(FhirExtractor):
     source_questionnaire = self.r_fhir.questionnaire.reference
     return source_questionnaire.split('Questionnaire/')[-1]
 
+  def extract_id(self):
+    return self.r_fhir.id
+
   def extract_answer(self, link_id, concept):
     config = self.CONFIGS[concept]
     qs = get_questions_by_link_id(self.r_fhir, link_id)

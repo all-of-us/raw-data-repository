@@ -197,7 +197,7 @@ def map_key_to_summary(entity_key, now=None):
         new_state[field.name] = field.func(hist_obj)
       except Exception as e:
         logging.error(
-            'Failure parsing history field {}: {}'.format(field.name, e))
+            'Failure parsing history field {0}: {1}'.format(field.name, e))
         new_state = last_state  # Restore to previous state and abort loop
         break
 
