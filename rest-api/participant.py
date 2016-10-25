@@ -72,9 +72,6 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     super(ParticipantDAO, self).__init__(Participant)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
-    if not dict_.get('participant_id'):
-      # Assign a unique biobank ID to this participant when creating it 
-      dict_['biobank_id'] = 'B{:d}'.format(identifier.get_id()).zfill(9)
     if id_:
       dict_['participant_id'] = id_
     api_util.parse_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
@@ -119,6 +116,12 @@ class ParticipantDAO(data_access_object.DataAccessObject):
   def allocate_id(self):
     _id = identifier.get_id()
     return 'P{:d}'.format(_id).zfill(9)
+    
+  def insert(self, model, date=None):
+    # Assign a new biobank ID when inserting a new participant 
+    model.populate(**{'biobank_id': 
+                      'B{:d}'.format(identifier.get_id()).zfill(9)})
+    return super(ParticipantDAO, self).insert(model, date)      
 
 def load_history_entities(participant_key, now):
   """Loads all related history entries.

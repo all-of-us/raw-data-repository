@@ -4,6 +4,7 @@ import uuid
 import copy
 
 from google.appengine.ext import ndb
+from werkzeug.exceptions import Conflict
 from werkzeug.exceptions import NotFound
 
 class DataAccessObject(object):
@@ -112,6 +113,21 @@ class DataAccessObject(object):
           self.model_name, ancestor_id, id_))
     return m
 
+  @ndb.transactional
+  def insert(self, model, date=None):
+    if model.key.get():
+      raise Conflict('{} with key {} already exists'.format(
+          self.model_name, model.key))
+    return self.store(model, date)
+  
+  @ndb.transactional
+  def update(self, model, date=None):
+    if not model.key.get():
+      raise NotFound('{} with key {} does not exist'.format(
+          self.model_name, model.key))
+    return self.store(model, date)
+
+  @ndb.transactional
   def store(self, model, date=None):
     h = self.history_model(parent=model.key, obj=model)
     if date:
