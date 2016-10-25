@@ -68,3 +68,16 @@ source file, you can do this.
 ```Shell
 until ack-grep -f --python | entr -r test/run_tests.sh -g $sdk_dir unit;do sleep 1; done
 ```
+
+### Adding test participants to local appserver
+
+Use the [local datastore viewer](http://localhost:8000/datastore?kind=Config) 
+to create a Config entity with
+`config_key=allow_fake_history_dates` and `value=True`.
+
+Then execute the following from the rest-api-client directory:
+```Shell
+python load_fake_participants.py --instance=http://localhost:8080
+```
+You can run it repeatedly in order to have more fake participants.
+
