@@ -119,8 +119,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     
   def insert(self, model, date=None):
     # Assign a new biobank ID when inserting a new participant 
-    model.populate(**{'biobank_id': 
-                      'B{:d}'.format(identifier.get_id()).zfill(9)})
+    model.biobank_id = 'B{:d}'.format(identifier.get_id()).zfill(9)
     return super(ParticipantDAO, self).insert(model, date)      
 
 def load_history_entities(participant_key, now):
