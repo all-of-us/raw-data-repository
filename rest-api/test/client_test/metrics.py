@@ -23,5 +23,14 @@ class MetricsTest(unittest.TestCase):
     response = self.client.request_json('Metrics', 'POST', request)
     pprint.pprint(response)
 
+  def testParticipantTotal(self):
+    request = {
+        'metric': 'PARTICIPANT_TOTAL',
+        'bucket_by': 'NONE'
+    }
+    response = self.client.request_json('Metrics', 'POST', request)
+    pprint.pprint(response)
+
+
 if __name__ == '__main__':
   unittest.main()

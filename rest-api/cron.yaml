@@ -1,5 +1,5 @@
 cron:
 - description: Hourly metrics
-  url: /rdr/v1/metrics_recalculate
+  url: /rdr/v1/MetricsRecalculate
   schedule: every 1 hours
   
