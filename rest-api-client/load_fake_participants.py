@@ -89,7 +89,6 @@ def parse_args(default_instance=None):
       help='The instance to hit, either https://xxx.appspot.com, '
       'or http://localhost:8080',
       default=default_instance)
-
   return parser.parse_args()
 
 
@@ -111,7 +110,6 @@ def main():
       client.request_json('Participant/{}'.format(participant_id), 'PATCH', p, headers={'X-Pretend-Date': when})
 
     q = random_questionnaire(response, details['questionnaire_time'], q_id)
-    print 'Random questionnaire:', q
     q_response = client.request_json(
         'Participant/{}/QuestionnaireResponse'.format(participant_id),
         'POST',
