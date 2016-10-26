@@ -36,6 +36,7 @@ class DataAccessObject(object):
     history_props = {
         'date': ndb.DateTimeProperty(auto_now_add=True),
         'obj': ndb.StructuredProperty(model_type, repeated=False),
+        'client_id': ndb.StringProperty(),
     }
     self.history_model = type(
         self.model_name + 'History', (ndb.Model,), history_props)
@@ -114,24 +115,26 @@ class DataAccessObject(object):
     return m
 
   @ndb.transactional
-  def insert(self, model, date=None):
+  def insert(self, model, date=None, client_id=None):
     if model.key.get():
       raise Conflict('{} with key {} already exists'.format(
           self.model_name, model.key))
-    return self.store(model, date)
+    return self.store(model, date, client_id)
   
   @ndb.transactional
-  def update(self, model, date=None):
+  def update(self, model, date=None, client_id=None):
     if not model.key.get():
       raise NotFound('{} with key {} does not exist'.format(
           self.model_name, model.key))
-    return self.store(model, date)
+    return self.store(model, date, client_id)
 
   @ndb.transactional
-  def store(self, model, date=None):
+  def store(self, model, date=None, client_id=None):
     h = self.history_model(parent=model.key, obj=model)
     if date:
       h.populate(date=date)
+    if client_id:
+      h.populate(client_id=client_id)
     h.put()
     model.put()
 

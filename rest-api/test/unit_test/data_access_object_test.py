@@ -83,20 +83,24 @@ class DataAccessObjectTest(unittest.TestCase):
 
   def test_history(self):
     dates = [datetime(2016, 10, 1) for i in range(3)]
+    client_ids = ["client {}".format(i) for i in range(3)]
 
     for i in range(3):
       obj = ParentModel(key=ndb.Key(ParentModel, "1"))
       obj.foo = str(i)
-      PARENT_DAO.store(obj, dates[i])
+      PARENT_DAO.store(obj, dates[i], client_id="client {}".format(i))
       self.assertEquals(obj, PARENT_DAO.load("1"))
 
     key = ndb.Key(ParentModel, "1")
     actual_history = PARENT_DAO.get_all_history(key)
     self.assertEquals(sorted(dates), sorted(h.date for h in actual_history))
+    self.assertEquals(sorted(client_ids), 
+                      sorted(h.client_id for h in actual_history))
     self.assertEquals(range(3), sorted(int(h.obj.foo) for h in actual_history))
 
   def test_history_child(self):
     dates = [datetime(2016, 10, 1) for i in range(3)]
+    client_ids = ["client {}".format(i) for i in range(3)]
     parent_id = "p1"
     parent = ParentModel(key=ndb.Key(ParentModel, parent_id))
     PARENT_DAO.store(parent)
@@ -104,12 +108,14 @@ class DataAccessObjectTest(unittest.TestCase):
     for i in range(3):
       obj = ChildModel(key=ndb.Key(ParentModel, parent_id, ChildModel, "1"))
       obj.bar = str(i)
-      CHILD_DAO.store(obj, dates[i])
+      CHILD_DAO.store(obj, dates[i], client_id="client {}".format(i))
       self.assertEquals(obj, CHILD_DAO.load("1", parent_id))
 
     key = ndb.Key(ParentModel, parent_id, ChildModel, "1")
     actual_history = CHILD_DAO.get_all_history(key)
     self.assertEquals(sorted(dates), sorted(h.date for h in actual_history))
+    self.assertEquals(sorted(client_ids), 
+                      sorted(h.client_id for h in actual_history))
     self.assertEquals(range(3), sorted(int(h.obj.bar) for h in actual_history))
 
 if __name__ == '__main__':

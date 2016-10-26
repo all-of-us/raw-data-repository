@@ -117,10 +117,10 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     _id = identifier.get_id()
     return 'P{:d}'.format(_id).zfill(9)
     
-  def insert(self, model, date=None):
+  def insert(self, model, date=None, client_id=None):
     # Assign a new biobank ID when inserting a new participant 
     model.biobank_id = 'B{:d}'.format(identifier.get_id()).zfill(9)
-    return super(ParticipantDAO, self).insert(model, date)      
+    return super(ParticipantDAO, self).insert(model, date, client_id)      
 
 def load_history_entities(participant_key, now):
   """Loads all related history entries.
