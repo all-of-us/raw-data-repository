@@ -19,6 +19,10 @@ class QuestionnaireAPI(base_api.BaseApi):
   def __init__(self):
     super(QuestionnaireAPI, self).__init__(questionnaire.DAO)
 
+  def validate_object(self, q, a_id=None):
+    """Makes sure that the questionnaire is valid."""
+    model = fhirclient.models.questionnaire.Questionnaire(q.resource)
+
 
 class QuestionnaireResponseAPI(base_api.BaseApi):
   def __init__(self):
@@ -41,7 +45,7 @@ class QuestionnaireResponseAPI(base_api.BaseApi):
     if not questionnaire_id.startswith('Questionnaire/'):
       raise BadRequest(
           'Questionnaire id {} invalid or missing.'.format(questionnaire_id))
-    questionnaire_id = questionnaire_id.replace('Questionnaire/','')
+    questionnaire_id = questionnaire_id.replace('Questionnaire/', '', 1)
     if not questionnaire.DAO.load_if_present(questionnaire_id):
       raise BadRequest(
           'Questionnaire id {} invalid or missing.'.format(questionnaire_id))
