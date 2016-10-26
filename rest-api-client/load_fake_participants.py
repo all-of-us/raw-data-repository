@@ -90,20 +90,12 @@ def parse_args(default_instance=None):
       'or http://localhost:8080',
       default=default_instance)
 
-  parser.add_argument(
-      '--invalid_qid',
-      action='store_true',
-      help='Whether to use a deliberately broken questionnaire ID')
-
   return parser.parse_args()
 
 
 def main():
   args = parse_args()
   client = Client('rdr/v1', default_instance=args.instance, parse_cli=False)
-
-  print 'count: ', args.count
-  print 'invalid_qid: ', args.invalid_qid
 
   questionnaire = json.load(open('test-data/questionnaire_example.json'))
   q_id = client.request_json('Questionnaire', 'POST', questionnaire)['id']
@@ -118,10 +110,7 @@ def main():
     for p, when in participant_calls[1:]:
       client.request_json('Participant/{}'.format(participant_id), 'PATCH', p, headers={'X-Pretend-Date': when})
 
-    if args.invalid_qid:
-      print '*** Applying invalid questionnaire id ***'
-    q = random_questionnaire(response, details['questionnaire_time'],
-                             'invalid' if args.invalid_qid else q_id)
+    q = random_questionnaire(response, details['questionnaire_time'], q_id)
     print 'Random questionnaire:', q
     q_response = client.request_json(
         'Participant/{}/QuestionnaireResponse'.format(participant_id),
