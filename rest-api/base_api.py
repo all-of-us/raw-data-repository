@@ -59,11 +59,12 @@ class BaseApi(Resource):
 
     Args:
       a_id: The ancestor id.
-    """
+    """    
     resource = request.get_json(force=True)
     m = self.dao.from_json(resource, a_id, self.dao.allocate_id())
-    self.validate_object(m, a_id)
-    self.dao.insert(m, date=consider_fake_date())
+    self.validate_object(m, a_id)    
+    self.dao.insert(m, date=consider_fake_date(),
+                    client_id=api_util.get_client_id())
     return self.dao.to_json(m)
 
   @api_util.auth_required
@@ -78,7 +79,8 @@ class BaseApi(Resource):
     new_m = self.dao.from_json(request.get_json(force=True), a_id, id_)
     self.validate_object(new_m, a_id)
     api_util.update_model(old_model=old_m, new_model=new_m)
-    self.dao.update(old_m, date=consider_fake_date())
+    self.dao.update(old_m, date=consider_fake_date(),
+                    client_id=api_util.get_client_id())
     return self.dao.to_json(old_m)
 
 def consider_fake_date():

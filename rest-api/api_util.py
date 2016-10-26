@@ -36,6 +36,9 @@ def check_auth():
   user = oauth.get_current_user(SCOPE)
   return is_user_whitelisted(user)
 
+def get_client_id():
+  return oauth.get_current_user(SCOPE).email()
+
 def check_auth_cron_or_admin():
   """Returns true if the current user is a cron job or an admin.
 
