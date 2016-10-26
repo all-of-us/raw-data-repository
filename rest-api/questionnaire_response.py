@@ -1,5 +1,3 @@
-import logging
-
 import data_access_object
 
 import extraction
@@ -41,7 +39,6 @@ def extract_field(history_object, concept):
   resource = history_object.obj.resource
   response_extractor = QuestionnaireResponseExtractor(resource)
   questionnaire_id = response_extractor.extract_questionnaire_id()
-  logging.info('Looking up questionnaire id %s' % questionnaire_id)
   questionnaire = QuestionnaireDAO.load_if_present(questionnaire_id)
   if not questionnaire:
     raise ValueError(
