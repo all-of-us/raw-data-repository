@@ -1,7 +1,8 @@
 """Various functions for extracting fields from FHIR documents"""
 
-from fhirclient.models.fhirelementfactory import FHIRElementFactory
 from collections import namedtuple
+from fhirclient.models.fhirelementfactory import FHIRElementFactory
+from questionnaire import DAO as questionnaireDAO
 
 Concept = namedtuple('Concept', ['system', 'code'])
 
@@ -28,11 +29,9 @@ class FhirExtractor(object):
 
 class QuestionnaireExtractor(FhirExtractor):
   def extract_link_id_for_concept(self, concept):
+    """Returns list of link ids in questionnaire that address the concept."""
     assert isinstance(concept, Concept)
-    ret = self.extract_link_id_for_concept_(self.r_fhir.group, concept)
-    assert len(ret) == 1, \
-           '{} questions match concept {}'.format(len(ret), concept)
-    return ret[0]
+    return self.extract_link_id_for_concept_(self.r_fhir.group, concept)
 
   def extract_link_id_for_concept_(self, qr, concept):
     # Sometimes concept is an existing attr with a value of None.
@@ -87,6 +86,33 @@ class QuestionnaireResponseExtractor(FhirExtractor):
       if value:
         return config.mapping[Concept(value.system, value.code)]
 
+
+# Extractors for questionnaire response objects.
+# Used in metrics_pipeline to compute the time-series of answers.
+
+def extract_race(questionnaire_response):
+  """Returns tuple (whether race answer can be determined, answer)."""
+  return extract_field(questionnaire_response, RACE_CONCEPT)
+
+def extract_ethnicity(questionnaire_response):
+  """Returns tuple (whether ethnicity answer can be determined, answer)."""
+  return extract_field(questionnaire_response, ETHNICITY_CONCEPT)
+
+def extract_field(questionnaire_response, concept):
+  """Returns tuple (whether answer for concept can be determined, answer)."""
+  response_extractor = QuestionnaireResponseExtractor(
+      questionnaire_response.resource)
+  questionnaire_id = response_extractor.extract_questionnaire_id()
+  questionnaire = questionnaireDAO.load_if_present(questionnaire_id)
+  if not questionnaire:
+    raise ValueError(
+        'Invalid Questionnaire id {0} in Response {1}'.format(
+            questionnaire_id, response_extractor.extract_id()))
+  questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
+  link_ids = questionnaire_extractor.extract_link_id_for_concept(concept)
+  if not len(link_ids) == 1:
+    return (False, None)
+  return (True, response_extractor.extract_answer(link_ids[0], concept))
 
 
 def _as_list(v):

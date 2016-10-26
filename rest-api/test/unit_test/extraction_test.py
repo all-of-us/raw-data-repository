@@ -34,9 +34,9 @@ class ExtractionTest(unittest.TestCase):
   def test_questionnaire_extract(self):
     questionnaire = json.loads(open(_data_path('questionnaire_example.json')).read())
     extractor = QuestionnaireExtractor(questionnaire)
-    self.assertEquals(RACE_LINKID,
+    self.assertEquals([RACE_LINKID],
                       extractor.extract_link_id_for_concept(extraction.RACE_CONCEPT))
-    self.assertEquals(ETHNICITY_LINKID,
+    self.assertEquals([ETHNICITY_LINKID],
                       extractor.extract_link_id_for_concept(extraction.ETHNICITY_CONCEPT))
 
   def test_questionnaire_response_extract(self):

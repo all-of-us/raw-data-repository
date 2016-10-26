@@ -60,9 +60,9 @@ import pipeline
 
 import api_util
 import config
+import extraction
 import metrics
 import participant
-import questionnaire_response
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -82,17 +82,31 @@ class PipelineNotRunningException(BaseException):
 
 DATE_FORMAT = '%Y-%m-%d'
 
-# Extract the recruitment_source from a ParticipantHistory model.
-HPO_ID_FUNC = lambda ph: ((ph.obj.recruitment_source and (str(ph.obj.recruitment_source) + ':') or '')
-                         + str(ph.obj.hpo_id))
+UNMAPPED = 'UNMAPPED'
+
+# An ExtractionResult.found is True if the desired response was found in
+# the information provided, in which case it also has value set.
+# An ExtractionResult.value may be a valid value, None, or UNMAPPED.
+
+ExtractionResult = namedtuple('ExtractionResult', ['found', 'value'])
 
 
-def extract_bucketed_age(hist_obj):
-  today = hist_obj.date
-  if not hist_obj.obj.date_of_birth:
-    return None
-  age = relativedelta(today, hist_obj.obj.date_of_birth).years
-  return _bucket_age(age)
+def _extract_bucketed_age(participant_hist_obj):
+  """Returns ExtractionResult with the bucketed participant age on that date."""
+  today = participant_hist_obj.date
+  participant = participant_hist_obj.obj
+  if not participant.date_of_birth:
+    return ExtractionResult(True, None)
+  age = relativedelta(today, participant.date_of_birth).years
+  return ExtractionResult(True, _bucket_age(age))
+
+
+def _extract_HPO_id(ph):
+  return ExtractionResult(
+      True,
+      ((ph.obj.recruitment_source and (str(ph.obj.recruitment_source) + ':')
+        or '')
+       + str(ph.obj.hpo_id)))
 
 
 # Configuration for each type of object that we are collecting metrics on.  It
@@ -104,9 +118,11 @@ def extract_bucketed_age(hist_obj):
 #  facets: A list of functions for extracting the different facets to aggregate
 #    on. For each hisory object, this function will be passed a dictionary with
 #    all the current extracted fields, with their current values. Its return
-#    value must be convertable to a string.
+#    value must be convertible to string.
 #  model: The type of the history object.
-#  fields: The fields of the model to collect metrics on.
+#  fields: The fields of the model to collect metrics on. A field consists
+#    of a name and function that accepts a history object of the appropriate
+#    type and returns an ExtractionResult.
 FieldDef = namedtuple('FieldDef', ['name', 'func'])
 FacetDef = namedtuple('FacetDef', ['type', 'func'])
 METRICS_CONFIGS = {
@@ -117,18 +133,29 @@ METRICS_CONFIGS = {
         ],
         'fields': {
             'ParticipantHistory': [
-                FieldDef('membership_tier', lambda p: p.obj.membership_tier),
-                FieldDef('gender_identity', lambda p: p.obj.gender_identity),
-                FieldDef('age_range', extract_bucketed_age),
-                FieldDef('hpo_id', HPO_ID_FUNC),
+                FieldDef('membership_tier',
+                         lambda p: ExtractionResult(True,
+                                                    p.obj.membership_tier)),
+                FieldDef('gender_identity',
+                         lambda p: ExtractionResult(True,
+                                                    p.obj.gender_identity)),
+                FieldDef('age_range', _extract_bucketed_age),
+                FieldDef('hpo_id', _extract_HPO_id),
             ],
             'QuestionnaireResponseHistory': [
-                FieldDef('race', questionnaire_response.extract_race),
-                FieldDef('ethnicity', questionnaire_response.extract_ethnicity),
+                FieldDef(
+                    'race',
+                    lambda qr: ExtractionResult(
+                        *extraction.extract_race(qr.obj))),
+                FieldDef(
+                    'ethnicity',
+                    lambda qr: ExtractionResult(
+                        *extraction.extract_ethnicity(qr.obj))),
             ]
         },
     },
 }
+
 
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
@@ -194,19 +221,19 @@ def map_key_to_summary(entity_key, now=None):
     hist_kind = hist_obj.key.kind()
     for field in metrics_config['fields'][hist_kind]:
       try:
-        new_state[field.name] = field.func(hist_obj)
+        result = field.func(hist_obj)
+        if result.found:
+          new_state[field.name] = result.value
       except Exception as e:
         logging.error(
-            'Failure parsing history field {0}: {1}'.format(field.name, e))
-        new_state = last_state  # Restore to previous state and abort loop
-        break
+            'Exception extracting history field {0}: {1}'.format(field.name, e))
 
     if new_state == last_state:
-      # Either no changes or skipping a bad history object.
-      continue
+      continue  # No changes so there's nothing to do.
 
     facets_key = _get_facets_key(date, metrics_config, new_state)
-    facets_change = last_facets_key is None or last_facets_key['facets'] != facets_key['facets']
+    facets_change = (last_facets_key is None or
+                     last_facets_key['facets'] != facets_key['facets'])
 
     # Put out a single 'total' entry for the first time this object shows up.
     if facets_change:
@@ -230,9 +257,11 @@ def map_key_to_summary(entity_key, now=None):
 
     if old_summary:
       # Can't just use last_facets_key, as it has the old date.
-      yield json.dumps(_get_facets_key(date, metrics_config, last_state)), json.dumps(old_summary, sort_keys=True)
+      yield (json.dumps(_get_facets_key(date, metrics_config, last_state)),
+             json.dumps(old_summary, sort_keys=True))
 
-    yield json.dumps(facets_key), json.dumps(summary, sort_keys=True)
+    yield (json.dumps(facets_key),
+           json.dumps(summary, sort_keys=True))
     last_state = new_state
     last_facets_key = facets_key
 
