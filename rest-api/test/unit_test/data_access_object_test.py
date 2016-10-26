@@ -10,6 +10,9 @@ from google.appengine.api import memcache
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 
+from werkzeug.exceptions import Conflict
+from werkzeug.exceptions import NotFound
+
 
 class ParentModel(ndb.Model):
   foo = ndb.StringProperty()
@@ -50,6 +53,33 @@ class DataAccessObjectTest(unittest.TestCase):
     child.bar = "1"
     CHILD_DAO.store(child)
     self.assertEquals(child, CHILD_DAO.load("1", parent_id))
+
+  def test_insert(self):
+    parent_id = 'parentID1'
+    parent = ParentModel(key=ndb.Key(ParentModel, parent_id))
+    parent.foo = "Foo"
+    PARENT_DAO.insert(parent)
+    self.assertEquals(parent, PARENT_DAO.load(parent_id))
+    
+    try:
+      PARENT_DAO.insert(parent)
+      self.fail('Repeated insert should fail.')
+    except Conflict:
+      pass
+    
+  def test_update(self):
+    parent_id = 'parentID1'
+    parent = ParentModel(key=ndb.Key(ParentModel, parent_id))
+    parent.foo = "Foo"
+    try:
+      PARENT_DAO.update(parent)
+      self.fail('Update before insert should fail.')
+    except NotFound:
+      pass
+    PARENT_DAO.insert(parent)    
+    parent.foo = "BAR"
+    PARENT_DAO.update(parent)
+    self.assertEquals(parent, PARENT_DAO.load(parent_id))  
 
   def test_history(self):
     dates = [datetime(2016, 10, 1) for i in range(3)]

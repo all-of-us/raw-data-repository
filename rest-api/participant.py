@@ -74,7 +74,6 @@ class ParticipantDAO(data_access_object.DataAccessObject):
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:
       dict_['participant_id'] = id_
-
     api_util.parse_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
     api_util.parse_json_date(dict_, 'sign_up_time')
     api_util.parse_json_date(dict_, 'consent_time')
@@ -117,6 +116,11 @@ class ParticipantDAO(data_access_object.DataAccessObject):
   def allocate_id(self):
     _id = identifier.get_id()
     return 'P{:d}'.format(_id).zfill(9)
+    
+  def insert(self, model, date=None):
+    # Assign a new biobank ID when inserting a new participant 
+    model.biobank_id = 'B{:d}'.format(identifier.get_id()).zfill(9)
+    return super(ParticipantDAO, self).insert(model, date)      
 
 def load_history_entities(participant_key, now):
   """Loads all related history entries.

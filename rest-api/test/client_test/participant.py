@@ -32,6 +32,9 @@ class ParticipantTest(unittest.TestCase):
     self.assertEqual(response['first_name'], first_name)
     self.assertEqual(response['physical_evaluation_status'], 
         physical_evaluation_status)
+    biobank_id = response['biobank_id']
+    self.assertTrue(biobank_id.startswith('B'))
+    
 
     participant_id = response['participant_id']
 
@@ -45,12 +48,14 @@ class ParticipantTest(unittest.TestCase):
     response['membership_tier'] = 'VOLUNTEER'
     response['consent_time'] = datetime.datetime.now().isoformat()
     response['hpo_id'] = '1234'
+    response['biobank_id'] = None
     response = self.client.request_json(
         'Participant/{}'.format(participant_id), 'PATCH', response)
     self.assertEqual(response['zip_code'], zip_code)
     self.assertEqual(response['membership_tier'], 'VOLUNTEER')
     self.assertTrue('sign_up_time' in response)
     self.assertEqual(response['hpo_id'], '1234')
+    self.assertEqual(response['biobank_id'], biobank_id)
 
     try:
       # List request must contain at least last name and birth date.
