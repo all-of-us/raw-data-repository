@@ -12,18 +12,20 @@ DEFAULT_INSTANCE = 'http://localhost:8080'
 def get_client(base_path):
   return Client(base_path, False, CREDS_FILE, DEFAULT_INSTANCE)
 
-def create_participant(first, last, birthday):
+def create_participant(client, first, last, birthday):
   participant = {
       'first_name': first,
       'last_name': last,
       'date_of_birth': birthday,
   }
-  participant_client = Client(
-      'rdr/v1', False, CREDS_FILE, DEFAULT_INSTANCE)
-  response = participant_client.request_json(
-      'Participant', 'POST', participant)
+  response = client.request_json('Participant', 'POST', participant)
   return response['participant_id']
 
+def create_questionnaire(client, json_file):
+  with open(json_file) as f:
+    questionnaire = json.load(f)
+    response = client.request_json('Questionnaire', 'POST', questionnaire)
+    return response['id']
 
 def round_trip(test, client, path, resource):
   response = client.request_json(path, 'POST', resource)
@@ -34,7 +36,6 @@ def round_trip(test, client, path, resource):
   response = client.request_json('{}/{}'.format(path, q_id), 'GET')
   del response['id']
   _compare_json(test, resource, response)
-
 
 def _compare_json(test, obj_a, obj_b):
   obj_b = copy.deepcopy(obj_b)
