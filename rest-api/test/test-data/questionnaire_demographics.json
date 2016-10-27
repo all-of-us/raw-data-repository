@@ -87,31 +87,38 @@
                         "type":"choice",
                         "option":[  
                            {  
-                              "code":"Female",
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"female",
                               "display":"Female"
                            },
                            {  
-                              "code":"Female to Male Transgender",
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"female-to-male-transgender",
                               "display":"Female to Male Transgender   "
                            },
                            {  
-                              "code":"Male",
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"male",
                               "display":"Male"
                            },
                            {  
-                              "code":"Male to Female Transgender",
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"male-to-female-transgender",
                               "display":"Male to Female Transgender"
                            },
                            {  
-                              "code":"Intersex",
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"intersex",
                               "display":"Intersex"
                            },
                            {  
-                              "code":"Other",
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"other",
                               "display":"Other"
                            },
                            {  
-                              "code":"Prefer not to answer",
+                              "system": "http://hl7.org/fhir/v3/NullFlavor",
+                              "code":"ASKU",
                               "display":"Prefer not to answer"
                            }
                         ]

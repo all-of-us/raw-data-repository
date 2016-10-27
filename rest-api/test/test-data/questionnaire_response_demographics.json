@@ -30,7 +30,16 @@
             ]
           },
           {
-            "linkId": "1.2"
+            "linkId": "1.2",
+            "question": [{
+              "linkId": "1.2.3",
+              "answer": [{
+                "valueCoding": {
+                  "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                  "code": "male-to-female-transgender"
+                }
+              }]
+            }]
           },
           {
             "linkId": "1.3",
