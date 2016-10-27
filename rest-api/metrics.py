@@ -124,7 +124,7 @@ class MetricService(object):
     results_buckets = ResultsBuckets()
     for db_bucket in MetricsBucket.query(ancestor=serving_version).fetch():
       if not db_bucket.facets:
-        logging.warn('Ignoring old MetricsBucket with no facets defined.')
+        logging.warning('Ignoring old MetricsBucket with no facets defined.')
         continue
       results_bucket = results_buckets.find_or_create(request.facets, db_bucket)
       counts = collections.Counter(json.loads(db_bucket.metrics))
