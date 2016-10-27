@@ -11,6 +11,60 @@ from questionnaire import DAO as questionnaireDAO
 from questionnaire import QuestionnaireExtractor
 from werkzeug.exceptions import NotFound
 
+# Taken from http://www2.census.gov/geo/docs/maps-data/maps/reg_div.txt
+census_regions = {
+  'CT': 'NORTHEAST',
+  'ME': 'NORTHEAST',
+  'MA': 'NORTHEAST',
+  'NH': 'NORTHEAST',
+  'RI': 'NORTHEAST',
+  'VT': 'NORTHEAST',
+  'NJ': 'NORTHEAST',
+  'NY': 'NORTHEAST',
+  'PA': 'NORTHEAST',
+  'IL': 'MIDWEST',
+  'IN': 'MIDWEST',
+  'MI': 'MIDWEST',
+  'OH': 'MIDWEST',
+  'WI': 'MIDWEST',
+  'IA': 'MIDWEST',
+  'KS': 'MIDWEST',
+  'MN': 'MIDWEST',
+  'MO': 'MIDWEST',
+  'NE': 'MIDWEST',
+  'ND': 'MIDWEST',
+  'SD': 'MIDWEST',
+  'DE': 'SOUTH',
+  'DC': 'SOUTH',
+  'FL': 'SOUTH',
+  'GA': 'SOUTH',
+  'MD': 'SOUTH',
+  'NC': 'SOUTH',
+  'SC': 'SOUTH',
+  'VA': 'SOUTH',
+  'WV': 'SOUTH',
+  'AL': 'SOUTH',
+  'KY': 'SOUTH',
+  'MS': 'SOUTH',
+  'TN': 'SOUTH',
+  'AR': 'SOUTH',
+  'LA': 'SOUTH',
+  'OK': 'SOUTH',
+  'TX': 'SOUTH',
+  'AZ': 'WEST',
+  'CO': 'WEST',
+  'ID': 'WEST',
+  'MT': 'WEST',
+  'NV': 'WEST',
+  'NM': 'WEST',
+  'UT': 'WEST',
+  'WY': 'WEST',
+  'AL': 'WEST',
+  'CA': 'WEST',
+  'HI': 'WEST',
+  'OR': 'WEST',
+  'WA': 'WEST' }  
+
 class QuestionnaireResponse(ndb.Model):
   """The questionnaire response."""
   resource = ndb.JsonProperty()
@@ -88,10 +142,116 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
                           'ASKU'): GenderIdentity.PREFER_NOT_TO_SAY,
   }
   
+  _STATE_MAPPING = {
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'AL'): 'AL',
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'AK'): 'AK',
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'AZ'): 'AZ',
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'AR'): 'AR',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'CA'): 'CA',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'CO'): 'CO',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'CT'): 'CT',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'DE'): 'DE',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'FL'): 'FL',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'GA'): 'GA',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'HI'): 'HI',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'ID'): 'ID',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'IL'): 'IL',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'IN'): 'IN',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'IA'): 'IA',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'KS'): 'KS',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'KY'): 'KY',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'LA'): 'LA',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'ME'): 'ME',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'MD'): 'MD',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'MA'): 'MA',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'MI'): 'MI',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'MN'): 'MN',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'MS'): 'MS',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'MO'): 'MO',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'MT'): 'MT',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'NE'): 'NE',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'NV'): 'NV',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'NH'): 'NH',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'NJ'): 'NJ',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'NM'): 'NM',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'NY'): 'NY',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'NC'): 'NC',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'ND'): 'ND',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'OH'): 'OH',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'OK'): 'OK',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'OR'): 'OR',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'PA'): 'PA',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'RI'): 'RI',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'SC'): 'SC',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'SD'): 'SD',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'TN'): 'TN',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'TX'): 'TX',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'UT'): 'UT',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'VT'): 'VT',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'VA'): 'VA',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'WA'): 'WA',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'WV'): 'WV',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'WI'): 'WI',                    
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'WY'): 'WY',
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state',
+                           'ZZ'): 'ZZ'
+  }
+  
   CONFIGS = {
       extraction.ETHNICITY_CONCEPT: Config('valueCoding', _ETHNICITY_MAPPING),
       extraction.RACE_CONCEPT: Config('valueCoding', _RACE_MAPPING),
-      extraction.GENDER_IDENTITY_CONCEPT: Config('valueCoding', _GENDER_IDENTITY_MAPPING)
+      extraction.GENDER_IDENTITY_CONCEPT: Config('valueCoding', _GENDER_IDENTITY_MAPPING),
+      extraction.STATE_OF_RESIDENCE_CONCEPT: Config('valueCoding', _STATE_MAPPING)
   }
 
   def extract_questionnaire_id(self):
@@ -123,6 +283,19 @@ def extract_ethnicity(qr_hist_obj):
 def extract_gender_identity(qr_hist_obj):
   """Returns ExtractionResult for gender identity answer from questionnaire response."""  
   return extract_field(qr_hist_obj.obj, extraction.GENDER_IDENTITY_CONCEPT)
+
+def extract_state_of_residence(qr_hist_obj):
+  """Returns ExtractionResult for state of residence answer from questionnaire response."""  
+  return extract_field(qr_hist_obj.obj, extraction.STATE_OF_RESIDENCE_CONCEPT)
+
+def extract_census_region(qr_hist_obj):
+  """Returns ExtractionResult for census region from questionnaire response."""  
+  state_result = extract_state_of_residence(qr_hist_obj)
+  if state_result.extracted:
+    census_region = census_regions.get(state_result.value)
+    if census_region:
+      return extraction.ExtractionResult(census_region, True)
+  return extraction.ExtractionResult(None, False)  
 
 @ndb.non_transactional
 def extract_field(obj, concept):
