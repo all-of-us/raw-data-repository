@@ -55,12 +55,15 @@ key, adds them up, and writes out the aggregated counts.
 
 import copy
 import json
+import logging
 import pipeline
 
 import api_util
 import config
+import extraction
 import metrics
 import participant
+import questionnaire
 import questionnaire_response
 
 from datetime import datetime
@@ -81,18 +84,6 @@ class PipelineNotRunningException(BaseException):
 
 DATE_FORMAT = '%Y-%m-%d'
 
-# Extract the recruitment_source from a ParticipantHistory model.
-HPO_ID_FUNC = lambda ph: ((ph.obj.recruitment_source and (str(ph.obj.recruitment_source) + ':') or '')
-                         + str(ph.obj.hpo_id))
-
-
-def extract_bucketed_age(hist_obj):
-  today = hist_obj.date
-  if not hist_obj.obj.date_of_birth:
-    return None
-  age = relativedelta(today, hist_obj.obj.date_of_birth).years
-  return _bucket_age(age)
-
 
 # Configuration for each type of object that we are collecting metrics on.  It
 # is keyed on the name of the model to collect metrics on.
@@ -103,9 +94,11 @@ def extract_bucketed_age(hist_obj):
 #  facets: A list of functions for extracting the different facets to aggregate
 #    on. For each hisory object, this function will be passed a dictionary with
 #    all the current extracted fields, with their current values. Its return
-#    value must be convertable to a string.
+#    value must be convertible to string.
 #  model: The type of the history object.
-#  fields: The fields of the model to collect metrics on.
+#  fields: The fields of the model to collect metrics on. A field consists
+#    of a name and function that accepts a history object of the appropriate
+#    type and returns an extraction.ExtractionResult.
 FieldDef = namedtuple('FieldDef', ['name', 'func'])
 FacetDef = namedtuple('FacetDef', ['type', 'func'])
 METRICS_CONFIGS = {
@@ -116,18 +109,22 @@ METRICS_CONFIGS = {
         ],
         'fields': {
             'ParticipantHistory': [
-                FieldDef('membership_tier', lambda p: p.obj.membership_tier),
-                FieldDef('gender_identity', lambda p: p.obj.gender_identity),
-                FieldDef('age_range', extract_bucketed_age),
-                FieldDef('hpo_id', HPO_ID_FUNC),
+                FieldDef('membership_tier',
+                         extraction.simple_field_extractor('membership_tier')),
+                FieldDef('gender_identity',
+                         extraction.simple_field_extractor('gender_identity')),
+                FieldDef('age_range',
+                         lambda ph: participant.extract_age(ph, _bucketed_age)),
+                FieldDef('hpo_id', participant.extract_HPO_id),
             ],
             'QuestionnaireResponseHistory': [
                 FieldDef('race', questionnaire_response.extract_race),
-                FieldDef('ethnicity', questionnaire_response.extract_ethnicity),
+                FieldDef('ethnicity', questionnaire_response.extract_ethnicity)
             ]
         },
     },
 }
+
 
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
@@ -182,20 +179,30 @@ def map_key_to_summary(entity_key, now=None):
   history = metrics_config['load_history_func'](entity_key, datetime.now())
   history = sorted(history, key=lambda o: o.date)
 
-  last_state = None
-  current_state = {}
+  last_state = {}
   last_facets_key = None
   for hist_obj in history:
     summary = {}
     old_summary = {}
     date = hist_obj.date.date()
 
+    new_state = copy.deepcopy(last_state)
     hist_kind = hist_obj.key.kind()
     for field in metrics_config['fields'][hist_kind]:
-      current_state[field.name] = field.func(hist_obj)
+      try:
+        result = field.func(hist_obj)
+        if result.extracted:
+          new_state[field.name] = result.value
+      except Exception as e:
+        logging.error(
+            'Exception extracting history field {0}: {1}'.format(field.name, e))
 
-    facets_key = _get_facets_key(date, metrics_config, current_state)
-    facets_change = last_facets_key is None or last_facets_key['facets'] != facets_key['facets']
+    if new_state == last_state:
+      continue  # No changes so there's nothing to do.
+
+    facets_key = _get_facets_key(date, metrics_config, new_state)
+    facets_change = (last_facets_key is None or
+                     last_facets_key['facets'] != facets_key['facets'])
 
     # Put out a single 'total' entry for the first time this object shows up.
     if facets_change:
@@ -203,7 +210,7 @@ def map_key_to_summary(entity_key, now=None):
       if last_state:
         old_summary[kind] = -1
 
-    for k, v in current_state.iteritems():
+    for k, v in new_state.iteritems():
       # Output a delta for this field if it is either the first value we have,
       # or if it has changed. In the case that one of the facets has changed,
       # we need deltas for all fields.
@@ -219,10 +226,12 @@ def map_key_to_summary(entity_key, now=None):
 
     if old_summary:
       # Can't just use last_facets_key, as it has the old date.
-      yield json.dumps(_get_facets_key(date, metrics_config, last_state)), json.dumps(old_summary, sort_keys=True)
+      yield (json.dumps(_get_facets_key(date, metrics_config, last_state)),
+             json.dumps(old_summary, sort_keys=True))
 
-    yield json.dumps(facets_key), json.dumps(summary, sort_keys=True)
-    last_state = copy.deepcopy(current_state)
+    yield (json.dumps(facets_key),
+           json.dumps(summary, sort_keys=True))
+    last_state = new_state
     last_facets_key = facets_key
 
 def reduce_facets(facets_key_json, deltas):
@@ -261,7 +270,8 @@ def _get_facets_key(date, metrics_config, state):
     key['date'] = date.isoformat()
   return key
 
-def _bucket_age(age):
+def _bucketed_age(date_of_birth, today):
+  age = relativedelta(today, date_of_birth).years
   ages = [0, 18, 26, 36, 46, 56, 66, 76, 86]
   for begin, end in zip(ages, [a - 1 for a in ages[1:]] + ['']):
     if (age >= begin) and (not end or age <= end):

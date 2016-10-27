@@ -1,6 +1,7 @@
 '''The definition of the questionnaire object and DB marshalling.
 '''
 
+import extraction
 import fhirclient.models.questionnaire
 
 import data_access_object
@@ -27,3 +28,23 @@ class QuestionnaireDAO(data_access_object.DataAccessObject):
     }
 
 DAO = QuestionnaireDAO()
+
+class QuestionnaireExtractor(extraction.FhirExtractor):
+  def extract_link_id_for_concept(self, concept):
+    """Returns list of link ids in questionnaire that address the concept."""
+    assert isinstance(concept, extraction.Concept)
+    return self.extract_link_id_for_concept_(self.r_fhir.group, concept)
+
+  def extract_link_id_for_concept_(self, qr, concept):
+    # Sometimes concept is an existing attr with a value of None.
+    for node in qr.concept or []:
+      if concept == extraction.Concept(node.system, node.code):
+        return [qr.linkId]
+
+    ret = []
+    for prop in ('question', 'group'):
+      if getattr(qr, prop, None):
+        ret += [v
+                for q in extraction.as_list(getattr(qr, prop))
+                for v in self.extract_link_id_for_concept_(q, concept)]
+    return ret

@@ -104,8 +104,6 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.REGISTERED': 1,
              'Participant': 1,
         }),
-        ({'date': '2014-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]}, {}),
-        ({'date': '2015-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]}, {}),
         ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.REGISTERED': -1,
@@ -206,14 +204,19 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     self.assertEquals(expected_json, results[0].entity.metrics)
 
   def test_bucket_age(self):
-    self.assertEqual('18-25', metrics_pipeline._bucket_age(18))
-    self.assertEqual('18-25', metrics_pipeline._bucket_age(19))
-    self.assertEqual('18-25', metrics_pipeline._bucket_age(25))
-    self.assertEqual('26-35', metrics_pipeline._bucket_age(26))
-    self.assertEqual('76-85', metrics_pipeline._bucket_age(85))
-    self.assertEqual('86-', metrics_pipeline._bucket_age(86))
-    self.assertEqual('86-', metrics_pipeline._bucket_age(100))
-
+    testcases = ((18,'18-25'),
+                 (19,'18-25'),
+                 (25,'18-25'),
+                 (26,'26-35'),
+                 (85,'76-85'),
+                 (86,'86-'),
+                 (100,'86-'))
+    date_of_birth = datetime.datetime(1940, 8, 21)
+    for testcase in testcases:
+      response_date = date_of_birth + datetime.timedelta(testcase[0] * 365.25)
+      self.assertEqual(testcase[1],
+                       metrics_pipeline._bucketed_age(date_of_birth,
+                                                      response_date))
 
   def test_end_to_end(self):
     key = ndb.Key(participant.Participant, '1')

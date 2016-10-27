@@ -106,9 +106,12 @@ class DataAccessObject(object):
     """
     return dict_
 
-  def load(self, id_, ancestor_id=None):
+  def load_if_present(self, id_, ancestor_id=None):
     assert bool(ancestor_id) == bool(self.ancestor_type), "Requires an ancestor_id"
-    m = self._make_key(id_, ancestor_id).get()
+    return self._make_key(id_, ancestor_id).get()
+
+  def load(self, id_, ancestor_id=None):
+    m = self.load_if_present(id_, ancestor_id)
     if not m:
       raise NotFound('{} with id {}:{} not found.'.format(
           self.model_name, ancestor_id, id_))

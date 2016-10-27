@@ -5,6 +5,7 @@ import api_util
 import copy
 
 import data_access_object
+import extraction
 import identifier
 
 from datetime import datetime
@@ -182,5 +183,21 @@ def inject_age_change_records(history, now):
       del dates_to_inject[-1]
 
   history.extend(new_objs)
+
+def extract_age(participant_hist_obj, age_func):
+  """Returns ExtractionResult with the bucketed participant age on that date."""
+  today = participant_hist_obj.date
+  participant = participant_hist_obj.obj
+  if not participant.date_of_birth:
+    return extraction.ExtractionResult(None)  # DOB was not provided: set None
+  return extraction.ExtractionResult(age_func(participant.date_of_birth, today))
+
+def extract_HPO_id(ph):
+  """Returns ExtractionResult with the string representing the HPO."""
+  return extraction.ExtractionResult(
+      ((ph.obj.recruitment_source and (str(ph.obj.recruitment_source) + ':')
+        or '')
+       + str(ph.obj.hpo_id)))
+
 
 DAO = ParticipantDAO()

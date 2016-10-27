@@ -7,7 +7,10 @@ import json
 import unittest
 
 import test_util
+from client.client import HttpException
 
+def _questionnaire_response_url(participant_id):
+  return 'Participant/{}/QuestionnaireResponse'.format(participant_id)
 
 class TestPPI(unittest.TestCase):
   def setUp(self):
@@ -26,7 +29,7 @@ class TestPPI(unittest.TestCase):
         questionnaire = json.load(f)
         test_util.round_trip(self, self.client, 'Questionnaire', questionnaire)
 
-  def test_questionnaire_responses(self):
+  def test_valid_and_invalid_questionnaire_responses(self):
     questionnaire_response_files = [
         # Stripped down version of the official FHIR example
         #'test-data/questionnaire_response1.json',
@@ -35,17 +38,29 @@ class TestPPI(unittest.TestCase):
         'test-data/questionnaire_response3.json',
     ]
     participant_id = test_util.create_participant(
-        'Bovine', 'Knickers', '1970-10-10')
+        self.client, 'Bovine', 'Knickers', '1970-10-10')
+    questionnaire_id = test_util.create_questionnaire(
+        self.client, 'test-data/questionnaire1.json')
     for json_file in questionnaire_response_files:
       with open(json_file) as f:
         resource = json.load(f)
+        # Sending response with the dummy participant id in the file is an error
+        with self.assertRaises(HttpException) as context:
+          test_util.round_trip(self, self.client,
+                               _questionnaire_response_url('{participant_id}'),
+                               resource)
+        # Fixing participant id but not the questionnaire id is also an error
+        good_url = _questionnaire_response_url(participant_id)
         resource['subject']['reference'] = \
             resource['subject']['reference'].format(
                 participant_id=participant_id)
-        test_util.round_trip(
-            self, self.client, 
-            'Participant/' + participant_id + '/QuestionnaireResponse', 
-            resource)
+        with self.assertRaises(HttpException) as context:
+          test_util.round_trip(self, self.client, good_url, resource)
+        # Also fixing participant id succeeds
+        resource['questionnaire']['reference'] = \
+            resource['questionnaire']['reference'].format(
+                questionnaire_id=questionnaire_id)
+        test_util.round_trip(self, self.client, good_url, resource)
 
 
 if __name__ == '__main__':

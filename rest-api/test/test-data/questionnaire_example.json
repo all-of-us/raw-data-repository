@@ -1,5 +1,8 @@
 {
   "resourceType": "Questionnaire",
+  "status":"published",
+  "date":"2015-01-01T00:00:00-00:00",
+  "publisher":"fake",
   "group": {
     "question": [
       {
