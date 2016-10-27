@@ -7,7 +7,9 @@ import unittest
 
 import extraction
 
-from extraction import QuestionnaireResponseExtractor, QuestionnaireExtractor, Concept
+from questionnaire import QuestionnaireExtractor
+from questionnaire_response import QuestionnaireResponseExtractor
+
 
 
 from google.appengine.api import memcache
@@ -43,8 +45,8 @@ class ExtractionTest(unittest.TestCase):
     template = open(_data_path('questionnaire_response_example.json')).read()
     response = _fill_response(
         template, 'Q1234', 'P1',
-        Concept('http://hl7.org/fhir/v3/Race', '2106-3'),
-        Concept('http://hl7.org/fhir/v3/Ethnicity', '2135-5'))
+        extraction.Concept('http://hl7.org/fhir/v3/Race', '2106-3'),
+        extraction.Concept('http://hl7.org/fhir/v3/Ethnicity', '2135-5'))
 
     extractor = QuestionnaireResponseExtractor(json.loads(response))
     self.assertEquals('Q1234', extractor.extract_questionnaire_id())

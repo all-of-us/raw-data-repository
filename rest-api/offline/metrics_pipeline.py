@@ -63,6 +63,8 @@ import config
 import extraction
 import metrics
 import participant
+import questionnaire
+import questionnaire_response
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -82,32 +84,6 @@ class PipelineNotRunningException(BaseException):
 
 DATE_FORMAT = '%Y-%m-%d'
 
-UNMAPPED = 'UNMAPPED'
-
-# An ExtractionResult.found is True if the desired response was found in
-# the information provided, in which case it also has value set.
-# An ExtractionResult.value may be a valid value, None, or UNMAPPED.
-
-ExtractionResult = namedtuple('ExtractionResult', ['found', 'value'])
-
-
-def _extract_bucketed_age(participant_hist_obj):
-  """Returns ExtractionResult with the bucketed participant age on that date."""
-  today = participant_hist_obj.date
-  participant = participant_hist_obj.obj
-  if not participant.date_of_birth:
-    return ExtractionResult(True, None)
-  age = relativedelta(today, participant.date_of_birth).years
-  return ExtractionResult(True, _bucket_age(age))
-
-
-def _extract_HPO_id(ph):
-  return ExtractionResult(
-      True,
-      ((ph.obj.recruitment_source and (str(ph.obj.recruitment_source) + ':')
-        or '')
-       + str(ph.obj.hpo_id)))
-
 
 # Configuration for each type of object that we are collecting metrics on.  It
 # is keyed on the name of the model to collect metrics on.
@@ -122,7 +98,7 @@ def _extract_HPO_id(ph):
 #  model: The type of the history object.
 #  fields: The fields of the model to collect metrics on. A field consists
 #    of a name and function that accepts a history object of the appropriate
-#    type and returns an ExtractionResult.
+#    type and returns an extraction.ExtractionResult.
 FieldDef = namedtuple('FieldDef', ['name', 'func'])
 FacetDef = namedtuple('FacetDef', ['type', 'func'])
 METRICS_CONFIGS = {
@@ -134,23 +110,16 @@ METRICS_CONFIGS = {
         'fields': {
             'ParticipantHistory': [
                 FieldDef('membership_tier',
-                         lambda p: ExtractionResult(True,
-                                                    p.obj.membership_tier)),
+                         extraction.simple_field_extractor('membership_tier')),
                 FieldDef('gender_identity',
-                         lambda p: ExtractionResult(True,
-                                                    p.obj.gender_identity)),
-                FieldDef('age_range', _extract_bucketed_age),
-                FieldDef('hpo_id', _extract_HPO_id),
+                         extraction.simple_field_extractor('gender_identity')),
+                FieldDef('age_range',
+                         lambda ph: participant.extract_age(ph, _bucketed_age)),
+                FieldDef('hpo_id', participant.extract_HPO_id),
             ],
             'QuestionnaireResponseHistory': [
-                FieldDef(
-                    'race',
-                    lambda qr: ExtractionResult(
-                        *extraction.extract_race(qr.obj))),
-                FieldDef(
-                    'ethnicity',
-                    lambda qr: ExtractionResult(
-                        *extraction.extract_ethnicity(qr.obj))),
+                FieldDef('race', questionnaire_response.extract_race),
+                FieldDef('ethnicity', questionnaire_response.extract_ethnicity)
             ]
         },
     },
@@ -222,7 +191,7 @@ def map_key_to_summary(entity_key, now=None):
     for field in metrics_config['fields'][hist_kind]:
       try:
         result = field.func(hist_obj)
-        if result.found:
+        if result.extracted:
           new_state[field.name] = result.value
       except Exception as e:
         logging.error(
@@ -301,7 +270,8 @@ def _get_facets_key(date, metrics_config, state):
     key['date'] = date.isoformat()
   return key
 
-def _bucket_age(age):
+def _bucketed_age(date_of_birth, today):
+  age = relativedelta(today, date_of_birth).years
   ages = [0, 18, 26, 36, 46, 56, 66, 76, 86]
   for begin, end in zip(ages, [a - 1 for a in ages[1:]] + ['']):
     if (age >= begin) and (not end or age <= end):
