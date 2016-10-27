@@ -1,0 +1,171 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "id": "2424",
+  "extension": [
+    {
+      "url": "http:\/\/hl7.org\/fhir\/StructureDefinition\/iso21090-ST-language",
+      "valueCode": "en"
+    }
+  ],
+  "questionnaire": {
+    "reference": "216"
+  },
+  "group": {
+    "linkId": "root",
+    "group": [
+      {
+        "linkId": "1",
+        "group": [
+          {
+            "linkId": "1.1",
+            "question": [
+              {
+                "linkId": "1.1.1",
+                "answer": [
+                  {
+                    "valueString": "grades 12 or GED (high school graduate)"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "1.2",
+            "question": [{
+              "linkId": "1.2.3",
+              "answer": [{
+                "valueCoding": {
+                  "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                  "code": "male-to-female-transgender"
+                }
+              }]
+            }]
+          },
+          {
+            "linkId": "1.3",
+            "question": [
+              {
+                "linkId": "1.3.1",
+                "answer": [
+                  {
+                    "valueString": "rarely"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "1.4",
+            "question": [
+              {
+                "linkId": "1.4.1",
+                "answer": [
+                  {
+                    "valueString": "rarely"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "1.5",
+            "question": [
+              {
+                "linkId": "1.5.1",
+                "answer": [
+                  {
+                    "valueString": "s@s.cm"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "1.6",
+            "question": [
+              {
+                "linkId": "1.6.1"
+              },
+              {
+                "linkId": "1.6.2",
+                "answer": [
+                  {
+                    "valueDecimal": 343344
+                  }
+                ]
+              },
+              {
+                "linkId": "1.6.3",
+                "answer": [
+                  {
+                    "valueString": "work"
+                  }
+                ]
+              },
+              {
+                "linkId": "1.6.4",
+                "answer": [
+                  {
+                    "valueDecimal": 4343
+                  }
+                ]
+              },
+              {
+                "linkId": "1.6.5"
+              },
+              {
+                "linkId": "1.6.6",
+                "answer": [
+                  {
+                    "valueString": "work"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "1.7",
+            "question": [
+              {
+                "linkId": "1.7.1"
+              },
+              {
+                "linkId": "1.7.2"
+              },
+              {
+                "linkId": "1.7.3"
+              },
+              {
+                "linkId": "1.7.4"
+              },
+              {
+                "linkId": "1.7.5"
+              },
+              {
+                "linkId": "1.7.6"
+              },
+              {
+                "linkId": "1.7.7"
+              },
+              {
+                "linkId": "1.7.8"
+              },
+              {
+                "linkId": "1.7.9"
+              },
+              {
+                "linkId": "1.7.10"
+              },
+              {
+                "linkId": "1.7.11"
+              },
+              {
+                "linkId": "1.7.12"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,180 @@
+{  
+   "resourceType":"Questionnaire",
+   "id":"206",
+   "version":"12",
+   "status":"published",
+   "date":"2016-10-17T16:12:30-04:00",
+   "publisher":"admin",
+   "group":{  
+      "linkId":"root",
+      "title":"demographics",
+      "required":true,
+      "repeats":false,
+      "group":[  
+         {  
+            "linkId":"1",
+            "group":[  
+               {  
+                  "linkId":"1.1",
+                  "question":[  
+                     {  
+                        "linkId":"1.1.1",
+                        "text":"Birth Date",
+                        "type":"date"
+                     }
+                  ]
+               },
+               {  
+                  "linkId":"1.2",
+                  "question":[  
+                     {  
+                        "linkId":"1.2.1",
+                        "text":"Please provide whatever you feel comfortable providing. These are optional - Race",
+                        "type":"choice",
+                        "option":[  
+                           {  
+                              "code":"American Indian or Alaskan Native",
+                              "display":"American Indian or Alaskan Native"
+                           },
+                           {  
+                              "code":"Asian",
+                              "display":"Asian"
+                           },
+                           {  
+                              "code":"Black or African American",
+                              "display":"Black or African American"
+                           },
+                           {  
+                              "code":"Native Hawaiian or Pacific Islander",
+                              "display":"Native Hawaiian or Pacific Islander"
+                           },
+                           {  
+                              "code":"White",
+                              "display":"White"
+                           },
+                           {  
+                              "code":"Other",
+                              "display":"Other"
+                           },
+                           {  
+                              "code":"Prefer not to answer",
+                              "display":"Prefer not to answer"
+                           }
+                        ]
+                     },
+                     {  
+                        "linkId":"1.2.2",
+                        "text":"Please provide whatever you feel comfortable providing. These are optional - Ethnicity",
+                        "type":"choice",
+                        "option":[  
+                           {  
+                              "code":"1",
+                              "display":"Answer Choice 1"
+                           },
+                           {  
+                              "code":"2",
+                              "display":"Option 2"
+                           },
+                           {  
+                              "code":"3",
+                              "display":"Option 3"
+                           }
+                        ]
+                     },
+                     {  
+                        "linkId":"1.2.3",
+                        "text":"Please provide whatever you feel comfortable providing. These are optional- Gender",
+                        "type":"choice",
+                        "option":[  
+                           {  
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"female",
+                              "display":"Female"
+                           },
+                           {  
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"female-to-male-transgender",
+                              "display":"Female to Male Transgender   "
+                           },
+                           {  
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"male",
+                              "display":"Male"
+                           },
+                           {  
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"male-to-female-transgender",
+                              "display":"Male to Female Transgender"
+                           },
+                           {  
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"intersex",
+                              "display":"Intersex"
+                           },
+                           {  
+                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "code":"other",
+                              "display":"Other"
+                           },
+                           {  
+                              "system": "http://hl7.org/fhir/v3/NullFlavor",
+                              "code":"ASKU",
+                              "display":"Prefer not to answer"
+                           }
+                        ]
+                     }
+                  ]
+               },
+               {  
+                  "linkId":"1.3",
+                  "question":[  
+                     {  
+                        "extension":[  
+                           {  
+                              "url":"http://hl7.org/fhir/StructureDefinition/translation",
+                              "extension":[  
+                                 {  
+                                    "url":"lang",
+                                    "valueCode":"es"
+                                 },
+                                 {  
+                                    "url":"content",
+                                    "valueString":"Favor ingresar su código postal"
+                                 }
+                              ]
+                           }
+                        ],
+                        "linkId":"1.3.1",
+                        "text":"Please provide your zip code.",
+                        "type":"text"
+                     },
+                     {  
+                        "extension":[  
+                           {  
+                              "url":"http://hl7.org/fhir/StructureDefinition/translation",
+                              "extension":[  
+                                 {  
+                                    "url":"lang",
+                                    "valueCode":"es"
+                                 },
+                                 {  
+                                    "url":"content",
+                                    "valueString":"código postal"
+                                 }
+                              ]
+                           }
+                        ],
+                        "linkId":"1.3.2",
+                        "text":"zip code",
+                        "type":"integer"
+                     }
+                  ]
+               },
+               {  
+                  "linkId":"1.4"
+               }
+            ]
+         }
+      ]
+   }
+}
