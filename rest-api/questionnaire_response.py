@@ -75,7 +75,9 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
       answer = qs[0].answer[0]
       value = getattr(answer, config.field, None)
       if value:
-        return config.mapping[extraction.Concept(value.system, value.code)]
+        return config.mapping.get(
+            extraction.Concept(value.system, value.code),
+            extraction.UNMAPPED)
 
 def extract_race(qr_hist_obj):
   """Returns ExtractionResult for race answer from questionnaire response."""
