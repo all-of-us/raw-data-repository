@@ -4,6 +4,7 @@ import collections
 import copy
 import datetime
 import json
+import logging
 import participant
 
 import api_util
@@ -122,6 +123,9 @@ class MetricService(object):
 
     results_buckets = ResultsBuckets()
     for db_bucket in MetricsBucket.query(ancestor=serving_version).fetch():
+      if not db_bucket.facets:
+        logging.warning('Ignoring old MetricsBucket with no facets defined.')
+        continue
       results_bucket = results_buckets.find_or_create(request.facets, db_bucket)
       counts = collections.Counter(json.loads(db_bucket.metrics))
       results_bucket.add_counts(db_bucket.date, counts)
@@ -164,9 +168,6 @@ def get_serving_version():
   if running:
     return running[0].key
   return None
-
-def start_metrics_pipeline():
-  pipeline.start()
 
 def _convert_name(result, enum):
   if result is None:
