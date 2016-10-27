@@ -88,7 +88,6 @@ DATE_FORMAT = '%Y-%m-%d'
 # used whenever a mapper starts up in a new app engine instance.
 METRICS_CONFIGS=metrics_config.METRICS_CONFIGS
 
-
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
     metrics.set_pipeline_in_progress()
