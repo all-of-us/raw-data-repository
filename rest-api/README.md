@@ -81,3 +81,23 @@ python load_fake_participants.py --instance=http://localhost:8080 --count=10
 ```
 Running it repeatedly just adds more fake participants.
 
+## Deploying to test server
+
+To deploy to the test server, make sure your Git repo has the appropriate state, then do:
+```Shell
+gcloud config set project pmi-drc-api-test
+gcloud app deploy app.yaml
+```
+
+If you've changed other files you may need to deploy them as well, for instance the cron config:
+```Shell
+gcloud app deploy cron.yaml
+```
+
+### Running client tests against test server
+
+From the pmi-data directory, run:
+```Shell
+test/test_server.sh
+```
+
