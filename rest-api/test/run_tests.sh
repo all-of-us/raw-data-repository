@@ -55,9 +55,8 @@ then
    echo Excuting tests that match $substring
 fi
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-export PYTHONPATH=$PYTHONPATH:${SCRIPT_DIR}/..:${SCRIPT_DIR}/../lib
+BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
+export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
 
 if [[ "$subset" == "all" || "$subset" == "unit" ]];
 then
@@ -68,28 +67,11 @@ then
   else
     cmd="test/runner.py --test-path test/unit_test/ ${sdk_dir} --test-pattern $substring"
   fi
-  (cd ${SCRIPT_DIR}/..; python $cmd)
+  (cd ${BASE_DIR}; python $cmd)
 fi
-
-
-
-function run_client_test {
-  if [[ $1 == *"$substring"* ]]
-  then
-    echo Running $1 as it matches substring \"${substring}.\"
-    (cd ${SCRIPT_DIR}; python $1)
-  else
-    echo Skipping $1 as it doesn\'t match substring \"${substring}.\"
-  fi
-    
-}
 
 if [[ "$subset" == "all" || "$subset" == "client" ]];
 then
-  # By default these run against a local dev_server.
-  run_client_test "client_test/ppi.py"
-  run_client_test "client_test/participant.py"
-  run_client_test "client_test/evaluation.py"
-  run_client_test "client_test/metrics.py"
-  run_client_test "client_test/biobank_order.py"
+  # Run client tests against local dev_server.
+  ${BASE_DIR}/test/test_server.sh -i http://localhost:8080 ${substring:+-r $substring}
 fi

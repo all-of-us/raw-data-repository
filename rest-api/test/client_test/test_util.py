@@ -2,15 +2,19 @@
 
 import copy
 import json
+import os
 
 from client.client import Client
 
 CREDS_FILE = './test-data/test-client-cert.json'
 DEFAULT_INSTANCE = 'http://localhost:8080'
-# 'https://pmi-drc-api-test.appspot.com/'
+
+# To run the tests against the test instance instead,
+# set environment variable PMI_DRC_RDR_INSTANCE.
 
 def get_client(base_path):
-  return Client(base_path, False, CREDS_FILE, DEFAULT_INSTANCE)
+  instance = os.environ.get('PMI_DRC_RDR_INSTANCE') or DEFAULT_INSTANCE
+  return Client(base_path, False, CREDS_FILE, instance)
 
 def create_participant(client, first, last, birthday):
   participant = {
