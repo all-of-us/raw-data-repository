@@ -94,6 +94,11 @@ If you've changed other files you may need to deploy them as well, for instance 
 gcloud app deploy cron.yaml
 ```
 
+After uploading a new version you should run the metrics cron job on the
+appengine server: from the AppEngine console select the Task queues panel, and
+then the Cron Jobs tab.  Click the "Run now" button for the MetricsRecalculate
+cron job.
+
 ### Running client tests against test server
 
 From the pmi-data directory, run:
