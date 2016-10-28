@@ -203,21 +203,6 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         results[0].entity.facets)
     self.assertEquals(expected_json, results[0].entity.metrics)
 
-  def test_bucket_age(self):
-    testcases = ((18,'18-25'),
-                 (19,'18-25'),
-                 (25,'18-25'),
-                 (26,'26-35'),
-                 (85,'76-85'),
-                 (86,'86-'),
-                 (100,'86-'))
-    date_of_birth = datetime.datetime(1940, 8, 21)
-    for testcase in testcases:
-      response_date = date_of_birth + datetime.timedelta(testcase[0] * 365.25)
-      self.assertEqual(testcase[1],
-                       metrics_pipeline._bucketed_age(date_of_birth,
-                                                      response_date))
-
   def test_end_to_end(self):
     key = ndb.Key(participant.Participant, '1')
     self._populate_sample_history(key)

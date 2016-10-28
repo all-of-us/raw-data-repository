@@ -192,12 +192,22 @@ def extract_age(participant_hist_obj, age_func):
     return extraction.ExtractionResult(None)  # DOB was not provided: set None
   return extraction.ExtractionResult(age_func(participant.date_of_birth, today))
 
+def extract_bucketed_age(participant_hist_obj):
+  return extract_age(participant_hist_obj, _bucketed_age)
+
 def extract_HPO_id(ph):
   """Returns ExtractionResult with the string representing the HPO."""
   return extraction.ExtractionResult(
       ((ph.obj.recruitment_source and (str(ph.obj.recruitment_source) + ':')
         or '')
        + str(ph.obj.hpo_id)))
+
+def _bucketed_age(date_of_birth, today):
+  age = relativedelta(today, date_of_birth).years
+  ages = [0, 18, 26, 36, 46, 56, 66, 76, 86]
+  for begin, end in zip(ages, [a - 1 for a in ages[1:]] + ['']):
+    if (age >= begin) and (not end or age <= end):
+      return str(begin) + '-' + str(end)
 
 
 DAO = ParticipantDAO()
