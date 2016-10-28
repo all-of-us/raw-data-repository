@@ -31,15 +31,15 @@ class MembershipTier(messages.Enum):
   ENROLLEE = 4
   # Note that these are out of order; ENROLEE was added after FULL_PARTICIPANT.
 
-
 class GenderIdentity(messages.Enum):
   """The gender identity of the participant."""
   FEMALE = 1
   MALE = 2
-  NEITHER = 3
-  OTHER = 4
-  PREFER_NOT_TO_SAY = 5
-
+  FEMALE_TO_MALE_TRANSGENDER = 3
+  MALE_TO_FEMALE_TRANSGENDER = 4
+  INTERSEX = 5
+  OTHER = 6
+  PREFER_NOT_TO_SAY = 7
 
 class RecruitmentSource(messages.Enum):
   HPO = 1

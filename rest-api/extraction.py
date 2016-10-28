@@ -28,6 +28,7 @@ Concept = namedtuple('Concept', ['system', 'code'])
 LOINC = 'http://loinc.org'
 ETHNICITY_CONCEPT = Concept(LOINC, '69490-1')
 RACE_CONCEPT = Concept(LOINC, '72826-1')
+GENDER_IDENTITY_CONCEPT = Concept(LOINC, '76691-5')
 
 
 def get_questions_by_link_id(qr, target_link_id):

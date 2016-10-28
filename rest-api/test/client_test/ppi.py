@@ -22,6 +22,7 @@ class TestPPI(unittest.TestCase):
         'test-data/questionnaire1.json',
         # Example from vibrent.
         'test-data/questionnaire2.json',
+        'test-data/questionnaire_demographics.json',
     ]
 
     for json_file in questionnaire_files:
@@ -61,7 +62,29 @@ class TestPPI(unittest.TestCase):
             resource['questionnaire']['reference'].format(
                 questionnaire_id=questionnaire_id)
         test_util.round_trip(self, self.client, good_url, resource)
-
+  
+  def test_demographic_questionnaire_responses(self):
+    questionnaire_response_files = [
+        'test-data/questionnaire_response_demographics.json',
+    ]
+    participant_id = test_util.create_participant(
+        self.client, 'Bovine', 'Knickers', '1970-10-10')
+    questionnaire_id = test_util.create_questionnaire(
+        self.client, 'test-data/questionnaire_demographics.json')
+    for json_file in questionnaire_response_files:
+      with open(json_file) as f:
+        resource = json.load(f)
+        # Sending response with the dummy participant id in the file is an error
+        good_url = _questionnaire_response_url(participant_id)
+        resource['subject']['reference'] = \
+            resource['subject']['reference'].format(
+                participant_id=participant_id)
+        resource['questionnaire']['reference'] = \
+            resource['questionnaire']['reference'].format(
+                questionnaire_id=questionnaire_id)
+        test_util.round_trip(self, self.client, good_url, resource)
+    response = self.client.request_json('Participant/{}'.format(participant_id))
+    self.assertEqual(response['gender_identity'], 'MALE_TO_FEMALE_TRANSGENDER')
 
 if __name__ == '__main__':
   unittest.main()

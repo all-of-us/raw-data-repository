@@ -35,8 +35,7 @@ class QuestionnaireResponseAPI(base_api.BaseApi):
 
     # The participant id must match a_id and be present.
     participant_id = model.subject.reference
-    if (participant_id != 'Patient/{}'.format(a_id) or
-        not participant.DAO.load_if_present(a_id)):
+    if (participant_id != 'Patient/{}'.format(a_id)):
       raise BadRequest(
           'Participant id {} invalid or missing.'.format(participant_id))
 

@@ -1,14 +1,17 @@
 {
   "resourceType": "QuestionnaireResponse",
-  "id": "2424",
   "extension": [
     {
       "url": "http:\/\/hl7.org\/fhir\/StructureDefinition\/iso21090-ST-language",
       "valueCode": "en"
     }
   ],
+  "status": "completed",
+  "subject": {
+    "reference": "Patient/{participant_id}"
+  },
   "questionnaire": {
-    "reference": "216"
+    "reference": "Questionnaire/{questionnaire_id}"
   },
   "group": {
     "linkId": "root",
