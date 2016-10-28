@@ -36,9 +36,7 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
     participant_id = model.resource['subject']['reference'].split('/')[1]
     gender_identity_result = extract_field(model, extraction.GENDER_IDENTITY_CONCEPT)
     if gender_identity_result.extracted:
-      participant_obj = participant.DAO.load_if_present(participant_id)
-      if not participant_obj:
-        raise NotFound('Participant with id {} not found.'.format(participant_id))
+      participant_obj = participant.DAO.load(participant_id)
       # If the gender identity on the participant doesn't match, update it
       if participant_obj.gender_identity != gender_identity_result.value:
         participant_obj.gender_identity = gender_identity_result.value
