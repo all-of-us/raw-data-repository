@@ -68,8 +68,7 @@ import questionnaire
 import questionnaire_response
 
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
-from collections import Counter, namedtuple
+from collections import Counter
 from google.appengine.api import app_identity
 from google.appengine.ext import ndb
 from mapreduce import mapreduce_pipeline
