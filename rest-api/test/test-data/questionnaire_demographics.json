@@ -1,7 +1,5 @@
 {  
    "resourceType":"Questionnaire",
-   "id":"206",
-   "version":"12",
    "status":"published",
    "date":"2016-10-17T16:12:30-04:00",
    "publisher":"admin",
@@ -85,6 +83,11 @@
                         "linkId":"1.2.3",
                         "text":"Please provide whatever you feel comfortable providing. These are optional- Gender",
                         "type":"choice",
+                        "concept": [{
+                           "system": "http://loinc.org",
+                           "code": "76691-5",
+                           "display": "Gender Identity"
+                        }],
                         "option":[  
                            {  
                               "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
