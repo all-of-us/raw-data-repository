@@ -84,6 +84,8 @@ class PipelineNotRunningException(BaseException):
 
 DATE_FORMAT = '%Y-%m-%d'
 
+TOTAL_SENTINEL = '__total_sentinel__'
+
 # This can be overridden for unit-tests, however, this hardcoded config will be
 # used whenever a mapper starts up in a new app engine instance.
 METRICS_CONFIGS=metrics_config.METRICS_CONFIGS
@@ -149,7 +151,12 @@ def map_key_to_summary(entity_key, now=None):
     old_summary = {}
     date = hist_obj.date.date()
 
-    new_state = copy.deepcopy(last_state)
+    if not last_state:
+      new_state = copy.deepcopy(metrics_conf['initial_state'])
+      new_state[TOTAL_SENTINEL] = 1
+    else:
+      new_state = copy.deepcopy(last_state)
+
     hist_kind = hist_obj.key.kind()
     for field in metrics_conf['fields'][hist_kind]:
       try:
@@ -167,25 +174,17 @@ def map_key_to_summary(entity_key, now=None):
     facets_change = (last_facets_key is None or
                      last_facets_key['facets'] != facets_key['facets'])
 
-    # Put out a single 'total' entry for the first time this object shows up.
-    if facets_change:
-      summary[kind] = 1
-      if last_state:
-        old_summary[kind] = -1
-
     for k, v in new_state.iteritems():
       # Output a delta for this field if it is either the first value we have,
       # or if it has changed. In the case that one of the facets has changed,
       # we need deltas for all fields.
       old_val = last_state and last_state.get(k, None)
       if facets_change or v != old_val:
-        summary_key = '{}.{}.{}'.format(kind, k, v)
-        summary[summary_key] = 1
+        summary[_make_metric_key(kind, k, v)] = 1
 
         if last_state:
-          # If the value changed, output a -1 delta for the old value.
-          old_summary_key = '{}.{}.{}'.format(kind, k, old_val)
-          old_summary[old_summary_key] = -1
+          # If the value changed, output -1 delta for the old value.
+          old_summary[_make_metric_key(kind, k, old_val)] = -1
 
     if old_summary:
       # Can't just use last_facets_key, as it has the old date.
@@ -232,3 +231,17 @@ def _get_facets_key(date, metrics_conf, state):
   if date:
     key['date'] = date.isoformat()
   return key
+
+def _make_metric_key(kind, key, value):
+  """Formats a metrics key for the summary.
+
+  Normally the key is of the form:
+    Participant.some_field.some_value
+
+  However there is a special metric that just counts the total number of
+  entities, for this kind of metric, just emit the kind.
+  """
+  if key is TOTAL_SENTINEL:
+    return '{}'.format(kind)
+  else:
+    return '{}.{}.{}'.format(kind, key, value)

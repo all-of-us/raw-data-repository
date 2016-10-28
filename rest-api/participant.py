@@ -117,11 +117,11 @@ class ParticipantDAO(data_access_object.DataAccessObject):
   def allocate_id(self):
     _id = identifier.get_id()
     return 'P{:d}'.format(_id).zfill(9)
-    
+
   def insert(self, model, date=None, client_id=None):
-    # Assign a new biobank ID when inserting a new participant 
+    # Assign a new biobank ID when inserting a new participant
     model.biobank_id = 'B{:d}'.format(identifier.get_id()).zfill(9)
-    return super(ParticipantDAO, self).insert(model, date, client_id)      
+    return super(ParticipantDAO, self).insert(model, date, client_id)
 
 def load_history_entities(participant_key, now):
   """Loads all related history entries.
@@ -142,12 +142,12 @@ def modify_participant_history(history, participant_key, now):
   participant's age changes.
   """
   inject_age_change_records(history, now)
-  insert_questionnaire_responses(participant_key, history)
-
-def insert_questionnaire_responses(participant_key, history):
-  """Joins in the questionnaire response history for this participant."""
   import questionnaire_response
   history.extend(questionnaire_response.DAO.get_all_history(participant_key))
+  import evaluation
+  history.extend(evaluation.DAO.get_all_history(participant_key))
+  import biobank_order
+  history.extend(evaluation.DAO.get_all_history(participant_key))
 
 def inject_age_change_records(history, now):
   """Inject history records when a participant's age changes.
