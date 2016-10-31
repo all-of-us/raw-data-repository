@@ -34,6 +34,18 @@
           }
         }
       ]
+      }, {
+      "linkId": "state_of_residence",
+      "text": "What is your state of residence?",
+      "answer": [
+        {
+          "valueCoding": {
+             "code": "$state_of_residence_code",
+             "system": "$state_of_residence_system",
+             "display": "$state_of_residence_display"
+          }
+        }
+      ]
       }
     ]
   }

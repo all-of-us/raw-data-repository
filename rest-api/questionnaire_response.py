@@ -4,6 +4,7 @@ import data_access_object
 import extraction
 import participant
 import fhirclient.models.questionnaireresponse
+from census_regions import census_regions
 from google.appengine.ext import ndb
 from participant import Participant
 from participant import GenderIdentity
@@ -88,10 +89,16 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
                           'ASKU'): GenderIdentity.PREFER_NOT_TO_SAY,
   }
   
+  _STATE_MAPPING = {
+    extraction.Concept('http://terminology.pmi-ops.org/ppi/state', state): state
+    for state in census_regions.keys()      
+  }
+  
   CONFIGS = {
       extraction.ETHNICITY_CONCEPT: Config('valueCoding', _ETHNICITY_MAPPING),
       extraction.RACE_CONCEPT: Config('valueCoding', _RACE_MAPPING),
-      extraction.GENDER_IDENTITY_CONCEPT: Config('valueCoding', _GENDER_IDENTITY_MAPPING)
+      extraction.GENDER_IDENTITY_CONCEPT: Config('valueCoding', _GENDER_IDENTITY_MAPPING),
+      extraction.STATE_OF_RESIDENCE_CONCEPT: Config('valueCoding', _STATE_MAPPING)
   }
 
   def extract_questionnaire_id(self):
@@ -123,6 +130,19 @@ def extract_ethnicity(qr_hist_obj):
 def extract_gender_identity(qr_hist_obj):
   """Returns ExtractionResult for gender identity answer from questionnaire response."""  
   return extract_field(qr_hist_obj.obj, extraction.GENDER_IDENTITY_CONCEPT)
+
+def extract_state_of_residence(qr_hist_obj):
+  """Returns ExtractionResult for state of residence answer from questionnaire response."""  
+  return extract_field(qr_hist_obj.obj, extraction.STATE_OF_RESIDENCE_CONCEPT)
+
+def extract_census_region(qr_hist_obj):
+  """Returns ExtractionResult for census region from questionnaire response."""  
+  state_result = extract_state_of_residence(qr_hist_obj)
+  if state_result.extracted:
+    census_region = census_regions.get(state_result.value)
+    if census_region:
+      return extraction.ExtractionResult(census_region, True)
+  return extraction.ExtractionResult(None, False)  
 
 @ndb.non_transactional
 def extract_field(obj, concept):

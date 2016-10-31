@@ -21,6 +21,15 @@
           "code": "69490-1",
           "display":"Ethnicity OMB"
         }]
+      }, {
+        "linkId":"state_of_residence",
+        "text":"Please provide your state of residence.",
+        "type":"choice",
+        "concept": [{
+          "system": "http://loinc.org",
+          "code": "46499-0",
+          "display": "State of residence"
+        }]            
       }
     ]
   }

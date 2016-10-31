@@ -90,7 +90,6 @@ TOTAL_SENTINEL = '__total_sentinel__'
 # used whenever a mapper starts up in a new app engine instance.
 METRICS_CONFIGS=metrics_config.METRICS_CONFIGS
 
-
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
     metrics.set_pipeline_in_progress()
