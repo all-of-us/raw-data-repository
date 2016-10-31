@@ -2,13 +2,17 @@
 
 import copy
 import datetime
+import extraction
 import json
 import metrics
 import participant
+import evaluation
 import unittest
 import os
 
+from extraction import ExtractionResult
 from offline import metrics_pipeline
+from offline.metrics_config import FieldDef, FacetDef
 from collections import Counter
 from google.appengine.api import memcache
 from google.appengine.api import queueinfo
@@ -19,12 +23,37 @@ from mapreduce import test_support
 from testlib import testutil
 
 
+CONFIGS_FOR_TEST = {
+    'Participant': {
+        'load_history_func': participant.load_history_entities,
+        'facets': [
+            FacetDef(metrics.FacetType.HPO_ID, lambda s: s['hpo_id']),
+        ],
+        'initial_state': {
+            'physical_evaluation': 'UNSET',
+        },
+        'fields': {
+            'ParticipantHistory': [
+                FieldDef('membership_tier',
+                         extraction.simple_field_extractor('membership_tier')),
+                FieldDef('age_range', participant.extract_bucketed_age),
+                FieldDef('hpo_id', participant.extract_HPO_id),
+            ],
+            'EvaluationHistory': [
+                # The presence of a physical evaluation implies that it is complete.
+                FieldDef('physical_evaluation', lambda h: ExtractionResult('COMPLETE')),
+            ],
+        },
+    },
+}
+
 class MetricsPipelineTest(testutil.HandlerTestBase):
   def setUp(self):
     testutil.HandlerTestBase.setUp(self)
     self.maxDiff = None
     self.longMessage = True
     self.saved_configs = copy.deepcopy(metrics_pipeline.METRICS_CONFIGS)
+    metrics_pipeline.METRICS_CONFIGS = CONFIGS_FOR_TEST
 
   def tearDown(self):
     metrics_pipeline.METRICS_CONFIGS = self.saved_configs
@@ -37,10 +66,10 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.age_range.36-45': 1,
-             'Participant.gender_identity.MALE': 1,
              'Participant.hpo_id.HPO1': 1,
              'Participant.membership_tier.REGISTERED': 1,
              'Participant': 1,
+             'Participant.physical_evaluation.UNSET': 1,
          }),
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -57,6 +86,14 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.REGISTERED': 1,
+         }),
+        ({'date': '2016-09-05', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+         {
+             'Participant.physical_evaluation.UNSET': -1,
+         }),
+        ({'date': '2016-09-05', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+         {
+             'Participant.physical_evaluation.COMPLETE': 1,
          }),
         ({'date': '2016-09-10', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -78,7 +115,6 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1970, 8, 21),
-             gender_identity=participant.GenderIdentity.MALE,
              membership_tier=participant.MembershipTier.REGISTERED,
              hpo_id='HPO1')),
         # One state change in 2015.
@@ -86,7 +122,6 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1970, 8, 21),
-             gender_identity=participant.GenderIdentity.MALE,
              membership_tier=participant.MembershipTier.FULL_PARTICIPANT,
              hpo_id='HPO1')),
     ]
@@ -99,10 +134,10 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.age_range.36-45': 1,
-             'Participant.gender_identity.MALE': 1,
              'Participant.hpo_id.HPO1': 1,
              'Participant.membership_tier.REGISTERED': 1,
              'Participant': 1,
+             'Participant.physical_evaluation.UNSET': 1,
         }),
         ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -132,14 +167,12 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1970, 8, 21),
-             gender_identity=participant.GenderIdentity.MALE,
              hpo_id='HPO1')),
         # One state change in 2012.
         (datetime.datetime(2016, 9, 2),
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1970, 8, 21),
-             gender_identity=participant.GenderIdentity.MALE,
              hpo_id='HPO2')),
     ]
     for fake_date, p in history_list:
@@ -150,26 +183,27 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.age_range.46-55': 1,
-             'Participant.gender_identity.MALE': 1,
              'Participant.hpo_id.HPO1': 1,
              'Participant.membership_tier.None': 1,
              'Participant': 1,
+             'Participant.physical_evaluation.UNSET': 1,
          }),
         ({'date': '2016-09-02', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.age_range.46-55': -1,
-             'Participant.gender_identity.MALE': -1,
              'Participant.hpo_id.HPO1': -1,
              'Participant.membership_tier.None': -1,
              'Participant': -1,
+             'Participant.physical_evaluation.UNSET': -1,
+
          }),
         ({'date': '2016-09-02', 'facets': [{'type': 'HPO_ID', 'value': 'HPO2'}]},
          {
              'Participant.age_range.46-55': 1,
-             'Participant.gender_identity.MALE': 1,
              'Participant.hpo_id.HPO2': 1,
              'Participant.membership_tier.None': 1,
              'Participant': 1,
+             'Participant.physical_evaluation.UNSET': 1,
          }),
     ]
     expected = [(json.dumps(d), json.dumps(s, sort_keys=True)) for d, s in expected]
@@ -213,18 +247,23 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     metrics_list = list(metrics.MetricsBucket.query(ancestor=serving_version).fetch())
     metrics_list = sorted(metrics_list, key=lambda m: m.date)
     self.assertEquals(datetime.date(2016, 9, 1), metrics_list[0].date)
-    self.assertEquals(datetime.date(2016, 9, 10), metrics_list[1].date)
+    self.assertEquals(datetime.date(2016, 9, 5), metrics_list[1].date)
+    self.assertEquals(datetime.date(2016, 9, 10), metrics_list[2].date)
     self.assertEquals('[{"type": "HPO_ID", "value": "HPO1"}]', metrics_list[0].facets)
     self.assertEquals('[{"type": "HPO_ID", "value": "HPO1"}]', metrics_list[1].facets)
+    self.assertEquals('[{"type": "HPO_ID", "value": "HPO1"}]', metrics_list[2].facets)
     metrics0 = json.loads(metrics_list[0].metrics)
     self.assertEquals(1, metrics0['Participant'])
-    self.assertEquals(1, metrics0['Participant.gender_identity.MALE'])
     self.assertEquals(1, metrics0['Participant.membership_tier.REGISTERED'])
     self.assertEquals(1, metrics0['Participant.hpo_id.HPO1'])
 
     metrics1 = json.loads(metrics_list[1].metrics)
-    self.assertEquals(1, metrics1['Participant.membership_tier.VOLUNTEER'])
-    self.assertEquals(-1, metrics1['Participant.membership_tier.REGISTERED'])
+    self.assertEquals(-1, metrics1['Participant.physical_evaluation.UNSET'])
+    self.assertEquals(1, metrics1['Participant.physical_evaluation.COMPLETE'])
+
+    metrics2 = json.loads(metrics_list[2].metrics)
+    self.assertEquals(1, metrics2['Participant.membership_tier.VOLUNTEER'])
+    self.assertEquals(-1, metrics2['Participant.membership_tier.REGISTERED'])
 
   def _compare_json(self, a, b, msg=None):
     if isinstance(a, str):
@@ -244,6 +283,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
       msg = 'Comparing element {}'.format(i)
       self._compare_json(a, b, msg)
 
+  @ndb.transactional(xg=True)
   def _populate_sample_history(self, key):
     history_list = [
         # One participant signs up on 9/1
@@ -251,7 +291,6 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1975, 8, 21),
-             gender_identity=participant.GenderIdentity.MALE,
              participant_id='1',
              membership_tier=participant.MembershipTier.REGISTERED,
              hpo_id='HPO1')),
@@ -260,7 +299,6 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1975, 8, 21),
-             gender_identity=participant.GenderIdentity.MALE,
              participant_id='1',
              membership_tier=participant.MembershipTier.FULL_PARTICIPANT,
              hpo_id='HPO1')),
@@ -269,24 +307,27 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1975, 8, 21),
-             gender_identity=participant.GenderIdentity.MALE,
              participant_id='1',
              membership_tier=participant.MembershipTier.REGISTERED,
              hpo_id='HPO1')),
+
+        # Note that on 9/5, an evaluation is entered.
+
         # On 9/10, participant 1 changes their tier.
         (datetime.datetime(2016, 9, 10),
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1975, 8, 21),
              sign_up_time=datetime.datetime(2016, 9, 1, 11, 0, 2),
-             gender_identity=participant.GenderIdentity.MALE,
              participant_id='1',
              membership_tier=participant.MembershipTier.VOLUNTEER,
              hpo_id='HPO1')),
     ]
-    for fake_date, p in history_list:
-      participant.DAO.store(p, fake_date)
-
+    for fake_date, ptc in history_list:
+      participant.DAO.store(ptc, fake_date)
+    key = ndb.Key(key.flat()[0], key.flat()[1], evaluation.Evaluation, evaluation.DAO.allocate_id())
+    evaluation.DAO.store(evaluation.Evaluation(key=key, resource="ignored"),
+                         datetime.datetime(2016, 9, 5))
 
 
 if __name__ == '__main__':

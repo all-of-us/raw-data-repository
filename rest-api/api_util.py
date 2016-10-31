@@ -9,7 +9,6 @@ from google.appengine.api import users
 from google.appengine.ext import ndb
 
 from protorpc import message_types
-from protorpc import protojson
 from protorpc import messages
 from dateutil.parser import parse
 from google.appengine.api import oauth
