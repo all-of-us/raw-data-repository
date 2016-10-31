@@ -19,6 +19,7 @@ from google.appengine.ext import testbed
 
 RACE_LINKID = 'race'
 ETHNICITY_LINKID = 'ethnicity'
+STATE_OF_RESIDENCE_LINKID = 'state_of_residence'
 
 class ExtractionTest(unittest.TestCase):
   def setUp(self):
@@ -40,20 +41,24 @@ class ExtractionTest(unittest.TestCase):
                       extractor.extract_link_id_for_concept(extraction.RACE_CONCEPT))
     self.assertEquals([ETHNICITY_LINKID],
                       extractor.extract_link_id_for_concept(extraction.ETHNICITY_CONCEPT))
+    self.assertEquals([STATE_OF_RESIDENCE_LINKID],
+                      extractor.extract_link_id_for_concept(extraction.STATE_OF_RESIDENCE_CONCEPT))
 
   def test_questionnaire_response_extract(self):
     template = open(_data_path('questionnaire_response_example.json')).read()
     response = _fill_response(
         template, 'Q1234', 'P1',
         extraction.Concept('http://hl7.org/fhir/v3/Race', '2106-3'),
-        extraction.Concept('http://hl7.org/fhir/v3/Ethnicity', '2135-5'))
+        extraction.Concept('http://hl7.org/fhir/v3/Ethnicity', '2135-5'),
+        extraction.Concept('http://terminology.pmi-ops.org/ppi/state', 'TX'))
 
     extractor = QuestionnaireResponseExtractor(json.loads(response))
     self.assertEquals('Q1234', extractor.extract_questionnaire_id())
     self.assertEquals('white', extractor.extract_answer(RACE_LINKID, extraction.RACE_CONCEPT))
+    self.assertEquals('TX', extractor.extract_answer(STATE_OF_RESIDENCE_LINKID, 
+                                                     extraction.STATE_OF_RESIDENCE_CONCEPT))
 
-
-def _fill_response(template, q_id, p_id, race, ethnicity):
+def _fill_response(template, q_id, p_id, race, ethnicity, state_of_residence):
   for k, v in {
       '$questionnaire_id': q_id,
       '$participant_id': p_id,
@@ -63,6 +68,9 @@ def _fill_response(template, q_id, p_id, race, ethnicity):
       '$ethnicity_code': ethnicity.code,
       '$ethnicity_system': ethnicity.system,
       '$ethnicity_display': 'Not Used',
+      '$state_of_residence_code': state_of_residence.code,
+      '$state_of_residence_system': state_of_residence.system,
+      '$state_of_residence_display': 'Not Used',
       '$authored': datetime.datetime.now().date().isoformat(),
   }.iteritems():
     template = template.replace(k, v)
