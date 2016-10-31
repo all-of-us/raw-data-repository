@@ -9,9 +9,10 @@ init-hook="from pylint.config import find_pylintrc; \
     import os; \
     import sys; \
     sys.path = [x for x in sys.path if 'python2.7' in x]; \
-    appengine_dir = os.environ["HOME"] + '/google-cloud-sdk/platform/google_appengine'; \
-    sys.path.insert(0, appengine_dir); \
-    lib_dir = os.path.join(appengine_dir, 'lib')
+    sdk_bin_dir = [p for p in set(os.environ['PATH'].split(os.pathsep)) if os.path.exists(os.path.join(p, 'gcloud'))][0]; \
+    ae_dir = os.path.join(sdk_bin_dir, '..', 'platform', 'google_appengine'); \
+    sys.path.insert(0, ae_dir); \
+    lib_dir = os.path.join(ae_dir, 'lib'); \
     sys.path.extend([os.path.join(lib_dir, x) for x in os.listdir(lib_dir)]); \
     "
 
