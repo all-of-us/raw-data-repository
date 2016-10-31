@@ -147,7 +147,7 @@ def modify_participant_history(history, participant_key, now):
   import evaluation
   history.extend(evaluation.DAO.get_all_history(participant_key))
   import biobank_order
-  history.extend(evaluation.DAO.get_all_history(participant_key))
+  history.extend(biobank_order.DAO.get_all_history(participant_key))
 
 def inject_age_change_records(history, now):
   """Inject history records when a participant's age changes.
