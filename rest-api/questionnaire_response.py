@@ -10,7 +10,6 @@ from participant import Participant
 from participant import GenderIdentity
 from questionnaire import DAO as questionnaireDAO
 from questionnaire import QuestionnaireExtractor
-from werkzeug.exceptions import NotFound
 
 class QuestionnaireResponse(ndb.Model):
   """The questionnaire response."""
@@ -76,24 +75,24 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
         extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
                            'female'): GenderIdentity.FEMALE,
         extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
-                           'female-to-male-transgender'): GenderIdentity.FEMALE_TO_MALE_TRANSGENDER,                              
+                           'female-to-male-transgender'): GenderIdentity.FEMALE_TO_MALE_TRANSGENDER,
         extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
-                           'male'): GenderIdentity.MALE,                              
+                           'male'): GenderIdentity.MALE,
         extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
                            'male-to-female-transgender'): GenderIdentity.MALE_TO_FEMALE_TRANSGENDER,
         extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
-                           'intersex'): GenderIdentity.INTERSEX,                              
+                           'intersex'): GenderIdentity.INTERSEX,
         extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
                            'other'): GenderIdentity.OTHER,
         extraction.Concept('http://hl7.org/fhir/v3/NullFlavor',
                           'ASKU'): GenderIdentity.PREFER_NOT_TO_SAY,
   }
-  
+
   _STATE_MAPPING = {
     extraction.Concept('http://terminology.pmi-ops.org/ppi/state', state): state
-    for state in census_regions.keys()      
+    for state in census_regions.keys()
   }
-  
+
   CONFIGS = {
       extraction.ETHNICITY_CONCEPT: Config('valueCoding', _ETHNICITY_MAPPING),
       extraction.RACE_CONCEPT: Config('valueCoding', _RACE_MAPPING),
@@ -128,21 +127,21 @@ def extract_ethnicity(qr_hist_obj):
   return extract_field(qr_hist_obj.obj, extraction.ETHNICITY_CONCEPT)
 
 def extract_gender_identity(qr_hist_obj):
-  """Returns ExtractionResult for gender identity answer from questionnaire response."""  
+  """Returns ExtractionResult for gender identity answer from questionnaire response."""
   return extract_field(qr_hist_obj.obj, extraction.GENDER_IDENTITY_CONCEPT)
 
 def extract_state_of_residence(qr_hist_obj):
-  """Returns ExtractionResult for state of residence answer from questionnaire response."""  
+  """Returns ExtractionResult for state of residence answer from questionnaire response."""
   return extract_field(qr_hist_obj.obj, extraction.STATE_OF_RESIDENCE_CONCEPT)
 
 def extract_census_region(qr_hist_obj):
-  """Returns ExtractionResult for census region from questionnaire response."""  
+  """Returns ExtractionResult for census region from questionnaire response."""
   state_result = extract_state_of_residence(qr_hist_obj)
   if state_result.extracted:
     census_region = census_regions.get(state_result.value)
     if census_region:
       return extraction.ExtractionResult(census_region, True)
-  return extraction.ExtractionResult(None, False)  
+  return extraction.ExtractionResult(None, False)
 
 @ndb.non_transactional
 def extract_field(obj, concept):
@@ -156,7 +155,7 @@ def extract_field(obj, concept):
             questionnaire_id, response_extractor.extract_id()))
   questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
   link_ids = questionnaire_extractor.extract_link_id_for_concept(concept)
-  
+
   if not len(link_ids) == 1:
     return extraction.ExtractionResult(None, False)  # Failed to extract answer
   # Questionnaire unambiguously asked the desired question.
