@@ -12,11 +12,12 @@ import evaluation
 import offline.metrics_config
 import participant
 
+from extraction import Concept, LOINC
 from flask import request
 from flask.ext.restful import Resource
-from protorpc import messages
 from questionnaire_response import DAO as response_DAO
 from werkzeug.exceptions import BadRequest, InternalServerError
+
 
 METRICS_CONFIG = offline.metrics_config.METRICS_CONFIGS['Participant']
 
@@ -49,6 +50,24 @@ class EvaluationAPI(base_api.BaseApi):
   @api_util.auth_required
   def list(self, a_id):
     return evaluation.DAO.list(a_id)
+
+  def validate_object(self, e, a_id=None):
+    extractor = evaluation.EvaluationExtractor(e.resource)
+    _check_existence(extractor, LOINC, '8480-6', 'systolic blood pressure')
+    _check_existence(extractor, LOINC, '8462-4', 'diastolic blood pressure')
+    _check_existence(extractor, LOINC, '8867-4', 'heart rate')
+    _check_existence(extractor, LOINC, '29463-7', 'weight')
+    _check_existence(extractor, LOINC, '39156-5', 'body mass index')
+    _check_existence(extractor, LOINC, '29463-7', 'weight')
+    _check_existence(extractor, LOINC, '62409-8', 'hip circumference')
+    _check_existence(extractor, LOINC, '56086-2', 'waist circumference')
+
+
+def _check_existence(extractor, system, code, name):
+  value = extractor.extract_value(Concept(system, code))
+  if not value:
+    raise BadRequest('Evaluation does not contain a value for {}, ({}:{}).'.format(
+        name, system, code))
 
 
 class ParticipantSummaryAPI(Resource):

@@ -472,7 +472,7 @@
         "code": {
           "coding": [
             {
-              "code": "62409-8",
+              "code": "56086-2",
               "display": "Waist circumference",
               "system": "http://loinc.org"
             }
@@ -499,7 +499,7 @@
         "code": {
           "coding": [
             {
-              "code": "62409-8",
+              "code": "56086-2",
               "display": "Waist circumference",
               "system": "http://loinc.org"
             }
@@ -526,7 +526,7 @@
         "code": {
           "coding": [
             {
-              "code": "62409-8",
+              "code": "56086-2",
               "display": "Waist circumference",
               "system": "http://loinc.org"
             }

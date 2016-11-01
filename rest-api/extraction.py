@@ -2,6 +2,7 @@
 
 from collections import namedtuple
 from fhirclient.models.fhirelementfactory import FHIRElementFactory
+from werkzeug.exceptions import BadRequest
 
 UNMAPPED = 'UNMAPPED'
 
@@ -51,3 +52,40 @@ class FhirExtractor(object):
   def __init__(self, resource):
     self.r_fhir = FHIRElementFactory.instantiate(resource['resourceType'],
                                                  resource)
+
+
+
+Value = namedtuple('Value', ['value', 'value_type'])
+
+def extract_value(node):
+  """Extracts the value from a set of value[x] fields
+
+  Returns:
+    A extraction.Value object. Value.value is the extracted value,
+    Value.value_type is one of: valueQuantity, valueCodeableConcept,
+    valueString, valueRange, valueRatio, valueSampledData, valueAttachment,
+    valueTime, valueDateTime, or valuePeriod.  If no value is found None is
+    returned.
+
+  Raises:
+    BadRequest: If a value is specified in more than one field.
+  """
+  ret = None
+  for prop in ('valueQuantity',
+               'valueCodeableConcept',
+               'valueString',
+               'valueRange',
+               'valueRatio',
+               'valueSampledData',
+               'valueAttachment',
+               'valueTime',
+               'valueDateTime',
+               'valuePeriod',):
+    if hasattr(node, prop):
+      if ret:
+        raise BadRequest('{} has multiple values'.format(node.resource_name))
+      ret = getattr(node, prop)
+    return ret
+
+def extract_concept(node):
+  return Concept(system=node.system, code=node.code)
