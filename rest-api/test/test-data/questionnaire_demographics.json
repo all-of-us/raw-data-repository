@@ -90,32 +90,32 @@
                         }],
                         "option":[
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/gender-identity",
                               "code":"female",
                               "display":"Female"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/gender-identity",
                               "code":"female-to-male-transgender",
                               "display":"Female to Male Transgender   "
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/gender-identity",
                               "code":"male",
                               "display":"Male"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/gender-identity",
                               "code":"male-to-female-transgender",
                               "display":"Male to Female Transgender"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/gender-identity",
                               "code":"intersex",
                               "display":"Intersex"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/gender-identity",
                               "code":"other",
                               "display":"Other"
                            },
@@ -162,257 +162,257 @@
                         }],
                         "option":[
                            {
-                              "system":"http://terminology.pmi-ops.org/ppi/state",
+                              "system":"http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"AL",
                               "display":"Alabama (AL)"
                            },
                            {
-                              "system":"http://terminology.pmi-ops.org/ppi/state",
+                              "system":"http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"AK",
                               "display":"Alaska (AK)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"AZ",
                               "display":"Arizona (AZ)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"AR",
                               "display":"Arkansas (AR)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"CA",
                               "display":"California (CA)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"CO",
                               "display":"Colorado (CO)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"CT",
                               "display":"Connecticut (CT)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"DE",
                               "display":"Delaware (DE)"
                            },
                                                       {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"FL",
                               "display":"Florida (FL)"
                            },
                                                       {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"GA",
                               "display":"Georgia (GA)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"HI",
                               "display":"Hawaii (HI)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"ID",
                               "display":"Idaho (ID)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"IL",
                               "display":"Illinois (IL)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"IN",
                               "display":"Indiana (IN)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"IA",
                               "display":"Iowa (IA)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"KS",
                               "display":"Kansas (KS)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"KY",
                               "display":"Kentucky (KY)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"LA",
                               "display":"Louisiana (LA)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"ME",
                               "display":"Maine (ME)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"MD",
                               "display":"Maryland (MA)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"MA",
                               "display":"Massachusetts (MA)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"MI",
                               "display":"Michigan (MI)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"MN",
                               "display":"Minnesota (MN)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"MS",
                               "display":"Mississippi (MS)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"MO",
                               "display":"Missouri (MO)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"MT",
                               "display":"Montana (MT)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"NE",
                               "display":"Nebraska (NE)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"NV",
                               "display":"Nevada (NV)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"NH",
                               "display":"New Hampshire (NH)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"NJ",
                               "display":"New Jersey (NJ)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"NM",
                               "display":"New Mexico (NM)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"NY",
                               "display":"New York (NY)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"NC",
                               "display":"North Carolina (NC)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"ND",
                               "display":"North Dakota (ND)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"OH",
                               "display":"Ohio (OH)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"OK",
                               "display":"Oklahoma (OK)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"OR",
                               "display":"Oregon (OR)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"PA",
                               "display":"Pennsylvania (PA)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"RI",
                               "display":"Rhode Island (RI)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"SC",
                               "display":"South Carolina (SC)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"SD",
                               "display":"South Dakota (SD)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"TN",
                               "display":"Tennessee (TN)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"TX",
                               "display":"Texas (TX)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"UT",
                               "display":"Utah (UT)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"VT",
                               "display":"Vermont (VT)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"VA",
                               "display":"Virginia (VA)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"WA",
                               "display":"Washington (WA)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"WV",
                               "display":"West Virginia (WV)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"WI",
                               "display":"Wisconsin (WI)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"WY",
                               "display":"Wyoming (WY)"
                            },
                            {
-                              "system": "http://terminology.pmi-ops.org/ppi/state",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                               "code":"ZZ",
                               "display":"Other / Unknown"
                            }
