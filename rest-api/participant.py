@@ -46,6 +46,25 @@ class RecruitmentSource(messages.Enum):
   DIRECT_VOLUNTEER = 2
 
 
+# Valid values for the HPO, not currently enforced.
+HPO_VALUES = (
+    'pitt',        # Pitt/UPMC
+    'columbia',    # Columbia University Medical Center
+    'illinois',    # Illinois Precision Medicine Consortium
+    'az_tucson',   # University of Arizona, Tucson
+    'comm_health', # Community Health Center
+    'san_ysidro',  # San Ysidro health Center, Inc.
+    'cherokee',    # Cherokee Health Systems
+    'eau_claire',  # Eau Claire Cooperative Health Centers, Inc
+    'hrhcare',     # HRHCare (Hudson River Healthcare)
+    'jackson',     # Jackson-Hinds Comprehensive Health Center
+    'geisinger',   # Geisinger Health System
+    'cal_pmc',     # California Precision Medicine Consortium
+    'ne_pmc',      # New England Precision Medicine Consortium
+    'trans_am',    # Trans-American Consortium for the Health Care Systems Research Network
+    'va',          # Veterans Affairs
+)
+
 class Participant(ndb.Model):
   """The participant resource definition"""
   participant_id = ndb.StringProperty()
@@ -209,12 +228,17 @@ def extract_HPO_id(ph):
         or '')
        + str(ph.obj.hpo_id)))
 
+# The lower bounds of the age buckets.
+_AGE_LB =  [0, 18, 26, 36, 46, 56, 66, 76, 86]
+AGE_BUCKETS = ['{}-{}'.format(b,e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
+
+
 def _bucketed_age(date_of_birth, today):
   age = relativedelta(today, date_of_birth).years
-  ages = [0, 18, 26, 36, 46, 56, 66, 76, 86]
-  for begin, end in zip(ages, [a - 1 for a in ages[1:]] + ['']):
+  for begin, end in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + ['']):
     if (age >= begin) and (not end or age <= end):
       return str(begin) + '-' + str(end)
+
 
 
 DAO = ParticipantDAO()

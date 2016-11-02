@@ -20,22 +20,28 @@ Keys for an individual configuration entry:
 
 """
 
+
 import extraction
-import metrics
 import participant
 import questionnaire_response
 
 from collections import namedtuple
 from extraction import ExtractionResult
+from protorpc import messages
 
-FieldDef = namedtuple('FieldDef', ['name', 'func'])
+class FacetType(messages.Enum):
+  """The Facets (dimensions) to bucket by"""
+  NONE = 0
+  HPO_ID = 1
+
+FieldDef = namedtuple('FieldDef', ['name', 'func', 'func_range'])
 FacetDef = namedtuple('FacetDef', ['type', 'func'])
 
 METRICS_CONFIGS = {
     'Participant': {
         'load_history_func': participant.load_history_entities,
         'facets': [
-            FacetDef(metrics.FacetType.HPO_ID, lambda s: s['hpo_id']),
+            FacetDef(FacetType.HPO_ID, lambda s: s['hpo_id']),
         ],
         'initial_state': {
             'physical_evaluation': 'UNSET',
@@ -47,27 +53,45 @@ METRICS_CONFIGS = {
         'fields': {
             'ParticipantHistory': [
                 FieldDef('membership_tier',
-                         extraction.simple_field_extractor('membership_tier')),
+                         extraction.simple_field_extractor('membership_tier'),
+                         iter(participant.MembershipTier)),
                 FieldDef('gender_identity',
-                         extraction.simple_field_extractor('gender_identity')),
-                FieldDef('age_range', participant.extract_bucketed_age),
-                FieldDef('hpo_id', participant.extract_HPO_id)
+                         extraction.simple_field_extractor('gender_identity'),
+                         iter(participant.GenderIdentity)),
+                FieldDef('age_range', participant.extract_bucketed_age,
+                         participant.AGE_BUCKETS),
+                FieldDef('hpo_id', participant.extract_HPO_id,
+                         participant.HPO_VALUES)
             ],
             'QuestionnaireResponseHistory': [
-                FieldDef('race', questionnaire_response.extract_race),
-                FieldDef('ethnicity', questionnaire_response.extract_ethnicity),
+                FieldDef('race',
+                         questionnaire_response.extract_race,
+                         questionnaire_response.races()),
+                FieldDef('ethnicity',
+                         questionnaire_response.extract_ethnicity,
+                         questionnaire_response.ethnicities()),
                 # The presence of a response means that some have been submitted.
-                FieldDef('survey', lambda h: ExtractionResult('SUBMITTED_SOME')),
-                FieldDef('state', questionnaire_response.extract_state_of_residence),
-                FieldDef('census_region', questionnaire_response.extract_census_region)
+                FieldDef('survey',
+                         lambda h: ExtractionResult('SUBMITTED_SOME'),
+                         ('None', 'SUBMITTED_SOME')),
+                FieldDef('state',
+                         questionnaire_response.extract_state_of_residence,
+                         questionnaire_response.states()),
+                FieldDef('census_region',
+                         questionnaire_response.extract_census_region,
+                         questionnaire_response.regions())
             ],
             'EvaluationHistory': [
                 # The presence of a physical evaluation implies that it is complete.
-                FieldDef('physical_evaluation', lambda h: ExtractionResult('COMPLETE')),
+                FieldDef('physical_evaluation',
+                         lambda h: ExtractionResult('COMPLETE'),
+                         ('None', 'COMPLETE')),
             ],
             'BiobankOrderHistory': [
                 # The presence of a biobank order implies that an order has been placed.
-                FieldDef('biospecimen', lambda h: ExtractionResult('ORDER_PLACED'))
+                FieldDef('biospecimen',
+                         lambda h: ExtractionResult('ORDER_PLACED'),
+                         ('None', 'ORDER_PLACED'))
             ],
         },
     },
