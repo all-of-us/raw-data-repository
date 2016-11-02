@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Manual steps to provision service-account keys for gcloud
-# Arg: [path to gcloud service accout key]
+# Arg: [path to gcloud service account key] [CI token]
 
 set -e
 
@@ -17,16 +17,22 @@ function make_circle_envvar {
 GCLOUD_CREDENTIALS_KEY=$(openssl rand -base64 32)
 GCLOUD_CREDENTIALS=$(openssl enc  -aes-256-cbc -in $1 -base64 -A  -k $GCLOUD_CREDENTIALS_KEY)
 
-echo "Environment vars to set in Circle CI Admin UI\n-----\n\n"
+VCS_TYPE=github
+CI_USERNAME=vanderbilt
+CI_PROJECT=pmi-data
+CI_TOKEN=$2
+
+
+echo "----- Environment vars to set in Circle CI Admin UI:"
 
 echo "GCLOUD_CREDENTIALS=$GCLOUD_CREDENTIALS"
 echo "GCLOUD_CREDENTIALS_KEY=$GCLOUD_CREDENTIALS_KEY"
 
-make_circle_envvar github vanderbilt pmi-data GCLOUD_CREDENTIALS $GCLOUD_CREDENTIALS
-make_circle_envvar github vanderbilt pmi-data GCLOUD_CREDENTIALS_KEY $GCLOUD_CREDENTIALS_KEY
+make_circle_envvar $VCS_TYPE $CI_USERNAME $CI_PROJECT GCLOUD_CREDENTIALS $GCLOUD_CREDENTIALS
+make_circle_envvar $VCS_TYPE $CI_USERNAME $CI_PROJECT GCLOUD_CREDENTIALS_KEY $GCLOUD_CREDENTIALS_KEY
 
-echo "Created vars":
-curl https://circleci.com/api/v1.1/project/github/vanderbilt/pmi-data/envvar?circle-token=$CI_TOKEN
+echo "----- Created vars:"
+curl https://circleci.com/api/v1.1/project/$VCS_TYPE/$CI_USERNAME/$CI_PROJECT/envvar?circle-token=$CI_TOKEN
 
-echo Decryption command:
-echo $GCLOUD_CREDENTIALS | openssl enc -d -aes-256-cbc -base64 -A -k $GCLOUD_CREDENTIALS_KEY
+echo "----- Decryption command:"
+echo 'echo $GCLOUD_CREDENTIALS | openssl enc -d -aes-256-cbc -base64 -A -k $GCLOUD_CREDENTIALS_KEY'
