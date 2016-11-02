@@ -9,7 +9,7 @@ from extraction import extract_concept
 from google.appengine.ext import ndb
 from werkzeug.exceptions import BadRequest
 
-EVALUATION_CONCEPT_SYSTEM = "http://terminology.pmi-ops.org/document-types"
+EVALUATION_CONCEPT_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/document-type"
 EVALUATION_CONCEPT_CODE_PREFIX = "intake-exam-v"
 
 
@@ -43,27 +43,28 @@ class EvaluationExtractor(extraction.FhirExtractor):
     super(EvaluationExtractor, self).__init__(resource)
     self.values = {}
 
-    has_composition = False
-    for entry in (e.resource for e in self.r_fhir.entry):
+    # The first entry should be a Composition, then Observations follow.
+    if not self.r_fhir.entry or self.r_fhir.entry[0].resource.resource_name != "Composition":
+      raise BadRequest('The first entry should be a Composition. It is {}'.format(
+          self.r_fhir.entry and self.r_fhir.entry[0].resource.resource_name))
+
+    composition = self.r_fhir.entry[0].resource
+    codings = {c.system: c.code for c in composition.type.coding}
+    code = codings.get(EVALUATION_CONCEPT_SYSTEM, None)
+    if not code:
+      raise BadRequest('Evaluation does not have a composition node with system: {}.'.format(
+          EVALUATION_CONCEPT_SYSTEM))
+    if not code.startswith(EVALUATION_CONCEPT_CODE_PREFIX):
+      raise BadRequest('Invalid Composition code: {} should start with: {}.'.format(
+          code, EVALUATION_CONCEPT_CODE_PREFIX))
+
+    for entry in (e.resource for e in self.r_fhir.entry[1:]):
       if entry.resource_name == "Observation":
         value = extraction.extract_value(entry)
         self.values.update({extract_concept(coding): value for coding in entry.code.coding})
         for component in entry.component or []:
           value = extraction.extract_value(component)
           self.values.update({extract_concept(coding): value for coding in component.code.coding})
-      elif entry.resource_name == "Composition":
-        has_composition = True
-        codings = {c.system: c.code for c in entry.type.coding}
-        code = codings.get(EVALUATION_CONCEPT_SYSTEM, None)
-        if not code:
-          raise BadRequest('Evaluation does not have a composition node with system: {}.'.format(
-              EVALUATION_CONCEPT_SYSTEM))
-        if not code.startswith(EVALUATION_CONCEPT_CODE_PREFIX):
-          raise BadRequest('Invalid Composition code: {} should start with: {}.'.format(
-              code, EVALUATION_CONCEPT_CODE_PREFIX))
-
-    if not has_composition:
-      raise BadRequest("Evaluation has no Composition node.")
 
   def extract_value(self, concept):
     return self.values.get(concept, None)

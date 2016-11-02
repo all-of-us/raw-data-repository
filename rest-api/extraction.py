@@ -84,7 +84,7 @@ def extract_value(node):
     if hasattr(node, prop):
       if ret:
         raise BadRequest('{} has multiple values'.format(node.resource_name))
-      ret = getattr(node, prop)
+      ret = Value(getattr(node, prop), prop)
     return ret
 
 def extract_concept(node):
