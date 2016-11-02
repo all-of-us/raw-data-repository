@@ -34,6 +34,12 @@ api.add_resource(
     endpoint='participant.evaluation',
     methods=['GET', 'POST',])
 
+api.add_resource(
+    participants_api.ParticipantSummaryAPI,
+    PREFIX + 'Participant/<string:id_>/Summary',
+    endpoint='participant.summary',
+    methods=['GET',])
+
 api.add_resource(ppi_api.QuestionnaireAPI,
                  PREFIX + 'Questionnaire',
                  PREFIX + 'Questionnaire/<string:id_>',

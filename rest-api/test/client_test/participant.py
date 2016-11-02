@@ -6,7 +6,8 @@ import unittest
 
 import test_util
 
-from client.client import Client, HttpException
+from client.client import HttpException
+from dateutil.relativedelta import relativedelta
 
 
 class ParticipantTest(unittest.TestCase):
@@ -17,7 +18,7 @@ class ParticipantTest(unittest.TestCase):
   def testCreateAndModifyParticipant(self):
     first_name = 'Mister'
     last_name = 'O\'Pants'
-    date_of_birth = '1975-08-21'
+    date_of_birth = (datetime.datetime.now() - relativedelta(years=40)).date().isoformat()
     physical_evaluation_status = 'COMPLETED'
 
     # Create a new participant.
@@ -30,11 +31,10 @@ class ParticipantTest(unittest.TestCase):
 
     response = self.client.request_json('Participant', 'POST', participant)
     self.assertEqual(response['first_name'], first_name)
-    self.assertEqual(response['physical_evaluation_status'], 
+    self.assertEqual(response['physical_evaluation_status'],
         physical_evaluation_status)
     biobank_id = response['biobank_id']
     self.assertTrue(biobank_id.startswith('B'))
-    
 
     participant_id = response['participant_id']
 
@@ -62,8 +62,8 @@ class ParticipantTest(unittest.TestCase):
       response = self.client.request_json('Participant',
                                           query_args={"last_name": last_name})
       self.fail('List request without last name and birth date should fail.')
-    except HttpException, e:
-      self.assertEqual(e.code, 400)
+    except HttpException, ex:
+      self.assertEqual(ex.code, 400)
 
     args = {
         "first_name": first_name.upper(),
@@ -82,6 +82,16 @@ class ParticipantTest(unittest.TestCase):
         break
     else:
       raise self.fail('Did not encounter newly created participant')
+
+    response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
+    expected = {
+        'Participant.membership_tier': 'VOLUNTEER',
+        'Participant.gender_identity': 'None',
+        'Participant.age_range': '36-45',
+        'Participant.hpo_id': '1234',
+        }
+    self.assertEqual(expected, response)
+
 
 if __name__ == '__main__':
   unittest.main()

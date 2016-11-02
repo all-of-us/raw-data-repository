@@ -123,7 +123,7 @@ class DataAccessObject(object):
       raise Conflict('{} with key {} already exists'.format(
           self.model_name, model.key))
     return self.store(model, date, client_id)
-  
+
   @ndb.transactional
   def update(self, model, date=None, client_id=None):
     if not model.key.get():
@@ -143,6 +143,16 @@ class DataAccessObject(object):
 
   def get_all_history(self, ancestor_key):
     return self.history_model.query(ancestor=ancestor_key).fetch()
+
+  def children(self, parent):
+    """Gets all objects that have parent as an ancestor."""
+    return self.model_type.query(ancestor=parent.key).fetch()
+
+  def last_history(self, obj):
+    """Gets the history object associated with the last update to obj."""
+    query = self.history_model.query(ancestor=obj.key).order(-self.history_model.date)
+    hists = query.fetch(limit=1)
+    return hists and hists[0] or None
 
   def _make_key(self, id_, ancestor_id):
     if ancestor_id:

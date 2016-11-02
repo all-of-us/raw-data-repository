@@ -4,20 +4,22 @@ This defines the APIs and the handlers for the APIs.
 """
 
 import datetime
-import uuid
 
 import api_util
 import base_api
+import biobank_order
 import evaluation
+import offline.metrics_config
 import participant
 
-from protorpc import message_types
+from flask import request
+from flask.ext.restful import Resource
 from protorpc import messages
+from questionnaire_response import DAO as response_DAO
+from werkzeug.exceptions import BadRequest, InternalServerError
 
-from google.appengine.ext import ndb
-from flask import Flask, request
-from flask.ext.restful import Resource, reqparse, abort
-from werkzeug.exceptions import BadRequest, NotFound
+METRICS_CONFIG = offline.metrics_config.METRICS_CONFIGS['Participant']
+
 
 class ParticipantAPI(base_api.BaseApi):
   def __init__(self):
@@ -47,3 +49,29 @@ class EvaluationAPI(base_api.BaseApi):
   @api_util.auth_required
   def list(self, a_id):
     return evaluation.DAO.list(a_id)
+
+
+class ParticipantSummaryAPI(Resource):
+
+  @api_util.auth_required
+  def get(self, id_, date=None):
+    date = date or datetime.datetime.now()
+    pt = participant.DAO.load(id_)
+
+    hists = sorted([response_DAO.last_history(r) for r in response_DAO.children(pt)] +
+                   [evaluation.DAO.last_history(e) for e in evaluation.DAO.children(pt)] +
+                   [biobank_order.DAO.last_history(b) for b in biobank_order.DAO.children(pt)] +
+                   [participant.DAO.last_history(pt)],
+                   key=lambda o: o.date)
+
+    summary = {}
+    for hist in hists:
+      for field in METRICS_CONFIG['fields'][hist.key.kind()]:
+        try:
+          result = field.func(hist)
+          if result.extracted:
+            summary['Participant.' + field.name] = str(result.value)
+        except Exception as ex:
+          raise InternalServerError('Exception extracting field {0}: {1}'.format(field.name, ex))
+
+    return summary

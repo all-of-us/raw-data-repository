@@ -4,12 +4,9 @@
 import api_util
 
 import data_access_object
-import identifier
 import participant
 
-from protorpc import messages
 from google.appengine.ext import ndb
-from google.appengine.ext.ndb import msgprop
 
 class BiobankOrderIdentifier(ndb.Model):
   """An identifier for a Biobank order"""

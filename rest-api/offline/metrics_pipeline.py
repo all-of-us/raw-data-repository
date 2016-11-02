@@ -60,21 +60,15 @@ import pipeline
 
 import api_util
 import config
-import extraction
 import metrics
-import metrics_config
-import participant
-import questionnaire
-import questionnaire_response
+import offline.metrics_config
 
 from datetime import datetime
 from collections import Counter
-from google.appengine.api import app_identity
 from google.appengine.ext import ndb
 from mapreduce import mapreduce_pipeline
-from mapreduce import util
 from mapreduce import operation as op
-from protorpc import messages
+
 
 from metrics import MetricsBucket
 
@@ -88,7 +82,7 @@ TOTAL_SENTINEL = '__total_sentinel__'
 
 # This can be overridden for unit-tests, however, this hardcoded config will be
 # used whenever a mapper starts up in a new app engine instance.
-METRICS_CONFIGS=metrics_config.METRICS_CONFIGS
+METRICS_CONFIGS=offline.metrics_config.METRICS_CONFIGS
 
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):

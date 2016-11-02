@@ -3,11 +3,13 @@
 Also serves as end to end test to exercise each of these REST APIs.
 """
 
+import datetime
 import json
 import unittest
 
 import test_util
 from client.client import HttpException
+from dateutil.relativedelta import relativedelta
 
 def _questionnaire_response_url(participant_id):
   return 'Participant/{}/QuestionnaireResponse'.format(participant_id)
@@ -39,7 +41,10 @@ class TestPPI(unittest.TestCase):
         'test-data/questionnaire_response3.json',
     ]
     participant_id = test_util.create_participant(
-        self.client, 'Bovine', 'Knickers', '1970-10-10')
+        self.client,
+        'Bovine',
+        'Knickers',
+        (datetime.datetime.now() - relativedelta(years=46)).date().isoformat())
     questionnaire_id = test_util.create_questionnaire(
         self.client, 'test-data/questionnaire1.json')
     for json_file in questionnaire_response_files:
@@ -62,7 +67,7 @@ class TestPPI(unittest.TestCase):
             resource['questionnaire']['reference'].format(
                 questionnaire_id=questionnaire_id)
         test_util.round_trip(self, self.client, good_url, resource)
-  
+
   def test_demographic_questionnaire_responses(self):
     questionnaire_response_files = [
         'test-data/questionnaire_response_demographics.json',
@@ -85,6 +90,19 @@ class TestPPI(unittest.TestCase):
         test_util.round_trip(self, self.client, good_url, resource)
     response = self.client.request_json('Participant/{}'.format(participant_id))
     self.assertEqual(response['gender_identity'], 'MALE_TO_FEMALE_TRANSGENDER')
+
+    response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
+    expected = {
+        'Participant.membership_tier': 'None',
+        'Participant.gender_identity': 'MALE_TO_FEMALE_TRANSGENDER',
+        'Participant.age_range': '46-55',
+        'Participant.hpo_id': 'None',
+        'Participant.state': 'AL',
+        'Participant.census_region': 'SOUTH',
+        'Participant.survey': 'SUBMITTED_SOME',
+        }
+    self.assertEqual(expected, response)
+
 
 if __name__ == '__main__':
   unittest.main()

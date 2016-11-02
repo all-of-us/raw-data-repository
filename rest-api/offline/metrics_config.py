@@ -51,14 +51,14 @@ METRICS_CONFIGS = {
                 FieldDef('gender_identity',
                          extraction.simple_field_extractor('gender_identity')),
                 FieldDef('age_range', participant.extract_bucketed_age),
-                FieldDef('hpo_id', participant.extract_HPO_id)            
+                FieldDef('hpo_id', participant.extract_HPO_id)
             ],
             'QuestionnaireResponseHistory': [
                 FieldDef('race', questionnaire_response.extract_race),
                 FieldDef('ethnicity', questionnaire_response.extract_ethnicity),
                 # The presence of a response means that some have been submitted.
                 FieldDef('survey', lambda h: ExtractionResult('SUBMITTED_SOME')),
-                FieldDef('state',  questionnaire_response.extract_state_of_residence),
+                FieldDef('state', questionnaire_response.extract_state_of_residence),
                 FieldDef('census_region', questionnaire_response.extract_census_region)
             ],
             'EvaluationHistory': [
