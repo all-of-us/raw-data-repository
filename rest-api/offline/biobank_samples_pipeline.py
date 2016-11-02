@@ -42,6 +42,7 @@ class BiobankSamplesPipeline(pipeline.Pipeline):
     for gcs_file in cloudstorage_api.listbucket('/' + bucket_name):
       if gcs_file.filename.endswith(".csv") and gcs_file.st_ctime > newest_timestamp:
         newest_filename = gcs_file.filename.split('/')[2]
+        newest_timestamp = gcs_file.st_ctime
     
     if not newest_filename:
       print 'No CSV files found in bucket {}; aborting pipeline.'.format(bucket_name)

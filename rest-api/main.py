@@ -64,8 +64,8 @@ api.add_resource(metrics_api.MetricsApi,
                  methods=['POST'])
 
 api.add_resource(biobank_samples_api.BiobankSamplesApi,
-                 PREFIX + 'BiobankSamples',
-                 endpoint='biobankSamples',
+                 PREFIX + 'BiobankSamplesReload',
+                 endpoint='biobankSamplesReload',
                  methods=['GET'])
 
 api.add_resource(metrics_api.MetricsApi,
