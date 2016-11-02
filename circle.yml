@@ -13,7 +13,7 @@ test:
 
 deployment:
   test:
-    branch: [master, brockman-circle-deploy]
+    branch: master
     commands:
       - ./ci/deploy_to_test.sh pmi-drc-api-test
   staging:
