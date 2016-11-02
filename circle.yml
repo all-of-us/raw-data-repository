@@ -10,3 +10,16 @@ dependencies:
 test:
   override:
     - ./ci/test.sh
+
+deployment:
+  # Deploy master to the pmi-drc-api-test project whenever the tests pass
+  test:
+    branch: master
+    commands:
+      - ./ci/deploy_to_test.sh pmi-drc-api-test
+  # To deploy to staging, cut a GitHub release on a green build, with tag of the form v0.1.1-rc0
+  staging:
+    tag: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
+    commands:
+      - ./ci/deploy_to_test.sh all-of-us-rdr-staging
+    
