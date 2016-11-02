@@ -15,7 +15,8 @@ _CONFIG_INITIALIZED = 'initialized'
 ALLOWED_USER = 'allowed_user'
 ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
 METRICS_SHARDS = 'metrics_shards'
-
+BIOBANK_SAMPLES_SHARDS = 'biobank_samples_shards'
+BIOBANK_SAMPLES_BUCKET_NAME = 'biobank_samples_bucket_name'
 
 class MissingConfigException(BaseException):
   """Exception raised if the setting does not exist"""
@@ -86,6 +87,8 @@ def check_initialized():
     print "Creating and setting sane defaults for development..."
     Config(config_key=_CONFIG_INITIALIZED, value='True').put()
     Config(config_key=METRICS_SHARDS, value='2').put()
+    Config(config_key=BIOBANK_SAMPLES_SHARDS, value = '2').put()
+    Config(config_key=BIOBANK_SAMPLES_BUCKET_NAME, value = 'pmi-drc-biobank-test.appspot.com').put()
     Config(config_key=ALLOWED_USER,
            value='pmi-hpo-staging@appspot.gserviceaccount.com').put()
     Config(config_key=ALLOWED_USER,
