@@ -9,8 +9,6 @@ PROJECT_ID=$1
 echo "Deploying to: $PROJECT_ID"
 
 cd rest-api
-pip install -r requirements.txt -t lib/
-git submodule update --init
 
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
