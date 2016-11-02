@@ -1,13 +1,17 @@
 #!/bin/bash
 
 # Deploys the application to the project $1.
-# Requires environment variables GCLOUD_CREDENTIALS and GCLOUD_CREDENTIALS_KEY
-# which combine to decrypt the keys for a service account.
 
-# The service account must have role permissions as described here:
+# This script is executed by the circle.yml config when the conditions
+# specified there are met.
+
+# Requires two environment variables (see below) which combine to decrypt
+# the keys for a service account.
+
+# The service account must have permissions as described here:
 # https://cloud.google.com/appengine/docs/python/access-control
 # In particular it requires project editor permission: this is currently
-# required to push queues.yaml, cron.yaml, index.yaml.
+# required to push queues.yaml, cron.yaml, and index.yaml.
 
 set -e
 
