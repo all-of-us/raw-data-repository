@@ -50,12 +50,12 @@ class ExtractionTest(unittest.TestCase):
         template, 'Q1234', 'P1',
         extraction.Concept('http://hl7.org/fhir/v3/Race', '2106-3'),
         extraction.Concept('http://hl7.org/fhir/v3/Ethnicity', '2135-5'),
-        extraction.Concept('http://terminology.pmi-ops.org/ppi/state', 'TX'))
+        extraction.Concept('http://terminology.pmi-ops.org/CodeSystem/us-state', 'TX'))
 
     extractor = QuestionnaireResponseExtractor(json.loads(response))
     self.assertEquals('Q1234', extractor.extract_questionnaire_id())
     self.assertEquals('white', extractor.extract_answer(RACE_LINKID, extraction.RACE_CONCEPT))
-    self.assertEquals('TX', extractor.extract_answer(STATE_OF_RESIDENCE_LINKID, 
+    self.assertEquals('TX', extractor.extract_answer(STATE_OF_RESIDENCE_LINKID,
                                                      extraction.STATE_OF_RESIDENCE_CONCEPT))
 
 def _fill_response(template, q_id, p_id, race, ethnicity, state_of_residence):

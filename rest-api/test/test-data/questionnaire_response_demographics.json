@@ -38,7 +38,7 @@
               "linkId": "1.2.3",
               "answer": [{
                 "valueCoding": {
-                  "system": "http://terminology.pmi-ops.org/ppi/gender-identity",
+                  "system": "http://terminology.pmi-ops.org/CodeSystem/gender-identity",
                   "code": "male-to-female-transgender"
                 }
               }]
@@ -60,7 +60,7 @@
                 "answer": [
                   {
                     "valueCoding": {
-                      "system": "http://terminology.pmi-ops.org/ppi/state",
+                      "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
                       "code": "AL"
                     }
                   }

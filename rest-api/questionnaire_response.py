@@ -72,24 +72,24 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
                            'ASKU'): 'asked_but_no_answer',
   }
   _GENDER_IDENTITY_MAPPING = {
-        extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
+        extraction.Concept('http://terminology.pmi-ops.org/CodeSystem/gender-identity',
                            'female'): GenderIdentity.FEMALE,
-        extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
+        extraction.Concept('http://terminology.pmi-ops.org/CodeSystem/gender-identity',
                            'female-to-male-transgender'): GenderIdentity.FEMALE_TO_MALE_TRANSGENDER,
-        extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
+        extraction.Concept('http://terminology.pmi-ops.org/CodeSystem/gender-identity',
                            'male'): GenderIdentity.MALE,
-        extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
+        extraction.Concept('http://terminology.pmi-ops.org/CodeSystem/gender-identity',
                            'male-to-female-transgender'): GenderIdentity.MALE_TO_FEMALE_TRANSGENDER,
-        extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
+        extraction.Concept('http://terminology.pmi-ops.org/CodeSystem/gender-identity',
                            'intersex'): GenderIdentity.INTERSEX,
-        extraction.Concept('http://terminology.pmi-ops.org/ppi/gender-identity',
+        extraction.Concept('http://terminology.pmi-ops.org/CodeSystem/gender-identity',
                            'other'): GenderIdentity.OTHER,
         extraction.Concept('http://hl7.org/fhir/v3/NullFlavor',
                           'ASKU'): GenderIdentity.PREFER_NOT_TO_SAY,
   }
 
   _STATE_MAPPING = {
-    extraction.Concept('http://terminology.pmi-ops.org/ppi/state', state): state
+    extraction.Concept('http://terminology.pmi-ops.org/CodeSystem/us-state', state): state
     for state in census_regions.keys()
   }
 
