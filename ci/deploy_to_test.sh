@@ -8,10 +8,21 @@
 # Requires two environment variables (see below) which combine to decrypt
 # the keys for a service account.
 
+# The AppEngine Admin API must be activated for the project being deployed
+# to (it is not activated by default).
+
 # The service account must have permissions as described here:
 # https://cloud.google.com/appengine/docs/python/access-control
-# In particular it requires project editor permission: this is currently
+
+# 1. In particular it requires project editor permission: this is currently
 # required to push queues.yaml, cron.yaml, and index.yaml.
+
+# 2. It must also have write access to the two Cloud Storage buckets used
+# for staging the deployment - this comes automatically with project editor
+# status.
+
+# In the future it will likely be possible to grant weaker permissions
+# (such as the AppEngine Deployer role).
 
 set -e
 
