@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Manual steps to provision service-account keys for gcloud
-# Arg: [path to gcloud service account key] [CI token]
+# Run this script to upload service-account keys for gcloud on Circle CI.
+# Arg: [path to gcloud service account key JSON file]
+# Requires CI_TOKEN environment variable containing a valid Circle CI token.
 
 set -e
 
@@ -20,8 +21,6 @@ GCLOUD_CREDENTIALS=$(openssl enc  -aes-256-cbc -in $1 -base64 -A  -k $GCLOUD_CRE
 VCS_TYPE=github
 CI_USERNAME=vanderbilt
 CI_PROJECT=pmi-data
-CI_TOKEN=$2
-
 
 echo "----- Environment vars to set in Circle CI Admin UI:"
 
