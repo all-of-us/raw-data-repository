@@ -142,7 +142,7 @@ class DataAccessObject(object):
       if client_id:
         h.populate(client_id=client_id)
       h.put()
-    model.put()
+    return model.put()
 
   def get_all_history(self, ancestor_key):
     assert self.keep_history

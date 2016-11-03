@@ -11,5 +11,7 @@ from flask.ext.restful import Resource
 class BiobankSamplesApi(Resource):
   @api_util.auth_required_cron_or_admin
   def get(self):
-    print "=========== Starting Pipeline ============"
-    offline.biobank_samples_pipeline.BiobankSamplesPipeline().start()
+    print "=========== Starting biobank samples pipeline ============"
+    bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME,
+        'pmi-drc-biobank-test.appspot.com') 
+    offline.biobank_samples_pipeline.BiobankSamplesPipeline(bucket_name).start()

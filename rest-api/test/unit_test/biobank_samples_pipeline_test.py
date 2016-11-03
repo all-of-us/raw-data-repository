@@ -1,7 +1,9 @@
 """Tests for biobank_samples_pipeline."""
 
+import csv
 import os
 import biobank_sample
+import participant
 
 from offline.biobank_samples_pipeline import BiobankSamplesPipeline
 
@@ -14,32 +16,40 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
     testutil.HandlerTestBase.setUp(self)
     
   def test_end_to_end(self):    
+    # Insert participants to generate biobank IDs
+    participant.DAO.insert(participant.DAO.from_json({}, None, 'P1'))
+    participant_1 = participant.DAO.load('P1')
+    participant.DAO.insert(participant.DAO.from_json({}, None, 'P2'))    
+    participant_2 = participant.DAO.load('P2')  
+                                        
     with open(_data_path('biobank_samples_1.csv'), 'rb') as src, \
         cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.csv', mode='w') as dest:
-      while 1:
-          copy_buffer = src.read(1024)
-          if not copy_buffer:
-              break
-          dest.write(copy_buffer)    
-    BiobankSamplesPipeline().start()
+      reader = csv.reader(src)
+      writer = csv.writer(dest)
+      for line in reader:
+        # Put biobank IDs in the CSV being imported
+        line[0] = line[0].replace("{biobank_id_1}", participant_1.biobank_id)
+        line[0] = line[0].replace("{biobank_id_2}", participant_2.biobank_id);
+        writer.writerow(line)        
+    BiobankSamplesPipeline('pmi-drc-biobank-test.appspot.com').start()
     test_support.execute_until_empty(self.taskqueue)
     
-    biobank_samples_1 = biobank_sample.DAO.load('0', 'PMI-100001')
+    biobank_samples_1 = biobank_sample.DAO.load('0', 'P1')
     expected_sample_dict_1 = {
-        'family_id': 'SF160914-000001',
-        'sample_id': '16258000008',
-        'event_name': 'DRC-00123',
-        'storage_status': 'In Prep',
+        'familyId': 'SF160914-000001',
+        'sampleId': '16258000008',
+        'eventName': 'DRC-00123',
+        'storageStatus': 'In Prep',
         'type': 'Urine',
         'treatments': 'No Additive',
-        'expected_volume': '10 mL',
+        'expectedVolume': '10 mL',
         'quantity': '1 mL',
-        'container_type': 'TS - Matrix 1.4mL',
-        'collection_date': '2016/09/13 09:47:00',
-        'parent_sample_id': '16258000001',
-        'confirmed_date': '2016/09/14 09:49:00' }
+        'containerType': 'TS - Matrix 1.4mL',
+        'collectionDate': '2016/09/13 09:47:00',
+        'parentSampleId': '16258000001',
+        'confirmedDate': '2016/09/14 09:49:00' }
     expected_samples_1 = biobank_sample.DAO.from_json(
-        { 'samples': [ expected_sample_dict_1 ]}, 'PMI-100001', '0')
+        { 'samples': [ expected_sample_dict_1 ]}, 'P1', '0')
     self.assertEquals(expected_samples_1, biobank_samples_1)    
 
 def _data_path(filename):
