@@ -10,29 +10,16 @@ import extraction
 from questionnaire import QuestionnaireExtractor
 from questionnaire_response import QuestionnaireResponseExtractor
 
-
-
-from google.appengine.api import memcache
-from google.appengine.ext import ndb
-from google.appengine.ext import testbed
-
+from test.unit_test.unit_test_util import NdbTestBase
 
 RACE_LINKID = 'race'
 ETHNICITY_LINKID = 'ethnicity'
 STATE_OF_RESIDENCE_LINKID = 'state_of_residence'
 
-class ExtractionTest(unittest.TestCase):
+class ExtractionTest(NdbTestBase):
   def setUp(self):
-    self.maxDiff = None
+    super(ExtractionTest, self).setUp()
     self.longMessage = True
-    self.testbed = testbed.Testbed()
-    self.testbed.activate()
-    self.testbed.init_datastore_v3_stub()
-    self.testbed.init_memcache_stub()
-    ndb.get_context().clear_cache()
-
-  def tearDown(self):
-    pass
 
   def test_questionnaire_extract(self):
     questionnaire = json.loads(open(_data_path('questionnaire_example.json')).read())
