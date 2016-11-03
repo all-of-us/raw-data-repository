@@ -1,3 +1,15 @@
+# To support validating AppEngine calls by IP whitelisting,
+# we need to know which DNS blocks are used by AppEngine.
+# This code implements the algorithm described at
+# https://cloud.google.com/appengine/kb/ for recursively
+# expanding DNS blocks used by AppEngine.
+
+# Three example values of the TXT record returned from these requests:
+# _cloud-netblocks.googleusercontent.com. 3599 IN TXT "v=spf1 include:_cloud-netblocks1.googleusercontent.com include:_cloud-netblocks2.googleusercontent.com include:_cloud-netblocks3.googleusercontent.com include:_cloud-netblocks4.googleusercontent.com include:_cloud-netblocks5.googleusercontent.com ?all"
+# _cloud-netblocks.googleusercontent.com. 3599 IN TXT "v=spf1 include:_cloud-netblocks1.googleusercontent.com include:_cloud-netblocks2.googleusercontent.com include:_cloud-netblocks3.googleusercontent.com include:_cloud-netblocks4.googleusercontent.com include:_cloud-netblocks5.googleusercontent.com ?all"
+# _cloud-netblocks5.googleusercontent.com. 3599 IN TXT "v=spf1 ip6:2600:1900::/35 ?all"
+
+
 import dns.resolver
 import re
 from  collections import namedtuple
@@ -13,12 +25,12 @@ def get_ip_ranges(start):
         [v for r in resolved_blocks.values() for v in r.ip6])
 
 def resolve(source):
-      q = dns.resolver.query(source, "TXT").response.answer[0].to_text()
-      return Response(
-          list(re.findall("include:(.*?\.googleusercontent\.com)", q)),
-          list(re.findall("ip4:([0-9\.\/:]+)", q)),
-          list(re.findall("ip6:([0-9\.\/:]+)", q))
-      )
+    q = dns.resolver.query(source, "TXT").response.answer[0].to_text()
+    return Response(
+        list(re.findall("include:(.*?\.googleusercontent\.com)", q)),
+        list(re.findall("ip4:([0-9\.\/:]+)", q)),
+        list(re.findall("ip6:([0-9\.\/:]+)", q))
+    )
 
 def explore(to_visit, resolved_blocks):
     for next_entry in to_visit.next_entries:
