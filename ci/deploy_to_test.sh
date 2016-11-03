@@ -26,7 +26,7 @@
 
 set -e
 
-trap 'kill $(jobs -p)' EXIT
+trap 'kill $(jobs -p) || true' EXIT
 
 PROJECT_ID=$1
 
