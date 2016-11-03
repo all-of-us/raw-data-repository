@@ -12,12 +12,12 @@ import concepts
 import evaluation
 import offline.metrics_config
 import participant
-import validation
+import field_validation
 
 from flask import request
 from flask.ext.restful import Resource
 from questionnaire_response import DAO as response_DAO
-from validation import FieldValidation, within_range, lessthan
+from field_validation import FieldValidation, within_range, lessthan
 
 from werkzeug.exceptions import BadRequest, InternalServerError
 
@@ -31,7 +31,7 @@ SYSTOLIC_BP = FieldValidation(concepts.SYSTOLIC_BP,
                               required=True)
 DIASTOLIC_BP = FieldValidation(concepts.DIASTOLIC_BP,
                                'diastolic blood pressure',
-                               [within_range(0, 100), lessthan(SYSTOLIC_BP.concept)],
+                               [within_range(0, 100), lessthan(SYSTOLIC_BP)],
                                required=True)
 HEART_RATE = FieldValidation(concepts.HEART_RATE,
                              'heart rate',
@@ -87,7 +87,6 @@ class EvaluationAPI(base_api.BaseApi):
 
   def validate_object(self, e, a_id=None):
     field_validators = [
-        METRICS_CONFIG,
         SYSTOLIC_BP,
         DIASTOLIC_BP,
         HEART_RATE,
@@ -98,7 +97,7 @@ class EvaluationAPI(base_api.BaseApi):
     ]
     extractor = evaluation.EvaluationExtractor(e.resource)
     value_dict = {f.concept: extractor.extract_value(f.concept) for f in field_validators}
-    validation.validate_fields(field_validators, value_dict)
+    field_validation.validate_fields(field_validators, value_dict)
 
 def _check_existence(extractor, system, code, name):
   value = extractor.extract_value(concepts.Concept(system, code))

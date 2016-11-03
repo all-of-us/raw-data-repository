@@ -1,7 +1,5 @@
 """Various functions for extracting fields from FHIR documents"""
 
-from collections import namedtuple
-
 from concepts import Concept
 
 from fhirclient.models.fhirelementfactory import FHIRElementFactory
@@ -45,42 +43,60 @@ def as_list(v):
 
 class FhirExtractor(object):
   def __init__(self, resource):
-    self.r_fhir = FHIRElementFactory.instantiate(resource['resourceType'],
-                                                 resource)
+    self.r_fhir = FHIRElementFactory.instantiate(resource['resourceType'], resource)
 
 
+class Value(object):
+  def __init__(self, value, value_type):
+    self.value = value
+    self.value_type = value_type
 
-Value = namedtuple('Value', ['value', 'value_type'])
+  def extract_quantity(self):
+    """Extracts the numeric quantity from a value with a quantity node"""
+    assert self.value_type == 'valueQuantity'
+    return self.value.value
+
+  def extract_concept(self):
+    """Extracts a concept from a value with a valueCoding type."""
+    assert self.value_type == 'valueCoding'
+    return extract_concept(self.value)
+
+
+# Fields that values can be found in.
+VALUE_PROPS = (
+    'valueAttachment',
+    'valueCodeableConcept',
+    'valueCoding',
+    'valueDateTime',
+    'valuePeriod',
+    'valueRange',
+    'valueRatio',
+    'valueSampledData',
+    'valueString',
+    'valueTime',
+    'valueQuantity',
+)
+
+def extract_concept(node):
+  """Extracts a valueCodeableConcept."""
+  return Concept(system=str(node.system), code=str(node.code))
 
 def extract_value(node):
   """Extracts the value from a set of value[x] fields
 
   Returns:
-    A extraction.Value object. Value.value is the extracted value,
-    Value.value_type is one of: valueQuantity, valueCodeableConcept,
-    valueString, valueRange, valueRatio, valueSampledData, valueAttachment,
-    valueTime, valueDateTime, or valuePeriod.  If no value is found None is
-    returned.
+    A extraction.Value object. Value.value is the extracted value.
+    Value.value_type is one of the valid FHIR field names in which
+    a value can reside.
 
   Raises:
     BadRequest: If a value is specified in more than one field.
   """
   ret = None
-  for prop in ('valueQuantity',
-               'valueCodeableConcept',
-               'valueString',
-               'valueRange',
-               'valueRatio',
-               'valueSampledData',
-               'valueAttachment',
-               'valueTime',
-               'valueDateTime',
-               'valuePeriod',):
-    if hasattr(node, prop):
+  for prop in VALUE_PROPS:
+    attr = getattr(node, prop, None)
+    if attr:
       if ret:
         raise BadRequest('{} has multiple values'.format(node.resource_name))
-      ret = Value(getattr(node, prop), prop)
-    return ret
-
-def extract_concept(node):
-  return Concept(system=node.system, code=node.code)
+      ret = Value(attr, prop)
+  return ret
