@@ -2,7 +2,7 @@
 
 set -e
 
-trap 'kill $(jobs -p)' EXIT
+trap 'kill $(jobs -p) || true' EXIT
 
 cd rest-api
 pip install -r requirements.txt -t lib/
