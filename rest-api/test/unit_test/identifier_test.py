@@ -1,22 +1,12 @@
 """Tests for identifier."""
-import time
 import threading
 import unittest
 
 from google.appengine.api.datastore_errors import TransactionFailedError
-from google.appengine.api import memcache
-from google.appengine.ext import ndb
-from google.appengine.ext import testbed
 
+from test.unit_test.unit_test_util import NdbTestBase
 
-class IdentifierTest(unittest.TestCase):
-  def setUp(self):
-    self.maxDiff = None
-    self.testbed = testbed.Testbed()
-    self.testbed.activate()
-    self.testbed.init_datastore_v3_stub()
-    self.testbed.init_memcache_stub()
-    ndb.get_context().clear_cache()
+class IdentifierTest(NdbTestBase):
 
   def test_reserve_candidate(self):
     import identifier

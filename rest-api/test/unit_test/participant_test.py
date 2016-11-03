@@ -12,9 +12,9 @@ import questionnaire
 import questionnaire_response
 
 from google.appengine.ext import ndb
-from test.unit_test.unit_test_util import NdbTestBase
+from test.unit_test.unit_test_util import NdbTestBase, TestBase
 
-class ParticipantTest(unittest.TestCase):
+class ParticipantTest(TestBase):
   def test_bucket_age(self):
     testcases = ((18, '18-25'),
                  (19, '18-25'),
