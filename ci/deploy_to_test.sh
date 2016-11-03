@@ -26,7 +26,7 @@
 
 set -e
 
-trap 'kill $(jobs -p)' EXIT
+trap 'JOBS_TO_KILL=$(jobs -p) ; if [[ -n $JOBS_TO_KILL ]] ; then kill $JOBS_TO_KILL ; fi' EXIT
 
 PROJECT_ID=$1
 
