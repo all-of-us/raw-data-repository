@@ -3,8 +3,8 @@
 Contains things such as the accounts allowed access to the system.
 """
 
+from google.appengine.api import app_identity
 from google.appengine.ext import ndb
-
 
 class Config(ndb.Model):
   config_key = ndb.StringProperty()
@@ -88,7 +88,8 @@ def check_initialized():
     Config(config_key=_CONFIG_INITIALIZED, value='True').put()
     Config(config_key=METRICS_SHARDS, value='2').put()
     Config(config_key=BIOBANK_SAMPLES_SHARDS, value = '2').put()
-    Config(config_key=BIOBANK_SAMPLES_BUCKET_NAME, value = 'pmi-drc-biobank-test.appspot.com').put()
+    Config(config_key=BIOBANK_SAMPLES_BUCKET_NAME, 
+           value = app_identity.get_default_gcs_bucket_name()).put()
     Config(config_key=ALLOWED_USER,
            value='pmi-hpo-staging@appspot.gserviceaccount.com').put()
     Config(config_key=ALLOWED_USER,
