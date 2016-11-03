@@ -65,7 +65,7 @@ METRICS_CONFIGS = {
                 # The presence of a physical evaluation implies that it is complete.
                 FieldDef('physical_evaluation', lambda h: ExtractionResult('COMPLETE')),
             ],
-            'BiobankOrder': [
+            'BiobankOrderHistory': [
                 # The presence of a biobank order implies that an order has been placed.
                 FieldDef('biospecimen', lambda h: ExtractionResult('ORDER_PLACED'))
             ],

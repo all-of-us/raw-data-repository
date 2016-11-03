@@ -1,11 +1,10 @@
 """Tests for extraction."""
 
+import concepts
 import datetime
 import os
 import json
 import unittest
-
-import extraction
 
 from questionnaire import QuestionnaireExtractor
 from questionnaire_response import QuestionnaireResponseExtractor
@@ -25,25 +24,25 @@ class ExtractionTest(NdbTestBase):
     questionnaire = json.loads(open(_data_path('questionnaire_example.json')).read())
     extractor = QuestionnaireExtractor(questionnaire)
     self.assertEquals([RACE_LINKID],
-                      extractor.extract_link_id_for_concept(extraction.RACE_CONCEPT))
+                      extractor.extract_link_id_for_concept(concepts.RACE))
     self.assertEquals([ETHNICITY_LINKID],
-                      extractor.extract_link_id_for_concept(extraction.ETHNICITY_CONCEPT))
+                      extractor.extract_link_id_for_concept(concepts.ETHNICITY))
     self.assertEquals([STATE_OF_RESIDENCE_LINKID],
-                      extractor.extract_link_id_for_concept(extraction.STATE_OF_RESIDENCE_CONCEPT))
+                      extractor.extract_link_id_for_concept(concepts.STATE_OF_RESIDENCE))
 
   def test_questionnaire_response_extract(self):
     template = open(_data_path('questionnaire_response_example.json')).read()
     response = _fill_response(
         template, 'Q1234', 'P1',
-        extraction.Concept('http://hl7.org/fhir/v3/Race', '2106-3'),
-        extraction.Concept('http://hl7.org/fhir/v3/Ethnicity', '2135-5'),
-        extraction.Concept('http://terminology.pmi-ops.org/CodeSystem/us-state', 'TX'))
+        concepts.WHITE,
+        concepts.NON_HISPANIC,
+        concepts.STATES_BY_ABBREV['TX'])
 
     extractor = QuestionnaireResponseExtractor(json.loads(response))
     self.assertEquals('Q1234', extractor.extract_questionnaire_id())
-    self.assertEquals('white', extractor.extract_answer(RACE_LINKID, extraction.RACE_CONCEPT))
+    self.assertEquals('white', extractor.extract_answer(RACE_LINKID, concepts.RACE))
     self.assertEquals('TX', extractor.extract_answer(STATE_OF_RESIDENCE_LINKID,
-                                                     extraction.STATE_OF_RESIDENCE_CONCEPT))
+                                                     concepts.STATE_OF_RESIDENCE))
 
 def _fill_response(template, q_id, p_id, race, ethnicity, state_of_residence):
   for k, v in {

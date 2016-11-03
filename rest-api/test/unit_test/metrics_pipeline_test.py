@@ -1,6 +1,5 @@
 """Tests for metrics_pipeline."""
 
-import copy
 import datetime
 import extraction
 import json
@@ -8,17 +7,12 @@ import metrics
 import participant
 import evaluation
 import unittest
-import os
 
 from extraction import ExtractionResult
 from offline import metrics_pipeline
 from offline.metrics_config import FieldDef, FacetDef
 from collections import Counter
-from google.appengine.api import memcache
-from google.appengine.api import queueinfo
-from google.appengine.datastore import datastore_stub_util
 from google.appengine.ext import ndb
-from google.appengine.ext import testbed
 from mapreduce import test_support
 from testlib import testutil
 
@@ -52,7 +46,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     testutil.HandlerTestBase.setUp(self)
     self.maxDiff = None
     self.longMessage = True
-    self.saved_configs = copy.deepcopy(metrics_pipeline.METRICS_CONFIGS)
+    self.saved_configs = metrics_pipeline.METRICS_CONFIGS
     metrics_pipeline.METRICS_CONFIGS = CONFIGS_FOR_TEST
 
   def tearDown(self):

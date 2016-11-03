@@ -8,17 +8,53 @@ import datetime
 import api_util
 import base_api
 import biobank_order
+import concepts
 import evaluation
 import offline.metrics_config
 import participant
+import field_validation
 
 from flask import request
 from flask.ext.restful import Resource
-from protorpc import messages
 from questionnaire_response import DAO as response_DAO
+from field_validation import FieldValidation, has_units, lessthan, within_range
+
 from werkzeug.exceptions import BadRequest, InternalServerError
 
+
 METRICS_CONFIG = offline.metrics_config.METRICS_CONFIGS['Participant']
+
+
+SYSTOLIC_BP = FieldValidation(concepts.SYSTOLIC_BP,
+                              'systolic blood pressure',
+                              [within_range(0, 300), has_units(concepts.UNIT_MM_HG)],
+                              required=True)
+DIASTOLIC_BP = FieldValidation(
+    concepts.DIASTOLIC_BP,
+    'diastolic blood pressure',
+    [within_range(0, 300), has_units(concepts.UNIT_MM_HG), lessthan(SYSTOLIC_BP)],
+    required=True)
+HEART_RATE = FieldValidation(concepts.HEART_RATE,
+                             'heart rate',
+                             [within_range(0, 300), has_units(concepts.UNIT_PER_MIN)],
+                             required=True)
+WEIGHT = FieldValidation(concepts.WEIGHT,
+                         'weight',
+                         [within_range(0, 1000), has_units(concepts.UNIT_KG)],
+                         required=True)
+BMI = FieldValidation(concepts.BMI,
+                      'body mass index',
+                      [has_units(concepts.UNIT_KG_M2)],
+                      required=True)
+HIP_CIRCUMFERENCE = FieldValidation(concepts.HIP_CIRCUMFERENCE,
+                                    'hip circumference',
+                                    [within_range(0, 300), has_units(concepts.UNIT_CM)],
+                                    required=True)
+WAIST_CIRCUMFERENCE = FieldValidation(concepts.WAIST_CIRCUMFERENCE,
+                                      'waist circumerence',
+                                      [within_range(0, 300), has_units(concepts.UNIT_CM)],
+                                      required=True)
+
 
 
 class ParticipantAPI(base_api.BaseApi):
@@ -49,6 +85,26 @@ class EvaluationAPI(base_api.BaseApi):
   @api_util.auth_required
   def list(self, a_id):
     return evaluation.DAO.list(a_id)
+
+  def validate_object(self, e, a_id=None):
+    field_validators = [
+        SYSTOLIC_BP,
+        DIASTOLIC_BP,
+        HEART_RATE,
+        WEIGHT,
+        BMI,
+        HIP_CIRCUMFERENCE,
+        WAIST_CIRCUMFERENCE,
+    ]
+    extractor = evaluation.EvaluationExtractor(e.resource)
+    value_dict = {f.concept: extractor.extract_value(f.concept) for f in field_validators}
+    field_validation.validate_fields(field_validators, value_dict)
+
+def _check_existence(extractor, system, code, name):
+  value = extractor.extract_value(concepts.Concept(system, code))
+  if not value:
+    raise BadRequest('Evaluation does not contain a value for {}, ({}:{}).'.format(
+        name, system, code))
 
 
 class ParticipantSummaryAPI(Resource):
