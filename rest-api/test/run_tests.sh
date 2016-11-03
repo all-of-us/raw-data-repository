@@ -9,7 +9,7 @@ set -e
 subset="all"
 
 function usage() {
-  echo "Usage: run_test.sh -g /path/to/google/cloud/sdk_dir [-s all|unit|client] [-r <name match substring>]" >& 2
+  echo "Usage: run_test.sh -g /path/to/google/cloud/sdk_dir [-s all|unit|client] [-r <name match substring, e.g. 'extraction_*'>]" >& 2
   exit 1
 }
 

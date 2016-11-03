@@ -1,8 +1,7 @@
-# To support validating AppEngine calls by IP whitelisting,
-# we need to know which DNS blocks are used by AppEngine.
-# This code implements the algorithm described at
-# https://cloud.google.com/appengine/kb/ for recursively
-# expanding DNS blocks used by AppEngine.
+# To support validating AppEngine calls by IP whitelisting, we need to know
+# which DNS blocks are used by AppEngine.  This code implements the algorithm
+# described at https://cloud.google.com/appengine/kb/ for recursively expanding
+# DNS blocks used by AppEngine.
 
 # Three example values of the TXT record returned from these requests:
 # _cloud-netblocks.googleusercontent.com. 3599 IN TXT "v=spf1 include:_cloud-netblocks1.googleusercontent.com include:_cloud-netblocks2.googleusercontent.com include:_cloud-netblocks3.googleusercontent.com include:_cloud-netblocks4.googleusercontent.com include:_cloud-netblocks5.googleusercontent.com ?all"
@@ -14,6 +13,7 @@ import dns.resolver
 import re
 from  collections import namedtuple
 
+START = "_cloud-netblocks.googleusercontent.com"
 Response = namedtuple("Response", ["next_entries", "ip4", "ip6"])
 
 def get_ip_ranges(start):
@@ -41,6 +41,5 @@ def explore(to_visit, resolved_blocks):
 
 if __name__ == "__main__":
     import json
-    START = "_cloud-netblocks.googleusercontent.com"
     ips = get_ip_ranges(START)
     print(json.dumps({'ip4': ips.ip4, 'ip6': ips.ip6}, indent=2))
