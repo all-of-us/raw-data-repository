@@ -14,4 +14,8 @@ indexes:
   - name: complete
   - name: date
     direction: desc
-    
+- kind: QuestionnaireResponseHistory
+  ancestor: yes
+  properties:
+  - name: date
+    direction: desc
