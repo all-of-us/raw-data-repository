@@ -28,18 +28,20 @@ class DataAccessObject(object):
   structure of the JSON dictionary if the json fields don't map directly to the
   model fields.
   """
-  def __init__(self, model_type, ancestor_type=None):
+  def __init__(self, model_type, ancestor_type=None, keep_history=True):
     self.model_type = model_type
     self.ancestor_type = ancestor_type
     self.model_name = model_type.__name__
+    self.keep_history = keep_history
 
-    history_props = {
-        'date': ndb.DateTimeProperty(auto_now_add=True),
-        'obj': ndb.StructuredProperty(model_type, repeated=False),
-        'client_id': ndb.StringProperty(),
-    }
-    self.history_model = type(
-        self.model_name + 'History', (ndb.Model,), history_props)
+    if self.keep_history:
+      history_props = {
+          'date': ndb.DateTimeProperty(auto_now_add=True),
+          'obj': ndb.StructuredProperty(model_type, repeated=False),
+          'client_id': ndb.StringProperty(),
+      }
+      self.history_model = type(
+          self.model_name + 'History', (ndb.Model,), history_props)
 
   def to_json(self, m):
     properties_obj = copy.deepcopy(m.to_dict())
@@ -133,15 +135,17 @@ class DataAccessObject(object):
 
   @ndb.transactional
   def store(self, model, date=None, client_id=None):
-    h = self.history_model(parent=model.key, obj=model)
-    if date:
-      h.populate(date=date)
-    if client_id:
-      h.populate(client_id=client_id)
-    h.put()
-    model.put()
+    if self.keep_history:
+      h = self.history_model(parent=model.key, obj=model)    
+      if date:
+        h.populate(date=date)
+      if client_id:
+        h.populate(client_id=client_id)
+      h.put()
+    return model.put()
 
   def get_all_history(self, ancestor_key):
+    assert self.keep_history
     return self.history_model.query(ancestor=ancestor_key).fetch()
 
   def children(self, parent):
@@ -150,6 +154,7 @@ class DataAccessObject(object):
 
   def last_history(self, obj):
     """Gets the history object associated with the last update to obj."""
+    assert self.keep_history
     query = self.history_model.query(ancestor=obj.key).order(-self.history_model.date)
     hists = query.fetch(limit=1)
     return hists and hists[0] or None

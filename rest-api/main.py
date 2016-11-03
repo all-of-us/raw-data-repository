@@ -4,10 +4,10 @@ This defines the APIs and the handlers for the APIs.
 """
 import flask
 import biobank_orders_api
+import biobank_samples_api
 import metrics_api
 import participants_api
 import ppi_api
-
 
 from flask import Flask, jsonify
 from flask_restful import Api
@@ -62,6 +62,11 @@ api.add_resource(metrics_api.MetricsApi,
                  PREFIX + 'Metrics',
                  endpoint='metrics',
                  methods=['POST'])
+
+api.add_resource(biobank_samples_api.BiobankSamplesApi,
+                 PREFIX + 'BiobankSamplesReload',
+                 endpoint='biobankSamplesReload',
+                 methods=['GET'])
 
 api.add_resource(metrics_api.MetricsApi,
                  PREFIX + 'MetricsRecalculate',

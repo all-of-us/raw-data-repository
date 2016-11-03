@@ -122,6 +122,13 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     # Assign a new biobank ID when inserting a new participant
     model.biobank_id = 'B{:d}'.format(identifier.get_id()).zfill(9)
     return super(ParticipantDAO, self).insert(model, date, client_id)
+  
+  def find_participant_id_by_biobank_id(self, biobank_id):
+    query = Participant.query(Participant.biobank_id == biobank_id)
+    results = query.fetch(options=ndb.QueryOptions(keys_only=True))
+    if len(results) == 0:
+      return None
+    return results[0].id()
 
 def load_history_entities(participant_key, now):
   """Loads all related history entries.

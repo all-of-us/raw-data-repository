@@ -17,10 +17,10 @@ class MetricsApi(Resource):
   def get(self):
     in_progress = metrics.get_in_progress_version()
     if in_progress:
-      print "=========== Pipeline already running ============"
+      print "=========== Metircs pipeline already running ============"
       return "Pipeline already running."
     else:
-      print "=========== Starting Pipeline ============"
+      print "=========== Starting metrics pipeline ============"
       offline.metrics_pipeline.MetricsPipeline().start()
 
 
