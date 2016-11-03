@@ -44,4 +44,9 @@ echo "Deploying RDR to $PROJECT_ID"
 gcloud auth activate-service-account --key-file ~/gcloud-credentials.key
 gcloud config set project $PROJECT_ID
 gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml
-echo "RDR deployed to $PROJECT_ID"
+
+cd test
+echo "Smoke-testing RDR server at $PROJECT_ID"
+./test_server.sh -i "https://$PROJECT_ID.appspot.com"
+
+echo "RDR successfully deployed to $PROJECT_ID"
