@@ -1,4 +1,6 @@
 """The definition of the evaluation object and DB marshalling."""
+
+import concepts
 import data_access_object
 import extraction
 import participant
@@ -8,10 +10,6 @@ import fhirclient.models.bundle
 from extraction import extract_concept
 from google.appengine.ext import ndb
 from werkzeug.exceptions import BadRequest
-
-EVALUATION_CONCEPT_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/document-type"
-EVALUATION_CONCEPT_CODE_PREFIX = "intake-exam-v"
-
 
 class Evaluation(ndb.Model):
   """The evaluation resource definition"""
@@ -50,13 +48,13 @@ class EvaluationExtractor(extraction.FhirExtractor):
 
     composition = self.r_fhir.entry[0].resource
     codings = {c.system: c.code for c in composition.type.coding}
-    code = codings.get(EVALUATION_CONCEPT_SYSTEM, None)
+    code = codings.get(concepts.SYSTEM_EVALUATION, None)
     if not code:
       raise BadRequest('Evaluation does not have a composition node with system: {}.'.format(
-          EVALUATION_CONCEPT_SYSTEM))
-    if not code.startswith(EVALUATION_CONCEPT_CODE_PREFIX):
+          concepts.SYSTEM_EVALUATION))
+    if not code.startswith(concepts.EVALUATION_CONCEPT_CODE_PREFIX):
       raise BadRequest('Invalid Composition code: {} should start with: {}.'.format(
-          code, EVALUATION_CONCEPT_CODE_PREFIX))
+          code, concepts.EVALUATION_CONCEPT_CODE_PREFIX))
 
     for entry in (e.resource for e in self.r_fhir.entry[1:]):
       if entry.resource_name == "Observation":

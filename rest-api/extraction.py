@@ -61,6 +61,9 @@ class Value(object):
     assert self.value_type == 'valueCoding'
     return extract_concept(self.value)
 
+  def extract_units(self):
+    """Returns the units (as a Concept) that this value is represented in."""
+    return Concept(system=self.value.system, code=self.value.code)
 
 # Fields that values can be found in.
 VALUE_PROPS = (

@@ -14,7 +14,7 @@ from werkzeug.exceptions import BadRequest
 #   Three values will be passed to the validation function:
 #    value: An extraction.Value value for the field being validated.
 #    display_name: The display name for this value, to be used in error messages.
-#    value_dict: A dictionary of of extraction.Concept to extraction.Value, for all the
+#    value_dict: A dictionary of extraction.Concept to extraction.Value, for all the
 #      other values. Used to enforce rules like field A must be less than field B.
 FieldValidation = namedtuple('FieldValidation', ['concept', 'display_name', 'funcs', 'required'])
 
@@ -58,4 +58,13 @@ def lessthan(other_field):
       return
     raise BadRequest('{} of {} is not less than {} which is {}'.format(
         display_name, val, other_field.display_name, other_value))
+  return validate
+
+def has_units(units_concept):
+  """Returns a function that verifies that this field uses the specified units."""
+  def validate(val, display_name, _):
+    val_units = val.extract_units()
+    if units_concept != val_units:
+      raise BadRequest('Expecting units "{}" for {} but found "{}".'.format(
+          units_concept, display_name, val_units))
   return validate

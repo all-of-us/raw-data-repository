@@ -17,7 +17,7 @@ import field_validation
 from flask import request
 from flask.ext.restful import Resource
 from questionnaire_response import DAO as response_DAO
-from field_validation import FieldValidation, within_range, lessthan
+from field_validation import FieldValidation, has_units, lessthan, within_range
 
 from werkzeug.exceptions import BadRequest, InternalServerError
 
@@ -27,32 +27,33 @@ METRICS_CONFIG = offline.metrics_config.METRICS_CONFIGS['Participant']
 
 SYSTOLIC_BP = FieldValidation(concepts.SYSTOLIC_BP,
                               'systolic blood pressure',
-                              [within_range(0, 300)],
+                              [within_range(0, 300), has_units(concepts.UNIT_MM_HG)],
                               required=True)
-DIASTOLIC_BP = FieldValidation(concepts.DIASTOLIC_BP,
-                               'diastolic blood pressure',
-                               [within_range(0, 100), lessthan(SYSTOLIC_BP)],
-                               required=True)
+DIASTOLIC_BP = FieldValidation(
+    concepts.DIASTOLIC_BP,
+    'diastolic blood pressure',
+    [within_range(0, 300), has_units(concepts.UNIT_MM_HG), lessthan(SYSTOLIC_BP)],
+    required=True)
 HEART_RATE = FieldValidation(concepts.HEART_RATE,
                              'heart rate',
-                             [within_range(0, 300)],
+                             [within_range(0, 300), has_units(concepts.UNIT_PER_MIN)],
                              required=True)
 WEIGHT = FieldValidation(concepts.WEIGHT,
                          'weight',
-                         [within_range(0, 1000)],
+                         [within_range(0, 1000), has_units(concepts.UNIT_KG)],
                          required=True)
 BMI = FieldValidation(concepts.BMI,
                       'body mass index',
-                      [], # Just needs to be present.
+                      [has_units(concepts.UNIT_KG_M2)],
                       required=True)
 HIP_CIRCUMFERENCE = FieldValidation(concepts.HIP_CIRCUMFERENCE,
                                     'hip circumference',
-                                    [within_range(0, 300)],
+                                    [within_range(0, 300), has_units(concepts.UNIT_CM)],
                                     required=True)
-WAIST_CIRCUMFERENCE =  FieldValidation(concepts.WAIST_CIRCUMFERENCE,
-                                       'waist circumerence',
-                                       [within_range(0, 300)],
-                                       required=True)
+WAIST_CIRCUMFERENCE = FieldValidation(concepts.WAIST_CIRCUMFERENCE,
+                                      'waist circumerence',
+                                      [within_range(0, 300), has_units(concepts.UNIT_CM)],
+                                      required=True)
 
 
 
