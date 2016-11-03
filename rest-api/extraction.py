@@ -1,6 +1,9 @@
 """Various functions for extracting fields from FHIR documents"""
 
 from collections import namedtuple
+
+from concepts import Concept
+
 from fhirclient.models.fhirelementfactory import FHIRElementFactory
 from werkzeug.exceptions import BadRequest
 
@@ -23,14 +26,6 @@ class ExtractionResult(object):
 def simple_field_extractor(field_name):
   """Returns a function that successfully extracts the named field."""
   return lambda hist: ExtractionResult(getattr(hist.obj, field_name))
-
-Concept = namedtuple('Concept', ['system', 'code'])
-
-LOINC = 'http://loinc.org'
-ETHNICITY_CONCEPT = Concept(LOINC, '69490-1')
-RACE_CONCEPT = Concept(LOINC, '72826-1')
-GENDER_IDENTITY_CONCEPT = Concept(LOINC, '76691-5')
-STATE_OF_RESIDENCE_CONCEPT = Concept(LOINC, '46499-0')
 
 def get_questions_by_link_id(qr, target_link_id):
   ret = []

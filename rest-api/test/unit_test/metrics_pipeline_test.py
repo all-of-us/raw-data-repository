@@ -52,7 +52,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     testutil.HandlerTestBase.setUp(self)
     self.maxDiff = None
     self.longMessage = True
-    self.saved_configs = copy.deepcopy(metrics_pipeline.METRICS_CONFIGS)
+    self.saved_configs = copy.copy(metrics_pipeline.METRICS_CONFIGS)
     metrics_pipeline.METRICS_CONFIGS = CONFIGS_FOR_TEST
 
   def tearDown(self):

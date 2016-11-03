@@ -1,9 +1,11 @@
 from collections import namedtuple
 
+import concepts
 import data_access_object
 import extraction
 import participant
 import fhirclient.models.questionnaireresponse
+
 from census_regions import census_regions
 from google.appengine.ext import ndb
 from participant import Participant
@@ -34,7 +36,7 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
   def store(self, model, date=None, client_id=None):
     super(QuestionnaireResponseDAO, self).store(model, date, client_id)
     participant_id = model.resource['subject']['reference'].split('/')[1]
-    gender_identity_result = extract_field(model, extraction.GENDER_IDENTITY_CONCEPT)
+    gender_identity_result = extract_field(model, concepts.GENDER_IDENTITY)
     if gender_identity_result.extracted:
       participant_obj = participant.DAO.load(participant_id)
       # If the gender identity on the participant doesn't match, update it
@@ -43,6 +45,33 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
         participant.DAO.store(participant_obj, date, client_id)
 
 DAO = QuestionnaireResponseDAO()
+
+_ETHNICITY_MAPPING = {
+    concepts.HISPANIC: 'hispanic',
+    concepts.NON_HISPANIC: 'non_hispanic',
+    concepts.ASKED_BUT_NO_ANSWER: 'asked_but_no_answer',
+}
+_RACE_MAPPING = {
+    concepts.AMERICAN_INDIAN_OR_ALASKA_NATIVE: 'american_indian_or_alaska_native',
+    concepts.BLACK_OR_AFRICAN_AMERICAN: 'black_or_african_american',
+    concepts.ASIAN: 'asian',
+    concepts.NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER: 'native_hawaiian_or_other_pacific_islander',
+    concepts.WHITE: 'white',
+    concepts.OTHER_RACE: 'other_race',
+    concepts.ASKED_BUT_NO_ANSWER: 'asked_but_no_answer',
+}
+_GENDER_IDENTITY_MAPPING = {
+    concepts.FEMALE: GenderIdentity.FEMALE,
+    concepts.FEMALE_TO_MALE_TRANSGENDER: GenderIdentity.FEMALE_TO_MALE_TRANSGENDER,
+    concepts.MALE: GenderIdentity.MALE,
+    concepts.MALE_TO_FEMALE_TRANSGENDER: GenderIdentity.MALE_TO_FEMALE_TRANSGENDER,
+    concepts.INTERSEX: GenderIdentity.INTERSEX,
+    concepts.OTHER: GenderIdentity.OTHER,
+    concepts.PREFER_NOT_TO_SAY: GenderIdentity.PREFER_NOT_TO_SAY,
+}
+# In concepts, it's keyed by the state abbreviation, we need to flip them.
+_STATE_MAPPING = {v:k for k, v in concepts.STATES_BY_ABBREV}
+
 
 class QuestionnaireResponseExtractor(extraction.FhirExtractor):
   Config = namedtuple('Config', ['field', 'mapping'])
@@ -94,10 +123,10 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
   }
 
   CONFIGS = {
-      extraction.ETHNICITY_CONCEPT: Config('valueCoding', _ETHNICITY_MAPPING),
-      extraction.RACE_CONCEPT: Config('valueCoding', _RACE_MAPPING),
-      extraction.GENDER_IDENTITY_CONCEPT: Config('valueCoding', _GENDER_IDENTITY_MAPPING),
-      extraction.STATE_OF_RESIDENCE_CONCEPT: Config('valueCoding', _STATE_MAPPING)
+      concepts.ETHNICITY: Config('valueCoding', _ETHNICITY_MAPPING),
+      concepts.RACE: Config('valueCoding', _RACE_MAPPING),
+      concepts.GENDER_IDENTITY: Config('valueCoding', _GENDER_IDENTITY_MAPPING),
+      concepts.STATE_OF_RESIDENCE: Config('valueCoding', _STATE_MAPPING)
   }
 
   def extract_questionnaire_id(self):
@@ -115,24 +144,24 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
       value = getattr(answer, config.field, None)
       if value:
         return config.mapping.get(
-            extraction.Concept(value.system, value.code),
+            concepts.Concept(value.system, value.code),
             extraction.UNMAPPED)
 
 def extract_race(qr_hist_obj):
   """Returns ExtractionResult for race answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, extraction.RACE_CONCEPT)
+  return extract_field(qr_hist_obj.obj, concepts.RACE_CONCEPT)
 
 def extract_ethnicity(qr_hist_obj):
   """Returns ExtractionResult for ethnicity from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, extraction.ETHNICITY_CONCEPT)
+  return extract_field(qr_hist_obj.obj, concepts.ETHNICITY_CONCEPT)
 
 def extract_gender_identity(qr_hist_obj):
   """Returns ExtractionResult for gender identity answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, extraction.GENDER_IDENTITY_CONCEPT)
+  return extract_field(qr_hist_obj.obj, concepts.GENDER_IDENTITY_CONCEPT)
 
 def extract_state_of_residence(qr_hist_obj):
   """Returns ExtractionResult for state of residence answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, extraction.STATE_OF_RESIDENCE_CONCEPT)
+  return extract_field(qr_hist_obj.obj, concepts.STATE_OF_RESIDENCE_CONCEPT)
 
 def extract_census_region(qr_hist_obj):
   """Returns ExtractionResult for census region from questionnaire response."""

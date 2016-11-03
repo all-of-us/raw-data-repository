@@ -8,18 +8,52 @@ import datetime
 import api_util
 import base_api
 import biobank_order
+import concepts
 import evaluation
 import offline.metrics_config
 import participant
+import validation
 
-from extraction import Concept, LOINC
 from flask import request
 from flask.ext.restful import Resource
 from questionnaire_response import DAO as response_DAO
+from validation import FieldValidation, within_range, lessthan
+
 from werkzeug.exceptions import BadRequest, InternalServerError
 
 
 METRICS_CONFIG = offline.metrics_config.METRICS_CONFIGS['Participant']
+
+
+SYSTOLIC_BP = FieldValidation(concepts.SYSTOLIC_BP,
+                              'systolic blood pressure',
+                              [within_range(0, 300)],
+                              required=True)
+DIASTOLIC_BP = FieldValidation(concepts.DIASTOLIC_BP,
+                               'diastolic blood pressure',
+                               [within_range(0, 100), lessthan(SYSTOLIC_BP.concept)],
+                               required=True)
+HEART_RATE = FieldValidation(concepts.HEART_RATE,
+                             'heart rate',
+                             [within_range(0, 300)],
+                             required=True)
+WEIGHT = FieldValidation(concepts.WEIGHT,
+                         'weight',
+                         [within_range(0, 1000)],
+                         required=True)
+BMI = FieldValidation(concepts.BMI,
+                      'body mass index',
+                      [], # Just needs to be present.
+                      required=True)
+HIP_CIRCUMFERENCE = FieldValidation(concepts.HIP_CIRCUMFERENCE,
+                                    'hip circumference',
+                                    [within_range(0, 300)],
+                                    required=True)
+WAIST_CIRCUMFERENCE =  FieldValidation(concepts.WAIST_CIRCUMFERENCE,
+                                       'waist circumerence',
+                                       [within_range(0, 300)],
+                                       required=True)
+
 
 
 class ParticipantAPI(base_api.BaseApi):
@@ -52,19 +86,22 @@ class EvaluationAPI(base_api.BaseApi):
     return evaluation.DAO.list(a_id)
 
   def validate_object(self, e, a_id=None):
+    field_validators = [
+        METRICS_CONFIG,
+        SYSTOLIC_BP,
+        DIASTOLIC_BP,
+        HEART_RATE,
+        WEIGHT,
+        BMI,
+        HIP_CIRCUMFERENCE,
+        WAIST_CIRCUMFERENCE,
+    ]
     extractor = evaluation.EvaluationExtractor(e.resource)
-    _check_existence(extractor, LOINC, '8480-6', 'systolic blood pressure')
-    _check_existence(extractor, LOINC, '8462-4', 'diastolic blood pressure')
-    _check_existence(extractor, LOINC, '8867-4', 'heart rate')
-    _check_existence(extractor, LOINC, '29463-7', 'weight')
-    _check_existence(extractor, LOINC, '39156-5', 'body mass index')
-    _check_existence(extractor, LOINC, '29463-7', 'weight')
-    _check_existence(extractor, LOINC, '62409-8', 'hip circumference')
-    _check_existence(extractor, LOINC, '56086-2', 'waist circumference')
-
+    value_dict = {f.concept: extractor.extract_value(f.concept) for f in field_validators}
+    validation.validate_fields(field_validators, value_dict)
 
 def _check_existence(extractor, system, code, name):
-  value = extractor.extract_value(Concept(system, code))
+  value = extractor.extract_value(concepts.Concept(system, code))
   if not value:
     raise BadRequest('Evaluation does not contain a value for {}, ({}:{}).'.format(
         name, system, code))
