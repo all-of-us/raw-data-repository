@@ -59,10 +59,10 @@ class BaseApi(Resource):
 
     Args:
       a_id: The ancestor id.
-    """    
+    """
     resource = request.get_json(force=True)
     m = self.dao.from_json(resource, a_id, self.dao.allocate_id())
-    self.validate_object(m, a_id)    
+    self.validate_object(m, a_id)
     self.dao.insert(m, date=consider_fake_date(),
                     client_id=api_util.get_client_id())
     return self.dao.to_json(m)

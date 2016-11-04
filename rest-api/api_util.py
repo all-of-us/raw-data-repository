@@ -8,6 +8,7 @@ import string
 from google.appengine.api import users
 from google.appengine.ext import ndb
 
+from flask import request
 from protorpc import message_types
 from protorpc import messages
 from dateutil.parser import parse
@@ -20,6 +21,8 @@ SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 def auth_required(func):
   """A decorator that keeps the function from being called without auth."""
   def wrapped(self, *args, **kwargs):
+    if request.scheme.lower() != 'https' and config.getSetting(config.ALLOW_INSECURE) != 'True':
+      raise Unauthorized('HTTPS is required')
     check_auth()
     return func(self, *args, **kwargs)
   return wrapped

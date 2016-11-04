@@ -65,7 +65,17 @@ class Client(object):
     print '{} to {}'.format(method, url)
     resp, content = self.fetcher.request(
         url, method, headers=headers, body=body)
-    print 'Response: {}'.format(resp.status)
+    print resp
+    if resp['content-disposition'] != 'attachment':
+      raise HttpException(
+          'content-disposition header is set to {}'.format(resp['content-disposition']))
+    if resp['x-content-type-options'] != 'nosniff':
+      raise HttpException(
+          'x-content-type-options header is set to {}'.format(resp['x-content-type-options']))
+    if resp['content-type'] != 'application/json':
+      raise HttpException(
+          'content-type header is set to {}'.format(resp['content-type']))
+
     if resp.status != 200:
       print resp
       raise HttpException(
@@ -78,5 +88,5 @@ class Client(object):
     if body:
       json_body = json.dumps(body)
     response = self.request(path, method, body=json_body, query_args=query_args, headers=headers)
-    print response
+
     return json.loads(response)
