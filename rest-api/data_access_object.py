@@ -136,7 +136,7 @@ class DataAccessObject(object):
   @ndb.transactional
   def store(self, model, date=None, client_id=None):
     if self.keep_history:
-      h = self.history_model(parent=model.key, obj=model)    
+      h = self.history_model(parent=model.key, obj=model)
       if date:
         h.populate(date=date)
       if client_id:
@@ -159,7 +159,9 @@ class DataAccessObject(object):
     hists = query.fetch(limit=1)
     return hists and hists[0] or None
 
-  def _make_key(self, id_, ancestor_id):
+  def _make_key(self, id_, ancestor_id=None):
+    """Generates a key for this type given an and and ancestor id (for child objects)"""
+    assert bool(ancestor_id) == bool(self.ancestor_type), "Requires an ancestor_id"
     if ancestor_id:
       return ndb.Key(self.ancestor_type, ancestor_id, self.model_type, id_)
     else:
