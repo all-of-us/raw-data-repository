@@ -27,7 +27,7 @@ CONFIGS_FOR_TEST = {
         ],
         'initial_state': {
             'physical_evaluation': 'UNSET',
-            'biospecimen': 'UNSET',
+            'biospecimen_samples': 'UNSET',
         },
         'fields': {
             'ParticipantHistory': [
@@ -49,7 +49,7 @@ CONFIGS_FOR_TEST = {
             ],
             'BiobankSamples': [
                # The presence of a biobank sample implies that samples have arrived
-               FieldDef('biospecimen', lambda h: ExtractionResult('SAMPLES_ARRIVED'),
+               FieldDef('biospecimen_samples', lambda h: ExtractionResult('SAMPLES_ARRIVED'),
                          ('None', 'SAMPLES_ARRIVED'))
             ]
         },
@@ -79,7 +79,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.REGISTERED': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
-             'Participant.biospecimen.UNSET': 1,
+             'Participant.biospecimen_samples.UNSET': 1,
          }),
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -99,11 +99,11 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          }),
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
-             'Participant.biospecimen.UNSET': -1,
+             'Participant.biospecimen_samples.UNSET': -1,
          }),
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
-             'Participant.biospecimen.SAMPLES_ARRIVED': 1,
+             'Participant.biospecimen_samples.SAMPLES_ARRIVED': 1,
          }),
         ({'date': '2016-09-05', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -156,7 +156,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.REGISTERED': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
-             'Participant.biospecimen.UNSET': 1,
+             'Participant.biospecimen_samples.UNSET': 1,
         }),
         ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -206,7 +206,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.None': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
-             'Participant.biospecimen.UNSET': 1,
+             'Participant.biospecimen_samples.UNSET': 1,
          }),
         ({'date': '2016-09-02', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -215,7 +215,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.None': -1,
              'Participant': -1,
              'Participant.physical_evaluation.UNSET': -1,
-             'Participant.biospecimen.UNSET': -1,
+             'Participant.biospecimen_samples.UNSET': -1,
          }),
         ({'date': '2016-09-02', 'facets': [{'type': 'HPO_ID', 'value': 'HPO2'}]},
          {
@@ -224,7 +224,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.None': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
-             'Participant.biospecimen.UNSET': 1,
+             'Participant.biospecimen_samples.UNSET': 1,
          }),
     ]
     expected = [(json.dumps(d), json.dumps(s, sort_keys=True)) for d, s in expected]
