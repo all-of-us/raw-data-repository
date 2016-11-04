@@ -72,3 +72,12 @@ api.add_resource(metrics_api.MetricsApi,
                  PREFIX + 'MetricsRecalculate',
                  endpoint='metrics_recalc',
                  methods=['GET'])
+
+
+def add_headers(response):
+  response.headers['Content-Disposition'] = 'attachment'
+  response.headers['X-Content-Type-Options'] = 'nosniff'
+  response.headers['Content-Type'] = 'application/json'
+  return response
+
+app.after_request(add_headers)

@@ -10,6 +10,7 @@ handlers:
 - url: /_ah/pipeline.*
   script: pipeline.handlers._APP
   login: admin
+  secure: always
 - url: /.*
   script: main.app
   
