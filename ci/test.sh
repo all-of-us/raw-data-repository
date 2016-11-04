@@ -20,8 +20,17 @@ until $(curl -s --fail http://localhost:8000); do
     sleep .25
 done
 
+# The first call will often fail, as it will populate the config store.
+# And due to eventual consistency on the config indexes, it often can not be
+# used immediately.
+# Burn a request to populate the config store.
+set +e
+python participant_client.py  --instance http://localhost:8080
+sleep 2 # Give the indices a chance to get updated.
+set -e
+
 cd ..
-./ci/run_command.sh ci/configure_example_user.py
+./ci/run_command.sh ci/init_config.py
 
 cd rest-api/test
 GCLOUD_PATH=$(which gcloud)
