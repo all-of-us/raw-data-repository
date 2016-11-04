@@ -20,12 +20,12 @@ until $(curl -s --fail http://localhost:8000); do
     sleep .25
 done
 
-cd ../../rest-api-client
+cd ../rest-api-client
 pip install virtualenv
 virtualenv venv
 source venv/bin/activate
 pip install -r requirements.txt
-
+cd -
 
 # The first call will often fail, as it will populate the config store.
 # And due to eventual consistency on the config indexes, it often can not be
