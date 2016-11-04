@@ -162,13 +162,13 @@ def set_pipeline_in_progress():
   return new_version
 
 def get_in_progress_version():
-  running = MetricsVersion.query(MetricsVersion.in_progress==True).fetch()
+  running = MetricsVersion.query(MetricsVersion.in_progress == True).fetch()
   if running:
     return running[0]
   return None
 
 def get_serving_version():
-  query = MetricsVersion.query(MetricsVersion.complete==True)
+  query = MetricsVersion.query(MetricsVersion.complete == True)
   running = query.order(-MetricsVersion.date).fetch(1)
   if running:
     return running[0].key

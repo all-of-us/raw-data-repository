@@ -50,4 +50,5 @@ census_regions = {
   'CA': 'WEST',
   'HI': 'WEST',
   'OR': 'WEST',
-  'WA': 'WEST' }  
+  'WA': 'WEST'
+  }

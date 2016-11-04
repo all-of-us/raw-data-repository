@@ -8,21 +8,21 @@ from google.appengine.ext import ndb
 SINGLETON_SAMPLES_ID = '1'
 
 class BiobankSample(ndb.Model):
-   """A sample taken from a participant"""
-   familyId = ndb.StringProperty()
-   sampleId = ndb.StringProperty()
-   eventName = ndb.StringProperty()
-   storageStatus = ndb.StringProperty()
-   type = ndb.StringProperty()
-   treatments = ndb.StringProperty()
-   expectedVolume = ndb.StringProperty()
-   quantity = ndb.StringProperty()
-   containerType = ndb.StringProperty()
-   collectionDate = ndb.DateTimeProperty()
-   disposalStatus = ndb.StringProperty()
-   disposedDate = ndb.DateTimeProperty()
-   parentSampleId = ndb.StringProperty()
-   confirmedDate = ndb.DateTimeProperty()
+  """A sample taken from a participant"""
+  familyId = ndb.StringProperty()
+  sampleId = ndb.StringProperty()
+  eventName = ndb.StringProperty()
+  storageStatus = ndb.StringProperty()
+  type = ndb.StringProperty()
+  treatments = ndb.StringProperty()
+  expectedVolume = ndb.StringProperty()
+  quantity = ndb.StringProperty()
+  containerType = ndb.StringProperty()
+  collectionDate = ndb.DateTimeProperty()
+  disposalStatus = ndb.StringProperty()
+  disposedDate = ndb.DateTimeProperty()
+  parentSampleId = ndb.StringProperty()
+  confirmedDate = ndb.DateTimeProperty()
 
 class BiobankSamples(ndb.Model):
   """An inventory of samples"""

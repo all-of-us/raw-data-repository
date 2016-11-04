@@ -19,14 +19,14 @@ class BiobankOrderSample(ndb.Model):
   description = ndb.StringProperty()
   processingRequired = ndb.BooleanProperty()
   collected = ndb.DateTimeProperty()
-  processed = ndb.DateTimeProperty() 
-  finalized = ndb.DateTimeProperty()  
+  processed = ndb.DateTimeProperty()
+  finalized = ndb.DateTimeProperty()
 
 class BiobankOrderNotes(ndb.Model):
-   """Notes associated with a Biobank order"""
-   collected = ndb.StringProperty()
-   processed = ndb.StringProperty()
-   finalized = ndb.StringProperty()
+  """Notes associated with a Biobank order"""
+  collected = ndb.StringProperty()
+  processed = ndb.StringProperty()
+  finalized = ndb.StringProperty()
 
 class BiobankOrder(ndb.Model):
   """The Biobank order resource definition"""
@@ -36,11 +36,11 @@ class BiobankOrder(ndb.Model):
   identifier = ndb.StructuredProperty(BiobankOrderIdentifier, repeated=True)
   samples = ndb.LocalStructuredProperty(BiobankOrderSample, repeated=True)
   notes = ndb.LocalStructuredProperty(BiobankOrderNotes, repeated=False)
-  
-  
-class BiobankOrderDAO(data_access_object.DataAccessObject):  
+
+
+class BiobankOrderDAO(data_access_object.DataAccessObject):
   DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-  
+
   def __init__(self):
     super(BiobankOrderDAO, self).__init__(BiobankOrder, participant.Participant)
 
@@ -65,7 +65,7 @@ class BiobankOrderDAO(data_access_object.DataAccessObject):
       api_util.format_json_date(sample_dict, 'finalized',
                                 format=BiobankOrderDAO.DATE_TIME_FORMAT)
     return dict_
-  
+
   def find_by_identifier(self, identifier):
     query = BiobankOrder.query(BiobankOrder.identifier.system == identifier.system,
                                BiobankOrder.identifier.value == identifier.value)
@@ -73,5 +73,5 @@ class BiobankOrderDAO(data_access_object.DataAccessObject):
     if len(results) == 0:
       return None
     return results[0]
-  
+
 DAO = BiobankOrderDAO()

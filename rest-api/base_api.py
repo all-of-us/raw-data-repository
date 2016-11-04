@@ -3,7 +3,7 @@
 import api_util
 import config
 
-from flask import Flask, request
+from flask import request
 from flask.ext.restful import Resource
 
 class BaseApi(Resource):

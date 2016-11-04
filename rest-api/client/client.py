@@ -54,7 +54,7 @@ class Client(object):
     url = '{}/{}/{}'.format(self.instance, self.base_path, path)
     if query_args:
       args_str = '&'.join(
-          '{}={}'.format(k,v) for k, v in query_args.iteritems())
+          '{}={}'.format(k, v) for k, v in query_args.iteritems())
       url = '{}?{}'.format(url, args_str)
 
     headers = copy.deepcopy(headers or {})

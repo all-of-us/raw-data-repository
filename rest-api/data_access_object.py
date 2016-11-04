@@ -1,5 +1,4 @@
 """Base object for Datastore data access objects."""
-import api_util
 import uuid
 import copy
 

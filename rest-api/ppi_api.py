@@ -11,17 +11,13 @@ import questionnaire_response
 import fhirclient.models.questionnaire
 from werkzeug.exceptions import BadRequest
 
-from google.appengine.ext import ndb
-from flask.ext.restful import Resource
-
-
 class QuestionnaireAPI(base_api.BaseApi):
   def __init__(self):
     super(QuestionnaireAPI, self).__init__(questionnaire.DAO)
 
   def validate_object(self, q, a_id=None):
     """Makes sure that the questionnaire is valid."""
-    model = fhirclient.models.questionnaire.Questionnaire(q.resource)
+    fhirclient.models.questionnaire.Questionnaire(q.resource)
 
 
 class QuestionnaireResponseAPI(base_api.BaseApi):
