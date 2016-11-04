@@ -49,6 +49,7 @@ METRICS_CONFIGS = {
             'ethnicity': 'UNSET',
             'survey': 'UNSET',
             'biospecimen': 'UNSET',
+            'biospecimen_samples': 'UNSET'
         },
         'fields': {
             'ParticipantHistory': [
@@ -93,6 +94,12 @@ METRICS_CONFIGS = {
                          lambda h: ExtractionResult('ORDER_PLACED'),
                          ('None', 'ORDER_PLACED'))
             ],
+            'BiobankSamples': [
+                # The presence of a biobank sample implies that samples have arrived
+                # This overwrites the ORDER_PLACED value for biospecimen above
+                FieldDef('biospecimen_samples', lambda h: ExtractionResult('SAMPLES_ARRIVED'),
+                         ('None', 'SAMPLES_ARRIVED'))
+            ]
         },
     },
 }
