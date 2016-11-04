@@ -45,6 +45,7 @@ SDK_PATH=${GCLOUD_PATH%/bin/gcloud}
 
 ./run_tests.sh -g $SDK_PATH
 
+cd ../../rest-api-client
 python participant_client.py  --instance http://localhost:8080
 python load_fake_participants.py --count 2 --instance http://localhost:8080
 
