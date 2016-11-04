@@ -4,19 +4,21 @@ This defines the APIs and the handlers for the APIs.
 """
 
 import datetime
+import traceback
 
 import api_util
 import base_api
 import biobank_order
+import biobank_sample
 import concepts
 import evaluation
 import offline.metrics_config
 import participant
+import questionnaire_response
 import field_validation
 
 from flask import request
 from flask.ext.restful import Resource
-from questionnaire_response import DAO as response_DAO
 from field_validation import FieldValidation, has_units, lessthan, within_range
 
 from werkzeug.exceptions import BadRequest, InternalServerError
@@ -111,14 +113,24 @@ class ParticipantSummaryAPI(Resource):
 
   @api_util.auth_required
   def get(self, id_, date=None):
+    # Use the current date by default for the history objects.  This is required to make
+    # the age calculations for the participants work.
     date = date or datetime.datetime.now()
     pt = participant.DAO.load(id_)
 
-    hists = sorted([response_DAO.last_history(r) for r in response_DAO.children(pt)] +
-                   [evaluation.DAO.last_history(e) for e in evaluation.DAO.children(pt)] +
-                   [biobank_order.DAO.last_history(b) for b in biobank_order.DAO.children(pt)] +
-                   [participant.DAO.last_history(pt)],
-                   key=lambda o: o.date)
+    child_daos = [
+        questionnaire_response.DAO,
+        evaluation.DAO,
+        biobank_order.DAO,
+        biobank_sample.DAO,
+    ]
+
+    # Fetch all child objects, then wrap them in history objects so we can use the
+    # metrics pipeline config to extract the summary.
+    hists = [dao.history_model(parent=o.key, date=date, obj=o)
+             for dao in child_daos
+             for o in dao.children(pt)]
+    hists.extend([participant.DAO.history_model(parent=pt.key, date=date, obj=pt)])
 
     summary = {}
     for hist in hists:
@@ -127,7 +139,8 @@ class ParticipantSummaryAPI(Resource):
           result = field.func(hist)
           if result.extracted:
             summary['Participant.' + field.name] = str(result.value)
-        except Exception as ex:
-          raise InternalServerError('Exception extracting field {0}: {1}'.format(field.name, ex))
+        except Exception as _:
+          raise InternalServerError('Exception extracting field {0}: {1}'.format(
+              field.name, traceback.format_exc()))
 
     return summary
