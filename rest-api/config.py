@@ -14,6 +14,7 @@ _CONFIG_INITIALIZED = 'initialized'
 
 ALLOW_INSECURE = 'allow_insecure'
 ALLOWED_USER = 'allowed_user'
+ALLOWED_IP = 'allowed_ip'
 ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
 METRICS_SHARDS = 'metrics_shards'
 BIOBANK_SAMPLES_SHARDS = 'biobank_samples_shards'
@@ -83,16 +84,17 @@ def check_initialized():
   # Create the config 'table' if it doesn't exist.
   print "Checking the config datastore is initialized..."
   try:
-    setting = getSetting(_CONFIG_INITIALIZED)
+    getSetting(_CONFIG_INITIALIZED)
   except MissingConfigException:
     print "Creating and setting sane defaults for development..."
     Config(config_key=_CONFIG_INITIALIZED, value='True').put()
     Config(config_key=METRICS_SHARDS, value='2').put()
-    Config(config_key=BIOBANK_SAMPLES_SHARDS, value = '2').put()
+    Config(config_key=BIOBANK_SAMPLES_SHARDS, value='2').put()
     Config(config_key=BIOBANK_SAMPLES_BUCKET_NAME,
-           value = app_identity.get_default_gcs_bucket_name()).put()
+           value=app_identity.get_default_gcs_bucket_name()).put()
     Config(config_key=ALLOWED_USER,
            value='pmi-hpo-staging@appspot.gserviceaccount.com').put()
     Config(config_key=ALLOWED_USER,
            value='test-client@pmi-rdr-api-test.iam.gserviceaccount.com').put()
     Config(config_key=ALLOW_INSECURE, value='False').put()
+    Config(config_key=ALLOWED_IP, value='{"ip6": [], "ip4": ["127.0.0.1/32"]}')

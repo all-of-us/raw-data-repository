@@ -36,7 +36,8 @@ def auth_required_cron_or_admin(func):
 
 def check_auth():
   user = oauth.get_current_user(SCOPE)
-  return is_user_whitelisted(user)
+  ip = request.remote_addr
+  return is_ip_whitelisted(ip) && is_user_whitelisted(user)
 
 def get_client_id():
   return oauth.get_current_user(SCOPE).email()
@@ -51,12 +52,15 @@ def check_auth_cron_or_admin():
   """
   return users.is_current_user_admin()
 
-
 def is_user_whitelisted(user):
   if user and user.email() in config.getSettingList(config.ALLOWED_USER):
     return
 
   raise Unauthorized('Forbidden.')
+
+def is_ip_whitelisted(ip):
+  allowed_ip_config = json.loads(config.getSetting(config.ALLOWED_IP))
+  Need to walk the config
 
 
 def update_model(old_model, new_model):
