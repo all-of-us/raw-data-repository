@@ -31,7 +31,7 @@ pip install -r requirements.txt
 # used immediately.
 # Burn a request to populate the config store.
 set +e
-python participant_client.py  --instance http://localhost:8080
+python participant_client.py  --instance http://localhost:8080 2> /dev/null
 sleep 2 # Give the indices a chance to get updated.
 set -e
 
