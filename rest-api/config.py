@@ -97,4 +97,4 @@ def check_initialized():
     Config(config_key=ALLOWED_USER,
            value='test-client@pmi-rdr-api-test.iam.gserviceaccount.com').put()
     Config(config_key=ALLOW_INSECURE, value='False').put()
-    Config(config_key=ALLOWED_IP, value='{"ip6": [], "ip4": ["127.0.0.1/32"]}')
+    Config(config_key=ALLOWED_IP, value='{"ip6": ["::1/64"], "ip4": ["127.0.0.1/32"]}').put()

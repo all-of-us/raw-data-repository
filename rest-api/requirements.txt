@@ -10,3 +10,5 @@ simplejson>=3.6.5
 mock>=1.0.1
 mox>=0.5.3
 dnspython>=1.15.0
+netaddr>=0.7.18
+cachetools>=1.1.5

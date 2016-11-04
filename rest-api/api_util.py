@@ -1,9 +1,13 @@
 """Utilities used by the API definition.
 """
 
-import config
+import cachetools
 import datetime
+import json
+import netaddr
 import string
+
+import config
 
 from google.appengine.api import users
 from google.appengine.ext import ndb
@@ -17,6 +21,7 @@ from werkzeug.exceptions import Unauthorized, BadRequest
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 
+_IP_CONFIG_SINGLETON_KEY = "ip_config"
 
 def auth_required(func):
   """A decorator that keeps the function from being called without auth."""
@@ -37,7 +42,8 @@ def auth_required_cron_or_admin(func):
 def check_auth():
   user = oauth.get_current_user(SCOPE)
   ip = request.remote_addr
-  return is_ip_whitelisted(ip) && is_user_whitelisted(user)
+  enforce_ip_whitelisted(ip)
+  enforce_user_whitelisted(user)
 
 def get_client_id():
   return oauth.get_current_user(SCOPE).email()
@@ -52,16 +58,17 @@ def check_auth_cron_or_admin():
   """
   return users.is_current_user_admin()
 
-def is_user_whitelisted(user):
+def enforce_user_whitelisted(user):
   if user and user.email() in config.getSettingList(config.ALLOWED_USER):
     return
 
   raise Unauthorized('Forbidden.')
 
-def is_ip_whitelisted(ip):
-  allowed_ip_config = json.loads(config.getSetting(config.ALLOWED_IP))
-  Need to walk the config
-
+def enforce_ip_whitelisted(ip_string):
+  allowed_ip_config = IP_CONFIG_CACHE[_IP_CONFIG_SINGLETON_KEY]
+  ip = netaddr.IPAddress(ip_string)
+  if not bool([True for rng in allowed_ip_config if ip in rng]):
+    raise Unauthorized('Client IP not whitelisted.')
 
 def update_model(old_model, new_model):
   """Updates a model.
@@ -145,3 +152,9 @@ def searchable_representation(str_):
 
   str_ = str(str_)
   return str_.lower().translate(None, string.punctuation)
+
+def _get_ip_config(_):
+  ip_ranges = json.loads(config.getSetting(config.ALLOWED_IP))
+  return [netaddr.IPNetwork(rng) for rng in ip_ranges['ip6'] + ip_ranges['ip4']]
+
+IP_CONFIG_CACHE = cachetools.TTLCache(1, ttl=60, missing=_get_ip_config)
