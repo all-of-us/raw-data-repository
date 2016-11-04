@@ -49,7 +49,8 @@ CONFIGS_FOR_TEST = {
             ],
             'BiobankSamples': [
                # The presence of a biobank sample implies that samples have arrived
-               FieldDef('biospecimen', lambda h: ExtractionResult('SAMPLES_ARRIVED'))
+               FieldDef('biospecimen', lambda h: ExtractionResult('SAMPLES_ARRIVED'),
+                         ('None', 'SAMPLES_ARRIVED'))
             ]
         },
     },
@@ -362,7 +363,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         'parentSampleId': '16258000001',
         'confirmedDate': '2016/09/2 09:49:00' }
     samples_1 = biobank_sample.DAO.from_json(
-        { 'samples': [ sample_dict_1 ]}, '1', '0')
+        { 'samples': [ sample_dict_1 ]}, '1', biobank_sample.SINGLETON_SAMPLES_ID)
     biobank_sample.DAO.store(samples_1)
 
 if __name__ == '__main__':

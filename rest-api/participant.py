@@ -141,7 +141,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     # Assign a new biobank ID when inserting a new participant
     model.biobank_id = 'B{:d}'.format(identifier.get_id()).zfill(9)
     return super(ParticipantDAO, self).insert(model, date, client_id)
-  
+
   def find_participant_id_by_biobank_id(self, biobank_id):
     query = Participant.query(Participant.biobank_id == biobank_id)
     results = query.fetch(options=ndb.QueryOptions(keys_only=True))
@@ -175,7 +175,8 @@ def modify_participant_history(history, participant_key, now):
   import biobank_order
   history.extend(biobank_order.DAO.get_all_history(participant_key))
   import biobank_sample
-  samples = biobank_sample.DAO.load_if_present('0', participant_key.id())
+  samples = biobank_sample.DAO.load_if_present(biobank_sample.SINGLETON_SAMPLES_ID,
+                                               participant_key.id())
   if samples:
     min_date = None
     for sample in samples.samples:

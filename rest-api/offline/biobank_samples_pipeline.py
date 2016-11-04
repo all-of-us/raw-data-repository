@@ -112,5 +112,6 @@ def reduce_samples(biobank_id, samples):
     sample_dicts.append(sample_dict)
   biobank_samples_dict = {'samples': sample_dicts}
   biobank_samples = biobank_sample.DAO.from_json(biobank_samples_dict,
-                                                 participant_id, '0')
+                                                 participant_id,
+                                                 biobank_sample.SINGLETON_SAMPLES_ID)
   yield op.db.Put(biobank_samples)
