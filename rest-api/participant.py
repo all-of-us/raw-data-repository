@@ -243,6 +243,14 @@ def extract_HPO_id(ph):
 _AGE_LB =  [0, 18, 26, 36, 46, 56, 66, 76, 86]
 AGE_BUCKETS = ['{}-{}'.format(b,e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
 
+def is_full_participant(summary):
+  """Determines if the participant is a 'full_participant' based on a summary dictionary."""
+  if not 'biospecimen' in summary or not 'biospecimen_samples' in summary:
+    return extraction.ExtractionResult(None, False)
+  val = (summary['biospecimen'] == 'ORDER_PLACED' and
+         summary['biospecimen_samples'] == 'SAMPLES_ARRIVED')
+
+  return extraction.ExtractionResult(str(val))
 
 def _bucketed_age(date_of_birth, today):
   age = relativedelta(today, date_of_birth).years

@@ -85,11 +85,18 @@ class ParticipantTest(unittest.TestCase):
 
     response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
     expected = {
-        'Participant.membership_tier': 'VOLUNTEER',
-        'Participant.gender_identity': 'None',
         'Participant.age_range': '36-45',
+        'Participant.biospecimen': 'UNSET',
+        'Participant.biospecimen_samples': 'UNSET',
+        'Participant.ethnicity': 'UNSET',
+        'Participant.full_participant': 'False',
+        'Participant.gender_identity': 'None',
         'Participant.hpo_id': '1234',
-        }
+        'Participant.membership_tier': 'VOLUNTEER',
+        'Participant.physical_evaluation': 'UNSET',
+        'Participant.race': 'UNSET',
+        'Participant.survey': 'UNSET',
+    }
     self.assertEqual(expected, response)
 
 

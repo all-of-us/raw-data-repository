@@ -93,12 +93,18 @@ class TestPPI(unittest.TestCase):
 
     response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
     expected = {
-        'Participant.membership_tier': 'None',
-        'Participant.gender_identity': 'MALE_TO_FEMALE_TRANSGENDER',
         'Participant.age_range': '46-55',
-        'Participant.hpo_id': 'None',
-        'Participant.state': 'AL',
+        'Participant.biospecimen': 'UNSET',
+        'Participant.biospecimen_samples': 'UNSET',
         'Participant.census_region': 'SOUTH',
+        'Participant.ethnicity': 'UNSET',
+        'Participant.full_participant': 'False',
+        'Participant.gender_identity': 'MALE_TO_FEMALE_TRANSGENDER',
+        'Participant.hpo_id': 'None',
+        'Participant.membership_tier': 'None',
+        'Participant.physical_evaluation': 'UNSET',
+        'Participant.race': 'UNSET',
+        'Participant.state': 'AL',
         'Participant.survey': 'SUBMITTED_SOME',
         }
     self.assertEqual(expected, response)
