@@ -57,6 +57,7 @@ import copy
 import json
 import logging
 import pipeline
+import traceback
 
 import api_util
 import config
@@ -157,8 +158,8 @@ def map_key_to_summary(entity_key, now=None):
         if result.extracted:
           new_state[field.name] = result.value
       except Exception as e:
-        logging.error(
-            'Exception extracting history field {0}: {1}'.format(field.name, e))
+        logging.error('Exception extracting history field {0}: {1}'.format(
+                field.name, traceback.format_exc()))
 
     if new_state == last_state:
       continue  # No changes so there's nothing to do.
