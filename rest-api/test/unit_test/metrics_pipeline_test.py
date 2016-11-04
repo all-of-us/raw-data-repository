@@ -4,6 +4,7 @@ import datetime
 import extraction
 import json
 import metrics
+import offline.metrics_config
 import participant
 import evaluation
 import unittest
@@ -21,7 +22,7 @@ CONFIGS_FOR_TEST = {
     'Participant': {
         'load_history_func': participant.load_history_entities,
         'facets': [
-            FacetDef(metrics.FacetType.HPO_ID, lambda s: s['hpo_id']),
+            FacetDef(offline.metrics_config.FacetType.HPO_ID, lambda s: s['hpo_id']),
         ],
         'initial_state': {
             'physical_evaluation': 'UNSET',
@@ -29,13 +30,20 @@ CONFIGS_FOR_TEST = {
         'fields': {
             'ParticipantHistory': [
                 FieldDef('membership_tier',
-                         extraction.simple_field_extractor('membership_tier')),
-                FieldDef('age_range', participant.extract_bucketed_age),
-                FieldDef('hpo_id', participant.extract_HPO_id),
+                         extraction.simple_field_extractor('membership_tier'),
+                         iter(participant.MembershipTier)),
+                FieldDef('age_range',
+                         participant.extract_bucketed_age,
+                         participant.AGE_BUCKETS),
+                FieldDef('hpo_id',
+                         participant.extract_HPO_id,
+                         participant.HPO_VALUES),
             ],
             'EvaluationHistory': [
                 # The presence of a physical evaluation implies that it is complete.
-                FieldDef('physical_evaluation', lambda h: ExtractionResult('COMPLETE')),
+                FieldDef('physical_evaluation',
+                         lambda h: ExtractionResult('COMPLETE'),
+                         ('None', 'COMPLETE')),
             ],
         },
     },

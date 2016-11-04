@@ -5,11 +5,9 @@ import copy
 import datetime
 import json
 import logging
-import participant
 
-import api_util
+from offline.metrics_config import METRICS_CONFIGS, FacetType
 
-from dateutil.relativedelta import relativedelta
 from google.appengine.ext import ndb
 from protorpc import message_types
 from protorpc import messages
@@ -35,10 +33,10 @@ class MetricsVersion(ndb.Model):
   complete = ndb.BooleanProperty()
   date = ndb.DateTimeProperty(auto_now=True)
 
-class FacetType(messages.Enum):
-  """The Facets (dimensions) to bucket by"""
-  NONE = 0
-  HPO_ID = 1
+class FieldDefinition(messages.Message):
+  """Defines a field and its values"""
+  name = messages.StringField(1)
+  values = messages.StringField(2, repeated=True)
 
 class Facet(messages.Message):
   """Used in the response to describe what the aggregated value represents."""
@@ -55,7 +53,8 @@ class MetricsResponseBucket(messages.Message):
   entries = messages.MessageField(MetricsResponseBucketEntry, 3, repeated=True)
 
 class MetricsResponse(messages.Message):
-  bucket = messages.MessageField(MetricsResponseBucket, 1, repeated=True)
+  field_definition = messages.MessageField(FieldDefinition, 1, repeated=True)
+  bucket = messages.MessageField(MetricsResponseBucket, 2, repeated=True)
 
 class MetricsRequest(messages.Message):
   facets = messages.EnumField(FacetType, 1, repeated=True)
@@ -145,6 +144,12 @@ class MetricService(object):
           entry.value = float(val)
           resp_bucket.entries.append(entry)
 
+
+    response.field_definition = [
+        FieldDefinition(name=type_ + '.' + field.name, values=[str(r) for r in field.func_range])
+        for type_, conf in METRICS_CONFIGS.iteritems()
+        for field_list in conf['fields'].values()
+        for field in field_list]
     return response
 
 def set_pipeline_in_progress():

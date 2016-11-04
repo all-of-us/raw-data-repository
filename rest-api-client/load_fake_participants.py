@@ -17,15 +17,21 @@ two_months = datetime.timedelta(60)
 one_year = datetime.timedelta(365)
 
 hpo_ids = (
-    "nyc",
-    "chicago",
-    "tucson",
-    "pittsburgh",
-    "knoxville",
-    "middletown",
-    "peekskill",
-    "jackson",
-    "san-ysidro"
+    'pitt',        # Pitt/UPMC
+    'columbia',    # Columbia University Medical Center
+    'illinois',    # Illinois Precision Medicine Consortium
+    'az_tucson',   # University of Arizona, Tucson
+    'comm_health', # Community Health Center
+    'san_ysidro',  # San Ysidro health Center, Inc.
+    'cherokee',    # Cherokee Health Systems
+    'eau_claire',  # Eau Claire Cooperative Health Centers, Inc
+    'hrhcare',     # HRHCare (Hudson River Healthcare)
+    'jackson',     # Jackson-Hinds Comprehensive Health Center
+    'geisinger',   # Geisinger Health System
+    'cal_pmc',     # California Precision Medicine Consortium
+    'ne_pmc',      # New England Precision Medicine Consortium
+    'trans_am',    # Trans-American Consortium for the Health Care Systems Research Network
+    'va',          # Veterans Affairs
 )
 
 def participant():
