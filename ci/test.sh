@@ -25,7 +25,7 @@ done
 # used immediately.
 # Burn a request to populate the config store.
 set +e
-python participant_client.py  --instance http://localhost:8080
+curl -s --fail http://localhost:8080/rdr/v1/Metrics
 sleep 2 # Give the indices a chance to get updated.
 set -e
 
