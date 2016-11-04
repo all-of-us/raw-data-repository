@@ -174,6 +174,16 @@ def modify_participant_history(history, participant_key, now):
   history.extend(evaluation.DAO.get_all_history(participant_key))
   import biobank_order
   history.extend(biobank_order.DAO.get_all_history(participant_key))
+  import biobank_sample
+  samples = biobank_sample.DAO.load_if_present('0', participant_key.id())
+  if samples:
+    min_date = None
+    for sample in samples.samples:
+      if not min_date or min_date > sample.collectionDate:
+        min_date = sample.collectionDate
+    if min_date:
+      samples.date = min_date
+      history.append(samples)
 
 def inject_age_change_records(history, now):
   """Inject history records when a participant's age changes.

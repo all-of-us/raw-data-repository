@@ -1,5 +1,6 @@
 """Tests for metrics_pipeline."""
 
+import biobank_sample
 import datetime
 import extraction
 import json
@@ -26,6 +27,7 @@ CONFIGS_FOR_TEST = {
         ],
         'initial_state': {
             'physical_evaluation': 'UNSET',
+            'biospecimen': 'UNSET',
         },
         'fields': {
             'ParticipantHistory': [
@@ -45,6 +47,10 @@ CONFIGS_FOR_TEST = {
                          lambda h: ExtractionResult('COMPLETE'),
                          ('None', 'COMPLETE')),
             ],
+            'BiobankSamples': [
+               # The presence of a biobank sample implies that samples have arrived
+               FieldDef('biospecimen', lambda h: ExtractionResult('SAMPLES_ARRIVED'))
+            ]
         },
     },
 }
@@ -72,6 +78,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.REGISTERED': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
+             'Participant.biospecimen.UNSET': 1,
          }),
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -88,6 +95,14 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.REGISTERED': 1,
+         }),
+        ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+         {
+             'Participant.biospecimen.UNSET': -1,
+         }),
+        ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+         {
+             'Participant.biospecimen.SAMPLES_ARRIVED': 1,
          }),
         ({'date': '2016-09-05', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -140,6 +155,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.REGISTERED': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
+             'Participant.biospecimen.UNSET': 1,
         }),
         ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -189,6 +205,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.None': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
+             'Participant.biospecimen.UNSET': 1,
          }),
         ({'date': '2016-09-02', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -197,7 +214,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.None': -1,
              'Participant': -1,
              'Participant.physical_evaluation.UNSET': -1,
-
+             'Participant.biospecimen.UNSET': -1,
          }),
         ({'date': '2016-09-02', 'facets': [{'type': 'HPO_ID', 'value': 'HPO2'}]},
          {
@@ -206,6 +223,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.membership_tier.None': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
+             'Participant.biospecimen.UNSET': 1,
          }),
     ]
     expected = [(json.dumps(d), json.dumps(s, sort_keys=True)) for d, s in expected]
@@ -330,7 +348,22 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     key = ndb.Key(key.flat()[0], key.flat()[1], evaluation.Evaluation, evaluation.DAO.allocate_id())
     evaluation.DAO.store(evaluation.Evaluation(key=key, resource="ignored"),
                          datetime.datetime(2016, 9, 5))
-
+    sample_dict_1 = {
+        'familyId': 'SF160914-000001',
+        'sampleId': '16258000008',
+        'eventName': 'DRC-00123',
+        'storageStatus': 'In Prep',
+        'type': 'Urine',
+        'treatments': 'No Additive',
+        'expectedVolume': '10 mL',
+        'quantity': '1 mL',
+        'containerType': 'TS - Matrix 1.4mL',
+        'collectionDate': '2016/09/1 23:59:00',
+        'parentSampleId': '16258000001',
+        'confirmedDate': '2016/09/2 09:49:00' }
+    samples_1 = biobank_sample.DAO.from_json(
+        { 'samples': [ sample_dict_1 ]}, '1', '0')
+    biobank_sample.DAO.store(samples_1)
 
 if __name__ == '__main__':
   unittest.main()

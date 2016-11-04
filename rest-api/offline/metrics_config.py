@@ -93,6 +93,11 @@ METRICS_CONFIGS = {
                          lambda h: ExtractionResult('ORDER_PLACED'),
                          ('None', 'ORDER_PLACED'))
             ],
+            'BiobankSamples': [
+                # The presence of a biobank sample implies that samples have arrived
+                # This overwrites the ORDER_PLACED value for biospecimen above
+                FieldDef('biospecimen', lambda h: ExtractionResult('SAMPLES_ARRIVED'))
+            ]
         },
     },
 }
