@@ -89,7 +89,7 @@ class ParticipantTest(unittest.TestCase):
         'Participant.biospecimen': 'UNSET',
         'Participant.biospecimen_samples': 'UNSET',
         'Participant.ethnicity': 'UNSET',
-        'Participant.full_participant': 'False',
+        'Participant.biospecimen_summary': 'UNSET',
         'Participant.gender_identity': 'None',
         'Participant.hpo_id': '1234',
         'Participant.membership_tier': 'VOLUNTEER',

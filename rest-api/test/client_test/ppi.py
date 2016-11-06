@@ -98,7 +98,7 @@ class TestPPI(unittest.TestCase):
         'Participant.biospecimen_samples': 'UNSET',
         'Participant.census_region': 'SOUTH',
         'Participant.ethnicity': 'UNSET',
-        'Participant.full_participant': 'False',
+        'Participant.biospecimen_summary': 'UNSET',
         'Participant.gender_identity': 'MALE_TO_FEMALE_TRANSGENDER',
         'Participant.hpo_id': 'None',
         'Participant.membership_tier': 'None',

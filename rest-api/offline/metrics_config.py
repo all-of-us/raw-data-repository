@@ -37,6 +37,15 @@ class FacetType(messages.Enum):
 FieldDef = namedtuple('FieldDef', ['name', 'func', 'func_range'])
 FacetDef = namedtuple('FacetDef', ['type', 'func'])
 
+def biospecimen_summary(summary):
+  """Summarizes the two biospecimen statuses into one."""
+  samples = summary.get('biospecimen_samples', 'UNSET')
+  order = summary.get('biospecimen', 'UNSET')
+  ret = order
+  if samples != 'UNSET':
+    ret = samples
+  return ExtractionResult(ret)
+
 METRICS_CONFIGS = {
     'Participant': {
         'load_history_func': participant.load_history_entities,
@@ -50,7 +59,7 @@ METRICS_CONFIGS = {
             'survey': 'UNSET',
             'biospecimen': 'UNSET',
             'biospecimen_samples': 'UNSET',
-            'full_participant': 'False',
+            'biospecimen_summary': 'UNSET',
         },
         'fields': {
             'ParticipantHistory': [
@@ -103,7 +112,8 @@ METRICS_CONFIGS = {
             ]
         },
         'summary_fields': [
-            FieldDef('full_participant', participant.is_full_participant, ('False', 'True')),
+            FieldDef('biospecimen_summary', biospecimen_summary,
+                     ('UNSET', 'ORDER_PLACED', 'SAMPLES_ARRIVED')),
         ],
     },
 }
