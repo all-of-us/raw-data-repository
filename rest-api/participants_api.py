@@ -3,7 +3,6 @@
 This defines the APIs and the handlers for the APIs.
 """
 
-import copy
 import datetime
 import traceback
 

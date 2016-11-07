@@ -43,7 +43,7 @@ def getSettingList(key, default=None):
       and a default is not provided.
   """
   check_initialized()
-  query = Config.query(Config.config_key==key)
+  query = Config.query(Config.config_key == key)
   iterator = query.iter()
   if not iterator.has_next():
     if default is not None:

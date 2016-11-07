@@ -240,8 +240,8 @@ def extract_HPO_id(ph):
        + str(ph.obj.hpo_id)))
 
 # The lower bounds of the age buckets.
-_AGE_LB =  [0, 18, 26, 36, 46, 56, 66, 76, 86]
-AGE_BUCKETS = ['{}-{}'.format(b,e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
+_AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
+AGE_BUCKETS = ['{}-{}'.format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
 
 def _bucketed_age(date_of_birth, today):
   age = relativedelta(today, date_of_birth).years

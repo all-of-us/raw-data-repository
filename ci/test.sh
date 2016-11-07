@@ -8,6 +8,13 @@ cd rest-api
 pip install -r requirements.txt -t lib/
 git submodule update --init
 
+pylint -r n -f text \
+  --disable=all \
+  --enable=bad-whitespace,unused-import,unused-variable,bad-indentation \
+  *.py \
+  offline/*.py \
+  client/*.py
+
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
 dev_appserver.py \

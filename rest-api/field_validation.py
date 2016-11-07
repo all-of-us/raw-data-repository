@@ -1,7 +1,6 @@
 """Data and functions used to validate incoming data."""
 
 from collections import namedtuple
-import extraction
 
 from werkzeug.exceptions import BadRequest
 

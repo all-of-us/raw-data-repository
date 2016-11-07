@@ -2,17 +2,14 @@
 
 This defines the APIs and the handlers for the APIs.
 """
-import flask
 import biobank_orders_api
 import biobank_samples_api
 import metrics_api
 import participants_api
 import ppi_api
 
-from flask import Flask, jsonify
+from flask import Flask
 from flask_restful import Api
-
-from werkzeug.exceptions import default_exceptions
 
 
 app = Flask(__name__)

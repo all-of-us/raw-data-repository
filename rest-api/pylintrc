@@ -13,7 +13,7 @@ init-hook="from pylint.config import find_pylintrc; \
     ae_dir = os.path.join(sdk_bin_dir, '..', 'platform', 'google_appengine'); \
     sys.path.insert(0, ae_dir); \
     lib_dir = os.path.join(ae_dir, 'lib'); \
-    sys.path.extend([os.path.join(lib_dir, x) for x in os.listdir(lib_dir)]); \
+    sys.path.extend([os.path.join(lib_dir, x) for x in os.listdir(lib_dir)]) if os.path.exists(lib_dir) else None; \
     "
 
 # Profiled execution.

@@ -5,7 +5,6 @@ BiobankSamples entries under participants in datastore.
 """
 
 import ast
-import api_util
 import biobank_sample
 import csv
 import config

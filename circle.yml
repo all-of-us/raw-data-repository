@@ -6,6 +6,7 @@ dependencies:
     - sudo chmod o+w /opt
     - pip install --upgrade httplib2
     - pip install --upgrade oauth2client
+    - pip install --upgrade pylint
 
 test:
   override:
