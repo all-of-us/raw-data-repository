@@ -1,6 +1,7 @@
 """Base object for Datastore data access objects."""
 import uuid
 import copy
+import api_util
 
 from google.appengine.ext import ndb
 from werkzeug.exceptions import BadRequest
