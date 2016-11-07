@@ -34,7 +34,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 cd ..
-./ci/check_licesnses.py
+./ci/check_licesnses.sh
 cd -
 
 
