@@ -33,6 +33,11 @@ virtualenv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
+cd ..
+./ci/check_licesnses.py
+cd -
+
+
 # The first call will often fail, as it will populate the config store.
 # And due to eventual consistency on the config indexes, it often can not be
 # used immediately.
