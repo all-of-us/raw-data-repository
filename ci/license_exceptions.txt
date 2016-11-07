@@ -1,0 +1,5 @@
+# Graphy is Apache 2.0 according to it's web page, but it's metadata is lacking.
+Graphy
+
+# dnspython is BSD style, but it's metadata says 'Freeware' which is not a valid license.
+dnspython

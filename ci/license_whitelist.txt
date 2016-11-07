@@ -1,0 +1,26 @@
+# Apache
+Apache Software License
+#Apache 2.0
+#ASL 2
+Apache License 2.0
+Apache License, Version 2.0
+
+# BSD
+BSD
+BSD License
+Simplified BSD
+
+# MIT
+MIT
+MIT License
+
+# The standard python licenses
+Python Software Foundation License
+PSF license
+
+# PSF is the Python license  ZPL is the Zope Public License.
+PSF or ZPL
+Zope Public License
+
+# Academic Free License (AFL).
+Academic Free License (AFL)
