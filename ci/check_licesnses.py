@@ -40,6 +40,7 @@ def check_licenses(whitelist, root, exceptions):
     classifiers = pkg_info.get_all('Classifier') or []
     license_checked = False
     for classifier in classifiers:
+      # Classifiers look like:  "License :: OSI Approved :: MIT License"
       segments = [s.strip() for s in classifier.split('::')]
       if segments[0] == 'License':
         segments = segments[1:]
@@ -75,16 +76,23 @@ def _load_metadata(pkg):
     return eparser.parsestr(pkg.get_metadata('METADATA'))
 
 
+
+def _load_and_strip(filename):
+  with open(filename) as f:
+    stripped = [l.strip('\n \t') for l in f.readlines()]
+    comments_removed = [l for l in stripped if l and l[0] != '#']
+    return comments_removed
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
       description=__doc__,
       formatter_class=argparse.RawDescriptionHelpFormatter)
   parser.add_argument('--licenses_file', help='File containing acceptable licenses, one per line.')
   parser.add_argument('--root', help='Only check packages under this dir.', default=os.path.sep)
-  parser.add_argument('--exceptions', help='Comma seperated packages lacking metadata.', default='')
+  parser.add_argument('--exceptions_file', help='Comma seperated packages lacking metadata.')
   args = parser.parse_args()
 
-  with open(args.licenses_file) as license_file:
-    stripped = [l.strip('\n \t') for l in license_file.readlines()]
-    comments_removed = [l for l in stripped if l and l[0] != '#']
-    check_licenses(comments_removed, args.root, args.exceptions.split(','))
+  exceptions = []
+  if args.exceptions_file:
+    exceptions = _load_and_strip(args.exceptions_file)
+  check_licenses(_load_and_strip(args.licenses_file), args.root, exceptions)
