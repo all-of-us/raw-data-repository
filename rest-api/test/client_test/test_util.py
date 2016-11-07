@@ -47,6 +47,8 @@ def _compare_json(test, obj_a, obj_b):
     del obj_b['etag']
   if 'kind' in obj_b:
     del obj_b['kind']
+  if 'meta' in obj_b:
+    del obj_b['meta']
   test.assertMultiLineEqual(pretty(obj_a), pretty(obj_b))
 
 def pretty(obj):

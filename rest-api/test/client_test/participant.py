@@ -41,6 +41,7 @@ class ParticipantTest(unittest.TestCase):
     # Fetch that participant.
     response = self.client.request_json('Participant/{}'.format(participant_id))
     self.assertEqual(response['first_name'], first_name)
+    last_etag = self.client.last_etag
 
     # Add fields to the participant.
     zip_code = '02142'
@@ -49,8 +50,26 @@ class ParticipantTest(unittest.TestCase):
     response['consent_time'] = datetime.datetime.now().isoformat()
     response['hpo_id'] = '1234'
     response['biobank_id'] = None
+    try:
+      response = self.client.request_json(
+          'Participant/{}'.format(participant_id), 'PATCH', response)
+      self.fail("Need If-Match header for update")
+    except HttpException, ex:
+      self.assertEqual(ex.code, 400)
+      pass
+    try:
+      response = self.client.request_json(
+          'Participant/{}'.format(participant_id), 'PATCH', response,
+          headers = { 'If-Match': '12345' })
+      self.fail("Wrong If-Match header for update")
+    except HttpException, ex:
+      self.assertEqual(ex.code, 409)
+      pass
+    print 'ETag = {}'.format(last_etag)
     response = self.client.request_json(
-        'Participant/{}'.format(participant_id), 'PATCH', response)
+          'Participant/{}'.format(participant_id), 'PATCH', response,
+          headers = { 'If-Match': last_etag})
+
     self.assertEqual(response['zip_code'], zip_code)
     self.assertEqual(response['membership_tier'], 'VOLUNTEER')
     self.assertTrue('sign_up_time' in response)

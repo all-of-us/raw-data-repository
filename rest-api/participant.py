@@ -85,6 +85,7 @@ class Participant(ndb.Model):
   consent_time = ndb.DateTimeProperty()
   hpo_id = ndb.StringProperty()
   recruitment_source = msgprop.EnumProperty(RecruitmentSource)
+  last_modified = ndb.DateTimeProperty(auto_now=True)
 
 
 class ParticipantDAO(data_access_object.DataAccessObject):

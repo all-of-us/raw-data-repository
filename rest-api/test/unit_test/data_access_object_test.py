@@ -7,18 +7,17 @@ from datetime import datetime
 
 from google.appengine.ext import ndb
 
-from test.unit_test.unit_test_util import NdbTestBase
+from test.unit_test.unit_test_util import NdbTestBase, strip_last_modified
 
-from werkzeug.exceptions import Conflict
-from werkzeug.exceptions import NotFound
-
+from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
 class ParentModel(ndb.Model):
   foo = ndb.StringProperty()
+  last_modified = ndb.DateTimeProperty(auto_now=True)
 
 class ChildModel(ndb.Model):
   bar = ndb.StringProperty()
-
+  last_modified = ndb.DateTimeProperty(auto_now=True)
 
 class ParentModelDAO(data_access_object.DataAccessObject):
   def __init__(self):
@@ -61,17 +60,32 @@ class DataAccessObjectTest(NdbTestBase):
 
   def test_update(self):
     parent_id = 'parentID1'
+    expected_version_id = '12345'
     parent = ParentModel(key=ndb.Key(ParentModel, parent_id))
     parent.foo = "Foo"
     try:
-      PARENT_DAO.update(parent)
+      PARENT_DAO.update(parent, expected_version_id)
       self.fail('Update before insert should fail.')
     except NotFound:
       pass
     PARENT_DAO.insert(parent)
     parent.foo = "BAR"
-    PARENT_DAO.update(parent)
-    self.assertEquals(parent, PARENT_DAO.load(parent_id))
+    try:
+      PARENT_DAO.update(parent, None)
+      self.fail('Update without expected version id should fail')
+    except BadRequest:
+      pass
+    try:
+      PARENT_DAO.update(parent, expected_version_id)
+      self.fail('Update with wrong expected version id should fail')
+    except Conflict:
+      pass
+    parent = PARENT_DAO.load(parent_id)
+    parent.foo = "BAR"
+    PARENT_DAO.update(parent, PARENT_DAO.make_version_id(parent.last_modified))
+
+    self.assertEquals(strip_last_modified(parent),
+                      strip_last_modified(PARENT_DAO.load(parent_id)))
 
   def test_history(self):
     dates = [datetime(2016, 10, 1) for i in range(3)]

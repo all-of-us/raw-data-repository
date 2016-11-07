@@ -20,8 +20,8 @@ from google.appengine.api import oauth
 from werkzeug.exceptions import Unauthorized, BadRequest
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
-
 _IP_CONFIG_SINGLETON_KEY = "ip_config"
+EPOCH = datetime.datetime.utcfromtimestamp(0)
 
 def auth_required(func):
   """A decorator that keeps the function from being called without auth."""
@@ -125,6 +125,10 @@ def format_json_date(obj, field_name, format=None):
         obj[field_name] = obj[field_name].strftime(format)
       else:
         obj[field_name] = obj[field_name].isoformat()
+
+def unix_time_millis(dt):
+    return int((dt - EPOCH).total_seconds() * 1000 +
+               (dt.microsecond - EPOCH.microsecond) / 1000)
 
 def parse_json_enum(obj, field_name, enum):
   """Converts a field of a dictionary from a string to an enum."""

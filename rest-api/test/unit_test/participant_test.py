@@ -12,7 +12,7 @@ import questionnaire
 import questionnaire_response
 
 from google.appengine.ext import ndb
-from test.unit_test.unit_test_util import NdbTestBase, TestBase
+from test.unit_test.unit_test_util import NdbTestBase, TestBase, strip_last_modified
 
 class ParticipantTest(TestBase):
   def test_bucket_age(self):
@@ -93,10 +93,12 @@ class ParticipantNdbTest(NdbTestBase):
 
     expected = [participant_entry, response_entry, evaluation_entry, biobank_entry]
     for entry in expected:
+      strip_last_modified(entry)
       entry.key = None
 
     entries = [e.obj for e in entries]
     for entry in entries:
+      strip_last_modified(entry)
       entry.key = None
 
     self.assertEquals(expected, entries)

@@ -3,6 +3,7 @@ import uuid
 import copy
 
 from google.appengine.ext import ndb
+from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import Conflict
 from werkzeug.exceptions import NotFound
 
@@ -44,7 +45,12 @@ class DataAccessObject(object):
 
   def to_json(self, m):
     properties_obj = copy.deepcopy(m.to_dict())
-    return self.properties_to_json(properties_obj)
+    dict = self.properties_to_json(properties_obj)
+    last_modified = dict.get('last_modified')
+    if last_modified:
+      del dict['last_modified']
+      dict['meta'] = { 'versionId': api_util.unix_time_millis(last_modified)}
+    return dict
 
   def from_json(self, dict_, ancestor_id=None, id_=None):
     assert bool(ancestor_id) == bool(self.ancestor_type), "Requires an ancestor_id"
@@ -64,6 +70,9 @@ class DataAccessObject(object):
 
     m = self.model_type(key=key)
     dict_ = self.properties_from_json(dict_, ancestor_id, id_)
+    # Do not populate meta fields received in the request.
+    if dict_.get('meta'):
+      del dict_['meta']
 
     m.populate(**dict_)
     return m
@@ -126,10 +135,19 @@ class DataAccessObject(object):
     return self.store(model, date, client_id)
 
   @ndb.transactional
-  def update(self, model, date=None, client_id=None):
-    if not model.key.get():
+  def update(self, model, expected_version_id, date=None, client_id=None):
+    if not expected_version_id:
+      raise BadRequest('If-Match header missing when updating resource')
+    existing_obj = model.key.get()
+    if not existing_obj:
       raise NotFound('{} with key {} does not exist'.format(
           self.model_name, model.key))
+    if existing_obj.last_modified:
+      version_id = self.make_version_id(existing_obj.last_modified)
+      if version_id != expected_version_id:
+        raise Conflict('If-Match header was {}; stored version was {}'.format(
+            expected_version_id, version_id))
+    model.last_modified = None
     return self.store(model, date, client_id)
 
   @ndb.transactional
@@ -172,3 +190,6 @@ class DataAccessObject(object):
     Override this to use something other than a uuid.
     """
     return str(uuid.uuid4())
+
+  def make_version_id(self, last_modified):
+     return str(api_util.unix_time_millis(last_modified))

@@ -10,6 +10,7 @@ from offline.biobank_samples_pipeline import BiobankSamplesPipeline
 from cloudstorage import cloudstorage_api
 from mapreduce import test_support
 from testlib import testutil
+from test.unit_test.unit_test_util import strip_last_modified
 
 class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
@@ -50,7 +51,7 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
         'confirmedDate': '2016/09/14 09:49:00' }
     expected_samples_1 = biobank_sample.DAO.from_json(
         { 'samples': [ expected_sample_dict_1 ]}, 'P1', biobank_sample.SINGLETON_SAMPLES_ID)
-    self.assertEquals(expected_samples_1, biobank_samples_1)
+    self.assertEquals(expected_samples_1, strip_last_modified(biobank_samples_1))
 
 def _data_path(filename):
   return os.path.join(os.path.dirname(__file__), '..', 'test-data', filename)
