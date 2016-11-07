@@ -3,6 +3,7 @@
 This defines the APIs and the handlers for the APIs.
 """
 
+import copy
 import datetime
 import traceback
 
@@ -132,7 +133,7 @@ class ParticipantSummaryAPI(Resource):
              for o in dao.children(pt)]
     hists.extend([participant.DAO.history_model(parent=pt.key, date=date, obj=pt)])
 
-    summary = {}
+    summary = {'Participant.' + k: v for k, v in METRICS_CONFIG['initial_state'].iteritems()}
     for hist in hists:
       for field in METRICS_CONFIG['fields'][hist.key.kind()]:
         try:
@@ -141,6 +142,15 @@ class ParticipantSummaryAPI(Resource):
             summary['Participant.' + field.name] = str(result.value)
         except Exception as _:
           raise InternalServerError('Exception extracting field {0}: {1}'.format(
+              field.name, traceback.format_exc()))
+
+      for field in METRICS_CONFIG['summary_fields']:
+        try:
+          result = field.func(summary)
+          if result.extracted:
+            summary['Participant.' + field.name] = str(result.value)
+        except Exception as _:
+          raise InternalServerError('Exception extracting summary field {0}: {1}'.format(
               field.name, traceback.format_exc()))
 
     return summary

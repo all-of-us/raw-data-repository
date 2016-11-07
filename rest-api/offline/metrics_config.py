@@ -37,6 +37,15 @@ class FacetType(messages.Enum):
 FieldDef = namedtuple('FieldDef', ['name', 'func', 'func_range'])
 FacetDef = namedtuple('FacetDef', ['type', 'func'])
 
+def biospecimen_summary(summary):
+  """Summarizes the two biospecimen statuses into one."""
+  samples = summary.get('biospecimen_samples', 'UNSET')
+  order = summary.get('biospecimen', 'UNSET')
+  ret = order
+  if samples != 'UNSET':
+    ret = samples
+  return ExtractionResult(ret)
+
 METRICS_CONFIGS = {
     'Participant': {
         'load_history_func': participant.load_history_entities,
@@ -49,7 +58,8 @@ METRICS_CONFIGS = {
             'ethnicity': 'UNSET',
             'survey': 'UNSET',
             'biospecimen': 'UNSET',
-            'biospecimen_samples': 'UNSET'
+            'biospecimen_samples': 'UNSET',
+            'biospecimen_summary': 'UNSET',
         },
         'fields': {
             'ParticipantHistory': [
@@ -67,14 +77,14 @@ METRICS_CONFIGS = {
             'QuestionnaireResponseHistory': [
                 FieldDef('race',
                          questionnaire_response.extract_race,
-                         questionnaire_response.races()),
+                         set('UNSET') | questionnaire_response.races()),
                 FieldDef('ethnicity',
                          questionnaire_response.extract_ethnicity,
-                         questionnaire_response.ethnicities()),
+                         set('UNSET') | questionnaire_response.ethnicities()),
                 # The presence of a response means that some have been submitted.
                 FieldDef('survey',
                          lambda h: ExtractionResult('SUBMITTED_SOME'),
-                         ('None', 'SUBMITTED_SOME')),
+                         ('UNSET', 'SUBMITTED_SOME')),
                 FieldDef('state',
                          questionnaire_response.extract_state_of_residence,
                          questionnaire_response.states()),
@@ -86,20 +96,24 @@ METRICS_CONFIGS = {
                 # The presence of a physical evaluation implies that it is complete.
                 FieldDef('physical_evaluation',
                          lambda h: ExtractionResult('COMPLETE'),
-                         ('None', 'COMPLETE')),
+                         ('UNSET', 'COMPLETE')),
             ],
             'BiobankOrderHistory': [
                 # The presence of a biobank order implies that an order has been placed.
                 FieldDef('biospecimen',
                          lambda h: ExtractionResult('ORDER_PLACED'),
-                         ('None', 'ORDER_PLACED'))
+                         ('UNSET', 'ORDER_PLACED'))
             ],
             'BiobankSamples': [
                 # The presence of a biobank sample implies that samples have arrived
                 # This overwrites the ORDER_PLACED value for biospecimen above
                 FieldDef('biospecimen_samples', lambda h: ExtractionResult('SAMPLES_ARRIVED'),
-                         ('None', 'SAMPLES_ARRIVED'))
+                         ('UNSET', 'SAMPLES_ARRIVED'))
             ]
         },
+        'summary_fields': [
+            FieldDef('biospecimen_summary', biospecimen_summary,
+                     ('UNSET', 'ORDER_PLACED', 'SAMPLES_ARRIVED')),
+        ],
     },
 }

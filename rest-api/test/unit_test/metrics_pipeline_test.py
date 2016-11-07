@@ -19,6 +19,13 @@ from mapreduce import test_support
 from testlib import testutil
 
 
+def compute_meta(summary):
+  if summary['membership_tier'] == 'REGISTERED' and summary['hpo_id'] == 'HPO1':
+    val = 'R1'
+  else:
+    val = 'NOPE'
+  return ExtractionResult(val)
+
 CONFIGS_FOR_TEST = {
     'Participant': {
         'load_history_func': participant.load_history_entities,
@@ -53,6 +60,9 @@ CONFIGS_FOR_TEST = {
                          ('None', 'SAMPLES_ARRIVED'))
             ]
         },
+        'summary_fields': [
+            FieldDef('meta', compute_meta, ('R1', 'NOPE')),
+        ],
     },
 }
 
@@ -80,22 +90,27 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
              'Participant.biospecimen_samples.UNSET': 1,
+             'Participant.meta.R1': 1,
          }),
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.REGISTERED': -1,
+             'Participant.meta.R1': -1,
          }),
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.FULL_PARTICIPANT': 1,
+             'Participant.meta.NOPE': 1,
          }),
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.FULL_PARTICIPANT': -1,
+             'Participant.meta.NOPE': -1,
          }),
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.REGISTERED': 1,
+             'Participant.meta.R1': 1,
          }),
         ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -116,10 +131,12 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         ({'date': '2016-09-10', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.REGISTERED': -1,
+             'Participant.meta.R1': -1,
          }),
         ({'date': '2016-09-10', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.VOLUNTEER': 1,
+             'Participant.meta.NOPE': 1,
          }),
     ]
     expected = [(json.dumps(d), json.dumps(s, sort_keys=True)) for d, s in expected]
@@ -154,6 +171,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.age_range.36-45': 1,
              'Participant.hpo_id.HPO1': 1,
              'Participant.membership_tier.REGISTERED': 1,
+             'Participant.meta.R1': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
              'Participant.biospecimen_samples.UNSET': 1,
@@ -161,10 +179,12 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.REGISTERED': -1,
+             'Participant.meta.R1': -1,
          }),
         ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.FULL_PARTICIPANT': 1,
+             'Participant.meta.NOPE': 1,
          }),
         ({'date': '2016-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -204,6 +224,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.age_range.46-55': 1,
              'Participant.hpo_id.HPO1': 1,
              'Participant.membership_tier.None': 1,
+             'Participant.meta.NOPE': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
              'Participant.biospecimen_samples.UNSET': 1,
@@ -213,6 +234,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.age_range.46-55': -1,
              'Participant.hpo_id.HPO1': -1,
              'Participant.membership_tier.None': -1,
+             'Participant.meta.NOPE': -1,
              'Participant': -1,
              'Participant.physical_evaluation.UNSET': -1,
              'Participant.biospecimen_samples.UNSET': -1,
@@ -222,6 +244,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              'Participant.age_range.46-55': 1,
              'Participant.hpo_id.HPO2': 1,
              'Participant.membership_tier.None': 1,
+             'Participant.meta.NOPE': 1,
              'Participant': 1,
              'Participant.physical_evaluation.UNSET': 1,
              'Participant.biospecimen_samples.UNSET': 1,

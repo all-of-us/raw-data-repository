@@ -156,9 +156,18 @@ def map_key_to_summary(entity_key, now=None):
       try:
         result = field.func(hist_obj)
         if result.extracted:
-          new_state[field.name] = result.value
-      except Exception as e:
+          new_state[field.name] = str(result.value)
+      except Exception:
         logging.error('Exception extracting history field {0}: {1}'.format(
+                field.name, traceback.format_exc()))
+
+    for field in metrics_conf['summary_fields']:
+      try:
+        result = field.func(new_state)
+        if result.extracted:
+          new_state[field.name] = str(result.value)
+      except Exception:
+        logging.error('Exception extracting history summary field {0}: {1}'.format(
                 field.name, traceback.format_exc()))
 
     if new_state == last_state:
@@ -185,8 +194,7 @@ def map_key_to_summary(entity_key, now=None):
       yield (json.dumps(_get_facets_key(date, metrics_conf, last_state)),
              json.dumps(old_summary, sort_keys=True))
 
-    yield (json.dumps(facets_key),
-           json.dumps(summary, sort_keys=True))
+    yield (json.dumps(facets_key), json.dumps(summary, sort_keys=True))
     last_state = new_state
     last_facets_key = facets_key
 
