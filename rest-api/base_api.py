@@ -14,9 +14,17 @@ class BaseApi(Resource):
 
   Subclasses should implement the list() function.  The generic implementations
   of get(), post() and patch() should be sufficient for most subclasses.
+
+  If include_meta is True (the default), meta will be returned to clients in
+  resources when populated; if False, it will be ignored.
+
+  meta.versionId will be used to populate an ETag header on resource responses;
+  an If-Match header must be sent on patch requests that matches the current ETag
+  value
   """
-  def __init__(self, dao):
+  def __init__(self, dao, include_meta=True):
     self.dao = dao
+    self.include_meta = include_meta
 
   @api_util.auth_required
   def get(self, id_=None, a_id=None):
@@ -30,7 +38,8 @@ class BaseApi(Resource):
     """
     if not id_:
       return self.list(a_id)
-    return self.dao.to_json(self.dao.load(id_, a_id))
+    result = self.dao.to_json(self.dao.load(id_, a_id))
+    return self.make_response_for_resource(result)
 
   @api_util.auth_required
   def list(self, a_id=None):
@@ -65,7 +74,7 @@ class BaseApi(Resource):
     self.validate_object(m, a_id)
     self.dao.insert(m, date=consider_fake_date(),
                     client_id=api_util.get_client_id())
-    return self.dao.to_json(m)
+    return self.make_response_for_resource(self.dao.to_json(m))
 
   @api_util.auth_required
   def patch(self, id_, a_id=None):
@@ -79,9 +88,20 @@ class BaseApi(Resource):
     new_m = self.dao.from_json(request.get_json(force=True), a_id, id_)
     self.validate_object(new_m, a_id)
     api_util.update_model(old_model=old_m, new_model=new_m)
-    self.dao.update(old_m, date=consider_fake_date(),
+    self.dao.update(old_m, request.headers.get('If-Match'),
+                    date=consider_fake_date(),
                     client_id=api_util.get_client_id())
-    return self.dao.to_json(old_m)
+    return self.make_response_for_resource(self.dao.to_json(old_m))
+
+  def make_response_for_resource(self, result):
+    meta = result.get('meta')
+    if meta:
+      if not self.include_meta:
+        result['meta'] = None
+      version_id = meta.get('versionId')
+      if version_id:
+        return result, 200, {'ETag': version_id}
+    return result
 
 def consider_fake_date():
   try:

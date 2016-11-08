@@ -15,6 +15,7 @@ from questionnaire import QuestionnaireExtractor
 class QuestionnaireResponse(ndb.Model):
   """The questionnaire response."""
   resource = ndb.JsonProperty()
+  last_modified = ndb.DateTimeProperty(auto_now=True)
 
 class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
   def __init__(self):

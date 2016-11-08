@@ -24,6 +24,7 @@ class HttpException(BaseException):
 
 
 class Client(object):
+
   def __init__(self, base_path, parse_cli=True, creds_file=CREDS_FILE, default_instance=None):
     default_instance = default_instance or DEFAULT_INSTANCE
     if parse_cli:
@@ -34,6 +35,7 @@ class Client(object):
     self.base_path = base_path
     self.creds_file = creds_file
     self.fetcher = self._get_fetcher()
+    self.last_etag = None
 
   def parse_args(self, default_instance):
     parser = argparse.ArgumentParser()
@@ -75,6 +77,8 @@ class Client(object):
     if resp['content-type'] != 'application/json':
       raise HttpException(
           'content-type header is set to {}'.format(resp['content-type']))
+    if resp.get('etag'):
+      self.last_etag = resp['etag']
 
     if resp.status != 200:
       print resp

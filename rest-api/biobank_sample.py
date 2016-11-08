@@ -27,6 +27,7 @@ class BiobankSample(ndb.Model):
 class BiobankSamples(ndb.Model):
   """An inventory of samples"""
   samples = ndb.LocalStructuredProperty(BiobankSample, repeated=True)
+  last_modified = ndb.DateTimeProperty(auto_now=True)
 
 class BiobankSamplesDAO(data_access_object.DataAccessObject):
   def __init__(self):

@@ -113,7 +113,8 @@ def main():
     response = client.request_json('Participant', 'POST', p, headers={'X-Pretend-Date': when})
     participant_id = response['participant_id']
     for p, when in participant_calls[1:]:
-      client.request_json('Participant/{}'.format(participant_id), 'PATCH', p, headers={'X-Pretend-Date': when})
+      client.request_json('Participant/{}'.format(participant_id), 'PATCH', p, 
+                          headers={'X-Pretend-Date': when, 'If-Match': client.last_etag})
 
     q = random_questionnaire(response, details['questionnaire_time'], q_id)
     q_response = client.request_json(

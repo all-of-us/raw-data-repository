@@ -14,6 +14,7 @@ from werkzeug.exceptions import BadRequest
 class Evaluation(ndb.Model):
   """The evaluation resource definition"""
   resource = ndb.JsonProperty()
+  last_modified = ndb.DateTimeProperty(auto_now=True)
 
 class EvaluationDAO(data_access_object.DataAccessObject):
   def __init__(self):

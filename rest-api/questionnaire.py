@@ -12,6 +12,7 @@ from google.appengine.ext import ndb
 class Questionnaire(ndb.Model):
   """The questionnaire."""
   resource = ndb.JsonProperty()
+  last_modified = ndb.DateTimeProperty(auto_now=True)
 
 class QuestionnaireDAO(data_access_object.DataAccessObject):
   def __init__(self):

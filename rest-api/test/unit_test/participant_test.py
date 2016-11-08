@@ -12,7 +12,7 @@ import questionnaire
 import questionnaire_response
 
 from google.appengine.ext import ndb
-from test.unit_test.unit_test_util import NdbTestBase, TestBase
+from test.unit_test.unit_test_util import NdbTestBase, TestBase, to_dict_strip_last_modified
 
 class ParticipantTest(TestBase):
   def test_bucket_age(self):
@@ -90,16 +90,20 @@ class ParticipantNdbTest(NdbTestBase):
     entries = sorted(
         participant.load_history_entities(participant_key, dates[5]),
         key=lambda m: m.date)
+    entries_json = []
 
     expected = [participant_entry, response_entry, evaluation_entry, biobank_entry]
+    expected_json = []
     for entry in expected:
+      expected_json.append(to_dict_strip_last_modified(entry))
       entry.key = None
 
     entries = [e.obj for e in entries]
     for entry in entries:
+      entries_json.append(to_dict_strip_last_modified(entry))
       entry.key = None
 
-    self.assertEquals(expected, entries)
+    self.assertEquals(expected_json, entries_json)
 
 if __name__ == '__main__':
   unittest.main()
