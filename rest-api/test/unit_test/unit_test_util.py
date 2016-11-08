@@ -35,7 +35,8 @@ class NdbTestBase(TestbedTestBase):
     self.testbed.init_memcache_stub()
     ndb.get_context().clear_cache()
 
-def strip_last_modified(obj):
+def to_dict_strip_last_modified(obj):
   assert obj.last_modified, 'Missing last_modified: {}'.format(obj)
-  obj.last_modified = None
-  return obj
+  json = obj.to_dict()
+  del json['last_modified']
+  return json

@@ -7,7 +7,7 @@ from datetime import datetime
 
 from google.appengine.ext import ndb
 
-from test.unit_test.unit_test_util import NdbTestBase, strip_last_modified
+from test.unit_test.unit_test_util import NdbTestBase, to_dict_strip_last_modified
 
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
@@ -84,8 +84,8 @@ class DataAccessObjectTest(NdbTestBase):
     parent.foo = "BAR"
     PARENT_DAO.update(parent, PARENT_DAO.make_version_id(parent.last_modified))
 
-    self.assertEquals(strip_last_modified(parent),
-                      strip_last_modified(PARENT_DAO.load(parent_id)))
+    self.assertEquals(to_dict_strip_last_modified(parent),
+                      to_dict_strip_last_modified(PARENT_DAO.load(parent_id)))
 
   def test_history(self):
     dates = [datetime(2016, 10, 1) for i in range(3)]
