@@ -46,12 +46,12 @@ class DataAccessObject(object):
 
   def to_json(self, m):
     properties_obj = copy.deepcopy(m.to_dict())
-    dict = self.properties_to_json(properties_obj)
-    last_modified = dict.get('last_modified')
+    dict_ = self.properties_to_json(properties_obj)
+    last_modified = dict_.get('last_modified')
     if last_modified:
-      del dict['last_modified']
-      dict['meta'] = { 'versionId': api_util.unix_time_millis(last_modified)}
-    return dict
+      del dict_['last_modified']
+      dict_['meta'] = {'versionId': self.make_version_id(last_modified)}
+    return dict_
 
   def from_json(self, dict_, ancestor_id=None, id_=None):
     assert bool(ancestor_id) == bool(self.ancestor_type), "Requires an ancestor_id"
@@ -193,4 +193,4 @@ class DataAccessObject(object):
     return str(uuid.uuid4())
 
   def make_version_id(self, last_modified):
-     return str(api_util.unix_time_millis(last_modified))
+    return 'W/{}'.format(api_util.unix_time_millis(last_modified))

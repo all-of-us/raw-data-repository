@@ -127,8 +127,7 @@ def format_json_date(obj, field_name, format=None):
         obj[field_name] = obj[field_name].isoformat()
 
 def unix_time_millis(dt):
-    return int((dt - EPOCH).total_seconds() * 1000 +
-               (dt.microsecond - EPOCH.microsecond) / 1000)
+  return int((dt - EPOCH).total_seconds() * 1000)
 
 def parse_json_enum(obj, field_name, enum):
   """Converts a field of a dictionary from a string to an enum."""

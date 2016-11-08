@@ -100,7 +100,7 @@ class BaseApi(Resource):
         result['meta'] = None
       version_id = meta.get('versionId')
       if version_id:
-        return result, 200, { 'ETag': version_id }
+        return result, 200, {'ETag': version_id}
     return result
 
 def consider_fake_date():
