@@ -2,17 +2,9 @@
 
 import random
 import string
-import time
 import unittest
 
 import test_util
-
-# The amount of times we will retry while waiting for the index to be updated.
-RETRIES = 60 # At least 30s at 0.5 second per sleep (doesn't count time to make request).
-
-# How long to wait between attempts.
-SLEEP_AMT = 0.5
-
 
 class TestConfig(unittest.TestCase):
   def setUp(self):
@@ -26,14 +18,8 @@ class TestConfig(unittest.TestCase):
     self.client.request_json('Config/random_test', 'POST', post_json)
 
     expected = {'key': 'random_test', 'values': sorted(random_strs)}
-    for _ in range(RETRIES): # Retries
-      response = self.client.request_json('Config/random_test', 'GET')
-      response['values'] = sorted(response['values'])
-      time.sleep(SLEEP_AMT) # It takes a bit to update the config index.
-      if expected == response:
-        break
-      print "Waiting on index"
-
+    response = self.client.request_json('Config/random_test', 'GET')
+    response['values'] = sorted(response['values'])
     self.assertEquals(expected, response)
 
     vals = self.client.request_json('Config', 'GET')
@@ -48,31 +34,17 @@ class TestConfig(unittest.TestCase):
     post_json = {'values': starting_vals}
     self.client.request_json('Config/replace_test', 'POST', post_json)
 
-    for _ in range(RETRIES): # Retries
-      response = self.client.request_json('Config/replace_test', 'GET')
-      response['values'] = sorted(response['values'])
-      time.sleep(SLEEP_AMT) # It takes a tiny bit to update the config index.
-      if sorted(response['values']) == starting_vals:
-        break
-      print "Waiting on index"
-
     # The new set doesn't contain 'C', but contains a new entry 'D'.
     new_vals = ['A', 'B', 'D']
     post_json = {'values': new_vals}
     self.client.request_json('Config/replace_test', 'POST', post_json)
 
-    for _ in range(RETRIES): # Retries
-      response = self.client.request_json('Config/replace_test', 'GET')
-      response['values'] = sorted(response['values'])
-      time.sleep(SLEEP_AMT) # It takes a tiny bit to update the config index.
-      if sorted(response['values']) == new_vals:
-        break
-      print "Waiting on index"
-
-    expected = {'key': 'replace_test', 'values': sorted(new_vals)}
     response = self.client.request_json('Config/replace_test', 'GET')
     response['values'] = sorted(response['values'])
+
+    expected = {'key': 'replace_test', 'values': sorted(new_vals)}
     self.assertEquals(expected, response)
+
 
 if __name__ == '__main__':
   unittest.main()
