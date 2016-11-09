@@ -26,7 +26,7 @@ EPOCH = datetime.datetime.utcfromtimestamp(0)
 def auth_required(func):
   """A decorator that keeps the function from being called without auth."""
   def wrapped(self, *args, **kwargs):
-    is_dev_appserver = app_identity.get_application_id().startswith('dev')
+    is_dev_appserver = app_identity.get_application_id() == "None"
     if request.scheme.lower() != 'https' and not is_dev_appserver:
       raise Unauthorized('HTTPS is required')
     check_auth()
