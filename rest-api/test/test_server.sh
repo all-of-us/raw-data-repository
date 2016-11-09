@@ -57,9 +57,28 @@ function run_client_test {
   fi
 }
 
+# Warn if the indicated instance is not local and not https
+[[ ${instance} == *localhost* ]] || [[ ${instance} == https://* ]] ||
+  echo "WARNING: ${instance} is non-local and not HTTPS; expect failure."
 
-run_client_test "client_test/ppi.py"
-run_client_test "client_test/participant.py"
-run_client_test "client_test/evaluation.py"
-run_client_test "client_test/metrics.py"
-run_client_test "client_test/biobank_order.py"
+TEST_FILES="ppi.py
+participant.py
+evaluation.py
+metrics.py
+biobank_order.py"
+
+for test in ${TEST_FILES}
+do
+  run_client_test "client_test/${test}"
+done
+
+# Security test: check that HTTPS is required for non-local endpoints.
+if [[ ${instance} == https://* ]]
+   then
+     instance=${instance/https:/http:}
+     echo "Checking RDR server at $instance is unreachable over HTTP."
+     for test in ${TEST_FILES}
+     do
+       ( run_client_test "client_test/${test}" 2>&1 | grep "HttpException" ) && echo "OK"
+     done
+fi
