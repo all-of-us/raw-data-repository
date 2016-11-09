@@ -1,18 +1,23 @@
 """Configuration parameters.
 
 Contains things such as the accounts allowed access to the system.
+
+
+In order to have strong consistency, we have a model where we can use ancestor
+queries to load all config values for a given key.  The parent object is a
+ConfigKey which uses an ndb.Key based on the config key.  The child object is a
+ConfigValue.
 """
 
-from google.appengine.api import app_identity
 from google.appengine.ext import ndb
 
-class Config(ndb.Model):
+
+class ConfigKey(ndb.Model):
   config_key = ndb.StringProperty()
+
+class ConfigValue(ndb.Model):
   value = ndb.StringProperty()
 
-_CONFIG_INITIALIZED = 'initialized'
-
-ALLOW_INSECURE = 'allow_insecure'
 ALLOWED_USER = 'allowed_user'
 ALLOWED_IP = 'allowed_ip'
 ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
@@ -26,7 +31,27 @@ class MissingConfigException(BaseException):
 class InvalidConfigException(BaseException):
   """Exception raised when the config setting is a not in the expected form."""
 
-_initialized = False
+def list_keys():
+  """Returns all config settings in the datastore"""
+  all_configs = ConfigKey.query().fetch()
+  return set(c.config_key for c in all_configs)
+
+def replace_config(key, value_list):
+  """Replaces all config entries with the given key."""
+  parent_key = ndb.Key(ConfigKey, key)
+  existing_configs = list(ConfigValue.query(ancestor=parent_key).fetch())
+
+  existing_values = set(c.value for c in existing_configs)
+  new_values = set(value_list)
+
+  values_to_delete = existing_values - new_values
+
+  for existing_config in existing_configs:
+    if existing_config.value in values_to_delete:
+      existing_config.key.delete()
+
+  for value in new_values - existing_values:
+    insert_config(key, value)
 
 def getSettingList(key, default=None):
   """Gets all config settings for a given key.
@@ -42,16 +67,19 @@ def getSettingList(key, default=None):
     MissingConfigException: If the config key does not exist in the datastore,
       and a default is not provided.
   """
-  check_initialized()
-  query = Config.query(Config.config_key == key)
-  iterator = query.iter()
-  if not iterator.has_next():
+  config_key = ndb.Key(ConfigKey, key).get()
+
+  config_values = []
+  if config_key:
+    config_values = ConfigValue.query(ancestor=config_key.key).fetch()
+
+  if not config_key or not config_values:
     if default is not None:
       return default
     raise MissingConfigException(
-        'Config key "{}" is not in datastore.'.format(key))
+        'Config key "{}" has no values in the datastore.'.format(key))
 
-  return [config.value for config in iterator]
+  return [config.value for config in config_values]
 
 def getSetting(key, default=None):
   """Gets a config where there is only a single setting for a given key.
@@ -75,26 +103,11 @@ def getSetting(key, default=None):
         'Config key {} has multiple entries in datastore.'.format(key))
   return settings_list[0]
 
+def insert_config(key, value):
+  parent_key = ndb.Key(ConfigKey, key)
+  parent = parent_key.get()
+  if not parent:
+    parent = ConfigKey(key=parent_key, config_key=key)
+    parent.put()
 
-def check_initialized():
-  global _initialized
-  if _initialized:
-    return
-  _initialized = True
-  # Create the config 'table' if it doesn't exist.
-  print "Checking the config datastore is initialized..."
-  try:
-    getSetting(_CONFIG_INITIALIZED)
-  except MissingConfigException:
-    print "Creating and setting sane defaults for development..."
-    Config(config_key=_CONFIG_INITIALIZED, value='True').put()
-    Config(config_key=METRICS_SHARDS, value='2').put()
-    Config(config_key=BIOBANK_SAMPLES_SHARDS, value='2').put()
-    Config(config_key=BIOBANK_SAMPLES_BUCKET_NAME,
-           value=app_identity.get_default_gcs_bucket_name()).put()
-    Config(config_key=ALLOWED_USER,
-           value='pmi-hpo-staging@appspot.gserviceaccount.com').put()
-    Config(config_key=ALLOWED_USER,
-           value='test-client@pmi-rdr-api-test.iam.gserviceaccount.com').put()
-    Config(config_key=ALLOW_INSECURE, value='False').put()
-    Config(config_key=ALLOWED_IP, value='{"ip6": ["::1/64"], "ip4": ["127.0.0.1/32"]}').put()
+  ConfigValue(parent=parent.key, value=value).put()

@@ -2,6 +2,7 @@
 
 This defines the APIs and the handlers for the APIs.
 """
+import config_api
 import biobank_orders_api
 import biobank_samples_api
 import metrics_api
@@ -69,6 +70,12 @@ api.add_resource(metrics_api.MetricsApi,
                  PREFIX + 'MetricsRecalculate',
                  endpoint='metrics_recalc',
                  methods=['GET'])
+
+api.add_resource(config_api.ConfigApi,
+                 PREFIX + 'Config',
+                 PREFIX + 'Config/<string:key>',
+                 endpoint='config',
+                 methods=['GET', 'POST'])
 
 
 def add_headers(response):

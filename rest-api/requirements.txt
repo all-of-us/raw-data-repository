@@ -12,3 +12,4 @@ mox>=0.5.3
 dnspython>=1.15.0
 netaddr>=0.7.18
 cachetools>=1.1.5
+oauth2client>=4.0.0

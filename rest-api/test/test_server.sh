@@ -65,7 +65,8 @@ TEST_FILES="ppi.py
 participant.py
 evaluation.py
 metrics.py
-biobank_order.py"
+biobank_order.py
+config_test.py"
 
 for test in ${TEST_FILES}
 do
