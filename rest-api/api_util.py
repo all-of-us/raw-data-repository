@@ -28,7 +28,6 @@ def auth_required(func):
   """A decorator that keeps the function from being called without auth."""
   def wrapped(self, *args, **kwargs):
     is_dev_appserver = os.environ['APPLICATION_ID'].startswith('dev')
-    print 'DEV APPSERVER', os.environ['APPLICATION_ID'], is_dev_appserver
     if request.scheme.lower() != 'https' and not is_dev_appserver:
       raise Unauthorized('HTTPS is required')
     check_auth()
