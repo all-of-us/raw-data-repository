@@ -43,9 +43,9 @@ def auth_required_cron_or_admin(func):
 
 def check_auth():
   user = oauth.get_current_user(SCOPE)
+  enforce_user_whitelisted(user)
   ip = request.remote_addr
   enforce_ip_whitelisted(ip)
-  enforce_user_whitelisted(user)
 
 def get_client_id():
   return oauth.get_current_user(SCOPE).email()
@@ -72,10 +72,11 @@ def enforce_user_whitelisted(user):
 
 def enforce_ip_whitelisted(ip_string):
   allowed_ip_config = CONFIG_CACHE[_IP_CONFIG_SINGLETON_KEY]
+  logging.info('IP RANGES ALLOWED: {}'.format(allowed_ip_config))
   ip = netaddr.IPAddress(ip_string)
   if not bool([True for rng in allowed_ip_config if ip in rng]):
     logging.info('IP {} NOT ALLOWED'.format(ip))
-    raise Unauthorized('Client IP not whitelisted.')
+    raise Unauthorized('Client IP not whitelisted: {}'.format(ip))
   logging.info('IP {} ALLOWED'.format(ip))
 
 def update_model(old_model, new_model):
@@ -166,7 +167,7 @@ def searchable_representation(str_):
 
 def _get_config(key):
   if key == _ALLOWED_USERS_SINGLETON_KEY:
-    return set(config.getSettingList(config.ALLOWED_USER))
+    return frozenset(config.getSettingList(config.ALLOWED_USER))
   elif key == _IP_CONFIG_SINGLETON_KEY:
     ip_ranges = json.loads(config.getSetting(config.ALLOWED_IP))
     return [netaddr.IPNetwork(rng)
