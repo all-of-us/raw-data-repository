@@ -4,6 +4,7 @@
 import cachetools
 import datetime
 import json
+import logging
 import netaddr
 import string
 
@@ -20,6 +21,7 @@ from google.appengine.api import oauth
 from werkzeug.exceptions import Unauthorized, BadRequest
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
+_ALLOWED_USERS_SINGLETON_KEY = "allowed_users"
 _IP_CONFIG_SINGLETON_KEY = "ip_config"
 EPOCH = datetime.datetime.utcfromtimestamp(0)
 
@@ -41,9 +43,9 @@ def auth_required_cron_or_admin(func):
 
 def check_auth():
   user = oauth.get_current_user(SCOPE)
+  enforce_user_whitelisted(user)
   ip = request.remote_addr
   enforce_ip_whitelisted(ip)
-  enforce_user_whitelisted(user)
 
 def get_client_id():
   return oauth.get_current_user(SCOPE).email()
@@ -59,16 +61,23 @@ def check_auth_cron_or_admin():
   return users.is_current_user_admin()
 
 def enforce_user_whitelisted(user):
-  if user and user.email() in config.getSettingList(config.ALLOWED_USER):
-    return
-
+  user_email = 'None'
+  if user:
+    user_email = user.email()
+    if user.email() in CONFIG_CACHE[_ALLOWED_USERS_SINGLETON_KEY]:
+      logging.info('User {} ALLOWED'.format(user_email))
+      return
+  logging.info('User {} NOT ALLOWED'.format(user_email))
   raise Unauthorized('Forbidden.')
 
 def enforce_ip_whitelisted(ip_string):
-  allowed_ip_config = IP_CONFIG_CACHE[_IP_CONFIG_SINGLETON_KEY]
+  allowed_ip_config = CONFIG_CACHE[_IP_CONFIG_SINGLETON_KEY]
+  logging.info('IP RANGES ALLOWED: {}'.format(allowed_ip_config))
   ip = netaddr.IPAddress(ip_string)
   if not bool([True for rng in allowed_ip_config if ip in rng]):
-    raise Unauthorized('Client IP not whitelisted.')
+    logging.info('IP {} NOT ALLOWED'.format(ip))
+    raise Unauthorized('Client IP not whitelisted: {}'.format(ip))
+  logging.info('IP {} ALLOWED'.format(ip))
 
 def update_model(old_model, new_model):
   """Updates a model.
@@ -146,7 +155,7 @@ def remove_field(dict_, field_name):
     del dict_[field_name]
 
 def searchable_representation(str_):
-  """Takes a string, and returns a searchabe representation.
+  """Takes a string, and returns a searchable representation.
 
   The string is lowercased and punctuation is removed.
   """
@@ -156,8 +165,14 @@ def searchable_representation(str_):
   str_ = str(str_)
   return str_.lower().translate(None, string.punctuation)
 
-def _get_ip_config(_):
-  ip_ranges = json.loads(config.getSetting(config.ALLOWED_IP))
-  return [netaddr.IPNetwork(rng) for rng in ip_ranges['ip6'] + ip_ranges['ip4']]
+def _get_config(key):
+  if key == _ALLOWED_USERS_SINGLETON_KEY:
+    return frozenset(config.getSettingList(config.ALLOWED_USER))
+  elif key == _IP_CONFIG_SINGLETON_KEY:
+    ip_ranges = json.loads(config.getSetting(config.ALLOWED_IP))
+    return [netaddr.IPNetwork(rng)
+            for rng in ip_ranges['ip6'] + ip_ranges['ip4']]
+  else:
+    logging.error('Unexpected config cache key: {}'.format(key))
 
-IP_CONFIG_CACHE = cachetools.TTLCache(1, ttl=60, missing=_get_ip_config)
+CONFIG_CACHE = cachetools.TTLCache(2, ttl=60, missing=_get_config)
