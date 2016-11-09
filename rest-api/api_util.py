@@ -6,6 +6,7 @@ import datetime
 import json
 import netaddr
 import string
+import os
 
 import config
 
@@ -26,7 +27,9 @@ EPOCH = datetime.datetime.utcfromtimestamp(0)
 def auth_required(func):
   """A decorator that keeps the function from being called without auth."""
   def wrapped(self, *args, **kwargs):
-    if request.scheme.lower() != 'https' and config.getSetting(config.ALLOW_INSECURE) != 'True':
+    is_dev_appserver = os.environ['APPLICATION_ID'].startswith('dev')
+    print 'DEV APPSERVER', os.environ['APPLICATION_ID'], is_dev_appserver
+    if request.scheme.lower() != 'https' and not is_dev_appserver:
       raise Unauthorized('HTTPS is required')
     check_auth()
     return func(self, *args, **kwargs)
@@ -61,7 +64,6 @@ def check_auth_cron_or_admin():
 def enforce_user_whitelisted(user):
   if user and user.email() in config.getSettingList(config.ALLOWED_USER):
     return
-
   raise Unauthorized('Forbidden.')
 
 def enforce_ip_whitelisted(ip_string):

@@ -35,18 +35,24 @@ dev_appserver.py . &
 
 When the instance comes up for the first time, it will check for the existance
 of the configuration values in the datastore.  If there are none found, then
-development defaults will be written. (The instance may need to try to service
-its first request before it does this)
+some defaults will be written, however these are insufficient for development.
+Specifically, we need an `allowed_user` entry with a value of
+`example@example.com`.  This is what a oauth user appears as under the
+dev_appserver.
 
-In order to modify the configuration:
+The best way to get set up for development is to install the dev config:
+
+```Shell
+tools/install_config.sh --config config/config_dev.json --update True
+```
+The server should be now be good to go!
+
+
+In order to modify the configuration manually:
 
 If running a local dev_appserver, navigate to the
 [datastore viewer](http://localhost:8000/datastore?kind=Config).
 You should be able to modify config settings using the fancy UI.
-
-For local development, add an `allowed_user` entry with a value of
-`example@example.com`.  This is what a oauth user appears as under the
-dev_appserver.
 
 If running in production, go to the
 [cloud console](https://console.cloud.google.com).  Select the app engine

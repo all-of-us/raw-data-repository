@@ -12,7 +12,6 @@ class Config(ndb.Model):
 
 _CONFIG_INITIALIZED = 'initialized'
 
-ALLOW_INSECURE = 'allow_insecure'
 ALLOWED_USER = 'allowed_user'
 ALLOWED_IP = 'allowed_ip'
 ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
@@ -27,6 +26,19 @@ class InvalidConfigException(BaseException):
   """Exception raised when the config setting is a not in the expected form."""
 
 _initialized = False
+
+def list_keys():
+  """Returns all config settings in the datastore"""
+  all_configs = Config.query().fetch()
+  return set(c.config_key for c in all_configs)
+
+def replace_config(key, value_list):
+  """Replaces all config entries with the given key."""
+  for cfg in Config.query(Config.config_key==key).fetch():
+    cfg.key.delete()
+
+  for value in value_list:
+    insert_config(key, value)
 
 def getSettingList(key, default=None):
   """Gets all config settings for a given key.
@@ -75,6 +87,8 @@ def getSetting(key, default=None):
         'Config key {} has multiple entries in datastore.'.format(key))
   return settings_list[0]
 
+def insert_config(key, value):
+  Config(config_key=key, value=value).put()
 
 def check_initialized():
   global _initialized
@@ -87,14 +101,10 @@ def check_initialized():
     getSetting(_CONFIG_INITIALIZED)
   except MissingConfigException:
     print "Creating and setting sane defaults for development..."
-    Config(config_key=_CONFIG_INITIALIZED, value='True').put()
-    Config(config_key=METRICS_SHARDS, value='2').put()
-    Config(config_key=BIOBANK_SAMPLES_SHARDS, value='2').put()
-    Config(config_key=BIOBANK_SAMPLES_BUCKET_NAME,
-           value=app_identity.get_default_gcs_bucket_name()).put()
-    Config(config_key=ALLOWED_USER,
-           value='pmi-hpo-staging@appspot.gserviceaccount.com').put()
-    Config(config_key=ALLOWED_USER,
-           value='test-client@pmi-rdr-api-test.iam.gserviceaccount.com').put()
-    Config(config_key=ALLOW_INSECURE, value='False').put()
-    Config(config_key=ALLOWED_IP, value='{"ip6": ["::1/64"], "ip4": ["127.0.0.1/32"]}').put()
+    insert_config(_CONFIG_INITIALIZED, 'True')
+    insert_config(METRICS_SHARDS, '2')
+    insert_config(BIOBANK_SAMPLES_SHARDS, '2')
+    insert_config(BIOBANK_SAMPLES_BUCKET_NAME, app_identity.get_default_gcs_bucket_name())
+    insert_config(ALLOWED_USER, 'pmi-hpo-staging@appspot.gserviceaccount.com')
+    insert_config(ALLOWED_USER, 'test-client@pmi-rdr-api-test.iam.gserviceaccount.com')
+    insert_config(ALLOWED_IP, '{"ip6": ["::1/64"], "ip4": ["127.0.0.1/32"]}')
