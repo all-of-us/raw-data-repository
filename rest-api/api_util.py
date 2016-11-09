@@ -1,6 +1,5 @@
 """Utilities used by the API definition.
 """
-
 import cachetools
 import datetime
 import json
@@ -10,6 +9,7 @@ import os
 
 import config
 
+from google.appengine.api import app_identity
 from google.appengine.api import users
 from google.appengine.ext import ndb
 
@@ -27,7 +27,7 @@ EPOCH = datetime.datetime.utcfromtimestamp(0)
 def auth_required(func):
   """A decorator that keeps the function from being called without auth."""
   def wrapped(self, *args, **kwargs):
-    is_dev_appserver = os.environ['APPLICATION_ID'].startswith('dev')
+    is_dev_appserver = app_identity.get_application_id().startswith('dev')
     if request.scheme.lower() != 'https' and not is_dev_appserver:
       raise Unauthorized('HTTPS is required')
     check_auth()
