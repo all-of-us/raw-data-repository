@@ -67,7 +67,13 @@ class Client(object):
     print '{} to {}'.format(method, url)
     resp, content = self.fetcher.request(
         url, method, headers=headers, body=body)
+
     print resp
+
+    if resp.status != 200:
+      raise HttpException(
+          '{}:{}\n---{}'.format(url, method, content), resp.status)
+
     if resp['content-disposition'] != 'attachment':
       raise HttpException(
           'content-disposition header is set to {}'.format(resp['content-disposition']))
@@ -79,11 +85,6 @@ class Client(object):
           'content-type header is set to {}'.format(resp['content-type']))
     if resp.get('etag'):
       self.last_etag = resp['etag']
-
-    if resp.status != 200:
-      print resp
-      raise HttpException(
-          '{}:{}\n---{}'.format(url, method, content), resp.status)
 
     return content
 
