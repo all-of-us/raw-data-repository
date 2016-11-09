@@ -34,7 +34,7 @@ def list_keys():
 
 def replace_config(key, value_list):
   """Replaces all config entries with the given key."""
-  for cfg in Config.query(Config.config_key==key).fetch():
+  for cfg in Config.query(Config.config_key == key).fetch():
     cfg.key.delete()
 
   for value in value_list:
