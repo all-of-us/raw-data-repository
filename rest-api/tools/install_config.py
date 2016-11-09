@@ -83,6 +83,6 @@ if __name__ == '__main__':
                       default=False)
   parser.add_argument('--creds_file',
                       type=str,
-                      help='Pat to credentials JSON file.',
+                      help='Path to credentials JSON file.',
                       default=CREDS_FILE)
 main(parser.parse_args())

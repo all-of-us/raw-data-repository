@@ -21,7 +21,6 @@ class TestConfig(unittest.TestCase):
     expected = {'key': 'random_test', 'values': sorted(random_strs)}
 
     response = self.client.request_json('Config/random_test', 'GET')
-    print 'RESPONSE', response
     response['values'] = sorted(response['values'])
     self.assertEquals(expected, response)
 
@@ -30,6 +29,24 @@ class TestConfig(unittest.TestCase):
       val['values'] = sorted(val['values'])
 
     self.assertIn(expected, vals)
+
+  def test_replace(self):
+    starting_vals = ['A', 'B', 'C']
+
+    post_json = {'values': starting_vals}
+    self.client.request_json('Config/replace_test', 'POST', post_json)
+    time.sleep(2) # It takes a tiny bit to update the config index.
+
+    # The new set doesn't contain 'C', but contains a new entry 'D'.
+    new_vals = ['A', 'B', 'D']
+    post_json = {'values': new_vals}
+    self.client.request_json('Config/replace_test', 'POST', post_json)
+    time.sleep(2) # It takes a tiny bit to update the config index.
+
+    expected = {'key': 'replace_test', 'values': sorted(new_vals)}
+    response = self.client.request_json('Config/replace_test', 'GET')
+    response['values'] = sorted(response['values'])
+    self.assertEquals(expected, response)
 
 if __name__ == '__main__':
   unittest.main()

@@ -34,10 +34,18 @@ def list_keys():
 
 def replace_config(key, value_list):
   """Replaces all config entries with the given key."""
-  for cfg in Config.query(Config.config_key == key).fetch():
-    cfg.key.delete()
+  existing_configs = list(Config.query(Config.config_key == key).fetch())
 
-  for value in value_list:
+  existing_values = set(c.value for c in existing_configs)
+  new_values = set(value_list)
+
+  values_to_delete = existing_values - new_values
+
+  for existing_config in existing_configs:
+    if existing_config.value in values_to_delete:
+      existing_config.key.delete()
+
+  for value in new_values - existing_values:
     insert_config(key, value)
 
 def getSettingList(key, default=None):
