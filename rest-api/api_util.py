@@ -5,7 +5,6 @@ import datetime
 import json
 import netaddr
 import string
-import os
 
 import config
 
