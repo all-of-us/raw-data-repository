@@ -10,7 +10,7 @@ from client.client import Client, HttpException
 CREDS_FILE = 'test/test-data/test-client-cert.json'
 
 def main(args):
-  client = Client('rdr/v1', False, args.creds_file, args.instance)
+  client = Client('rdr/v1', False, args.creds_file, args.instance, test_unauthenticated=False)
 
   config_server = client.request_json('Config', 'GET')
   comparable_server = _comparable_string(config_server)

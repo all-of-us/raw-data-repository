@@ -50,9 +50,16 @@ class Client(object):
   def _get_fetcher(self):
     credentials = ServiceAccountCredentials.from_json_keyfile_name(
         self.creds_file, [SCOPE])
-    return credentials.authorize(httplib2.Http())
+    #return credentials.authorize(httplib2.Http())
+    return httplib2.Http()
 
-  def request(self, path, method='GET', body=None, query_args=None, headers=None):
+  def request(self,
+              path,
+              method='GET',
+              body=None,
+              query_args=None,
+              headers=None,
+              test_unauthenticated=True):
     url = '{}/{}/{}'.format(self.instance, self.base_path, path)
     if query_args:
       args_str = '&'.join(
@@ -64,6 +71,19 @@ class Client(object):
     if method == 'POST':
       headers.update(POST_HEADERS)
 
+    if test_unauthenticated:
+      unauthenticated_headers = copy.deepcopy(headers)
+      unauthenticated_headers['unauthenticated'] = 'YES'
+      print 'Trying unauthenticated {} to {}.'.format(method, url)
+      resp, content = httplib2.Http().request(
+          url, method, headers=unauthenticated_headers, body=body)
+      if resp.status != 401:
+        raise HttpException(
+            'API is allowing unauthenticated {} to {}. Status: {}'.format(method, url, resp.status),
+            resp.status)
+      else:
+        print 'Not allowed. Good!'
+
     print '{} to {}'.format(method, url)
     resp, content = self.fetcher.request(
         url, method, headers=headers, body=body)
@@ -71,7 +91,8 @@ class Client(object):
     print resp
 
     if resp.status != 200:
-      raise HttpException('{}:{}\n---{}'.format(url, method, content), resp.status)
+      raise HttpException(
+          '{}:{} - {}\n---{}'.format(url, method, resp.status, content), resp.status)
 
     if resp['content-disposition'] != 'attachment':
       raise HttpException(
@@ -87,10 +108,21 @@ class Client(object):
 
     return content
 
-  def request_json(self, path, method='GET', body=None, query_args=None, headers=None):
+  def request_json(self,
+                   path,
+                   method='GET',
+                   body=None,
+                   query_args=None,
+                   headers=None,
+                   test_unauthenticated=True):
     json_body = None
     if body:
       json_body = json.dumps(body)
-    response = self.request(path, method, body=json_body, query_args=query_args, headers=headers)
+    response = self.request(path,
+                            method,
+                            body=json_body,
+                            query_args=query_args,
+                            headers=headers,
+                            test_unauthenticated=test_unauthenticated)
 
     return json.loads(response)

@@ -63,7 +63,7 @@ def check_auth_cron_or_admin():
 
 def enforce_user_whitelisted(user):
   user_email = 'None'
-  if user:
+  if user and not request.headers.get('unauthenticated', None):
     user_email = user.email()
     if user.email() in CONFIG_CACHE[_ALLOWED_USERS_SINGLETON_KEY]:
       logging.info('User {} ALLOWED'.format(user_email))
