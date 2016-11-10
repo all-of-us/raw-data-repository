@@ -1,7 +1,10 @@
 """Test for the config endpoint."""
 
+import copy
+import datetime
 import random
 import string
+import time
 import unittest
 
 import test_util
@@ -11,39 +14,38 @@ class TestConfig(unittest.TestCase):
     self.maxDiff = None
     self.client = test_util.get_client('rdr/v1')
 
-  def test_insert_get_list(self):
-    random_strs = [''.join(random.choice(string.uppercase) for _ in range(10)) for _ in range(3)]
+  def test_replace_history(self):
+    random_strs_1 = [''.join(random.choice(string.uppercase) for _ in range(10)) for _ in range(3)]
+    old_config = self.client.request_json('Config', 'GET')
+    new_config_1 = copy.deepcopy(old_config)
+    new_config_1['some_config'] = sorted(random_strs_1)
 
-    post_json = {'values': random_strs}
-    self.client.request_json('Config/random_test', 'POST', post_json)
+    self.client.request_json('Config', 'PUT', new_config_1)
 
-    expected = {'key': 'random_test', 'values': sorted(random_strs)}
-    response = self.client.request_json('Config/random_test', 'GET')
-    response['values'] = sorted(response['values'])
-    self.assertEquals(expected, response)
+    response = self.client.request_json('Config', 'GET')
+    response['some_config'] = sorted(response['some_config'])
+    self.assertEquals(new_config_1, response)
 
-    vals = self.client.request_json('Config', 'GET')
-    for val in vals:
-      val['values'] = sorted(val['values'])
+    then = datetime.datetime.utcnow()
 
-    self.assertIn(expected, vals)
+    random_strs_2 = [''.join(random.choice(string.uppercase) for _ in range(10)) for _ in range(3)]
+    new_config_2 = copy.deepcopy(old_config)
+    new_config_2['some_config'] = sorted(random_strs_2)
+    self.client.request_json('Config', 'PUT', new_config_2)
 
-  def test_replace(self):
-    starting_vals = ['A', 'B', 'C']
+    response = self.client.request_json('Config', 'GET')
+    response['some_config'] = sorted(response['some_config'])
+    self.assertEquals(new_config_2, response)
 
-    post_json = {'values': starting_vals}
-    self.client.request_json('Config/replace_test', 'POST', post_json)
-
-    # The new set doesn't contain 'C', but contains a new entry 'D'.
-    new_vals = ['A', 'B', 'D']
-    post_json = {'values': new_vals}
-    self.client.request_json('Config/replace_test', 'POST', post_json)
-
-    response = self.client.request_json('Config/replace_test', 'GET')
-    response['values'] = sorted(response['values'])
-
-    expected = {'key': 'replace_test', 'values': sorted(new_vals)}
-    self.assertEquals(expected, response)
+    for _ in range(40):
+      # Make sure we get the the first config when we query by time.
+      response = self.client.request_json('Config/{}'.format(then.isoformat()), 'GET')
+      response['some_config'] = sorted(response['some_config'])
+      if new_config_1 == response:
+        break
+      time.sleep(.25) # The history is based on an index which may take a little while to update.
+      print 'Waiting on index update..'
+      self.assertEquals(new_config_1, response)
 
 
 if __name__ == '__main__':

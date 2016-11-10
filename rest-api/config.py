@@ -1,22 +1,14 @@
 """Configuration parameters.
 
 Contains things such as the accounts allowed access to the system.
-
-
-In order to have strong consistency, we have a model where we can use ancestor
-queries to load all config values for a given key.  The parent object is a
-ConfigKey which uses an ndb.Key based on the config key.  The child object is a
-ConfigValue.
 """
+import data_access_object
 
 from google.appengine.ext import ndb
 
+from werkzeug.exceptions import NotFound
 
-class ConfigKey(ndb.Model):
-  config_key = ndb.StringProperty()
-
-class ConfigValue(ndb.Model):
-  value = ndb.StringProperty()
+CONFIG_SINGLETON_KEY = 'current_config'
 
 ALLOWED_USER = 'allowed_user'
 ALLOWED_IP = 'allowed_ip'
@@ -25,33 +17,44 @@ METRICS_SHARDS = 'metrics_shards'
 BIOBANK_SAMPLES_SHARDS = 'biobank_samples_shards'
 BIOBANK_SAMPLES_BUCKET_NAME = 'biobank_samples_bucket_name'
 
+REQUIRED_CONFIG_KEYS = [ALLOWED_USER, ALLOWED_IP, BIOBANK_SAMPLES_BUCKET_NAME]
+
 class MissingConfigException(BaseException):
   """Exception raised if the setting does not exist"""
+
 
 class InvalidConfigException(BaseException):
   """Exception raised when the config setting is a not in the expected form."""
 
-def list_keys():
-  """Returns all config settings in the datastore"""
-  all_configs = ConfigKey.query().fetch()
-  return set(c.config_key for c in all_configs)
 
-def replace_config(key, value_list):
-  """Replaces all config entries with the given key."""
-  parent_key = ndb.Key(ConfigKey, key)
-  existing_configs = list(ConfigValue.query(ancestor=parent_key).fetch())
+class Configuration(ndb.Model):
+  configuration = ndb.JsonProperty()
 
-  existing_values = set(c.value for c in existing_configs)
-  new_values = set(value_list)
 
-  values_to_delete = existing_values - new_values
+class ConfigurationDAO(data_access_object.DataAccessObject):
+  def __init__(self):
+    super(ConfigurationDAO, self).__init__(Configuration)
 
-  for existing_config in existing_configs:
-    if existing_config.value in values_to_delete:
-      existing_config.key.delete()
+  def properties_from_json(self, dict_, ancestor_id, id_):
+    return {
+        "configuration": dict_
+    }
 
-  for value in new_values - existing_values:
-    insert_config(key, value)
+  def properties_to_json(self, dict_):
+    return dict_.get('configuration', {})
+
+  def load_if_present(self, id_, ancestor_id=None):
+    obj = super(ConfigurationDAO, self).load_if_present(id_, ancestor_id)
+    if not obj:
+      initialize_config()
+      obj = super(ConfigurationDAO, self).load_if_present(id_, ancestor_id)
+    return obj
+
+  def allocate_id(self):
+    return CONFIG_SINGLETON_KEY
+
+
+DAO = ConfigurationDAO()
 
 def getSettingList(key, default=None):
   """Gets all config settings for a given key.
@@ -67,19 +70,20 @@ def getSettingList(key, default=None):
     MissingConfigException: If the config key does not exist in the datastore,
       and a default is not provided.
   """
-  config_key = ndb.Key(ConfigKey, key).get()
+  conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
+  conf_model = conf_ndb_key.get()
 
-  config_values = []
-  if config_key:
-    config_values = ConfigValue.query(ancestor=config_key.key).fetch()
+  if not conf_model:
+    initialize_config()
+    config_values = default
+  else:
+    configuration = conf_model.configuration
+    config_values = configuration.get(key, default)
 
-  if not config_key or not config_values:
-    if default is not None:
-      return default
-    raise MissingConfigException(
-        'Config key "{}" has no values in the datastore.'.format(key))
+  if not config_values:
+    raise MissingConfigException('Config key "{}" has no values.'.format(key))
 
-  return [config.value for config in config_values]
+  return config_values
 
 def getSetting(key, default=None):
   """Gets a config where there is only a single setting for a given key.
@@ -103,11 +107,21 @@ def getSetting(key, default=None):
         'Config key {} has multiple entries in datastore.'.format(key))
   return settings_list[0]
 
-def insert_config(key, value):
-  parent_key = ndb.Key(ConfigKey, key)
-  parent = parent_key.get()
-  if not parent:
-    parent = ConfigKey(key=parent_key, config_key=key)
-    parent.put()
+def initialize_config():
+  """Initalize an empty configuration."""
+  conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
+  Configuration(key=conf_ndb_key, configuration={}).put()
+  print 'Setting an empty configuration.'
 
-  ConfigValue(parent=parent.key, value=value).put()
+def insert_config(key, value_list):
+  """Updates a config key.  Used for tests"""
+  conf = DAO.load(CONFIG_SINGLETON_KEY)
+  conf.configuration[key] = value_list
+  DAO.store(conf)
+
+def get_config_that_was_active_at(date):
+  q = DAO.history_model.query(DAO.history_model.date < date).order(-DAO.history_model.date)
+  h = q.fetch(limit=1)
+  if not h:
+    raise NotFound('No history object active at {}.'.format(date))
+  return h[0].obj

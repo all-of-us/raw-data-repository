@@ -1,38 +1,17 @@
-[
-  {
-    "key": "biobank_samples_shards",
-    "values": [
-      "2"
-    ]
-  },
-  {
-    "key": "allowed_user",
-    "values": [
+{
+  "biobank_samples_shards": [
+    "2"
+  ],
+  "allowed_user": [
       "example@example.com"
-    ]
-  },
-  {
-    "key": "biobank_samples_bucket_name",
-    "values": [
+  ],
+  "biobank_samples_bucket_name": [
       "app_default_bucket"
-    ]
-  },
-  {
-    "key": "initialized",
-    "values": [
-      "True"
-    ]
-  },
-  {
-    "key": "metrics_shards",
-    "values": [
-      "2"
-    ]
-  },
-  {
-    "key": "allowed_ip",
-    "values": [
-      "{\"ip6\": [\"::1/64\"], \"ip4\": [\"127.0.0.1/32\"]}"
-    ]
-  }
-]
+  ],
+  "metrics_shards": [
+    "2"
+  ],
+  "allowed_ip": [
+    "{\"ip6\": [\"::1/64\"], \"ip4\": [\"127.0.0.1/32\"]}"
+  ]
+}

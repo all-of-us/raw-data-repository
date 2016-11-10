@@ -9,6 +9,8 @@ from flask.ext.restful import Resource
 class BaseApi(Resource):
   """Base class for API handlers.
 
+  Do not extend this directly, instead extend BaseAuthenticatedApi or BaseAdminApi.
+
   Provides a generic implementation for an API handler which is backed by a
   DataAccessObject.
 
@@ -26,7 +28,6 @@ class BaseApi(Resource):
     self.dao = dao
     self.include_meta = include_meta
 
-  @api_util.auth_required
   def get(self, id_=None, a_id=None):
     """Handle a GET request.
 
@@ -41,7 +42,6 @@ class BaseApi(Resource):
     result = self.dao.to_json(self.dao.load(id_, a_id))
     return self.make_response_for_resource(result)
 
-  @api_util.auth_required
   def list(self, a_id=None):
     """Handle a list request.
 
@@ -62,7 +62,6 @@ class BaseApi(Resource):
     """
     pass
 
-  @api_util.auth_required
   def post(self, a_id=None):
     """Handles a POST request.
 
@@ -76,7 +75,6 @@ class BaseApi(Resource):
                     client_id=api_util.get_client_id())
     return self.make_response_for_resource(self.dao.to_json(m))
 
-  @api_util.auth_required
   def patch(self, id_, a_id=None):
     """Handles a PATCH (update) request.
 
@@ -93,6 +91,18 @@ class BaseApi(Resource):
                     client_id=api_util.get_client_id())
     return self.make_response_for_resource(self.dao.to_json(old_m))
 
+  def put(self, id_, a_id=None):
+    """Handles a PUT (replace) request.
+
+    Args:
+      id_: The id of the object to replace.
+      a_id: The ancestor id.
+    """
+    m = self.dao.from_json(request.get_json(force=True), a_id, id_)
+    self.validate_object(m, a_id)
+    self.dao.replace(m, date=consider_fake_date(), client_id=api_util.get_client_id())
+    return self.make_response_for_resource(self.dao.to_json(m))
+
   def make_response_for_resource(self, result):
     meta = result.get('meta')
     if meta:
@@ -102,6 +112,58 @@ class BaseApi(Resource):
       if version_id:
         return result, 200, {'ETag': version_id}
     return result
+
+
+class BaseAuthenticatedApi(BaseApi):
+  """Base class for API handlers requiring user authentication.
+
+  See documentation for BaseApi.
+  """
+  @api_util.auth_required
+  def get(self, id_=None, a_id=None):
+    return super(BaseAuthenticatedApi, self).get(id_, a_id)
+
+  @api_util.auth_required
+  def list(self, a_id=None):
+    return super(BaseAuthenticatedApi, self).list(a_id)
+
+  @api_util.auth_required
+  def post(self, a_id=None):
+    return super(BaseAuthenticatedApi, self).post(a_id)
+
+  @api_util.auth_required
+  def put(self, id_, a_id=None):
+    return super(BaseAuthenticatedApi, self).put(id_, a_id)
+
+  @api_util.auth_required
+  def patch(self, id_, a_id=None):
+    return super(BaseAuthenticatedApi, self).patch(id_, a_id)
+
+class BaseAdminApi(BaseApi):
+  """Base class for API handlers requiring admin/cron authentication.
+
+  See documentation for BaseApi.
+  """
+  @api_util.auth_required_cron_or_admin
+  def get(self, id_=None, a_id=None):
+    return super(BaseAdminApi, self).get(id_, a_id)
+
+  @api_util.auth_required_cron_or_admin
+  def list(self, a_id=None):
+    return super(BaseAdminApi, self).list(a_id)
+
+  @api_util.auth_required_cron_or_admin
+  def post(self, a_id=None):
+    return super(BaseAdminApi, self).post(a_id)
+
+  @api_util.auth_required_cron_or_admin
+  def put(self, id_, a_id=None):
+    return super(BaseAdminApi, self).put(id_, a_id)
+
+  @api_util.auth_required_cron_or_admin
+  def patch(self, id_, a_id=None):
+    return super(BaseAdminApi, self).patch(id_, a_id)
+
 
 def consider_fake_date():
   try:
