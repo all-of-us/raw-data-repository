@@ -8,6 +8,7 @@
   {
     "key": "allowed_user",
     "values": [
+      "pmi-hpo-staging@appspot.gserviceaccount.com",
       "test-client@pmi-rdr-api-test.iam.gserviceaccount.com"
     ]
   },
