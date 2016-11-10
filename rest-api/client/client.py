@@ -50,8 +50,7 @@ class Client(object):
   def _get_fetcher(self):
     credentials = ServiceAccountCredentials.from_json_keyfile_name(
         self.creds_file, [SCOPE])
-    #return credentials.authorize(httplib2.Http())
-    return httplib2.Http()
+    return credentials.authorize(httplib2.Http())
 
   def request(self,
               path,
