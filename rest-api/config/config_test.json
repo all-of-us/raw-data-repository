@@ -1,0 +1,33 @@
+[
+  {
+    "key": "biobank_samples_shards",
+    "values": [
+      "2"
+    ]
+  },
+  {
+    "key": "allowed_user",
+    "values": [
+      "pmi-hpo-staging@appspot.gserviceaccount.com",
+      "test-client@pmi-rdr-api-test.iam.gserviceaccount.com"
+    ]
+  },
+  {
+    "key": "biobank_samples_bucket_name",
+    "values": [
+      "app_default_bucket"
+    ]
+  },
+  {
+    "key": "metrics_shards",
+    "values": [
+      "2"
+    ]
+  },
+  {
+    "key": "allowed_ip",
+    "values": [
+      "{\"ip6\": [\"::0/0\"], \"ip4\": [\"0.0.0.0/0\"]}"
+    ]
+  }
+]
