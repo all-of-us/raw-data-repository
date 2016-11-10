@@ -1,12 +1,6 @@
 """Configuration parameters.
 
 Contains things such as the accounts allowed access to the system.
-
-
-In order to have strong consistency, we have a model where we can use ancestor
-queries to load all config values for a given key.  The parent object is a
-ConfigKey which uses an ndb.Key based on the config key.  The child object is a
-ConfigValue.
 """
 import data_access_object
 
@@ -52,14 +46,9 @@ class ConfigurationDAO(data_access_object.DataAccessObject):
   def load_if_present(self, id_, ancestor_id=None):
     obj = super(ConfigurationDAO, self).load_if_present(id_, ancestor_id)
     if not obj:
-      # A side-effect of this call is that it will create an empty configuration.
-      getSettingList('foo', ['foo'])
+      initialize_config()
       obj = super(ConfigurationDAO, self).load_if_present(id_, ancestor_id)
     return obj
-
-  def list(self, participant_id):
-    super(ConfigurationDAO, self).list(participant_id)
-    # return the current config here.
 
   def allocate_id(self):
     return CONFIG_SINGLETON_KEY
@@ -85,9 +74,7 @@ def getSettingList(key, default=None):
   conf_model = conf_ndb_key.get()
 
   if not conf_model:
-    # Initalize an empty configuration.
-    Configuration(key=conf_ndb_key, configuration={}).put()
-    print 'Setting an empty configuration.'
+    initialize_config()
     config_values = default
   else:
     configuration = conf_model.configuration
@@ -120,6 +107,11 @@ def getSetting(key, default=None):
         'Config key {} has multiple entries in datastore.'.format(key))
   return settings_list[0]
 
+def initialize_config():
+  """Initalize an empty configuration."""
+  conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
+  Configuration(key=conf_ndb_key, configuration={}).put()
+  print 'Setting an empty configuration.'
 
 def insert_config(key, value_list):
   """Updates a config key.  Used for tests"""
