@@ -10,9 +10,9 @@ from client.client import Client, HttpException
 CREDS_FILE = 'test/test-data/test-client-cert.json'
 
 def main(args):
-  client = Client('rdr/v1', False, args.creds_file, args.instance, test_unauthenticated=False)
+  client = Client('rdr/v1', False, args.creds_file, args.instance)
 
-  config_server = client.request_json('Config', 'GET')
+  config_server = client.request_json('Config', 'GET', test_unauthenticated=False)
   comparable_server = _comparable_string(config_server)
 
   if not args.config:
@@ -26,11 +26,11 @@ def main(args):
     configs_match = compare_configs(comparable_file, comparable_server)
 
     if not configs_match and args.update:
-      update_server(client, config_server, config_file)
+      update_server(client, config_file)
 
-def update_server(client, config_server, config_file):
+def update_server(client, config_file):
   print '-------------- Updating Server -------------------'
-  client.request_json('Config', 'PUT', config_file)
+  client.request_json('Config', 'PUT', config_file, test_unauthenticated=False)
 
 def compare_configs(comparable_file, comparable_server):
   if comparable_file == comparable_server:
