@@ -71,8 +71,7 @@ class Client(object):
     print resp
 
     if resp.status != 200:
-      raise HttpException(
-          '{}:{}\n---{}'.format(url, method, content), resp.status)
+      raise HttpException('{}:{}\n---{}'.format(url, method, content), resp.status)
 
     if resp['content-disposition'] != 'attachment':
       raise HttpException(

@@ -23,48 +23,28 @@ def main(args):
       config_file = json.load(config_file)
 
     comparable_file = _comparable_string(config_file)
-    compare_configs(comparable_file, comparable_server)
+    configs_match = compare_configs(comparable_file, comparable_server)
 
-    if args.update:
+    if not configs_match and args.update:
       update_server(client, config_server, config_file)
-
 
 def update_server(client, config_server, config_file):
   print '-------------- Updating Server -------------------'
-  keys_in_server = set(e['key'] for e in config_server)
-  keys_in_file = set(e['key'] for e in config_file)
-  keys_to_delete = keys_in_server - keys_in_file
-
-  for key in keys_to_delete:
-    print 'Deleting {}...'.format(key)
-    empty_config = {'values': []}
-    client.request_json('Config/{}'.format(key), 'POST', empty_config)
-
-  server_values = {e['key'] : sorted(e['values']) for e in config_server}
-  file_values = {e['key'] : sorted(e['values']) for e in config_file}
-
-  for k, v in file_values.iteritems():
-    if k in server_values and v == server_values[k]:
-      print '{} matches server config...'.format(k)
-    else:
-      print '{} differs.  Updating...'.format(k)
-      client.request_json('Config/{}'.format(k), 'POST', {'values': v})
-
+  client.request_json('Config', 'PUT', config_file)
 
 def compare_configs(comparable_file, comparable_server):
   if comparable_file == comparable_server:
     print 'Server config matches.'
+    return True
   else:
     print 'Server config differs.'
     for line in difflib.context_diff(comparable_server.split('\n'), comparable_file.split('\n')):
       print line
+  return False
 
 def _comparable_string(config):
   """Sort the values and pretty print so it will compare nicely."""
-  config = copy.deepcopy(config)
-  config = sorted(config, key=lambda e: e['key'])
-  for entry in config:
-    entry['values'] = sorted(entry['values'])
+  config = {k:sorted(v) for k,v in config.iteritems()}
   return json.dumps(config, sort_keys=True, indent=2)
 
 if __name__ == '__main__':

@@ -11,7 +11,7 @@ import questionnaire_response
 import fhirclient.models.questionnaire
 from werkzeug.exceptions import BadRequest
 
-class QuestionnaireAPI(base_api.BaseApi):
+class QuestionnaireAPI(base_api.BaseAuthenticatedApi):
   def __init__(self):
     super(QuestionnaireAPI, self).__init__(questionnaire.DAO)
 
@@ -20,7 +20,7 @@ class QuestionnaireAPI(base_api.BaseApi):
     fhirclient.models.questionnaire.Questionnaire(q.resource)
 
 
-class QuestionnaireResponseAPI(base_api.BaseApi):
+class QuestionnaireResponseAPI(base_api.BaseAuthenticatedApi):
   def __init__(self):
     super(QuestionnaireResponseAPI, self).__init__(questionnaire_response.DAO)
 

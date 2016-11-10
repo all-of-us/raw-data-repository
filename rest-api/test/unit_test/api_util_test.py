@@ -12,8 +12,8 @@ class ApiUtilNdbTest(NdbTestBase):
     super(ApiUtilNdbTest, self).setUp()
 
     # Note that there is a ttl cache on this config value, so it can't be changed during the test.
-    config.insert_config(key=config.ALLOWED_IP,
-                         value='{"ip6": ["1234:5678::/32"], "ip4": ["123.210.0.1/16"]}')
+    config.insert_config(config.ALLOWED_IP,
+                         ['{"ip6": ["1234:5678::/32"], "ip4": ["123.210.0.1/16"]}'])
 
   def test_valid_ip(self):
     api_util.enforce_ip_whitelisted('123.210.0.1')

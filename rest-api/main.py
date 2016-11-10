@@ -75,7 +75,7 @@ api.add_resource(config_api.ConfigApi,
                  PREFIX + 'Config',
                  PREFIX + 'Config/<string:key>',
                  endpoint='config',
-                 methods=['GET', 'POST'])
+                 methods=['GET', 'PUT'])
 
 
 def add_headers(response):

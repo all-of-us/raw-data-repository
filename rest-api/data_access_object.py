@@ -119,7 +119,8 @@ class DataAccessObject(object):
 
   def load_if_present(self, id_, ancestor_id=None):
     assert bool(ancestor_id) == bool(self.ancestor_type), "Requires an ancestor_id"
-    return self._make_key(id_, ancestor_id).get()
+    key = self._make_key(id_, ancestor_id)
+    return key.get()
 
   def load(self, id_, ancestor_id=None):
     m = self.load_if_present(id_, ancestor_id)
@@ -149,6 +150,13 @@ class DataAccessObject(object):
         raise Conflict('If-Match header was {}; stored version was {}'.format(
             expected_version_id, version_id))
     model.last_modified = None
+    return self.store(model, date, client_id)
+
+  @ndb.transactional
+  def replace(self, model, date=None, client_id=None):
+    existing_obj = model.key.get()
+    if not existing_obj:
+      raise NotFound('{} with key {} does not exist'.format(self.model_name, model.key))
     return self.store(model, date, client_id)
 
   @ndb.transactional

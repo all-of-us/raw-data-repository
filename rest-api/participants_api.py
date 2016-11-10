@@ -59,7 +59,7 @@ WAIST_CIRCUMFERENCE = FieldValidation(concepts.WAIST_CIRCUMFERENCE,
 
 
 
-class ParticipantAPI(base_api.BaseApi):
+class ParticipantAPI(base_api.BaseAuthenticatedApi):
   def __init__(self):
     super(ParticipantAPI, self).__init__(participant.DAO)
 
@@ -80,7 +80,7 @@ class ParticipantAPI(base_api.BaseApi):
     if not p.sign_up_time:
       p.sign_up_time = datetime.datetime.now()
 
-class EvaluationAPI(base_api.BaseApi):
+class EvaluationAPI(base_api.BaseAuthenticatedApi):
   def __init__(self):
     super(EvaluationAPI, self).__init__(evaluation.DAO)
 

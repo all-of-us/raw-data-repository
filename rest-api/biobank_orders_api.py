@@ -9,7 +9,7 @@ import participant
 
 from werkzeug.exceptions import BadRequest
 
-class BiobankOrderAPI(base_api.BaseApi):
+class BiobankOrderAPI(base_api.BaseAuthenticatedApi):
   valid_tests = frozenset(['1ED10', '2ED10', '1ED04', '1SST8', '1PST8', '1HEP4',
                            '1UR10', '1SAL'])
 

@@ -1,41 +1,39 @@
 """The API definition for the config API."""
 
 import api_util
+import base_api
 import config
-import json
 
-from protorpc import messages
-from protorpc import protojson
 from flask import request
 from flask.ext.restful import Resource
 
-class ConfigResponse(messages.Message):
-  key = messages.StringField(1)
-  values = messages.StringField(2, repeated=True)
+from werkzeug.exceptions import BadRequest
 
-class ConfigApi(Resource):
+class ConfigApi(base_api.BaseAdminApi):
   """Api handlers for retrieving and setting config values."""
-  @api_util.auth_required_cron_or_admin
+
+  def __init__(self):
+    super(ConfigApi, self).__init__(config.DAO)
+
   def get(self, key=None):
     if not key:
-      ret = [_json_encode_config(k) for k in config.list_keys()]
+      # Return the only config.
+      return super(ConfigApi, self).get(config.CONFIG_SINGLETON_KEY)
     else:
-      ret = _json_encode_config(key)
-    return ret
+      result = config.get_config_that_was_active_at(api_util.parse_date(key))
+      return self.make_response_for_resource(self.dao.to_json(result))
 
-  @api_util.auth_required_cron_or_admin
-  def post(self, key):
-    resource = request.get_json(force=True)
-    values = resource['values']
-    config.replace_config(key, values)
-    # Because of eventual consistency, it is hard to get all config values for
-    # the given key right away.  Just return the request instead of reading the
-    # values from the datastore.
-    return json.loads(protojson.encode_message(ConfigResponse(key=key, values=values)))
+  def put(self, key=None):
+    return super(ConfigApi, self).put(config.CONFIG_SINGLETON_KEY)
 
+  def validate_object(self, obj, a_id=None):
+    super(ConfigApi, self).validate_object(obj, a_id)
+    config_obj = obj.configuration
+    # make sure all required keys are present and that the values are the right type.
+    for k in config.REQUIRED_CONFIG_KEYS:
+      if k not in config_obj:
+        raise BadRequest('Missing required config key {}'.format(k))
 
-def _json_encode_config(key):
-  """Creates a protojson encoded reporesentation of a ConfigResponse for the given key."""
-  values = config.getSettingList(key, [])
-  json_encoded = protojson.encode_message(ConfigResponse(key=key, values=values))
-  return json.loads(json_encoded)
+    for k, val in config_obj.iteritems():
+      if not isinstance(val, list) or [v for v in val if not isinstance(v, basestring)]:
+        raise BadRequest('Config for {} must be a list of strings'.format(k))
