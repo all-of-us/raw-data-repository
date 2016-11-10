@@ -2,6 +2,8 @@
 
 Contains things such as the accounts allowed access to the system.
 """
+import logging
+
 import data_access_object
 
 from google.appengine.ext import ndb
@@ -111,7 +113,7 @@ def initialize_config():
   """Initalize an empty configuration."""
   conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
   Configuration(key=conf_ndb_key, configuration={}).put()
-  print 'Setting an empty configuration.'
+  logging.info('Setting an empty configuration.')
 
 def insert_config(key, value_list):
   """Updates a config key.  Used for tests"""
