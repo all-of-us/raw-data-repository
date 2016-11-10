@@ -4,9 +4,6 @@ import api_util
 import base_api
 import config
 
-from flask import request
-from flask.ext.restful import Resource
-
 from werkzeug.exceptions import BadRequest
 
 class ConfigApi(base_api.BaseAdminApi):
