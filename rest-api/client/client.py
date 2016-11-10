@@ -73,6 +73,9 @@ class Client(object):
 
     if test_unauthenticated:
       unauthenticated_headers = copy.deepcopy(headers)
+      # On dev_appserver, there is no way to tell if a request is authenticated or not.
+      # This adds a header that we can use to reject 'unauthenticated' requests.  What this
+      # is really testing is that the auth_required annotation is in all the right places.
       unauthenticated_headers['unauthenticated'] = 'YES'
       print 'Trying unauthenticated {} to {}.'.format(method, url)
       resp, content = httplib2.Http().request(

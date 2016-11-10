@@ -63,6 +63,9 @@ def check_auth_cron_or_admin():
 
 def enforce_user_whitelisted(user):
   user_email = 'None'
+  # We haven't found a way to tell if a dev_appserver request is
+  # unauthenticated, so, when the client tests are checking to ensure that an
+  # unauthenticated requests gets rejected it helpfully adds this header.
   if user and not request.headers.get('unauthenticated', None):
     user_email = user.email()
     if user.email() in CONFIG_CACHE[_ALLOWED_USERS_SINGLETON_KEY]:
