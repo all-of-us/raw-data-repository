@@ -19,12 +19,6 @@
     ]
   },
   {
-    "key": "initialized",
-    "values": [
-      "True"
-    ]
-  },
-  {
     "key": "metrics_shards",
     "values": [
       "2"
