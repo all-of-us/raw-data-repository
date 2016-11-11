@@ -83,3 +83,5 @@ if [[ ${instance} == https://* ]]
        ( run_client_test "client_test/${test}" 2>&1 | grep "HttpException" ) && echo "OK"
      done
 fi
+
+echo "Test passed!"
