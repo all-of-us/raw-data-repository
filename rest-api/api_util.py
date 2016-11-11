@@ -43,7 +43,11 @@ def auth_required_cron_or_admin(func):
   return wrapped
 
 def check_auth():
-  user = oauth.get_current_user(SCOPE)
+  user=None
+  try:
+    user = oauth.get_current_user(SCOPE)
+  except oauth.Error as e:
+    logging.error('OAuth failure: {}'.format(e))
   enforce_user_whitelisted(user)
   ip = request.remote_addr
   enforce_ip_whitelisted(ip)
