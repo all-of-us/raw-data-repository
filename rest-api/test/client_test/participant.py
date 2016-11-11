@@ -55,14 +55,14 @@ class ParticipantTest(unittest.TestCase):
           'Participant/{}'.format(participant_id), 'PATCH', response)
       self.fail("Need If-Match header for update")
     except HttpException, ex:
-      self.assertEqual(ex.code, 400)
+      self.assertEqual(ex.code, 412)
     try:
       response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PATCH', response,
           headers = { 'If-Match': '12345' })
       self.fail("Wrong If-Match header for update")
     except HttpException, ex:
-      self.assertEqual(ex.code, 409)    
+      self.assertEqual(ex.code, 412)    
     response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PATCH', response,
           headers = { 'If-Match': last_etag})

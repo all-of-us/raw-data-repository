@@ -9,7 +9,7 @@ from google.appengine.ext import ndb
 
 from test.unit_test.unit_test_util import NdbTestBase, to_dict_strip_last_modified
 
-from werkzeug.exceptions import BadRequest, Conflict, NotFound
+from werkzeug.exceptions import Conflict, NotFound, PreconditionFailed
 
 class ParentModel(ndb.Model):
   foo = ndb.StringProperty()
@@ -73,12 +73,12 @@ class DataAccessObjectTest(NdbTestBase):
     try:
       PARENT_DAO.update(parent, None)
       self.fail('Update without expected version id should fail')
-    except BadRequest:
+    except PreconditionFailed:
       pass
     try:
       PARENT_DAO.update(parent, expected_version_id)
       self.fail('Update with wrong expected version id should fail')
-    except Conflict:
+    except PreconditionFailed:
       pass
     parent = PARENT_DAO.load(parent_id)
     parent.foo = "BAR"
