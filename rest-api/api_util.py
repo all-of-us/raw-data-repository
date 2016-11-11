@@ -43,7 +43,7 @@ def auth_required_cron_or_admin(func):
   return wrapped
 
 def check_auth():
-  user=None
+  user = None
   try:
     user = oauth.get_current_user(SCOPE)
   except oauth.Error as e:
