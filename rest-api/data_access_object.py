@@ -4,8 +4,8 @@ import copy
 import api_util
 
 from google.appengine.ext import ndb
-from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import Conflict
+from werkzeug.exceptions import PreconditionFailed
 from werkzeug.exceptions import NotFound
 
 class DataAccessObject(object):
@@ -139,7 +139,7 @@ class DataAccessObject(object):
   @ndb.transactional
   def update(self, model, expected_version_id, date=None, client_id=None):
     if not expected_version_id:
-      raise BadRequest('If-Match header missing when updating resource')
+      raise PreconditionFailed('If-Match header missing when updating resource')
     existing_obj = model.key.get()
     if not existing_obj:
       raise NotFound('{} with key {} does not exist'.format(
@@ -147,7 +147,7 @@ class DataAccessObject(object):
     if existing_obj.last_modified:
       version_id = self.make_version_id(existing_obj.last_modified)
       if version_id != expected_version_id:
-        raise Conflict('If-Match header was {}; stored version was {}'.format(
+        raise PreconditionFailed('If-Match header was {}; stored version was {}'.format(
             expected_version_id, version_id))
     model.last_modified = None
     return self.store(model, date, client_id)
