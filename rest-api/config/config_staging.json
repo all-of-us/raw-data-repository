@@ -5,6 +5,7 @@
   "allowed_user": [
     "pmi-hpo-staging@appspot.gserviceaccount.com",
     "test-client@pmi-rdr-api-test.iam.gserviceaccount.com"
+    "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com"
   ],
   "biobank_samples_bucket_name": [
     "app_default_bucket"
