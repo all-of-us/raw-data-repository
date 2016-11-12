@@ -83,13 +83,12 @@ TOTAL_SENTINEL = '__total_sentinel__'
 
 # This can be overridden for unit-tests, however, this hardcoded config will be
 # used whenever a mapper starts up in a new app engine instance.
-METRICS_CONFIGS = offline.metrics_config.METRICS_CONFIGS
 
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
     metrics.set_pipeline_in_progress()
     futures = []
-    for config_name in METRICS_CONFIGS.keys():
+    for config_name in offline.metrics_config.get_config().keys():
       future = yield SummaryPipeline(config_name)
       futures.append(future)
     yield FinalizeMetrics(*futures)
@@ -133,7 +132,7 @@ def map_key_to_summary(entity_key, now=None):
   entity_key = ndb.Key.from_old_key(entity_key)
   now = now or datetime.now()
   kind = entity_key.kind()
-  metrics_conf = METRICS_CONFIGS[kind]
+  metrics_conf = offline.metrics_config.get_config()[kind]
   # Note that history can contain multiple types of history objects.
   history = metrics_conf['load_history_func'](entity_key, datetime.now())
   history = sorted(history, key=lambda o: o.date)

@@ -44,7 +44,7 @@ def participant():
     gender_identity = birth_sex
     date_of_birth = fake.date(pattern="%Y-%m-%d")
     if random.random() < 0.05:
-        gender_identity = random.choice(["MALE", "FEMALE", "NEITHER", "OTHER", "PREFER_NOT_TO_SAY"])
+        gender_identity = random.choice(["MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY"])
 
     membership_tier = "REGISTERED"
     sign_up_time = fake.date_time_between(start_date="2016-11-15", end_date="+1y", tzinfo=None)

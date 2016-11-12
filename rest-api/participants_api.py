@@ -24,7 +24,6 @@ from field_validation import FieldValidation, has_units, lessthan, within_range
 from werkzeug.exceptions import BadRequest, InternalServerError
 
 
-METRICS_CONFIG = offline.metrics_config.METRICS_CONFIGS['Participant']
 
 
 SYSTOLIC_BP = FieldValidation(concepts.SYSTOLIC_BP,
@@ -132,6 +131,7 @@ class ParticipantSummaryAPI(Resource):
              for o in dao.children(pt)]
     hists.extend([participant.DAO.history_model(parent=pt.key, date=date, obj=pt)])
 
+    METRICS_CONFIG = offline.metrics_config.get_config()['Participant']
     summary = {'Participant.' + k: v for k, v in METRICS_CONFIG['initial_state'].iteritems()}
     for hist in hists:
       for field in METRICS_CONFIG['fields'][hist.key.kind()]:

@@ -8,6 +8,10 @@
       "title":"demographics",
       "required":true,
       "repeats":false,
+      "concept": [{
+        "system": "http://terminology.pmi-ops.org/CodeSystem/questionnaire",
+        "code": "intake-demographics"
+      }],
       "group":[
          {
             "linkId":"1",
