@@ -69,7 +69,7 @@ from collections import Counter
 from google.appengine.ext import ndb
 from mapreduce import mapreduce_pipeline
 from mapreduce import operation as op
-
+from mapreduce import context
 
 from metrics import MetricsBucket
 
@@ -80,17 +80,38 @@ class PipelineNotRunningException(BaseException):
 DATE_FORMAT = '%Y-%m-%d'
 
 TOTAL_SENTINEL = '__total_sentinel__'
+_EXTRA_METRICS = '_EXTRA_METRICS'
+_NUM_SHARDS = '_NUM_SHARDS'
 
-# This can be overridden for unit-tests, however, this hardcoded config will be
-# used whenever a mapper starts up in a new app engine instance.
+def default_params():
+  return {
+        _NUM_SHARDS: int(config.getSetting(config.METRICS_SHARDS, 1)),
+        _EXTRA_METRICS: config.getSettingJson(config.EXTRA_METRICS, default={})
+    }
+
+def get_config(extras=None):
+  """Resolve a complete config object, using the first available of:
+     1. Supplied extras
+     2. Extras from a MapreducePipeline context
+     3. Config datastore entity"""
+  if extras:
+    return offline.metrics_config.get_config(extras)
+  elif context.get():
+    extras = context.get().mapreduce_spec.mapper.params[_EXTRA_METRICS]
+    print("extras", extras)
+    return offline.metrics_config.get_config(extras)
+  return offline.metrics_config.get_config()
 
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
     metrics.set_pipeline_in_progress()
     futures = []
-    for config_name in offline.metrics_config.get_config().keys():
-      future = yield SummaryPipeline(config_name)
+
+    mapper_params = default_params()
+    for config_name in get_config(mapper_params[_EXTRA_METRICS]):
+      future = yield SummaryPipeline(config_name, mapper_params)
       futures.append(future)
+
     yield FinalizeMetrics(*futures)
 
 class FinalizeMetrics(pipeline.Pipeline):
@@ -103,13 +124,20 @@ class FinalizeMetrics(pipeline.Pipeline):
     current_version.put()
 
 class SummaryPipeline(pipeline.Pipeline):
-  def run(self, config_name):
+  def run(self, config_name, parent_params=None):
     print '======= Starting {} Pipeline'.format(config_name)
+    print context.get()
+
     mapper_params = {
         'entity_kind': config_name,
     }
-    num_shards = int(config.getSetting(config.METRICS_SHARDS, 1))
-    # The result of yield is a future that will contian the files that were
+
+    if parent_params:
+      mapper_params.update(parent_params)
+    print("MAPPER PRAMS***", mapper_params)
+
+    num_shards = mapper_params[_NUM_SHARDS]
+    # The result of yield is a future that will contain the files that were
     # produced by MapreducePipeline.
     yield mapreduce_pipeline.MapreducePipeline(
         'Extract Metrics',
@@ -129,10 +157,11 @@ def map_key_to_summary(entity_key, now=None):
       be converted.
     now: Used to set the clock for testing.
   """
+
   entity_key = ndb.Key.from_old_key(entity_key)
   now = now or datetime.now()
   kind = entity_key.kind()
-  metrics_conf = offline.metrics_config.get_config()[kind]
+  metrics_conf = get_config()[kind]
   # Note that history can contain multiple types of history objects.
   history = metrics_conf['load_history_func'](entity_key, datetime.now())
   history = sorted(history, key=lambda o: o.date)

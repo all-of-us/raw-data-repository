@@ -72,7 +72,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     self.maxDiff = None
     self.longMessage = True
     self.saved_config_fn = offline.metrics_config.get_config
-    offline.metrics_config.get_config = lambda:CONFIGS_FOR_TEST
+    offline.metrics_config.get_config = (lambda _=None: CONFIGS_FOR_TEST)
 
   def tearDown(self):
     offline.metrics_config.get_config = self.saved_config_fn

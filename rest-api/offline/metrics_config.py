@@ -48,18 +48,19 @@ def biospecimen_summary(summary):
     ret = samples
   return ExtractionResult(ret)
 
-def get_config():
+def get_config(extra_metrics=None):
+
+  if not extra_metrics:
+    extra_metrics = config.getSettingJson(config.EXTRA_METRICS, default={})
 
   CONFIG = copy.deepcopy(DEFAULT_CONFIG)
-
-  extra_metrics = config.getSettingJson(config.EXTRA_METRICS, default={})
   for k, v in extra_metrics.get('Participant', {}).iteritems():
     if v.get('type', None) == 'QuestionnaireResponse.SUBMITTED':
       CONFIG['Participant']['fields']['QuestionnaireResponseHistory'].append(
         FieldDef(k, questionnaire_response.extract_concept_presence(concepts.Concept(
                  v.get('concept', {}).get('system', ''),
                  v.get('concept', {}).get('code', ''))),
-                set('UNSET') | questionnaire_response.submission_statuses()))
+                set(['UNSET']) | questionnaire_response.submission_statuses()))
       CONFIG['Participant']['initial_state'][k] = 'UNSET'
   return CONFIG
 
