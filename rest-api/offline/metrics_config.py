@@ -48,10 +48,13 @@ def biospecimen_summary(summary):
     ret = samples
   return ExtractionResult(ret)
 
-def get_config(extra_metrics=None):
+def get_extra_metrics():
+  return config.getSettingJson(config.EXTRA_METRICS, default={})
 
+
+def get_config(extra_metrics=None):
   if not extra_metrics:
-    extra_metrics = config.getSettingJson(config.EXTRA_METRICS, default={})
+    extra_metrics = get_extra_metrics()
 
   CONFIG = copy.deepcopy(DEFAULT_CONFIG)
   for k, v in extra_metrics.get('Participant', {}).iteritems():

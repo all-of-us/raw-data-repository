@@ -84,23 +84,23 @@ _EXTRA_METRICS = '_EXTRA_METRICS'
 _NUM_SHARDS = '_NUM_SHARDS'
 
 def default_params():
+  """These can be used in a snapshot to ensure they stay the same across
+  all instances of a MapReduce pipeline, even if datastore changes"""
   return {
         _NUM_SHARDS: int(config.getSetting(config.METRICS_SHARDS, 1)),
-        _EXTRA_METRICS: config.getSettingJson(config.EXTRA_METRICS, default={})
+        _EXTRA_METRICS: offline.metrics_config.get_extra_metrics()
     }
 
 def get_config(extras=None):
   """Resolve a complete config object, using the first available of:
      1. Supplied extras
      2. Extras from a MapreducePipeline context
-     3. Config datastore entity"""
-  if extras:
-    return offline.metrics_config.get_config(extras)
-  elif context.get():
+     3. Config datastore entity (default behavior)"""
+
+  if (not extras) and context.get():
     extras = context.get().mapreduce_spec.mapper.params[_EXTRA_METRICS]
-    print("extras", extras)
-    return offline.metrics_config.get_config(extras)
-  return offline.metrics_config.get_config()
+
+  return offline.metrics_config.get_config(extras)
 
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
@@ -126,7 +126,6 @@ class FinalizeMetrics(pipeline.Pipeline):
 class SummaryPipeline(pipeline.Pipeline):
   def run(self, config_name, parent_params=None):
     print '======= Starting {} Pipeline'.format(config_name)
-    print context.get()
 
     mapper_params = {
         'entity_kind': config_name,
@@ -134,7 +133,6 @@ class SummaryPipeline(pipeline.Pipeline):
 
     if parent_params:
       mapper_params.update(parent_params)
-    print("MAPPER PRAMS***", mapper_params)
 
     num_shards = mapper_params[_NUM_SHARDS]
     # The result of yield is a future that will contain the files that were
