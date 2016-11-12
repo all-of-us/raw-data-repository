@@ -1,6 +1,8 @@
 threadsafe: true
 runtime: python27
 api_version: 1
+version: 1
+module: all-of-us
 
 includes:
   - appengine-mapreduce/python/src/mapreduce/include.yaml
