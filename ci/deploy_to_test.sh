@@ -45,8 +45,12 @@ gcloud auth activate-service-account --key-file ~/gcloud-credentials.key
 gcloud config set project $PROJECT_ID
 gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml
 
-cd test
 ENDPOINT="https://$PROJECT_ID.appspot.com"
+
+./tools/install_config.sh --config=config/config_test.json --instance $ENDPOINT --update
+
+cd test
+
 if [ $PROJECT_ID == "pmi-drc-api-test" ]
 then
   echo "Smoke-testing RDR server at $ENDPOINT"
