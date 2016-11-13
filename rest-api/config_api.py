@@ -32,3 +32,6 @@ class ConfigApi(base_api.BaseAdminApi):
     for k in config.REQUIRED_CONFIG_KEYS:
       if k not in config_obj:
         raise BadRequest('Missing required config key {}'.format(k))
+      val = config_obj[k]
+      if not isinstance(val, list) or [v for v in val if not isinstance(v, basestring)]:
+        raise BadRequest('Config for {} must be a list of strings'.format(k))

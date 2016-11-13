@@ -13,6 +13,7 @@ from google.appengine.ext import ndb
 from werkzeug.exceptions import NotFound
 
 CONFIG_SINGLETON_KEY = 'current_config'
+CONFIG_CACHE_TTL_SECONDS = 60
 
 ALLOWED_USER = 'allowed_user'
 ALLOWED_IP = 'allowed_ip'
@@ -25,10 +26,12 @@ BIOBANK_SAMPLES_BUCKET_NAME = 'biobank_samples_bucket_name'
 REQUIRED_CONFIG_KEYS = [ALLOWED_USER, ALLOWED_IP, BIOBANK_SAMPLES_BUCKET_NAME]
 
 def _get_config(key):
+  """This function is called by the `TTLCache` to grab an updated config.
+  Note that `TTLCache` always supplies a key, which we assert here."""
   assert key == CONFIG_SINGLETON_KEY
   return DAO.load_if_present(key).configuration
 
-CONFIG_CACHE = cachetools.TTLCache(1, ttl=60, missing=_get_config)
+CONFIG_CACHE = cachetools.TTLCache(1, ttl=CONFIG_CACHE_TTL_SECONDS, missing=_get_config)
 
 
 class MissingConfigException(BaseException):
@@ -145,7 +148,10 @@ def initialize_config():
   logging.info('Setting an empty configuration.')
 
 def invalidate():
-  CONFIG_CACHE.expire(time.time() + 60)
+  """Invalidate the config cache when we learn something new has been written.
+  The `expire` function takes one argument, which effectively says, "pretend
+  it's this time, and expire everything that's due to expire by then"."""
+  CONFIG_CACHE.expire(time.time() + CONFIG_CACHE_TTL_SECONDS)
 
 
 def insert_config(key, value_list):
