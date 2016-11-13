@@ -3,14 +3,32 @@
     "2"
   ],
   "allowed_user": [
-      "example@example.com"
+    "example@example.com"
   ],
   "biobank_samples_bucket_name": [
-      "app_default_bucket"
+    "app_default_bucket"
   ],
   "metrics_shards": [
     "2"
   ],
+  "extra_metrics": {
+    "Participant": {
+      "ppi_consent": {
+        "type": "QuestionnaireResponse.SUBMITTED",
+        "concept": {
+          "system": "http://terminology.pmi-ops.org/CodeSystem/questionnaire",
+          "code": "basic-consent"
+        }
+      },
+      "ppi_demographics": {
+        "type": "QuestionnaireResponse.SUBMITTED",
+        "concept": {
+          "system": "http://terminology.pmi-ops.org/CodeSystem/questionnaire",
+          "code": "intake-demographics"
+        }
+      }
+    }
+  },
   "allowed_ip": [
     "{\"ip6\": [\"::1/64\"], \"ip4\": [\"127.0.0.1/32\"]}"
   ]

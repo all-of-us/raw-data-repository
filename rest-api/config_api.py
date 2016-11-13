@@ -21,7 +21,9 @@ class ConfigApi(base_api.BaseAdminApi):
       return self.make_response_for_resource(self.dao.to_json(result))
 
   def put(self, key=None):
-    return super(ConfigApi, self).put(config.CONFIG_SINGLETON_KEY)
+    ret = super(ConfigApi, self).put(config.CONFIG_SINGLETON_KEY)
+    config.invalidate()
+    return ret
 
   def validate_object(self, obj, a_id=None):
     super(ConfigApi, self).validate_object(obj, a_id)
@@ -30,7 +32,6 @@ class ConfigApi(base_api.BaseAdminApi):
     for k in config.REQUIRED_CONFIG_KEYS:
       if k not in config_obj:
         raise BadRequest('Missing required config key {}'.format(k))
-
-    for k, val in config_obj.iteritems():
+      val = config_obj[k]
       if not isinstance(val, list) or [v for v in val if not isinstance(v, basestring)]:
         raise BadRequest('Config for {} must be a list of strings'.format(k))

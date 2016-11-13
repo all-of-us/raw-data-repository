@@ -20,7 +20,9 @@ Keys for an individual configuration entry:
 
 """
 
-
+import concepts
+import config
+import copy
 import extraction
 import participant
 import questionnaire_response
@@ -46,7 +48,26 @@ def biospecimen_summary(summary):
     ret = samples
   return ExtractionResult(ret)
 
-METRICS_CONFIGS = {
+def get_extra_metrics():
+  return config.getSettingJson(config.EXTRA_METRICS, default={})
+
+
+def get_config(extra_metrics=None):
+  if not extra_metrics:
+    extra_metrics = get_extra_metrics()
+
+  CONFIG = copy.deepcopy(DEFAULT_CONFIG)
+  for k, v in extra_metrics.get('Participant', {}).iteritems():
+    if v.get('type', None) == 'QuestionnaireResponse.SUBMITTED':
+      CONFIG['Participant']['fields']['QuestionnaireResponseHistory'].append(
+        FieldDef(k, questionnaire_response.extract_concept_presence(concepts.Concept(
+                 v.get('concept', {}).get('system', ''),
+                 v.get('concept', {}).get('code', ''))),
+                set(['UNSET']) | questionnaire_response.submission_statuses()))
+      CONFIG['Participant']['initial_state'][k] = 'UNSET'
+  return CONFIG
+
+DEFAULT_CONFIG = {
     'Participant': {
         'load_history_func': participant.load_history_entities,
         'facets': [
@@ -59,16 +80,16 @@ METRICS_CONFIGS = {
             'survey': 'UNSET',
             'biospecimen': 'UNSET',
             'biospecimen_samples': 'UNSET',
-            'biospecimen_summary': 'UNSET',
+            'biospecimen_summary': 'UNSET'
         },
         'fields': {
             'ParticipantHistory': [
                 FieldDef('membership_tier',
                          extraction.simple_field_extractor('membership_tier'),
-                         iter(participant.MembershipTier)),
+                         list(participant.MembershipTier)),
                 FieldDef('gender_identity',
                          extraction.simple_field_extractor('gender_identity'),
-                         iter(participant.GenderIdentity)),
+                         list(participant.GenderIdentity)),
                 FieldDef('age_range', participant.extract_bucketed_age,
                          participant.AGE_BUCKETS),
                 FieldDef('hpo_id', participant.extract_HPO_id,

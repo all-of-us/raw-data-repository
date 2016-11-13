@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-from offline.metrics_config import METRICS_CONFIGS, FacetType
+from offline.metrics_config import get_config, FacetType
 
 from google.appengine.ext import ndb
 from protorpc import message_types
@@ -147,7 +147,7 @@ class MetricService(object):
 
     response.field_definition = [
         FieldDefinition(name=type_ + '.' + field.name, values=[str(r) for r in field.func_range])
-        for type_, conf in METRICS_CONFIGS.iteritems()
+        for type_, conf in get_config().iteritems()
         for field_list in conf['fields'].values()
         for field in field_list]
     return response

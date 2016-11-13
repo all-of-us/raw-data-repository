@@ -1,6 +1,5 @@
 """Utilities used by the API definition.
 """
-import cachetools
 import datetime
 import json
 import logging
@@ -21,8 +20,6 @@ from google.appengine.api import oauth
 from werkzeug.exceptions import Unauthorized, BadRequest
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
-_ALLOWED_USERS_SINGLETON_KEY = "allowed_users"
-_IP_CONFIG_SINGLETON_KEY = "ip_config"
 EPOCH = datetime.datetime.utcfromtimestamp(0)
 
 def auth_required(func):
@@ -72,14 +69,14 @@ def enforce_user_whitelisted(user):
   # unauthenticated requests gets rejected it helpfully adds this header.
   if user and not request.headers.get('unauthenticated', None):
     user_email = user.email()
-    if user.email() in CONFIG_CACHE[_ALLOWED_USERS_SINGLETON_KEY]:
+    if user.email() in allowed_users():
       logging.info('User {} ALLOWED'.format(user_email))
       return
   logging.info('User {} NOT ALLOWED'.format(user_email))
   raise Unauthorized('Forbidden.')
 
 def enforce_ip_whitelisted(ip_string):
-  allowed_ip_config = CONFIG_CACHE[_IP_CONFIG_SINGLETON_KEY]
+  allowed_ip_config = allowed_ips()
   logging.info('IP RANGES ALLOWED: {}'.format(allowed_ip_config))
   ip = netaddr.IPAddress(ip_string)
   if not bool([True for rng in allowed_ip_config if ip in rng]):
@@ -173,14 +170,10 @@ def searchable_representation(str_):
   str_ = str(str_)
   return str_.lower().translate(None, string.punctuation)
 
-def _get_config(key):
-  if key == _ALLOWED_USERS_SINGLETON_KEY:
-    return frozenset(config.getSettingList(config.ALLOWED_USER))
-  elif key == _IP_CONFIG_SINGLETON_KEY:
-    ip_ranges = json.loads(config.getSetting(config.ALLOWED_IP))
-    return [netaddr.IPNetwork(rng)
-            for rng in ip_ranges['ip6'] + ip_ranges['ip4']]
-  else:
-    logging.error('Unexpected config cache key: {}'.format(key))
+def allowed_users():
+  return frozenset(config.getSettingList(config.ALLOWED_USER))
 
-CONFIG_CACHE = cachetools.TTLCache(2, ttl=60, missing=_get_config)
+def allowed_ips():
+  ip_ranges = json.loads(config.getSetting(config.ALLOWED_IP))
+  return [netaddr.IPNetwork(rng)
+          for rng in ip_ranges['ip6'] + ip_ranges['ip4']]

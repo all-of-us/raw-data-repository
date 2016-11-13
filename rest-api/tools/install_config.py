@@ -44,7 +44,11 @@ def compare_configs(comparable_file, comparable_server):
 
 def _comparable_string(config):
   """Sort the values and pretty print so it will compare nicely."""
-  config = {k:sorted(v) for k,v in config.iteritems()}
+  config = copy.deepcopy(config)
+  for k,v in config.iteritems():
+    if isinstance(v, list):
+      config[k] = sorted(v)
+
   return json.dumps(config, sort_keys=True, indent=2)
 
 if __name__ == '__main__':
@@ -58,9 +62,8 @@ if __name__ == '__main__':
                       help='The instance to hit, defaults to http://localhost:8080',
                       default='http://localhost:8080')
   parser.add_argument('--update',
-                      type=bool,
-                      help='If True, will replace the server config.  If False, compares configs.',
-                      default=False)
+                      help='If this flag is set, then update the remote server',
+                      action='store_true')
   parser.add_argument('--creds_file',
                       type=str,
                       help='Path to credentials JSON file.',

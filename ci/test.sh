@@ -27,7 +27,7 @@ until $(curl -s --fail http://localhost:8000); do
     sleep .25
 done
 
-./tools/install_config.sh --config=config/config_dev.json --update True
+./tools/install_config.sh --config=config/config_dev.json --update
 
 cd ../rest-api-client
 pip install virtualenv

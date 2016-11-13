@@ -31,6 +31,7 @@ class QuestionnaireDAO(data_access_object.DataAccessObject):
 DAO = QuestionnaireDAO()
 
 class QuestionnaireExtractor(extraction.FhirExtractor):
+
   def extract_link_id_for_concept(self, concept):
     """Returns list of link ids in questionnaire that address the concept."""
     assert isinstance(concept, extraction.Concept)

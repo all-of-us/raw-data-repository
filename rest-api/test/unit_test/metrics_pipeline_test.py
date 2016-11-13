@@ -71,11 +71,11 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     testutil.HandlerTestBase.setUp(self)
     self.maxDiff = None
     self.longMessage = True
-    self.saved_configs = metrics_pipeline.METRICS_CONFIGS
-    metrics_pipeline.METRICS_CONFIGS = CONFIGS_FOR_TEST
+    self.saved_config_fn = offline.metrics_config.get_config
+    offline.metrics_config.get_config = (lambda _=None: CONFIGS_FOR_TEST)
 
   def tearDown(self):
-    metrics_pipeline.METRICS_CONFIGS = self.saved_configs
+    offline.metrics_config.get_config = self.saved_config_fn
 
   def test_map_key_to_summary(self):
     key = ndb.Key(participant.Participant, '1')

@@ -101,6 +101,8 @@ class ParticipantTest(unittest.TestCase):
 
     response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
     expected = {
+        'Participant.ppi_consent': 'UNSET',
+        'Participant.ppi_demographics': 'UNSET',
         'Participant.age_range': '36-45',
         'Participant.biospecimen': 'UNSET',
         'Participant.biospecimen_samples': 'UNSET',

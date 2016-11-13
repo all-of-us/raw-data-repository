@@ -97,9 +97,24 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
       concept = value.extract_concept()
       return concept and config.get(concept, UNMAPPED)
 
+  def extract_link_ids(self, concept):
+    questionnaire_id = self.extract_questionnaire_id()
+    questionnaire = questionnaireDAO.load_if_present(questionnaire_id)
+    if not questionnaire:
+      raise ValueError(
+          'Invalid Questionnaire id {0} in Response {1}'.format(
+              questionnaire_id, response_extractor.extract_id()))
+
+    self.questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
+    return self.questionnaire_extractor.extract_link_id_for_concept(concept)
+
 def extract_race(qr_hist_obj):
   """Returns ExtractionResult for race answer from questionnaire response."""
   return extract_field(qr_hist_obj.obj, concepts.RACE)
+
+def submission_statuses():
+  """Enumerates the questionnaire response submission values"""
+  return set(["SUBMITTED"])
 
 def races():
   """Enumerates the race values"""
@@ -112,10 +127,6 @@ def extract_ethnicity(qr_hist_obj):
 def ethnicities():
   """Enumerates the ethnicity values."""
   return set(_ETHNICITY_MAPPING.values())
-
-def extract_gender_identity(qr_hist_obj):
-  """Returns ExtractionResult for gender identity answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, concepts.GENDER_IDENTITY)
 
 def extract_state_of_residence(qr_hist_obj):
   """Returns ExtractionResult for state of residence answer from questionnaire response."""
@@ -142,17 +153,25 @@ def regions():
 def extract_field(obj, concept):
   """Returns ExtractionResult for concept answer from questionnaire response."""
   response_extractor = QuestionnaireResponseExtractor(obj.resource)
-  questionnaire_id = response_extractor.extract_questionnaire_id()
-  questionnaire = questionnaireDAO.load_if_present(questionnaire_id)
-  if not questionnaire:
-    raise ValueError(
-        'Invalid Questionnaire id {0} in Response {1}'.format(
-            questionnaire_id, response_extractor.extract_id()))
-  questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
-  link_ids = questionnaire_extractor.extract_link_id_for_concept(concept)
+  link_ids = response_extractor.extract_link_ids(concept)
 
   if not len(link_ids) == 1:
     return extraction.ExtractionResult(None, False)  # Failed to extract answer
+
   # Questionnaire unambiguously asked the desired question.
   return extraction.ExtractionResult(
       response_extractor.extract_answer(link_ids[0], concept))
+
+@ndb.non_transactional
+def extract_concept_presence(concept):
+
+  def extract(history_obj):
+    response_extractor = QuestionnaireResponseExtractor(history_obj.obj.resource)
+    link_ids = response_extractor.extract_link_ids(concept)
+
+    if not len(link_ids) == 1:
+      return extraction.ExtractionResult(None, False)  # Failed to extract answer
+
+    return extraction.ExtractionResult('SUBMITTED')
+
+  return extract
