@@ -8,7 +8,7 @@
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com"
   ],
   "biobank_samples_bucket_name": [
-    "app_default_bucket"
+    "test_biobank_samples_upload_bucket"
   ],
   "metrics_shards": [
     "2"
