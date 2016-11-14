@@ -71,7 +71,7 @@ DEFAULT_CONFIG = {
     'Participant': {
         'load_history_func': participant.load_history_entities,
         'facets': [
-            FacetDef(FacetType.HPO_ID, lambda s: s['hpo_id']),
+            FacetDef(FacetType.HPO_ID, lambda s: s.get('hpo_id', 'UNSET')),
         ],
         'initial_state': {
             'physical_evaluation': 'UNSET',

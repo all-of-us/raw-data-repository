@@ -102,7 +102,7 @@ class TestPPI(unittest.TestCase):
         'Participant.ethnicity': 'UNSET',
         'Participant.biospecimen_summary': 'UNSET',
         'Participant.gender_identity': 'MALE_TO_FEMALE_TRANSGENDER',
-        'Participant.hpo_id': 'None',
+        'Participant.hpo_id': 'UNSET',
         'Participant.membership_tier': 'None',
         'Participant.physical_evaluation': 'UNSET',
         'Participant.race': 'UNSET',

@@ -238,7 +238,7 @@ def extract_HPO_id(ph):
   return extraction.ExtractionResult(
       ((ph.obj.recruitment_source and (str(ph.obj.recruitment_source) + ':')
         or '')
-       + str(ph.obj.hpo_id)))
+       + str(ph.obj.hpo_id or 'UNSET')))
 
 # The lower bounds of the age buckets.
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
