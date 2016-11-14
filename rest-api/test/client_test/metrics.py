@@ -7,6 +7,7 @@ that metrics come back and that it doen't crash.
 
 import unittest
 import pprint
+import client
 
 import test_util
 
@@ -20,16 +21,28 @@ class MetricsTest(unittest.TestCase):
         'metric': 'PARTICIPANT_MEMBERSHIP_TIER',
         'facets': ['HPO_ID'],
     }
-    response = self.client.request_json('Metrics', 'POST', request)
-    pprint.pprint(response)
+    try:
+      response = self.client.request_json('Metrics', 'POST', request)
+      pprint.pprint(response)
+    except client.client.HttpException as ex:
+      if ex.code == 404:
+        print "No metrics loaded"
+      else:
+        raise ex
 
   def testParticipantTotal(self):
     request = {
         'metric': 'PARTICIPANT_TOTAL',
         'bucket_by': 'NONE'
     }
-    response = self.client.request_json('Metrics', 'POST', request)
-    pprint.pprint(response)
+    try:
+      response = self.client.request_json('Metrics', 'POST', request)
+      pprint.pprint(response)
+    except client.client.HttpException as ex:
+      if ex.code == 404:
+        print "No Metrics loaded"
+      else:
+        raise ex
 
 
 if __name__ == '__main__':

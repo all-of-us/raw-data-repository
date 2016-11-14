@@ -102,6 +102,14 @@ def get_config(extras=None):
 
   return offline.metrics_config.get_config(extras)
 
+# This is a indicator of the format of the produced metrics.  If the metrics
+# pipeline changes such that the produced metrics are not compatible with the
+# serving side of the metrics API, increment this version and increment the
+# version in metrics.py.  This will cause no metrics to be served while new
+# metrics are calculated, which is better than crashing or serving incorrect
+# data.
+PIPELINE_METRICS_DATA_VERSION = 1
+
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
     metrics.set_pipeline_in_progress()
@@ -116,12 +124,7 @@ class MetricsPipeline(pipeline.Pipeline):
 
 class FinalizeMetrics(pipeline.Pipeline):
   def run(self, *args):
-    current_version = metrics.get_in_progress_version()
-    if not current_version:
-      raise PipelineNotRunningException()
-    current_version.in_progress = False
-    current_version.complete = True
-    current_version.put()
+    set_serving_version()
 
 class SummaryPipeline(pipeline.Pipeline):
   def run(self, config_name, parent_params=None):
@@ -244,6 +247,16 @@ def reduce_facets(facets_key_json, deltas):
                          facets=json.dumps(facets_key['facets']),
                          metrics=json.dumps(cnt))
   yield op.db.Put(bucket)
+
+
+def set_serving_version():
+  current_version = metrics.get_in_progress_version()
+  if not current_version:
+    raise PipelineNotRunningException()
+  current_version.in_progress = False
+  current_version.complete = True
+  current_version.data_version = PIPELINE_METRICS_DATA_VERSION
+  current_version.put()
 
 def _get_facets_key(date, metrics_conf, state):
   """Creates a string that can be used as a key specifying the facets.

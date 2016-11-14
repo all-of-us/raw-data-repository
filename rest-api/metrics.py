@@ -12,6 +12,7 @@ from google.appengine.ext import ndb
 from protorpc import message_types
 from protorpc import messages
 from protorpc import protojson
+from werkzeug.exceptions import NotFound
 
 class InvalidMetricException(BaseException):
   """Exception thrown when a invalid metric is specified."""
@@ -23,6 +24,10 @@ START_DATE = datetime.date(2016, 9, 1)
 
 DATE_FORMAT = '%Y-%m-%d'
 
+# Only metrics that match this version will be served.  See the corresponding
+# comment in metrics_pipeline.py.
+SERVING_METRICS_DATA_VERSION = 1
+
 class MetricsBucket(ndb.Model):
   date = ndb.DateProperty() # Used on metrics where we are tracking history.
   facets = ndb.StringProperty()
@@ -32,6 +37,7 @@ class MetricsVersion(ndb.Model):
   in_progress = ndb.BooleanProperty()
   complete = ndb.BooleanProperty()
   date = ndb.DateTimeProperty(auto_now=True)
+  data_version = ndb.IntegerProperty()
 
 class FieldDefinition(messages.Message):
   """Defines a field and its values"""
@@ -119,7 +125,9 @@ class MetricService(object):
 
   def get_metrics(self, request):
     serving_version = get_serving_version()
-
+    if not serving_version:
+      raise NotFound(
+          'No Metrics with data version {} calculated yet.'.format(SERVING_METRICS_DATA_VERSION))
     results_buckets = ResultsBuckets()
     for db_bucket in MetricsBucket.query(ancestor=serving_version).fetch():
       if not db_bucket.facets:
@@ -168,7 +176,8 @@ def get_in_progress_version():
   return None
 
 def get_serving_version():
-  query = MetricsVersion.query(MetricsVersion.complete == True)
+  query = MetricsVersion.query(MetricsVersion.complete == True,
+                               MetricsVersion.data_version == SERVING_METRICS_DATA_VERSION)
   running = query.order(-MetricsVersion.date).fetch(1)
   if running:
     return running[0].key
