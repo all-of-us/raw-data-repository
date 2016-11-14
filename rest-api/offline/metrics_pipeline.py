@@ -260,12 +260,9 @@ def set_serving_version():
   current_version.put()
 
 def validate_metrics(configs):
-  for config in configs:
-    field_names = []
-    for field_name in configs[config]['fields']:
-      for definition in configs[config]['fields'][field_name]:
-        assert not definition.name in field_names
-        field_names.append(definition.name)
+  for config in configs.values():
+    fields = [definition.name for def_list in config['fields'].values() for definition in def_list]
+    assert len(fields) == len(set(fields))
 
 def _get_facets_key(date, metrics_conf, state):
   """Creates a string that can be used as a key specifying the facets.
