@@ -14,4 +14,14 @@ indexes:
   - name: complete
   - name: date
     direction: desc
-    
+- kind: MetricsVersion
+  properties:
+  - name: complete
+  - name: data_version
+  - name: date
+    direction: desc
+- kind: MetricsVersion
+  properties:
+  - name: data_version
+  - name: date
+    direction: desc
