@@ -263,9 +263,9 @@ def validate_metrics(configs):
   for config in configs:
     field_names = []
     for field_name in configs[config]['fields']:
-      print "f1 =  {}, names = ".format(field_name, field_names)
-      assert not field_name in field_names
-      field_names.append(field_name)
+      for definition in configs[config]['fields'][field_name]:
+        assert not definition.name in field_names
+        field_names.append(definition.name)
 
 def _get_facets_key(date, metrics_conf, state):
   """Creates a string that can be used as a key specifying the facets.
