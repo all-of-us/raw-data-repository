@@ -2,6 +2,6 @@ cron:
 - description: Hourly metrics
   url: /rdr/v1/MetricsRecalculate
   schedule: every 1 hours
-- description: Hourly metrics
+- description: Hourly biosample reconciliation
   url: /rdr/v1/BiobankSamplesReload
   schedule: every 1 hours
