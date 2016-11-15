@@ -112,11 +112,13 @@ PIPELINE_METRICS_DATA_VERSION = 1
 
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
+    mapper_params = default_params()
+    configs = get_config(mapper_params[_EXTRA_METRICS])
+    validate_metrics(configs)
     metrics.set_pipeline_in_progress()
     futures = []
-
-    mapper_params = default_params()
-    for config_name in get_config(mapper_params[_EXTRA_METRICS]):
+    
+    for config_name in configs:
       future = yield SummaryPipeline(config_name, mapper_params)
       futures.append(future)
 
@@ -248,7 +250,6 @@ def reduce_facets(facets_key_json, deltas):
                          metrics=json.dumps(cnt))
   yield op.db.Put(bucket)
 
-
 def set_serving_version():
   current_version = metrics.get_in_progress_version()
   if not current_version:
@@ -257,6 +258,11 @@ def set_serving_version():
   current_version.complete = True
   current_version.data_version = PIPELINE_METRICS_DATA_VERSION
   current_version.put()
+
+def validate_metrics(configs):
+  for config in configs.values():
+    fields = [definition.name for def_list in config['fields'].values() for definition in def_list]
+    assert len(fields) == len(set(fields))
 
 def _get_facets_key(date, metrics_conf, state):
   """Creates a string that can be used as a key specifying the facets.
