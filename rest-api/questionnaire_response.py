@@ -101,12 +101,10 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
     questionnaire_id = self.extract_questionnaire_id()
     questionnaire = questionnaireDAO.load_if_present(questionnaire_id)
     if not questionnaire:
-      raise ValueError(
-          'Invalid Questionnaire id {0} in Response {1}'.format(
-              questionnaire_id, response_extractor.extract_id()))
+      raise ValueError('Invalid Questionnaire id "{0}".'.format(questionnaire_id))
 
-    self.questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
-    return self.questionnaire_extractor.extract_link_id_for_concept(concept)
+    questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
+    return questionnaire_extractor.extract_link_id_for_concept(concept)
 
 def extract_race(qr_hist_obj):
   """Returns ExtractionResult for race answer from questionnaire response."""
