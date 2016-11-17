@@ -68,7 +68,6 @@ class BaseApi(Resource):
     Args:
       a_id: The ancestor id.
     """
-    print "XX"
     resource = request.get_json(force=True)
     m = self.dao.from_json(resource, a_id, self.dao.allocate_id())
     self.validate_object(m, a_id)
@@ -99,7 +98,6 @@ class BaseApi(Resource):
       id_: The id of the object to replace.
       a_id: The ancestor id.
     """
-    print "YY"
     m = self.dao.from_json(request.get_json(force=True), a_id, id_)
     self.validate_object(m, a_id)
     self.dao.replace(m, date=consider_fake_date(), client_id=api_util.get_client_id())

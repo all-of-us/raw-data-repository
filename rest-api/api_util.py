@@ -31,12 +31,9 @@ def auth_required(allowed_roles = None):
       is_dev_appserver = app_identity.get_application_id() == "None"
       if request.scheme.lower() != 'https' and not is_dev_appserver:
         raise Unauthorized('HTTPS is required')
-
-      allowed_roles = None
-      if len(args) > 0:
-        allowed_roles = args[0]
+      allowed_roles_list = allowed_roles
       if allowed_roles and not type(allowed_roles) is list:
-        allowed_roles = [allowed_roles]
+        allowed_roles_list = [allowed_roles]
       check_auth(allowed_roles)
       return func(self, *args, **kwargs)
     return wrapped
@@ -95,7 +92,7 @@ def check_user_info(user, ip_string):
       enforce_ip_whitelisted(ip_string, allowed_ips(user_info))
       enforce_app_id(user_info.get('allowed_app_ids'))
       logging.info('User {} ALLOWED'.format(user_email))
-      return
+      return user_info
   logging.info('User {} NOT ALLOWED'.format(user_email))
   raise Unauthorized('Forbidden.')
 
