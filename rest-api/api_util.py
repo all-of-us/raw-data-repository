@@ -25,7 +25,7 @@ EPOCH = datetime.datetime.utcfromtimestamp(0)
 """A decorator that keeps the function from being called without auth.
    allowed_roles can be a string or list of strings specifying one or
    more roles that are allowed to call the function. """
-def auth_required(allowed_roles = None):
+def auth_required(allowed_roles=None):
   def auth_required_wrapper(func):
     def wrapped(self, *args, **kwargs):
       is_dev_appserver = app_identity.get_application_id() == "None"
@@ -34,7 +34,7 @@ def auth_required(allowed_roles = None):
       allowed_roles_list = allowed_roles
       if allowed_roles and not type(allowed_roles) is list:
         allowed_roles_list = [allowed_roles]
-      check_auth(allowed_roles)
+      check_auth(allowed_roles_list)
       return func(self, *args, **kwargs)
     return wrapped
   return auth_required_wrapper
@@ -207,7 +207,7 @@ def searchable_representation(str_):
   return str_.lower().translate(None, string.punctuation)
 
 def lookup_user_info(user):
-  user_info_dict = config.getSettingJson(config.USER_INFO, default = {})
+  user_info_dict = config.getSettingJson(config.USER_INFO, default={})
   return user_info_dict.get(user)
 
 def allowed_ips(user_info):
