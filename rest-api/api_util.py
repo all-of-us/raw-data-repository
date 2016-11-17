@@ -1,7 +1,6 @@
 """Utilities used by the API definition.
 """
 import datetime
-import json
 import logging
 import netaddr
 import string
