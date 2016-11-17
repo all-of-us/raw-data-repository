@@ -2,11 +2,29 @@
   "biobank_samples_shards": [
     "2"
   ],
-  "allowed_user": [
-    "pmi-hpo-staging@appspot.gserviceaccount.com",
-    "test-client@pmi-rdr-api-test.iam.gserviceaccount.com",
-    "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com"
-  ],
+  "user_info": {
+    "pmi-hpo-staging@appspot.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro", "admin"],
+      "ip_ranges": {
+        "ip6": ["2620:0::/32", "2600:1900::/32"],
+        "ip4": ["0.1.0.40"]
+      }
+    },
+    "test-client@pmi-rdr-api-test.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro", "admin"],
+      "ip_ranges": {
+        "ip6": ["2620:0::/32", "2600:1900::/32"],
+        "ip4": ["0.1.0.40"]
+      }
+    },
+    "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro", "admin"],
+      "ip_ranges": {
+        "ip6": ["2620:0::/32", "2600:1900::/32"],
+        "ip4": ["0.1.0.40"]
+      }
+    }
+  },
   "biobank_samples_bucket_name": [
     "staging_biobank_samples_upload_bucket"
   ],
@@ -30,8 +48,5 @@
         }
       }
     }
-  },
-  "allowed_ip": [
-    "{\"ip6\": [\"2620:0::/32\", \"2600:1900::/32\" ], \"ip4\": [\"0.1.0.40\"]}"
-  ]
+  }
 }

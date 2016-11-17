@@ -58,11 +58,31 @@ WAIST_CIRCUMFERENCE = FieldValidation(concepts.WAIST_CIRCUMFERENCE,
 
 
 
-class ParticipantAPI(base_api.BaseAuthenticatedApi):
+class ParticipantAPI(base_api.BaseApi):
+
+  READ_ROLES = ['ptc', 'healthpro']
+  WRITE_ROLES = ['ptc']
+
   def __init__(self):
     super(ParticipantAPI, self).__init__(participant.DAO)
 
-  @api_util.auth_required
+  @api_util.auth_required(READ_ROLES)
+  def get(self, id_=None, a_id=None):
+    return super(ParticipantAPI, self).get(id_, a_id)
+
+  @api_util.auth_required(WRITE_ROLES)
+  def post(self, a_id=None):
+    return super(ParticipantAPI, self).post(a_id)
+
+  @api_util.auth_required(WRITE_ROLES)
+  def put(self, id_, a_id=None):
+    return super(ParticipantAPI, self).put(id_, a_id)
+
+  @api_util.auth_required(WRITE_ROLES)
+  def patch(self, id_, a_id=None):
+    return super(ParticipantAPI, self).patch(id_, a_id)
+
+  @api_util.auth_required(READ_ROLES)
   def list(self, a_id=None):
     # In order to do a query, at least the last name and the birthdate must be
     # specified.
@@ -83,7 +103,7 @@ class EvaluationAPI(base_api.BaseAuthenticatedApi):
   def __init__(self):
     super(EvaluationAPI, self).__init__(evaluation.DAO)
 
-  @api_util.auth_required
+  @api_util.auth_required()
   def list(self, a_id):
     return evaluation.DAO.list(a_id)
 
@@ -110,7 +130,7 @@ def _check_existence(extractor, system, code, name):
 
 class ParticipantSummaryAPI(Resource):
 
-  @api_util.auth_required
+  @api_util.auth_required()
   def get(self, id_, date=None):
     # Use the current date by default for the history objects.  This is required to make
     # the age calculations for the participants work.

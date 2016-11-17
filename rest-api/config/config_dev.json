@@ -2,9 +2,15 @@
   "biobank_samples_shards": [
     "2"
   ],
-  "allowed_user": [
-    "example@example.com"
-  ],
+  "user_info": {
+    "example@example.com": {
+      "roles": ["ptc", "healthpro", "admin"],
+      "ip_ranges": {
+        "ip6": ["::1/64"],
+        "ip4": ["127.0.0.1/32"]
+      }
+    }
+  },
   "biobank_samples_bucket_name": [
     "app_default_bucket"
   ],
@@ -28,8 +34,5 @@
         }
       }
     }
-  },
-  "allowed_ip": [
-    "{\"ip6\": [\"::1/64\"], \"ip4\": [\"127.0.0.1/32\"]}"
-  ]
+  }
 }

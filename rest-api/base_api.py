@@ -68,6 +68,7 @@ class BaseApi(Resource):
     Args:
       a_id: The ancestor id.
     """
+    print "XX"
     resource = request.get_json(force=True)
     m = self.dao.from_json(resource, a_id, self.dao.allocate_id())
     self.validate_object(m, a_id)
@@ -98,6 +99,7 @@ class BaseApi(Resource):
       id_: The id of the object to replace.
       a_id: The ancestor id.
     """
+    print "YY"
     m = self.dao.from_json(request.get_json(force=True), a_id, id_)
     self.validate_object(m, a_id)
     self.dao.replace(m, date=consider_fake_date(), client_id=api_util.get_client_id())
@@ -119,23 +121,23 @@ class BaseAuthenticatedApi(BaseApi):
 
   See documentation for BaseApi.
   """
-  @api_util.auth_required
+  @api_util.auth_required()
   def get(self, id_=None, a_id=None):
     return super(BaseAuthenticatedApi, self).get(id_, a_id)
 
-  @api_util.auth_required
+  @api_util.auth_required()
   def list(self, a_id=None):
     return super(BaseAuthenticatedApi, self).list(a_id)
 
-  @api_util.auth_required
+  @api_util.auth_required()
   def post(self, a_id=None):
     return super(BaseAuthenticatedApi, self).post(a_id)
 
-  @api_util.auth_required
+  @api_util.auth_required()
   def put(self, id_, a_id=None):
     return super(BaseAuthenticatedApi, self).put(id_, a_id)
 
-  @api_util.auth_required
+  @api_util.auth_required()
   def patch(self, id_, a_id=None):
     return super(BaseAuthenticatedApi, self).patch(id_, a_id)
 

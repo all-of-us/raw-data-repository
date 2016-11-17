@@ -50,7 +50,7 @@ The server should be now be good to go!
 
 In order to modify the configuration manually:
 
-(Note: For local development we need an `allowed_user` entry with a value of
+(Note: For local development we need an `user_info` map entry with a key of
 `example@example.com`.  This is what a oauth user appears as under the
 dev_appserver.)
 
