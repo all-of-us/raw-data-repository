@@ -21,6 +21,11 @@ from werkzeug.exceptions import Unauthorized, BadRequest
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 EPOCH = datetime.datetime.utcfromtimestamp(0)
 
+# Role constants; used with allowed_roles in auth_required below.
+PTC = "ptc"
+HEALTHPRO = "healthpro"
+PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
+
 """A decorator that keeps the function from being called without auth.
    allowed_roles can be a string or list of strings specifying one or
    more roles that are allowed to call the function. """
@@ -65,6 +70,7 @@ def check_auth(allowed_roles):
     if not found_role:
       logging.info('No matching role found in {} for user {}'
                    .format(allowed_roles, user.email()))
+      raise Unauthorized('Forbidden.')
 
 def get_client_id():
   return oauth.get_current_user(SCOPE).email()

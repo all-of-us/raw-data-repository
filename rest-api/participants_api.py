@@ -17,14 +17,12 @@ import participant
 import questionnaire_response
 import field_validation
 
+from api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
 from flask import request
 from flask.ext.restful import Resource
 from field_validation import FieldValidation, has_units, lessthan, within_range
 
 from werkzeug.exceptions import BadRequest, InternalServerError
-
-
-
 
 SYSTOLIC_BP = FieldValidation(concepts.SYSTOLIC_BP,
                               'systolic blood pressure',
@@ -60,29 +58,26 @@ WAIST_CIRCUMFERENCE = FieldValidation(concepts.WAIST_CIRCUMFERENCE,
 
 class ParticipantAPI(base_api.BaseApi):
 
-  READ_ROLES = ['ptc', 'healthpro']
-  WRITE_ROLES = ['ptc']
-
   def __init__(self):
     super(ParticipantAPI, self).__init__(participant.DAO)
 
-  @api_util.auth_required(READ_ROLES)
+  @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None, a_id=None):
     return super(ParticipantAPI, self).get(id_, a_id)
 
-  @api_util.auth_required(WRITE_ROLES)
+  @api_util.auth_required(PTC)
   def post(self, a_id=None):
     return super(ParticipantAPI, self).post(a_id)
 
-  @api_util.auth_required(WRITE_ROLES)
+  @api_util.auth_required(PTC)
   def put(self, id_, a_id=None):
     return super(ParticipantAPI, self).put(id_, a_id)
 
-  @api_util.auth_required(WRITE_ROLES)
+  @api_util.auth_required(PTC)
   def patch(self, id_, a_id=None):
     return super(ParticipantAPI, self).patch(id_, a_id)
 
-  @api_util.auth_required(READ_ROLES)
+  @api_util.auth_required(PTC_AND_HEALTHPRO)
   def list(self, a_id=None):
     # In order to do a query, at least the last name and the birthdate must be
     # specified.
@@ -99,11 +94,28 @@ class ParticipantAPI(base_api.BaseApi):
     if not p.sign_up_time:
       p.sign_up_time = datetime.datetime.now()
 
-class EvaluationAPI(base_api.BaseAuthenticatedApi):
+class EvaluationAPI(base_api.BaseApi):
+
   def __init__(self):
     super(EvaluationAPI, self).__init__(evaluation.DAO)
 
-  @api_util.auth_required()
+  @api_util.auth_required(PTC_AND_HEALTHPRO)
+  def get(self, id_=None, a_id=None):
+    return super(EvaluationAPI, self).get(id_, a_id)
+
+  @api_util.auth_required(HEALTHPRO)
+  def post(self, a_id=None):
+    return super(EvaluationAPI, self).post(a_id)
+
+  @api_util.auth_required(HEALTHPRO)
+  def put(self, id_, a_id=None):
+    return super(EvaluationAPI, self).put(id_, a_id)
+
+  @api_util.auth_required(HEALTHPRO)
+  def patch(self, id_, a_id=None):
+    return super(EvaluationAPI, self).patch(id_, a_id)
+
+  @api_util.auth_required(PTC_AND_HEALTHPRO)
   def list(self, a_id):
     return evaluation.DAO.list(a_id)
 
@@ -130,7 +142,7 @@ def _check_existence(extractor, system, code, name):
 
 class ParticipantSummaryAPI(Resource):
 
-  @api_util.auth_required()
+  @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_, date=None):
     # Use the current date by default for the history objects.  This is required to make
     # the age calculations for the participants work.
