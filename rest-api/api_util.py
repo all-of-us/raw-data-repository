@@ -95,7 +95,8 @@ def check_user_info(user, ip_string):
     user_info = lookup_user_info(user_email)
     if user_info:
       enforce_ip_whitelisted(ip_string, allowed_ips(user_info))
-      enforce_app_id(user_info.get('allowed_app_ids'))
+      enforce_app_id(user_info.get('allowed_app_ids'),
+                     request.headers.get('X-Appengine-Inbound-Appid', None))
       logging.info('User {} ALLOWED'.format(user_email))
       return user_info
   logging.info('User {} NOT ALLOWED'.format(user_email))
@@ -111,10 +112,9 @@ def enforce_ip_whitelisted(ip_string, allowed_ip_config):
     raise Unauthorized('Client IP not whitelisted: {}'.format(ip))
   logging.info('IP {} ALLOWED'.format(ip))
 
-def enforce_app_id(allowed_app_ids):
+def enforce_app_id(allowed_app_ids, app_id):
   if not allowed_app_ids:
     return
-  app_id = request.headers.get('X-Appengine-Inbound-Appid', None)
   if app_id:
     if app_id in allowed_app_ids:
       logging.info('APP ID {} ALLOWED'.format(app_id))
