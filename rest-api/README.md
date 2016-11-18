@@ -31,6 +31,12 @@ From the rest-api directory, run:
 dev_appserver.py . &
 ```
 
+or to run dev_appserver for use in tests, run:
+
+```Shell
+dev_appserver.py test.yaml &
+```
+
 ### Configuring your instance
 
 When the instance comes up for the first time, it will have no configuration, and be generally useless.

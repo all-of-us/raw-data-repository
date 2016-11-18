@@ -20,7 +20,7 @@ export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 dev_appserver.py \
   --datastore_path=/tmp/rdr_test_db \
   --clear_datastore=yes \
-  . &
+  test.yaml &
 
 until $(curl -s --fail http://localhost:8000); do
     printf '.'

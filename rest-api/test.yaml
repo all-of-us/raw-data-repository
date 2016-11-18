@@ -1,0 +1,28 @@
+# The same as app.yaml, but with module: testing and version: 1,
+# to support running dev_appserver locally for tests in a way that can
+# run pipelines.
+# This file should be kept in sync with app.yaml.
+threadsafe: true
+runtime: python27
+api_version: 1
+
+includes:
+  - appengine-mapreduce/python/src/mapreduce/include.yaml
+
+module: testing
+version: 1
+
+handlers:
+- url: /_ah/pipeline.*
+  script: pipeline.handlers._APP
+  login: admin
+  secure: always
+- url: /.*
+  script: main.app
+  
+libraries:
+- name: pycrypto
+  version: 2.6
+- name: protorpc
+  version: 1.0
+  

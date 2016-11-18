@@ -57,6 +57,7 @@ class BiobankSamplesPipeline(pipeline.Pipeline):
     if not newest_filename:
       print 'No CSV files found in bucket {}; aborting pipeline.'.format(
           bucket_name)
+      return
 
     print '======= Starting Biobank Samples Pipeline with file {} in bucket {}'.format(
         newest_filename, bucket_name)
