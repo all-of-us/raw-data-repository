@@ -1,3 +1,7 @@
+# The same as app.yaml, but with module: testing and version: 1,
+# to support running dev_appserver locally for tests in a way that can
+# run pipelines.
+# This file should be kept in sync with app.yaml.
 threadsafe: true
 runtime: python27
 api_version: 1
