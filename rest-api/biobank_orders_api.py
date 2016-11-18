@@ -3,18 +3,39 @@
 This defines the APIs and the handlers for the APIs.
 """
 
+import api_util
 import base_api
 import biobank_order
 import participant
 
+from api_util import HEALTHPRO, PTC_AND_HEALTHPRO
 from werkzeug.exceptions import BadRequest
 
-class BiobankOrderAPI(base_api.BaseAuthenticatedApi):
+class BiobankOrderAPI(base_api.BaseApi):
   valid_tests = frozenset(['1ED10', '2ED10', '1ED04', '1SST8', '1PST8', '1HEP4',
                            '1UR10', '1SAL'])
-
   def __init__(self):
     super(BiobankOrderAPI, self).__init__(biobank_order.DAO)
+
+  @api_util.auth_required(PTC_AND_HEALTHPRO)
+  def get(self, id_=None, a_id=None):
+    return super(BiobankOrderAPI, self).get(id_, a_id)
+
+  @api_util.auth_required(HEALTHPRO)
+  def post(self, a_id=None):
+    return super(BiobankOrderAPI, self).post(a_id)
+
+  @api_util.auth_required(HEALTHPRO)
+  def put(self, id_, a_id=None):
+    return super(BiobankOrderAPI, self).put(id_, a_id)
+
+  @api_util.auth_required(HEALTHPRO)
+  def patch(self, id_, a_id=None):
+    return super(BiobankOrderAPI, self).patch(id_, a_id)
+
+  @api_util.auth_required(PTC_AND_HEALTHPRO)
+  def list(self, a_id=None):
+    return super(BiobankOrderAPI, self).list(a_id)
 
   def validate_object(self, order, a_id=None):
     if not order.subject:

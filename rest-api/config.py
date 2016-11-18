@@ -15,15 +15,14 @@ from werkzeug.exceptions import NotFound
 CONFIG_SINGLETON_KEY = 'current_config'
 CONFIG_CACHE_TTL_SECONDS = 60
 
-ALLOWED_USER = 'allowed_user'
-ALLOWED_IP = 'allowed_ip'
 ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
 EXTRA_METRICS = 'extra_metrics'
 METRICS_SHARDS = 'metrics_shards'
 BIOBANK_SAMPLES_SHARDS = 'biobank_samples_shards'
 BIOBANK_SAMPLES_BUCKET_NAME = 'biobank_samples_bucket_name'
+USER_INFO = 'user_info'
 
-REQUIRED_CONFIG_KEYS = [ALLOWED_USER, ALLOWED_IP, BIOBANK_SAMPLES_BUCKET_NAME]
+REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 
 def _get_config(key):
   """This function is called by the `TTLCache` to grab an updated config.

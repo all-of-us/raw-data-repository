@@ -8,6 +8,7 @@ import metrics
 import json
 import offline.metrics_pipeline
 
+from api_util import HEALTHPRO
 from protorpc import protojson
 from flask import request
 from flask.ext.restful import Resource
@@ -24,7 +25,7 @@ class MetricsApi(Resource):
       offline.metrics_pipeline.MetricsPipeline().start()
 
 
-  @api_util.auth_required
+  @api_util.auth_required(HEALTHPRO)
   def post(self):
     resource = request.get_data()
     metrics_request = protojson.decode_message(metrics.MetricsRequest, resource)

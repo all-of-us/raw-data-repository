@@ -119,23 +119,23 @@ class BaseAuthenticatedApi(BaseApi):
 
   See documentation for BaseApi.
   """
-  @api_util.auth_required
+  @api_util.auth_required()
   def get(self, id_=None, a_id=None):
     return super(BaseAuthenticatedApi, self).get(id_, a_id)
 
-  @api_util.auth_required
+  @api_util.auth_required()
   def list(self, a_id=None):
     return super(BaseAuthenticatedApi, self).list(a_id)
 
-  @api_util.auth_required
+  @api_util.auth_required()
   def post(self, a_id=None):
     return super(BaseAuthenticatedApi, self).post(a_id)
 
-  @api_util.auth_required
+  @api_util.auth_required()
   def put(self, id_, a_id=None):
     return super(BaseAuthenticatedApi, self).put(id_, a_id)
 
-  @api_util.auth_required
+  @api_util.auth_required()
   def patch(self, id_, a_id=None):
     return super(BaseAuthenticatedApi, self).patch(id_, a_id)
 
