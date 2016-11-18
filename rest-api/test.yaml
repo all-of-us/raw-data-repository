@@ -1,0 +1,24 @@
+threadsafe: true
+runtime: python27
+api_version: 1
+
+includes:
+  - appengine-mapreduce/python/src/mapreduce/include.yaml
+
+module: testing
+version: 1
+
+handlers:
+- url: /_ah/pipeline.*
+  script: pipeline.handlers._APP
+  login: admin
+  secure: always
+- url: /.*
+  script: main.app
+  
+libraries:
+- name: pycrypto
+  version: 2.6
+- name: protorpc
+  version: 1.0
+  

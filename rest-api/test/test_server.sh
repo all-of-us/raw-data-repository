@@ -66,6 +66,7 @@ participant.py
 evaluation.py
 metrics.py
 biobank_order.py
+biobank_samples.py
 config_test.py"
 
 for test in ${TEST_FILES}
