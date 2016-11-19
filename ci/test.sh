@@ -27,6 +27,11 @@ until $(curl -s --fail http://localhost:8000); do
     sleep .25
 done
 
+# Make sure JSON files are well-formed
+for json_file in ./config/*.json; do
+    cat $json_file | json_pp;
+done
+
 ./tools/install_config.sh --config=config/config_dev.json --update
 
 cd ../rest-api-client
