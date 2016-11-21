@@ -7,10 +7,6 @@ from mock import MagicMock, patch
 from test.unit_test.unit_test_util import NdbTestBase
 from werkzeug.exceptions import Unauthorized
 
-@api_util.auth_required()
-def no_roles(x):
-  return x + 1
-
 @api_util.auth_required('foo')
 def foo_role(x):
   return x + 1
@@ -59,44 +55,11 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_get_application_id.return_value = 'app_id'
     mock_request.return_value.scheme = 'http'
     try:
-      no_roles(1)
+      foo_role(1)
       self.fail("Should have been forbidden")
     except Unauthorized:
       pass
 
-  @patch('api_util.request')
-  @patch('api_util.app_identity.get_application_id')
-  @patch('api_util.get_client_id')
-  @patch('api_util.lookup_user_info')
-  def test_auth_required_https_identity_set_no_roles(self, mock_lookup_user_info,
-                                                     mock_get_client_id,
-                                                     mock_get_application_id, mock_request):
-    mock_get_application_id.return_value = 'app_id'
-    mock_request.scheme = 'https'
-    mock_request.remote_addr = 'ip'
-    mock_request.headers = {}
-    mock_get_client_id.return_value = 'bob@example.com'
-    mock_lookup_user_info.return_value = {'place':'holder'}
-    self.assertEquals(2,  no_roles(1))
-    mock_get_client_id.assert_called_with()
-    mock_lookup_user_info.assert_called_with(mock_get_client_id())
-
-  @patch('api_util.request')
-  @patch('api_util.app_identity.get_application_id')
-  @patch('api_util.get_client_id')
-  @patch('api_util.lookup_user_info')
-  def test_auth_required_http_no_identity_set_no_roles(self, mock_lookup_user_info,
-                                                       mock_get_client_id,
-                                                       mock_get_application_id, mock_request):
-    mock_get_application_id.return_value = 'None'
-    mock_request.scheme = 'http'
-    mock_request.remote_addr = 'ip'
-    mock_request.headers = {}
-    mock_get_client_id.return_value = 'bob@example.com'
-    mock_lookup_user_info.return_value = {'place':'holder'}
-    self.assertEquals(2,  no_roles(1))
-    mock_get_client_id.assert_called_with()
-    mock_lookup_user_info.assert_called_with(mock_get_client_id())
 
   @patch('api_util.request', spec=api_util.request)
   @patch('api_util.app_identity.get_application_id')
@@ -120,7 +83,6 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_lookup_user_info.assert_called_with(mock_get_client_id())
 
 
-  # TODO why is this function defined twice? Rename this one.
   @patch('api_util.request')
   @patch('api_util.app_identity.get_application_id')
   @patch('api_util.get_client_id')
@@ -236,3 +198,10 @@ class ApiUtilNdbTest(NdbTestBase):
 
     mock_lookup_user_info.return_value = { 'roles': ['bar'], }
     self.assertEquals(2, foo_bar_role(1))
+
+  def test_no_roles_supplied_to_decorator(self):
+    try:
+      @api_util.auth_required('foo')
+      def placeholder(): pass
+      self.fail("Shouldn't be able to authorize without supplying roles")
+    except AssertionError: pass

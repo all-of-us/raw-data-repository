@@ -16,7 +16,6 @@ from protorpc import message_types
 from protorpc import messages
 from dateutil.parser import parse
 from google.appengine.api import oauth
-from types import NoneType
 from werkzeug.exceptions import Unauthorized, BadRequest
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
@@ -26,8 +25,9 @@ EPOCH = datetime.datetime.utcfromtimestamp(0)
 PTC = "ptc"
 HEALTHPRO = "healthpro"
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
+ALL_ROLES = [PTC, HEALTHPRO]
 
-def auth_required(role_whitelist=None):
+def auth_required(role_whitelist):
   """A decorator that keeps the function from being called without auth.
   role_whitelist can be a string or list of strings specifying one or
   more roles that are allowed to call the function. """
@@ -37,9 +37,9 @@ def auth_required(role_whitelist=None):
   # an empty whitelist. The idea is to ensure that deleting elements from a whitelist
   # produces monotonically stricter access control, and won't "suddenly" open up
   # access when a developer deletes one (final) element from the list.
-  assert(role_whitelist != [], "Can't call `auth_required` with empty role_whitelist. Use `None`.")
+  assert(role_whitelist, "Can't call `auth_required` with empty role_whitelist. Use `None`.")
 
-  if type(role_whitelist) not in [NoneType, list]:
+  if type(role_whitelist) != list:
     role_whitelist = [role_whitelist]
 
   def auth_required_wrapper(func):
@@ -62,9 +62,7 @@ def auth_required_cron_or_admin(func):
 def check_auth(role_whitelist):
   user_email, user_info = get_validated_user_info()
 
-  if role_whitelist == None:
-    return
-  elif set(user_info.get('roles', [])) & set(role_whitelist):
+  if set(user_info.get('roles', [])) & set(role_whitelist):
     return
 
   logging.info('User {} has roles {}, but {} is required'.format(
