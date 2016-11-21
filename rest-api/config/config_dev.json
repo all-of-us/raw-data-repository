@@ -5,7 +5,7 @@
   "user_info": {
     "example@example.com": {
       "roles": ["ptc", "healthpro", "admin"],
-      "ip_ranges": {
+      "whitelisted_ip_ranges": {
         "ip6": ["::1/64"],
         "ip4": ["127.0.0.1/32"]
       }

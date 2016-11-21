@@ -21,24 +21,28 @@ from werkzeug.exceptions import Unauthorized, BadRequest
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 EPOCH = datetime.datetime.utcfromtimestamp(0)
 
-# Role constants; used with allowed_roles in auth_required below.
+# Role constants; used with role_whitelist in auth_required below.
 PTC = "ptc"
 HEALTHPRO = "healthpro"
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
+ALL_ROLES = [PTC, HEALTHPRO]
 
-"""A decorator that keeps the function from being called without auth.
-   allowed_roles can be a string or list of strings specifying one or
-   more roles that are allowed to call the function. """
-def auth_required(allowed_roles=None):
+def auth_required(role_whitelist):
+  """A decorator that keeps the function from being called without auth.
+  role_whitelist can be a string or list of strings specifying one or
+  more roles that are allowed to call the function. """
+
+  assert(role_whitelist, "Can't call `auth_required` with empty role_whitelist.")
+
+  if type(role_whitelist) != list:
+    role_whitelist = [role_whitelist]
+
   def auth_required_wrapper(func):
     def wrapped(self, *args, **kwargs):
       is_dev_appserver = app_identity.get_application_id() == "None"
       if request.scheme.lower() != 'https' and not is_dev_appserver:
         raise Unauthorized('HTTPS is required')
-      allowed_roles_list = allowed_roles
-      if allowed_roles and not type(allowed_roles) is list:
-        allowed_roles_list = [allowed_roles]
-      check_auth(allowed_roles_list)
+      check_auth(role_whitelist)
       return func(self, *args, **kwargs)
     return wrapped
   return auth_required_wrapper
@@ -50,27 +54,17 @@ def auth_required_cron_or_admin(func):
     return func(self, *args, **kwargs)
   return wrapped
 
-def check_auth(allowed_roles):
-  user = None
-  try:
-    user = oauth.get_current_user(SCOPE)
-  except oauth.Error as e:
-    logging.error('OAuth failure: {}'.format(e))
-  ip = request.remote_addr
-  user_info = check_user_info(user, ip)
-  if allowed_roles:
-    if not user_info.get('roles'):
-      logging.info('No roles found for user {}'.format(user.email()))
-      raise Unauthorized('Forbidden.')
-    found_role = False
-    for role in user_info['roles']:
-      if role in allowed_roles:
-        found_role = True
-        break
-    if not found_role:
-      logging.info('No matching role found in {} for user {}'
-                   .format(allowed_roles, user.email()))
-      raise Unauthorized('Forbidden.')
+def check_auth(role_whitelist):
+  user_email, user_info = get_validated_user_info()
+
+  if set(user_info.get('roles', [])) & set(role_whitelist):
+    return
+
+  logging.info('User {} has roles {}, but {} is required'.format(
+     user_email,
+     user_info.get('roles'),
+     role_whitelist))
+  raise Unauthorized('Forbidden.')
 
 def get_client_id():
   return oauth.get_current_user(SCOPE).email()
@@ -85,45 +79,68 @@ def check_auth_cron_or_admin():
   """
   return users.is_current_user_admin()
 
-def check_user_info(user, ip_string):
-  user_email = 'None'
-  # We haven't found a way to tell if a dev_appserver request is
-  # unauthenticated, so, when the client tests are checking to ensure that an
-  # unauthenticated requests gets rejected it helpfully adds this header.
-  if user and not request.headers.get('unauthenticated', None):
-    user_email = user.email()
+def lookup_user_info(user_email):
+  return config.getSettingJson(config.USER_INFO, {}).get(user_email)
+
+def get_validated_user_info():
+  try:
+    user_email = get_client_id()
+  except oauth.Error as e:
+    user_email = None
+    logging.error('OAuth failure: {}'.format(e))
+
+  # Allow clients to simulate an unauthentiated request (for testing)
+  # becaues we haven't found another way to create an unauthenticated request
+  # when using dev_appserver. When client tests are checking to ensure that an
+  # unauthenticated requests gets rejected, they helpfully add this header.
+  # The `application_id` check ensures this feature only works in dev_appserver.
+  if request.headers.get('unauthenticated') and app_identity.get_application_id() == "None":
+    user_email = None
+
+  if user_email:
     user_info = lookup_user_info(user_email)
     if user_info:
-      enforce_ip_whitelisted(ip_string, allowed_ips(user_info))
-      enforce_app_id(user_info.get('allowed_app_ids'),
-                     request.headers.get('X-Appengine-Inbound-Appid', None))
+      enforce_ip_whitelisted(request.remote_addr, whitelisted_ips(user_info))
+      enforce_appid_whitelisted(request.headers.get('X-Appengine-Inbound-Appid'),
+                              whitelisted_appids(user_info))
       logging.info('User {} ALLOWED'.format(user_email))
-      return user_info
+      return (user_email, user_info)
+
   logging.info('User {} NOT ALLOWED'.format(user_email))
   raise Unauthorized('Forbidden.')
 
-def enforce_ip_whitelisted(ip_string, allowed_ip_config):
-  if not allowed_ip_config:
+def whitelisted_ips(user_info):
+  if not user_info.get('whitelisted_ip_ranges'):
+    return None
+  return [netaddr.IPNetwork(rng)
+          for rng in user_info['whitelisted_ip_ranges']['ip6'] + \
+                     user_info['whitelisted_ip_ranges']['ip4']]
+
+def enforce_ip_whitelisted(request_ip, whitelisted_ips):
+  if whitelisted_ips == None: # No whitelist means "don't apply restrictions"
     return
-  logging.info('IP RANGES ALLOWED: {}'.format(allowed_ip_config))
-  ip = netaddr.IPAddress(ip_string)
-  if not bool([True for rng in allowed_ip_config if ip in rng]):
+  logging.info('IP RANGES ALLOWED: {}'.format(whitelisted_ips))
+  ip = netaddr.IPAddress(request_ip)
+  if not bool([True for rng in whitelisted_ips if ip in rng]):
     logging.info('IP {} NOT ALLOWED'.format(ip))
     raise Unauthorized('Client IP not whitelisted: {}'.format(ip))
   logging.info('IP {} ALLOWED'.format(ip))
 
-def enforce_app_id(allowed_app_ids, app_id):
-  if not allowed_app_ids:
+def whitelisted_appids(user_info):
+  return user_info.get('whitelisted_appids')
+
+def enforce_appid_whitelisted(request_app_id, whitelisted_appids):
+  if not whitelisted_appids:  # No whitelist means "don't apply restrictions"
     return
-  if app_id:
-    if app_id in allowed_app_ids:
-      logging.info('APP ID {} ALLOWED'.format(app_id))
+  if request_app_id:
+    if request_app_id in whitelisted_appids:
+      logging.info('APP ID {} ALLOWED'.format(request_app_id))
       return
     else:
-      logging.info('APP ID {} NOT FOUND IN {}'.format(app_id, allowed_app_ids))
+      logging.info('APP ID {} NOT FOUND IN {}'.format(request_app_id, whitelisted_appids))
   else:
-    logging.info('NO APP ID FOUND WHEN REQUIRED TO BE ONE OF: {}' + allowed_app_ids)
-  raise Unauthorized("User is not in roles: {}".format(allowed_app_ids))
+    logging.info('NO APP ID FOUND WHEN REQUIRED TO BE ONE OF: {}', whitelisted_appids)
+  raise Unauthorized('Forbidden.')
 
 def update_model(old_model, new_model):
   """Updates a model.
@@ -211,12 +228,3 @@ def searchable_representation(str_):
   str_ = str(str_)
   return str_.lower().translate(None, string.punctuation)
 
-def lookup_user_info(user):
-  user_info_dict = config.getSettingJson(config.USER_INFO, default={})
-  return user_info_dict.get(user)
-
-def allowed_ips(user_info):
-  if not user_info.get('ip_ranges'):
-    return None
-  return [netaddr.IPNetwork(rng)
-          for rng in user_info['ip_ranges']['ip6'] + user_info['ip_ranges']['ip4']]
