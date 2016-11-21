@@ -32,12 +32,7 @@ def auth_required(role_whitelist):
   role_whitelist can be a string or list of strings specifying one or
   more roles that are allowed to call the function. """
 
-  # For "any role is allowed" semantics, the caller should omit `role_whitelist`
-  # or supply a value of `None`. This assertion prevents the caller from supplying
-  # an empty whitelist. The idea is to ensure that deleting elements from a whitelist
-  # produces monotonically stricter access control, and won't "suddenly" open up
-  # access when a developer deletes one (final) element from the list.
-  assert(role_whitelist, "Can't call `auth_required` with empty role_whitelist. Use `None`.")
+  assert(role_whitelist, "Can't call `auth_required` with empty role_whitelist.")
 
   if type(role_whitelist) != list:
     role_whitelist = [role_whitelist]
