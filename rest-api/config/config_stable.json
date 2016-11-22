@@ -5,17 +5,10 @@
   "user_info": {
     "pmi-hpo-staging@appspot.gserviceaccount.com": {
       "roles": ["healthpro"],
-      "whitelisted_ip_ranges": {
-        "ip6": [],
-        "ip4": ["0.1.0.40"]
-      }
+      "whitelisted_appids": ["pmi-hpo-staging"]
     },
     "test-client@pmi-rdr-api-test.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"],
-      "whitelisted_ip_ranges": {
-        "ip6": ["::0/0"],
-        "ip4": ["0.0.0.0/0"]
-      }
+      "roles": ["ptc", "healthpro"]
     }
   },
   "biobank_samples_bucket_name": [
