@@ -44,7 +44,7 @@ When the instance comes up for the first time, it will have no configuration, an
 The best way to get set up for development is to install the dev config:
 
 ```Shell
-tools/install_config.sh --config config/config_dev.json --update True
+tools/install_config.sh --config config/config_dev.json --update
 ```
 The server should be now be good to go!
 

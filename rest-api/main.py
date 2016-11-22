@@ -5,12 +5,14 @@ This defines the APIs and the handlers for the APIs.
 import config_api
 import biobank_orders_api
 import biobank_samples_api
+import logging
 import metrics_api
 import participants_api
 import ppi_api
 
 from flask import Flask
 from flask_restful import Api
+from flask import request
 
 
 app = Flask(__name__)
@@ -78,6 +80,8 @@ api.add_resource(config_api.ConfigApi,
                  methods=['GET', 'PUT'])
 
 
+# All responses are json, so we tag them as such at the app level to
+# provide uniform protection against content-sniffing-based attacks.
 def add_headers(response):
   response.headers['Content-Disposition'] = 'attachment'
   response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -85,3 +89,9 @@ def add_headers(response):
   return response
 
 app.after_request(add_headers)
+
+# Some uniform logging of request characteristics before any checks are applied.
+def request_logging():
+  logging.info('Request protocol: HTTPS={}'.format(request.environ['HTTPS']))
+
+app.before_request(request_logging)

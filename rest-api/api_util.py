@@ -32,7 +32,7 @@ def auth_required(role_whitelist):
   role_whitelist can be a string or list of strings specifying one or
   more roles that are allowed to call the function. """
 
-  assert(role_whitelist, "Can't call `auth_required` with empty role_whitelist.")
+  assert role_whitelist, "Can't call `auth_required` with empty role_whitelist."
 
   if type(role_whitelist) != list:
     role_whitelist = [role_whitelist]
@@ -227,4 +227,3 @@ def searchable_representation(str_):
 
   str_ = str(str_)
   return str_.lower().translate(None, string.punctuation)
-
