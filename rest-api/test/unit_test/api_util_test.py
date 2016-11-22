@@ -166,18 +166,38 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_get_client_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {
             'roles': ['bar'],
-            'whitelisted_ip_ranges': {'ip4': [], 'ip6': []}}
+            'whitelisted_ip_ranges': {'ip4': ['10.0.0.2/32'], 'ip6': []}}
+
     with self.assertRaises(Unauthorized):
       foo_bar_role(1)
+
+    mock_request.remote_addr = '10.0.0.2'
+    self.assertEquals(2, foo_bar_role(1))
+
+  @patch('api_util.request')
+  @patch('api_util.app_identity.get_application_id')
+  @patch('api_util.get_client_id')
+  @patch('api_util.lookup_user_info')
+  def test_auth_required_appid(self, mock_lookup_user_info,
+                                                       mock_get_client_id,
+                                                       mock_get_application_id, mock_request):
+    mock_get_application_id.return_value = 'appid'
+    mock_request.scheme = 'https'
+    mock_request.remote_addr = '10.0.0.1'
+    mock_request.headers = {}
+    mock_get_client_id.return_value = 'bob@example.com'
 
     mock_lookup_user_info.return_value = {
             'roles': ['bar'],
-            'whitelisted_appids': ['notyourid'],
+            'whitelisted_appids': ['must-be-this-id'],
             }
+
     with self.assertRaises(Unauthorized):
       foo_bar_role(1)
 
-    mock_lookup_user_info.return_value = { 'roles': ['bar'], }
+    mock_request.headers = {
+        'X-Appengine-Inbound-Appid': 'must-be-this-id'
+    }
     self.assertEquals(2, foo_bar_role(1))
 
   def test_no_roles_supplied_to_decorator(self):
