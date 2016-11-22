@@ -4,29 +4,15 @@
   ],
   "user_info": {
     "pmi-hpo-staging@appspot.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro", "admin"],
-      "whitelisted_ip_ranges": {
-        "ip6": [],
-        "ip4": ["0.1.0.40"]
-      }
+      "roles": ["healthpro"],
+      "whitelisted_appids": ["pmi-hpo-staging"]
     },
     "test-client@pmi-rdr-api-test.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro", "admin"],
-      "whitelisted_ip_ranges": {
-        "ip6": ["::0/0"],
-        "ip4": ["0.0.0.0/0"]
-      }
-    },
-    "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro", "admin"],
-      "whitelisted_ip_ranges": {
-        "ip6": ["::0/0"],
-        "ip4": ["0.0.0.0/0"]
-      }
+      "roles": ["ptc", "healthpro"]
     }
   },
   "biobank_samples_bucket_name": [
-    "staging_biobank_samples_upload_bucket"
+    "stable_biobank_samples_upload_bucket"
   ],
   "metrics_shards": [
     "2"
