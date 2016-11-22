@@ -54,11 +54,8 @@ class ApiUtilNdbTest(NdbTestBase):
   def test_auth_required_http_identity_set(self, mock_get_application_id, mock_request):
     mock_get_application_id.return_value = 'app_id'
     mock_request.return_value.scheme = 'http'
-    try:
+    with self.assertRaises(Unauthorized):
       foo_role(1)
-      self.fail("Should have been forbidden")
-    except Unauthorized:
-      pass
 
 
   @patch('api_util.request', spec=api_util.request)
@@ -74,11 +71,8 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_request.headers = {}
     mock_get_client_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'place':'holder'}
-    try:
+    with self.assertRaises(Unauthorized):
       foo_role(1)
-      self.fail("Should have been forbidden")
-    except Unauthorized:
-      pass
     mock_get_client_id.assert_called_with()
     mock_lookup_user_info.assert_called_with(mock_get_client_id())
 
@@ -96,11 +90,8 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_request.headers = {}
     mock_get_client_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'roles': ['bar']}
-    try:
+    with self.assertRaises(Unauthorized):
       foo_role(1)
-      self.fail("Should have been forbidden")
-    except Unauthorized:
-      pass
     mock_get_client_id.assert_called_with()
 
   @patch('api_util.request')
@@ -117,14 +108,11 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_get_client_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'place':'holder'}
 
-    try:
+    with self.assertRaises(Unauthorized):
       foo_bar_role(1)
-      self.fail("Should have been forbidden")
-    except Unauthorized:
-      pass
 
     mock_lookup_user_info.return_value = {'roles': ['foo']}
-    foo_bar_role(1)
+    self.assertEquals(2, foo_bar_role(1))
 
 
   @patch('api_util.request')
@@ -142,11 +130,8 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_lookup_user_info.return_value = {'roles': ['baz']}
 
     mock_request.headers = {}
-    try:
+    with self.assertRaises(Unauthorized):
       foo_bar_role(1)
-      self.fail("Should have been forbidden")
-    except Unauthorized:
-      pass
     mock_get_client_id.assert_called_with()
     mock_lookup_user_info.assert_called_with(mock_get_client_id())
 
@@ -182,26 +167,23 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_lookup_user_info.return_value = {
             'roles': ['bar'],
             'whitelisted_ip_ranges': {'ip4': [], 'ip6': []}}
-    try:
+    with self.assertRaises(Unauthorized):
       foo_bar_role(1)
-      self.fail("Should have been forbidden")
-    except Unauthorized: pass
 
     mock_lookup_user_info.return_value = {
             'roles': ['bar'],
             'whitelisted_appids': ['notyourid'],
             }
-    try:
+    with self.assertRaises(Unauthorized):
       foo_bar_role(1)
-      self.fail("Should have been forbidden")
-    except Unauthorized: pass
 
     mock_lookup_user_info.return_value = { 'roles': ['bar'], }
     self.assertEquals(2, foo_bar_role(1))
 
   def test_no_roles_supplied_to_decorator(self):
-    try:
-      @api_util.auth_required('foo')
+    with self.assertRaises(TypeError):
+      @api_util.auth_required()
       def placeholder(): pass
-      self.fail("Shouldn't be able to authorize without supplying roles")
-    except AssertionError: pass
+    with self.assertRaises(AssertionError):
+      @api_util.auth_required(None)
+      def placeholder(): pass
