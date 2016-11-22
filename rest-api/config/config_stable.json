@@ -16,7 +16,7 @@
         "ip6": ["::0/0"],
         "ip4": ["0.0.0.0/0"]
       }
-    },
+    }
   },
   "biobank_samples_bucket_name": [
     "stable_biobank_samples_upload_bucket"
