@@ -1,22 +1,9 @@
 """Tests for participant."""
 
-import datetime
-import json
-import unittest
-import os
-
-import biobank_order
-
-import evaluation
-import participant
-import questionnaire
-import questionnaire_response
-
 from base_api import BaseApi
 from mock import MagicMock, patch
 
-from google.appengine.ext import ndb
-from test.unit_test.unit_test_util import NdbTestBase, TestBase, to_dict_strip_last_modified
+from test.unit_test.unit_test_util import TestBase
 
 class BaseApiTest(TestBase):
   """Base API test"""
