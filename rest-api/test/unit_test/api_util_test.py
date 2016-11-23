@@ -7,6 +7,7 @@ from mock import MagicMock, patch
 from test.unit_test.unit_test_util import NdbTestBase
 from werkzeug.exceptions import Unauthorized
 
+
 @api_util.auth_required('foo')
 def foo_role(x):
   return x + 1
@@ -14,6 +15,11 @@ def foo_role(x):
 @api_util.auth_required(['foo', 'bar'])
 def foo_bar_role(x):
   return x + 1
+
+@api_util.auth_required_cron_or_admin
+def admin_required(x):
+  return x + 1
+
 
 class ApiUtilNdbTest(NdbTestBase):
 
@@ -157,8 +163,8 @@ class ApiUtilNdbTest(NdbTestBase):
   @patch('api_util.get_client_id')
   @patch('api_util.lookup_user_info')
   def test_auth_required_ip_ranges(self, mock_lookup_user_info,
-                                                       mock_get_client_id,
-                                                       mock_get_application_id, mock_request):
+                                   mock_get_client_id,
+                                   mock_get_application_id, mock_request):
     mock_get_application_id.return_value = 'appid'
     mock_request.scheme = 'https'
     mock_request.remote_addr = '10.0.0.1'
@@ -179,8 +185,8 @@ class ApiUtilNdbTest(NdbTestBase):
   @patch('api_util.get_client_id')
   @patch('api_util.lookup_user_info')
   def test_auth_required_appid(self, mock_lookup_user_info,
-                                                       mock_get_client_id,
-                                                       mock_get_application_id, mock_request):
+                               mock_get_client_id,
+                               mock_get_application_id, mock_request):
     mock_get_application_id.return_value = 'appid'
     mock_request.scheme = 'https'
     mock_request.remote_addr = '10.0.0.1'
@@ -207,3 +213,12 @@ class ApiUtilNdbTest(NdbTestBase):
     with self.assertRaises(AssertionError):
       @api_util.auth_required(None)
       def placeholder(): pass
+
+  @patch('api_util.users.is_current_user_admin')
+  def test_check_auth_required_cron_or_admin(self, mock_is_current_user_admin):
+    mock_is_current_user_admin.return_value = True
+    self.assertEquals(2, admin_required(1))
+
+    mock_is_current_user_admin.return_value = False
+    with self.assertRaises(Unauthorized):
+      admin_required(1)

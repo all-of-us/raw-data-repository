@@ -16,13 +16,16 @@ class TestConfig(unittest.TestCase):
 
   def test_replace_history(self):
     random_strs_1 = [''.join(random.choice(string.uppercase) for _ in range(10)) for _ in range(3)]
-    old_config = self.client.request_json('Config', 'GET', test_unauthenticated=False)
+    old_config = self.client.request_json('Config', 'GET',
+                                          dev_appserver_admin=True)
     new_config_1 = copy.deepcopy(old_config)
     new_config_1['some_config'] = sorted(random_strs_1)
 
-    self.client.request_json('Config', 'PUT', new_config_1, test_unauthenticated=False)
+    self.client.request_json('Config', 'PUT', new_config_1,
+                             dev_appserver_admin=True)
 
-    response = self.client.request_json('Config', 'GET', test_unauthenticated=False)
+    response = self.client.request_json('Config', 'GET',
+                             dev_appserver_admin=True)
     response['some_config'] = sorted(response['some_config'])
     self.assertEquals(new_config_1, response)
 
@@ -31,16 +34,19 @@ class TestConfig(unittest.TestCase):
     random_strs_2 = [''.join(random.choice(string.uppercase) for _ in range(10)) for _ in range(3)]
     new_config_2 = copy.deepcopy(old_config)
     new_config_2['some_config'] = sorted(random_strs_2)
-    self.client.request_json('Config', 'PUT', new_config_2, test_unauthenticated=False)
+    self.client.request_json('Config', 'PUT', new_config_2,
+                             dev_appserver_admin=True)
 
-    response = self.client.request_json('Config', 'GET', test_unauthenticated=False)
+    response = self.client.request_json('Config', 'GET',
+                             dev_appserver_admin=True)
     response['some_config'] = sorted(response['some_config'])
     self.assertEquals(new_config_2, response)
 
     for _ in range(40):
       # Make sure we get the the first config when we query by time.
       response = self.client.request_json(
-          'Config/{}'.format(then.isoformat()), 'GET', test_unauthenticated=False)
+          'Config/{}'.format(then.isoformat()), 'GET',
+                             dev_appserver_admin=True)
       response['some_config'] = sorted(response['some_config'])
       if new_config_1 == response:
         break

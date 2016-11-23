@@ -9,7 +9,9 @@ from flask.ext.restful import Resource
 class BaseApi(Resource):
   """Base class for API handlers.
 
-  Do not extend this directly, instead extend BaseAuthenticatedApi or BaseAdminApi.
+  Prefer to extend BaseAuthenticatedApi or BaseAdminApi. If extending
+  BaseApi directly, use the method_decorators class property (as those
+  subclasses do) for uniform authentication.
 
   Provides a generic implementation for an API handler which is backed by a
   DataAccessObject.
@@ -23,6 +25,7 @@ class BaseApi(Resource):
   meta.versionId will be used to populate an ETag header on resource responses;
   an If-Match header must be sent on patch requests that matches the current ETag
   value
+
   """
   def __init__(self, dao, include_meta=True):
     self.dao = dao
@@ -119,50 +122,15 @@ class BaseAuthenticatedApi(BaseApi):
 
   See documentation for BaseApi.
   """
-  @api_util.auth_required(api_util.ALL_ROLES)
-  def get(self, id_=None, a_id=None):
-    return super(BaseAuthenticatedApi, self).get(id_, a_id)
+  method_decorators = [api_util.auth_required(api_util.ALL_ROLES)]
 
-  @api_util.auth_required(api_util.ALL_ROLES)
-  def list(self, a_id=None):
-    return super(BaseAuthenticatedApi, self).list(a_id)
-
-  @api_util.auth_required(api_util.ALL_ROLES)
-  def post(self, a_id=None):
-    return super(BaseAuthenticatedApi, self).post(a_id)
-
-  @api_util.auth_required(api_util.ALL_ROLES)
-  def put(self, id_, a_id=None):
-    return super(BaseAuthenticatedApi, self).put(id_, a_id)
-
-  @api_util.auth_required(api_util.ALL_ROLES)
-  def patch(self, id_, a_id=None):
-    return super(BaseAuthenticatedApi, self).patch(id_, a_id)
 
 class BaseAdminApi(BaseApi):
   """Base class for API handlers requiring admin/cron authentication.
 
   See documentation for BaseApi.
   """
-  @api_util.auth_required_cron_or_admin
-  def get(self, id_=None, a_id=None):
-    return super(BaseAdminApi, self).get(id_, a_id)
-
-  @api_util.auth_required_cron_or_admin
-  def list(self, a_id=None):
-    return super(BaseAdminApi, self).list(a_id)
-
-  @api_util.auth_required_cron_or_admin
-  def post(self, a_id=None):
-    return super(BaseAdminApi, self).post(a_id)
-
-  @api_util.auth_required_cron_or_admin
-  def put(self, id_, a_id=None):
-    return super(BaseAdminApi, self).put(id_, a_id)
-
-  @api_util.auth_required_cron_or_admin
-  def patch(self, id_, a_id=None):
-    return super(BaseAdminApi, self).patch(id_, a_id)
+  method_decorators = [api_util.auth_required_cron_or_admin]
 
 
 def consider_fake_date():

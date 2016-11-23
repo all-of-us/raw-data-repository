@@ -38,23 +38,24 @@ def auth_required(role_whitelist):
     role_whitelist = [role_whitelist]
 
   def auth_required_wrapper(func):
-    def wrapped(self, *args, **kwargs):
+    def wrapped(*args, **kwargs):
       is_dev_appserver = app_identity.get_application_id() == "None"
       if request.scheme.lower() != 'https' and not is_dev_appserver:
         raise Unauthorized('HTTPS is required')
       check_auth(role_whitelist)
-      return func(self, *args, **kwargs)
+      return func(*args, **kwargs)
     return wrapped
   return auth_required_wrapper
 
 def auth_required_cron_or_admin(func):
   """A decorator that ensures that the user is an admin or cron job."""
-  def wrapped(self, *args, **kwargs):
+  def wrapped(*args, **kwargs):
     check_auth_cron_or_admin()
-    return func(self, *args, **kwargs)
+    return func(*args, **kwargs)
   return wrapped
 
 def check_auth(role_whitelist):
+  """Raises Unauthorized if the current user is not authorized."""
   user_email, user_info = get_validated_user_info()
 
   if set(user_info.get('roles', [])) & set(role_whitelist):
@@ -70,14 +71,19 @@ def get_client_id():
   return oauth.get_current_user(SCOPE).email()
 
 def check_auth_cron_or_admin():
-  """Returns true if the current user is a cron job or an admin.
+  """Raises Unauthorized if the current user is not a cron job or an admin.
 
   Only members of the cloud project can be admin users:
   https://cloud.google.com/appengine/docs/python/users/adminusers
 
   Cron jobs also appear as admin users.
   """
-  return users.is_current_user_admin()
+  user = users.get_current_user()
+  if users.is_current_user_admin():
+    logging.info('User {} ALLOWED for admin endpoint.'.format(user))
+    return
+  logging.info('User {} NOT ALLOWED for admin endpoint'.format(user))
+  raise Unauthorized('Forbidden.')
 
 def lookup_user_info(user_email):
   return config.getSettingJson(config.USER_INFO, {}).get(user_email)

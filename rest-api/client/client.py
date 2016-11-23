@@ -58,6 +58,7 @@ class Client(object):
               body=None,
               query_args=None,
               headers=None,
+              dev_appserver_admin=False,
               test_unauthenticated=True):
     url = '{}/{}/{}'.format(self.instance, self.base_path, path)
     if query_args:
@@ -85,6 +86,10 @@ class Client(object):
             resp.status)
       else:
         print 'Not allowed. Good!'
+
+    if dev_appserver_admin:
+      # Provide the cookie the dev_appserver uses for logged-in admin users.
+      headers['Cookie'] = 'dev_appserver_login="test@example.com:True:0"'
 
     print '{} to {}'.format(method, url)
     resp, content = self.fetcher.request(
@@ -116,6 +121,7 @@ class Client(object):
                    body=None,
                    query_args=None,
                    headers=None,
+                   dev_appserver_admin=False,
                    test_unauthenticated=True):
     json_body = None
     if body:
@@ -125,6 +131,7 @@ class Client(object):
                             body=json_body,
                             query_args=query_args,
                             headers=headers,
+                            dev_appserver_admin=dev_appserver_admin,
                             test_unauthenticated=test_unauthenticated)
 
     return json.loads(response)
