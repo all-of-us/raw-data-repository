@@ -12,7 +12,7 @@ class TestBiobankSamples(unittest.TestCase):
 
   def test_reload_no_files(self):
     self.client.request_json('BiobankSamplesReload', 'GET',
-                             test_unauthenticated=False)
+                             dev_appserver_admin=True)
 
 if __name__ == '__main__':
   unittest.main()

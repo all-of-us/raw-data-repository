@@ -12,13 +12,16 @@ class ConfigApi(base_api.BaseAdminApi):
   def __init__(self):
     super(ConfigApi, self).__init__(config.DAO)
 
+  def get_config_by_date(self, date):
+    result = config.get_config_that_was_active_at(api_util.parse_date(date))
+    return self.make_response_for_resource(self.dao.to_json(result))
+
   def get(self, key=None):
     if not key:
       # Return the only config.
       return super(ConfigApi, self).get(config.CONFIG_SINGLETON_KEY)
     else:
-      result = config.get_config_that_was_active_at(api_util.parse_date(key))
-      return self.make_response_for_resource(self.dao.to_json(result))
+      return self.get_config_by_date(key)
 
   def put(self, key=None):
     ret = super(ConfigApi, self).put(config.CONFIG_SINGLETON_KEY)

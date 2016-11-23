@@ -15,11 +15,13 @@ from flask_restful import Api
 from flask import request
 
 
-app = Flask(__name__)
-api = Api(app)
-
 PREFIX = '/rdr/v1/'
 
+app = Flask(__name__)
+
+# The REST-ful resources that are the bulk of the API.
+
+api = Api(app)
 
 api.add_resource(participants_api.ParticipantAPI,
                  PREFIX + 'Participant/<string:id_>',
@@ -58,26 +60,30 @@ api.add_resource(biobank_orders_api.BiobankOrderAPI,
                  endpoint='participant.biobank_order',
                  methods=['POST', 'GET'])
 
-api.add_resource(metrics_api.MetricsApi,
-                 PREFIX + 'Metrics',
-                 endpoint='metrics',
-                 methods=['POST'])
-
-api.add_resource(biobank_samples_api.BiobankSamplesApi,
-                 PREFIX + 'BiobankSamplesReload',
-                 endpoint='biobankSamplesReload',
-                 methods=['GET'])
-
-api.add_resource(metrics_api.MetricsApi,
-                 PREFIX + 'MetricsRecalculate',
-                 endpoint='metrics_recalc',
-                 methods=['GET'])
-
 api.add_resource(config_api.ConfigApi,
                  PREFIX + 'Config',
                  PREFIX + 'Config/<string:key>',
                  endpoint='config',
                  methods=['GET', 'PUT'])
+
+
+# Some non-resource endpoints for triggering pipelines, and querying
+# the metrics.
+
+app.add_url_rule(PREFIX + 'BiobankSamplesReload',
+                 endpoint='biobankSamplesReload',
+                 view_func=biobank_samples_api.get,
+                 methods=['GET'])
+
+app.add_url_rule(PREFIX + 'MetricsRecalculate',
+                 endpoint='metrics_recalc',
+                 view_func=metrics_api.get,
+                 methods=['GET'])
+
+app.add_url_rule(PREFIX + 'Metrics',
+                 endpoint='metrics',
+                 view_func=metrics_api.post,
+                 methods=['POST'])
 
 
 # All responses are json, so we tag them as such at the app level to
@@ -89,6 +95,7 @@ def add_headers(response):
   return response
 
 app.after_request(add_headers)
+
 
 # Some uniform logging of request characteristics before any checks are applied.
 def request_logging():
