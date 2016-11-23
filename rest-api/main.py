@@ -60,6 +60,8 @@ api.add_resource(biobank_orders_api.BiobankOrderAPI,
                  endpoint='participant.biobank_order',
                  methods=['POST', 'GET'])
 
+# Configuration API for admin use.
+
 api.add_resource(config_api.ConfigApi,
                  PREFIX + 'Config',
                  PREFIX + 'Config/<string:key>',
