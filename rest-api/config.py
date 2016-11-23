@@ -118,7 +118,7 @@ def getSettingList(key, default=_NO_DEFAULT):
       'Config key {} is a {} instead of a list'.format(key, type(config_json)))
 
 
-def getSetting(key, default=None):
+def getSetting(key, default=_NO_DEFAULT):
   """Gets a config where there is only a single setting for a given key.
 
   Args:
@@ -131,7 +131,7 @@ def getSetting(key, default=None):
     MissingConfigException: If the config key does not exist in the datastore,
      and a default is not provided.
   """
-  if default:
+  if default != _NO_DEFAULT:
     default = [default]
   settings_list = getSettingList(key, default)
 

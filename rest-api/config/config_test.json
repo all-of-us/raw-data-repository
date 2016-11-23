@@ -1,4 +1,7 @@
 {
+  "allow_fake_history_dates": [
+    "True"
+  ],
   "biobank_samples_shards": [
     "2"
   ],

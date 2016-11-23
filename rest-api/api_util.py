@@ -139,7 +139,7 @@ def enforce_appid_whitelisted(request_app_id, whitelisted_appids):
     else:
       logging.info('APP ID {} NOT FOUND IN {}'.format(request_app_id, whitelisted_appids))
   else:
-    logging.info('NO APP ID FOUND WHEN REQUIRED TO BE ONE OF: {}', whitelisted_appids)
+    logging.info('NO APP ID FOUND WHEN REQUIRED TO BE ONE OF: {}'.format(whitelisted_appids))
   raise Unauthorized('Forbidden.')
 
 def update_model(old_model, new_model):
