@@ -166,10 +166,8 @@ class BaseAdminApi(BaseApi):
 
 
 def consider_fake_date():
-  try:
-    if "True" == config.getSetting(config.ALLOW_FAKE_HISTORY_DATES):
-      date = request.headers.get('x-pretend-date', None)
-      if date:
-        return api_util.parse_date(date)
-  except:
-    return None
+  if "True" == config.getSetting(config.ALLOW_FAKE_HISTORY_DATES, None):
+    date = request.headers.get('x-pretend-date', None)
+    if date:
+      return api_util.parse_date(date)
+  return None

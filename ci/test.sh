@@ -10,7 +10,7 @@ git submodule update --init
 
 pylint -r n -f text \
   --disable=all \
-  --enable=bad-whitespace,unused-import,unused-variable,bad-indentation \
+  --enable=bad-whitespace,unused-import,unused-variable,bad-indentation,broad-except,bare-except,logging-too-many-args \
   *.py \
   offline/*.py \
   client/*.py

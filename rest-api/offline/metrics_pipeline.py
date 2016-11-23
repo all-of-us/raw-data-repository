@@ -117,7 +117,7 @@ class MetricsPipeline(pipeline.Pipeline):
     validate_metrics(configs)
     metrics.set_pipeline_in_progress()
     futures = []
-    
+
     for config_name in configs:
       future = yield SummaryPipeline(config_name, mapper_params)
       futures.append(future)
@@ -188,7 +188,7 @@ def map_key_to_summary(entity_key, now=None):
         result = field.func(hist_obj)
         if result.extracted:
           new_state[field.name] = str(result.value)
-      except Exception:
+      except Exception: # pylint: disable=broad-except
         logging.error('Exception extracting history field {0}: {1}'.format(
                 field.name, traceback.format_exc()))
 
@@ -197,7 +197,7 @@ def map_key_to_summary(entity_key, now=None):
         result = field.func(new_state)
         if result.extracted:
           new_state[field.name] = str(result.value)
-      except Exception:
+      except Exception: # pylint: disable=broad-except
         logging.error('Exception extracting history summary field {0}: {1}'.format(
                 field.name, traceback.format_exc()))
 
