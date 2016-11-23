@@ -11,7 +11,7 @@ CREDS_FILE = 'test/test-data/test-client-cert.json'
 
 def main(args):
   client = Client('rdr/v1', False, args.creds_file, args.instance)
-  is_dev_appserver = len(args.instance.split('localhost')) > 1
+  is_dev_appserver = ('localhost' in args.instance)
   config_server = client.request_json('Config', 'GET',
                                       test_unauthenticated=False,
                                       dev_appserver_admin=is_dev_appserver)

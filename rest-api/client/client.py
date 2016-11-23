@@ -88,7 +88,9 @@ class Client(object):
         print 'Not allowed. Good!'
 
     if dev_appserver_admin:
-      headers['Cookie:'] = 'dev_appserver_login="test@example.com:True:0"'
+      # Provide the cookie the dev_appserver uses for logged-in admin users.
+      headers['Cookie'] = 'dev_appserver_login="test@example.com:True:0"'
+
     print '{} to {}'.format(method, url)
     resp, content = self.fetcher.request(
         url, method, headers=headers, body=body)
