@@ -11,7 +11,6 @@ import offline.metrics_pipeline
 from api_util import HEALTHPRO
 from protorpc import protojson
 from flask import request
-from flask.ext.restful import Resource
 
 @api_util.auth_required_cron_or_admin
 def get():
