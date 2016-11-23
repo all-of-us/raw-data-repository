@@ -13,7 +13,7 @@ def get():
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME, None)
   if not bucket_name:
     print "No bucket configured for {}".format(config.BIOBANK_SAMPLES_BUCKET_NAME)
-    return
+    return '{"biobank-samples-pipeline-status": "error: no bucket configured"}'
   print "=========== Starting biobank samples pipeline ============"
   offline.biobank_samples_pipeline.BiobankSamplesPipeline(bucket_name).start()
   return '{"biobank-samples-pipeline-status": "started"}'
