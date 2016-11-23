@@ -1,7 +1,6 @@
 threadsafe: true
 runtime: python27
 api_version: 1
-module: testing
 
 includes:
   - appengine-mapreduce/python/src/mapreduce/include.yaml
