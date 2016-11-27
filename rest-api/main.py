@@ -19,7 +19,9 @@ PREFIX = '/rdr/v1/'
 
 app = Flask(__name__)
 
+#
 # The REST-ful resources that are the bulk of the API.
+#
 
 api = Api(app)
 
@@ -68,9 +70,11 @@ api.add_resource(config_api.ConfigApi,
                  endpoint='config',
                  methods=['GET', 'PUT'])
 
+#
+# Non-resource endpoints
+#
 
-# Some non-resource endpoints for triggering pipelines, and querying
-# the metrics.
+# Pipeline triggers
 
 app.add_url_rule(PREFIX + 'BiobankSamplesReload',
                  endpoint='biobankSamplesReload',
@@ -81,6 +85,8 @@ app.add_url_rule(PREFIX + 'MetricsRecalculate',
                  endpoint='metrics_recalc',
                  view_func=metrics_api.get,
                  methods=['GET'])
+
+# Metrics querying
 
 app.add_url_rule(PREFIX + 'Metrics',
                  endpoint='metrics',
