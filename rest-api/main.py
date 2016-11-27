@@ -19,7 +19,9 @@ PREFIX = '/rdr/v1/'
 
 app = Flask(__name__)
 
+#
 # The REST-ful resources that are the bulk of the API.
+#
 
 api = Api(app)
 
@@ -68,9 +70,18 @@ api.add_resource(config_api.ConfigApi,
                  endpoint='config',
                  methods=['GET', 'PUT'])
 
+#
+# Non-resource endpoints follow.
+#
 
-# Some non-resource endpoints for triggering pipelines, and querying
-# the metrics.
+# Metrics query endpoint for dashboards.
+
+app.add_url_rule(PREFIX + 'Metrics',
+                 endpoint='metrics',
+                 view_func=metrics_api.post,
+                 methods=['POST'])
+
+# Endpoints for triggering pipelines.
 
 app.add_url_rule(PREFIX + 'BiobankSamplesReload',
                  endpoint='biobankSamplesReload',
@@ -82,11 +93,15 @@ app.add_url_rule(PREFIX + 'MetricsRecalculate',
                  view_func=metrics_api.get,
                  methods=['GET'])
 
-app.add_url_rule(PREFIX + 'Metrics',
-                 endpoint='metrics',
-                 view_func=metrics_api.post,
-                 methods=['POST'])
+#
+# Extra behavior before and after request handling.
+#
 
+# Some uniform logging of request characteristics before any checks are applied.
+def request_logging():
+  logging.info('Request protocol: HTTPS={}'.format(request.environ['HTTPS']))
+
+app.before_request(request_logging)
 
 # All responses are json, so we tag them as such at the app level to
 # provide uniform protection against content-sniffing-based attacks.
@@ -97,10 +112,3 @@ def add_headers(response):
   return response
 
 app.after_request(add_headers)
-
-
-# Some uniform logging of request characteristics before any checks are applied.
-def request_logging():
-  logging.info('Request protocol: HTTPS={}'.format(request.environ['HTTPS']))
-
-app.before_request(request_logging)

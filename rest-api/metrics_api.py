@@ -30,4 +30,4 @@ def post():
   metrics_request = protojson.decode_message(metrics.MetricsRequest, resource)
   metrics_response = metrics.SERVICE.get_metrics(metrics_request)
 
-  return json.loads(protojson.encode_message(metrics_response))
+  return protojson.encode_message(metrics_response)
