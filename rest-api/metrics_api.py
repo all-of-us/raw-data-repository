@@ -5,7 +5,6 @@ This defines the APIs and the handlers for the APIs.
 
 import api_util
 import metrics
-import json
 import offline.metrics_pipeline
 
 from api_util import HEALTHPRO
