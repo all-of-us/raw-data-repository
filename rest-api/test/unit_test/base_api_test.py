@@ -17,7 +17,7 @@ class BaseApiTest(TestBase):
     mock_request.get_json.return_value = {}
     mock_config.return_value = 'True'
     mock_api_util.parse_date.return_value='parsed-date'
-    mock_api_util.get_client_id.return_value='client-id'
+    mock_api_util.get_oauth_id.return_value='client-id'
 
     mock_dao = MagicMock()
     mock_dao.from_json.return_value = 'entity'
@@ -36,7 +36,7 @@ class BaseApiTest(TestBase):
     mock_request.get_json.return_value = {}
     mock_config.return_value = 'True'
     mock_api_util.parse_date.return_value='parsed-date'
-    mock_api_util.get_client_id.return_value='client-id'
+    mock_api_util.get_oauth_id.return_value='client-id'
 
     mock_dao = MagicMock()
     mock_dao.from_json.return_value = 'entity'

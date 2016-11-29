@@ -19,7 +19,9 @@ PREFIX = '/rdr/v1/'
 
 app = Flask(__name__)
 
+#
 # The REST-ful resources that are the bulk of the API.
+#
 
 api = Api(app)
 
@@ -41,6 +43,11 @@ api.add_resource(
     PREFIX + 'Participant/<string:id_>/Summary',
     endpoint='participant.summary',
     methods=['GET',])
+
+api.add_resource(metrics_api.MetricsAPI,
+                 PREFIX + 'Metrics',
+                 endpoint='metrics',
+                 methods=['POST'])
 
 api.add_resource(ppi_api.QuestionnaireAPI,
                  PREFIX + 'Questionnaire',
@@ -68,9 +75,9 @@ api.add_resource(config_api.ConfigApi,
                  endpoint='config',
                  methods=['GET', 'PUT'])
 
-
-# Some non-resource endpoints for triggering pipelines, and querying
-# the metrics.
+#
+# Non-resource pipeline-trigger endpoints
+#
 
 app.add_url_rule(PREFIX + 'BiobankSamplesReload',
                  endpoint='biobankSamplesReload',
@@ -81,12 +88,6 @@ app.add_url_rule(PREFIX + 'MetricsRecalculate',
                  endpoint='metrics_recalc',
                  view_func=metrics_api.get,
                  methods=['GET'])
-
-app.add_url_rule(PREFIX + 'Metrics',
-                 endpoint='metrics',
-                 view_func=metrics_api.post,
-                 methods=['POST'])
-
 
 # All responses are json, so we tag them as such at the app level to
 # provide uniform protection against content-sniffing-based attacks.

@@ -8,7 +8,6 @@ import string
 import config
 
 from google.appengine.api import app_identity
-from google.appengine.api import users
 from google.appengine.ext import ndb
 
 from flask import request
@@ -26,6 +25,7 @@ PTC = "ptc"
 HEALTHPRO = "healthpro"
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
 ALL_ROLES = [PTC, HEALTHPRO]
+
 
 def auth_required(role_whitelist):
   """A decorator that keeps the function from being called without auth.
@@ -47,10 +47,10 @@ def auth_required(role_whitelist):
     return wrapped
   return auth_required_wrapper
 
-def auth_required_cron_or_admin(func):
-  """A decorator that ensures that the user is an admin or cron job."""
+def auth_required_cron(func):
+  """A decorator that ensures that the user is a cron job."""
   def wrapped(*args, **kwargs):
-    check_auth_cron_or_admin()
+    check_cron()
     return func(*args, **kwargs)
   return wrapped
 
@@ -67,33 +67,30 @@ def check_auth(role_whitelist):
      role_whitelist))
   raise Unauthorized('Forbidden.')
 
-def get_client_id():
-  return oauth.get_current_user(SCOPE).email()
+def get_oauth_id():
+  """Returns user email ID if OAUTH token present, or None."""
+  try:
+    user_email = oauth.get_current_user(SCOPE).email()
+  except oauth.Error as e:
+    user_email = None
+    logging.error('OAuth failure: {}'.format(e))
+  return user_email
 
-def check_auth_cron_or_admin():
-  """Raises Unauthorized if the current user is not a cron job or an admin.
-
-  Only members of the cloud project can be admin users:
-  https://cloud.google.com/appengine/docs/python/users/adminusers
-
-  Cron jobs also appear as admin users.
-  """
-  user = users.get_current_user()
-  if users.is_current_user_admin():
-    logging.info('User {} ALLOWED for admin endpoint.'.format(user))
+def check_cron():
+  """Raises Unauthorized if the current user is not a cron job."""
+  if request.headers.get('X-Appengine-Cron'):
+    logging.info('Appengine-Cron ALLOWED for cron endpoint.')
     return
-  logging.info('User {} NOT ALLOWED for admin endpoint'.format(user))
+  logging.info('User {} NOT ALLOWED for cron endpoint'.format(
+      get_oauth_id()))
   raise Unauthorized('Forbidden.')
 
 def lookup_user_info(user_email):
   return config.getSettingJson(config.USER_INFO, {}).get(user_email)
 
 def get_validated_user_info():
-  try:
-    user_email = get_client_id()
-  except oauth.Error as e:
-    user_email = None
-    logging.error('OAuth failure: {}'.format(e))
+  """Returns a valid (user email, user info), or raises Unauthorized."""
+  user_email = get_oauth_id()
 
   # Allow clients to simulate an unauthentiated request (for testing)
   # becaues we haven't found another way to create an unauthenticated request

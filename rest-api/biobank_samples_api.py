@@ -8,7 +8,7 @@ import config
 import offline.biobank_samples_pipeline
 
 
-@api_util.auth_required_cron_or_admin
+@api_util.auth_required_cron
 def get():
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME, None)
   if not bucket_name:
