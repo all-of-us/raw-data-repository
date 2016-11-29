@@ -16,8 +16,8 @@ def foo_role(x):
 def foo_bar_role(x):
   return x + 1
 
-@api_util.auth_required_cron_or_admin
-def admin_required(x):
+@api_util.auth_required_cron
+def cron_required(x):
   return x + 1
 
 
@@ -66,52 +66,52 @@ class ApiUtilNdbTest(NdbTestBase):
 
   @patch('api_util.request', spec=api_util.request)
   @patch('api_util.app_identity.get_application_id')
-  @patch('api_util.get_client_id')
+  @patch('api_util.get_oauth_id')
   @patch('api_util.lookup_user_info')
   def test_auth_required_https_identity_set_role_not_matched(self, mock_lookup_user_info,
-                                                             mock_get_client_id,
+                                                             mock_get_oauth_id,
                                                              mock_get_application_id, mock_request):
     mock_get_application_id.return_value = 'None'
     mock_request.scheme = 'http'
     mock_request.remote_addr = 'ip'
     mock_request.headers = {}
-    mock_get_client_id.return_value = 'bob@example.com'
+    mock_get_oauth_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'place':'holder'}
     with self.assertRaises(Unauthorized):
       foo_role(1)
-    mock_get_client_id.assert_called_with()
-    mock_lookup_user_info.assert_called_with(mock_get_client_id())
+    mock_get_oauth_id.assert_called_with()
+    mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
 
 
   @patch('api_util.request')
   @patch('api_util.app_identity.get_application_id')
-  @patch('api_util.get_client_id')
+  @patch('api_util.get_oauth_id')
   @patch('api_util.lookup_user_info')
   def test_auth_required_https_identity_set_role_wrong_match(self, mock_lookup_user_info,
-                                                             mock_get_client_id,
+                                                             mock_get_oauth_id,
                                                              mock_get_application_id, mock_request):
     mock_get_application_id.return_value = 'appid'
     mock_request.scheme = 'https'
     mock_request.remote_addr = 'ip'
     mock_request.headers = {}
-    mock_get_client_id.return_value = 'bob@example.com'
+    mock_get_oauth_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'roles': ['bar']}
     with self.assertRaises(Unauthorized):
       foo_role(1)
-    mock_get_client_id.assert_called_with()
+    mock_get_oauth_id.assert_called_with()
 
   @patch('api_util.request')
   @patch('api_util.app_identity.get_application_id')
-  @patch('api_util.get_client_id')
+  @patch('api_util.get_oauth_id')
   @patch('api_util.lookup_user_info')
   def test_auth_required_https_identity_set_multi_role_not_matched(self, mock_lookup_user_info,
-                                                                   mock_get_client_id,
+                                                                   mock_get_oauth_id,
                                                                    mock_get_application_id, mock_request):
     mock_get_application_id.return_value = 'appid'
     mock_request.scheme = 'https'
     mock_request.remote_addr = 'ip'
     mock_request.headers = {}
-    mock_get_client_id.return_value = 'bob@example.com'
+    mock_get_oauth_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'place':'holder'}
 
     with self.assertRaises(Unauthorized):
@@ -123,53 +123,53 @@ class ApiUtilNdbTest(NdbTestBase):
 
   @patch('api_util.request')
   @patch('api_util.app_identity.get_application_id')
-  @patch('api_util.get_client_id')
+  @patch('api_util.get_oauth_id')
   @patch('api_util.lookup_user_info')
   def test_auth_required_https_identity_set_role_wrong_match(self, mock_lookup_user_info,
-                                                             mock_get_client_id,
+                                                             mock_get_oauth_id,
                                                              mock_get_application_id, mock_request):
     mock_get_application_id.return_value = 'None'
     mock_request.scheme = 'https'
     mock_request.remote_addr = 'ip'
     mock_request.headers = {}
-    mock_get_client_id.return_value = 'bob@example.com'
+    mock_get_oauth_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'roles': ['baz']}
 
     mock_request.headers = {}
     with self.assertRaises(Unauthorized):
       foo_bar_role(1)
-    mock_get_client_id.assert_called_with()
-    mock_lookup_user_info.assert_called_with(mock_get_client_id())
+    mock_get_oauth_id.assert_called_with()
+    mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
 
   @patch('api_util.request')
   @patch('api_util.app_identity.get_application_id')
-  @patch('api_util.get_client_id')
+  @patch('api_util.get_oauth_id')
   @patch('api_util.lookup_user_info')
   def test_auth_required_https_identity_set_role_match(self, mock_lookup_user_info,
-                                                       mock_get_client_id,
+                                                       mock_get_oauth_id,
                                                        mock_get_application_id, mock_request):
     mock_get_application_id.return_value = 'None'
     mock_request.scheme = 'http'
     mock_request.remote_addr = 'ip'
     mock_request.headers = {}
-    mock_get_client_id.return_value = 'bob@example.com'
+    mock_get_oauth_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'roles': ['bar']}
     self.assertEquals(2, foo_bar_role(1))
-    mock_get_client_id.assert_called_with()
-    mock_lookup_user_info.assert_called_with(mock_get_client_id())
+    mock_get_oauth_id.assert_called_with()
+    mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
 
   @patch('api_util.request')
   @patch('api_util.app_identity.get_application_id')
-  @patch('api_util.get_client_id')
+  @patch('api_util.get_oauth_id')
   @patch('api_util.lookup_user_info')
   def test_auth_required_ip_ranges(self, mock_lookup_user_info,
-                                   mock_get_client_id,
+                                   mock_get_oauth_id,
                                    mock_get_application_id, mock_request):
     mock_get_application_id.return_value = 'appid'
     mock_request.scheme = 'https'
     mock_request.remote_addr = '10.0.0.1'
     mock_request.headers = {}
-    mock_get_client_id.return_value = 'bob@example.com'
+    mock_get_oauth_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {
             'roles': ['bar'],
             'whitelisted_ip_ranges': {'ip4': ['10.0.0.2/32'], 'ip6': []}}
@@ -182,16 +182,16 @@ class ApiUtilNdbTest(NdbTestBase):
 
   @patch('api_util.request')
   @patch('api_util.app_identity.get_application_id')
-  @patch('api_util.get_client_id')
+  @patch('api_util.get_oauth_id')
   @patch('api_util.lookup_user_info')
   def test_auth_required_appid(self, mock_lookup_user_info,
-                               mock_get_client_id,
+                               mock_get_oauth_id,
                                mock_get_application_id, mock_request):
     mock_get_application_id.return_value = 'appid'
     mock_request.scheme = 'https'
     mock_request.remote_addr = '10.0.0.1'
     mock_request.headers = {}
-    mock_get_client_id.return_value = 'bob@example.com'
+    mock_get_oauth_id.return_value = 'bob@example.com'
 
     mock_lookup_user_info.return_value = {
             'roles': ['bar'],
@@ -214,11 +214,14 @@ class ApiUtilNdbTest(NdbTestBase):
       @api_util.auth_required(None)
       def placeholder(): pass
 
-  @patch('api_util.users.is_current_user_admin')
-  def test_check_auth_required_cron_or_admin(self, mock_is_current_user_admin):
-    mock_is_current_user_admin.return_value = True
-    self.assertEquals(2, admin_required(1))
+  @patch('api_util.request', spec=api_util.request)
+  @patch('api_util.get_oauth_id')
+  def test_check_auth_required_cron(self, mock_get_oauth_id, mock_request):
+    mock_get_oauth_id.return_value = 'bob@example.com'
 
-    mock_is_current_user_admin.return_value = False
+    mock_request.headers = {'X-Appengine-Cron': 'true'}
+    self.assertEquals(2, cron_required(1))
+
+    mock_request.headers = {}
     with self.assertRaises(Unauthorized):
-      admin_required(1)
+      cron_required(1)

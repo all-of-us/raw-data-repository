@@ -44,6 +44,11 @@ api.add_resource(
     endpoint='participant.summary',
     methods=['GET',])
 
+api.add_resource(metrics_api.MetricsAPI,
+                 PREFIX + 'Metrics',
+                 endpoint='metrics',
+                 methods=['POST'])
+
 api.add_resource(ppi_api.QuestionnaireAPI,
                  PREFIX + 'Questionnaire',
                  PREFIX + 'Questionnaire/<string:id_>',
@@ -71,10 +76,8 @@ api.add_resource(config_api.ConfigApi,
                  methods=['GET', 'PUT'])
 
 #
-# Non-resource endpoints
+# Non-resource pipeline-trigger endpoints
 #
-
-# Pipeline triggers
 
 app.add_url_rule(PREFIX + 'BiobankSamplesReload',
                  endpoint='biobankSamplesReload',
@@ -85,14 +88,6 @@ app.add_url_rule(PREFIX + 'MetricsRecalculate',
                  endpoint='metrics_recalc',
                  view_func=metrics_api.get,
                  methods=['GET'])
-
-# Metrics querying
-
-app.add_url_rule(PREFIX + 'Metrics',
-                 endpoint='metrics',
-                 view_func=metrics_api.post,
-                 methods=['POST'])
-
 
 # All responses are json, so we tag them as such at the app level to
 # provide uniform protection against content-sniffing-based attacks.

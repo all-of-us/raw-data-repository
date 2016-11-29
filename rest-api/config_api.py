@@ -3,6 +3,11 @@
 import api_util
 import base_api
 import config
+import json
+import logging
+import os
+
+from flask import request
 
 from google.appengine.api import app_identity
 
@@ -11,9 +16,12 @@ from werkzeug.exceptions import Unauthorized, BadRequest
 # Read bootstrap config admin service account configuration
 CONFIG_ADMIN_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                  'config',
-                                 'config_admin.json')
+                                 'config_admins.json')
 with open(CONFIG_ADMIN_FILE) as config_file:
-  CONFIG_ADMIN_MAP = json.load(config_file)
+  try:
+    CONFIG_ADMIN_MAP = json.load(config_file)
+  except IOError:
+    CONFIG_ADMIN_MAP = {}
 
 
 def auth_required_config_admin(func):
@@ -28,6 +36,15 @@ def check_config_admin():
   """Raises Unauthorized unless the caller is a config admin."""
   app_id = app_identity.get_application_id()
   user_email = api_util.get_oauth_id()
+
+  # Allow clients to simulate an unauthentiated request (for testing)
+  # becaues we haven't found another way to create an unauthenticated request
+  # when using dev_appserver. When client tests are checking to ensure that an
+  # unauthenticated requests gets rejected, they helpfully add this header.
+  # The `application_id` check ensures this feature only works in dev_appserver.
+  if app_id == "None" and request.headers.get('unauthenticated'):
+    user_email = None
+
   if user_email:
     config_admin = CONFIG_ADMIN_MAP.get(
         app_id,
@@ -35,7 +52,7 @@ def check_config_admin():
     if user_email == config_admin:
       logging.info('User {} ALLOWED for config endpoint'.format(user_email))
       return
-  logging.info('User {} NOT ALLOWED for config endpoint',format(user_email))
+  logging.info('User {} NOT ALLOWED for config endpoint'.format(user_email))
   raise Unauthorized('Forbidden.')
 
 

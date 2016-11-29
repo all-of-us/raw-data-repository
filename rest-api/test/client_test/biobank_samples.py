@@ -11,8 +11,7 @@ class TestBiobankSamples(unittest.TestCase):
     self.client = test_util.get_client('rdr/v1')
 
   def test_reload_no_files(self):
-    self.client.request_json('BiobankSamplesReload', 'GET',
-                             dev_appserver_admin=True)
+    self.client.request_json('BiobankSamplesReload', 'GET', cron=True)
 
 if __name__ == '__main__':
   unittest.main()
