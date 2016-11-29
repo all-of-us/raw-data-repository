@@ -47,15 +47,14 @@ gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml
 
 ENDPOINT="https://$PROJECT_ID.appspot.com"
 
-./tools/install_config.sh --config=config/config_test.json --instance $ENDPOINT --update
-
-cd test
-
+echo "Updating config on RDR server at $ENDPOINT"
 if [ $PROJECT_ID == "pmi-drc-api-test" ]
 then
+  ./tools/install_config.sh --config=config/config_test.json --instance $ENDPOINT --creds_file ~/gcloud-credentials.key --update
   echo "Smoke-testing RDR server at $ENDPOINT"
-  ./test_server.sh -i $ENDPOINT
+  test/test_server.sh -i $ENDPOINT
 else
+  ./tools/install_config.sh --config=config/config_staging.json --instance $ENDPOINT --creds_file ~/gcloud-credentials.key --update
   echo "Checking RDR server at $ENDPOINT is unreachable due to IP whitelisting."
   ( test/test_server.sh -i $ENDPOINT 2>&1 | grep "Client IP not whitelisted" ) && echo "OK"
 fi
