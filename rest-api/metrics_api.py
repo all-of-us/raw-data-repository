@@ -12,7 +12,7 @@ from api_util import HEALTHPRO
 from protorpc import protojson
 from flask import request
 
-@api_util.auth_required_cron_or_admin
+@api_util.auth_required_cron
 def get():
   in_progress = metrics.get_in_progress_version()
   if in_progress:

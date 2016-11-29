@@ -4,10 +4,45 @@ import api_util
 import base_api
 import config
 
-from werkzeug.exceptions import BadRequest
+from google.appengine.api import app_identity
 
-class ConfigApi(base_api.BaseAdminApi):
+from werkzeug.exceptions import Unauthorized, BadRequest
+
+# Read bootstrap config admin service account configuration
+CONFIG_ADMIN_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                 'config',
+                                 'config_admin.json')
+with open(CONFIG_ADMIN_FILE) as config_file:
+  CONFIG_ADMIN_MAP = json.load(config_file)
+
+
+def auth_required_config_admin(func):
+  """A decorator that checks that the caller is a config admin for the app."""
+  def wrapped(*args, **kwargs):
+    check_config_admin()
+    return func(*args, **kwargs)
+  return wrapped
+
+
+def check_config_admin():
+  """Raises Unauthorized unless the caller is a config admin."""
+  app_id = app_identity.get_application_id()
+  user_email = api_util.get_oauth_id()
+  if user_email:
+    config_admin = CONFIG_ADMIN_MAP.get(
+        app_id,
+        'configurator@{}.iam.gserviceaccount.com'.format(app_id))
+    if user_email == config_admin:
+      logging.info('User {} ALLOWED for config endpoint'.format(user_email))
+      return
+  logging.info('User {} NOT ALLOWED for config endpoint',format(user_email))
+  raise Unauthorized('Forbidden.')
+
+
+class ConfigApi(base_api.BaseApi):
   """Api handlers for retrieving and setting config values."""
+
+  method_decorators = [auth_required_config_admin]
 
   def __init__(self):
     super(ConfigApi, self).__init__(config.DAO)
