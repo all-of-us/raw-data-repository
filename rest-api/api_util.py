@@ -8,7 +8,6 @@ import string
 import config
 
 from google.appengine.api import app_identity
-from google.appengine.api import users
 from google.appengine.ext import ndb
 
 from flask import request
