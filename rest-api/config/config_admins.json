@@ -1,0 +1,4 @@
+{
+  "pmi-drc-api-test": "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com",
+  "all-of-us-rdr-staging": "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
+}
