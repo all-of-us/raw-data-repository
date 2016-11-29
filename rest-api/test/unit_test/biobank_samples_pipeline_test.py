@@ -24,7 +24,7 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
     participant_2 = participant.DAO.load('P2')
 
     with open(_data_path('biobank_samples_1.csv'), 'rb') as src, \
-        cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.csv', mode='w') as dest:
+        cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV', mode='w') as dest:
       reader = csv.reader(src)
       writer = csv.writer(dest)
       for line in reader:

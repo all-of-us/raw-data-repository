@@ -49,7 +49,7 @@ class BiobankSamplesPipeline(pipeline.Pipeline):
     newest_filename = None
     newest_timestamp = 0
     for gcs_file in cloudstorage_api.listbucket('/' + bucket_name):
-      if gcs_file.filename.endswith(
+      if gcs_file.filename.lower().endswith(
           ".csv") and gcs_file.st_ctime > newest_timestamp:
         newest_filename = gcs_file.filename.split('/')[2]
         newest_timestamp = gcs_file.st_ctime
