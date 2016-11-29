@@ -65,14 +65,19 @@ TEST_FILES="ppi.py
 participant.py
 evaluation.py
 metrics.py
-biobank_order.py
-biobank_samples.py
-config_test.py"
+biobank_order.py"
 
 for test in ${TEST_FILES}
 do
   run_client_test "client_test/${test}"
 done
+
+if [[ ${instance} == *localhost* ]]
+then
+  # These tests fail on real servers because of auth issues.
+  run_client_test "client_test/biobank_samples.py"
+  run_client_test "client_test/config_test.py"
+fi
 
 # Security test: check that HTTPS is required for non-local endpoints.
 if [[ ${instance} == https://* ]]
