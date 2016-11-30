@@ -5,3 +5,6 @@ cron:
 - description: Hourly biosample reconciliation
   url: /rdr/v1/BiobankSamplesReload
   schedule: every 1 hours
+- description: Datastore backup
+  url: /_ah/datastore_admin/backup.create?kind=BiobankOrder&kind=BiobankOrderHistory&kind=Configuration&kind=ConfigurationHistory&kind=Evaluation&kind=EvaluationHistory&kind=Participant&kind=ParticipantHistory&kind=Questionnaire&kind=QuestionnaireHistory&kind=QuestionnaireResponse&kind=QuestionnaireResponseHistory&kind=IdReservation&kind=MetricsBucket&kind=MetricsVersion&filesystem=gs&gs_bucket_name=
+  schedule: every 12 hours
