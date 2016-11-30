@@ -1,6 +1,6 @@
 """The main API definition file.
 
-This defines the APIs and the handlers for the APIs.
+This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import config_api
 import biobank_orders_api
@@ -9,6 +9,7 @@ import logging
 import metrics_api
 import participants_api
 import ppi_api
+import version_api
 
 from flask import Flask
 from flask_restful import Api
@@ -74,6 +75,13 @@ api.add_resource(config_api.ConfigApi,
                  PREFIX + 'Config/<string:key>',
                  endpoint='config',
                  methods=['GET', 'PUT'])
+
+# Version API for prober and release management use.
+api.add_resource(version_api.VersionApi,
+                 '/',
+                 PREFIX,  # Default behavior
+                 endpoint='version',
+                 methods=['GET'])
 
 #
 # Non-resource pipeline-trigger endpoints
