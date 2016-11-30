@@ -40,10 +40,12 @@ echo $GCLOUD_CREDENTIALS | \
      openssl enc -d -aes-256-cbc -base64 -A -k $GCLOUD_CREDENTIALS_KEY \
      > ~/gcloud-credentials.key
 
+echo "Fixing cron.yaml "
+sed -i -e "s/{PROJECT_ID}/${PROJECT_ID}/" cron.yaml
+
 echo "Deploying RDR to $PROJECT_ID"
 gcloud auth activate-service-account --key-file ~/gcloud-credentials.key
-gcloud config set project $PROJECT_ID
-gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml
+gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml --project=${PROJECT_ID}
 
 ENDPOINT="https://$PROJECT_ID.appspot.com"
 
