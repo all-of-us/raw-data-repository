@@ -1,2 +1,6 @@
 lib/
 venv/
+*.csv
+*.CSV
+*.xls
+*.XLS

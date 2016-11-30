@@ -8,12 +8,22 @@ cd rest-api
 pip install -r requirements.txt -t lib/
 git submodule update --init
 
+# Pylint checks
 pylint -r n -f text \
   --disable=all \
   --enable=bad-whitespace,unused-import,unused-variable,bad-indentation,broad-except,bare-except,logging-too-many-args \
   *.py \
   offline/*.py \
   client/*.py
+
+# Make sure JSON files are well-formed
+for json_file in ./config/*.json; do
+    cat $json_file | json_pp;
+done
+
+# No new checked-in credentials.
+grep -ril "BEGIN PRIVATE KEY" . | sort > credentials_files
+diff credentials_files ci/allowed_private_key_files
 
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
@@ -25,11 +35,6 @@ dev_appserver.py \
 until $(curl -s --fail http://localhost:8000); do
     printf '.'
     sleep .25
-done
-
-# Make sure JSON files are well-formed
-for json_file in ./config/*.json; do
-    cat $json_file | json_pp;
 done
 
 ./tools/install_config.sh --config=config/config_dev.json --update
