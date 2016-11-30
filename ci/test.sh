@@ -4,7 +4,12 @@ set -e
 
 trap 'kill $(jobs -p) || true' EXIT
 
+# No new checked-in credentials.
+grep -ril "BEGIN PRIVATE KEY" . | sort > credentials_files
+diff credentials_files ci/allowed_private_key_files
+
 cd rest-api
+
 pip install -r requirements.txt -t lib/
 git submodule update --init
 
@@ -20,10 +25,6 @@ pylint -r n -f text \
 for json_file in ./config/*.json; do
     cat $json_file | json_pp;
 done
-
-# No new checked-in credentials.
-grep -ril "BEGIN PRIVATE KEY" . | sort > credentials_files
-diff credentials_files ci/allowed_private_key_files
 
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
