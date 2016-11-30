@@ -1,3 +1,2 @@
 ./ci/test.sh
-./rest-api/lib/oauth2client/_pure_python_crypt.py
 ./rest-api/test/test-data/test-client-cert.json
