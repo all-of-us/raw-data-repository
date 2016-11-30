@@ -1,0 +1,2 @@
+./ci/test.sh
+./rest-api/test/test-data/test-client-cert.json
