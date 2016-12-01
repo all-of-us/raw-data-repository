@@ -11,6 +11,7 @@ import config
 import participant
 import pipeline
 from cloudstorage import cloudstorage_api
+from sets import Set
 
 from mapreduce import mapreduce_pipeline
 from mapreduce.lib.input_reader._gcs import GCSInputReader
@@ -34,12 +35,12 @@ BIOBANK_SAMPLE_FIELDS = [
 ]
 
 EXPECTED_HEADERS = [
-    'External Participant Id', 'Sample Family Id', 'Sample Id',
-    'Sample Storage Status', 'Sample Type', 'Test Code',
-    'Sample Treatments', 'Parent Expected Volume', 'Sample Quantity',
-    'Sample Container Type', 'Sample Family Collection Date',
-    'Sample Disposal Status', 'Sample Disposed Date', 'Parent Sample Id',
-    'Sample Confirmed Date'
+    "'External Participant Id'", "'Sample Family Id'", "'Sample Id'",
+    "'Sample Storage Status'", "'Sample Type'", "'Test Code'",
+    "'Sample Treatments'", "'Parent Expected Volume'", "'Sample Quantity'",
+    "'Sample Container Type'", "'Sample Family Collection Date'",
+    "'Sample Disposal Status'", "'Sample Disposed Date'", "'Parent Sample Id'",
+    "'Sample Confirmed Date'"
 ]
 
 class BiobankSamplesPipeline(pipeline.Pipeline):
@@ -82,16 +83,25 @@ class BiobankSamplesPipeline(pipeline.Pipeline):
         shards=num_shards)
 
 def map_samples(buffer):
-  reader = csv.reader(buffer, delimiter = '\t')
-  header_row = reader.next()
-  trimmed_header_row = []
-  for header in header_row:
-    trimmed_header_row.append(header.strip("'"))
-  if trimmed_header_row != EXPECTED_HEADERS:
-    print 'Unexpected headers: {}; aborting.'.format(trimmed_header_row)
+  reader = csv.DictReader(buffer, delimiter='\t')
+  headers = Set(reader.fieldnames)
+  expected_headers_set = Set(EXPECTED_HEADERS)
+  missing_headers = expected_headers_set.difference(headers)
+  if len(missing_headers) > 0:
+    print 'Missing headers: {}; aborting.'.format(missing_headers)
     return
-  for row in reader:
-    yield (row[0].strip("'"), row[1:])
+  else:
+    extra_headers = headers.difference(expected_headers_set)
+    if len(extra_headers) > 0:
+      print 'Warning -- unexpected extra headers: {}'.format(extra_headers)
+  for dict in reader:
+    participant_id = dict.get("'External Participant Id'").strip("'");
+    if participant_id:
+      values = []
+      for header in EXPECTED_HEADERS:
+        if header != "'External Participant Id'":
+          values.append(dict.get(header).strip("'"));
+      yield (participant_id, values)
 
 def reduce_samples(biobank_id, samples):
   # TODO: fetch existing samples, don't write when nothing changes
