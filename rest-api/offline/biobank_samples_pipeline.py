@@ -11,7 +11,6 @@ import config
 import participant
 import pipeline
 from cloudstorage import cloudstorage_api
-from sets import Set
 
 from mapreduce import mapreduce_pipeline
 from mapreduce.lib.input_reader._gcs import GCSInputReader
@@ -84,14 +83,14 @@ class BiobankSamplesPipeline(pipeline.Pipeline):
 
 def map_samples(buffer):
   reader = csv.DictReader(buffer, delimiter='\t')
-  headers = Set(reader.fieldnames)
-  expected_headers_set = Set(EXPECTED_HEADERS)
-  missing_headers = expected_headers_set.difference(headers)
+  headers = set(reader.fieldnames)
+  expected_headers_set = set(EXPECTED_HEADERS)
+  missing_headers = expected_headers_set - headers
   if len(missing_headers) > 0:
     print 'Missing headers: {}; aborting.'.format(missing_headers)
     return
   else:
-    extra_headers = headers.difference(expected_headers_set)
+    extra_headers = headers - expected_headers_set
     if len(extra_headers) > 0:
       print 'Warning -- unexpected extra headers: {}'.format(extra_headers)
   for dict in reader:
