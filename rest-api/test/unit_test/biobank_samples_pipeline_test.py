@@ -39,9 +39,9 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
     expected_sample_dict_1 = {
         'familyId': 'SF160914-000001',
         'sampleId': '16258000008',
-        'eventName': 'DRC-00123',
         'storageStatus': 'In Prep',
         'type': 'Urine',
+        'testCode': '1ED10',
         'treatments': 'No Additive',
         'expectedVolume': '10 mL',
         'quantity': '1 mL',

@@ -19,9 +19,9 @@ from mapreduce import operation as op
 BIOBANK_SAMPLE_FIELDS = [
   'familyId',
   'sampleId',
-  'eventName',
   'storageStatus',
   'type',
+  'testCode',
   'treatments',
   'expectedVolume',
   'quantity',
@@ -35,7 +35,7 @@ BIOBANK_SAMPLE_FIELDS = [
 
 EXPECTED_HEADERS = [
     'External Participant Id', 'Sample Family Id', 'Sample Id',
-    'Participant Event Name', 'Sample Storage Status', 'Sample Type',
+    'Sample Storage Status', 'Sample Type', 'Test Code',
     'Sample Treatments', 'Parent Expected Volume', 'Sample Quantity',
     'Sample Container Type', 'Sample Family Collection Date',
     'Sample Disposal Status', 'Sample Disposed Date', 'Parent Sample Id',
@@ -82,7 +82,7 @@ class BiobankSamplesPipeline(pipeline.Pipeline):
         shards=num_shards)
 
 def map_samples(buffer):
-  reader = csv.reader(buffer)
+  reader = csv.reader(buffer, delimiter = '\t')
   header_row = reader.next()
   trimmed_header_row = []
   for header in header_row:
