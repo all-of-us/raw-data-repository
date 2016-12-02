@@ -201,4 +201,4 @@ class DataAccessObject(object):
     return str(uuid.uuid4())
 
   def make_version_id(self, last_modified):
-    return 'W/{}'.format(api_util.unix_time_millis(last_modified))
+    return 'W/"{}"'.format(api_util.unix_time_millis(last_modified))

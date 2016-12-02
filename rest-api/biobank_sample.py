@@ -11,9 +11,9 @@ class BiobankSample(ndb.Model):
   """A sample taken from a participant"""
   familyId = ndb.StringProperty()
   sampleId = ndb.StringProperty()
-  eventName = ndb.StringProperty()
   storageStatus = ndb.StringProperty()
   type = ndb.StringProperty()
+  testCode = ndb.StringProperty()
   treatments = ndb.StringProperty()
   expectedVolume = ndb.StringProperty()
   quantity = ndb.StringProperty()

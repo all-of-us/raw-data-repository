@@ -39,9 +39,9 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
     expected_sample_dict_1 = {
         'familyId': 'SF160914-000001',
         'sampleId': '16258000008',
-        'eventName': 'DRC-00123',
         'storageStatus': 'In Prep',
         'type': 'Urine',
+        'testCode': '1ED10',
         'treatments': 'No Additive',
         'expectedVolume': '10 mL',
         'quantity': '1 mL',
@@ -54,6 +54,29 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
         'P1', biobank_sample.SINGLETON_SAMPLES_ID).to_dict()
     del expected_samples_1['last_modified']    
     self.assertEquals(expected_samples_1, to_dict_strip_last_modified(biobank_samples_1))
+
+def test_end_to_end_missing_field(self):
+    # Insert participants to generate biobank IDs
+    participant.DAO.insert(participant.DAO.from_json({}, None, 'P1'))
+    participant_1 = participant.DAO.load('P1')
+    participant.DAO.insert(participant.DAO.from_json({}, None, 'P2'))
+    participant_2 = participant.DAO.load('P2')
+
+    with open(_data_path('biobank_samples_missing_field.csv'), 'rb') as src, \
+        cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV', mode='w') as dest:
+      reader = csv.reader(src)
+      writer = csv.writer(dest)
+      for line in reader:
+        # Put biobank IDs in the CSV being imported
+        line[0] = line[0].replace("{biobank_id_1}", participant_1.biobank_id)
+        line[0] = line[0].replace("{biobank_id_2}", participant_2.biobank_id);
+        writer.writerow(line)
+    BiobankSamplesPipeline('pmi-drc-biobank-test.appspot.com').start()
+    test_support.execute_until_empty(self.taskqueue)
+
+    biobank_samples_1 = biobank_sample.DAO.load_if_present(biobank_sample.SINGLETON_SAMPLES_ID, 
+                                                           'P1')
+    self.assertNot(biobank_samples_1)
 
 def _data_path(filename):
   return os.path.join(os.path.dirname(__file__), '..', 'test-data', filename)
