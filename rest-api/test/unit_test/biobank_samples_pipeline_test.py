@@ -25,30 +25,34 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
 
     with open(_data_path('biobank_samples_1.csv'), 'rb') as src, \
         cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV', mode='w') as dest:
-      reader = csv.reader(src)
-      writer = csv.writer(dest)
+      reader = csv.reader(src, delimiter='\t')
+      writer = csv.writer(dest, delimiter='\t')
+      header_row = reader.next()
+      participant_id_index = header_row.index('External Participant Id')
+      writer.writerow(header_row)
       for line in reader:
         # Put biobank IDs in the CSV being imported
-        line[0] = line[0].replace("{biobank_id_1}", participant_1.biobank_id)
-        line[0] = line[0].replace("{biobank_id_2}", participant_2.biobank_id);
+        line[participant_id_index] = line[participant_id_index].replace("{biobank_id_1}", participant_1.biobank_id)
+        line[participant_id_index] = line[participant_id_index].replace("{biobank_id_2}", participant_2.biobank_id);
         writer.writerow(line)
     BiobankSamplesPipeline('pmi-drc-biobank-test.appspot.com').start()
     test_support.execute_until_empty(self.taskqueue)
 
     biobank_samples_1 = biobank_sample.DAO.load(biobank_sample.SINGLETON_SAMPLES_ID, 'P1')
     expected_sample_dict_1 = {
-        'familyId': 'SF160914-000001',
-        'sampleId': '16258000008',
-        'storageStatus': 'In Prep',
-        'type': 'Urine',
+        'familyId': 'SF161129-000713',
+        'sampleId': '16334002110',
+        'storageStatus': 'Disposed',
+        'type': 'Whole Blood',
         'testCode': '1ED10',
-        'treatments': 'No Additive',
+        'treatments': 'EDTA',
         'expectedVolume': '10 mL',
-        'quantity': '1 mL',
-        'containerType': 'TS - Matrix 1.4mL',
-        'collectionDate': '2016/09/13 09:47:00',
-        'parentSampleId': '16258000001',
-        'confirmedDate': '2016/09/14 09:49:00' }
+        'quantity': '10 mL',
+        'containerType': 'Vacutainer Tube, 10m',
+        'collectionDate': '2016/11/28 02:00:00',
+        'confirmedDate': '2016/11/29 12:19:32',
+        'disposalStatus': 'Accessioning Error',
+        'disposedDate': '2016/11/30 12:17:33' }
     expected_samples_1 = biobank_sample.DAO.from_json(
         { 'samples': [ expected_sample_dict_1 ]}, 
         'P1', biobank_sample.SINGLETON_SAMPLES_ID).to_dict()

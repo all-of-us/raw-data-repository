@@ -36,7 +36,7 @@ BIOBANK_SAMPLE_FIELDS = [
 EXPECTED_HEADERS = [
     "External Participant Id", "Sample Family Id", "Sample Id",
     "Sample Storage Status", "Sample Type", "Test Code",
-    "Sample Treatments", "Parent Expected Volume", "Sample Quantity",
+    "Sample Treatment", "Parent Expected Volume", "Sample Quantity",
     "Sample Container Type", "Sample Family Collection Date",
     "Sample Disposal Status", "Sample Disposed Date", "Parent Sample Id",
     "Sample Confirmed Date"
