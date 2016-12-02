@@ -34,12 +34,12 @@ BIOBANK_SAMPLE_FIELDS = [
 ]
 
 EXPECTED_HEADERS = [
-    "'External Participant Id'", "'Sample Family Id'", "'Sample Id'",
-    "'Sample Storage Status'", "'Sample Type'", "'Test Code'",
-    "'Sample Treatments'", "'Parent Expected Volume'", "'Sample Quantity'",
-    "'Sample Container Type'", "'Sample Family Collection Date'",
-    "'Sample Disposal Status'", "'Sample Disposed Date'", "'Parent Sample Id'",
-    "'Sample Confirmed Date'"
+    "External Participant Id", "Sample Family Id", "Sample Id",
+    "Sample Storage Status", "Sample Type", "Test Code",
+    "Sample Treatments", "Parent Expected Volume", "Sample Quantity",
+    "Sample Container Type", "Sample Family Collection Date",
+    "Sample Disposal Status", "Sample Disposed Date", "Parent Sample Id",
+    "Sample Confirmed Date"
 ]
 
 class BiobankSamplesPipeline(pipeline.Pipeline):
@@ -94,12 +94,12 @@ def map_samples(buffer):
     if len(extra_headers) > 0:
       print 'Warning -- unexpected extra headers: {}'.format(extra_headers)
   for dict in reader:
-    participant_id = dict.get("'External Participant Id'").strip("'");
+    participant_id = dict.get("External Participant Id")
     if participant_id:
       values = []
       for header in EXPECTED_HEADERS:
-        if header != "'External Participant Id'":
-          values.append(dict.get(header).strip("'"));
+        if header != "External Participant Id":
+          values.append(dict.get(header))
       yield (participant_id, values)
 
 def reduce_samples(biobank_id, samples):
