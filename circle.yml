@@ -17,10 +17,18 @@ deployment:
   test:
     branch: master
     commands:
-      - ./ci/deploy_to_test.sh pmi-drc-api-test
+      - ./ci/activate_creds.sh ~/gcloud-credentials.key
+      - ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
+      - ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com
   # To deploy to staging, cut a GitHub release on a green build, with tag of the form v0.1.1-rc0
   staging:
     tag: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
     commands:
-      - ./ci/deploy_to_test.sh all-of-us-rdr-staging
-    
+      - ./ci/activate_creds.sh ~/gcloud-credentials.key
+      - ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
+      - ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com
+
+# Stable and production deployments are not done automatically but can be
+# manually executed with the test.sh and deploy.sh pair, e.g.:
+# ./ci/deploy.sh all-of-us-rdr-stable config/config_stable.json <configurator key file>
+# ./ci/deploy.sh all-of-us-rdr config/config_prod.json <configurator key file>
