@@ -35,7 +35,7 @@ trap 'kill $(jobs -p) || true' EXIT
 PROJECT_ID=$1
 CONFIG=$2
 CREDS=$3
-VERSION=${CIRCLE_TAG//./-}  # dots not allowed; replace with dashes
+VERSION=${CIRCLE_TAG}
 echo "Deploying $VERSION to: $PROJECT_ID"
 
 cd rest-api
