@@ -7,6 +7,7 @@ import copy
 import data_access_object
 import extraction
 import identifier
+import fhir_datatypes
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -66,27 +67,12 @@ HPO_VALUES = (
     'va',          # Veterans Affairs
 )
 
-class ProviderLinkIdentifier(ndb.Model):
-  """An identifier for a provider link"""
-  system = ndb.StringProperty()
-  value = ndb.StringProperty()
-
-class ProviderLinkOrganization(ndb.Model):
-  """An organization for a provider link"""
-  system = ndb.StringProperty()
-  code = ndb.StringProperty()
-
-class ProviderLinkSite(ndb.Model):
-  """A site for a provider link"""
-  system = ndb.StringProperty()
-  code = ndb.StringProperty()
-
 class ProviderLink(ndb.Model):
   """A link between a participant and an outside institution."""
   primary = ndb.BooleanProperty()
-  organization = ndb.LocalStructuredProperty(ProviderLinkOrganization, repeated=False)
-  site = ndb.LocalStructuredProperty(ProviderLinkSite, repeated=False)
-  identifier = ndb.LocalStructuredProperty(ProviderLinkIdentifier, repeated=False)
+  organization = ndb.LocalStructuredProperty(fhir_datatypes.FHIRCoding, repeated=False)
+  site = ndb.LocalStructuredProperty(fhir_datatypes.FHIRCoding, repeated=False)
+  identifier = ndb.LocalStructuredProperty(fhir_datatypes.FHIRIdentifier, repeated=False)
 
 class Participant(ndb.Model):
   """The participant resource definition"""
