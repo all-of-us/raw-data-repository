@@ -20,6 +20,21 @@ class ParticipantTest(unittest.TestCase):
     last_name = 'O\'Pants'
     date_of_birth = (datetime.datetime.now() - relativedelta(years=40)).date().isoformat()
     physical_evaluation_status = 'COMPLETED'
+    provider_link = {
+      "primary": False,
+      "organization": {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/provider-organization",
+        "code": "columbia"
+      },
+      "site": {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/provider-site",
+        "code": "columbia-harlem-free-clinic"
+      },
+      "identifier": {
+        "system": "http://any-columbia-mrn-system",
+        "value": "MRN123"
+      }
+    }
 
     # Create a new participant.
     participant = {
@@ -27,12 +42,14 @@ class ParticipantTest(unittest.TestCase):
         'last_name': last_name,
         'date_of_birth': date_of_birth,
         'physical_evaluation_status': physical_evaluation_status,
+        'providerLink': [provider_link]
     }
 
     response = self.client.request_json('Participant', 'POST', participant)
     self.assertEqual(response['first_name'], first_name)
     self.assertEqual(response['physical_evaluation_status'],
         physical_evaluation_status)
+    self.assertEquals(response['providerLink'], [provider_link])
     biobank_id = response['biobank_id']
     self.assertTrue(biobank_id.startswith('B'))
 

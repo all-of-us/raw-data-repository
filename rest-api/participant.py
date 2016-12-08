@@ -14,6 +14,7 @@ from protorpc import messages
 from google.appengine.ext import ndb
 from google.appengine.ext.ndb import msgprop
 
+# TODO: remove this and enums
 DATE_OF_BIRTH_FORMAT = '%Y-%m-%d'
 
 class PhysicalEvaluationStatus(messages.Enum):
@@ -65,10 +66,38 @@ HPO_VALUES = (
     'va',          # Veterans Affairs
 )
 
+class ProviderLinkIdentifier(ndb.Model):
+  """An identifier for a provider link"""
+  system = ndb.StringProperty()
+  value = ndb.StringProperty()
+
+class ProviderLinkOrganization(ndb.Model):
+  """An organization for a provider link"""
+  system = ndb.StringProperty()
+  code = ndb.StringProperty()
+
+class ProviderLinkSite(ndb.Model):
+  """A site for a provider link"""
+  system = ndb.StringProperty()
+  code = ndb.StringProperty()
+
+class ProviderLink(ndb.Model):
+  """A link between a participant and an outside institution."""
+  primary = ndb.BooleanProperty()
+  organization = ndb.LocalStructuredProperty(ProviderLinkOrganization, repeated=False)
+  site = ndb.LocalStructuredProperty(ProviderLinkSite, repeated=False)
+  identifier = ndb.LocalStructuredProperty(ProviderLinkIdentifier, repeated=False)
+
 class Participant(ndb.Model):
   """The participant resource definition"""
   participant_id = ndb.StringProperty()
   biobank_id = ndb.StringProperty()
+  last_modified = ndb.DateTimeProperty(auto_now=True)
+  # Should this be indexed? If so, switch to StructuredProperty here and above
+  # Should this be provider_link?
+  providerLink = ndb.LocalStructuredProperty(ProviderLink, repeated=True)
+
+  # TODO: remove the fields below here
   first_name = ndb.StringProperty()
   first_name_search = ndb.ComputedProperty(
       lambda self: api_util.searchable_representation(self.first_name))
@@ -85,7 +114,6 @@ class Participant(ndb.Model):
   consent_time = ndb.DateTimeProperty()
   hpo_id = ndb.StringProperty()
   recruitment_source = msgprop.EnumProperty(RecruitmentSource)
-  last_modified = ndb.DateTimeProperty(auto_now=True)
 
 
 class ParticipantDAO(data_access_object.DataAccessObject):
@@ -95,6 +123,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:
       dict_['participant_id'] = id_
+    # TODO: remove the stuff below
     api_util.parse_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
     api_util.parse_json_date(dict_, 'sign_up_time')
     api_util.parse_json_date(dict_, 'consent_time')
@@ -104,6 +133,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     api_util.parse_json_enum(dict_, 'recruitment_source', RecruitmentSource)
     return dict_
 
+  # TODO: remove
   def properties_to_json(self, dict_):
     api_util.format_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
     api_util.format_json_date(dict_, 'sign_up_time')
@@ -117,6 +147,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     return dict_
 
 
+  # TODO: remove
   def list(self, first_name, last_name, dob_string, zip_code):
     date_of_birth = api_util.parse_date(dob_string, DATE_OF_BIRTH_FORMAT)
     query = Participant.query(
