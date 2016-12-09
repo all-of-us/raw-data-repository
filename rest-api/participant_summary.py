@@ -59,6 +59,11 @@ HPO_VALUES = (
     'va',          # Veterans Affairs
 )
 
+class ParticipantSummaryField(ndb.Model):
+  """A field under a participant summary"""
+  key = ndb.StringProperty()
+  value = ndb.StringProperty()
+  canonicalized = ndb.StringProperty()
 
 class ParticipantSummary(ndb.Model):
   """The participant summary resource definition"""
@@ -81,10 +86,11 @@ class ParticipantSummary(ndb.Model):
   hpo_id = ndb.StringProperty()
   recruitment_source = msgprop.EnumProperty(RecruitmentSource)
   last_modified = ndb.DateTimeProperty(auto_now=True)
+  fields = ndb.StructuredProperty(ParticipantSummaryField, repeated=True)
 
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def __init__(self):
-    super(ParticipantSummaryDAO, self).__init__(Participant)
+    super(ParticipantSummaryDAO, self).__init__(ParticipantSummary)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:
@@ -110,6 +116,15 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.remove_field(dict_, 'last_name_search')
     return dict_
 
+  def query_on_fields(self, dict_):
+    query = ParticipantSummary.query()
+    for k in dict_.keys():
+      query = query.filter(ParticipantSummary.fields ==
+                           ParticipantSummaryField(key=k, canonicalized=dict_[k], value=None))
+    items = []
+    for p in query.fetch():
+      items.append(self.to_json(p))
+    return {"items": items}
 
   def list(self, first_name, last_name, dob_string, zip_code):
     date_of_birth = api_util.parse_date(dob_string, DATE_OF_BIRTH_FORMAT)
@@ -127,3 +142,5 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     for p in query.fetch():
       items.append(self.to_json(p))
     return {"items": items}
+
+DAO = ParticipantSummaryDAO()
