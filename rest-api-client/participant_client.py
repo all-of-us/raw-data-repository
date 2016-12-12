@@ -21,7 +21,7 @@ def main():
   response = client.request_json('Participant', 'POST', participant)
   pprint.pprint(response)
 
-  participant_id = response['participant_id']
+  participant_id = response['participantId']
   # Fetch that participant and print it out.
   response = client.request_json('Participant/{}'.format(participant_id))
   pprint.pprint(response)
