@@ -50,10 +50,10 @@ class ParticipantTest(unittest.TestCase):
     self.assertEqual(response['physical_evaluation_status'],
         physical_evaluation_status)
     self.assertEquals(response['providerLink'], [provider_link])
-    biobank_id = response['biobank_id']
+    biobank_id = response['biobankId']
     self.assertTrue(biobank_id.startswith('B'))
 
-    participant_id = response['participant_id']
+    participant_id = response['participantId']
 
     # Fetch that participant.
     response = self.client.request_json('Participant/{}'.format(participant_id))
@@ -66,7 +66,7 @@ class ParticipantTest(unittest.TestCase):
     response['membership_tier'] = 'VOLUNTEER'
     response['consent_time'] = datetime.datetime.now().isoformat()
     response['hpo_id'] = '1234'
-    response['biobank_id'] = None
+    response['biobankId'] = None
     try:
       response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PATCH', response)
@@ -88,7 +88,7 @@ class ParticipantTest(unittest.TestCase):
     self.assertEqual(response['membership_tier'], 'VOLUNTEER')
     self.assertTrue('sign_up_time' in response)
     self.assertEqual(response['hpo_id'], '1234')
-    self.assertEqual(response['biobank_id'], biobank_id)
+    self.assertEqual(response['biobankId'], biobank_id)
 
     try:
       # List request must contain at least last name and birth date.
@@ -111,7 +111,7 @@ class ParticipantTest(unittest.TestCase):
       self.assertEqual(participant['last_name'], last_name)
       self.assertEqual(participant['date_of_birth'], date_of_birth)
 
-      if participant['participant_id'] == participant_id:
+      if participant['participantId'] == participant_id:
         break
     else:
       raise self.fail('Did not encounter newly created participant')

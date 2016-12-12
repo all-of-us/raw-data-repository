@@ -40,12 +40,12 @@ class ParticipantNdbTest(NdbTestBase):
     participant_key = ndb.Key(participant.Participant, participant_id)
     participant_entry = participant.Participant(
         key=participant_key,
-        biobank_id=None, # Need to set all unused fields to None for the diff to succeed.
+        biobankId=None, # Need to set all unused fields to None for the diff to succeed.
         consent_time=None,
         first_name=None,
         middle_name=None,
         physical_evaluation_status=None,
-        participant_id=None,
+        participantId=None,
         recruitment_source=None,
         sign_up_time=None,
         zip_code=None,

@@ -335,7 +335,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1975, 8, 21),
-             participant_id='1',
+             participantId='1',
              membership_tier=participant.MembershipTier.REGISTERED,
              hpo_id='HPO1')),
         # Accidentally changes status to FULL_PARTICIPANT
@@ -343,7 +343,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1975, 8, 21),
-             participant_id='1',
+             participantId='1',
              membership_tier=participant.MembershipTier.FULL_PARTICIPANT,
              hpo_id='HPO1')),
         # Fixes it back to REGISTERED
@@ -351,7 +351,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          participant.Participant(
              key=key,
              date_of_birth=datetime.datetime(1975, 8, 21),
-             participant_id='1',
+             participantId='1',
              membership_tier=participant.MembershipTier.REGISTERED,
              hpo_id='HPO1')),
 
@@ -363,7 +363,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              key=key,
              date_of_birth=datetime.datetime(1975, 8, 21),
              sign_up_time=datetime.datetime(2016, 9, 1, 11, 0, 2),
-             participant_id='1',
+             participantId='1',
              membership_tier=participant.MembershipTier.VOLUNTEER,
              hpo_id='HPO1')),
     ]

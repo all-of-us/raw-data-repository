@@ -32,8 +32,8 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
       writer.writerow(header_row)
       for line in reader:
         # Put biobank IDs in the CSV being imported
-        line[participant_id_index] = line[participant_id_index].replace("{biobank_id_1}", participant_1.biobank_id)
-        line[participant_id_index] = line[participant_id_index].replace("{biobank_id_2}", participant_2.biobank_id);
+        line[participant_id_index] = line[participant_id_index].replace("{biobank_id_1}", participant_1.biobankId)
+        line[participant_id_index] = line[participant_id_index].replace("{biobank_id_2}", participant_2.biobankId);
         writer.writerow(line)
     BiobankSamplesPipeline('pmi-drc-biobank-test.appspot.com').start()
     test_support.execute_until_empty(self.taskqueue)
@@ -72,8 +72,8 @@ def test_end_to_end_missing_field(self):
       writer = csv.writer(dest)
       for line in reader:
         # Put biobank IDs in the CSV being imported
-        line[0] = line[0].replace("{biobank_id_1}", participant_1.biobank_id)
-        line[0] = line[0].replace("{biobank_id_2}", participant_2.biobank_id);
+        line[0] = line[0].replace("{biobank_id_1}", participant_1.biobankId)
+        line[0] = line[0].replace("{biobank_id_2}", participant_2.biobankId);
         writer.writerow(line)
     BiobankSamplesPipeline('pmi-drc-biobank-test.appspot.com').start()
     test_support.execute_until_empty(self.taskqueue)

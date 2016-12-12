@@ -59,34 +59,27 @@ HPO_VALUES = (
     'va',          # Veterans Affairs
 )
 
-class ParticipantSummaryField(ndb.Model):
-  """A field under a participant summary"""
-  key = ndb.StringProperty()
-  value = ndb.StringProperty()
-  canonicalized = ndb.StringProperty()
-
 class ParticipantSummary(ndb.Model):
   """The participant summary resource definition"""
-  participant_id = ndb.StringProperty()
-  biobank_id = ndb.StringProperty()
-  first_name = ndb.StringProperty()
-  first_name_search = ndb.ComputedProperty(
-      lambda self: api_util.searchable_representation(self.first_name))
-  middle_name = ndb.StringProperty()
-  last_name = ndb.StringProperty()
-  last_name_search = ndb.ComputedProperty(
-      lambda self: api_util.searchable_representation(self.last_name))
-  zip_code = ndb.StringProperty()
-  date_of_birth = ndb.DateProperty()
-  gender_identity = msgprop.EnumProperty(GenderIdentity)
-  membership_tier = msgprop.EnumProperty(MembershipTier)
-  physical_evaluation_status = msgprop.EnumProperty(PhysicalEvaluationStatus)
-  sign_up_time = ndb.DateTimeProperty()
-  consent_time = ndb.DateTimeProperty()
-  hpo_id = ndb.StringProperty()
-  recruitment_source = msgprop.EnumProperty(RecruitmentSource)
-  last_modified = ndb.DateTimeProperty(auto_now=True)
-  fields = ndb.StructuredProperty(ParticipantSummaryField, repeated=True)
+  participantId = ndb.StringProperty()
+  biobankId = ndb.StringProperty()
+  firstName = ndb.StringProperty()
+  firstNameSearch = ndb.ComputedProperty(
+      lambda self: api_util.searchable_representation(self.firstName))
+  middleName = ndb.StringProperty()
+  lastName = ndb.StringProperty()
+  lastNameSearch = ndb.ComputedProperty(
+      lambda self: api_util.searchable_representation(self.lastName))
+  zipCode = ndb.StringProperty()
+  dateOfBirth = ndb.DateProperty()
+  genderIdentity = msgprop.EnumProperty(GenderIdentity)
+  membershipTier = msgprop.EnumProperty(MembershipTier)
+  physicalEvaluationStatus = msgprop.EnumProperty(PhysicalEvaluationStatus)
+  signUpTime = ndb.DateTimeProperty()
+  consentTime = ndb.DateTimeProperty()
+  hpoId = ndb.StringProperty()
+  recruitmentSource = msgprop.EnumProperty(RecruitmentSource)
+  lastModified = ndb.DateTimeProperty(auto_now=True)
 
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def __init__(self):
@@ -94,49 +87,39 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:
-      dict_['participant_id'] = id_
-    api_util.parse_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
-    api_util.parse_json_date(dict_, 'sign_up_time')
-    api_util.parse_json_date(dict_, 'consent_time')
-    api_util.parse_json_enum(dict_, 'gender_identity', GenderIdentity)
-    api_util.parse_json_enum(dict_, 'membership_tier', MembershipTier)
-    api_util.parse_json_enum(dict_, 'physical_evaluation_status', PhysicalEvaluationStatus)
-    api_util.parse_json_enum(dict_, 'recruitment_source', RecruitmentSource)
+      dict_['participantId'] = id_
+    api_util.parse_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
+    api_util.parse_json_date(dict_, 'signUpTime')
+    api_util.parse_json_date(dict_, 'consentTime')
+    api_util.parse_json_enum(dict_, 'genderIdentity', GenderIdentity)
+    api_util.parse_json_enum(dict_, 'membershipTier', MembershipTier)
+    api_util.parse_json_enum(dict_, 'physicalEvaluationStatus', PhysicalEvaluationStatus)
+    api_util.parse_json_enum(dict_, 'recruitmentSource', RecruitmentSource)
     return dict_
 
   def properties_to_json(self, dict_):
-    api_util.format_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
-    api_util.format_json_date(dict_, 'sign_up_time')
-    api_util.format_json_date(dict_, 'consent_time')
-    api_util.format_json_enum(dict_, 'gender_identity')
-    api_util.format_json_enum(dict_, 'membership_tier')
-    api_util.format_json_enum(dict_, 'physical_evaluation_status')
-    api_util.format_json_enum(dict_, 'recruitment_source')
-    api_util.remove_field(dict_, 'first_name_search')
-    api_util.remove_field(dict_, 'last_name_search')
+    api_util.format_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
+    api_util.format_json_date(dict_, 'signUpTime')
+    api_util.format_json_date(dict_, 'consentTime')
+    api_util.format_json_enum(dict_, 'genderIdentity')
+    api_util.format_json_enum(dict_, 'membershipTier')
+    api_util.format_json_enum(dict_, 'physicalEvaluationStatus')
+    api_util.format_json_enum(dict_, 'recruitmentSource')
+    api_util.remove_field(dict_, 'firstNameSearch')
+    api_util.remove_field(dict_, 'lastNameSearch')
     return dict_
-
-  def query_on_fields(self, dict_):
-    query = ParticipantSummary.query()
-    for k in dict_.keys():
-      query = query.filter(ParticipantSummary.fields ==
-                           ParticipantSummaryField(key=k, canonicalized=dict_[k], value=None))
-    items = []
-    for p in query.fetch():
-      items.append(self.to_json(p))
-    return {"items": items}
 
   def list(self, first_name, last_name, dob_string, zip_code):
     date_of_birth = api_util.parse_date(dob_string, DATE_OF_BIRTH_FORMAT)
     query = ParticipantSummary.query(
-        ParticipantSummary.last_name_search == api_util.searchable_representation(last_name),
-        ParticipantSummary.date_of_birth == date_of_birth)
+        ParticipantSummary.lastNameSearch == api_util.searchable_representation(last_name),
+        ParticipantSummary.dateOfBirth == date_of_birth)
     if first_name:
       query = query.filter(
-          ParticipantSummary.first_name_search == api_util.searchable_representation(first_name))
+          ParticipantSummary.firstNameSearch == api_util.searchable_representation(first_name))
 
     if zip_code:
-      query = query.filter(ParticipantSummary.zip_code == zip_code)
+      query = query.filter(ParticipantSummary.zipCode == zip_code)
 
     items = []
     for p in query.fetch():

@@ -76,8 +76,9 @@ class ProviderLink(ndb.Model):
 
 class Participant(ndb.Model):
   """The participant resource definition"""
-  participant_id = ndb.StringProperty()
-  biobank_id = ndb.StringProperty()
+  participantId = ndb.StringProperty()
+  biobankId = ndb.StringProperty()
+  # TODO: rename to lastModified (with data_access_object)
   last_modified = ndb.DateTimeProperty(auto_now=True)
   # Should this be indexed? If so, switch to StructuredProperty here and above
   # Should this be provider_link?
@@ -108,7 +109,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:
-      dict_['participant_id'] = id_
+      dict_['participantId'] = id_
     # TODO: remove the stuff below
     api_util.parse_json_date(dict_, 'date_of_birth', DATE_OF_BIRTH_FORMAT)
     api_util.parse_json_date(dict_, 'sign_up_time')
@@ -157,11 +158,11 @@ class ParticipantDAO(data_access_object.DataAccessObject):
 
   def insert(self, model, date=None, client_id=None):
     # Assign a new biobank ID when inserting a new participant
-    model.biobank_id = 'B{:d}'.format(identifier.get_id()).zfill(9)
+    model.biobankId = 'B{:d}'.format(identifier.get_id()).zfill(9)
     return super(ParticipantDAO, self).insert(model, date, client_id)
 
   def find_participant_id_by_biobank_id(self, biobank_id):
-    query = Participant.query(Participant.biobank_id == biobank_id)
+    query = Participant.query(Participant.biobankId == biobank_id)
     results = query.fetch(options=ndb.QueryOptions(keys_only=True))
     if len(results) == 0:
       return None

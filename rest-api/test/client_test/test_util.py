@@ -23,7 +23,7 @@ def create_participant(client, first, last, birthday):
       'date_of_birth': birthday,
   }
   response = client.request_json('Participant', 'POST', participant)
-  return response['participant_id']
+  return response['participantId']
 
 def create_questionnaire(client, json_file):
   with open(json_file) as f:
