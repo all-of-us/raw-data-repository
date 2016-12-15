@@ -98,10 +98,10 @@ DEFAULT_CONFIG = {
             'QuestionnaireResponseHistory': [
                 FieldDef('race',
                          questionnaire_response.extract_race,
-                         set('UNSET') | questionnaire_response.races()),
+                         set(['UNSET']) | questionnaire_response.races()),
                 FieldDef('ethnicity',
                          questionnaire_response.extract_ethnicity,
-                         set('UNSET') | questionnaire_response.ethnicities()),
+                         set(['UNSET']) | questionnaire_response.ethnicities()),
                 # The presence of a response means that some have been submitted.
                 FieldDef('survey',
                          lambda h: ExtractionResult('SUBMITTED_SOME'),
