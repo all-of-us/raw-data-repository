@@ -11,6 +11,9 @@ handlers:
   script: pipeline.handlers._APP
   login: admin
   secure: always
+- url: /_ah/datastore_admin.*
+  script: google.appengine.ext.datastore_admin.main
+  login: admin  
 - url: /.*
   script: main.app
   
