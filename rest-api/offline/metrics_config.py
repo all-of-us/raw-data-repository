@@ -25,6 +25,7 @@ import config
 import copy
 import extraction
 import participant
+import participant_summary
 import questionnaire_response
 
 from collections import namedtuple
@@ -69,7 +70,6 @@ def get_config(extra_metrics=None):
 
 DEFAULT_CONFIG = {
     'Participant': {
-        'load_history_func': participant.load_history_entities,
         'facets': [
             FacetDef(FacetType.HPO_ID, lambda s: s.get('hpo_id', 'UNSET')),
         ],
@@ -78,22 +78,18 @@ DEFAULT_CONFIG = {
             'race': 'UNSET',
             'ethnicity': 'UNSET',
             'survey': 'UNSET',
+            'state': 'UNSET',
+            'census_region': 'UNSET',
+            'membership_tier': 'UNSET',
+            'gender_identity': 'UNSET',
             'biospecimen': 'UNSET',
             'biospecimen_samples': 'UNSET',
             'biospecimen_summary': 'UNSET'
         },
         'fields': {
             'ParticipantHistory': [
-                FieldDef('membership_tier',
-                         extraction.simple_field_extractor('membership_tier'),
-                         list(participant.MembershipTier)),
-                FieldDef('gender_identity',
-                         extraction.simple_field_extractor('gender_identity'),
-                         list(participant.GenderIdentity)),
-                FieldDef('age_range', participant.extract_bucketed_age,
-                         participant.AGE_BUCKETS),
-                FieldDef('hpo_id', participant.extract_HPO_id,
-                         participant.HPO_VALUES)
+              FieldDef('hpo_id', participant.extract_HPO_id,
+                       participant.HPO_VALUES)
             ],
             'QuestionnaireResponseHistory': [
                 FieldDef('race',
@@ -111,7 +107,13 @@ DEFAULT_CONFIG = {
                          questionnaire_response.states()),
                 FieldDef('census_region',
                          questionnaire_response.extract_census_region,
-                         questionnaire_response.regions())
+                         questionnaire_response.regions()),
+                FieldDef('membership_tier',
+                         questionnaire_response.extract_membership_tier,
+                         list(participant_summary.MembershipTier)),
+                FieldDef('gender_identity',
+                         questionnaire_response.extract_gender_identity,
+                         list(participant_summary.GenderIdentity))
             ],
             'EvaluationHistory': [
                 # The presence of a physical evaluation implies that it is complete.

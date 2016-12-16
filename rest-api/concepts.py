@@ -43,6 +43,28 @@ MALE_TO_FEMALE_TRANSGENDER = Concept(SYSTEM_GENDER_IDENTITY, 'male-to-female-tra
 INTERSEX = Concept(SYSTEM_GENDER_IDENTITY, 'intersex')
 OTHER = Concept(SYSTEM_GENDER_IDENTITY, 'other')
 
+DATE_OF_BIRTH = Concept(SYSTEM_PMI_BASE, 'date-of-birth')
+
+MEMBERSHIP_TIER = Concept(SYSTEM_PMI_BASE, 'membership-tier')
+
+SYSTEM_MEMBERSHIP_TIER = SYSTEM_PMI_BASE + 'membership-tier'
+REGISTERED = Concept(SYSTEM_MEMBERSHIP_TIER, 'registered')
+VOLUNTEER = Concept(SYSTEM_MEMBERSHIP_TIER, 'volunteer')
+FULL_PARTICIPANT = Concept(SYSTEM_MEMBERSHIP_TIER, 'full-participant')
+ENROLLEE = Concept(SYSTEM_MEMBERSHIP_TIER, 'enrollee')
+
+RECRUITMENT_SOURCE = Concept(SYSTEM_PMI_BASE, 'recruitment-source')
+
+SYSTEM_RECRUITMENT_SOURCE = SYSTEM_PMI_BASE + 'recruitment-source'
+HPO = Concept(RECRUITMENT_SOURCE, 'hpo')
+DIRECT_VOLUNTEER = Concept(RECRUITMENT_SOURCE, 'direct-volunteer')
+
+HPO_ID = Concept(SYSTEM_PMI_BASE, 'hpo-id')
+SYSTEM_HPO_ID = SYSTEM_PMI_BASE + 'hpo-id'
+
+FIRST_NAME = Concept(SYSTEM_PMI_BASE, 'first-name')
+MIDDLE_NAME = Concept(SYSTEM_PMI_BASE, 'middle-name')
+LAST_NAME = Concept(SYSTEM_PMI_BASE, 'last-name')
 
 STATE_OF_RESIDENCE = Concept(SYSTEM_LOINC, '46499-0')
 

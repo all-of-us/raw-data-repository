@@ -37,6 +37,24 @@
           "code": "46499-0",
           "display": "State of residence"
         }]
+      }, {
+        "linkId":"membership_tier",
+        "text":"Please provide your membership tier.",
+        "type":"choice",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/",
+          "code": "membership-tier",
+          "display": "Membership tier"
+        }]
+      }, {
+        "linkId":"hpo_id",
+        "text":"Please provide your HPO ID.",
+        "type":"choice",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/",
+          "code": "hpo-id",
+          "display": "HPO ID"
+        }]
       }
     ]
   }

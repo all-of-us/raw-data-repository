@@ -9,3 +9,8 @@ class FHIRIdentifier(ndb.Model):
   """An FHIR identifier"""
   system = ndb.StringProperty()
   value = ndb.StringProperty()
+
+class FHIRReference(ndb.Model):
+  """An FHIR reference"""
+  value = ndb.StringProperty()
+  displayName = ndb.StringProperty()

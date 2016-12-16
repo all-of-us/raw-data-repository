@@ -4,11 +4,15 @@
 import api_util
 import data_access_object
 
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from protorpc import messages
+from participant import Participant
 from google.appengine.ext import ndb
 from google.appengine.ext.ndb import msgprop
 
 DATE_OF_BIRTH_FORMAT = '%Y-%m-%d'
+SINGLETON_SUMMARY_ID = '1'
 
 class PhysicalEvaluationStatus(messages.Enum):
   """The state of the participant's physical evaluation"""
@@ -35,29 +39,15 @@ class GenderIdentity(messages.Enum):
   OTHER = 6
   PREFER_NOT_TO_SAY = 7
 
-class RecruitmentSource(messages.Enum):
-  HPO = 1
-  DIRECT_VOLUNTEER = 2
+# The lower bounds of the age buckets.
+_AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
+AGE_BUCKETS = ['{}-{}'.format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
 
-
-# Valid values for the HPO, not currently enforced.
-HPO_VALUES = (
-    'pitt',        # Pitt/UPMC
-    'columbia',    # Columbia University Medical Center
-    'illinois',    # Illinois Precision Medicine Consortium
-    'az_tucson',   # University of Arizona, Tucson
-    'comm_health', # Community Health Center
-    'san_ysidro',  # San Ysidro health Center, Inc.
-    'cherokee',    # Cherokee Health Systems
-    'eau_claire',  # Eau Claire Cooperative Health Centers, Inc
-    'hrhcare',     # HRHCare (Hudson River Healthcare)
-    'jackson',     # Jackson-Hinds Comprehensive Health Center
-    'geisinger',   # Geisinger Health System
-    'cal_pmc',     # California Precision Medicine Consortium
-    'ne_pmc',      # New England Precision Medicine Consortium
-    'trans_am',    # Trans-American Consortium for the Health Care Systems Research Network
-    'va',          # Veterans Affairs
-)
+def get_bucketed_age(date_of_birth, today):
+  age = relativedelta(today, date_of_birth).years
+  for begin, end in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + ['']):
+    if (age >= begin) and (not end or age <= end):
+      return str(begin) + '-' + str(end)
 
 class ParticipantSummary(ndb.Model):
   """The participant summary resource definition"""
@@ -78,12 +68,11 @@ class ParticipantSummary(ndb.Model):
   signUpTime = ndb.DateTimeProperty()
   consentTime = ndb.DateTimeProperty()
   hpoId = ndb.StringProperty()
-  recruitmentSource = msgprop.EnumProperty(RecruitmentSource)
-  lastModified = ndb.DateTimeProperty(auto_now=True)
 
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def __init__(self):
-    super(ParticipantSummaryDAO, self).__init__(ParticipantSummary)
+    super(ParticipantSummaryDAO, self).__init__(ParticipantSummary, Participant,
+                                                keep_history = False)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:
