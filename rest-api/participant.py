@@ -1,9 +1,6 @@
 '''The definition of the participant object and DB marshalling.
 '''
 
-import api_util
-import copy
-
 import data_access_object
 import extraction
 import identifier
@@ -11,9 +8,7 @@ import fhir_datatypes
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from protorpc import messages
 from google.appengine.ext import ndb
-from google.appengine.ext.ndb import msgprop
 
 # Valid values for the HPO, not currently enforced.
 HPO_VALUES = (

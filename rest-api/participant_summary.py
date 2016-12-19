@@ -5,7 +5,6 @@ import api_util
 import data_access_object
 import extraction
 
-from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from protorpc import messages
 from participant import Participant
@@ -80,7 +79,7 @@ class ParticipantSummary(ndb.Model):
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def __init__(self):
     super(ParticipantSummaryDAO, self).__init__(ParticipantSummary, Participant,
-                                                keep_history = False)
+                                                keep_history=False)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:

@@ -63,7 +63,6 @@ import api_util
 import config
 import metrics
 import participant
-import participant_summary
 import offline.metrics_config
 
 from datetime import datetime

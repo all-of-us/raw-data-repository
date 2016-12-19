@@ -23,7 +23,6 @@ Keys for an individual configuration entry:
 import concepts
 import config
 import copy
-import extraction
 import participant
 import participant_summary
 import questionnaire_response

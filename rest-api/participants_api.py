@@ -3,27 +3,18 @@
 This defines the APIs and the handlers for the APIs.
 """
 
-import datetime
-import traceback
-
 import api_util
 import base_api
-import biobank_order
-import biobank_sample
 import concepts
 import evaluation
-import offline.metrics_config
 import participant
 import participant_summary
-import questionnaire_response
 import field_validation
 
 from api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
-from flask import request
-from flask.ext.restful import Resource
 from field_validation import FieldValidation, has_units, lessthan, within_range
 
-from werkzeug.exceptions import BadRequest, InternalServerError
+from werkzeug.exceptions import BadRequest
 
 SYSTOLIC_BP = FieldValidation(concepts.SYSTOLIC_BP,
                               'systolic blood pressure',
@@ -130,4 +121,4 @@ class ParticipantSummaryAPI(base_api.BaseApi):
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_, date=None):
-   return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
+    return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
