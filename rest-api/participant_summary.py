@@ -122,5 +122,9 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     for p in query.fetch():
       items.append(self.to_json(p))
     return {"items": items}
+    
+  def get_summary_for_participant(self, participant_id):
+    return self.load_if_present(SINGLETON_SUMMARY_ID, participant_id)
+  
 
 DAO = ParticipantSummaryDAO()

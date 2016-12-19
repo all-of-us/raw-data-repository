@@ -59,11 +59,12 @@ class Participant(ndb.Model):
     return None
 
 # Fake history entry created to represent the age of the participant
-class AgeHistoryEntry(object):
+class BirthdayEvent(object):
   def __init__(self, date_of_birth, date):
     self.date_of_birth = date_of_birth
     self.date = date
-    self.key = ndb.Key('AgeHistory', '')
+    self.obj = Participant()
+    self.key = ndb.Key('ParticipantHistory', '')
 
 class ParticipantDAO(data_access_object.DataAccessObject):
   def __init__(self):
@@ -103,7 +104,7 @@ def extract_HPO_id(ph):
   """Returns ExtractionResult with the string representing the HPO."""
   primary_provider_link = ph.obj.get_primary_provider_link()
   if primary_provider_link and primary_provider_link.organization:
-    return extraction.ExtractionResult(primary_provider_link.organization.value, True)
+    return extraction.ExtractionResult(primary_provider_link.organization.reference, True)
   return extraction.ExtractionResult(None, False)
 
 def load_history_entities(participant_key, now):
@@ -124,19 +125,18 @@ def modify_participant_history(history, participant_key, now):
   participant's age changes.
   """  
   
-  # Insert AgeHistory entries starting at the date of the participant's creation,
-  # followed by each birthday until today.
+  # Set initial date of birth, and insert BirthdayEvent entries for each birthday after
+  # the participant's creation until today.
   import participant_summary
-  summary = participant_summary.DAO.load_if_present(participant_summary.SINGLETON_SUMMARY_ID, participant_key.id())
+  summary = participant_summary.DAO.get_summary_for_participant(participant_key.id())
   if summary and summary.dateOfBirth:
-    age_history_obj = AgeHistoryEntry(summary.dateOfBirth, history[0].date)
-    history.append(age_history_obj)
-    difference_in_years = relativedelta(summary.dateOfBirth, history[0].date).years
+    history[0].date_of_birth = summary.dateOfBirth
+    difference_in_years = relativedelta(history[0].date, summary.dateOfBirth).years
         
     year = relativedelta(years=1)
-    date = summary.dateOfBirth + relativedelta(years=difference_in_years)
+    date = summary.dateOfBirth + relativedelta(years=difference_in_years + 1)
     while date and date < now.date():
-      age_history_obj = AgeHistoryEntry(summary.dateOfBirth, datetime.combine(date, datetime.min.time()))
+      age_history_obj = BirthdayEvent(summary.dateOfBirth, datetime.combine(date, datetime.min.time()))
       history.append(age_history_obj)    
       date = date + year
     

@@ -2,6 +2,7 @@ import concepts
 import data_access_object
 import extraction
 import participant
+import participant_summary
 import fhirclient.models.questionnaireresponse
 
 from census_regions import census_regions
@@ -38,11 +39,11 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
     participant_id = model.resource['subject']['reference'].split('/')[1]
     gender_identity_result = extract_field(model, concepts.GENDER_IDENTITY)
     if gender_identity_result.extracted:
-      participant_obj = participant.DAO.load(participant_id)
+      participant_summary_obj = participant_summary.DAO.get_summary_for_participant(participant_id)
       # If the gender identity on the participant doesn't match, update it
-      if participant_obj.gender_identity != gender_identity_result.value:
-        participant_obj.gender_identity = gender_identity_result.value
-        participant.DAO.store(participant_obj, date, client_id)
+      if participant_summary_obj.genderIdentity != gender_identity_result.value:
+        participant_summary_obj.genderIdentity = gender_identity_result.value
+        participant_summary.DAO.store(participant_summary_obj, date, client_id)
 
 DAO = QuestionnaireResponseDAO()
 
@@ -104,7 +105,11 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
     if len(qs) == 1 and len(qs[0].answer) == 1:
       value = extraction.extract_value(qs[0].answer[0])
       concept = value.extract_concept()
-      return concept and config.get(concept, UNMAPPED)
+      if concept:
+        result = config.get(concept, UNMAPPED)
+        if result:
+          return extraction.ExtractionResult(result)
+    return extraction.ExtractionResult(value=None, extracted=False)
 
   def extract_link_ids(self, concept):
     questionnaire_id = self.extract_questionnaire_id()
@@ -186,13 +191,10 @@ def extract_field(obj, concept):
   """Returns ExtractionResult for concept answer from questionnaire response."""
   response_extractor = QuestionnaireResponseExtractor(obj.resource)
   link_ids = response_extractor.extract_link_ids(concept)
-
+  
   if not len(link_ids) == 1:
     return extraction.ExtractionResult(None, False)  # Failed to extract answer
-
-  # Questionnaire unambiguously asked the desired question.
-  return extraction.ExtractionResult(
-      response_extractor.extract_answer(link_ids[0], concept))
+  return response_extractor.extract_answer(link_ids[0], concept)
 
 @ndb.non_transactional
 def extract_concept_presence(concept):

@@ -90,11 +90,9 @@ DEFAULT_CONFIG = {
         'fields': {
             'ParticipantHistory': [
               FieldDef('hpo_id', participant.extract_HPO_id,
-                       participant.HPO_VALUES),                
-            ],
-            'AgeHistory': [
+                       participant.HPO_VALUES),
               FieldDef('age_range', participant_summary.extract_bucketed_age,
-                       participant_summary.AGE_BUCKETS),
+                       participant_summary.AGE_BUCKETS),               
             ],
             'QuestionnaireResponseHistory': [
                 FieldDef('race',

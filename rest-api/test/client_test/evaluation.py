@@ -9,9 +9,7 @@ class TestEvaluation(unittest.TestCase):
   def setUp(self):
     self.maxDiff = None
     self.client = test_util.get_client('rdr/v1')
-    self.participant_id = test_util.create_participant(
-        self.client, 'Eval', 'Johnson', '1969-02-02')
-
+    self.participant_id = test_util.create_participant(self.client)
 
   def test_insert_eval(self):
     evaluation_files = [

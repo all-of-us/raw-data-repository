@@ -16,13 +16,8 @@ def get_client(base_path):
   instance = os.environ.get('PMI_DRC_RDR_INSTANCE') or DEFAULT_INSTANCE
   return Client(base_path, False, CREDS_FILE, instance)
 
-def create_participant(client, first, last, birthday):
-  participant = {
-      'first_name': first,
-      'last_name': last,
-      'date_of_birth': birthday,
-  }
-  response = client.request_json('Participant', 'POST', participant)
+def create_participant(client):
+  response = client.request_json('Participant', 'POST')
   return response['participantId']
 
 def create_questionnaire(client, json_file):

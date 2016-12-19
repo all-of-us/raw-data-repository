@@ -2,6 +2,7 @@
 
 import concepts
 import datetime
+import extraction
 import os
 import json
 import unittest
@@ -40,9 +41,9 @@ class ExtractionTest(NdbTestBase):
 
     extractor = QuestionnaireResponseExtractor(json.loads(response))
     self.assertEquals('Q1234', extractor.extract_questionnaire_id())
-    self.assertEquals('white', extractor.extract_answer(RACE_LINKID, concepts.RACE))
+    self.assertEquals('white', extractor.extract_answer(RACE_LINKID, concepts.RACE).value)
     self.assertEquals('TX', extractor.extract_answer(STATE_OF_RESIDENCE_LINKID,
-                                                     concepts.STATE_OF_RESIDENCE))
+                                                     concepts.STATE_OF_RESIDENCE).value)
 
 def _fill_response(template, q_id, p_id, race, ethnicity, state_of_residence):
   for k, v in {

@@ -126,6 +126,8 @@ class Client(object):
     json_body = None
     if body:
       json_body = json.dumps(body)
+    elif method == 'POST':
+      json_body = '{}'
     response = self.request(path,
                             method,
                             body=json_body,

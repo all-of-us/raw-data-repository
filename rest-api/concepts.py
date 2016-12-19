@@ -53,12 +53,6 @@ VOLUNTEER = Concept(SYSTEM_MEMBERSHIP_TIER, 'volunteer')
 FULL_PARTICIPANT = Concept(SYSTEM_MEMBERSHIP_TIER, 'full-participant')
 ENROLLEE = Concept(SYSTEM_MEMBERSHIP_TIER, 'enrollee')
 
-RECRUITMENT_SOURCE = Concept(SYSTEM_PMI_BASE, 'recruitment-source')
-
-SYSTEM_RECRUITMENT_SOURCE = SYSTEM_PMI_BASE + 'recruitment-source'
-HPO = Concept(RECRUITMENT_SOURCE, 'hpo')
-DIRECT_VOLUNTEER = Concept(RECRUITMENT_SOURCE, 'direct-volunteer')
-
 HPO_ID = Concept(SYSTEM_PMI_BASE, 'hpo-id')
 SYSTEM_HPO_ID = SYSTEM_PMI_BASE + 'hpo-id'
 
