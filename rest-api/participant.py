@@ -58,8 +58,7 @@ class BirthdayEvent(object):
   def __init__(self, date_of_birth, date):
     self.date_of_birth = date_of_birth
     self.date = date
-    self.obj = Participant()
-    self.key = ndb.Key('ParticipantHistory', '')
+    self.key = ndb.Key('AgeHistory', '')
 
 class ParticipantDAO(data_access_object.DataAccessObject):
   def __init__(self):
@@ -126,6 +125,7 @@ def modify_participant_history(history, participant_key, now):
   summary = participant_summary.DAO.get_summary_for_participant(participant_key.id())
   if summary and summary.dateOfBirth:
     history[0].date_of_birth = summary.dateOfBirth
+    history.append(BirthdayEvent(summary.dateOfBirth, history[0].date))
     difference_in_years = relativedelta(history[0].date, summary.dateOfBirth).years
         
     year = relativedelta(years=1)

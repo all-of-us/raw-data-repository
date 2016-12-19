@@ -50,6 +50,8 @@ CONFIGS_FOR_TEST = {
             'ParticipantHistory': [
               FieldDef('hpo_id', participant.extract_HPO_id,
                        participant.HPO_VALUES),
+            ],
+            'AgeHistory': [
               FieldDef('age_range', participant_summary.extract_bucketed_age,
                        participant_summary.AGE_BUCKETS),         
             ],
@@ -105,7 +107,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
               "Participant": 1, 
-              "Participant.age_range.36-45": 1, 
+              "Participant.age_range.UNSET": 1, 
               "Participant.biospecimen_samples.UNSET": 1, 
               "Participant.ethnicity.UNSET": 1, 
               "Participant.hpo_id.HPO1": 1, 
@@ -114,6 +116,13 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
               "Participant.physical_evaluation.UNSET": 1, 
               "Participant.race.UNSET": 1, 
               "Participant.state.UNSET": 1}),
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.age_range.UNSET": -1}), 
+        
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.age_range.36-45": 1}),        
         ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
               "Participant.ethnicity.UNSET": -1, 
@@ -206,7 +215,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
         ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
               "Participant": 1, 
-              "Participant.age_range.36-45": 1, 
+              "Participant.age_range.UNSET": 1, 
               "Participant.biospecimen_samples.UNSET": 1, 
               "Participant.ethnicity.UNSET": 1, 
               "Participant.hpo_id.HPO1": 1, 
@@ -216,6 +225,13 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
               "Participant.race.UNSET": 1, 
               "Participant.state.UNSET": 1
         }),
+        ({'date': "2013-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.age_range.UNSET": -1}), 
+        
+        ({'date': "2013-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.age_range.36-45": 1}),        
         ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.UNSET': -1,
