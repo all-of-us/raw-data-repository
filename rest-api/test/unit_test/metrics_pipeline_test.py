@@ -16,7 +16,7 @@ import evaluation
 import unittest
 import os
 
-from extraction import ExtractionResult
+from extraction import ExtractionResult, BASE_VALUES, UNSET
 from offline import metrics_pipeline
 from offline.metrics_config import FieldDef, FacetDef
 from collections import Counter
@@ -35,39 +35,39 @@ def compute_meta(summary):
 CONFIGS_FOR_TEST = {
     'Participant': {
         'facets': [
-            FacetDef(offline.metrics_config.FacetType.HPO_ID, lambda s: s.get('hpo_id', 'UNSET')),
+            FacetDef(offline.metrics_config.FacetType.HPO_ID, lambda s: s.get('hpo_id', UNSET)),
         ],
         'initial_state': {
-            'physical_evaluation': 'UNSET',
-            'biospecimen_samples': 'UNSET',
-            'membership_tier': 'UNSET',
-            'age_range': 'UNSET',
-            'race': 'UNSET',
-            'ethnicity': 'UNSET',
-            'state': 'UNSET',            
+            'physical_evaluation': UNSET,
+            'biospecimen_samples': UNSET,
+            'membership_tier': UNSET,
+            'age_range': UNSET,
+            'race': UNSET,
+            'ethnicity': UNSET,
+            'state': UNSET,            
         },
         'fields': {
             'ParticipantHistory': [
               FieldDef('hpo_id', participant.extract_HPO_id,
-                       participant.HPO_VALUES),
+                       BASE_VALUES | set(participant.HPO_VALUES)),
             ],
             'AgeHistory': [
               FieldDef('age_range', participant_summary.extract_bucketed_age,
-                       participant_summary.AGE_BUCKETS),         
+                       BASE_VALUES | set(participant_summary.AGE_BUCKETS)),         
             ],
             'QuestionnaireResponseHistory': [
                 FieldDef('race',
                          questionnaire_response.extract_race,
-                         set('UNSET') | questionnaire_response.races()),
+                         BASE_VALUES | questionnaire_response.races()),
                 FieldDef('ethnicity',
                          questionnaire_response.extract_ethnicity,
-                         set('UNSET') | questionnaire_response.ethnicities()),
+                         BASE_VALUES | questionnaire_response.ethnicities()),
                 FieldDef('state',
                          questionnaire_response.extract_state_of_residence,
-                         questionnaire_response.states()),
+                         BASE_VALUES | questionnaire_response.states()),
                 FieldDef('membership_tier',
                          questionnaire_response.extract_membership_tier,
-                         list(participant_summary.MembershipTier)),
+                         BASE_VALUES | set(participant_summary.MembershipTier)),
             ],
             'EvaluationHistory': [
                 # The presence of a physical evaluation implies that it is complete.
@@ -139,10 +139,14 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
               "Participant.state.TX": 1}),
         ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
+              "Participant.ethnicity.non_hispanic": -1,
+              "Participant.race.white": -1, 
               "Participant.membership_tier.REGISTERED": -1, 
               "Participant.meta.R1": -1}),      
         ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
+              "Participant.ethnicity.SKIPPED": 1,
+              "Participant.race.UNMAPPED": 1,               
               "Participant.membership_tier.FULL_PARTICIPANT": 1, 
               "Participant.meta.NOPE": 1}),
         ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
@@ -236,11 +240,17 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
          {
              'Participant.membership_tier.UNSET': -1,
              'Participant.meta.NOPE': -1,
+             "Participant.ethnicity.UNSET": -1,            
+             "Participant.race.UNSET": -1,
+             "Participant.state.UNSET": -1
          }),
         ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.REGISTERED': 1,
              'Participant.meta.R1': 1,
+             "Participant.ethnicity.SKIPPED": 1,             
+             "Participant.race.SKIPPED": 1,
+             "Participant.state.SKIPPED": 1
          }), 
         ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
@@ -374,6 +384,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
   def populate_questionnaire_responses(self, participant_key):
     questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
     questionnaire_key = questionnaire.DAO.store(questionnaire.DAO.from_json(questionnaire_json, None, questionnaire.DAO.allocate_id()))
+    unmapped_race = concepts.Concept(concepts.SYSTEM_RACE, 'unmapped-race')
     # Set race, ethnicity, state, and membership tier on 9/1/2016
     questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
@@ -382,28 +393,36 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
                                                                   ("state_of_residence", concepts.STATES_BY_ABBREV['TX']),
                                                                   ("membership_tier", concepts.REGISTERED)]),
                                      datetime.datetime(2016, 9, 1, 11, 0, 2))
-    # Accidentally change status to FULL_PARTICIPANT                         
+    # Accidentally change status to FULL_PARTICIPANT; don't fill out ethnicity and put in an unmapped race                         
     questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
-                                                                 questionnaire_key.id(),
-                                                                 [("membership_tier", concepts.FULL_PARTICIPANT)]),
+                                                                 questionnaire_key.id(),                                                                  
+                                                                 [("membership_tier", concepts.FULL_PARTICIPANT),
+                                                                  ("state_of_residence", concepts.STATES_BY_ABBREV['TX']),
+                                                                  ("race", unmapped_race)]),
                                      datetime.datetime(2016, 9, 1, 11, 0, 3))        
     # Change it back to REGISTERED
     questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
-                                                                 [("membership_tier", concepts.REGISTERED)]),
+                                                                 [("membership_tier", concepts.REGISTERED),
+                                                                  ("state_of_residence", concepts.STATES_BY_ABBREV['TX']),
+                                                                  ("race", unmapped_race)]),
                                      datetime.datetime(2016, 9, 1, 11, 0, 4))
     # Note that on 9/5, an evaluation is entered.
     
     # Change to VOLUNTEER on 9/10
     questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
-                                                                 [("membership_tier", concepts.VOLUNTEER)]),
+                                                                 [("membership_tier", concepts.VOLUNTEER),
+                                                                  ("state_of_residence", concepts.STATES_BY_ABBREV['TX']),
+                                                                  ("race", unmapped_race)]),
                                      datetime.datetime(2016, 9, 10, 11, 0, 1))
     
     # Change state on 10/1/2016
     questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
-                                                                 [("state_of_residence", concepts.STATES_BY_ABBREV['CA'])]),
+                                                                 [("membership_tier", concepts.VOLUNTEER),
+                                                                  ("state_of_residence", concepts.STATES_BY_ABBREV['CA']),
+                                                                  ("race", unmapped_race)]),
                                      datetime.datetime(2016, 10, 1, 11, 0, 2))
 
 

@@ -28,7 +28,7 @@ import participant_summary
 import questionnaire_response
 
 from collections import namedtuple
-from extraction import ExtractionResult
+from extraction import ExtractionResult, BASE_VALUES, UNSET
 from protorpc import messages
 
 class FacetType(messages.Enum):
@@ -41,10 +41,10 @@ FacetDef = namedtuple('FacetDef', ['type', 'func'])
 
 def biospecimen_summary(summary):
   """Summarizes the two biospecimen statuses into one."""
-  samples = summary.get('biospecimen_samples', 'UNSET')
-  order = summary.get('biospecimen', 'UNSET')
+  samples = summary.get('biospecimen_samples', UNSET)
+  order = summary.get('biospecimen', UNSET)
   ret = order
-  if samples != 'UNSET':
+  if samples != UNSET:
     ret = samples
   return ExtractionResult(ret)
 
@@ -63,84 +63,84 @@ def get_config(extra_metrics=None):
         FieldDef(k, questionnaire_response.extract_concept_presence(concepts.Concept(
                  v.get('concept', {}).get('system', ''),
                  v.get('concept', {}).get('code', ''))),
-                set(['UNSET']) | questionnaire_response.submission_statuses()))
-      CONFIG['Participant']['initial_state'][k] = 'UNSET'
+                set([UNSET]) | questionnaire_response.submission_statuses()))
+      CONFIG['Participant']['initial_state'][k] = UNSET
   return CONFIG
 
 DEFAULT_CONFIG = {
     'Participant': {
         'facets': [
-            FacetDef(FacetType.HPO_ID, lambda s: s.get('hpo_id', 'UNSET')),
+            FacetDef(FacetType.HPO_ID, lambda s: s.get('hpo_id', UNSET)),
         ],
         'initial_state': {
-            'physical_evaluation': 'UNSET',
-            'race': 'UNSET',
-            'ethnicity': 'UNSET',
-            'survey': 'UNSET',
-            'state': 'UNSET',
-            'census_region': 'UNSET',
-            'membership_tier': 'UNSET',
-            'gender_identity': 'UNSET',
-            'biospecimen': 'UNSET',
-            'biospecimen_samples': 'UNSET',
-            'biospecimen_summary': 'UNSET',
-            'age_range': 'UNSET'
+            'physical_evaluation': UNSET,
+            'race': UNSET,
+            'ethnicity': UNSET,
+            'survey': UNSET,
+            'state': UNSET,
+            'census_region': UNSET,
+            'membership_tier': UNSET,
+            'gender_identity': UNSET,
+            'biospecimen': UNSET,
+            'biospecimen_samples': UNSET,
+            'biospecimen_summary': UNSET,
+            'age_range': UNSET
         },
         'fields': {
             'ParticipantHistory': [
               FieldDef('hpo_id', participant.extract_HPO_id,
-                       participant.HPO_VALUES),
+                       BASE_VALUES | set(participant.HPO_VALUES)),
             ],
             'AgeHistory': [
               FieldDef('age_range', participant_summary.extract_bucketed_age,
-                       participant_summary.AGE_BUCKETS),         
+                       BASE_VALUES | set(participant_summary.AGE_BUCKETS)),         
             ],
             'QuestionnaireResponseHistory': [
                 FieldDef('race',
                          questionnaire_response.extract_race,
-                         set(['UNSET']) | questionnaire_response.races()),
+                         BASE_VALUES | questionnaire_response.races()),
                 FieldDef('ethnicity',
                          questionnaire_response.extract_ethnicity,
-                         set(['UNSET']) | questionnaire_response.ethnicities()),
+                         BASE_VALUES | questionnaire_response.ethnicities()),
                 # The presence of a response means that some have been submitted.
                 FieldDef('survey',
                          lambda h: ExtractionResult('SUBMITTED_SOME'),
-                         ('UNSET', 'SUBMITTED_SOME')),
+                         (UNSET, 'SUBMITTED_SOME')),
                 FieldDef('state',
                          questionnaire_response.extract_state_of_residence,
-                         questionnaire_response.states()),
+                         BASE_VALUES | questionnaire_response.states()),
                 FieldDef('census_region',
                          questionnaire_response.extract_census_region,
-                         questionnaire_response.regions()),
+                         BASE_VALUES | questionnaire_response.regions()),
                 FieldDef('membership_tier',
                          questionnaire_response.extract_membership_tier,
-                         list(participant_summary.MembershipTier)),
+                         BASE_VALUES | set(participant_summary.MembershipTier)),
                 FieldDef('gender_identity',
                          questionnaire_response.extract_gender_identity,
-                         list(participant_summary.GenderIdentity)),                
+                         BASE_VALUES | set(participant_summary.GenderIdentity)),                
             ],
             'EvaluationHistory': [
                 # The presence of a physical evaluation implies that it is complete.
                 FieldDef('physical_evaluation',
                          lambda h: ExtractionResult('COMPLETE'),
-                         ('UNSET', 'COMPLETE')),
+                         (UNSET, 'COMPLETE')),
             ],
             'BiobankOrderHistory': [
                 # The presence of a biobank order implies that an order has been placed.
                 FieldDef('biospecimen',
                          lambda h: ExtractionResult('ORDER_PLACED'),
-                         ('UNSET', 'ORDER_PLACED'))
+                         (UNSET, 'ORDER_PLACED'))
             ],
             'BiobankSamples': [
                 # The presence of a biobank sample implies that samples have arrived
                 # This overwrites the ORDER_PLACED value for biospecimen above
                 FieldDef('biospecimen_samples', lambda h: ExtractionResult('SAMPLES_ARRIVED'),
-                         ('UNSET', 'SAMPLES_ARRIVED'))
+                         (UNSET, 'SAMPLES_ARRIVED'))
             ]
         },
         'summary_fields': [
             FieldDef('biospecimen_summary', biospecimen_summary,
-                     ('UNSET', 'ORDER_PLACED', 'SAMPLES_ARRIVED')),
+                     (UNSET, 'ORDER_PLACED', 'SAMPLES_ARRIVED')),
         ],
     },
 }

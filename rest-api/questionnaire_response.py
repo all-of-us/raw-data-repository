@@ -5,7 +5,7 @@ import participant_summary
 import fhirclient.models.questionnaireresponse
 
 from census_regions import census_regions
-from extraction import UNMAPPED
+from extraction import UNMAPPED, SKIPPED
 from google.appengine.ext import ndb
 from participant import Participant
 from participant_summary import GenderIdentity, MembershipTier
@@ -105,10 +105,8 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
       value = extraction.extract_value(qs[0].answer[0])
       concept = value.extract_concept()
       if concept:
-        result = config.get(concept, UNMAPPED)
-        if result:
-          return extraction.ExtractionResult(result)
-    return extraction.ExtractionResult(value=None, extracted=False)
+        return config.get(concept, UNMAPPED)        
+    return SKIPPED
 
   def extract_link_ids(self, concept):
     questionnaire_id = self.extract_questionnaire_id()
@@ -193,7 +191,7 @@ def extract_field(obj, concept):
   
   if not len(link_ids) == 1:
     return extraction.ExtractionResult(None, False)  # Failed to extract answer
-  return response_extractor.extract_answer(link_ids[0], concept)
+  return extraction.ExtractionResult(response_extractor.extract_answer(link_ids[0], concept))
 
 @ndb.non_transactional
 def extract_concept_presence(concept):
