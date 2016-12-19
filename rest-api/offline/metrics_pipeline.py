@@ -167,12 +167,7 @@ def map_key_to_summary(entity_key, now=None):
   now = now or datetime.now()
   kind = entity_key.kind()
   metrics_conf = get_config()[kind]
-  print "metrics_conf: {}".format(metrics_conf)
   # Note that history can contain multiple types of history objects.
-  summary = participant_summary.DAO.load_if_present(participant_summary.SINGLETON_SUMMARY_ID, entity_key.id())
-  date_of_birth = None
-  if summary:
-    date_of_birth = summary.dateOfBirth
 
   history = participant.load_history_entities(entity_key, now)
   history = sorted(history, key=lambda o: o.date)
@@ -189,9 +184,6 @@ def map_key_to_summary(entity_key, now=None):
       new_state[TOTAL_SENTINEL] = 1
     else:
       new_state = copy.deepcopy(last_state)
-    if date_of_birth:
-      for summary in get_age_change_summaries(date_of_birth, new_state, last_state, date, False):
-        yield summary
     hist_kind = hist_obj.key.kind()
     for field in metrics_conf['fields'][hist_kind]:
       try:
@@ -238,29 +230,6 @@ def map_key_to_summary(entity_key, now=None):
     yield (json.dumps(facets_key), json.dumps(summary, sort_keys=True))
     last_state = new_state
     last_facets_key = facets_key
-  if date_of_birth:
-    for summary in get_age_change_summaries(date_of_birth, new_state, last_state, now.date(), True):
-      yield summary
-
-
-def get_age_change_summaries(date_of_birth, new_state, last_state, date, include_new_state):
-  new_state['age_range'] = participant_summary.get_bucketed_age(date_of_birth, date)
-  # If age ranges differ, add all intermediate age range changes.
-  if last_state and last_state['age_range'] != new_state['age_range']:
-    last_age_range_index = participant_summary.AGE_BUCKETS.index(last_state['age_range'])
-    new_age_range_index = participant_summary.AGE_BUCKETS.index(new_state['age_range'])
-    for i in range(last_age_range_index + 1, new_age_range_index + 1 if include_new_state else new_age_range_index):
-      intermediate_age_bucket = participant_summary.AGE_BUCKETS[i]
-      new_date = date_of_birth + relativedelta(years=participant_summary._AGE_LB[i])
-      # Yield -1 for the old age range and +1 for the new one
-      old_age_summary[_make_metric_key(kind, 'age_range', last_state['age_range'])] = -1
-      new_age_summary[_make_metric_key(kind, 'age_range', intermediate_age_bucket)] = 1
-      yield (json.dumps(_get_facets_key(new_date, metrics_conf, last_state)),
-             json.dumps(old_age_summary, sort_keys=True))
-      yield (json.dumps(_get_facets_key(new_date, metrics_conf, last_state)),
-             json.dumps(new_age_summary, sort_keys=True))
-      last_state['age_range'] = intermediate_age_bucket
-
 
 def reduce_facets(facets_key_json, deltas):
   facets_key = json.loads(facets_key_json)

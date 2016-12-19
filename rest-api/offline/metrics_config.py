@@ -84,12 +84,17 @@ DEFAULT_CONFIG = {
             'gender_identity': 'UNSET',
             'biospecimen': 'UNSET',
             'biospecimen_samples': 'UNSET',
-            'biospecimen_summary': 'UNSET'
+            'biospecimen_summary': 'UNSET',
+            'age_range': 'UNSET'
         },
         'fields': {
             'ParticipantHistory': [
               FieldDef('hpo_id', participant.extract_HPO_id,
-                       participant.HPO_VALUES)
+                       participant.HPO_VALUES),                
+            ],
+            'AgeHistory': [
+              FieldDef('age_range', participant_summary.extract_bucketed_age,
+                       participant_summary.AGE_BUCKETS),
             ],
             'QuestionnaireResponseHistory': [
                 FieldDef('race',
@@ -113,7 +118,7 @@ DEFAULT_CONFIG = {
                          list(participant_summary.MembershipTier)),
                 FieldDef('gender_identity',
                          questionnaire_response.extract_gender_identity,
-                         list(participant_summary.GenderIdentity))
+                         list(participant_summary.GenderIdentity)),                
             ],
             'EvaluationHistory': [
                 # The presence of a physical evaluation implies that it is complete.

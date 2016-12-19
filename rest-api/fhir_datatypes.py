@@ -12,5 +12,5 @@ class FHIRIdentifier(ndb.Model):
 
 class FHIRReference(ndb.Model):
   """An FHIR reference"""
-  value = ndb.StringProperty()
-  displayName = ndb.StringProperty()
+  reference = ndb.StringProperty()
+  display = ndb.StringProperty()

@@ -3,6 +3,7 @@
 
 import api_util
 import data_access_object
+import extraction
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -43,6 +44,13 @@ class GenderIdentity(messages.Enum):
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
 AGE_BUCKETS = ['{}-{}'.format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
 
+def extract_bucketed_age(participant_hist_obj):
+  if participant_hist_obj.date_of_birth:
+    bucketed_age = get_bucketed_age(participant_hist_obj.date_of_birth, participant_hist_obj.date)
+    if bucketed_age:
+      return extraction.ExtractionResult(bucketed_age, True)
+  return extraction.ExtractionResult(None, False)
+  
 def get_bucketed_age(date_of_birth, today):
   age = relativedelta(today, date_of_birth).years
   for begin, end in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + ['']):

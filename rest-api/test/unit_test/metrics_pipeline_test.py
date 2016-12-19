@@ -39,11 +39,20 @@ CONFIGS_FOR_TEST = {
         'initial_state': {
             'physical_evaluation': 'UNSET',
             'biospecimen_samples': 'UNSET',
+            'membership_tier': 'UNSET',
+            'age_range': 'UNSET',
+            'race': 'UNSET',
+            'ethnicity': 'UNSET',
+            'state': 'UNSET',            
         },
         'fields': {
             'ParticipantHistory': [
               FieldDef('hpo_id', participant.extract_HPO_id,
                        participant.HPO_VALUES)
+            ],
+            'AgeHistory': [
+              FieldDef('age_range', participant_summary.extract_bucketed_age,
+                       participant_summary.AGE_BUCKETS),
             ],
             'QuestionnaireResponseHistory': [
                 FieldDef('race',
