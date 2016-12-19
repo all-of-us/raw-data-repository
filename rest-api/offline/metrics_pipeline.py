@@ -62,6 +62,7 @@ import traceback
 import api_util
 import config
 import metrics
+import participant
 import offline.metrics_config
 
 from datetime import datetime
@@ -166,7 +167,8 @@ def map_key_to_summary(entity_key, now=None):
   kind = entity_key.kind()
   metrics_conf = get_config()[kind]
   # Note that history can contain multiple types of history objects.
-  history = metrics_conf['load_history_func'](entity_key, datetime.now())
+
+  history = participant.load_history_entities(entity_key, now)
   history = sorted(history, key=lambda o: o.date)
 
   last_state = {}
@@ -181,7 +183,6 @@ def map_key_to_summary(entity_key, now=None):
       new_state[TOTAL_SENTINEL] = 1
     else:
       new_state = copy.deepcopy(last_state)
-
     hist_kind = hist_obj.key.kind()
     for field in metrics_conf['fields'][hist_kind]:
       try:

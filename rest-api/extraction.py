@@ -5,7 +5,10 @@ from concepts import Concept
 from fhirclient.models.fhirelementfactory import FHIRElementFactory
 from werkzeug.exceptions import BadRequest
 
+UNSET = 'UNSET'
+SKIPPED = 'SKIPPED'
 UNMAPPED = 'UNMAPPED'
+BASE_VALUES = set([UNSET, SKIPPED, UNMAPPED])
 
 # An ExtractionResult.value may be a valid value, None, or UNMAPPED. Use
 # None if the value is being (re)set to None, and UNMAPPED if the value is

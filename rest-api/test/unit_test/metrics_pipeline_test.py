@@ -1,16 +1,22 @@
 """Tests for metrics_pipeline."""
 
 import biobank_sample
+import concepts
 import datetime
 import extraction
+import fhir_datatypes
 import json
 import metrics
 import offline.metrics_config
 import participant
+import participant_summary
+import questionnaire
+import questionnaire_response
 import evaluation
 import unittest
+import os
 
-from extraction import ExtractionResult
+from extraction import ExtractionResult, BASE_VALUES, UNSET
 from offline import metrics_pipeline
 from offline.metrics_config import FieldDef, FacetDef
 from collections import Counter
@@ -20,7 +26,7 @@ from testlib import testutil
 
 
 def compute_meta(summary):
-  if summary['membership_tier'] == 'REGISTERED' and summary['hpo_id'] == 'HPO1':
+  if summary['membership_tier'] == 'REGISTERED' and summary.get('hpo_id') == 'HPO1':
     val = 'R1'
   else:
     val = 'NOPE'
@@ -28,25 +34,40 @@ def compute_meta(summary):
 
 CONFIGS_FOR_TEST = {
     'Participant': {
-        'load_history_func': participant.load_history_entities,
         'facets': [
-            FacetDef(offline.metrics_config.FacetType.HPO_ID, lambda s: s.get('hpo_id', 'UNSET')),
+            FacetDef(offline.metrics_config.FacetType.HPO_ID, lambda s: s.get('hpo_id', UNSET)),
         ],
         'initial_state': {
-            'physical_evaluation': 'UNSET',
-            'biospecimen_samples': 'UNSET',
+            'physical_evaluation': UNSET,
+            'biospecimen_samples': UNSET,
+            'membership_tier': UNSET,
+            'age_range': UNSET,
+            'race': UNSET,
+            'ethnicity': UNSET,
+            'state': UNSET,            
         },
         'fields': {
             'ParticipantHistory': [
+              FieldDef('hpo_id', participant.extract_HPO_id,
+                       BASE_VALUES | set(participant.HPO_VALUES)),
+            ],
+            'AgeHistory': [
+              FieldDef('age_range', participant_summary.extract_bucketed_age,
+                       BASE_VALUES | set(participant_summary.AGE_BUCKETS)),         
+            ],
+            'QuestionnaireResponseHistory': [
+                FieldDef('race',
+                         questionnaire_response.extract_race,
+                         BASE_VALUES | questionnaire_response.races()),
+                FieldDef('ethnicity',
+                         questionnaire_response.extract_ethnicity,
+                         BASE_VALUES | questionnaire_response.ethnicities()),
+                FieldDef('state',
+                         questionnaire_response.extract_state_of_residence,
+                         BASE_VALUES | questionnaire_response.states()),
                 FieldDef('membership_tier',
-                         extraction.simple_field_extractor('membership_tier'),
-                         iter(participant.MembershipTier)),
-                FieldDef('age_range',
-                         participant.extract_bucketed_age,
-                         participant.AGE_BUCKETS),
-                FieldDef('hpo_id',
-                         participant.extract_HPO_id,
-                         participant.HPO_VALUES),
+                         questionnaire_response.extract_membership_tier,
+                         BASE_VALUES | set(participant_summary.MembershipTier)),
             ],
             'EvaluationHistory': [
                 # The presence of a physical evaluation implies that it is complete.
@@ -81,101 +102,156 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     key = ndb.Key(participant.Participant, '1')
     self._populate_sample_history(key)
     results = list(metrics_pipeline.map_key_to_summary(key.to_old_key()))
+    
     expected = [
-        ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.age_range.36-45': 1,
-             'Participant.hpo_id.HPO1': 1,
-             'Participant.membership_tier.REGISTERED': 1,
-             'Participant': 1,
-             'Participant.physical_evaluation.UNSET': 1,
-             'Participant.biospecimen_samples.UNSET': 1,
-             'Participant.meta.R1': 1,
-         }),
-        ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+              "Participant": 1, 
+              "Participant.age_range.UNSET": 1, 
+              "Participant.biospecimen_samples.UNSET": 1, 
+              "Participant.ethnicity.UNSET": 1, 
+              "Participant.hpo_id.HPO1": 1, 
+              "Participant.membership_tier.UNSET": 1, 
+              "Participant.meta.NOPE": 1, 
+              "Participant.physical_evaluation.UNSET": 1, 
+              "Participant.race.UNSET": 1, 
+              "Participant.state.UNSET": 1}),
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.membership_tier.REGISTERED': -1,
-             'Participant.meta.R1': -1,
-         }),
-        ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+              "Participant.age_range.UNSET": -1}), 
+        
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.membership_tier.FULL_PARTICIPANT': 1,
-             'Participant.meta.NOPE': 1,
-         }),
-        ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+              "Participant.age_range.36-45": 1}),        
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.membership_tier.FULL_PARTICIPANT': -1,
-             'Participant.meta.NOPE': -1,
-         }),
-        ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+              "Participant.ethnicity.UNSET": -1, 
+              "Participant.membership_tier.UNSET": -1, 
+              "Participant.meta.NOPE": -1, 
+              "Participant.race.UNSET": -1, 
+              "Participant.state.UNSET": -1}),
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.membership_tier.REGISTERED': 1,
-             'Participant.meta.R1': 1,
-         }),
-        ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+              "Participant.ethnicity.non_hispanic": 1, 
+              "Participant.membership_tier.REGISTERED": 1, 
+              "Participant.meta.R1": 1, 
+              "Participant.race.white": 1, 
+              "Participant.state.TX": 1}),
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.biospecimen_samples.UNSET': -1,
-         }),
-        ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+              "Participant.ethnicity.non_hispanic": -1,
+              "Participant.race.white": -1, 
+              "Participant.membership_tier.REGISTERED": -1, 
+              "Participant.meta.R1": -1}),      
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.biospecimen_samples.SAMPLES_ARRIVED': 1,
-         }),
-        ({'date': '2016-09-05', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+              "Participant.ethnicity.SKIPPED": 1,
+              "Participant.race.UNMAPPED": 1,               
+              "Participant.membership_tier.FULL_PARTICIPANT": 1, 
+              "Participant.meta.NOPE": 1}),
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.physical_evaluation.UNSET': -1,
-         }),
-        ({'date': '2016-09-05', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+              "Participant.membership_tier.FULL_PARTICIPANT": -1, 
+              "Participant.meta.NOPE": -1}),       
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.physical_evaluation.COMPLETE': 1,
-         }),
-        ({'date': '2016-09-10', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+              "Participant.membership_tier.REGISTERED": 1, 
+              "Participant.meta.R1": 1}),
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.membership_tier.REGISTERED': -1,
-             'Participant.meta.R1': -1,
-         }),
-        ({'date': '2016-09-10', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+              "Participant.biospecimen_samples.UNSET": -1}),
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
          {
-             'Participant.membership_tier.VOLUNTEER': 1,
-             'Participant.meta.NOPE': 1,
-         }),
-    ]
+              "Participant.biospecimen_samples.SAMPLES_ARRIVED": 1}),
+        ({'date': "2016-09-05", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.physical_evaluation.UNSET": -1}),  
+        ({'date': "2016-09-05", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.physical_evaluation.COMPLETE": 1}),
+        ({'date': "2016-09-10", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.membership_tier.REGISTERED": -1, 
+              "Participant.meta.R1": -1}),
+        ({'date': "2016-09-10", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.membership_tier.VOLUNTEER": 1, 
+              "Participant.meta.NOPE": 1}),
+        ({'date': "2016-10-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.state.TX": -1}),
+        ({'date': "2016-10-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.state.CA": 1}),
+        ]
     expected = [(json.dumps(d), json.dumps(s, sort_keys=True)) for d, s in expected]
     self._compare_json_list(expected, results)
 
   def test_map_key_to_summary_participant_ages(self):
     key = ndb.Key(participant.Participant, '1')
-    history_list = [
-        # One participant signs up in 2013.
-        (datetime.datetime(2013, 9, 1, 11, 0, 1),
-         participant.Participant(
-             key=key,
-             date_of_birth=datetime.datetime(1970, 8, 21),
-             membership_tier=participant.MembershipTier.REGISTERED,
-             hpo_id='HPO1')),
-        # One state change in 2015.
-        (datetime.datetime(2015, 9, 1, 11, 0, 2),
-         participant.Participant(
-             key=key,
-             date_of_birth=datetime.datetime(1970, 8, 21),
-             membership_tier=participant.MembershipTier.FULL_PARTICIPANT,
-             hpo_id='HPO1')),
-    ]
-    for fake_date, p in history_list:
-      participant.DAO.store(p, fake_date)
-
+    link = participant.ProviderLink(primary=True, 
+                                    organization=fhir_datatypes.FHIRReference(reference='HPO1'))
+    # One participant signs up in 2013
+    participant.DAO.insert(participant.Participant(key=key,
+                                                   providerLink = [ link ]),
+                          datetime.datetime(2013, 9, 1, 11, 0, 1))
+    summary_key = ndb.Key(participant_summary.ParticipantSummary,
+                          participant_summary.SINGLETON_SUMMARY_ID,
+                          parent=key)
+    summary = participant_summary.ParticipantSummary(key=summary_key,
+                                                     dateOfBirth=datetime.datetime(1970, 8, 21))
+    participant_summary.DAO.store(summary)
+    questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
+    questionnaire_key = questionnaire.DAO.store(questionnaire.DAO.from_json(questionnaire_json, None, questionnaire.DAO.allocate_id()))
+    # REGISTERED when signed up.
+    questionnaire_response.DAO.store(self.make_questionnaire_response(key.id(),
+                                                                 questionnaire_key.id(),
+                                                                 [("membership_tier", concepts.REGISTERED)]),
+                                     datetime.datetime(2013, 9, 1, 11, 0, 1))
+    # FULL_PARTICIPANT two years later
+    questionnaire_response.DAO.store(self.make_questionnaire_response(key.id(),
+                                                                 questionnaire_key.id(),
+                                                                 [("membership_tier", concepts.FULL_PARTICIPANT)]),
+                                     datetime.datetime(2015, 9, 1, 11, 0, 2))
     results = list(metrics_pipeline.map_key_to_summary(key.to_old_key(),
                                                        datetime.datetime(2016, 10, 17)))
     expected = [
         ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
-             'Participant.age_range.36-45': 1,
-             'Participant.hpo_id.HPO1': 1,
+              "Participant": 1, 
+              "Participant.age_range.UNSET": 1, 
+              "Participant.biospecimen_samples.UNSET": 1, 
+              "Participant.ethnicity.UNSET": 1, 
+              "Participant.hpo_id.HPO1": 1, 
+              "Participant.membership_tier.UNSET": 1, 
+              "Participant.meta.NOPE": 1, 
+              "Participant.physical_evaluation.UNSET": 1, 
+              "Participant.race.UNSET": 1, 
+              "Participant.state.UNSET": 1
+        }),
+        ({'date': "2013-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.age_range.UNSET": -1}), 
+        
+        ({'date': "2013-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+         {
+              "Participant.age_range.36-45": 1}),        
+        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+         {
+             'Participant.membership_tier.UNSET': -1,
+             'Participant.meta.NOPE': -1,
+             "Participant.ethnicity.UNSET": -1,            
+             "Participant.race.UNSET": -1,
+             "Participant.state.UNSET": -1
+         }),
+        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+         {
              'Participant.membership_tier.REGISTERED': 1,
              'Participant.meta.R1': 1,
-             'Participant': 1,
-             'Participant.physical_evaluation.UNSET': 1,
-             'Participant.biospecimen_samples.UNSET': 1,
-        }),
+             "Participant.ethnicity.SKIPPED": 1,             
+             "Participant.race.SKIPPED": 1,
+             "Participant.state.SKIPPED": 1
+         }), 
         ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
          {
              'Participant.membership_tier.REGISTERED': -1,
@@ -197,62 +273,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     ]
     expected = [(json.dumps(d), json.dumps(s, sort_keys=True)) for d, s in expected]
     self._compare_json_list(expected, results)
-
-  def test_map_key_to_summary_hpo_changes(self):
-    key = ndb.Key(participant.Participant, '1')
-    history_list = [
-        # One participant signs up in 2013.
-        (datetime.datetime(2016, 9, 1),
-         participant.Participant(
-             key=key,
-             date_of_birth=datetime.datetime(1970, 8, 21),
-             hpo_id='HPO1')),
-        # One state change in 2012.
-        (datetime.datetime(2016, 9, 2),
-         participant.Participant(
-             key=key,
-             date_of_birth=datetime.datetime(1970, 8, 21),
-             hpo_id='HPO2')),
-    ]
-    for fake_date, p in history_list:
-      participant.DAO.store(p, fake_date)
-
-    results = list(metrics_pipeline.map_key_to_summary(key.to_old_key()))
-    expected = [
-        ({'date': '2016-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
-         {
-             'Participant.age_range.46-55': 1,
-             'Participant.hpo_id.HPO1': 1,
-             'Participant.membership_tier.None': 1,
-             'Participant.meta.NOPE': 1,
-             'Participant': 1,
-             'Participant.physical_evaluation.UNSET': 1,
-             'Participant.biospecimen_samples.UNSET': 1,
-         }),
-        ({'date': '2016-09-02', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
-         {
-             'Participant.age_range.46-55': -1,
-             'Participant.hpo_id.HPO1': -1,
-             'Participant.membership_tier.None': -1,
-             'Participant.meta.NOPE': -1,
-             'Participant': -1,
-             'Participant.physical_evaluation.UNSET': -1,
-             'Participant.biospecimen_samples.UNSET': -1,
-         }),
-        ({'date': '2016-09-02', 'facets': [{'type': 'HPO_ID', 'value': 'HPO2'}]},
-         {
-             'Participant.age_range.46-55': 1,
-             'Participant.hpo_id.HPO2': 1,
-             'Participant.membership_tier.None': 1,
-             'Participant.meta.NOPE': 1,
-             'Participant': 1,
-             'Participant.physical_evaluation.UNSET': 1,
-             'Participant.biospecimen_samples.UNSET': 1,
-         }),
-    ]
-    expected = [(json.dumps(d), json.dumps(s, sort_keys=True)) for d, s in expected]
-    self._compare_json_list(expected, results)
-
+    
   def test_reduce_facets(self):
     reduce_input = [
         json.dumps({
@@ -327,48 +348,19 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
       msg = 'Comparing element {}'.format(i)
       self._compare_json(a, b, msg)
 
-  @ndb.transactional(xg=True)
   def _populate_sample_history(self, key):
-    history_list = [
-        # One participant signs up on 9/1
-        (datetime.datetime(2016, 9, 1, 11, 0, 1),
-         participant.Participant(
-             key=key,
-             date_of_birth=datetime.datetime(1975, 8, 21),
-             participant_id='1',
-             membership_tier=participant.MembershipTier.REGISTERED,
-             hpo_id='HPO1')),
-        # Accidentally changes status to FULL_PARTICIPANT
-        (datetime.datetime(2016, 9, 1, 11, 0, 2),
-         participant.Participant(
-             key=key,
-             date_of_birth=datetime.datetime(1975, 8, 21),
-             participant_id='1',
-             membership_tier=participant.MembershipTier.FULL_PARTICIPANT,
-             hpo_id='HPO1')),
-        # Fixes it back to REGISTERED
-        (datetime.datetime(2016, 9, 1, 11, 0, 3),
-         participant.Participant(
-             key=key,
-             date_of_birth=datetime.datetime(1975, 8, 21),
-             participant_id='1',
-             membership_tier=participant.MembershipTier.REGISTERED,
-             hpo_id='HPO1')),
-
-        # Note that on 9/5, an evaluation is entered.
-
-        # On 9/10, participant 1 changes their tier.
-        (datetime.datetime(2016, 9, 10),
-         participant.Participant(
-             key=key,
-             date_of_birth=datetime.datetime(1975, 8, 21),
-             sign_up_time=datetime.datetime(2016, 9, 1, 11, 0, 2),
-             participant_id='1',
-             membership_tier=participant.MembershipTier.VOLUNTEER,
-             hpo_id='HPO1')),
-    ]
-    for fake_date, ptc in history_list:
-      participant.DAO.store(ptc, fake_date)
+    link = participant.ProviderLink(primary=True, 
+                                    organization=fhir_datatypes.FHIRReference(reference='HPO1'))
+    participant.DAO.insert(participant.Participant(key=key,
+                                                   providerLink = [ link ]),
+                          datetime.datetime(2016, 9, 1, 11, 0, 1))
+    summary_key = ndb.Key(participant_summary.ParticipantSummary,
+                          participant_summary.SINGLETON_SUMMARY_ID,
+                          parent=key)
+    summary = participant_summary.ParticipantSummary(key=summary_key,
+                                                     dateOfBirth=datetime.datetime(1975, 8, 21))
+    participant_summary.DAO.store(summary)
+    self.populate_questionnaire_responses(key)
     key = ndb.Key(key.flat()[0], key.flat()[1], evaluation.Evaluation, evaluation.DAO.allocate_id())
     evaluation.DAO.store(evaluation.Evaluation(key=key, resource="ignored"),
                          datetime.datetime(2016, 9, 5))
@@ -388,6 +380,74 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     samples_1 = biobank_sample.DAO.from_json(
         { 'samples': [ sample_dict_1 ]}, '1', biobank_sample.SINGLETON_SAMPLES_ID)
     biobank_sample.DAO.store(samples_1)
+
+  def populate_questionnaire_responses(self, participant_key):
+    questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
+    questionnaire_key = questionnaire.DAO.store(questionnaire.DAO.from_json(questionnaire_json, None, questionnaire.DAO.allocate_id()))
+    unmapped_race = concepts.Concept(concepts.SYSTEM_RACE, 'unmapped-race')
+    # Set race, ethnicity, state, and membership tier on 9/1/2016
+    questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
+                                                                 questionnaire_key.id(),
+                                                                 [("race", concepts.WHITE),
+                                                                  ("ethnicity", concepts.NON_HISPANIC),
+                                                                  ("state_of_residence", concepts.STATES_BY_ABBREV['TX']),
+                                                                  ("membership_tier", concepts.REGISTERED)]),
+                                     datetime.datetime(2016, 9, 1, 11, 0, 2))
+    # Accidentally change status to FULL_PARTICIPANT; don't fill out ethnicity and put in an unmapped race                         
+    questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
+                                                                 questionnaire_key.id(),                                                                  
+                                                                 [("membership_tier", concepts.FULL_PARTICIPANT),
+                                                                  ("state_of_residence", concepts.STATES_BY_ABBREV['TX']),
+                                                                  ("race", unmapped_race)]),
+                                     datetime.datetime(2016, 9, 1, 11, 0, 3))        
+    # Change it back to REGISTERED
+    questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
+                                                                 questionnaire_key.id(),
+                                                                 [("membership_tier", concepts.REGISTERED),
+                                                                  ("state_of_residence", concepts.STATES_BY_ABBREV['TX']),
+                                                                  ("race", unmapped_race)]),
+                                     datetime.datetime(2016, 9, 1, 11, 0, 4))
+    # Note that on 9/5, an evaluation is entered.
+    
+    # Change to VOLUNTEER on 9/10
+    questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
+                                                                 questionnaire_key.id(),
+                                                                 [("membership_tier", concepts.VOLUNTEER),
+                                                                  ("state_of_residence", concepts.STATES_BY_ABBREV['TX']),
+                                                                  ("race", unmapped_race)]),
+                                     datetime.datetime(2016, 9, 10, 11, 0, 1))
+    
+    # Change state on 10/1/2016
+    questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
+                                                                 questionnaire_key.id(),
+                                                                 [("membership_tier", concepts.VOLUNTEER),
+                                                                  ("state_of_residence", concepts.STATES_BY_ABBREV['CA']),
+                                                                  ("race", unmapped_race)]),
+                                     datetime.datetime(2016, 10, 1, 11, 0, 2))
+
+
+  def make_questionnaire_response(self, participant_id, questionnaire_id, answers):
+    results = []
+    for answer in answers:
+      results.append({ "linkId": answer[0],
+                       "answer": [
+                          { "valueCoding": {
+                            "code": answer[1].code,
+                            "system": answer[1].system
+                          }
+                        }]
+                    })
+    return questionnaire_response.DAO.from_json({"resourceType": "QuestionnaireResponse",
+            "status": "completed",
+            "subject": { "reference": "Patient/{}".format(participant_id) },
+            "questionnaire": { "reference": "Questionnaire/{}".format(questionnaire_id) },
+            "group": {
+              "question": results
+            }
+            }, participant_id, questionnaire_response.DAO.allocate_id())
+
+def _data_path(filename):
+  return os.path.join(os.path.dirname(__file__), '..', 'test-data', filename)
 
 if __name__ == '__main__':
   unittest.main()

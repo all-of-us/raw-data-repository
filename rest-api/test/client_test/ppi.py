@@ -40,11 +40,7 @@ class TestPPI(unittest.TestCase):
         #'test-data/questionnaire_response2.json',
         'test-data/questionnaire_response3.json',
     ]
-    participant_id = test_util.create_participant(
-        self.client,
-        'Bovine',
-        'Knickers',
-        (datetime.datetime.now() - relativedelta(years=46)).date().isoformat())
+    participant_id = test_util.create_participant(self.client)
     questionnaire_id = test_util.create_questionnaire(
         self.client, 'test-data/questionnaire1.json')
     for json_file in questionnaire_response_files:
@@ -72,8 +68,7 @@ class TestPPI(unittest.TestCase):
     questionnaire_response_files = [
         'test-data/questionnaire_response_demographics.json',
     ]
-    participant_id = test_util.create_participant(
-        self.client, 'Bovine', 'Knickers', '1970-10-10')
+    participant_id = test_util.create_participant(self.client)
     questionnaire_id = test_util.create_questionnaire(
         self.client, 'test-data/questionnaire_demographics.json')
     for json_file in questionnaire_response_files:
@@ -88,28 +83,23 @@ class TestPPI(unittest.TestCase):
             resource['questionnaire']['reference'].format(
                 questionnaire_id=questionnaire_id)
         test_util.round_trip(self, self.client, good_url, resource)
-    response = self.client.request_json('Participant/{}'.format(participant_id))
-    self.assertEqual(response['gender_identity'], 'MALE_TO_FEMALE_TRANSGENDER')
+    participant = self.client.request_json('Participant/{}'.format(participant_id))
+    response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
+    self.assertEqual(response['genderIdentity'], 'MALE_TO_FEMALE_TRANSGENDER')
 
     response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
-    expected = {
-        'Participant.ppi_consent': 'UNSET',
-        'Participant.ppi_demographics': 'SUBMITTED',
-        'Participant.age_range': '46-55',
-        'Participant.biospecimen': 'UNSET',
-        'Participant.biospecimen_samples': 'UNSET',
-        'Participant.census_region': 'SOUTH',
-        'Participant.ethnicity': 'UNSET',
-        'Participant.biospecimen_summary': 'UNSET',
-        'Participant.gender_identity': 'MALE_TO_FEMALE_TRANSGENDER',
-        'Participant.hpo_id': 'UNSET',
-        'Participant.membership_tier': 'None',
-        'Participant.physical_evaluation': 'UNSET',
-        'Participant.race': 'UNSET',
-        'Participant.state': 'AL',
-        'Participant.survey': 'SUBMITTED_SOME',
-        }
-    self.assertEqual(expected, response)
+    # TODO: add more stuff here
+    expected = { 'genderIdentity': 'MALE_TO_FEMALE_TRANSGENDER',
+                 'hpoId': None,
+                 'firstName': None,
+                 'lastName': None,
+                 'middleName': None,
+                 'membershipTier': None,
+                 'biobankId': participant['biobankId'],
+                 'participantId': participant_id,
+                 'physicalEvaluationStatus': None,
+                 'zipCode': None }
+    test_util._compare_json(self, expected, response)
 
 
 if __name__ == '__main__':

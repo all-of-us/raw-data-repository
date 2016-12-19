@@ -111,7 +111,7 @@ def main():
 
     p, when = participant_calls[0]
     response = client.request_json('Participant', 'POST', p, headers={'X-Pretend-Date': when})
-    participant_id = response['participant_id']
+    participant_id = response['participantId']
     for p, when in participant_calls[1:]:
       client.request_json('Participant/{}'.format(participant_id), 'PATCH', p, 
                           headers={'X-Pretend-Date': when, 'If-Match': client.last_etag})

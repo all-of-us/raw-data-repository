@@ -1,14 +1,14 @@
 import concepts
 import data_access_object
 import extraction
-import participant
+import participant_summary
 import fhirclient.models.questionnaireresponse
 
 from census_regions import census_regions
-from extraction import UNMAPPED
+from extraction import UNMAPPED, SKIPPED
 from google.appengine.ext import ndb
 from participant import Participant
-from participant import GenderIdentity
+from participant_summary import GenderIdentity, MembershipTier
 from questionnaire import DAO as questionnaireDAO
 from questionnaire import QuestionnaireExtractor
 
@@ -38,11 +38,11 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
     participant_id = model.resource['subject']['reference'].split('/')[1]
     gender_identity_result = extract_field(model, concepts.GENDER_IDENTITY)
     if gender_identity_result.extracted:
-      participant_obj = participant.DAO.load(participant_id)
+      participant_summary_obj = participant_summary.DAO.get_summary_for_participant(participant_id)
       # If the gender identity on the participant doesn't match, update it
-      if participant_obj.gender_identity != gender_identity_result.value:
-        participant_obj.gender_identity = gender_identity_result.value
-        participant.DAO.store(participant_obj, date, client_id)
+      if participant_summary_obj.genderIdentity != gender_identity_result.value:
+        participant_summary_obj.genderIdentity = gender_identity_result.value
+        participant_summary.DAO.store(participant_summary_obj, date, client_id)
 
 DAO = QuestionnaireResponseDAO()
 
@@ -70,6 +70,14 @@ _GENDER_IDENTITY_MAPPING = {
     concepts.OTHER: GenderIdentity.OTHER,
     concepts.PREFER_NOT_TO_SAY: GenderIdentity.PREFER_NOT_TO_SAY,
 }
+
+_MEMBERSHIP_TIER_MAPPING = {
+    concepts.REGISTERED: MembershipTier.REGISTERED,
+    concepts.VOLUNTEER: MembershipTier.VOLUNTEER,
+    concepts.FULL_PARTICIPANT: MembershipTier.FULL_PARTICIPANT,
+    concepts.ENROLLEE: MembershipTier.ENROLLEE
+}
+
 # In concepts, it's keyed by the state abbreviation, we need to flip them.
 _STATE_MAPPING = {v:k for k, v in concepts.STATES_BY_ABBREV.iteritems()}
 
@@ -80,6 +88,7 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
       concepts.RACE: _RACE_MAPPING,
       concepts.GENDER_IDENTITY: _GENDER_IDENTITY_MAPPING,
       concepts.STATE_OF_RESIDENCE: _STATE_MAPPING,
+      concepts.MEMBERSHIP_TIER: _MEMBERSHIP_TIER_MAPPING,
   }
 
   def extract_questionnaire_id(self):
@@ -95,7 +104,9 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
     if len(qs) == 1 and len(qs[0].answer) == 1:
       value = extraction.extract_value(qs[0].answer[0])
       concept = value.extract_concept()
-      return concept and config.get(concept, UNMAPPED)
+      if concept:
+        return config.get(concept, UNMAPPED)        
+    return SKIPPED
 
   def extract_link_ids(self, concept):
     questionnaire_id = self.extract_questionnaire_id()
@@ -109,6 +120,31 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
 def extract_race(qr_hist_obj):
   """Returns ExtractionResult for race answer from questionnaire response."""
   return extract_field(qr_hist_obj.obj, concepts.RACE)
+
+def extract_date_of_birth(qr_hist_obj):
+  """Returns ExtractionResult for date of birth answer from questionnaire response."""
+  return extract_field(qr_hist_obj.obj, concepts.DATE_OF_BIRTH)
+
+def extract_gender_identity(qr_hist_obj):
+  """Returns ExtractionResult for gender identity answer from questionnaire response."""
+  return extract_field(qr_hist_obj.obj, concepts.GENDER_IDENTITY)
+
+def extract_membership_tier(qr_hist_obj):
+  """Returns ExtractionResult for membership tier answer from questionnaire response."""
+  return extract_field(qr_hist_obj.obj, concepts.MEMBERSHIP_TIER)
+
+def extract_first_name(qr_hist_obj):
+  """Returns ExtractionResult for first name answer from questionnaire response."""
+  return extract_field(qr_hist_obj.obj, concepts.FIRST_NAME)
+
+def extract_middle_name(qr_hist_obj):
+  """Returns ExtractionResult for middle name answer from questionnaire response."""
+  return extract_field(qr_hist_obj.obj, concepts.MIDDLE_NAME)
+
+def extract_last_name(qr_hist_obj):
+  """Returns ExtractionResult for last name answer from questionnaire response."""
+  return extract_field(qr_hist_obj.obj, concepts.LAST_NAME)
+
 
 def submission_statuses():
   """Enumerates the questionnaire response submission values"""
@@ -152,13 +188,10 @@ def extract_field(obj, concept):
   """Returns ExtractionResult for concept answer from questionnaire response."""
   response_extractor = QuestionnaireResponseExtractor(obj.resource)
   link_ids = response_extractor.extract_link_ids(concept)
-
+  
   if not len(link_ids) == 1:
     return extraction.ExtractionResult(None, False)  # Failed to extract answer
-
-  # Questionnaire unambiguously asked the desired question.
-  return extraction.ExtractionResult(
-      response_extractor.extract_answer(link_ids[0], concept))
+  return extraction.ExtractionResult(response_extractor.extract_answer(link_ids[0], concept))
 
 @ndb.non_transactional
 def extract_concept_presence(concept):
@@ -173,3 +206,14 @@ def extract_concept_presence(concept):
     return extraction.ExtractionResult('SUBMITTED')
 
   return extract
+
+def extract_age(qr_hist_obj, age_func):
+  """Returns ExtractionResult with the bucketed participant age on that date."""
+  today = qr_hist_obj.date
+  date_of_birth = extract_date_of_birth(qr_hist_obj)
+  if not date_of_birth:
+    return extraction.ExtractionResult(None)  # DOB was not provided: set None
+  return extraction.ExtractionResult(age_func(date_of_birth, today))
+
+def extract_bucketed_age(qr_hist_obj):
+  return extract_age(qr_hist_obj, participant_summary.get_bucketed_age)
