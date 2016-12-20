@@ -90,15 +90,27 @@ class TestPPI(unittest.TestCase):
     response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
     # TODO: add more stuff here
     expected = { 'genderIdentity': 'MALE_TO_FEMALE_TRANSGENDER',
-                 'hpoId': None,
+                 'ethnicity': 'UNSET',
+                 'race': 'UNSET',
+                 'hpoId': 'UNSET',
                  'firstName': None,
                  'lastName': None,
                  'middleName': None,
-                 'membershipTier': None,
+                 'membershipTier': 'UNSET',
                  'biobankId': participant['biobankId'],
                  'participantId': participant_id,
-                 'physicalEvaluationStatus': None,
-                 'zipCode': None }
+                 'physicalEvaluationStatus': 'UNSET',
+                 'zipCode': None,
+                 'consentForElectronicHealthRecords': 'UNSET',
+                 'consentForStudyEnrollment': 'UNSET',
+                 'questionnaireOnFamilyHealth': 'UNSET',
+                 'questionnaireOnHealthcareAccess': 'UNSET',
+                 'questionnaireOnMedicalHistory' : 'UNSET',
+                 'questionnaireOnMedications': 'UNSET',  
+                 'questionnaireOnOverallHealth': 'UNSET',
+                 'questionnaireOnPersonalHabits': 'UNSET',
+                 'questionnaireOnSociodemographics': 'UNSET'
+              }
     test_util._compare_json(self, expected, response)
 
 

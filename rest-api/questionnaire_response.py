@@ -8,7 +8,7 @@ from census_regions import census_regions
 from extraction import UNMAPPED, SKIPPED
 from google.appengine.ext import ndb
 from participant import Participant
-from participant_summary import GenderIdentity, MembershipTier
+from participant_summary import GenderIdentity, MembershipTier, Ethnicity, Race
 from questionnaire import DAO as questionnaireDAO
 from questionnaire import QuestionnaireExtractor
 
@@ -48,18 +48,18 @@ DAO = QuestionnaireResponseDAO()
 
 
 _ETHNICITY_MAPPING = {
-    concepts.HISPANIC: 'hispanic',
-    concepts.NON_HISPANIC: 'non_hispanic',
-    concepts.ASKED_BUT_NO_ANSWER: 'asked_but_no_answer',
+    concepts.HISPANIC: Ethnicity.HISPANIC,
+    concepts.NON_HISPANIC: Ethnicity.NON_HISPANIC,
+    concepts.ASKED_BUT_NO_ANSWER: Ethnicity.PREFER_NOT_TO_SAY
 }
 _RACE_MAPPING = {
-    concepts.AMERICAN_INDIAN_OR_ALASKA_NATIVE: 'american_indian_or_alaska_native',
-    concepts.BLACK_OR_AFRICAN_AMERICAN: 'black_or_african_american',
-    concepts.ASIAN: 'asian',
-    concepts.NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER: 'native_hawaiian_or_other_pacific_islander',
-    concepts.WHITE: 'white',
-    concepts.OTHER_RACE: 'other_race',
-    concepts.ASKED_BUT_NO_ANSWER: 'asked_but_no_answer',
+    concepts.AMERICAN_INDIAN_OR_ALASKA_NATIVE: Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE,
+    concepts.BLACK_OR_AFRICAN_AMERICAN: Race.BLACK_OR_AFRICAN_AMERICAN,
+    concepts.ASIAN: Race.ASIAN,
+    concepts.NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER: Race.NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER,
+    concepts.WHITE: Race.WHITE,
+    concepts.OTHER_RACE: Race.OTHER_RACE,
+    concepts.ASKED_BUT_NO_ANSWER: Race.PREFER_NOT_TO_SAY
 }
 _GENDER_IDENTITY_MAPPING = {
     concepts.FEMALE: GenderIdentity.FEMALE,

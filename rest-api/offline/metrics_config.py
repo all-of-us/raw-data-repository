@@ -89,7 +89,7 @@ DEFAULT_CONFIG = {
         'fields': {
             'ParticipantHistory': [
               FieldDef('hpo_id', participant.extract_HPO_id,
-                       BASE_VALUES | set(participant.HPO_VALUES)),
+                       set(participant_summary.HPOId)),
             ],
             'AgeHistory': [
               FieldDef('age_range', participant_summary.extract_bucketed_age,
@@ -98,10 +98,10 @@ DEFAULT_CONFIG = {
             'QuestionnaireResponseHistory': [
                 FieldDef('race',
                          questionnaire_response.extract_race,
-                         BASE_VALUES | questionnaire_response.races()),
+                         set(participant_summary.Race)),
                 FieldDef('ethnicity',
                          questionnaire_response.extract_ethnicity,
-                         BASE_VALUES | questionnaire_response.ethnicities()),
+                         set(participant_summary.Ethnicity)),
                 # The presence of a response means that some have been submitted.
                 FieldDef('survey',
                          lambda h: ExtractionResult('SUBMITTED_SOME'),
@@ -114,10 +114,10 @@ DEFAULT_CONFIG = {
                          BASE_VALUES | questionnaire_response.regions()),
                 FieldDef('membership_tier',
                          questionnaire_response.extract_membership_tier,
-                         BASE_VALUES | set(participant_summary.MembershipTier)),
+                         set(participant_summary.MembershipTier)),
                 FieldDef('gender_identity',
                          questionnaire_response.extract_gender_identity,
-                         BASE_VALUES | set(participant_summary.GenderIdentity)),                
+                         set(participant_summary.GenderIdentity)),                
             ],
             'EvaluationHistory': [
                 # The presence of a physical evaluation implies that it is complete.
