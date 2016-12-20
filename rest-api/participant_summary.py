@@ -14,6 +14,26 @@ from google.appengine.ext.ndb import msgprop
 DATE_OF_BIRTH_FORMAT = '%Y-%m-%d'
 SINGLETON_SUMMARY_ID = '1'
 
+class HPOId(messages.Enum):
+  """The ID of the HPO the participant signed up with"""
+  UNSET = 0
+  UNMAPPED = 1
+  PITT = 2
+  COLUMBIA = 3
+  ILLINOIS = 4
+  AZ_TUCSON = 5
+  COMM_HEALTH = 6
+  SAN_YSIDRO = 7
+  CHEROKEE = 8
+  EAU_CLAIRE = 9
+  HRHCARE = 10
+  JACKSON = 11
+  GEISINGER = 12
+  CAL_PMC = 13
+  NE_PMC = 14
+  TRANS_AM = 15
+  VA = 16
+
 class PhysicalEvaluationStatus(messages.Enum):
   """The state of the participant's physical evaluation"""
   UNSET = 0
@@ -108,7 +128,7 @@ class ParticipantSummary(ndb.Model):
   physicalEvaluationStatus = msgprop.EnumProperty(PhysicalEvaluationStatus, default=PhysicalEvaluationStatus.UNSET)
   signUpTime = ndb.DateTimeProperty()
   consentTime = ndb.DateTimeProperty()
-  hpoId = ndb.StringProperty(default='UNSET')
+  hpoId = msgprop.EnumProperty(HPOId, default=HPOId.UNSET)
   consentForStudyEnrollment = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
   consentForElectronicHealthRecords = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
   questionnaireOnOverallHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
@@ -128,6 +148,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.format_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
     api_util.format_json_date(dict_, 'signUpTime')
     api_util.format_json_date(dict_, 'consentTime')
+    api_util.format_json_enum(dict_, 'hpoId')
     api_util.format_json_enum(dict_, 'genderIdentity')
     api_util.format_json_enum(dict_, 'race')
     api_util.format_json_enum(dict_, 'ethnicity')
