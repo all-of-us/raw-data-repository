@@ -92,7 +92,7 @@ class TestPPI(unittest.TestCase):
     expected = { 'genderIdentity': 'MALE_TO_FEMALE_TRANSGENDER',
                  'ethnicity': 'UNSET',
                  'race': 'UNSET',
-                 'hpoId': None,
+                 'hpoId': 'UNSET',
                  'firstName': None,
                  'lastName': None,
                  'middleName': None,

@@ -56,9 +56,8 @@ class Ethnicity(messages.Enum):
   SKIPPED = 1
   UNMAPPED = 2
   HISPANIC = 3
-  NON_HISPANIC = 4
-  # Should this be PREFER_NOT_TO_SAY as above?
-  ASKED_BUT_NO_ANSWER = 5
+  NON_HISPANIC = 4  
+  PREFER_NOT_TO_SAY = 5
 
 class Race(messages.Enum):
   UNSET = 0
@@ -69,9 +68,8 @@ class Race(messages.Enum):
   ASIAN = 5    
   NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER = 6
   WHITE = 7
-  OTHER_RACE = 8
-  # Should this be PREFER_NOT_TO_SAY as above?
-  ASKED_BUT_NO_ANSWER = 9
+  OTHER_RACE = 8  
+  PREFER_NOT_TO_SAY = 9
 
 # The lower bounds of the age buckets.
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
@@ -110,7 +108,7 @@ class ParticipantSummary(ndb.Model):
   physicalEvaluationStatus = msgprop.EnumProperty(PhysicalEvaluationStatus, default=PhysicalEvaluationStatus.UNSET)
   signUpTime = ndb.DateTimeProperty()
   consentTime = ndb.DateTimeProperty()
-  hpoId = ndb.StringProperty()
+  hpoId = ndb.StringProperty(default='UNSET')
   consentForStudyEnrollment = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
   consentForElectronicHealthRecords = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
   questionnaireOnOverallHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
