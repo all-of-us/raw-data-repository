@@ -16,28 +16,62 @@ SINGLETON_SUMMARY_ID = '1'
 
 class PhysicalEvaluationStatus(messages.Enum):
   """The state of the participant's physical evaluation"""
+  UNSET = 0
   SCHEDULED = 1
   COMPLETED = 2
   RESULT_READY = 3
-
+  
+class QuestionnaireStatus(messages.Enum):
+  """The status of a given questionnaire for this participant"""
+  UNSET = 0
+  COMPLETED = 1
 
 class MembershipTier(messages.Enum):
   """The state of the participant"""
-  REGISTERED = 1
-  VOLUNTEER = 2
-  FULL_PARTICIPANT = 3
-  ENROLLEE = 4
+  UNSET = 0
+  SKIPPED = 1
+  UNMAPPED = 2
+  REGISTERED = 3
+  VOLUNTEER = 4
+  FULL_PARTICIPANT = 5
+  ENROLLEE = 6
   # Note that these are out of order; ENROLEE was added after FULL_PARTICIPANT.
 
 class GenderIdentity(messages.Enum):
   """The gender identity of the participant."""
-  FEMALE = 1
-  MALE = 2
-  FEMALE_TO_MALE_TRANSGENDER = 3
-  MALE_TO_FEMALE_TRANSGENDER = 4
-  INTERSEX = 5
-  OTHER = 6
-  PREFER_NOT_TO_SAY = 7
+  UNSET = 0
+  SKIPPED = 1
+  UNMAPPED = 2  
+  FEMALE = 3
+  MALE = 4
+  FEMALE_TO_MALE_TRANSGENDER = 5
+  MALE_TO_FEMALE_TRANSGENDER = 6
+  INTERSEX = 7
+  OTHER = 8
+  PREFER_NOT_TO_SAY = 9
+ 
+class Ethnicity(messages.Enum):
+  """The ethnicity of the participant.""" 
+  UNSET = 0
+  SKIPPED = 1
+  UNMAPPED = 2
+  HISPANIC = 3
+  NON_HISPANIC = 4
+  # Should this be PREFER_NOT_TO_SAY as above?
+  ASKED_BUT_NO_ANSWER = 5
+
+class Race(messages.Enum):
+  UNSET = 0
+  SKIPPED = 1
+  UNMAPPED = 2
+  AMERICAN_INDIAN_OR_ALASKA_NATIVE = 3
+  BLACK_OR_AFRICAN_AMERICAN = 4
+  ASIAN = 5    
+  NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER = 6
+  WHITE = 7
+  OTHER_RACE = 8
+  # Should this be PREFER_NOT_TO_SAY as above?
+  ASKED_BUT_NO_ANSWER = 9
 
 # The lower bounds of the age buckets.
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
@@ -69,38 +103,47 @@ class ParticipantSummary(ndb.Model):
       lambda self: api_util.searchable_representation(self.lastName))
   zipCode = ndb.StringProperty()
   dateOfBirth = ndb.DateProperty()
-  genderIdentity = msgprop.EnumProperty(GenderIdentity)
-  membershipTier = msgprop.EnumProperty(MembershipTier)
-  physicalEvaluationStatus = msgprop.EnumProperty(PhysicalEvaluationStatus)
+  genderIdentity = msgprop.EnumProperty(GenderIdentity, default = GenderIdentity.UNSET)
+  membershipTier = msgprop.EnumProperty(MembershipTier, default = MembershipTier.UNSET)
+  race = msgprop.EnumProperty(Race, default = Race.UNSET)
+  ethnicity = msgprop.EnumProperty(Ethnicity, default = Ethnicity.UNSET)
+  physicalEvaluationStatus = msgprop.EnumProperty(PhysicalEvaluationStatus, default = PhysicalEvaluationStatus.UNSET)
   signUpTime = ndb.DateTimeProperty()
   consentTime = ndb.DateTimeProperty()
   hpoId = ndb.StringProperty()
+  consentForStudyEnrollment = msgprop.EnumProperty(QuestionnaireStatus, default = QuestionnaireStatus.UNSET)
+  consentForElectronicHealthRecords = msgprop.EnumProperty(QuestionnaireStatus, default = QuestionnaireStatus.UNSET)
+  questionnaireOnOverallHealth = msgprop.EnumProperty(QuestionnaireStatus, default = QuestionnaireStatus.UNSET)
+  questionnaireOnPersonalHabits = msgprop.EnumProperty(QuestionnaireStatus, default = QuestionnaireStatus.UNSET)
+  questionnaireOnSociodemographics = msgprop.EnumProperty(QuestionnaireStatus, default = QuestionnaireStatus.UNSET)
+  questionnaireOnHealthcareAccess = msgprop.EnumProperty(QuestionnaireStatus, default = QuestionnaireStatus.UNSET)
+  questionnaireOnMedicalHistory = msgprop.EnumProperty(QuestionnaireStatus, default = QuestionnaireStatus.UNSET)
+  questionnaireOnMedications = msgprop.EnumProperty(QuestionnaireStatus, default = QuestionnaireStatus.UNSET)
+  questionnaireOnFamilyHealth = msgprop.EnumProperty(QuestionnaireStatus, default = QuestionnaireStatus.UNSET)
 
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def __init__(self):
     super(ParticipantSummaryDAO, self).__init__(ParticipantSummary, Participant,
                                                 keep_history=False)
 
-  def properties_from_json(self, dict_, ancestor_id, id_):
-    if id_:
-      dict_['participantId'] = id_
-    api_util.parse_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
-    api_util.parse_json_date(dict_, 'signUpTime')
-    api_util.parse_json_date(dict_, 'consentTime')
-    api_util.parse_json_enum(dict_, 'genderIdentity', GenderIdentity)
-    api_util.parse_json_enum(dict_, 'membershipTier', MembershipTier)
-    api_util.parse_json_enum(dict_, 'physicalEvaluationStatus', PhysicalEvaluationStatus)
-    api_util.parse_json_enum(dict_, 'recruitmentSource', RecruitmentSource)
-    return dict_
-
   def properties_to_json(self, dict_):
     api_util.format_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
     api_util.format_json_date(dict_, 'signUpTime')
     api_util.format_json_date(dict_, 'consentTime')
     api_util.format_json_enum(dict_, 'genderIdentity')
+    api_util.format_json_enum(dict_, 'race')
+    api_util.format_json_enum(dict_, 'ethnicity')
     api_util.format_json_enum(dict_, 'membershipTier')
     api_util.format_json_enum(dict_, 'physicalEvaluationStatus')
-    api_util.format_json_enum(dict_, 'recruitmentSource')
+    api_util.format_json_enum(dict_, 'consentForStudyEnrollment')
+    api_util.format_json_enum(dict_, 'consentForElectronicHealthRecords')
+    api_util.format_json_enum(dict_, 'questionnaireOnOverallHealth')
+    api_util.format_json_enum(dict_, 'questionnaireOnPersonalHabits')        
+    api_util.format_json_enum(dict_, 'questionnaireOnSociodemographics')
+    api_util.format_json_enum(dict_, 'questionnaireOnHealthcareAccess')
+    api_util.format_json_enum(dict_, 'questionnaireOnMedicalHistory')
+    api_util.format_json_enum(dict_, 'questionnaireOnMedications')
+    api_util.format_json_enum(dict_, 'questionnaireOnFamilyHealth')
     api_util.remove_field(dict_, 'firstNameSearch')
     api_util.remove_field(dict_, 'lastNameSearch')
     return dict_

@@ -7,6 +7,7 @@ import os
 import json
 import unittest
 
+from participant_summary import Race
 from questionnaire import QuestionnaireExtractor
 from questionnaire_response import QuestionnaireResponseExtractor
 
@@ -41,7 +42,7 @@ class ExtractionTest(NdbTestBase):
 
     extractor = QuestionnaireResponseExtractor(json.loads(response))
     self.assertEquals('Q1234', extractor.extract_questionnaire_id())
-    self.assertEquals('white', extractor.extract_answer(RACE_LINKID, concepts.RACE))
+    self.assertEquals(Race.WHITE, extractor.extract_answer(RACE_LINKID, concepts.RACE))
     self.assertEquals('TX', extractor.extract_answer(STATE_OF_RESIDENCE_LINKID,
                                                      concepts.STATE_OF_RESIDENCE))
 
