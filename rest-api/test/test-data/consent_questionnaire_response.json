@@ -1,0 +1,59 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "status": "completed",
+  "subject": {
+    "reference": "Patient/$participant_id"
+  },
+  "questionnaire": {
+    "reference": "Questionnaire/$consent_questionnaire_id"
+  },
+  "authored": "$consent_questionnaire_authored",
+  "group": {
+    "question": [
+      {
+      "linkId": "first_name",
+      "text": "What is your first name?",
+      "answer": [
+        {
+          "valueString": "$first_name"
+        }
+      ]
+      },{
+      "linkId": "middle_name",
+      "text": "What is your middle name?",
+      "answer": [
+        {
+          "valueString": "$middle_name"
+        }
+      ]
+      },{
+      "linkId": "last_name",
+      "text": "What is your last name?",
+      "answer": [
+        {
+          "valueString": "$last_name"
+        }
+      ]
+      }, {
+      "linkId": "date_of_birth",
+      "text": "What is your date of birth?",
+      "answer": [
+        {
+          "valueString": "$date_of_birth"
+        }
+      ]
+      },{
+      "linkId": "state_of_residence",
+      "text": "What is your date of birth?",
+      "answer": [
+        {
+          "valueCoding": {
+	    "system": "http://terminology.pmi-ops.org/CodeSystem/us-state",
+	    "code": "$state"
+	  }
+        }
+      ]
+      } 
+    ]
+  }
+}

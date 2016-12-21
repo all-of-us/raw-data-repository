@@ -65,8 +65,7 @@ SDK_PATH=${GCLOUD_PATH%/bin/gcloud}
 cd ../../rest-api-client
 python participant_client.py  --instance http://localhost:8080
 
-# TODO(danrodney): add this back in when we get it working again
-# python load_fake_participants.py --count 2 --instance http://localhost:8080
+python load_fake_participants.py --count 2 --instance http://localhost:8080
 
 # If auto-generated indexes have changed over thie course of running the tests
 # it means we forgot to check an updated index.yaml into git — an omission that

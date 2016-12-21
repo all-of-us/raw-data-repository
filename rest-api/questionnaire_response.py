@@ -13,11 +13,15 @@ from questionnaire import DAO as questionnaireDAO
 from questionnaire import QuestionnaireExtractor
 
 PARTICIPANT_SUMMARY_CONCEPT_MAP = {
-  'dateOfBirth': concepts.DATE_OF_BIRTH,
-  'genderIdentity': concepts.GENDER_IDENTITY,
-  'race': concepts.RACE,
-  'ethnicity': concepts.ETHNICITY,
-  'membershipTier': concepts.MEMBERSHIP_TIER  
+  'dateOfBirth': [concepts.DATE_OF_BIRTH, extraction.VALUE_STRING],
+  'genderIdentity': [concepts.GENDER_IDENTITY, extraction.VALUE_CODING],
+  'race': [concepts.RACE, extraction.VALUE_CODING],
+  'ethnicity': [concepts.ETHNICITY, extraction.VALUE_CODING],
+  'membershipTier': [concepts.MEMBERSHIP_TIER, extraction.VALUE_CODING],
+  'firstName': [concepts.FIRST_NAME, extraction.VALUE_STRING],
+  'middleName': [concepts.MIDDLE_NAME, extraction.VALUE_STRING],
+  'lastName': [concepts.LAST_NAME, extraction.VALUE_STRING],
+
 }
 
 PARTICIPANT_SUMMARY_QUESTIONNAIRE_STATUS_MAP = {
@@ -57,8 +61,8 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
     super(QuestionnaireResponseDAO, self).store(model, date, client_id)
     participant_id = model.resource['subject']['reference'].split('/')[1]
     extracted_map = {}
-    for field_name, concept in PARTICIPANT_SUMMARY_CONCEPT_MAP.iteritems():
-      result = extract_field(model, concept)
+    for field_name, (concept, expected_type) in PARTICIPANT_SUMMARY_CONCEPT_MAP.iteritems():
+      result = extract_field(model, concept, expected_type)
       if result.extracted:
         extracted_map[field_name] = result.value
     group_concepts = QuestionnaireResponseExtractor(model.resource).extract_group_concepts()
@@ -72,13 +76,13 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
       # If the extracted fields don't match, update them
       changed = False
       for field_name, value in extracted_map.iteritems():
-        old_value = summary_json.get(field_name)        
+        old_value = summary_json.get(field_name)
         if value != old_value:
           summary_json[field_name] = value
           changed = True
       if changed:
-        updated_summary = participant_summary.DAO.from_json(summary_json, 
-                                                            old_summary.key.parent().id(), 
+        updated_summary = participant_summary.DAO.from_json(summary_json,
+                                                            old_summary.key.parent().id(),
                                                             participant_summary.SINGLETON_SUMMARY_ID)
         participant_summary.DAO.store(updated_summary, date, client_id)
 
@@ -145,14 +149,15 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
     questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
     return questionnaire_extractor.extract_root_group_concepts()
 
-  def extract_answer(self, link_id, concept):
-    config = self.CONFIGS[concept]
+  def extract_answer(self, link_id, concept, expected_type):
     qs = extraction.get_questions_by_link_id(self.r_fhir, link_id)
     if len(qs) == 1 and len(qs[0].answer) == 1:
       value = extraction.extract_value(qs[0].answer[0])
-      concept = value.extract_concept()
-      if concept:
-        return config.get(concept, UNMAPPED)        
+      if expected_type == extraction.VALUE_CODING:
+        config = self.CONFIGS[concept]
+        return config.get(value.extract_concept(), UNMAPPED)
+      elif expected_type == extraction.VALUE_STRING:
+        return value.extract_string()
     return SKIPPED
 
   def extract_link_ids(self, concept):
@@ -231,14 +236,15 @@ def regions():
   return set(census_regions.values())
 
 @ndb.non_transactional
-def extract_field(obj, concept):
+def extract_field(obj, concept, expected_type=extraction.VALUE_CODING):
   """Returns ExtractionResult for concept answer from questionnaire response."""
   response_extractor = QuestionnaireResponseExtractor(obj.resource)
   link_ids = response_extractor.extract_link_ids(concept)
-  
+
   if not len(link_ids) == 1:
     return extraction.ExtractionResult(None, False)  # Failed to extract answer
-  return extraction.ExtractionResult(response_extractor.extract_answer(link_ids[0], concept))
+  return extraction.ExtractionResult(
+          response_extractor.extract_answer(link_ids[0], concept, expected_type))
 
 @ndb.non_transactional
 def extract_concept_presence(concept):

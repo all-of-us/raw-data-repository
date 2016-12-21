@@ -1,0 +1,31 @@
+{
+  "resourceType": "Questionnaire",
+  "status":"published",
+  "date":"2015-01-01T00:00:00-00:00",
+  "publisher":"fake",
+  "group": {
+    "concept": [{
+      "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-module",
+      "code": "sociodemographics"
+    }],
+    "question": [
+      {
+        "linkId": "race",
+        "text": "What is your race?",
+        "concept": [{
+          "system": "http://loinc.org",
+          "code": "72826-1",
+          "display": "Race OMB"
+        }]
+      }, {
+        "linkId": "ethnicity",
+        "text": "What is your ethnicity?",
+        "concept": [{
+          "system": "http://loinc.org",
+          "code": "69490-1",
+          "display":"Ethnicity OMB"
+        }]
+      }
+    ]
+  }
+}

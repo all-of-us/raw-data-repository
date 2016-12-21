@@ -10,25 +10,6 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from google.appengine.ext import ndb
 
-# Valid values for the HPO, not currently enforced.
-HPO_VALUES = (
-    'pitt',        # Pitt/UPMC
-    'columbia',    # Columbia University Medical Center
-    'illinois',    # Illinois Precision Medicine Consortium
-    'az_tucson',   # University of Arizona, Tucson
-    'comm_health', # Community Health Center
-    'san_ysidro',  # San Ysidro health Center, Inc.
-    'cherokee',    # Cherokee Health Systems
-    'eau_claire',  # Eau Claire Cooperative Health Centers, Inc
-    'hrhcare',     # HRHCare (Hudson River Healthcare)
-    'jackson',     # Jackson-Hinds Comprehensive Health Center
-    'geisinger',   # Geisinger Health System
-    'cal_pmc',     # California Precision Medicine Consortium
-    'ne_pmc',      # New England Precision Medicine Consortium
-    'trans_am',    # Trans-American Consortium for the Health Care Systems Research Network
-    'va',          # Veterans Affairs
-)
-
 class ProviderLink(ndb.Model):
   """A link between a participant and an outside institution."""
   primary = ndb.BooleanProperty()
@@ -97,7 +78,7 @@ def extract_HPO_id(ph):
   """Returns ExtractionResult with the string representing the HPO."""
   primary_provider_link = ph.obj.get_primary_provider_link()
   if primary_provider_link and primary_provider_link.organization:
-    return extraction.ExtractionResult(primary_provider_link.organization.reference, True)
+    return extraction.ExtractionResult(primary_provider_link.organization.reference.split('/')[1], True)
   return extraction.ExtractionResult(None, False)
 
 def load_history_entities(participant_key, now):

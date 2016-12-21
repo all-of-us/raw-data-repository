@@ -56,7 +56,7 @@ MALE_TO_FEMALE_TRANSGENDER = Concept(SYSTEM_GENDER_IDENTITY, 'male-to-female-tra
 INTERSEX = Concept(SYSTEM_GENDER_IDENTITY, 'intersex')
 OTHER = Concept(SYSTEM_GENDER_IDENTITY, 'other')
 
-DATE_OF_BIRTH = Concept(SYSTEM_PMI_BASE, 'date-of-birth')
+SYSTEM_PPI_QUESTION = SYSTEM_PMI_BASE + 'ppi-question'
 
 MEMBERSHIP_TIER = Concept(SYSTEM_PMI_BASE, 'membership-tier')
 
@@ -66,9 +66,11 @@ VOLUNTEER = Concept(SYSTEM_MEMBERSHIP_TIER, 'volunteer')
 FULL_PARTICIPANT = Concept(SYSTEM_MEMBERSHIP_TIER, 'full-participant')
 ENROLLEE = Concept(SYSTEM_MEMBERSHIP_TIER, 'enrollee')
 
-FIRST_NAME = Concept(SYSTEM_PMI_BASE, 'first-name')
-MIDDLE_NAME = Concept(SYSTEM_PMI_BASE, 'middle-name')
-LAST_NAME = Concept(SYSTEM_PMI_BASE, 'last-name')
+
+DATE_OF_BIRTH = Concept(SYSTEM_PPI_QUESTION, 'date-of-birth')
+FIRST_NAME = Concept(SYSTEM_PPI_QUESTION, 'first-name')
+MIDDLE_NAME = Concept(SYSTEM_PPI_QUESTION, 'middle-name')
+LAST_NAME = Concept(SYSTEM_PPI_QUESTION, 'last-name')
 
 STATE_OF_RESIDENCE = Concept(SYSTEM_LOINC, '46499-0')
 
