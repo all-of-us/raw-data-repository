@@ -12,6 +12,26 @@ from participant_summary import GenderIdentity, MembershipTier, Ethnicity, Race
 from questionnaire import DAO as questionnaireDAO
 from questionnaire import QuestionnaireExtractor
 
+PARTICIPANT_SUMMARY_CONCEPT_MAP = {
+  'dateOfBirth': concepts.DATE_OF_BIRTH,
+  'genderIdentity': concepts.GENDER_IDENTITY,
+  'race': concepts.RACE,
+  'ethnicity': concepts.ETHNICITY,
+  'membershipTier': concepts.MEMBERSHIP_TIER  
+}
+
+PARTICIPANT_SUMMARY_QUESTIONNAIRE_STATUS_MAP = {
+  'consentForStudyEnrollment': concepts.ENROLLMENT_CONSENT_FORM,
+  'consentForElectronicHealthRecords': concepts.ELECTRONIC_HEALTH_RECORDS_CONSENT_FORM,
+  'questionnaireOnOverallHealth': concepts.OVERALL_HEALTH_PPI_MODULE,
+  'questionnaireOnPersonalHabits': concepts.PERSONAL_HABITS_PPI_MODULE,
+  'questionnaireOnSociodemographics': concepts.SOCIODEMOGRAPHICS_PPI_MODULE,
+  'questionnaireOnHealthcareAccess': concepts.HEALTHCARE_ACCESS_PPI_MODULE,
+  'questionnaireOnMedicalHistory': concepts.MEDICAL_HISTORY_PPI_MODULE,
+  'questionnaireOnMedications': concepts.MEDICATIONS_PPI_MODULE,
+  'questionnaireOnFamilyHealth': concepts.FAMILY_HEALTH_PPI_MODULE
+}
+
 class QuestionnaireResponse(ndb.Model):
   """The questionnaire response."""
   resource = ndb.JsonProperty()
@@ -36,13 +56,31 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
   def store(self, model, date=None, client_id=None):
     super(QuestionnaireResponseDAO, self).store(model, date, client_id)
     participant_id = model.resource['subject']['reference'].split('/')[1]
-    gender_identity_result = extract_field(model, concepts.GENDER_IDENTITY)
-    if gender_identity_result.extracted:
-      participant_summary_obj = participant_summary.DAO.get_summary_for_participant(participant_id)
-      # If the gender identity on the participant doesn't match, update it
-      if participant_summary_obj.genderIdentity != gender_identity_result.value:
-        participant_summary_obj.genderIdentity = gender_identity_result.value
-        participant_summary.DAO.store(participant_summary_obj, date, client_id)
+    extracted_map = {}
+    for field_name, concept in PARTICIPANT_SUMMARY_CONCEPT_MAP.iteritems():
+      result = extract_field(model, concept)
+      if result.extracted:
+        extracted_map[field_name] = result.value
+    group_concepts = QuestionnaireResponseExtractor(model.resource).extract_group_concepts()
+    if group_concepts:
+      for field_name, concept in PARTICIPANT_SUMMARY_QUESTIONNAIRE_STATUS_MAP.iteritems():
+        if concept in group_concepts:
+          extracted_map[field_name] = 'COMPLETED'
+    if extracted_map:
+      old_summary = participant_summary.DAO.get_summary_for_participant(participant_id)
+      summary_json = participant_summary.DAO.to_json(old_summary)
+      # If the extracted fields don't match, update them
+      changed = False
+      for field_name, value in extracted_map.iteritems():
+        old_value = summary_json.get(field_name)        
+        if value != old_value:
+          summary_json[field_name] = value
+          changed = True
+      if changed:
+        updated_summary = participant_summary.DAO.from_json(summary_json, 
+                                                            old_summary.key.parent().id(), 
+                                                            participant_summary.SINGLETON_SUMMARY_ID)
+        participant_summary.DAO.store(updated_summary, date, client_id)
 
 DAO = QuestionnaireResponseDAO()
 
@@ -97,6 +135,15 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
 
   def extract_id(self):
     return self.r_fhir.id
+
+  @ndb.non_transactional
+  def extract_group_concepts(self):
+    questionnaire_id = self.extract_questionnaire_id()
+    questionnaire = questionnaireDAO.load_if_present(questionnaire_id)
+    if not questionnaire:
+      raise ValueError('Invalid Questionnaire id "{0}".'.format(questionnaire_id))
+    questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
+    return questionnaire_extractor.extract_root_group_concepts()
 
   def extract_answer(self, link_id, concept):
     config = self.CONFIGS[concept]

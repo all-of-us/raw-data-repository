@@ -80,8 +80,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     participant_key = ndb.Key(participant_summary.ParticipantSummary,
                           participant_summary.SINGLETON_SUMMARY_ID,
                           parent=model.key)
-    summary = participant_summary.ParticipantSummary(key=participant_key,
-                                                     participantId=model.participantId,
+    summary = participant_summary.ParticipantSummary(key=participant_key,                                                     
                                                      biobankId=model.biobankId)
     result = super(ParticipantDAO, self).insert(model, date, client_id)
     participant_summary.DAO.insert(summary, date, client_id)

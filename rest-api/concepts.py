@@ -6,6 +6,19 @@ from census_regions import census_regions
 Concept = namedtuple('Concept', ['system', 'code'])
 
 
+SYSTEM_CONSENT_FORM = "http://terminology.pmi-ops.org/CodeSystem/consent-form"
+ENROLLMENT_CONSENT_FORM = Concept(SYSTEM_CONSENT_FORM, "enrollment")
+ELECTRONIC_HEALTH_RECORDS_CONSENT_FORM = Concept(SYSTEM_CONSENT_FORM, "electronic-health-records")
+
+SYSTEM_PPI_MODULE = "http://terminology.pmi-ops.org/CodeSystem/ppi-module"
+OVERALL_HEALTH_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "overall-health")
+PERSONAL_HABITS_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "personal-habits")
+SOCIODEMOGRAPHICS_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "sociodemographics")
+HEALTHCARE_ACCESS_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "healthcare-access")
+MEDICAL_HISTORY_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "medical-history")
+MEDICATIONS_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "medications")
+FAMILY_HEALTH_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "family-health")
+
 SYSTEM_EVALUATION = "http://terminology.pmi-ops.org/CodeSystem/document-type"
 EVALUATION_CONCEPT_CODE_PREFIX = "intake-exam-v"
 
@@ -52,9 +65,6 @@ REGISTERED = Concept(SYSTEM_MEMBERSHIP_TIER, 'registered')
 VOLUNTEER = Concept(SYSTEM_MEMBERSHIP_TIER, 'volunteer')
 FULL_PARTICIPANT = Concept(SYSTEM_MEMBERSHIP_TIER, 'full-participant')
 ENROLLEE = Concept(SYSTEM_MEMBERSHIP_TIER, 'enrollee')
-
-HPO_ID = Concept(SYSTEM_PMI_BASE, 'hpo-id')
-SYSTEM_HPO_ID = SYSTEM_PMI_BASE + 'hpo-id'
 
 FIRST_NAME = Concept(SYSTEM_PMI_BASE, 'first-name')
 MIDDLE_NAME = Concept(SYSTEM_PMI_BASE, 'middle-name')

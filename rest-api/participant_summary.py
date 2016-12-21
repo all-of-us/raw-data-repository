@@ -144,6 +144,28 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     super(ParticipantSummaryDAO, self).__init__(ParticipantSummary, Participant,
                                                 keep_history=False)
 
+  def properties_from_json(self, dict_, ancestor_id, id_):
+    dict_['participantId'] = ancestor_id
+    api_util.parse_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
+    api_util.parse_json_date(dict_, 'signUpTime')
+    api_util.parse_json_date(dict_, 'consentTime')
+    api_util.parse_json_enum(dict_, 'hpoId', HPOId)
+    api_util.parse_json_enum(dict_, 'genderIdentity', GenderIdentity)
+    api_util.parse_json_enum(dict_, 'race', Race)
+    api_util.parse_json_enum(dict_, 'ethnicity', Ethnicity)
+    api_util.parse_json_enum(dict_, 'membershipTier', MembershipTier)
+    api_util.parse_json_enum(dict_, 'physicalEvaluationStatus', PhysicalEvaluationStatus)
+    api_util.parse_json_enum(dict_, 'consentForStudyEnrollment', QuestionnaireStatus)
+    api_util.parse_json_enum(dict_, 'consentForElectronicHealthRecords', QuestionnaireStatus)
+    api_util.parse_json_enum(dict_, 'questionnaireOnOverallHealth', QuestionnaireStatus)
+    api_util.parse_json_enum(dict_, 'questionnaireOnPersonalHabits', QuestionnaireStatus)        
+    api_util.parse_json_enum(dict_, 'questionnaireOnSociodemographics', QuestionnaireStatus)
+    api_util.parse_json_enum(dict_, 'questionnaireOnHealthcareAccess', QuestionnaireStatus)
+    api_util.parse_json_enum(dict_, 'questionnaireOnMedicalHistory', QuestionnaireStatus)
+    api_util.parse_json_enum(dict_, 'questionnaireOnMedications', QuestionnaireStatus)
+    api_util.parse_json_enum(dict_, 'questionnaireOnFamilyHealth', QuestionnaireStatus)
+    return dict_
+    
   def properties_to_json(self, dict_):
     api_util.format_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
     api_util.format_json_date(dict_, 'signUpTime')
