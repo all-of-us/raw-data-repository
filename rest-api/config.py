@@ -16,7 +16,6 @@ CONFIG_SINGLETON_KEY = 'current_config'
 CONFIG_CACHE_TTL_SECONDS = 60
 
 ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
-EXTRA_METRICS = 'extra_metrics'
 METRICS_SHARDS = 'metrics_shards'
 BIOBANK_SAMPLES_SHARDS = 'biobank_samples_shards'
 BIOBANK_SAMPLES_BUCKET_NAME = 'biobank_samples_bucket_name'

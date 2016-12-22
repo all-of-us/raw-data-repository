@@ -19,23 +19,5 @@
   ],
   "metrics_shards": [
     "2"
-  ],
-  "extra_metrics": {
-    "Participant": {
-      "ppi_consent": {
-        "type": "QuestionnaireResponse.SUBMITTED",
-        "concept": {
-          "system": "http://terminology.pmi-ops.org/CodeSystem/questionnaire",
-          "code": "basic-consent"
-        }
-      },
-      "ppi_demographics": {
-        "type": "QuestionnaireResponse.SUBMITTED",
-        "concept": {
-          "system": "http://terminology.pmi-ops.org/CodeSystem/questionnaire",
-          "code": "intake-demographics"
-        }
-      }
-    }
-  }
+  ]
 }

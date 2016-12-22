@@ -8,33 +8,10 @@ from census_regions import census_regions
 from extraction import UNMAPPED, SKIPPED
 from google.appengine.ext import ndb
 from participant import Participant
-from participant_summary import GenderIdentity, MembershipTier, Ethnicity, Race
+from participant_summary import GenderIdentity, MembershipTier, Ethnicity, Race, DAO as summaryDAO
 from questionnaire import DAO as questionnaireDAO
 from questionnaire import QuestionnaireExtractor
 
-PARTICIPANT_SUMMARY_CONCEPT_MAP = {
-  'dateOfBirth': [concepts.DATE_OF_BIRTH, extraction.VALUE_STRING],
-  'genderIdentity': [concepts.GENDER_IDENTITY, extraction.VALUE_CODING],
-  'race': [concepts.RACE, extraction.VALUE_CODING],
-  'ethnicity': [concepts.ETHNICITY, extraction.VALUE_CODING],
-  'membershipTier': [concepts.MEMBERSHIP_TIER, extraction.VALUE_CODING],
-  'firstName': [concepts.FIRST_NAME, extraction.VALUE_STRING],
-  'middleName': [concepts.MIDDLE_NAME, extraction.VALUE_STRING],
-  'lastName': [concepts.LAST_NAME, extraction.VALUE_STRING],
-
-}
-
-PARTICIPANT_SUMMARY_QUESTIONNAIRE_STATUS_MAP = {
-  'consentForStudyEnrollment': concepts.ENROLLMENT_CONSENT_FORM,
-  'consentForElectronicHealthRecords': concepts.ELECTRONIC_HEALTH_RECORDS_CONSENT_FORM,
-  'questionnaireOnOverallHealth': concepts.OVERALL_HEALTH_PPI_MODULE,
-  'questionnaireOnPersonalHabits': concepts.PERSONAL_HABITS_PPI_MODULE,
-  'questionnaireOnSociodemographics': concepts.SOCIODEMOGRAPHICS_PPI_MODULE,
-  'questionnaireOnHealthcareAccess': concepts.HEALTHCARE_ACCESS_PPI_MODULE,
-  'questionnaireOnMedicalHistory': concepts.MEDICAL_HISTORY_PPI_MODULE,
-  'questionnaireOnMedications': concepts.MEDICATIONS_PPI_MODULE,
-  'questionnaireOnFamilyHealth': concepts.FAMILY_HEALTH_PPI_MODULE
-}
 
 class QuestionnaireResponse(ndb.Model):
   """The questionnaire response."""
@@ -60,31 +37,14 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
   def store(self, model, date=None, client_id=None):
     super(QuestionnaireResponseDAO, self).store(model, date, client_id)
     participant_id = model.resource['subject']['reference'].split('/')[1]
-    extracted_map = {}
-    for field_name, (concept, expected_type) in PARTICIPANT_SUMMARY_CONCEPT_MAP.iteritems():
-      result = extract_field(model, concept, expected_type)
-      if result.extracted:
-        extracted_map[field_name] = result.value
-    group_concepts = QuestionnaireResponseExtractor(model.resource).extract_group_concepts()
-    if group_concepts:
-      for field_name, concept in PARTICIPANT_SUMMARY_QUESTIONNAIRE_STATUS_MAP.iteritems():
-        if concept in group_concepts:
-          extracted_map[field_name] = 'COMPLETED'
-    if extracted_map:
-      old_summary = participant_summary.DAO.get_summary_for_participant(participant_id)
-      summary_json = participant_summary.DAO.to_json(old_summary)
-      # If the extracted fields don't match, update them
-      changed = False
-      for field_name, value in extracted_map.iteritems():
-        old_value = summary_json.get(field_name)
-        if value != old_value:
-          summary_json[field_name] = value
-          changed = True
-      if changed:
-        updated_summary = participant_summary.DAO.from_json(summary_json,
-                                                            old_summary.key.parent().id(),
-                                                            participant_summary.SINGLETON_SUMMARY_ID)
-        participant_summary.DAO.store(updated_summary, date, client_id)
+    new_history = self.make_history(model, date, client_id)
+
+    import field_config.participant_summary_config
+    summaryDAO.update_with_incoming_data(
+            participant_id,
+            new_history,
+            field_config.participant_summary_config.CONFIG)
+
 
 DAO = QuestionnaireResponseDAO()
 
@@ -140,15 +100,6 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
   def extract_id(self):
     return self.r_fhir.id
 
-  @ndb.non_transactional
-  def extract_group_concepts(self):
-    questionnaire_id = self.extract_questionnaire_id()
-    questionnaire = questionnaireDAO.load_if_present(questionnaire_id)
-    if not questionnaire:
-      raise ValueError('Invalid Questionnaire id "{0}".'.format(questionnaire_id))
-    questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
-    return questionnaire_extractor.extract_root_group_concepts()
-
   def extract_answer(self, link_id, concept, expected_type):
     qs = extraction.get_questions_by_link_id(self.r_fhir, link_id)
     if len(qs) == 1 and len(qs[0].answer) == 1:
@@ -169,35 +120,6 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
     questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
     return questionnaire_extractor.extract_link_id_for_concept(concept)
 
-def extract_race(qr_hist_obj):
-  """Returns ExtractionResult for race answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, concepts.RACE)
-
-def extract_date_of_birth(qr_hist_obj):
-  """Returns ExtractionResult for date of birth answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, concepts.DATE_OF_BIRTH)
-
-def extract_gender_identity(qr_hist_obj):
-  """Returns ExtractionResult for gender identity answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, concepts.GENDER_IDENTITY)
-
-def extract_membership_tier(qr_hist_obj):
-  """Returns ExtractionResult for membership tier answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, concepts.MEMBERSHIP_TIER)
-
-def extract_first_name(qr_hist_obj):
-  """Returns ExtractionResult for first name answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, concepts.FIRST_NAME)
-
-def extract_middle_name(qr_hist_obj):
-  """Returns ExtractionResult for middle name answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, concepts.MIDDLE_NAME)
-
-def extract_last_name(qr_hist_obj):
-  """Returns ExtractionResult for last name answer from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, concepts.LAST_NAME)
-
-
 def submission_statuses():
   """Enumerates the questionnaire response submission values"""
   return set(["SUBMITTED"])
@@ -205,10 +127,6 @@ def submission_statuses():
 def races():
   """Enumerates the race values"""
   return set(_RACE_MAPPING.values())
-
-def extract_ethnicity(qr_hist_obj):
-  """Returns ExtractionResult for ethnicity from questionnaire response."""
-  return extract_field(qr_hist_obj.obj, concepts.ETHNICITY)
 
 def ethnicities():
   """Enumerates the ethnicity values."""
@@ -235,6 +153,11 @@ def regions():
   """Enumerates the census regions."""
   return set(census_regions.values())
 
+def extractor_for(concept, expected_type=extraction.VALUE_CODING):
+  def ret(qr_hist_obj):
+    return extract_field(qr_hist_obj.obj, concept, expected_type)
+  return ret
+
 @ndb.non_transactional
 def extract_field(obj, concept, expected_type=extraction.VALUE_CODING):
   """Returns ExtractionResult for concept answer from questionnaire response."""
@@ -246,9 +169,7 @@ def extract_field(obj, concept, expected_type=extraction.VALUE_CODING):
   return extraction.ExtractionResult(
           response_extractor.extract_answer(link_ids[0], concept, expected_type))
 
-@ndb.non_transactional
 def extract_concept_presence(concept):
-
   def extract(history_obj):
     response_extractor = QuestionnaireResponseExtractor(history_obj.obj.resource)
     link_ids = response_extractor.extract_link_ids(concept)
@@ -256,7 +177,7 @@ def extract_concept_presence(concept):
     if not len(link_ids) == 1:
       return extraction.ExtractionResult(None, False)  # Failed to extract answer
 
-    return extraction.ExtractionResult('SUBMITTED')
+    return extraction.ExtractionResult('COMPLETED')
 
   return extract
 
@@ -270,3 +191,4 @@ def extract_age(qr_hist_obj, age_func):
 
 def extract_bucketed_age(qr_hist_obj):
   return extract_age(qr_hist_obj, participant_summary.get_bucketed_age)
+

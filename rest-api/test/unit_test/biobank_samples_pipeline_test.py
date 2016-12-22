@@ -8,6 +8,7 @@ import participant
 from offline.biobank_samples_pipeline import BiobankSamplesPipeline
 
 from cloudstorage import cloudstorage_api
+from google.appengine.ext import ndb
 from mapreduce import test_support
 from testlib import testutil
 from test.unit_test.unit_test_util import to_dict_strip_last_modified
@@ -15,6 +16,8 @@ from test.unit_test.unit_test_util import to_dict_strip_last_modified
 class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
     testutil.HandlerTestBase.setUp(self)
+    ndb.get_context().set_cache_policy(False)
+
 
   def test_end_to_end(self):
     # Insert participants to generate biobank IDs
@@ -54,9 +57,9 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
         'disposalStatus': 'Accessioning Error',
         'disposedDate': '2016/11/30 12:17:33' }
     expected_samples_1 = biobank_sample.DAO.from_json(
-        { 'samples': [ expected_sample_dict_1 ]}, 
+        { 'samples': [ expected_sample_dict_1 ]},
         'P1', biobank_sample.SINGLETON_SAMPLES_ID).to_dict()
-    del expected_samples_1['last_modified']    
+    del expected_samples_1['last_modified']
     self.assertEquals(expected_samples_1, to_dict_strip_last_modified(biobank_samples_1))
 
 def test_end_to_end_missing_field(self):
@@ -78,7 +81,7 @@ def test_end_to_end_missing_field(self):
     BiobankSamplesPipeline('pmi-drc-biobank-test.appspot.com').start()
     test_support.execute_until_empty(self.taskqueue)
 
-    biobank_samples_1 = biobank_sample.DAO.load_if_present(biobank_sample.SINGLETON_SAMPLES_ID, 
+    biobank_samples_1 = biobank_sample.DAO.load_if_present(biobank_sample.SINGLETON_SAMPLES_ID,
                                                            'P1')
     self.assertNot(biobank_samples_1)
 

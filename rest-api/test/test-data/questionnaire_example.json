@@ -29,7 +29,7 @@
           "display":"Ethnicity OMB"
         }]
       }, {
-        "linkId":"state_of_residence",
+        "linkId":"stateOfResidence",
         "text":"Please provide your state of residence.",
         "type":"choice",
         "concept": [{
@@ -38,7 +38,7 @@
           "display": "State of residence"
         }]
       }, {
-        "linkId":"membership_tier",
+        "linkId":"membershipTier",
         "text":"Please provide your membership tier.",
         "type":"choice",
         "concept": [{
@@ -47,7 +47,7 @@
           "display": "Membership tier"
         }]
       }, {
-        "linkId":"hpo_id",
+        "linkId":"hpoId",
         "text":"Please provide your HPO ID.",
         "type":"choice",
         "concept": [{

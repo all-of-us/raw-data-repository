@@ -1,7 +1,6 @@
 """Base object for Datastore data access objects."""
 import uuid
 import copy
-import api_util
 
 from google.appengine.ext import ndb
 from werkzeug.exceptions import Conflict
@@ -160,14 +159,18 @@ class DataAccessObject(object):
     return self.store(model, date, client_id)
 
   @ndb.transactional
+  def make_history(self, model, date=None, client_id=None):
+    h = self.history_model(parent=model.key, obj=model)
+    if date:
+      h.populate(date=date)
+    if client_id:
+      h.populate(client_id=client_id)
+    return h
+
+  @ndb.transactional
   def store(self, model, date=None, client_id=None):
     if self.keep_history:
-      h = self.history_model(parent=model.key, obj=model)
-      if date:
-        h.populate(date=date)
-      if client_id:
-        h.populate(client_id=client_id)
-      h.put()
+      self.make_history(model, date, client_id).put()
     return model.put()
 
   def get_all_history(self, ancestor_key):
@@ -201,4 +204,5 @@ class DataAccessObject(object):
     return str(uuid.uuid4())
 
   def make_version_id(self, last_modified):
+    import api_util
     return 'W/"{}"'.format(api_util.unix_time_millis(last_modified))
