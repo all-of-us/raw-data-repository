@@ -49,7 +49,7 @@ CONFIGS_FOR_TEST = {
         'fields': {
             'ParticipantHistory': [
               FieldDef('hpo_id', participant.extract_HPO_id,
-                       BASE_VALUES | set(participant.HPO_VALUES)),
+                       BASE_VALUES | set(participant_summary.HPOId)),
             ],
             'AgeHistory': [
               FieldDef('age_range', participant_summary.extract_bucketed_age,
@@ -190,7 +190,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
   def test_map_key_to_summary_participant_ages(self):
     key = ndb.Key(participant.Participant, '1')
     link = participant.ProviderLink(primary=True, 
-                                    organization=fhir_datatypes.FHIRReference(reference='HPO1'))
+                                    organization=fhir_datatypes.FHIRReference(reference='Organization/HPO1'))
     # One participant signs up in 2013
     participant.DAO.insert(participant.Participant(key=key,
                                                    providerLink = [ link ]),
@@ -311,6 +311,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     serving_version = metrics.get_serving_version()
     metrics_list = list(metrics.MetricsBucket.query(ancestor=serving_version).fetch())
     metrics_list = sorted(metrics_list, key=lambda m: m.date)
+    print "ML", metrics_list, len(metrics_list)
     self.assertEquals(datetime.date(2016, 9, 1), metrics_list[0].date)
     self.assertEquals(datetime.date(2016, 9, 5), metrics_list[1].date)
     self.assertEquals(datetime.date(2016, 9, 10), metrics_list[2].date)
@@ -350,7 +351,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
 
   def _populate_sample_history(self, key):
     link = participant.ProviderLink(primary=True, 
-                                    organization=fhir_datatypes.FHIRReference(reference='HPO1'))
+                                    organization=fhir_datatypes.FHIRReference(reference='Organization/HPO1'))
     participant.DAO.insert(participant.Participant(key=key,
                                                    providerLink = [ link ]),
                           datetime.datetime(2016, 9, 1, 11, 0, 1))

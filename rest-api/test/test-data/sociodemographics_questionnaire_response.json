@@ -1,0 +1,40 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "status": "completed",
+  "subject": {
+    "reference": "Patient/$participant_id"
+  },
+  "questionnaire": {
+    "reference": "Questionnaire/$sociodemographics_questionnaire_id"
+  },
+  "authored": "$sociodemographics_questionnaire_authored",
+  "group": {
+    "question": [
+      {
+        "linkId": "race",
+        "text": "What is your race?",
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "$race_code",
+              "system": "$race_system",
+              "display": "$race_display"
+            }
+          }
+        ]
+      }, {
+      "linkId": "ethnicity",
+      "text": "What is your ethnicity?",
+      "answer": [
+        {
+          "valueCoding": {
+             "code": "$ethnicity_code",
+             "system": "$ethnicity_system",
+             "display": "$ethnicity_display"
+          }
+        }
+      ]
+      }
+    ]
+  }
+}

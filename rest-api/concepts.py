@@ -6,6 +6,19 @@ from census_regions import census_regions
 Concept = namedtuple('Concept', ['system', 'code'])
 
 
+SYSTEM_CONSENT_FORM = "http://terminology.pmi-ops.org/CodeSystem/consent-form"
+ENROLLMENT_CONSENT_FORM = Concept(SYSTEM_CONSENT_FORM, "enrollment")
+ELECTRONIC_HEALTH_RECORDS_CONSENT_FORM = Concept(SYSTEM_CONSENT_FORM, "electronic-health-records")
+
+SYSTEM_PPI_MODULE = "http://terminology.pmi-ops.org/CodeSystem/ppi-module"
+OVERALL_HEALTH_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "overall-health")
+PERSONAL_HABITS_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "personal-habits")
+SOCIODEMOGRAPHICS_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "sociodemographics")
+HEALTHCARE_ACCESS_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "healthcare-access")
+MEDICAL_HISTORY_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "medical-history")
+MEDICATIONS_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "medications")
+FAMILY_HEALTH_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "family-health")
+
 SYSTEM_EVALUATION = "http://terminology.pmi-ops.org/CodeSystem/document-type"
 EVALUATION_CONCEPT_CODE_PREFIX = "intake-exam-v"
 
@@ -43,7 +56,7 @@ MALE_TO_FEMALE_TRANSGENDER = Concept(SYSTEM_GENDER_IDENTITY, 'male-to-female-tra
 INTERSEX = Concept(SYSTEM_GENDER_IDENTITY, 'intersex')
 OTHER = Concept(SYSTEM_GENDER_IDENTITY, 'other')
 
-DATE_OF_BIRTH = Concept(SYSTEM_PMI_BASE, 'date-of-birth')
+SYSTEM_PPI_QUESTION = SYSTEM_PMI_BASE + 'ppi-question'
 
 MEMBERSHIP_TIER = Concept(SYSTEM_PMI_BASE, 'membership-tier')
 
@@ -53,12 +66,11 @@ VOLUNTEER = Concept(SYSTEM_MEMBERSHIP_TIER, 'volunteer')
 FULL_PARTICIPANT = Concept(SYSTEM_MEMBERSHIP_TIER, 'full-participant')
 ENROLLEE = Concept(SYSTEM_MEMBERSHIP_TIER, 'enrollee')
 
-HPO_ID = Concept(SYSTEM_PMI_BASE, 'hpo-id')
-SYSTEM_HPO_ID = SYSTEM_PMI_BASE + 'hpo-id'
 
-FIRST_NAME = Concept(SYSTEM_PMI_BASE, 'first-name')
-MIDDLE_NAME = Concept(SYSTEM_PMI_BASE, 'middle-name')
-LAST_NAME = Concept(SYSTEM_PMI_BASE, 'last-name')
+DATE_OF_BIRTH = Concept(SYSTEM_PPI_QUESTION, 'date-of-birth')
+FIRST_NAME = Concept(SYSTEM_PPI_QUESTION, 'first-name')
+MIDDLE_NAME = Concept(SYSTEM_PPI_QUESTION, 'middle-name')
+LAST_NAME = Concept(SYSTEM_PPI_QUESTION, 'last-name')
 
 STATE_OF_RESIDENCE = Concept(SYSTEM_LOINC, '46499-0')
 

@@ -107,7 +107,7 @@ class TestPPI(unittest.TestCase):
                  'questionnaireOnHealthcareAccess': 'UNSET',
                  'questionnaireOnMedicalHistory' : 'UNSET',
                  'questionnaireOnMedications': 'UNSET',  
-                 'questionnaireOnOverallHealth': 'UNSET',
+                 'questionnaireOnOverallHealth': 'COMPLETED',
                  'questionnaireOnPersonalHabits': 'UNSET',
                  'questionnaireOnSociodemographics': 'UNSET'
               }

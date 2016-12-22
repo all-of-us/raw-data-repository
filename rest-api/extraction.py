@@ -64,23 +64,40 @@ class Value(object):
     assert self.value_type == 'valueCoding'
     return extract_concept(self.value)
 
+  def extract_string(self):
+    """Extracts a concept from a value with a valueCoding type."""
+    assert self.value_type == 'valueString'
+    return self.value
+
   def extract_units(self):
     """Returns the units (as a Concept) that this value is represented in."""
     return Concept(system=self.value.system, code=self.value.code)
 
+VALUE_ATTACHMENT = 'valueAttachment'
+VALUE_CODEABLE_CONCEPT = 'valueCodeableConcept'
+VALUE_CODING = 'valueCoding'
+VALUE_DATE_TIME = 'valueDateTime'
+VALUE_PERIOD = 'valuePeriod'
+VALUE_RANGE = 'valueRange'
+VALUE_RATIO = 'valueRatio'
+VALUE_SAMPLED_DATA = 'valueSampledData'
+VALUE_STRING = 'valueString'
+VALUE_TIME = 'valueTime'
+VALUE_QUANTITY = 'valueQuantity'
+
 # Fields that values can be found in.
 VALUE_PROPS = (
-    'valueAttachment',
-    'valueCodeableConcept',
-    'valueCoding',
-    'valueDateTime',
-    'valuePeriod',
-    'valueRange',
-    'valueRatio',
-    'valueSampledData',
-    'valueString',
-    'valueTime',
-    'valueQuantity',
+  VALUE_ATTACHMENT,
+  VALUE_CODEABLE_CONCEPT,
+  VALUE_CODING,
+  VALUE_DATE_TIME,
+  VALUE_PERIOD,
+  VALUE_RANGE,
+  VALUE_RATIO,
+  VALUE_SAMPLED_DATA,
+  VALUE_STRING,
+  VALUE_TIME,
+  VALUE_QUANTITY,
 )
 
 def extract_concept(node):

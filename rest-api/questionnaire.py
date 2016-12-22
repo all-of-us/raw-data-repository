@@ -32,6 +32,9 @@ DAO = QuestionnaireDAO()
 
 class QuestionnaireExtractor(extraction.FhirExtractor):
 
+  def extract_root_group_concepts(self):  
+    return [extraction.Concept(node.system, node.code) for node in self.r_fhir.group.concept or []]
+
   def extract_link_id_for_concept(self, concept):
     """Returns list of link ids in questionnaire that address the concept."""
     assert isinstance(concept, extraction.Concept)
