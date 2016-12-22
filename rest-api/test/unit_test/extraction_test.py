@@ -15,7 +15,7 @@ from test.unit_test.unit_test_util import NdbTestBase
 
 RACE_LINKID = 'race'
 ETHNICITY_LINKID = 'ethnicity'
-STATE_OF_RESIDENCE_LINKID = 'state_of_residence'
+STATE_OF_RESIDENCE_LINKID = 'stateOfResidence'
 
 class ExtractionTest(NdbTestBase):
   def setUp(self):

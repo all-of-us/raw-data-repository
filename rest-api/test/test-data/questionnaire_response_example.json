@@ -35,7 +35,7 @@
         }
       ]
       }, {
-      "linkId": "state_of_residence",
+      "linkId": "stateOfResidence",
       "text": "What is your state of residence?",
       "answer": [
         {

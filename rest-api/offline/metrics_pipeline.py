@@ -55,9 +55,7 @@ key, adds them up, and writes out the aggregated counts.
 
 import copy
 import json
-import logging
 import pipeline
-import traceback
 
 import api_util
 import config
@@ -70,9 +68,9 @@ from collections import Counter
 from google.appengine.ext import ndb
 from mapreduce import mapreduce_pipeline
 from mapreduce import operation as op
-from mapreduce import context
 
 from metrics import MetricsBucket
+from offline.metrics_fields import run_extractors
 
 
 class PipelineNotRunningException(BaseException):
@@ -81,27 +79,17 @@ class PipelineNotRunningException(BaseException):
 DATE_FORMAT = '%Y-%m-%d'
 
 TOTAL_SENTINEL = '__total_sentinel__'
-_EXTRA_METRICS = '_EXTRA_METRICS'
 _NUM_SHARDS = '_NUM_SHARDS'
 
 def default_params():
   """These can be used in a snapshot to ensure they stay the same across
   all instances of a MapReduce pipeline, even if datastore changes"""
   return {
-        _NUM_SHARDS: int(config.getSetting(config.METRICS_SHARDS, 1)),
-        _EXTRA_METRICS: offline.metrics_config.get_extra_metrics()
+        _NUM_SHARDS: int(config.getSetting(config.METRICS_SHARDS, 1))
     }
 
-def get_config(extras=None):
-  """Resolve a complete config object, using the first available of:
-     1. Supplied extras
-     2. Extras from a MapreducePipeline context
-     3. Config datastore entity (default behavior)"""
-
-  if (not extras) and context.get():
-    extras = context.get().mapreduce_spec.mapper.params[_EXTRA_METRICS]
-
-  return offline.metrics_config.get_config(extras)
+def get_config():
+  return offline.metrics_config.get_config()
 
 # This is a indicator of the format of the produced metrics.  If the metrics
 # pipeline changes such that the produced metrics are not compatible with the
@@ -114,7 +102,7 @@ PIPELINE_METRICS_DATA_VERSION = 1
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
     mapper_params = default_params()
-    configs = get_config(mapper_params[_EXTRA_METRICS])
+    configs = get_config()
     validate_metrics(configs)
     metrics.set_pipeline_in_progress()
     futures = []
@@ -151,7 +139,6 @@ class SummaryPipeline(pipeline.Pipeline):
         reducer_spec='offline.metrics_pipeline.reduce_facets',
         shards=num_shards)
 
-
 def map_key_to_summary(entity_key, now=None):
   """Takes a key for the entity. Emits deltas for all state changes.
 
@@ -177,31 +164,13 @@ def map_key_to_summary(entity_key, now=None):
     summary = {}
     old_summary = {}
     date = hist_obj.date.date()
-
     if not last_state:
       new_state = copy.deepcopy(metrics_conf['initial_state'])
       new_state[TOTAL_SENTINEL] = 1
     else:
-      new_state = copy.deepcopy(last_state)
-    hist_kind = hist_obj.key.kind()
-    for field in metrics_conf['fields'][hist_kind]:
-      try:
-        result = field.func(hist_obj)
-        if result.extracted:
-          new_state[field.name] = str(result.value)
-      except Exception: # pylint: disable=broad-except
-        logging.error('Exception extracting history field {0}: {1}'.format(
-                field.name, traceback.format_exc()))
+      new_state = last_state
 
-    for field in metrics_conf['summary_fields']:
-      try:
-        result = field.func(new_state)
-        if result.extracted:
-          new_state[field.name] = str(result.value)
-      except Exception: # pylint: disable=broad-except
-        logging.error('Exception extracting history summary field {0}: {1}'.format(
-                field.name, traceback.format_exc()))
-
+    new_state = run_extractors(hist_obj, metrics_conf, new_state)
     if new_state == last_state:
       continue  # No changes so there's nothing to do.
 
@@ -216,7 +185,6 @@ def map_key_to_summary(entity_key, now=None):
       old_val = last_state and last_state.get(k, None)
       if facets_change or v != old_val:
         summary[_make_metric_key(kind, k, v)] = 1
-
         if last_state:
           # If the value changed, output -1 delta for the old value.
           old_summary[_make_metric_key(kind, k, old_val)] = -1

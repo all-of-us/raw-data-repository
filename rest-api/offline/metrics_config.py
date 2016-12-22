@@ -19,15 +19,16 @@ Keys for an individual configuration entry:
   fields: The fields of the model to collect metrics on.
 
 """
-
 import concepts
-import config
-import copy
+import extraction
 import participant
 import participant_summary
 import questionnaire_response
 
-from collections import namedtuple
+import field_config.shared_config
+from questionnaire_response import states, regions
+
+from offline.metrics_fields import FacetDef, FieldDef
 from extraction import ExtractionResult, BASE_VALUES, UNSET
 from protorpc import messages
 
@@ -35,9 +36,6 @@ class FacetType(messages.Enum):
   """The Facets (dimensions) to bucket by"""
   NONE = 0
   HPO_ID = 1
-
-FieldDef = namedtuple('FieldDef', ['name', 'func', 'func_range'])
-FacetDef = namedtuple('FacetDef', ['type', 'func'])
 
 def biospecimen_summary(summary):
   """Summarizes the two biospecimen statuses into one."""
@@ -48,80 +46,53 @@ def biospecimen_summary(summary):
     ret = samples
   return ExtractionResult(ret)
 
-def get_extra_metrics():
-  return config.getSettingJson(config.EXTRA_METRICS, default={})
+def get_config():
+  return ALL_CONFIG
 
-
-def get_config(extra_metrics=None):
-  if not extra_metrics:
-    extra_metrics = get_extra_metrics()
-
-  CONFIG = copy.deepcopy(DEFAULT_CONFIG)
-  for k, v in extra_metrics.get('Participant', {}).iteritems():
-    if v.get('type', None) == 'QuestionnaireResponse.SUBMITTED':
-      CONFIG['Participant']['fields']['QuestionnaireResponseHistory'].append(
-        FieldDef(k, questionnaire_response.extract_concept_presence(concepts.Concept(
-                 v.get('concept', {}).get('system', ''),
-                 v.get('concept', {}).get('code', ''))),
-                set([UNSET]) | questionnaire_response.submission_statuses()))
-      CONFIG['Participant']['initial_state'][k] = UNSET
-  return CONFIG
-
-DEFAULT_CONFIG = {
+ALL_CONFIG = {
     'Participant': {
         'facets': [
-            FacetDef(FacetType.HPO_ID, lambda s: s.get('hpo_id', UNSET)),
+            FacetDef(FacetType.HPO_ID, lambda s: s.get('hpoId', UNSET)),
         ],
         'initial_state': {
-            'physical_evaluation': UNSET,
+            'physicalEvaluation': UNSET,
             'race': UNSET,
             'ethnicity': UNSET,
             'survey': UNSET,
             'state': UNSET,
-            'census_region': UNSET,
-            'membership_tier': UNSET,
-            'gender_identity': UNSET,
+            'censusRegion': UNSET,
+            'membershipTier': UNSET,
+            'genderIdentity': UNSET,
+            'physicalEvaluation': UNSET,
             'biospecimen': UNSET,
-            'biospecimen_samples': UNSET,
-            'biospecimen_summary': UNSET,
-            'age_range': UNSET
+            'biospecimenSamples': UNSET,
+            'biospecimenSummary': UNSET,
+            'ageRange': UNSET
         },
         'fields': {
             'ParticipantHistory': [
-              FieldDef('hpo_id', participant.extract_HPO_id,
-                       set(participant_summary.HPOId)),
+              FieldDef('hpoId', participant.extract_HPO_id, set(participant_summary.HPOId)),
             ],
             'AgeHistory': [
-              FieldDef('age_range', participant_summary.extract_bucketed_age,
-                       BASE_VALUES | set(participant_summary.AGE_BUCKETS)),         
+              FieldDef('ageRange', participant_summary.extract_bucketed_age,
+                       BASE_VALUES | set(participant_summary.AGE_BUCKETS)),
             ],
-            'QuestionnaireResponseHistory': [
-                FieldDef('race',
-                         questionnaire_response.extract_race,
-                         set(participant_summary.Race)),
-                FieldDef('ethnicity',
-                         questionnaire_response.extract_ethnicity,
-                         set(participant_summary.Ethnicity)),
-                # The presence of a response means that some have been submitted.
-                FieldDef('survey',
-                         lambda h: ExtractionResult('SUBMITTED_SOME'),
-                         (UNSET, 'SUBMITTED_SOME')),
-                FieldDef('state',
-                         questionnaire_response.extract_state_of_residence,
-                         BASE_VALUES | questionnaire_response.states()),
-                FieldDef('census_region',
-                         questionnaire_response.extract_census_region,
-                         BASE_VALUES | questionnaire_response.regions()),
-                FieldDef('membership_tier',
-                         questionnaire_response.extract_membership_tier,
-                         set(participant_summary.MembershipTier)),
-                FieldDef('gender_identity',
-                         questionnaire_response.extract_gender_identity,
-                         set(participant_summary.GenderIdentity)),                
+            'QuestionnaireResponseHistory':
+                field_config.shared_config.questionnaire_fields + [
+                    FieldDef('survey',
+                        lambda h: extraction.ExtractionResult('SUBMITTED_SOME'),
+                        (UNSET, 'SUBMITTED_SOME')),
+                    FieldDef('state',
+                        questionnaire_response.extractor_for(
+                            concepts.STATE_OF_RESIDENCE, extraction.VALUE_CODING),
+                        BASE_VALUES | states()),
+                    FieldDef('censusRegion',
+                        questionnaire_response.extract_census_region,
+                        BASE_VALUES | regions()),
             ],
             'EvaluationHistory': [
                 # The presence of a physical evaluation implies that it is complete.
-                FieldDef('physical_evaluation',
+                FieldDef('physicalEvaluation',
                          lambda h: ExtractionResult('COMPLETE'),
                          (UNSET, 'COMPLETE')),
             ],
@@ -134,13 +105,14 @@ DEFAULT_CONFIG = {
             'BiobankSamples': [
                 # The presence of a biobank sample implies that samples have arrived
                 # This overwrites the ORDER_PLACED value for biospecimen above
-                FieldDef('biospecimen_samples', lambda h: ExtractionResult('SAMPLES_ARRIVED'),
+                FieldDef('biospecimenSamples', lambda h: ExtractionResult('SAMPLES_ARRIVED'),
                          (UNSET, 'SAMPLES_ARRIVED'))
             ]
         },
         'summary_fields': [
-            FieldDef('biospecimen_summary', biospecimen_summary,
+            FieldDef('biospecimenSummary', biospecimen_summary,
                      (UNSET, 'ORDER_PLACED', 'SAMPLES_ARRIVED')),
         ],
     },
 }
+

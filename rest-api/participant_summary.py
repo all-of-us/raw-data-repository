@@ -5,6 +5,8 @@ import api_util
 import data_access_object
 import extraction
 
+from offline.metrics_fields import run_extractors
+
 from dateutil.relativedelta import relativedelta
 from protorpc import messages
 from participant import Participant
@@ -40,7 +42,7 @@ class PhysicalEvaluationStatus(messages.Enum):
   SCHEDULED = 1
   COMPLETED = 2
   RESULT_READY = 3
-  
+
 class QuestionnaireStatus(messages.Enum):
   """The status of a given questionnaire for this participant"""
   UNSET = 0
@@ -61,7 +63,7 @@ class GenderIdentity(messages.Enum):
   """The gender identity of the participant."""
   UNSET = 0
   SKIPPED = 1
-  UNMAPPED = 2  
+  UNMAPPED = 2
   FEMALE = 3
   MALE = 4
   FEMALE_TO_MALE_TRANSGENDER = 5
@@ -69,14 +71,14 @@ class GenderIdentity(messages.Enum):
   INTERSEX = 7
   OTHER = 8
   PREFER_NOT_TO_SAY = 9
- 
+
 class Ethnicity(messages.Enum):
-  """The ethnicity of the participant.""" 
+  """The ethnicity of the participant."""
   UNSET = 0
   SKIPPED = 1
   UNMAPPED = 2
   HISPANIC = 3
-  NON_HISPANIC = 4  
+  NON_HISPANIC = 4
   PREFER_NOT_TO_SAY = 5
 
 class Race(messages.Enum):
@@ -85,10 +87,10 @@ class Race(messages.Enum):
   UNMAPPED = 2
   AMERICAN_INDIAN_OR_ALASKA_NATIVE = 3
   BLACK_OR_AFRICAN_AMERICAN = 4
-  ASIAN = 5    
+  ASIAN = 5
   NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER = 6
   WHITE = 7
-  OTHER_RACE = 8  
+  OTHER_RACE = 8
   PREFER_NOT_TO_SAY = 9
 
 # The lower bounds of the age buckets.
@@ -101,7 +103,7 @@ def extract_bucketed_age(participant_hist_obj):
     if bucketed_age:
       return extraction.ExtractionResult(bucketed_age, True)
   return extraction.ExtractionResult(None, False)
-  
+
 def get_bucketed_age(date_of_birth, today):
   age = relativedelta(today, date_of_birth).years
   for begin, end in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + ['']):
@@ -158,14 +160,14 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.parse_json_enum(dict_, 'consentForStudyEnrollment', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'consentForElectronicHealthRecords', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnOverallHealth', QuestionnaireStatus)
-    api_util.parse_json_enum(dict_, 'questionnaireOnPersonalHabits', QuestionnaireStatus)        
+    api_util.parse_json_enum(dict_, 'questionnaireOnPersonalHabits', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnSociodemographics', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnHealthcareAccess', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnMedicalHistory', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnMedications', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnFamilyHealth', QuestionnaireStatus)
     return dict_
-    
+
   def properties_to_json(self, dict_):
     api_util.format_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
     api_util.format_json_date(dict_, 'signUpTime')
@@ -179,7 +181,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.format_json_enum(dict_, 'consentForStudyEnrollment')
     api_util.format_json_enum(dict_, 'consentForElectronicHealthRecords')
     api_util.format_json_enum(dict_, 'questionnaireOnOverallHealth')
-    api_util.format_json_enum(dict_, 'questionnaireOnPersonalHabits')        
+    api_util.format_json_enum(dict_, 'questionnaireOnPersonalHabits')
     api_util.format_json_enum(dict_, 'questionnaireOnSociodemographics')
     api_util.format_json_enum(dict_, 'questionnaireOnHealthcareAccess')
     api_util.format_json_enum(dict_, 'questionnaireOnMedicalHistory')
@@ -205,9 +207,29 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     for p in query.fetch():
       items.append(self.to_json(p))
     return {"items": items}
-    
+
   def get_summary_for_participant(self, participant_id):
     return self.load_if_present(SINGLETON_SUMMARY_ID, participant_id)
-  
+
+  def update_with_incoming_data(self, participant_id, incoming_history_obj, config):
+    old_summary = self.get_summary_for_participant(participant_id)
+    old_summary_json = self.to_json(old_summary)
+    new_summary = run_extractors(incoming_history_obj, config, old_summary_json)
+
+    # If the extracted fields don't match, update them
+    changed = False
+    for field_name, value in new_summary.iteritems():
+      old_value = old_summary_json.get(field_name)
+
+      if value != old_value:
+        old_summary_json[field_name] = value
+        changed = True
+      if changed:
+        updated_summary = self.from_json(old_summary_json,
+                                                        old_summary.key.parent().id(),
+                                                        SINGLETON_SUMMARY_ID)
+        self.store(updated_summary)
+
+
 
 DAO = ParticipantSummaryDAO()

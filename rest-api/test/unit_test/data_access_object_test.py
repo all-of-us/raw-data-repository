@@ -88,6 +88,7 @@ class DataAccessObjectTest(NdbTestBase):
                       to_dict_strip_last_modified(PARENT_DAO.load(parent_id)))
 
   def test_history(self):
+
     dates = [datetime(2016, 10, 1) for i in range(3)]
     client_ids = ["client {}".format(i) for i in range(3)]
 
