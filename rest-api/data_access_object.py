@@ -2,10 +2,18 @@
 import uuid
 import copy
 
+from query import PropertyType, Operator
 from google.appengine.ext import ndb
 from werkzeug.exceptions import Conflict
 from werkzeug.exceptions import PreconditionFailed
 from werkzeug.exceptions import NotFound
+
+PROPERTY_TYPE_MAP = {
+  "ndb.StringProperty": PropertyType.STRING,
+  "ndb.DateProperty": PropertyType.DATE,
+  "ndb.DateTimeProperty": PropertyType.DATE,
+  "ndb.EnumProperty": PropertyType.ENUM
+}
 
 class DataAccessObject(object):
   """Base class for data access objects.
@@ -206,3 +214,25 @@ class DataAccessObject(object):
   def make_version_id(self, last_modified):
     import api_util
     return 'W/"{}"'.format(api_util.unix_time_millis(last_modified))
+
+  def query(self, query_definition):
+    query = self.model_type.query()
+    for field_filter in query_definition.field_filters:
+      property = get_attr(self.model_type, field_filter.field_name, None)
+      assert property, "Property {}.{} not found".format(self.model_name, field_filter.field_name)
+      property_type = PROPERTY_TYPE_MAP.get(property.__class__.__name__)
+      assert property_type, "Property class {} had invalid property type".format(property.__class__.__name__)
+
+      search_property = property
+      search_value = field_filter.value
+      if property_type == PropertyType.STRING:
+         search_property = get_attr(self.model_type, field_filter.field_name + 'Search', None)
+         assert search_property, "Property {}.{}Search not found".format(self.model_name, field_filter.field_name)
+         search_value = api_util.searchable_representation(field_filter.value)
+
+      operator = field_filter.operator
+      if operator == Operator.EQUALS:
+        query = query.filter(search_property == field_filter.value)
+      else if operator == Operator.LESS_THAN:
+        query = query.filter(search_property < field_filter.value)
+      # etc.

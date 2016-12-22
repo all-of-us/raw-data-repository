@@ -191,7 +191,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.remove_field(dict_, 'lastNameSearch')
     return dict_
 
-  def list(self, first_name, last_name, dob_string, zip_code):
+  def list(self, query):
     date_of_birth = api_util.parse_date(dob_string, DATE_OF_BIRTH_FORMAT)
     query = ParticipantSummary.query(
         ParticipantSummary.lastNameSearch == api_util.searchable_representation(last_name),
