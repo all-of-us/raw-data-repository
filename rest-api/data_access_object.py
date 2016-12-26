@@ -251,8 +251,6 @@ class DataAccessObject(object):
         query = query.filter(search_property <= search_value)
       elif operator == Operator.GREATER_THAN_OR_EQUALS:
         query = query.filter(search_property >= search_value)
-      elif operator == Operator.NOT_EQUALS:
-        query = query.filter(search_property != search_value)
       else:
         assert false, "Invalid operator: {}".format(operator)
     if query_definition.order_by:

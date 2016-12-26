@@ -7,8 +7,7 @@ class Operator(messages.Enum):
   GREATER_THAN = 2
   LESS_THAN_OR_EQUALS = 3
   GREATER_THAN_OR_EQUALS = 4
-  NOT_EQUALS = 5
-  # Note: we don't support contains or exact string comparison at this stage
+  # Note: we don't support contains, not equals, or exact string comparison at this stage
 
 class PropertyType(messages.Enum):
   STRING = 0
