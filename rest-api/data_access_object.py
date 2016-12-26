@@ -1,6 +1,7 @@
 """Base object for Datastore data access objects."""
 import uuid
 import copy
+import api_util
 
 from query import PropertyType, Operator, Results
 from google.appengine.ext import ndb
