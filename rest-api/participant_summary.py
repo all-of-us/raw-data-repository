@@ -191,23 +191,6 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.remove_field(dict_, 'lastNameSearch')
     return dict_
 
-  def list(self, query):
-    date_of_birth = api_util.parse_date(dob_string, DATE_OF_BIRTH_FORMAT)
-    query = ParticipantSummary.query(
-        ParticipantSummary.lastNameSearch == api_util.searchable_representation(last_name),
-        ParticipantSummary.dateOfBirth == date_of_birth)
-    if first_name:
-      query = query.filter(
-          ParticipantSummary.firstNameSearch == api_util.searchable_representation(first_name))
-
-    if zip_code:
-      query = query.filter(ParticipantSummary.zipCode == zip_code)
-
-    items = []
-    for p in query.fetch():
-      items.append(self.to_json(p))
-    return {"items": items}
-
   def get_summary_for_participant(self, participant_id):
     return self.load_if_present(SINGLETON_SUMMARY_ID, participant_id)
 
@@ -229,7 +212,6 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
                                                         old_summary.key.parent().id(),
                                                         SINGLETON_SUMMARY_ID)
         self.store(updated_summary)
-
-
+        
 
 DAO = ParticipantSummaryDAO()

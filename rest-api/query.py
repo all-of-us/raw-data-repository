@@ -1,4 +1,5 @@
 """A query to run against a DAO (abstracted from the persistent level)."""
+from protorpc import messages
 
 class Operator(messages.Enum):
   EQUALS = 0 # Case insensitive comparison for strings, exact comparison otherwise
@@ -10,8 +11,8 @@ class Operator(messages.Enum):
   # Note: we don't support contains or exact string comparison at this stage
 
 class PropertyType(messages.Enum):
-  STRING = 0,
-  DATE = 1,
+  STRING = 0
+  DATE = 1
   ENUM = 2
 
 class FieldFilter:
@@ -26,9 +27,15 @@ class OrderBy:
     self.ascending = ascending
 
 class Query:
-  def __init__(self, field_filters, order_by, max_results):
+  def __init__(self, field_filters, order_by, max_results, pagination_token):
     self.field_filters = field_filters
     self.order_by = order_by
     self.max_results = max_results
+    self.pagination_token = pagination_token
+
+class Results:
+  def __init__(self, items, pagination_token):
+    self.items = items
+    self.pagination_token = pagination_token
 
 

@@ -1,9 +1,11 @@
 """Tests for data_access_object."""
 
+import api_util
 import data_access_object
 import unittest
 
 from datetime import datetime
+from query import Query, OrderBy, FieldFilter, Operator
 
 from google.appengine.ext import ndb
 
@@ -13,6 +15,8 @@ from werkzeug.exceptions import Conflict, NotFound, PreconditionFailed
 
 class ParentModel(ndb.Model):
   foo = ndb.StringProperty()
+  fooSearch = ndb.ComputedProperty(
+      lambda self: api_util.searchable_representation(self.foo))
   last_modified = ndb.DateTimeProperty(auto_now=True)
 
 class ChildModel(ndb.Model):
@@ -86,6 +90,115 @@ class DataAccessObjectTest(NdbTestBase):
 
     self.assertEquals(to_dict_strip_last_modified(parent),
                       to_dict_strip_last_modified(PARENT_DAO.load(parent_id)))
+
+  def test_query_no_filters(self):
+    query = Query([], OrderBy(field_name='foo', ascending=True), 2, None)
+    results = PARENT_DAO.query(query)
+    self.assertEquals([], results.items)
+    self.assertEquals(None, results.pagination_token)
+
+    parent1 = ParentModel(key=ndb.Key(ParentModel, '321'), foo="a")
+    PARENT_DAO.insert(parent1)
+    results = PARENT_DAO.query(query)
+    self.assertEquals([parent1], results.items)
+    self.assertEquals(None, results.pagination_token)
+
+    parent2 = ParentModel(key=ndb.Key(ParentModel, '123'), foo="bob")
+    PARENT_DAO.insert(parent2)
+    parent3 = ParentModel(key=ndb.Key(ParentModel, '456'), foo="AARDVARK")
+    PARENT_DAO.insert(parent3)
+    results = PARENT_DAO.query(query)
+    self.assertEquals([parent1, parent3], results.items)
+    self.assertTrue(results.pagination_token)
+
+    query2 = Query([], OrderBy(field_name='foo', ascending=True), 2, results.pagination_token)
+    results2 = PARENT_DAO.query(query2)
+    self.assertEquals([parent2], results2.items)
+    self.assertEquals(None, results2.pagination_token)
+
+    # Now in descending order
+    query3 = Query([], OrderBy(field_name='foo', ascending=False), 2, None)
+    results3 = PARENT_DAO.query(query3)
+    self.assertEquals([parent2, parent3], results3.items)
+    self.assertTrue(results3.pagination_token)
+
+    query4 = Query([], OrderBy(field_name='foo', ascending=False), 2, results3.pagination_token)
+    results4 = PARENT_DAO.query(query4)
+    self.assertEquals([parent1], results4.items)
+    self.assertEquals(None, results4.pagination_token)
+
+    # Now sort by last_modified
+    query5 = Query([], OrderBy(field_name='last_modified', ascending=True), 3, None)
+    results5 = PARENT_DAO.query(query5)
+    self.assertEquals([parent1, parent2, parent3], results5.items)
+    self.assertEquals(None, results5.pagination_token)
+
+  def test_query_with_filters(self):
+    query = Query([FieldFilter('foo', Operator.EQUALS, 'A')], OrderBy(field_name='foo', ascending=True), 2, None)
+    results = PARENT_DAO.query(query)
+    self.assertEquals([], results.items)
+    self.assertEquals(None, results.pagination_token)
+
+    parent1 = ParentModel(key=ndb.Key(ParentModel, '321'), foo="a")
+    PARENT_DAO.insert(parent1)
+    results = PARENT_DAO.query(query)
+    self.assertEquals([parent1], results.items)
+    self.assertEquals(None, results.pagination_token)
+
+    parent2 = ParentModel(key=ndb.Key(ParentModel, '123'), foo="bob")
+    PARENT_DAO.insert(parent2)
+    parent3 = ParentModel(key=ndb.Key(ParentModel, '456'), foo="AARDVARK")
+    PARENT_DAO.insert(parent3)
+    results = PARENT_DAO.query(query)
+    self.assertEquals([parent1], results.items)
+    self.assertEquals(None, results.pagination_token)
+
+    query2 = Query([FieldFilter('foo', Operator.LESS_THAN, "bob")], OrderBy(field_name='foo', ascending=True), 2, None)
+    results2 = PARENT_DAO.query(query2)
+    self.assertEquals([parent1, parent3], results2.items)
+    self.assertEquals(None, results2.pagination_token)
+
+    query3 = Query([FieldFilter('foo', Operator.LESS_THAN_OR_EQUALS, "bob")], OrderBy(field_name='foo', ascending=False), 2, None)
+    results3 = PARENT_DAO.query(query3)
+    self.assertEquals([parent2, parent3], results3.items)
+    self.assertTrue(results3.pagination_token)
+
+    query4 = Query([FieldFilter('foo', Operator.LESS_THAN_OR_EQUALS, "bob")], OrderBy(field_name='foo', ascending=False), 2, results3.pagination_token)
+    results4 = PARENT_DAO.query(query4)
+    self.assertEquals([parent1], results4.items)
+    self.assertEquals(None, results4.pagination_token)
+
+    query5 = Query([FieldFilter('foo', Operator.GREATER_THAN, "a")], OrderBy(field_name='foo', ascending=True), 2, None)
+    results5 = PARENT_DAO.query(query5)
+    self.assertEquals([parent3, parent2], results5.items)
+    self.assertEquals(None, results5.pagination_token)
+
+    query6 = Query([FieldFilter('foo', Operator.GREATER_THAN_OR_EQUALS, "a")], OrderBy(field_name='foo', ascending=True), 2, None)
+    results6 = PARENT_DAO.query(query6)
+    self.assertEquals([parent1, parent3], results6.items)
+    self.assertTrue(results6.pagination_token)
+
+    query7 = Query([FieldFilter('foo', Operator.GREATER_THAN_OR_EQUALS, "a")], OrderBy(field_name='foo', ascending=True), 2, results6.pagination_token)
+    results7 = PARENT_DAO.query(query7)
+    self.assertEquals([parent2], results7.items)
+    self.assertEquals(None, results7.pagination_token)
+
+    query8 = Query([FieldFilter('last_modified', Operator.EQUALS, results7.items[0].last_modified)], OrderBy(field_name='foo', ascending=True), 2, None)
+    results8 = PARENT_DAO.query(query8)
+    self.assertEquals([parent2], results8.items)
+    self.assertEquals(None, results8.pagination_token)
+
+    query9 = Query([FieldFilter('last_modified', Operator.EQUALS, parent2.last_modified),
+                    FieldFilter('foo', Operator.EQUALS, parent2.foo)], OrderBy(field_name='foo', ascending=True), 2, None)
+    results9 = PARENT_DAO.query(query9)
+    self.assertEquals([parent2], results9.items)
+    self.assertEquals(None, results9.pagination_token)
+
+    query10 = Query([FieldFilter('last_modified', Operator.EQUALS, parent2.last_modified),
+                    FieldFilter('foo', Operator.EQUALS, parent1.foo)], OrderBy(field_name='foo', ascending=True), 2, None)
+    results10 = PARENT_DAO.query(query10)
+    self.assertEquals([], results10.items)
+    self.assertEquals(None, results10.pagination_token)
 
   def test_history(self):
 
