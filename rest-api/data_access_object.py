@@ -238,9 +238,7 @@ class DataAccessObject(object):
   def query(self, query_definition):
     query = self.model_type.query()
     for field_filter in query_definition.field_filters:
-      search_property_and_value = self.get_search_property_and_value(field_filter.field_name, field_filter.value)
-      search_property = search_property_and_value[0]
-      search_value = search_property_and_value[1]
+      (search_property, search_value) = self.get_search_property_and_value(field_filter.field_name, field_filter.value)
       operator = field_filter.operator
       if operator == Operator.EQUALS:
         query = query.filter(search_property == search_value)
