@@ -50,79 +50,121 @@ def random_ethnicity():
     ['http://hl7.org/fhir/v3/NullFlavor', 'ASKU', 'Asked but no answer'],
   ])
 
-two_months = datetime.timedelta(60)
+extra_ppi_modules = [
+"overall-health",
+"personal-habits",
+"healthcare-access",
+"medical-history",
+"medications",
+"family-health",
+]
+
+one_week = datetime.timedelta(7)
+one_month = datetime.timedelta(30)
 one_year = datetime.timedelta(365)
 
 def participant():
-    birth_sex = random.choice(["MALE", "FEMALE"])
-    first_name_fn = fake.first_name_male if birth_sex == "MALE" else fake.first_name_female
-    (first_name, middle_name, last_name) = (first_name_fn(), first_name_fn(), fake.last_name())
+  birth_sex = random.choice(["MALE", "FEMALE"])
+  first_name_fn = fake.first_name_male if birth_sex == "MALE" else fake.first_name_female
+  (first_name, middle_name, last_name) = (first_name_fn(), first_name_fn(), fake.last_name())
 
-    hpo_id = random_hpo()
-    zip_code = fake.zipcode()
-    gender_identity = birth_sex
-    date_of_birth = fake.date(pattern="%Y-%m-%d")
-    if random.random() < 0.05:
-        gender_identity = random.choice(["MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY"])
+  hpo_id = random_hpo()
+  zip_code = fake.zipcode()
+  gender_identity = birth_sex
+  date_of_birth = fake.date(pattern="%Y-%m-%d")
+  if random.random() < 0.05:
+    gender_identity = random.choice(["MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY"])
 
-    membership_tier = "REGISTERED"
-    sign_up_time = fake.date_time_between(start_date="2016-12-20", end_date="+1y", tzinfo=None)
+  membership_tier = "REGISTERED"
+  sign_up_time = fake.date_time_between(start_date="2016-12-20", end_date="+1y", tzinfo=None)
 
-    initial_participant = {
-        'providerLink': [{
-          'primary': True,
-          'organization': {
-              'reference': 'Organization/' + hpo_id
-          }
-        }]
-    }
+  initial_participant = {
+    'providerLink': [{
+      'primary': True,
+      'organization': {
+          'reference': 'Organization/' + hpo_id
+      }
+    }]
+  }
 
-    if random.random() < 0.3:
-      del initial_participant['providerLink']
+  if random.random() < 0.3:
+    del initial_participant['providerLink']
 
-    consent_questionnaire_time = fake.date_time_between(start_date=sign_up_time, end_date=sign_up_time + two_months, tzinfo=None)
-    consent_questionnaire_time  = consent_questionnaire_time.isoformat()
-    sociodemographics_questionnaire_time = fake.date_time_between(start_date=sign_up_time, end_date=sign_up_time + one_year, tzinfo=None)
-    sociodemographics_questionnaire_time = sociodemographics_questionnaire_time.isoformat()
+  consent_questionnaire_time = fake.date_time_between(
+          start_date=sign_up_time,
+          end_date=sign_up_time + 2*one_month,
+          tzinfo=None)
 
-    ret = []
-    race = random_race()
-    ethnicity = random_ethnicity()
-    ret.append({
-        'when': sign_up_time.isoformat(),
-        'endpoint': 'Participant',
-        'payload': json.dumps(initial_participant),
-        'vars':  {
-          'first_name': first_name,
-          'middle_name': middle_name,
-          'last_name': last_name,
-          'date_of_birth': date_of_birth,
-          'race_system': race[0],
-          'race_code': race[1],
-          'race_dislay': race[2],
-          'ethnicity_system': ethnicity[0],
-          'ethnicity_code': ethnicity[1],
-          'race_dislay': ethnicity[2],
-          'state': fake.state_abbr(),
-          'consent_questionnaire_authored': consent_questionnaire_time,
-          'sociodemographics_questionnaire_authored': sociodemographics_questionnaire_time,
+  sociodemographics_questionnaire_time = fake.date_time_between(
+          start_date=consent_questionnaire_time,
+          end_date=consent_questionnaire_time + one_month,
+          tzinfo=None)
+
+  ret = []
+  race = random_race()
+  ethnicity = random_ethnicity()
+  ret.append({
+    'when': sign_up_time.isoformat(),
+    'endpoint': 'Participant',
+    'payload': json.dumps(initial_participant),
+    'vars':  {
+        'first_name': first_name,
+        'middle_name': middle_name,
+        'last_name': last_name,
+        'date_of_birth': date_of_birth,
+        'race_system': race[0],
+        'race_code': race[1],
+        'race_dislay': race[2],
+        'ethnicity_system': ethnicity[0],
+        'ethnicity_code': ethnicity[1],
+        'race_dislay': ethnicity[2],
+        'state': fake.state_abbr(),
+        'consent_questionnaire_authored': consent_questionnaire_time.isoformat(),
+        'sociodemographics_questionnaire_authored': sociodemographics_questionnaire_time.isoformat(),
+    },
+    'gather': {'participant_id': lambda r: r['participantId']}
+  })
+
+  ret.append({
+    'when': consent_questionnaire_time.isoformat(),
+    'endpoint': 'Participant/$participant_id/QuestionnaireResponse',
+    'payload': open("test-data/consent_questionnaire_response.json").read()
+  })
+
+  ret.append({
+    'when': sociodemographics_questionnaire_time.isoformat(),
+    'endpoint': 'Participant/$participant_id/QuestionnaireResponse',
+    'payload': open("test-data/sociodemographics_questionnaire_response.json").read()
+  })
+
+  for m in extra_ppi_modules:
+    if random.random() < 0.5:
+      when = fake.date_time_between(
+              start_date=sociodemographics_questionnaire_time,
+              end_date=sociodemographics_questionnaire_time + 2*one_month,
+              tzinfo=None)
+
+      ret.append({
+        'when': when.isoformat(),
+        'endpoint': 'Participant/$participant_id/QuestionnaireResponse',
+        'vars': {
+          'authored_time': when.isoformat()
         },
-        'gather': {'participant_id': lambda r: r['participantId']}
-    })
+        'payload': """{
+          "resourceType": "QuestionnaireResponse",
+          "status": "completed",
+          "subject": {
+              "reference": "Patient/$participant_id"
+          },
+          "questionnaire": {
+              "reference": "Questionnaire/$%s_questionnaire_id"
+          },
+          "authored": "$authored_time",
+          "group": {}
+        }"""%m,
+      })
 
-    ret.append({
-      'when': consent_questionnaire_time,
-      'endpoint': 'Participant/$participant_id/QuestionnaireResponse',
-      'payload': open("test-data/consent_questionnaire_response.json").read()
-    })
-
-    ret.append({
-      'when': sociodemographics_questionnaire_time,
-      'endpoint': 'Participant/$participant_id/QuestionnaireResponse',
-      'payload': open("test-data/sociodemographics_questionnaire_response.json").read()
-    })
-
-    return ret
+  return ret
 
 def parse_args(default_instance=None):
   parser = argparse.ArgumentParser()
@@ -155,6 +197,19 @@ def main():
     'consent_questionnaire_id': consent_questionnaire_id,
     'sociodemographics_questionnaire_id': sociodemographics_questionnaire_id,
   }
+
+  for m in extra_ppi_modules:
+    vars['%s_questionnaire_id'%m] = client.request_json('Questionnaire', 'POST', json.loads("""{
+        "resourceType": "Questionnaire",
+        "status": "published",
+        "publisher":"fake",
+        "group": {
+            "concept": [{
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-module",
+            "code": "%s"
+            }]
+        }
+    }"""%m))['id']
 
   for i in range(args.count):
     for details in participant():
