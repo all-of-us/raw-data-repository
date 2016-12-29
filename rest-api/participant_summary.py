@@ -46,7 +46,7 @@ class PhysicalEvaluationStatus(messages.Enum):
 class QuestionnaireStatus(messages.Enum):
   """The status of a given questionnaire for this participant"""
   UNSET = 0
-  COMPLETED = 1
+  SUBMITTED = 1
 
 class MembershipTier(messages.Enum):
   """The state of the participant"""

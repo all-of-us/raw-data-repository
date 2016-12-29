@@ -69,7 +69,7 @@ _GENDER_IDENTITY_MAPPING = {
     concepts.MALE: GenderIdentity.MALE,
     concepts.MALE_TO_FEMALE_TRANSGENDER: GenderIdentity.MALE_TO_FEMALE_TRANSGENDER,
     concepts.INTERSEX: GenderIdentity.INTERSEX,
-    concepts.OTHER: GenderIdentity.OTHER,
+    concepts.OTHER_GENDER: GenderIdentity.OTHER,
     concepts.PREFER_NOT_TO_SAY: GenderIdentity.PREFER_NOT_TO_SAY,
 }
 
@@ -177,7 +177,7 @@ def extract_concept_presence(concept):
     if not len(link_ids) == 1:
       return extraction.ExtractionResult(None, False)  # Failed to extract answer
 
-    return extraction.ExtractionResult('COMPLETED')
+    return extraction.ExtractionResult('SUBMITTED')
 
   return extract
 

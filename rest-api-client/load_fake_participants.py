@@ -64,8 +64,8 @@ one_month = datetime.timedelta(30)
 one_year = datetime.timedelta(365)
 
 def participant():
-  birth_sex = random.choice(["MALE", "FEMALE"])
-  first_name_fn = fake.first_name_male if birth_sex == "MALE" else fake.first_name_female
+  birth_sex = random.choice(["male", "female"])
+  first_name_fn = fake.first_name_male if birth_sex == "male" else fake.first_name_female
   (first_name, middle_name, last_name) = (first_name_fn(), first_name_fn(), fake.last_name())
 
   hpo_id = random_hpo()
@@ -73,7 +73,7 @@ def participant():
   gender_identity = birth_sex
   date_of_birth = fake.date(pattern="%Y-%m-%d")
   if random.random() < 0.05:
-    gender_identity = random.choice(["MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY"])
+    gender_identity = random.choice(["male", "female", "other", "female-to-male-transgender", "male-to-female-transgender"])
 
   membership_tier = "REGISTERED"
   sign_up_time = fake.date_time_between(start_date="2016-12-20", end_date="+1y", tzinfo=None)
@@ -112,6 +112,7 @@ def participant():
         'middle_name': middle_name,
         'last_name': last_name,
         'date_of_birth': date_of_birth,
+        'gender_identity': gender_identity,
         'race_system': race[0],
         'race_code': race[1],
         'race_display': race[2],
@@ -163,6 +164,22 @@ def participant():
           "group": {}
         }"""%m,
       })
+
+  if random.random() < 0.25:
+    when = fake.date_time_between(
+            start_date=sociodemographics_questionnaire_time + 2*one_month,
+            end_date=sociodemographics_questionnaire_time + 12*one_month,
+            tzinfo=None)
+
+    ret.append({
+      'when': when.isoformat(),
+      'endpoint': 'Participant/$participant_id/QuestionnaireResponse',
+      'vars': {
+        'authored_time': when.isoformat()
+      },
+      'payload': open("test-data/consent_questionnaire_response.json").read()
+    })
+
 
   return ret
 

@@ -54,21 +54,17 @@ ALL_CONFIG = {
         'facets': [
             FacetDef(FacetType.HPO_ID, lambda s: s.get('hpoId', UNSET)),
         ],
-        'initial_state': {
+        'initial_state': dict(list({
             'physicalEvaluation': UNSET,
-            'race': UNSET,
-            'ethnicity': UNSET,
             'survey': UNSET,
             'state': UNSET,
             'censusRegion': UNSET,
-            'membershipTier': UNSET,
-            'genderIdentity': UNSET,
             'physicalEvaluation': UNSET,
             'biospecimen': UNSET,
             'biospecimenSamples': UNSET,
             'biospecimenSummary': UNSET,
             'ageRange': UNSET
-        },
+        }.items()) + list(field_config.shared_config.questionnaire_defaults.items())),
         'fields': {
             'ParticipantHistory': [
               FieldDef('hpoId', participant.extract_HPO_id, set(participant_summary.HPOId)),

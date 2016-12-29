@@ -53,7 +53,18 @@
 	  }
         }
       ]
-      } 
+      }, {
+      "linkId": "gender_identity",
+      "text": "What is your gender identity?",
+      "answer": [
+        {
+          "valueCoding": {
+	    "system": "http://terminology.pmi-ops.org/CodeSystem/gender-identity",
+	    "code": "$gender_identity"
+	  }
+        }
+      ]
+      }
     ]
   }
 }
