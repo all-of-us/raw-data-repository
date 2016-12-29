@@ -1,11 +1,20 @@
 """Base object for Datastore data access objects."""
 import uuid
 import copy
+import api_util
 
+from query import PropertyType, Operator, Results
 from google.appengine.ext import ndb
 from werkzeug.exceptions import Conflict
 from werkzeug.exceptions import PreconditionFailed
 from werkzeug.exceptions import NotFound
+
+PROPERTY_TYPE_MAP = {
+  "StringProperty": PropertyType.STRING,
+  "DateProperty": PropertyType.DATE,
+  "DateTimeProperty": PropertyType.DATE,
+  "EnumProperty": PropertyType.ENUM
+}
 
 class DataAccessObject(object):
   """Base class for data access objects.
@@ -206,3 +215,54 @@ class DataAccessObject(object):
   def make_version_id(self, last_modified):
     import api_util
     return 'W/"{}"'.format(api_util.unix_time_millis(last_modified))
+
+  
+  def is_string_property(self, property):
+    property_type = PROPERTY_TYPE_MAP.get(property.__class__.__name__)
+    assert property_type, "Property class {} had invalid property type".format(property.__class__.__name__)
+    return property_type == PropertyType.STRING
+    
+  def get_search_property_and_value(self, field_name, value=None):
+    property = getattr(self.model_type, field_name, None)
+    assert property, "Property {}.{} not found".format(self.model_name, field_name)
+    if self.is_string_property(property):
+      search_property = getattr(self.model_type, field_name + 'Search', None)
+      assert search_property, "Property {}.{}Search not found".format(self.model_name, field_name)
+      if value:
+        return (search_property, api_util.searchable_representation(value))
+      else:
+        return (search_property, None)
+    else:
+      return (property, value)
+
+  def query(self, query_definition):
+    query = self.model_type.query()
+    for field_filter in query_definition.field_filters:
+      (search_property, search_value) = self.get_search_property_and_value(field_filter.field_name, field_filter.value)
+      operator = field_filter.operator
+      if operator == Operator.EQUALS:
+        query = query.filter(search_property == search_value)
+      elif operator == Operator.LESS_THAN:
+        query = query.filter(search_property < search_value)
+      elif operator == Operator.GREATER_THAN:
+        query = query.filter(search_property > search_value)
+      elif operator == Operator.LESS_THAN_OR_EQUALS:
+        query = query.filter(search_property <= search_value)
+      elif operator == Operator.GREATER_THAN_OR_EQUALS:
+        query = query.filter(search_property >= search_value)
+      else:
+        assert false, "Invalid operator: {}".format(operator)
+    if query_definition.order_by:
+      order_property = self.get_search_property_and_value(query_definition.order_by.field_name, None)[0]
+      if query_definition.order_by.ascending:
+        query = query.order(order_property)
+      else:
+        query = query.order(-order_property)
+    cursor = None
+    if query_definition.pagination_token:
+      cursor = ndb.Cursor(urlsafe=query_definition.pagination_token)
+    fetch_results = query.fetch_page(query_definition.max_results, start_cursor=cursor)
+    result_token = None
+    if fetch_results[2]:
+      result_token = fetch_results[1].urlsafe()
+    return Results(fetch_results[0], result_token)
