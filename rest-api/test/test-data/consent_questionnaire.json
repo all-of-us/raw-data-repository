@@ -54,7 +54,16 @@
           "code": "date-of-birth",
           "display": "Date of birth"
         }]
-      } 
+      },{
+        "linkId":"gender_identity",
+        "text":"Please provide your gender identity",
+        "type":"choice",
+        "concept": [{
+          "system": "http://loinc.org",
+          "code": "76691-5",
+          "display": "Gender identity"
+        }]
+      }
     ]
   }
 }

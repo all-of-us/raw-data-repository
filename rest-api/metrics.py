@@ -107,7 +107,7 @@ class ResultsBucket(object):
 
   def add_counts(self, date, counts):
     date = date or self.no_date
-    self.counts_by_date[date] += counts
+    self.counts_by_date[date].update(counts)
 
   def aggregated_dates(self):
     """Goes through the deltas in date order and adds up the deltas."""

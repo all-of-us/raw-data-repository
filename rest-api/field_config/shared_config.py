@@ -37,3 +37,4 @@ questionnaire_fields = [
     set([UNSET]) | submission_statuses())
   for k, concept in KNOWN_QUESTIONNAIRES.iteritems()]
 
+questionnaire_defaults = { f.name: UNSET for f in questionnaire_fields}

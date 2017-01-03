@@ -1,6 +1,8 @@
 """Tests for metrics"""
 
+import collections
 import copy
+import datetime
 
 import metrics
 import offline.metrics_pipeline
@@ -47,6 +49,13 @@ class MetricsTest(NdbTestBase):
     # Make sure that a version mismatch results in a 404.
     with self.assertRaises(NotFound):
       metrics.MetricService().get_metrics(None)
+
+  def test_date_aggregation(self):
+    bucket = metrics.ResultsBucket([])
+    c = collections.Counter({'a': 1, 'b': -1})
+    bucket.add_counts(None, c)
+    self.assertEqual(1, bucket.counts_by_date[bucket.no_date]['a'])
+    self.assertEqual(-1, bucket.counts_by_date[bucket.no_date]['b'])
 
 if __name__ == '__main__':
   unittest.main()
