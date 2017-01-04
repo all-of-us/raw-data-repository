@@ -53,7 +53,7 @@ class ParticipantTest(unittest.TestCase):
       "primary": True,
       "organization": {
         "display": None,
-        "reference": "mayo",
+        "reference": "Organization/PITT",
       },
       "site": [{
         "display": None,
@@ -84,6 +84,23 @@ class ParticipantTest(unittest.TestCase):
 
     self.assertEqual(response['biobankId'], biobank_id)
     test_util._compare_json(self, response['providerLink'], [provider_link, provider_link_2])
+    
+    # Fetch the participant summary
+    summary_response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
+    self.assertEquals(biobank_id, summary_response['biobankId'])
+    self.assertEquals('PITT', summary_response['hpoId'])
+    self.assertEquals(participant_id, summary_response['participantId'])
+    
+    # Fetch all participant summaries; should be just one.
+    response = self.client.request_json('ParticipantSummary?biobankId={}'.format(biobank_id))
+    self.assertEquals('Bundle', response['resourceType'])
+    self.assertEquals('searchset', response['type'])
+    self.assertFalse(response.get('link'))
+    self.assertTrue(response.get('entry'))
+    self.assertEquals(1, len(response['entry']))
+    entry = response['entry'][0]
+    self.assertEquals(summary_response, entry['resource'])
+    self.assertEquals('http://localhost:8080/rdr/v1/Participant/{}/Summary'.format(participant_id), entry['fullUrl'])
 
 if __name__ == '__main__':
   unittest.main()

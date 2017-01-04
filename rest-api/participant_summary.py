@@ -194,6 +194,13 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def get_summary_for_participant(self, participant_id):
     return self.load_if_present(SINGLETON_SUMMARY_ID, participant_id)
 
+  @ndb.transactional
+  def update_hpo_id(self, participant_id, hpo_id):
+    summary = self.get_summary_for_participant(participant_id)
+    summary.hpoId = hpo_id
+    self.store(summary)
+    
+  @ndb.transactional
   def update_with_incoming_data(self, participant_id, incoming_history_obj, config):
     old_summary = self.get_summary_for_participant(participant_id)
     old_summary_json = self.to_json(old_summary)

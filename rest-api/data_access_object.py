@@ -227,13 +227,12 @@ class DataAccessObject(object):
     assert property, "Property {}.{} not found".format(self.model_name, field_name)
     if self.is_string_property(property):
       search_property = getattr(self.model_type, field_name + 'Search', None)
-      assert search_property, "Property {}.{}Search not found".format(self.model_name, field_name)
-      if value:
-        return (search_property, api_util.searchable_representation(value))
-      else:
-        return (search_property, None)
-    else:
-      return (property, value)
+      if search_property:
+        if value:
+          return (search_property, api_util.searchable_representation(value))
+        else:
+          return (search_property, None)
+    return (property, value)
 
   def query(self, query_definition):
     query = self.model_type.query()

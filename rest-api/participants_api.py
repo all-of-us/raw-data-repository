@@ -120,5 +120,8 @@ class ParticipantSummaryAPI(base_api.BaseApi):
     super(ParticipantSummaryAPI, self).__init__(participant_summary.DAO)
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
-  def get(self, id_, date=None):
-    return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
+  def get(self, id_=None):
+    if id_:
+      return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
+    else:
+      return super(ParticipantSummaryAPI, self).query("participantId")

@@ -69,6 +69,14 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     result = super(ParticipantDAO, self).insert(model, date, client_id)
     participant_summary.DAO.insert(summary, date, client_id)
     return result
+    
+  def update(self, model, expected_version_id, date=None, client_id=None):    
+    result = super(ParticipantDAO, self).update(model, expected_version_id, date, client_id)
+    import participant_summary
+    existing_summary = participant_summary.DAO.get_summary_for_participant(model.key.id())    
+    new_hpo_id = extract_HPO_id_from_participant(model)
+    if new_hpo_id.value != existing_summary.hpoId:
+      participant_summary.DAO.update_hpo_id(model.key.id(), new_hpo_id.value)
 
   def find_participant_id_by_biobank_id(self, biobank_id):
     query = Participant.query(Participant.biobankId == biobank_id)
