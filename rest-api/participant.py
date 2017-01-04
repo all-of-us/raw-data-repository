@@ -61,8 +61,14 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     participant_key = ndb.Key(participant_summary.ParticipantSummary,
                           participant_summary.SINGLETON_SUMMARY_ID,
                           parent=model.key)
-    summary = participant_summary.ParticipantSummary(key=participant_key,                                                     
-                                                     biobankId=model.biobankId)
+    hpo_id_result = extract_HPO_id_from_participant(model)    
+    hpo_id = participant_summary.HPOId.UNSET
+    if hpo_id_result.value:
+      hpo_id = participant_summary.HPOId(hpo_id_result.value)
+    summary = participant_summary.ParticipantSummary(key=participant_key,                                     
+                                                     participantId=model.key.id(),
+                                                     biobankId=model.biobankId,
+                                                     hpoId=hpo_id)
     result = super(ParticipantDAO, self).insert(model, date, client_id)
     participant_summary.DAO.insert(summary, date, client_id)
     return result
@@ -75,11 +81,20 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     return results[0].id()
 
 def extract_HPO_id(ph):
+  return extract_HPO_id_from_participant(ph.obj)
+  
+def extract_HPO_id_from_participant(participant):
   """Returns ExtractionResult with the string representing the HPO."""
-  primary_provider_link = ph.obj.get_primary_provider_link()
+  primary_provider_link = participant.get_primary_provider_link()
   if primary_provider_link and primary_provider_link.organization:
-    return extraction.ExtractionResult(primary_provider_link.organization.reference.split('/')[1], True)
-  return extraction.ExtractionResult(None, False)
+    hpo_id_string = primary_provider_link.organization.reference.split('/')[1]
+    import participant_summary
+    if hpo_id_string:
+      if participant_summary.HPOId.to_dict().get(hpo_id_string):
+        return extraction.ExtractionResult(hpo_id_string, True)
+      else:
+        return extraction.ExtractionResult('UNMAPPED', True)
+  return extraction.ExtractionResult('UNSET', True)
 
 def load_history_entities(participant_key, now):
   """Loads all related history entries.
