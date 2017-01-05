@@ -1,7 +1,6 @@
 import concepts
 import data_access_object
 import extraction
-import participant_summary
 import fhirclient.models.questionnaireresponse
 
 from census_regions import census_regions

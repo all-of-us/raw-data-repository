@@ -77,6 +77,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     new_hpo_id = extract_HPO_id_from_participant(model)
     if new_hpo_id.value != existing_summary.hpoId:
       participant_summary.DAO.update_hpo_id(model.key.id(), new_hpo_id.value)
+    return result
 
   def find_participant_id_by_biobank_id(self, biobank_id):
     query = Participant.query(Participant.biobankId == biobank_id)

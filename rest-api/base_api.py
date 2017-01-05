@@ -4,11 +4,10 @@ import api_util
 import config
 
 from data_access_object import PROPERTY_TYPE_MAP
-from query import Query, OrderBy, FieldFilter, Results, Operator, PropertyType
+from query import Query, OrderBy, FieldFilter, Operator, PropertyType
 from flask import request
 from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest
-from werkzeug.urls import url_encode
 
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
@@ -189,13 +188,13 @@ class BaseApi(Resource):
     return Query(field_filters, order_by, max_results, pagination_token, a_id)        
 
   def make_bundle(self, results, max_results, id_field, a_id):
-    bundle_dict = { "resourceType" : "Bundle", "type": "searchset" }
+    bundle_dict = {"resourceType": "Bundle", "type": "searchset"}
     import main
     if results.pagination_token:
       query_params = request.args.copy()
       query_params['_token'] = results.pagination_token
       next_url = main.api.url_for(self.__class__, _external=True, **query_params)
-      bundle_dict['link'] = [{ "relation": "next", "url": next_url}]      
+      bundle_dict['link'] = [{"relation": "next", "url": next_url}]      
     entries = []
     for item in results.items:      
       json = self.dao.to_json(item)
@@ -209,7 +208,7 @@ class BaseApi(Resource):
                                      id_=json[id_field],
                                      _external=True)
       entries.append({"fullUrl": full_url,
-                     "resource": json })
+                     "resource": json})
     bundle_dict['entry'] = entries
     return bundle_dict  
 
