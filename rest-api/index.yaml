@@ -27,3 +27,38 @@ indexes:
   - name: data_version
   - name: date
     direction: desc
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: lastNameSearch
+  - name: dateOfBirth
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: lastNameSearch
+  - name: firstNameSearch
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: lastNameSearch
+  - name: firstNameSearch
+    direction: desc
+
+- kind: ParticipantSummary
+  properties:
+  - name: lastNameSearch
+  - name: dateOfBirth
+
+- kind: ParticipantSummary
+  properties:
+  - name: lastNameSearch
+  - name: firstNameSearch
+
+- kind: ParticipantSummary
+  properties:
+  - name: lastNameSearch
+  - name: firstNameSearch
+    direction: desc

@@ -13,7 +13,7 @@ import field_validation
 
 from api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
 from field_validation import FieldValidation, has_units, lessthan, within_range
-
+from flask import request
 from werkzeug.exceptions import BadRequest
 
 SYSTOLIC_BP = FieldValidation(concepts.SYSTOLIC_BP,
@@ -124,4 +124,7 @@ class ParticipantSummaryAPI(base_api.BaseApi):
     if id_:
       return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
     else:
-      return super(ParticipantSummaryAPI, self).query("participantId")
+      if request.args.get('hpoId') or (request.args.get('lastName') and request.args.get('dateOfBirth')):        
+        return super(ParticipantSummaryAPI, self).query("participantId")
+      else:
+        raise BadRequest("Participant summary queries must specify hpoId or both lastName and dateOfBirth")

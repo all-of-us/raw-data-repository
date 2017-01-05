@@ -8,6 +8,7 @@ from query import Query, OrderBy, FieldFilter, Results, Operator, PropertyType
 from flask import request
 from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest
+from werkzeug.urls import url_encode
 
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
@@ -140,6 +141,7 @@ class BaseApi(Resource):
     order_by = None
     max_results = DEFAULT_MAX_RESULTS
     pagination_token = None
+    inequality_field = None
     for key, value in request.args.iteritems():
       if key == '_count':
         max_results = int(request.args['_count'])
@@ -172,22 +174,28 @@ class BaseApi(Resource):
               operator = Operator.EQUALS
             date_str = value
             if operator != Operator.EQUALS:
+              if inequality_field:
+                raise BadRequest("Can't have multiple inequality expressions in a single query")
               date_str = value[2:]
+              inequality_field = key
             date_val = api_util.parse_date(date_str)
             field_filters.append(FieldFilter(key, operator, date_val))   
+          elif property_type == PropertyType.ENUM:
+            field_filters.append(FieldFilter(key, Operator.EQUALS, property._enum_type(value)))
           else:
             field_filters.append(FieldFilter(key, Operator.EQUALS, value))
+    if inequality_field and order_by and inequality_field != order_by.field_name:
+      raise BadRequest("Can't combine inequality expression with sort on a different property")
     return Query(field_filters, order_by, max_results, pagination_token)        
 
   def make_bundle(self, results, max_results, id_field):
     bundle_dict = { "resourceType" : "Bundle", "type": "searchset" }
     import main
     if results.pagination_token:
-      bundle_dict['link'] = [{ "relation": "next", 
-                              "url": main.api.url_for(self.__class__, 
-                                   _count=max_results, 
-                                   _token=results.pagination_token,
-                                   _external=True)}]
+      query_params = request.args.copy()
+      query_params['_token'] = results.pagination_token
+      next_url = main.api.url_for(self.__class__, _external=True, **query_params)
+      bundle_dict['link'] = [{ "relation": "next", "url": next_url}]      
     entries = []
     for item in results.items:      
       json = self.dao.to_json(item)

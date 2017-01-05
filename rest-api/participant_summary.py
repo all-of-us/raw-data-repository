@@ -205,7 +205,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     old_summary = self.get_summary_for_participant(participant_id)
     old_summary_json = self.to_json(old_summary)
     new_summary = run_extractors(incoming_history_obj, config, old_summary_json)
-
+    
     # If the extracted fields don't match, update them
     changed = False
     for field_name, value in new_summary.iteritems():
