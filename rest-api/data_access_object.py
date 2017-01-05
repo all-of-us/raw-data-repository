@@ -235,7 +235,11 @@ class DataAccessObject(object):
     return (property, value)
 
   def query(self, query_definition):
-    query = self.model_type.query()
+    if query_definition.ancestor_id:
+      ancestor_key = ndb.Key(self.ancestor_type, query_definition.ancestor_id)
+      query = self.model_type.query(ancestor=ancestor_key)
+    else:
+      query = self.model_type.query()
     for field_filter in query_definition.field_filters:
       (search_property, search_value) = self.get_search_property_and_value(field_filter.field_name, field_filter.value)
       operator = field_filter.operator

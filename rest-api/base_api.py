@@ -62,7 +62,7 @@ class BaseApi(Resource):
     """
     pass
           
-  def query(self, id_field):    
+  def query(self, id_field, a_id=None):    
     """Run a query against the DAO. 
     Extracts query parameters from request using FHIR conventions.
     
@@ -73,9 +73,9 @@ class BaseApi(Resource):
     Args:
       id_field: the name of the field containing the ID used when constructing resource URLs for results
     """     
-    query = self.make_query()
+    query = self.make_query(a_id)
     results = self.dao.query(query)
-    return self.make_bundle(results, query.max_results, id_field)
+    return self.make_bundle(results, query.max_results, id_field, a_id)
 
   def validate_object(self, obj, a_id=None):
     """Override this function to validate the passed object.
@@ -136,7 +136,7 @@ class BaseApi(Resource):
         return result, 200, {'ETag': version_id}
     return result 
   
-  def make_query(self):
+  def make_query(self, a_id=None):
     field_filters = []
     order_by = None
     max_results = DEFAULT_MAX_RESULTS
@@ -186,9 +186,9 @@ class BaseApi(Resource):
             field_filters.append(FieldFilter(key, Operator.EQUALS, value))
     if inequality_field and order_by and inequality_field != order_by.field_name:
       raise BadRequest("Can't combine inequality expression with sort on a different property")
-    return Query(field_filters, order_by, max_results, pagination_token)        
+    return Query(field_filters, order_by, max_results, pagination_token, a_id)        
 
-  def make_bundle(self, results, max_results, id_field):
+  def make_bundle(self, results, max_results, id_field, a_id):
     bundle_dict = { "resourceType" : "Bundle", "type": "searchset" }
     import main
     if results.pagination_token:
@@ -199,9 +199,16 @@ class BaseApi(Resource):
     entries = []
     for item in results.items:      
       json = self.dao.to_json(item)
-      entries.append({"fullUrl": main.api.url_for(self.__class__,
-                                                 id_=json[id_field],
-                                                 _external=True),
+      if a_id:
+        full_url = main.api.url_for(self.__class__,
+                                    id_=json[id_field],
+                                    a_id=a_id,
+                                    _external=True)
+      else:
+        full_url =  main.api.url_for(self.__class__,
+                                     id_=json[id_field],
+                                     _external=True)
+      entries.append({"fullUrl": full_url,
                      "resource": json })
     bundle_dict['entry'] = entries
     return bundle_dict  

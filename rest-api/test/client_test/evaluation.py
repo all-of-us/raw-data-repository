@@ -21,6 +21,12 @@ class TestEvaluation(unittest.TestCase):
         evaluation = json.load(f)
         path = 'Participant/{}/PhysicalEvaluation'.format(self.participant_id)
         test_util.round_trip(self, self.client, path, evaluation)
+    response = self.client.request_json('Participant/{}/PhysicalEvaluation'.format(self.participant_id))
+    self.assertEquals('Bundle', response['resourceType'])
+    self.assertEquals('searchset', response['type'])    
+    self.assertFalse(response.get('link'))
+    self.assertTrue(response.get('entry'))
+    self.assertEquals(1, len(response['entry']))    
 
 if __name__ == '__main__':
   unittest.main()

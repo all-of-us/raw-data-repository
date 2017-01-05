@@ -92,7 +92,7 @@ class EvaluationAPI(base_api.BaseApi):
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def list(self, a_id):
-    return evaluation.DAO.list(a_id)
+    return super(EvaluationAPI, self).query("id", a_id)
 
   def validate_object(self, e, a_id=None):
     field_validators = [
