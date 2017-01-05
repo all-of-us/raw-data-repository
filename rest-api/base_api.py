@@ -204,9 +204,9 @@ class BaseApi(Resource):
                                     a_id=a_id,
                                     _external=True)
       else:
-        full_url =  main.api.url_for(self.__class__,
-                                     id_=json[id_field],
-                                     _external=True)
+        full_url = main.api.url_for(self.__class__,
+                                    id_=json[id_field],
+                                    _external=True)
       entries.append({"fullUrl": full_url,
                      "resource": json})
     bundle_dict['entry'] = entries
