@@ -3,6 +3,7 @@
 
 import api_util
 import data_access_object
+import datetime
 import extraction
 
 from offline.metrics_fields import run_extractors
@@ -93,6 +94,18 @@ class Race(messages.Enum):
   OTHER_RACE = 8
   PREFER_NOT_TO_SAY = 9
 
+class AgeRange(messages.Enum):
+  UNSET = 0
+  AGE_0_TO_17 = 1
+  AGE_18_TO_25 = 2
+  AGE_26_TO_35 = 3
+  AGE_36_TO_45 = 4
+  AGE_46_TO_55 = 5
+  AGE_56_TO_65 = 6
+  AGE_66_TO_75 = 7
+  AGE_76_TO_85 = 8
+  AGE_86_AND_ABOVE = 9
+  
 # The lower bounds of the age buckets.
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
 AGE_BUCKETS = ['{}-{}'.format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
@@ -109,7 +122,7 @@ def get_bucketed_age(date_of_birth, today):
   for begin, end in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + ['']):
     if (age >= begin) and (not end or age <= end):
       return str(begin) + '-' + str(end)
-
+      
 class ParticipantSummary(ndb.Model):
   """The participant summary resource definition"""
   participantId = ndb.StringProperty()
@@ -123,6 +136,8 @@ class ParticipantSummary(ndb.Model):
       lambda self: api_util.searchable_representation(self.lastName))
   zipCode = ndb.StringProperty()
   dateOfBirth = ndb.DateProperty()
+  ageRange = ndb.ComputedProperty(
+      lambda self: get_bucketed_age(self.dateOfBirth, datetime.datetime.now()))
   genderIdentity = msgprop.EnumProperty(GenderIdentity, default=GenderIdentity.UNSET)
   membershipTier = msgprop.EnumProperty(MembershipTier, default=MembershipTier.UNSET)
   race = msgprop.EnumProperty(Race, default=Race.UNSET)
@@ -166,6 +181,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.parse_json_enum(dict_, 'questionnaireOnMedicalHistory', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnMedications', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnFamilyHealth', QuestionnaireStatus)
+    api_util.remove_field(dict_, 'ageRange')
     return dict_
 
   def properties_to_json(self, dict_):
@@ -214,11 +230,11 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
       if value != old_value:
         old_summary_json[field_name] = value
         changed = True
-      if changed:
-        updated_summary = self.from_json(old_summary_json,
-                                                        old_summary.key.parent().id(),
-                                                        SINGLETON_SUMMARY_ID)
-        self.store(updated_summary)
+    if changed:
+      updated_summary = self.from_json(old_summary_json,
+                                       old_summary.key.parent().id(),
+                                       SINGLETON_SUMMARY_ID)
+      self.store(updated_summary)
         
 
 DAO = ParticipantSummaryDAO()

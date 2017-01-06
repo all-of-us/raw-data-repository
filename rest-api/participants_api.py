@@ -14,6 +14,7 @@ import field_validation
 from api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
 from field_validation import FieldValidation, has_units, lessthan, within_range
 from flask import request
+from query import OrderBy
 from werkzeug.exceptions import BadRequest
 
 SYSTOLIC_BP = FieldValidation(concepts.SYSTOLIC_BP,
@@ -46,7 +47,14 @@ WAIST_CIRCUMFERENCE = FieldValidation(concepts.WAIST_CIRCUMFERENCE,
                                       [within_range(0, 300), has_units(concepts.UNIT_CM)],
                                       required=True)
 
+PARTICIPANT_SUMMARY_FILTER_FIELDS = ["hpoId", "firstName", "middleName", "lastName", 
+                                     "dateOfBirth", "ageRange", "genderIdentity", "ethnicity", "zipCode",
+                                    "membershipTier", "consentForStudyEnrollment" ]
+PARTICIPANT_SUMMARY_LAST_NAME_ORDER = OrderBy("lastName", True)
+PARTICIPANT_SUMMARY_DATE_OF_BIRTH_ORDER = OrderBy("dateOfBirth", True)                                        
 
+EVALUATION_FILTER_FIELDS = ["last_modified"]
+EVALUATION_ORDER = OrderBy("last_modified", True)
 
 class ParticipantAPI(base_api.BaseApi):
 
@@ -92,7 +100,8 @@ class EvaluationAPI(base_api.BaseApi):
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def list(self, a_id):
-    return super(EvaluationAPI, self).query("id", a_id)
+    return super(EvaluationAPI, self).query("id", EVALUATION_FILTER_FIELDS, 
+                                            EVALUATION_ORDER, a_id)
 
   def validate_object(self, e, a_id=None):
     field_validators = [
@@ -116,6 +125,7 @@ def _check_existence(extractor, system, code, name):
 
 
 class ParticipantSummaryAPI(base_api.BaseApi):
+    
   def __init__(self):
     super(ParticipantSummaryAPI, self).__init__(participant_summary.DAO)
 
@@ -125,6 +135,10 @@ class ParticipantSummaryAPI(base_api.BaseApi):
       return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
     else:
       if request.args.get('hpoId') or (request.args.get('lastName') and request.args.get('dateOfBirth')):        
-        return super(ParticipantSummaryAPI, self).query("participantId")
+        order_by = PARTICIPANT_SUMMARY_LAST_NAME_ORDER
+        if request.args.get('dateOfBirth'):
+          order_by = PARTICIPANT_SUMMARY_DATE_OF_BIRTH_ORDER
+        return super(ParticipantSummaryAPI, self).query("participantId", PARTICIPANT_SUMMARY_FILTER_FIELDS,
+                                                        order_by)
       else:
         raise BadRequest("Participant summary queries must specify hpoId or both lastName and dateOfBirth")

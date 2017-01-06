@@ -10,6 +10,7 @@ from werkzeug.exceptions import PreconditionFailed
 from werkzeug.exceptions import NotFound
 
 PROPERTY_TYPE_MAP = {
+  "ComputedProperty": PropertyType.STRING,
   "StringProperty": PropertyType.STRING,
   "DateProperty": PropertyType.DATE,
   "DateTimeProperty": PropertyType.DATE,
