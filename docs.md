@@ -85,6 +85,20 @@ ETag values are also returned in a *`meta.versionId`* property within each
 resource, following FHIR’s convention.
 
 
+## Metadata API
+
+Clients of the RDR can use this API to verify that the version they did
+integration testing against matches the production version.  This API does not
+check authorization because the information is not sensitive, making it
+suitable for operational monitoring (uptime checks) as well.
+
+#### `GET /`
+
+Retrieve metadata for the server. Response is a JSON object including a
+`version_id` field.  The version ID will change with each binary release.
+Format and semantics of the identifier are not otherwise defined.
+
+
 ## Participant API
 
 The Participant is a very thin resource—essentially it has a set of identifiers including:
@@ -142,12 +156,13 @@ The summary includes the following fields:
 * `lastName`
 * `zipCode`
 * `dateOfBirth`
+* `ageRange`
 * `genderIdentity`
 * `membershipTier`: (TODO clarify these values)
 * `race`
 * `ethnicity`
 * `physicalEvaluationStatus`: indicates whether this participant has completed a physical evaluation
-* `hpoId`: HPO marked as `primary` for this participant, if any
+* `hpoId`: HPO marked as `primary` for this participant, if any (just the resource id, like `PITT` — not a reference like `Organization/PITT`)
 * `consentForStudyEnrollment`:  indicates whether enrollment consent has been received
 * `consentForElectronicHealthRecords`:  indicate whether EHR sharing consent has been received
 * `questionnaireOnOverallHealth`: indicates status for Overall Health PPI module
@@ -160,19 +175,21 @@ The summary includes the following fields:
 
 For enumeration fields, the following values are defined:
 
-`hpoId`: UNSET, UNMAPPED, PITT, COLUMBIA, ILLINOIS, AZ_TUCSON, COMM_HEALTH, SAN_YSIDRO, CHEROKEE, EAU_CLAIRE, HRHCARE, JACKSON, GEISINGER, CAL_PMC, NE_PMC, TRANS_AM, VA
+`hpoId`: `UNSET`, `UNMAPPED`, `PITT`, `COLUMBIA`, `ILLINOIS`, `AZ_TUCSON`, `COMM_HEALTH`, `SAN_YSIDRO`, `CHEROKEE`, `EAU_CLAIRE`, `HRHCARE`, `JACKSON`, `GEISINGER`, `CAL_PMC`, `NE_PMC`, `TRANS_AM`, `VA`
 
-`physicalEvaluationStatus`: UNSET, SCHEDULED, COMPLETED, RESULT_READY 
+`ageRange`: `0-17`, `18-25`, `26-35`, `36-45`, `46-55`, `56-65`, `66-75`, `76-85`, `86-`
 
-`questionnaireOn[x]`: UNSET, SUBMITTED
+`physicalEvaluationStatus`: `UNSET`, `SCHEDULED`, `COMPLETED`, `RESULT_READY` 
 
-`membershipTier`: UNSET, SKIPPED, UNMAPPED, REGISTERED, ENROLLEE, VOLUNTEER, FULL_PARTICIPANT,
+`questionnaireOn[x]`: `UNSET`, `SUBMITTED`
 
-`genderIdentity`: UNSET, SKIPPED, UNMAPPED, FEMALE, MALE, FEMALE_TO_MALE_TRANSGENDER, MALE_TO_FEMALE_TRANSGENDER, INTERSEX, OTHER, PREFER_NOT_TO_SAY
+`membershipTier`: `UNSET`, `SKIPPED`, `UNMAPPED`, `REGISTERED`, `ENROLLEE`, `VOLUNTEER`, `FULL_PARTICIPANT`
 
-`ethnicity`: UNSET, SKIPPED, UNMAPPED, HISPANIC, NON_HISPANIC, PREFER_NOT_TO_SAY
+`genderIdentity`: `UNSET`, `SKIPPED`, `UNMAPPED`, `FEMALE`, `MALE`, `FEMALE_TO_MALE_TRANSGENDER`, `MALE_TO_FEMALE_TRANSGENDER`, `INTERSEX`, `OTHER`, `PREFER_NOT_TO_SAY`
 
-`race`: UNSET, SKIPPED, UNMAPPED, AMERICAN_INDIAN_OR_ALASKA_NATIVE, BLACK_OR_AFRICAN_AMERICAN, ASIAN, NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER, WHITE, OTHER_RACE, PREFER_NOT_TO_SAY
+`ethnicity`: `UNSET`, `SKIPPED`, `UNMAPPED`, `HISPANIC`, `NON_HISPANIC`, `PREFER_NOT_TO_SAY`
+
+`race`: `UNSET`, `SKIPPED`, `UNMAPPED`, `AMERICAN_INDIAN_OR_ALASKA_NATIVE`, `BLACK_OR_AFRICAN_AMERICAN`, `ASIAN`, `NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER`, `WHITE`, `OTHER_RACE`, `PREFER_NOT_TO_SAY`
 
 
 #### `GET /ParticipantSummary?`
@@ -194,5 +211,183 @@ If no HPO is provided, then a last name and date of birth (at minimum) must be
 supplied. Example query:
 
     GET /ParticipantSummary?dateOfBirth=1980-12-30&lastName=Smith
+    GET /ParticipantSummary?hpoId=PITT&ethnicity=HISPANIC
 
+
+## Questionnaire and QuestionnaireResponse API
+
+We use the FHIR [Questionnaire](http://hl7.org/fhir/questionnaire.html) and
+[QuestionnaireResponse](http://hl7.org/fhir/questionnaireresponse.html)
+resources to track consent and participant-provided information. We store the
+blank forms (Questionnaires) at the RDR level, and we store responses at the
+participant level.
+
+
+#### `POST /Questionnaire`
+
+Create a new Questionnaire in the RDR. Body is a FHIR DSTU2 Questionnaire
+resource. Response is the stored resource, which includes an `id`.
+
+#### `GET /Questionnaire/:id`
+
+Read a single Questionnaire from the RDR. Response is the stored resource.
+
+#### `POST /Participant/:pid/QuestionnaireResponse`
+
+Create a new QuestionnaireResponse in the RDR. Body is a FHIR DSTU2
+QuestionnaireResponse resource which must include:
+
+* `subject`: a reference to the participant, in the form `Patient/:pid`.  The
+  `:pid` variable of this refernce must match the participant ID supplied in
+  the POST URL. (Note the use of the word "Patient" here, which comes from FHIR.)
+
+* `questionnaire`: a refernece to the questionnaire for which this response
+  has been written, in the form `Questionnaire/:qid`
+
+* `linkId`s for each question, corresponding to a `linkId` specified in the
+  questionnaire
+
+#### `GET /Participant/:pid/QuestionnaireResponse/:qid`
+
+Example query:
+
+    GET /Participant/P123456789/Questionnaire/810572271
+
+
+## PhysicalEvaluation API
+
+We use the FHIR `Document` model to represent a set of physical measurements
+recorded at a PMI visit. This stores a `Bundle` of resources, with a
+`Composition` as the first entry (listing basic metadata for the document,
+including a document type, creation time, author, and an index of contents),
+and a set of `Observation`s as subsequent entries (recording, for example,
+individual blood pressure or weight measurements).
+
+
+#### `POST /Participant/:pid/PhysicalEvaluation`
+
+Create a new PhysicalEvaluation for a given participant. The payload is a
+Bundle (see
+[example](https://github.com/vanderbilt/pmi-data/blob/master/rest-api/test/test-data/evaluation-as-fhir.json))
+where the first entry is a `Composition` including:
+
+* `subject`: a reference to the participant, in the form `Patient/:pid`.  The
+  `:pid` variable of this refernce must match the participant ID supplied in
+  the POST URL. (Note the use of the word "Patient" here, which comes from FHIR.)
+
+* `type`: a coding indicating the document type. This should have a `system` of
+  `http://terminology.pmi-ops.org/CodeSystem/document-type`, so the compete type looks like:
+
+```
+"type": {
+  "coding": [{
+    "system": "http://terminology.pmi-ops.org/CodeSystem/document-type",
+    "code": "intake-exam-v0.0.1",
+    "display": "PMI Intake Evaluation v0.0.1"
+  }]
+}
+
+```
+
+* a series of `Observation`s each with times, codes, and values. 
+
+See also: [Physical evaluation form
+specs](https://docs.google.com/spreadsheets/d/10kYqLSPigl02jUBpwEHpGAHwuwExFu-BedvMOJ5afpE/edit#gid=0)
+and
+[methods](https://drive.google.com/file/d/0B7ko4YYX_fIca0QwRWx5VkdfSW1SSWFldWN2UTZtWFNMTS1B/view)
+
+#### `POST /Participant/:pid/PhysicalEvaluation`
+
+Create a new PhysicalEvaluation for a given participant. Request body is a FHIR
+Document-type Bundle. Response is the resource as stored.
+
+#### `GET /Participant/:pid/PhysialEvaluation/:id`
+
+Read a PhysicalEvaluation by id.
+
+#### `GET /Participant/:pid/PhysialEvaluation`
+
+Search for all PhysicalEvaluations available for a given participant. Response
+body is a Bundle (possibly empty) of documents (that is: a bundle of search
+results whose entries are bundles of measurements).
+
+
+## BiobankOrder API
+
+Maintains records of orders placed from HealthPro to the Biobank. Each order is
+a resource [as documented
+here](https://docs.google.com/document/d/1nTvFU3V7ssizGwdwzlc0-EfByTGCBoEjJOzQ-YKExqc/edit),
+including:
+
+* `subject`: a reference to the participant, in the form `Patient/:pid`.  The
+  `:pid` variable of this refernce must match the participant ID supplied in
+  the POST URL. (Note the use of the word "Patient" here, which comes from FHIR.)
+
+* `identifier`: an array of Identifiers, each with a `system` and `value`.
+  These should include the HealthPro identifier for this order as well as the
+biobank identifier for this order.
+
+
+#### `POST /Participant/:pid/BiobankOrder`
+
+Create a new BiobankOrder for a given participant. Request body is a
+BiobankOrder resource to be created. Response is the resource as stored.
+
+#### `GET /Participant/:pid/BiobankOrder/:oid`
+
+Read a BiobankOrder by id.
+
+#### `GET /Participant/:pid/BiobankOrder`
+
+Search for BiobankOrders about a given participant. Response body is a bundle
+of BiobankOrders (possibly empty).
+
+## Metrics API
+
+Metrics provide a high-level overview of participants counts by date for a
+variety of metrics (e.g. by race, ethnicity, or consent status). These can be
+broken down by "facet" (e.g. HPO). These metrics are intended to provide "just
+enough" data to drive known launch-time dashboard requirements. (Different
+technology will be required to provide a flexible ad-hoc analysis system.)
+
+#### `POST /Metrics`
+
+Retrieve RDR metrics up to the present time. The request body can optionally
+include a list of facets, like:
+
+```
+{
+  "facets": ["HPO_ID"]
+}
+```
+
+Currently `HPO_ID` is the only facet supported.
+
+The response body includes:
+
+* `field_definition`: an array of fields that appear in the returned metrics. Each field is an object with a name and array of values, like:
+
+
+```
+{
+  "name": "Participant.genderIdentity", 
+  "values": [
+    "FEMALE", 
+    "MALE", 
+    "FEMALE_TO_MALE_TRANSGENDER", 
+    "MALE_TO_FEMALE_TRANSGENDER", 
+    "INTERSEX", 
+    "OTHER", 
+    "PREFER_NOT_TO_SAY"
+  ]
+}
+```
+
+## BiobankSamples API
+
+Mayo has defined a sample manifest format that will be uploaded to the RDR
+daily. The RDR scans this manifest and uses it to populate `BiobankSamples`
+resources. Once these are created, a client can query for available samples:
+
+#### TODO `GET /Participant/:pid/BiobankSamples
 
