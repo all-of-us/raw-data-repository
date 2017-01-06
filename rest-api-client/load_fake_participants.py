@@ -165,7 +165,7 @@ def participant():
         }"""%m,
       })
 
-  if random.random() < 0.25:
+  if random.random() < .4:
     when = fake.date_time_between(
             start_date=sociodemographics_questionnaire_time + 2*one_month,
             end_date=sociodemographics_questionnaire_time + 12*one_month,
@@ -173,11 +173,11 @@ def participant():
 
     ret.append({
       'when': when.isoformat(),
-      'endpoint': 'Participant/$participant_id/QuestionnaireResponse',
+      'endpoint': 'Participant/$participant_id/PhysicalEvaluation',
       'vars': {
         'authored_time': when.isoformat()
       },
-      'payload': open("test-data/consent_questionnaire_response.json").read()
+      'payload': open("test-data/evaluation-as-fhir.json").read()
     })
 
 

@@ -8,7 +8,7 @@
             "display": "N/A"
           }
         ],
-        "date": "2016-09-02T20:59:41Z",
+        "date": "$authored_time",
         "resourceType": "Composition",
         "section": [{
           "entry": [
@@ -55,7 +55,7 @@
         }],
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "title": "PMI Intake Evaluation",
         "type": {
@@ -131,11 +131,11 @@
             }
           }
         ],
-        "effectiveDateTime": "2016-09-02T20:30:10Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         }
       }
     },
@@ -200,11 +200,11 @@
             }
           }
         ],
-        "effectiveDateTime": "2016-09-02T20:31:20Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         }
       }
     },
@@ -269,11 +269,11 @@
             }
           }
         ],
-        "effectiveDateTime": "2016-09-02T20:33:05Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         }
       }
     },
@@ -290,11 +290,11 @@
           ],
           "text": "Body height"
         },
-        "effectiveDateTime": "2016-09-02T20:38:12Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "valueQuantity": {
           "code": "cm",
@@ -317,11 +317,11 @@
           ],
           "text": "Body weight"
         },
-        "effectiveDateTime": "2016-09-02T20:41:55Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "valueQuantity": {
           "code": "kg",
@@ -344,11 +344,11 @@
           ],
           "text": "Body mass index"
         },
-        "effectiveDateTime": "2016-09-02T20:41:55Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "valueQuantity": {
           "code": "kg/m2",
@@ -371,11 +371,11 @@
           ],
           "text": "Heart rate"
         },
-        "effectiveDateTime": "2016-09-02T20:43:20Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "valueQuantity": {
           "code": "/min",
@@ -398,11 +398,11 @@
           ],
           "text": "Hip circumference"
         },
-        "effectiveDateTime": "2016-09-02T20:45:42Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "valueQuantity": {
           "code": "cm",
@@ -425,11 +425,11 @@
           ],
           "text": "Hip circumference"
         },
-        "effectiveDateTime": "2016-09-02T20:46:11Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "valueQuantity": {
           "code": "cm",
@@ -452,11 +452,11 @@
           ],
           "text": "Hip circumference"
         },
-        "effectiveDateTime": "2016-09-02T20:46:56Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "valueQuantity": {
           "code": "cm",
@@ -479,11 +479,11 @@
           ],
           "text": "Waist circumference"
         },
-        "effectiveDateTime": "2016-09-02T20:47:42Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "valueQuantity": {
           "code": "cm",
@@ -506,11 +506,11 @@
           ],
           "text": "Waist circumference"
         },
-        "effectiveDateTime": "2016-09-02T20:48:10Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "valueQuantity": {
           "code": "cm",
@@ -533,11 +533,11 @@
           ],
           "text": "Waist circumference"
         },
-        "effectiveDateTime": "2016-09-02T20:48:3332Z",
+        "effectiveDateTime": "$authored_time",
         "resourceType": "Observation",
         "status": "final",
         "subject": {
-          "reference": "Patient/1000"
+          "reference": "Patient/$participant_id"
         },
         "valueQuantity": {
           "code": "cm",
