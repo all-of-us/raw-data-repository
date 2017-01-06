@@ -115,11 +115,13 @@ class ParticipantSummary(ndb.Model):
   """The participant summary resource definition"""
   participantId = ndb.StringProperty()
   biobankId = ndb.StringProperty()
-  firstName = ndb.StringProperty()
+  firstName = ndb.StringProperty(indexed=False)
   firstNameSearch = ndb.ComputedProperty(
       lambda self: api_util.searchable_representation(self.firstName))
-  middleName = ndb.StringProperty()
-  lastName = ndb.StringProperty()
+  middleName = ndb.StringProperty(indexed=False)
+  middleNameSearch = ndb.ComputedProperty(
+      lambda self: api_util.searchable_representation(self.middleName))
+  lastName = ndb.StringProperty(indexed=False)
   lastNameSearch = ndb.ComputedProperty(
       lambda self: api_util.searchable_representation(self.lastName))
   zipCode = ndb.StringProperty()
@@ -130,19 +132,19 @@ class ParticipantSummary(ndb.Model):
   membershipTier = msgprop.EnumProperty(MembershipTier, default=MembershipTier.UNSET)
   race = msgprop.EnumProperty(Race, default=Race.UNSET)
   ethnicity = msgprop.EnumProperty(Ethnicity, default=Ethnicity.UNSET)
-  physicalEvaluationStatus = msgprop.EnumProperty(PhysicalEvaluationStatus, default=PhysicalEvaluationStatus.UNSET)
-  signUpTime = ndb.DateTimeProperty()
-  consentTime = ndb.DateTimeProperty()
+  physicalEvaluationStatus = msgprop.EnumProperty(PhysicalEvaluationStatus, default=PhysicalEvaluationStatus.UNSET, indexed=False)
+  signUpTime = ndb.DateTimeProperty(indexed=False)
+  consentTime = ndb.DateTimeProperty(indexed=False)
   hpoId = msgprop.EnumProperty(HPOId, default=HPOId.UNSET)
   consentForStudyEnrollment = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  consentForElectronicHealthRecords = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnOverallHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnPersonalHabits = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnSociodemographics = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnHealthcareAccess = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnMedicalHistory = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnMedications = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnFamilyHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
+  consentForElectronicHealthRecords = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnOverallHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnPersonalHabits = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnSociodemographics = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnHealthcareAccess = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnMedicalHistory = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnMedications = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnFamilyHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
 
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def __init__(self):
@@ -192,6 +194,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.format_json_enum(dict_, 'questionnaireOnMedications')
     api_util.format_json_enum(dict_, 'questionnaireOnFamilyHealth')
     api_util.remove_field(dict_, 'firstNameSearch')
+    api_util.remove_field(dict_, 'middleNameSearch')
     api_util.remove_field(dict_, 'lastNameSearch')
     return dict_
 
