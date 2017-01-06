@@ -242,11 +242,10 @@ class ParticipantTest(unittest.TestCase):
     self.assertEquals(dates_of_birth[8].isoformat(), response['entry'][0]['resource']['dateOfBirth'])
     self.assertEquals('LN9', response['entry'][0]['resource']['lastName'])
 
-    # Returns the one participant matching everything without hpoId in the query
+    # Returns the one participant matching first name, gender identity without hpoId in the query
     response = self.client.request_json('ParticipantSummary?firstName={}'.format(first_name) + \
-                                        '&middleName=Quentin&lastName=LN2&genderIdentity=MALE' + \
-                                        '&dateOfBirth={}&ageRange=18-25&ethnicity=UNSET'.format(dates_of_birth[1]) + \
-                                        '&membershipTier=UNSET&consentForStudyEnrollment=SUBMITTED')
+                                        '&lastName=LN2&genderIdentity=MALE' + \
+                                        '&dateOfBirth={}'.format(dates_of_birth[1]))                                        
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
@@ -262,6 +261,10 @@ class ParticipantTest(unittest.TestCase):
     # Query on date of birth without last name or HPO ID fails
     with self.assertRaises(HttpException):
       self.client.request_json('ParticipantSummary?dateOfBirth=2017-01-09')
+      
+    # Query on date of birth with last name but no HPO ID and middle name fails
+    with self.assertRaises(HttpException):
+      self.client.request_json('ParticipantSummary?dateOfBirth=2017-01-09&lastName=LN2&middleName=bob')
       
     # Query with no HPO ID, last name, or date of birth fails
     with self.assertRaises(HttpException):

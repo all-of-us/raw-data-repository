@@ -20,61 +20,94 @@ indexes:
 - kind: ParticipantSummary
   properties:
   - name: hpoId
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
   - name: lastNameSearch
+  - name: dateOfBirth
+  - name: sortKey
+
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: lastNameSearch
+  - name: sortKey
 
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: firstNameSearch
+  - name: sortKey
+ 
+- kind: ParticipantSummary
+  properties:
   - name: lastNameSearch
-
+  - name: dateOfBirth
+  - name: firstNameSearch
+  - name: sortKey
+ 
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: middleNameSearch
-  - name: lastNameSearch
+  - name: sortKey
   
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: dateOfBirth
-  - name: lastNameSearch  
+  - name: sortKey  
 
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: ageRange
-  - name: lastNameSearch  
+  - name: sortKey  
 
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: genderIdentity
-  - name: lastNameSearch
+  - name: sortKey
   
+- kind: ParticipantSummary
+  properties:
+  - name: lastNameSearch
+  - name: dateOfBirth
+  - name: genderIdentity
+  - name: sortKey
+
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: ethnicity
-  - name: lastNameSearch
+  - name: sortKey
   
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: zipCode
-  - name: lastNameSearch    
+  - name: sortKey    
+  
+- kind: ParticipantSummary
+  properties:
+  - name: lastNameSearch
+  - name: dateOfBirth
+  - name: zipCode
+  - name: sortKey
   
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: membershipTier
-  - name: lastNameSearch
+  - name: sortKey
   
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: consentForStudyEnrollment
-  - name: lastNameSearch
+  - name: sortKey
 
 - kind: Evaluation
   ancestor: yes

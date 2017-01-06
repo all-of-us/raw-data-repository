@@ -126,6 +126,9 @@ class ParticipantSummary(ndb.Model):
       lambda self: api_util.searchable_representation(self.lastName))
   zipCode = ndb.StringProperty()
   dateOfBirth = ndb.DateProperty()
+  sortKey = ndb.ComputedProperty(
+      lambda self: "|".join([self.lastNameSearch or '', self.firstNameSearch or '', 
+                             self.middleNameSearch or '', self.dateOfBirth.isoformat() if self.dateOfBirth else '']))
   ageRange = ndb.ComputedProperty(
       lambda self: get_bucketed_age(self.dateOfBirth, datetime.datetime.now()))
   genderIdentity = msgprop.EnumProperty(GenderIdentity, default=GenderIdentity.UNSET)
@@ -196,6 +199,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.remove_field(dict_, 'firstNameSearch')
     api_util.remove_field(dict_, 'middleNameSearch')
     api_util.remove_field(dict_, 'lastNameSearch')
+    api_util.remove_field(dict_, 'sortKey')
     return dict_
 
   def get_summary_for_participant(self, participant_id):
