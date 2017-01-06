@@ -50,8 +50,7 @@ WAIST_CIRCUMFERENCE = FieldValidation(concepts.WAIST_CIRCUMFERENCE,
 PARTICIPANT_SUMMARY_FILTER_FIELDS = ["hpoId", "firstName", "middleName", "lastName", 
                                      "dateOfBirth", "ageRange", "genderIdentity", "ethnicity", "zipCode",
                                      "membershipTier", "consentForStudyEnrollment"]
-PARTICIPANT_SUMMARY_LAST_NAME_ORDER = OrderBy("lastName", True)
-PARTICIPANT_SUMMARY_DATE_OF_BIRTH_ORDER = OrderBy("dateOfBirth", True)                                        
+PARTICIPANT_SUMMARY_ORDER = OrderBy("lastName", True)
 
 EVALUATION_FILTER_FIELDS = ["last_modified"]
 EVALUATION_ORDER = OrderBy("last_modified", True)
@@ -135,10 +134,7 @@ class ParticipantSummaryAPI(base_api.BaseApi):
       return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
     else:
       if request.args.get('hpoId') or (request.args.get('lastName') and request.args.get('dateOfBirth')):        
-        order_by = PARTICIPANT_SUMMARY_LAST_NAME_ORDER
-        if request.args.get('dateOfBirth'):
-          order_by = PARTICIPANT_SUMMARY_DATE_OF_BIRTH_ORDER
         return super(ParticipantSummaryAPI, self).query("participantId", PARTICIPANT_SUMMARY_FILTER_FIELDS,
-                                                        order_by)
+                                                        PARTICIPANT_SUMMARY_ORDER)
       else:
         raise BadRequest("Participant summary queries must specify hpoId or both lastName and dateOfBirth")
