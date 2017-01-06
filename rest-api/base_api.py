@@ -3,8 +3,14 @@
 import api_util
 import config
 
+from data_access_object import PROPERTY_TYPE_MAP
+from query import Query, FieldFilter, Operator, PropertyType
 from flask import request
 from flask.ext.restful import Resource
+from werkzeug.exceptions import BadRequest
+
+DEFAULT_MAX_RESULTS = 100
+MAX_MAX_RESULTS = 10000
 
 class BaseApi(Resource):
   """Base class for API handlers.
@@ -12,7 +18,8 @@ class BaseApi(Resource):
   Provides a generic implementation for an API handler which is backed by a
   DataAccessObject.
 
-  Subclasses should implement the list() function.  The generic implementations
+  Subclasses should override the list() method; they can use the query() method
+  to return an FHIR bundle containing the results.  The generic implementations
   of get(), post() and patch() should be sufficient for most subclasses.
 
   When extending this class, prefer to use the method_decorators class property
@@ -47,15 +54,30 @@ class BaseApi(Resource):
 
   def list(self, a_id=None):
     """Handle a list request.
-
     Subclasses should pull the query parameters from the request with
     request.args.get().
-
     Args:
       a_id: The ancestor id.
-
     """
     pass
+          
+  def query(self, id_field, valid_filter_fields, order_by, a_id=None):    
+    """Run a query against the DAO. 
+    Extracts query parameters from request using FHIR conventions.
+    
+    Returns an FHIR Bundle containing entries for each item in the 
+    results, with a "next" link if there are more results to fetch. An empty Bundle
+    will be returned if no results match the query.
+    
+    Args:
+      id_field: the name of the field containing the ID used when constructing resource URLs for results
+      valid_filter_fields: the names of fields that can be filtered on when querying
+      order_by: the OrderBy object indicating the order to return rows in
+      a_id: the ancestor ID under which to perform this query, if appropriate
+    """     
+    query = self.make_query(valid_filter_fields, order_by, a_id)
+    results = self.dao.query(query)
+    return self.make_bundle(results, query.max_results, id_field, a_id)
 
   def validate_object(self, obj, a_id=None):
     """Override this function to validate the passed object.
@@ -114,8 +136,80 @@ class BaseApi(Resource):
       version_id = meta.get('versionId')
       if version_id:
         return result, 200, {'ETag': version_id}
-    return result
+    return result 
+  
+  def make_query(self, valid_filter_fields, order_by, a_id=None):
+    field_filters = []
+    max_results = DEFAULT_MAX_RESULTS
+    pagination_token = None
+    inequality_field = None
+    for key, value in request.args.iteritems():
+      if key == '_count':
+        max_results = int(request.args['_count'])
+        if max_results < 1:
+          raise BadRequest("_count < 1")
+        if max_results > MAX_MAX_RESULTS:
+          raise BadRequest("_count exceeds {}".format(MAX_MAX_RESULTS))
+      elif key == '_token':
+        pagination_token = value
+      else:
+        property = getattr(self.dao.model_type, key, None)
+        if property:
+          if valid_filter_fields and key in valid_filter_fields:
+            property_type = PROPERTY_TYPE_MAP.get(property.__class__.__name__)
+            if property_type == PropertyType.DATE:
+              if value.startswith("lt"):
+                operator = Operator.LESS_THAN
+              elif value.startswith("gt"):
+                operator = Operator.GREATER_THAN
+              elif value.startswith("le"):
+                operator = Operator.LESS_THAN_OR_EQUALS
+              elif value.startswith("ge"):
+                operator = Operator.GREATER_THAN_OR_EQUALS
+              else:
+                operator = Operator.EQUALS
+              date_str = value
+              if operator != Operator.EQUALS:
+                if inequality_field:
+                  raise BadRequest("Can't have multiple inequality expressions in a single query")
+                date_str = value[2:]
+                inequality_field = key
+              date_val = api_util.parse_date(date_str)
+              field_filters.append(FieldFilter(key, operator, date_val))   
+            elif property_type == PropertyType.ENUM:
+              field_filters.append(FieldFilter(key, Operator.EQUALS, property._enum_type(value)))
+            else:
+              field_filters.append(FieldFilter(key, Operator.EQUALS, value))
+          else:
+            raise BadRequest("Can't filter on field {}".format(key))
+    if inequality_field and order_by and inequality_field != order_by.field_name:
+      raise BadRequest("Can't combine inequality expression with sort on a different property")
+    return Query(field_filters, order_by, max_results, pagination_token, a_id)        
 
+  def make_bundle(self, results, max_results, id_field, a_id):
+    bundle_dict = {"resourceType": "Bundle", "type": "searchset"}
+    import main
+    if results.pagination_token:
+      query_params = request.args.copy()
+      query_params['_token'] = results.pagination_token
+      next_url = main.api.url_for(self.__class__, _external=True, **query_params)
+      bundle_dict['link'] = [{"relation": "next", "url": next_url}]      
+    entries = []
+    for item in results.items:      
+      json = self.dao.to_json(item)
+      if a_id:
+        full_url = main.api.url_for(self.__class__,
+                                    id_=json[id_field],
+                                    a_id=a_id,
+                                    _external=True)
+      else:
+        full_url = main.api.url_for(self.__class__,
+                                    id_=json[id_field],
+                                    _external=True)
+      entries.append({"fullUrl": full_url,
+                     "resource": json})
+    bundle_dict['entry'] = entries
+    return bundle_dict  
 
 def consider_fake_date():
   if "True" == config.getSetting(config.ALLOW_FAKE_HISTORY_DATES, None):

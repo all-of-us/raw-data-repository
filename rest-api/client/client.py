@@ -59,8 +59,12 @@ class Client(object):
               query_args=None,
               headers=None,
               cron=False,
-              test_unauthenticated=True):
-    url = '{}/{}/{}'.format(self.instance, self.base_path, path)
+              test_unauthenticated=True,
+              absolute_path=False):
+    if absolute_path:           
+      url = path
+    else:
+      url = '{}/{}/{}'.format(self.instance, self.base_path, path)
     if query_args:
       args_str = '&'.join(
           '{}={}'.format(k, v) for k, v in query_args.iteritems())
@@ -122,7 +126,8 @@ class Client(object):
                    query_args=None,
                    headers=None,
                    cron=False,
-                   test_unauthenticated=True):
+                   test_unauthenticated=True,
+                   absolute_path=False):
     json_body = None
     if body:
       json_body = json.dumps(body)
@@ -134,6 +139,7 @@ class Client(object):
                             query_args=query_args,
                             headers=headers,
                             cron=cron,
-                            test_unauthenticated=test_unauthenticated)
+                            test_unauthenticated=test_unauthenticated,
+                            absolute_path=absolute_path)
 
     return json.loads(response)

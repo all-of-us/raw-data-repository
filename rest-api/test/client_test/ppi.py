@@ -89,7 +89,8 @@ class TestPPI(unittest.TestCase):
 
     response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
     # TODO: add more stuff here
-    expected = { 'genderIdentity': 'MALE_TO_FEMALE_TRANSGENDER',
+    expected = { 'ageRange': '0-17',
+                 'genderIdentity': 'MALE_TO_FEMALE_TRANSGENDER',
                  'ethnicity': 'UNSET',
                  'race': 'UNSET',
                  'hpoId': 'UNSET',

@@ -3,6 +3,7 @@
 
 import api_util
 import data_access_object
+import datetime
 import extraction
 
 from offline.metrics_fields import run_extractors
@@ -109,37 +110,41 @@ def get_bucketed_age(date_of_birth, today):
   for begin, end in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + ['']):
     if (age >= begin) and (not end or age <= end):
       return str(begin) + '-' + str(end)
-
+      
 class ParticipantSummary(ndb.Model):
   """The participant summary resource definition"""
   participantId = ndb.StringProperty()
   biobankId = ndb.StringProperty()
-  firstName = ndb.StringProperty()
+  firstName = ndb.StringProperty(indexed=False)
   firstNameSearch = ndb.ComputedProperty(
       lambda self: api_util.searchable_representation(self.firstName))
-  middleName = ndb.StringProperty()
-  lastName = ndb.StringProperty()
+  middleName = ndb.StringProperty(indexed=False)
+  middleNameSearch = ndb.ComputedProperty(
+      lambda self: api_util.searchable_representation(self.middleName))
+  lastName = ndb.StringProperty(indexed=False)
   lastNameSearch = ndb.ComputedProperty(
       lambda self: api_util.searchable_representation(self.lastName))
   zipCode = ndb.StringProperty()
   dateOfBirth = ndb.DateProperty()
+  ageRange = ndb.ComputedProperty(
+      lambda self: get_bucketed_age(self.dateOfBirth, datetime.datetime.now()))
   genderIdentity = msgprop.EnumProperty(GenderIdentity, default=GenderIdentity.UNSET)
   membershipTier = msgprop.EnumProperty(MembershipTier, default=MembershipTier.UNSET)
   race = msgprop.EnumProperty(Race, default=Race.UNSET)
   ethnicity = msgprop.EnumProperty(Ethnicity, default=Ethnicity.UNSET)
-  physicalEvaluationStatus = msgprop.EnumProperty(PhysicalEvaluationStatus, default=PhysicalEvaluationStatus.UNSET)
-  signUpTime = ndb.DateTimeProperty()
-  consentTime = ndb.DateTimeProperty()
+  physicalEvaluationStatus = msgprop.EnumProperty(PhysicalEvaluationStatus, default=PhysicalEvaluationStatus.UNSET, indexed=False)
+  signUpTime = ndb.DateTimeProperty(indexed=False)
+  consentTime = ndb.DateTimeProperty(indexed=False)
   hpoId = msgprop.EnumProperty(HPOId, default=HPOId.UNSET)
   consentForStudyEnrollment = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  consentForElectronicHealthRecords = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnOverallHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnPersonalHabits = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnSociodemographics = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnHealthcareAccess = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnMedicalHistory = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnMedications = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  questionnaireOnFamilyHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
+  consentForElectronicHealthRecords = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnOverallHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnPersonalHabits = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnSociodemographics = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnHealthcareAccess = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnMedicalHistory = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnMedications = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnFamilyHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
 
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def __init__(self):
@@ -166,6 +171,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.parse_json_enum(dict_, 'questionnaireOnMedicalHistory', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnMedications', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnFamilyHealth', QuestionnaireStatus)
+    api_util.remove_field(dict_, 'ageRange')
     return dict_
 
   def properties_to_json(self, dict_):
@@ -188,17 +194,25 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.format_json_enum(dict_, 'questionnaireOnMedications')
     api_util.format_json_enum(dict_, 'questionnaireOnFamilyHealth')
     api_util.remove_field(dict_, 'firstNameSearch')
+    api_util.remove_field(dict_, 'middleNameSearch')
     api_util.remove_field(dict_, 'lastNameSearch')
     return dict_
 
   def get_summary_for_participant(self, participant_id):
     return self.load_if_present(SINGLETON_SUMMARY_ID, participant_id)
 
+  @ndb.transactional
+  def update_hpo_id(self, participant_id, hpo_id):
+    summary = self.get_summary_for_participant(participant_id)
+    summary.hpoId = hpo_id
+    self.store(summary)
+    
+  @ndb.transactional
   def update_with_incoming_data(self, participant_id, incoming_history_obj, config):
     old_summary = self.get_summary_for_participant(participant_id)
     old_summary_json = self.to_json(old_summary)
     new_summary = run_extractors(incoming_history_obj, config, old_summary_json)
-
+    
     # If the extracted fields don't match, update them
     changed = False
     for field_name, value in new_summary.iteritems():
@@ -207,11 +221,11 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
       if value != old_value:
         old_summary_json[field_name] = value
         changed = True
-      if changed:
-        updated_summary = self.from_json(old_summary_json,
-                                                        old_summary.key.parent().id(),
-                                                        SINGLETON_SUMMARY_ID)
-        self.store(updated_summary)
+    if changed:
+      updated_summary = self.from_json(old_summary_json,
+                                       old_summary.key.parent().id(),
+                                       SINGLETON_SUMMARY_ID)
+      self.store(updated_summary)
         
 
 DAO = ParticipantSummaryDAO()

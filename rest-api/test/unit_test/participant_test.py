@@ -8,6 +8,7 @@ import os
 import biobank_order
 import evaluation
 import participant
+import participant_summary
 import questionnaire
 import questionnaire_response
 
@@ -25,6 +26,14 @@ class ParticipantNdbTest(NdbTestBase):
         key=participant_key,
         biobankId=None)
     participant.DAO.insert(participant_entry, dates[0])
+    
+    participant_result = participant.DAO.load(participant_id)
+    self.assertTrue(participant_result.biobankId)
+    participant_summary_result = participant_summary.DAO.get_summary_for_participant(participant_id)
+    self.assertTrue(participant_summary_result)
+    self.assertEquals(participant_summary.HPOId.UNSET, participant_summary_result.hpoId)
+    self.assertEquals(participant_id, participant_summary_result.participantId)
+    self.assertEquals(participant_result.biobankId, participant_summary_result.biobankId)    
 
     questionnaire_id = questionnaire.DAO.allocate_id()
     questionnaire_key = ndb.Key(questionnaire.Questionnaire, questionnaire_id)

@@ -42,6 +42,7 @@ api.add_resource(
 api.add_resource(
     participants_api.ParticipantSummaryAPI,
     PREFIX + 'Participant/<string:id_>/Summary',
+    PREFIX + 'ParticipantSummary',
     endpoint='participant.summary',
     methods=['GET',])
 

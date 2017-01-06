@@ -1,7 +1,6 @@
 import concepts
 import data_access_object
 import extraction
-import participant_summary
 import fhirclient.models.questionnaireresponse
 
 from census_regions import census_regions
@@ -180,15 +179,3 @@ def extract_concept_presence(concept):
     return extraction.ExtractionResult('SUBMITTED')
 
   return extract
-
-def extract_age(qr_hist_obj, age_func):
-  """Returns ExtractionResult with the bucketed participant age on that date."""
-  today = qr_hist_obj.date
-  date_of_birth = extract_date_of_birth(qr_hist_obj)
-  if not date_of_birth:
-    return extraction.ExtractionResult(None)  # DOB was not provided: set None
-  return extraction.ExtractionResult(age_func(date_of_birth, today))
-
-def extract_bucketed_age(qr_hist_obj):
-  return extract_age(qr_hist_obj, participant_summary.get_bucketed_age)
-

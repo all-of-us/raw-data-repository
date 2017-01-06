@@ -26,7 +26,7 @@ from testlib import testutil
 
 
 def compute_meta(summary):
-  if summary['membershipTier'] == 'REGISTERED' and summary.get('hpoId') == 'HPO1':
+  if summary['membershipTier'] == 'REGISTERED' and summary.get('hpoId') == 'PITT':
     val = 'R1'
   else:
     val = 'NOPE'
@@ -104,83 +104,83 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     results = list(metrics_pipeline.map_key_to_summary(key.to_old_key()))
 
     expected = [
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant": 1,
               "Participant.ageRange.UNSET": 1,
               "Participant.biospecimenSamples.UNSET": 1,
               "Participant.ethnicity.UNSET": 1,
-              "Participant.hpoId.HPO1": 1,
+              "Participant.hpoId.PITT": 1,
               "Participant.membershipTier.UNSET": 1,
               "Participant.meta.NOPE": 1,
               "Participant.physicalEvaluation.UNSET": 1,
               "Participant.race.UNSET": 1,
               "Participant.state.UNSET": 1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.ageRange.UNSET": -1}),
 
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.ageRange.36-45": 1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.ethnicity.UNSET": -1,
               "Participant.membershipTier.UNSET": -1,
               "Participant.meta.NOPE": -1,
               "Participant.race.UNSET": -1,
               "Participant.state.UNSET": -1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.ethnicity.NON_HISPANIC": 1,
               "Participant.membershipTier.REGISTERED": 1,
               "Participant.meta.R1": 1,
               "Participant.race.WHITE": 1,
               "Participant.state.TX": 1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.ethnicity.NON_HISPANIC": -1,
               "Participant.race.WHITE": -1,
               "Participant.membershipTier.REGISTERED": -1,
               "Participant.meta.R1": -1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.ethnicity.SKIPPED": 1,
               "Participant.race.UNMAPPED": 1,
               "Participant.membershipTier.FULL_PARTICIPANT": 1,
               "Participant.meta.NOPE": 1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.membershipTier.FULL_PARTICIPANT": -1,
               "Participant.meta.NOPE": -1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.membershipTier.REGISTERED": 1,
               "Participant.meta.R1": 1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.biospecimenSamples.UNSET": -1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.biospecimenSamples.SAMPLES_ARRIVED": 1}),
-        ({'date': "2016-09-05", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-05", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.physicalEvaluation.UNSET": -1}),
-        ({'date': "2016-09-05", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-05", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.physicalEvaluation.COMPLETE": 1}),
-        ({'date': "2016-09-10", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-10", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.membershipTier.REGISTERED": -1,
               "Participant.meta.R1": -1}),
-        ({'date': "2016-09-10", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-09-10", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.membershipTier.VOLUNTEER": 1,
               "Participant.meta.NOPE": 1}),
-        ({'date': "2016-10-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-10-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.state.TX": -1}),
-        ({'date': "2016-10-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2016-10-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.state.CA": 1}),
         ]
@@ -190,7 +190,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
   def test_map_key_to_summary_participant_ages(self):
     key = ndb.Key(participant.Participant, '1')
     link = participant.ProviderLink(primary=True,
-                                    organization=fhir_datatypes.FHIRReference(reference='Organization/HPO1'))
+                                    organization=fhir_datatypes.FHIRReference(reference='Organization/PITT'))
     # One participant signs up in 2013
     participant.DAO.insert(participant.Participant(key=key,
                                                    providerLink = [ link ]),
@@ -216,27 +216,27 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     results = list(metrics_pipeline.map_key_to_summary(key.to_old_key(),
                                                        datetime.datetime(2016, 10, 17)))
     expected = [
-        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
          {
               "Participant": 1,
               "Participant.ageRange.UNSET": 1,
               "Participant.biospecimenSamples.UNSET": 1,
               "Participant.ethnicity.UNSET": 1,
-              "Participant.hpoId.HPO1": 1,
+              "Participant.hpoId.PITT": 1,
               "Participant.membershipTier.UNSET": 1,
               "Participant.meta.NOPE": 1,
               "Participant.physicalEvaluation.UNSET": 1,
               "Participant.race.UNSET": 1,
               "Participant.state.UNSET": 1
         }),
-        ({'date': "2013-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2013-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.ageRange.UNSET": -1}),
 
-        ({'date': "2013-09-01", "facets": [{"type": "HPO_ID", "value": "HPO1"}]},
+        ({'date': "2013-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
          {
               "Participant.ageRange.36-45": 1}),
-        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
          {
              'Participant.membershipTier.UNSET': -1,
              'Participant.meta.NOPE': -1,
@@ -244,7 +244,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              "Participant.race.UNSET": -1,
              "Participant.state.UNSET": -1
          }),
-        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
          {
              'Participant.membershipTier.REGISTERED': 1,
              'Participant.meta.R1': 1,
@@ -252,21 +252,21 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
              "Participant.race.SKIPPED": 1,
              "Participant.state.SKIPPED": 1
          }),
-        ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+        ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
          {
              'Participant.membershipTier.REGISTERED': -1,
              'Participant.meta.R1': -1,
          }),
-        ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+        ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
          {
              'Participant.membershipTier.FULL_PARTICIPANT': 1,
              'Participant.meta.NOPE': 1,
          }),
-        ({'date': '2016-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+        ({'date': '2016-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
          {
              'Participant.ageRange.36-45': -1,
          }),
-        ({'date': '2016-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]},
+        ({'date': '2016-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
          {
              'Participant.ageRange.46-55': 1,
          }),
@@ -290,7 +290,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
             'Participant.membershipTier.REGISTERED': 1,
         }),
     ]
-    facets_key = json.dumps({'facets': [{'type': 'HPO_ID', 'value': 'HPO1'}]})
+    facets_key = json.dumps({'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]})
 
     metrics.set_pipeline_in_progress()
     results = list(metrics_pipeline.reduce_facets(facets_key, reduce_input))
@@ -298,7 +298,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     expected_cnt = Counter(('Participant.membershipTier.REGISTERED',))
     expected_json = json.dumps(expected_cnt)
     self.assertEquals(
-        json.dumps([{'type': 'HPO_ID', 'value': 'HPO1'}]),
+        json.dumps([{'type': 'HPO_ID', 'value': 'PITT'}]),
         results[0].entity.facets)
     self.assertEquals(expected_json, results[0].entity.metrics)
 
@@ -315,13 +315,13 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
     self.assertEquals(datetime.date(2016, 9, 1), metrics_list[0].date)
     self.assertEquals(datetime.date(2016, 9, 5), metrics_list[1].date)
     self.assertEquals(datetime.date(2016, 9, 10), metrics_list[2].date)
-    self.assertEquals('[{"type": "HPO_ID", "value": "HPO1"}]', metrics_list[0].facets)
-    self.assertEquals('[{"type": "HPO_ID", "value": "HPO1"}]', metrics_list[1].facets)
-    self.assertEquals('[{"type": "HPO_ID", "value": "HPO1"}]', metrics_list[2].facets)
+    self.assertEquals('[{"type": "HPO_ID", "value": "PITT"}]', metrics_list[0].facets)
+    self.assertEquals('[{"type": "HPO_ID", "value": "PITT"}]', metrics_list[1].facets)
+    self.assertEquals('[{"type": "HPO_ID", "value": "PITT"}]', metrics_list[2].facets)
     metrics0 = json.loads(metrics_list[0].metrics)
     self.assertEquals(1, metrics0['Participant'])
     self.assertEquals(1, metrics0['Participant.membershipTier.REGISTERED'])
-    self.assertEquals(1, metrics0['Participant.hpoId.HPO1'])
+    self.assertEquals(1, metrics0['Participant.hpoId.PITT'])
 
     metrics1 = json.loads(metrics_list[1].metrics)
     self.assertEquals(-1, metrics1['Participant.physicalEvaluation.UNSET'])
@@ -351,7 +351,7 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
 
   def _populate_sample_history(self, key):
     link = participant.ProviderLink(primary=True,
-                                    organization=fhir_datatypes.FHIRReference(reference='Organization/HPO1'))
+                                    organization=fhir_datatypes.FHIRReference(reference='Organization/PITT'))
     participant.DAO.insert(participant.Participant(key=key,
                                                    providerLink = [ link ]),
                           datetime.datetime(2016, 9, 1, 11, 0, 1))
