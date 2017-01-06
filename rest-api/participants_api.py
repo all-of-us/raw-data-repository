@@ -49,7 +49,7 @@ WAIST_CIRCUMFERENCE = FieldValidation(concepts.WAIST_CIRCUMFERENCE,
 
 PARTICIPANT_SUMMARY_FILTER_FIELDS = ["hpoId", "firstName", "middleName", "lastName", 
                                      "dateOfBirth", "ageRange", "genderIdentity", "ethnicity", "zipCode",
-                                    "membershipTier", "consentForStudyEnrollment" ]
+                                     "membershipTier", "consentForStudyEnrollment"]
 PARTICIPANT_SUMMARY_LAST_NAME_ORDER = OrderBy("lastName", True)
 PARTICIPANT_SUMMARY_DATE_OF_BIRTH_ORDER = OrderBy("dateOfBirth", True)                                        
 

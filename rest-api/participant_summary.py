@@ -94,18 +94,6 @@ class Race(messages.Enum):
   OTHER_RACE = 8
   PREFER_NOT_TO_SAY = 9
 
-class AgeRange(messages.Enum):
-  UNSET = 0
-  AGE_0_TO_17 = 1
-  AGE_18_TO_25 = 2
-  AGE_26_TO_35 = 3
-  AGE_36_TO_45 = 4
-  AGE_46_TO_55 = 5
-  AGE_56_TO_65 = 6
-  AGE_66_TO_75 = 7
-  AGE_76_TO_85 = 8
-  AGE_86_AND_ABOVE = 9
-  
 # The lower bounds of the age buckets.
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
 AGE_BUCKETS = ['{}-{}'.format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]

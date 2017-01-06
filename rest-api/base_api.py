@@ -4,7 +4,7 @@ import api_util
 import config
 
 from data_access_object import PROPERTY_TYPE_MAP
-from query import Query, OrderBy, FieldFilter, Operator, PropertyType
+from query import Query, FieldFilter, Operator, PropertyType
 from flask import request
 from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest
