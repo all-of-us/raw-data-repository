@@ -68,6 +68,7 @@ from collections import Counter
 from google.appengine.ext import ndb
 from mapreduce import mapreduce_pipeline
 from mapreduce import operation as op
+from mapreduce import context
 
 from metrics import MetricsBucket
 from offline.metrics_fields import run_extractors
@@ -121,26 +122,42 @@ class SummaryPipeline(pipeline.Pipeline):
   def run(self, config_name, parent_params=None):
     print '======= Starting {} Pipeline'.format(config_name)
 
+    today = datetime.now()
     mapper_params = {
         'entity_kind': config_name,
+        'today': today
     }
 
     if parent_params:
       mapper_params.update(parent_params)
 
     num_shards = mapper_params[_NUM_SHARDS]
-    # The result of yield is a future that will contain the files that were
-    # produced by MapreducePipeline.
-    yield mapreduce_pipeline.MapreducePipeline(
+    # Chain together two map reduces
+    # The first emits lines of the form hpoId|metric|date|count
+    # The second reads those lines and emits metrics buckets in Datastore
+    blob_key = (yield mapreduce_pipeline.MapreducePipeline(
         'Extract Metrics',
-        mapper_spec='offline.metrics_pipeline.map_key_to_summary',
+        mapper_spec='offline.metrics_pipeline.map',
         input_reader_spec='mapreduce.input_readers.DatastoreKeyInputReader',
+        output_writer_spec='mapreduce.output_writers.BlobstoreOutputWriter',
         mapper_params=mapper_params,
-        reducer_spec='offline.metrics_pipeline.reduce_facets',
+        combiner_spec='offline.metrics_pipeline.combine',
+        reducer_spec='offline.metrics_pipeline.reduce',
+        reducer_params={
+            "mime_type": "text/plain",
+        },
+        shards=num_shards))
+    # We need to find a way to delete blob written above...
+    yield mapreduce.mapreduce_pipeline.MapreducePipeline(
+        'Write Metrics',
+        mapper_spec='offline.metrics_pipeline.map2',
+        input_reader_spec='mapreduce.input_readers.BlobstoreLineInputReader',
+        mapper_params=(yield BlobKeys(blob_key)),
+        reducer_spec='offline.metrics_pipeline.reduce2',
         shards=num_shards)
 
-def map_key_to_summary(entity_key, now=None):
-  """Takes a key for the entity. Emits deltas for all state changes.
+def map(entity_key, now=None):
+  """Takes a key for the entity. Emits hpoId|metric, date|delta pairs.
 
   Args:
     entity_key: The key of the entity to process.  The key read by the
@@ -150,7 +167,7 @@ def map_key_to_summary(entity_key, now=None):
   """
 
   entity_key = ndb.Key.from_old_key(entity_key)
-  now = now or datetime.now()
+  now = now or ctx.mapreduce_spec.mapper.params.get('today') or datetime.now()
   kind = entity_key.kind()
   metrics_conf = get_config()[kind]
   # Note that history can contain multiple types of history objects.
@@ -173,52 +190,96 @@ def map_key_to_summary(entity_key, now=None):
     new_state = run_extractors(hist_obj, metrics_conf, new_state)
     if new_state == last_state:
       continue  # No changes so there's nothing to do.
+    hpo_id = new_state.get('hpoId')
+    if not hpo_id:
+      continue
 
-    facets_key = _get_facets_key(date, metrics_conf, new_state)
-    facets_change = (last_facets_key is None or
-                     last_facets_key['facets'] != facets_key['facets'])
-
+    hpo_change = (last_hpo_id is None or last_hpo_id != hpo_id)
     for k, v in new_state.iteritems():
       # Output a delta for this field if it is either the first value we have,
       # or if it has changed. In the case that one of the facets has changed,
       # we need deltas for all fields.
       old_val = last_state and last_state.get(k, None)
-      if facets_change or v != old_val:
-        summary[_make_metric_key(kind, k, v)] = 1
+      if hpo_change or v != old_val:
+        yield ('|'.join(hpo_id, _make_metric_key(kind, k, v)), 
+               '|'.join(date.isoformat(), '1'))
         if last_state:
           # If the value changed, output -1 delta for the old value.
-          old_summary[_make_metric_key(kind, k, old_val)] = -1
+          yield ('|'.join(last_hpo_id, _make_metric_key(kind, k, old_val)), 
+                 '|'.join(date.isoformat(), '-1'))
 
-    if old_summary:
-      # Can't just use last_facets_key, as it has the old date.
-      yield (json.dumps(_get_facets_key(date, metrics_conf, last_state)),
-             json.dumps(old_summary, sort_keys=True))
-
-    yield (json.dumps(facets_key), json.dumps(summary, sort_keys=True))
     last_state = new_state
     last_facets_key = facets_key
 
-def reduce_facets(facets_key_json, deltas):
-  facets_key = json.loads(facets_key_json)
-  cnt = Counter()
-  for delta in deltas:
-    for k, val in json.loads(delta).iteritems():
-      cnt[k] += val
+def combine(key, new_values, old_values):
+    delta_map = {}
+    for old_value in old_values:
+      arr = old_value.split('|')
+      delta_map[arr[0]] = int(arr[1])
+    for new_value in new_values:
+      arr = new_value.split('|')
+      old_delta = delta_map.get(arr[0])
+      if old_delta:
+        delta_map[arr[0]] = old_delta + int(arr[1])
+      else:
+        delta_map[arr[0]] = int(arr[1])
+    for date, delta in delta_map.iteritems():
+        yield '|'.join(date.isoformat(), str(delta))
 
-  # Remove zeros
-  cnt = Counter({k:v for k, v in cnt.iteritems() if v is not 0})
+def reduce(reducer_key, reducer_values, now=None):
+  """Emits hpoId|metric|date|count for each date until today.
+  """ 
+  delta_map = {}
+  for reducer_value in reducer_values:
+    arr = reducer_value.split('|')
+    old_delta = delta_map.get(arr[0])
+    if old_delta:
+      delta_map[arr[0]] = old_delta + int(arr[1])
+    else:
+      delta_map[arr[0]] = int(arr[1])
+  
+  # Walk over the deltas by date  
+  last_date = None
+  count = 0
+  one_day = datetime.timedelta(days=1)
+  for date_str, delta in sorted(delta_map.items()):    
+    date = datetime.datetime.strptime(date_str, DATE_FORMAT)      
+    # Yield results for all the dates in between
+    if last_date:
+      middle_date = last_date + one_day
+      while middle_date < date:
+        yield _get_reducer_result(reducer_key, middle_date.isoformat(), count)
+        middle_date = middle_date + one_day    
+    count += delta
+    if count > 0:
+      yield '|'.join(reducer_key, date_str, str(count))
+    last_date = date
+  now = now or ctx.mapreduce_spec.mapper.params.get('today') or datetime.now()    
+  # Yield results up until today.
+  if count > 0 and last_date:
+    last_date = last_date + one_day
+    while last_date <= now.date():      
+      yield '|'.join(reducer_key, last_date.isoformat(), str(count))
 
-  date = None
-  if 'date' in facets_key:
-    date = api_util.parse_date(facets_key['date'], DATE_FORMAT, True)
+def map2(reducer_result):
+  arr = reducer_result.split('|')
+  # Yield HPO ID + date -> metric + count
+  yield ('|'.join(arr[0], arr[2]), '|'.join(arr[1], arr[3]))
 
-  parent = metrics.get_in_progress_version().key
+def reduce2(reducer_key, reducer_values):
+  metrics_dict = {}
+  key_arr = reducer_key.split('|')
+  date = datetime.datetime.strptime(key_arr[1], DATE_FORMAT)
+  for reducer_value in reducer_values:
+    arr = reducer_value.split('|')
+    metrics_dict[arr[0]] = int(arr[1])
+  parent = metrics.get_in_progress_version().key  
   bucket = MetricsBucket(date=date,
                          parent=parent,
-                         facets=json.dumps(facets_key['facets']),
+                         facets=arr[0],
                          metrics=json.dumps(cnt))
-  yield op.db.Put(bucket)
-
+  yield op.db.Put(bucket)                       
+  
 def set_serving_version():
   current_version = metrics.get_in_progress_version()
   if not current_version:
@@ -232,21 +293,6 @@ def validate_metrics(configs):
   for config in configs.values():
     fields = [definition.name for def_list in config['fields'].values() for definition in def_list]
     assert len(fields) == len(set(fields))
-
-def _get_facets_key(date, metrics_conf, state):
-  """Creates a string that can be used as a key specifying the facets.
-
-  The key is a json encoded object of the form:
-      {'date': '2016-10-02', 'facets': [{'type': 'hpo_id', 'value': 'jackson'}]}
-  """
-  key_parts = []
-  facets = metrics_conf['facets']
-  for axis in facets:
-    key_parts.append({'type': str(axis.type), 'value': axis.func(state)})
-  key = {'facets': key_parts}
-  if date:
-    key['date'] = date.isoformat()
-  return key
 
 def _make_metric_key(kind, key, value):
   """Formats a metrics key for the summary.

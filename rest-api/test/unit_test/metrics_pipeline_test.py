@@ -18,7 +18,7 @@ import os
 
 from extraction import ExtractionResult, BASE_VALUES, UNSET
 from offline import metrics_pipeline
-from offline.metrics_config import FieldDef, FacetDef
+from offline.metrics_config import FieldDef
 from collections import Counter
 from google.appengine.ext import ndb
 from mapreduce import test_support
@@ -34,9 +34,6 @@ def compute_meta(summary):
 
 CONFIGS_FOR_TEST = {
     'Participant': {
-        'facets': [
-            FacetDef(offline.metrics_config.FacetType.HPO_ID, lambda s: s.get('hpoId', UNSET)),
-        ],
         'initial_state': {
             'physicalEvaluation': UNSET,
             'biospecimenSamples': UNSET,

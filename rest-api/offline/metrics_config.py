@@ -7,10 +7,6 @@ Keys for an individual configuration entry:
   load_history_func: A function that will take a ndb.Key for  the entity, and
     load all the related history objects for the given entity id.  It may also
     synthesize records or load related objects.
-  facets: A list of functions for extracting the different facets to aggregate
-    on. For each hisory object, this function will be passed a dictionary with
-    all the current extracted fields, with their current values. Its return
-    value must be convertable to a string.
   initial_state: An object setting what the default state should be for an
     entity that is missing extracted values from subobjects.  For example, on
     Participant, any metrics that are not directly on the participant object
@@ -28,14 +24,9 @@ import questionnaire_response
 import field_config.shared_config
 from questionnaire_response import states, regions
 
-from offline.metrics_fields import FacetDef, FieldDef
+from offline.metrics_fields import FieldDef
 from extraction import ExtractionResult, BASE_VALUES, UNSET
 from protorpc import messages
-
-class FacetType(messages.Enum):
-  """The Facets (dimensions) to bucket by"""
-  NONE = 0
-  HPO_ID = 1
 
 def biospecimen_summary(summary):
   """Summarizes the two biospecimen statuses into one."""
@@ -51,9 +42,6 @@ def get_config():
 
 ALL_CONFIG = {
     'Participant': {
-        'facets': [
-            FacetDef(FacetType.HPO_ID, lambda s: s.get('hpoId', UNSET)),
-        ],
         'initial_state': dict(list({
             'physicalEvaluation': UNSET,
             'survey': UNSET,
