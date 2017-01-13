@@ -23,7 +23,7 @@ def get():
   else:
     bucket_name = app_identity.get_default_gcs_bucket_name()    
     print "=========== Starting metrics pipeline ============"
-    offline.metrics_pipeline.MetricsPipeline(bucket_name, datetime.datetime.now()).start()
+    offline.metrics_pipeline.MetricsPipeline(bucket_name, datetime.datetime.utcnow()).start()
     return '{"metrics-pipeline-status": "started"}'
 
 class MetricsAPI(Resource):
@@ -43,6 +43,8 @@ class MetricsFieldsAPI(Resource):
   def get(self):
     return metrics.SERVICE.get_metrics_fields()
     
+# Because we want to stream the JSON to the client, rather than load
+# it all into memory at once, we use this function (instead of json.dumps).
 def to_json_list(entries):
   yield '['
   first = True

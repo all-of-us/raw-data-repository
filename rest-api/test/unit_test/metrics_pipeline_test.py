@@ -96,10 +96,10 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
   def tearDown(self):
     offline.metrics_config.get_config = self.saved_config_fn
 
-  def test_map(self):
+  def test_map1(self):
     key = ndb.Key(participant.Participant, '1')
     self._populate_sample_history(key)
-    results = list(metrics_pipeline.map(key.to_old_key(), NOW))
+    results = list(metrics_pipeline.map1(key.to_old_key(), NOW))
 
     expected = [
         ('PITT|Participant', '2016-09-01|1'),
@@ -175,7 +175,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.FULL_PARTICIPANT)]),
                                      datetime.datetime(2015, 9, 1, 11, 0, 2))
-    results = list(metrics_pipeline.map(key.to_old_key(),
+    results = list(metrics_pipeline.map1(key.to_old_key(),
                                         datetime.datetime(2016, 10, 17)))
     expected = [
         ('PITT|Participant', '2013-09-01|1'),
@@ -209,7 +209,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     ]
     self._compare_json_list(sorted(expected), sorted(results))
 
-  def test_reduce(self):
+  def test_reduce1(self):
     reducer_values = [
       '2016-09-01|1',
       '2016-09-01|-1',
@@ -223,7 +223,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
       '2016-09-10|1',
     ]
     metrics.set_pipeline_in_progress()
-    results = list(metrics_pipeline.reduce('PITT|Participant', reducer_values, NOW))
+    results = list(metrics_pipeline.reduce1('PITT|Participant', reducer_values, NOW))
     expected = [
       'PITT|Participant|2016-09-01|2\n',
       'PITT|Participant|2016-09-02|3\n',
@@ -255,7 +255,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
       all_metrics = metrics_list[i * 2]
       pitt_metrics = metrics_list[(i * 2) + 1]
       self.assertEquals(datetime.date(2016, 9, 1 + i), all_metrics.date)
-      self.assertEquals('*', all_metrics.hpoId)
+      self.assertEquals('', all_metrics.hpoId)
       self.assertEquals(datetime.date(2016, 9, 1 + i), pitt_metrics.date)
       self.assertEquals('PITT', pitt_metrics.hpoId)    
       self.assertEquals(all_metrics.metrics, pitt_metrics.metrics)
@@ -295,7 +295,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
       metrics_entry = metrics_list[i]
       facets = bucket['facets']
       self.assertEquals(metrics_entry.date.isoformat(), facets['date'])
-      if metrics_entry.hpoId == '*':
+      if metrics_entry.hpoId == '':
         self.assertFalse(facets.get('hpoId'))
       else:          
         self.assertEquals(metrics_entry.hpoId, facets['hpoId'])
@@ -309,7 +309,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
       metrics_entry = metrics_list[i + 2]
       facets = bucket['facets']
       self.assertEquals(metrics_entry.date.isoformat(), facets['date'])
-      if metrics_entry.hpoId == '*':
+      if metrics_entry.hpoId == '':
         self.assertFalse(facets.get('hpoId'))
       else:          
         self.assertEquals(metrics_entry.hpoId, facets['hpoId'])

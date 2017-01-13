@@ -39,6 +39,16 @@ def biospecimen_summary(summary):
 def get_config():
   return ALL_CONFIG
 
+def get_fields():
+  fields = []
+  for type_, conf in get_config().iteritems():
+    for field_list in conf['fields'].values():
+      for field in field_list:
+        field_dict = {'name': type_ + '.' + field.name,
+                      'values': [str(r) for r in field.func_range]}
+        fields.append(field_dict)
+  return sorted(fields, key=lambda field: field['name'])    
+
 ALL_CONFIG = {
     'Participant': {
         'initial_state': dict(list({

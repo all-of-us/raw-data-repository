@@ -3,7 +3,7 @@
 import datetime
 import json
 
-from offline.metrics_config import get_config
+from offline.metrics_config import get_fields
 
 from google.appengine.ext import ndb
 from protorpc import messages
@@ -24,7 +24,7 @@ SERVING_METRICS_DATA_VERSION = 1
 
 class MetricsBucket(ndb.Model):
   date = ndb.DateProperty() # Used on metrics where we are tracking history.
-  hpoId = ndb.StringProperty() # Set to '*' for cross-HPO metrics
+  hpoId = ndb.StringProperty() # Set to '' for cross-HPO metrics
   metrics = ndb.JsonProperty()
 
 class MetricsVersion(ndb.Model):
@@ -45,16 +45,14 @@ class MetricsRequest(messages.Message):
 class MetricService(object):
 
   def get_metrics_fields(self):
-    fields = []
-    for type_, conf in get_config().iteritems():
-      for field_list in conf['fields'].values():
-        for field in field_list:
-          field_dict = {'name': type_ + '.' + field.name,
-                        'values': [str(r) for r in field.func_range]}
-          fields.append(field_dict)
-    return sorted(fields, key=lambda field: field['name'])    
+    """Returns a list of fields that can be returned in buckets in the result of get_metrics()."""
+    return get_fields()
 
   def get_metrics(self, request, serving_version):
+    """Returns a list of JSON buckets that look like:
+        {"facets": {"date": <date> [, "hpoId": <hpo ID> ] }, 
+         "entries": [{ "Participant": <# of participants>, .... }] }
+    """
     query = MetricsBucket.query(ancestor=serving_version).order(MetricsBucket.date)
     if request.start_date:
       start_date_val = datetime.datetime.strptime(request.start_date, DATE_FORMAT)
@@ -64,7 +62,7 @@ class MetricService(object):
       query = query.filter(MetricsBucket.date <= end_date_val)     
     for db_bucket in query.fetch():
       facets_dict = {"date": db_bucket.date.isoformat()}
-      if db_bucket.hpoId != '*':
+      if db_bucket.hpoId != '':
         facets_dict["hpoId"] = db_bucket.hpoId      
       yield '{"facets": ' + json.dumps(facets_dict) + ', "entries": ' + db_bucket.metrics + '}'
 

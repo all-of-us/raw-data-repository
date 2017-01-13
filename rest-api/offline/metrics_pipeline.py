@@ -102,6 +102,8 @@ def get_config():
 PIPELINE_METRICS_DATA_VERSION = 1
 
 class BlobKeys(base_handler.PipelineBase):
+  """A generator for the mapper params for the second MapReduce pipeline, containing the blob 
+     keys produced by the first pipeline."""
   def run(self, bucket_name, keys, now):
     start_index = len(bucket_name) + 2
     return {'input_reader': {GCSInputReader.BUCKET_NAME_PARAM: bucket_name,
@@ -146,12 +148,12 @@ class SummaryPipeline(pipeline.Pipeline):
     # The second reads those lines and emits metrics buckets in Datastore
     blob_key = (yield mapreduce_pipeline.MapreducePipeline(
         'Extract Metrics',
-        mapper_spec='offline.metrics_pipeline.map',
+        mapper_spec='offline.metrics_pipeline.map1',
         input_reader_spec='mapreduce.input_readers.DatastoreKeyInputReader',
         output_writer_spec='mapreduce.output_writers.GoogleCloudStorageOutputWriter',
         mapper_params=mapper_params,
-        combiner_spec='offline.metrics_pipeline.combine',
-        reducer_spec='offline.metrics_pipeline.reduce',
+        combiner_spec='offline.metrics_pipeline.combine1',
+        reducer_spec='offline.metrics_pipeline.reduce1',
         reducer_params={
             'now': now,
             'output_writer': {
@@ -160,7 +162,8 @@ class SummaryPipeline(pipeline.Pipeline):
             }
         },
         shards=num_shards))
-    # We need to find a way to delete blob written above...
+    # TODO(danrodney): 
+    # We need to find a way to delete blob written above (DA-167)    
     yield mapreduce_pipeline.MapreducePipeline(
         'Write Metrics',
         mapper_spec='offline.metrics_pipeline.map2',
@@ -169,7 +172,7 @@ class SummaryPipeline(pipeline.Pipeline):
         reducer_spec='offline.metrics_pipeline.reduce2',
         shards=num_shards)
 
-def map(entity_key, now=None):
+def map1(entity_key, now=None):
   """Takes a key for the entity. Emits (hpoId|metric, date|delta) tuples.
 
   Args:
@@ -241,7 +244,7 @@ def sum_deltas(values, delta_map):
     else:
       delta_map[date] = int(delta)
 
-def combine(key, new_values, old_values):
+def combine1(key, new_values, old_values):
   """ Combines deltas generated for users into a single delta per date
   Args:
      key: hpoId|metric (unused)
@@ -256,7 +259,7 @@ def combine(key, new_values, old_values):
   for date, delta in delta_map.iteritems():
     yield make_pair_str(date, str(delta))
 
-def reduce(reducer_key, reducer_values, now=None):
+def reduce1(reducer_key, reducer_values, now=None):
   """Emits hpoId|metric|date|count for each date until today.
   Args:
     reducer_key: hpoId|metric
@@ -316,6 +319,8 @@ def reduce2(reducer_key, reducer_values):
   """
   metrics_dict = {}
   (hpo_id, date_str) = parse_tuple(reducer_key)
+  if hpo_id == '*':
+    hpo_id = ''
   date = datetime.strptime(date_str, DATE_FORMAT)  
   for reducer_value in reducer_values:
     (metric_key, count) = parse_tuple(reducer_value)    
