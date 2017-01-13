@@ -32,6 +32,7 @@ def compute_meta(summary):
     val = 'NOPE'
   return ExtractionResult(val)
 
+NOW = datetime.datetime(2016, 9, 12, 11, 0, 1)
 CONFIGS_FOR_TEST = {
     'Participant': {
         'initial_state': {
@@ -84,7 +85,7 @@ CONFIGS_FOR_TEST = {
     },
 }
 
-class MetricsPipelineTest(testutil.HandlerTestBase):
+class MetricsPipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
     testutil.HandlerTestBase.setUp(self)
     self.maxDiff = None
@@ -95,94 +96,58 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
   def tearDown(self):
     offline.metrics_config.get_config = self.saved_config_fn
 
-  def test_map_key_to_summary(self):
+  def test_map(self):
     key = ndb.Key(participant.Participant, '1')
     self._populate_sample_history(key)
-    results = list(metrics_pipeline.map_key_to_summary(key.to_old_key()))
+    results = list(metrics_pipeline.map(key.to_old_key(), NOW))
 
     expected = [
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant": 1,
-              "Participant.ageRange.UNSET": 1,
-              "Participant.biospecimenSamples.UNSET": 1,
-              "Participant.ethnicity.UNSET": 1,
-              "Participant.hpoId.PITT": 1,
-              "Participant.membershipTier.UNSET": 1,
-              "Participant.meta.NOPE": 1,
-              "Participant.physicalEvaluation.UNSET": 1,
-              "Participant.race.UNSET": 1,
-              "Participant.state.UNSET": 1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.ageRange.UNSET": -1}),
-
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.ageRange.36-45": 1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.ethnicity.UNSET": -1,
-              "Participant.membershipTier.UNSET": -1,
-              "Participant.meta.NOPE": -1,
-              "Participant.race.UNSET": -1,
-              "Participant.state.UNSET": -1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.ethnicity.NON_HISPANIC": 1,
-              "Participant.membershipTier.REGISTERED": 1,
-              "Participant.meta.R1": 1,
-              "Participant.race.WHITE": 1,
-              "Participant.state.TX": 1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.ethnicity.NON_HISPANIC": -1,
-              "Participant.race.WHITE": -1,
-              "Participant.membershipTier.REGISTERED": -1,
-              "Participant.meta.R1": -1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.ethnicity.SKIPPED": 1,
-              "Participant.race.UNMAPPED": 1,
-              "Participant.membershipTier.FULL_PARTICIPANT": 1,
-              "Participant.meta.NOPE": 1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.membershipTier.FULL_PARTICIPANT": -1,
-              "Participant.meta.NOPE": -1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.membershipTier.REGISTERED": 1,
-              "Participant.meta.R1": 1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.biospecimenSamples.UNSET": -1}),
-        ({'date': "2016-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.biospecimenSamples.SAMPLES_ARRIVED": 1}),
-        ({'date': "2016-09-05", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.physicalEvaluation.UNSET": -1}),
-        ({'date': "2016-09-05", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.physicalEvaluation.COMPLETE": 1}),
-        ({'date': "2016-09-10", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.membershipTier.REGISTERED": -1,
-              "Participant.meta.R1": -1}),
-        ({'date': "2016-09-10", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.membershipTier.VOLUNTEER": 1,
-              "Participant.meta.NOPE": 1}),
-        ({'date': "2016-10-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.state.TX": -1}),
-        ({'date': "2016-10-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.state.CA": 1}),
+        ('PITT|Participant', '2016-09-01|1'),
+        ('PITT|Participant.ageRange.UNSET', '2016-09-01|1'),
+        ('PITT|Participant.biospecimenSamples.UNSET', '2016-09-01|1'),
+        ('PITT|Participant.ethnicity.UNSET', '2016-09-01|1'),
+        ('PITT|Participant.hpoId.PITT', '2016-09-01|1'),
+        ('PITT|Participant.membershipTier.UNSET', '2016-09-01|1'),
+        ('PITT|Participant.meta.NOPE', '2016-09-01|1'),
+        ('PITT|Participant.physicalEvaluation.UNSET', '2016-09-01|1'),
+        ('PITT|Participant.race.UNSET', '2016-09-01|1'),
+        ('PITT|Participant.state.UNSET', '2016-09-01|1'),
+        ('PITT|Participant.ageRange.UNSET', '2016-09-01|-1'),
+        ('PITT|Participant.ageRange.36-45', '2016-09-01|1'),
+        ('PITT|Participant.ethnicity.UNSET', '2016-09-01|-1'),
+        ('PITT|Participant.membershipTier.UNSET', '2016-09-01|-1'),
+        ('PITT|Participant.meta.NOPE', '2016-09-01|-1'),
+        ('PITT|Participant.race.UNSET', '2016-09-01|-1'),
+        ('PITT|Participant.state.UNSET', '2016-09-01|-1'),
+        ('PITT|Participant.ethnicity.NON_HISPANIC', '2016-09-01|1'),
+        ('PITT|Participant.membershipTier.REGISTERED', '2016-09-01|1'),
+        ('PITT|Participant.meta.R1', '2016-09-01|1'),
+        ('PITT|Participant.race.WHITE', '2016-09-01|1'),
+        ('PITT|Participant.state.TX', '2016-09-01|1'),
+        ('PITT|Participant.ethnicity.NON_HISPANIC', '2016-09-01|-1'),
+        ('PITT|Participant.race.WHITE', '2016-09-01|-1'),
+        ('PITT|Participant.membershipTier.REGISTERED', '2016-09-01|-1'),
+        ('PITT|Participant.meta.R1', '2016-09-01|-1'),
+        ('PITT|Participant.ethnicity.SKIPPED', '2016-09-01|1'),
+        ('PITT|Participant.race.UNMAPPED', '2016-09-01|1'),
+        ('PITT|Participant.membershipTier.FULL_PARTICIPANT', '2016-09-01|1'),
+        ('PITT|Participant.meta.NOPE', '2016-09-01|1'),
+        ('PITT|Participant.membershipTier.FULL_PARTICIPANT', '2016-09-01|-1'),
+        ('PITT|Participant.meta.NOPE', '2016-09-01|-1'),
+        ('PITT|Participant.membershipTier.REGISTERED', '2016-09-01|1'),
+        ('PITT|Participant.meta.R1', '2016-09-01|1'),
+        ('PITT|Participant.biospecimenSamples.UNSET', '2016-09-01|-1'),
+        ('PITT|Participant.biospecimenSamples.SAMPLES_ARRIVED', '2016-09-01|1'),                
+        ('PITT|Participant.physicalEvaluation.UNSET', '2016-09-05|-1'),
+        ('PITT|Participant.physicalEvaluation.COMPLETE', '2016-09-05|1'),
+        ('PITT|Participant.membershipTier.REGISTERED', '2016-09-10|-1'),
+        ('PITT|Participant.meta.R1', '2016-09-10|-1'),
+        ('PITT|Participant.membershipTier.VOLUNTEER', '2016-09-10|1'),
+        ('PITT|Participant.meta.NOPE', '2016-09-10|1'),
+        ('PITT|Participant.state.TX', '2016-09-11|-1'),
+        ('PITT|Participant.state.CA', '2016-09-11|1')
         ]
-    expected = [(json.dumps(d), json.dumps(s, sort_keys=True)) for d, s in expected]
-    self._compare_json_list(expected, results)
+    self._compare_json_list(sorted(expected), sorted(results))
 
   def test_map_key_to_summary_participant_ages(self):
     key = ndb.Key(participant.Participant, '1')
@@ -210,123 +175,146 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.FULL_PARTICIPANT)]),
                                      datetime.datetime(2015, 9, 1, 11, 0, 2))
-    results = list(metrics_pipeline.map_key_to_summary(key.to_old_key(),
-                                                       datetime.datetime(2016, 10, 17)))
+    results = list(metrics_pipeline.map(key.to_old_key(),
+                                        datetime.datetime(2016, 10, 17)))
     expected = [
-        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
-         {
-              "Participant": 1,
-              "Participant.ageRange.UNSET": 1,
-              "Participant.biospecimenSamples.UNSET": 1,
-              "Participant.ethnicity.UNSET": 1,
-              "Participant.hpoId.PITT": 1,
-              "Participant.membershipTier.UNSET": 1,
-              "Participant.meta.NOPE": 1,
-              "Participant.physicalEvaluation.UNSET": 1,
-              "Participant.race.UNSET": 1,
-              "Participant.state.UNSET": 1
-        }),
-        ({'date': "2013-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.ageRange.UNSET": -1}),
-
-        ({'date': "2013-09-01", "facets": [{"type": "HPO_ID", "value": "PITT"}]},
-         {
-              "Participant.ageRange.36-45": 1}),
-        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
-         {
-             'Participant.membershipTier.UNSET': -1,
-             'Participant.meta.NOPE': -1,
-             "Participant.ethnicity.UNSET": -1,
-             "Participant.race.UNSET": -1,
-             "Participant.state.UNSET": -1
-         }),
-        ({'date': '2013-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
-         {
-             'Participant.membershipTier.REGISTERED': 1,
-             'Participant.meta.R1': 1,
-             "Participant.ethnicity.SKIPPED": 1,
-             "Participant.race.SKIPPED": 1,
-             "Participant.state.SKIPPED": 1
-         }),
-        ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
-         {
-             'Participant.membershipTier.REGISTERED': -1,
-             'Participant.meta.R1': -1,
-         }),
-        ({'date': '2015-09-01', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
-         {
-             'Participant.membershipTier.FULL_PARTICIPANT': 1,
-             'Participant.meta.NOPE': 1,
-         }),
-        ({'date': '2016-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
-         {
-             'Participant.ageRange.36-45': -1,
-         }),
-        ({'date': '2016-08-21', 'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]},
-         {
-             'Participant.ageRange.46-55': 1,
-         }),
+        ('PITT|Participant', '2013-09-01|1'),
+        ('PITT|Participant.ageRange.UNSET', '2013-09-01|1'),
+        ('PITT|Participant.biospecimenSamples.UNSET', '2013-09-01|1'),
+        ('PITT|Participant.ethnicity.UNSET', '2013-09-01|1'),
+        ('PITT|Participant.hpoId.PITT', '2013-09-01|1'),
+        ('PITT|Participant.membershipTier.UNSET', '2013-09-01|1'),
+        ('PITT|Participant.meta.NOPE', '2013-09-01|1'),
+        ('PITT|Participant.physicalEvaluation.UNSET', '2013-09-01|1'),
+        ('PITT|Participant.race.UNSET', '2013-09-01|1'),
+        ('PITT|Participant.state.UNSET', '2013-09-01|1'),
+        ('PITT|Participant.ageRange.UNSET', '2013-09-01|-1'),
+        ('PITT|Participant.ageRange.36-45', '2013-09-01|1'),
+        ('PITT|Participant.membershipTier.UNSET', '2013-09-01|-1'),
+        ('PITT|Participant.meta.NOPE', '2013-09-01|-1'),
+        ('PITT|Participant.ethnicity.UNSET', '2013-09-01|-1'),
+        ('PITT|Participant.race.UNSET', '2013-09-01|-1'),
+        ('PITT|Participant.state.UNSET', '2013-09-01|-1'),
+        ('PITT|Participant.membershipTier.REGISTERED', '2013-09-01|1'),
+        ('PITT|Participant.meta.R1', '2013-09-01|1'),
+        ('PITT|Participant.ethnicity.SKIPPED', '2013-09-01|1'),
+        ('PITT|Participant.race.SKIPPED', '2013-09-01|1'),
+        ('PITT|Participant.state.SKIPPED', '2013-09-01|1'),
+        ('PITT|Participant.membershipTier.REGISTERED', '2015-09-01|-1'),
+        ('PITT|Participant.meta.R1', '2015-09-01|-1'),
+        ('PITT|Participant.membershipTier.FULL_PARTICIPANT', '2015-09-01|1'),
+        ('PITT|Participant.meta.NOPE', '2015-09-01|1'),
+        ('PITT|Participant.ageRange.36-45', '2016-08-21|-1'),
+        ('PITT|Participant.ageRange.46-55', '2016-08-21|1')
     ]
-    expected = [(json.dumps(d), json.dumps(s, sort_keys=True)) for d, s in expected]
-    self._compare_json_list(expected, results)
+    self._compare_json_list(sorted(expected), sorted(results))
 
-  def test_reduce_facets(self):
-    reduce_input = [
-        json.dumps({
-            'Participant.membershipTier.REGISTERED': 1,
-        }),
-
-        # Flips to ENGAGED and back.
-        json.dumps({
-            'Participant.membershipTier.FULL_PARTICIPANT': 1,
-            'Participant.membershipTier.REGISTERED': -1,
-        }),
-        json.dumps({
-            'Participant.membershipTier.FULL_PARTICIPANT': -1,
-            'Participant.membershipTier.REGISTERED': 1,
-        }),
+  def test_reduce(self):
+    reducer_values = [
+      '2016-09-01|1',
+      '2016-09-01|-1',
+      '2016-09-01|1',
+      '2016-09-01|1',
+      '2016-09-02|1',
+      '2016-09-03|-1',
+      '2016-09-04|1',
+      '2016-09-07|1',
+      '2016-09-07|3',
+      '2016-09-10|1',
     ]
-    facets_key = json.dumps({'facets': [{'type': 'HPO_ID', 'value': 'PITT'}]})
-
     metrics.set_pipeline_in_progress()
-    results = list(metrics_pipeline.reduce_facets(facets_key, reduce_input))
-    self.assertEquals(len(results), 1)
-    expected_cnt = Counter(('Participant.membershipTier.REGISTERED',))
-    expected_json = json.dumps(expected_cnt)
-    self.assertEquals(
-        json.dumps([{'type': 'HPO_ID', 'value': 'PITT'}]),
-        results[0].entity.facets)
-    self.assertEquals(expected_json, results[0].entity.metrics)
+    results = list(metrics_pipeline.reduce('PITT|Participant', reducer_values, NOW))
+    expected = [
+      'PITT|Participant|2016-09-01|2\n',
+      'PITT|Participant|2016-09-02|3\n',
+      'PITT|Participant|2016-09-03|2\n',
+      'PITT|Participant|2016-09-04|3\n',
+      'PITT|Participant|2016-09-05|3\n',
+      'PITT|Participant|2016-09-06|3\n',
+      'PITT|Participant|2016-09-07|7\n',
+      'PITT|Participant|2016-09-08|7\n',
+      'PITT|Participant|2016-09-09|7\n',
+      'PITT|Participant|2016-09-10|8\n',
+      'PITT|Participant|2016-09-11|8\n',
+      'PITT|Participant|2016-09-12|8\n',
+    ]
+    self.assertEquals(sorted(expected), sorted(results))
 
   def test_end_to_end(self):
     key = ndb.Key(participant.Participant, '1')
-    self._populate_sample_history(key)
-    metrics_pipeline.MetricsPipeline().start()
+    self._populate_sample_history(key)    
+    metrics_pipeline.MetricsPipeline('pmi-drc-biobank-test.appspot.com', NOW).start()
     test_support.execute_until_empty(self.taskqueue)
 
     serving_version = metrics.get_serving_version()
-    metrics_list = list(metrics.MetricsBucket.query(ancestor=serving_version).fetch())
-    metrics_list = sorted(metrics_list, key=lambda m: m.date)
-    print "ML", metrics_list, len(metrics_list)
-    self.assertEquals(datetime.date(2016, 9, 1), metrics_list[0].date)
-    self.assertEquals(datetime.date(2016, 9, 5), metrics_list[1].date)
-    self.assertEquals(datetime.date(2016, 9, 10), metrics_list[2].date)
-    self.assertEquals('[{"type": "HPO_ID", "value": "PITT"}]', metrics_list[0].facets)
-    self.assertEquals('[{"type": "HPO_ID", "value": "PITT"}]', metrics_list[1].facets)
-    self.assertEquals('[{"type": "HPO_ID", "value": "PITT"}]', metrics_list[2].facets)
-    metrics0 = json.loads(metrics_list[0].metrics)
-    self.assertEquals(1, metrics0['Participant'])
-    self.assertEquals(1, metrics0['Participant.membershipTier.REGISTERED'])
-    self.assertEquals(1, metrics0['Participant.hpoId.PITT'])
+    metrics_list = list(metrics.MetricsBucket.query(ancestor=serving_version)
+                        .order(metrics.MetricsBucket.date).fetch())
+    # Twelve dates, * and PITT for each
+    self.assertEquals(24, len(metrics_list))
+    for i in range(0, 12):
+      all_metrics = metrics_list[i * 2]
+      pitt_metrics = metrics_list[(i * 2) + 1]
+      self.assertEquals(datetime.date(2016, 9, 1 + i), all_metrics.date)
+      self.assertEquals('*', all_metrics.hpoId)
+      self.assertEquals(datetime.date(2016, 9, 1 + i), pitt_metrics.date)
+      self.assertEquals('PITT', pitt_metrics.hpoId)    
+      self.assertEquals(all_metrics.metrics, pitt_metrics.metrics)
 
-    metrics1 = json.loads(metrics_list[1].metrics)
-    self.assertEquals(-1, metrics1['Participant.physicalEvaluation.UNSET'])
-    self.assertEquals(1, metrics1['Participant.physicalEvaluation.COMPLETE'])
+    for i in range(0, 4):
+      all_metrics = json.loads(metrics_list[i * 2].metrics)
+      self.assertEquals(1, all_metrics['Participant'])
+      self.assertEquals(1, all_metrics['Participant.membershipTier.REGISTERED'])
+      self.assertEquals(1, all_metrics['Participant.hpoId.PITT'])
+      self.assertEquals(1, all_metrics['Participant.physicalEvaluation.UNSET'])   
+      self.assertFalse(all_metrics.get('Participant.physicalEvaluation.COMPLETE'))
+      self.assertFalse(all_metrics.get('Participant.membershipTier.VOLUNTEER'))
 
-    metrics2 = json.loads(metrics_list[2].metrics)
-    self.assertEquals(1, metrics2['Participant.membershipTier.VOLUNTEER'])
-    self.assertEquals(-1, metrics2['Participant.membershipTier.REGISTERED'])
+    for i in range(4, 9):
+      all_metrics = json.loads(metrics_list[i * 2].metrics)
+      self.assertEquals(1, all_metrics['Participant'])
+      self.assertEquals(1, all_metrics['Participant.membershipTier.REGISTERED'])
+      self.assertEquals(1, all_metrics['Participant.hpoId.PITT'])
+      self.assertEquals(1, all_metrics['Participant.physicalEvaluation.COMPLETE']) 
+      self.assertFalse(all_metrics.get('Participant.physicalEvaluation.UNSET')) 
+      self.assertFalse(all_metrics.get('Participant.membershipTier.VOLUNTEER')) 
+
+    for i in range(9, 12):
+      all_metrics = json.loads(metrics_list[i * 2].metrics)
+      self.assertEquals(1, all_metrics['Participant'])
+      self.assertEquals(1, all_metrics['Participant.membershipTier.VOLUNTEER'])
+      self.assertEquals(1, all_metrics['Participant.hpoId.PITT'])
+      self.assertEquals(1, all_metrics['Participant.physicalEvaluation.COMPLETE']) 
+      self.assertFalse(all_metrics.get('Participant.physicalEvaluation.UNSET'))
+      self.assertFalse(all_metrics.get('Participant.membershipTier.REGISTERED'))
+   
+    serving_version = metrics.get_serving_version()    
+    all_buckets = list(metrics.SERVICE.get_metrics(metrics.MetricsRequest(), serving_version))
+    self.assertEquals(24, len(all_buckets))
+    for i in range(0, 24):
+      bucket = json.loads(all_buckets[i])
+      metrics_entry = metrics_list[i]
+      facets = bucket['facets']
+      self.assertEquals(metrics_entry.date.isoformat(), facets['date'])
+      if metrics_entry.hpoId == '*':
+        self.assertFalse(facets.get('hpoId'))
+      else:          
+        self.assertEquals(metrics_entry.hpoId, facets['hpoId'])
+      self.assertEquals(json.loads(metrics_entry.metrics), bucket['entries'])
+    
+    request = metrics.MetricsRequest(start_date='2016-09-02', end_date='2016-09-04')
+    sub_buckets = list(metrics.SERVICE.get_metrics(request, serving_version))
+    self.assertEquals(6, len(sub_buckets))
+    for i in range(0, 6):
+      bucket = json.loads(sub_buckets[i])
+      metrics_entry = metrics_list[i + 2]
+      facets = bucket['facets']
+      self.assertEquals(metrics_entry.date.isoformat(), facets['date'])
+      if metrics_entry.hpoId == '*':
+        self.assertFalse(facets.get('hpoId'))
+      else:          
+        self.assertEquals(metrics_entry.hpoId, facets['hpoId'])
+      self.assertEquals(json.loads(metrics_entry.metrics), bucket['entries'])
+    
 
   def _compare_json(self, a, b, msg=None):
     if isinstance(a, str):
@@ -415,13 +403,13 @@ class MetricsPipelineTest(testutil.HandlerTestBase):
                                                                   ("race", unmapped_race)]),
                                      datetime.datetime(2016, 9, 10, 11, 0, 1))
 
-    # Change state on 10/1/2016
+    # Change state on 9/11
     questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.VOLUNTEER),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['CA']),
                                                                   ("race", unmapped_race)]),
-                                     datetime.datetime(2016, 10, 1, 11, 0, 2))
+                                     datetime.datetime(2016, 9, 11, 11, 0, 2))
 
 
   def make_questionnaire_response(self, participant_id, questionnaire_id, answers):

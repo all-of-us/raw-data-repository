@@ -12,7 +12,6 @@ from google.appengine.ext import ndb
 from protorpc import message_types
 from protorpc import messages
 from protorpc import protojson
-from werkzeug.exceptions import NotFound
 
 class InvalidMetricException(BaseException):
   """Exception thrown when a invalid metric is specified."""
@@ -30,7 +29,7 @@ SERVING_METRICS_DATA_VERSION = 1
 
 class MetricsBucket(ndb.Model):
   date = ndb.DateProperty() # Used on metrics where we are tracking history.
-  hpoId = ndb.StringProperty()
+  hpoId = ndb.StringProperty() # Set to '*' for cross-HPO metrics
   metrics = ndb.JsonProperty()
 
 class MetricsVersion(ndb.Model):
@@ -44,34 +43,23 @@ class FieldDefinition(messages.Message):
   name = messages.StringField(1)
   values = messages.StringField(2, repeated=True)
 
-# TODO: consider getting rid of these, breaking up field definitions into 
-# separate request, and streaming JSON directly from results
-class MetricsResponseBucketEntry(messages.Message):
-  name = messages.StringField(1)
-  value = messages.FloatField(2)
-
-class MetricsResponseBucket(messages.Message):
-  date = message_types.DateTimeField(1)
-  hpoId = messages.StringField(2)
-  entries = messages.MessageField(MetricsResponseBucketEntry, 3, repeated=True)
-
-class MetricsResponse(messages.Message):
-  field_definition = messages.MessageField(FieldDefinition, 1, repeated=True)
-  bucket = messages.MessageField(MetricsResponseBucket, 2, repeated=True)
-
 class MetricsRequest(messages.Message):
-  start_date = message_types.DateTimeField(1)
-  end_date = message_types.DateTimeField(2)
+  start_date = messages.StringField(1)
+  end_date = messages.StringField(2)
 
 class MetricService(object):
 
-  def get_metrics(self, request):
-    serving_version = get_serving_version()
-    if not serving_version:
-      raise NotFound(
-          'No Metrics with data version {} calculated yet.'.format(SERVING_METRICS_DATA_VERSION))
-    results_buckets = ResultsBuckets()
-    response = MetricsResponse()
+  def get_metrics_fields(self):
+    fields = []
+    for type_, conf in get_config().iteritems():
+        for field_list in conf['fields'].values():
+          for field in field_list:
+            field_dict = { 'name': type_ + '.' + field.name,
+                           'values': [str(r) for r in field.func_range] }
+            fields.append(field_dict)
+    return sorted(fields, key=lambda field: field['name'])    
+
+  def get_metrics(self, request, serving_version):
     bucket_map = {}
     query = MetricsBucket.query(ancestor=serving_version).order(MetricsBucket.date)
     if request.start_date:
@@ -79,22 +67,12 @@ class MetricService(object):
       query = query.filter(MetricsBucket.date >= start_date_val)
     if request.end_date:
       end_date_val = datetime.datetime.strptime(request.end_date, DATE_FORMAT) 
-      query = query.filter(MetricsBucket.date <= end_date_val) 
-    response = MetricsResponse()
+      query = query.filter(MetricsBucket.date <= end_date_val)     
     for db_bucket in query.fetch():
-      resp_bucket = MetricsResponseBucket(hpoId=db_bucket.hpoId, date=db_bucket.date)
-      response.bucket.append(resp_bucket)
-      for k, val in json.loads(db_bucket.metrics):
-          entry = MetricsResponseBucketEntry()
-          entry.name = str(k)
-          entry.value = float(val)
-          resp_bucket.entries.append(entry)
-    response.field_definition = [
-        FieldDefinition(name=type_ + '.' + field.name, values=[str(r) for r in field.func_range])
-        for type_, conf in get_config().iteritems()
-        for field_list in conf['fields'].values()
-        for field in field_list]
-    return response
+      facets_dict = { "date": db_bucket.date.isoformat() }
+      if db_bucket.hpoId != '*':
+        facets_dict["hpoId"] = db_bucket.hpoId      
+      yield '{ "facets": ' + json.dumps(facets_dict) + ', "entries": ' + db_bucket.metrics + ' }'
 
 def set_pipeline_in_progress():
   # Ensure that no pipeline is currently running.

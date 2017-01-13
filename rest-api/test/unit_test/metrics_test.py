@@ -46,9 +46,5 @@ class MetricsTest(NdbTestBase):
     serving_version.put()
     self.assertEqual(None, metrics.get_serving_version())
 
-    # Make sure that a version mismatch results in a 404.
-    with self.assertRaises(NotFound):
-      metrics.MetricService().get_metrics(None)
-
 if __name__ == '__main__':
   unittest.main()
