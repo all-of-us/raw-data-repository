@@ -205,9 +205,6 @@ def map1(entity_key, now=None):
     if new_state == last_state:
       continue  # No changes so there's nothing to do.
     hpo_id = new_state.get('hpoId')
-    if not hpo_id:
-      continue
-
     hpo_change = (last_hpo_id is None or last_hpo_id != hpo_id)
     for k, v in new_state.iteritems():
       # Output a delta for this field if it is either the first value we have,
