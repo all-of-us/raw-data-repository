@@ -57,16 +57,13 @@ import copy
 import json
 import pipeline
 
-import api_util
 import config
 import csv
 import metrics
 import participant
 import offline.metrics_config
 
-from google.appengine.api import app_identity
 from datetime import datetime, timedelta
-from collections import Counter
 from google.appengine.ext import ndb
 from mapreduce import base_handler
 from mapreduce import mapreduce_pipeline
@@ -105,11 +102,11 @@ def get_config():
 PIPELINE_METRICS_DATA_VERSION = 1
 
 class BlobKeys(base_handler.PipelineBase):
-    def run(self, bucket_name, keys, now):
-      start_index = len(bucket_name) + 2
-      return { 'input_reader': { GCSInputReader.BUCKET_NAME_PARAM: bucket_name,
-                                 GCSInputReader.OBJECT_NAMES_PARAM: [k[start_index:] for k in keys] },
-               'now': now }
+  def run(self, bucket_name, keys, now):
+    start_index = len(bucket_name) + 2
+    return {'input_reader': {GCSInputReader.BUCKET_NAME_PARAM: bucket_name,
+                             GCSInputReader.OBJECT_NAMES_PARAM: [k[start_index:] for k in keys]},
+            'now': now}
 
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
@@ -194,8 +191,6 @@ def map(entity_key, now=None):
   last_state = {}
   last_hpo_id = None
   for hist_obj in history:
-    summary = {}
-    old_summary = {}
     date = hist_obj.date.date()
     if not last_state:
       new_state = copy.deepcopy(metrics_conf['initial_state'])

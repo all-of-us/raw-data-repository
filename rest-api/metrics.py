@@ -1,17 +1,12 @@
 """Implementation of the metrics API"""
 
-import collections
-import copy
 import datetime
 import json
-import logging
 
 from offline.metrics_config import get_config
 
 from google.appengine.ext import ndb
-from protorpc import message_types
 from protorpc import messages
-from protorpc import protojson
 
 class InvalidMetricException(BaseException):
   """Exception thrown when a invalid metric is specified."""
@@ -52,15 +47,14 @@ class MetricService(object):
   def get_metrics_fields(self):
     fields = []
     for type_, conf in get_config().iteritems():
-        for field_list in conf['fields'].values():
-          for field in field_list:
-            field_dict = { 'name': type_ + '.' + field.name,
-                           'values': [str(r) for r in field.func_range] }
-            fields.append(field_dict)
+      for field_list in conf['fields'].values():
+        for field in field_list:
+          field_dict = {'name': type_ + '.' + field.name,
+                        'values': [str(r) for r in field.func_range]}
+          fields.append(field_dict)
     return sorted(fields, key=lambda field: field['name'])    
 
   def get_metrics(self, request, serving_version):
-    bucket_map = {}
     query = MetricsBucket.query(ancestor=serving_version).order(MetricsBucket.date)
     if request.start_date:
       start_date_val = datetime.datetime.strptime(request.start_date, DATE_FORMAT)
@@ -69,10 +63,10 @@ class MetricService(object):
       end_date_val = datetime.datetime.strptime(request.end_date, DATE_FORMAT) 
       query = query.filter(MetricsBucket.date <= end_date_val)     
     for db_bucket in query.fetch():
-      facets_dict = { "date": db_bucket.date.isoformat() }
+      facets_dict = {"date": db_bucket.date.isoformat()}
       if db_bucket.hpoId != '*':
         facets_dict["hpoId"] = db_bucket.hpoId      
-      yield '{ "facets": ' + json.dumps(facets_dict) + ', "entries": ' + db_bucket.metrics + ' }'
+      yield '{"facets": ' + json.dumps(facets_dict) + ', "entries": ' + db_bucket.metrics + '}'
 
 def set_pipeline_in_progress():
   # Ensure that no pipeline is currently running.

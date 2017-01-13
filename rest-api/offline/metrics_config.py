@@ -26,7 +26,6 @@ from questionnaire_response import states, regions
 
 from offline.metrics_fields import FieldDef
 from extraction import ExtractionResult, BASE_VALUES, UNSET
-from protorpc import messages
 
 def biospecimen_summary(summary):
   """Summarizes the two biospecimen statuses into one."""
