@@ -56,14 +56,14 @@ class BiobankOrderDAO(data_access_object.DataAccessObject):
 
   def properties_to_json(self, dict_):
     api_util.format_json_date(dict_, 'created',
-                              format=BiobankOrderDAO.DATE_TIME_FORMAT)
+                              date_format=BiobankOrderDAO.DATE_TIME_FORMAT)
     for sample_dict in dict_['samples']:
       api_util.format_json_date(sample_dict, 'collected',
-                                format=BiobankOrderDAO.DATE_TIME_FORMAT)
+                                date_format=BiobankOrderDAO.DATE_TIME_FORMAT)
       api_util.format_json_date(sample_dict, 'processed',
-                                format=BiobankOrderDAO.DATE_TIME_FORMAT)
+                                date_format=BiobankOrderDAO.DATE_TIME_FORMAT)
       api_util.format_json_date(sample_dict, 'finalized',
-                                format=BiobankOrderDAO.DATE_TIME_FORMAT)
+                                date_format=BiobankOrderDAO.DATE_TIME_FORMAT)
     return dict_
 
   def find_by_identifier(self, identifier):
