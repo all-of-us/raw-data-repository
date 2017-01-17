@@ -75,7 +75,7 @@ class ConfigApi(base_api.BaseApi):
     else:
       return self.get_config_by_date(key)
 
-  def put(self, key=None):
+  def put(self):
     ret = super(ConfigApi, self).put(config.CONFIG_SINGLETON_KEY)
     config.invalidate()
     return ret
