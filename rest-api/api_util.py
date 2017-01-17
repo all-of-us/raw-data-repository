@@ -103,16 +103,16 @@ def get_validated_user_info():
   if user_email:
     user_info = lookup_user_info(user_email)
     if user_info:
-      enforce_ip_whitelisted(request.remote_addr, whitelisted_ips(user_info))
+      enforce_ip_whitelisted(request.remote_addr, get_whitelisted_ips(user_info))
       enforce_appid_whitelisted(request.headers.get('X-Appengine-Inbound-Appid'),
-                              whitelisted_appids(user_info))
+                                get_whitelisted_appids(user_info))
       logging.info('User {} ALLOWED'.format(user_email))
       return (user_email, user_info)
 
   logging.info('User {} NOT ALLOWED'.format(user_email))
   raise Unauthorized('Forbidden.')
 
-def whitelisted_ips(user_info):
+def get_whitelisted_ips(user_info):
   if not user_info.get('whitelisted_ip_ranges'):
     return None
   return [netaddr.IPNetwork(rng)
@@ -129,7 +129,7 @@ def enforce_ip_whitelisted(request_ip, whitelisted_ips):
     raise Unauthorized('Client IP not whitelisted: {}'.format(ip))
   logging.info('IP {} ALLOWED'.format(ip))
 
-def whitelisted_appids(user_info):
+def get_whitelisted_appids(user_info):
   return user_info.get('whitelisted_appids')
 
 def enforce_appid_whitelisted(request_app_id, whitelisted_appids):
@@ -161,17 +161,17 @@ def update_model(old_model, new_model):
 class DateHolder(messages.Message):
   date = message_types.DateTimeField(1)
 
-def parse_date(date_str, format=None, date_only=False):
+def parse_date(date_str, date_format=None, date_only=False):
   """Parses JSON dates.
 
   Args:
-    format: If specified, use this date format, otherwise uses the proto
+    date_format: If specified, use this date format, otherwise uses the proto
       converter's date handling logic.
    date_only: If specified, and true, will raise an exception if the parsed
      timestamp isn't midnight.
   """
-  if format:
-    return datetime.datetime.strptime(date_str, format)
+  if date_format:
+    return datetime.datetime.strptime(date_str, date_format)
   else:
     date_obj = parse(date_str)
     if date_obj.utcoffset():
@@ -185,19 +185,19 @@ def parse_date(date_str, format=None, date_only=False):
     return date_obj
 
 
-def parse_json_date(obj, field_name, format=None):
+def parse_json_date(obj, field_name, date_format=None):
   """Converts a field of a dictionary from a string to a datetime."""
   if field_name in obj:
-    obj[field_name] = parse_date(obj[field_name], format)
+    obj[field_name] = parse_date(obj[field_name], date_format)
 
-def format_json_date(obj, field_name, format=None):
+def format_json_date(obj, field_name, date_format=None):
   """Converts a field of a dictionary from a datetime to a string."""
   if field_name in obj:
     if obj[field_name] is None:
       del obj[field_name]
     else:
-      if format:
-        obj[field_name] = obj[field_name].strftime(format)
+      if date_format:
+        obj[field_name] = obj[field_name].strftime(date_format)
       else:
         obj[field_name] = obj[field_name].isoformat()
 
