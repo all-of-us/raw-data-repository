@@ -118,8 +118,8 @@ def modify_participant_history(history, participant_key, now):
   """Modifies the participant history before summaries are created.
   This is used as part of the metrics pipeline to ensure that we capture when
   participant's age changes.
-  """  
-  
+  """
+
   # Set initial date of birth, and insert BirthdayEvent entries for each birthday after
   # the participant's creation until today.
   import participant_summary
@@ -128,14 +128,15 @@ def modify_participant_history(history, participant_key, now):
     history[0].date_of_birth = summary.dateOfBirth
     history.append(BirthdayEvent(summary.dateOfBirth, history[0].date))
     difference_in_years = relativedelta(history[0].date, summary.dateOfBirth).years
-        
+
     year = relativedelta(years=1)
     date = summary.dateOfBirth + relativedelta(years=difference_in_years + 1)
     while date and date < now.date():
-      age_history_obj = BirthdayEvent(summary.dateOfBirth, datetime.combine(date, datetime.min.time()))
-      history.append(age_history_obj)    
+      age_history_obj = BirthdayEvent(
+          summary.dateOfBirth, datetime.combine(date, datetime.min.time()))
+      history.append(age_history_obj)
       date = date + year
-    
+
   import questionnaire_response
   history.extend(questionnaire_response.DAO.get_all_history(participant_key))
   import evaluation
