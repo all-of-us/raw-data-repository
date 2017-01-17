@@ -70,14 +70,14 @@ class BaseApi(Resource):
     will be returned if no results match the query.
     
     Args:
-      id_field: the name of the field containing the ID used when constructing resource URLs for results
+      id_field: name of the field containing the ID used when constructing resource URLs for results
       valid_filter_fields: the names of fields that can be filtered on when querying
       order_by: the OrderBy object indicating the order to return rows in
       a_id: the ancestor ID under which to perform this query, if appropriate
     """     
     query = self.make_query(valid_filter_fields, order_by, a_id)
     results = self.dao.query(query)
-    return self.make_bundle(results, query.max_results, id_field, a_id)
+    return self.make_bundle(results, id_field, a_id)
 
   def validate_object(self, obj, a_id=None):
     """Override this function to validate the passed object.
@@ -153,10 +153,10 @@ class BaseApi(Resource):
       elif key == '_token':
         pagination_token = value
       else:
-        property = getattr(self.dao.model_type, key, None)
-        if property:
+        prop = getattr(self.dao.model_type, key, None)
+        if prop:
           if valid_filter_fields and key in valid_filter_fields:
-            property_type = PROPERTY_TYPE_MAP.get(property.__class__.__name__)
+            property_type = PROPERTY_TYPE_MAP.get(prop.__class__.__name__)
             if property_type == PropertyType.DATE:
               if value.startswith("lt"):
                 operator = Operator.LESS_THAN
@@ -177,7 +177,7 @@ class BaseApi(Resource):
               date_val = api_util.parse_date(date_str)
               field_filters.append(FieldFilter(key, operator, date_val))   
             elif property_type == PropertyType.ENUM:
-              field_filters.append(FieldFilter(key, Operator.EQUALS, property._enum_type(value)))
+              field_filters.append(FieldFilter(key, Operator.EQUALS, prop._enum_type(value)))
             else:
               field_filters.append(FieldFilter(key, Operator.EQUALS, value))
           else:
@@ -186,7 +186,7 @@ class BaseApi(Resource):
       raise BadRequest("Can't combine inequality expression with sort on a different property")
     return Query(field_filters, order_by, max_results, pagination_token, a_id)        
 
-  def make_bundle(self, results, max_results, id_field, a_id):
+  def make_bundle(self, results, id_field, a_id):
     bundle_dict = {"resourceType": "Bundle", "type": "searchset"}
     import main
     if results.pagination_token:
