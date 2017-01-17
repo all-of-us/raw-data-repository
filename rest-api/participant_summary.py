@@ -107,7 +107,7 @@ def extract_bucketed_age(participant_hist_obj):
 
 def get_bucketed_age(date_of_birth, today):
   age = relativedelta(today, date_of_birth).years
-  for begin, end in zip(_AGE_LB, [age - 1 for age in _AGE_LB[1:]] + ['']):
+  for begin, end in zip(_AGE_LB, [age_lb - 1 for age_lb in _AGE_LB[1:]] + ['']):
     if (age >= begin) and (not end or age <= end):
       return str(begin) + '-' + str(end)
 
