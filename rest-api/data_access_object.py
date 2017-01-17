@@ -214,7 +214,6 @@ class DataAccessObject(object):
     return str(uuid.uuid4())
 
   def make_version_id(self, last_modified):
-    import api_util
     return 'W/"{}"'.format(api_util.unix_time_millis(last_modified))
 
   def is_string_property(self, prop):
