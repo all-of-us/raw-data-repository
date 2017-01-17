@@ -43,7 +43,7 @@ EXPECTED_HEADERS = [
 ]
 
 class BiobankSamplesPipeline(pipeline.Pipeline):
-  def run(self, *args, **unused_kwargs):
+  def run(self, *args, **kwargs):  # pylint: disable=unused-argument
     bucket_name = args[0]
     newest_filename = None
     newest_timestamp = 0

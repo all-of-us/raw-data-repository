@@ -111,7 +111,7 @@ class BlobKeys(base_handler.PipelineBase):
             'now': now}
 
 class MetricsPipeline(pipeline.Pipeline):
-  def run(self, *unused_args, **unused_kwargs):
+  def run(self, *args, **kwargs):  # pylint: disable=unused-argument
     bucket_name = args[0]
     now = args[1]
     mapper_params = default_params()
@@ -127,7 +127,7 @@ class MetricsPipeline(pipeline.Pipeline):
     yield FinalizeMetrics(*futures)
 
 class FinalizeMetrics(pipeline.Pipeline):
-  def run(self, *unused_args):
+  def run(self, *args):  # pylint: disable=unused-argument
     set_serving_version()
 
 class SummaryPipeline(pipeline.Pipeline):
