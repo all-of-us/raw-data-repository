@@ -111,7 +111,7 @@ class BlobKeys(base_handler.PipelineBase):
             'now': now}
 
 class MetricsPipeline(pipeline.Pipeline):
-  def run(self, *args, **kwargs):
+  def run(self, *unused_args, **unused_kwargs):
     bucket_name = args[0]
     now = args[1]
     mapper_params = default_params()
@@ -127,7 +127,7 @@ class MetricsPipeline(pipeline.Pipeline):
     yield FinalizeMetrics(*futures)
 
 class FinalizeMetrics(pipeline.Pipeline):
-  def run(self, *args):
+  def run(self, *unused_args):
     set_serving_version()
 
 class SummaryPipeline(pipeline.Pipeline):
@@ -342,8 +342,8 @@ def set_serving_version():
   current_version.put()
 
 def validate_metrics(configs):
-  for config in configs.values():
-    fields = [definition.name for def_list in config['fields'].values() for definition in def_list]
+  for cfg in configs.values():
+    fields = [definition.name for def_list in cfg['fields'].values() for definition in def_list]
     assert len(fields) == len(set(fields))
 
 def make_metric_key(kind, key, value):
