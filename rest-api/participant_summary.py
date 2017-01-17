@@ -107,10 +107,10 @@ def extract_bucketed_age(participant_hist_obj):
 
 def get_bucketed_age(date_of_birth, today):
   age = relativedelta(today, date_of_birth).years
-  for begin, end in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + ['']):
+  for begin, end in zip(_AGE_LB, [age_lb - 1 for age_lb in _AGE_LB[1:]] + ['']):
     if (age >= begin) and (not end or age <= end):
       return str(begin) + '-' + str(end)
-      
+
 class ParticipantSummary(ndb.Model):
   """The participant summary resource definition"""
   participantId = ndb.StringProperty()
@@ -127,27 +127,40 @@ class ParticipantSummary(ndb.Model):
   zipCode = ndb.StringProperty()
   dateOfBirth = ndb.DateProperty()
   sortKey = ndb.ComputedProperty(
-      lambda self: "|".join([self.lastNameSearch or '', self.firstNameSearch or '', 
-                             self.middleNameSearch or '', self.dateOfBirth.isoformat() if self.dateOfBirth else '']))
+      lambda self: "|".join([
+          self.lastNameSearch or '',
+          self.firstNameSearch or '',
+          self.middleNameSearch or '',
+          self.dateOfBirth.isoformat() if self.dateOfBirth else '']))
   ageRange = ndb.ComputedProperty(
       lambda self: get_bucketed_age(self.dateOfBirth, datetime.datetime.now()))
   genderIdentity = msgprop.EnumProperty(GenderIdentity, default=GenderIdentity.UNSET)
   membershipTier = msgprop.EnumProperty(MembershipTier, default=MembershipTier.UNSET)
   race = msgprop.EnumProperty(Race, default=Race.UNSET)
   ethnicity = msgprop.EnumProperty(Ethnicity, default=Ethnicity.UNSET)
-  physicalEvaluationStatus = msgprop.EnumProperty(PhysicalEvaluationStatus, default=PhysicalEvaluationStatus.UNSET, indexed=False)
+  physicalEvaluationStatus = msgprop.EnumProperty(
+      PhysicalEvaluationStatus, default=PhysicalEvaluationStatus.UNSET, indexed=False)
   signUpTime = ndb.DateTimeProperty(indexed=False)
   consentTime = ndb.DateTimeProperty(indexed=False)
   hpoId = msgprop.EnumProperty(HPOId, default=HPOId.UNSET)
-  consentForStudyEnrollment = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
-  consentForElectronicHealthRecords = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
-  questionnaireOnOverallHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
-  questionnaireOnPersonalHabits = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
-  questionnaireOnSociodemographics = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
-  questionnaireOnHealthcareAccess = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
-  questionnaireOnMedicalHistory = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
-  questionnaireOnMedications = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
-  questionnaireOnFamilyHealth = msgprop.EnumProperty(QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  consentForStudyEnrollment = msgprop.EnumProperty(
+      QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
+  consentForElectronicHealthRecords = msgprop.EnumProperty(
+      QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnOverallHealth = msgprop.EnumProperty(
+      QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnPersonalHabits = msgprop.EnumProperty(
+      QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnSociodemographics = msgprop.EnumProperty(
+      QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnHealthcareAccess = msgprop.EnumProperty(
+      QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnMedicalHistory = msgprop.EnumProperty(
+      QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnMedications = msgprop.EnumProperty(
+      QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnFamilyHealth = msgprop.EnumProperty(
+      QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
 
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def __init__(self):

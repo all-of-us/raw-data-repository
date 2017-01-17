@@ -111,7 +111,7 @@ class BlobKeys(base_handler.PipelineBase):
             'now': now}
 
 class MetricsPipeline(pipeline.Pipeline):
-  def run(self, *args, **kwargs):
+  def run(self, *args, **kwargs):  # pylint: disable=unused-argument
     bucket_name = args[0]
     now = args[1]
     mapper_params = default_params()
@@ -127,7 +127,7 @@ class MetricsPipeline(pipeline.Pipeline):
     yield FinalizeMetrics(*futures)
 
 class FinalizeMetrics(pipeline.Pipeline):
-  def run(self, *args):
+  def run(self, *args):  # pylint: disable=unused-argument
     set_serving_version()
 
 class SummaryPipeline(pipeline.Pipeline):
@@ -225,9 +225,9 @@ def map1(entity_key, now=None):
 
 def make_pair_str(v1, v2):
   return v1 + '|' + v2
-  
-def parse_tuple(str):
-  return tuple(str.split('|'))
+
+def parse_tuple(row):
+  return tuple(row.split('|'))
 
 def map_result_key(hpo_id, kind, k, v):
   return make_pair_str(hpo_id, make_metric_key(kind, k, v))
@@ -241,13 +241,13 @@ def sum_deltas(values, delta_map):
     else:
       delta_map[date] = int(delta)
 
-def combine1(key, new_values, old_values):
+def combine1(key, new_values, old_values):  # pylint: disable=unused-argument
   """ Combines deltas generated for users into a single delta per date
   Args:
      key: hpoId|metric (unused)
      new_values: list of date|delta strings (one per participant + metric + date + hpoId)
-     old_values: list of date|delta strings (one per metric + date + hpoId)  
-  """ 
+     old_values: list of date|delta strings (one per metric + date + hpoId)
+  """
   delta_map = {}
   for old_value in old_values:
     (date, delta) = parse_tuple(old_value)
@@ -292,17 +292,17 @@ def reduce1(reducer_key, reducer_values, now=None):
 def reduce_result_value(reducer_key, date_str, count):
   return reducer_key + '|' + date_str + '|' + str(count) + '\n'
 
-def map2(buffer):
+def map2(row_buffer):
   """Emits (hpoId|date, metric|count) pairs for reducing ('*' for cross-HPO counts)
   Args:
-     buffer: buffer containing hpoId|metric|date|count lines
+     row_buffer: buffer containing hpoId|metric|date|count lines
   """
-  reader = csv.reader(buffer, delimiter='|')
+  reader = csv.reader(row_buffer, delimiter='|')
   for line in reader:
     hpo_id = line[0]
     metric_key = line[1]
     date_str = line[2]
-    count = line[3]    
+    count = line[3]
     # Yield HPO ID + date -> metric + count
     yield (make_pair_str(hpo_id, date_str), make_pair_str(metric_key, count))
     # Yield '*' + date -> metric + count (for all HPO counts)
@@ -342,8 +342,8 @@ def set_serving_version():
   current_version.put()
 
 def validate_metrics(configs):
-  for config in configs.values():
-    fields = [definition.name for def_list in config['fields'].values() for definition in def_list]
+  for cfg in configs.values():
+    fields = [definition.name for def_list in cfg['fields'].values() for definition in def_list]
     assert len(fields) == len(set(fields))
 
 def make_metric_key(kind, key, value):

@@ -43,8 +43,7 @@ EXPECTED_HEADERS = [
 ]
 
 class BiobankSamplesPipeline(pipeline.Pipeline):
-
-  def run(self, *args, **kwargs):
+  def run(self, *args, **kwargs):  # pylint: disable=unused-argument
     bucket_name = args[0]
     newest_filename = None
     newest_timestamp = 0
@@ -81,8 +80,8 @@ class BiobankSamplesPipeline(pipeline.Pipeline):
         reducer_spec='offline.biobank_samples_pipeline.reduce_samples',
         shards=num_shards)
 
-def map_samples(buffer):
-  reader = csv.DictReader(buffer, delimiter='\t')
+def map_samples(csv_buffer):
+  reader = csv.DictReader(csv_buffer, delimiter='\t')
   headers = set(reader.fieldnames)
   expected_headers_set = set(EXPECTED_HEADERS)
   missing_headers = expected_headers_set - headers
@@ -93,13 +92,13 @@ def map_samples(buffer):
     extra_headers = headers - expected_headers_set
     if len(extra_headers) > 0:
       print 'Warning -- unexpected extra headers: {}'.format(extra_headers)
-  for dict in reader:
-    participant_id = dict.get("External Participant Id")
+  for row_dict in reader:
+    participant_id = row_dict.get("External Participant Id")
     if participant_id:
       values = []
       for header in EXPECTED_HEADERS:
         if header != "External Participant Id":
-          values.append(dict.get(header))
+          values.append(row_dict.get(header))
       yield (participant_id, values)
 
 def reduce_samples(biobank_id, samples):
