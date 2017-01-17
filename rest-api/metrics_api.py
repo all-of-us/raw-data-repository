@@ -34,7 +34,7 @@ class MetricsAPI(Resource):
     serving_version = metrics.get_serving_version()
     if not serving_version:
       raise NotFound(
-         'No Metrics with data version {} calculated yet.'.format(metrics.SERVING_METRICS_DATA_VERSION))
+         'No Metrics with data version %r calculated yet.' % metrics.SERVING_METRICS_DATA_VERSION)
     return Response(to_json_list(metrics.SERVICE.get_metrics(metrics_request, serving_version)), 
                     content_type='application/json') 
     
