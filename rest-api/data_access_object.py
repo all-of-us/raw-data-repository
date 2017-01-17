@@ -87,15 +87,17 @@ class DataAccessObject(object):
     m.populate(**dict_)
     return m
 
+  # pylint: disable=unused-argument
   def properties_from_json(self, dict_, ancestor_id, id_):
-    """Convert json fields to so they  can be assigned to ndb properties.
+    """Converts json fields so they can be assigned to ndb properties.
 
-    Overriding this method id required unless the ndb model is all
+    Overriding this method is required unless the ndb model is all
     StringProperties.
 
     After this function is called the returned dictionary is passed to the
     constructor of the ndb model.  Each field must be converted so that it can
-    be assigned to the ndb properties.
+    be assigned to the ndb properties.  This base class implementation is a
+    pass-through.
 
     Args:
       dict_: The json dictionary.  For convienience, this object is a deep copy
@@ -109,12 +111,12 @@ class DataAccessObject(object):
     return dict_
 
   def properties_to_json(self, dict_):
-    """Convert ndb properties to their string representations for json.
+    """Converts ndb properties to their string representations for json.
 
     As a first step in converting ndb models to json, to_dict() is called.  This
     is sufficient if all the ndb properties are strings.  If not, subclasses
     should override this method to convert each field to its string
-    representation.
+    representation. This base class implementation is a pass-through.
 
     Args:
       dict_: A deep copy of the dict as returned from ndb.Model.to_dict().
