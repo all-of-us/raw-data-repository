@@ -7,10 +7,6 @@ Keys for an individual configuration entry:
   load_history_func: A function that will take a ndb.Key for  the entity, and
     load all the related history objects for the given entity id.  It may also
     synthesize records or load related objects.
-  facets: A list of functions for extracting the different facets to aggregate
-    on. For each hisory object, this function will be passed a dictionary with
-    all the current extracted fields, with their current values. Its return
-    value must be convertable to a string.
   initial_state: An object setting what the default state should be for an
     entity that is missing extracted values from subobjects.  For example, on
     Participant, any metrics that are not directly on the participant object
@@ -28,7 +24,6 @@ from collections import namedtuple
 from google.appengine.ext import ndb
 
 FieldDef = namedtuple('FieldDef', ['name', 'func', 'func_range'])
-FacetDef = namedtuple('FacetDef', ['type', 'func'])
 
 @ndb.non_transactional
 def run_extractors(hist_obj, config, new_state=None):

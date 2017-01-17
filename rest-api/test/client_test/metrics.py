@@ -44,6 +44,9 @@ class MetricsTest(unittest.TestCase):
       else:
         raise ex
 
+  def testMetricsFields(self):
+    response = self.client.request_json('MetricsFields')
+    self.assertEquals('Participant.ageRange', response[0]['name'])
 
 if __name__ == '__main__':
   unittest.main()

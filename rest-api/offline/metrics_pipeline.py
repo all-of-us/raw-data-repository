@@ -57,19 +57,21 @@ import copy
 import json
 import pipeline
 
-import api_util
 import config
+import csv
 import metrics
 import participant
 import offline.metrics_config
 
-from datetime import datetime
-from collections import Counter
+from datetime import datetime, timedelta
 from google.appengine.ext import ndb
+from mapreduce import base_handler
 from mapreduce import mapreduce_pipeline
 from mapreduce import operation as op
+from mapreduce import context
 
 from metrics import MetricsBucket
+from mapreduce.lib.input_reader._gcs import GCSInputReader
 from offline.metrics_fields import run_extractors
 
 
@@ -99,8 +101,19 @@ def get_config():
 # data.
 PIPELINE_METRICS_DATA_VERSION = 1
 
+class BlobKeys(base_handler.PipelineBase):
+  """A generator for the mapper params for the second MapReduce pipeline, containing the blob 
+     keys produced by the first pipeline."""
+  def run(self, bucket_name, keys, now):
+    start_index = len(bucket_name) + 2
+    return {'input_reader': {GCSInputReader.BUCKET_NAME_PARAM: bucket_name,
+                             GCSInputReader.OBJECT_NAMES_PARAM: [k[start_index:] for k in keys]},
+            'now': now}
+
 class MetricsPipeline(pipeline.Pipeline):
   def run(self, *args, **kwargs):
+    bucket_name = args[0]
+    now = args[1]
     mapper_params = default_params()
     configs = get_config()
     validate_metrics(configs)
@@ -108,7 +121,7 @@ class MetricsPipeline(pipeline.Pipeline):
     futures = []
 
     for config_name in configs:
-      future = yield SummaryPipeline(config_name, mapper_params)
+      future = yield SummaryPipeline(bucket_name, config_name, now, mapper_params)
       futures.append(future)
 
     yield FinalizeMetrics(*futures)
@@ -118,29 +131,49 @@ class FinalizeMetrics(pipeline.Pipeline):
     set_serving_version()
 
 class SummaryPipeline(pipeline.Pipeline):
-  def run(self, config_name, parent_params=None):
+  def run(self, bucket_name, config_name, now, parent_params=None):
     print '======= Starting {} Pipeline'.format(config_name)
-
+    
     mapper_params = {
         'entity_kind': config_name,
+        'now': now
     }
 
     if parent_params:
       mapper_params.update(parent_params)
 
     num_shards = mapper_params[_NUM_SHARDS]
-    # The result of yield is a future that will contain the files that were
-    # produced by MapreducePipeline.
-    yield mapreduce_pipeline.MapreducePipeline(
+    # Chain together two map reduces
+    # The first emits lines of the form hpoId|metric|date|count
+    # The second reads those lines and emits metrics buckets in Datastore
+    blob_key = (yield mapreduce_pipeline.MapreducePipeline(
         'Extract Metrics',
-        mapper_spec='offline.metrics_pipeline.map_key_to_summary',
+        mapper_spec='offline.metrics_pipeline.map1',
         input_reader_spec='mapreduce.input_readers.DatastoreKeyInputReader',
+        output_writer_spec='mapreduce.output_writers.GoogleCloudStorageOutputWriter',
         mapper_params=mapper_params,
-        reducer_spec='offline.metrics_pipeline.reduce_facets',
+        combiner_spec='offline.metrics_pipeline.combine1',
+        reducer_spec='offline.metrics_pipeline.reduce1',
+        reducer_params={
+            'now': now,
+            'output_writer': {
+                'bucket_name': bucket_name,
+                'content_type': 'text/plain',
+            }
+        },
+        shards=num_shards))
+    # TODO(danrodney): 
+    # We need to find a way to delete blob written above (DA-167)    
+    yield mapreduce_pipeline.MapreducePipeline(
+        'Write Metrics',
+        mapper_spec='offline.metrics_pipeline.map2',
+        input_reader_spec='mapreduce.input_readers.GoogleCloudStorageInputReader',
+        mapper_params=(yield BlobKeys(bucket_name, blob_key, now)),                     
+        reducer_spec='offline.metrics_pipeline.reduce2',
         shards=num_shards)
 
-def map_key_to_summary(entity_key, now=None):
-  """Takes a key for the entity. Emits deltas for all state changes.
+def map1(entity_key, now=None):
+  """Takes a key for the entity. Emits (hpoId|metric, date|delta) tuples.
 
   Args:
     entity_key: The key of the entity to process.  The key read by the
@@ -150,7 +183,7 @@ def map_key_to_summary(entity_key, now=None):
   """
 
   entity_key = ndb.Key.from_old_key(entity_key)
-  now = now or datetime.now()
+  now = now or context.get().mapreduce_spec.mapper.params.get('now')
   kind = entity_key.kind()
   metrics_conf = get_config()[kind]
   # Note that history can contain multiple types of history objects.
@@ -159,10 +192,8 @@ def map_key_to_summary(entity_key, now=None):
   history = sorted(history, key=lambda o: o.date)
 
   last_state = {}
-  last_facets_key = None
+  last_hpo_id = None
   for hist_obj in history:
-    summary = {}
-    old_summary = {}
     date = hist_obj.date.date()
     if not last_state:
       new_state = copy.deepcopy(metrics_conf['initial_state'])
@@ -173,52 +204,134 @@ def map_key_to_summary(entity_key, now=None):
     new_state = run_extractors(hist_obj, metrics_conf, new_state)
     if new_state == last_state:
       continue  # No changes so there's nothing to do.
-
-    facets_key = _get_facets_key(date, metrics_conf, new_state)
-    facets_change = (last_facets_key is None or
-                     last_facets_key['facets'] != facets_key['facets'])
-
+    hpo_id = new_state.get('hpoId')
+    hpo_change = (last_hpo_id is None or last_hpo_id != hpo_id)
     for k, v in new_state.iteritems():
       # Output a delta for this field if it is either the first value we have,
       # or if it has changed. In the case that one of the facets has changed,
       # we need deltas for all fields.
       old_val = last_state and last_state.get(k, None)
-      if facets_change or v != old_val:
-        summary[_make_metric_key(kind, k, v)] = 1
+      if hpo_change or v != old_val:
+        yield (map_result_key(hpo_id, kind, k, v), 
+               make_pair_str(date.isoformat(), '1'))
         if last_state:
           # If the value changed, output -1 delta for the old value.
-          old_summary[_make_metric_key(kind, k, old_val)] = -1
+          yield (map_result_key(last_hpo_id, kind, k, old_val), 
+                 make_pair_str(date.isoformat(), '-1'))
 
-    if old_summary:
-      # Can't just use last_facets_key, as it has the old date.
-      yield (json.dumps(_get_facets_key(date, metrics_conf, last_state)),
-             json.dumps(old_summary, sort_keys=True))
-
-    yield (json.dumps(facets_key), json.dumps(summary, sort_keys=True))
     last_state = new_state
-    last_facets_key = facets_key
+    last_hpo_id = hpo_id
 
-def reduce_facets(facets_key_json, deltas):
-  facets_key = json.loads(facets_key_json)
-  cnt = Counter()
-  for delta in deltas:
-    for k, val in json.loads(delta).iteritems():
-      cnt[k] += val
 
-  # Remove zeros
-  cnt = Counter({k:v for k, v in cnt.iteritems() if v is not 0})
+def make_pair_str(v1, v2):
+  return v1 + '|' + v2
+  
+def parse_tuple(str):
+  return tuple(str.split('|'))
 
-  date = None
-  if 'date' in facets_key:
-    date = api_util.parse_date(facets_key['date'], DATE_FORMAT, True)
+def map_result_key(hpo_id, kind, k, v):
+  return make_pair_str(hpo_id, make_metric_key(kind, k, v))
 
-  parent = metrics.get_in_progress_version().key
+def sum_deltas(values, delta_map):
+  for value in values:
+    (date, delta) = parse_tuple(value)
+    old_delta = delta_map.get(date)
+    if old_delta:
+      delta_map[date] = old_delta + int(delta)
+    else:
+      delta_map[date] = int(delta)
+
+def combine1(key, new_values, old_values):
+  """ Combines deltas generated for users into a single delta per date
+  Args:
+     key: hpoId|metric (unused)
+     new_values: list of date|delta strings (one per participant + metric + date + hpoId)
+     old_values: list of date|delta strings (one per metric + date + hpoId)  
+  """ 
+  delta_map = {}
+  for old_value in old_values:
+    (date, delta) = parse_tuple(old_value)
+    delta_map[date] = int(delta)
+  sum_deltas(new_values, delta_map)
+  for date, delta in delta_map.iteritems():
+    yield make_pair_str(date, str(delta))
+
+def reduce1(reducer_key, reducer_values, now=None):
+  """Emits hpoId|metric|date|count for each date until today.
+  Args:
+    reducer_key: hpoId|metric
+    reducer_values: list of date|delta strings
+    now: use to set the clock for testing
+  """ 
+  delta_map = {}
+  sum_deltas(reducer_values, delta_map)
+  # Walk over the deltas by date  
+  last_date = None
+  count = 0
+  one_day = timedelta(days=1)
+  for date_str, delta in sorted(delta_map.items()):    
+    date = datetime.strptime(date_str, DATE_FORMAT).date()      
+    # Yield results for all the dates in between
+    if last_date:
+      middle_date = last_date + one_day
+      while middle_date < date:
+        yield reduce_result_value(reducer_key, middle_date.isoformat(), count)
+        middle_date = middle_date + one_day    
+    count += delta
+    if count > 0:
+      yield reduce_result_value(reducer_key, date_str, count)
+    last_date = date
+  now = now or context.get().mapreduce_spec.mapper.params.get('now')    
+  # Yield results up until today.
+  if count > 0 and last_date:
+    last_date = last_date + one_day
+    while last_date <= now.date():      
+      yield reduce_result_value(reducer_key, last_date.isoformat(), count)
+      last_date = last_date + one_day
+
+def reduce_result_value(reducer_key, date_str, count):
+  return reducer_key + '|' + date_str + '|' + str(count) + '\n'
+
+def map2(buffer):
+  """Emits (hpoId|date, metric|count) pairs for reducing ('*' for cross-HPO counts)
+  Args:
+     buffer: buffer containing hpoId|metric|date|count lines
+  """
+  reader = csv.reader(buffer, delimiter='|')
+  for line in reader:
+    hpo_id = line[0]
+    metric_key = line[1]
+    date_str = line[2]
+    count = line[3]    
+    # Yield HPO ID + date -> metric + count
+    yield (make_pair_str(hpo_id, date_str), make_pair_str(metric_key, count))
+    # Yield '*' + date -> metric + count (for all HPO counts)
+    yield (make_pair_str('*', date_str), make_pair_str(metric_key, count))
+
+def reduce2(reducer_key, reducer_values):
+  """Emits a metrics bucket with counts for metrics for a given hpoId + date
+  Args:
+     reducer_key: hpoId|date ('*' for hpoId for cross-HPO counts)
+     reducer_values: list of metric|count strings
+  """
+  metrics_dict = {}
+  (hpo_id, date_str) = parse_tuple(reducer_key)
+  if hpo_id == '*':
+    hpo_id = ''
+  date = datetime.strptime(date_str, DATE_FORMAT)  
+  for reducer_value in reducer_values:
+    (metric_key, count) = parse_tuple(reducer_value)    
+    # There may be multiple values for a metric due to failures and retries; we'll arbitrarily
+    # pick the last one
+    metrics_dict[metric_key] = int(count)
+  parent = metrics.get_in_progress_version().key  
+  
   bucket = MetricsBucket(date=date,
                          parent=parent,
-                         facets=json.dumps(facets_key['facets']),
-                         metrics=json.dumps(cnt))
-  yield op.db.Put(bucket)
-
+                         hpoId=hpo_id,
+                         metrics=json.dumps(metrics_dict))
+  yield op.db.Put(bucket)                         
+  
 def set_serving_version():
   current_version = metrics.get_in_progress_version()
   if not current_version:
@@ -233,22 +346,7 @@ def validate_metrics(configs):
     fields = [definition.name for def_list in config['fields'].values() for definition in def_list]
     assert len(fields) == len(set(fields))
 
-def _get_facets_key(date, metrics_conf, state):
-  """Creates a string that can be used as a key specifying the facets.
-
-  The key is a json encoded object of the form:
-      {'date': '2016-10-02', 'facets': [{'type': 'hpo_id', 'value': 'jackson'}]}
-  """
-  key_parts = []
-  facets = metrics_conf['facets']
-  for axis in facets:
-    key_parts.append({'type': str(axis.type), 'value': axis.func(state)})
-  key = {'facets': key_parts}
-  if date:
-    key['date'] = date.isoformat()
-  return key
-
-def _make_metric_key(kind, key, value):
+def make_metric_key(kind, key, value):
   """Formats a metrics key for the summary.
 
   Normally the key is of the form:

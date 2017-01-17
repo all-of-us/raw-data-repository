@@ -141,5 +141,4 @@ class Client(object):
                             cron=cron,
                             test_unauthenticated=test_unauthenticated,
                             absolute_path=absolute_path)
-
     return json.loads(response)

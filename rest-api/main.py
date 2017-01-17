@@ -19,7 +19,6 @@ from flask import request
 PREFIX = '/rdr/v1/'
 
 app = Flask(__name__)
-
 #
 # The REST-ful resources that are the bulk of the API.
 #
@@ -50,6 +49,11 @@ api.add_resource(metrics_api.MetricsAPI,
                  PREFIX + 'Metrics',
                  endpoint='metrics',
                  methods=['POST'])
+
+api.add_resource(metrics_api.MetricsFieldsAPI,
+                 PREFIX + 'MetricsFields',
+                 endpoint='metrics_fields',
+                 methods=['GET'])
 
 api.add_resource(ppi_api.QuestionnaireAPI,
                  PREFIX + 'Questionnaire',
