@@ -22,6 +22,11 @@ git submodule update --init
 ```
 This will install all the needed dependencies in the `lib` directory.
 
+Also install dependencies for `rest-api-client`:
+```Shell
+pip install -r requirements.txt -t lib/
+```
+
 ### Running the development app server
 Make sure that you have google [cloud SDK](https://cloud.google.com/sdk/downloads) installed.
 
@@ -82,13 +87,13 @@ until ack-grep -f --python | entr -r test/run_tests.sh -g $sdk_dir unit;do sleep
 
 ### Adding fake participants to local appserver
 
-Use the [local datastore viewer](http://localhost:8000/datastore?kind=Config) 
-to create a Config entity with
-`config_key=allow_fake_history_dates` and `value=True`.
+Your `config_dev.json` loaded earlier should include a Config entity with
+`config_key=allow_fake_history_dates` and `value=True`. You can check the
+current config by running `tools/install_config.sh` with no arguments.
 
 Then execute the following from the rest-api-client directory:
 ```Shell
-python load_fake_participants.py --instance=http://localhost:8080 --count=10
+PYTHONPATH=lib/ python load_fake_participants.py --instance=http://localhost:8080 --count=10
 ```
 Running it repeatedly just adds more fake participants.
 
