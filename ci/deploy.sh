@@ -35,7 +35,16 @@ trap 'kill $(jobs -p) || true' EXIT
 PROJECT_ID=$1
 CONFIG=$2
 CREDS=$3
-VERSION=${CIRCLE_TAG}
+if [ -n "${CIRCLE_TAG}" ]
+then
+  # For a tagged commit, deploy a version matching that tag. We tag some commits
+  # on master to tell CircleCI to deploy them as named versions.
+  VERSION=${CIRCLE_TAG}
+else
+  # On test, CircleCI automatically deploys all commits to master, for testing.
+  # These versions need not persist, so give them all the same name.
+  VERSION=circle-ci-test
+fi
 echo "Deploying $VERSION to: $PROJECT_ID"
 
 cd rest-api
