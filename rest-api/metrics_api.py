@@ -9,6 +9,7 @@ import metrics
 import offline.metrics_pipeline
 
 from api_util import HEALTHPRO
+from google.appengine.api import app_identity
 from protorpc import protojson
 from flask import request, Response
 from flask.ext.restful import Resource
