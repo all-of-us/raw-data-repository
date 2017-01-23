@@ -53,7 +53,8 @@ class MetricService(object):
         {"facets": {"date": <date> [, "hpoId": <hpo ID> ] }, 
          "entries": [{ "Participant": <# of participants>, .... }] }
     """
-    query = MetricsBucket.query(ancestor=serving_version).order(MetricsBucket.date)
+    query = MetricsBucket.query(ancestor=serving_version).order(MetricsBucket.date, 
+                                                                MetricsBucket.hpoId)
     if request.start_date:
       start_date_val = datetime.datetime.strptime(request.start_date, DATE_FORMAT)
       query = query.filter(MetricsBucket.date >= start_date_val)
