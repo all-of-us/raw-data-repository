@@ -113,3 +113,9 @@ indexes:
   ancestor: yes
   properties:
   - name: last_modified
+
+- kind: MetricsBucket
+  ancestor: yes
+  properties:
+  - name: date
+  - name: hpoId
