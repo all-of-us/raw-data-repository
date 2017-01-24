@@ -185,9 +185,12 @@ class DataAccessObject(object):
       self.make_history(model, date, client_id).put()
     return model.put()
 
-  def get_all_history(self, ancestor_key):
+  def get_all_history(self, ancestor_key, now=None):
     assert self.keep_history
-    return self.history_model.query(ancestor=ancestor_key).fetch()
+    result = self.history_model.query(ancestor=ancestor_key).fetch()
+    if now:
+      return [hist_obj for hist_obj in result if hist_obj.date <= now]
+    return result
 
   def children(self, parent):
     """Gets all objects that have parent as an ancestor."""

@@ -110,7 +110,7 @@ def load_history_entities(participant_key, now):
     - Injects synthetic entries for when the participant's age changes.
     - Loads related QuestionnaireResponseHistory objects.
   """
-  history = list(DAO.get_all_history(participant_key))
+  history = list(DAO.get_all_history(participant_key, now))
   modify_participant_history(history, participant_key, now)
   return history
 
@@ -138,11 +138,11 @@ def modify_participant_history(history, participant_key, now):
       date = date + year
 
   import questionnaire_response
-  history.extend(questionnaire_response.DAO.get_all_history(participant_key))
+  history.extend(questionnaire_response.DAO.get_all_history(participant_key, now))
   import evaluation
-  history.extend(evaluation.DAO.get_all_history(participant_key))
+  history.extend(evaluation.DAO.get_all_history(participant_key, now))
   import biobank_order
-  history.extend(biobank_order.DAO.get_all_history(participant_key))
+  history.extend(biobank_order.DAO.get_all_history(participant_key, now))
   import biobank_sample
   samples = biobank_sample.DAO.load_if_present(biobank_sample.SINGLETON_SAMPLES_ID,
                                                participant_key.id())

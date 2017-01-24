@@ -217,6 +217,10 @@ class DataAccessObjectTest(NdbTestBase):
     self.assertEquals(sorted(client_ids),
                       sorted(h.client_id for h in actual_history))
     self.assertEquals(range(3), sorted(int(h.obj.foo) for h in actual_history))
+    new_history = PARENT_DAO.get_all_history(key, dates[0])
+    self.assertEquals(actual_history, new_history)
+    empty_history = PARENT_DAO.get_all_history(key, datetime(2016, 9, 30))
+    self.assertEquals(0, len(empty_history))
 
   def test_history_child(self):
     dates = [datetime(2016, 10, 1) for i in range(3)]
