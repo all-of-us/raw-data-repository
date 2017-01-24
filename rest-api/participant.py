@@ -111,6 +111,8 @@ def load_history_entities(participant_key, now):
     - Loads related QuestionnaireResponseHistory objects.
   """
   history = list(DAO.get_all_history(participant_key, now))
+  if not history:
+    return history
   modify_participant_history(history, participant_key, now)
   return history
 
