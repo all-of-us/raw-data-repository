@@ -17,6 +17,8 @@ CONFIG_CACHE_TTL_SECONDS = 60
 
 ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
 METRICS_SHARDS = 'metrics_shards'
+PARTICIPANT_SUMMARY_SHARDS = 'participant_summary_shards'
+AGE_RANGE_SHARDS = 'age_range_shards'
 BIOBANK_SAMPLES_SHARDS = 'biobank_samples_shards'
 BIOBANK_SAMPLES_BUCKET_NAME = 'biobank_samples_bucket_name'
 USER_INFO = 'user_info'

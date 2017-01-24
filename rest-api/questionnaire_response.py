@@ -136,6 +136,10 @@ def extract_state_of_residence(qr_hist_obj):
   """Returns ExtractionResult for state of residence answer from questionnaire response."""
   return extract_field(qr_hist_obj.obj, concepts.STATE_OF_RESIDENCE)
 
+def extract_date_of_birth(qr_hist_obj):
+  """Returns ExtractionResult for date of birth answer from questionnaire response."""
+  return extract_field(qr_hist_obj.obj, concepts.DATE_OF_BIRTH, extraction.VALUE_STRING)
+
 def states():
   """Enumerates the states."""
   return set(_STATE_MAPPING.values())

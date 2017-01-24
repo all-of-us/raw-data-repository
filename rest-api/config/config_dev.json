@@ -19,5 +19,11 @@
   ],
   "metrics_shards": [
     "2"
+  ],
+  "participant_summary_shards": [
+    "2"
+  ],
+  "age_range_shards": [
+    "2"
   ]
 }

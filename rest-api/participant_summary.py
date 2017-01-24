@@ -243,6 +243,5 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
                                        old_summary.key.parent().id(),
                                        SINGLETON_SUMMARY_ID)
       self.store(updated_summary)
-        
 
 DAO = ParticipantSummaryDAO()
