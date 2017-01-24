@@ -16,10 +16,10 @@ class MetricsTest(unittest.TestCase):
     self.maxDiff = None
     self.client = test_util.get_client('rdr/v1')
 
-  def testMembershipTier(self):
+  def testMetrics(self):
     request = {
-        'metric': 'PARTICIPANT_MEMBERSHIP_TIER',
-        'facets': ['HPO_ID'],
+        'start_date': '2017-01-21',
+        'end_date': '2017-01-22'
     }
     try:
       response = self.client.request_json('Metrics', 'POST', request)
@@ -27,20 +27,6 @@ class MetricsTest(unittest.TestCase):
     except client.client.HttpException as ex:
       if ex.code == 404:
         print "No metrics loaded"
-      else:
-        raise ex
-
-  def testParticipantTotal(self):
-    request = {
-        'metric': 'PARTICIPANT_TOTAL',
-        'bucket_by': 'NONE'
-    }
-    try:
-      response = self.client.request_json('Metrics', 'POST', request)
-      pprint.pprint(response)
-    except client.client.HttpException as ex:
-      if ex.code == 404:
-        print "No Metrics loaded"
       else:
         raise ex
 
