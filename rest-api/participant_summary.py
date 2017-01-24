@@ -2,6 +2,7 @@
 '''
 
 import api_util
+import copy
 import data_access_object
 import datetime
 import extraction
@@ -228,7 +229,8 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def update_with_incoming_data(self, participant_id, incoming_history_obj, config):
     old_summary = self.get_summary_for_participant(participant_id)
     old_summary_json = self.to_json(old_summary)
-    new_summary = run_extractors(incoming_history_obj, config, old_summary_json)
+    new_summary = copy.deepcopy(old_summary_json)
+    run_extractors(incoming_history_obj, config, new_summary)
     
     # If the extracted fields don't match, update them
     changed = False
