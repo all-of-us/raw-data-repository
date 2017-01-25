@@ -102,6 +102,17 @@ app.add_url_rule(PREFIX + 'MetricsRecalculate',
                  view_func=metrics_api.get,
                  methods=['GET'])
 
+app.add_url_rule(PREFIX + 'AgeRangeUpdate',
+                 endpoint='ageRangeUpdate',
+                 view_func=participants_api.update_participant_summary_age_ranges,
+                 methods=['GET'])
+
+app.add_url_rule(PREFIX + 'RegenerateParticipantSummaries',
+                 endpoint='regenerateParticipantSummaries',
+                 view_func=participants_api.regenerate_participant_summaries,
+                 methods=['GET'])
+
+
 # All responses are json, so we tag them as such at the app level to
 # provide uniform protection against content-sniffing-based attacks.
 def add_headers(response):
