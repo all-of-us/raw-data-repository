@@ -9,6 +9,7 @@ import json
 import pipeline
 
 import config
+import dateutil
 import participant
 import participant_summary
 
@@ -28,7 +29,7 @@ class AgeRangePipeline(pipeline.Pipeline):
     now = args[0]
     num_shards = int(config.getSetting(config.AGE_RANGE_SHARDS, 1))
     mapper_params = {
-        'entity_kind': 'ParticipantSummary',
+        'entity_kind': 'participant_summary.ParticipantSummary',
         'now': now,
     }
     yield mapper_pipeline.MapperPipeline(

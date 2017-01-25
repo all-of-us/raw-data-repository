@@ -84,6 +84,8 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     existing_summary = participant_summary.DAO.get_summary_for_participant(participant_key.id())
     if existing_summary:
       existing_summary_json = participant_summary.DAO.to_json(existing_summary)
+      # Clear out ageRange, since this doesn't get set until the summary is stored.
+      existing_summary_json['ageRange'] = None
       if existing_summary_json == summary_json:
         # If nothing has changed, bail out.
         return None

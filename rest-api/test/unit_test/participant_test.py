@@ -14,7 +14,8 @@ import questionnaire
 import questionnaire_response
 
 from google.appengine.ext import ndb
-from test.unit_test.unit_test_util import NdbTestBase, TestBase, to_dict_strip_last_modified
+from unit_test_util import NdbTestBase, TestBase, to_dict_strip_last_modified
+from unit_test_util import make_questionnaire_response, _data_path
 
 class ParticipantNdbTest(NdbTestBase):
   """Participant test cases requiring the NDB testbed."""
@@ -101,13 +102,12 @@ class ParticipantNdbTest(NdbTestBase):
     questionnaire_key = questionnaire.DAO.store(questionnaire.DAO.from_json(questionnaire_json,
                                                                             None,
                                                                             questionnaire.DAO.allocate_id()))
-    response = self.make_questionnaire_response(participant_key.id(),
-                                                questionnaire_key.id(),
-                                                [("race", concepts.WHITE),
-                                                 ("ethnicity", concepts.NON_HISPANIC),
-                                                 ("stateOfResidence",
-                                                  concepts.STATES_BY_ABBREV['TX']),
-                                                 ("membershipTier", concepts.REGISTERED)])
+    response = make_questionnaire_response(participant_key.id(),
+                                           questionnaire_key.id(),
+                                           [("race", concepts.WHITE),
+                                            ("ethnicity", concepts.NON_HISPANIC),
+                                            ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
+                                            ("membershipTier", concepts.REGISTERED)])
     questionnaire_response.DAO.store(response, datetime.datetime(2016, 9, 1, 11, 0, 2))
 
     participant_result = participant.DAO.load(participant_id)
@@ -130,29 +130,6 @@ class ParticipantNdbTest(NdbTestBase):
     self.assertEquals(summary, new_summary)
     new_summary = participant_summary.DAO.get_summary_for_participant(participant_id)
     self.assertEquals(summary, new_summary)
-
-  def make_questionnaire_response(self, participant_id, questionnaire_id, answers):
-    results = []
-    for answer in answers:
-      results.append({ "linkId": answer[0],
-                       "answer": [
-                          { "valueCoding": {
-                            "code": answer[1].code,
-                            "system": answer[1].system
-                          }
-                        }]
-                    })
-    return questionnaire_response.DAO.from_json({"resourceType": "QuestionnaireResponse",
-            "status": "completed",
-            "subject": { "reference": "Patient/{}".format(participant_id) },
-            "questionnaire": { "reference": "Questionnaire/{}".format(questionnaire_id) },
-            "group": {
-              "question": results
-            }
-            }, participant_id, questionnaire_response.DAO.allocate_id())
-
-def _data_path(filename):
-  return os.path.join(os.path.dirname(__file__), '..', 'test-data', filename)
 
 if __name__ == '__main__':
   unittest.main()

@@ -23,7 +23,7 @@ from collections import Counter
 from google.appengine.ext import ndb
 from mapreduce import test_support
 from testlib import testutil
-
+from unit_test_util import make_questionnaire_response, _data_path
 
 def compute_meta(summary):
   if summary['membershipTier'] == 'REGISTERED' and summary.get('hpoId') == 'PITT':
@@ -176,12 +176,12 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
     questionnaire_key = questionnaire.DAO.store(questionnaire.DAO.from_json(questionnaire_json, None, questionnaire.DAO.allocate_id()))
     # REGISTERED when signed up.
-    questionnaire_response.DAO.store(self.make_questionnaire_response(key.id(),
+    questionnaire_response.DAO.store(make_questionnaire_response(key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.REGISTERED)]),
                                      datetime.datetime(2013, 9, 1, 11, 0, 1))
     # FULL_PARTICIPANT two years later
-    questionnaire_response.DAO.store(self.make_questionnaire_response(key.id(),
+    questionnaire_response.DAO.store(make_questionnaire_response(key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.FULL_PARTICIPANT)]),
                                      datetime.datetime(2015, 9, 1, 11, 0, 2))
@@ -385,7 +385,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     questionnaire_key = questionnaire.DAO.store(questionnaire.DAO.from_json(questionnaire_json, None, questionnaire.DAO.allocate_id()))
     unmapped_race = concepts.Concept(concepts.SYSTEM_RACE, 'unmapped-race')
     # Set race, ethnicity, state, and membership tier on 9/1/2016
-    questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
+    questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("race", concepts.WHITE),
                                                                   ("ethnicity", concepts.NON_HISPANIC),
@@ -393,14 +393,14 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                                                   ("membershipTier", concepts.REGISTERED)]),
                                      datetime.datetime(2016, 9, 1, 11, 0, 2))
     # Accidentally change status to FULL_PARTICIPANT; don't fill out ethnicity and put in an unmapped race
-    questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
+    questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.FULL_PARTICIPANT),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
                                                                   ("race", unmapped_race)]),
                                      datetime.datetime(2016, 9, 1, 11, 0, 3))
     # Change it back to REGISTERED
-    questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
+    questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.REGISTERED),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
@@ -409,7 +409,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     # Note that on 9/5, an evaluation is entered.
 
     # Change to VOLUNTEER on 9/10
-    questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
+    questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.VOLUNTEER),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
@@ -417,36 +417,13 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                      datetime.datetime(2016, 9, 10, 11, 0, 1))
 
     # Change state on 9/11
-    questionnaire_response.DAO.store(self.make_questionnaire_response(participant_key.id(),
+    questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.VOLUNTEER),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['CA']),
                                                                   ("race", unmapped_race)]),
                                      datetime.datetime(2016, 9, 11, 11, 0, 2))
 
-
-  def make_questionnaire_response(self, participant_id, questionnaire_id, answers):
-    results = []
-    for answer in answers:
-      results.append({ "linkId": answer[0],
-                       "answer": [
-                          { "valueCoding": {
-                            "code": answer[1].code,
-                            "system": answer[1].system
-                          }
-                        }]
-                    })
-    return questionnaire_response.DAO.from_json({"resourceType": "QuestionnaireResponse",
-            "status": "completed",
-            "subject": { "reference": "Patient/{}".format(participant_id) },
-            "questionnaire": { "reference": "Questionnaire/{}".format(questionnaire_id) },
-            "group": {
-              "question": results
-            }
-            }, participant_id, questionnaire_response.DAO.allocate_id())
-
-def _data_path(filename):
-  return os.path.join(os.path.dirname(__file__), '..', 'test-data', filename)
 
 if __name__ == '__main__':
   unittest.main()
