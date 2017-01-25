@@ -4,23 +4,13 @@ This is mapreduce that goes over existing ParticipantSummary entities and update
 range if it has changed based on the current date.
 """
 
-import copy
-import json
 import pipeline
 
 import config
-import dateutil
-import participant
 import participant_summary
 
-from datetime import datetime, timedelta
-from google.appengine.ext import ndb
-from mapreduce import base_handler
 from mapreduce import mapper_pipeline
-from mapreduce import operation as op
 from mapreduce import context
-
-from offline.metrics_fields import run_extractors
 
 _NUM_SHARDS = '_NUM_SHARDS'
 

@@ -5,7 +5,6 @@ import api_util
 import clock
 import copy
 import data_access_object
-import datetime
 import extraction
 
 from offline.metrics_fields import run_extractors

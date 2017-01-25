@@ -6,22 +6,13 @@ and dumps summaries into ParticipantSummary entities.
 The extractors defined in participant_summary_config are used for questionnaire responses.
 """
 
-import copy
-import json
 import pipeline
 
 import config
 import participant
-import participant_summary
 
-from datetime import datetime, timedelta
 from google.appengine.ext import ndb
-from mapreduce import base_handler
 from mapreduce import mapper_pipeline
-from mapreduce import operation as op
-from mapreduce import context
-
-from offline.metrics_fields import run_extractors
 
 _NUM_SHARDS = '_NUM_SHARDS'
 
@@ -38,7 +29,7 @@ class ParticipantSummaryPipeline(pipeline.Pipeline):
         params=mapper_params,
         shards=num_shards)
 
-def regenerate_summary(entity_key, now=None):
+def regenerate_summary(entity_key):
   """Takes a key for the entity. Writes a new participant summary if something has changed
     or the summary is missing.
 
