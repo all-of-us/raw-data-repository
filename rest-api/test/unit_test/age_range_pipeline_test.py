@@ -1,5 +1,3 @@
-"""Tests for age range pipeline."""
-
 import concepts
 import datetime
 import dateutil

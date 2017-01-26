@@ -115,7 +115,12 @@ def get_bucketed_age(date_of_birth, today):
       return str(begin) + '-' + str(end)
 
 class ParticipantSummary(ndb.Model):
-  """The participant summary resource definition"""
+  """The participant summary resource definition.
+  
+     Participant summaries are a denormalized view of Participants and a number of related entities,
+     including QuestionnaireResponses and BioBank orders. Used to sort/filter participants for 
+     HealthPro work queues. This is effectively the output of a complex join.
+  """
   participantId = ndb.StringProperty()
   biobankId = ndb.StringProperty()
   firstName = ndb.StringProperty(indexed=False)

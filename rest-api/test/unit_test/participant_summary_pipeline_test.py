@@ -1,5 +1,3 @@
-"""Tests for participant summary pipeline."""
-
 import concepts
 import datetime
 import json
