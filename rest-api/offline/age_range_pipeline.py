@@ -32,6 +32,7 @@ class AgeRangePipeline(pipeline.Pipeline):
         params=mapper_params,
         shards=num_shards)
 
+
 def update_age_range(summary, now=None):
   """Takes a participant summary. Writes a new participant summary if the age range has changed.
 

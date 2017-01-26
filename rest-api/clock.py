@@ -1,7 +1,6 @@
 """A clock that returns system time by default, but can be overridden for testing purposes."""
 import datetime
 
-
 class FakeClock:
   def __init__(self, now):
     self.now = now
