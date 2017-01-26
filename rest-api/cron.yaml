@@ -5,6 +5,9 @@ cron:
 - description: Hourly biosample reconciliation
   url: /rdr/v1/BiobankSamplesReload
   schedule: every 1 hours
+- description: Regeneration of participant summaries
+  url: /rdr/v1/RegenerateParticipantSummaries
+  schedule: every 48 hours
 - description: Daily age summary updates
   url: /rdr/v1/AgeRangeUpdate
   schedule: every 24 hours
