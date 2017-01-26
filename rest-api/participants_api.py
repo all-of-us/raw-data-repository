@@ -7,6 +7,7 @@ import api_util
 import base_api
 import concepts
 import evaluation
+import logging
 import participant
 import participant_summary
 import field_validation
@@ -152,11 +153,11 @@ class ParticipantSummaryAPI(base_api.BaseApi):
 @api_util.auth_required_cron
 def regenerate_participant_summaries():
   # TODO(danrodney): check to see if it's already running?
-  print "=========== Starting participant summary regeneration pipeline ============"
+  logging.info("=========== Starting participant summary regeneration pipeline ============")
   offline.participant_summary_pipeline.ParticipantSummaryPipeline().start()
 
 @api_util.auth_required_cron
 def update_participant_summary_age_ranges():
   # TODO(danrodney): check to see if it's already running?
-  print "=========== Starting age range update pipeline ============"
+  logging.info("=========== Starting age range update pipeline ============")
   offline.age_range_pipeline.AgeRangePipeline(datetime.datetime.utcnow()).start()
