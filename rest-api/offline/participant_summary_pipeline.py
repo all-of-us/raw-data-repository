@@ -1,6 +1,6 @@
 """Offline process for updating participant summaries.
 
-This is mapreduce that goes over the participant and questionnaire response tables
+This is a mapreduce that goes over the participant and questionnaire response tables
 and dumps summaries into ParticipantSummary entities.
 
 The extractors defined in participant_summary_config are used for questionnaire responses.
@@ -30,8 +30,9 @@ class ParticipantSummaryPipeline(pipeline.Pipeline):
         shards=num_shards)
 
 def regenerate_summary(entity_key):
-  """Takes a key for the entity. Writes a new participant summary if something has changed
-    or the summary is missing.
+  """Takes a key for the entity. 
+  
+  Writes a new participant summary if something has changed or the summary is missing.
 
   Args:
     entity_key: The key of the entity to process.  The key read by the
