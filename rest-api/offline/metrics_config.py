@@ -22,7 +22,7 @@ import participant_summary
 import questionnaire_response
 
 import field_config.shared_config
-from questionnaire_response import states, regions
+from questionnaire_response import states, regions, submission_statuses
 
 from offline.metrics_fields import FieldDef
 from extraction import ExtractionResult, BASE_VALUES, UNSET
@@ -34,6 +34,15 @@ def biospecimen_summary(summary):
   ret = order
   if samples != UNSET:
     ret = samples
+  return ExtractionResult(ret)
+  
+def consent_for_study_enrollment_and_ehr(summary):
+  """True when both the study and EHR have been consented to."""
+  consent_for_study = summary.get('consentForStudyEnrollment', UNSET)
+  consent_for_ehr = summary.get('consentForElectronicHealthRecords', UNSET)
+  ret = UNSET
+  if consent_for_study == 'SUBMITTED' and consent_for_ehr == 'SUBMITTED':
+    ret = 'SUBMITTED'
   return ExtractionResult(ret)
 
 def get_config():
@@ -105,6 +114,8 @@ ALL_CONFIG = {
         'summary_fields': [
             FieldDef('biospecimenSummary', biospecimen_summary,
                      (UNSET, 'ORDER_PLACED', 'SAMPLES_ARRIVED')),
+            FieldDef('consentForStudyEnrollmentAndEHR', consent_for_study_enrollment_and_ehr,
+                     set([UNSET]) | submission_statuses())
         ],
     },
 }

@@ -38,6 +38,7 @@ CONFIGS_FOR_TEST = {
         'initial_state': {
             'physicalEvaluation': UNSET,
             'biospecimenSamples': UNSET,
+            'biospecimen': UNSET,
             'membershipTier': UNSET,
             'ageRange': UNSET,
             'race': UNSET,
@@ -73,6 +74,12 @@ CONFIGS_FOR_TEST = {
                          lambda h: ExtractionResult('COMPLETE'),
                          ('None', 'COMPLETE')),
             ],
+            'BiobankOrderHistory': [
+                # The presence of a biobank order implies that an order has been placed.
+                FieldDef('biospecimen',
+                         lambda h: ExtractionResult('ORDER_PLACED'),
+                         (UNSET, 'ORDER_PLACED'))
+            ],
             'BiobankSamples': [
                # The presence of a biobank sample implies that samples have arrived
                FieldDef('biospecimenSamples', lambda h: ExtractionResult('SAMPLES_ARRIVED'),
@@ -81,7 +88,7 @@ CONFIGS_FOR_TEST = {
         },
         'summary_fields': [
             FieldDef('meta', compute_meta, ('R1', 'NOPE')),
-        ],
+        ] + offline.metrics_config.ALL_CONFIG['Participant']['summary_fields'],
     },
 }
 
@@ -137,7 +144,10 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ('PITT|Participant.membershipTier.REGISTERED', '2016-09-01|1'),
         ('PITT|Participant.meta.R1', '2016-09-01|1'),
         ('PITT|Participant.biospecimenSamples.UNSET', '2016-09-01|-1'),
-        ('PITT|Participant.biospecimenSamples.SAMPLES_ARRIVED', '2016-09-01|1'),                
+        ('PITT|Participant.biospecimenSamples.SAMPLES_ARRIVED', '2016-09-01|1'),
+        ('PITT|Participant.biospecimen.UNSET', '2016-09-01|1'),
+        ('PITT|Participant.biospecimenSummary.UNSET', '2016-09-01|1'),
+        ('PITT|Participant.consentForStudyEnrollmentAndEHR.UNSET', '2016-09-01|1'),                
         ('PITT|Participant.physicalEvaluation.UNSET', '2016-09-05|-1'),
         ('PITT|Participant.physicalEvaluation.COMPLETE', '2016-09-05|1'),
         ('PITT|Participant.membershipTier.REGISTERED', '2016-09-10|-1'),
@@ -145,7 +155,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ('PITT|Participant.membershipTier.VOLUNTEER', '2016-09-10|1'),
         ('PITT|Participant.meta.NOPE', '2016-09-10|1'),
         ('PITT|Participant.state.TX', '2016-09-11|-1'),
-        ('PITT|Participant.state.CA', '2016-09-11|1')
+        ('PITT|Participant.state.CA', '2016-09-11|1')        
         ]
     self._compare_json_list(sorted(expected), sorted(results))
 
@@ -200,6 +210,9 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ('PITT|Participant.ethnicity.SKIPPED', '2013-09-01|1'),
         ('PITT|Participant.race.SKIPPED', '2013-09-01|1'),
         ('PITT|Participant.state.SKIPPED', '2013-09-01|1'),
+        ('PITT|Participant.biospecimen.UNSET', '2013-09-01|1'),
+        ('PITT|Participant.biospecimenSummary.UNSET', '2013-09-01|1'),
+        ('PITT|Participant.consentForStudyEnrollmentAndEHR.UNSET', '2013-09-01|1'),
         ('PITT|Participant.membershipTier.REGISTERED', '2015-09-01|-1'),
         ('PITT|Participant.meta.R1', '2015-09-01|-1'),
         ('PITT|Participant.membershipTier.FULL_PARTICIPANT', '2015-09-01|1'),
