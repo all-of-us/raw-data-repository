@@ -2,8 +2,9 @@
 '''
 
 import api_util
+import clock
+import copy
 import data_access_object
-import datetime
 import extraction
 
 from offline.metrics_fields import run_extractors
@@ -106,13 +107,20 @@ def extract_bucketed_age(participant_hist_obj):
   return extraction.ExtractionResult(None, False)
 
 def get_bucketed_age(date_of_birth, today):
+  if not date_of_birth:
+    return 'UNSET'
   age = relativedelta(today, date_of_birth).years
   for begin, end in zip(_AGE_LB, [age_lb - 1 for age_lb in _AGE_LB[1:]] + ['']):
     if (age >= begin) and (not end or age <= end):
       return str(begin) + '-' + str(end)
 
 class ParticipantSummary(ndb.Model):
-  """The participant summary resource definition"""
+  """The participant summary resource definition.
+  
+  Participant summaries are a denormalized view of Participants and a number of related entities,
+  including QuestionnaireResponses and BioBank orders. Used to sort/filter participants for 
+  HealthPro work queues. This is effectively the output of a complex join.
+  """
   participantId = ndb.StringProperty()
   biobankId = ndb.StringProperty()
   firstName = ndb.StringProperty(indexed=False)
@@ -132,8 +140,10 @@ class ParticipantSummary(ndb.Model):
           self.firstNameSearch or '',
           self.middleNameSearch or '',
           self.dateOfBirth.isoformat() if self.dateOfBirth else '']))
-  ageRange = ndb.ComputedProperty(
-      lambda self: get_bucketed_age(self.dateOfBirth, datetime.datetime.now()))
+  # Don't use a ComputedProperty here, as a dynamic expression in ComputedProperty is evaluated
+  # at both write and read time, and can thus result in queries for one value returning
+  # an entity with another value
+  ageRange = ndb.StringProperty()
   genderIdentity = msgprop.EnumProperty(GenderIdentity, default=GenderIdentity.UNSET)
   membershipTier = msgprop.EnumProperty(MembershipTier, default=MembershipTier.UNSET)
   race = msgprop.EnumProperty(Race, default=Race.UNSET)
@@ -219,6 +229,12 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     return self.load_if_present(SINGLETON_SUMMARY_ID, participant_id)
 
   @ndb.transactional
+  def store(self, model, date=None, client_id=None):
+    # Set the age range based on the current date when the summary is stored.
+    model.ageRange = get_bucketed_age(model.dateOfBirth, clock.CLOCK.now())
+    super(ParticipantSummaryDAO, self).store(model, date, client_id)
+
+  @ndb.transactional
   def update_hpo_id(self, participant_id, hpo_id):
     summary = self.get_summary_for_participant(participant_id)
     summary.hpoId = hpo_id
@@ -228,7 +244,8 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def update_with_incoming_data(self, participant_id, incoming_history_obj, config):
     old_summary = self.get_summary_for_participant(participant_id)
     old_summary_json = self.to_json(old_summary)
-    new_summary = run_extractors(incoming_history_obj, config, old_summary_json)
+    new_summary = copy.deepcopy(old_summary_json)
+    run_extractors(incoming_history_obj, config, new_summary)
     
     # If the extracted fields don't match, update them
     changed = False
@@ -243,6 +260,5 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
                                        old_summary.key.parent().id(),
                                        SINGLETON_SUMMARY_ID)
       self.store(updated_summary)
-        
 
 DAO = ParticipantSummaryDAO()

@@ -201,9 +201,9 @@ def map1(entity_key, now=None):
       new_state = copy.deepcopy(metrics_conf['initial_state'])
       new_state[TOTAL_SENTINEL] = 1
     else:
-      new_state = last_state
+      new_state = copy.deepcopy(last_state)
 
-    new_state = run_extractors(hist_obj, metrics_conf, new_state)
+    run_extractors(hist_obj, metrics_conf, new_state)
     if new_state == last_state:
       continue  # No changes so there's nothing to do.
     hpo_id = new_state.get('hpoId')

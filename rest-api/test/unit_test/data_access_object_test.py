@@ -31,7 +31,6 @@ class ChildModelDAO(data_access_object.DataAccessObject):
   def __init__(self):
     super(ChildModelDAO, self).__init__(ChildModel, ParentModel)
 
-
 PARENT_DAO = ParentModelDAO()
 CHILD_DAO = ChildModelDAO()
 
@@ -241,6 +240,20 @@ class DataAccessObjectTest(NdbTestBase):
     self.assertEquals(sorted(client_ids),
                       sorted(h.client_id for h in actual_history))
     self.assertEquals(range(3), sorted(int(h.obj.bar) for h in actual_history))
+
+  def test_update_computed_properties(self):
+    parent_id = 'parentID1'
+    parent = ParentModel(key=ndb.Key(ParentModel, parent_id))
+    parent.foo = "Foo"
+    PARENT_DAO.store(parent)
+    parent = PARENT_DAO.load(parent_id)
+    self.assertTrue(parent.last_modified)
+    modified = parent.last_modified
+    PARENT_DAO.update_computed_properties(parent.key)
+    new_parent = PARENT_DAO.load(parent_id)
+    self.assertTrue(new_parent.last_modified)
+    # last_modified should have changed.
+    self.assertNotEquals(parent.last_modified, new_parent.last_modified)
 
 if __name__ == '__main__':
   unittest.main()

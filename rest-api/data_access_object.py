@@ -185,6 +185,12 @@ class DataAccessObject(object):
       self.make_history(model, date, client_id).put()
     return model.put()
 
+  @ndb.transactional
+  def update_computed_properties(self, key, date=None, client_id=None):
+    """Fetches and stores an object without modification apart from computed properties."""
+    obj = key.get()
+    self.store(obj, date, client_id)
+
   def get_all_history(self, ancestor_key, now=None):
     assert self.keep_history
     result = self.history_model.query(ancestor=ancestor_key).fetch()

@@ -5,10 +5,12 @@ import data_access_object
 import extraction
 import identifier
 import fhir_datatypes
+import field_config
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from google.appengine.ext import ndb
+from offline.metrics_fields import run_extractors
 
 class ProviderLink(ndb.Model):
   """A link between a participant and an outside institution."""
@@ -54,19 +56,51 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     _id = identifier.get_id()
     return 'P{:d}'.format(_id).zfill(9)
 
-  def insert(self, model, date=None, client_id=None):
-    # Assign a new biobank ID when inserting a new participant
-    model.biobankId = 'B{:d}'.format(identifier.get_id()).zfill(9)
+  def make_participant_summary(self, model):
     import participant_summary
     participant_key = ndb.Key(participant_summary.ParticipantSummary,
                           participant_summary.SINGLETON_SUMMARY_ID,
                           parent=model.key)
     hpo_id_result = extract_HPO_id_from_participant(model)    
-    summary = participant_summary.ParticipantSummary(key=participant_key,                                     
-                                                     participantId=model.key.id(),
-                                                     biobankId=model.biobankId,
-                                                     hpoId=hpo_id_result.value)
+    return participant_summary.ParticipantSummary(key=participant_key,
+                                                  participantId=model.key.id(),
+                                                  biobankId=model.biobankId,
+                                                  hpoId=hpo_id_result.value)
+
+  @ndb.transactional
+  def regenerate_summary(self, participant_key):
+    participant = participant_key.get()
+    if not participant:
+      return None
+    import participant_summary
+    summary = self.make_participant_summary(participant)
+    summary_json = participant_summary.DAO.to_json(summary)
+    import questionnaire_response
+    questionnaire_response_history = questionnaire_response.DAO.get_all_history(participant_key)
+    questionnaire_response_history = sorted(questionnaire_response_history, key=lambda o: o.date)
+    for qr_hist_obj in questionnaire_response_history:
+      run_extractors(qr_hist_obj, field_config.participant_summary_config.CONFIG,
+                     summary_json)
+    existing_summary = participant_summary.DAO.get_summary_for_participant(participant_key.id())
+    if existing_summary:
+      existing_summary_json = participant_summary.DAO.to_json(existing_summary)
+      # Clear out ageRange, since this doesn't get set until the summary is stored.
+      existing_summary_json['ageRange'] = None
+      if existing_summary_json == summary_json:
+        # If nothing has changed, bail out.
+        return None
+    updated_summary = participant_summary.DAO.from_json(summary_json,
+                                                        participant_key.id(),
+                                                        participant_summary.SINGLETON_SUMMARY_ID)
+    participant_summary.DAO.store(updated_summary)
+    return updated_summary
+
+  def insert(self, model, date=None, client_id=None):
+    # Assign a new biobank ID when inserting a new participant
+    model.biobankId = 'B{:d}'.format(identifier.get_id()).zfill(9)
+    summary = self.make_participant_summary(model)
     result = super(ParticipantDAO, self).insert(model, date, client_id)
+    import participant_summary
     participant_summary.DAO.insert(summary, date, client_id)
     return result
     

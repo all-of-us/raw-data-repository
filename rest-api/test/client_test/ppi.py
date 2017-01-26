@@ -89,7 +89,7 @@ class TestPPI(unittest.TestCase):
 
     response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
     # TODO: add more stuff here
-    expected = { 'ageRange': '0-17',
+    expected = { 'ageRange': 'UNSET',
                  'genderIdentity': 'MALE_TO_FEMALE_TRANSGENDER',
                  'ethnicity': 'UNSET',
                  'race': 'UNSET',

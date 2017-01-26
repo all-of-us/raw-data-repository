@@ -6,6 +6,7 @@ import unittest
 import os
 
 import biobank_order
+import concepts
 import evaluation
 import participant
 import participant_summary
@@ -13,7 +14,8 @@ import questionnaire
 import questionnaire_response
 
 from google.appengine.ext import ndb
-from test.unit_test.unit_test_util import NdbTestBase, TestBase, to_dict_strip_last_modified
+from unit_test_util import NdbTestBase, TestBase, to_dict_strip_last_modified
+from unit_test_util import make_questionnaire_response, _data_path
 
 class ParticipantNdbTest(NdbTestBase):
   """Participant test cases requiring the NDB testbed."""
@@ -83,6 +85,51 @@ class ParticipantNdbTest(NdbTestBase):
       entry.key = None
 
     self.assertEquals(expected_json, entries_json)
+
+  def test_regenerate_summary_no_participant(self):
+    participant_key = ndb.Key(participant.Participant, '1')
+    self.assertFalse(participant.DAO.regenerate_summary(participant_key))
+
+  def test_regenerate_summary_participant(self):
+    participant_id = '1'
+    participant_key = ndb.Key(participant.Participant, participant_id)
+    participant_entry = participant.Participant(
+        key=participant_key,
+        biobankId=None)
+    participant.DAO.insert(participant_entry, datetime.datetime(2015, 9, 1))
+
+    questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
+    questionnaire_key = questionnaire.DAO.store(questionnaire.DAO.from_json(questionnaire_json,
+                                                                            None,
+                                                                            questionnaire.DAO.allocate_id()))
+    response = make_questionnaire_response(participant_key.id(),
+                                           questionnaire_key.id(),
+                                           [("race", concepts.WHITE),
+                                            ("ethnicity", concepts.NON_HISPANIC),
+                                            ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
+                                            ("membershipTier", concepts.REGISTERED)])
+    questionnaire_response.DAO.store(response, datetime.datetime(2016, 9, 1, 11, 0, 2))
+
+    participant_result = participant.DAO.load(participant_id)
+    self.assertTrue(participant_result.biobankId)
+    summary = participant_summary.DAO.get_summary_for_participant(participant_id)
+    self.assertTrue(summary)
+    self.assertEquals(participant_summary.Race.WHITE, summary.race)
+    self.assertEquals(participant_summary.Ethnicity.NON_HISPANIC, summary.ethnicity)
+    self.assertEquals(participant_summary.MembershipTier.REGISTERED, summary.membershipTier)
+
+    # Nothing has changed; no summary is returned.
+    self.assertFalse(participant.DAO.regenerate_summary(participant_key))
+
+    # Delete the participant summary.
+    summary.key.delete()
+    self.assertFalse(participant_summary.DAO.get_summary_for_participant(participant_id))
+
+    new_summary = participant.DAO.regenerate_summary(participant_key)
+    # The new summary should be the same as the old one.
+    self.assertEquals(summary, new_summary)
+    new_summary = participant_summary.DAO.get_summary_for_participant(participant_id)
+    self.assertEquals(summary, new_summary)
 
 if __name__ == '__main__':
   unittest.main()

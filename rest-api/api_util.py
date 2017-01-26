@@ -5,8 +5,6 @@ import logging
 import netaddr
 import string
 
-import config
-
 from google.appengine.api import app_identity
 from google.appengine.ext import ndb
 
@@ -86,6 +84,7 @@ def check_cron():
   raise Unauthorized('Forbidden.')
 
 def lookup_user_info(user_email):
+  import config
   return config.getSettingJson(config.USER_INFO, {}).get(user_email)
 
 def get_validated_user_info():
