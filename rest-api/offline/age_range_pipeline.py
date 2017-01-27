@@ -25,7 +25,7 @@ class AgeRangePipeline(BasePipeline):
         'now': now,
     }
     yield mapper_pipeline.MapperPipeline(
-        'Update Participant Summaries',
+        'Update Age Ranges',
         handler_spec='offline.age_range_pipeline.update_age_range',
         input_reader_spec='mapreduce.input_readers.DatastoreInputReader',
         params=mapper_params,
