@@ -1,7 +1,6 @@
 """Base pipeline class that implements common functionality."""
 
 import datetime
-import time
 import logging
 import os
 import pipeline

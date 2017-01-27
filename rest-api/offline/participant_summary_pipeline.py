@@ -6,8 +6,6 @@ and dumps summaries into ParticipantSummary entities.
 The extractors defined in participant_summary_config are used for questionnaire responses.
 """
 
-import pipeline
-
 import config
 import participant
 

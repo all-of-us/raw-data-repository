@@ -9,7 +9,6 @@ import biobank_sample
 import csv
 import config
 import participant
-import pipeline
 from cloudstorage import cloudstorage_api
 
 from mapreduce import mapreduce_pipeline

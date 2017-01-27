@@ -7,8 +7,6 @@ Having an age range field is necessary because Datastore does
 not support inequality filters on queries with a sort order starting with a different field.
 """
 
-import pipeline
-
 import config
 import participant_summary
 
