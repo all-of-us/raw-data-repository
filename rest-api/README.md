@@ -22,11 +22,6 @@ git submodule update --init
 ```
 This will install all the needed dependencies in the `lib` directory.
 
-Also install dependencies for `rest-api-client`:
-```Shell
-pip install -r requirements.txt -t lib/
-```
-
 ### Running the development app server
 Make sure that you have google [cloud SDK](https://cloud.google.com/sdk/downloads) installed.
 
