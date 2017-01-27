@@ -1,5 +1,3 @@
-"""Base pipeline class that implements common functionality."""
-
 import datetime
 import logging
 import os
@@ -39,8 +37,7 @@ class BasePipeline(pipeline.Pipeline):
         except (mail.InvalidSenderError, mail.InvalidEmailError):
           logging.warning('Could not send result email for '
                           'root pipeline ID "%s" from sender "%s"',
-                          self.root_pipeline_id, sender)
+                          self.root_pipeline_id, sender, exc_info=True)
       else:
-        message = "%s succeeded %s; results are at %s" % (pipeline_name, suffix, status_link)
-        print message
+        message = "%s succeeded %s; results are at %s" % (pipeline_name, suffix, status_link)        
         logging.info(message)
