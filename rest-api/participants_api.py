@@ -158,9 +158,12 @@ def regenerate_participant_summaries():
   # TODO(danrodney): check to see if it's already running?
   logging.info("=========== Starting participant summary regeneration pipeline ============")
   offline.participant_summary_pipeline.ParticipantSummaryPipeline().start()
+  return '{"metrics-pipeline-status": "started"}'
 
 @api_util.auth_required_cron
 def update_participant_summary_age_ranges():
   # TODO(danrodney): check to see if it's already running?
   logging.info("=========== Starting age range update pipeline ============")
   offline.age_range_pipeline.AgeRangePipeline(datetime.datetime.utcnow()).start()
+  return '{"metrics-pipeline-status": "started"}'
+  

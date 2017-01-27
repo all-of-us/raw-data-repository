@@ -4,6 +4,7 @@ import os
 import pipeline
 
 from google.appengine.ext import db
+from google.appengine.api import mail
 
 class BasePipeline(pipeline.Pipeline):  
   def finalized(self):

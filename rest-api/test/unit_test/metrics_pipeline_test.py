@@ -105,7 +105,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
 
   def test_map1(self):
     key = ndb.Key(participant.Participant, '1')
-    self._populate_sample_history(key)
+    self._populate_sample_history(key, 'PITT')
     results = list(metrics_pipeline.map1(key.to_old_key(), NOW))
 
     expected = [
@@ -159,7 +159,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ]
     self._compare_json_list(sorted(expected), sorted(results))
 
-  def test_map_key_to_summary_participant_ages(self):
+  def test_map1_participant_ages(self):
     key = ndb.Key(participant.Participant, '1')
     link = participant.ProviderLink(primary=True,
                                     organization=fhir_datatypes.FHIRReference(reference='Organization/PITT'))
@@ -255,55 +255,33 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
 
   def test_end_to_end(self):
     key = ndb.Key(participant.Participant, '1')
-    self._populate_sample_history(key)    
+    self._populate_sample_history(key, 'PITT')
+    key2 = ndb.Key(participant.Participant, '2')
+    self._populate_sample_history(key2, 'COLUMBIA')
     metrics_pipeline.MetricsPipeline('pmi-drc-biobank-test.appspot.com', NOW).start()
     test_support.execute_until_empty(self.taskqueue)
 
     serving_version = metrics.get_serving_version()
     metrics_list = list(metrics.MetricsBucket.query(ancestor=serving_version)
                         .order(metrics.MetricsBucket.date).fetch())
-    # Twelve dates, * and PITT for each
-    self.assertEquals(24, len(metrics_list))
+    # Twelve dates, *, COLUMBIA, and PITT for each
+    self.assertEquals(36, len(metrics_list))
     for i in range(0, 12):
-      all_metrics = metrics_list[i * 2]
-      pitt_metrics = metrics_list[(i * 2) + 1]
-      self.assertEquals(datetime.date(2016, 9, 1 + i), all_metrics.date)
-      self.assertEquals('', all_metrics.hpoId)
-      self.assertEquals(datetime.date(2016, 9, 1 + i), pitt_metrics.date)
-      self.assertEquals('PITT', pitt_metrics.hpoId)    
-      self.assertEquals(all_metrics.metrics, pitt_metrics.metrics)
-
+      self.run_checks_for_all_dates(metrics_list, i)
+      
     for i in range(0, 4):
-      all_metrics = json.loads(metrics_list[i * 2].metrics)
-      self.assertEquals(1, all_metrics['Participant'])
-      self.assertEquals(1, all_metrics['Participant.membershipTier.REGISTERED'])
-      self.assertEquals(1, all_metrics['Participant.hpoId.PITT'])
-      self.assertEquals(1, all_metrics['Participant.physicalEvaluation.UNSET'])   
-      self.assertFalse(all_metrics.get('Participant.physicalEvaluation.COMPLETE'))
-      self.assertFalse(all_metrics.get('Participant.membershipTier.VOLUNTEER'))
-
+      self.check_first_dates(metrics_list, i)
+      
     for i in range(4, 9):
-      all_metrics = json.loads(metrics_list[i * 2].metrics)
-      self.assertEquals(1, all_metrics['Participant'])
-      self.assertEquals(1, all_metrics['Participant.membershipTier.REGISTERED'])
-      self.assertEquals(1, all_metrics['Participant.hpoId.PITT'])
-      self.assertEquals(1, all_metrics['Participant.physicalEvaluation.COMPLETE']) 
-      self.assertFalse(all_metrics.get('Participant.physicalEvaluation.UNSET')) 
-      self.assertFalse(all_metrics.get('Participant.membershipTier.VOLUNTEER')) 
-
+      self.check_second_dates(metrics_list, i)
+      
     for i in range(9, 12):
-      all_metrics = json.loads(metrics_list[i * 2].metrics)
-      self.assertEquals(1, all_metrics['Participant'])
-      self.assertEquals(1, all_metrics['Participant.membershipTier.VOLUNTEER'])
-      self.assertEquals(1, all_metrics['Participant.hpoId.PITT'])
-      self.assertEquals(1, all_metrics['Participant.physicalEvaluation.COMPLETE']) 
-      self.assertFalse(all_metrics.get('Participant.physicalEvaluation.UNSET'))
-      self.assertFalse(all_metrics.get('Participant.membershipTier.REGISTERED'))
+      self.check_third_dates(metrics_list, i)
    
     serving_version = metrics.get_serving_version()    
     all_buckets = list(metrics.SERVICE.get_metrics(metrics.MetricsRequest(), serving_version))
-    self.assertEquals(24, len(all_buckets))
-    for i in range(0, 24):
+    self.assertEquals(36, len(all_buckets))
+    for i in range(0, 36):
       bucket = json.loads(all_buckets[i])
       metrics_entry = metrics_list[i]
       facets = bucket['facets']
@@ -316,10 +294,10 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     
     request = metrics.MetricsRequest(start_date='2016-09-02', end_date='2016-09-04')
     sub_buckets = list(metrics.SERVICE.get_metrics(request, serving_version))
-    self.assertEquals(6, len(sub_buckets))
-    for i in range(0, 6):
+    self.assertEquals(9, len(sub_buckets))
+    for i in range(0, 9):
       bucket = json.loads(sub_buckets[i])
-      metrics_entry = metrics_list[i + 2]
+      metrics_entry = metrics_list[i + 3]
       facets = bucket['facets']
       self.assertEquals(metrics_entry.date.isoformat(), facets['date'])
       if metrics_entry.hpoId == '':
@@ -328,6 +306,77 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         self.assertEquals(metrics_entry.hpoId, facets['hpoId'])
       self.assertEquals(json.loads(metrics_entry.metrics), bucket['entries'])
     
+  def run_checks_for_all_dates(self, metrics_list, i):
+    all_metrics_bucket = metrics_list[i * 3]
+    columbia_metrics_bucket = metrics_list[(i * 3) + 1]
+    pitt_metrics_bucket = metrics_list[(i * 3) + 2]
+    all_metrics = json.loads(metrics_list[i * 3].metrics)
+    columbia_metrics = json.loads(metrics_list[(i * 3) + 1].metrics)
+    pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)    
+    self.assertEquals(datetime.date(2016, 9, 1 + i), all_metrics_bucket.date)
+    self.assertEquals('', all_metrics_bucket.hpoId)
+    self.assertEquals(datetime.date(2016, 9, 1 + i), columbia_metrics_bucket.date)
+    self.assertEquals('COLUMBIA', columbia_metrics_bucket.hpoId)
+    self.assertEquals(datetime.date(2016, 9, 1 + i), pitt_metrics_bucket.date)
+    self.assertEquals('PITT', pitt_metrics_bucket.hpoId)
+    self.assertEquals(2, all_metrics['Participant'])
+    self.assertEquals(1, all_metrics['Participant.hpoId.PITT'])
+    self.assertEquals(1, all_metrics['Participant.hpoId.COLUMBIA'])
+    self.assertEquals(1, columbia_metrics['Participant'])
+    self.assertEquals(1, columbia_metrics['Participant.hpoId.COLUMBIA'])
+    self.assertEquals(1, pitt_metrics['Participant'])
+    self.assertEquals(1, pitt_metrics['Participant.hpoId.PITT'])
+    self.assertFalse(columbia_metrics.get('Participant.hpoId.PITT'))
+    self.assertFalse(pitt_metrics.get('Participant.hpoId.COLUMBIA'))  
+    
+  def check_first_dates(self, metrics_list, i):
+    all_metrics = json.loads(metrics_list[i * 3].metrics)
+    columbia_metrics = json.loads(metrics_list[(i * 3) + 1].metrics)
+    pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)
+    self.assertEquals(2, all_metrics['Participant.membershipTier.REGISTERED'])
+    self.assertEquals(2, all_metrics['Participant.physicalEvaluation.UNSET'])
+    self.assertEquals(1, columbia_metrics['Participant.membershipTier.REGISTERED'])    
+    self.assertEquals(1, columbia_metrics['Participant.physicalEvaluation.UNSET'])
+    self.assertFalse(columbia_metrics.get('Participant.physicalEvaluation.COMPLETE'))
+    self.assertFalse(columbia_metrics.get('Participant.membershipTier.VOLUNTEER'))    
+    self.assertEquals(1, pitt_metrics['Participant.membershipTier.REGISTERED'])    
+    self.assertEquals(1, pitt_metrics['Participant.physicalEvaluation.UNSET'])
+    self.assertFalse(pitt_metrics.get('Participant.physicalEvaluation.COMPLETE'))
+    self.assertFalse(pitt_metrics.get('Participant.membershipTier.VOLUNTEER'))
+    
+
+  def check_second_dates(self, metrics_list, i):
+    all_metrics = json.loads(metrics_list[i * 3].metrics)
+    columbia_metrics = json.loads(metrics_list[(i * 3) + 1].metrics)
+    pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)
+    self.assertEquals(2, all_metrics['Participant.membershipTier.REGISTERED'])
+    self.assertEquals(2, all_metrics['Participant.physicalEvaluation.COMPLETE'])
+    self.assertFalse(all_metrics.get('Participant.physicalEvaluation.UNSET')) 
+    self.assertFalse(all_metrics.get('Participant.membershipTier.VOLUNTEER')) 
+    self.assertEquals(1, columbia_metrics['Participant.membershipTier.REGISTERED'])
+    self.assertEquals(1, columbia_metrics['Participant.physicalEvaluation.COMPLETE'])
+    self.assertFalse(columbia_metrics.get('Participant.physicalEvaluation.UNSET'))
+    self.assertFalse(columbia_metrics.get('Participant.membershipTier.VOLUNTEER'))
+    self.assertEquals(1, pitt_metrics['Participant.membershipTier.REGISTERED'])
+    self.assertEquals(1, pitt_metrics['Participant.physicalEvaluation.COMPLETE'])
+    self.assertFalse(pitt_metrics.get('Participant.physicalEvaluation.UNSET'))
+
+  def check_third_dates(self, metrics_list, i):
+    all_metrics = json.loads(metrics_list[i * 3].metrics)
+    columbia_metrics = json.loads(metrics_list[(i * 3) + 1].metrics)
+    pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)
+    self.assertEquals(2, all_metrics['Participant.membershipTier.VOLUNTEER'])
+    self.assertEquals(2, all_metrics['Participant.physicalEvaluation.COMPLETE'])
+    self.assertFalse(all_metrics.get('Participant.physicalEvaluation.UNSET'))
+    self.assertFalse(all_metrics.get('Participant.membershipTier.REGISTERED'))
+    self.assertEquals(1, columbia_metrics['Participant.membershipTier.VOLUNTEER'])
+    self.assertEquals(1, columbia_metrics['Participant.physicalEvaluation.COMPLETE'])
+    self.assertFalse(columbia_metrics.get('Participant.physicalEvaluation.UNSET'))
+    self.assertFalse(columbia_metrics.get('Participant.membershipTier.REGISTERED'))    
+    self.assertEquals(1, pitt_metrics['Participant.membershipTier.VOLUNTEER'])
+    self.assertEquals(1, pitt_metrics['Participant.physicalEvaluation.COMPLETE'])
+    self.assertFalse(pitt_metrics.get('Participant.physicalEvaluation.UNSET'))
+    self.assertFalse(pitt_metrics.get('Participant.membershipTier.REGISTERED'))    
 
   def _compare_json(self, a, b, msg=None):
     if isinstance(a, str):
@@ -347,9 +396,9 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
       msg = 'Comparing element {}'.format(i)
       self._compare_json(a, b, msg)
 
-  def _populate_sample_history(self, key):
-    link = participant.ProviderLink(primary=True,
-                                    organization=fhir_datatypes.FHIRReference(reference='Organization/PITT'))
+  def _populate_sample_history(self, key, hpoId):
+    org = fhir_datatypes.FHIRReference(reference='Organization/' + hpoId)
+    link = participant.ProviderLink(primary=True, organization=org)
     participant.DAO.insert(participant.Participant(key=key,
                                                    providerLink = [ link ]),
                           datetime.datetime(2016, 9, 1, 11, 0, 1))
