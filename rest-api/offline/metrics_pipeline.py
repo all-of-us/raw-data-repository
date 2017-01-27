@@ -53,6 +53,7 @@ The reducer, 'reduce_facets', takes all the output from the mapper for a given
 key, adds them up, and writes out the aggregated counts.
 """
 
+import collections
 import copy
 import json
 import pipeline
@@ -316,15 +317,14 @@ def reduce2(reducer_key, reducer_values):
      reducer_key: hpoId|date ('*' for hpoId for cross-HPO counts)
      reducer_values: list of metric|count strings
   """
-  metrics_dict = {}
+  metrics_dict = collections.defaultdict(lambda: 0)
   (hpo_id, date_str) = parse_tuple(reducer_key)
   if hpo_id == '*':
     hpo_id = ''
   date = datetime.strptime(date_str, DATE_FORMAT)  
   for reducer_value in reducer_values:
-    (metric_key, count) = parse_tuple(reducer_value)    
-    existing_count = metrics_dict.get(metric_key) or 0
-    metrics_dict[metric_key] = int(count) + existing_count
+    (metric_key, count) = parse_tuple(reducer_value)        
+    metrics_dict[metric_key] += int(count)
   parent = metrics.get_in_progress_version().key  
   
   bucket = MetricsBucket(date=date,
