@@ -127,13 +127,14 @@ def extract_HPO_id_from_participant(participant):
   """Returns ExtractionResult with the string representing the HPO."""
   primary_provider_link = participant.get_primary_provider_link()
   import participant_summary
-  if primary_provider_link and primary_provider_link.organization:
-    hpo_id_string = primary_provider_link.organization.reference.split('/')[1]
-    if hpo_id_string:
-      if participant_summary.HPOId.to_dict().get(hpo_id_string):
-        return extraction.ExtractionResult(participant_summary.HPOId(hpo_id_string), True)
-      else:
-        return extraction.ExtractionResult(participant_summary.HPOId.UNMAPPED, True)
+  if (primary_provider_link and primary_provider_link.organization and 
+      primary_provider_link.organization.reference and
+      primary_provider_link.organization.reference.lower().startswith('organization/')):
+    hpo_id_string = primary_provider_link.organization.reference[13:]
+    if participant_summary.HPOId.to_dict().get(hpo_id_string):
+      return extraction.ExtractionResult(participant_summary.HPOId(hpo_id_string), True)
+    else:
+      return extraction.ExtractionResult(participant_summary.HPOId.UNMAPPED, True)
   return extraction.ExtractionResult(participant_summary.HPOId.UNSET, True)
 
 def load_history_entities(participant_key, now):
