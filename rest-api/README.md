@@ -87,15 +87,11 @@ until ack-grep -f --python | entr -r test/run_tests.sh -g $sdk_dir unit;do sleep
 
 ### Adding fake participants to local appserver
 
+See `rest-api-client/README.md` for instructions.
+
 Your `config_dev.json` loaded earlier should include a Config entity with
 `config_key=allow_fake_history_dates` and `value=True`. You can check the
 current config by running `tools/install_config.sh` with no arguments.
-
-Then execute the following from the rest-api-client directory:
-```Shell
-PYTHONPATH=lib/ python load_fake_participants.py --instance=http://localhost:8080 --count=10
-```
-Running it repeatedly just adds more fake participants.
 
 ## Deploying to test server
 
