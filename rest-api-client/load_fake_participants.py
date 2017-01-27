@@ -235,7 +235,7 @@ if __name__ == '__main__':
     'sociodemographics_questionnaire_id': sociodemographics_questionnaire_id,
   }
 
-  for module in extra_ppi_modules:
+  for module in _EXTRA_PPI_MODULES:
     vars[module + '_questionnaire_id'] = client.request_json(
         'Questionnaire',
         'POST',
