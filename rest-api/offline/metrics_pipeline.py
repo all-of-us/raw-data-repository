@@ -323,9 +323,8 @@ def reduce2(reducer_key, reducer_values):
   date = datetime.strptime(date_str, DATE_FORMAT)  
   for reducer_value in reducer_values:
     (metric_key, count) = parse_tuple(reducer_value)    
-    # There may be multiple values for a metric due to failures and retries; we'll arbitrarily
-    # pick the last one
-    metrics_dict[metric_key] = int(count)
+    existing_count = metrics_dict.get(metric_key) or 0
+    metrics_dict[metric_key] = int(count) + existing_count
   parent = metrics.get_in_progress_version().key  
   
   bucket = MetricsBucket(date=date,
