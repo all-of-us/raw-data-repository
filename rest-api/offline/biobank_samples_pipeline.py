@@ -15,6 +15,7 @@ from cloudstorage import cloudstorage_api
 from mapreduce import mapreduce_pipeline
 from mapreduce.lib.input_reader._gcs import GCSInputReader
 from mapreduce import operation as op
+from offline.base_pipeline import BasePipeline
 
 BIOBANK_SAMPLE_FIELDS = [
   'familyId',
@@ -42,7 +43,7 @@ EXPECTED_HEADERS = [
     "Sample Confirmed Date"
 ]
 
-class BiobankSamplesPipeline(pipeline.Pipeline):
+class BiobankSamplesPipeline(BasePipeline):
   def run(self, *args, **kwargs):  # pylint: disable=unused-argument
     bucket_name = args[0]
     newest_filename = None

@@ -72,8 +72,8 @@ from mapreduce import context
 
 from metrics import MetricsBucket
 from mapreduce.lib.input_reader._gcs import GCSInputReader
+from offline.base_pipeline import BasePipeline
 from offline.metrics_fields import run_extractors
-
 
 class PipelineNotRunningException(BaseException):
   """Exception thrown when a pipeline is expected to be running but is not."""
@@ -110,7 +110,7 @@ class BlobKeys(base_handler.PipelineBase):
                              GCSInputReader.OBJECT_NAMES_PARAM: [k[start_index:] for k in keys]},
             'now': now}
 
-class MetricsPipeline(pipeline.Pipeline):
+class MetricsPipeline(BasePipeline):
   def run(self, *args, **kwargs):  # pylint: disable=unused-argument
     bucket_name = args[0]
     now = args[1]

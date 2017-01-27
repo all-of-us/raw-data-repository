@@ -13,10 +13,11 @@ import participant
 
 from google.appengine.ext import ndb
 from mapreduce import mapper_pipeline
+from offline.base_pipeline import BasePipeline
 
 _NUM_SHARDS = '_NUM_SHARDS'
 
-class ParticipantSummaryPipeline(pipeline.Pipeline):
+class ParticipantSummaryPipeline(BasePipeline):
   def run(self, *args, **kwargs):  # pylint: disable=unused-argument
     num_shards = int(config.getSetting(config.PARTICIPANT_SUMMARY_SHARDS, 1))
     mapper_params = {

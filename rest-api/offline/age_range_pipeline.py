@@ -14,10 +14,11 @@ import participant_summary
 
 from mapreduce import mapper_pipeline
 from mapreduce import context
+from offline.base_pipeline import BasePipeline
 
 _NUM_SHARDS = '_NUM_SHARDS'
 
-class AgeRangePipeline(pipeline.Pipeline):
+class AgeRangePipeline(BasePipeline):
   def run(self, *args, **kwargs):  # pylint: disable=unused-argument
     now = args[0]
     num_shards = int(config.getSetting(config.AGE_RANGE_SHARDS, 1))
