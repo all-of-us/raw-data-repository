@@ -1,10 +1,7 @@
 """NDB model and DAO for logs of writes that can be synced."""
 import config
 
-from protorpc import messages
 from google.appengine.ext import ndb
-from google.appengine.ext.ndb import msgprop
-from __builtin__ import False
 
 # Sync channel indexes
 PHYSICAL_MEASUREMENTS = 1
@@ -41,8 +38,8 @@ class SyncLogDao:
   def make_sync_counter_key(self, channel_index, shard_number):  
     return ndb.Key('SyncCounter', '%d|%d' % (channel_index, shard_number))
   
-  def make_log_entry_key(self, sync_counter_key, id):
-    return ndb.Key('SyncLogEntry', id, parent=sync_counter_key)        
+  def make_log_entry_key(self, sync_counter_key, entry_id):
+    return ndb.Key('SyncLogEntry', entry_id, parent=sync_counter_key)        
   
   @ndb.transactional
   def write_log_entry(self, channel_index, participantId, resource):    
@@ -98,7 +95,7 @@ class SyncLogDao:
     # Get the results from the futures
     for i in range(0, len(futures)):
       f = futures[i]
-      (results, cursor, more) = f.get_result()      
+      (results, _, more) = f.get_result()      
       if results:        
         for result in results:
           resources.append(result.resource)
