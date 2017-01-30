@@ -7,7 +7,7 @@ import api_util
 import base_api
 import concepts
 import datetime
-import evaluation
+import measurements
 import logging
 import offline.age_range_pipeline
 import offline.participant_summary_pipeline
@@ -59,8 +59,8 @@ PARTICIPANT_SUMMARY_NON_HPO_FILTER_FIELDS = [
 PARTICIPANT_SUMMARY_ORDER = OrderBy("sortKey", True)
 
 
-EVALUATION_FILTER_FIELDS = ["last_modified"]
-EVALUATION_ORDER = OrderBy("last_modified", True)
+MEASUREMENTS_FILTER_FIELDS = ["last_modified"]
+MEASUREMENTS_ORDER = OrderBy("last_modified", True)
 
 class ParticipantAPI(base_api.BaseApi):
 
@@ -83,31 +83,31 @@ class ParticipantAPI(base_api.BaseApi):
   def patch(self, id_, a_id=None):
     return super(ParticipantAPI, self).patch(id_, a_id)
 
-class EvaluationAPI(base_api.BaseApi):
+class PhysicalMeasurementsAPI(base_api.BaseApi):
 
   def __init__(self):
-    super(EvaluationAPI, self).__init__(evaluation.DAO)
+    super(PhysicalMeasurementsAPI, self).__init__(measurements.DAO)
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None, a_id=None):
-    return super(EvaluationAPI, self).get(id_, a_id)
+    return super(PhysicalMeasurementsAPI, self).get(id_, a_id)
 
   @api_util.auth_required(HEALTHPRO)
   def post(self, a_id=None):
-    return super(EvaluationAPI, self).post(a_id)
+    return super(PhysicalMeasurementsAPI, self).post(a_id)
 
   @api_util.auth_required(HEALTHPRO)
   def put(self, id_, a_id=None):
-    return super(EvaluationAPI, self).put(id_, a_id)
+    return super(PhysicalMeasurementsAPI, self).put(id_, a_id)
 
   @api_util.auth_required(HEALTHPRO)
   def patch(self, id_, a_id=None):
-    return super(EvaluationAPI, self).patch(id_, a_id)
+    return super(PhysicalMeasurementsAPI, self).patch(id_, a_id)
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def list(self, a_id):
-    return super(EvaluationAPI, self).query("id", EVALUATION_FILTER_FIELDS,
-                                            EVALUATION_ORDER, a_id)
+    return super(PhysicalMeasurementsAPI, self).query("id", MEASUREMENTS_FILTER_FIELDS,
+                                            MEASUREMENTS_ORDER, a_id)
 
   def validate_object(self, e, a_id=None):
     field_validators = [
@@ -119,14 +119,14 @@ class EvaluationAPI(base_api.BaseApi):
         HIP_CIRCUMFERENCE,
         WAIST_CIRCUMFERENCE,
     ]
-    extractor = evaluation.EvaluationExtractor(e.resource)
+    extractor = measurements.PhysicalMeasurementsExtractor(e.resource)
     value_dict = {f.concept: extractor.extract_value(f.concept) for f in field_validators}
     field_validation.validate_fields(field_validators, value_dict)
 
 def _check_existence(extractor, system, code, name):
   value = extractor.extract_value(concepts.Concept(system, code))
   if not value:
-    raise BadRequest('Evaluation does not contain a value for {}, ({}:{}).'.format(
+    raise BadRequest('Physical measurements does not contain a value for {}, ({}:{}).'.format(
         name, system, code))
 
 

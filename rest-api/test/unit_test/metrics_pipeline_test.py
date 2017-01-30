@@ -12,7 +12,7 @@ import participant
 import participant_summary
 import questionnaire
 import questionnaire_response
-import evaluation
+import measurements
 import unittest
 import os
 
@@ -36,7 +36,7 @@ NOW = datetime.datetime(2016, 9, 12, 11, 0, 1)
 CONFIGS_FOR_TEST = {
     'Participant': {
         'initial_state': {
-            'physicalEvaluation': UNSET,
+            'physicalMeasurements': UNSET,
             'biospecimenSamples': UNSET,
             'biospecimen': UNSET,
             'membershipTier': UNSET,
@@ -68,9 +68,9 @@ CONFIGS_FOR_TEST = {
                          questionnaire_response.extractor_for(concepts.MEMBERSHIP_TIER, extraction.VALUE_CODING),
                             set(participant_summary.MembershipTier)),
             ],
-            'EvaluationHistory': [
-                # The presence of a physical evaluation implies that it is complete.
-                FieldDef('physicalEvaluation',
+            'PhysicalMeasurementsHistory': [
+                # The presence of physical measurements implies that it is complete.
+                FieldDef('physicalMeasurements',
                          lambda h: ExtractionResult('COMPLETE'),
                          ('None', 'COMPLETE')),
             ],
@@ -116,7 +116,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ('PITT|Participant.hpoId.PITT', '2016-09-01|1'),
         ('PITT|Participant.membershipTier.UNSET', '2016-09-01|1'),
         ('PITT|Participant.meta.NOPE', '2016-09-01|1'),
-        ('PITT|Participant.physicalEvaluation.UNSET', '2016-09-01|1'),
+        ('PITT|Participant.physicalMeasurements.UNSET', '2016-09-01|1'),
         ('PITT|Participant.race.UNSET', '2016-09-01|1'),
         ('PITT|Participant.state.UNSET', '2016-09-01|1'),
         ('PITT|Participant.ageRange.UNSET', '2016-09-01|-1'),
@@ -148,8 +148,8 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ('PITT|Participant.biospecimen.UNSET', '2016-09-01|1'),
         ('PITT|Participant.biospecimenSummary.UNSET', '2016-09-01|1'),
         ('PITT|Participant.consentForStudyEnrollmentAndEHR.UNSET', '2016-09-01|1'),                
-        ('PITT|Participant.physicalEvaluation.UNSET', '2016-09-05|-1'),
-        ('PITT|Participant.physicalEvaluation.COMPLETE', '2016-09-05|1'),
+        ('PITT|Participant.physicalMeasurements.UNSET', '2016-09-05|-1'),
+        ('PITT|Participant.physicalMeasurements.COMPLETE', '2016-09-05|1'),
         ('PITT|Participant.membershipTier.REGISTERED', '2016-09-10|-1'),
         ('PITT|Participant.meta.R1', '2016-09-10|-1'),
         ('PITT|Participant.membershipTier.VOLUNTEER', '2016-09-10|1'),
@@ -195,7 +195,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ('PITT|Participant.hpoId.PITT', '2013-09-01|1'),
         ('PITT|Participant.membershipTier.UNSET', '2013-09-01|1'),
         ('PITT|Participant.meta.NOPE', '2013-09-01|1'),
-        ('PITT|Participant.physicalEvaluation.UNSET', '2013-09-01|1'),
+        ('PITT|Participant.physicalMeasurements.UNSET', '2013-09-01|1'),
         ('PITT|Participant.race.UNSET', '2013-09-01|1'),
         ('PITT|Participant.state.UNSET', '2013-09-01|1'),
         ('PITT|Participant.ageRange.UNSET', '2013-09-01|-1'),
@@ -334,14 +334,14 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     columbia_metrics = json.loads(metrics_list[(i * 3) + 1].metrics)
     pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)
     self.assertEquals(2, all_metrics['Participant.membershipTier.REGISTERED'])
-    self.assertEquals(2, all_metrics['Participant.physicalEvaluation.UNSET'])
+    self.assertEquals(2, all_metrics['Participant.physicalMeasurements.UNSET'])
     self.assertEquals(1, columbia_metrics['Participant.membershipTier.REGISTERED'])    
-    self.assertEquals(1, columbia_metrics['Participant.physicalEvaluation.UNSET'])
-    self.assertFalse(columbia_metrics.get('Participant.physicalEvaluation.COMPLETE'))
+    self.assertEquals(1, columbia_metrics['Participant.physicalMeasurements.UNSET'])
+    self.assertFalse(columbia_metrics.get('Participant.physicalMeasurements.COMPLETE'))
     self.assertFalse(columbia_metrics.get('Participant.membershipTier.VOLUNTEER'))    
     self.assertEquals(1, pitt_metrics['Participant.membershipTier.REGISTERED'])    
-    self.assertEquals(1, pitt_metrics['Participant.physicalEvaluation.UNSET'])
-    self.assertFalse(pitt_metrics.get('Participant.physicalEvaluation.COMPLETE'))
+    self.assertEquals(1, pitt_metrics['Participant.physicalMeasurements.UNSET'])
+    self.assertFalse(pitt_metrics.get('Participant.physicalMeasurements.COMPLETE'))
     self.assertFalse(pitt_metrics.get('Participant.membershipTier.VOLUNTEER'))
     
 
@@ -350,32 +350,32 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     columbia_metrics = json.loads(metrics_list[(i * 3) + 1].metrics)
     pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)
     self.assertEquals(2, all_metrics['Participant.membershipTier.REGISTERED'])
-    self.assertEquals(2, all_metrics['Participant.physicalEvaluation.COMPLETE'])
-    self.assertFalse(all_metrics.get('Participant.physicalEvaluation.UNSET')) 
+    self.assertEquals(2, all_metrics['Participant.physicalMeasurements.COMPLETE'])
+    self.assertFalse(all_metrics.get('Participant.physicalMeasurements.UNSET')) 
     self.assertFalse(all_metrics.get('Participant.membershipTier.VOLUNTEER')) 
     self.assertEquals(1, columbia_metrics['Participant.membershipTier.REGISTERED'])
-    self.assertEquals(1, columbia_metrics['Participant.physicalEvaluation.COMPLETE'])
-    self.assertFalse(columbia_metrics.get('Participant.physicalEvaluation.UNSET'))
+    self.assertEquals(1, columbia_metrics['Participant.physicalMeasurements.COMPLETE'])
+    self.assertFalse(columbia_metrics.get('Participant.physicalMeasurements.UNSET'))
     self.assertFalse(columbia_metrics.get('Participant.membershipTier.VOLUNTEER'))
     self.assertEquals(1, pitt_metrics['Participant.membershipTier.REGISTERED'])
-    self.assertEquals(1, pitt_metrics['Participant.physicalEvaluation.COMPLETE'])
-    self.assertFalse(pitt_metrics.get('Participant.physicalEvaluation.UNSET'))
+    self.assertEquals(1, pitt_metrics['Participant.physicalMeasurements.COMPLETE'])
+    self.assertFalse(pitt_metrics.get('Participant.physicalMeasurements.UNSET'))
 
   def check_third_dates(self, metrics_list, i):
     all_metrics = json.loads(metrics_list[i * 3].metrics)
     columbia_metrics = json.loads(metrics_list[(i * 3) + 1].metrics)
     pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)
     self.assertEquals(2, all_metrics['Participant.membershipTier.VOLUNTEER'])
-    self.assertEquals(2, all_metrics['Participant.physicalEvaluation.COMPLETE'])
-    self.assertFalse(all_metrics.get('Participant.physicalEvaluation.UNSET'))
+    self.assertEquals(2, all_metrics['Participant.physicalMeasurements.COMPLETE'])
+    self.assertFalse(all_metrics.get('Participant.physicalMeasurements.UNSET'))
     self.assertFalse(all_metrics.get('Participant.membershipTier.REGISTERED'))
     self.assertEquals(1, columbia_metrics['Participant.membershipTier.VOLUNTEER'])
-    self.assertEquals(1, columbia_metrics['Participant.physicalEvaluation.COMPLETE'])
-    self.assertFalse(columbia_metrics.get('Participant.physicalEvaluation.UNSET'))
+    self.assertEquals(1, columbia_metrics['Participant.physicalMeasurements.COMPLETE'])
+    self.assertFalse(columbia_metrics.get('Participant.physicalMeasurements.UNSET'))
     self.assertFalse(columbia_metrics.get('Participant.membershipTier.REGISTERED'))    
     self.assertEquals(1, pitt_metrics['Participant.membershipTier.VOLUNTEER'])
-    self.assertEquals(1, pitt_metrics['Participant.physicalEvaluation.COMPLETE'])
-    self.assertFalse(pitt_metrics.get('Participant.physicalEvaluation.UNSET'))
+    self.assertEquals(1, pitt_metrics['Participant.physicalMeasurements.COMPLETE'])
+    self.assertFalse(pitt_metrics.get('Participant.physicalMeasurements.UNSET'))
     self.assertFalse(pitt_metrics.get('Participant.membershipTier.REGISTERED'))    
 
   def _compare_json(self, a, b, msg=None):
@@ -409,9 +409,10 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                                      dateOfBirth=datetime.datetime(1975, 8, 21))
     participant_summary.DAO.store(summary)
     self.populate_questionnaire_responses(key)
-    key = ndb.Key(key.flat()[0], key.flat()[1], evaluation.Evaluation, evaluation.DAO.allocate_id())
-    evaluation.DAO.store(evaluation.Evaluation(key=key, resource="ignored"),
-                         datetime.datetime(2016, 9, 5))
+    key = ndb.Key(key.flat()[0], key.flat()[1], measurements.PhysicalMeasurements, 
+                  measurements.DAO.allocate_id())
+    measurements.DAO.store(measurements.PhysicalMeasurements(key=key, resource="ignored"),
+                           datetime.datetime(2016, 9, 5))
     sample_dict_1 = {
         'familyId': 'SF160914-000001',
         'sampleId': '16258000008',
@@ -455,7 +456,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
                                                                   ("race", unmapped_race)]),
                                      datetime.datetime(2016, 9, 1, 11, 0, 4))
-    # Note that on 9/5, an evaluation is entered.
+    # Note that on 9/5, physical measurements are entered.
 
     # Change to VOLUNTEER on 9/10
     questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),

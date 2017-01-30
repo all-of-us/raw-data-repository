@@ -19,8 +19,8 @@ MEDICAL_HISTORY_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "medical-history")
 MEDICATIONS_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "medications")
 FAMILY_HEALTH_PPI_MODULE = Concept(SYSTEM_PPI_MODULE, "family-health")
 
-SYSTEM_EVALUATION = "http://terminology.pmi-ops.org/CodeSystem/document-type"
-EVALUATION_CONCEPT_CODE_PREFIX = "intake-exam-v"
+SYSTEM_PHYSICAL_MEASUREMENTS = "http://terminology.pmi-ops.org/CodeSystem/document-type"
+PHYSICAL_MEASUREMENTS_CONCEPT_CODE_PREFIX = "intake-exam-v"
 
 SYSTEM_LOINC = 'http://loinc.org'
 SYSTEM_FHIR_NULL = 'http://hl7.org/fhir/v3/NullFlavor'
@@ -79,7 +79,7 @@ STATE_LIST = [Concept(SYSTEM_STATE, s) for s in census_regions.keys()]
 STATES_BY_ABBREV = {c.code:c for c in STATE_LIST}
 
 
-# Used in the evaluation.
+# Used in physical measurements.
 SYSTOLIC_BP = Concept(SYSTEM_LOINC, '8480-6')
 DIASTOLIC_BP = Concept(SYSTEM_LOINC, '8462-4')
 HEART_RATE = Concept(SYSTEM_LOINC, '8867-4')

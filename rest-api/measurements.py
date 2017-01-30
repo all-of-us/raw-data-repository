@@ -1,4 +1,4 @@
-"""The definition of the evaluation object and DB marshalling."""
+"""The definition of the measurements object and DB marshalling."""
 
 import concepts
 import data_access_object
@@ -11,14 +11,14 @@ from extraction import extract_concept
 from google.appengine.ext import ndb
 from werkzeug.exceptions import BadRequest
 
-class Evaluation(ndb.Model):
-  """The evaluation resource definition"""
+class PhysicalMeasurements(ndb.Model):
+  """The physical measurements resource definition"""
   resource = ndb.JsonProperty()
   last_modified = ndb.DateTimeProperty(auto_now=True)
 
-class EvaluationDAO(data_access_object.DataAccessObject):
+class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
   def __init__(self):
-    super(EvaluationDAO, self).__init__(Evaluation, participant.Participant)
+    super(PhysicalMeasurementsDAO, self).__init__(PhysicalMeasurements, participant.Participant)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     model = fhirclient.models.bundle.Bundle(dict_)
@@ -32,14 +32,14 @@ class EvaluationDAO(data_access_object.DataAccessObject):
 
   def list(self, participant_id):
     p_key = ndb.Key(participant.Participant, participant_id)
-    query = Evaluation.query(ancestor=p_key)
+    query = PhysicalMeasurements.query(ancestor=p_key)
     return {"items": [self.to_json(p) for p in query.fetch()]}
 
-DAO = EvaluationDAO()
+DAO = PhysicalMeasurementsDAO()
 
-class EvaluationExtractor(extraction.FhirExtractor):
+class PhysicalMeasurementsExtractor(extraction.FhirExtractor):
   def __init__(self, resource):
-    super(EvaluationExtractor, self).__init__(resource)
+    super(PhysicalMeasurementsExtractor, self).__init__(resource)
     self.values = {}
 
     # The first entry should be a Composition, then Observations follow.
@@ -49,13 +49,13 @@ class EvaluationExtractor(extraction.FhirExtractor):
 
     composition = self.r_fhir.entry[0].resource
     codings = {c.system: c.code for c in composition.type.coding}
-    code = codings.get(concepts.SYSTEM_EVALUATION, None)
+    code = codings.get(concepts.SYSTEM_PHYSICAL_MEASUREMENTS, None)
     if not code:
-      raise BadRequest('Evaluation does not have a composition node with system: {}.'.format(
-          concepts.SYSTEM_EVALUATION))
-    if not code.startswith(concepts.EVALUATION_CONCEPT_CODE_PREFIX):
+      raise BadRequest('Physical measurements does not have a composition node with system: {}.'
+                       .format(concepts.SYSTEM_PHYSICAL_MEASUREMENTS))
+    if not code.startswith(concepts.PHYSICAL_MEASUREMENTS_CONCEPT_CODE_PREFIX):
       raise BadRequest('Invalid Composition code: {} should start with: {}.'.format(
-          code, concepts.EVALUATION_CONCEPT_CODE_PREFIX))
+          code, concepts.PHYSICAL_MEASUREMENTS_CONCEPT_CODE_PREFIX))
 
     for entry in (e.resource for e in self.r_fhir.entry[1:]):
       if entry.resource_name == "Observation":

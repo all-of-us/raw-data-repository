@@ -38,8 +38,8 @@ class HPOId(messages.Enum):
   TRANS_AM = 15
   VA = 16
 
-class PhysicalEvaluationStatus(messages.Enum):
-  """The state of the participant's physical evaluation"""
+class PhysicalMeasurementsStatus(messages.Enum):
+  """The state of the participant's physical measurements"""
   UNSET = 0
   SCHEDULED = 1
   COMPLETED = 2
@@ -148,8 +148,8 @@ class ParticipantSummary(ndb.Model):
   membershipTier = msgprop.EnumProperty(MembershipTier, default=MembershipTier.UNSET)
   race = msgprop.EnumProperty(Race, default=Race.UNSET)
   ethnicity = msgprop.EnumProperty(Ethnicity, default=Ethnicity.UNSET)
-  physicalEvaluationStatus = msgprop.EnumProperty(
-      PhysicalEvaluationStatus, default=PhysicalEvaluationStatus.UNSET, indexed=False)
+  physicalMeasurementsStatus = msgprop.EnumProperty(
+      PhysicalMeasurementsStatus, default=PhysicalMeasurementsStatus.UNSET, indexed=False)
   signUpTime = ndb.DateTimeProperty(indexed=False)
   consentTime = ndb.DateTimeProperty(indexed=False)
   hpoId = msgprop.EnumProperty(HPOId, default=HPOId.UNSET)
@@ -187,7 +187,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.parse_json_enum(dict_, 'race', Race)
     api_util.parse_json_enum(dict_, 'ethnicity', Ethnicity)
     api_util.parse_json_enum(dict_, 'membershipTier', MembershipTier)
-    api_util.parse_json_enum(dict_, 'physicalEvaluationStatus', PhysicalEvaluationStatus)
+    api_util.parse_json_enum(dict_, 'physicalMeasurementsStatus', PhysicalMeasurementsStatus)
     api_util.parse_json_enum(dict_, 'consentForStudyEnrollment', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'consentForElectronicHealthRecords', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnOverallHealth', QuestionnaireStatus)
@@ -209,7 +209,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.format_json_enum(dict_, 'race')
     api_util.format_json_enum(dict_, 'ethnicity')
     api_util.format_json_enum(dict_, 'membershipTier')
-    api_util.format_json_enum(dict_, 'physicalEvaluationStatus')
+    api_util.format_json_enum(dict_, 'physicalMeasurementsStatus')
     api_util.format_json_enum(dict_, 'consentForStudyEnrollment')
     api_util.format_json_enum(dict_, 'consentForElectronicHealthRecords')
     api_util.format_json_enum(dict_, 'questionnaireOnOverallHealth')

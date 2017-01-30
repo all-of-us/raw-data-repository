@@ -7,7 +7,7 @@ import os
 
 import biobank_order
 import concepts
-import evaluation
+import measurements
 import participant
 import participant_summary
 import questionnaire
@@ -57,10 +57,11 @@ class ParticipantNdbTest(NdbTestBase):
                                                                   resource=resource)
     questionnaire_response.DAO.store(response_entry, dates[2])
 
-    evaluation_key = ndb.Key(participant_key.flat()[0], participant_key.flat()[1],
-                             evaluation.Evaluation, evaluation.DAO.allocate_id())
-    evaluation_entry = evaluation.Evaluation(key=evaluation_key, resource='notused_eval')
-    evaluation.DAO.store(evaluation_entry, dates[3])
+    measurements_key = ndb.Key(participant_key.flat()[0], participant_key.flat()[1],
+                               measurements.PhysicalMeasurements, measurements.DAO.allocate_id())
+    measurements_entry = measurements.PhysicalMeasurements(key=measurements_key, 
+                                                           resource='notused_eval')
+    measurements.DAO.store(measurements_entry, dates[3])
 
     biobank_key = ndb.Key(participant_key.flat()[0], participant_key.flat()[1],
                           biobank_order.BiobankOrder,
@@ -73,7 +74,7 @@ class ParticipantNdbTest(NdbTestBase):
         key=lambda m: m.date)
     entries_json = []
 
-    expected = [participant_entry, response_entry, evaluation_entry, biobank_entry]
+    expected = [participant_entry, response_entry, measurements_entry, biobank_entry]
     expected_json = []
     for entry in expected:
       expected_json.append(to_dict_strip_last_modified(entry))

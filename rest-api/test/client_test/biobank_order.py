@@ -13,11 +13,11 @@ class TestBiobankOrder(unittest.TestCase):
     self.participant_id = test_util.create_participant(self.client)
 
   def test_insert_eval(self):
-    evaluation_files = [
+    order_files = [
         'test-data/biobank_order_1.json',
     ]
 
-    for json_file in evaluation_files:
+    for json_file in order_files:
       with open(json_file) as f:
         biobank_order = json.load(f)
         biobank_order['subject'] = biobank_order['subject'].format(self.participant_id)
