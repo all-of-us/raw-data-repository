@@ -1,5 +1,8 @@
 """NDB model and DAO for logs of writes that can be synced.
 
+Sync log entries provide a strongly consistent feed of participant changes, so clients can keep 
+their models up to date and notify end users of change events.
+
 Each sync channel has a configurable number of shards, each with its own SyncCounter row.
 These counters are incremented as records are written to the log; each record has the new value
 of the counter as the ID part of its key. Each shard is its own entity group; this allows for 
@@ -31,35 +34,35 @@ class SyncLogEntry(ndb.Model):
   participantId = ndb.StringProperty()
   resource = ndb.JsonProperty()
     
-class SyncLogDao:
+class SyncLogDao(object):
   """A DAO for writing and reading sync log entries."""
   
   def __init__(self):
-    self.num_shards = None
+    self._num_shards = None
     
-  def get_num_shards(self):
+  def _get_num_shards(self):
     """Returns the number of shards to use when syncing."""
-    if self.num_shards:
-      return self.num_shards
+    if self._num_shards:
+      return self._num_shards
     return config.getSetting(config.SYNC_SHARDS_PER_CHANNEL, 1)
   
   def set_num_shards(self, num_shards):
     """Overrides the number of shards. Used for testing."""
-    self.num_shards = num_shards
+    self._num_shards = num_shards
   
-  def get_shard_number(self, participantId):
-    return (hash(participantId) & 0xffffffff) % self.get_num_shards()
+  def _get_shard_number(self, participantId):
+    return (hash(participantId) & 0xffffffff) % self._get_num_shards()
 
-  def make_sync_counter_key(self, channel_index, shard_number):  
+  def _make_sync_counter_key(self, channel_index, shard_number):  
     return ndb.Key('SyncCounter', '%d|%d' % (channel_index, shard_number))
   
-  def make_log_entry_key(self, sync_counter_key, entry_id):
+  def _make_log_entry_key(self, sync_counter_key, entry_id):
     return ndb.Key('SyncLogEntry', entry_id, parent=sync_counter_key)        
   
   @ndb.transactional
   def write_log_entry(self, channel_index, participantId, resource):    
     """Writes a log entry for the specified participant and channel."""
-    counter_key = self.make_sync_counter_key(channel_index, self.get_shard_number(participantId))
+    counter_key = self._make_sync_counter_key(channel_index, self._get_shard_number(participantId))
     counter = counter_key.get()
     if counter:
       counter.value += 1      
@@ -68,7 +71,7 @@ class SyncLogDao:
       counter = SyncCounter(key=counter_key, value=1)
        
     entry = SyncLogEntry(participantId=participantId, resource=resource, 
-                         key=self.make_log_entry_key(counter_key, counter.value))
+                         key=self._make_log_entry_key(counter_key, counter.value))
     counter.put()
     entry.put()
     
@@ -84,7 +87,7 @@ class SyncLogDao:
     """
     counter_values = previous_token.split('|') if previous_token else [] 
     
-    num_shards = self.get_num_shards()
+    num_shards = self._get_num_shards()
     # If we changed the number of shards, the previous sync token is invalid; start from the 
     # beginning of time.
     if len(counter_values) != num_shards:
@@ -93,14 +96,12 @@ class SyncLogDao:
     
     # Fetch pages for each shards, and collect the futures
     for i in range(0, num_shards):
-      sync_counter_key = self.make_sync_counter_key(channel_index, i)
+      sync_counter_key = self._make_sync_counter_key(channel_index, i)
       query = SyncLogEntry.query(ancestor=sync_counter_key)
-      if len(counter_values) > i:
-        if counter_values[i] != '0':        
-          key = self.make_log_entry_key(sync_counter_key, int(counter_values[i]))
-          query = query.filter(SyncLogEntry.key > key)
-      query = query.order(SyncLogEntry.key)
-      # Should we use cursors instead?      
+      if counter_values[i] != '0':        
+        key = self._make_log_entry_key(sync_counter_key, int(counter_values[i]))
+        query = query.filter(SyncLogEntry.key > key)
+      query = query.order(SyncLogEntry.key)          
       futures.append(query.fetch_page_async(max_results / num_shards))
     resources = []
     more_available = False
