@@ -88,6 +88,7 @@ class SyncLogDao(object):
     counter_values = previous_token.split('|') if previous_token else [] 
     
     num_shards = self._get_num_shards()
+    assert num_shards <= max_results
     # If we changed the number of shards, the previous sync token is invalid; start from the 
     # beginning of time.
     if len(counter_values) != num_shards:

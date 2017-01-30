@@ -160,3 +160,7 @@ class ParticipantNdbTest(NdbTestBase):
     self.assertEquals('19', token)
     self.assertFalse(more_available)
     
+  def test_too_few_results(self):
+    sync_log.DAO.set_num_shards(2)
+    with self.assertRaises(AssertionError):
+      sync_log.DAO.sync(sync_log.PHYSICAL_MEASUREMENTS, None, 1)
