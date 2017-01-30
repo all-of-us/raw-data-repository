@@ -64,7 +64,7 @@ ALL_CONFIG = {
             'physicalMeasurements': UNSET,
             'survey': UNSET,
             'state': UNSET,
-            'censusRegion': UNSET,            
+            'censusRegion': UNSET,
             'biospecimen': UNSET,
             'biospecimenSamples': UNSET,
             'biospecimenSummary': UNSET,

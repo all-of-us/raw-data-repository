@@ -351,7 +351,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)
     self.assertEquals(2, all_metrics['Participant.membershipTier.REGISTERED'])
     self.assertEquals(2, all_metrics['Participant.physicalMeasurements.COMPLETE'])
-    self.assertFalse(all_metrics.get('Participant.physicalMeasurements.UNSET')) 
+    self.assertFalse(all_metrics.get('Participant.physicalMeasurements.UNSET'))
     self.assertFalse(all_metrics.get('Participant.membershipTier.VOLUNTEER')) 
     self.assertEquals(1, columbia_metrics['Participant.membershipTier.REGISTERED'])
     self.assertEquals(1, columbia_metrics['Participant.physicalMeasurements.COMPLETE'])
@@ -409,7 +409,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                                      dateOfBirth=datetime.datetime(1975, 8, 21))
     participant_summary.DAO.store(summary)
     self.populate_questionnaire_responses(key)
-    key = ndb.Key(key.flat()[0], key.flat()[1], measurements.PhysicalMeasurements, 
+    key = ndb.Key(key.flat()[0], key.flat()[1], measurements.PhysicalMeasurements,
                   measurements.DAO.allocate_id())
     measurements.DAO.store(measurements.PhysicalMeasurements(key=key, resource="ignored"),
                            datetime.datetime(2016, 9, 5))

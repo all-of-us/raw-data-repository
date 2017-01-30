@@ -31,10 +31,10 @@ class TestPhysicalMeasurements(unittest.TestCase):
     response = self.client.request_json('Participant/{}/PhysicalMeasurements'
                                         .format(self.participant_id))
     self.assertEquals('Bundle', response['resourceType'])
-    self.assertEquals('searchset', response['type'])    
+    self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
     self.assertTrue(response.get('entry'))
-    self.assertEquals(1, len(response['entry']))    
+    self.assertEquals(1, len(response['entry']))
 
 if __name__ == '__main__':
   unittest.main()

@@ -59,7 +59,7 @@ class ParticipantNdbTest(NdbTestBase):
 
     measurements_key = ndb.Key(participant_key.flat()[0], participant_key.flat()[1],
                                measurements.PhysicalMeasurements, measurements.DAO.allocate_id())
-    measurements_entry = measurements.PhysicalMeasurements(key=measurements_key, 
+    measurements_entry = measurements.PhysicalMeasurements(key=measurements_key,
                                                            resource='notused_eval')
     measurements.DAO.store(measurements_entry, dates[3])
 
