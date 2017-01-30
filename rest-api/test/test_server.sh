@@ -63,7 +63,7 @@ function run_client_test {
 
 TEST_FILES="ppi.py
 participant.py
-evaluation.py
+measurements.py
 metrics.py
 biobank_order.py"
 
