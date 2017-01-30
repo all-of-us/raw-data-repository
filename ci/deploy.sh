@@ -30,6 +30,7 @@
 
 set -e
 
+# When this script exits, kill any child jobs. OK for `kill` to fail.
 trap 'kill $(jobs -p) || true' EXIT
 
 PROJECT_ID=$1
