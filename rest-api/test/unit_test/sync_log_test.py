@@ -51,7 +51,7 @@ class ParticipantNdbTest(NdbTestBase):
     self.assertEquals(['foo', 'bar'], resources)
     self.assertEquals('2', token)
     self.assertFalse(more_available)
-    resources, token, more_available)= sync_log.DAO.sync(sync_log.BIOBANK_ORDERS, None, 2)
+    resources, token, more_available = sync_log.DAO.sync(sync_log.BIOBANK_ORDERS, None, 2)
     self.assertEquals([], resources)
     self.assertEquals('0', token)
     self.assertFalse(more_available)
@@ -144,4 +144,19 @@ class ParticipantNdbTest(NdbTestBase):
     self.assertEquals(['foo', 'bar'], resources)
     self.assertEquals('1|1', token)
     self.assertTrue(more_available)
+    
+  def test_more_than_ten_writes(self):
+    sync_log.DAO.set_num_shards(1)
+    for i in range(1, 20):
+      sync_log.DAO.write_log_entry(sync_log.PHYSICAL_MEASUREMENTS, 'P123', 'foo{}'.format(i))
+    resources, token, more_available = sync_log.DAO.sync(sync_log.PHYSICAL_MEASUREMENTS, None, 10)
+    self.assertEquals(['foo1', 'foo2', 'foo3', 'foo4', 'foo5', 'foo6', 'foo7', 'foo8', 'foo9', 
+                       'foo10'], resources)
+    self.assertEquals('10', token)
+    self.assertTrue(more_available)
+    resources, token, more_available = sync_log.DAO.sync(sync_log.PHYSICAL_MEASUREMENTS, token, 10)
+    self.assertEquals(['foo11', 'foo12', 'foo13', 'foo14', 'foo15', 'foo16', 'foo17', 'foo18', 
+                       'foo19'], resources)
+    self.assertEquals('19', token)
+    self.assertFalse(more_available)
     
