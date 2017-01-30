@@ -51,7 +51,7 @@ class SyncLogDao(object):
     self._num_shards = num_shards
   
   def _get_shard_number(self, participantId):
-    return (hash(participantId) & 0xffffffff) % self._get_num_shards()
+    return hash(participantId) % self._get_num_shards()
 
   def _make_sync_counter_key(self, channel_index, shard_number):  
     return ndb.Key('SyncCounter', '%d|%d' % (channel_index, shard_number))
