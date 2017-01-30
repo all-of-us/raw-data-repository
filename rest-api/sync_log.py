@@ -1,9 +1,24 @@
-"""NDB model and DAO for logs of writes that can be synced."""
+"""NDB model and DAO for logs of writes that can be synced.
+
+Each sync channel has a configurable number of shards, each with its own SyncCounter row.
+These counters are incremented as records are written to the log; each record has the new value
+of the counter as the ID part of its key. Each shard is its own entity group; this allows for 
+higher write QPS than having only a single entity group per channel.
+
+Calls to the sync() method retrieve resources from the log in increasing ID order, across all 
+shards. Because they are in the same entity group, reads from a shard are guaranteed to reflect
+all previous calls to write_log_entry for that shard. (This is in contrast to reads from secondary
+indexes, where no such guarantees exist.)
+
+Writes are sharded based on a hash of the ID for the participant being written about. This
+guarantees that resources for the same participant will be returned to the client in the
+order they were written. 
+"""
 import config
 
 from google.appengine.ext import ndb
 
-# Sync channel indexes
+# Sync channel indexes -- provided in calls to write_log_entry() and sync() below as channel_index.
 PHYSICAL_MEASUREMENTS = 1
 BIOBANK_ORDERS = 2
   
@@ -67,13 +82,13 @@ class SyncLogDao:
     
     Returns a tuple of (resource_list, next_token, more_available)
     """
-    counter_values = previous_token.split('|') if previous_token else []
+    counter_values = previous_token.split('|') if previous_token else [] 
     
     num_shards = self.get_num_shards()
     # If we changed the number of shards, the previous sync token is invalid; start from the 
     # beginning of time.
     if len(counter_values) != num_shards:
-      counter_values = []
+      counter_values = ['0'] * num_shards
     futures = []   
     
     # Fetch pages for each shards, and collect the futures
@@ -84,8 +99,6 @@ class SyncLogDao:
         if counter_values[i] != '0':        
           key = self.make_log_entry_key(sync_counter_key, int(counter_values[i]))
           query = query.filter(SyncLogEntry.key > key)
-      else:
-        counter_values.append('0')      
       query = query.order(SyncLogEntry.key)
       # Should we use cursors instead?      
       futures.append(query.fetch_page_async(max_results / num_shards))
@@ -99,7 +112,7 @@ class SyncLogDao:
       if results:        
         for result in results:
           resources.append(result.resource)
-        counter_values[i] = str(results[len(results) - 1].key.id())
+        counter_values[i] = str(results[-1].key.id())
       if more:
         more_available = True
     return (resources, '|'.join(counter_values), more_available)  
