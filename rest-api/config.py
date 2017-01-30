@@ -22,6 +22,7 @@ AGE_RANGE_SHARDS = 'age_range_shards'
 BIOBANK_SAMPLES_SHARDS = 'biobank_samples_shards'
 BIOBANK_SAMPLES_BUCKET_NAME = 'biobank_samples_bucket_name'
 USER_INFO = 'user_info'
+SYNC_SHARDS_PER_CHANNEL = 'sync_shards_per_channel'
 
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 
