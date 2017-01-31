@@ -20,7 +20,8 @@ deployment:
       - ./ci/activate_creds.sh ~/gcloud-credentials.key
       - ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
       - ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com
-  # To deploy to staging, cut a GitHub release on a green build, with tag of the form v0.1.1-rc0
+  # To deploy to staging, cut a GitHub release on a green build, with tag of
+  # the form v0.1.1-rc0
   staging:
     tag: /v[0-9]+(-[0-9]+)*-rc[0-9]+/
     commands:

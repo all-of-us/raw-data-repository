@@ -122,3 +122,42 @@ test/test_server.sh
 This will execute all the client tests in turn against the test server, stopping
 if any one of them fails. To run a particular test use the -r flag as for
 run_tests.  Use the -i flag to override the default instance.
+
+## Auth Model
+
+The RDR has separate permissions management for gcloud project administration,
+RDR's custom config updates, and general API endpoints.
+
+### Cloud Project Admin Permissions
+
+[Cloud Platform Admin settings](https://console.cloud.google.com/iam-admin/serviceaccounts/project?project=all-of-us-rdr-staging)
+control which people can administer the project. Service accounts (and their
+keys) are also created here.
+
+Admin accounts must be pmi-ops accounts using two-factor auth. For prod, only
+these accounts are allowed; for development environments, additional accounts
+may have access for convenience.
+
+### Config Updates
+
+The `/config` endpoint uses separate auth from any other endpoint. It depends on
+the hardcoded values in `rest-api/config/config_admins.json`. If an app ID is
+listed in `config_admins.json`, only the service account that it's mapped to
+may make `/config` requests. Otherwise, a default
+`configurator@$APPID.iam.gserviceaccount.com` has permission.
+
+Config updates happen automatically on deploy for some environments, controlled
+by `circle.yml`. To manually update configs, download the appropriate service
+account's private key in JSON format (or generate a new key which you can revoke
+after use), and pass it to `install_config.sh`.
+
+## API Endpoints
+
+All endpoints except `/config` are authenticated using service account
+credentials in oauth request headers. The config loaded into an app's datastore
+(from `config/config_$ENV.json`) maps service accounts to roles, and the
+`auth_*` decorators (from `api_util.py`) assign permissible roles to endpoints.
+
+The config may also specify that a service account is only authorized from
+certain IP ranges, or from specific appids (for AppEngine-to-AppEngine
+requests), as second verification of the service account's auth.
