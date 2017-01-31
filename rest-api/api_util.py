@@ -1,5 +1,5 @@
-"""Utilities used by the API definition.
-"""
+"""Utilities used by the API definition, and authentication/authorization/roles."""
+
 import datetime
 import logging
 import netaddr
