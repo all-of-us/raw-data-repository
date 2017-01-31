@@ -1,4 +1,4 @@
-"""Simple end to end test to exercise the participant and evaluation APIs.
+"""Simple end to end test to exercise the participant and measurements APIs.
 """
 
 import pprint

@@ -31,7 +31,7 @@ def validate_fields(field_validations, value_dict):
     value = value_dict.get(field.concept, None)
     if not value:
       if field.required:
-        raise BadRequest('{} ({}:{}) is required. Not found in evaluation.'.format(
+        raise BadRequest('{} ({}:{}) is required. Not found in physical measurements.'.format(
             field.display_name, field.concept.system, field.concept.code))
 
     for val_func in field.funcs:

@@ -176,8 +176,8 @@ def modify_participant_history(history, participant_key, now):
 
   import questionnaire_response
   history.extend(questionnaire_response.DAO.get_all_history(participant_key, now))
-  import evaluation
-  history.extend(evaluation.DAO.get_all_history(participant_key, now))
+  import measurements
+  history.extend(measurements.DAO.get_all_history(participant_key, now))
   import biobank_order
   history.extend(biobank_order.DAO.get_all_history(participant_key, now))
   import biobank_sample

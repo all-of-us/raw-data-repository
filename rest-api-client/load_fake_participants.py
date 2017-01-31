@@ -190,11 +190,11 @@ def create_fake_participant():
 
     ret.append({
       'when': when.isoformat(),
-      'endpoint': 'Participant/$participant_id/PhysicalEvaluation',
+      'endpoint': 'Participant/$participant_id/PhysicalMeasurements',
       'vars': {
         'authored_time': when.isoformat(),
       },
-      'payload': json.load(open("test-data/evaluation-as-fhir.json")),
+      'payload': json.load(open("test-data/measurements-as-fhir.json")),
     })
 
   return ret

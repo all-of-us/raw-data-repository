@@ -61,11 +61,10 @@ def get_fields():
 ALL_CONFIG = {
     'Participant': {
         'initial_state': dict(list({
-            'physicalEvaluation': UNSET,
+            'physicalMeasurements': UNSET,
             'survey': UNSET,
             'state': UNSET,
-            'censusRegion': UNSET,
-            'physicalEvaluation': UNSET,
+            'censusRegion': UNSET,            
             'biospecimen': UNSET,
             'biospecimenSamples': UNSET,
             'biospecimenSummary': UNSET,
@@ -92,9 +91,9 @@ ALL_CONFIG = {
                         questionnaire_response.extract_census_region,
                         BASE_VALUES | regions()),
             ],
-            'EvaluationHistory': [
-                # The presence of a physical evaluation implies that it is complete.
-                FieldDef('physicalEvaluation',
+            'PhysicalMeasurementsHistory': [
+                # The presence of physical measurements implies that it is complete.
+                FieldDef('physicalMeasurements',
                          lambda h: ExtractionResult('COMPLETE'),
                          (UNSET, 'COMPLETE')),
             ],

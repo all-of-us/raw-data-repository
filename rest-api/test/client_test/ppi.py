@@ -100,7 +100,7 @@ class TestPPI(unittest.TestCase):
                  'membershipTier': 'UNSET',
                  'biobankId': participant['biobankId'],
                  'participantId': participant_id,
-                 'physicalEvaluationStatus': 'UNSET',
+                 'physicalMeasurementsStatus': 'UNSET',
                  'zipCode': None,
                  'consentForElectronicHealthRecords': 'UNSET',
                  'consentForStudyEnrollment': 'UNSET',

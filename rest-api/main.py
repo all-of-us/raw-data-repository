@@ -32,10 +32,10 @@ api.add_resource(participants_api.ParticipantAPI,
                  methods=['GET', 'POST', 'PATCH'])
 
 api.add_resource(
-    participants_api.EvaluationAPI,
-    PREFIX + 'Participant/<string:a_id>/PhysicalEvaluation',
-    PREFIX + 'Participant/<string:a_id>/PhysicalEvaluation/<string:id_>',
-    endpoint='participant.evaluation',
+    participants_api.PhysicalMeasurementsAPI,
+    PREFIX + 'Participant/<string:a_id>/PhysicalMeasurements',
+    PREFIX + 'Participant/<string:a_id>/PhysicalMeasurements/<string:id_>',
+    endpoint='participant.physicalMeasurements',
     methods=['GET', 'POST',])
 
 api.add_resource(
