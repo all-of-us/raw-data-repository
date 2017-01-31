@@ -222,11 +222,10 @@ def sync(channel_index, max_results):
   resources, next_token, more_available = sync_log.DAO.sync(channel_index, decoded_token, count)        
   bundle_dict = {"resourceType": "Bundle", "type": "history"}
   query_params = request.args.copy()
-  query_params['_token'] = base64.b64encode(next_token)
-  if more_available:
-    query_params['moreAvailable'] = 'true'
+  query_params['_token'] = base64.b64encode(next_token)  
+  link_type = "next" if more_available else "sync"
   next_url = flask.url_for(request.url_rule.endpoint, _external=True, **query_params)
-  bundle_dict['link'] = [{"relation": "next", "url": next_url}]      
+  bundle_dict['link'] = [{"relation": link_type, "url": next_url}]      
   entries = []
   for resource in resources:            
     entries.append({"resource": resource})

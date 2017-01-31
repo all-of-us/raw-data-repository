@@ -50,21 +50,19 @@ class TestPhysicalMeasurements(unittest.TestCase):
     self.assertEquals(1, len(response['entry']))
     
   def test_physical_measurements_sync(self):
-    sync_response = self.client.request_json('PhysicalMeasurementsSync')
+    sync_response = self.client.request_json('PhysicalMeasurements/_history')
     self.assertEquals('Bundle', sync_response['resourceType'])
     self.assertEquals('history', sync_response['type'])
     link = sync_response.get('link')
-    self.assertTrue(link)
-    self.assertEquals("next", link[0]['relation'])        
+    self.assertTrue(link)          
     self.assertTrue(sync_response.get('entry'))    
     self.assertTrue(len(sync_response['entry']) > 1)
     
-    sync_response = self.client.request_json('PhysicalMeasurementsSync?_count=1')
+    sync_response = self.client.request_json('PhysicalMeasurements/_history?_count=1')
     self.assertTrue(sync_response.get('entry'))    
     link = sync_response.get('link')
     self.assertTrue(link)
-    print 'link = {}'.format(link[0]['url'])
-    self.assertTrue('moreAvailable=true' in link[0]['url'])
+    self.assertEquals("next", link[0]['relation'])    
     self.assertEquals(1, len(sync_response['entry']))
     
     sync_response_2 = self.client.request_json(link[0]['url'])

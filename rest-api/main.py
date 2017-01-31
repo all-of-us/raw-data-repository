@@ -92,7 +92,7 @@ api.add_resource(version_api.VersionApi,
 # Non-resource pipeline-trigger endpoints
 #
 
-app.add_url_rule(PREFIX + 'PhysicalMeasurementsSync',
+app.add_url_rule(PREFIX + 'PhysicalMeasurements/_history',
                  endpoint='physicalMeasurementsSync',
                  view_func=participants_api.sync_physical_measurements,
                  methods=['GET'])
