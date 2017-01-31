@@ -130,7 +130,7 @@ RDR's custom config updates, and general API endpoints.
 
 ### Cloud Project Admin Permissions
 
-[Cloud Platform Admin settings](https://pantheon.corp.google.com/iam-admin/serviceaccounts/project?project=all-of-us-rdr-staging)
+[Cloud Platform Admin settings](https://console.cloud.google.com/iam-admin/serviceaccounts/project?project=all-of-us-rdr-staging)
 control which people can administer the project. Service accounts (and their
 keys) are also created here.
 
