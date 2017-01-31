@@ -1,4 +1,7 @@
-"""Installs a configuration on a local server."""
+"""Installs a configuration on a RDR server.
+
+See "Config Updates" in the README for permissions details.
+"""
 
 import argparse
 import difflib
