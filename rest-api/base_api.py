@@ -1,11 +1,14 @@
 """Base class for API handlers."""
 
 import api_util
+import base64
 import config
+import flask
+import sync_log
 
 from data_access_object import PROPERTY_TYPE_MAP
 from query import Query, FieldFilter, Operator, PropertyType
-from flask import request
+from flask import jsonify, request
 from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest
 
@@ -210,6 +213,25 @@ class BaseApi(Resource):
                      "resource": json})
     bundle_dict['entry'] = entries
     return bundle_dict  
+    
+def sync(channel_index, max_results):
+  token = request.args.get('_token')
+  count_str = request.args.get('_count')
+  count = int(count_str) if count_str else max_results    
+  decoded_token = base64.b64decode(token) if token else None
+  resources, next_token, more_available = sync_log.DAO.sync(channel_index, decoded_token, count)        
+  bundle_dict = {"resourceType": "Bundle", "type": "history"}
+  query_params = request.args.copy()
+  query_params['_token'] = base64.b64encode(next_token)
+  if more_available:
+    query_params['moreAvailable'] = 'true'
+  next_url = flask.url_for(request.url_rule.endpoint, _external=True, **query_params)
+  bundle_dict['link'] = [{"relation": "next", "url": next_url}]      
+  entries = []
+  for resource in resources:            
+    entries.append({"resource": resource})
+  bundle_dict['entry'] = entries
+  return jsonify(bundle_dict)  
 
 def consider_fake_date():
   if "True" == config.getSetting(config.ALLOW_FAKE_HISTORY_DATES, None):

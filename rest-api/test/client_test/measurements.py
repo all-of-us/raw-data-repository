@@ -35,6 +35,28 @@ class TestPhysicalMeasurements(unittest.TestCase):
     self.assertFalse(response.get('link'))
     self.assertTrue(response.get('entry'))
     self.assertEquals(1, len(response['entry']))
-
+    
+  def test_physical_measurements_sync(self):
+    sync_response = self.client.request_json('PhysicalMeasurementsSync')
+    self.assertEquals('Bundle', sync_response['resourceType'])
+    self.assertEquals('history', sync_response['type'])
+    link = sync_response.get('link')
+    self.assertTrue(link)
+    self.assertEquals("next", link[0]['relation'])        
+    self.assertTrue(sync_response.get('entry'))    
+    self.assertTrue(len(sync_response['entry']) > 1)
+    
+    sync_response = self.client.request_json('PhysicalMeasurementsSync?_count=1')
+    self.assertTrue(sync_response.get('entry'))    
+    link = sync_response.get('link')
+    self.assertTrue(link)
+    print 'link = {}'.format(link[0]['url'])
+    self.assertTrue('moreAvailable=true' in link[0]['url'])
+    self.assertEquals(1, len(sync_response['entry']))
+    
+    sync_response_2 = self.client.request_json(link[0]['url'])
+    self.assertEquals(1, len(sync_response_2['entry']))
+    self.assertNotEquals(sync_response['entry'][0], sync_response_2['entry'][0])
+        
 if __name__ == '__main__':
   unittest.main()

@@ -5,15 +5,18 @@ This defines the APIs and the handlers for the APIs.
 
 import api_util
 import base_api
+import base64
 import concepts
+import config
 import datetime
+import field_validation
 import measurements
 import logging
 import offline.age_range_pipeline
 import offline.participant_summary_pipeline
 import participant
 import participant_summary
-import field_validation
+import sync_log
 
 from api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
 from field_validation import FieldValidation, has_units, lessthan, within_range
@@ -167,3 +170,7 @@ def update_participant_summary_age_ranges():
   offline.age_range_pipeline.AgeRangePipeline(datetime.datetime.utcnow()).start()
   return '{"metrics-pipeline-status": "started"}'
   
+@api_util.auth_required(PTC)
+def sync_physical_measurements():
+  max_results = config.getSetting(config.MEASUREMENTS_ENTITIES_PER_SYNC, 100)
+  return base_api.sync(sync_log.PHYSICAL_MEASUREMENTS, max_results)                                                  

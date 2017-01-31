@@ -23,7 +23,7 @@ from collections import Counter
 from google.appengine.ext import ndb
 from mapreduce import test_support
 from testlib import testutil
-from unit_test_util import make_questionnaire_response, _data_path
+from unit_test_util import make_deferred_not_run, make_questionnaire_response, _data_path
 
 def compute_meta(summary):
   if summary['membershipTier'] == 'REGISTERED' and summary.get('hpoId') == 'PITT':
@@ -99,6 +99,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     self.longMessage = True
     self.saved_config_fn = offline.metrics_config.get_config
     offline.metrics_config.get_config = (lambda: CONFIGS_FOR_TEST)
+    make_deferred_not_run()
 
   def tearDown(self):
     offline.metrics_config.get_config = self.saved_config_fn
@@ -135,7 +136,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ('PITT|Participant.race.WHITE', '2016-09-01|-1'),
         ('PITT|Participant.membershipTier.REGISTERED', '2016-09-01|-1'),
         ('PITT|Participant.meta.R1', '2016-09-01|-1'),
-        ('PITT|Participant.ethnicity.SKIPPED', '2016-09-01|1'),
+        ('PITT|Participant.ethnicity.SKIPPED', '2016-09-01|1'),#
         ('PITT|Participant.race.UNMAPPED', '2016-09-01|1'),
         ('PITT|Participant.membershipTier.FULL_PARTICIPANT', '2016-09-01|1'),
         ('PITT|Participant.meta.NOPE', '2016-09-01|1'),
