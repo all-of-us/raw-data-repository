@@ -20,7 +20,7 @@ These are the APIs that the RDR will support for the initial launch:
     * For a Work Queue, filter participants based on summary information (e.g. age, race, ethnicity)
   * Get Participant Summary (by id)
   * Update a Participant with a new Medical Record Number
-  * Insert results from physical evaluation
+  * Insert results from physical measurements
   * Insert biospecimen orders
 * BioBank to RDR
   * (Google Cloud Storage “add a csv file to bucket”, performed daily)
@@ -34,7 +34,7 @@ These are the APIs that the RDR will support for the initial launch:
 * JSON + REST
 * OAuth 2.0 / Google authentication
 * HTTPS
-* FHIR API and resource definitions where appropriate (questionnaires, evaluations)
+* FHIR API and resource definitions where appropriate (questionnaires, physical measurements)
 * FHIR API and resource conventions elsewhere (search, biospecimen orders)
 * API handlers written in Python + Flask, backed by AppEngine.
 * Data stored in [Cloud Datastore](https://cloud.google.com/datastore/docs/concepts/overview) (indexed on fields required for search)
@@ -161,7 +161,7 @@ The summary includes the following fields:
 * `membershipTier`: (TODO clarify these values)
 * `race`
 * `ethnicity`
-* `physicalEvaluationStatus`: indicates whether this participant has completed a physical evaluation
+* `physicalMeasurementsStatus`: indicates whether this participant has completed physical measurements
 * `hpoId`: HPO marked as `primary` for this participant, if any (just the resource id, like `PITT` — not a reference like `Organization/PITT`)
 * `consentForStudyEnrollment`:  indicates whether enrollment consent has been received
 * `consentForElectronicHealthRecords`:  indicate whether EHR sharing consent has been received
@@ -179,7 +179,7 @@ For enumeration fields, the following values are defined:
 
 `ageRange`: `0-17`, `18-25`, `26-35`, `36-45`, `46-55`, `56-65`, `66-75`, `76-85`, `86-`
 
-`physicalEvaluationStatus`: `UNSET`, `SCHEDULED`, `COMPLETED`, `RESULT_READY` 
+`physicalMeasurementsStatus`: `UNSET`, `SCHEDULED`, `COMPLETED`, `RESULT_READY` 
 
 `questionnaireOn[x]`: `UNSET`, `SUBMITTED`
 
@@ -254,7 +254,7 @@ Example query:
     GET /Participant/P123456789/Questionnaire/810572271
 
 
-## PhysicalEvaluation API
+## PhysicalMeasurements API
 
 We use the FHIR `Document` model to represent a set of physical measurements
 recorded at a PMI visit. This stores a `Bundle` of resources, with a
@@ -264,11 +264,11 @@ and a set of `Observation`s as subsequent entries (recording, for example,
 individual blood pressure or weight measurements).
 
 
-#### `POST /Participant/:pid/PhysicalEvaluation`
+#### `POST /Participant/:pid/PhysicalMeasurements`
 
-Create a new PhysicalEvaluation for a given participant. The payload is a
+Create a new PhysicalMeasurements for a given participant. The payload is a
 Bundle (see
-[example](https://github.com/vanderbilt/pmi-data/blob/master/rest-api/test/test-data/evaluation-as-fhir.json))
+[example](https://github.com/vanderbilt/pmi-data/blob/master/rest-api/test/test-data/measurements-as-fhir.json))
 where the first entry is a `Composition` including:
 
 * `subject`: a reference to the participant, in the form `Patient/:pid`.  The
@@ -283,7 +283,7 @@ where the first entry is a `Composition` including:
   "coding": [{
     "system": "http://terminology.pmi-ops.org/CodeSystem/document-type",
     "code": "intake-exam-v0.0.1",
-    "display": "PMI Intake Evaluation v0.0.1"
+    "display": "PMI Intake Measurements v0.0.1"
   }]
 }
 
@@ -291,23 +291,23 @@ where the first entry is a `Composition` including:
 
 * a series of `Observation`s each with times, codes, and values. 
 
-See also: [Physical evaluation form
+See also: [Physical measurements form
 specs](https://docs.google.com/spreadsheets/d/10kYqLSPigl02jUBpwEHpGAHwuwExFu-BedvMOJ5afpE/edit#gid=0)
 and
 [methods](https://drive.google.com/file/d/0B7ko4YYX_fIca0QwRWx5VkdfSW1SSWFldWN2UTZtWFNMTS1B/view)
 
-#### `POST /Participant/:pid/PhysicalEvaluation`
+#### `POST /Participant/:pid/PhysicalMeasurements`
 
-Create a new PhysicalEvaluation for a given participant. Request body is a FHIR
+Create a new PhysicalMeasurements for a given participant. Request body is a FHIR
 Document-type Bundle. Response is the resource as stored.
 
-#### `GET /Participant/:pid/PhysialEvaluation/:id`
+#### `GET /Participant/:pid/PhysicalMeasurements/:id`
 
-Read a PhysicalEvaluation by id.
+Read PhysicalMeasurements by id.
 
-#### `GET /Participant/:pid/PhysialEvaluation`
+#### `GET /Participant/:pid/PhysicalMeasurements`
 
-Search for all PhysicalEvaluations available for a given participant. Response
+Search for all PhysicalMeasurements available for a given participant. Response
 body is a Bundle (possibly empty) of documents (that is: a bundle of search
 results whose entries are bundles of measurements).
 
