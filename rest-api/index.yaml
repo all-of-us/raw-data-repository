@@ -109,7 +109,7 @@ indexes:
   - name: consentForStudyEnrollment
   - name: sortKey
 
-- kind: Evaluation
+- kind: PhysicalMeasurements
   ancestor: yes
   properties:
   - name: last_modified
