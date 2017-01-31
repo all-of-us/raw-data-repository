@@ -12,6 +12,6 @@ cron:
   url: /rdr/v1/AgeRangeUpdate
   schedule: every 24 hours
 - description: Datastore backup
-  url: /_ah/datastore_admin/backup.create?kind=BiobankOrder&kind=BiobankOrderHistory&kind=Configuration&kind=ConfigurationHistory&kind=Evaluation&kind=EvaluationHistory&kind=Participant&kind=ParticipantHistory&kind=Questionnaire&kind=QuestionnaireHistory&kind=QuestionnaireResponse&kind=QuestionnaireResponseHistory&kind=IdReservation&kind=MetricsBucket&kind=MetricsVersion&filesystem=gs&gs_bucket_name={PROJECT_ID}-backup
+  url: /_ah/datastore_admin/backup.create?kind=BiobankOrder&kind=BiobankOrderHistory&kind=Configuration&kind=ConfigurationHistory&kind=PhysicalMeasurements&kind=PhysicalMeasurementsHistory&kind=Participant&kind=ParticipantHistory&kind=Questionnaire&kind=QuestionnaireHistory&kind=QuestionnaireResponse&kind=QuestionnaireResponseHistory&kind=IdReservation&kind=MetricsBucket&kind=MetricsVersion&filesystem=gs&gs_bucket_name={PROJECT_ID}-backup
   schedule: every 12 hours
   target: ah-builtin-python-bundle
