@@ -12,6 +12,7 @@ class TestPhysicalMeasurements(unittest.TestCase):
     self.maxDiff = None
     self.client = test_util.get_client('rdr/v1')
     self.participant_id = test_util.create_participant(self.client)
+    self.participant_id_2 = test_util.create_participant(self.client)
     self.when = datetime.datetime.now().isoformat()
 
   def test_insert_physical_measurements(self):
@@ -22,14 +23,26 @@ class TestPhysicalMeasurements(unittest.TestCase):
     for json_file in measurements_files:
       with open(json_file) as f:
         measurements = f.read() \
-          .replace('$authored_time', self.when) \
-          .replace('$participant_id', self.participant_id)
+          .replace('$authored_time', self.when)
+        measurements_1 = measurements.replace('$participant_id', self.participant_id)
+        measurements_2 = measurements.replace('$participant_id', self.participant_id_2)
 
-        measurements = json.loads(measurements)
-        path = 'Participant/{}/PhysicalMeasurements'.format(self.participant_id)
-        test_util.round_trip(self, self.client, path, measurements)
+        measurements_1 = json.loads(measurements_1)
+        measurements_2 = json.loads(measurements_2)
+        path_1 = 'Participant/{}/PhysicalMeasurements'.format(self.participant_id)
+        path_2 = 'Participant/{}/PhysicalMeasurements'.format(self.participant_id_2)
+        test_util.round_trip(self, self.client, path_1, measurements_1)
+        test_util.round_trip(self, self.client, path_2, measurements_2)
     response = self.client.request_json('Participant/{}/PhysicalMeasurements'
                                         .format(self.participant_id))
+    self.assertEquals('Bundle', response['resourceType'])
+    self.assertEquals('searchset', response['type'])
+    self.assertFalse(response.get('link'))
+    self.assertTrue(response.get('entry'))
+    self.assertEquals(1, len(response['entry']))
+    
+    response = self.client.request_json('Participant/{}/PhysicalMeasurements'
+                                        .format(self.participant_id_2))
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
