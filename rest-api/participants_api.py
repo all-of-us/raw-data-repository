@@ -5,7 +5,6 @@ This defines the APIs and the handlers for the APIs.
 
 import api_util
 import base_api
-import base64
 import concepts
 import config
 import datetime

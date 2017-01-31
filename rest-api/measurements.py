@@ -23,7 +23,7 @@ class PhysicalMeasurements(ndb.Model):
     print "ParticipantId: {}".format(participantId)
     sync_log.DAO.write_log_entry(sync_log.PHYSICAL_MEASUREMENTS, participantId, resource)
 
-  def _post_put_hook(self, future):
+  def _post_put_hook(self, _):
     executors.defer(PhysicalMeasurements.write_to_sync_log,
                     self.key.parent().id(), self.resource, _transactional=ndb.in_transaction())
 
