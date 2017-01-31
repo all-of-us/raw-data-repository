@@ -5,7 +5,6 @@ import data_access_object
 import extraction
 import identifier
 import fhir_datatypes
-import field_config
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -78,6 +77,7 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     import questionnaire_response
     questionnaire_response_history = questionnaire_response.DAO.get_all_history(participant_key)
     questionnaire_response_history = sorted(questionnaire_response_history, key=lambda o: o.date)
+    import field_config.participant_summary_config
     for qr_hist_obj in questionnaire_response_history:
       run_extractors(qr_hist_obj, field_config.participant_summary_config.CONFIG,
                      summary_json)
