@@ -1,9 +1,11 @@
 import concepts
 import data_access_object
+import dateutil
 import extraction
 import fhirclient.models.questionnaireresponse
 
 from census_regions import census_regions
+from datetime import datetime
 from extraction import UNMAPPED, SKIPPED
 from google.appengine.ext import ndb
 from participant import Participant
@@ -181,5 +183,17 @@ def extract_concept_presence(concept):
       return extraction.ExtractionResult(None, False)  # Failed to extract answer
 
     return extraction.ExtractionResult('SUBMITTED')
+
+  return extract
+
+def extract_concept_date(concept):
+  def extract(history_obj):
+    response_extractor = QuestionnaireResponseExtractor(history_obj.obj.resource)
+    link_ids = response_extractor.extract_link_ids(concept)
+
+    if not len(link_ids) == 1:
+      return extraction.ExtractionResult(None, False)  # Failed to extract answer
+
+    return extraction.ExtractionResult(history_obj.date)
 
   return extract

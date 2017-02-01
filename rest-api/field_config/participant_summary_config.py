@@ -4,7 +4,7 @@ import extraction
 import shared_config
 
 from offline.metrics_fields import FieldDef
-from questionnaire_response import extractor_for
+from questionnaire_response import extractor_for, extract_concept_date
 
 def make_sample_test_code_set(samples):
   return extraction.ExtractionResult(set(s.testCode for s in samples.samples))
@@ -33,7 +33,8 @@ questionnaire_fields = [
     FieldDef('dateOfBirth',
              extractor_for(concepts.DATE_OF_BIRTH, extraction.VALUE_STRING),
              None),
-]
+] + [FieldDef(k + 'Time', extract_concept_date(concept), None) 
+     for k, concept in shared_config.KNOWN_QUESTIONNAIRES.iteritems()]
 
 CONFIG = {
     'fields': {
