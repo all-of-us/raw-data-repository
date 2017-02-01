@@ -77,8 +77,8 @@ CONFIGS_FOR_TEST = {
             'BiobankOrderHistory': [
                 # The presence of a biobank order implies that an order has been placed.
                 FieldDef('biospecimen',
-                         lambda h: ExtractionResult('ORDER_PLACED'),
-                         (UNSET, 'ORDER_PLACED'))
+                         lambda h: ExtractionResult('SPECIMEN_COLLECTED'),
+                         (UNSET, 'SPECIMEN_COLLECTED'))
             ],
             'BiobankSamples': [
                # The presence of a biobank sample implies that samples have arrived
