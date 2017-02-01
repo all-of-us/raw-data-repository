@@ -2,7 +2,7 @@
   "baseline_ppi_questionnaire_fields": [
     "questionnaireOnSociodemographics", 
     "questionnaireOnOverallHealth",
-    "questionnaireOnPersonalHabits",    
+    "questionnaireOnPersonalHabits" 
   ],
   "baseline_sample_test_codes": [
   	"1ED04",
