@@ -2,9 +2,11 @@ threadsafe: true
 runtime: python27
 api_version: 1
 
+builtins:
+- deferred: on  
+
 includes:
   - appengine-mapreduce/python/src/mapreduce/include.yaml
-  
 
 handlers:
 - url: /_ah/pipeline.*
@@ -15,6 +17,9 @@ handlers:
   script: google.appengine.ext.datastore_admin.main
   login: admin  
   secure: always
+- url: /_ah/queue/deferred
+  script: google.appengine.ext.deferred.deferred.application
+  login: admin
 - url: /.*
   script: main.app
   

@@ -1,5 +1,6 @@
 """Utils for unit tests."""
 
+import executors
 import os
 import unittest
 import questionnaire_response
@@ -22,7 +23,8 @@ class TestbedTestBase(TestBase):
     super(TestbedTestBase, self).setUp()
     self.testbed = testbed.Testbed()
     self.testbed.activate()
-
+    self.testbed.init_taskqueue_stub() 
+    
   def tearDown(self):
     self.testbed.deactivate()
     super(TestbedTestBase, self).tearDown()
@@ -42,6 +44,9 @@ def to_dict_strip_last_modified(obj):
   json = obj.to_dict()
   del json['last_modified']
   return json
+  
+def make_deferred_not_run():
+  executors.defer = (lambda fn, *args, **kwargs: None)
 
 def make_questionnaire_response(participant_id, questionnaire_id, answers):
     results = []

@@ -179,7 +179,7 @@ For enumeration fields, the following values are defined:
 
 `ageRange`: `0-17`, `18-25`, `26-35`, `36-45`, `46-55`, `56-65`, `66-75`, `76-85`, `86-`
 
-`physicalMeasurementsStatus`: `UNSET`, `SCHEDULED`, `COMPLETED`, `RESULT_READY` 
+`physicalMeasurementsStatus`: `UNSET`, `SCHEDULED`, `COMPLETED`, `RESULT_READY`
 
 `questionnaireOn[x]`: `UNSET`, `SUBMITTED`
 

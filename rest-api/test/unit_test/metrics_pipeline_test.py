@@ -23,7 +23,7 @@ from collections import Counter
 from google.appengine.ext import ndb
 from mapreduce import test_support
 from testlib import testutil
-from unit_test_util import make_questionnaire_response, _data_path
+from unit_test_util import make_deferred_not_run, make_questionnaire_response, _data_path
 
 def compute_meta(summary):
   if summary['membershipTier'] == 'REGISTERED' and summary.get('hpoId') == 'PITT':
@@ -99,6 +99,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     self.longMessage = True
     self.saved_config_fn = offline.metrics_config.get_config
     offline.metrics_config.get_config = (lambda: CONFIGS_FOR_TEST)
+    make_deferred_not_run()
 
   def tearDown(self):
     offline.metrics_config.get_config = self.saved_config_fn
@@ -351,7 +352,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)
     self.assertEquals(2, all_metrics['Participant.membershipTier.REGISTERED'])
     self.assertEquals(2, all_metrics['Participant.physicalMeasurements.COMPLETE'])
-    self.assertFalse(all_metrics.get('Participant.physicalMeasurements.UNSET')) 
+    self.assertFalse(all_metrics.get('Participant.physicalMeasurements.UNSET'))
     self.assertFalse(all_metrics.get('Participant.membershipTier.VOLUNTEER')) 
     self.assertEquals(1, columbia_metrics['Participant.membershipTier.REGISTERED'])
     self.assertEquals(1, columbia_metrics['Participant.physicalMeasurements.COMPLETE'])
@@ -409,7 +410,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                                      dateOfBirth=datetime.datetime(1975, 8, 21))
     participant_summary.DAO.store(summary)
     self.populate_questionnaire_responses(key)
-    key = ndb.Key(key.flat()[0], key.flat()[1], measurements.PhysicalMeasurements, 
+    key = ndb.Key(key.flat()[0], key.flat()[1], measurements.PhysicalMeasurements,
                   measurements.DAO.allocate_id())
     measurements.DAO.store(measurements.PhysicalMeasurements(key=key, resource="ignored"),
                            datetime.datetime(2016, 9, 5))
