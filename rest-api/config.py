@@ -38,10 +38,10 @@ def _get_config(key):
 
 def override_setting(key, value):
   """Overrides a config setting. Used in tests."""
-  CONFIG_CACHE[CONFIG_SINGLETON_KEY][key] = value  
+  CONFIG_OVERRIDES[key] = value  
 
 CONFIG_CACHE = cachetools.TTLCache(1, ttl=CONFIG_CACHE_TTL_SECONDS, missing=_get_config)
-
+CONFIG_OVERRIDES = {}
 
 class MissingConfigException(BaseException):
   """Exception raised if the setting does not exist"""
@@ -96,10 +96,12 @@ def getSettingJson(key, default=_NO_DEFAULT):
     MissingConfigException: If the config key does not exist in the datastore,
       and a default is not provided.
   """
+  config_values = CONFIG_OVERRIDES.get(key)
+  if config_values:
+    return config_values
+      
   current_config = CONFIG_CACHE[CONFIG_SINGLETON_KEY]
-
   config_values = current_config.get(key, default)
-
   if config_values == _NO_DEFAULT:
     raise MissingConfigException('Config key "{}" has no values.'.format(key))
 
@@ -120,7 +122,7 @@ def getSettingList(key, default=_NO_DEFAULT):
     MissingConfigException: If the config key does not exist in the datastore,
       and a default is not provided.
   """
-  config_json = getSettingJson(key, default)  
+  config_json = getSettingJson(key, default)
   if isinstance(config_json, list):
     return config_json
 
