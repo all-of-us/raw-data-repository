@@ -11,10 +11,7 @@ def make_sample_test_code_set(samples):
 
 def num_completed_baseline_ppi_modules(summary):
   baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
-  count = 0
-  for field in baseline_ppi_module_fields:
-    if summary.get(field) == 'SUBMITTED':
-      count += 1
+  count = sum(1 for field in baseline_ppi_module_fields if summary.get(field) == 'SUBMITTED')
   return extraction.ExtractionResult(count)
 
 def num_baseline_samples_arrived(summary):
@@ -22,10 +19,7 @@ def num_baseline_samples_arrived(summary):
   samples_arrived = summary.get('samplesArrived')
   if not samples_arrived:
     return extraction.ExtractionResult(0)
-  count = 0
-  for test_code in baseline_sample_test_codes:
-    if test_code in samples_arrived:
-      count += 1
+  count = sum(1 for test_code in baseline_sample_test_codes if test_code in samples_arrived)
   return extraction.ExtractionResult(count)
 
 questionnaire_fields = [
