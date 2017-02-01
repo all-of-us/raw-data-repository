@@ -24,8 +24,7 @@ class TestbedTestBase(TestBase):
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.testbed.init_taskqueue_stub() 
-    #make_deferred_run_immediately()
-
+    
   def tearDown(self):
     self.testbed.deactivate()
     super(TestbedTestBase, self).tearDown()
@@ -45,9 +44,6 @@ def to_dict_strip_last_modified(obj):
   json = obj.to_dict()
   del json['last_modified']
   return json
-
-def make_deferred_run_immediately():
-  executors.defer = (lambda fn, *args, **kwargs: fn(args, kwargs))
   
 def make_deferred_not_run():
   executors.defer = (lambda fn, *args, **kwargs: None)

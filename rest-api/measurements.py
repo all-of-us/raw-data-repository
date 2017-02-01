@@ -20,7 +20,6 @@ class PhysicalMeasurements(ndb.Model):
 
   @classmethod
   def write_to_sync_log(cls, participantId, resource):
-    print "ParticipantId: {}".format(participantId)
     sync_log.DAO.write_log_entry(sync_log.PHYSICAL_MEASUREMENTS, participantId, resource)
 
   def _post_put_hook(self, _):

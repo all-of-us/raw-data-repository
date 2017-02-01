@@ -136,7 +136,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ('PITT|Participant.race.WHITE', '2016-09-01|-1'),
         ('PITT|Participant.membershipTier.REGISTERED', '2016-09-01|-1'),
         ('PITT|Participant.meta.R1', '2016-09-01|-1'),
-        ('PITT|Participant.ethnicity.SKIPPED', '2016-09-01|1'),#
+        ('PITT|Participant.ethnicity.SKIPPED', '2016-09-01|1'),
         ('PITT|Participant.race.UNMAPPED', '2016-09-01|1'),
         ('PITT|Participant.membershipTier.FULL_PARTICIPANT', '2016-09-01|1'),
         ('PITT|Participant.meta.NOPE', '2016-09-01|1'),
