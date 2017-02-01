@@ -100,19 +100,19 @@ ALL_CONFIG = {
             'BiobankOrderHistory': [
                 # The presence of a biobank order implies that an order has been placed.
                 FieldDef('biospecimen',
-                         lambda h: ExtractionResult('ORDER_PLACED'),
-                         (UNSET, 'ORDER_PLACED'))
+                         lambda h: ExtractionResult('SPECIMEN_COLLECTED'),
+                         (UNSET, 'SPECIMEN_COLLECTED'))
             ],
             'BiobankSamples': [
                 # The presence of a biobank sample implies that samples have arrived
-                # This overwrites the ORDER_PLACED value for biospecimen above
+                # This overwrites the SPECIMEN_COLLECTED value for biospecimen above
                 FieldDef('biospecimenSamples', lambda h: ExtractionResult('SAMPLES_ARRIVED'),
                          (UNSET, 'SAMPLES_ARRIVED'))
             ]
         },
         'summary_fields': [
             FieldDef('biospecimenSummary', biospecimen_summary,
-                     (UNSET, 'ORDER_PLACED', 'SAMPLES_ARRIVED')),
+                     (UNSET, 'SPECIMEN_COLLECTED', 'SAMPLES_ARRIVED')),
             FieldDef('consentForStudyEnrollmentAndEHR', consent_for_study_enrollment_and_ehr,
                      set([UNSET]) | submission_statuses())
         ],
