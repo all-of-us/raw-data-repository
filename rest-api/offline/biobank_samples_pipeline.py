@@ -13,7 +13,6 @@ from cloudstorage import cloudstorage_api
 
 from mapreduce import mapreduce_pipeline
 from mapreduce.lib.input_reader._gcs import GCSInputReader
-from mapreduce import operation as op
 from offline.base_pipeline import BasePipeline
 
 BIOBANK_SAMPLE_FIELDS = [
