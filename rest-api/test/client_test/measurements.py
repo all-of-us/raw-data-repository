@@ -54,14 +54,13 @@ class TestPhysicalMeasurements(unittest.TestCase):
     self.assertEquals('Bundle', sync_response['resourceType'])
     self.assertEquals('history', sync_response['type'])
     link = sync_response.get('link')    
-    print "Link: {}".format(link)          
     self.assertTrue(sync_response.get('entry'))    
     self.assertTrue(len(sync_response['entry']) > 1)
     
     sync_response = self.client.request_json('PhysicalMeasurements/_history?_count=1')
     self.assertTrue(sync_response.get('entry'))    
     link = sync_response.get('link')
-    self.assertTrue(link)    
+    self.assertTrue(link)
     self.assertEquals("next", link[0]['relation'])    
     self.assertEquals(1, len(sync_response['entry']))
     
