@@ -108,7 +108,19 @@ indexes:
   - name: hpoId
   - name: consentForStudyEnrollment
   - name: sortKey
+  
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: numCompletedBaselinePPIModules
+  - name: sortKey
 
+- kind: ParticipantSummary
+  properties:
+  - name: hpoId
+  - name: numBaselineSamplesArrived
+  - name: sortKey
+ 
 - kind: PhysicalMeasurements
   ancestor: yes
   properties:

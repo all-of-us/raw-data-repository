@@ -119,7 +119,14 @@ def reduce_samples(biobank_id, samples):
         sample_dict[BIOBANK_SAMPLE_FIELDS[i]] = stripped_value
     sample_dicts.append(sample_dict)
   biobank_samples_dict = {'samples': sample_dicts}
+  existing_samples = biobank_sample.DAO.get_samples_for_participant(participant_id)
+  if existing_samples:
+    existing_samples_dict = biobank_sample.DAO.to_json(existing_samples)
+    if biobank_samples_dict == existing_samples_dict:
+      return  
   biobank_samples = biobank_sample.DAO.from_json(biobank_samples_dict,
                                                  participant_id,
                                                  biobank_sample.SINGLETON_SAMPLES_ID)
-  yield op.db.Put(biobank_samples)
+  # This also takes care of updating the participant summary if necessary.
+  biobank_sample.DAO.store(biobank_samples)
+  

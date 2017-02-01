@@ -2,7 +2,7 @@ import api_util
 import data_access_object
 
 from participant import Participant
-
+from participant_summary import DAO as summaryDAO
 from google.appengine.ext import ndb
 
 SINGLETON_SAMPLES_ID = '1'
@@ -33,11 +33,22 @@ class BiobankSamplesDAO(data_access_object.DataAccessObject):
   def __init__(self):
     super(BiobankSamplesDAO, self).__init__(BiobankSamples, Participant, False)
 
+  def get_samples_for_participant(self, participant_id):
+    return self.load_if_present(SINGLETON_SAMPLES_ID, participant_id)    
+
   def properties_from_json(self, dict_, ancestor_id, id_):
     for sample_dict in dict_['samples']:
       api_util.parse_json_date(sample_dict, 'collectionDate')
       api_util.parse_json_date(sample_dict, 'disposedDate')
       api_util.parse_json_date(sample_dict, 'confirmedDate')
     return dict_
+    
+  @ndb.transactional
+  def store(self, model, date=None, client_id=None):
+    super(BiobankSamplesDAO, self).store(model, date, client_id)
+    import field_config.participant_summary_config
+    participant_id = model.key.parent().id()
+    summaryDAO.update_with_incoming_data(participant_id, model,
+                                         field_config.participant_summary_config.CONFIG)
 
 DAO = BiobankSamplesDAO()

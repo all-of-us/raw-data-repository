@@ -55,7 +55,8 @@ WAIST_CIRCUMFERENCE = FieldValidation(concepts.WAIST_CIRCUMFERENCE,
 
 PARTICIPANT_SUMMARY_HPO_FILTER_FIELDS = [
     "hpoId", "firstName", "middleName", "lastName", "dateOfBirth", "ageRange", "genderIdentity",
-    "ethnicity", "zipCode", "membershipTier", "consentForStudyEnrollment"]
+    "ethnicity", "zipCode", "membershipTier", "consentForStudyEnrollment",
+    "numCompletedBaselinePPIModules", "numBaselineSamplesArrived"]
 PARTICIPANT_SUMMARY_NON_HPO_FILTER_FIELDS = [
     "firstName", "lastName", "dateOfBirth", "genderIdentity", "zipCode"]
 PARTICIPANT_SUMMARY_ORDER = OrderBy("sortKey", True)

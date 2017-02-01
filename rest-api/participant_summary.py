@@ -171,6 +171,8 @@ class ParticipantSummary(ndb.Model):
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
   questionnaireOnFamilyHealth = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  numCompletedBaselinePPIModules = ndb.IntegerProperty(default=0)
+  numBaselineSamplesArrived = ndb.IntegerProperty(default=0)
 
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def __init__(self):
@@ -198,6 +200,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.parse_json_enum(dict_, 'questionnaireOnMedications', QuestionnaireStatus)
     api_util.parse_json_enum(dict_, 'questionnaireOnFamilyHealth', QuestionnaireStatus)
     api_util.remove_field(dict_, 'ageRange')
+    api_util.remove_field(dict_, 'samplesArrived')
     return dict_
 
   def properties_to_json(self, dict_):

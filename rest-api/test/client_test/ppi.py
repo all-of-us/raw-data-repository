@@ -98,6 +98,8 @@ class TestPPI(unittest.TestCase):
                  'lastName': None,
                  'middleName': None,
                  'membershipTier': 'UNSET',
+                 'numBaselineSamplesArrived': 0,
+                 'numCompletedBaselinePPIModules': 1,
                  'biobankId': participant['biobankId'],
                  'participantId': participant_id,
                  'physicalMeasurementsStatus': 'UNSET',

@@ -6,7 +6,9 @@ import unittest
 import os
 
 import biobank_order
+import biobank_sample
 import concepts
+import config
 import measurements
 import participant
 import participant_summary
@@ -17,7 +19,13 @@ from google.appengine.ext import ndb
 from unit_test_util import NdbTestBase, TestBase, to_dict_strip_last_modified
 from unit_test_util import make_questionnaire_response, _data_path
 
-class ParticipantNdbTest(NdbTestBase):
+class ParticipantNdbTest(NdbTestBase):  
+  def setUp(self):
+    super(ParticipantNdbTest, self).setUp()
+    config.override_setting(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, 
+                            ["foo", "questionnaireOnSociodemographics"])
+    config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, ["bar", "1ED04"])    
+  
   """Participant test cases requiring the NDB testbed."""
   def test_load_history_entities(self):
     dates = [datetime.datetime(2015, 9, d) for d in range(1, 7)]
@@ -34,6 +42,8 @@ class ParticipantNdbTest(NdbTestBase):
     participant_summary_result = participant_summary.DAO.get_summary_for_participant(participant_id)
     self.assertTrue(participant_summary_result)
     self.assertEquals(participant_summary.HPOId.UNSET, participant_summary_result.hpoId)
+    self.assertEquals(0, participant_summary_result.numCompletedBaselinePPIModules)
+    self.assertEquals(0, participant_summary_result.numBaselineSamplesArrived)
     self.assertEquals(participant_id, participant_summary_result.participantId)
     self.assertEquals(participant_result.biobankId, participant_summary_result.biobankId)    
 
@@ -111,6 +121,11 @@ class ParticipantNdbTest(NdbTestBase):
                                             ("membershipTier", concepts.REGISTERED)])
     questionnaire_response.DAO.store(response, datetime.datetime(2016, 9, 1, 11, 0, 2))
 
+    samples_json = { "samples": [ {"testCode": "xxx"}, {"testCode": "1ED04"} ]}
+    samples = biobank_sample.DAO.from_json(samples_json, participant_id, 
+                                           biobank_sample.SINGLETON_SAMPLES_ID)
+    biobank_sample.DAO.store(samples)
+
     participant_result = participant.DAO.load(participant_id)
     self.assertTrue(participant_result.biobankId)
     summary = participant_summary.DAO.get_summary_for_participant(participant_id)
@@ -118,6 +133,8 @@ class ParticipantNdbTest(NdbTestBase):
     self.assertEquals(participant_summary.Race.WHITE, summary.race)
     self.assertEquals(participant_summary.Ethnicity.NON_HISPANIC, summary.ethnicity)
     self.assertEquals(participant_summary.MembershipTier.REGISTERED, summary.membershipTier)
+    self.assertEquals(1, summary.numCompletedBaselinePPIModules)
+    self.assertEquals(1, summary.numBaselineSamplesArrived)
 
     # Nothing has changed; no summary is returned.
     self.assertFalse(participant.DAO.regenerate_summary(participant_key))

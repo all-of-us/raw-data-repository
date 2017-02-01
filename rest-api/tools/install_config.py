@@ -11,6 +11,7 @@ import json
 from client.client import Client, HttpException
 
 CREDS_FILE = 'test/test-data/test-client-cert.json'
+BASE_CONFIG_FILE = 'config/base_config.json'
 
 def main(args):
   client = Client('rdr/v1', False, args.creds_file, args.instance)
@@ -24,13 +25,16 @@ def main(args):
   else:
     with open(args.config) as config_file:
       config_file = json.load(config_file)
-
-    comparable_file = _comparable_string(config_file)
+    with open(BASE_CONFIG_FILE) as base_config_file:
+      base_config = json.load(base_config_file)
+    combined_config = base_config.copy()
+    combined_config.update(config_file)
+    comparable_file = _comparable_string(combined_config)
     configs_match = compare_configs(comparable_file, comparable_server)
 
     if not configs_match and args.update:
       print '-------------- Updating Server -------------------'
-      client.request_json('Config', 'PUT', config_file,
+      client.request_json('Config', 'PUT', combined_config,
                           test_unauthenticated=False)
 
 def compare_configs(comparable_file, comparable_server):

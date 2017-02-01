@@ -14,7 +14,8 @@ PROPERTY_TYPE_MAP = {
   "StringProperty": PropertyType.STRING,
   "DateProperty": PropertyType.DATE,
   "DateTimeProperty": PropertyType.DATE,
-  "EnumProperty": PropertyType.ENUM
+  "EnumProperty": PropertyType.ENUM,
+  "IntegerProperty": PropertyType.INTEGER
 }
 
 class DataAccessObject(object):

@@ -10,6 +10,9 @@
     },{
       "system": "http://terminology.pmi-ops.org/CodeSystem/questionnaire",
       "code": "basic-consent"
+    },{
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-module",
+        "code": "sociodemographics"
     }],
     "question": [
       {

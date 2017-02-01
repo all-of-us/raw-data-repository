@@ -7,6 +7,10 @@
     "concept": [{
       "system": "http://terminology.pmi-ops.org/CodeSystem/consent-form",
       "code": "enrollment"
+    },
+    {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-module",
+        "code": "sociodemographics"
     }],
     "question": [
       {
