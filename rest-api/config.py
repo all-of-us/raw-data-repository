@@ -24,6 +24,9 @@ BIOBANK_SAMPLES_BUCKET_NAME = 'biobank_samples_bucket_name'
 USER_INFO = 'user_info'
 SYNC_SHARDS_PER_CHANNEL = 'sync_shards_per_channel'
 MEASUREMENTS_ENTITIES_PER_SYNC = 'measurements_entities_per_sync'
+BASELINE_PPI_QUESTIONNAIRE_FIELDS = 'baseline_ppi_questionnaire_fields'
+BASELINE_SAMPLE_TEST_CODES = 'baseline_sample_test_codes'
+
 
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 
@@ -33,8 +36,12 @@ def _get_config(key):
   assert key == CONFIG_SINGLETON_KEY
   return DAO.load_if_present(key).configuration
 
-CONFIG_CACHE = cachetools.TTLCache(1, ttl=CONFIG_CACHE_TTL_SECONDS, missing=_get_config)
+def override_setting(key, value):
+  """Overrides a config setting. Used in tests."""
+  CONFIG_OVERRIDES[key] = value  
 
+CONFIG_CACHE = cachetools.TTLCache(1, ttl=CONFIG_CACHE_TTL_SECONDS, missing=_get_config)
+CONFIG_OVERRIDES = {}
 
 class MissingConfigException(BaseException):
   """Exception raised if the setting does not exist"""
@@ -89,10 +96,12 @@ def getSettingJson(key, default=_NO_DEFAULT):
     MissingConfigException: If the config key does not exist in the datastore,
       and a default is not provided.
   """
+  config_values = CONFIG_OVERRIDES.get(key)
+  if config_values:
+    return config_values
+      
   current_config = CONFIG_CACHE[CONFIG_SINGLETON_KEY]
-
   config_values = current_config.get(key, default)
-
   if config_values == _NO_DEFAULT:
     raise MissingConfigException('Config key "{}" has no values.'.format(key))
 

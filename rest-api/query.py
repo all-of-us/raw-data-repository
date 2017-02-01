@@ -13,6 +13,7 @@ class PropertyType(messages.Enum):
   STRING = 0
   DATE = 1
   ENUM = 2
+  INTEGER = 3
 
 class FieldFilter:
   def __init__(self, field_name, operator, value):

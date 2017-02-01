@@ -1,9 +1,11 @@
 """Tests for biobank_samples_pipeline."""
 
+import config
 import csv
 import os
 import biobank_sample
 import participant
+import participant_summary
 
 from offline.biobank_samples_pipeline import BiobankSamplesPipeline
 
@@ -17,7 +19,7 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
     testutil.HandlerTestBase.setUp(self)
     ndb.get_context().set_cache_policy(False)
-
+    config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, ["1ED10", "1ED04"])
 
   def test_end_to_end(self):
     # Insert participants to generate biobank IDs
@@ -25,6 +27,10 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
     participant_1 = participant.DAO.load('P1')
     participant.DAO.insert(participant.DAO.from_json({}, None, 'P2'))
     participant_2 = participant.DAO.load('P2')
+    participant_summary_1 = participant_summary.DAO.get_summary_for_participant('P1')
+    participant_summary_2 = participant_summary.DAO.get_summary_for_participant('P2')
+    self.assertEquals(0, participant_summary_1.numBaselineSamplesArrived)
+    self.assertEquals(0, participant_summary_2.numBaselineSamplesArrived)
 
     with open(_data_path('biobank_samples_1.csv'), 'rb') as src, \
         cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV', mode='w') as dest:
@@ -61,6 +67,11 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
         'P1', biobank_sample.SINGLETON_SAMPLES_ID).to_dict()
     del expected_samples_1['last_modified']
     self.assertEquals(expected_samples_1, to_dict_strip_last_modified(biobank_samples_1))
+    
+    participant_summary_1 = participant_summary.DAO.get_summary_for_participant('P1')
+    participant_summary_2 = participant_summary.DAO.get_summary_for_participant('P2')
+    self.assertEquals(1, participant_summary_1.numBaselineSamplesArrived)
+    self.assertEquals(1, participant_summary_2.numBaselineSamplesArrived)
 
 def test_end_to_end_missing_field(self):
     # Insert participants to generate biobank IDs

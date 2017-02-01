@@ -186,7 +186,8 @@ class ParticipantTest(unittest.TestCase):
     response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}'.format(first_name) + \
                                         '&middleName=Quentin&lastName=LN2&genderIdentity=MALE' + \
                                         '&dateOfBirth={}&ageRange=18-25&ethnicity=UNSET'.format(dates_of_birth[1]) + \
-                                        '&membershipTier=UNSET&consentForStudyEnrollment=SUBMITTED')
+                                        '&membershipTier=UNSET&consentForStudyEnrollment=SUBMITTED' + \
+                                        '&numCompletedBaselinePPIModules=1&numBaselineSamplesArrived=0')
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
@@ -205,6 +206,20 @@ class ParticipantTest(unittest.TestCase):
     
     # Returns no participant summary (no match on date of birth)
     response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}&dateOfBirth=2525-01-15'.format(first_name))
+    self.assertEquals('Bundle', response['resourceType'])
+    self.assertEquals('searchset', response['type'])
+    self.assertFalse(response.get('link'))
+    self.assertFalse(response.get('entry'))
+    
+    # Returns no participant summary (no match on number of completed baseline PPI modules)
+    response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}&numCompletedBaselinePPIModules=2'.format(first_name))
+    self.assertEquals('Bundle', response['resourceType'])
+    self.assertEquals('searchset', response['type'])
+    self.assertFalse(response.get('link'))
+    self.assertFalse(response.get('entry'))
+    
+    # Returns no participant summary (no match on number of baseline samples arrived)
+    response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}&numBaselineSamplesArrived=1'.format(first_name))
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))

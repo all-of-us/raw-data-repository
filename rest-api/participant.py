@@ -81,6 +81,12 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     for qr_hist_obj in questionnaire_response_history:
       run_extractors(qr_hist_obj, field_config.participant_summary_config.CONFIG,
                      summary_json)
+    import biobank_sample
+    samples = biobank_sample.DAO.get_samples_for_participant(participant_key.id())
+    if samples:
+      run_extractors(samples, field_config.participant_summary_config.CONFIG, summary_json)
+      # Clear out samplesArrived, since it doesn't get stored.
+      del summary_json['samplesArrived']
     existing_summary = participant_summary.DAO.get_summary_for_participant(participant_key.id())
     if existing_summary:
       existing_summary_json = participant_summary.DAO.to_json(existing_summary)

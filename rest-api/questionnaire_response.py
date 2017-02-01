@@ -37,7 +37,6 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
     super(QuestionnaireResponseDAO, self).store(model, date, client_id)
     participant_id = model.resource['subject']['reference'].split('/')[1]
     new_history = self.make_history(model, date, client_id)
-
     import field_config.participant_summary_config
     summaryDAO.update_with_incoming_data(
             participant_id,

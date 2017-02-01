@@ -42,7 +42,7 @@ def run_extractors(hist_obj, config, new_state):
     try:
       result = field.func(new_state)
       if result.extracted:
-        new_state[field.name] = str(result.value)
+        new_state[field.name] = result.value
     except Exception: # pylint: disable=broad-except
       logging.error('Exception extracting history summary field {0}: {1}'.format(
               field.name, traceback.format_exc()))

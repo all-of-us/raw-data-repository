@@ -1,0 +1,16 @@
+{
+  "baseline_ppi_questionnaire_fields": [
+    "questionnaireOnSociodemographics", 
+    "questionnaireOnOverallHealth",
+    "questionnaireOnPersonalHabits" 
+  ],
+  "baseline_sample_test_codes": [
+  	"1ED04",
+  	"1ED10",
+    "1HEP4",
+    "1PST8",
+    "1SST8",
+    "1UR10",
+    "2ED10"
+  ]
+}

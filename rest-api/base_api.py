@@ -181,6 +181,8 @@ class BaseApi(Resource):
               field_filters.append(FieldFilter(key, operator, date_val))   
             elif property_type == PropertyType.ENUM:
               field_filters.append(FieldFilter(key, Operator.EQUALS, prop._enum_type(value)))
+            elif property_type == PropertyType.INTEGER:
+              field_filters.append(FieldFilter(key, Operator.EQUALS, int(value)))
             else:
               field_filters.append(FieldFilter(key, Operator.EQUALS, value))
           else:
