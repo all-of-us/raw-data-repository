@@ -34,6 +34,7 @@ class BiobankOrder(ndb.Model):
   subject = ndb.StringProperty()
   created = ndb.DateTimeProperty()
   identifier = ndb.StructuredProperty(BiobankOrderIdentifier, repeated=True)
+  sourceSite = ndb.StructuredProperty(BiobankOrderIdentifier, repeated=False)
   samples = ndb.LocalStructuredProperty(BiobankOrderSample, repeated=True)
   notes = ndb.LocalStructuredProperty(BiobankOrderNotes, repeated=False)
   last_modified = ndb.DateTimeProperty(auto_now=True)
