@@ -89,7 +89,7 @@ class TestPPI(unittest.TestCase):
 
     response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
     self.assertTrue(response['questionnaireOnOverallHealthTime'])
-    del response['questionnaireOnOverallHealthTime']
+    del response['questionnaireOnOverallHealthTime']    
     expected = { 'ageRange': 'UNSET',
                  'genderIdentity': 'MALE_TO_FEMALE_TRANSGENDER',
                  'ethnicity': 'UNSET',
@@ -113,7 +113,8 @@ class TestPPI(unittest.TestCase):
                  'questionnaireOnMedications': 'UNSET',
                  'questionnaireOnOverallHealth': 'SUBMITTED',
                  'questionnaireOnPersonalHabits': 'UNSET',
-                 'questionnaireOnSociodemographics': 'UNSET'
+                 'questionnaireOnSociodemographics': 'UNSET',
+                 'signUpTime': participant['signUpTime']
               }
     test_util._compare_json(self, expected, response)
 

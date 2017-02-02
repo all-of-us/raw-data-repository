@@ -43,6 +43,8 @@ def to_dict_strip_last_modified(obj):
   assert obj.last_modified, 'Missing last_modified: {}'.format(obj)
   json = obj.to_dict()
   del json['last_modified']
+  if json.get('signUpTime'):
+    del json['signUpTime']
   return json
   
 def make_deferred_not_run():
