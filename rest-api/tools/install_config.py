@@ -26,8 +26,7 @@ def main(args):
     with open(args.config) as config_file:
       config_file = json.load(config_file)
     with open(BASE_CONFIG_FILE) as base_config_file:
-      base_config = json.load(base_config_file)
-    combined_config = base_config.copy()
+      combined_config = json.load(base_config_file)
     combined_config.update(config_file)
     comparable_file = _comparable_string(combined_config)
     configs_match = compare_configs(comparable_file, comparable_server)

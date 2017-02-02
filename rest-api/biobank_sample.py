@@ -5,6 +5,9 @@ from participant import Participant
 from participant_summary import DAO as summaryDAO
 from google.appengine.ext import ndb
 
+"""The ID (scoped within a participant) for all biobank samples.
+  (There is only one per participant.)
+"""
 SINGLETON_SAMPLES_ID = '1'
 
 class BiobankSample(ndb.Model):
