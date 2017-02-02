@@ -22,7 +22,7 @@ from participant import Participant, BirthdayEvent
 
 class ParticipantDAO(data_access_object.DataAccessObject):
   def __init__(self):
-    super(ParticipantDAO, self).__init__(participant.Participant)
+    super(ParticipantDAO, self).__init__(Participant)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:
@@ -34,10 +34,11 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     return 'P{:d}'.format(_id).zfill(9)
 
   def make_participant_summary(self, model):
+    import participant_summary
     participant_key = ndb.Key(participant_summary.ParticipantSummary,
                           participant_summary.SINGLETON_SUMMARY_ID,
                           parent=model.key)
-    hpo_id_result = extract_HPO_id_from_participant(model)
+    hpo_id_result = extract_HPO_id_from_participant(model)    
     return participant_summary.ParticipantSummary(key=participant_key,
                                                   participantId=model.key.id(),
                                                   biobankId=model.biobankId,
@@ -45,27 +46,36 @@ class ParticipantDAO(data_access_object.DataAccessObject):
 
   @ndb.transactional
   def regenerate_summary(self, participant_key):
-    p = participant_key.get()
-    if not p:
+    participant = participant_key.get()
+    if not participant:
       return None
-    summary = self.make_participant_summary(p)
+    import participant_summary
+    summary = self.make_participant_summary(participant)
     summary_json = participant_summary.DAO().to_json(summary)
+    import questionnaire_response
     questionnaire_response_history = questionnaire_response.DAO().get_all_history(participant_key)
     questionnaire_response_history = sorted(questionnaire_response_history, key=lambda o: o.date)
+    import field_config.participant_summary_config
     for qr_hist_obj in questionnaire_response_history:
       run_extractors(qr_hist_obj, field_config.participant_summary_config.CONFIG,
                      summary_json)
+    import biobank_sample
     samples = biobank_sample.DAO().get_samples_for_participant(participant_key.id())
     if samples:
       run_extractors(samples, field_config.participant_summary_config.CONFIG, summary_json)
-      # Clear out samplesArrived, since it doesn't get stored.
-      del summary_json['samplesArrived']
+    
     existing_summary = participant_summary.DAO().get_summary_for_participant(participant_key.id())
     if existing_summary:
+      # Transform the JSON to the model and back again, to make sure we get the same representation.
+      adjusted_summary = participant_summary.DAO().from_json(summary_json, 
+                                                           participant_summary.SINGLETON_SUMMARY_ID,
+                                                           participant_key.id())
+      adjusted_summary_json = participant_summary.DAO().to_json(adjusted_summary)
+
       existing_summary_json = participant_summary.DAO().to_json(existing_summary)
       # Clear out ageRange, since this doesn't get set until the summary is stored.
       existing_summary_json['ageRange'] = None
-      if existing_summary_json == summary_json:
+      if existing_summary_json == adjusted_summary_json:
         # If nothing has changed, bail out.
         return None
     updated_summary = participant_summary.DAO().from_json(summary_json,
@@ -79,12 +89,14 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     model.biobankId = 'B{:d}'.format(identifier.get_id()).zfill(9)
     summary = self.make_participant_summary(model)
     result = super(ParticipantDAO, self).insert(model, date, client_id)
+    import participant_summary
     participant_summary.DAO().insert(summary, date, client_id)
     return result
-
-  def update(self, model, expected_version_id, date=None, client_id=None):
+    
+  def update(self, model, expected_version_id, date=None, client_id=None):    
     result = super(ParticipantDAO, self).update(model, expected_version_id, date, client_id)
-    existing_summary = participant_summary.DAO().get_summary_for_participant(model.key.id())
+    import participant_summary
+    existing_summary = participant_summary.DAO().get_summary_for_participant(model.key.id())    
     new_hpo_id = extract_HPO_id_from_participant(model)
     if new_hpo_id.value != existing_summary.hpoId:
       participant_summary.DAO().update_hpo_id(model.key.id(), new_hpo_id.value)
@@ -97,28 +109,25 @@ class ParticipantDAO(data_access_object.DataAccessObject):
       return None
     return results[0].id()
 
-def DAO():
-  return singletons.get(ParticipantDAO)
-
 def extract_HPO_id(ph):
   return extract_HPO_id_from_participant(ph.obj)
-
+  
 def extract_HPO_id_from_participant(participant):
   """Returns ExtractionResult with the string representing the HPO."""
   primary_provider_link = participant.get_primary_provider_link()
-  if (primary_provider_link and primary_provider_link.organization and
+  import participant_summary
+  if (primary_provider_link and primary_provider_link.organization and 
       primary_provider_link.organization.reference and
       primary_provider_link.organization.reference.lower().startswith('organization/')):
     hpo_id_string = primary_provider_link.organization.reference[13:]
-    if participant_enums.HPOId.to_dict().get(hpo_id_string):
-      return extraction.ExtractionResult(participant_enums.HPOId(hpo_id_string), True)
+    if participant_summary.HPOId.to_dict().get(hpo_id_string):
+      return extraction.ExtractionResult(participant_summary.HPOId(hpo_id_string), True)
     else:
-      return extraction.ExtractionResult(participant_enums.HPOId.UNMAPPED, True)
-  return extraction.ExtractionResult(participant_enums.HPOId.UNSET, True)
+      return extraction.ExtractionResult(participant_summary.HPOId.UNMAPPED, True)
+  return extraction.ExtractionResult(participant_summary.HPOId.UNSET, True)
 
 def load_history_entities(participant_key, now):
   """Loads all related history entries.
-
   Details:
     - Loads all history objects for this participant.
     - Injects synthetic entries for when the participant's age changes.
@@ -138,6 +147,7 @@ def modify_participant_history(history, participant_key, now):
 
   # Set initial date of birth, and insert BirthdayEvent entries for each birthday after
   # the participant's creation until today.
+  import participant_summary
   summary = participant_summary.DAO().get_summary_for_participant(participant_key.id())
   if summary and summary.dateOfBirth:
     history[0].date_of_birth = summary.dateOfBirth
@@ -152,10 +162,13 @@ def modify_participant_history(history, participant_key, now):
       history.append(age_history_obj)
       date = date + year
 
-
+  import questionnaire_response
   history.extend(questionnaire_response.DAO().get_all_history(participant_key, now))
+  import measurements
   history.extend(measurements.DAO().get_all_history(participant_key, now))
+  import biobank_order
   history.extend(biobank_order.DAO().get_all_history(participant_key, now))
+  import biobank_sample
   samples = biobank_sample.DAO().load_if_present(biobank_sample.SINGLETON_SAMPLES_ID,
                                                participant_key.id())
   if samples:
@@ -166,3 +179,6 @@ def modify_participant_history(history, participant_key, now):
     if min_date:
       samples.date = min_date
       history.append(samples)
+
+def DAO():
+  return singletons.get(ParticipantDAO)

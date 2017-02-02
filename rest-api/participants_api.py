@@ -58,15 +58,7 @@ _WAIST_CIRCUMFERENCE = FieldValidation(
     [within_range(0, 300), has_units(concepts.UNIT_CM)],
     required=True)
 
-_PARTICIPANT_SUMMARY_HPO_FILTER_FIELDS = [
-    "hpoId", "firstName", "middleName", "lastName", "dateOfBirth", "ageRange", "genderIdentity",
-    "ethnicity", "zipCode", "membershipTier", "consentForStudyEnrollment",
-    "numCompletedBaselinePPIModules", "numBaselineSamplesArrived"]
-_PARTICIPANT_SUMMARY_NON_HPO_FILTER_FIELDS = [
-    "firstName", "lastName", "dateOfBirth", "genderIdentity", "zipCode"]
 _PARTICIPANT_SUMMARY_ORDER = OrderBy("sortKey", True)
-
-_MEASUREMENTS_FILTER_FIELDS = ["last_modified"]
 _MEASUREMENTS_ORDER = OrderBy("last_modified", True)
 
 class ParticipantAPI(base_api.BaseApi):
@@ -113,7 +105,7 @@ class PhysicalMeasurementsAPI(base_api.BaseApi):
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def list(self, a_id):
-    return super(PhysicalMeasurementsAPI, self).query("id", MEASUREMENTS_ORDER, a_id)
+    return super(PhysicalMeasurementsAPI, self).query("id", _MEASUREMENTS_ORDER, a_id)
 
   def validate_object(self, e, a_id=None):
     field_validators = [
@@ -146,7 +138,7 @@ class ParticipantSummaryAPI(base_api.BaseApi):
     if id_:
       return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
     else:
-      return super(ParticipantSummaryAPI, self).query("participantId", PARTICIPANT_SUMMARY_ORDER)
+      return super(ParticipantSummaryAPI, self).query("participantId", _PARTICIPANT_SUMMARY_ORDER)
 
 
 @api_util.auth_required_cron
