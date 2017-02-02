@@ -6,7 +6,6 @@ This defines the APIs and the handlers for the APIs.
 import api_util
 import base_api
 import biobank_order
-import participant
 import participant_dao
 
 from api_util import HEALTHPRO, PTC_AND_HEALTHPRO
