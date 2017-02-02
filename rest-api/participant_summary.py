@@ -12,6 +12,7 @@ from participant_enums import HPOId, PhysicalMeasurementsStatus, QuestionnaireSt
 from participant_enums import MembershipTier, GenderIdentity, Ethnicity, Race, get_bucketed_age
 from google.appengine.ext import ndb
 from google.appengine.ext.ndb import msgprop
+from werkzeug.exceptions import BadRequest
 
 DATE_OF_BIRTH_FORMAT = '%Y-%m-%d'
 SINGLETON_SUMMARY_ID = '1'

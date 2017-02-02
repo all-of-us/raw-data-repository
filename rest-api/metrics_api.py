@@ -5,6 +5,7 @@ This defines the APIs and the handlers for the APIs.
 
 import api_util
 import datetime
+import logging
 import metrics
 import offline.metrics_pipeline
 
@@ -19,11 +20,11 @@ from werkzeug.exceptions import NotFound
 def get():
   in_progress = metrics.get_in_progress_version()
   if in_progress:
-    print "=========== Metrics pipeline already running ============"
+    logging.info("=========== Metrics pipeline already running ============")
     return '{"metrics-pipeline-status": "running"}'
   else:
     bucket_name = app_identity.get_default_gcs_bucket_name()    
-    print "=========== Starting metrics pipeline ============"
+    logging.info("=========== Starting metrics pipeline ============")
     offline.metrics_pipeline.MetricsPipeline(bucket_name, datetime.datetime.utcnow()).start()
     return '{"metrics-pipeline-status": "started"}'
 

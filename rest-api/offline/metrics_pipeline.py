@@ -56,6 +56,7 @@ key, adds them up, and writes out the aggregated counts.
 import collections
 import copy
 import json
+import logging
 import pipeline
 
 import config
@@ -133,7 +134,7 @@ class FinalizeMetrics(pipeline.Pipeline):
 
 class SummaryPipeline(pipeline.Pipeline):
   def run(self, bucket_name, config_name, now, parent_params=None):
-    print '======= Starting {} Pipeline'.format(config_name)
+    logging.info('======= Starting %s Pipeline', config_name)
     
     mapper_params = {
         'entity_kind': config_name,
