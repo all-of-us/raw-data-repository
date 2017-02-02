@@ -4,14 +4,10 @@
 import api_util
 
 import data_access_object
+import fhir_datatypes
 import singletons
 
 from google.appengine.ext import ndb
-
-class BiobankOrderIdentifier(ndb.Model):
-  """An identifier for a Biobank order"""
-  system = ndb.StringProperty()
-  value = ndb.StringProperty()
 
 class BiobankOrderSample(ndb.Model):
   """A sample in a Biobank order"""
@@ -33,7 +29,8 @@ class BiobankOrder(ndb.Model):
   id = ndb.StringProperty()
   subject = ndb.StringProperty()
   created = ndb.DateTimeProperty()
-  identifier = ndb.StructuredProperty(BiobankOrderIdentifier, repeated=True)
+  identifier = ndb.StructuredProperty(fhir_datatypes.FHIRIdentifier, repeated=True)
+  sourceSite = ndb.StructuredProperty(fhir_datatypes.FHIRIdentifier, repeated=False)
   samples = ndb.LocalStructuredProperty(BiobankOrderSample, repeated=True)
   notes = ndb.LocalStructuredProperty(BiobankOrderNotes, repeated=False)
   last_modified = ndb.DateTimeProperty(auto_now=True)
