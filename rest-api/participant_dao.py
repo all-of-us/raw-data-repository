@@ -7,8 +7,6 @@ import data_access_object
 import extraction
 import identifier
 import measurements
-import participant
-import participant_enums
 import participant_summary
 import questionnaire_response
 import singletons
@@ -105,9 +103,9 @@ class ParticipantDAO(data_access_object.DataAccessObject):
 def extract_HPO_id(ph):
   return extract_HPO_id_from_participant(ph.obj)
   
-def extract_HPO_id_from_participant(participant):
+def extract_HPO_id_from_participant(p):
   """Returns ExtractionResult with the string representing the HPO."""
-  primary_provider_link = participant.get_primary_provider_link()  
+  primary_provider_link = p.get_primary_provider_link()  
   if (primary_provider_link and primary_provider_link.organization and 
       primary_provider_link.organization.reference and
       primary_provider_link.organization.reference.lower().startswith('organization/')):
