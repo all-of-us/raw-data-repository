@@ -13,13 +13,12 @@ import measurements
 import logging
 import offline.age_range_pipeline
 import offline.participant_summary_pipeline
-import participant
+import participant_dao
 import participant_summary
 import sync_log
 
 from api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
 from field_validation import FieldValidation, has_units, lessthan, within_range
-from flask import request
 from query import OrderBy
 from werkzeug.exceptions import BadRequest
 
@@ -59,22 +58,13 @@ _WAIST_CIRCUMFERENCE = FieldValidation(
     [within_range(0, 300), has_units(concepts.UNIT_CM)],
     required=True)
 
-_PARTICIPANT_SUMMARY_HPO_FILTER_FIELDS = [
-    "hpoId", "firstName", "middleName", "lastName", "dateOfBirth", "ageRange", "genderIdentity",
-    "ethnicity", "zipCode", "membershipTier", "consentForStudyEnrollment",
-    "numCompletedBaselinePPIModules", "numBaselineSamplesArrived"]
-_PARTICIPANT_SUMMARY_NON_HPO_FILTER_FIELDS = [
-    "firstName", "lastName", "dateOfBirth", "genderIdentity", "zipCode"]
 _PARTICIPANT_SUMMARY_ORDER = OrderBy("sortKey", True)
-
-_MEASUREMENTS_FILTER_FIELDS = ["last_modified"]
 _MEASUREMENTS_ORDER = OrderBy("last_modified", True)
-
 
 class ParticipantAPI(base_api.BaseApi):
 
   def __init__(self):
-    super(ParticipantAPI, self).__init__(participant.DAO)
+    super(ParticipantAPI, self).__init__(participant_dao.DAO())
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None, a_id=None):
@@ -95,7 +85,7 @@ class ParticipantAPI(base_api.BaseApi):
 class PhysicalMeasurementsAPI(base_api.BaseApi):
 
   def __init__(self):
-    super(PhysicalMeasurementsAPI, self).__init__(measurements.DAO)
+    super(PhysicalMeasurementsAPI, self).__init__(measurements.DAO())
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None, a_id=None):
@@ -115,8 +105,7 @@ class PhysicalMeasurementsAPI(base_api.BaseApi):
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def list(self, a_id):
-    return super(PhysicalMeasurementsAPI, self).query(
-        "id", _MEASUREMENTS_FILTER_FIELDS, _MEASUREMENTS_ORDER, a_id)
+    return super(PhysicalMeasurementsAPI, self).query("id", _MEASUREMENTS_ORDER, a_id)
 
   def validate_object(self, e, a_id=None):
     field_validators = [
@@ -142,26 +131,14 @@ def _check_existence(extractor, system, code, name):
 
 class ParticipantSummaryAPI(base_api.BaseApi):
   def __init__(self):
-    super(ParticipantSummaryAPI, self).__init__(participant_summary.DAO)
+    super(ParticipantSummaryAPI, self).__init__(participant_summary.DAO())
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None):
     if id_:
       return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
     else:
-      if request.args.get('hpoId'):
-        return super(ParticipantSummaryAPI, self).query(
-            "participantId",
-            _PARTICIPANT_SUMMARY_HPO_FILTER_FIELDS,
-            _PARTICIPANT_SUMMARY_ORDER)
-      elif request.args.get('lastName') and request.args.get('dateOfBirth'):
-        return super(ParticipantSummaryAPI, self).query(
-            "participantId",
-            _PARTICIPANT_SUMMARY_NON_HPO_FILTER_FIELDS,
-            _PARTICIPANT_SUMMARY_ORDER)
-      else:
-        raise BadRequest("Participant summary queries must specify hpoId"
-                         " or both lastName and dateOfBirth")
+      return super(ParticipantSummaryAPI, self).query("participantId", _PARTICIPANT_SUMMARY_ORDER)
 
 
 @api_util.auth_required_cron

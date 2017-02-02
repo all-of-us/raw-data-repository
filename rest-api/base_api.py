@@ -6,8 +6,7 @@ import config
 import flask
 import sync_log
 
-from data_access_object import PROPERTY_TYPE_MAP
-from query import Query, FieldFilter, Operator, PropertyType
+from query import Query
 from flask import jsonify, request
 from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest
@@ -64,7 +63,7 @@ class BaseApi(Resource):
     """
     pass
           
-  def query(self, id_field, valid_filter_fields, order_by, a_id=None):    
+  def query(self, id_field, order_by, a_id=None):
     """Run a query against the DAO. 
     Extracts query parameters from request using FHIR conventions.
     
@@ -74,11 +73,10 @@ class BaseApi(Resource):
     
     Args:
       id_field: name of the field containing the ID used when constructing resource URLs for results
-      valid_filter_fields: the names of fields that can be filtered on when querying
       order_by: the OrderBy object indicating the order to return rows in
       a_id: the ancestor ID under which to perform this query, if appropriate
     """     
-    query = self.make_query(valid_filter_fields, order_by, a_id)
+    query = self.make_query(order_by, a_id)
     results = self.dao.query(query)
     return self.make_bundle(results, id_field, a_id)
 
@@ -141,11 +139,10 @@ class BaseApi(Resource):
         return result, 200, {'ETag': version_id}
     return result 
   
-  def make_query(self, valid_filter_fields, order_by, a_id=None):
+  def make_query(self, order_by, a_id=None):
     field_filters = []
     max_results = DEFAULT_MAX_RESULTS
     pagination_token = None
-    inequality_field = None
     for key, value in request.args.iteritems():
       if key == '_count':
         max_results = int(request.args['_count'])
@@ -156,39 +153,9 @@ class BaseApi(Resource):
       elif key == '_token':
         pagination_token = value
       else:
-        prop = getattr(self.dao.model_type, key, None)
-        if prop:
-          if valid_filter_fields and key in valid_filter_fields:
-            property_type = PROPERTY_TYPE_MAP.get(prop.__class__.__name__)
-            if property_type == PropertyType.DATE:
-              if value.startswith("lt"):
-                operator = Operator.LESS_THAN
-              elif value.startswith("gt"):
-                operator = Operator.GREATER_THAN
-              elif value.startswith("le"):
-                operator = Operator.LESS_THAN_OR_EQUALS
-              elif value.startswith("ge"):
-                operator = Operator.GREATER_THAN_OR_EQUALS
-              else:
-                operator = Operator.EQUALS
-              date_str = value
-              if operator != Operator.EQUALS:
-                if inequality_field:
-                  raise BadRequest("Can't have multiple inequality expressions in a single query")
-                date_str = value[2:]
-                inequality_field = key
-              date_val = api_util.parse_date(date_str)
-              field_filters.append(FieldFilter(key, operator, date_val))   
-            elif property_type == PropertyType.ENUM:
-              field_filters.append(FieldFilter(key, Operator.EQUALS, prop._enum_type(value)))
-            elif property_type == PropertyType.INTEGER:
-              field_filters.append(FieldFilter(key, Operator.EQUALS, int(value)))
-            else:
-              field_filters.append(FieldFilter(key, Operator.EQUALS, value))
-          else:
-            raise BadRequest("Can't filter on field {}".format(key))
-    if inequality_field and order_by and inequality_field != order_by.field_name:
-      raise BadRequest("Can't combine inequality expression with sort on a different property")
+        field_filter = self.dao.make_query_filter(key, value)
+        if field_filter:
+          field_filters.append(field_filter)
     return Query(field_filters, order_by, max_results, pagination_token, a_id)        
 
   def make_bundle(self, results, id_field, a_id):
@@ -221,7 +188,7 @@ def sync(channel_index, max_results):
   count_str = request.args.get('_count')
   count = int(count_str) if count_str else max_results    
   decoded_token = base64.b64decode(token) if token else None
-  resources, next_token, more_available = sync_log.DAO.sync(channel_index, decoded_token, count)        
+  resources, next_token, more_available = sync_log.DAO().sync(channel_index, decoded_token, count)
   bundle_dict = {"resourceType": "Bundle", "type": "history"}
   query_params = request.args.copy()
   query_params['_token'] = base64.b64encode(next_token)  

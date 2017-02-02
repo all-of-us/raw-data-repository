@@ -4,7 +4,7 @@ import concepts
 import data_access_object
 import executors
 import extraction
-import participant
+import singletons
 import sync_log
 
 import fhirclient.models.bundle
@@ -20,7 +20,7 @@ class PhysicalMeasurements(ndb.Model):
 
   @classmethod
   def write_to_sync_log(cls, participantId, resource):
-    sync_log.DAO.write_log_entry(sync_log.PHYSICAL_MEASUREMENTS, participantId, resource)
+    sync_log.DAO().write_log_entry(sync_log.PHYSICAL_MEASUREMENTS, participantId, resource)
 
   def _post_put_hook(self, _):
     executors.defer(PhysicalMeasurements.write_to_sync_log,
@@ -28,7 +28,13 @@ class PhysicalMeasurements(ndb.Model):
 
 class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
   def __init__(self):
+    import participant
     super(PhysicalMeasurementsDAO, self).__init__(PhysicalMeasurements, participant.Participant)
+
+  def validate_query(self, query_definition):
+    for field_filter in query_definition.field_filters:
+      if field_filter.field_name != 'last_modified':
+        raise BadRequest("Invalid filter on field %s" % field_filter.field_name)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     model = fhirclient.models.bundle.Bundle(dict_)
@@ -45,7 +51,8 @@ class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
     query = PhysicalMeasurements.query(ancestor=p_key)
     return {"items": [self.to_json(p) for p in query.fetch()]}
 
-DAO = PhysicalMeasurementsDAO()
+def DAO():
+  return singletons.get(PhysicalMeasurementsDAO)
 
 class PhysicalMeasurementsExtractor(extraction.FhirExtractor):
   def __init__(self, resource):

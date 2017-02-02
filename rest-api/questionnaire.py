@@ -2,6 +2,7 @@
 '''
 
 import extraction
+import singletons
 import fhirclient.models.questionnaire
 
 import data_access_object
@@ -28,7 +29,8 @@ class QuestionnaireDAO(data_access_object.DataAccessObject):
         "resource": model.as_json()
     }
 
-DAO = QuestionnaireDAO()
+def DAO():
+  return singletons.get(QuestionnaireDAO)
 
 class QuestionnaireExtractor(extraction.FhirExtractor):
 

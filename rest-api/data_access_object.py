@@ -4,8 +4,9 @@ import clock
 import copy
 import api_util
 
-from query import PropertyType, Operator, Results
+from query import PropertyType, Operator, Results, FieldFilter
 from google.appengine.ext import ndb
+from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import Conflict
 from werkzeug.exceptions import PreconditionFailed
 from werkzeug.exceptions import NotFound
@@ -246,7 +247,11 @@ class DataAccessObject(object):
           return (search_property, None)
     return (prop, value)
 
+  def validate_query(self, query_definition):
+    raise BadRequest("query not supported on this type")
+
   def query(self, query_definition):
+    self.validate_query(query_definition)
     if query_definition.ancestor_id:
       ancestor_key = ndb.Key(self.ancestor_type, query_definition.ancestor_id)
       query = self.model_type.query(ancestor=ancestor_key)
@@ -283,3 +288,27 @@ class DataAccessObject(object):
     if fetch_results[2]:
       result_token = fetch_results[1].urlsafe()
     return Results(fetch_results[0], result_token)
+
+  def make_query_filter(self, field_name, value):
+    """Attempts to make a query filter for the model property with the specified name, matching
+    the specified value. If no such property exists, None is returned.
+    """
+    prop = getattr(self.model_type, field_name, None)
+    if prop:
+      property_type = PROPERTY_TYPE_MAP.get(prop.__class__.__name__)
+      filter_value = None
+      try:
+        if property_type == PropertyType.DATE:
+          filter_value = api_util.parse_date(value)
+        elif property_type == PropertyType.ENUM:
+          filter_value = prop._enum_type(value)
+        elif property_type == PropertyType.INTEGER:
+          filter_value = int(value)
+        else:
+          filter_value = value
+      except ValueError:
+        raise BadRequest("Invalid value for %s of type %s: %s" % (field_name, property_type,
+                                                                  value))
+      return FieldFilter(field_name, Operator.EQUALS, filter_value)
+    else:
+      return None

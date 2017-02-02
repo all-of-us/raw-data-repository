@@ -7,7 +7,7 @@ The extractors defined in participant_summary_config are used for questionnaire 
 """
 
 import config
-import participant
+import participant_dao
 
 from google.appengine.ext import ndb
 from mapreduce import mapper_pipeline
@@ -39,4 +39,4 @@ def regenerate_summary(entity_key):
       be converted.
   """
   entity_key = ndb.Key.from_old_key(entity_key)
-  participant.DAO.regenerate_summary(entity_key)
+  participant_dao.DAO().regenerate_summary(entity_key)

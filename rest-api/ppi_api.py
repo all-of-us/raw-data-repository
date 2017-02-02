@@ -6,7 +6,7 @@ This defines the APIs and the handlers for the APIs.
 import api_util
 import base_api
 
-import participant
+import participant_dao
 import questionnaire
 import questionnaire_response
 import fhirclient.models.questionnaire
@@ -15,7 +15,7 @@ from werkzeug.exceptions import BadRequest
 
 class QuestionnaireAPI(base_api.BaseApi):
   def __init__(self):
-    super(QuestionnaireAPI, self).__init__(questionnaire.DAO)
+    super(QuestionnaireAPI, self).__init__(questionnaire.DAO())
 
   @api_util.auth_required(PTC)
   def get(self, id_=None, a_id=None):
@@ -44,7 +44,7 @@ class QuestionnaireAPI(base_api.BaseApi):
 
 class QuestionnaireResponseAPI(base_api.BaseApi):
   def __init__(self):
-    super(QuestionnaireResponseAPI, self).__init__(questionnaire_response.DAO)
+    super(QuestionnaireResponseAPI, self).__init__(questionnaire_response.DAO())
 
   @api_util.auth_required(PTC)
   def get(self, id_=None, a_id=None):
@@ -74,7 +74,7 @@ class QuestionnaireResponseAPI(base_api.BaseApi):
     # The participant id must match a_id and be present.
     participant_id = model.subject.reference
     if (participant_id != 'Patient/{}'.format(a_id) or
-        not participant.DAO.load_if_present(a_id)):
+        not participant_dao.DAO().load_if_present(a_id)):
       raise BadRequest(
           'Participant id {} invalid or missing.'.format(participant_id))
 
@@ -84,6 +84,6 @@ class QuestionnaireResponseAPI(base_api.BaseApi):
       raise BadRequest(
           'Questionnaire id {} invalid or missing.'.format(questionnaire_id))
     questionnaire_id = questionnaire_id.replace('Questionnaire/', '', 1)
-    if not questionnaire.DAO.load_if_present(questionnaire_id):
+    if not questionnaire.DAO().load_if_present(questionnaire_id):
       raise BadRequest(
           'Questionnaire id {} invalid or missing.'.format(questionnaire_id))

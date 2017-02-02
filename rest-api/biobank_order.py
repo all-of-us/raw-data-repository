@@ -4,7 +4,7 @@
 import api_util
 
 import data_access_object
-import participant
+import singletons
 
 from google.appengine.ext import ndb
 
@@ -42,6 +42,7 @@ class BiobankOrderDAO(data_access_object.DataAccessObject):
   DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
   def __init__(self):
+    import participant
     super(BiobankOrderDAO, self).__init__(BiobankOrder, participant.Participant)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
@@ -74,4 +75,5 @@ class BiobankOrderDAO(data_access_object.DataAccessObject):
       return None
     return results[0]
 
-DAO = BiobankOrderDAO()
+def DAO():
+  return singletons.get(BiobankOrderDAO)
