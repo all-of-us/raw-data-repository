@@ -13,7 +13,6 @@ import measurements
 import logging
 import offline.age_range_pipeline
 import offline.participant_summary_pipeline
-import participant
 import participant_dao
 import participant_summary
 import sync_log

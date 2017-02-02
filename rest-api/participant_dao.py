@@ -6,7 +6,6 @@ import biobank_sample
 import data_access_object
 import extraction
 import identifier
-import fhir_datatypes
 import measurements
 import participant
 import participant_enums
@@ -46,10 +45,10 @@ class ParticipantDAO(data_access_object.DataAccessObject):
 
   @ndb.transactional
   def regenerate_summary(self, participant_key):
-    participant = participant_key.get()
-    if not participant:
+    p = participant_key.get()
+    if not p:
       return None
-    summary = self.make_participant_summary(participant)
+    summary = self.make_participant_summary(p)
     summary_json = participant_summary.DAO().to_json(summary)
     questionnaire_response_history = questionnaire_response.DAO().get_all_history(participant_key)
     questionnaire_response_history = sorted(questionnaire_response_history, key=lambda o: o.date)
@@ -139,7 +138,6 @@ def modify_participant_history(history, participant_key, now):
 
   # Set initial date of birth, and insert BirthdayEvent entries for each birthday after
   # the participant's creation until today.
-  import participant_summary
   summary = participant_summary.DAO().get_summary_for_participant(participant_key.id())
   if summary and summary.dateOfBirth:
     history[0].date_of_birth = summary.dateOfBirth

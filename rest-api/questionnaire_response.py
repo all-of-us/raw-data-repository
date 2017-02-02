@@ -1,7 +1,6 @@
 import concepts
 import data_access_object
 import extraction
-import participant_enums
 import participant_summary
 import singletons
 import fhirclient.models.questionnaireresponse

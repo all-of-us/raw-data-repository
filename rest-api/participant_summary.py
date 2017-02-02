@@ -10,7 +10,6 @@ import singletons
 from offline.metrics_fields import run_extractors
 from participant_enums import HPOId, PhysicalMeasurementsStatus, QuestionnaireStatus
 from participant_enums import MembershipTier, GenderIdentity, Ethnicity, Race, get_bucketed_age
-from protorpc import messages
 from google.appengine.ext import ndb
 from google.appengine.ext.ndb import msgprop
 
