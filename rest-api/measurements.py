@@ -4,6 +4,7 @@ import concepts
 import data_access_object
 import executors
 import extraction
+import participant
 import singletons
 import sync_log
 
@@ -28,7 +29,6 @@ class PhysicalMeasurements(ndb.Model):
 
 class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
   def __init__(self):
-    import participant
     super(PhysicalMeasurementsDAO, self).__init__(PhysicalMeasurements, participant.Participant)
 
   def validate_query(self, query_definition):
