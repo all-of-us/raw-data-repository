@@ -23,47 +23,53 @@ from flask import request
 from query import OrderBy
 from werkzeug.exceptions import BadRequest
 
-SYSTOLIC_BP = FieldValidation(concepts.SYSTOLIC_BP,
-                              'systolic blood pressure',
-                              [within_range(0, 300), has_units(concepts.UNIT_MM_HG)],
-                              required=True)
-DIASTOLIC_BP = FieldValidation(
+
+_SYSTOLIC_BP = FieldValidation(
+    concepts.SYSTOLIC_BP,
+    'systolic blood pressure',
+    [within_range(0, 300), has_units(concepts.UNIT_MM_HG)],
+    required=True)
+_DIASTOLIC_BP = FieldValidation(
     concepts.DIASTOLIC_BP,
     'diastolic blood pressure',
-    [within_range(0, 300), has_units(concepts.UNIT_MM_HG), lessthan(SYSTOLIC_BP)],
+    [within_range(0, 300), has_units(concepts.UNIT_MM_HG), lessthan(_SYSTOLIC_BP)],
     required=True)
-HEART_RATE = FieldValidation(concepts.HEART_RATE,
-                             'heart rate',
-                             [within_range(0, 300), has_units(concepts.UNIT_PER_MIN)],
-                             required=True)
-WEIGHT = FieldValidation(concepts.WEIGHT,
-                         'weight',
-                         [within_range(0, 1000), has_units(concepts.UNIT_KG)],
-                         required=True)
-BMI = FieldValidation(concepts.BMI,
-                      'body mass index',
-                      [has_units(concepts.UNIT_KG_M2)],
-                      required=True)
-HIP_CIRCUMFERENCE = FieldValidation(concepts.HIP_CIRCUMFERENCE,
-                                    'hip circumference',
-                                    [within_range(0, 300), has_units(concepts.UNIT_CM)],
-                                    required=True)
-WAIST_CIRCUMFERENCE = FieldValidation(concepts.WAIST_CIRCUMFERENCE,
-                                      'waist circumerence',
-                                      [within_range(0, 300), has_units(concepts.UNIT_CM)],
-                                      required=True)
+_HEART_RATE = FieldValidation(
+    concepts.HEART_RATE,
+    'heart rate',
+    [within_range(0, 300), has_units(concepts.UNIT_PER_MIN)],
+    required=True)
+_WEIGHT = FieldValidation(
+    concepts.WEIGHT,
+    'weight',
+    [within_range(0, 1000), has_units(concepts.UNIT_KG)],
+    required=True)
+_BMI = FieldValidation(concepts.BMI,
+    'body mass index',
+    [has_units(concepts.UNIT_KG_M2)],
+    required=True)
+_HIP_CIRCUMFERENCE = FieldValidation(
+    concepts.HIP_CIRCUMFERENCE,
+    'hip circumference',
+    [within_range(0, 300), has_units(concepts.UNIT_CM)],
+    required=True)
+_WAIST_CIRCUMFERENCE = FieldValidation(
+    concepts.WAIST_CIRCUMFERENCE,
+    'waist circumerence',
+    [within_range(0, 300), has_units(concepts.UNIT_CM)],
+    required=True)
 
-PARTICIPANT_SUMMARY_HPO_FILTER_FIELDS = [
+_PARTICIPANT_SUMMARY_HPO_FILTER_FIELDS = [
     "hpoId", "firstName", "middleName", "lastName", "dateOfBirth", "ageRange", "genderIdentity",
     "ethnicity", "zipCode", "membershipTier", "consentForStudyEnrollment",
     "numCompletedBaselinePPIModules", "numBaselineSamplesArrived"]
-PARTICIPANT_SUMMARY_NON_HPO_FILTER_FIELDS = [
+_PARTICIPANT_SUMMARY_NON_HPO_FILTER_FIELDS = [
     "firstName", "lastName", "dateOfBirth", "genderIdentity", "zipCode"]
-PARTICIPANT_SUMMARY_ORDER = OrderBy("sortKey", True)
+_PARTICIPANT_SUMMARY_ORDER = OrderBy("sortKey", True)
 
+_MEASUREMENTS_FILTER_FIELDS = ["last_modified"]
+_MEASUREMENTS_ORDER = OrderBy("last_modified", True)
 
-MEASUREMENTS_FILTER_FIELDS = ["last_modified"]
-MEASUREMENTS_ORDER = OrderBy("last_modified", True)
 
 class ParticipantAPI(base_api.BaseApi):
 
@@ -109,22 +115,23 @@ class PhysicalMeasurementsAPI(base_api.BaseApi):
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def list(self, a_id):
-    return super(PhysicalMeasurementsAPI, self).query("id", MEASUREMENTS_FILTER_FIELDS,
-                                            MEASUREMENTS_ORDER, a_id)
+    return super(PhysicalMeasurementsAPI, self).query(
+        "id", _MEASUREMENTS_FILTER_FIELDS, _MEASUREMENTS_ORDER, a_id)
 
   def validate_object(self, e, a_id=None):
     field_validators = [
-        SYSTOLIC_BP,
-        DIASTOLIC_BP,
-        HEART_RATE,
-        WEIGHT,
-        BMI,
-        HIP_CIRCUMFERENCE,
-        WAIST_CIRCUMFERENCE,
+        _SYSTOLIC_BP,
+        _DIASTOLIC_BP,
+        _HEART_RATE,
+        _WEIGHT,
+        _BMI,
+        _HIP_CIRCUMFERENCE,
+        _WAIST_CIRCUMFERENCE,
     ]
     extractor = measurements.PhysicalMeasurementsExtractor(e.resource)
     value_dict = {f.concept: extractor.extract_value(f.concept) for f in field_validators}
     field_validation.validate_fields(field_validators, value_dict)
+
 
 def _check_existence(extractor, system, code, name):
   value = extractor.extract_value(concepts.Concept(system, code))
@@ -145,16 +152,17 @@ class ParticipantSummaryAPI(base_api.BaseApi):
       if request.args.get('hpoId'):
         return super(ParticipantSummaryAPI, self).query(
             "participantId",
-            PARTICIPANT_SUMMARY_HPO_FILTER_FIELDS,
-            PARTICIPANT_SUMMARY_ORDER)
+            _PARTICIPANT_SUMMARY_HPO_FILTER_FIELDS,
+            _PARTICIPANT_SUMMARY_ORDER)
       elif request.args.get('lastName') and request.args.get('dateOfBirth'):
         return super(ParticipantSummaryAPI, self).query(
             "participantId",
-            PARTICIPANT_SUMMARY_NON_HPO_FILTER_FIELDS,
-            PARTICIPANT_SUMMARY_ORDER)
+            _PARTICIPANT_SUMMARY_NON_HPO_FILTER_FIELDS,
+            _PARTICIPANT_SUMMARY_ORDER)
       else:
         raise BadRequest("Participant summary queries must specify hpoId"
                          " or both lastName and dateOfBirth")
+
 
 @api_util.auth_required_cron
 def regenerate_participant_summaries():
@@ -163,14 +171,16 @@ def regenerate_participant_summaries():
   offline.participant_summary_pipeline.ParticipantSummaryPipeline().start()
   return '{"metrics-pipeline-status": "started"}'
 
+
 @api_util.auth_required_cron
 def update_participant_summary_age_ranges():
   # TODO(danrodney): check to see if it's already running?
   logging.info("=========== Starting age range update pipeline ============")
   offline.age_range_pipeline.AgeRangePipeline(datetime.datetime.utcnow()).start()
   return '{"metrics-pipeline-status": "started"}'
-  
+
+
 @api_util.auth_required(PTC)
 def sync_physical_measurements():
   max_results = config.getSetting(config.MEASUREMENTS_ENTITIES_PER_SYNC, 100)
-  return base_api.sync(sync_log.PHYSICAL_MEASUREMENTS, max_results)                                                  
+  return base_api.sync(sync_log.PHYSICAL_MEASUREMENTS, max_results)
