@@ -31,9 +31,9 @@ class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
     super(PhysicalMeasurementsDAO, self).__init__(PhysicalMeasurements, participant.Participant)
 
   def validate_query(self, query_definition):
-    for filter in query_definition.field_filters:
-      if filter.field_name != 'last_modified':
-        raise BadRequest("Invalid filter on field %s" % filter.field_name)
+    for field_filter in query_definition.field_filters:
+      if field_filter.field_name != 'last_modified':
+        raise BadRequest("Invalid filter on field %s" % field_filter.field_name)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     model = fhirclient.models.bundle.Bundle(dict_)

@@ -6,8 +6,7 @@ import config
 import flask
 import sync_log
 
-from data_access_object import PROPERTY_TYPE_MAP
-from query import Query, FieldFilter, Operator, PropertyType
+from query import Query
 from flask import jsonify, request
 from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest
@@ -154,9 +153,9 @@ class BaseApi(Resource):
       elif key == '_token':
         pagination_token = value
       else:
-        filter = self.dao.make_query_filter(key, value)
-        if filter:
-          field_filters.append(filter)
+        field_filter = self.dao.make_query_filter(key, value)
+        if field_filter:
+          field_filters.append(field_filter)
     return Query(field_filters, order_by, max_results, pagination_token, a_id)        
 
   def make_bundle(self, results, id_field, a_id):

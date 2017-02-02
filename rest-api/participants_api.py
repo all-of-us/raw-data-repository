@@ -19,7 +19,6 @@ import sync_log
 
 from api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
 from field_validation import FieldValidation, has_units, lessthan, within_range
-from flask import request
 from query import OrderBy
 from werkzeug.exceptions import BadRequest
 

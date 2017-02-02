@@ -263,14 +263,14 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def validate_query(self, query_definition):
     field_names = set(filter.field_name for filter in query_definition.field_filters)
     if 'hpoId' in field_names:
-      for filter in query_definition.field_filters:
-        if not filter.field_name in _HPO_FILTER_FIELDS:
-          raise BadRequest("Invalid filter on field %s" % filter.field_name)
+      for field_filter in query_definition.field_filters:
+        if not field_filter.field_name in _HPO_FILTER_FIELDS:
+          raise BadRequest("Invalid filter on field %s" % field_filter.field_name)
     else:
       if 'lastName' in field_names and 'dateOfBirth' in field_names:
-        for filter in query_definition.field_filters:
-          if not filter.field_name in _NON_HPO_FILTER_FIELDS:
-            raise BadRequest("Invalid filter on field %s without HPO ID" % filter.field_name)
+        for field_filter in query_definition.field_filters:
+          if not field_filter.field_name in _NON_HPO_FILTER_FIELDS:
+            raise BadRequest("Invalid filter on field %s without HPO ID" % field_filter.field_name)
       else:
         raise BadRequest("Participant summary queries must specify hpoId"
                          " or both lastName and dateOfBirth")
