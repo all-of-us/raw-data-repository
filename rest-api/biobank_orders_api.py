@@ -7,6 +7,7 @@ import api_util
 import base_api
 import biobank_order
 import participant
+import participant_dao
 
 from api_util import HEALTHPRO, PTC_AND_HEALTHPRO
 from werkzeug.exceptions import BadRequest
@@ -64,4 +65,4 @@ class BiobankOrderAPI(base_api.BaseApi):
         raise BadRequest('Identifier {} is already in use by another order'.format(identifier))
     # This will raise if the participant can't be found.  Loading for validation
     # only.
-    participant.DAO().load(a_id)
+    participant_dao.DAO().load(a_id)

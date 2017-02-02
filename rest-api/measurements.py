@@ -4,7 +4,7 @@ import concepts
 import data_access_object
 import executors
 import extraction
-import participant
+import singletons
 import sync_log
 
 import fhirclient.models.bundle
@@ -28,6 +28,7 @@ class PhysicalMeasurements(ndb.Model):
 
 class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
   def __init__(self):
+    import participant
     super(PhysicalMeasurementsDAO, self).__init__(PhysicalMeasurements, participant.Participant)
 
   def validate_query(self, query_definition):
@@ -50,9 +51,8 @@ class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
     query = PhysicalMeasurements.query(ancestor=p_key)
     return {"items": [self.to_json(p) for p in query.fetch()]}
 
-_DAO = PhysicalMeasurementsDAO()
 def DAO():
-  return _DAO
+  return singletons.get(PhysicalMeasurementsDAO)
 
 class PhysicalMeasurementsExtractor(extraction.FhirExtractor):
   def __init__(self, resource):

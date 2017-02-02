@@ -6,7 +6,7 @@ This defines the APIs and the handlers for the APIs.
 import api_util
 import base_api
 
-import participant
+import participant_dao
 import questionnaire
 import questionnaire_response
 import fhirclient.models.questionnaire
@@ -74,7 +74,7 @@ class QuestionnaireResponseAPI(base_api.BaseApi):
     # The participant id must match a_id and be present.
     participant_id = model.subject.reference
     if (participant_id != 'Patient/{}'.format(a_id) or
-        not participant.DAO().load_if_present(a_id)):
+        not participant_dao.DAO().load_if_present(a_id)):
       raise BadRequest(
           'Participant id {} invalid or missing.'.format(participant_id))
 

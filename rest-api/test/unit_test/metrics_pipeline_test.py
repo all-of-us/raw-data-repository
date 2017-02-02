@@ -9,6 +9,8 @@ import json
 import metrics
 import offline.metrics_config
 import participant
+import participant_dao
+import participant_enums
 import participant_summary
 import questionnaire
 import questionnaire_response
@@ -47,26 +49,26 @@ CONFIGS_FOR_TEST = {
         },
         'fields': {
             'ParticipantHistory': [
-              FieldDef('hpoId', participant.extract_HPO_id,
-                       BASE_VALUES | set(participant_summary.HPOId)),
+              FieldDef('hpoId', participant_dao.extract_HPO_id,
+                       BASE_VALUES | set(participant_enums.HPOId)),
             ],
             'AgeHistory': [
-              FieldDef('ageRange', participant_summary.extract_bucketed_age,
-                       BASE_VALUES | set(participant_summary.AGE_BUCKETS)),
+              FieldDef('ageRange', participant_enums.extract_bucketed_age,
+                       BASE_VALUES | set(participant_enums.AGE_BUCKETS)),
             ],
             'QuestionnaireResponseHistory': [
                 FieldDef('race',
                             questionnaire_response.extractor_for(concepts.RACE, extraction.VALUE_CODING),
-                            set(participant_summary.Race)),
+                            set(participant_enums.Race)),
                 FieldDef('ethnicity',
                             questionnaire_response.extractor_for(concepts.ETHNICITY, extraction.VALUE_CODING),
-                            set(participant_summary.Ethnicity)),
+                            set(participant_enums.Ethnicity)),
                 FieldDef('state',
                          questionnaire_response.extract_state_of_residence,
                          BASE_VALUES | questionnaire_response.states()),
                 FieldDef('membershipTier',
                          questionnaire_response.extractor_for(concepts.MEMBERSHIP_TIER, extraction.VALUE_CODING),
-                            set(participant_summary.MembershipTier)),
+                            set(participant_enums.MembershipTier)),
             ],
             'PhysicalMeasurementsHistory': [
                 # The presence of physical measurements implies that it is complete.
@@ -165,7 +167,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     link = participant.ProviderLink(primary=True,
                                     organization=fhir_datatypes.FHIRReference(reference='Organization/PITT'))
     # One participant signs up in 2013
-    participant.DAO().insert(participant.Participant(key=key,
+    participant_dao.DAO().insert(participant.Participant(key=key,
                                                    providerLink = [ link ]),
                           datetime.datetime(2013, 9, 1, 11, 0, 1))
     summary_key = ndb.Key(participant_summary.ParticipantSummary,
@@ -400,7 +402,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
   def _populate_sample_history(self, key, hpoId):
     org = fhir_datatypes.FHIRReference(reference='Organization/' + hpoId)
     link = participant.ProviderLink(primary=True, organization=org)
-    participant.DAO().insert(participant.Participant(key=key,
+    participant_dao.DAO().insert(participant.Participant(key=key,
                                                    providerLink = [ link ]),
                           datetime.datetime(2016, 9, 1, 11, 0, 1))
     summary_key = ndb.Key(participant_summary.ParticipantSummary,

@@ -1,7 +1,7 @@
 import api_util
 import data_access_object
+import singletons
 
-from participant import Participant
 from participant_summary import DAO as summaryDAO
 from google.appengine.ext import ndb
 
@@ -33,7 +33,8 @@ class BiobankSamples(ndb.Model):
 
 class BiobankSamplesDAO(data_access_object.DataAccessObject):
   def __init__(self):
-    super(BiobankSamplesDAO, self).__init__(BiobankSamples, Participant, False)
+    import participant
+    super(BiobankSamplesDAO, self).__init__(BiobankSamples, participant.Participant, False)
 
   def get_samples_for_participant(self, participant_id):
     return self.load_if_present(SINGLETON_SAMPLES_ID, participant_id)    
@@ -53,6 +54,5 @@ class BiobankSamplesDAO(data_access_object.DataAccessObject):
     summaryDAO().update_with_incoming_data(participant_id, model,
                                          field_config.participant_summary_config.CONFIG)
 
-_DAO = BiobankSamplesDAO()
 def DAO():
-  return _DAO
+  return singletons.get(BiobankSamplesDAO)

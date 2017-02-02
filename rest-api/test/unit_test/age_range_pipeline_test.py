@@ -3,6 +3,7 @@ import datetime
 import dateutil
 import json
 import participant
+import participant_dao
 import participant_summary
 import questionnaire
 import questionnaire_response
@@ -23,7 +24,7 @@ class AgeRangePipelineTest(testutil.CloudStorageTestBase):
     participant_id = '1'
     participant_key = ndb.Key(participant.Participant, participant_id)
     participant_entry = participant.Participant(key=participant_key, biobankId=None)
-    participant.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
+    participant_dao.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
 
     questionnaire_json = json.loads(open(_data_path('consent_questionnaire.json')).read())
     questionnaire_key = questionnaire.DAO().store(questionnaire.DAO().from_json(questionnaire_json,

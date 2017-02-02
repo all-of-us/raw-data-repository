@@ -1,6 +1,6 @@
 import concepts
 import extraction
-import participant_summary
+import participant_enums
 
 from extraction import UNSET
 from questionnaire_response import extractor_for, extract_concept_presence, submission_statuses
@@ -18,20 +18,19 @@ KNOWN_QUESTIONNAIRES = {
   'questionnaireOnFamilyHealth': concepts.FAMILY_HEALTH_PPI_MODULE
 }
 
-
 questionnaire_fields = [
   FieldDef('race',
               extractor_for(concepts.RACE, extraction.VALUE_CODING),
-              set(participant_summary.Race)),
+              set(participant_enums.Race)),
   FieldDef('ethnicity',
               extractor_for(concepts.ETHNICITY, extraction.VALUE_CODING),
-              set(participant_summary.Ethnicity)),
+              set(participant_enums.Ethnicity)),
   FieldDef('membershipTier',
               extractor_for(concepts.MEMBERSHIP_TIER, extraction.VALUE_CODING),
-              set(participant_summary.MembershipTier)),
+              set(participant_enums.MembershipTier)),
   FieldDef('genderIdentity',
               extractor_for(concepts.GENDER_IDENTITY, extraction.VALUE_CODING),
-              set(participant_summary.GenderIdentity)),
+              set(participant_enums.GenderIdentity)),
   ]  + [FieldDef(k,
     extract_concept_presence(concept),
     set([UNSET]) | submission_statuses())

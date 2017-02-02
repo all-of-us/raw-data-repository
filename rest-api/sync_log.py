@@ -18,6 +18,7 @@ guarantees that resources for the same participant will be returned to the clien
 order they were written. 
 """
 import config
+import singletons
 
 from google.appengine.ext import ndb
 
@@ -119,6 +120,5 @@ class SyncLogDao(object):
         more_available = True
     return (resources, '|'.join(counter_values), more_available)  
 
-_DAO = SyncLogDao()
 def DAO():
-  return _DAO
+  return singletons.get(SyncLogDao)

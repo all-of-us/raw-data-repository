@@ -8,7 +8,7 @@ import ast
 import biobank_sample
 import csv
 import config
-import participant
+import participant_dao
 from cloudstorage import cloudstorage_api
 
 from mapreduce import mapreduce_pipeline
@@ -103,7 +103,7 @@ def map_samples(csv_buffer):
 def reduce_samples(biobank_id, samples):
   # TODO: fetch existing samples, don't write when nothing changes
   sample_dicts = []
-  participant_id = participant.DAO().find_participant_id_by_biobank_id(biobank_id)
+  participant_id = participant_dao.DAO().find_participant_id_by_biobank_id(biobank_id)
   if not participant_id:
     print 'Participant with biobank ID {} not found; skipping.'.format(
         biobank_id)

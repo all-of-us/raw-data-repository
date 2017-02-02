@@ -1,10 +1,15 @@
-'''The definition of the participant object and DB marshalling.
+'''The definition of the participant object.
 '''
-
+import biobank_order
+import biobank_sample
 import data_access_object
 import extraction
 import identifier
 import fhir_datatypes
+import measurements
+import participant_enums
+import questionnaire_response
+import field_config.participant_summary_config
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta

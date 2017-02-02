@@ -2,6 +2,7 @@ import concepts
 import datetime
 import json
 import participant
+import participant_dao
 import participant_summary
 import questionnaire
 import questionnaire_response
@@ -21,12 +22,12 @@ class ParticipantSummaryPipelineTest(testutil.CloudStorageTestBase):
     participant_id = '1'
     participant_key = ndb.Key(participant.Participant, participant_id)
     participant_entry = participant.Participant(key=participant_key, biobankId=None)
-    participant.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
+    participant_dao.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
 
     participant_id_2 = '2'
     participant_key_2 = ndb.Key(participant.Participant, participant_id_2)
     participant_entry_2 = participant.Participant(key=participant_key_2, biobankId=None)
-    participant.DAO().insert(participant_entry_2, datetime.datetime(2015, 9, 1))
+    participant_dao.DAO().insert(participant_entry_2, datetime.datetime(2015, 9, 1))
 
     questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
     questionnaire_key = questionnaire.DAO().store(questionnaire.DAO().from_json(questionnaire_json,
@@ -40,7 +41,7 @@ class ParticipantSummaryPipelineTest(testutil.CloudStorageTestBase):
                                             ("membershipTier", concepts.REGISTERED)])
     questionnaire_response.DAO().store(response, datetime.datetime(2016, 9, 1, 11, 0, 2))
 
-    participant_result = participant.DAO().load(participant_id)
+    participant_result = participant_dao.DAO().load(participant_id)
     self.assertTrue(participant_result.biobankId)
     summary = participant_summary.DAO().get_summary_for_participant(participant_id)
     summary_2 = participant_summary.DAO().get_summary_for_participant(participant_id_2)

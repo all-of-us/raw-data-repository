@@ -61,7 +61,7 @@ import pipeline
 import config
 import csv
 import metrics
-import participant
+import participant_dao
 import offline.metrics_config
 
 from datetime import datetime, timedelta
@@ -189,7 +189,7 @@ def map1(entity_key, now=None):
   metrics_conf = get_config()[kind]
   # Note that history can contain multiple types of history objects.
 
-  history = participant.load_history_entities(entity_key, now)
+  history = participant_dao.load_history_entities(entity_key, now)
   if not history:
     return
   history = sorted(history, key=lambda o: o.date)

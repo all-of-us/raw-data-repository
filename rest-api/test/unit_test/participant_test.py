@@ -11,6 +11,8 @@ import concepts
 import config
 import measurements
 import participant
+import participant_dao
+import participant_enums
 import participant_summary
 import questionnaire
 import questionnaire_response
@@ -35,13 +37,13 @@ class ParticipantNdbTest(NdbTestBase):
     participant_entry = participant.Participant(
         key=participant_key,
         biobankId=None)
-    participant.DAO().insert(participant_entry, dates[0])
+    participant_dao.DAO().insert(participant_entry, dates[0])
     
-    participant_result = participant.DAO().load(participant_id)
+    participant_result = participant_dao.DAO().load(participant_id)
     self.assertTrue(participant_result.biobankId)
     participant_summary_result = participant_summary.DAO().get_summary_for_participant(participant_id)
     self.assertTrue(participant_summary_result)
-    self.assertEquals(participant_summary.HPOId.UNSET, participant_summary_result.hpoId)
+    self.assertEquals(participant_enums.HPOId.UNSET, participant_summary_result.hpoId)
     self.assertEquals(0, participant_summary_result.numCompletedBaselinePPIModules)
     self.assertEquals(0, participant_summary_result.numBaselineSamplesArrived)
     self.assertEquals(participant_id, participant_summary_result.participantId)
@@ -80,7 +82,7 @@ class ParticipantNdbTest(NdbTestBase):
     biobank_order.DAO().store(biobank_entry, dates[4])
 
     entries = sorted(
-        participant.load_history_entities(participant_key, dates[5]),
+        participant_dao.load_history_entities(participant_key, dates[5]),
         key=lambda m: m.date)
     entries_json = []
 
@@ -99,7 +101,7 @@ class ParticipantNdbTest(NdbTestBase):
 
   def test_regenerate_summary_no_participant(self):
     participant_key = ndb.Key(participant.Participant, '1')
-    self.assertFalse(participant.DAO().regenerate_summary(participant_key))
+    self.assertFalse(participant_dao.DAO().regenerate_summary(participant_key))
 
   def test_regenerate_summary_participant(self):
     participant_id = '1'
@@ -107,7 +109,7 @@ class ParticipantNdbTest(NdbTestBase):
     participant_entry = participant.Participant(
         key=participant_key,
         biobankId=None)
-    participant.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
+    participant_dao.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
 
     questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
     questionnaire_key = questionnaire.DAO().store(questionnaire.DAO().from_json(questionnaire_json,
@@ -126,24 +128,24 @@ class ParticipantNdbTest(NdbTestBase):
                                            biobank_sample.SINGLETON_SAMPLES_ID)
     biobank_sample.DAO().store(samples)
 
-    participant_result = participant.DAO().load(participant_id)
+    participant_result = participant_dao.DAO().load(participant_id)
     self.assertTrue(participant_result.biobankId)
     summary = participant_summary.DAO().get_summary_for_participant(participant_id)
     self.assertTrue(summary)
-    self.assertEquals(participant_summary.Race.WHITE, summary.race)
-    self.assertEquals(participant_summary.Ethnicity.NON_HISPANIC, summary.ethnicity)
-    self.assertEquals(participant_summary.MembershipTier.REGISTERED, summary.membershipTier)
+    self.assertEquals(participant_enums.Race.WHITE, summary.race)
+    self.assertEquals(participant_enums.Ethnicity.NON_HISPANIC, summary.ethnicity)
+    self.assertEquals(participant_enums.MembershipTier.REGISTERED, summary.membershipTier)
     self.assertEquals(1, summary.numCompletedBaselinePPIModules)
     self.assertEquals(1, summary.numBaselineSamplesArrived)
 
     # Nothing has changed; no summary is returned.
-    self.assertFalse(participant.DAO().regenerate_summary(participant_key))
+    self.assertFalse(participant_dao.DAO().regenerate_summary(participant_key))
 
     # Delete the participant summary.
     summary.key.delete()
     self.assertFalse(participant_summary.DAO().get_summary_for_participant(participant_id))
 
-    new_summary = participant.DAO().regenerate_summary(participant_key)
+    new_summary = participant_dao.DAO().regenerate_summary(participant_key)
     # The new summary should be the same as the old one.
     self.assertEquals(summary, new_summary)
     new_summary = participant_summary.DAO().get_summary_for_participant(participant_id)

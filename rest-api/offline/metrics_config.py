@@ -17,8 +17,8 @@ Keys for an individual configuration entry:
 """
 import concepts
 import extraction
-import participant
-import participant_summary
+import participant_dao
+import participant_enums
 import questionnaire_response
 
 import field_config.shared_config
@@ -72,11 +72,11 @@ ALL_CONFIG = {
         }.items()) + list(field_config.shared_config.questionnaire_defaults.items())),
         'fields': {
             'ParticipantHistory': [
-              FieldDef('hpoId', participant.extract_HPO_id, set(participant_summary.HPOId)),
+              FieldDef('hpoId', participant_dao.extract_HPO_id, set(participant_enums.HPOId)),
             ],
             'AgeHistory': [
-              FieldDef('ageRange', participant_summary.extract_bucketed_age,
-                       BASE_VALUES | set(participant_summary.AGE_BUCKETS)),
+              FieldDef('ageRange', participant_enums.extract_bucketed_age,
+                       BASE_VALUES | set(participant_enums.AGE_BUCKETS)),
             ],
             'QuestionnaireResponseHistory':
                 field_config.shared_config.questionnaire_fields + [

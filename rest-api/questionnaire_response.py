@@ -1,13 +1,15 @@
 import concepts
 import data_access_object
 import extraction
+import participant_enums
+import participant_summary
+import singletons
 import fhirclient.models.questionnaireresponse
 
 from census_regions import census_regions
 from extraction import UNMAPPED, SKIPPED
 from google.appengine.ext import ndb
-from participant import Participant
-from participant_summary import GenderIdentity, MembershipTier, Ethnicity, Race, DAO as summaryDAO
+from participant_enums import GenderIdentity, MembershipTier, Ethnicity, Race
 from questionnaire import DAO as questionnaireDAO
 from questionnaire import QuestionnaireExtractor
 
@@ -19,8 +21,9 @@ class QuestionnaireResponse(ndb.Model):
 
 class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
   def __init__(self):
+    import participant
     super(QuestionnaireResponseDAO, self).__init__(QuestionnaireResponse,
-                                                   Participant)
+                                                   participant.Participant)
 
   def properties_to_json(self, m):
     return m['resource']
@@ -38,16 +41,14 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
     participant_id = model.resource['subject']['reference'].split('/')[1]
     new_history = self.make_history(model, date, client_id)
     import field_config.participant_summary_config
-    summaryDAO().update_with_incoming_data(
+    participant_summary.DAO().update_with_incoming_data(
             participant_id,
             new_history,
             field_config.participant_summary_config.CONFIG)
 
 
-_DAO = QuestionnaireResponseDAO()
 def DAO():
-  return _DAO
-
+  return singletons.get(QuestionnaireResponseDAO)
 
 _ETHNICITY_MAPPING = {
     concepts.HISPANIC: Ethnicity.HISPANIC,

@@ -14,6 +14,7 @@ import logging
 import offline.age_range_pipeline
 import offline.participant_summary_pipeline
 import participant
+import participant_dao
 import participant_summary
 import sync_log
 
@@ -72,7 +73,7 @@ _MEASUREMENTS_ORDER = OrderBy("last_modified", True)
 class ParticipantAPI(base_api.BaseApi):
 
   def __init__(self):
-    super(ParticipantAPI, self).__init__(participant.DAO())
+    super(ParticipantAPI, self).__init__(participant_dao.DAO())
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None, a_id=None):

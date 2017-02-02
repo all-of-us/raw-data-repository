@@ -5,6 +5,7 @@ import csv
 import os
 import biobank_sample
 import participant
+import participant_dao
 import participant_summary
 
 from offline.biobank_samples_pipeline import BiobankSamplesPipeline
@@ -23,10 +24,10 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
 
   def test_end_to_end(self):
     # Insert participants to generate biobank IDs
-    participant.DAO().insert(participant.DAO().from_json({}, None, 'P1'))
-    participant_1 = participant.DAO().load('P1')
-    participant.DAO().insert(participant.DAO().from_json({}, None, 'P2'))
-    participant_2 = participant.DAO().load('P2')
+    participant_dao.DAO().insert(participant_dao.DAO().from_json({}, None, 'P1'))
+    participant_1 = participant_dao.DAO().load('P1')
+    participant_dao.DAO().insert(participant_dao.DAO().from_json({}, None, 'P2'))
+    participant_2 = participant_dao.DAO().load('P2')
     participant_summary_1 = participant_summary.DAO().get_summary_for_participant('P1')
     participant_summary_2 = participant_summary.DAO().get_summary_for_participant('P2')
     self.assertEquals(0, participant_summary_1.numBaselineSamplesArrived)
@@ -75,10 +76,10 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
 
 def test_end_to_end_missing_field(self):
     # Insert participants to generate biobank IDs
-    participant.DAO().insert(participant.DAO().from_json({}, None, 'P1'))
-    participant_1 = participant.DAO().load('P1')
-    participant.DAO().insert(participant.DAO().from_json({}, None, 'P2'))
-    participant_2 = participant.DAO().load('P2')
+    participant_dao.DAO().insert(participant_dao.DAO().from_json({}, None, 'P1'))
+    participant_1 = participant_dao.DAO().load('P1')
+    participant_dao.DAO().insert(participant_dao.DAO().from_json({}, None, 'P2'))
+    participant_2 = participant_dao.DAO().load('P2')
 
     with open(_data_path('biobank_samples_missing_field.csv'), 'rb') as src, \
         cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV', mode='w') as dest:
