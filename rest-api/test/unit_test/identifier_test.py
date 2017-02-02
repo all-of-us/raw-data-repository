@@ -1,4 +1,5 @@
 """Tests for identifier."""
+import identifier
 import threading
 import unittest
 
@@ -9,14 +10,11 @@ from test.unit_test.unit_test_util import NdbTestBase
 class IdentifierTest(NdbTestBase):
 
   def test_reserve_candidate(self):
-    import identifier
     self.assertTrue(identifier._reserve_candidate(1))
     # Can't reserve the same id twice.
     self.assertFalse(identifier._reserve_candidate(1))
 
   def test_conflict(self):
-    import identifier
-
     def make_res():
       self.assertTrue(identifier._reserve_candidate(2, testing_sleep=.1))
 
