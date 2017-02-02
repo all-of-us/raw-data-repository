@@ -70,7 +70,6 @@ _PARTICIPANT_SUMMARY_ORDER = OrderBy("sortKey", True)
 _MEASUREMENTS_FILTER_FIELDS = ["last_modified"]
 _MEASUREMENTS_ORDER = OrderBy("last_modified", True)
 
-
 class ParticipantAPI(base_api.BaseApi):
 
   def __init__(self):
@@ -115,8 +114,7 @@ class PhysicalMeasurementsAPI(base_api.BaseApi):
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def list(self, a_id):
-    return super(PhysicalMeasurementsAPI, self).query(
-        "id", _MEASUREMENTS_FILTER_FIELDS, _MEASUREMENTS_ORDER, a_id)
+    return super(PhysicalMeasurementsAPI, self).query("id", MEASUREMENTS_ORDER, a_id)
 
   def validate_object(self, e, a_id=None):
     field_validators = [
@@ -149,19 +147,7 @@ class ParticipantSummaryAPI(base_api.BaseApi):
     if id_:
       return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
     else:
-      if request.args.get('hpoId'):
-        return super(ParticipantSummaryAPI, self).query(
-            "participantId",
-            _PARTICIPANT_SUMMARY_HPO_FILTER_FIELDS,
-            _PARTICIPANT_SUMMARY_ORDER)
-      elif request.args.get('lastName') and request.args.get('dateOfBirth'):
-        return super(ParticipantSummaryAPI, self).query(
-            "participantId",
-            _PARTICIPANT_SUMMARY_NON_HPO_FILTER_FIELDS,
-            _PARTICIPANT_SUMMARY_ORDER)
-      else:
-        raise BadRequest("Participant summary queries must specify hpoId"
-                         " or both lastName and dateOfBirth")
+      return super(ParticipantSummaryAPI, self).query("participantId", PARTICIPANT_SUMMARY_ORDER)
 
 
 @api_util.auth_required_cron

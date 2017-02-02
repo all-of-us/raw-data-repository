@@ -27,6 +27,9 @@ class ParentModelDAO(data_access_object.DataAccessObject):
   def __init__(self):
     super(ParentModelDAO, self).__init__(ParentModel)
 
+  def validate_query(self, query_definition):
+    return
+
 class ChildModelDAO(data_access_object.DataAccessObject):
   def __init__(self):
     super(ChildModelDAO, self).__init__(ChildModel, ParentModel)

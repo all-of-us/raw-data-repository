@@ -182,7 +182,15 @@ class ParticipantSummary(ndb.Model):
   numCompletedBaselinePPIModules = ndb.IntegerProperty(default=0)
   numBaselineSamplesArrived = ndb.IntegerProperty(default=0)
 
+_HPO_FILTER_FIELDS = [
+    "hpoId", "firstName", "middleName", "lastName", "dateOfBirth", "ageRange", "genderIdentity",
+    "ethnicity", "zipCode", "membershipTier", "consentForStudyEnrollment",
+    "numCompletedBaselinePPIModules", "numBaselineSamplesArrived"]
+_NON_HPO_FILTER_FIELDS = [
+    "firstName", "lastName", "dateOfBirth", "genderIdentity", "zipCode"]
+
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
+
   def __init__(self):
     super(ParticipantSummaryDAO, self).__init__(ParticipantSummary, Participant,
                                                 keep_history=False)
@@ -251,6 +259,21 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     api_util.remove_field(dict_, 'lastNameSearch')
     api_util.remove_field(dict_, 'sortKey')
     return dict_
+
+  def validate_query(self, query_definition):
+    field_names = set(filter.field_name for filter in query_definition.field_filters)
+    if 'hpoId' in field_names:
+      for filter in query_definition.field_filters:
+        if not filter.field_name in _HPO_FILTER_FIELDS:
+          raise BadRequest("Invalid filter on field %s" % filter.field_name)
+    else:
+      if 'lastName' in field_names and 'dateOfBirth' in field_names:
+        for filter in query_definition.field_filters:
+          if not filter.field_name in _NON_HPO_FILTER_FIELDS:
+            raise BadRequest("Invalid filter on field %s without HPO ID" % filter.field_name)
+      else:
+        raise BadRequest("Participant summary queries must specify hpoId"
+                         " or both lastName and dateOfBirth")
 
   def get_summary_for_participant(self, participant_id):
     return self.load_if_present(SINGLETON_SUMMARY_ID, participant_id)
