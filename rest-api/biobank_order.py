@@ -1,10 +1,11 @@
-'''The definition of the Biobank order object and DB marshalling.
-'''
+"""The definition of the Biobank order object and DB marshalling.
+"""
 
 import api_util
 
 import data_access_object
 import fhir_datatypes
+import participant
 import singletons
 
 from google.appengine.ext import ndb
@@ -39,7 +40,6 @@ class BiobankOrderDAO(data_access_object.DataAccessObject):
   DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
   def __init__(self):
-    import participant
     super(BiobankOrderDAO, self).__init__(BiobankOrder, participant.Participant)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
