@@ -1,5 +1,6 @@
 """Base object for Datastore data access objects."""
 import uuid
+import clock
 import copy
 import api_util
 
@@ -173,9 +174,8 @@ class DataAccessObject(object):
 
   @ndb.transactional
   def make_history(self, model, date=None, client_id=None):
-    h = self.history_model(parent=model.key, obj=model)
-    if date:
-      h.populate(date=date)
+    date = date or clock.CLOCK.now()
+    h = self.history_model(parent=model.key, obj=model, date=date)
     if client_id:
       h.populate(client_id=client_id)
     return h

@@ -88,7 +88,8 @@ class TestPPI(unittest.TestCase):
     self.assertEqual(response['genderIdentity'], 'MALE_TO_FEMALE_TRANSGENDER')
 
     response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
-    # TODO: add more stuff here
+    self.assertTrue(response['questionnaireOnOverallHealthTime'])
+    del response['questionnaireOnOverallHealthTime']
     expected = { 'ageRange': 'UNSET',
                  'genderIdentity': 'MALE_TO_FEMALE_TRANSGENDER',
                  'ethnicity': 'UNSET',

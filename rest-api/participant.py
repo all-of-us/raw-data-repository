@@ -85,14 +85,19 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     samples = biobank_sample.DAO.get_samples_for_participant(participant_key.id())
     if samples:
       run_extractors(samples, field_config.participant_summary_config.CONFIG, summary_json)
-      # Clear out samplesArrived, since it doesn't get stored.
-      del summary_json['samplesArrived']
+    
     existing_summary = participant_summary.DAO.get_summary_for_participant(participant_key.id())
     if existing_summary:
+      # Transform the JSON to the model and back again, to make sure we get the same representation.
+      adjusted_summary = participant_summary.DAO.from_json(summary_json, 
+                                                           participant_summary.SINGLETON_SUMMARY_ID,
+                                                           participant_key.id())
+      adjusted_summary_json = participant_summary.DAO.to_json(adjusted_summary)
+
       existing_summary_json = participant_summary.DAO.to_json(existing_summary)
       # Clear out ageRange, since this doesn't get set until the summary is stored.
       existing_summary_json['ageRange'] = None
-      if existing_summary_json == summary_json:
+      if existing_summary_json == adjusted_summary_json:
         # If nothing has changed, bail out.
         return None
     updated_summary = participant_summary.DAO.from_json(summary_json,

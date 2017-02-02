@@ -151,26 +151,34 @@ class ParticipantSummary(ndb.Model):
   physicalMeasurementsStatus = msgprop.EnumProperty(
       PhysicalMeasurementsStatus, default=PhysicalMeasurementsStatus.UNSET, indexed=False)
   signUpTime = ndb.DateTimeProperty(indexed=False)
-  consentTime = ndb.DateTimeProperty(indexed=False)
   hpoId = msgprop.EnumProperty(HPOId, default=HPOId.UNSET)
   consentForStudyEnrollment = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET)
+  consentForStudyEnrollmentTime = ndb.DateTimeProperty(indexed=False)
   consentForElectronicHealthRecords = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  consentForElectronicHealthRecordsTime = ndb.DateTimeProperty(indexed=False)
   questionnaireOnOverallHealth = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnOverallHealthTime = ndb.DateTimeProperty(indexed=False)
   questionnaireOnPersonalHabits = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnPersonalHabitsTime = ndb.DateTimeProperty(indexed=False)      
   questionnaireOnSociodemographics = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnSociodemographicsTime = ndb.DateTimeProperty(indexed=False)
   questionnaireOnHealthcareAccess = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnHealthcareAccessTime = ndb.DateTimeProperty(indexed=False)
   questionnaireOnMedicalHistory = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnMedicalHistoryTime = ndb.DateTimeProperty(indexed=False)
   questionnaireOnMedications = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnMedicationsTime = ndb.DateTimeProperty(indexed=False)
   questionnaireOnFamilyHealth = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
+  questionnaireOnFamilyHealthTime = ndb.DateTimeProperty(indexed=False)
   numCompletedBaselinePPIModules = ndb.IntegerProperty(default=0)
   numBaselineSamplesArrived = ndb.IntegerProperty(default=0)
 
@@ -183,7 +191,15 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     dict_['participantId'] = ancestor_id
     api_util.parse_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
     api_util.parse_json_date(dict_, 'signUpTime')
-    api_util.parse_json_date(dict_, 'consentTime')
+    api_util.parse_json_date(dict_, 'consentForStudyEnrollmentTime')
+    api_util.parse_json_date(dict_, 'consentForElectronicHealthRecordsTime')
+    api_util.parse_json_date(dict_, 'questionnaireOnOverallHealthTime')
+    api_util.parse_json_date(dict_, 'questionnaireOnPersonalHabitsTime')
+    api_util.parse_json_date(dict_, 'questionnaireOnSociodemographicsTime')
+    api_util.parse_json_date(dict_, 'questionnaireOnHealthcareAccessTime')
+    api_util.parse_json_date(dict_, 'questionnaireOnMedicalHistoryTime')
+    api_util.parse_json_date(dict_, 'questionnaireOnMedicationsTime')
+    api_util.parse_json_date(dict_, 'questionnaireOnFamilyHealthTime')
     api_util.parse_json_enum(dict_, 'hpoId', HPOId)
     api_util.parse_json_enum(dict_, 'genderIdentity', GenderIdentity)
     api_util.parse_json_enum(dict_, 'race', Race)
@@ -206,7 +222,15 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
   def properties_to_json(self, dict_):
     api_util.format_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
     api_util.format_json_date(dict_, 'signUpTime')
-    api_util.format_json_date(dict_, 'consentTime')
+    api_util.format_json_date(dict_, 'consentForStudyEnrollmentTime')
+    api_util.format_json_date(dict_, 'consentForElectronicHealthRecordsTime')
+    api_util.format_json_date(dict_, 'questionnaireOnOverallHealthTime')
+    api_util.format_json_date(dict_, 'questionnaireOnPersonalHabitsTime')
+    api_util.format_json_date(dict_, 'questionnaireOnSociodemographicsTime')
+    api_util.format_json_date(dict_, 'questionnaireOnHealthcareAccessTime')
+    api_util.format_json_date(dict_, 'questionnaireOnMedicalHistoryTime')
+    api_util.format_json_date(dict_, 'questionnaireOnMedicationsTime')
+    api_util.format_json_date(dict_, 'questionnaireOnFamilyHealthTime')
     api_util.format_json_enum(dict_, 'hpoId')
     api_util.format_json_enum(dict_, 'genderIdentity')
     api_util.format_json_enum(dict_, 'race')
