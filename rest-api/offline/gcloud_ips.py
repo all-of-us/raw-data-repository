@@ -14,6 +14,7 @@ _cloud-netblocks5.googleusercontent.com. 3599 IN TXT "v=spf1 ip6:2600:1900::/35 
 # pylint: enable=line-too-long
 
 import dns.resolver
+import json
 import re
 from  collections import namedtuple
 
@@ -52,7 +53,6 @@ def explore(to_visit, resolved_blocks):
 
 def print_json_for_debug():
   """Heler to print the entire AppEngine IP range to stdout, in JSON"""
-  import json
   ips = get_ip_ranges(START)
   print json.dumps({'ip4': ips.ip4, 'ip6': ips.ip6}, indent=2)
 
