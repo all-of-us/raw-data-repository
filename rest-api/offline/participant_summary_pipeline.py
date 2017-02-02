@@ -39,4 +39,4 @@ def regenerate_summary(entity_key):
       be converted.
   """
   entity_key = ndb.Key.from_old_key(entity_key)
-  participant.DAO.regenerate_summary(entity_key)
+  participant.DAO().regenerate_summary(entity_key)

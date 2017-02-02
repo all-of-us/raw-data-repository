@@ -35,11 +35,11 @@ class ParticipantNdbTest(NdbTestBase):
     participant_entry = participant.Participant(
         key=participant_key,
         biobankId=None)
-    participant.DAO.insert(participant_entry, dates[0])
+    participant.DAO().insert(participant_entry, dates[0])
     
-    participant_result = participant.DAO.load(participant_id)
+    participant_result = participant.DAO().load(participant_id)
     self.assertTrue(participant_result.biobankId)
-    participant_summary_result = participant_summary.DAO.get_summary_for_participant(participant_id)
+    participant_summary_result = participant_summary.DAO().get_summary_for_participant(participant_id)
     self.assertTrue(participant_summary_result)
     self.assertEquals(participant_summary.HPOId.UNSET, participant_summary_result.hpoId)
     self.assertEquals(0, participant_summary_result.numCompletedBaselinePPIModules)
@@ -47,16 +47,16 @@ class ParticipantNdbTest(NdbTestBase):
     self.assertEquals(participant_id, participant_summary_result.participantId)
     self.assertEquals(participant_result.biobankId, participant_summary_result.biobankId)    
 
-    questionnaire_id = questionnaire.DAO.allocate_id()
+    questionnaire_id = questionnaire.DAO().allocate_id()
     questionnaire_key = ndb.Key(questionnaire.Questionnaire, questionnaire_id)
     with open(os.path.join(test_data, 'questionnaire1.json')) as rfile:
       questionnaire_entry = questionnaire.Questionnaire(
           key=questionnaire_key, resource=json.load(rfile))
-    questionnaire.DAO.store(questionnaire_entry, dates[1])
+    questionnaire.DAO().store(questionnaire_entry, dates[1])
 
     response_key = ndb.Key(
         participant_key.flat()[0], participant_key.flat()[1],
-        questionnaire_response.QuestionnaireResponse, questionnaire_response.DAO.allocate_id())
+        questionnaire_response.QuestionnaireResponse, questionnaire_response.DAO().allocate_id())
     with open(os.path.join(test_data, 'questionnaire_response3.json')) as rfile:
       resource = json.load(rfile)
     resource['subject']['reference'] = resource['subject']['reference'].format(
@@ -65,19 +65,19 @@ class ParticipantNdbTest(NdbTestBase):
         questionnaire_id=questionnaire_id)
     response_entry = questionnaire_response.QuestionnaireResponse(key=response_key,
                                                                   resource=resource)
-    questionnaire_response.DAO.store(response_entry, dates[2])
+    questionnaire_response.DAO().store(response_entry, dates[2])
 
     measurements_key = ndb.Key(participant_key.flat()[0], participant_key.flat()[1],
-                               measurements.PhysicalMeasurements, measurements.DAO.allocate_id())
+                               measurements.PhysicalMeasurements, measurements.DAO().allocate_id())
     measurements_entry = measurements.PhysicalMeasurements(key=measurements_key,
                                                            resource='notused_eval')
-    measurements.DAO.store(measurements_entry, dates[3])
+    measurements.DAO().store(measurements_entry, dates[3])
 
     biobank_key = ndb.Key(participant_key.flat()[0], participant_key.flat()[1],
                           biobank_order.BiobankOrder,
-                          biobank_order.DAO.allocate_id())
+                          biobank_order.DAO().allocate_id())
     biobank_entry = biobank_order.BiobankOrder(key=biobank_key, subject='foo')
-    biobank_order.DAO.store(biobank_entry, dates[4])
+    biobank_order.DAO().store(biobank_entry, dates[4])
 
     entries = sorted(
         participant.load_history_entities(participant_key, dates[5]),
@@ -99,7 +99,7 @@ class ParticipantNdbTest(NdbTestBase):
 
   def test_regenerate_summary_no_participant(self):
     participant_key = ndb.Key(participant.Participant, '1')
-    self.assertFalse(participant.DAO.regenerate_summary(participant_key))
+    self.assertFalse(participant.DAO().regenerate_summary(participant_key))
 
   def test_regenerate_summary_participant(self):
     participant_id = '1'
@@ -107,28 +107,28 @@ class ParticipantNdbTest(NdbTestBase):
     participant_entry = participant.Participant(
         key=participant_key,
         biobankId=None)
-    participant.DAO.insert(participant_entry, datetime.datetime(2015, 9, 1))
+    participant.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
 
     questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
-    questionnaire_key = questionnaire.DAO.store(questionnaire.DAO.from_json(questionnaire_json,
+    questionnaire_key = questionnaire.DAO().store(questionnaire.DAO().from_json(questionnaire_json,
                                                                             None,
-                                                                            questionnaire.DAO.allocate_id()))
+                                                                            questionnaire.DAO().allocate_id()))
     response = make_questionnaire_response(participant_key.id(),
                                            questionnaire_key.id(),
                                            [("race", concepts.WHITE),
                                             ("ethnicity", concepts.NON_HISPANIC),
                                             ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
                                             ("membershipTier", concepts.REGISTERED)])
-    questionnaire_response.DAO.store(response, datetime.datetime(2016, 9, 1, 11, 0, 2))
+    questionnaire_response.DAO().store(response, datetime.datetime(2016, 9, 1, 11, 0, 2))
 
     samples_json = { "samples": [ {"testCode": "xxx"}, {"testCode": "1ED04"} ]}
-    samples = biobank_sample.DAO.from_json(samples_json, participant_id, 
+    samples = biobank_sample.DAO().from_json(samples_json, participant_id,
                                            biobank_sample.SINGLETON_SAMPLES_ID)
-    biobank_sample.DAO.store(samples)
+    biobank_sample.DAO().store(samples)
 
-    participant_result = participant.DAO.load(participant_id)
+    participant_result = participant.DAO().load(participant_id)
     self.assertTrue(participant_result.biobankId)
-    summary = participant_summary.DAO.get_summary_for_participant(participant_id)
+    summary = participant_summary.DAO().get_summary_for_participant(participant_id)
     self.assertTrue(summary)
     self.assertEquals(participant_summary.Race.WHITE, summary.race)
     self.assertEquals(participant_summary.Ethnicity.NON_HISPANIC, summary.ethnicity)
@@ -137,16 +137,16 @@ class ParticipantNdbTest(NdbTestBase):
     self.assertEquals(1, summary.numBaselineSamplesArrived)
 
     # Nothing has changed; no summary is returned.
-    self.assertFalse(participant.DAO.regenerate_summary(participant_key))
+    self.assertFalse(participant.DAO().regenerate_summary(participant_key))
 
     # Delete the participant summary.
     summary.key.delete()
-    self.assertFalse(participant_summary.DAO.get_summary_for_participant(participant_id))
+    self.assertFalse(participant_summary.DAO().get_summary_for_participant(participant_id))
 
-    new_summary = participant.DAO.regenerate_summary(participant_key)
+    new_summary = participant.DAO().regenerate_summary(participant_key)
     # The new summary should be the same as the old one.
     self.assertEquals(summary, new_summary)
-    new_summary = participant_summary.DAO.get_summary_for_participant(participant_id)
+    new_summary = participant_summary.DAO().get_summary_for_participant(participant_id)
     self.assertEquals(summary, new_summary)
 
 if __name__ == '__main__':

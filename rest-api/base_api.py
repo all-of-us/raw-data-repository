@@ -221,7 +221,7 @@ def sync(channel_index, max_results):
   count_str = request.args.get('_count')
   count = int(count_str) if count_str else max_results    
   decoded_token = base64.b64decode(token) if token else None
-  resources, next_token, more_available = sync_log.DAO.sync(channel_index, decoded_token, count)        
+  resources, next_token, more_available = sync_log.DAO().sync(channel_index, decoded_token, count)
   bundle_dict = {"resourceType": "Bundle", "type": "history"}
   query_params = request.args.copy()
   query_params['_token'] = base64.b64encode(next_token)  

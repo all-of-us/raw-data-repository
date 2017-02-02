@@ -119,4 +119,6 @@ class SyncLogDao(object):
         more_available = True
     return (resources, '|'.join(counter_values), more_available)  
 
-DAO = SyncLogDao()
+_DAO = SyncLogDao()
+def DAO():
+  return _DAO

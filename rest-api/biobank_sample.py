@@ -51,7 +51,9 @@ class BiobankSamplesDAO(data_access_object.DataAccessObject):
     super(BiobankSamplesDAO, self).store(model, date, client_id)
     import field_config.participant_summary_config
     participant_id = model.key.parent().id()
-    summaryDAO.update_with_incoming_data(participant_id, model,
+    summaryDAO().update_with_incoming_data(participant_id, model,
                                          field_config.participant_summary_config.CONFIG)
 
-DAO = BiobankSamplesDAO()
+_DAO = BiobankSamplesDAO()
+def DAO():
+  return _DAO

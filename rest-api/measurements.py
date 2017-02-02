@@ -20,7 +20,7 @@ class PhysicalMeasurements(ndb.Model):
 
   @classmethod
   def write_to_sync_log(cls, participantId, resource):
-    sync_log.DAO.write_log_entry(sync_log.PHYSICAL_MEASUREMENTS, participantId, resource)
+    sync_log.DAO().write_log_entry(sync_log.PHYSICAL_MEASUREMENTS, participantId, resource)
 
   def _post_put_hook(self, _):
     executors.defer(PhysicalMeasurements.write_to_sync_log,
@@ -45,7 +45,9 @@ class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
     query = PhysicalMeasurements.query(ancestor=p_key)
     return {"items": [self.to_json(p) for p in query.fetch()]}
 
-DAO = PhysicalMeasurementsDAO()
+_DAO = PhysicalMeasurementsDAO()
+def DAO():
+  return _DAO
 
 class PhysicalMeasurementsExtractor(extraction.FhirExtractor):
   def __init__(self, resource):

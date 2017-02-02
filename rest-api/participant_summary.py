@@ -288,4 +288,6 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
                                        SINGLETON_SUMMARY_ID)
       self.store(updated_summary)
 
-DAO = ParticipantSummaryDAO()
+_DAO = ParticipantSummaryDAO()
+def DAO():
+  return _DAO

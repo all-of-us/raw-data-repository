@@ -43,4 +43,4 @@ def update_age_range(summary, now=None):
     now = now or context.get().mapreduce_spec.mapper.params.get('now')
     new_age_range = participant_summary.get_bucketed_age(summary.dateOfBirth, now.date())
     if summary.ageRange != new_age_range:
-      participant_summary.DAO.update_computed_properties(summary.key)
+      participant_summary.DAO().update_computed_properties(summary.key)

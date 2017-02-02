@@ -74,4 +74,7 @@ class BiobankOrderDAO(data_access_object.DataAccessObject):
       return None
     return results[0]
 
-DAO = BiobankOrderDAO()
+
+_DAO = BiobankOrderDAO()
+def DAO():
+  return _DAO

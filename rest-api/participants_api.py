@@ -74,7 +74,7 @@ _MEASUREMENTS_ORDER = OrderBy("last_modified", True)
 class ParticipantAPI(base_api.BaseApi):
 
   def __init__(self):
-    super(ParticipantAPI, self).__init__(participant.DAO)
+    super(ParticipantAPI, self).__init__(participant.DAO())
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None, a_id=None):
@@ -95,7 +95,7 @@ class ParticipantAPI(base_api.BaseApi):
 class PhysicalMeasurementsAPI(base_api.BaseApi):
 
   def __init__(self):
-    super(PhysicalMeasurementsAPI, self).__init__(measurements.DAO)
+    super(PhysicalMeasurementsAPI, self).__init__(measurements.DAO())
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None, a_id=None):
@@ -142,7 +142,7 @@ def _check_existence(extractor, system, code, name):
 
 class ParticipantSummaryAPI(base_api.BaseApi):
   def __init__(self):
-    super(ParticipantSummaryAPI, self).__init__(participant_summary.DAO)
+    super(ParticipantSummaryAPI, self).__init__(participant_summary.DAO())
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None):

@@ -38,13 +38,15 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
     participant_id = model.resource['subject']['reference'].split('/')[1]
     new_history = self.make_history(model, date, client_id)
     import field_config.participant_summary_config
-    summaryDAO.update_with_incoming_data(
+    summaryDAO().update_with_incoming_data(
             participant_id,
             new_history,
             field_config.participant_summary_config.CONFIG)
 
 
-DAO = QuestionnaireResponseDAO()
+_DAO = QuestionnaireResponseDAO()
+def DAO():
+  return _DAO
 
 
 _ETHNICITY_MAPPING = {
@@ -112,7 +114,7 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
 
   def extract_link_ids(self, concept):
     questionnaire_id = self.extract_questionnaire_id()
-    questionnaire = questionnaireDAO.load_if_present(questionnaire_id)
+    questionnaire = questionnaireDAO().load_if_present(questionnaire_id)
     if not questionnaire:
       raise ValueError('Invalid Questionnaire id "{0}".'.format(questionnaire_id))
 

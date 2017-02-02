@@ -59,14 +59,14 @@ def make_questionnaire_response(participant_id, questionnaire_id, answers):
                           }
                         }]
                     })
-    return questionnaire_response.DAO.from_json({"resourceType": "QuestionnaireResponse",
+    return questionnaire_response.DAO().from_json({"resourceType": "QuestionnaireResponse",
             "status": "completed",
             "subject": { "reference": "Patient/{}".format(participant_id) },
             "questionnaire": { "reference": "Questionnaire/{}".format(questionnaire_id) },
             "group": {
               "question": results
             }
-            }, participant_id, questionnaire_response.DAO.allocate_id())
+            }, participant_id, questionnaire_response.DAO().allocate_id())
 
 def _data_path(filename):
     return os.path.join(os.path.dirname(__file__), '..', 'test-data', filename)

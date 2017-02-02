@@ -62,7 +62,7 @@ class ConfigApi(base_api.BaseApi):
   method_decorators = [auth_required_config_admin]
 
   def __init__(self):
-    super(ConfigApi, self).__init__(config.DAO)
+    super(ConfigApi, self).__init__(config.DAO())
 
   def get_config_by_date(self, date):
     result = config.get_config_that_was_active_at(api_util.parse_date(date))

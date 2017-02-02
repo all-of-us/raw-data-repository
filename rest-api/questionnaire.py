@@ -28,7 +28,9 @@ class QuestionnaireDAO(data_access_object.DataAccessObject):
         "resource": model.as_json()
     }
 
-DAO = QuestionnaireDAO()
+_DAO = QuestionnaireDAO()
+def DAO():
+  return _DAO
 
 class QuestionnaireExtractor(extraction.FhirExtractor):
 

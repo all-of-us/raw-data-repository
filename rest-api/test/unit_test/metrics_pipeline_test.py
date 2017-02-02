@@ -165,7 +165,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     link = participant.ProviderLink(primary=True,
                                     organization=fhir_datatypes.FHIRReference(reference='Organization/PITT'))
     # One participant signs up in 2013
-    participant.DAO.insert(participant.Participant(key=key,
+    participant.DAO().insert(participant.Participant(key=key,
                                                    providerLink = [ link ]),
                           datetime.datetime(2013, 9, 1, 11, 0, 1))
     summary_key = ndb.Key(participant_summary.ParticipantSummary,
@@ -173,16 +173,16 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                           parent=key)
     summary = participant_summary.ParticipantSummary(key=summary_key,
                                                      dateOfBirth=datetime.datetime(1970, 8, 21))
-    participant_summary.DAO.store(summary)
+    participant_summary.DAO().store(summary)
     questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
-    questionnaire_key = questionnaire.DAO.store(questionnaire.DAO.from_json(questionnaire_json, None, questionnaire.DAO.allocate_id()))
+    questionnaire_key = questionnaire.DAO().store(questionnaire.DAO().from_json(questionnaire_json, None, questionnaire.DAO().allocate_id()))
     # REGISTERED when signed up.
-    questionnaire_response.DAO.store(make_questionnaire_response(key.id(),
+    questionnaire_response.DAO().store(make_questionnaire_response(key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.REGISTERED)]),
                                      datetime.datetime(2013, 9, 1, 11, 0, 1))
     # FULL_PARTICIPANT two years later
-    questionnaire_response.DAO.store(make_questionnaire_response(key.id(),
+    questionnaire_response.DAO().store(make_questionnaire_response(key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.FULL_PARTICIPANT)]),
                                      datetime.datetime(2015, 9, 1, 11, 0, 2))
@@ -400,7 +400,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
   def _populate_sample_history(self, key, hpoId):
     org = fhir_datatypes.FHIRReference(reference='Organization/' + hpoId)
     link = participant.ProviderLink(primary=True, organization=org)
-    participant.DAO.insert(participant.Participant(key=key,
+    participant.DAO().insert(participant.Participant(key=key,
                                                    providerLink = [ link ]),
                           datetime.datetime(2016, 9, 1, 11, 0, 1))
     summary_key = ndb.Key(participant_summary.ParticipantSummary,
@@ -408,11 +408,11 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                           parent=key)
     summary = participant_summary.ParticipantSummary(key=summary_key,
                                                      dateOfBirth=datetime.datetime(1975, 8, 21))
-    participant_summary.DAO.store(summary)
+    participant_summary.DAO().store(summary)
     self.populate_questionnaire_responses(key)
     key = ndb.Key(key.flat()[0], key.flat()[1], measurements.PhysicalMeasurements,
-                  measurements.DAO.allocate_id())
-    measurements.DAO.store(measurements.PhysicalMeasurements(key=key, resource="ignored"),
+                  measurements.DAO().allocate_id())
+    measurements.DAO().store(measurements.PhysicalMeasurements(key=key, resource="ignored"),
                            datetime.datetime(2016, 9, 5))
     sample_dict_1 = {
         'familyId': 'SF160914-000001',
@@ -427,16 +427,16 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         'collectionDate': '2016/09/1 23:59:00',
         'parentSampleId': '16258000001',
         'confirmedDate': '2016/09/2 09:49:00' }
-    samples_1 = biobank_sample.DAO.from_json(
+    samples_1 = biobank_sample.DAO().from_json(
         { 'samples': [ sample_dict_1 ]}, '1', biobank_sample.SINGLETON_SAMPLES_ID)
-    biobank_sample.DAO.store(samples_1)
+    biobank_sample.DAO().store(samples_1)
 
   def populate_questionnaire_responses(self, participant_key):
     questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
-    questionnaire_key = questionnaire.DAO.store(questionnaire.DAO.from_json(questionnaire_json, None, questionnaire.DAO.allocate_id()))
+    questionnaire_key = questionnaire.DAO().store(questionnaire.DAO().from_json(questionnaire_json, None, questionnaire.DAO().allocate_id()))
     unmapped_race = concepts.Concept(concepts.SYSTEM_RACE, 'unmapped-race')
     # Set race, ethnicity, state, and membership tier on 9/1/2016
-    questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),
+    questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("race", concepts.WHITE),
                                                                   ("ethnicity", concepts.NON_HISPANIC),
@@ -444,14 +444,14 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                                                   ("membershipTier", concepts.REGISTERED)]),
                                      datetime.datetime(2016, 9, 1, 11, 0, 2))
     # Accidentally change status to FULL_PARTICIPANT; don't fill out ethnicity and put in an unmapped race
-    questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),
+    questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.FULL_PARTICIPANT),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
                                                                   ("race", unmapped_race)]),
                                      datetime.datetime(2016, 9, 1, 11, 0, 3))
     # Change it back to REGISTERED
-    questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),
+    questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.REGISTERED),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
@@ -460,7 +460,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     # Note that on 9/5, physical measurements are entered.
 
     # Change to VOLUNTEER on 9/10
-    questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),
+    questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.VOLUNTEER),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
@@ -468,7 +468,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                      datetime.datetime(2016, 9, 10, 11, 0, 1))
 
     # Change state on 9/11
-    questionnaire_response.DAO.store(make_questionnaire_response(participant_key.id(),
+    questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),
                                                                  questionnaire_key.id(),
                                                                  [("membershipTier", concepts.VOLUNTEER),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['CA']),

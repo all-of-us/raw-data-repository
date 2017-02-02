@@ -34,7 +34,7 @@ def _get_config(key):
   """This function is called by the `TTLCache` to grab an updated config.
   Note that `TTLCache` always supplies a key, which we assert here."""
   assert key == CONFIG_SINGLETON_KEY
-  return DAO.load_if_present(key).configuration
+  return DAO().load_if_present(key).configuration
 
 def override_setting(key, value):
   """Overrides a config setting. Used in tests."""
@@ -78,7 +78,9 @@ class ConfigurationDAO(data_access_object.DataAccessObject):
     return CONFIG_SINGLETON_KEY
 
 
-DAO = ConfigurationDAO()
+_DAO = ConfigurationDAO()
+def DAO():
+  return _DAO
 
 _NO_DEFAULT = '_NO_DEFAULT'
 
@@ -167,13 +169,13 @@ def invalidate():
 
 def insert_config(key, value_list):
   """Updates a config key.  Used for tests"""
-  conf = DAO.load(CONFIG_SINGLETON_KEY)
+  conf = DAO().load(CONFIG_SINGLETON_KEY)
   conf.configuration[key] = value_list
-  DAO.store(conf)
+  DAO().store(conf)
   invalidate()
 
 def get_config_that_was_active_at(date):
-  q = DAO.history_model.query(DAO.history_model.date < date).order(-DAO.history_model.date)
+  q = DAO().history_model.query(DAO().history_model.date < date).order(-DAO().history_model.date)
   h = q.fetch(limit=1)
   if not h:
     raise NotFound('No history object active at {}.'.format(date))
