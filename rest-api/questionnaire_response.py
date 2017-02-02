@@ -1,6 +1,8 @@
 import concepts
 import data_access_object
 import extraction
+import field_config.participant_summary_config
+import participant
 import participant_summary
 import singletons
 import fhirclient.models.questionnaireresponse
@@ -20,7 +22,6 @@ class QuestionnaireResponse(ndb.Model):
 
 class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
   def __init__(self):
-    import participant
     super(QuestionnaireResponseDAO, self).__init__(QuestionnaireResponse,
                                                    participant.Participant)
 
@@ -39,7 +40,6 @@ class QuestionnaireResponseDAO(data_access_object.DataAccessObject):
     super(QuestionnaireResponseDAO, self).store(model, date, client_id)
     participant_id = model.resource['subject']['reference'].split('/')[1]
     new_history = self.make_history(model, date, client_id)
-    import field_config.participant_summary_config
     participant_summary.DAO().update_with_incoming_data(
             participant_id,
             new_history,

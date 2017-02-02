@@ -4,6 +4,9 @@ import dns
 import unittest
 from mock import Mock, MagicMock
 
+import offline.gcloud_ips
+from offline.gcloud_ips import START, get_ip_ranges
+
 class GcloudIpsTest(unittest.TestCase):
   DNS_RESPONSES = [
     '_cloud-netblocks.googleusercontent.com. 2677 IN TXT "v=spf1 include:_cloud-netblocks1.googleusercontent.com include:_cloud-netblocks2.googleusercontent.com include:_cloud-netblocks3.googleusercontent.com include:_cloud-netblocks4.googleusercontent.com include:_cloud-netblocks5.googleusercontent.com ?all"',
@@ -16,8 +19,6 @@ class GcloudIpsTest(unittest.TestCase):
 
 
   def test_gcloud_ips(self):
-    import offline.gcloud_ips
-    from offline.gcloud_ips import START, get_ip_ranges
     offline.gcloud_ips.lookup_txt = MagicMock(side_effect=self.DNS_RESPONSES)
     response = get_ip_ranges(START)
     self.assertEqual(6, offline.gcloud_ips.lookup_txt.call_count)

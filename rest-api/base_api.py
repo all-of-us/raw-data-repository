@@ -137,8 +137,8 @@ class BaseApi(Resource):
       version_id = meta.get('versionId')
       if version_id:
         return result, 200, {'ETag': version_id}
-    return result 
-  
+    return result
+
   def make_query(self, order_by, a_id=None):
     field_filters = []
     max_results = DEFAULT_MAX_RESULTS
@@ -156,18 +156,18 @@ class BaseApi(Resource):
         field_filter = self.dao.make_query_filter(key, value)
         if field_filter:
           field_filters.append(field_filter)
-    return Query(field_filters, order_by, max_results, pagination_token, a_id)        
+    return Query(field_filters, order_by, max_results, pagination_token, a_id)
 
   def make_bundle(self, results, id_field, a_id):
-    bundle_dict = {"resourceType": "Bundle", "type": "searchset"}
     import main
+    bundle_dict = {"resourceType": "Bundle", "type": "searchset"}
     if results.pagination_token:
       query_params = request.args.copy()
       query_params['_token'] = results.pagination_token
       next_url = main.api.url_for(self.__class__, _external=True, **query_params)
-      bundle_dict['link'] = [{"relation": "next", "url": next_url}]      
+      bundle_dict['link'] = [{"relation": "next", "url": next_url}]
     entries = []
-    for item in results.items:      
+    for item in results.items:
       json = self.dao.to_json(item)
       if a_id:
         full_url = main.api.url_for(self.__class__,
@@ -181,8 +181,8 @@ class BaseApi(Resource):
       entries.append({"fullUrl": full_url,
                      "resource": json})
     bundle_dict['entry'] = entries
-    return bundle_dict  
-    
+    return bundle_dict
+
 def sync(channel_index, max_results):
   token = request.args.get('_token')
   count_str = request.args.get('_count')

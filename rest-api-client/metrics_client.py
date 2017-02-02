@@ -1,6 +1,7 @@
 """Simple end to end test to exercise the participant and measurements APIs.
 """
 
+import json
 import pprint
 
 from client.client import Client
@@ -11,8 +12,6 @@ def main():
   request = {
       'facets':['HPO_ID'],
   }
-
-  import json
 
   response = client.request_json('Metrics', 'POST', request)
   print(json.dumps(response, indent=2, sort_keys=True))

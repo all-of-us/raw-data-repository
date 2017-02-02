@@ -1,5 +1,7 @@
 import api_util
 import data_access_object
+import field_config.participant_summary_config
+import participant
 import singletons
 
 from participant_summary import DAO as summaryDAO
@@ -33,7 +35,6 @@ class BiobankSamples(ndb.Model):
 
 class BiobankSamplesDAO(data_access_object.DataAccessObject):
   def __init__(self):
-    import participant
     super(BiobankSamplesDAO, self).__init__(BiobankSamples, participant.Participant, False)
 
   def get_samples_for_participant(self, participant_id):
@@ -49,7 +50,6 @@ class BiobankSamplesDAO(data_access_object.DataAccessObject):
   @ndb.transactional
   def store(self, model, date=None, client_id=None):
     super(BiobankSamplesDAO, self).store(model, date, client_id)
-    import field_config.participant_summary_config
     participant_id = model.key.parent().id()
     summaryDAO().update_with_incoming_data(participant_id, model,
                                          field_config.participant_summary_config.CONFIG)
