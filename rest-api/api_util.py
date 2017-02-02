@@ -6,14 +6,16 @@ import netaddr
 import string
 
 from google.appengine.api import app_identity
+from google.appengine.api import oauth
 from google.appengine.ext import ndb
 
 from flask import request
 from protorpc import message_types
 from protorpc import messages
 from dateutil.parser import parse
-from google.appengine.api import oauth
 from werkzeug.exceptions import Unauthorized, BadRequest
+
+import config
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 EPOCH = datetime.datetime.utcfromtimestamp(0)
@@ -84,7 +86,6 @@ def check_cron():
   raise Unauthorized('Forbidden.')
 
 def lookup_user_info(user_email):
-  import config
   return config.getSettingJson(config.USER_INFO, {}).get(user_email)
 
 def get_validated_user_info():
