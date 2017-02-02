@@ -1,11 +1,9 @@
 import concepts
 import data_access_object
-import dateutil
 import extraction
 import fhirclient.models.questionnaireresponse
 
 from census_regions import census_regions
-from datetime import datetime
 from extraction import UNMAPPED, SKIPPED
 from google.appengine.ext import ndb
 from participant import Participant
