@@ -1,8 +1,10 @@
 '''The DAO for participants. Separated out from the participant object to avoid circular
 dependencies.
 '''
+import api_util
 import biobank_order
 import biobank_sample
+import clock
 import data_access_object
 import extraction
 import identifier
@@ -25,6 +27,11 @@ class ParticipantDAO(data_access_object.DataAccessObject):
   def properties_from_json(self, dict_, ancestor_id, id_):
     if id_:
       dict_['participantId'] = id_
+    api_util.parse_json_date(dict_, 'signUpTime')
+    return dict_
+
+  def properties_to_json(self, dict_):
+    api_util.format_json_date(dict_, 'signUpTime')
     return dict_
 
   def allocate_id(self):
@@ -39,7 +46,8 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     return participant_summary.ParticipantSummary(key=participant_key,
                                                   participantId=model.key.id(),
                                                   biobankId=model.biobankId,
-                                                  hpoId=hpo_id_result.value)
+                                                  hpoId=hpo_id_result.value,
+                                                  signUpTime=model.signUpTime)
 
   @ndb.transactional
   def regenerate_summary(self, participant_key):
@@ -79,10 +87,11 @@ class ParticipantDAO(data_access_object.DataAccessObject):
 
   def insert(self, model, date=None, client_id=None):
     # Assign a new biobank ID when inserting a new participant
-    model.biobankId = 'B{:d}'.format(identifier.get_id()).zfill(9)
+    model.biobankId = 'B{:d}'.format(identifier.get_id()).zfill(9)    
+    model.signUpTime = date or clock.CLOCK.now()
     summary = self.make_participant_summary(model)
-    result = super(ParticipantDAO, self).insert(model, date, client_id)    
-    participant_summary.DAO().insert(summary, date, client_id)
+    result = super(ParticipantDAO, self).insert(model, model.signUpTime, client_id)    
+    participant_summary.DAO().insert(summary, model.signUpTime, client_id)
     return result
     
   def update(self, model, expected_version_id, date=None, client_id=None):    

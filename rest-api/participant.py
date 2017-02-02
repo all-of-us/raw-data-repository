@@ -20,6 +20,7 @@ class Participant(ndb.Model):
   # Should this be indexed? If so, switch to StructuredProperty here and above
   # Should this be provider_link?
   providerLink = ndb.LocalStructuredProperty(ProviderLink, repeated=True)
+  signUpTime = ndb.DateTimeProperty(indexed=False)
 
   def get_primary_provider_link(self):
     if self.providerLink:

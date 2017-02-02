@@ -27,7 +27,7 @@ class ParticipantNdbTest(NdbTestBase):
     config.override_setting(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, 
                             ["foo", "questionnaireOnSociodemographics"])
     config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, ["bar", "1ED04"])    
-  
+    
   """Participant test cases requiring the NDB testbed."""
   def test_load_history_entities(self):
     dates = [datetime.datetime(2015, 9, d) for d in range(1, 7)]
