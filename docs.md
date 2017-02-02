@@ -163,15 +163,24 @@ The summary includes the following fields:
 * `ethnicity`
 * `physicalMeasurementsStatus`: indicates whether this participant has completed physical measurements
 * `hpoId`: HPO marked as `primary` for this participant, if any (just the resource id, like `PITT` — not a reference like `Organization/PITT`)
-* `consentForStudyEnrollment`:  indicates whether enrollment consent has been received
-* `consentForElectronicHealthRecords`:  indicate whether EHR sharing consent has been received
+* `consentForStudyEnrollment`:  indicates whether enrollment consent has been received (`UNSET` or `SUBMITTED`)
+* `consentForStudyEnrollmentTime`: indicates the time at which enrollment consent has been received (ISO-8601 time)
+* `consentForElectronicHealthRecords`
+* `consentForElectronicHealthRecordsTime` 
 * `questionnaireOnOverallHealth`: indicates status for Overall Health PPI module
+* `questionnaireOnOverallHealthTime`
 * `questionnaireOnPersonalHabits` 
+* `questionnaireOnPersonalHabitsTime`
 * `questionnaireOnSociodemographics`
+* `questionnaireOnSociodemographicsTime`
 * `questionnaireOnHealthcareAccess` 
+* `questionnaireOnHealthcareAccessTime`
 * `questionnaireOnMedicalHistory`
+* `questionnaireOnMedicalHistoryTime`
 * `questionnaireOnMedications`
+* `questionnaireOnMedicationsTime`
 * `questionnaireOnFamilyHealth`
+* `questionnaireOnFamilyHealthTime`
 
 For enumeration fields, the following values are defined:
 
