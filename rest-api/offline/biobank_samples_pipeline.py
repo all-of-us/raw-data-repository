@@ -8,6 +8,7 @@ import ast
 import biobank_sample
 import csv
 import config
+import logging
 import participant_dao
 from cloudstorage import cloudstorage_api
 
@@ -53,11 +54,10 @@ class BiobankSamplesPipeline(BasePipeline):
         newest_timestamp = gcs_file.st_ctime
 
     if not newest_filename:
-      print 'No CSV files found in bucket {}; aborting pipeline.'.format(
-          bucket_name)
+      logging.warning('No CSV files found in bucket %s; aborting pipeline.', bucket_name)
       return
 
-    print '======= Starting Biobank Samples Pipeline with file {} in bucket {}'.format(
+    logging.info('======= Starting Biobank Samples Pipeline with file %s in bucket %s',
         newest_filename, bucket_name)
     mapper_params = {
         'input_reader': {
@@ -85,12 +85,12 @@ def map_samples(csv_buffer):
   expected_headers_set = set(EXPECTED_HEADERS)
   missing_headers = expected_headers_set - headers
   if len(missing_headers) > 0:
-    print 'Missing headers: {}; aborting.'.format(missing_headers)
+    logging.warning('Missing headers: %s; aborting.', missing_headers)
     return
   else:
     extra_headers = headers - expected_headers_set
     if len(extra_headers) > 0:
-      print 'Warning -- unexpected extra headers: {}'.format(extra_headers)
+      logging.warning('Warning -- unexpected extra headers: %s', extra_headers)
   for row_dict in reader:
     participant_id = row_dict.get("External Participant Id")
     if participant_id:
@@ -105,8 +105,7 @@ def reduce_samples(biobank_id, samples):
   sample_dicts = []
   participant_id = participant_dao.DAO().find_participant_id_by_biobank_id(biobank_id)
   if not participant_id:
-    print 'Participant with biobank ID {} not found; skipping.'.format(
-        biobank_id)
+    logging.info('Participant with biobank ID %s not found; skipping.', biobank_id)
     return
 
   for sample in samples:
