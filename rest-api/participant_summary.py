@@ -1,10 +1,11 @@
-'''The definition of the participant summary object and DB marshalling.
-'''
+"""The definition of the participant summary object and DB marshalling.
+"""
 
 import api_util
 import clock
 import copy
 import data_access_object
+import participant
 import singletons
 
 from offline.metrics_fields import run_extractors
@@ -19,9 +20,9 @@ SINGLETON_SUMMARY_ID = '1'
 
 class ParticipantSummary(ndb.Model):
   """The participant summary resource definition.
-  
+
   Participant summaries are a denormalized view of Participants and a number of related entities,
-  including QuestionnaireResponses and BioBank orders. Used to sort/filter participants for 
+  including QuestionnaireResponses and BioBank orders. Used to sort/filter participants for
   HealthPro work queues. This is effectively the output of a complex join.
   """
   participantId = ndb.StringProperty()
@@ -95,7 +96,6 @@ _NON_HPO_FILTER_FIELDS = [
 class ParticipantSummaryDAO(data_access_object.DataAccessObject):
 
   def __init__(self):
-    import participant
     super(ParticipantSummaryDAO, self).__init__(ParticipantSummary, participant.Participant,
                                                 keep_history=False)
 
