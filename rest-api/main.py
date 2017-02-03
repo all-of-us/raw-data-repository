@@ -14,8 +14,6 @@ import version_api
 
 from flask import Flask
 from flask_restful import Api
-from flask import request
-
 
 PREFIX = '/rdr/v1/'
 
