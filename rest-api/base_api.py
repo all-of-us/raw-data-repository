@@ -55,27 +55,29 @@ class BaseApi(Resource):
     return self.make_response_for_resource(result)
 
   def list(self, a_id=None):
-    """Handle a list request.
+    """Handles a list request, as the default behavior when a GET has no id_ provided.
+
     Subclasses should pull the query parameters from the request with
     request.args.get().
+
     Args:
       a_id: The ancestor id.
     """
-    pass
-          
+    raise BadRequest('List not implemented, provide GET with an ID.')
+
   def query(self, id_field, order_by, a_id=None):
-    """Run a query against the DAO. 
+    """Run a query against the DAO.
     Extracts query parameters from request using FHIR conventions.
-    
-    Returns an FHIR Bundle containing entries for each item in the 
+
+    Returns an FHIR Bundle containing entries for each item in the
     results, with a "next" link if there are more results to fetch. An empty Bundle
     will be returned if no results match the query.
-    
+
     Args:
       id_field: name of the field containing the ID used when constructing resource URLs for results
       order_by: the OrderBy object indicating the order to return rows in
       a_id: the ancestor ID under which to perform this query, if appropriate
-    """     
+    """
     query = self.make_query(order_by, a_id)
     results = self.dao.query(query)
     return self.make_bundle(results, id_field, a_id)
