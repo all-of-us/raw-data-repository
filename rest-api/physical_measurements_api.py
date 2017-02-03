@@ -2,15 +2,12 @@ import api_util
 import base_api
 import concepts
 import config
-import datetime
 import measurements
-import logging
 import sync_log
 
 from api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
 from field_validation import FieldValidation, has_units, lessthan, within_range
 from query import OrderBy
-from werkzeug.exceptions import BadRequest
 
 
 _SYSTOLIC_BP = FieldValidation(

@@ -2,19 +2,15 @@
 
 import api_util
 import base_api
-import config
 import datetime
-import field_validation
 import logging
 import offline.age_range_pipeline
 import offline.participant_summary_pipeline
 import participant_dao
 import participant_summary
 
-from api_util import HEALTHPRO, PTC, PTC_AND_HEALTHPRO
-from field_validation import FieldValidation, has_units, lessthan, within_range
+from api_util import PTC, PTC_AND_HEALTHPRO
 from query import OrderBy
-from werkzeug.exceptions import BadRequest
 
 
 _PARTICIPANT_SUMMARY_ORDER = OrderBy("sortKey", True)
