@@ -1,7 +1,7 @@
-# The same as app.yaml, but with module: testing and version: 1,
+# A combination of app.yaml and offline.yaml, with module: testing and version: 1,
 # to support running dev_appserver locally for tests in a way that can
-# run pipelines.
-# This file should be kept in sync with app.yaml.
+# run pipelines and our endpoints on one port.
+# This file should be kept in sync with app.yaml and offline.yaml.
 threadsafe: true
 runtime: python27
 api_version: 1
@@ -23,6 +23,8 @@ handlers:
 - url: /_ah/queue/deferred
   script: google.appengine.ext.deferred.deferred.application
   login: admin
+- url: /offline/.*
+  script: offline.main.app
 - url: /.*
   script: main.app
   

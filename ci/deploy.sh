@@ -56,7 +56,7 @@ echo "Fixing cron.yaml "
 sed -i -e "s/{PROJECT_ID}/${PROJECT_ID}/" cron.yaml
 
 echo "Deploying RDR to ${PROJECT_ID}"
-gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml --project=${PROJECT_ID} --version=${VERSION}
+gcloud app deploy app.yaml cron.yaml index.yaml offline.yaml queue.yaml --project=${PROJECT_ID} --version=${VERSION}
 
 ENDPOINT="https://${PROJECT_ID}.appspot.com"
 echo "Using creds ${CREDS} to update config ${CONFIG} on RDR server at ${ENDPOINT}"

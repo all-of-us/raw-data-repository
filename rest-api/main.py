@@ -4,7 +4,6 @@ This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import config_api
 import biobank_orders_api
-import biobank_samples_api
 import logging
 import metrics_api
 import participant_summary_api
@@ -89,34 +88,13 @@ api.add_resource(version_api.VersionApi,
                  methods=['GET'])
 
 #
-# Non-resource pipeline-trigger endpoints
+# Non-resource endpoints
 #
 
 app.add_url_rule(PREFIX + 'PhysicalMeasurements/_history',
                  endpoint='physicalMeasurementsSync',
                  view_func=physical_measurements_api.sync_physical_measurements,
                  methods=['GET'])
-
-app.add_url_rule(PREFIX + 'BiobankSamplesReload',
-                 endpoint='biobankSamplesReload',
-                 view_func=biobank_samples_api.get,
-                 methods=['GET'])
-
-app.add_url_rule(PREFIX + 'MetricsRecalculate',
-                 endpoint='metrics_recalc',
-                 view_func=metrics_api.get,
-                 methods=['GET'])
-
-app.add_url_rule(PREFIX + 'AgeRangeUpdate',
-                 endpoint='ageRangeUpdate',
-                 view_func=participant_summary_api.update_participant_summary_age_ranges,
-                 methods=['GET'])
-
-app.add_url_rule(PREFIX + 'RegenerateParticipantSummaries',
-                 endpoint='regenerateParticipantSummaries',
-                 view_func=participant_summary_api.regenerate_participant_summaries,
-                 methods=['GET'])
-
 
 # All responses are json, so we tag them as such at the app level to
 # provide uniform protection against content-sniffing-based attacks.

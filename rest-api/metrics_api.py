@@ -7,7 +7,6 @@ import api_util
 import datetime
 import logging
 import metrics
-import offline.metrics_pipeline
 
 from api_util import HEALTHPRO
 from google.appengine.api import app_identity
@@ -15,18 +14,6 @@ from protorpc import protojson
 from flask import request, Response
 from flask.ext.restful import Resource
 from werkzeug.exceptions import NotFound
-
-@api_util.auth_required_cron
-def get():
-  in_progress = metrics.get_in_progress_version()
-  if in_progress:
-    logging.info("=========== Metrics pipeline already running ============")
-    return '{"metrics-pipeline-status": "running"}'
-  else:
-    bucket_name = app_identity.get_default_gcs_bucket_name()    
-    logging.info("=========== Starting metrics pipeline ============")
-    offline.metrics_pipeline.MetricsPipeline(bucket_name, datetime.datetime.utcnow()).start()
-    return '{"metrics-pipeline-status": "started"}'
 
 class MetricsAPI(Resource):
   @api_util.auth_required(HEALTHPRO)
