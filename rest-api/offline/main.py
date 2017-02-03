@@ -1,6 +1,7 @@
 """The main API definition file for endpoints that trigger MapReduces.
 """
 import api_util
+import app_util
 import config
 import offline.age_range_pipeline
 import offline.biobank_samples_pipeline
@@ -89,18 +90,5 @@ app.add_url_rule(PREFIX + 'RegenerateParticipantSummaries',
                  view_func=regenerate_participant_summaries,
                  methods=['GET'])
 
-# All responses are json, so we tag them as such at the app level to
-# provide uniform protection against content-sniffing-based attacks.
-def add_headers(response):
-  response.headers['Content-Disposition'] = 'attachment'
-  response.headers['X-Content-Type-Options'] = 'nosniff'
-  response.headers['Content-Type'] = 'application/json'
-  return response
-
-app.after_request(add_headers)
-
-# Some uniform logging of request characteristics before any checks are applied.
-def request_logging():
-  logging.info('Request protocol: HTTPS={}'.format(request.environ['HTTPS']))
-
-app.before_request(request_logging)
+app.after_request(app_util.add_headers)
+app.before_request(app_util.request_logging)
