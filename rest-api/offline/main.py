@@ -26,7 +26,7 @@ def recalculate_metrics():
     bucket_name = app_identity.get_default_gcs_bucket_name()
     logging.info("=========== Starting metrics pipeline ============")
     pipeline = offline.metrics_pipeline.MetricsPipeline(bucket_name, datetime.datetime.utcnow())
-    pipeline.start(queue_name = 'metrics-pipeline')
+    pipeline.start(queue_name='metrics-pipeline')
     return '{"metrics-pipeline-status": "started"}'
 
 @api_util.auth_required_cron
@@ -37,7 +37,7 @@ def reload_biobank_samples():
     return '{"biobank-samples-pipeline-status": "error: no bucket configured"}'
   logging.info("=========== Starting biobank samples pipeline ============")
   pipeline = offline.biobank_samples_pipeline.BiobankSamplesPipeline(bucket_name)
-  pipeline.start(queue_name = 'biobank-samples-pipeline')
+  pipeline.start(queue_name='biobank-samples-pipeline')
   return '{"biobank-samples-pipeline-status": "started"}'
 
 @api_util.auth_required_cron
@@ -45,7 +45,7 @@ def regenerate_participant_summaries():
   # TODO(danrodney): check to see if it's already running?
   logging.info("=========== Starting participant summary regeneration pipeline ============")
   pipeline = offline.participant_summary_pipeline.ParticipantSummaryPipeline()
-  pipeline.start(queue_name = 'participant-summary-pipeline')
+  pipeline.start(queue_name='participant-summary-pipeline')
   return '{"metrics-pipeline-status": "started"}'
 
 
@@ -54,7 +54,7 @@ def update_participant_summary_age_ranges():
   # TODO(danrodney): check to see if it's already running?
   logging.info("=========== Starting age range update pipeline ============")
   pipeline = offline.age_range_pipeline.AgeRangePipeline(datetime.datetime.utcnow())
-  pipeline.start(queue_name = 'age-range-pipeline')
+  pipeline.start(queue_name='age-range-pipeline')
   return '{"metrics-pipeline-status": "started"}'
 
 
