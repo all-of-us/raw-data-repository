@@ -8,6 +8,7 @@ import biobank_samples_api
 import logging
 import metrics_api
 import participants_api
+import physical_measurements_api
 import ppi_api
 import version_api
 
@@ -31,19 +32,17 @@ api.add_resource(participants_api.ParticipantAPI,
                  endpoint='participant',
                  methods=['GET', 'POST', 'PATCH'])
 
-api.add_resource(
-    participants_api.PhysicalMeasurementsAPI,
-    PREFIX + 'Participant/<string:a_id>/PhysicalMeasurements',
-    PREFIX + 'Participant/<string:a_id>/PhysicalMeasurements/<string:id_>',
-    endpoint='participant.physicalMeasurements',
-    methods=['GET', 'POST',])
+api.add_resource(participants_api.ParticipantSummaryAPI,
+                 PREFIX + 'Participant/<string:id_>/Summary',
+                 PREFIX + 'ParticipantSummary',
+                 endpoint='participant.summary',
+                 methods=['GET',])
 
-api.add_resource(
-    participants_api.ParticipantSummaryAPI,
-    PREFIX + 'Participant/<string:id_>/Summary',
-    PREFIX + 'ParticipantSummary',
-    endpoint='participant.summary',
-    methods=['GET',])
+api.add_resource(physical_measurements_api.PhysicalMeasurementsAPI,
+                 PREFIX + 'Participant/<string:a_id>/PhysicalMeasurements',
+                 PREFIX + 'Participant/<string:a_id>/PhysicalMeasurements/<string:id_>',
+                 endpoint='participant.physicalMeasurements',
+                 methods=['GET', 'POST',])
 
 api.add_resource(metrics_api.MetricsAPI,
                  PREFIX + 'Metrics',
@@ -94,7 +93,7 @@ api.add_resource(version_api.VersionApi,
 
 app.add_url_rule(PREFIX + 'PhysicalMeasurements/_history',
                  endpoint='physicalMeasurementsSync',
-                 view_func=participants_api.sync_physical_measurements,
+                 view_func=physical_measurements_api.sync_physical_measurements,
                  methods=['GET'])
 
 app.add_url_rule(PREFIX + 'BiobankSamplesReload',
