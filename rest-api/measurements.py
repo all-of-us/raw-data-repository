@@ -14,6 +14,7 @@ from extraction import extract_concept
 from google.appengine.ext import ndb
 from werkzeug.exceptions import BadRequest
 
+
 class PhysicalMeasurements(ndb.Model):
   """The physical measurements resource definition"""
   resource = ndb.JsonProperty()
@@ -26,6 +27,7 @@ class PhysicalMeasurements(ndb.Model):
   def _post_put_hook(self, _):
     executors.defer(PhysicalMeasurements.write_to_sync_log,
                     self.key.parent().id(), self.resource, _transactional=ndb.in_transaction())
+
 
 class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
   def __init__(self):
@@ -51,8 +53,10 @@ class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
     query = PhysicalMeasurements.query(ancestor=p_key)
     return {"items": [self.to_json(p) for p in query.fetch()]}
 
+
 def DAO():
   return singletons.get(PhysicalMeasurementsDAO)
+
 
 class PhysicalMeasurementsExtractor(extraction.FhirExtractor):
   def __init__(self, resource):
