@@ -1,3 +1,5 @@
+# Configuration for main API service. Should be kept in sync with test.yaml.
+
 threadsafe: true
 runtime: python27
 api_version: 1
@@ -5,14 +7,7 @@ api_version: 1
 builtins:
 - deferred: on  
 
-includes:
-  - appengine-mapreduce/python/src/mapreduce/include.yaml
-
 handlers:
-- url: /_ah/pipeline.*
-  script: pipeline.handlers._APP
-  login: admin
-  secure: always
 - url: /_ah/datastore_admin.*
   script: google.appengine.ext.datastore_admin.main
   login: admin  

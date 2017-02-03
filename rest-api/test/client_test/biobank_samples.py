@@ -8,7 +8,7 @@ import test_util
 
 class TestBiobankSamples(unittest.TestCase):
   def setUp(self):
-    self.client = test_util.get_client('rdr/v1')
+    self.client = test_util.get_client('offline')
 
   def test_reload_no_files(self):
     self.client.request_json('BiobankSamplesReload', 'GET', cron=True)

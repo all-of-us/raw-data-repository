@@ -95,7 +95,7 @@ Git repo into the desired state, then run the following from the rest-api direct
 
 ```Shell
 gcloud config set project pmi-drc-api-test
-gcloud app deploy app.yaml
+gcloud app deploy app.yaml offline.yaml
 ```
 
 If you've changed other files you may need to deploy them as well, for instance the cron config:

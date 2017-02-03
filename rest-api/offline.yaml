@@ -1,0 +1,30 @@
+# Configuration for offline pipeline service. Should be kept in sync with test.yaml.
+
+threadsafe: true
+runtime: python27
+api_version: 1
+service: offline
+
+builtins:
+- deferred: on
+
+includes:
+  - appengine-mapreduce/python/src/mapreduce/include.yaml
+
+handlers:
+- url: /_ah/pipeline.*
+  script: pipeline.handlers._APP
+  login: admin
+  secure: always
+- url: /_ah/queue/deferred
+  script: google.appengine.ext.deferred.deferred.application
+  login: admin
+- url: /offline/.*
+  script: offline.main.app
+  login: admin
+
+libraries:
+- name: pycrypto
+  version: 2.6
+- name: protorpc
+  version: 1.0
