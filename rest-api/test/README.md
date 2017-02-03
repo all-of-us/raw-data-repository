@@ -1,24 +1,24 @@
 # Tests for the API server
 
-These tests can be run with the run_tests.sh script.
+These tests can be run with:
 
-'''Shell
+```Shell
 ./run_tests.sh -g ${sdk_dir}
-'''
+```
 
 You can optionally only run the unit tests or client tests with
-'''Shell
+```Shell
 ./run_tests.sh -g ${sdk_dir} unit
-'''
+```
 or
-'''Shell
+```Shell
 ./run_tests.sh -g ${sdk_dir} client
-'''
+```
 
 ## Directory Structure
 
 The tests are split into two directories:
 
-'unit_test' is for unit_tests.  That is tests that can be run by themselves.
+`unit_test` is for unit_tests.  That is tests that can be run by themselves.
 
-'client_test' are tests that require an instance of the api to be running.
+`client_test` are tests that require an instance of the API to be running.
