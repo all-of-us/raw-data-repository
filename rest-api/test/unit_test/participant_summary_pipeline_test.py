@@ -12,7 +12,8 @@ from offline import participant_summary_pipeline
 from google.appengine.ext import ndb
 from mapreduce import test_support
 from testlib import testutil
-from unit_test_util import make_questionnaire_response, _data_path
+from unit_test_util import make_questionnaire_response, data_path
+
 
 class ParticipantSummaryPipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
@@ -29,7 +30,7 @@ class ParticipantSummaryPipelineTest(testutil.CloudStorageTestBase):
     participant_entry_2 = participant.Participant(key=participant_key_2, biobankId=None)
     participant_dao.DAO().insert(participant_entry_2, datetime.datetime(2015, 9, 1))
 
-    questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
+    questionnaire_json = json.loads(open(data_path('questionnaire_example.json')).read())
     questionnaire_key = questionnaire.DAO().store(questionnaire.DAO().from_json(questionnaire_json,
                                                                             None,
                                                                             questionnaire.DAO().allocate_id()))

@@ -1,8 +1,5 @@
-"""Tests for biobank_samples_pipeline."""
-
 import config
 import csv
-import os
 import biobank_sample
 import participant
 import participant_dao
@@ -14,7 +11,8 @@ from cloudstorage import cloudstorage_api
 from google.appengine.ext import ndb
 from mapreduce import test_support
 from testlib import testutil
-from test.unit_test.unit_test_util import to_dict_strip_last_modified
+from test.unit_test.unit_test_util import to_dict_strip_last_modified, data_path
+
 
 class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
@@ -33,7 +31,7 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
     self.assertEquals(0, participant_summary_1.numBaselineSamplesArrived)
     self.assertEquals(0, participant_summary_2.numBaselineSamplesArrived)
 
-    with open(_data_path('biobank_samples_1.csv'), 'rb') as src, \
+    with open(data_path('biobank_samples_1.csv'), 'rb') as src, \
         cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV', mode='w') as dest:
       reader = csv.reader(src, delimiter='\t')
       writer = csv.writer(dest, delimiter='\t')
@@ -81,7 +79,7 @@ def test_end_to_end_missing_field(self):
     participant_dao.DAO().insert(participant_dao.DAO().from_json({}, None, 'P2'))
     participant_2 = participant_dao.DAO().load('P2')
 
-    with open(_data_path('biobank_samples_missing_field.csv'), 'rb') as src, \
+    with open(data_path('biobank_samples_missing_field.csv'), 'rb') as src, \
         cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV', mode='w') as dest:
       reader = csv.reader(src)
       writer = csv.writer(dest)
@@ -96,6 +94,3 @@ def test_end_to_end_missing_field(self):
     biobank_samples_1 = biobank_sample.DAO().load_if_present(biobank_sample.SINGLETON_SAMPLES_ID,
                                                            'P1')
     self.assertNot(biobank_samples_1)
-
-def _data_path(filename):
-  return os.path.join(os.path.dirname(__file__), '..', 'test-data', filename)
