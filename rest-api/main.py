@@ -7,6 +7,7 @@ import biobank_orders_api
 import biobank_samples_api
 import logging
 import metrics_api
+import participant_summary_api
 import participants_api
 import physical_measurements_api
 import ppi_api
@@ -32,7 +33,7 @@ api.add_resource(participants_api.ParticipantAPI,
                  endpoint='participant',
                  methods=['GET', 'POST', 'PATCH'])
 
-api.add_resource(participants_api.ParticipantSummaryAPI,
+api.add_resource(participant_summary_api.ParticipantSummaryAPI,
                  PREFIX + 'Participant/<string:id_>/Summary',
                  PREFIX + 'ParticipantSummary',
                  endpoint='participant.summary',
@@ -108,12 +109,12 @@ app.add_url_rule(PREFIX + 'MetricsRecalculate',
 
 app.add_url_rule(PREFIX + 'AgeRangeUpdate',
                  endpoint='ageRangeUpdate',
-                 view_func=participants_api.update_participant_summary_age_ranges,
+                 view_func=participant_summary_api.update_participant_summary_age_ranges,
                  methods=['GET'])
 
 app.add_url_rule(PREFIX + 'RegenerateParticipantSummaries',
                  endpoint='regenerateParticipantSummaries',
-                 view_func=participants_api.regenerate_participant_summaries,
+                 view_func=participant_summary_api.regenerate_participant_summaries,
                  methods=['GET'])
 
 
