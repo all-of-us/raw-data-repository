@@ -9,6 +9,7 @@ from model.biobank_sample import BiobankSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderSample
 from model.hpo import HPO
 from model.measurements import PhysicalMeasurements
+from model.questionnaire import Questionnaire, QuestionnaireHistory
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
@@ -28,6 +29,8 @@ session.commit()
 
 p = Participant(id=1, version=1, biobankId=2, hpoId=1)
 session.add(p)
+ph = ParticipantHistory(id=1, version=1, biobankId=2, hpoId=1)
+session.add(ph)
 session.commit()
 
 ps = ParticipantSummary(id=1, biobankId=2, firstName='Bob', middleName='Q', lastName='Jones',
@@ -62,6 +65,15 @@ bo.samples.append(BiobankOrderSample(test='a', description='b', processingRequir
 session.add(bo)
 
 pm = PhysicalMeasurements(id=1, participantId=1, created=datetime.datetime.now(), resource='blah')
+pm2 = PhysicalMeasurements(id=2, participantId=1, created=datetime.datetime.now(), resource='blah',
+                           amendedMeasurementsId=1)
 session.add(pm)
+
+q = Questionnaire(id=1, version=1, created=datetime.datetime.now(), 
+                  lastModified=datetime.datetime.now(), resource='what?')
+qh = QuestionnaireHistory(id=1, version=1, created=datetime.datetime.now(), 
+                          lastModified=datetime.datetime.now(), resource='what?')
+session.add(q)
+session.add(qh)
 
 session.commit()

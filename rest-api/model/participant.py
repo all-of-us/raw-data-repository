@@ -1,7 +1,6 @@
 import clock
 
 from model.base import Base
-from model.model_utils import make_history
 from sqlalchemy import Column, Integer, DateTime, BLOB, UniqueConstraint, ForeignKey, Index
 from sqlalchemy.ext.declarative import declared_attr
 
@@ -36,6 +35,6 @@ Index('participant_hpo_id', Participant.hpoId)
 class ParticipantHistory(ParticipantBase, Base):
   """History for participants"""
   __tablename__ = 'participant_history'
-  version = Column(Integer, nullable=False, primary_key=True)
+  version = Column('version', Integer, primary_key=True)
 
 
