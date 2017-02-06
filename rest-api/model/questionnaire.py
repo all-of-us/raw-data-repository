@@ -1,7 +1,8 @@
 import clock
 
 from model.base import Base
-from sqlalchemy import Column, Integer, DateTime, BLOB
+from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint
 
 class QuestionnaireBase(object):
   """Mixin containing columns for Questionnaire and QuestionnaireHistory"""
@@ -11,7 +12,7 @@ class QuestionnaireBase(object):
   created = Column('created', DateTime, default=clock.CLOCK.now, nullable=False)
   lastModified = Column('last_modified', DateTime, default=clock.CLOCK.now, 
                         onupdate=clock.CLOCK.now, nullable=False)  
-  resource = Column('resource', BLOB, nullable=False)
+  resource = Column('resource', BLOB, nullable=False)  
   
 
 class Questionnaire(QuestionnaireBase, Base):
@@ -22,4 +23,23 @@ class QuestionnaireHistory(QuestionnaireBase, Base):
   """History table for questionnaires"""
   __tablename__ = 'questionnaire_history'
   version = Column('version', Integer, primary_key=True)
+  questions = relationship('QuestionnaireQuestion', cascade='all, delete-orphan')
 
+class QuestionnaireQuestion(Base):
+  """A question in a questionnaire. These should be copied whenever a new version of a 
+  questionnaire is created."""
+  __tablename__ = 'questionnaire_question'
+  id = Column('id', Integer, primary_key=True)
+  questionnaireId = Column('questionnaire_id', Integer)
+  questionnaireVersion = Column('questionnaire_version', Integer)
+  linkId = Column('link_id', String(20), primary_key=True)
+  # Is this big enough?
+  text = Column('text', String(1024), nullable=False)
+  concept_system = Column('concept_system', String(50))
+  concept_code = Column('concept_code', String(20))
+  concept_display = Column('concept_display', String(80))
+  # Should we also include valid answers here?  
+  __table_args__ = (
+    ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], 
+                         ['questionnaire_history.id', 'questionnaire_history.version']),
+  )

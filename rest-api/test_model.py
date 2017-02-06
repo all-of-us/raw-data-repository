@@ -9,7 +9,8 @@ from model.biobank_sample import BiobankSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderSample
 from model.hpo import HPO
 from model.measurements import PhysicalMeasurements
-from model.questionnaire import Questionnaire, QuestionnaireHistory
+from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
+from model.questionnaire_response import QuestionnaireResponse, QuestionnaireAnswer
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
@@ -73,7 +74,18 @@ q = Questionnaire(id=1, version=1, created=datetime.datetime.now(),
                   lastModified=datetime.datetime.now(), resource='what?')
 qh = QuestionnaireHistory(id=1, version=1, created=datetime.datetime.now(), 
                           lastModified=datetime.datetime.now(), resource='what?')
+qh.questions.append(QuestionnaireQuestion(id=1, questionnaireId=1, questionnaireVersion=1, 
+                                          linkId="1.2.3", text='What is your favorite color?', 
+                                          concept_system='a', concept_code='b', 
+                                          concept_display='c'))                          
 session.add(q)
 session.add(qh)
+session.commit()
 
+qr = QuestionnaireResponse(id=1, questionnaireId=1, questionnaireVersion=1, participantId=1,
+                           created=datetime.datetime.now(), resource='blah')
+qr.answers.append(QuestionnaireAnswer(questionnaireResponseId=1, questionId=1, valueSystem='a', 
+                                      valueCode='b', valueDecimal=123, valueString='blah'))
+
+session.add(qr)
 session.commit()
