@@ -14,6 +14,7 @@ from werkzeug.exceptions import BadRequest
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
 
+
 class BaseApi(Resource):
   """Base class for API handlers.
 
