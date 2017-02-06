@@ -2,7 +2,7 @@ import clock
 
 from model.base import Base
 from model.model_utils import make_history
-from sqlalchemy import Column, Integer, DateTime, BLOB, UniqueConstraint, ForeignKey
+from sqlalchemy import Column, Integer, DateTime, BLOB, UniqueConstraint, ForeignKey, Index
 from sqlalchemy.ext.declarative import declared_attr
 
 """Shared columns for Participant and ParticipantHistory"""
@@ -27,10 +27,10 @@ class ParticipantBase(object):
 
 """Model object for participants"""
 class Participant(ParticipantBase, Base):
-  __tablename__ = 'participant'
-  __table_args__ = (
-    UniqueConstraint('biobank_id'),
-  )
+  __tablename__ = 'participant'  
+  
+Index('participant_biobank_id', Participant.biobankId, unique=True)  
+Index('participant_hpo_id', Participant.hpoId)
 
 """History for participants"""
 class ParticipantHistory(ParticipantBase, Base):

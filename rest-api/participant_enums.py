@@ -1,5 +1,3 @@
-import extraction
-
 from protorpc import messages
 from dateutil.relativedelta import relativedelta
 
@@ -85,6 +83,7 @@ _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
 AGE_BUCKETS = ['{}-{}'.format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
 
 def extract_bucketed_age(participant_hist_obj):
+  import extraction
   if participant_hist_obj.date_of_birth:
     bucketed_age = get_bucketed_age(participant_hist_obj.date_of_birth, participant_hist_obj.date)
     if bucketed_age:

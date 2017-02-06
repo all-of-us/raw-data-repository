@@ -14,8 +14,8 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-hpoId = HPOId(id=1, name='UNSET')
-session.add(hpoId)
+hpo = HPO(id=1, name='UNSET')
+session.add(hpo)
 session.commit()
 
 p = Participant(id=1, version=1, biobankId=2, hpoId=1)
