@@ -8,11 +8,11 @@ These tests can be run with:
 
 You can optionally only run the unit tests or client tests with
 ```Shell
-./run_tests.sh -g ${sdk_dir} unit
+./run_tests.sh -g ${sdk_dir} -s unit
 ```
 or
 ```Shell
-./run_tests.sh -g ${sdk_dir} client
+./run_tests.sh -g ${sdk_dir} -s client
 ```
 
 ## Directory Structure
