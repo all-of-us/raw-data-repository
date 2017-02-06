@@ -14,4 +14,4 @@ def add_headers(response):
 
 # Some uniform logging of request characteristics before any checks are applied.
 def request_logging():
-  logging.info('Request protocol: HTTPS={}'.format(request.environ['HTTPS']))
+  logging.info('Request protocol: HTTPS={}'.format(request.environ.get('HTTPS')))
