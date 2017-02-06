@@ -272,7 +272,7 @@ class DataAccessObject(object):
       elif operator == Operator.GREATER_THAN_OR_EQUALS:
         query = query.filter(search_property >= search_value)
       else:
-        assert false, "Invalid operator: {}".format(operator)
+        assert False, "Invalid operator: {}".format(operator)
     if query_definition.order_by:
       order_property = self.get_search_property_and_value(
           query_definition.order_by.field_name, None)[0]

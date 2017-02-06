@@ -13,10 +13,13 @@ cd rest-api
 pip install -r requirements.txt -t lib/
 git submodule update --init
 
-# Pylint checks
+# Pylint checks. Use pylint --list-msgs to see more options.
 pylint -r n -f text \
   --disable=all \
-  --enable=bad-whitespace,bad-indentation,broad-except,bare-except,logging-too-many-args,line-too-long,unused-import,unused-variable,unused-argument,redefined-outer-name,redefined-builtin,unused-import,unused-variable \
+  --enable=bad-whitespace,bad-indentation,broad-except,bare-except \
+  --enable=logging-too-many-args,line-too-long,unused-import,unused-variable \
+  --enable=unused-argument,redefined-outer-name,redefined-builtin,unused-import \
+  --enable=unused-variable,undefined-variable \
   *.py \
   offline/*.py \
   client/*.py
