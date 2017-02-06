@@ -1,6 +1,7 @@
 from model.base import Base
 from model.participant import Participant, ParticipantHistory
-from model.hpo_id import HPOId
+from model.participant_summary import ParticipantSummary
+from model.hpo import HPO
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
