@@ -2,16 +2,20 @@ cron:
 - description: Daily metrics
   url: /offline/MetricsRecalculate
   schedule: every day 01:00
+  target: offline
 - description: Daily biosample reconciliation
   url: /offline/BiobankSamplesReload
   schedule: every day 08:00
   timezone: America/New_York
+  target: offline
 - description: Regeneration of participant summaries
   url: /offline/RegenerateParticipantSummaries
   schedule: every monday 03:00
+  target: offline
 - description: Daily age summary updates
   url: /offline/AgeRangeUpdate
   schedule: every day 02:00
+  target: offline
 - description: Datastore backup
   url: /_ah/datastore_admin/backup.create?kind=BiobankOrder&kind=BiobankOrderHistory&kind=Configuration&kind=ConfigurationHistory&kind=PhysicalMeasurements&kind=PhysicalMeasurementsHistory&kind=Participant&kind=ParticipantHistory&kind=Questionnaire&kind=QuestionnaireHistory&kind=QuestionnaireResponse&kind=QuestionnaireResponseHistory&kind=IdReservation&kind=MetricsBucket&kind=MetricsVersion&filesystem=gs&gs_bucket_name={PROJECT_ID}-backup
   schedule: every 12 hours
