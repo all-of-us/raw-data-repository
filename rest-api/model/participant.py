@@ -8,10 +8,10 @@ from sqlalchemy.ext.declarative import declared_attr
 """Shared columns for Participant and ParticipantHistory"""
 class ParticipantBase(object):
   # We tack 'P' on the front whenever we use this externally
-  id = Column(Integer, primary_key=True)
+  id = Column('id', Integer, primary_key=True)
 
   # Incrementing version, starts at 1 and is incremented on each update.
-  version = Column(Integer, nullable=False)
+  version = Column('version', Integer, nullable=False)
 
   # We tack 'B' on the front whenever we use this externally
   biobankId = Column('biobank_id', Integer, nullable=False)

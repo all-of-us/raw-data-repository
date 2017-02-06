@@ -15,8 +15,8 @@ class Enum(TypeDecorator):
       super(Enum, self).__init__()
       self.enum_type = enum_type
           
-    def process_bind_param(self, value, dialect):
-        return self.enum_type(value) if value else None
+    def process_bind_param(self, value, dialect):        
+        return int(value) if value else None
         
     def process_result_value(self, value, dialect):
-        return int(value) if value else None
+        return self.enum_type(value) if value else None
