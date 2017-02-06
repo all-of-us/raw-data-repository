@@ -5,8 +5,9 @@ from model.model_utils import make_history
 from sqlalchemy import Column, Integer, DateTime, BLOB, UniqueConstraint, ForeignKey, Index
 from sqlalchemy.ext.declarative import declared_attr
 
-"""Shared columns for Participant and ParticipantHistory"""
 class ParticipantBase(object):
+  """Mixin with shared columns for Participant and ParticipantHistory"""
+
   # We tack 'P' on the front whenever we use this externally
   id = Column('id', Integer, primary_key=True)
 
@@ -25,15 +26,15 @@ class ParticipantBase(object):
   def hpoId(cls):
     return Column('hpo_id', Integer, ForeignKey('hpo.id'), nullable=False)
 
-"""Model object for participants"""
 class Participant(ParticipantBase, Base):
+  """Model object for participants"""
   __tablename__ = 'participant'  
   
 Index('participant_biobank_id', Participant.biobankId, unique=True)  
 Index('participant_hpo_id', Participant.hpoId)
 
-"""History for participants"""
 class ParticipantHistory(ParticipantBase, Base):
+  """History for participants"""
   __tablename__ = 'participant_history'
   version = Column(Integer, nullable=False, primary_key=True)
 

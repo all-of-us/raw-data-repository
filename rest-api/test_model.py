@@ -8,6 +8,7 @@ from model.participant_summary import ParticipantSummary
 from model.biobank_sample import BiobankSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderSample
 from model.hpo import HPO
+from model.measurements import PhysicalMeasurements
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
@@ -59,5 +60,8 @@ bo.samples.append(BiobankOrderSample(test='a', description='b', processingRequir
                                      finalized=datetime.datetime.now()))
 
 session.add(bo)
+
+pm = PhysicalMeasurements(id=1, participantId=1, created=datetime.datetime.now(), resource='blah')
+session.add(pm)
 
 session.commit()

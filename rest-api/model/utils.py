@@ -9,6 +9,7 @@ def to_upper(field_name):
   return lambda context: upper(context.current_parameters[field_name])
   
 class Enum(TypeDecorator):
+    """A type for a SQLAlchemy column based on a protomsg Enum provided in the constructor"""
     impl = SmallInteger
 
     def __init__(self, enum_type):
