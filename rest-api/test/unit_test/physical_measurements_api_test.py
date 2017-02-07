@@ -1,15 +1,13 @@
 import api_util
 import config
-import datetime
 import httplib
 import json
 import main
 import measurements
 import mock
 import physical_measurements_api
-import pprint
 
-from test.unit_test.unit_test_util import NdbTestBase, data_path
+from test.unit_test.unit_test_util import NdbTestBase, data_path, load_measurement_json
 
 _AUTH_USER = 'authorized@gservices.act'
 _CONFIG_USER_INFO = {
@@ -18,14 +16,6 @@ _CONFIG_USER_INFO = {
   },
 }
 _PARTICIPANT = 'P123'
-
-
-def load_measurement_json(participant_id, now=None):
-  with open(data_path('measurements-as-fhir.json')) as measurements_file:
-    json_text = measurements_file.read()
-    json_text = json_text.replace('$participant_id', participant_id)
-    json_text = json_text.replace('$authored_time', now or datetime.datetime.now().isoformat())
-    return json.loads(json_text)  # deserialize to validate
 
 
 class PhysicalMeasurementsAPITest(NdbTestBase):
@@ -52,7 +42,6 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
     # Verify that the PhysicalMeasurement was created.
     self.assertEquals(response.status_code, httplib.OK)
     response_data = json.loads(response.data)
-    pprint.pprint(response_data)
 
   def test_new_measurement(self):
     pass
