@@ -2,7 +2,7 @@ import clock
 
 from model.base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, DateTime, BLOB, ForeignKey, String, ForeignKeyConstraint
+from sqlalchemy import Column, Integer, Date, DateTime, BLOB, ForeignKey, String, ForeignKeyConstraint
 
 class QuestionnaireResponse(Base):
   """Questionnaire response resource"""
@@ -31,7 +31,7 @@ class QuestionnaireAnswer(Base):
   valueDecimal = Column('value_decimal', Integer)
   # Is this big enough?
   valueString = Column('value_string', String(1024))
-  # Any other value types?
+  valueDate = Column('value_date', Date)
 
 
   

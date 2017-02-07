@@ -32,7 +32,7 @@ class QuestionnaireQuestion(Base):
   id = Column('id', Integer, primary_key=True)
   questionnaireId = Column('questionnaire_id', Integer)
   questionnaireVersion = Column('questionnaire_version', Integer)
-  linkId = Column('link_id', String(20), primary_key=True)
+  linkId = Column('link_id', String(20))
   # Is this big enough?
   text = Column('text', String(1024), nullable=False)
   concept_system = Column('concept_system', String(50))

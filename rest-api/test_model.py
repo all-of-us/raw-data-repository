@@ -3,12 +3,14 @@ import datetime
 from participant_enums import GenderIdentity, QuestionnaireStatus
 
 from model.base import Base
+from model.config import Config
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_sample import BiobankSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderSample
 from model.hpo import HPO
 from model.measurements import PhysicalMeasurements
+from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireAnswer
 
@@ -85,7 +87,20 @@ session.commit()
 qr = QuestionnaireResponse(id=1, questionnaireId=1, questionnaireVersion=1, participantId=1,
                            created=datetime.datetime.now(), resource='blah')
 qr.answers.append(QuestionnaireAnswer(questionnaireResponseId=1, questionId=1, valueSystem='a', 
-                                      valueCode='b', valueDecimal=123, valueString='blah'))
+                                      valueCode='b', valueDecimal=123, valueString='blah',
+                                      valueDate=datetime.date.today()))
 
 session.add(qr)
+session.commit()
+
+c = Config(configuration='blah')
+mv = MetricsVersion(id=1, inProgress=False, complete=True, date=datetime.date.today(),
+                    dataVersion=1)
+session.add(mv)
+session.add(c)
+session.commit()
+
+mb = MetricsBucket(metricsVersionId=1, date=datetime.date.today(),
+                   hpoId='PITT', metrics='blah')
+session.add(mb)
 session.commit()
