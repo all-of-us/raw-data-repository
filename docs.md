@@ -320,6 +320,15 @@ Search for all PhysicalMeasurements available for a given participant. Response
 body is a Bundle (possibly empty) of documents (that is: a bundle of search
 results whose entries are bundles of measurements).
 
+#### `GET /PhysicalMeasurements/_history`
+
+Synchronize PhysicalMeasurements across all participants. This allows PTC to stay up-to-date
+with newly-arrived measurements. The return value is a FHIR History [Bundle](http://hl7.org/fhir/bundle.html)
+where each entry is a `PhysicalMeasurements` document.
+
+The Bundle's `link` array will include a link with relation=`next` if more results are available immediately.
+Otherwise the array will contain a `link` with relation=`sync` that can be used to check for new results in
+one minute.
 
 ## BiobankOrder API
 
