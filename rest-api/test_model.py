@@ -14,7 +14,6 @@ from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireAnswer
 
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -62,7 +61,8 @@ bo = BiobankOrder(id=1, participantId=1, created=datetime.datetime.now(), source
                   sourceSiteValue='b', collected='c', processed='d', finalized='e')                  
 bo.identifiers.append(BiobankOrderIdentifier(system='a', value='b'))
 bo.samples.append(BiobankOrderSample(test='a', description='b', processingRequired=True,
-                                     collected=datetime.datetime.now(), processed=datetime.datetime.now(),
+                                     collected=datetime.datetime.now(), 
+                                     processed=datetime.datetime.now(),
                                      finalized=datetime.datetime.now()))
 
 session.add(bo)
