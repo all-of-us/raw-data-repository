@@ -100,9 +100,14 @@ class BaseApi(Resource):
     resource = request.get_json(force=True)
     m = self.dao.from_json(resource, a_id, self.dao.allocate_id())
     self.validate_object(m, a_id)
+    m = self._process_object(m, a_id)
     self.dao.insert(m, date=consider_fake_date(),
                     client_id=api_util.get_oauth_id())
     return self.make_response_for_resource(self.dao.to_json(m))
+
+  def _process_object(self, m, a_id):  # pylint: disable=unused-argument
+    """Makes updates related to a valid, newly created object."""
+    return m
 
   def patch(self, id_, a_id=None):
     """Handles a PATCH (update) request.

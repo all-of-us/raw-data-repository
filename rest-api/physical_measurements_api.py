@@ -79,6 +79,24 @@ class PhysicalMeasurementsAPI(base_api.BaseApi):
     value_dict = {f.concept: extractor.extract_value(f.concept) for f in field_validators}
     field_validation.validate_fields(field_validators, value_dict)
 
+  def _process_object(self, m, aid=None):
+    m = super(PhysicalMeasurementsAPI, self)._process_object(m, aid)
+    resource = m.resource['entry'][0]['resource']
+    for extension in resource.get('extension', []):
+      extension = resource['extension'][0]
+      if extension.get('url', '').endswith('/amends'):
+        ref = extension.get('valueReference', {}).get('reference', '')
+        type_name, ref_id = ref.split('/')
+        if type_name == 'PhysicalMeasurements':
+          self._set_amended(ref_id, aid)
+    return m
+
+  def _set_amended(self, ref_id, aid=None):
+    amended_measurement = measurements.DAO().load(ref_id, aid)
+    resource = amended_measurement.resource['entry'][0]['resource']
+    resource['status'] = 'amended'
+    measurements.DAO().store(amended_measurement)
+
 
 @api_util.auth_required(PTC)
 def sync_physical_measurements():
