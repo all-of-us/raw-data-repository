@@ -24,3 +24,6 @@ Zope Public License
 
 # Academic Free License (AFL).
 Academic Free License (AFL)
+
+# GNU
+GNU General Public License (GPL)
