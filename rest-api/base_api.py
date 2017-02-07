@@ -55,7 +55,7 @@ class BaseApi(Resource):
     result = self.dao.to_json(self.dao.load(id_, a_id))
     return self.make_response_for_resource(result)
 
-  def list(self, a_id=None):
+  def list(self, a_id=None):  # pylint: disable=unused-argument
     """Handles a list request, as the default behavior when a GET has no id_ provided.
 
     Subclasses should pull the query parameters from the request with
