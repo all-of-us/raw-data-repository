@@ -14,7 +14,7 @@ from model.measurements import PhysicalMeasurements
 from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept
-from model.questionnaire_response import QuestionnaireResponse, QuestionnaireAnswer
+from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -82,7 +82,7 @@ q = Questionnaire(id=1, version=1, created=datetime.datetime.now(),
 qh = QuestionnaireHistory(id=1, version=1, created=datetime.datetime.now(), 
                           lastModified=datetime.datetime.now(), resource='what?')
 qh.questions.append(QuestionnaireQuestion(id=1, questionnaireId=1, questionnaireVersion=1, 
-                                          linkId="1.2.3", concept_system='a', concept_code='b'))
+                                          linkId="1.2.3", conceptSystem='a', conceptCode='b'))
 qh.concepts.append(QuestionnaireConcept(id=1, questionnaireId=1, questionnaireVersion=1,
                                         conceptSystem='a', conceptCode='b'))                
 session.add(q)

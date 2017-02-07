@@ -2,7 +2,7 @@ import clock
 
 from model.base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint
+from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint, Index
 from sqlalchemy import UniqueConstraint
 
 class QuestionnaireBase(object):
@@ -40,6 +40,8 @@ class QuestionnaireConcept(Base):
                          ['questionnaire_history.id', 'questionnaire_history.version']),
     UniqueConstraint('questionnaire_id', 'questionnaire_version', 'concept_system', 'concept_code')
   )
+Index('questionnaire_concept_system_code', QuestionnaireConcept.conceptSystem, 
+      QuestionnaireConcept.conceptCode)
 
 class QuestionnaireQuestion(Base):
   """A question in a questionnaire. These should be copied whenever a new version of a 
@@ -49,11 +51,14 @@ class QuestionnaireQuestion(Base):
   questionnaireId = Column('questionnaire_id', Integer)
   questionnaireVersion = Column('questionnaire_version', Integer)
   linkId = Column('link_id', String(20))
-  concept_system = Column('concept_system', String(50))
-  concept_code = Column('concept_code', String(20))
+  conceptSystem = Column('concept_system', String(50))
+  conceptCode = Column('concept_code', String(20))
   # Should we also include valid answers here?  
   __table_args__ = (
     ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], 
                          ['questionnaire_history.id', 'questionnaire_history.version']),
     UniqueConstraint('questionnaire_id', 'questionnaire_version', 'link_id')
   )
+  
+Index('questionnaire_question_system_code', QuestionnaireQuestion.conceptSystem, 
+      QuestionnaireQuestion.conceptCode)

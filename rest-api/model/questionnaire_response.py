@@ -13,7 +13,7 @@ class QuestionnaireResponse(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.id'), nullable=False)
   created = Column('created', DateTime, default=clock.CLOCK.now, nullable=False)
   resource = Column('resource', BLOB, nullable=False)
-  answers = relationship('QuestionnaireAnswer', cascade='all, delete-orphan')
+  answers = relationship('QuestionnaireResponseAnswer', cascade='all, delete-orphan')
   __table_args__ = (
     ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], 
                          ['questionnaire_history.id', 'questionnaire_history.version']),
@@ -36,6 +36,3 @@ class QuestionnaireResponseAnswer(Base):
   # Is this big enough?
   valueString = Column('value_string', String(1024))
   valueDate = Column('value_date', Date)
-
-
-  
