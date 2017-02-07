@@ -11,7 +11,8 @@ from cloudstorage import cloudstorage_api
 from google.appengine.ext import ndb
 from mapreduce import test_support
 from testlib import testutil
-from test.unit_test.unit_test_util import to_dict_strip_last_modified, data_path
+from test.unit_test.unit_test_util import to_dict_strip_last_modified
+from test.test_data import data_path
 
 
 class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):

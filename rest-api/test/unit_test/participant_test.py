@@ -17,7 +17,8 @@ import questionnaire_response
 
 from google.appengine.ext import ndb
 from unit_test_util import NdbTestBase, TestBase, to_dict_strip_last_modified
-from unit_test_util import make_questionnaire_response, data_path
+from unit_test_util import make_questionnaire_response
+from test.test_data import data_path
 
 
 class ParticipantNdbTest(NdbTestBase):

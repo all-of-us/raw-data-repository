@@ -9,7 +9,8 @@ from participant_summary import Race
 from questionnaire import QuestionnaireExtractor
 from questionnaire_response import QuestionnaireResponseExtractor
 
-from test.unit_test.unit_test_util import NdbTestBase, data_path
+from test.unit_test.unit_test_util import NdbTestBase
+from test.test_data import data_path
 
 RACE_LINKID = 'race'
 ETHNICITY_LINKID = 'ethnicity'

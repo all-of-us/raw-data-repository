@@ -7,7 +7,8 @@ import measurements
 import mock
 import physical_measurements_api
 
-from test.unit_test.unit_test_util import NdbTestBase, data_path, load_measurement_json
+from test.unit_test.unit_test_util import NdbTestBase
+from test.test_data import data_path, load_measurement_json
 
 _AUTH_USER = 'authorized@gservices.act'
 _CONFIG_USER_INFO = {
@@ -25,6 +26,10 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
     main.app.config['TESTING'] = True
     self.app = main.app.test_client()
     config.override_setting(config.USER_INFO, _CONFIG_USER_INFO)
+
+  def tearDown(self):
+    super(PhysicalMeasurementsAPITest, self).tearDown()
+    config.remove_override(config.USER_INFO)
 
   @mock.patch('api_util.get_oauth_id')
   def test_original_measurement(self, mock_get_oauth_id):

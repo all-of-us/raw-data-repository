@@ -25,7 +25,8 @@ from collections import Counter
 from google.appengine.ext import ndb
 from mapreduce import test_support
 from testlib import testutil
-from unit_test_util import make_deferred_not_run, make_questionnaire_response, data_path
+from unit_test_util import make_deferred_not_run, make_questionnaire_response
+from test.test_data import data_path
 
 def compute_meta(summary):
   if summary['membershipTier'] == 'REGISTERED' and summary.get('hpoId') == 'PITT':

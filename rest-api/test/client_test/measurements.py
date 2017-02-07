@@ -4,7 +4,7 @@ import datetime
 
 import test_util
 
-from test.unit_test.unit_test_util import load_measurement_json
+from test.test_data import load_measurement_json
 
 
 class TestPhysicalMeasurements(unittest.TestCase):

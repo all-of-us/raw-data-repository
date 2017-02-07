@@ -12,7 +12,8 @@ from offline import participant_summary_pipeline
 from google.appengine.ext import ndb
 from mapreduce import test_support
 from testlib import testutil
-from unit_test_util import make_questionnaire_response, data_path
+from unit_test_util import make_questionnaire_response
+from test.test_data import data_path
 
 
 class ParticipantSummaryPipelineTest(testutil.CloudStorageTestBase):
