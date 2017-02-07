@@ -1,0 +1,115 @@
+{
+  "entry": [
+    {
+      "fullUrl": "urn:example:report",
+      "resource": {
+        "extension": [{
+          "url": "http://terminology.pmi-ops.org/StructureDefinition/amends",
+          "valueReference": {
+            "reference": "PhysicalMeasurements/%(physical_measurement_id)s"
+          }
+        }],
+        "author": [
+          {
+            "display": "N/A"
+          }
+        ],
+        "date": "%(authored_time)s",
+        "resourceType": "Composition",
+        "section": [{
+          "entry": [
+            {
+              "reference": "urn:example:blood-pressure-1"
+            }
+          ]
+        }],
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        },
+        "title": "PMI Intake Evaluation, Amendment",
+        "type": {
+          "coding": [
+            {
+              "code": "intake-exam-v0.0.1",
+              "display": "PMI Intake Evaluation v0.0.1",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/document-type"
+            }
+          ],
+          "text": "PMI Intake Evaluation v0.0.1"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:blood-pressure-1",
+      "resource": {
+        "bodySite": {
+          "coding": [
+            {
+              "code": "368209003",
+              "display": "Right arm",
+              "system": "http://snomed.info/sct"
+            }
+          ],
+          "text": "Right arm"
+        },
+        "code": {
+          "coding": [
+            {
+              "code": "55284-4",
+              "display": "Blood pressure systolic and diastolic",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Blood pressure systolic and diastolic"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Systolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 109
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Diastolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 44
+            }
+          }
+        ],
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        }
+      }
+    }
+  ],
+  "resourceType": "Bundle",
+  "type": "document"
+}
