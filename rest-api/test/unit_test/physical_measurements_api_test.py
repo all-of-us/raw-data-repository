@@ -33,7 +33,7 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
         main.PREFIX + local_path,
         data=json.dumps(post_data),
         content_type='application/json')
-    self.assertEquals(response.status_code, expected_status)
+    self.assertEquals(response.status_code, expected_status, response.data)
     return json.loads(response.data)
 
   def tearDown(self):
@@ -60,7 +60,7 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
     self.assertEquals(response_data['id'], stored_items[0]['id'])
 
   @mock.patch('api_util.get_oauth_id')
-  def test_missing_amended(self, mock_get_oauth_id):
+  def test_amended(self, mock_get_oauth_id):
     mock_get_oauth_id.return_value = _AUTH_USER
 
     # Set up: create a novel PhysicalMeasurement.
@@ -69,6 +69,26 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
         test_data.load_measurement_json(_PARTICIPANT))
     created_id = response_data['id']
 
+    # Create a new measurement that amends the previous one.
     response_data = self.post_json(
         'Participant/P123/PhysicalMeasurements',
         test_data.load_measurement_json_amendment(_PARTICIPANT, created_id))
+    amended_id = response_data['id']
+
+    # After amendment, we should have two PhysicalMeasurements for the participant,
+    # and the older one has Composition.status == 'amended'.
+    stored_items = measurements.DAO().list(_PARTICIPANT)['items']
+    self.assertEquals(len(stored_items), 2)
+    for item in stored_items:
+      if item['id'] == created_id:
+        self.assertEquals(
+            item['entry'][0]['resource']['status'],
+            'amended',
+            'previous measurement should be amended')
+      elif item['id'] == amended_id:
+        self.assertEquals(
+            item['entry'][0]['resource']['status'],
+            'final',
+            'latest measurement should be final')
+      else:
+        self.fail('Unepxected PhysicalMeasurement %r.' % item['id'])
