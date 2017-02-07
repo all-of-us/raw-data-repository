@@ -3,7 +3,7 @@
 import api_util
 import config
 
-from mock import MagicMock, patch
+from mock import patch
 from test.unit_test.unit_test_util import NdbTestBase
 from werkzeug.exceptions import Unauthorized
 

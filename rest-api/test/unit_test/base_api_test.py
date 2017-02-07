@@ -1,5 +1,3 @@
-"""Tests for participant."""
-
 from base_api import BaseApi
 from mock import MagicMock, patch
 

@@ -1,10 +1,10 @@
-"""Test for the physical measurements endpoint."""
-
 import json
 import unittest
 import datetime
 
 import test_util
+
+from test.test_data import load_measurement_json
 
 
 class TestPhysicalMeasurements(unittest.TestCase):
@@ -16,23 +16,13 @@ class TestPhysicalMeasurements(unittest.TestCase):
     self.when = datetime.datetime.now().isoformat()
 
   def test_insert_physical_measurements(self):
-    measurements_files = [
-        'test-data/measurements-as-fhir.json',
-    ]
+    measurements_1 = load_measurement_json(self.participant_id, now=self.when)
+    measurements_2 = load_measurement_json(self.participant_id_2, now=self.when)
+    path_1 = 'Participant/{}/PhysicalMeasurements'.format(self.participant_id)
+    path_2 = 'Participant/{}/PhysicalMeasurements'.format(self.participant_id_2)
+    test_util.round_trip(self, self.client, path_1, measurements_1)
+    test_util.round_trip(self, self.client, path_2, measurements_2)
 
-    for json_file in measurements_files:
-      with open(json_file) as f:
-        measurements = f.read() \
-          .replace('$authored_time', self.when)
-        measurements_1 = measurements.replace('$participant_id', self.participant_id)
-        measurements_2 = measurements.replace('$participant_id', self.participant_id_2)
-
-        measurements_1 = json.loads(measurements_1)
-        measurements_2 = json.loads(measurements_2)
-        path_1 = 'Participant/{}/PhysicalMeasurements'.format(self.participant_id)
-        path_2 = 'Participant/{}/PhysicalMeasurements'.format(self.participant_id_2)
-        test_util.round_trip(self, self.client, path_1, measurements_1)
-        test_util.round_trip(self, self.client, path_2, measurements_2)
     response = self.client.request_json('Participant/{}/PhysicalMeasurements'
                                         .format(self.participant_id))
     self.assertEquals('Bundle', response['resourceType'])
@@ -40,7 +30,7 @@ class TestPhysicalMeasurements(unittest.TestCase):
     self.assertFalse(response.get('link'))
     self.assertTrue(response.get('entry'))
     self.assertEquals(1, len(response['entry']))
-    
+
     response = self.client.request_json('Participant/{}/PhysicalMeasurements'
                                         .format(self.participant_id_2))
     self.assertEquals('Bundle', response['resourceType'])

@@ -1,5 +1,3 @@
-"""Tests for participant."""
-
 import datetime
 import json
 import unittest
@@ -19,15 +17,17 @@ import questionnaire_response
 
 from google.appengine.ext import ndb
 from unit_test_util import NdbTestBase, TestBase, to_dict_strip_last_modified
-from unit_test_util import make_questionnaire_response, _data_path
+from unit_test_util import make_questionnaire_response
+from test.test_data import data_path
 
-class ParticipantNdbTest(NdbTestBase):  
+
+class ParticipantNdbTest(NdbTestBase):
   def setUp(self):
     super(ParticipantNdbTest, self).setUp()
-    config.override_setting(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, 
+    config.override_setting(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS,
                             ["foo", "questionnaireOnSociodemographics"])
-    config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, ["bar", "1ED04"])    
-    
+    config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, ["bar", "1ED04"])
+
   """Participant test cases requiring the NDB testbed."""
   def test_load_history_entities(self):
     dates = [datetime.datetime(2015, 9, d) for d in range(1, 7)]
@@ -111,10 +111,9 @@ class ParticipantNdbTest(NdbTestBase):
         biobankId=None)
     participant_dao.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
 
-    questionnaire_json = json.loads(open(_data_path('questionnaire_example.json')).read())
-    questionnaire_key = questionnaire.DAO().store(questionnaire.DAO().from_json(questionnaire_json,
-                                                                            None,
-                                                                            questionnaire.DAO().allocate_id()))
+    questionnaire_json = json.loads(open(data_path('questionnaire_example.json')).read())
+    questionnaire_key = questionnaire.DAO().store(
+        questionnaire.DAO().from_json(questionnaire_json, None, questionnaire.DAO().allocate_id()))
     response = make_questionnaire_response(participant_key.id(),
                                            questionnaire_key.id(),
                                            [("race", concepts.WHITE),

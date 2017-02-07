@@ -61,14 +61,6 @@ class PhysicalMeasurementsAPI(base_api.BaseApi):
   def post(self, a_id=None):
     return super(PhysicalMeasurementsAPI, self).post(a_id)
 
-  @api_util.auth_required(HEALTHPRO)
-  def put(self, id_, a_id=None):
-    return super(PhysicalMeasurementsAPI, self).put(id_, a_id)
-
-  @api_util.auth_required(HEALTHPRO)
-  def patch(self, id_, a_id=None):
-    return super(PhysicalMeasurementsAPI, self).patch(id_, a_id)
-
   @api_util.auth_required(PTC_AND_HEALTHPRO)
   def list(self, a_id):
     return super(PhysicalMeasurementsAPI, self).query("id", _MEASUREMENTS_ORDER, a_id)

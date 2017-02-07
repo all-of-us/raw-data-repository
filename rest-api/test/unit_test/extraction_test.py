@@ -1,5 +1,3 @@
-"""Tests for extraction."""
-
 import concepts
 import datetime
 import extraction
@@ -12,10 +10,12 @@ from questionnaire import QuestionnaireExtractor
 from questionnaire_response import QuestionnaireResponseExtractor
 
 from test.unit_test.unit_test_util import NdbTestBase
+from test.test_data import data_path
 
 RACE_LINKID = 'race'
 ETHNICITY_LINKID = 'ethnicity'
 STATE_OF_RESIDENCE_LINKID = 'stateOfResidence'
+
 
 class ExtractionTest(NdbTestBase):
   def setUp(self):
@@ -23,7 +23,7 @@ class ExtractionTest(NdbTestBase):
     self.longMessage = True
 
   def test_questionnaire_extract(self):
-    questionnaire = json.loads(open(_data_path('questionnaire_example.json')).read())
+    questionnaire = json.loads(open(data_path('questionnaire_example.json')).read())
     extractor = QuestionnaireExtractor(questionnaire)
     self.assertEquals([RACE_LINKID],
                       extractor.extract_link_id_for_concept(concepts.RACE))
@@ -33,7 +33,7 @@ class ExtractionTest(NdbTestBase):
                       extractor.extract_link_id_for_concept(concepts.STATE_OF_RESIDENCE))
 
   def test_questionnaire_response_extract(self):
-    template = open(_data_path('questionnaire_response_example.json')).read()
+    template = open(data_path('questionnaire_response_example.json')).read()
     response = _fill_response(
         template, 'Q1234', 'P1',
         concepts.WHITE,
@@ -66,9 +66,6 @@ def _fill_response(template, q_id, p_id, race, ethnicity, state_of_residence):
   }.iteritems():
     template = template.replace(k, v)
   return template
-
-def _data_path(filename):
-  return os.path.join(os.path.dirname(__file__), '..', 'test-data', filename)
 
 
 if __name__ == '__main__':

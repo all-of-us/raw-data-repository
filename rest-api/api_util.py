@@ -39,9 +39,9 @@ def auth_required(role_whitelist):
 
   def auth_required_wrapper(func):
     def wrapped(*args, **kwargs):
-      is_dev_appserver = app_identity.get_application_id() == "None"
-      if request.scheme.lower() != 'https' and not is_dev_appserver:
-        raise Unauthorized('HTTPS is required')
+      appid = app_identity.get_application_id()
+      if request.scheme.lower() != 'https' and appid not in ('None', 'testbed-test', 'testapp'):
+        raise Unauthorized('HTTPS is required for %r' % appid)
       check_auth(role_whitelist)
       return func(*args, **kwargs)
     return wrapped
