@@ -7,7 +7,7 @@ from sqlalchemy import Column, Integer, Date, DateTime, BLOB, ForeignKey, String
 class QuestionnaireResponse(Base):
   """Questionnaire response resource"""
   __tablename__  = 'questionnaire_response'
-  id = Column('id', Integer, primary_key=True)
+  id = Column('id', Integer, primary_key=True, autoincrement=False)
   questionnaireId = Column('questionnaire_id', Integer, nullable=False)
   questionnaireVersion = Column('questionnaire_version', Integer, nullable=False)  
   participantId = Column('participant_id', Integer, ForeignKey('participant.id'), nullable=False)
@@ -20,12 +20,16 @@ class QuestionnaireResponse(Base):
   )
 
 class QuestionnaireAnswer(Base):
-  """An answer found in a questionnaire response"""
+  """An answer found in a questionnaire response. Note that there could be multiple answers to 
+  the same question."""
   __tablename__  = 'questionnaire_answer'
+  id = Column('id', Integer, primary_key=True, autoincrement=False)
   questionnaireResponseId = Column('questionnaire_response_id', Integer, 
-                                   ForeignKey('questionnaire_response.id'), primary_key=True)
-  questionId = Column('question_id', Integer, ForeignKey('questionnaire_question.id'), 
-                      primary_key=True)
+                                   ForeignKey('questionnaire_response.id'))
+  questionId = Column('question_id', Integer, ForeignKey('questionnaire_question.id'))
+  # The time at which this answer was replaced by another answer. Not set if this answer is the
+  # latest answer to the question.
+  endTime = Column('end_time', DateTime)
   valueSystem = Column('value_system', String(50))
   valueCode = Column('value_code', String(20))
   valueDecimal = Column('value_decimal', Integer)

@@ -10,7 +10,7 @@ from sqlalchemy import UniqueConstraint, ForeignKey, func, Index, SmallInteger
 class ParticipantSummary(Base): 
   """Model object for participant summaries"""
   __tablename__ = 'participant_summary'
-  id = Column('id', Integer, ForeignKey('participant.id'), primary_key=True)
+  id = Column('id', Integer, ForeignKey('participant.id'), primary_key=True, autoincrement=False)
   biobankId = Column('biobank_id', Integer, nullable=False)
   firstName = Column('first_name', String(80))
   firstNameUpper = Column('first_name_upper', String(80), onupdate=to_upper('first_name'), 
