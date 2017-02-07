@@ -6,6 +6,7 @@ import main
 import measurements
 import mock
 import physical_measurements_api
+import pprint
 
 from test.unit_test.unit_test_util import NdbTestBase
 from test.test_data import data_path, load_measurement_json
@@ -44,12 +45,12 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
         data=json.dumps(post_data),
         content_type='application/json')
 
-    # Verify that the PhysicalMeasurement was created.
+    # Verify that the request succeeded and 1 bundle was created.
     self.assertEquals(response.status_code, httplib.OK)
     response_data = json.loads(response.data)
+    self.assertIn('id', response_data)
+    self.assertIn('entry', response_data)
 
-  def test_new_measurement(self):
-    pass
-
-  def test_new_measurement_missing_original(self):
-    pass
+    stored_items = measurements.DAO().list(_PARTICIPANT)['items']
+    self.assertEquals(len(stored_items), 1)
+    self.assertEquals(response_data['id'], stored_items[0]['id'])
