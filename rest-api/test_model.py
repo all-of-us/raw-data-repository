@@ -82,9 +82,7 @@ q = Questionnaire(id=1, version=1, created=datetime.datetime.now(),
 qh = QuestionnaireHistory(id=1, version=1, created=datetime.datetime.now(), 
                           lastModified=datetime.datetime.now(), resource='what?')
 qh.questions.append(QuestionnaireQuestion(id=1, questionnaireId=1, questionnaireVersion=1, 
-                                          linkId="1.2.3", text='What is your favorite color?', 
-                                          concept_system='a', concept_code='b', 
-                                          concept_display='c'))
+                                          linkId="1.2.3", concept_system='a', concept_code='b'))
 qh.concepts.append(QuestionnaireConcept(id=1, questionnaireId=1, questionnaireVersion=1,
                                         conceptSystem='a', conceptCode='b'))                
 session.add(q)
@@ -93,10 +91,10 @@ session.commit()
 
 qr = QuestionnaireResponse(id=1, questionnaireId=1, questionnaireVersion=1, participantId=1,
                            created=datetime.datetime.now(), resource='blah')
-qr.answers.append(QuestionnaireAnswer(id=1, questionnaireResponseId=1, questionId=1, 
-                                      endTime=datetime.datetime.now(), valueSystem='a', 
-                                      valueCode='b', valueDecimal=123, valueString='blah',
-                                      valueDate=datetime.date.today()))
+qr.answers.append(QuestionnaireResponseAnswer(id=1, questionnaireResponseId=1, questionId=1, 
+                                              endTime=datetime.datetime.now(), valueSystem='a', 
+                                              valueCode='b', valueDecimal=123, valueString='blah',
+                                              valueDate=datetime.date.today()))
 
 session.add(qr)
 session.commit()

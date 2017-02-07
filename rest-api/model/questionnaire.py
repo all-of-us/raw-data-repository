@@ -49,11 +49,8 @@ class QuestionnaireQuestion(Base):
   questionnaireId = Column('questionnaire_id', Integer)
   questionnaireVersion = Column('questionnaire_version', Integer)
   linkId = Column('link_id', String(20))
-  # Is this big enough?
-  text = Column('text', String(1024), nullable=False)
   concept_system = Column('concept_system', String(50))
   concept_code = Column('concept_code', String(20))
-  concept_display = Column('concept_display', String(80))  
   # Should we also include valid answers here?  
   __table_args__ = (
     ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], 

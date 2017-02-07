@@ -19,10 +19,10 @@ class QuestionnaireResponse(Base):
                          ['questionnaire_history.id', 'questionnaire_history.version']),
   )
 
-class QuestionnaireAnswer(Base):
+class QuestionnaireResponseAnswer(Base):
   """An answer found in a questionnaire response. Note that there could be multiple answers to 
-  the same question."""
-  __tablename__  = 'questionnaire_answer'
+  the same question, if the questionnaire allows for multiple answers."""
+  __tablename__  = 'questionnaire_response_answer'
   id = Column('id', Integer, primary_key=True, autoincrement=False)
   questionnaireResponseId = Column('questionnaire_response_id', Integer, 
                                    ForeignKey('questionnaire_response.id'))
