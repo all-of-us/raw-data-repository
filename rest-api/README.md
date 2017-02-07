@@ -23,19 +23,17 @@ git submodule update --init
 This will install all the needed dependencies in the `lib` directory.
 
 ### Running the development app server
-Make sure that you have google [cloud SDK](https://cloud.google.com/sdk/downloads) installed.
+Make sure that you have google
+[cloud SDK](https://cloud.google.com/sdk/downloads) installed.
 
 From the rest-api directory, run:
 
 ```Shell
-dev_appserver.py . &
+dev_appserver.py test.yaml --require_indexes &
 ```
 
-or to run dev_appserver for use in tests, run:
-
-```Shell
-dev_appserver.py test.yaml &
-```
+This runs a local server with both API and offline services (suitable for local
+development as well as running client tests).
 
 ### Configuring your instance
 
