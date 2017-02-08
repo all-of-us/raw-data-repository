@@ -5,8 +5,8 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index
 class BiobankSample(Base):
   """A sample taken from a participant"""
   __tablename__ = 'biobank_sample'
-  id = Column('id', Integer, primary_key=True, autoincrement=False)
-  participantId = Column('participant_id', Integer, ForeignKey('participant.id'))  
+  biobankSampleId = Column('biobank_sample_id', Integer, primary_key=True, autoincrement=False)
+  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'))  
   familyId = Column('family_id', String(80))
   sampleId = Column('sample_id', String(80))
   storageStatus = Column('storage_status', String(80))
@@ -19,8 +19,10 @@ class BiobankSample(Base):
   collectionDate = Column('collection_date', DateTime)
   disposalStatus = Column('disposal_status', String(80))
   disposedDate = Column('disposed_date', DateTime)
-  parentSampleId = Column('parent_sample_id', Integer, ForeignKey('biobank_sample.id'))
+  parentSampleId = Column('parent_sample_id', Integer, 
+                          ForeignKey('biobank_sample.biobank_sample_id'))
   confirmedDate = Column('confirmed_date', DateTime)
-  logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.id'), nullable=False)
+  logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'),
+                         nullable=False)
   logPosition = relationship('LogPosition')
   

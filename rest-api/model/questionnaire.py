@@ -7,7 +7,7 @@ from sqlalchemy import UniqueConstraint
 
 class QuestionnaireBase(object):
   """Mixin containing columns for Questionnaire and QuestionnaireHistory"""
-  id = Column('id', Integer, primary_key=True)
+  questionnaireId = Column('questionnaire_id', Integer, primary_key=True)
   # Incrementing version, starts at 1 and is incremented on each update.
   version = Column('version', Integer, nullable=False)      
   created = Column('created', DateTime, default=clock.CLOCK.now, nullable=False)
@@ -30,14 +30,14 @@ class QuestionnaireHistory(QuestionnaireBase, Base):
 class QuestionnaireConcept(Base):
   """Concepts for the questionnaire as a whole"""
   __tablename__ = 'questionnaire_concept'
-  id = Column('id', Integer, primary_key=True)
+  questionnaireConceptId = Column('questionnaire_concept_id', Integer, primary_key=True)
   questionnaireId = Column('questionnaire_id', Integer)
   questionnaireVersion = Column('questionnaire_version', Integer)
   conceptSystem = Column('concept_system', String(50))
   conceptCode = Column('concept_code', String(20))
   __table_args__ = (
     ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], 
-                         ['questionnaire_history.id', 'questionnaire_history.version']),
+                         ['questionnaire_history.questionnaire_id', 'questionnaire_history.version']),
     UniqueConstraint('questionnaire_id', 'questionnaire_version', 'concept_system', 'concept_code')
   )
 Index('questionnaire_concept_system_code', QuestionnaireConcept.conceptSystem, 
@@ -47,7 +47,7 @@ class QuestionnaireQuestion(Base):
   """A question in a questionnaire. These should be copied whenever a new version of a 
   questionnaire is created."""
   __tablename__ = 'questionnaire_question'
-  id = Column('id', Integer, primary_key=True)
+  questionnaireQuestionId = Column('questionnaire_question_id', Integer, primary_key=True)
   questionnaireId = Column('questionnaire_id', Integer)
   questionnaireVersion = Column('questionnaire_version', Integer)
   linkId = Column('link_id', String(20))
@@ -56,7 +56,7 @@ class QuestionnaireQuestion(Base):
   # Should we also include valid answers here?  
   __table_args__ = (
     ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], 
-                         ['questionnaire_history.id', 'questionnaire_history.version']),
+                         ['questionnaire_history.questionnaire_id', 'questionnaire_history.version']),
     UniqueConstraint('questionnaire_id', 'questionnaire_version', 'link_id')
   )
   

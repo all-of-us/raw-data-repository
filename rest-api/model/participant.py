@@ -8,7 +8,7 @@ class ParticipantBase(object):
   """Mixin with shared columns for Participant and ParticipantHistory"""
 
   # We tack 'P' on the front whenever we use this externally
-  id = Column('id', Integer, primary_key=True, autoincrement=False)
+  participantId = Column('participant_id', Integer, primary_key=True, autoincrement=False)
 
   # Incrementing version, starts at 1 and is incremented on each update.
   version = Column('version', Integer, nullable=False)
@@ -23,7 +23,7 @@ class ParticipantBase(object):
 
   @declared_attr
   def hpoId(cls):
-    return Column('hpo_id', Integer, ForeignKey('hpo.id'), nullable=False)
+    return Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
 
 class Participant(ParticipantBase, Base):
   """Model object for participants"""

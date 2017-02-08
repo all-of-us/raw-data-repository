@@ -10,7 +10,8 @@ from sqlalchemy import UniqueConstraint, ForeignKey, func, Index, SmallInteger
 class ParticipantSummary(Base): 
   """Model object for participant summaries"""
   __tablename__ = 'participant_summary'
-  id = Column('id', Integer, ForeignKey('participant.id'), primary_key=True, autoincrement=False)
+  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'), 
+                         primary_key=True, autoincrement=False)
   biobankId = Column('biobank_id', Integer, nullable=False)
   firstName = Column('first_name', String(80))
   firstNameUpper = Column('first_name_upper', String(80), onupdate=to_upper('first_name'), 
@@ -31,7 +32,7 @@ class ParticipantSummary(Base):
                                       Enum(PhysicalMeasurementsStatus), 
                                       default=PhysicalMeasurementsStatus.UNSET)
   signUpTime = Column('sign_up_time', DateTime)
-  hpoId = Column('hpo_id', Integer, ForeignKey('hpo.id'), nullable=False)
+  hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
   consentForStudyEnrollment = Column('consent_for_study_enrollment', 
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   consentForStudyEnrollmentTime = Column('consent_for_study_enrollment_time', DateTime)
