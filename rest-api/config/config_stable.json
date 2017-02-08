@@ -3,7 +3,7 @@
     "2"
   ],
   "user_info": {
-    "pmi-hpo-staging@appspot.gserviceaccount.com": {
+    "healthpro-staging@appspot.gserviceaccount.com": {
       "roles": ["healthpro"],
       "whitelisted_appids": ["pmi-hpo-staging"]
     },
