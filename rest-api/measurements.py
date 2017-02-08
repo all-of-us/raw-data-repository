@@ -4,7 +4,6 @@ import concepts
 import data_access_object
 import executors
 import extraction
-import json
 import logging
 import participant
 import singletons
@@ -61,7 +60,7 @@ class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
     query = PhysicalMeasurements.query(ancestor=p_key)
     return {"items": [self.to_json(p) for p in query.fetch()]}
 
-  @ndb.transactional
+  #@ndb.transactional
   def store(self, model, *args, **kwargs):
     outer_resource = model.resource
     for extension in outer_resource['entry'][0]['resource'].get('extension', []):
