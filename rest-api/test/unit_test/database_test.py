@@ -67,9 +67,9 @@ class DatabaseTest(unittest.TestCase):
     session.add(bo)
 
     pm = PhysicalMeasurements(id=1, participantId=1, created=datetime.datetime.now(), resource='blah',
-                              logPosition=LogPosition())
+                              final=False, logPosition=LogPosition())
     pm2 = PhysicalMeasurements(id=2, participantId=1, created=datetime.datetime.now(), resource='blah',
-                               amendedMeasurementsId=1, logPosition=LogPosition())
+                               final=True, amendedMeasurementsId=1, logPosition=LogPosition())
     session.add(pm)
 
     q = Questionnaire(id=1, version=1, created=datetime.datetime.now(), 
