@@ -4,7 +4,11 @@ from model.base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index, Boolean, Text
 
-class BiobankOrder(Base):    
+class BiobankOrder(Base):
+  """An order requesting samples. The order contains a list of samples stored in 
+  BiobankOrderedSample; the actual delivered and stored samples are stored in BiobankStoredSample.
+  Our reconciliation report compares the two.
+  """    
   __tablename__ = 'biobank_order'
   biobankOrderId = Column('biobank_order_id', Integer, primary_key=True, autoincrement=False)
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'), 
