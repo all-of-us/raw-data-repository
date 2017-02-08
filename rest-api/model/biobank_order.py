@@ -2,7 +2,7 @@ import clock
 
 from model.base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index, Boolean, Text
 
 class BiobankOrder(Base):  
   """The Biobank order resource definition."""
@@ -13,9 +13,9 @@ class BiobankOrder(Base):
   created = Column('created', DateTime, default=clock.CLOCK.now, nullable=False)  
   sourceSiteSystem = Column('source_site_system', String(80))
   sourceSiteValue = Column('source_site_value', String(80))  
-  collected = Column('collected', String(255))
-  processed = Column('processed', String(255))
-  finalized = Column('finalized', String(255))
+  collected = Column('collected', Text)
+  processed = Column('processed', Text)
+  finalized = Column('finalized', Text)
   identifiers = relationship('BiobankOrderIdentifier', cascade='all, delete-orphan')    
   samples = relationship('BiobankOrderSample', cascade='all, delete-orphan')
   logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'), 
@@ -36,7 +36,7 @@ class BiobankOrderSample(Base):
   orderId = Column('order_id', Integer, ForeignKey('biobank_order.biobank_order_id'), 
                    primary_key=True)  
   test = Column('test', String(80), primary_key=True)
-  description = Column('description', String(255))
+  description = Column('description', Text)
   processingRequired = Column('processing_required', Boolean, nullable=False)
   collected = Column('collected', DateTime)
   processed = Column('processed', DateTime)
