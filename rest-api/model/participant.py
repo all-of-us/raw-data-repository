@@ -25,15 +25,13 @@ class ParticipantBase(object):
   def hpoId(cls):
     return Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
 
-class Participant(ParticipantBase, Base):
-  """Model object for participants"""
+class Participant(ParticipantBase, Base):  
   __tablename__ = 'participant'  
   
 Index('participant_biobank_id', Participant.biobankId, unique=True)  
 Index('participant_hpo_id', Participant.hpoId)
 
-class ParticipantHistory(ParticipantBase, Base):
-  """History for participants"""
+class ParticipantHistory(ParticipantBase, Base):  
   __tablename__ = 'participant_history'
   version = Column('version', Integer, primary_key=True)
 

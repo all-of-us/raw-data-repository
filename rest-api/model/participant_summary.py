@@ -7,8 +7,7 @@ from model.utils import to_upper, Enum
 from sqlalchemy import Column, Integer, String, Date, DateTime, BLOB
 from sqlalchemy import UniqueConstraint, ForeignKey, func, Index, SmallInteger
 
-class ParticipantSummary(Base): 
-  """Model object for participant summaries"""
+class ParticipantSummary(Base):  
   __tablename__ = 'participant_summary'
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'), 
                          primary_key=True, autoincrement=False)

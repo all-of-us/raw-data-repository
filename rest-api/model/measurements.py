@@ -4,8 +4,7 @@ from model.base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Boolean, Integer, DateTime, BLOB, ForeignKey
 
-class PhysicalMeasurements(Base):
-  """The physical measurements resource definition"""
+class PhysicalMeasurements(Base):  
   __tablename__ = 'physical_measurements'
   physicalMeasurementsId = Column('physical_measurements_id', Integer, primary_key=True, 
                                   autoincrement=False)

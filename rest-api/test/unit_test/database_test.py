@@ -7,8 +7,8 @@ from model.database import Database
 from model.config import Config
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
-from model.biobank_sample import BiobankSample
-from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderSample
+from model.biobank_stored_sample import BiobankStoredSample
+from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.hpo import HPO
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements
@@ -42,18 +42,19 @@ class DatabaseTest(unittest.TestCase):
                             numBaselineSamplesArrived=2)                      
     session.add(ps)
 
-    sample1 = BiobankSample(biobankSampleId=1, participantId=1, familyId='a', sampleId='b', 
-                            storageStatus='c', type='d', testCode='e', treatments='f', 
-                            expectedVolume='g', quantity='h', containerType='i', 
-                            collectionDate=datetime.datetime.now(),
-                            disposalStatus='j', disposedDate=datetime.datetime.now(),
-                            confirmedDate=datetime.datetime.now(), logPosition=LogPosition())
-    sample2 = BiobankSample(biobankSampleId=2, participantId=1, familyId='a', sampleId='b', storageStatus='c',
-                            type='d', testCode='e', treatments='f', expectedVolume='g',
-                            quantity='h', containerType='i', collectionDate=datetime.datetime.now(),
-                            disposalStatus='j', disposedDate=datetime.datetime.now(),
-                            parentSampleId=1, confirmedDate=datetime.datetime.now(), 
-                            logPosition=LogPosition())
+    sample1 = BiobankStoredSample(biobankStoredSampleId=1, participantId=1, familyId='a', 
+                                  sampleId='b', storageStatus='c', type='d', testCode='e', 
+                                  treatments='f', expectedVolume='g', quantity='h', 
+                                  containerType='i', collectionDate=datetime.datetime.now(),
+                                  disposalStatus='j', disposedDate=datetime.datetime.now(),
+                                  confirmedDate=datetime.datetime.now(), logPosition=LogPosition())
+    sample2 = BiobankStoredSample(biobankStoredSampleId=2, participantId=1, familyId='a', 
+                                  sampleId='b', storageStatus='c', type='d', testCode='e', 
+                                  treatments='f', expectedVolume='g', quantity='h', 
+                                  containerType='i', collectionDate=datetime.datetime.now(),
+                                  disposalStatus='j', disposedDate=datetime.datetime.now(),
+                                  parentSampleId=1, confirmedDate=datetime.datetime.now(), 
+                                  logPosition=LogPosition())
     session.add(sample1)
     session.add(sample2)
 
@@ -61,10 +62,10 @@ class DatabaseTest(unittest.TestCase):
                       sourceSiteSystem='a', sourceSiteValue='b', collected='c', processed='d', 
                       finalized='e', logPosition=LogPosition())                  
     bo.identifiers.append(BiobankOrderIdentifier(system='a', value='b'))
-    bo.samples.append(BiobankOrderSample(test='a', description='b', processingRequired=True,
-                                         collected=datetime.datetime.now(), 
-                                         processed=datetime.datetime.now(),
-                                         finalized=datetime.datetime.now()))
+    bo.samples.append(BiobankOrderedSample(test='a', description='b', processingRequired=True,
+                                           collected=datetime.datetime.now(), 
+                                           processed=datetime.datetime.now(),
+                                           finalized=datetime.datetime.now()))
     session.add(bo)
 
     pm = PhysicalMeasurements(physicalMeasurementsId=1, participantId=1, 

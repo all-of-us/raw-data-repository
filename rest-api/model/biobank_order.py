@@ -4,8 +4,7 @@ from model.base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index, Boolean, Text
 
-class BiobankOrder(Base):  
-  """The Biobank order resource definition."""
+class BiobankOrder(Base):    
   __tablename__ = 'biobank_order'
   biobankOrderId = Column('biobank_order_id', Integer, primary_key=True, autoincrement=False)
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'), 
@@ -17,22 +16,20 @@ class BiobankOrder(Base):
   processed = Column('processed', Text)
   finalized = Column('finalized', Text)
   identifiers = relationship('BiobankOrderIdentifier', cascade='all, delete-orphan')    
-  samples = relationship('BiobankOrderSample', cascade='all, delete-orphan')
+  samples = relationship('BiobankOrderedSample', cascade='all, delete-orphan')
   logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'), 
                          nullable=False)
   logPosition = relationship('LogPosition')  
 
-class BiobankOrderIdentifier(Base):
-  """An identifier in a Biobank order"""
+class BiobankOrderIdentifier(Base):  
   __tablename__ = 'biobank_order_identifier'  
   system = Column('system', String(80), primary_key=True)
   value = Column('value', String(80), primary_key=True)
   orderId = Column('order_id', Integer, ForeignKey('biobank_order.biobank_order_id'), 
                    nullable=False)
 
-class BiobankOrderSample(Base):
-  """A sample in a Biobank order"""
-  __tablename__ = 'biobank_order_sample'
+class BiobankOrderedSample(Base):  
+  __tablename__ = 'biobank_ordered_sample'
   orderId = Column('order_id', Integer, ForeignKey('biobank_order.biobank_order_id'), 
                    primary_key=True)  
   test = Column('test', String(80), primary_key=True)

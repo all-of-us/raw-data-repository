@@ -3,8 +3,7 @@ import clock
 from model.base import Base
 from sqlalchemy import Column, Integer, BLOB, Boolean, DateTime, Date, String, ForeignKey
 
-class MetricsVersion(Base):
-  """A resource representing a batch of metrics generated from our pipeline."""
+class MetricsVersion(Base):  
   __tablename__ = 'metrics_version'
   metricsVersionId = Column('metrics_version_id', Integer, primary_key=True)
   inProgress = Column('in_progress', Boolean, default=False, nullable=False)

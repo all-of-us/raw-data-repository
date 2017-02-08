@@ -16,19 +16,18 @@ class QuestionnaireBase(object):
   resource = Column('resource', BLOB, nullable=False)  
   
 
-class Questionnaire(QuestionnaireBase, Base):
-  """Questionnaire resource definition"""
+class Questionnaire(QuestionnaireBase, Base):  
   __tablename__ = 'questionnaire'
 
-class QuestionnaireHistory(QuestionnaireBase, Base):
-  """History table for questionnaires"""
+class QuestionnaireHistory(QuestionnaireBase, Base):  
   __tablename__ = 'questionnaire_history'
   version = Column('version', Integer, primary_key=True)
   concepts = relationship('QuestionnaireConcept', cascade='all, delete-orphan')
   questions = relationship('QuestionnaireQuestion', cascade='all, delete-orphan')  
 
 class QuestionnaireConcept(Base):
-  """Concepts for the questionnaire as a whole"""
+  """Concepts for the questionnaire as a whole. These should be copied whenever a new version of 
+  a questionnaire is created."""
   __tablename__ = 'questionnaire_concept'
   questionnaireConceptId = Column('questionnaire_concept_id', Integer, primary_key=True)
   questionnaireId = Column('questionnaire_id', Integer)
