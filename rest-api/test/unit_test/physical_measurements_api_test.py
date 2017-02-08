@@ -18,6 +18,7 @@ _CONFIG_USER_INFO = {
   },
 }
 _PARTICIPANT = 'P123'
+_URL = 'Participant/%s/PhysicalMeasurements' % _PARTICIPANT
 
 
 class PhysicalMeasurementsAPITest(NdbTestBase):
@@ -47,9 +48,7 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
     existing = measurements.DAO().list(_PARTICIPANT)
     self.assertItemsEqual(existing['items'], [])
     # Simulate a POST to create a novel PhysicalMeasurement.
-    response_data = self.post_json(
-        'Participant/%s/PhysicalMeasurements' % _PARTICIPANT,
-        test_data.load_measurement_json(_PARTICIPANT))
+    response_data = self.post_json(_URL, test_data.load_measurement_json(_PARTICIPANT))
 
     # Verify that the request succeeded and 1 bundle was created.
     self.assertIn('id', response_data)
@@ -64,14 +63,12 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
     mock_get_oauth_id.return_value = _AUTH_USER
 
     # Set up: create a novel PhysicalMeasurement.
-    response_data = self.post_json(
-        'Participant/%s/PhysicalMeasurements' % _PARTICIPANT,
-        test_data.load_measurement_json(_PARTICIPANT))
+    response_data = self.post_json(_URL, test_data.load_measurement_json(_PARTICIPANT))
     created_id = response_data['id']
 
     # Create a new measurement that amends the previous one.
     response_data = self.post_json(
-        'Participant/%s/PhysicalMeasurements' % _PARTICIPANT,
+        _URL,
         test_data.load_measurement_json_amendment(_PARTICIPANT, created_id))
     amended_id = response_data['id']
 
@@ -99,7 +96,4 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
 
     amendmant_with_bad_id = test_data.load_measurement_json_amendment(
         _PARTICIPANT, 'bogus-measurement-id')
-    response_data = self.post_json(
-        'Participant/%s/PhysicalMeasurements' % _PARTICIPANT,
-        amendmant_with_bad_id,
-        expected_status=httplib.BAD_REQUEST)
+    response_data = self.post_json(_URL, amendmant_with_bad_id, expected_status=httplib.BAD_REQUEST)
