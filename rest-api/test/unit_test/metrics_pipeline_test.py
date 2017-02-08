@@ -418,8 +418,8 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     self.populate_questionnaire_responses(key)
     key = ndb.Key(key.flat()[0], key.flat()[1], measurements.PhysicalMeasurements,
                   measurements.DAO().allocate_id())
-    measurements.DAO().store(measurements.PhysicalMeasurements(key=key, resource="ignored"),
-                           datetime.datetime(2016, 9, 5))
+    measurements.DAO().store(measurements.PhysicalMeasurements(
+        key=key, resource={'entry': [{'resource': {}}]}), datetime.datetime(2016, 9, 5))
     sample_dict_1 = {
         'familyId': 'SF160914-000001',
         'sampleId': '16258000008',
