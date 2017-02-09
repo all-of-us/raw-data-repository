@@ -4,6 +4,7 @@ import concepts
 import data_access_object
 import executors
 import extraction
+import logging
 import participant
 import singletons
 import sync_log
@@ -14,10 +15,16 @@ from extraction import extract_concept
 from google.appengine.ext import ndb
 from werkzeug.exceptions import BadRequest
 
+_AMENDMENT_URL = 'http://terminology.pmi-ops.org/StructureDefinition/amends'
+
 
 class PhysicalMeasurements(ndb.Model):
   """The physical measurements resource definition"""
   resource = ndb.JsonProperty()
+  # This measurement amends the given old measurement.
+  amendedMeasurementsId = ndb.StringProperty()
+  # If this measurement has been amended, final will be False.
+  final = ndb.BooleanProperty(default=True)
   last_modified = ndb.DateTimeProperty(auto_now=True)
 
   @classmethod
@@ -52,6 +59,38 @@ class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
     p_key = ndb.Key(participant.Participant, participant_id)
     query = PhysicalMeasurements.query(ancestor=p_key)
     return {"items": [self.to_json(p) for p in query.fetch()]}
+
+  @ndb.transactional
+  def store(self, model, *args, **kwargs):
+    outer_resource = model.resource
+    for extension in outer_resource['entry'][0]['resource'].get('extension', []):
+      url = extension.get('url', '')
+      if url != _AMENDMENT_URL:
+        logging.info('Ignoring unsupported extension for PhysicalMeasurements: %r.' % url)
+        continue
+      self._update_amended(model, extension, url)
+    model.resource = outer_resource
+    return super(PhysicalMeasurementsDAO, self).store(model, *args, **kwargs)
+
+  def _update_amended(self, model, extension, url):
+    value_ref = extension.get('valueReference')
+    if value_ref is None:
+      raise BadRequest('No valueReference in extension %r.' % url)
+    ref = value_ref.get('reference')
+    if ref is None:
+      raise BadRequest('No reference in extension %r.' % url)
+    type_name, ref_id = ref.split('/')
+    if type_name != 'PhysicalMeasurements':
+      raise BadRequest('Bad reference type in extension %r: %r.' % (url, ref))
+
+    amended_measurement = self.load_if_present(ref_id, model.key.parent().string_id())
+    if amended_measurement is None:
+      raise BadRequest('Amendment references unknown PhysicalMeasurement %r.' % ref_id)
+    amended_resource = amended_measurement.resource['entry'][0]['resource']
+    amended_resource['status'] = 'amended'
+    amended_measurement.put()
+
+    model.amendedMeasurementsId = ref_id
 
 
 def DAO():
