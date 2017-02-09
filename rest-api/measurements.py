@@ -85,7 +85,7 @@ class PhysicalMeasurementsDAO(data_access_object.DataAccessObject):
 
     amended_measurement = self.load_if_present(ref_id, model.key.parent().string_id())
     if amended_measurement is None:
-      raise BadRequest('Amendment references bad PhysicalMeasurement %r.' % ref_id)
+      raise BadRequest('Amendment references unknown PhysicalMeasurement %r.' % ref_id)
     amended_resource = amended_measurement.resource['entry'][0]['resource']
     amended_resource['status'] = 'amended'
     amended_measurement.put()
