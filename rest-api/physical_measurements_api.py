@@ -3,7 +3,6 @@ import base_api
 import concepts
 import config
 import field_validation
-import logging
 import measurements
 import sync_log
 
@@ -78,9 +77,8 @@ class PhysicalMeasurementsAPI(base_api.BaseApi):
     ]
     extractor = measurements.PhysicalMeasurementsExtractor(e.resource)
     value_dict = {f.concept: extractor.extract_value(f.concept) for f in field_validators}
-    errors = field_validation.validate_fields(field_validators, value_dict, raise_errors=False)
-    for msg in errors.values():
-      logging.error(msg)
+    # TODO(DA-124) Communication soft validation errors to clients.
+    field_validation.validate_fields(field_validators, value_dict, raise_errors=False)
 
 
 @api_util.auth_required(PTC)
