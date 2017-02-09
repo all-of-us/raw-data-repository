@@ -3,6 +3,7 @@ import base_api
 import concepts
 import config
 import field_validation
+import logging
 import measurements
 import sync_log
 
@@ -77,7 +78,9 @@ class PhysicalMeasurementsAPI(base_api.BaseApi):
     ]
     extractor = measurements.PhysicalMeasurementsExtractor(e.resource)
     value_dict = {f.concept: extractor.extract_value(f.concept) for f in field_validators}
-    field_validation.validate_fields(field_validators, value_dict)
+    errors = field_validation.validate_fields(field_validators, value_dict, raise_errors=False)
+    for msg in errors.values():
+      logging.error(msg)
 
 
 @api_util.auth_required(PTC)
