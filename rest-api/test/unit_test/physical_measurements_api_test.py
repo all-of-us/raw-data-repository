@@ -1,53 +1,17 @@
-import api_util
-import config
 import httplib
 import json
-import main
-import measurements
-import mock
-import physical_measurements_api
-import pprint
 
-from test.unit_test.unit_test_util import NdbTestBase
+from test.unit_test.unit_test_util import FlaskTestBase
 from test import test_data
 
-_AUTH_USER = 'authorized@gservices.act'
-_CONFIG_USER_INFO = {
-  _AUTH_USER: {
-    'roles': api_util.ALL_ROLES,
-  },
-}
+import measurements
+import physical_measurements_api
+
 _PARTICIPANT = 'P123'
 _URL = 'Participant/%s/PhysicalMeasurements' % _PARTICIPANT
 
 
-class PhysicalMeasurementsAPITest(NdbTestBase):
-  def setUp(self):
-    super(PhysicalMeasurementsAPITest, self).setUp()
-    # http://flask.pocoo.org/docs/0.12/testing/
-    main.app.config['TESTING'] = True
-    self.app = main.app.test_client()
-    config.override_setting(config.USER_INFO, _CONFIG_USER_INFO)
-
-    self.patchers = []
-    mock_oauth = mock.patch('api_util.get_oauth_id')
-    mock_oauth.start().return_value = _AUTH_USER
-    self.patchers.append(mock_oauth)
-
-  def post_json(self, local_path, post_data, expected_status=httplib.OK):
-    response = self.app.post(
-        main.PREFIX + local_path,
-        data=json.dumps(post_data),
-        content_type='application/json')
-    self.assertEquals(response.status_code, expected_status, response.data)
-    return json.loads(response.data)
-
-  def tearDown(self):
-    super(PhysicalMeasurementsAPITest, self).tearDown()
-    config.remove_override(config.USER_INFO)
-    for patcher in self.patchers:
-      patcher.stop()
-
+class PhysicalMeasurementsAPITest(FlaskTestBase):
   def test_original_measurement(self):
     # Sanity check: Verify that there is no PhysicalMeasurement yet.
     existing = measurements.DAO().list(_PARTICIPANT)
