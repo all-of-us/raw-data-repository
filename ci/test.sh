@@ -8,9 +8,15 @@ trap 'kill $(jobs -p) || true' EXIT
 grep -ril "BEGIN PRIVATE KEY" . | sort > credentials_files
 diff credentials_files ci/allowed_private_key_files
 
-cd rest-api
+function activate_local_venv {
+  pip install virtualenv safety
+  virtualenv venv
+  source venv/bin/activate
+  pip install -r requirements.txt
+}
 
-pip install -r requirements.txt -t lib/
+cd rest-api
+activate_local_venv
 git submodule update --init
 
 # Pylint checks. Use pylint --list-msgs to see more options.
@@ -23,6 +29,8 @@ pylint -r n -f text \
   *.py \
   offline/*.py \
   client/*.py
+
+safety check  # checks current (API) venv
 
 # Make sure JSON files are well-formed
 for json_file in ./config/*.json; do
@@ -44,10 +52,9 @@ done
 ./tools/install_config.sh --config=config/config_dev.json --update
 
 cd ../rest-api-client
-pip install virtualenv
-virtualenv venv
-source venv/bin/activate
-pip install -r requirements.txt
+activate_local_venv
+
+safety check  # checks current (client) venv
 
 cd ..
 
