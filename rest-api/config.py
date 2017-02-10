@@ -41,9 +41,6 @@ def override_setting(key, value):
   """Overrides a config setting. Used in tests."""
   CONFIG_OVERRIDES[key] = value
 
-def remove_override(key):
-  del CONFIG_OVERRIDES[key]
-
 CONFIG_CACHE = cachetools.TTLCache(1, ttl=CONFIG_CACHE_TTL_SECONDS, missing=_get_config)
 CONFIG_OVERRIDES = {}
 
