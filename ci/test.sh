@@ -14,7 +14,7 @@ function activate_local_venv {
   source venv/bin/activate
   pip install -r requirements.txt
   # The API server doesn't expect to be in venv, it just wants a lib/.
-  ln -s venv/lib
+  ln -s venv/lib/python* lib
 }
 
 cd rest-api
