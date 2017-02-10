@@ -17,25 +17,39 @@ from werkzeug.exceptions import BadRequest
 #      other values. Used to enforce rules like field A must be less than field B.
 FieldValidation = namedtuple('FieldValidation', ['concept', 'display_name', 'funcs', 'required'])
 
-def validate_fields(field_validations, value_dict):
+
+def validate_fields(field_validations, value_dict, raise_errors=True):
   """Validates the passed values based on the field definitions
 
   Args:
     field_validations: A list of FieldValidation objects containing the validation rules.
     value_dict: A dictionary of extraction.Concept to extraction.Value
+    raise_errors: If True, raise BadRequest for failed validations. Otherwise, return a dict
+        of failed validation results.
+  Returns:
+    A dictionary of {concept: failure message string}. A non-empty dict will only be returned if
+    raise_errors = False, since otherwise the BadRequest is raised.
 
   Raises:
     BadRequest: If a value fails validation.
   """
+  errors = {}
   for field in field_validations:
     value = value_dict.get(field.concept, None)
     if not value:
       if field.required:
-        raise BadRequest('{} ({}:{}) is required. Not found in physical measurements.'.format(
-            field.display_name, field.concept.system, field.concept.code))
+        msg = (
+            '%s (%s:%s) is required. Not found in physical measurements.' %
+            (field.display_name, field.concept.system, field.concept.code))
+        errors[field.concept] = msg
+        continue
 
     for val_func in field.funcs:
       val_func(value, field.display_name, value_dict)
+  if errors and raise_errors:
+    raise BadRequest(' '.join(errors.values()))
+  return errors
+
 
 def within_range(low, high):
   """Returns a function that verifies that a given value is within the range (Exclusive)."""
@@ -48,6 +62,7 @@ def within_range(low, high):
 
   return validate
 
+
 def lessthan(other_field):
   """Returns a function that verifies that this field is less than the specified field"""
   def validate(val, display_name, value_dict):
@@ -58,6 +73,7 @@ def lessthan(other_field):
     raise BadRequest('{} of {} is not less than {} which is {}'.format(
         display_name, val, other_field.display_name, other_value))
   return validate
+
 
 def has_units(units_concept):
   """Returns a function that verifies that this field uses the specified units."""

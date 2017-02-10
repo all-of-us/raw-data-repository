@@ -97,3 +97,28 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
     amendmant_with_bad_id = test_data.load_measurement_json_amendment(
         _PARTICIPANT, 'bogus-measurement-id')
     response_data = self.post_json(_URL, amendmant_with_bad_id, expected_status=httplib.BAD_REQUEST)
+
+  @mock.patch('api_util.get_oauth_id')
+  def test_validation_does_not_block(self, mock_get_oauth_id):
+    mock_get_oauth_id.return_value = _AUTH_USER
+
+    # Remove one of the measurement sections from the valid FHIR document.
+    measurement_data = test_data.load_measurement_json(_PARTICIPANT)
+    rm_entry = 'urn:example:weight'
+    found_to_rm = 0
+    entries = measurement_data['entry']
+    sections = entries[0]['resource']['section'][0]['entry']
+    for i, sec in enumerate(sections):
+      if sec['reference'] == rm_entry:
+        sections.pop(i)
+        found_to_rm += 1
+        break
+    for i, entry in enumerate(entries):
+      if entry['fullUrl'] == rm_entry:
+        entries.pop(i)
+        found_to_rm += 1
+        break
+    self.assertEquals(found_to_rm, 2)
+
+    response_data = self.post_json(_URL, measurement_data)
+    self.assertIn('id', response_data, 'invalid request should still create a measurement')

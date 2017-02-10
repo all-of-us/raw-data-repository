@@ -77,7 +77,8 @@ class PhysicalMeasurementsAPI(base_api.BaseApi):
     ]
     extractor = measurements.PhysicalMeasurementsExtractor(e.resource)
     value_dict = {f.concept: extractor.extract_value(f.concept) for f in field_validators}
-    field_validation.validate_fields(field_validators, value_dict)
+    # TODO(DA-124) Communication soft validation errors to clients.
+    field_validation.validate_fields(field_validators, value_dict, raise_errors=False)
 
 
 @api_util.auth_required(PTC)
