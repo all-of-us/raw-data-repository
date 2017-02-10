@@ -5,11 +5,13 @@ import mock
 import os
 import unittest
 
+from google.appengine.api import app_identity
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 
 import api_util
 import config
+import config_api
 import executors
 import main
 import questionnaire_response
@@ -17,7 +19,6 @@ import questionnaire_response
 
 class TestBase(unittest.TestCase):
   """Base class for unit tests."""
-
   def setUp(self):
     # Allow printing the full diff report on errors.
     self.maxDiff = None
@@ -25,7 +26,6 @@ class TestBase(unittest.TestCase):
 
 class TestbedTestBase(TestBase):
   """Base class for unit tests that need the testbed."""
-
   def setUp(self):
     super(TestbedTestBase, self).setUp()
     self.testbed = testbed.Testbed()
@@ -39,7 +39,6 @@ class TestbedTestBase(TestBase):
 
 class NdbTestBase(TestbedTestBase):
   """Base class for unit tests that need the NDB testbed."""
-
   def setUp(self):
     super(NdbTestBase, self).setUp()
     self.testbed.init_datastore_v3_stub()
@@ -73,8 +72,11 @@ class FlaskTestBase(NdbTestBase):
     self._mock_get_oauth_id = mock_oauth.start()
     self._patchers.append(mock_oauth)
 
+    config_api.CONFIG_ADMIN_MAP[app_identity.get_application_id()] = self._ADMIN_USER
+
+    config.initialize_config()
     dev_config = read_dev_config()
-    dev_config['user_info'].update(self._CONFIG_USER_INFO)
+    dev_config[config.USER_INFO] = self._CONFIG_USER_INFO
     self.set_auth_user(self._ADMIN_USER)
     self.open_json('PUT', 'Config', request_data=dev_config)
     self.set_auth_user(self._AUTH_USER)
