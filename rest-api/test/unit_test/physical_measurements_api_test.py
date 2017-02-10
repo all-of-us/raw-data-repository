@@ -29,6 +29,11 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
     self.app = main.app.test_client()
     config.override_setting(config.USER_INFO, _CONFIG_USER_INFO)
 
+    self.patchers = []
+    mock_oauth = mock.patch('api_util.get_oauth_id')
+    mock_oauth.start().return_value = _AUTH_USER
+    self.patchers.append(mock_oauth)
+
   def post_json(self, local_path, post_data, expected_status=httplib.OK):
     response = self.app.post(
         main.PREFIX + local_path,
@@ -40,10 +45,10 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
   def tearDown(self):
     super(PhysicalMeasurementsAPITest, self).tearDown()
     config.remove_override(config.USER_INFO)
+    for patcher in self.patchers:
+      patcher.stop()
 
-  @mock.patch('api_util.get_oauth_id')
-  def test_original_measurement(self, mock_get_oauth_id):
-    mock_get_oauth_id.return_value = _AUTH_USER
+  def test_original_measurement(self):
     # Sanity check: Verify that there is no PhysicalMeasurement yet.
     existing = measurements.DAO().list(_PARTICIPANT)
     self.assertItemsEqual(existing['items'], [])
@@ -58,10 +63,7 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
     self.assertEquals(len(stored_items), 1)
     self.assertEquals(response_data['id'], stored_items[0]['id'])
 
-  @mock.patch('api_util.get_oauth_id')
-  def test_amended(self, mock_get_oauth_id):
-    mock_get_oauth_id.return_value = _AUTH_USER
-
+  def test_amended(self):
     # Set up: create a novel PhysicalMeasurement.
     response_data = self.post_json(_URL, test_data.load_measurement_json(_PARTICIPANT))
     created_id = response_data['id']
@@ -90,18 +92,12 @@ class PhysicalMeasurementsAPITest(NdbTestBase):
       else:
         self.fail('Unepxected PhysicalMeasurement %r.' % item['id'])
 
-  @mock.patch('api_util.get_oauth_id')
-  def test_amended_invalid_id_fails(self, mock_get_oauth_id):
-    mock_get_oauth_id.return_value = _AUTH_USER
-
+  def test_amended_invalid_id_fails(self):
     amendmant_with_bad_id = test_data.load_measurement_json_amendment(
         _PARTICIPANT, 'bogus-measurement-id')
     response_data = self.post_json(_URL, amendmant_with_bad_id, expected_status=httplib.BAD_REQUEST)
 
-  @mock.patch('api_util.get_oauth_id')
-  def test_validation_does_not_block(self, mock_get_oauth_id):
-    mock_get_oauth_id.return_value = _AUTH_USER
-
+  def test_validation_does_not_block(self):
     # Remove one of the measurement sections from the valid FHIR document.
     measurement_data = test_data.load_measurement_json(_PARTICIPANT)
     rm_entry = 'urn:example:weight'
