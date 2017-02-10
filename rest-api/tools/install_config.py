@@ -15,9 +15,16 @@ BASE_CONFIG_FILE = 'config/base_config.json'
 
 def main(args):
   client = Client('rdr/v1', False, args.creds_file, args.instance)
-  config_server = client.request_json('Config', 'GET',
-                                      test_unauthenticated=False)
-  comparable_server = _comparable_string(config_server)
+  config_path = 'Config/%s' % args.key if args.key else 'Config'
+  try:
+    config_server = client.request_json(config_path, 'GET',
+                                        test_unauthenticated=False)
+    comparable_server = _comparable_string(config_server)
+  except HttpException as ex:
+    if ex.code == 404:
+      comparable_server = ''
+    else:
+      raise ex
 
   if not args.config:
     print '----------------- Current Server Config --------------------'
@@ -25,15 +32,18 @@ def main(args):
   else:
     with open(args.config) as config_file:
       config_file = json.load(config_file)
-    with open(BASE_CONFIG_FILE) as base_config_file:
-      combined_config = json.load(base_config_file)
-    combined_config.update(config_file)
+    if not args.key or args.key == 'current_config':
+      with open(BASE_CONFIG_FILE) as base_config_file:
+        combined_config = json.load(base_config_file)
+      combined_config.update(config_file)
+    else:
+      combined_config = config_file
     comparable_file = _comparable_string(combined_config)
     configs_match = compare_configs(comparable_file, comparable_server)
 
     if not configs_match and args.update:
       print '-------------- Updating Server -------------------'
-      client.request_json('Config', 'PUT', combined_config,
+      client.request_json(config_path, 'POST', combined_config,
                           test_unauthenticated=False)
 
 def compare_configs(comparable_file, comparable_server):
@@ -41,9 +51,11 @@ def compare_configs(comparable_file, comparable_server):
     print 'Server config matches.'
     return True
   else:
-    print 'Server config differs.'
     for line in difflib.context_diff(comparable_server.split('\n'), comparable_file.split('\n')):
-      print line
+      if '"db_connection_string":' in line or '"db_password":' in line:
+        print line.split(':')[0] + " *******"
+      else:
+        print line
   return False
 
 def _comparable_string(config):
@@ -72,4 +84,10 @@ if __name__ == '__main__':
                       type=str,
                       help='Path to credentials JSON file.',
                       default=CREDS_FILE)
+  parser.add_argument('--key',
+                      type=str,
+                      help='Specifies a key for a configuration to update.')
+  parser.add_argument('--value',
+                      type=str,
+                      help='Specifies a value for a configuration to use; alternative to --config.')
 main(parser.parse_args())

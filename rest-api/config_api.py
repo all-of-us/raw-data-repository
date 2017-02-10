@@ -65,8 +65,8 @@ class ConfigApi(base_api.BaseApi):
   def __init__(self):
     super(ConfigApi, self).__init__(config.DAO())
 
-  def get_config_by_date(self, date):
-    result = config.get_config_that_was_active_at(api_util.parse_date(date))
+  def get_config_by_date(self, key, date):
+    result = config.get_config_that_was_active_at(key, api_util.parse_date(date))
     return self.make_response_for_resource(self.dao.to_json(result))
 
   def get(self, key=None):
@@ -76,16 +76,25 @@ class ConfigApi(base_api.BaseApi):
       # Return the live config.
       return super(ConfigApi, self).get(key)
     else:
-      return self.get_config_by_date(key)
+      return self.get_config_by_date(key, date)
+
+  # Insert or update to configuration
+  def post(self, key=None):
+    key = key or config.CONFIG_SINGLETON_KEY
+    resource = request.get_json(force=True)
+    m = self.dao.from_json(resource, None, key)
+    self.validate_object(m, None)
+    self.dao.store(m)
+    return self.make_response_for_resource(self.dao.to_json(m))
 
   def put(self, key=None):
-    key = key or config.CONFIG_SINGLETON_KEY
-    ret = super(ConfigApi, self).put(key)
-    config.invalidate()
-    return ret
+    return super(ConfigApi, self).put(key or config.CONFIG_SINGLETON_KEY)
 
   def validate_object(self, obj, a_id=None):
     super(ConfigApi, self).validate_object(obj, a_id)
+    if obj.key.id() != config.CONFIG_SINGLETON_KEY:
+      return
+
     config_obj = obj.configuration
     # make sure all required keys are present and that the values are the right type.
     for k in config.REQUIRED_CONFIG_KEYS:

@@ -76,6 +76,11 @@ class ConfigurationDAO(data_access_object.DataAccessObject):
       obj = super(ConfigurationDAO, self).load_if_present(id_, ancestor_id)
     return obj
 
+  def store(self, model, date=None, client_id=None):
+    ret = super(ConfigurationDAO, self).store(model, date, client_id)
+    invalidate()
+    return ret
+
 def DAO():
   return singletons.get(ConfigurationDAO)
 
@@ -171,8 +176,10 @@ def insert_config(key, value_list):
   DAO().store(conf)
   invalidate()
 
-def get_config_that_was_active_at(date):
-  q = DAO().history_model.query(DAO().history_model.date < date).order(-DAO().history_model.date)
+def get_config_that_was_active_at(key, date):
+  history_model = DAO().history_model
+  q = history_model.query(ancestor=ndb.Key('Configuration', key));
+  q = q.filter(history_model.date < date).order(-DAO().history_model.date)
   h = q.fetch(limit=1)
   if not h:
     raise NotFound('No history object active at {}.'.format(date))

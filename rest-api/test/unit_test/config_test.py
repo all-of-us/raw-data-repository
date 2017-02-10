@@ -45,6 +45,11 @@ class TestConfig(FlaskTestBase):
       response = self.send_get('Config/{}'.format(between_updates.isoformat()))
     self.assertEquals(new_config_1, response)
 
+  def test_set_other_config(self):
+    other_config = { 'foo': 'bar'}
+    self.send_post('Config/xxx', other_config)
+    response = self.send_get('Config/xxx')
+    self.assertEquals(other_config, response)
 
 if __name__ == '__main__':
   unittest.main()
