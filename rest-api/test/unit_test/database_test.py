@@ -4,7 +4,6 @@ import unittest
 from participant_enums import GenderIdentity, QuestionnaireStatus
 
 from model.database import Database
-from model.config import Config
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
@@ -101,11 +100,9 @@ class DatabaseTest(unittest.TestCase):
     session.add(qr)
     session.commit()
 
-    c = Config(configuration='blah')
     mv = MetricsVersion(metricsVersionId=1, inProgress=False, complete=True, 
                         date=datetime.date.today(), dataVersion=1)
     session.add(mv)
-    session.add(c)
     session.commit()
 
     mb = MetricsBucket(metricsVersionId=1, date=datetime.date.today(),

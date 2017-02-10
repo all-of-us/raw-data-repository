@@ -2,7 +2,6 @@ import os
 
 from model.base import Base
 # All tables in the schema should be imported below here.
-from model.config import Config
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample

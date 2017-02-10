@@ -70,14 +70,17 @@ class ConfigApi(base_api.BaseApi):
     return self.make_response_for_resource(self.dao.to_json(result))
 
   def get(self, key=None):
-    if not key:
-      # Return the only config.
-      return super(ConfigApi, self).get(config.CONFIG_SINGLETON_KEY)
+    date = request.args.get('date')
+    key = key or config.CONFIG_SINGLETON_KEY
+    if not date:
+      # Return the live config.
+      return super(ConfigApi, self).get(key)
     else:
       return self.get_config_by_date(key)
 
-  def put(self):
-    ret = super(ConfigApi, self).put(config.CONFIG_SINGLETON_KEY)
+  def put(self, key=None):
+    key = key or config.CONFIG_SINGLETON_KEY
+    ret = super(ConfigApi, self).put(key)
     config.invalidate()
     return ret
 

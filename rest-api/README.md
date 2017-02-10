@@ -159,3 +159,16 @@ credentials in oauth request headers. The config loaded into an app's datastore
 The config may also specify that a service account is only authorized from
 certain IP ranges, or from specific appids (for AppEngine-to-AppEngine
 requests), as second verification of the service account's auth.
+
+### Deploying to staging
+
+* Go to https://github.com/vanderbilt/pmi-data/releases/new
+* Enter a tag name of the form vX-Y-rcZZ -- e.g. v0-1-rc14
+* Unless this is intended to be pushed to prod eventually, check the "This is a pre-release" box.
+* Submit.
+
+CircleCI should automatically push to staging, based on logic found in
+https://github.com/vanderbilt/pmi-data/blob/master/circle.yml
+
+If you are adding new indexes, the tests may fail when they aren't ready yet; use Rebuild in
+CircleCI to retry.
