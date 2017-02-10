@@ -47,9 +47,15 @@ class NdbTestBase(TestbedTestBase):
     ndb.get_context().clear_cache()
 
 
+def read_dev_config():
+  with open(os.path.join(os.path.dirname(__file__), '../../config/config_dev.json')) as config_file: 
+    return json.load(config_file)
+
+
 class FlaskTestBase(NdbTestBase):
   """Provide a local flask server to exercise handlers and storage."""
-  _AUTH_USER = 'authorized@gservices.act'
+  _ADMIN_USER = 'config_admin@fake.google.com'  # allowed to update config
+  _AUTH_USER = 'authorized@gservices.act'  # authorized for typical API usage roles
   _CONFIG_USER_INFO = {
     _AUTH_USER: {
       'roles': api_util.ALL_ROLES,
@@ -61,33 +67,48 @@ class FlaskTestBase(NdbTestBase):
     # http://flask.pocoo.org/docs/0.12/testing/
     main.app.config['TESTING'] = True
     self._app = main.app.test_client()
-    config.override_setting(config.USER_INFO, self._CONFIG_USER_INFO)
 
     self._patchers = []
     mock_oauth = mock.patch('api_util.get_oauth_id')
-    mock_oauth.start().return_value = self._AUTH_USER
+    self._mock_get_oauth_id = mock_oauth.start()
     self._patchers.append(mock_oauth)
 
-  def post_json(self, local_path, post_data, expected_status=httplib.OK):
-    """Makes a JSON API call against the test client and returns its response data.
-
-    Args:
-      local_path: The API endpoint's URL (excluding main.PREFIX).
-      post_data: Parsed JSON payload for the request.
-      expected_status: What HTTP status to assert, if not 200 (OK).
-    """
-    response = self._app.post(
-        main.PREFIX + local_path,
-        data=json.dumps(post_data),
-        content_type='application/json')
-    self.assertEquals(response.status_code, expected_status, response.data)
-    return json.loads(response.data)
+    dev_config = read_dev_config()
+    dev_config['user_info'].update(self._CONFIG_USER_INFO)
+    self.set_auth_user(self._ADMIN_USER)
+    self.open_json('PUT', 'Config', request_data=dev_config)
+    self.set_auth_user(self._AUTH_USER)
 
   def tearDown(self):
     super(FlaskTestBase, self).tearDown()
-    config.remove_override(config.USER_INFO)
     for patcher in self._patchers:
       patcher.stop()
+
+  def set_auth_user(self, auth_user):
+    self._mock_get_oauth_id.return_value = auth_user
+
+  def post_json(self, *args, **kwargs):
+    return self.open_json('POST', *args, **kwargs)
+
+  def get_json(self, *args, **kwargs):
+    return self.open_json('GET', *args, **kwargs)
+
+  def open_json(self, method, local_path, request_data=None, expected_status=httplib.OK):
+    """Makes a JSON API call against the test client and returns its response data.
+
+    Args:
+      method: HTTP method, as a string.
+      local_path: The API endpoint's URL (excluding main.PREFIX).
+      request_data: Parsed JSON payload for the request.
+      expected_status: What HTTP status to assert, if not 200 (OK).
+    """
+    response = self._app.open(
+        main.PREFIX + local_path,
+        method=method,
+        data=json.dumps(request_data) if request_data is not None else None,
+        content_type='application/json')
+    self.assertEquals(response.status_code, expected_status, response.data)
+    return json.loads(response.data)
 
 
 def to_dict_strip_last_modified(obj):
