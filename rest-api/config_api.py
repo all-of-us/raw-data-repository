@@ -21,6 +21,7 @@ with open(CONFIG_ADMIN_FILE) as config_file:
   try:
     CONFIG_ADMIN_MAP = json.load(config_file)
   except IOError:
+    logging.error('Unable to load config admin file %r.', CONFIG_ADMIN_FILE)
     CONFIG_ADMIN_MAP = {}
 
 
@@ -50,9 +51,9 @@ def check_config_admin():
         app_id,
         'configurator@{}.iam.gserviceaccount.com'.format(app_id))
     if user_email == config_admin:
-      logging.info('User {} ALLOWED for config endpoint'.format(user_email))
+      logging.info('User %r ALLOWED for config endpoint on %r' % (user_email, app_id))
       return
-  logging.info('User {} NOT ALLOWED for config endpoint'.format(user_email))
+  logging.info('User %r NOT ALLOWED for config endpoint on %r.' % (user_email, app_id))
   raise Unauthorized('Forbidden.')
 
 
