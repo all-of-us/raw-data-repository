@@ -14,7 +14,7 @@ from google.appengine.ext import ndb
 from werkzeug.exceptions import NotFound
 
 CONFIG_SINGLETON_KEY = 'current_config'
-DB_CONNECTION_STRING_KEY = 'db_connection_string'
+DB_CONFIG_KEY = 'db_config'
 CONFIG_CACHE_TTL_SECONDS = 60
 
 ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
@@ -35,7 +35,7 @@ REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 def _get_config(key):
   """This function is called by the `TTLCache` to grab an updated config.
   Note that `TTLCache` always supplies a key, which we assert here."""
-  assert key in [CONFIG_SINGLETON_KEY, DB_CONNECTION_STRING_KEY]
+  assert key in [CONFIG_SINGLETON_KEY, DB_CONFIG_KEY]
   return DAO().load_if_present(key).configuration
 
 def override_setting(key, value):
