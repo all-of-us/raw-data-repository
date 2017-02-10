@@ -32,9 +32,9 @@ pylint -r n -f text \
 
 safety check  # checks current (API) venv
 
-# Make sure JSON files are well-formed
+# Make sure JSON files are well-formed (but don't bother printing them).
 for json_file in ./config/*.json; do
-    cat $json_file | json_pp;
+    cat $json_file | json_pp -t null;
 done
 
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
