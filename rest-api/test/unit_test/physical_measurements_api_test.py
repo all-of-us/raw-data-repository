@@ -17,7 +17,7 @@ class PhysicalMeasurementsAPITest(FlaskTestBase):
     existing = measurements.DAO().list(_PARTICIPANT)
     self.assertItemsEqual(existing['items'], [])
     # Simulate a POST to create a novel PhysicalMeasurement.
-    response_data = self.post_json(_URL, test_data.load_measurement_json(_PARTICIPANT))
+    response_data = self.send_post(_URL, test_data.load_measurement_json(_PARTICIPANT))
 
     # Verify that the request succeeded and 1 bundle was created.
     self.assertIn('id', response_data)
@@ -29,11 +29,11 @@ class PhysicalMeasurementsAPITest(FlaskTestBase):
 
   def test_amended(self):
     # Set up: create a novel PhysicalMeasurement.
-    response_data = self.post_json(_URL, test_data.load_measurement_json(_PARTICIPANT))
+    response_data = self.send_post(_URL, test_data.load_measurement_json(_PARTICIPANT))
     created_id = response_data['id']
 
     # Create a new measurement that amends the previous one.
-    response_data = self.post_json(
+    response_data = self.send_post(
         _URL,
         test_data.load_measurement_json_amendment(_PARTICIPANT, created_id))
     amended_id = response_data['id']
@@ -59,7 +59,7 @@ class PhysicalMeasurementsAPITest(FlaskTestBase):
   def test_amended_invalid_id_fails(self):
     amendmant_with_bad_id = test_data.load_measurement_json_amendment(
         _PARTICIPANT, 'bogus-measurement-id')
-    response_data = self.post_json(_URL, amendmant_with_bad_id, expected_status=httplib.BAD_REQUEST)
+    response_data = self.send_post(_URL, amendmant_with_bad_id, expected_status=httplib.BAD_REQUEST)
 
   def test_validation_does_not_block(self):
     # Remove one of the measurement sections from the valid FHIR document.
@@ -80,5 +80,5 @@ class PhysicalMeasurementsAPITest(FlaskTestBase):
         break
     self.assertEquals(found_to_rm, 2)
 
-    response_data = self.post_json(_URL, measurement_data)
+    response_data = self.send_post(_URL, measurement_data)
     self.assertIn('id', response_data, 'invalid request should still create a measurement')

@@ -78,7 +78,7 @@ class FlaskTestBase(NdbTestBase):
     dev_config = read_dev_config()
     dev_config[config.USER_INFO] = self._CONFIG_USER_INFO
     self.set_auth_user(self._ADMIN_USER)
-    self.open_json('PUT', 'Config', request_data=dev_config)
+    self.send_request('PUT', 'Config', request_data=dev_config)
     self.set_auth_user(self._AUTH_USER)
 
   def tearDown(self):
@@ -89,13 +89,13 @@ class FlaskTestBase(NdbTestBase):
   def set_auth_user(self, auth_user):
     self._mock_get_oauth_id.return_value = auth_user
 
-  def post_json(self, *args, **kwargs):
-    return self.open_json('POST', *args, **kwargs)
+  def send_post(self, *args, **kwargs):
+    return self.send_request('POST', *args, **kwargs)
 
-  def get_json(self, *args, **kwargs):
-    return self.open_json('GET', *args, **kwargs)
+  def send_get(self, *args, **kwargs):
+    return self.send_request('GET', *args, **kwargs)
 
-  def open_json(self, method, local_path, request_data=None, expected_status=httplib.OK):
+  def send_request(self, method, local_path, request_data=None, expected_status=httplib.OK):
     """Makes a JSON API call against the test client and returns its response data.
 
     Args:
