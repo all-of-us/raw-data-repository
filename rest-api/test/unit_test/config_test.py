@@ -17,7 +17,7 @@ class TestConfig(FlaskTestBase):
     orig_config = self.get_json('Config')
 
     # Replace some data in the current config.
-    test_key = u'testing_config_key'
+    test_key = 'testing_config_key'
     new_config_1 = copy.deepcopy(orig_config)
     new_config_1[test_key] = sorted(['initially', 'injected', 'values'])
     with fake_clock:
