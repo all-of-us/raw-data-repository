@@ -13,7 +13,11 @@ from google.appengine.ext import ndb
 
 from werkzeug.exceptions import NotFound
 
+# Key that the main server configuration is stored under
 CONFIG_SINGLETON_KEY = 'current_config'
+# Key that the database configuration is stored under
+DB_CONFIG_KEY = 'db_config'
+
 CONFIG_CACHE_TTL_SECONDS = 60
 
 ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
@@ -34,7 +38,7 @@ REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 def _get_config(key):
   """This function is called by the `TTLCache` to grab an updated config.
   Note that `TTLCache` always supplies a key, which we assert here."""
-  assert key == CONFIG_SINGLETON_KEY
+  assert key in (CONFIG_SINGLETON_KEY, DB_CONFIG_KEY)
   return DAO().load_if_present(key).configuration
 
 def override_setting(key, value):
@@ -70,14 +74,15 @@ class ConfigurationDAO(data_access_object.DataAccessObject):
 
   def load_if_present(self, id_, ancestor_id=None):
     obj = super(ConfigurationDAO, self).load_if_present(id_, ancestor_id)
-    if not obj:
+    if not obj and id_ == CONFIG_SINGLETON_KEY:
       initialize_config()
       obj = super(ConfigurationDAO, self).load_if_present(id_, ancestor_id)
     return obj
 
-  def allocate_id(self):
-    return CONFIG_SINGLETON_KEY
-
+  def store(self, model, date=None, client_id=None):
+    ret = super(ConfigurationDAO, self).store(model, date, client_id)
+    invalidate()
+    return ret
 
 def DAO():
   return singletons.get(ConfigurationDAO)
@@ -174,9 +179,14 @@ def insert_config(key, value_list):
   DAO().store(conf)
   invalidate()
 
-def get_config_that_was_active_at(date):
-  q = DAO().history_model.query(DAO().history_model.date < date).order(-DAO().history_model.date)
+def get_config_that_was_active_at(key, date):
+  history_model = DAO().history_model
+  q = history_model.query(ancestor=ndb.Key('Configuration', key));
+  q = q.filter(history_model.date < date).order(-DAO().history_model.date)
   h = q.fetch(limit=1)
   if not h:
     raise NotFound('No history object active at {}.'.format(date))
   return h[0].obj
+
+def get_db_config():
+  return CONFIG_CACHE[DB_CONFIG_KEY]

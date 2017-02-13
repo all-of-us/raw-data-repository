@@ -42,9 +42,15 @@ class TestConfig(FlaskTestBase):
 
     # Make sure we get the the first replacement config when we query by time.
     with fake_clock:
-      response = self.send_get('Config/{}'.format(between_updates.isoformat()))
+      response = self.send_get('Config?date={}'.format(between_updates.isoformat()))
     self.assertEquals(new_config_1, response)
 
+  def test_set_other_config(self):
+    self.set_auth_user(self._ADMIN_USER)
+    other_config = { 'foo': 'bar'}
+    self.send_post('Config/xxx', other_config)
+    response = self.send_get('Config/xxx')
+    self.assertEquals(other_config, response)
 
 if __name__ == '__main__':
   unittest.main()

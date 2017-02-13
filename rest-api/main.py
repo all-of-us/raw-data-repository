@@ -76,7 +76,7 @@ api.add_resource(config_api.ConfigApi,
                  PREFIX + 'Config',
                  PREFIX + 'Config/<string:key>',
                  endpoint='config',
-                 methods=['GET', 'PUT'])
+                 methods=['GET', 'POST', 'PUT'])
 
 # Version API for prober and release management use.
 api.add_resource(version_api.VersionApi,

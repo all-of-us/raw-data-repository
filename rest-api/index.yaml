@@ -131,3 +131,9 @@ indexes:
   properties:
   - name: date
   - name: hpoId
+
+- kind: ConfigurationHistory
+  ancestor: yes
+  properties:
+  - name: date
+    direction: desc

@@ -23,4 +23,5 @@ libraries:
   version: 2.6
 - name: protorpc
   version: 1.0
-  
+- name: MySQLdb
+  version: "latest"
