@@ -6,6 +6,10 @@
 # Note that this script does *not* set up failover for the database. You can do that manually
 # in the environments you want.
 
+# Example usage:
+# tools/setup_database.sh --account=dan.rodney@pmi-ops.org --project=all-of-us-rdr-staging \
+#    --instance=https://all-of-us-rdr-staging.appspot.com/
+
 CREATE_DB=
 USAGE="tools/setup_database.sh --account=<ACCOUNT> --project=<PROJECT> --instance=<INSTANCE_URL> [--create_db]"
 while true; do
@@ -56,6 +60,8 @@ fi
 INSTANCE_NAME=rdrmain
 DB_USER=root
 DB_NAME=rdr
+# The default configuration; uses a non-shared CPU, with 8 cores and 30 GB of memory
+# (Consider making this something different in production.)
 MACHINE_TYPE=db-n1-standard-8
 
 set -e

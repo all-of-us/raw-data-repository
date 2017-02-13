@@ -7,6 +7,7 @@ import argparse
 import difflib
 import copy
 import json
+import httplib
 
 from client.client import Client, HttpException
 
@@ -21,7 +22,7 @@ def main(args):
                                         test_unauthenticated=False)
     comparable_server = _comparable_string(config_server)
   except HttpException as ex:
-    if ex.code == 404:
+    if ex.code == httplib.NOT_FOUND:
       comparable_server = ''
     else:
       raise ex

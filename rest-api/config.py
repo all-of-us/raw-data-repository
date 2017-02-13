@@ -13,8 +13,11 @@ from google.appengine.ext import ndb
 
 from werkzeug.exceptions import NotFound
 
+# Key that the main server configuration is stored under
 CONFIG_SINGLETON_KEY = 'current_config'
+# Key that the database configuration is stored under
 DB_CONFIG_KEY = 'db_config'
+
 CONFIG_CACHE_TTL_SECONDS = 60
 
 ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
