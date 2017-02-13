@@ -14,13 +14,10 @@ Follow the instructions in the client directory first to set up a
 virtual Python environment, then follow the instructions here.
 
 ### Installing dependencies
-From the rest-api directory, run
-```Shell
-pip install -r requirements.txt -t lib/
+From the rest-api directory, run tools/setup_env.sh
 
-git submodule update --init
-```
-This will install all the needed dependencies in the `lib` directory.
+This will install all the needed dependencies in the `lib` directory, and download the 
+Cloud SQL Proxy binary into the 'bin' directory.
 
 ### Running the development app server
 Make sure that you have google
