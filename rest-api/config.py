@@ -185,5 +185,5 @@ def get_config_that_was_active_at(key, date):
     raise NotFound('No history object active at {}.'.format(date))
   return h[0].obj
 
-def get_db_connection_string():
-  return CONFIG_CACHE[DB_CONNECTION_STRING_KEY]
+def get_db_config():
+  return CONFIG_CACHE[DB_CONFIG_KEY]
