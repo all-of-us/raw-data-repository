@@ -19,14 +19,13 @@ class TestConfig(FlaskTestBase):
     # Replace some data in the current config.
     test_key = 'testing_config_key'
     new_config_1 = copy.deepcopy(orig_config)
-    new_config_1[test_key] = sorted(['initially', 'injected', 'values'])
+    new_config_1[test_key] = ['initially', 'injected', 'values']
     with fake_clock:
       self.open_json('PUT', 'Config', request_data=new_config_1)
 
     # Make sure the replacements show up when re-fetching the config.
     with fake_clock:
       response = self.get_json('Config')
-    response[test_key] = sorted(response[test_key])
     self.assertEquals(new_config_1, response)
 
     fake_clock.advance()
@@ -35,17 +34,15 @@ class TestConfig(FlaskTestBase):
 
     # Make sure another replacement takes effect.
     new_config_2 = copy.deepcopy(orig_config)
-    new_config_2[test_key] = sorted(['afterwards', 'replaced', 'values'])
+    new_config_2[test_key] = ['afterwards', 'replaced', 'values']
     with fake_clock:
       self.open_json('PUT', 'Config', new_config_2)
       response = self.get_json('Config')
-    response[test_key] = sorted(response[test_key])
     self.assertEquals(new_config_2, response)
 
     # Make sure we get the the first replacement config when we query by time.
     with fake_clock:
       response = self.get_json('Config/{}'.format(between_updates.isoformat()))
-    response[test_key] = sorted(response[test_key])
     self.assertEquals(new_config_1, response)
 
 
