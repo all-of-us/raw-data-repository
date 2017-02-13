@@ -76,7 +76,6 @@ if [[ ${instance} == *localhost* ]]
 then
   # These tests fail on real servers because of auth issues.
   run_client_test "client_test/biobank_samples.py"
-  run_client_test "client_test/config_test.py"
 fi
 
 # Security test: check that HTTPS is required for non-local endpoints.

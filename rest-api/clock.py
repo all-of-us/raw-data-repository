@@ -12,6 +12,9 @@ class FakeClock:
   def __exit__(self, t, value, traceback):
     CLOCK.set_now(None)
 
+  def advance(self, delta=None):
+    self.now += delta or datetime.timedelta(minutes=1)
+
 
 class Clock:
   def __init__(self):
