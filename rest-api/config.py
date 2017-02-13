@@ -38,7 +38,7 @@ REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 def _get_config(key):
   """This function is called by the `TTLCache` to grab an updated config.
   Note that `TTLCache` always supplies a key, which we assert here."""
-  assert key in [CONFIG_SINGLETON_KEY, DB_CONFIG_KEY]
+  assert key in (CONFIG_SINGLETON_KEY, DB_CONFIG_KEY)
   return DAO().load_if_present(key).configuration
 
 def override_setting(key, value):
