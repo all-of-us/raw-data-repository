@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Generates schema migrations in the "alembic/versions" directory.
+# Run this before committing whenever you make a change to the model/ directory.
 
 if [ -z "$1" ]
   then
