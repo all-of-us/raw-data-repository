@@ -39,7 +39,7 @@ if [ -z "${PROJECT}" ]
     exit 1
 fi
 
-if [ -z  "${CREDS_ACCOUNT}" ]
+if [ -z "${CREDS_ACCOUNT}" ]
   then
     CREDS_ACCOUNT="${ACCOUNT}"
 fi
@@ -68,7 +68,7 @@ DB_NAME=rdr
 # (Consider making this something different in production.)
 MACHINE_TYPE=db-n1-standard-8
 
-source utils.sh
+source tools/utils.sh
 
 if [ "${CREATE_INSTANCE}" = "Y" ]
   then
