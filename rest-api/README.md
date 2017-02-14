@@ -14,19 +14,21 @@ Follow the instructions in the client directory first to set up a
 virtual Python environment, then follow the instructions here.
 
 ### Installing dependencies
-From the rest-api directory, run
-```Shell
-pip install -r requirements.txt -t lib/
 
-git submodule update --init
-```
-This will install all the needed dependencies in the `lib` directory.
-
-### Running the development app server
 Make sure that you have google
 [cloud SDK](https://cloud.google.com/sdk/downloads) installed.
 
 From the rest-api directory, run:
+
+* tools/setup_env.sh (get libs and Cloud SQL Proxy)
+* sudo apt-get install mysql-server libmysqlclient-dev (to install MySQL server and client)
+* dev_appserver.py test.yaml --require_indexes (to run your local server)
+* tools/setup_local_database.sh (to create a database in MySQL, upgrade its schema, 
+  and put the config for it in Datastore)
+
+### Running the development app server
+
+From the rest-api directory, you can in general run your local server with:
 
 ```Shell
 dev_appserver.py test.yaml --require_indexes &
@@ -172,3 +174,7 @@ https://github.com/vanderbilt/pmi-data/blob/master/circle.yml
 
 If you are adding new indexes, the tests may fail when they aren't ready yet; use Rebuild in
 CircleCI to retry.
+
+### Tools
+
+Please see the [Tools README](tools/README.md) for more information on command line tools.
