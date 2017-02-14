@@ -30,7 +30,7 @@ server.
 
 Upgrades a database to the latest or a specified Alembic revision, applying schema migrations
 
-## Included scripts (use with "source <SCRIPT>")
+## Included scripts (use with "source &lt;script name&gt;")
 
 ### set_path.sh
 
