@@ -29,7 +29,7 @@ target_metadata = Base.metadata
 # ... etc.
 
 def get_url():
-    return os.getenv("DB_CONNECTION_STRING", "mysql+mysqldb://root:root@localhost/rdr-main")
+    return os.getenv("DB_CONNECTION_STRING", "mysql+mysqldb://root:root@localhost/rdr")
 
 def run_migrations_offline():
     """Run migrations in 'offline' mode.

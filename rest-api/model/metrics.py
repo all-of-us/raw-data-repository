@@ -16,5 +16,5 @@ class MetricsBucket(Base):
   metricsVersionId = Column('metrics_version_id', Integer, 
                             ForeignKey('metrics_version.metrics_version_id'), primary_key=True)
   date = Column('date', Date, primary_key=True)
-  hpoId = Column('hpo_id', String, primary_key=True) # Set to '' for cross-HPO metrics
+  hpoId = Column('hpo_id', String(20), primary_key=True) # Set to '' for cross-HPO metrics
   metrics = Column('metrics', BLOB, nullable=False)

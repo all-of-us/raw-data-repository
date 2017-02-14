@@ -7,7 +7,11 @@ Create Date: ${create_date}
 """
 from alembic import op
 import sqlalchemy as sa
+import model.utils
 ${imports if imports else ""}
+
+from participant_enums import HPOId, PhysicalMeasurementsStatus, QuestionnaireStatus
+from participant_enums import MembershipTier, GenderIdentity, Ethnicity, Race
 
 # revision identifiers, used by Alembic.
 revision = ${repr(up_revision)}

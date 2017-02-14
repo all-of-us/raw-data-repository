@@ -1,26 +1,12 @@
-GCLOUD_PATH=$(which gcloud)
-CLOUDSDK_ROOT_DIR=${GCLOUD_PATH%/bin/gcloud}
-APPENGINE_HOME="${CLOUDSDK_ROOT_DIR}/platform/appengine-java-sdk"
-GAE_SDK_ROOT="${CLOUDSDK_ROOT_DIR}/platform/google_appengine"
+#!/bin/bash
 
-# The next line enables Python libraries for Google Cloud SDK
-PYTHONPATH=${GAE_SDK_ROOT}:${PYTHONPATH}
+# Generates schema migrations in the "alembic/versions" directory.
 
-# * OPTIONAL STEP *
-# If you wish to import all Python modules, you may iterate in the directory
-# tree and import each module.
-#
-# * WARNING *
-# Some modules have two or more versions available (Ex. django), so the loop
-# will import always its latest version.
-for module in ${GAE_SDK_ROOT}/lib/*; do
-  if [ -r ${module} ]; then
-    PYTHONPATH=${module}:${PYTHONPATH}
-  fi
-done
-unset module
+if [ -z "$1" ]
+  then
+    echo "Usage: tools/generate_schema.sh <MESSAGE>"
+    exit 1
+fi
 
-BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
-
+source tools/set_path.sh
 (cd ${BASE_DIR}; alembic revision --autogenerate -m "$1")
