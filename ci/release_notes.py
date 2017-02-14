@@ -4,12 +4,14 @@
 import re
 import subprocess
 
+_REPO_BASE_URL = 'https://github.com/vanderbilt/pmi-data'
+
 # Git tags of this format denote releases.
 _RELEASE_TAG_RE = re.compile(r'v[0-9]+(?:-[0-9]+)*-rc[0-9]+')
 
 # Formatting for release notes in JIRA comments.
 # Note that JIRA auto-linkifies JIRA IDs, so avoid using commit message text in a link.
-_LOG_LINE_FORMAT = "--format=*   [%aN %ad|https://github.com/vanderbilt/pmi-data/commit/%h] %s"
+_LOG_LINE_FORMAT = "--format=*   [%aN %ad|" + _REPO_BASE_URL + "/commit/%h] %s"
 # Overall release notes template.
 _RELEASE_NOTES_T = """h1. Release Notes for %(current)s
 h2. since %(prev)s
@@ -45,6 +47,13 @@ def _get_current_and_prev_release_tags(tag_lines):
     return release_tags[0], None
 
 
+def _linkify_pull_request_ids(text):
+  return re.sub(
+      r'\(#([0-9]+)\)',
+      r'([#\1|%s/pull/\1])' % _REPO_BASE_URL,
+      text)
+
+
 def _get_release_notes(current_tag, prev_tag):
   """Formats release notes from git commit messages between the given tags."""
   if prev_tag is not None:
@@ -60,7 +69,7 @@ def _get_release_notes(current_tag, prev_tag):
   return _RELEASE_NOTES_T % {
     'current': current_tag,
     'prev': prev_tag or 'beginning of history',
-    'history': stdout,
+    'history': _linkify_pull_request_ids(stdout),
   }
 
 
