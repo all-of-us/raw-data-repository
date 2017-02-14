@@ -12,10 +12,10 @@
 # create_instance can be provided to create the database instance the first time
 
 # Example usage:
-# tools/setup_database.sh --account=dan.rodney@pmi-ops.org --project=all-of-us-rdr-staging
+# tools/setup_database.sh --account dan.rodney@pmi-ops.org --project all-of-us-rdr-staging
 
 CREATE_INSTANCE=
-USAGE="tools/setup_database.sh --account=<ACCOUNT> --project=<PROJECT> [--creds_account=<ACCOUNT>] [--create_instance]"
+USAGE="tools/setup_database.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>] [--create_instance]"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
