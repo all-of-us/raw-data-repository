@@ -7,6 +7,7 @@ BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
 set -e
 cd ${BASE_DIR};
 
+
 echo "Removing old libs..."
 rm -rf lib
 find . | grep \.pyc | xargs rm -if $*
@@ -18,8 +19,8 @@ git submodule update --init
 
 echo "Getting Cloud SQL Proxy..."
 wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64
-mkdir bin
-mv cloud_sql_proxy.linux.amd64 bin/cloud_sql_proxy
+mkdir -p bin
+mv -f cloud_sql_proxy.linux.amd64 bin/cloud_sql_proxy
 chmod +x bin/cloud_sql_proxy
 
 

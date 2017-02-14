@@ -14,10 +14,12 @@ Follow the instructions in the client directory first to set up a
 virtual Python environment, then follow the instructions here.
 
 ### Installing dependencies
-From the rest-api directory, run tools/setup_env.sh
+From the rest-api directory, run:
 
-This will install all the needed dependencies in the `lib` directory, and download the 
-Cloud SQL Proxy binary into the 'bin' directory.
+* tools/setup_env.sh (get libs and Cloud SQL Proxy)
+* sudo apt-get install mysql-server (to install MySQL)
+* tools/setup_local_database.sh (to create a database in MySQL)
+* tools/upgrade_database.sh (to update your database to the latest schema)
 
 ### Running the development app server
 Make sure that you have google
