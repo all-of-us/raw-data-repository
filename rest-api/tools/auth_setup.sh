@@ -2,7 +2,7 @@
 
 # Utility functions and setup for scripts that need to generate credentials and (optionally)
 # run the Cloud SQL proxy
-# Expected environment variables: $ACCOUNT, $PROJECT, $CREDS_ACCOUNT, $SERVICE_ACCOUNT
+# Expected environment variables: $ACCOUNT, $PROJECT, $CREDS_ACCOUNT
 
 set -e
 gcloud auth login $ACCOUNT
@@ -10,8 +10,8 @@ gcloud config set project $PROJECT
 
 SERVICE_ACCOUNT="circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
 if [ "${PROJECT}" != "pmi-drc-api-test" ] && [ "${PROJECT}" != "all-of-us-rdr-staging" ]
-  then
-    SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
+then
+  SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
 fi
 
 CREDS_FILE=/tmp/creds.json
@@ -22,13 +22,13 @@ CLOUD_PROXY_PID=
 PRIVATE_KEY=
 
 function cleanup {
-  if [ ! -z $CLOUD_PROXY_PID ];
-    then
-       kill $CLOUD_PROXY_PID
+  if [ ! -z "$CLOUD_PROXY_PID" ];
+  then
+    kill $CLOUD_PROXY_PID
   fi
   if [ ! -z $PRIVATE_KEY ];
-    then
-      gcloud iam service-accounts keys delete $PRIVATE_KEY -q --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT       
+  then
+    gcloud iam service-accounts keys delete $PRIVATE_KEY -q --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT       
   fi
   rm -f ${CREDS_FILE}
   rm -f ${DB_INFO_FILE}
@@ -48,8 +48,8 @@ function get_instance_connection_name {
 
 function run_cloud_sql_proxy {
   if [ -z "$INSTANCE_CONNECTION_NAME" ]
-    then
-      get_instance_connection_name
+  then
+    get_instance_connection_name
   fi
 
   echo "Running cloud proxy..."

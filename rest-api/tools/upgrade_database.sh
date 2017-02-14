@@ -19,40 +19,39 @@ while true; do
 done
  
 if [ ! -z "${PROJECT}" ]
+then
+  if [ -z "${ACCOUNT}" ]
   then
-    if [ -z "${ACCOUNT}" ]
-      then
-        echo "Usage: $USAGE"
-	    exit 1
-    fi
-    if [ -z "${CREDS_ACCOUNT}" ]
-      then
-        CREDS_ACCOUNT="${ACCOUNT}"
-    fi
+    echo "Usage: $USAGE"
+    exit 1
+  fi
+  if [ -z "${CREDS_ACCOUNT}" ]
+  then
+    CREDS_ACCOUNT="${ACCOUNT}"
+  fi
 fi   
     
 
 if [ -z "${REVISION}" ]
-  then
-    REVISION=head
+then
+  REVISION=head
 fi
 
 DB_USER=root
 DB_NAME=rdr
 
 if [ ! -z "${PROJECT}" ]
-  then 
-    source tools/utils.sh
-    run_cloud_sql_proxy
-    PASSWORD=`grep db_password $DB_INFO_FILE | cut -d\" -f4`
-     function finish {
-      cleanup
-      export DB_CONNECTION_STRING=
-    }
-    trap finish EXIT    
-    export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${PASSWORD}@127.0.0.1:${PORT}/${DB_NAME}"       
+then 
+  source tools/auth_setup.sh
+  run_cloud_sql_proxy
+  PASSWORD=`grep db_password $DB_INFO_FILE | cut -d\" -f4`
+  function finish {
+    cleanup
+    export DB_CONNECTION_STRING=
+  }
+  trap finish EXIT    
+  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${PASSWORD}@127.0.0.1:${PORT}/${DB_NAME}"       
 fi
 
-source tools/set_path.sh
-alembic upgrade ${REVISION}
+(source tools/set_path.sh; alembic upgrade ${REVISION})
 

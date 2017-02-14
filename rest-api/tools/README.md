@@ -33,14 +33,14 @@ applying schema migrations.
 
 ## Included scripts (use with "source &lt;script name&gt;")
 
+### auth_setup.sh
+
+Creates credentials in a temp file, exports run_cloud_sql_proxy function used to run Cloud SQL.
+
 ### set_path.sh
 
 Sets PYTHONPATH to include everything in libs and the AppEngine SDK. For use when running python
 scripts that rely on these libraries.
-
-### utils.sh
-
-Creates credentials in a temp file, exports run_cloud_sql_proxy function used to run Cloud SQL.
 
 
 

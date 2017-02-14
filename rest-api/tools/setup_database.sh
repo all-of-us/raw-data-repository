@@ -28,37 +28,37 @@ while true; do
 done
 
 if [ -z "${ACCOUNT}" ]
-  then
-    echo "Usage: $USAGE"
-	exit 1
+then
+  echo "Usage: $USAGE"
+xit 1
 fi
 
 if [ -z "${PROJECT}" ]
-  then
-    echo "Usage: $USAGE"
-    exit 1
+then
+  echo "Usage: $USAGE"
+  exit 1
 fi
 
 if [ -z "${CREDS_ACCOUNT}" ]
-  then
-    CREDS_ACCOUNT="${ACCOUNT}"
+then
+  CREDS_ACCOUNT="${ACCOUNT}"
 fi
 
 
 read -s -p "root password for database: " PASSWORD
 echo
 if [ -z "${PASSWORD}" ]
-  then
-    echo "Password required; exiting."
-    exit 1
+then
+  echo "Password required; exiting."
+  exit 1
 fi
 
 read -s -p "Repeat password: " REPEAT_PASSWORD
 echo
 if [ "${REPEAT_PASSWORD}" != "${PASSWORD}" ]
-  then
-    echo "Password mismatch; exiting."
-    exit 1
+then
+  echo "Password mismatch; exiting."
+  exit 1
 fi
 
 INSTANCE_NAME=rdrmain
@@ -68,11 +68,11 @@ DB_NAME=rdr
 # (Consider making this something different in production.)
 MACHINE_TYPE=db-n1-standard-8
 
-source tools/utils.sh
+source tools/auth_setup.sh
 
 if [ "${CREATE_INSTANCE}" = "Y" ]
-  then
-    gcloud beta sql instances create $INSTANCE_NAME --tier=$MACHINE_TYPE  --activation-policy=ALWAYS
+then
+  gcloud beta sql instances create $INSTANCE_NAME --tier=$MACHINE_TYPE  --activation-policy=ALWAYS
 fi
 gcloud sql instances set-root-password $INSTANCE_NAME --password $PASSWORD
 
@@ -98,7 +98,7 @@ echo 'CREATE DATABASE IF NOT EXISTS '$DB_NAME > $CREATE_DB_FILE
 run_cloud_sql_proxy
 
 echo "Creating empty database..."
-mysql -u $DB_USER -p$PASSWORD --host 127.0.0.1 --port ${PORT} < ${CREATE_DB_FILE}
+mysql -u "$DB_USER" -p"$PASSWORD" --host 127.0.0.1 --port ${PORT} < ${CREATE_DB_FILE}
 
 echo "Setting database configuration"
 tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}

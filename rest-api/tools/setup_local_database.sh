@@ -17,8 +17,8 @@ DB_INFO_FILE=/tmp/db_info.json
 CREATE_DB_FILE=/tmp/create_db.sql
 
 if [ ! -z "${MYSQL_ROOT_PASSWORD}" ]
-  then
-    PASSWORD="${MYSQL_ROOT_PASSWORD}"
+then
+  PASSWORD="${MYSQL_ROOT_PASSWORD}"
 fi
 
 function finish {
@@ -35,13 +35,17 @@ echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
 echo 'DROP DATABASE IF EXISTS '$DB_NAME'; CREATE DATABASE '$DB_NAME > $CREATE_DB_FILE
 
 echo "Creating empty database..."
-mysql -u $DB_USER -p$PASSWORD < ${CREATE_DB_FILE}
+mysql -u "$DB_USER" -p"$PASSWORD" < ${CREATE_DB_FILE}
 if [ $? != '0' ]
-  then
-    echo "Error creating database. Exiting."
-    exit 1
+then
+  echo "Error creating database. Exiting."
+  exit 1
 fi
 
-echo "Setting database configuration"
+echo "Updating schema to latest..."
+tools/upgrade_database.sh
+
+echo "Setting database configuration..."
 tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update
+
 
