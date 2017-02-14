@@ -15,6 +15,7 @@ find . | grep \.pyc | xargs rm -if $*
 echo "Installing libs..."
 pip install -r requirements.txt -t lib/
 pip install MySQL-python -t lib/
+pip install alembic
 git submodule update --init
 
 echo "Getting Cloud SQL Proxy..."

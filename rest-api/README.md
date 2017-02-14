@@ -17,8 +17,9 @@ virtual Python environment, then follow the instructions here.
 From the rest-api directory, run:
 
 * tools/setup_env.sh (get libs and Cloud SQL Proxy)
-* sudo apt-get install mysql-server (to install MySQL)
-* tools/setup_local_database.sh (to create a database in MySQL)
+* sudo apt-get install mysql-server libmysqlclient-dev (to install MySQL server and client)
+* dev_appserver.py test.yaml --require_indexes (to run your local server... see below)
+* tools/setup_local_database.sh (to create a database in MySQL and put the config for it in Datastore)
 * tools/upgrade_database.sh (to update your database to the latest schema)
 
 ### Running the development app server
