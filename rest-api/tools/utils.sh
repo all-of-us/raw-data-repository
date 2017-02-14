@@ -28,8 +28,7 @@ function cleanup {
   fi
   if [ ! -z $PRIVATE_KEY ];
     then
-      DELETE_CMD="gcloud iam service-accounts keys delete $PRIVATE_KEY -q --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT" 
-      eval $DELETE_CMD
+      gcloud iam service-accounts keys delete $PRIVATE_KEY -q --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT       
   fi
   rm -f ${CREDS_FILE}
   rm -f ${DB_INFO_FILE}
@@ -37,8 +36,7 @@ function cleanup {
 
 trap cleanup EXIT
 
-CREATE_CREDS_COMMAND="gcloud iam service-accounts keys create $CREDS_FILE --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT"
-eval $CREATE_CREDS_COMMAND
+gcloud iam service-accounts keys create $CREDS_FILE --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
 PRIVATE_KEY=`grep private_key_id $CREDS_FILE | cut -d\" -f4`
 
 function get_instance_connection_name { 
@@ -55,8 +53,7 @@ function run_cloud_sql_proxy {
   fi
 
   echo "Running cloud proxy..."
-  SQL_PROXY_COMMAND="bin/cloud_sql_proxy -instances=${INSTANCE_CONNECTION_NAME}=tcp:${PORT} -credential_file=${CREDS_FILE} &"
-  eval $SQL_PROXY_COMMAND                  
+  bin/cloud_sql_proxy -instances=${INSTANCE_CONNECTION_NAME}=tcp:${PORT} -credential_file=${CREDS_FILE} &
   sleep 3
   CLOUD_PROXY_PID=%1
 }

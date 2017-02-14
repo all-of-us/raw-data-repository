@@ -35,8 +35,7 @@ echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
 echo 'DROP DATABASE IF EXISTS '$DB_NAME'; CREATE DATABASE '$DB_NAME > $CREATE_DB_FILE
 
 echo "Creating empty database..."
-MYSQL_COMMAND="mysql -u $DB_USER -p$PASSWORD < ${CREATE_DB_FILE}"
-eval $MYSQL_COMMAND
+mysql -u $DB_USER -p$PASSWORD < ${CREATE_DB_FILE}
 if [ $? != '0' ]
   then
     echo "Error creating database. Exiting."
@@ -44,6 +43,5 @@ if [ $? != '0' ]
 fi
 
 echo "Setting database configuration"
-INSTALL_CONFIG_COMMAND="tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update"
-eval $INSTALL_CONFIG_COMMAND
+tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update
 

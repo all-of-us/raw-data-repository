@@ -98,9 +98,8 @@ echo 'CREATE DATABASE IF NOT EXISTS '$DB_NAME > $CREATE_DB_FILE
 run_cloud_sql_proxy
 
 echo "Creating empty database..."
-MYSQL_COMMAND="mysql -u $DB_USER -p$PASSWORD --host 127.0.0.1 --port ${PORT} < ${CREATE_DB_FILE}"
-eval $MYSQL_COMMAND
+mysql -u $DB_USER -p$PASSWORD --host 127.0.0.1 --port ${PORT} < ${CREATE_DB_FILE}
 
 echo "Setting database configuration"
-INSTALL_CONFIG_COMMAND="tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}"
-eval $INSTALL_CONFIG_COMMAND
+tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
+
