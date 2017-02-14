@@ -29,7 +29,7 @@ server.
 ### upgrade_database.sh
 
 Upgrades a database (either local or in Cloud SQL) to the latest or a specified Alembic revision, 
-applying schema migrations.
+applying schema migrations. (If the schema is already up to date, this is a no-op.)
 
 ## Included scripts (use with "source &lt;script name&gt;")
 
