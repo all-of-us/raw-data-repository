@@ -18,6 +18,8 @@ def check_licenses(whitelist, root, exceptions):
 
   Args:
     whitelist: A list of strings, each the name of a supported license.
+    root: Ignore packages outside this directory path.
+    exceptions: List of package names to ignore.
 
   Raises:
     InvalidLicenseException: If a license for an installed package is not in the whitelist.
@@ -68,6 +70,7 @@ def _verify_license(pkg, lic, whitelist):
             pkgname, lic, pkgname, pkg.location, whitelist))
   print '{} : {} OK!'.format(pkgname, lic)
 
+
 def _load_metadata(pkg):
   eparser = email.parser.HeaderParser()
   if pkg.has_metadata('PKG-INFO'):
@@ -76,12 +79,12 @@ def _load_metadata(pkg):
     return eparser.parsestr(pkg.get_metadata('METADATA'))
 
 
-
 def _load_and_strip(filename):
   with open(filename) as f:
     stripped = [l.strip('\n \t') for l in f.readlines()]
     comments_removed = [l for l in stripped if l and l[0] != '#']
     return comments_removed
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
@@ -92,7 +95,7 @@ if __name__ == '__main__':
   parser.add_argument('--exceptions_file', help='Comma seperated packages lacking metadata.')
   args = parser.parse_args()
 
-  exceptions = []
+  ignore_packages = []
   if args.exceptions_file:
-    exceptions = _load_and_strip(args.exceptions_file)
-  check_licenses(_load_and_strip(args.licenses_file), args.root, exceptions)
+    ignore_packages = _load_and_strip(args.exceptions_file)
+  check_licenses(_load_and_strip(args.licenses_file), args.root, ignore_packages)
