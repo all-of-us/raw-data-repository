@@ -22,6 +22,7 @@ activate_local_venv
 git submodule update --init
 
 # Pylint checks. Use pylint --list-msgs to see more options.
+# More options are set in rest-api/pylintrc.
 pylint -r n -f text \
   --disable=all \
   --enable=bad-whitespace,bad-indentation,broad-except,bare-except \
@@ -30,7 +31,8 @@ pylint -r n -f text \
   --enable=unused-variable,undefined-variable \
   *.py \
   offline/*.py \
-  client/*.py
+  client/*.py \
+  ../ci/*.py
 
 safety check  # checks current (API) venv
 
