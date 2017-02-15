@@ -164,16 +164,21 @@ requests), as second verification of the service account's auth.
 
 ### Deploying to staging
 
-* Go to https://github.com/vanderbilt/pmi-data/releases/new
-* Enter a tag name of the form vX-Y-rcZZ -- e.g. v0-1-rc14
-* Unless this is intended to be pushed to prod eventually, check the "This is a pre-release" box.
-* Submit.
+*   Go to https://github.com/vanderbilt/pmi-data/releases/new
+*   Enter a tag name of the form vX-Y-rcZZ -- e.g. v0-1-rc14. For cherry picks,
+    add an additional letter (rc14a).
+*   Unless this is intended to be pushed to prod eventually, check the
+    "This is a pre-release" box.
+*   Submit.
 
 CircleCI should automatically push to staging, based on logic found in
 https://github.com/vanderbilt/pmi-data/blob/master/circle.yml
 
-If you are adding new indexes, the tests may fail when they aren't ready yet; use Rebuild in
-CircleCI to retry.
+If you are adding new indexes, the tests may fail when they aren't ready yet;
+use Rebuild in CircleCI to retry.
+
+CircleCI will also open a new JIRA issue to track the release (or update an
+existing issue for cherry picks).
 
 ### Tools
 
