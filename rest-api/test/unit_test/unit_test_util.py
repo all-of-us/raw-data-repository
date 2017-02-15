@@ -4,6 +4,7 @@ import json
 import mock
 import os
 import unittest
+import dao.database_factory
 
 from google.appengine.api import app_identity
 from google.appengine.ext import ndb
@@ -15,7 +16,14 @@ import config_api
 import executors
 import main
 import questionnaire_response
+import dao.base_dao
+import singletons
 
+from dao.hpo_dao import HPODao
+from model.hpo import HPO
+from participant_enums import UNMAPPED_HPO_ID, UNSET_HPO_ID
+
+PITT_HPO_ID = 2
 
 class TestBase(unittest.TestCase):
   """Base class for unit tests."""
@@ -28,6 +36,8 @@ class TestbedTestBase(TestBase):
   """Base class for unit tests that need the testbed."""
   def setUp(self):
     super(TestbedTestBase, self).setUp()
+    # Reset singletons, including the database, between tests.
+    singletons.reset_for_tests()    
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.testbed.init_taskqueue_stub()
@@ -36,6 +46,36 @@ class TestbedTestBase(TestBase):
     self.testbed.deactivate()
     super(TestbedTestBase, self).tearDown()
 
+class SqlTestBase(TestbedTestBase):
+  """Base class for unit tests that use the SQL database."""
+  def setUp(self):
+    super(SqlTestBase, self).setUp()
+    dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
+    self.database = dao.database_factory.get_database()
+    self.database.create_schema()
+  
+  def get_database(self):
+    return self.database
+  
+  def setup_data(self):
+    hpo_dao = HPODao()
+    hpo = HPO(hpoId=UNSET_HPO_ID, name='UNSET')    
+    hpo2 = HPO(hpoId=UNMAPPED_HPO_ID, name='UNMAPPED')
+    hpo3 = HPO(hpoId=PITT_HPO_ID, name='PITT')
+    hpo_dao.insert(hpo)
+    hpo_dao.insert(hpo2)
+    hpo_dao.insert(hpo3)
+  
+  def assertObjEquals(self, obj1, obj2):
+    self.assertEquals(dao.base_dao.as_dict(obj1), dao.base_dao.as_dict(obj2))
+    
+  def assertObjEqualsExceptLastModified(self, obj1, obj2):
+    dict1 = dao.base_dao.as_dict(obj1)
+    dict2 = dao.base_dao.as_dict(obj2)
+    del dict1['lastModified']
+    del dict2['lastModified']
+    self.assertEquals(dict1, dict2)
+    
 
 class NdbTestBase(TestbedTestBase):
   """Base class for unit tests that need the NDB testbed."""
@@ -111,7 +151,6 @@ class FlaskTestBase(NdbTestBase):
         content_type='application/json')
     self.assertEquals(response.status_code, expected_status, response.data)
     return json.loads(response.data)
-
 
 def to_dict_strip_last_modified(obj):
   assert obj.last_modified, 'Missing last_modified: {}'.format(obj)

@@ -1,9 +1,7 @@
 import datetime
-import unittest
 
 from participant_enums import GenderIdentity, QuestionnaireStatus
 
-from model.database import Database
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
@@ -15,12 +13,11 @@ from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from unit_test_util import SqlTestBase
 
-class DatabaseTest(unittest.TestCase):
-  def test_schema(self):
-    database = Database('sqlite:///:memory:')
-    database.create_schema()
-    session = database.make_session()
+class DatabaseTest(SqlTestBase):
+  def test_schema(self):    
+    session = self.get_database().make_session()
 
     hpo = HPO(hpoId=1, name='UNSET')
     session.add(hpo)

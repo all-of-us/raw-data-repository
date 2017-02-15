@@ -6,6 +6,7 @@ from model.base import Base
 from model.utils import to_upper, Enum
 from sqlalchemy import Column, Integer, String, Date, DateTime, BLOB
 from sqlalchemy import UniqueConstraint, ForeignKey, func, Index, SmallInteger
+from sqlalchemy.orm import relationship
 
 class ParticipantSummary(Base):  
   __tablename__ = 'participant_summary'
@@ -63,6 +64,8 @@ class ParticipantSummary(Base):
   numCompletedBaselinePPIModules = Column('num_completed_baseline_ppi_modules', SmallInteger, 
                                           default=0)
   numBaselineSamplesArrived = Column('num_baseline_samples_arrived', SmallInteger, default=0)
+  
+  participant = relationship("Participant", back_populates="participantSummary")
     
 Index('participant_summary_biobank_id', ParticipantSummary.biobankId)
 Index('participant_summary_ln_dob', ParticipantSummary.lastNameUpper, 
