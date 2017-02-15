@@ -8,6 +8,10 @@ dependencies:
     - pip install --upgrade oauth2client
     - pip install --upgrade pylint
 
+machine:
+  services:
+    - mysql
+
 test:
   override:
     - ./ci/test.sh
