@@ -79,10 +79,3 @@ class ParticipantDaoTest(SqlTestBase):
     ps3 = participant_summary_dao.get(1)
     self.assertEquals(UNMAPPED_HPO_ID, ps3.hpoId)
     
-    
-    
-        
-    
-    
-    
-    
