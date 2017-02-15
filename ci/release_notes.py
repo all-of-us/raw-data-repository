@@ -130,7 +130,7 @@ def _update_or_create_release_tracker(jira_connection, project_id, full_version_
           'Found multiple release tracker matches, using newest. %s',
           ', '.join('[%s] %s' % (issue.key, issue.fields().summary) for issue in issues))
     issue = issues[0]
-    #jira_connection.add_comment(issues[1], release_notes)
+    jira_connection.add_comment(issue, release_notes)
     what_happened = 'Updated'
   else:
     if is_cherry_pick:
@@ -140,9 +140,12 @@ def _update_or_create_release_tracker(jira_connection, project_id, full_version_
     issue = jira_connection.create_issue(
         project=_JIRA_PROJECT_ID,
         summary=summary,
-        description=release_notes)
+        description=release_notes,
+        issuetype={'name': 'Task'})
+    # TODO(mwf) Use jira_connection.add_watcher(issue, 'username') to notify engineers.
+    # Requires extra permissions, may want to avoid hardcoding list of names.
     what_happened = 'Created'
-  logging.info('%s [%s] with release notes for %s.', what_happened, issue.key, version_id)
+  logging.info('%s [%s] with release notes for %s.', what_happened, issue.key, full_version_id)
 
 
 def main():
