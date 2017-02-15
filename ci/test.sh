@@ -21,7 +21,7 @@ cd rest-api
 activate_local_venv
 git submodule update --init
 
-# Pylint checks. Use pylint --list-msgs to see more options.
+# Pylint checks. Use pylint --list-msgs to see more available messages.
 # More options are set in rest-api/pylintrc.
 pylint -r n -f text \
   --disable=all \
