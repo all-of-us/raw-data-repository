@@ -29,7 +29,7 @@ deployment:
       - ./ci/activate_creds.sh ~/gcloud-credentials.key
       - ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
       - ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com
-      - ./ci/release_notes.py
+      - ./ci/release_notes.py all-of-us-rdr-staging
 
 # Stable and production deployments are not done automatically but can be
 # manually executed with the test.sh and deploy.sh pair, e.g.:
