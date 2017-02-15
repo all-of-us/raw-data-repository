@@ -65,13 +65,10 @@ class SqlTestBase(TestbedTestBase):
     hpo_dao.insert(hpo)
     hpo_dao.insert(hpo2)
     hpo_dao.insert(hpo3)
-  
-  def assertObjEquals(self, obj1, obj2):
-    self.assertEquals(dao.base_dao.as_dict(obj1), dao.base_dao.as_dict(obj2))
-    
+      
   def assertObjEqualsExceptLastModified(self, obj1, obj2):
-    dict1 = dao.base_dao.as_dict(obj1)
-    dict2 = dao.base_dao.as_dict(obj2)
+    dict1 = obj1.asdict()
+    dict2 = obj2.asdict()
     del dict1['lastModified']
     del dict2['lastModified']
     self.assertEquals(dict1, dict2)

@@ -7,21 +7,19 @@ from model.utils import to_upper, Enum
 from sqlalchemy import Column, Integer, String, Date, DateTime, BLOB
 from sqlalchemy import UniqueConstraint, ForeignKey, func, Index, SmallInteger
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.hybrid import hybrid_property
 
 class ParticipantSummary(Base):  
   __tablename__ = 'participant_summary'
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'), 
                          primary_key=True, autoincrement=False)
   biobankId = Column('biobank_id', Integer, nullable=False)
-  firstName = Column('first_name', String(80))
-  firstNameUpper = Column('first_name_upper', String(80), onupdate=to_upper('first_name'), 
-                          default=to_upper('first_name'))
-  middleName = Column('middle_name', String(80))
-  middleNameUpper = Column('middle_name_upper', String(80), onupdate=to_upper('middle_name'),
-                           default=to_upper('middle_name'))
-  lastName = Column('last_name', String(80))
-  lastNameUpper = Column('last_name_upper', String(80), onupdate=to_upper('last_name'),
-                         default=to_upper('last_name'))
+  _firstName = Column('first_name', String(80))
+  firstNameUpper = Column('first_name_upper', String(80))
+  _middleName = Column('middle_name', String(80))
+  middleNameUpper = Column('middle_name_upper', String(80))
+  _lastName = Column('last_name', String(80))
+  lastNameUpper = Column('last_name_upper', String(80))
   zipCode = Column('zip_code', String(10))
   dateOfBirth = Column('date_of_birth', Date)
   genderIdentity = Column('gender_identity', Enum(GenderIdentity), default=GenderIdentity.UNSET)
@@ -66,6 +64,33 @@ class ParticipantSummary(Base):
   numBaselineSamplesArrived = Column('num_baseline_samples_arrived', SmallInteger, default=0)
   
   participant = relationship("Participant", back_populates="participantSummary")
+  
+  @hybrid_property
+  def lastName(self):
+    return self._lastName
+
+  @lastName.setter
+  def lastName(self, lastName):
+      self._lastName = lastName
+      self.lastNameUpper = lastName.upper()
+  
+  @hybrid_property
+  def firstName(self):
+    return self._firstName
+
+  @firstName.setter
+  def firstName(self, firstName):
+      self._firstName = firstName
+      self.firstNameUpper = firstName.upper()
+      
+  @hybrid_property
+  def middleName(self):
+    return self._middleName
+
+  @middleName.setter
+  def middleName(self, middleName):
+      self._middleName = middleName
+      self.middleNameUpper = middleName.upper()
     
 Index('participant_summary_biobank_id', ParticipantSummary.biobankId)
 Index('participant_summary_ln_dob', ParticipantSummary.lastNameUpper, 

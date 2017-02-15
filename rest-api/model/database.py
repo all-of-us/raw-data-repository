@@ -21,6 +21,7 @@ from sqlalchemy.testing.plugin.plugin_base import _engine_uri
 class Database(object):
   """Maintains state for accessing the database."""
   def __init__(self, database_uri, **kwargs):    
+    # Add echo=True here to spit out SQL statements.
     self._engine = create_engine(database_uri, **kwargs)    
     self._engine.execute('PRAGMA foreign_keys = ON;')
     # expire_on_commit = False allows us to access model objects outside of a transaction.

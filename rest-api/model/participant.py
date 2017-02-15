@@ -17,9 +17,8 @@ class ParticipantBase(object):
   # We tack 'B' on the front whenever we use this externally
   biobankId = Column('biobank_id', Integer, nullable=False)
 
-  lastModified = Column('last_modified', DateTime, default=clock.CLOCK.now,
-                        onupdate=clock.CLOCK.now, nullable=False)
-  signUpTime = Column('sign_up_time', DateTime, default=clock.CLOCK.now, nullable=False)
+  lastModified = Column('last_modified', DateTime, nullable=False)
+  signUpTime = Column('sign_up_time', DateTime, nullable=False)
   providerLink = Column('provider_link', BLOB)  
 
   @declared_attr

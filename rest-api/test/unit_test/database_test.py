@@ -23,20 +23,21 @@ class DatabaseTest(SqlTestBase):
     session.add(hpo)
     session.commit()
 
-    p = Participant(participantId=1, version=1, biobankId=2, hpoId=1)
-    session.add(p)
-    ph = ParticipantHistory(participantId=1, version=1, biobankId=2, hpoId=1)
-    session.add(ph)
-    session.commit()
-
+    p = Participant(participantId=1, version=1, biobankId=2, hpoId=1, 
+                    signUpTime=datetime.datetime.now())
     ps = ParticipantSummary(participantId=1, biobankId=2, firstName='Bob', middleName='Q', 
                             lastName='Jones', zipCode='78751', dateOfBirth=datetime.date.today(), 
                             genderIdentity=GenderIdentity.MALE, hpoId=1,
                             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED, 
                             consentForStudyEnrollmentTime=datetime.datetime.now(),
                             numCompletedBaselinePPIModules=1,
-                            numBaselineSamplesArrived=2)                      
-    session.add(ps)
+                            numBaselineSamplesArrived=2)     
+    p.participantSummary = ps
+    session.add(p)
+    ph = ParticipantHistory(participantId=1, version=1, biobankId=2, hpoId=1, 
+                            signUpTime=datetime.datetime.now())
+    session.add(ph)
+    session.commit()
 
     sample1 = BiobankStoredSample(biobankStoredSampleId=1, participantId=1, familyId='a', 
                                   sampleId='b', storageStatus='c', type='d', testCode='e', 
