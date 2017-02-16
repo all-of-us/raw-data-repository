@@ -25,10 +25,10 @@ class ParticipantDao(BaseDao):
     return obj.participantId
     
   def insert_with_session(self, session, obj):    
-    super(ParticipantDao, self).insert_with_session(session, obj)
     obj.hpoId = self.get_hpo_id(session, obj)
     obj.signUpTime = clock.CLOCK.now()
     obj.lastModified = clock.CLOCK.now()
+    super(ParticipantDao, self).insert_with_session(session, obj)
     obj.participantSummary = ParticipantSummary(participantId=obj.participantId, 
                                                 biobankId=obj.biobankId,
                                                 signUpTime=obj.signUpTime,
@@ -37,26 +37,26 @@ class ParticipantDao(BaseDao):
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)                                                
 
-  def update_history(self, session, obj):
+  def _update_history(self, session, obj):
     # Increment the version and add a new history entry.
     obj.version += 1
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
 
-  def do_update(self, session, obj, existing_obj):
+  def _do_update(self, session, obj, existing_obj):
     # If the provider link changes, update the HPO ID on the participant and its summary.
     obj.lastModified = clock.CLOCK.now()
     if obj.providerLink != existing_obj.providerLink:
       new_hpo_id = self.get_hpo_id(session, obj)
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id        
-        self.update_history(session, obj)
-        super(ParticipantDao, self).do_update(session, obj, existing_obj)
+        self._update_history(session, obj)
+        super(ParticipantDao, self)._do_update(session, obj, existing_obj)
         obj.participantSummary.hpoId = new_hpo_id
         return
-    self.update_history(session, obj)
-    super(ParticipantDao, self).do_update(session, obj, existing_obj)
+    self._update_history(session, obj)
+    super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
   def get_hpo_id(self, session, obj):
     hpo_name = get_HPO_name_from_participant(obj)

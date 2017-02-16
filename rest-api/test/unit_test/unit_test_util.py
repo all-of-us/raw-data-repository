@@ -21,7 +21,7 @@ import singletons
 
 from dao.hpo_dao import HPODao
 from model.hpo import HPO
-from participant_enums import UNMAPPED_HPO_ID, UNSET_HPO_ID
+from participant_enums import UNSET_HPO_ID
 
 PITT_HPO_ID = 2
 
@@ -60,11 +60,9 @@ class SqlTestBase(TestbedTestBase):
   def setup_data(self):
     hpo_dao = HPODao()
     hpo = HPO(hpoId=UNSET_HPO_ID, name='UNSET')    
-    hpo2 = HPO(hpoId=UNMAPPED_HPO_ID, name='UNMAPPED')
-    hpo3 = HPO(hpoId=PITT_HPO_ID, name='PITT')
+    hpo2 = HPO(hpoId=PITT_HPO_ID, name='PITT')
     hpo_dao.insert(hpo)
     hpo_dao.insert(hpo2)
-    hpo_dao.insert(hpo3)
       
   def assertObjEqualsExceptLastModified(self, obj1, obj2):
     dict1 = obj1.asdict()

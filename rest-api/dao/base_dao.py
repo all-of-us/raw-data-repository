@@ -52,7 +52,7 @@ class BaseDao(object):
   def _make_version_id(self, last_modified):
     return 'W/"{}"'.format(api_util.unix_time_millis(last_modified))
       
-  def validate_update(self, session, obj, existing_obj, expected_version_id=None):
+  def _validate_update(self, session, obj, existing_obj, expected_version_id=None):
     """Validates that an update is OK before performing it. By default, validates that the 
     object already exists, and if an expected version ID is provided, that it matches."""
     if not existing_obj:
@@ -67,7 +67,7 @@ class BaseDao(object):
         raise PreconditionFailed('If-Match header was {}; stored version was {}'
                                  .format(expected_version_id, version_id))    
   
-  def do_update(self, session, obj, existing_obj):
+  def _do_update(self, session, obj, existing_obj):
     """Perform the update of the specified object. Subclasses can override to alter things."""
     session.add(obj)   
                 
@@ -76,8 +76,8 @@ class BaseDao(object):
     expected version ID."""
     id = self.get_id(obj)
     existing_obj = self.get(self.get_id(obj))
-    self.validate_update(session, obj, existing_obj, expected_version_id)
-    self.do_update(session, obj, existing_obj)
+    self._validate_update(session, obj, existing_obj, expected_version_id)
+    self._do_update(session, obj, existing_obj)
   
   def update(self, obj, expected_version_id=None):
     """Updates the object in the database. Will fail if the object doesn't exist already, or
