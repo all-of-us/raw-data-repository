@@ -27,22 +27,21 @@ def upgrade():
     op.bulk_insert(hpo_table,
     [
         {'hpo_id': 0, 'name': 'UNSET' },
-        {'hpo_id': 1, 'name': 'UNMAPPED' },
-        {'hpo_id': 2, 'name': 'PITT' },
-        {'hpo_id': 3, 'name': 'COLUMBIA' },
-        {'hpo_id': 4, 'name': 'ILLNOIS' },
-        {'hpo_id': 5, 'name': 'AZ_TUCSON' },
-        {'hpo_id': 6, 'name': 'COMM_HEALTH' },
-        {'hpo_id': 7, 'name': 'SAN_YSIDRO' },
-        {'hpo_id': 8, 'name': 'CHEROKEE' },
-        {'hpo_id': 9, 'name': 'EAU_CLAIRE' },
-        {'hpo_id': 10, 'name': 'HRHCARE' },
-        {'hpo_id': 11, 'name': 'JACKSON' },
-        {'hpo_id': 12, 'name': 'GEISINGER' },
-        {'hpo_id': 13, 'name': 'CAL_PMC' },
-        {'hpo_id': 14, 'name': 'NE_PMC' },
-        {'hpo_id': 15, 'name': 'TRANS_AM' },
-        {'hpo_id': 16, 'name': 'VA' }
+        {'hpo_id': 1, 'name': 'PITT' },
+        {'hpo_id': 2, 'name': 'COLUMBIA' },
+        {'hpo_id': 3, 'name': 'ILLNOIS' },
+        {'hpo_id': 4, 'name': 'AZ_TUCSON' },
+        {'hpo_id': 5, 'name': 'COMM_HEALTH' },
+        {'hpo_id': 6, 'name': 'SAN_YSIDRO' },
+        {'hpo_id': 7, 'name': 'CHEROKEE' },
+        {'hpo_id': 8, 'name': 'EAU_CLAIRE' },
+        {'hpo_id': 9, 'name': 'HRHCARE' },
+        {'hpo_id': 10, 'name': 'JACKSON' },
+        {'hpo_id': 11, 'name': 'GEISINGER' },
+        {'hpo_id': 12, 'name': 'CAL_PMC' },
+        {'hpo_id': 13, 'name': 'NE_PMC' },
+        {'hpo_id': 14, 'name': 'TRANS_AM' },
+        {'hpo_id': 15, 'name': 'VA' }
     ])
 
 

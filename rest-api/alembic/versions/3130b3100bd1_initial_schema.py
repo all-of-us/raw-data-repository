@@ -152,11 +152,8 @@ def upgrade():
     sa.Column('participant_id', sa.Integer(), autoincrement=False, nullable=False),
     sa.Column('biobank_id', sa.Integer(), nullable=False),
     sa.Column('first_name', sa.String(length=80), nullable=True),
-    sa.Column('first_name_upper', sa.String(length=80), nullable=True),
     sa.Column('middle_name', sa.String(length=80), nullable=True),
-    sa.Column('middle_name_upper', sa.String(length=80), nullable=True),
     sa.Column('last_name', sa.String(length=80), nullable=True),
-    sa.Column('last_name_upper', sa.String(length=80), nullable=True),
     sa.Column('zip_code', sa.String(length=10), nullable=True),
     sa.Column('date_of_birth', sa.Date(), nullable=True),
     sa.Column('gender_identity', model.utils.Enum(GenderIdentity), nullable=True),
@@ -195,15 +192,15 @@ def upgrade():
     op.create_index('participant_summary_hpo_consent', 'participant_summary', ['hpo_id', 'consent_for_study_enrollment'], unique=False)
     op.create_index('participant_summary_hpo_dob', 'participant_summary', ['hpo_id', 'date_of_birth'], unique=False)
     op.create_index('participant_summary_hpo_ethnicity', 'participant_summary', ['hpo_id', 'ethnicity'], unique=False)
-    op.create_index('participant_summary_hpo_fn', 'participant_summary', ['hpo_id', 'first_name_upper'], unique=False)
-    op.create_index('participant_summary_hpo_ln', 'participant_summary', ['hpo_id', 'last_name_upper'], unique=False)
+    op.create_index('participant_summary_hpo_fn', 'participant_summary', ['hpo_id', 'first_name'], unique=False)
+    op.create_index('participant_summary_hpo_ln', 'participant_summary', ['hpo_id', 'last_name'], unique=False)
     op.create_index('participant_summary_hpo_num_baseline_ppi', 'participant_summary', ['hpo_id', 'num_completed_baseline_ppi_modules'], unique=False)
     op.create_index('participant_summary_hpo_num_baseline_samples', 'participant_summary', ['hpo_id', 'num_baseline_samples_arrived'], unique=False)
     op.create_index('participant_summary_hpo_tier', 'participant_summary', ['hpo_id', 'membership_tier'], unique=False)
     op.create_index('participant_summary_hpo_zip', 'participant_summary', ['hpo_id', 'zip_code'], unique=False)
-    op.create_index('participant_summary_ln_dob', 'participant_summary', ['last_name_upper', 'date_of_birth'], unique=False)
-    op.create_index('participant_summary_ln_dob_fn', 'participant_summary', ['last_name_upper', 'date_of_birth', 'first_name_upper'], unique=False)
-    op.create_index('participant_summary_ln_dob_zip', 'participant_summary', ['last_name_upper', 'date_of_birth', 'zip_code'], unique=False)
+    op.create_index('participant_summary_ln_dob', 'participant_summary', ['last_name', 'date_of_birth'], unique=False)
+    op.create_index('participant_summary_ln_dob_fn', 'participant_summary', ['last_name', 'date_of_birth', 'first_name'], unique=False)
+    op.create_index('participant_summary_ln_dob_zip', 'participant_summary', ['last_name', 'date_of_birth', 'zip_code'], unique=False)
     op.create_table('physical_measurements',
     sa.Column('physical_measurements_id', sa.Integer(), autoincrement=False, nullable=False),
     sa.Column('participant_id', sa.Integer(), nullable=False),

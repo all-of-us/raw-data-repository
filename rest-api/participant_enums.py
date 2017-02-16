@@ -1,13 +1,9 @@
 from protorpc import messages
 from dateutil.relativedelta import relativedelta
 
-UNSET = 'UNSET'
-UNMAPPED = 'UNMAPPED'
-
 # These are handled specially in code; others will be inserted into the database and handled 
 # dynamically.
 UNSET_HPO_ID = 0
-UNMAPPED_HPO_ID = 1
 
 # TODO(danrodney): get rid of this
 class HPOId(messages.Enum):

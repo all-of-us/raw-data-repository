@@ -6,7 +6,8 @@ from dao.hpo_dao import HPODao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
-from participant_enums import UNSET, UNSET_HPO_ID, UNMAPPED_HPO_ID
+from participant_enums import UNSET_HPO_ID
+from werkzeug.exceptions import BadRequest
 
 class ParticipantHistoryDao(BaseDao):  
   def __init__(self):
@@ -61,7 +62,8 @@ class ParticipantDao(BaseDao):
     hpo_name = get_HPO_name_from_participant(obj)
     if hpo_name:
       hpo = HPODao().get_by_name_with_session(session, hpo_name)
-      # Return 1 for UNMAPPED if the name doesn't resolve to anything.
+      if not hpo:
+        raise BadRequest('No HPO found with name %s' % hpo_name)
       return hpo.hpoId if hpo else UNMAPPED_HPO_ID
     else:      
       return UNSET_HPO_ID

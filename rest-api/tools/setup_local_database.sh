@@ -27,7 +27,7 @@ while true; do
   esac
 done
 
-if [ ! -z "${MYSQL_ROOT_PASSWORD}" ]
+if [ "${MYSQL_ROOT_PASSWORD}" ]
 then
   PASSWORD="${MYSQL_ROOT_PASSWORD}"
   PASSWORD_ARGS='-p"${PASSWORD}"'
