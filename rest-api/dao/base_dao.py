@@ -33,6 +33,7 @@ class BaseDao(object):
 
   def insert_with_session(self, session, obj):
     """Adds the object into the session to be inserted."""
+    self._validate_insert(obj)
     session.add(obj)
 
   def insert(self, obj):
