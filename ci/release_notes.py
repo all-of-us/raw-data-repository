@@ -6,7 +6,12 @@ current version, then gets commit messages from that tag to HEAD, and formats th
 JIRA's style of markup) to make release notes. HEAD is assumed (but not required) to also be tagged
 for the release that's going out / the release for which we're generating notes.
 
-This requires the JIRA_API_USER_PASSWORD and JIRA_API_USER_NAME environment variables to be set.
+This requires the
+    JIRA_API_USER_PASSWORD and
+    JIRA_API_USER_NAME
+environment variables to be set. If it is also set, the comma-separated list of JIRA user names in
+    JIRA_WATCHER_NAMES
+will be set as watchers on newly created release trackers.
 """
 
 import httplib
@@ -40,6 +45,7 @@ _JIRA_INSTANCE_URL = 'https://precisionmedicineinitiative.atlassian.net/'
 _JIRA_PROJECT_ID = 'DA'
 _JIRA_NAME_VARNAME = 'JIRA_API_USER_NAME'
 _JIRA_PASSWORD_VARNAME = 'JIRA_API_USER_PASSWORD'
+_JIRA_WATCHERS_VARNAME = 'JIRA_WATCHER_NAMES'
 
 
 def _linkify_pull_request_ids(text):
@@ -118,6 +124,14 @@ def _strip_cherry_pick(version_id):
     return match.group(1), bool(match.group(2))
 
 
+def _get_watchers():
+  watchers = set()
+  for name in [n.strip() for n in os.getenv(_JIRA_WATCHERS_VARNAME, '').split(',')]:
+    if name:
+      watchers.add(name)
+  return watchers
+
+
 def _update_or_create_release_tracker(jira_connection, project_id, full_version_id, release_notes):
   """Adds release notes to a new or existing JIRA issue."""
   version_id, is_cherry_pick = _strip_cherry_pick(full_version_id)
@@ -142,8 +156,11 @@ def _update_or_create_release_tracker(jira_connection, project_id, full_version_
         summary=summary,
         description=release_notes,
         issuetype={'name': 'Task'})
-    # TODO(mwf) Use jira_connection.add_watcher(issue, 'username') to notify engineers.
-    # Requires extra permissions, may want to avoid hardcoding list of names.
+    for watcher_username in _get_watchers():
+      try:
+        jira_connection.add_watcher(issue, watcher_username)
+      except jira.exceptions.JIRAError, e:
+        logging.warning('Skipping invalid watcher %r (got %s).', watcher_username, e.status_code)
     what_happened = 'Created'
   logging.info('%s [%s] with release notes for %s.', what_happened, issue.key, full_version_id)
 
