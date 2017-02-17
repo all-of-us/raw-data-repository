@@ -20,10 +20,14 @@ from sqlalchemy.testing.plugin.plugin_base import _engine_uri
 
 class Database(object):
   """Maintains state for accessing the database."""
-  def __init__(self, database_uri, **kwargs):
-    self._engine = create_engine(database_uri, **kwargs)
+  def __init__(self, database_uri, **kwargs):    
+    # Add echo=True here to spit out SQL statements.
+    self._engine = create_engine(database_uri, **kwargs)    
     self._engine.execute('PRAGMA foreign_keys = ON;')
-    self.Session = sessionmaker(bind=self._engine)
+    # expire_on_commit = False allows us to access model objects outside of a transaction.
+    # It also means that after a commit, a model object won't read from the database for its 
+    # properties. (Which should be fine.)
+    self._Session = sessionmaker(bind=self._engine, expire_on_commit=False)
 
   def get_engine(self):
     return self._engine
@@ -32,7 +36,7 @@ class Database(object):
     Base.metadata.create_all(self._engine)
     
   def make_session(self):    
-    return self.Session()
+    return self._Session()
     
 
   

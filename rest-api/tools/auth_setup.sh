@@ -22,11 +22,11 @@ CLOUD_PROXY_PID=
 PRIVATE_KEY=
 
 function cleanup {
-  if [ ! -z "$CLOUD_PROXY_PID" ];
+  if [ "$CLOUD_PROXY_PID" ];
   then
     kill $CLOUD_PROXY_PID
   fi
-  if [ ! -z $PRIVATE_KEY ];
+  if [ "$PRIVATE_KEY" ];
   then
     gcloud iam service-accounts keys delete $PRIVATE_KEY -q --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT       
   fi

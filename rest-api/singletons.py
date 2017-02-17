@@ -3,6 +3,10 @@ import threading
 singletons_lock = threading.RLock()
 singletons_map = {}
 
+def reset_for_tests():
+  with singletons_lock:
+    singletons_map.clear()
+
 def get(constructor):
   # First try without a lock (usually should return something)
   existing_instance = singletons_map.get(constructor.__name__)

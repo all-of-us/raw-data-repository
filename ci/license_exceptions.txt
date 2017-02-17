@@ -3,3 +3,7 @@ Graphy
 
 # dnspython is BSD style, but it's metadata says 'Freeware' which is not a valid license.
 dnspython
+
+# MySQLDB is not actually linked against. We use it indirectly, but it's not a compile-time
+# dependency.
+MySQL-python

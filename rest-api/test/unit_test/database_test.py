@@ -1,9 +1,7 @@
 import datetime
-import unittest
 
 from participant_enums import GenderIdentity, QuestionnaireStatus
 
-from model.database import Database
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
@@ -15,31 +13,32 @@ from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from unit_test_util import SqlTestBase
 
-class DatabaseTest(unittest.TestCase):
-  def test_schema(self):
-    database = Database('sqlite:///:memory:')
-    database.create_schema()
-    session = database.make_session()
+class DatabaseTest(SqlTestBase):
+  def test_schema(self):    
+    session = self.get_database().make_session()
 
     hpo = HPO(hpoId=1, name='UNSET')
     session.add(hpo)
     session.commit()
 
-    p = Participant(participantId=1, version=1, biobankId=2, hpoId=1)
-    session.add(p)
-    ph = ParticipantHistory(participantId=1, version=1, biobankId=2, hpoId=1)
-    session.add(ph)
-    session.commit()
-
+    p = Participant(participantId=1, version=1, biobankId=2, hpoId=1, 
+                    signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now())
     ps = ParticipantSummary(participantId=1, biobankId=2, firstName='Bob', middleName='Q', 
                             lastName='Jones', zipCode='78751', dateOfBirth=datetime.date.today(), 
                             genderIdentity=GenderIdentity.MALE, hpoId=1,
                             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED, 
                             consentForStudyEnrollmentTime=datetime.datetime.now(),
                             numCompletedBaselinePPIModules=1,
-                            numBaselineSamplesArrived=2)                      
-    session.add(ps)
+                            numBaselineSamplesArrived=2)     
+    p.participantSummary = ps
+    session.add(p)
+    ph = ParticipantHistory(participantId=1, version=1, biobankId=2, hpoId=1, 
+                            signUpTime=datetime.datetime.now(), 
+                            lastModified=datetime.datetime.now())
+    session.add(ph)
+    session.commit()
 
     sample1 = BiobankStoredSample(biobankStoredSampleId=1, participantId=1, familyId='a', 
                                   sampleId='b', storageStatus='c', type='d', testCode='e', 

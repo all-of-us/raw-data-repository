@@ -18,7 +18,7 @@ while true; do
   esac
 done
  
-if [ ! -z "${PROJECT}" ]
+if [ "${PROJECT}" ]
 then
   if [ -z "${ACCOUNT}" ]
   then
