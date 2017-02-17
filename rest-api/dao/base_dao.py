@@ -23,17 +23,17 @@ class BaseDao(object):
     finally:
         sess.close()
 
-  def _validate_model(self, obj):
+  def _validate_model(self, session, obj):
     """Override to validate a model before any db write (insert or update)."""
     pass
 
-  def _validate_insert(self, obj):
+  def _validate_insert(self, session, obj):
     """Override to validate a new model before inserting it (not applied to updates)."""
-    self._validate_model(self, obj)
+    self._validate_model(self, session, obj)
 
   def insert_with_session(self, session, obj):
     """Adds the object into the session to be inserted."""
-    self._validate_insert(obj)
+    self._validate_insert(session, obj)
     session.add(obj)
 
   def insert(self, obj):
@@ -68,7 +68,7 @@ class BaseDao(object):
     By default, validates that the object already exists, and if an expected version ID is provided,
     that it matches.
     """
-    self._validate_model(obj)
+    self._validate_model(session, obj)
     if not existing_obj:
       raise NotFound('{} with id {} does not exist'.format(
           self.model_type.__name__, id))
