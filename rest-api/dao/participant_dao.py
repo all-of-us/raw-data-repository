@@ -26,8 +26,9 @@ class ParticipantDao(BaseDao):
     
   def insert_with_session(self, session, obj):    
     obj.hpoId = self.get_hpo_id(session, obj)
+    obj.version = 1
     obj.signUpTime = clock.CLOCK.now()
-    obj.lastModified = clock.CLOCK.now()
+    obj.lastModified = obj.signUpTime
     super(ParticipantDao, self).insert_with_session(session, obj)
     obj.participantSummary = ParticipantSummary(participantId=obj.participantId, 
                                                 biobankId=obj.biobankId,
@@ -37,9 +38,9 @@ class ParticipantDao(BaseDao):
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)                                                
 
-  def _update_history(self, session, obj):
+  def _update_history(self, session, obj, existing_obj):
     # Increment the version and add a new history entry.
-    obj.version += 1
+    obj.version = existing_obj.version + 1
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
@@ -51,11 +52,11 @@ class ParticipantDao(BaseDao):
       new_hpo_id = self.get_hpo_id(session, obj)
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id        
-        self._update_history(session, obj)
+        self._update_history(session, obj, existing_obj)
         super(ParticipantDao, self)._do_update(session, obj, existing_obj)
         obj.participantSummary.hpoId = new_hpo_id
         return
-    self._update_history(session, obj)
+    self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
   def get_hpo_id(self, session, obj):

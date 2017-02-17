@@ -10,14 +10,19 @@ class QuestionnaireBase(object):
   questionnaireId = Column('questionnaire_id', Integer, primary_key=True)
   # Incrementing version, starts at 1 and is incremented on each update.
   version = Column('version', Integer, nullable=False)      
-  created = Column('created', DateTime, default=clock.CLOCK.now, nullable=False)
-  lastModified = Column('last_modified', DateTime, default=clock.CLOCK.now, 
-                        onupdate=clock.CLOCK.now, nullable=False)  
+  created = Column('created', DateTime, nullable=False)
+  lastModified = Column('last_modified', DateTime, nullable=False)
   resource = Column('resource', BLOB, nullable=False)  
   
 
 class Questionnaire(QuestionnaireBase, Base):  
   __tablename__ = 'questionnaire'
+  concepts = relationship('QuestionnaireConcept', cascade=False,
+                          primaryjoin='Questionnaire.questionnaireId==' + \
+                            'foreign(QuestionnaireConcept.questionnaireId)')
+  questions = relationship('QuestionnaireQuestion', cascade=False,
+                           primaryjoin='Questionnaire.questionnaireId==' + \
+                            'foreign(QuestionnaireQuestion.questionnaireId)')
 
 class QuestionnaireHistory(QuestionnaireBase, Base):  
   __tablename__ = 'questionnaire_history'
