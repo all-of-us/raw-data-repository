@@ -29,7 +29,7 @@ class BaseDao(object):
 
   def _validate_insert(self, session, obj):
     """Override to validate a new model before inserting it (not applied to updates)."""
-    self._validate_model(self, session, obj)
+    self._validate_model(session, obj)
 
   def insert_with_session(self, session, obj):
     """Adds the object into the session to be inserted."""
