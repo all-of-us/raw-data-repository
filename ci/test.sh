@@ -12,8 +12,7 @@ function activate_local_venv {
   pip install virtualenv safety
   virtualenv venv
   source venv/bin/activate
-  pip install -r requirements.txt
-  pip install MySQL-python
+  pip install -r requirements.txt  
   # The API server doesn't expect to be in venv, it just wants a lib/.
   ln -s venv/lib/python*/site-packages/ lib
 }
