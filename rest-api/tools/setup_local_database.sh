@@ -51,7 +51,7 @@ echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
 echo 'DROP DATABASE IF EXISTS '$DB_NAME'; CREATE DATABASE '$DB_NAME > $CREATE_DB_FILE
 
 echo "Creating empty database..."
-mysql -u "$DB_USER" -p"$PASSWORD" < ${CREATE_DB_FILE}
+mysql -u "$DB_USER" $PASSWORD_ARGS < ${CREATE_DB_FILE}
 if [ $? != '0' ]
 then
   echo "Error creating database. Exiting."
