@@ -11,10 +11,10 @@ from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed
 from sqlalchemy.exc import IntegrityError
 
+
 class ParticipantDaoTest(SqlTestBase):
   def setUp(self):
     super(ParticipantDaoTest, self).setUp()
-    self.setup_data()
     self.dao = ParticipantDao()
     self.participant_summary_dao = ParticipantSummaryDao()
     self.participant_history_dao = ParticipantHistoryDao()
@@ -52,11 +52,8 @@ class ParticipantDaoTest(SqlTestBase):
     self.dao.insert(p)
     
     p2 = Participant(participantId=1, biobankId=3)
-    try:
+    with self.assertRaises(IntegrityError):
       self.dao.insert(p2)
-      self.fail("IntegrityError expected")
-    except IntegrityError:
-      pass
 
   def test_update_no_expected_version(self):
     p = Participant(participantId=1, biobankId=2)
@@ -121,28 +118,19 @@ class ParticipantDaoTest(SqlTestBase):
     p.providerLink = test_data.primary_provider_link('PITT')
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
-      try:
+      with self.assertRaises(PreconditionFailed):
         self.dao.update(p, expected_version=2)
-        self.fail("PreconditionFailed expected")
-      except PreconditionFailed:
-        pass        
-  
+
   def test_update_not_exists(self):
     p = Participant(participantId=1, biobankId=2)
-    try:
+    with self.assertRaises(NotFound):
       self.dao.update(p)
-      self.fail("NotFound expected")
-    except NotFound:
-      pass
 
   def test_bad_hpo_insert(self):
     p = Participant(participantId=1, version=1, biobankId=2,
                     providerLink = test_data.primary_provider_link('FOO'))
-    try:
+    with self.assertRaises(BadRequest):
       self.dao.insert(p)
-      fail ("Should have failed")
-    except BadRequest:
-      pass
 
   def test_bad_hpo_update(self):
     p = Participant(participantId=1, biobankId=2)
@@ -151,8 +139,5 @@ class ParticipantDaoTest(SqlTestBase):
       self.dao.insert(p)
 
     p.providerLink = test_data.primary_provider_link('FOO')
-    try:
+    with self.assertRaises(BadRequest):
       self.dao.update(p)
-      fail("Should have failed")
-    except BadRequest:
-      pass

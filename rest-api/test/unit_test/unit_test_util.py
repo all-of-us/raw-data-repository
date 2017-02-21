@@ -48,26 +48,27 @@ class TestbedTestBase(TestBase):
 
 class SqlTestBase(TestbedTestBase):
   """Base class for unit tests that use the SQL database."""
-  def setUp(self):    
+  def setUp(self, with_data=True):
     super(SqlTestBase, self).setUp()
     dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
-    self.database = dao.database_factory.get_database()      
+    self.database = dao.database_factory.get_database()
     self.database.create_schema()
-  
+    if with_data:
+      self.setup_data()
+
   def tearDown(self):
     self.database.get_engine().dispose()
     super(SqlTestBase, self).tearDown()
-  
+
   def get_database(self):
     return self.database
-  
+
   def setup_data(self):
+    """Creates default data necessary for basic testing."""
     hpo_dao = HPODao()
-    hpo = HPO(hpoId=UNSET_HPO_ID, name='UNSET')    
-    hpo2 = HPO(hpoId=PITT_HPO_ID, name='PITT')
-    hpo_dao.insert(hpo)
-    hpo_dao.insert(hpo2)
-      
+    hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
+    hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT'))
+
   def assertObjEqualsExceptLastModified(self, obj1, obj2):
     dict1 = obj1.asdict()
     dict2 = obj2.asdict()
