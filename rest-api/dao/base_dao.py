@@ -65,7 +65,6 @@ class BaseDao(object):
     By default, validates that the object already exists, and if an expected version ID is provided,
     that it matches.
     """
-    self._validate_model(session, obj)
     if not existing_obj:
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
     # If an expected version was provided, make sure it matches the last modified timestamp of
@@ -74,6 +73,7 @@ class BaseDao(object):
       if existing_obj.version != expected_version:
         raise PreconditionFailed('Expected version was %d; stored version was %d' % \
                                  (expected_version, existing_obj.version))
+    self._validate_model(session, obj)
 
   def _do_update(self, session, obj, existing_obj):
     """Perform the update of the specified object. Subclasses can override to alter things."""
