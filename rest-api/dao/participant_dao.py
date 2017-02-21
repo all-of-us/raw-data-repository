@@ -53,10 +53,7 @@ class ParticipantDao(BaseDao):
       new_hpo_id = self.get_hpo_id(session, obj)
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id        
-        self._update_history(session, obj, existing_obj)
         obj.participantSummary.hpoId = new_hpo_id
-        super(ParticipantDao, self)._do_update(session, obj, existing_obj)
-        return
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 

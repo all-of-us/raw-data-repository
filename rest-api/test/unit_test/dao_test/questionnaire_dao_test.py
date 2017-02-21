@@ -39,12 +39,12 @@ class QuestionnaireDaoTest(SqlTestBase):
     self.questionnaire_question_dao = QuestionnaireQuestionDao()
     
   def test_get_before_insert(self):
-    self.assertFalse(self.dao.get(1))
-    self.assertFalse(self.dao.get_with_children(1))
-    self.assertFalse(self.questionnaire_history_dao.get([1, 1]))
-    self.assertFalse(self.questionnaire_history_dao.get_with_children([1, 1]))
-    self.assertFalse(self.questionnaire_concept_dao.get(1))
-    self.assertFalse(self.questionnaire_question_dao.get(1))
+    self.assertIsNone(self.dao.get(1))
+    self.assertIsNone(self.dao.get_with_children(1))
+    self.assertIsNone(self.questionnaire_history_dao.get([1, 1]))
+    self.assertIsNone(self.questionnaire_history_dao.get_with_children([1, 1]))
+    self.assertIsNone(self.questionnaire_concept_dao.get(1))
+    self.assertIsNone(self.questionnaire_question_dao.get(1))
 
   def check_history(self):
     expected_history = QuestionnaireHistory(questionnaireId=1, version=1, created=TIME,

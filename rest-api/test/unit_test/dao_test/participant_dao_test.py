@@ -19,9 +19,9 @@ class ParticipantDaoTest(SqlTestBase):
     self.participant_history_dao = ParticipantHistoryDao()
 
   def test_get_before_insert(self):
-    self.assertFalse(self.dao.get(1))
-    self.assertFalse(self.participant_summary_dao.get(1))
-    self.assertFalse(self.participant_history_dao.get([1, 1]))
+    self.assertIsNone(self.dao.get(1))
+    self.assertIsNone(self.participant_summary_dao.get(1))
+    self.assertIsNone(self.participant_history_dao.get([1, 1]))
 
   def test_insert(self):
     p = Participant(participantId=1, biobankId=2)
