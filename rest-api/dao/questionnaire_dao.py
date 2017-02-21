@@ -70,6 +70,10 @@ class QuestionnaireHistoryDao(BaseDao):
   All previous versions of a questionnaire are maintained (with the same questionnaireId value and
   a new version value for each update.)
   
+  Old versions of questionnaires and their questions can still be referenced by questionnaire 
+  responses, and are used when generating metrics / participant summaries, and in general 
+  determining what answers participants gave to questions.
+  
   Concepts and questions live under a QuestionnaireHistory entry, such that when the questionnaire
   gets updated new concepts and questions are created and existing ones are left as they were.
   

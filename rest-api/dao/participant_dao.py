@@ -14,6 +14,9 @@ class ParticipantHistoryDao(BaseDao):
   
   All previous versions of a participant are maintained (with the same participantId value and
   a new version value for each update.)
+  
+  Old versions of a participant are used to generate historical metrics (e.g. count the number of
+  participants with different statuses or HPO IDs over time).  
     
   Do not use this DAO for write operations directly; instead use ParticipantDao.
   '''
