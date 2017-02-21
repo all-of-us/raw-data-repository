@@ -9,8 +9,8 @@ from model.participant import Participant, ParticipantHistory
 from participant_enums import UNSET_HPO_ID
 from werkzeug.exceptions import BadRequest
 
-class ParticipantHistoryDao(BaseDao):  
-  '''Maintains version history for participants.
+class ParticipantHistoryDao(BaseDao):
+  """Maintains version history for participants.
   
   All previous versions of a participant are maintained (with the same participantId value and
   a new version value for each update.)
@@ -19,22 +19,31 @@ class ParticipantHistoryDao(BaseDao):
   participants with different statuses or HPO IDs over time).  
     
   Do not use this DAO for write operations directly; instead use ParticipantDao.
-  '''
+  """
   def __init__(self):
     super(ParticipantHistoryDao, self).__init__(ParticipantHistory)
 
   def get_id(self, obj):
     return [obj.participantId, obj.version]
 
+
 class ParticipantDao(BaseDao):
-  
   def __init__(self):
     super(ParticipantDao, self).__init__(Participant)
 
   def get_id(self, obj):
     return obj.participantId
-    
-  def insert_with_session(self, session, obj):    
+
+  def _validate_model(self, session, obj):
+    if not obj.biobankId:
+      raise BadRequest('Biobank ID required.')
+    if obj.hpoId is None:
+      raise BadRequest('HPO ID is required.')
+    hpo = HPODao().get_with_session(session, obj.hpoId)
+    if not hpo:
+      raise BadRequest('No HPO found for ID %r' % obj.hpoId)
+
+  def insert_with_session(self, session, obj):
     obj.hpoId = self.get_hpo_id(session, obj)
     obj.version = 1
     obj.signUpTime = clock.CLOCK.now()
