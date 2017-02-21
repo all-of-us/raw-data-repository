@@ -17,10 +17,10 @@ class QuestionnaireBase(object):
 
 class Questionnaire(QuestionnaireBase, Base):  
   __tablename__ = 'questionnaire'
-  concepts = relationship('QuestionnaireConcept', cascade=False,
+  concepts = relationship('QuestionnaireConcept', cascade="expunge", cascade_backrefs=False,
                           primaryjoin='Questionnaire.questionnaireId==' + \
                             'foreign(QuestionnaireConcept.questionnaireId)')
-  questions = relationship('QuestionnaireQuestion', cascade=False,
+  questions = relationship('QuestionnaireQuestion', cascade="expunge", cascade_backrefs=False,
                            primaryjoin='Questionnaire.questionnaireId==' + \
                             'foreign(QuestionnaireQuestion.questionnaireId)')
 

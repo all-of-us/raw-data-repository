@@ -20,21 +20,38 @@ class QuestionnaireDao(BaseDao):
 
   def _make_history(self, questionnaire):
     history = QuestionnaireHistory()
-    history.fromdict(questionnaire.asdict(), allow_pk=True)
-    history.concepts.extend(questionnaire.concepts)
-    history.questions.extend(questionnaire.questions)
-
+    history.fromdict(questionnaire.asdict(), allow_pk=True)        
+    for concept in questionnaire.concepts:
+      new_concept = QuestionnaireConcept()
+      new_concept.fromdict(concept.asdict())
+      new_concept.questionnaireId = questionnaire.questionnaireId
+      new_concept.questionnaireVersion = questionnaire.version
+      history.concepts.append(new_concept)
+    for question in questionnaire.questions:
+      new_question = QuestionnaireQuestion()
+      new_question.fromdict(question.asdict())      
+      new_question.questionnaireId = questionnaire.questionnaireId
+      new_question.questionnaireVersion = questionnaire.version
+      history.questions.append(new_question)    
+    
     return history
 
   def insert_with_session(self, session, questionnaire):
     questionnaire.created = clock.CLOCK.now()
     questionnaire.lastModified = clock.CLOCK.now()
     questionnaire.version = 1
+    history = self._make_history(questionnaire)
+    # SQLAlchemy emits warnings unnecessarily when these collections aren't cleared.
+    # We don't want these to be cascaded now anyway, so clear them.
+    del questionnaire.concepts[:]
+    del questionnaire.questions[:]
+    
     super(QuestionnaireDao, self).insert_with_session(session, questionnaire)
     # This is needed to assign an ID to the questionnaire, as the client doesn't need to provide
     # one.
-    session.flush()
-    QuestionnaireHistoryDao().insert_with_session(session, self._make_history(questionnaire))
+    session.flush()    
+    history.questionnaireId = questionnaire.questionnaireId
+    QuestionnaireHistoryDao().insert_with_session(session, history)
 
   def _do_update(self, session, obj, existing_obj):
     # If the provider link changes, update the HPO ID on the participant and its summary.
@@ -46,7 +63,7 @@ class QuestionnaireDao(BaseDao):
   def update_with_session(self, session, questionnaire, expected_version_id=None):
     super(QuestionnaireDao, self).update_with_session(session, questionnaire, expected_version_id)
     QuestionnaireHistoryDao().insert_with_session(session, self._make_history(questionnaire))
-
+    
 class QuestionnaireHistoryDao(BaseDao):
 
   def __init__(self):
@@ -55,12 +72,12 @@ class QuestionnaireHistoryDao(BaseDao):
   def get_id(self, obj):
     return [obj.questionnaireId, obj.version]
 
-  def get_with_children(self, questionnaireId):
+  def get_with_children(self, questionnaireIdAndVersion):
     with self.session() as session:
       query = session.query(QuestionnaireHistory) \
           .options(subqueryload(QuestionnaireHistory.concepts),
                    subqueryload(QuestionnaireHistory.questions))
-      return query.get(questionnaireId)
+      return query.get(questionnaireIdAndVersion)
 
 class QuestionnaireConceptDao(BaseDao):
 
