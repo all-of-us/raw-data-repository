@@ -16,7 +16,10 @@ from model.questionnaire_response import QuestionnaireResponse, QuestionnaireRes
 from unit_test_util import SqlTestBase
 
 class DatabaseTest(SqlTestBase):
-  def test_schema(self):    
+  def setUp(self):
+    super(DatabaseTest, self).setUp(with_data=False)
+
+  def test_schema(self):
     session = self.get_database().make_session()
 
     hpo = HPO(hpoId=1, name='UNSET')
