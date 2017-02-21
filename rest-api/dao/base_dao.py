@@ -1,7 +1,7 @@
 import dao.database_factory
 from contextlib import contextmanager
 from sqlalchemy.orm.session import make_transient
-
+from werkzeug.exceptions import NotFound, PreconditionFailed
 
 class BaseDao(object):
   """A data access object base class; defines common methods for inserting, updating, and retrieving
@@ -59,10 +59,7 @@ class BaseDao(object):
       result = self.get_with_session(session, id)
     return result
 
-  def _make_version_id(self, last_modified):
-    return 'W/"{}"'.format(api_util.unix_time_millis(last_modified))
-
-  def _validate_update(self, session, obj, existing_obj, expected_version_id=None):
+  def _validate_update(self, session, obj, existing_obj, expected_version=None):
     """Validates that an update is OK before performing it. (Not applied on insert.)
 
     By default, validates that the object already exists, and if an expected version ID is provided,
@@ -70,32 +67,29 @@ class BaseDao(object):
     """
     self._validate_model(session, obj)
     if not existing_obj:
-      raise NotFound('{} with id {} does not exist'.format(
-          self.model_type.__name__, id))
+      raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
     # If an expected version was provided, make sure it matches the last modified timestamp of
     # the existing entity.
-    if expected_version_id:
-      if existing_obj.lastModified:
-        version_id = self._make_version_id(existing_obj.lastModified)
-      if version_id != expected_version_id:
-        raise PreconditionFailed('If-Match header was {}; stored version was {}'
-                                 .format(expected_version_id, version_id))
+    if expected_version:      
+      if existing_obj.version != expected_version:
+        raise PreconditionFailed('Expected version was %d; stored version was %d' % \
+                                 (expected_version, existing_obj.version))
 
   def _do_update(self, session, obj, existing_obj):
     """Perform the update of the specified object. Subclasses can override to alter things."""
-    session.add(obj)
+    session.merge(obj)
 
-  def update_with_session(self, session, obj, expected_version_id=None):
+  def update_with_session(self, session, obj, expected_version=None):
     """Updates the object in the database with the specified session and (optionally)
     expected version ID."""
     id = self.get_id(obj)
     existing_obj = self.get(self.get_id(obj))
-    self._validate_update(session, obj, existing_obj, expected_version_id)
+    self._validate_update(session, obj, existing_obj, expected_version)
     self._do_update(session, obj, existing_obj)
 
-  def update(self, obj, expected_version_id=None):
+  def update(self, obj, expected_version=None):
     """Updates the object in the database. Will fail if the object doesn't exist already, or
-    if expected_version_id is provided but does not match the lastModified timestamp of the object.
+    if expected_version is provided but does not match the version of the existing object.
     May modify the passed in object."""
     with self.session() as session:
-      return self.update_with_session(session, obj, expected_version_id)
+      return self.update_with_session(session, obj, expected_version)

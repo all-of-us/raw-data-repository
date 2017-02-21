@@ -10,6 +10,16 @@ from participant_enums import UNSET_HPO_ID
 from werkzeug.exceptions import BadRequest
 
 class ParticipantHistoryDao(BaseDao):  
+  '''Maintains version history for participants.
+  
+  All previous versions of a participant are maintained (with the same participantId value and
+  a new version value for each update.)
+  
+  Old versions of a participant are used to generate historical metrics (e.g. count the number of
+  participants with different statuses or HPO IDs over time).  
+    
+  Do not use this DAO for write operations directly; instead use ParticipantDao.
+  '''
   def __init__(self):
     super(ParticipantHistoryDao, self).__init__(ParticipantHistory)
 
@@ -26,8 +36,9 @@ class ParticipantDao(BaseDao):
     
   def insert_with_session(self, session, obj):    
     obj.hpoId = self.get_hpo_id(session, obj)
+    obj.version = 1
     obj.signUpTime = clock.CLOCK.now()
-    obj.lastModified = clock.CLOCK.now()
+    obj.lastModified = obj.signUpTime
     super(ParticipantDao, self).insert_with_session(session, obj)
     obj.participantSummary = ParticipantSummary(participantId=obj.participantId, 
                                                 biobankId=obj.biobankId,
@@ -37,9 +48,9 @@ class ParticipantDao(BaseDao):
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)                                                
 
-  def _update_history(self, session, obj):
+  def _update_history(self, session, obj, existing_obj):
     # Increment the version and add a new history entry.
-    obj.version += 1
+    obj.version = existing_obj.version + 1
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
@@ -47,15 +58,13 @@ class ParticipantDao(BaseDao):
   def _do_update(self, session, obj, existing_obj):
     # If the provider link changes, update the HPO ID on the participant and its summary.
     obj.lastModified = clock.CLOCK.now()
+    obj.signUpTime = existing_obj.signUpTime
     if obj.providerLink != existing_obj.providerLink:
       new_hpo_id = self.get_hpo_id(session, obj)
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id        
-        self._update_history(session, obj)
-        super(ParticipantDao, self)._do_update(session, obj, existing_obj)
         obj.participantSummary.hpoId = new_hpo_id
-        return
-    self._update_history(session, obj)
+    self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
   def get_hpo_id(self, session, obj):

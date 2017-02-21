@@ -48,11 +48,15 @@ class TestbedTestBase(TestBase):
 
 class SqlTestBase(TestbedTestBase):
   """Base class for unit tests that use the SQL database."""
-  def setUp(self):
+  def setUp(self):    
     super(SqlTestBase, self).setUp()
     dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
-    self.database = dao.database_factory.get_database()
+    self.database = dao.database_factory.get_database()      
     self.database.create_schema()
+  
+  def tearDown(self):
+    self.database.get_engine().dispose()
+    super(SqlTestBase, self).tearDown()
   
   def get_database(self):
     return self.database
@@ -154,7 +158,12 @@ def to_dict_strip_last_modified(obj):
   if json.get('signUpTime'):
     del json['signUpTime']
   return json
-
+  
+def sort_lists(obj):  
+  for key, val in obj.iteritems():
+    if type(val) is list:
+      obj[key] = sorted(val)
+  return obj  
 
 def make_deferred_not_run():
   executors.defer = (lambda fn, *args, **kwargs: None)

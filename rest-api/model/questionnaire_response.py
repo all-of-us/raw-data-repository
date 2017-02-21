@@ -28,9 +28,11 @@ class QuestionnaireResponseAnswer(Base):
   questionnaireResponseAnswerId = Column('questionnaire_response_answer_id', Integer, primary_key=True,
                                         autoincrement=False)
   questionnaireResponseId = Column('questionnaire_response_id', Integer, 
-                                   ForeignKey('questionnaire_response.questionnaire_response_id'))
+                                   ForeignKey('questionnaire_response.questionnaire_response_id'),
+                                   nullable=False)
   questionId = Column('question_id', Integer, 
-                      ForeignKey('questionnaire_question.questionnaire_question_id'))
+                      ForeignKey('questionnaire_question.questionnaire_question_id'), 
+                      nullable=False)
   # The time at which this answer was replaced by another answer. Not set if this answer is the
   # latest answer to the question.
   endTime = Column('end_time', DateTime)
