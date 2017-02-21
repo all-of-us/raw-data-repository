@@ -60,8 +60,8 @@ class QuestionnaireDao(BaseDao):
     obj.created = existing_obj.created
     super(QuestionnaireDao, self)._do_update(session, obj, existing_obj)
 
-  def update_with_session(self, session, questionnaire, expected_version_id=None):
-    super(QuestionnaireDao, self).update_with_session(session, questionnaire, expected_version_id)
+  def update_with_session(self, session, questionnaire, expected_version=None):
+    super(QuestionnaireDao, self).update_with_session(session, questionnaire, expected_version)
     QuestionnaireHistoryDao().insert_with_session(session, self._make_history(questionnaire))
         
 class QuestionnaireHistoryDao(BaseDao):
@@ -72,6 +72,8 @@ class QuestionnaireHistoryDao(BaseDao):
   
   Concepts and questions live under a QuestionnaireHistory entry, such that when the questionnaire
   gets updated new concepts and questions are created and existing ones are left as they were.
+  
+  Do not use this DAO for write operations directly; instead use QuestionnaireDao.
   '''
   def __init__(self):
     super(QuestionnaireHistoryDao, self).__init__(QuestionnaireHistory)

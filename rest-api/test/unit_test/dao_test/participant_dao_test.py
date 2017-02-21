@@ -8,7 +8,8 @@ from model.participant_summary import ParticipantSummary
 from participant_enums import UNSET_HPO_ID
 from unit_test_util import SqlTestBase, PITT_HPO_ID
 from clock import FakeClock
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed
+from sqlalchemy.exc import IntegrityError
 
 class ParticipantDaoTest(SqlTestBase):
   def setUp(self):
@@ -46,8 +47,18 @@ class ParticipantDaoTest(SqlTestBase):
                                      signUpTime=time, hpoId=UNSET_HPO_ID)
     self.assertEquals(expected_ph.asdict(), ph.asdict())
 
+  def test_insert_duplicate(self):    
+    p = Participant(participantId=1, biobankId=2)
+    self.dao.insert(p)
+    
+    p2 = Participant(participantId=1, biobankId=3)
+    try:
+      self.dao.insert(p2)
+      self.fail("IntegrityError expected")
+    except IntegrityError:
+      pass
 
-  def test_update(self):
+  def test_update_no_expected_version(self):
     p = Participant(participantId=1, biobankId=2)
     time = datetime.datetime(2016, 1, 1)
     with FakeClock(time):
@@ -83,6 +94,46 @@ class ParticipantDaoTest(SqlTestBase):
                                       signUpTime=time, hpoId=PITT_HPO_ID,
                                       providerLink=p2.providerLink)
     self.assertEquals(expected_ph2.asdict(), ph2.asdict())
+
+  def test_update_right_expected_version(self):
+    p = Participant(participantId=1, biobankId=2)
+    time = datetime.datetime(2016, 1, 1)
+    with FakeClock(time):
+      self.dao.insert(p)
+
+    p.providerLink = test_data.primary_provider_link('PITT')
+    time2 = datetime.datetime(2016, 1, 2)
+    with FakeClock(time2):
+      self.dao.update(p, expected_version=1)
+    
+    p2 = self.dao.get(1);
+    expected_participant = Participant(participantId=1, version=2, biobankId=2, lastModified=time2,
+                                       signUpTime=time, hpoId=PITT_HPO_ID,
+                                       providerLink=p2.providerLink)
+    self.assertEquals(expected_participant.asdict(), p2.asdict())
+    
+  def test_update_wrong_expected_version(self):
+    p = Participant(participantId=1, biobankId=2)
+    time = datetime.datetime(2016, 1, 1)
+    with FakeClock(time):
+      self.dao.insert(p)
+
+    p.providerLink = test_data.primary_provider_link('PITT')
+    time2 = datetime.datetime(2016, 1, 2)
+    with FakeClock(time2):
+      try:
+        self.dao.update(p, expected_version=2)
+        self.fail("PreconditionFailed expected")
+      except PreconditionFailed:
+        pass        
+  
+  def test_update_not_exists(self):
+    p = Participant(participantId=1, biobankId=2)
+    try:
+      self.dao.update(p)
+      self.fail("NotFound expected")
+    except NotFound:
+      pass
 
   def test_bad_hpo_insert(self):
     p = Participant(participantId=1, version=1, biobankId=2,
