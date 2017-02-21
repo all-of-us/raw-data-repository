@@ -48,13 +48,14 @@ class ParticipantDao(BaseDao):
   def _do_update(self, session, obj, existing_obj):
     # If the provider link changes, update the HPO ID on the participant and its summary.
     obj.lastModified = clock.CLOCK.now()
+    obj.signUpTime = existing_obj.signUpTime
     if obj.providerLink != existing_obj.providerLink:
       new_hpo_id = self.get_hpo_id(session, obj)
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id        
         self._update_history(session, obj, existing_obj)
-        super(ParticipantDao, self)._do_update(session, obj, existing_obj)
         obj.participantSummary.hpoId = new_hpo_id
+        super(ParticipantDao, self)._do_update(session, obj, existing_obj)
         return
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)

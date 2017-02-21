@@ -83,7 +83,7 @@ class BaseDao(object):
 
   def _do_update(self, session, obj, existing_obj):
     """Perform the update of the specified object. Subclasses can override to alter things."""
-    session.add(obj)
+    session.merge(obj)
 
   def update_with_session(self, session, obj, expected_version_id=None):
     """Updates the object in the database with the specified session and (optionally)

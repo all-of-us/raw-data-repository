@@ -40,6 +40,7 @@ class QuestionnaireDao(BaseDao):
     # If the provider link changes, update the HPO ID on the participant and its summary.
     obj.lastModified = clock.CLOCK.now()
     obj.version = existing_obj.version + 1
+    obj.created = existing_obj.created
     super(QuestionnaireDao, self)._do_update(session, obj, existing_obj)
 
   def update_with_session(self, session, questionnaire, expected_version_id=None):

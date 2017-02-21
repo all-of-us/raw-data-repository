@@ -75,7 +75,31 @@ class QuestionnaireDaoTest(SqlTestBase):
     self.assertEquals(expected_history.asdict(follow=concepts_and_questions),
                       questionnaire_history.asdict(follow=concepts_and_questions))
 
-    self.assertEquals(expected_concept_1, self.questionnaire_concept_dao.get(1))
-    self.assertEquals(expected_concept_2, self.questionnaire_concept_dao.get(2))
-    self.assertEquals(expected_question_1, self.questionnaire_question_dao.get(1))
-    self.assertEquals(expected_question_2, self.questionnaire_question_dao.get(2))
+    self.assertEquals(expected_concept_1.asdict(), self.questionnaire_concept_dao.get(1).asdict())
+    self.assertEquals(expected_concept_2.asdict(), self.questionnaire_concept_dao.get(2).asdict())
+    self.assertEquals(expected_question_1.asdict(), self.questionnaire_question_dao.get(1).asdict())
+    self.assertEquals(expected_question_2.asdict(), self.questionnaire_question_dao.get(2).asdict())
+
+  def test_update(self):
+    q = Questionnaire(resource='blah')
+    q.concepts.append(QuestionnaireConcept(conceptSystem='a', conceptCode='b'))
+    q.concepts.append(QuestionnaireConcept(conceptSystem='c', conceptCode='d'))
+    q.questions.append(QuestionnaireQuestion(linkId='a', conceptSystem='b', conceptCode='c'))
+    q.questions.append(QuestionnaireQuestion(linkId='d', conceptSystem='e', conceptCode='f'))
+    time = datetime.datetime(2016, 1, 1)
+    with FakeClock(time):
+      self.dao.insert(q)
+
+    q = Questionnaire(questionnaireId=1, resource='foo')
+    q.concepts.append(QuestionnaireConcept(conceptSystem='a', conceptCode='b'))
+    q.concepts.append(QuestionnaireConcept(conceptSystem='x', conceptCode='y'))
+    q.questions.append(QuestionnaireQuestion(linkId='x', conceptSystem='y', conceptCode='z'))
+    q.questions.append(QuestionnaireQuestion(linkId='d', conceptSystem='e', conceptCode='f'))
+    time2 = datetime.datetime(2016, 1, 2)
+    with FakeClock(time2):
+      self.dao.update(q)
+
+    expected_questionnaire = Questionnaire(questionnaireId=1, version=2, created=time,
+                                          lastModified=time2, resource='foo')
+    questionnaire = self.dao.get(1)
+    self.assertEquals(expected_questionnaire.asdict(), questionnaire.asdict())
