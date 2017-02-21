@@ -44,7 +44,8 @@ def main(args):
 
     if not configs_match and args.update:
       print '-------------- Updating Server -------------------'
-      client.request_json(config_path, 'POST', combined_config,
+      method = 'POST' if args.key else 'PUT'
+      client.request_json(config_path, method, combined_config,
                           test_unauthenticated=False)
 
 def compare_configs(comparable_file, comparable_server):
