@@ -10,6 +10,13 @@ from participant_enums import UNSET_HPO_ID
 from werkzeug.exceptions import BadRequest
 
 class ParticipantHistoryDao(BaseDao):  
+  '''Maintains version history for participants.
+  
+  All previous versions of a participant are maintained (with the same participantId value and
+  a new version value for each update.)
+    
+  Do not use this DAO for write operations directly; instead use ParticipantDao.
+  '''
   def __init__(self):
     super(ParticipantHistoryDao, self).__init__(ParticipantHistory)
 

@@ -63,9 +63,16 @@ class QuestionnaireDao(BaseDao):
   def update_with_session(self, session, questionnaire, expected_version_id=None):
     super(QuestionnaireDao, self).update_with_session(session, questionnaire, expected_version_id)
     QuestionnaireHistoryDao().insert_with_session(session, self._make_history(questionnaire))
-    
+        
 class QuestionnaireHistoryDao(BaseDao):
-
+  '''Maintains version history for questionnaires.
+  
+  All previous versions of a questionnaire are maintained (with the same questionnaireId value and
+  a new version value for each update.)
+  
+  Concepts and questions live under a QuestionnaireHistory entry, such that when the questionnaire
+  gets updated new concepts and questions are created and existing ones are left as they were.
+  '''
   def __init__(self):
     super(QuestionnaireHistoryDao, self).__init__(QuestionnaireHistory)
 
