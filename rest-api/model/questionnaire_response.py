@@ -12,7 +12,7 @@ class QuestionnaireResponse(Base):
   questionnaireVersion = Column('questionnaire_version', Integer, nullable=False)  
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'), 
                          nullable=False)
-  created = Column('created', DateTime, default=clock.CLOCK.now, nullable=False)
+  created = Column('created', DateTime, nullable=False)
   resource = Column('resource', BLOB, nullable=False)
   answers = relationship('QuestionnaireResponseAnswer', cascade='all, delete-orphan')
   __table_args__ = (
