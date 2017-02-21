@@ -7,7 +7,8 @@ from model.questionnaire import Questionnaire, QuestionnaireHistory
 from model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from unit_test_util import SqlTestBase, sort_lists
 from clock import FakeClock
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed
+from sqlalchemy.exc import IntegrityError
 
 CONCEPT_1 = QuestionnaireConcept(conceptSystem='a', conceptCode='b')
 CONCEPT_2 = QuestionnaireConcept(conceptSystem='c', conceptCode='d')
@@ -94,7 +95,16 @@ class QuestionnaireDaoTest(SqlTestBase):
     self.assertEquals(sort_lists(expected_questionnaire.asdict(follow=CONCEPTS_AND_QUESTIONS)),
                       sort_lists(questionnaire.asdict(follow=CONCEPTS_AND_QUESTIONS)))
   
-  def test_update(self):
+  def test_insert_duplicate(self):    
+    q = Questionnaire(questionnaireId=1, resource='blah')
+    self.dao.insert(q)
+    try:
+      self.dao.insert(q)
+      self.fail("IntegrityError expected")
+    except IntegrityError:
+      pass    
+  
+  def test_update_no_expected_version(self):
     q = Questionnaire(resource='blah')
     q.concepts.append(CONCEPT_1)
     q.concepts.append(CONCEPT_2)
@@ -156,4 +166,41 @@ class QuestionnaireDaoTest(SqlTestBase):
     self.assertEquals(expected_concept_2.asdict(), self.questionnaire_concept_dao.get(4).asdict())
     self.assertEquals(expected_question_1.asdict(), self.questionnaire_question_dao.get(3).asdict())
     self.assertEquals(expected_question_2.asdict(), self.questionnaire_question_dao.get(4).asdict())
+  
+  def test_update_right_expected_version(self):
+    q = Questionnaire(resource='blah')
+    time = datetime.datetime(2016, 1, 1)
+    with FakeClock(TIME):
+      self.dao.insert(q)
     
+    q = Questionnaire(questionnaireId=1, resource='foo')    
+    with FakeClock(TIME_2):
+      self.dao.update(q, expected_version=1)
+    
+    expected_questionnaire = Questionnaire(questionnaireId=1, version=2, created=TIME,
+                                          lastModified=TIME_2, resource='foo')
+    questionnaire = self.dao.get(1)
+    self.assertEquals(expected_questionnaire.asdict(), questionnaire.asdict())\
+  
+  def test_update_wrong_expected_version(self):
+    q = Questionnaire(resource='blah')
+    time = datetime.datetime(2016, 1, 1)
+    with FakeClock(TIME):
+      self.dao.insert(q)
+    
+    q = Questionnaire(questionnaireId=1, resource='foo')    
+    with FakeClock(TIME_2):
+      try:
+        self.dao.update(q, expected_version=2)
+        self.fail("PreconditionFailed expected")
+      except PreconditionFailed:
+        pass
+      
+  def test_update_not_exists(self):    
+    q = Questionnaire(questionnaireId=1, resource='blah')
+    try:
+      self.dao.update(q)
+      self.fail("NotFound expected")
+    except NotFound:
+      pass
+  
