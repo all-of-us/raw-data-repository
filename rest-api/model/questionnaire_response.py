@@ -7,7 +7,7 @@ from sqlalchemy import Column, Integer, Date, DateTime, BLOB, ForeignKey, String
 class QuestionnaireResponse(Base):
   """"A response to a questionnaire for a participant. Contains answers to questions found in the
   questionnaire."""
-  __tablename__  = 'questionnaire_response'
+  __tablename__ = 'questionnaire_response'
   questionnaireResponseId = Column('questionnaire_response_id', Integer, primary_key=True, 
                                    autoincrement=False)
   questionnaireId = Column('questionnaire_id', Integer, nullable=False)
@@ -35,7 +35,7 @@ class QuestionnaireResponseAnswer(Base):
   answers to questions with the same concept codes that don't have endTime set yet should have
   endTime set to the current time.
   """
-  __tablename__  = 'questionnaire_response_answer'
+  __tablename__ = 'questionnaire_response_answer'
   questionnaireResponseAnswerId = Column(
       'questionnaire_response_answer_id', Integer, primary_key=True, autoincrement=False)
   questionnaireResponseId = Column('questionnaire_response_id', Integer, 
