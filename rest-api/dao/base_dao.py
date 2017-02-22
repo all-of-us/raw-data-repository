@@ -48,19 +48,13 @@ class BaseDao(object):
     raise NotImplementedError
 
   def get_with_session(self, session, obj_id):
-    """Finds an object by ID for this type using the specified session.
-
-    The returned object has lazy-loading relationships (no subqueryload is specified).
-
-    Returns None if not found.
-    """
+    """Gets an object by ID for this type using the specified session. Returns None if not found."""
     return session.query(self.model_type).get(obj_id)
 
   def get(self, obj_id):
     """Gets an object with the specified ID for this type from the database.
 
-    The returned object must eagerly load any relationships (use subqueryload), since once the
-    session is out of scope the object cannot issue further queries.
+    Use get_with_children to eagerly load any child objects (using subqueryload).
 
     Returns None if not found.
     """

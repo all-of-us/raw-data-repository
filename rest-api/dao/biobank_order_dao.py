@@ -40,11 +40,12 @@ class BiobankOrderDao(BaseDao):
       raise BadRequest('At least one identifier is required.')
     # Verify that all no identifier is in use by another order.
     for identifier in obj.identifiers:
-      for existing in session.query(BiobankOrderIdentifier).filter_by(
-          system=identifier.system).filter_by(value=identifier.value):
-        if existing.biobankOrderId != obj.biobankOrderId:
-          raise BadRequest(
-              'Identifier %s is already in use by order %d' % (identifier, existing.biobankOrderId))
+      for existing in (session.query(BiobankOrderIdentifier)
+          .filter_by(system=identifier.system)
+          .filter_by(value=identifier.value)
+          .filter(BiobankOrderIdentifier.biobankOrderId != obj.biobankOrderId)):
+        raise BadRequest(
+            'Identifier %s is already in use by order %d' % (identifier, existing.biobankOrderId))
 
   def _validate_order_sample(self, sample):
     if not sample.test:
@@ -54,6 +55,8 @@ class BiobankOrderDao(BaseDao):
     if sample.test not in VALID_TESTS:
       raise BadRequest('Invalid test value %r not in %s.' % (sample.test, VALID_TESTS))
 
-  def get(self, obj_id):
+  def get_with_children(self, obj_id):
     with self.session() as session:
-      return session.query(BiobankOrder).options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples)).get(obj_id)
+      return (session.query(BiobankOrder)
+          .options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples))
+          .get(obj_id))

@@ -26,7 +26,7 @@ class BiobankOrderDaoTest(SqlTestBase):
         biobankOrderId=order_id,
         participantId=self.participant.participantId,
         identifiers=[BiobankOrderIdentifier(system='rdr', value='firstid')]))
-    fetched = self.dao.get(order_id)
+    fetched = self.dao.get_with_children(order_id)
     self.assertIsNotNone(fetched)
     self.assertEquals([('rdr', 'firstid')], [(i.system, i.value) for i in fetched.identifiers])
 
@@ -49,7 +49,7 @@ class BiobankOrderDaoTest(SqlTestBase):
         identifiers=[BiobankOrderIdentifier(system='a', value='b')],
         samples=[BiobankOrderedSample(
             test=self._A_TEST, processingRequired=True, description='tested it')]))
-    fetched = self.dao.get(order_id)
+    fetched = self.dao.get_with_children(order_id)
     self.assertEquals([self._A_TEST], [s.test for s in fetched.samples])
 
   def test_store_invalid_test(self):
