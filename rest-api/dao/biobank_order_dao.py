@@ -3,6 +3,7 @@ from dao.participant_dao import ParticipantDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from model.log_position import LogPosition
 
+from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
 
@@ -52,3 +53,7 @@ class BiobankOrderDao(BaseDao):
       raise BadRequest('Missing field: sample.description in %s.' % sample)
     if sample.test not in VALID_TESTS:
       raise BadRequest('Invalid test value %r not in %s.' % (sample.test, VALID_TESTS))
+
+  def get(self, obj_id):
+    with self.session() as session:
+      return session.query(BiobankOrder).options(subqueryload(BiobankOrder.identifiers)).get(obj_id)

@@ -24,7 +24,9 @@ class BiobankOrderDaoTest(SqlTestBase):
         biobankOrderId=order_id,
         participantId=self.participant.participantId,
         identifiers=[BiobankOrderIdentifier(system='rdr', value='firstid')]))
-    self.assertIsNotNone(self.dao.get(order_id))
+    fetched = self.dao.get(order_id)
+    self.assertIsNotNone(fetched)
+    self.assertEquals([('rdr', 'firstid')], [(i.system, i.value) for i in fetched.identifiers])
 
   def test_reject_used_identifier(self):
     self.dao.insert(BiobankOrder(
