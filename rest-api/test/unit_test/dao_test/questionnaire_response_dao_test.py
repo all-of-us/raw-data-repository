@@ -12,10 +12,10 @@ from clock import FakeClock
 from werkzeug.exceptions import NotFound, PreconditionFailed, BadRequest
 from sqlalchemy.exc import IntegrityError
 
-QUESTION_1 = QuestionnaireQuestion(linkId='a', conceptSystem='b', conceptCode='c')
-QUESTION_2 = QuestionnaireQuestion(linkId='d', conceptSystem='e', conceptCode='f')
+CONCEPT_1_QUESTION_1 = QuestionnaireQuestion(linkId='a', conceptSystem='b', conceptCode='c')
+CONCEPT_2_QUESTION = QuestionnaireQuestion(linkId='d', conceptSystem='e', conceptCode='f')
 # Same concept as question 1
-QUESTION_3 = QuestionnaireQuestion(linkId='x', conceptSystem='b', conceptCode='c')
+CONCEPT_1_QUESTION_2 = QuestionnaireQuestion(linkId='x', conceptSystem='b', conceptCode='c')
 
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -85,24 +85,17 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     with self.assertRaises(IntegrityError):
       self.questionnaire_response_dao.insert(qr2)
 
-  def setup_questionnaires(self):
-    p = Participant(participantId=1, biobankId=2)
-    self.participant_dao.insert(p)
-    q = Questionnaire(resource='blah')
-    q.questions.append(QUESTION_1)
-    q.questions.append(QUESTION_2)
-    self.questionnaire_dao.insert(q)
-
-    q2 = Questionnaire(resource='blarg')
-    q2.questions.append(QUESTION_3)
-    self.questionnaire_dao.insert(q2)
-
   def check_response(self, expected_qr):
     qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
     self.assertEquals(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
 
   def test_insert_with_answers(self):
-    self.setup_questionnaires()
+    p = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(p)
+    q = Questionnaire(resource='blah')
+    q.questions.append(CONCEPT_1_QUESTION_1)
+    q.questions.append(CONCEPT_2_QUESTION)
+    self.questionnaire_dao.insert(q)
 
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
@@ -141,9 +134,19 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     same participant, whether on the same questionnaire or a different questionnaire,
     without affecting other answers.
     """
+    p = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(p)
+    q = Questionnaire(resource='blah')
+    q.questions.append(CONCEPT_1_QUESTION_1)
+    q.questions.append(CONCEPT_2_QUESTION)
+    self.questionnaire_dao.insert(q)
 
-    self.setup_questionnaires()
-
+    q2 = Questionnaire(resource='blarg')
+    # The question on the second questionnaire has the same concept as the first question on the
+    # first questionnaire; answers to it will thus set endTime for answers to the first question.
+    q2.questions.append(CONCEPT_1_QUESTION_2)
+    self.questionnaire_dao.insert(q2)
+    
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,

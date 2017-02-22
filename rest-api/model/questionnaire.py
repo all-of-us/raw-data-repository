@@ -14,6 +14,7 @@ class QuestionnaireBase(object):
   
 
 class Questionnaire(QuestionnaireBase, Base):  
+  """A questionnaire containing questions to pose to participants."""
   __tablename__ = 'questionnaire'
   concepts = relationship('QuestionnaireConcept', cascade="expunge", cascade_backrefs=False,
                           primaryjoin='Questionnaire.questionnaireId==' + \
@@ -48,7 +49,12 @@ Index('questionnaire_concept_system_code', QuestionnaireConcept.conceptSystem,
 
 class QuestionnaireQuestion(Base):
   """A question in a questionnaire. These should be copied whenever a new version of a 
-  questionnaire is created."""
+  questionnaire is created.
+
+  Each question has a concept system and code defining what the question is about. Questions on
+  different questionnaires can share the same concept code, but concept code is unique within a
+  given questionnaire.
+  """
   __tablename__ = 'questionnaire_question'
   questionnaireQuestionId = Column('questionnaire_question_id', Integer, primary_key=True)
   questionnaireId = Column('questionnaire_id', Integer)
