@@ -47,17 +47,25 @@ class BaseDao(object):
     primary key column tables). Must be overridden by subclasses."""
     raise NotImplementedError
 
-  def get_with_session(self, session, id):
-    """Gets an object with the specified ID for this type from the database using the specified
-    session. Returns None if not found."""
-    return session.query(self.model_type).get(id)
+  def get_with_session(self, session, obj_id):
+    """Finds an object by ID for this type using the specified session.
 
-  def get(self, id):
+    The returned object has lazy-loading relationships (no subqueryload is specified).
+
+    Returns None if not found.
+    """
+    return session.query(self.model_type).get(obj_id)
+
+  def get(self, obj_id):
     """Gets an object with the specified ID for this type from the database.
-    Returns None if not found."""
+
+    The returned object must eagerly load any relationships (use subqueryload), since once the
+    session is out of scope the object cannot issue further queries.
+
+    Returns None if not found.
+    """
     with self.session() as session:
-      result = self.get_with_session(session, id)
-    return result
+      return self.get_with_session(session, obj_id)
 
   def _validate_update(self, session, obj, existing_obj, expected_version=None):
     """Validates that an update is OK before performing it. (Not applied on insert.)
