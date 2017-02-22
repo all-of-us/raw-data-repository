@@ -1,9 +1,12 @@
 import clock
 
 from dao.base_dao import BaseDao
+from dao.participant_dao import ParticipantDao
+from dao.questionnaire_dao import QuestionnaireHistoryDao
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from sqlalchemy.orm import subqueryload
+from werkzeug.exceptions import BadRequest
 
 class QuestionnaireResponseDao(BaseDao):
 
@@ -18,6 +21,28 @@ class QuestionnaireResponseDao(BaseDao):
       query = session.query(QuestionnaireResponse) \
           .options(subqueryload(QuestionnaireResponse.answers))
       return query.get(questionnaire_response_id)
+
+  def _validate_model(self, session, obj):
+    if not obj.participantId:
+      raise BadRequest('QuestionnaireResponse.participantId is required.')
+    if not obj.questionnaireId:
+      raise BadRequest('QuestionnaireResponse.questionnaireId is required.')
+    if not obj.questionnaireVersion:
+      raise BadRequest('QuestionnaireResponse.questionnaireVersion is required.')
+    if not ParticipantDao().get_with_session(session, obj.participantId):
+      raise BadRequest('Participant with ID %s is not found.' % obj.participantId)
+    qh = QuestionnaireHistoryDao().get_with_children_with_session(session,
+                                                                  [obj.questionnaireId,
+                                                                   obj.questionnaireVersion])
+    if not qh:
+      raise BadRequest('Questionnaire with ID %s, version %s is not found' %
+                       (obj.questionnaireId, obj.questionnaireVersion))
+    question_ids = set([question.questionnaireQuestionId for question in qh.questions])
+    for answer in obj.answers:
+      if answer.questionId not in question_ids:
+        raise BadRequest('Questionnaire response contains question ID %s not in questionnaire.' %
+                         answer.questionId)
+
 
   def insert_with_session(self, session, questionnaireResponse):
     questionnaireResponse.created = clock.CLOCK.now()

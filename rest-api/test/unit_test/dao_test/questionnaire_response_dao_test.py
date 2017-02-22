@@ -9,7 +9,7 @@ from model.questionnaire import Questionnaire, QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from unit_test_util import SqlTestBase, sort_lists
 from clock import FakeClock
-from werkzeug.exceptions import NotFound, PreconditionFailed
+from werkzeug.exceptions import NotFound, PreconditionFailed, BadRequest
 from sqlalchemy.exc import IntegrityError
 
 QUESTION_1 = QuestionnaireQuestion(linkId='a', conceptSystem='b', conceptCode='c')
@@ -41,22 +41,16 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     self.participant_dao.insert(p)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
-    try:
+    with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
-      fail("IntegrityError expected")
-    except IntegrityError:
-      pass
 
   def test_insert_participant_not_found(self):
     q = Questionnaire(resource='blah')
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
-    try:
+    with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
-      fail("IntegrityError expected")
-    except IntegrityError:
-      pass
 
   def test_insert_no_answers(self):
     p = Participant(participantId=1, biobankId=2)
@@ -88,11 +82,8 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     self.questionnaire_response_dao.insert(qr)
     qr2 = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                 participantId=1, resource='xxx')
-    try:
+    with self.assertRaises(IntegrityError):
       self.questionnaire_response_dao.insert(qr2)
-      self.fail("IntegrityError expected")
-    except IntegrityError:
-      pass
 
   def test_insert_with_answers(self):
     p = Participant(participantId=1, biobankId=2)
