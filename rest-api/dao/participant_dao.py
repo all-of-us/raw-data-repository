@@ -9,6 +9,7 @@ from model.participant import Participant, ParticipantHistory
 from participant_enums import UNSET_HPO_ID
 from werkzeug.exceptions import BadRequest
 
+
 class ParticipantHistoryDao(BaseDao):
   """Maintains version history for participants.
   
@@ -37,11 +38,6 @@ class ParticipantDao(BaseDao):
   def _validate_model(self, session, obj):
     if not obj.biobankId:
       raise BadRequest('Biobank ID required.')
-    if obj.hpoId is None:
-      raise BadRequest('HPO ID is required.')
-    hpo = HPODao().get_with_session(session, obj.hpoId)
-    if not hpo:
-      raise BadRequest('No HPO found for ID %r' % obj.hpoId)
 
   def insert_with_session(self, session, obj):
     obj.hpoId = self.get_hpo_id(session, obj)
