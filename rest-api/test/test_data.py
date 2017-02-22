@@ -34,3 +34,10 @@ def load_measurement_json_amendment(participant_id, amended_id, now=None):
         })
   measurement['entry'][0]['resource'].update(extension)
   return measurement
+
+
+def load_biobank_order(participant_id):
+  with open(data_path('biobank_order_1.json')) as order_file:
+    return json.loads(order_file.read() % {
+      'participant_id': participant_id,
+    })
