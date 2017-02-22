@@ -4,7 +4,7 @@ This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import app_util
 import config_api
-import biobank_orders_api
+import biobank_order_api
 import metrics_api
 import participant_summary_api
 import participants_api
@@ -64,7 +64,7 @@ api.add_resource(ppi_api.QuestionnaireResponseAPI,
                  endpoint='participant.questionnaire_response',
                  methods=['POST', 'GET'])
 
-api.add_resource(biobank_orders_api.BiobankOrderAPI,
+api.add_resource(biobank_order_api.BiobankOrderAPI,
                  PREFIX + 'Participant/<string:participant_id>/BiobankOrder/<string:biobank_order_id>',
                  PREFIX + 'Participant/<string:participant_id>/BiobankOrder',
                  endpoint='participant.biobank_order',
