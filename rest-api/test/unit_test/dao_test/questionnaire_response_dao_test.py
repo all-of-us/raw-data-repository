@@ -1,5 +1,4 @@
 import datetime
-import test_data
 
 from dao.participant_dao import ParticipantDao
 from dao.questionnaire_dao import QuestionnaireDao
@@ -7,9 +6,9 @@ from dao.questionnaire_response_dao import QuestionnaireResponseDao, Questionnai
 from model.participant import Participant
 from model.questionnaire import Questionnaire, QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from unit_test_util import SqlTestBase, sort_lists
+from unit_test_util import SqlTestBase
 from clock import FakeClock
-from werkzeug.exceptions import NotFound, PreconditionFailed, BadRequest
+from werkzeug.exceptions import BadRequest
 from sqlalchemy.exc import IntegrityError
 
 CONCEPT_1_QUESTION_1 = QuestionnaireQuestion(linkId='a', conceptSystem='b', conceptCode='c')
