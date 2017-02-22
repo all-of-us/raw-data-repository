@@ -93,7 +93,7 @@ class QuestionnaireHistoryDao(BaseDao):
 
   def get_with_children(self, questionnaireIdAndVersion):
     with self.session() as session:
-      return get_with_children_with_session(session, questionnaireIdAndVersion)
+      return self.get_with_children_with_session(session, questionnaireIdAndVersion)
 
 class QuestionnaireConceptDao(BaseDao):
 

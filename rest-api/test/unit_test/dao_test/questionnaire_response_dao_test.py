@@ -85,13 +85,25 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     with self.assertRaises(IntegrityError):
       self.questionnaire_response_dao.insert(qr2)
 
-  def test_insert_with_answers(self):
+  def setup_questionnaires(self):
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
     q = Questionnaire(resource='blah')
     q.questions.append(QUESTION_1)
     q.questions.append(QUESTION_2)
     self.questionnaire_dao.insert(q)
+
+    q2 = Questionnaire(resource='blarg')
+    q2.questions.append(QUESTION_3)
+    self.questionnaire_dao.insert(q2)
+
+  def check_response(self, expected_qr):
+    qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
+    self.assertEquals(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
+
+  def test_insert_with_answers(self):
+    self.setup_questionnaires()
+
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
@@ -116,22 +128,11 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
 
     expected_qr.answers.append(answer_1)
     expected_qr.answers.append(answer_2)
-
-    qr3 = self.questionnaire_response_dao.get_with_children(1)
-    self.assertEquals(expected_qr.asdict(follow=ANSWERS), qr3.asdict(follow=ANSWERS))
+    self.check_response(expected_qr)
 
 
   def test_insert_same_questionnaire_three_times(self):
-    p = Participant(participantId=1, biobankId=2)
-    self.participant_dao.insert(p)
-    q = Questionnaire(resource='blah')
-    q.questions.append(QUESTION_1)
-    q.questions.append(QUESTION_2)
-    self.questionnaire_dao.insert(q)
-
-    q2 = Questionnaire(resource='blarg')
-    q2.questions.append(QUESTION_3)
-    self.questionnaire_dao.insert(q2)
+    self.setup_questionnaires()
 
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
@@ -170,16 +171,14 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     expected_qr.answers.append(answer_1)
     expected_qr.answers.append(answer_2)
 
-    qr = self.questionnaire_response_dao.get_with_children(1)
-    self.assertEquals(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
+    self.check_response(expected_qr)
 
     # The new questionnaire response should be there, too.
     expected_qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
                                          questionnaireVersion=1, participantId=1,
                                          resource='foo', created=time2)
     expected_qr2.answers.append(answer_3)
-    qr2 = self.questionnaire_response_dao.get_with_children(2)
-    self.assertEquals(expected_qr2.asdict(follow=ANSWERS), qr2.asdict(follow=ANSWERS))
+    self.check_response(expected_qr2)
 
     qr3 = QuestionnaireResponse(questionnaireResponseId=3, questionnaireId=2,
                                 questionnaireVersion=1, participantId=1, resource='zzz')
@@ -194,19 +193,16 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
       self.questionnaire_response_dao.insert(qr3)
 
     # The first questionnaire response hasn't changed.
-    qr = self.questionnaire_response_dao.get_with_children(1)
-    self.assertEquals(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
+    self.check_response(expected_qr)
 
     # The second questionnaire response's answer should have had an endTime set.
     answer_3.endTime = time3
-    qr2 = self.questionnaire_response_dao.get_with_children(2)
-    self.assertEquals(expected_qr2.asdict(follow=ANSWERS), qr2.asdict(follow=ANSWERS))
+    self.check_response(expected_qr2)
 
     # The third questionnaire response should be there.
     expected_qr3 = QuestionnaireResponse(questionnaireResponseId=3, questionnaireId=2,
                                         questionnaireVersion=1, participantId=1,
                                         resource='zzz', created=time3)
     expected_qr3.answers.append(answer_4)
-    qr3 = self.questionnaire_response_dao.get_with_children(3)
-    self.assertEquals(expected_qr3.asdict(follow=ANSWERS), qr3.asdict(follow=ANSWERS))
+    self.check_response(expected_qr3)
 

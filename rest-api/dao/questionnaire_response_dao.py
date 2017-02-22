@@ -47,9 +47,9 @@ class QuestionnaireResponseDao(BaseDao):
   def insert_with_session(self, session, questionnaireResponse):
     questionnaireResponse.created = clock.CLOCK.now()
     question_ids = [answer.questionId for answer in questionnaireResponse.answers]
-    current_answers = QuestionnaireResponseAnswerDao().\
+    current_answers = (QuestionnaireResponseAnswerDao().
         get_current_answers_for_concepts(session, questionnaireResponse.participantId,
-                                         question_ids)
+                                         question_ids))
     super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaireResponse)
     # Mark existing answers for the questions in this response given previously by this participant
     # as ended.
@@ -70,14 +70,14 @@ class QuestionnaireResponseAnswerDao(BaseDao):
     concepts as the questions with the provided IDs."""
     if not question_ids:
       return []
-    subquery = session.query(QuestionnaireQuestion) \
-        .filter(QuestionnaireQuestion.questionnaireQuestionId.in_(question_ids)) \
-        .subquery()
+    subquery = (session.query(QuestionnaireQuestion)
+        .filter(QuestionnaireQuestion.questionnaireQuestionId.in_(question_ids))
+        .subquery())
 
-    return session.query(QuestionnaireResponseAnswer).join(QuestionnaireResponse) \
-        .join(QuestionnaireQuestion) \
-        .filter(QuestionnaireResponse.participantId == participant_id) \
-        .filter(QuestionnaireResponseAnswer.endTime == None) \
-        .filter(QuestionnaireQuestion.conceptSystem == subquery.c.concept_system) \
-        .filter(QuestionnaireQuestion.conceptCode == subquery.c.concept_code) \
-        .all()
+    return (session.query(QuestionnaireResponseAnswer).join(QuestionnaireResponse)
+        .join(QuestionnaireQuestion)
+        .filter(QuestionnaireResponse.participantId == participant_id)
+        .filter(QuestionnaireResponseAnswer.endTime == None)
+        .filter(QuestionnaireQuestion.conceptSystem == subquery.c.concept_system)
+        .filter(QuestionnaireQuestion.conceptCode == subquery.c.concept_code)
+        .all())
