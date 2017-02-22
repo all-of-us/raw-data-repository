@@ -85,12 +85,15 @@ class QuestionnaireHistoryDao(BaseDao):
   def get_id(self, obj):
     return [obj.questionnaireId, obj.version]
 
+  def get_with_children_with_session(self, session, questionnaireIdAndVersion):
+    query = session.query(QuestionnaireHistory) \
+        .options(subqueryload(QuestionnaireHistory.concepts),
+                 subqueryload(QuestionnaireHistory.questions))
+    return query.get(questionnaireIdAndVersion)
+
   def get_with_children(self, questionnaireIdAndVersion):
     with self.session() as session:
-      query = session.query(QuestionnaireHistory) \
-          .options(subqueryload(QuestionnaireHistory.concepts),
-                   subqueryload(QuestionnaireHistory.questions))
-      return query.get(questionnaireIdAndVersion)
+      return self.get_with_children_with_session(session, questionnaireIdAndVersion)
 
 class QuestionnaireConceptDao(BaseDao):
 
