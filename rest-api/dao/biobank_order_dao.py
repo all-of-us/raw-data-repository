@@ -21,6 +21,8 @@ class BiobankOrderDao(BaseDao):
     super(BiobankOrderDao, self)._validate_insert(session, obj)
     if obj.biobankOrderId is None:
       raise BadRequest('Client must supply biobankOrderId.')
+    if self.get(obj.biobankOrderId) is not None:
+      raise BadRequest('BiobankOrder %d already exists.' % obj.biobankOrderId)
     if obj.logPositionId is not None:
       raise BadRequest('BiobankOrder LogPosition ID must be auto-generated.')
 
@@ -60,3 +62,10 @@ class BiobankOrderDao(BaseDao):
       return (session.query(BiobankOrder)
           .options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples))
           .get(obj_id))
+
+  def list_for_participant(self, participant_id):
+    with self.session() as session:
+      return (session.query(BiobankOrder)
+          .where(participantId=participant_id)
+          .options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples))
+          .all())
