@@ -131,7 +131,17 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     self.check_response(expected_qr)
 
 
-  def test_insert_same_questionnaire_three_times(self):
+  def test_insert_qr_three_times(self):
+    """Adds three questionnaire responses for the same participant.
+
+    The latter two responses are for the same questionnaire, answering a question that has the
+    same concept code and system as a question found on the first (different) questionnaire.
+
+    Verifies that new answers set endTime on answers for questions with the same concept for the
+    same participant, whether on the same questionnaire or a different questionnaire,
+    without affecting other answers.
+    """
+
     self.setup_questionnaires()
 
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
