@@ -8,11 +8,24 @@ trap 'kill $(jobs -p) || true' EXIT
 grep -ril "BEGIN PRIVATE KEY" . | sort > credentials_files
 diff credentials_files ci/allowed_private_key_files
 
+# Pylint checks. Use pylint --list-msgs to see more available messages.
+# More options are set in rest-api/pylintrc.
+ENABLE_FOR_TESTS="\
+  --enable=bad-indentation,broad-except,bare-except,logging-too-many-args \
+  --enable=unused-argument,redefined-outer-name,redefined-builtin,superfluous-parens \
+  --enable=unused-import,unused-variable,undefined-variable"
+ENABLE_FOR_ALL="$ENABLE_FOR_TESTS --enable=bad-whitespace,line-too-long,unused-import,unused-variable"
+PYLINT_OPTS="-r n --disable=all"
+git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e '_test' | \
+    parallel pylint $PYLINT_OPTS $ENABLE_FOR_ALL
+git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' | \
+    parallel pylint $PYLINT_OPTS $ENABLE_FOR_TESTS
+
 function activate_local_venv {
   pip install virtualenv safety
   virtualenv venv
   source venv/bin/activate
-  pip install -r requirements.txt  
+  pip install -r requirements.txt
   # The API server doesn't expect to be in venv, it just wants a lib/.
   ln -s venv/lib/python*/site-packages/ lib
 }
@@ -20,19 +33,6 @@ function activate_local_venv {
 cd rest-api
 activate_local_venv
 git submodule update --init
-
-# Pylint checks. Use pylint --list-msgs to see more available messages.
-# More options are set in rest-api/pylintrc.
-pylint -r n -f text \
-  --disable=all \
-  --enable=bad-whitespace,bad-indentation,broad-except,bare-except \
-  --enable=logging-too-many-args,line-too-long,unused-import,unused-variable \
-  --enable=unused-argument,redefined-outer-name,redefined-builtin,unused-import \
-  --enable=unused-variable,undefined-variable \
-  *.py \
-  offline/*.py \
-  client/*.py \
-  ../ci/*.py
 
 safety check  # checks current (API) venv
 

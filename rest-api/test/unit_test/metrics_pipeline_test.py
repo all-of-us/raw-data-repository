@@ -16,12 +16,10 @@ import questionnaire
 import questionnaire_response
 import measurements
 import unittest
-import os
 
 from extraction import ExtractionResult, BASE_VALUES, UNSET
 from offline import metrics_pipeline
 from offline.metrics_config import FieldDef
-from collections import Counter
 from google.appengine.ext import ndb
 from mapreduce import test_support
 from testlib import testutil

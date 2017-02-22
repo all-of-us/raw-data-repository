@@ -6,7 +6,6 @@ import participant_dao
 import participant_summary
 import questionnaire
 import questionnaire_response
-import unittest
 
 from offline import participant_summary_pipeline
 from google.appengine.ext import ndb

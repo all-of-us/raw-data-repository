@@ -1,14 +1,8 @@
-"""Tests for metrics"""
-
-import collections
 import copy
-import datetime
 
 import metrics
 import offline.metrics_pipeline
 import unittest
-
-from werkzeug.exceptions import NotFound
 
 from test.unit_test.unit_test_util import NdbTestBase
 

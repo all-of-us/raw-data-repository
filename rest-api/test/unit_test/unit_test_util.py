@@ -1,4 +1,3 @@
-import datetime
 import httplib
 import json
 import mock
@@ -152,19 +151,22 @@ class FlaskTestBase(NdbTestBase):
     self.assertEquals(response.status_code, expected_status, response.data)
     return json.loads(response.data)
 
+
 def to_dict_strip_last_modified(obj):
   assert obj.last_modified, 'Missing last_modified: {}'.format(obj)
-  json = obj.to_dict()
-  del json['last_modified']
-  if json.get('signUpTime'):
-    del json['signUpTime']
-  return json
-  
-def sort_lists(obj):  
+  obj_json = obj.to_dict()
+  del obj_json['last_modified']
+  if obj_json.get('signUpTime'):
+    del obj_json['signUpTime']
+  return obj_json
+
+
+def sort_lists(obj):
   for key, val in obj.iteritems():
     if type(val) is list:
       obj[key] = sorted(val)
-  return obj  
+  return obj
+
 
 def make_deferred_not_run():
   executors.defer = (lambda fn, *args, **kwargs: None)

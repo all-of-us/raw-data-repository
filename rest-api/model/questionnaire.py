@@ -1,5 +1,3 @@
-import clock
-
 from model.base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint, Index
@@ -40,8 +38,9 @@ class QuestionnaireConcept(Base):
   conceptSystem = Column('concept_system', String(50))
   conceptCode = Column('concept_code', String(20))
   __table_args__ = (
-    ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], 
-                         ['questionnaire_history.questionnaire_id', 'questionnaire_history.version']),
+    ForeignKeyConstraint(
+        ['questionnaire_id', 'questionnaire_version'], 
+        ['questionnaire_history.questionnaire_id', 'questionnaire_history.version']),
     UniqueConstraint('questionnaire_id', 'questionnaire_version', 'concept_system', 'concept_code')
   )
 Index('questionnaire_concept_system_code', QuestionnaireConcept.conceptSystem, 
@@ -59,8 +58,9 @@ class QuestionnaireQuestion(Base):
   conceptCode = Column('concept_code', String(20))
   # Should we also include valid answers here?  
   __table_args__ = (
-    ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], 
-                         ['questionnaire_history.questionnaire_id', 'questionnaire_history.version']),
+    ForeignKeyConstraint(
+        ['questionnaire_id', 'questionnaire_version'],
+        ['questionnaire_history.questionnaire_id', 'questionnaire_history.version']),
     UniqueConstraint('questionnaire_id', 'questionnaire_version', 'link_id')
   )
   

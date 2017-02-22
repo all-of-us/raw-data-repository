@@ -1,7 +1,6 @@
-import os
-
 from model.base import Base
 # All tables in the schema should be imported below here.
+# pylint: disable=unused-import
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
@@ -16,7 +15,6 @@ from model.questionnaire_response import QuestionnaireResponse, QuestionnaireRes
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.testing.plugin.plugin_base import _engine_uri
 
 class Database(object):
   """Maintains state for accessing the database."""

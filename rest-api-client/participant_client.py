@@ -2,14 +2,11 @@
 
 import pprint
 
-from client.client import Client, HttpException
+from client.client import Client
+
 
 def main():
   client = Client('rdr/v1')
-
-  first_name = 'Mister'
-  last_name = 'Pants'
-  date_of_birth = '1975-08-21'
 
   response = client.request_json('Participant', 'POST')
   pprint.pprint(response)

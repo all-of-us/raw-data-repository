@@ -1,5 +1,4 @@
 import datetime
-import test_data
 
 from dao.questionnaire_dao import QuestionnaireDao, QuestionnaireHistoryDao
 from dao.questionnaire_dao import QuestionnaireConceptDao, QuestionnaireQuestionDao
@@ -7,7 +6,7 @@ from model.questionnaire import Questionnaire, QuestionnaireHistory
 from model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from unit_test_util import SqlTestBase, sort_lists
 from clock import FakeClock
-from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed
+from werkzeug.exceptions import NotFound, PreconditionFailed
 from sqlalchemy.exc import IntegrityError
 
 CONCEPT_1 = QuestionnaireConcept(conceptSystem='a', conceptCode='b')
@@ -110,7 +109,6 @@ class QuestionnaireDaoTest(SqlTestBase):
     q.concepts.append(CONCEPT_2)
     q.questions.append(QUESTION_1)
     q.questions.append(QUESTION_2)
-    time = datetime.datetime(2016, 1, 1)
     with FakeClock(TIME):
       self.dao.insert(q)
 
@@ -169,7 +167,6 @@ class QuestionnaireDaoTest(SqlTestBase):
   
   def test_update_right_expected_version(self):
     q = Questionnaire(resource='blah')
-    time = datetime.datetime(2016, 1, 1)
     with FakeClock(TIME):
       self.dao.insert(q)
     
@@ -184,7 +181,6 @@ class QuestionnaireDaoTest(SqlTestBase):
   
   def test_update_wrong_expected_version(self):
     q = Questionnaire(resource='blah')
-    time = datetime.datetime(2016, 1, 1)
     with FakeClock(TIME):
       self.dao.insert(q)
     

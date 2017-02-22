@@ -1,13 +1,10 @@
-import clock
-
-from participant_enums import HPOId, PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import MembershipTier, GenderIdentity, Ethnicity, Race, get_bucketed_age
+from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
+from participant_enums import MembershipTier, GenderIdentity, Ethnicity, Race
 from model.base import Base
 from model.utils import Enum
-from sqlalchemy import Column, Integer, String, Date, DateTime, BLOB
-from sqlalchemy import UniqueConstraint, ForeignKey, func, Index, SmallInteger
+from sqlalchemy import Column, Integer, String, Date, DateTime
+from sqlalchemy import ForeignKey, Index, SmallInteger
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.hybrid import hybrid_property
 
 class ParticipantSummary(Base):  
   __tablename__ = 'participant_summary'

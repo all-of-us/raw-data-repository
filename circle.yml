@@ -4,10 +4,7 @@ dependencies:
     # and wants to make a .staging directory (as a sibling!)
     # when upgrading or installing new components.
     - sudo chmod o+w /opt
-    - pip install --upgrade httplib2
-    - pip install --upgrade jira
-    - pip install --upgrade oauth2client
-    - pip install --upgrade pylint
+    - pip install --upgrade httplib2 jira oauth2client parallel pylint
 
 machine:
   services:

@@ -1,6 +1,3 @@
-"""Args parsing code shared with sample clients.
-"""
-
 import argparse
 import httplib2
 import json

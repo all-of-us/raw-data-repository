@@ -2,7 +2,7 @@ import clock
 
 from model.base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index, Boolean, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text
 
 
 class BiobankOrder(Base):

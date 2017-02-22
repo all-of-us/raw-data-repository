@@ -1,6 +1,5 @@
 import dao.database_factory
 from contextlib import contextmanager
-from sqlalchemy.orm.session import make_transient
 from werkzeug.exceptions import NotFound, PreconditionFailed
 
 class BaseDao(object):
@@ -15,13 +14,13 @@ class BaseDao(object):
   def session(self):
     sess = self.database.make_session()
     try:
-        yield sess
-        sess.commit()
+      yield sess
+      sess.commit()
     except Exception as ex:
-        sess.rollback()
-        raise ex
+      sess.rollback()
+      raise ex
     finally:
-        sess.close()
+      sess.close()
 
   def _validate_model(self, session, obj):
     """Override to validate a model before any db write (insert or update)."""
@@ -73,12 +72,13 @@ class BaseDao(object):
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
     # If an expected version was provided, make sure it matches the last modified timestamp of
     # the existing entity.
-    if expected_version:      
+    if expected_version:
       if existing_obj.version != expected_version:
         raise PreconditionFailed('Expected version was %d; stored version was %d' % \
                                  (expected_version, existing_obj.version))
     self._validate_model(session, obj)
 
+  # pylint: disable=unused-argument
   def _do_update(self, session, obj, existing_obj):
     """Perform the update of the specified object. Subclasses can override to alter things."""
     session.merge(obj)
@@ -86,7 +86,6 @@ class BaseDao(object):
   def update_with_session(self, session, obj, expected_version=None):
     """Updates the object in the database with the specified session and (optionally)
     expected version ID."""
-    id = self.get_id(obj)
     existing_obj = self.get(self.get_id(obj))
     self._validate_update(session, obj, existing_obj, expected_version)
     self._do_update(session, obj, existing_obj)

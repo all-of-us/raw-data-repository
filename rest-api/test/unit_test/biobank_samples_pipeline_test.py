@@ -1,7 +1,6 @@
 import config
 import csv
 import biobank_sample
-import participant
 import participant_dao
 import participant_summary
 
@@ -13,6 +12,8 @@ from mapreduce import test_support
 from testlib import testutil
 from test.unit_test.unit_test_util import to_dict_strip_last_modified
 from test.test_data import data_path
+
+_CLOUD_STORAGE_TEST_DST = '/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV'
 
 
 class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
@@ -73,18 +74,20 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
     self.assertEquals(1, participant_summary_1.numBaselineSamplesArrived)
     self.assertEquals(1, participant_summary_2.numBaselineSamplesArrived)
 
-def test_end_to_end_missing_field(self):
+  def test_end_to_end_missing_field(self):
     # Insert participants to generate biobank IDs
     participant_dao.DAO().insert(participant_dao.DAO().from_json({}, None, 'P1'))
     participant_1 = participant_dao.DAO().load('P1')
     participant_dao.DAO().insert(participant_dao.DAO().from_json({}, None, 'P2'))
     participant_2 = participant_dao.DAO().load('P2')
 
-    with open(data_path('biobank_samples_missing_field.csv'), 'rb') as src, \
-        cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV', mode='w') as dest:
+    with open(data_path('biobank_samples_missing_field.csv'), 'rb') as src, cloudstorage_api.open(
+        _CLOUD_STORAGE_TEST_DST, mode='w') as dest:
       reader = csv.reader(src)
       writer = csv.writer(dest)
       for line in reader:
+        if not line:
+          continue
         # Put biobank IDs in the CSV being imported
         line[0] = line[0].replace("{biobank_id_1}", participant_1.biobankId)
         line[0] = line[0].replace("{biobank_id_2}", participant_2.biobankId);
@@ -92,6 +95,6 @@ def test_end_to_end_missing_field(self):
     BiobankSamplesPipeline('pmi-drc-biobank-test.appspot.com').start()
     test_support.execute_until_empty(self.taskqueue)
 
-    biobank_samples_1 = biobank_sample.DAO().load_if_present(biobank_sample.SINGLETON_SAMPLES_ID,
-                                                           'P1')
-    self.assertNot(biobank_samples_1)
+    biobank_samples_1 = biobank_sample.DAO().load_if_present(
+        biobank_sample.SINGLETON_SAMPLES_ID, 'P1')
+    self.assertIsNone(biobank_samples_1)

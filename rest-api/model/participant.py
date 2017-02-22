@@ -1,7 +1,5 @@
-import clock
-
 from model.base import Base
-from sqlalchemy import Column, Integer, DateTime, BLOB, UniqueConstraint, ForeignKey, Index
+from sqlalchemy import Column, Integer, DateTime, BLOB, ForeignKey, Index
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 

@@ -1,11 +1,9 @@
 import httplib
-import json
 
 from test.unit_test.unit_test_util import FlaskTestBase
 from test import test_data
 
 import measurements
-import physical_measurements_api
 
 _PARTICIPANT = 'P123'
 _URL = 'Participant/%s/PhysicalMeasurements' % _PARTICIPANT
@@ -59,7 +57,7 @@ class PhysicalMeasurementsAPITest(FlaskTestBase):
   def test_amended_invalid_id_fails(self):
     amendmant_with_bad_id = test_data.load_measurement_json_amendment(
         _PARTICIPANT, 'bogus-measurement-id')
-    response_data = self.send_post(_URL, amendmant_with_bad_id, expected_status=httplib.BAD_REQUEST)
+    self.send_post(_URL, amendmant_with_bad_id, expected_status=httplib.BAD_REQUEST)
 
   def test_validation_does_not_block(self):
     # Remove one of the measurement sections from the valid FHIR document.
