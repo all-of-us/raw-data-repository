@@ -1,6 +1,6 @@
 from dao.base_dao import BaseDao
 from dao.participant_dao import ParticipantDao
-from model.biobank_order import BiobankOrder
+from model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from model.log_position import LogPosition
 
 from werkzeug.exceptions import BadRequest
@@ -35,15 +35,15 @@ class BiobankOrderDao(BaseDao):
       raise BadRequest('%r does not reference a valid participant.' % obj.participantId)
     for sample in obj.samples:
       self._validate_order_sample(sample)
-    # Verify that all order identifiers are not in use by another order
     if not obj.identifiers:
       raise BadRequest('At least one identifier is required.')
+    # Verify that all no identifier is in use by another order.
     for identifier in obj.identifiers:
-      other_order = self._find_by_identifier(session, identifier)
-      if other_order and other_order.biobankOrderIdentifier != obj.biobankOrderIdentifier:
-        raise BadRequest(
-            'Identifier %s is already in use by order %s'
-            % (identifier, other_order.biobankOrderId))
+      for existing in session.query(BiobankOrderIdentifier).filter_by(
+          system=identifier.system).filter_by(value=identifier.value):
+        if existing.biobankOrderId != obj.biobankOrderId:
+          raise BadRequest(
+              'Identifier %s is already in use by order %d' % (identifier, existing.biobankOrderId))
 
   def _validate_order_sample(self, sample):
     if not sample.test:
@@ -52,6 +52,3 @@ class BiobankOrderDao(BaseDao):
       raise BadRequest('Missing field: sample.description in %s.' % sample)
     if sample.test not in VALID_TESTS:
       raise BadRequest('Invalid test value %r not in %s.' % (sample.test, VALID_TESTS))
-
-  def _find_by_identifier(self, session, identifier):
-    return None

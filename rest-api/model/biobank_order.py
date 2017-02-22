@@ -37,8 +37,8 @@ class BiobankOrderIdentifier(Base):
   __tablename__ = 'biobank_order_identifier'
   system = Column('system', String(80), primary_key=True)
   value = Column('value', String(80), primary_key=True)
-  orderId = Column('order_id', Integer, ForeignKey('biobank_order.biobank_order_id'),
-                   nullable=False)
+  biobankOrderId = Column(
+      'order_id', Integer, ForeignKey('biobank_order.biobank_order_id'), nullable=False)
 
 
 class BiobankOrderedSample(Base):
@@ -48,8 +48,8 @@ class BiobankOrderedSample(Base):
   match up, but we see BiobankOrderedSamples first and track them separately.
   """
   __tablename__ = 'biobank_ordered_sample'
-  orderId = Column('order_id', Integer, ForeignKey('biobank_order.biobank_order_id'), 
-                   primary_key=True)  
+  biobankOrderId = Column(
+      'order_id', Integer, ForeignKey('biobank_order.biobank_order_id'), primary_key=True)
   test = Column('test', String(80), primary_key=True)
   description = Column('description', Text)
   processingRequired = Column('processing_required', Boolean, nullable=False)

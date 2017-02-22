@@ -18,8 +18,21 @@ class BiobankOrderDaoTest(SqlTestBase):
     with self.assertRaises(BadRequest):
       self.dao.insert(BiobankOrder(participantId=999))
 
-  def test_store_identifier(self):
-    bo = BiobankOrder(biobankOrderId=432, participantId=self.participant.participantId)
-    bo.identifiers.extend([
-        BiobankOrderIdentifier(system='rdr', value='firstid')])
-    self.dao.insert(bo)
+  def test_store_with_identifier(self):
+    order_id = 567
+    self.dao.insert(BiobankOrder(
+        biobankOrderId=order_id,
+        participantId=self.participant.participantId,
+        identifiers=[BiobankOrderIdentifier(system='rdr', value='firstid')]))
+    self.assertIsNotNone(self.dao.get(order_id))
+
+  def test_reject_used_identifier(self):
+    self.dao.insert(BiobankOrder(
+        biobankOrderId=1,
+        participantId=self.participant.participantId,
+        identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
+    with self.assertRaises(BadRequest):
+      self.dao.insert(BiobankOrder(
+          biobankOrderId=2,
+          participantId=self.participant.participantId,
+          identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
