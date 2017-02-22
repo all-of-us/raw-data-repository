@@ -51,3 +51,12 @@ class BiobankOrderDaoTest(SqlTestBase):
             test=self._A_TEST, processingRequired=True, description='tested it')]))
     fetched = self.dao.get(order_id)
     self.assertEquals([self._A_TEST], [s.test for s in fetched.samples])
+
+  def test_store_invalid_test(self):
+    with self.assertRaises(BadRequest):
+      self.dao.insert(BiobankOrder(
+          biobankOrderId=2,
+          participantId=self.participant.participantId,
+          identifiers=[BiobankOrderIdentifier(system='a', value='b')],
+          samples=[BiobankOrderedSample(
+              test='InvalidTestName', processingRequired=True, description='tested it')]))
