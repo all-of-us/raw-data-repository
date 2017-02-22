@@ -24,8 +24,7 @@ ANSWERS = {'answers': {}}
 
 class QuestionnaireResponseDaoTest(SqlTestBase):
   def setUp(self):
-    super(QuestionnaireResponseDaoTest, self).setUp()
-    self.setup_data()
+    super(QuestionnaireResponseDaoTest, self).setUp()    
     self.participant_dao = ParticipantDao()
     self.questionnaire_dao = QuestionnaireDao()
     self.questionnaire_response_dao = QuestionnaireResponseDao()
