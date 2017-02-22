@@ -14,6 +14,8 @@ from testlib import testutil
 from test.unit_test.unit_test_util import to_dict_strip_last_modified
 from test.test_data import data_path
 
+_CLOUD_STORAGE_TEST_DST = '/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV'
+
 
 class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
@@ -80,11 +82,13 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
     participant_dao.DAO().insert(participant_dao.DAO().from_json({}, None, 'P2'))
     participant_2 = participant_dao.DAO().load('P2')
 
-    with open(data_path('biobank_samples_missing_field.csv'), 'rb') as src, \
-        cloudstorage_api.open('/pmi-drc-biobank-test.appspot.com/biobank_samples_1.CSV', mode='w') as dest:
+    with open(data_path('biobank_samples_missing_field.csv'), 'rb') as src, cloudstorage_api.open(
+        _CLOUD_STORAGE_TEST_DST, mode='w') as dest:
       reader = csv.reader(src)
       writer = csv.writer(dest)
       for line in reader:
+        if not line:
+          continue
         # Put biobank IDs in the CSV being imported
         line[0] = line[0].replace("{biobank_id_1}", participant_1.biobankId)
         line[0] = line[0].replace("{biobank_id_2}", participant_2.biobankId);
@@ -92,6 +96,6 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
     BiobankSamplesPipeline('pmi-drc-biobank-test.appspot.com').start()
     test_support.execute_until_empty(self.taskqueue)
 
-    biobank_samples_1 = biobank_sample.DAO().load_if_present(biobank_sample.SINGLETON_SAMPLES_ID,
-                                                           'P1')
-    self.assertNot(biobank_samples_1)
+    biobank_samples_1 = biobank_sample.DAO().load_if_present(
+        biobank_sample.SINGLETON_SAMPLES_ID, 'P1')
+    self.assertIsNone(biobank_samples_1)
