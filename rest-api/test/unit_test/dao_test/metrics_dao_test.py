@@ -5,7 +5,7 @@ from model.metrics import MetricsVersion, MetricsBucket
 from dao.metrics_dao import MetricsVersionDao, MetricsBucketDao, SERVING_METRICS_DATA_VERSION
 from unit_test_util import SqlTestBase
 from sqlalchemy.exc import IntegrityError
-from werkzeug.exceptions import BadRequest, PreconditionFailed
+from werkzeug.exceptions import PreconditionFailed
 
 TIME = datetime.datetime(2016, 1, 1, 10, 0)
 TIME_2 = datetime.datetime(2016, 1, 2, 9, 59)
