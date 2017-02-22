@@ -1,13 +1,11 @@
 """Create fake participant data and load it into an RDR instance using the API client."""
 
 import argparse
-import copy
 import datetime
 import json
 import random
-import sys
 
-from faker import Faker, Factory
+from faker import Factory
 fake = Factory.create()
 
 from client.client import Client
@@ -84,14 +82,12 @@ def create_fake_participant():
   (first_name, middle_name, last_name) = (first_name_fn(), first_name_fn(), fake.last_name())
 
   hpo_id = _random_hpo()
-  zip_code = fake.zipcode()
   gender_identity = birth_sex
   date_of_birth = fake.date(pattern="%Y-%m-%d")
   if random.random() < 0.05:
     gender_identity = random.choice([
         "male", "female", "other", "female-to-male-transgender", "male-to-female-transgender"])
 
-  membership_tier = "REGISTERED"
   sign_up_time = fake.date_time_between(start_date="2016-12-20", end_date="+1y", tzinfo=None)
 
   initial_participant = {
@@ -230,13 +226,13 @@ if __name__ == '__main__':
   sociodemographics_questionnaire_id = client.request_json(
       'Questionnaire', 'POST', sociodemographics_questionnaire)['id']
 
-  vars = {
+  variables = {
     'consent_questionnaire_id': consent_questionnaire_id,
     'sociodemographics_questionnaire_id': sociodemographics_questionnaire_id,
   }
 
   for module in _EXTRA_PPI_MODULES:
-    vars[module + '_questionnaire_id'] = client.request_json(
+    variables[module + '_questionnaire_id'] = client.request_json(
         'Questionnaire',
         'POST',
         {
@@ -256,11 +252,11 @@ if __name__ == '__main__':
       when = request_details['when']
       endpoint = request_details['endpoint']
       payload_json = json.dumps(request_details['payload'])
-      vars.update(request_details.get('vars', {}))
-      for k, v in vars.iteritems():
+      variables.update(request_details.get('vars', {}))
+      for k, v in variables.iteritems():
         payload_json = payload_json.replace('$%s' % k, str(v))
         endpoint = endpoint.replace('$%s' % k, str(v))
       payload = json.loads(payload_json)
       response = client.request_json(endpoint, 'POST', payload, headers={'X-Pretend-Date': when})
       for k, f in request_details.get('gather', {}).iteritems():
-        vars[k] = f(response)
+        variables[k] = f(response)

@@ -2,7 +2,6 @@
 """
 
 import json
-import pprint
 
 from client.client import Client
 
@@ -14,7 +13,7 @@ def main():
   }
 
   response = client.request_json('Metrics', 'POST', request)
-  print(json.dumps(response, indent=2, sort_keys=True))
+  print json.dumps(response, indent=2, sort_keys=True)
 
 
 if __name__ == '__main__':

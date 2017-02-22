@@ -2,10 +2,10 @@ import clock
 
 from model.base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, Date, DateTime, BLOB, ForeignKey, String, ForeignKeyConstraint
+from sqlalchemy import Column, Integer, Date, DateTime, BLOB, ForeignKey, String, ForeignKeyConstraint  # pylint: disable=line-too-long
 
 class QuestionnaireResponse(Base):  
-  __tablename__  = 'questionnaire_response'
+  __tablename__ = 'questionnaire_response'
   questionnaireResponseId = Column('questionnaire_response_id', Integer, primary_key=True, 
                                    autoincrement=False)
   questionnaireId = Column('questionnaire_id', Integer, nullable=False)
@@ -24,10 +24,10 @@ class QuestionnaireResponse(Base):
 class QuestionnaireResponseAnswer(Base):
   """An answer found in a questionnaire response. Note that there could be multiple answers to 
   the same question, if the questionnaire allows for multiple answers."""
-  __tablename__  = 'questionnaire_response_answer'
-  questionnaireResponseAnswerId = Column('questionnaire_response_answer_id', Integer, primary_key=True,
-                                        autoincrement=False)
-  questionnaireResponseId = Column('questionnaire_response_id', Integer, 
+  __tablename__ = 'questionnaire_response_answer'
+  questionnaireResponseAnswerId = Column(
+      'questionnaire_response_answer_id', Integer, primary_key=True, autoincrement=False)
+  questionnaireResponseId = Column('questionnaire_response_id', Integer,
                                    ForeignKey('questionnaire_response.questionnaire_response_id'),
                                    nullable=False)
   questionId = Column('question_id', Integer, 
