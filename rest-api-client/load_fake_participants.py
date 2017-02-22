@@ -213,7 +213,7 @@ def parse_args(default_instance=None):
   return parser.parse_args()
 
 
-if __name__ == '__main__':
+def main():
   args = parse_args()
   client = Client('rdr/v1', default_instance=args.instance, parse_cli=False)
 
@@ -247,7 +247,7 @@ if __name__ == '__main__':
             },
         })['id']
 
-  for i in range(args.count):
+  for _ in range(args.count):
     for request_details in create_fake_participant():
       when = request_details['when']
       endpoint = request_details['endpoint']
@@ -260,3 +260,7 @@ if __name__ == '__main__':
       response = client.request_json(endpoint, 'POST', payload, headers={'X-Pretend-Date': when})
       for k, f in request_details.get('gather', {}).iteritems():
         variables[k] = f(response)
+
+
+if __name__ == '__main__':
+  main()

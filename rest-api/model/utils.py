@@ -12,7 +12,7 @@ class Enum(TypeDecorator):
     return "Enum(%s)" % self.enum_type.__name__
         
   def process_bind_param(self, value, dialect):        
-      return int(value) if value else None
+    return int(value) if value else None
       
   def process_result_value(self, value, dialect):
-      return self.enum_type(value) if value else None
+    return self.enum_type(value) if value else None
