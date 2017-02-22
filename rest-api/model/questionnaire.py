@@ -33,10 +33,10 @@ class QuestionnaireConcept(Base):
   a questionnaire is created."""
   __tablename__ = 'questionnaire_concept'
   questionnaireConceptId = Column('questionnaire_concept_id', Integer, primary_key=True)
-  questionnaireId = Column('questionnaire_id', Integer)
-  questionnaireVersion = Column('questionnaire_version', Integer)
-  conceptSystem = Column('concept_system', String(50))
-  conceptCode = Column('concept_code', String(20))
+  questionnaireId = Column('questionnaire_id', Integer, nullable=False)
+  questionnaireVersion = Column('questionnaire_version', Integer, nullable=False)
+  conceptSystem = Column('concept_system', String(50), nullable=False)
+  conceptCode = Column('concept_code', String(20), nullable=False)
   __table_args__ = (
     ForeignKeyConstraint(
         ['questionnaire_id', 'questionnaire_version'], 
