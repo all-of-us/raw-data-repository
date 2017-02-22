@@ -1,6 +1,6 @@
 import clock
 import json
-from dao.base_dao import BaseDao
+from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
@@ -26,7 +26,7 @@ class ParticipantHistoryDao(BaseDao):
     return [obj.participantId, obj.version]
 
 
-class ParticipantDao(BaseDao):
+class ParticipantDao(UpdatableDao):
   def __init__(self):
     super(ParticipantDao, self).__init__(Participant)
 
