@@ -54,12 +54,14 @@ class BaseDao(object):
   def get(self, obj_id):
     """Gets an object with the specified ID for this type from the database.
 
-    Use get_with_children to eagerly load any child objects (using subqueryload).
-
     Returns None if not found.
     """
     with self.session() as session:
       return self.get_with_session(session, obj_id)
+
+  def get_with_children(self, obj_id):
+    """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
+    return self.get(self, obj_id)
 
   def _validate_update(self, session, obj, existing_obj, expected_version=None):
     """Validates that an update is OK before performing it. (Not applied on insert.)
