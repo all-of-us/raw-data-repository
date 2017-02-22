@@ -1,6 +1,6 @@
 from model.base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 
 class BiobankStoredSample(Base):  
   __tablename__ = 'biobank_stored_sample'

@@ -1,7 +1,7 @@
 import clock
 
 from dao.base_dao import BaseDao
-from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireConcept, QuestionnaireQuestion
+from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireConcept, QuestionnaireQuestion  # pylint: disable=line-too-long
 from sqlalchemy.orm import subqueryload
 
 class QuestionnaireDao(BaseDao):

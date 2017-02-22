@@ -1,9 +1,7 @@
 import clock
-import extraction
 import json
 from dao.base_dao import BaseDao
 from dao.hpo_dao import HPODao
-from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
 from participant_enums import UNSET_HPO_ID
@@ -78,7 +76,7 @@ class ParticipantDao(BaseDao):
       hpo = HPODao().get_by_name_with_session(session, hpo_name)
       if not hpo:
         raise BadRequest('No HPO found with name %s' % hpo_name)
-      return hpo.hpoId if hpo else UNMAPPED_HPO_ID
+      return hpo.hpoId
     else:      
       return UNSET_HPO_ID
     

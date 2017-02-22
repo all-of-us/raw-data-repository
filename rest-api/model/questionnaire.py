@@ -1,5 +1,3 @@
-import clock
-
 from model.base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint, Index
