@@ -56,4 +56,4 @@ class BiobankOrderDao(BaseDao):
 
   def get(self, obj_id):
     with self.session() as session:
-      return session.query(BiobankOrder).options(subqueryload(BiobankOrder.identifiers)).get(obj_id)
+      return session.query(BiobankOrder).options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples)).get(obj_id)

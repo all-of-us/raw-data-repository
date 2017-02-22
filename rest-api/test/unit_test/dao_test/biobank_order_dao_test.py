@@ -1,6 +1,6 @@
-from dao.biobank_order_dao import BiobankOrderDao
+from dao.biobank_order_dao import BiobankOrderDao, VALID_TESTS
 from dao.participant_dao import ParticipantDao
-from model.biobank_order import BiobankOrder, BiobankOrderIdentifier
+from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.participant import Participant
 from unit_test_util import SqlTestBase
 
@@ -8,6 +8,8 @@ from werkzeug.exceptions import BadRequest
 
 
 class BiobankOrderDaoTest(SqlTestBase):
+  _A_TEST = iter(VALID_TESTS).next()
+
   def setUp(self):
     super(BiobankOrderDaoTest, self).setUp()
     self.participant = Participant(participantId=123, biobankId=555)
@@ -38,3 +40,14 @@ class BiobankOrderDaoTest(SqlTestBase):
           biobankOrderId=2,
           participantId=self.participant.participantId,
           identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
+
+  def test_store_with_samples(self):
+    order_id = 5
+    self.dao.insert(BiobankOrder(
+        biobankOrderId=order_id,
+        participantId=self.participant.participantId,
+        identifiers=[BiobankOrderIdentifier(system='a', value='b')],
+        samples=[BiobankOrderedSample(
+            test=self._A_TEST, processingRequired=True, description='tested it')]))
+    fetched = self.dao.get(order_id)
+    self.assertEquals([self._A_TEST], [s.test for s in fetched.samples])

@@ -51,7 +51,7 @@ class BiobankOrderedSample(Base):
   biobankOrderId = Column(
       'order_id', Integer, ForeignKey('biobank_order.biobank_order_id'), primary_key=True)
   test = Column('test', String(80), primary_key=True)
-  description = Column('description', Text)
+  description = Column('description', Text, nullable=False)
   processingRequired = Column('processing_required', Boolean, nullable=False)
   collected = Column('collected', DateTime)
   processed = Column('processed', DateTime)
