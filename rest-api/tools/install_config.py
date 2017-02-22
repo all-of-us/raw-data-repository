@@ -63,7 +63,7 @@ def compare_configs(comparable_file, comparable_server):
 def _comparable_string(config):
   """Sort the values and pretty print so it will compare nicely."""
   config = copy.deepcopy(config)
-  for k,v in config.iteritems():
+  for k, v in config.iteritems():
     if isinstance(v, list):
       config[k] = sorted(v)
 

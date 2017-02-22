@@ -17,7 +17,7 @@ ENABLE_FOR_TESTS="\
   --enable=unused-import,unused-variable,undefined-variable"
 ENABLE_FOR_ALL=$ENABLE_FOR_TESTS
 PYLINT_OPTS="-r n --disable=all"
-git ls-files | grep '.py$' | grep -v -e '_test.py$' -e 'alembic/versions/' | \
+git ls-files | grep '.py$' | grep -v -e '_test' -e 'alembic/versions/' | \
     parallel pylint $PYLINT_OPTS $ENABLE_FOR_ALL
 git ls-files | grep '.py$' | parallel pylint $PYLINT_OPTS $ENABLE_FOR_TESTS
 

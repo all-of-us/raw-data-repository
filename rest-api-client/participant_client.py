@@ -2,6 +2,8 @@
 
 import pprint
 
+from client.client import Client
+
 
 def main():
   client = Client('rdr/v1')
