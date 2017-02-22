@@ -1,7 +1,6 @@
 import config
 import csv
 import biobank_sample
-import participant
 import participant_dao
 import participant_summary
 
