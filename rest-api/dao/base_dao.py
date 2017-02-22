@@ -47,17 +47,21 @@ class BaseDao(object):
     primary key column tables). Must be overridden by subclasses."""
     raise NotImplementedError
 
-  def get_with_session(self, session, id):
-    """Gets an object with the specified ID for this type from the database using the specified
-    session. Returns None if not found."""
-    return session.query(self.model_type).get(id)
+  def get_with_session(self, session, obj_id):
+    """Gets an object by ID for this type using the specified session. Returns None if not found."""
+    return session.query(self.model_type).get(obj_id)
 
-  def get(self, id):
+  def get(self, obj_id):
     """Gets an object with the specified ID for this type from the database.
-    Returns None if not found."""
+
+    Returns None if not found.
+    """
     with self.session() as session:
-      result = self.get_with_session(session, id)
-    return result
+      return self.get_with_session(session, obj_id)
+
+  def get_with_children(self, obj_id):
+    """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
+    return self.get(self, obj_id)
 
   def _validate_update(self, session, obj, existing_obj, expected_version=None):
     """Validates that an update is OK before performing it. (Not applied on insert.)
@@ -65,7 +69,6 @@ class BaseDao(object):
     By default, validates that the object already exists, and if an expected version ID is provided,
     that it matches.
     """
-    self._validate_model(session, obj)
     if not existing_obj:
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
     # If an expected version was provided, make sure it matches the last modified timestamp of
@@ -74,6 +77,7 @@ class BaseDao(object):
       if existing_obj.version != expected_version:
         raise PreconditionFailed('Expected version was %d; stored version was %d' % \
                                  (expected_version, existing_obj.version))
+    self._validate_model(session, obj)
 
   def _do_update(self, session, obj, existing_obj):
     """Perform the update of the specified object. Subclasses can override to alter things."""

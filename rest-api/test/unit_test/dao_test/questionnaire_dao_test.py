@@ -33,12 +33,12 @@ CONCEPTS_AND_QUESTIONS = {'concepts':{}, 'questions':{}}
 
 class QuestionnaireDaoTest(SqlTestBase):
   def setUp(self):
-    super(QuestionnaireDaoTest, self).setUp()
+    super(QuestionnaireDaoTest, self).setUp(with_data=False)
     self.dao = QuestionnaireDao()
     self.questionnaire_history_dao = QuestionnaireHistoryDao()
     self.questionnaire_concept_dao = QuestionnaireConceptDao()
     self.questionnaire_question_dao = QuestionnaireQuestionDao()
-    
+
   def test_get_before_insert(self):
     self.assertIsNone(self.dao.get(1))
     self.assertIsNone(self.dao.get_with_children(1))
