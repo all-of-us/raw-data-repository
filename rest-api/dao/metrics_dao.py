@@ -3,7 +3,7 @@ import logging
 
 from model.metrics import MetricsVersion, MetricsBucket
 from dao.base_dao import BaseDao, UpdatableDao
-from werkzeug.exceptions import BadRequest, PreconditionFailed, NotFound
+from werkzeug.exceptions import PreconditionFailed
 from sqlalchemy.orm import subqueryload
 from datetime import timedelta
 
