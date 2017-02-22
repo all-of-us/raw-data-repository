@@ -1,4 +1,3 @@
-"""Tests for identifier."""
 import identifier
 import threading
 import unittest
@@ -19,11 +18,8 @@ class IdentifierTest(NdbTestBase):
       self.assertTrue(identifier._reserve_candidate(2, testing_sleep=.1))
 
     threading.Thread(target=make_res).start()
-    try:
+    with self.assertRaises(TransactionFailedError):
       identifier._reserve_candidate(2, testing_sleep=.22)
-      self.fail()
-    except TransactionFailedError as e:
-      pass
 
 
 if __name__ == '__main__':

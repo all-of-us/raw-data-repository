@@ -1,6 +1,5 @@
 import sync_log
 
-from google.appengine.ext import ndb
 from unit_test_util import NdbTestBase
 
 class ParticipantNdbTest(NdbTestBase):

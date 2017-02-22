@@ -3,13 +3,11 @@
 Also serves as end to end test to exercise each of these REST APIs.
 """
 
-import datetime
 import json
 import unittest
 
 import test_util
 from client.client import HttpException
-from dateutil.relativedelta import relativedelta
 
 def _questionnaire_response_url(participant_id):
   return 'Participant/{}/QuestionnaireResponse'.format(participant_id)
@@ -47,7 +45,7 @@ class TestPPI(unittest.TestCase):
       with open(json_file) as f:
         resource = json.load(f)
         # Sending response with the dummy participant id in the file is an error
-        with self.assertRaises(HttpException) as context:
+        with self.assertRaises(HttpException):
           test_util.round_trip(self, self.client,
                                _questionnaire_response_url('{participant_id}'),
                                resource)
@@ -56,7 +54,7 @@ class TestPPI(unittest.TestCase):
         resource['subject']['reference'] = \
             resource['subject']['reference'].format(
                 participant_id=participant_id)
-        with self.assertRaises(HttpException) as context:
+        with self.assertRaises(HttpException):
           test_util.round_trip(self, self.client, good_url, resource)
         # Also fixing participant id succeeds
         resource['questionnaire']['reference'] = \

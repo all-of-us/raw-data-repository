@@ -76,6 +76,7 @@ class DatabaseTest(SqlTestBase):
                                created=datetime.datetime.now(), resource='blah',
                                final=True, amendedMeasurementsId=1, logPosition=LogPosition())
     session.add(pm)
+    session.add(pm2)
 
     q = Questionnaire(questionnaireId=1, version=1, created=datetime.datetime.now(), 
                       lastModified=datetime.datetime.now(), resource='what?')

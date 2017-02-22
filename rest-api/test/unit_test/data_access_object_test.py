@@ -1,5 +1,3 @@
-"""Tests for data_access_object."""
-
 import api_util
 import data_access_object
 import unittest
@@ -251,7 +249,6 @@ class DataAccessObjectTest(NdbTestBase):
     PARENT_DAO.store(parent)
     parent = PARENT_DAO.load(parent_id)
     self.assertTrue(parent.last_modified)
-    modified = parent.last_modified
     PARENT_DAO.update_computed_properties(parent.key)
     new_parent = PARENT_DAO.load(parent_id)
     self.assertTrue(new_parent.last_modified)

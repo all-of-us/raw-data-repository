@@ -1,8 +1,5 @@
-"""Tests for gcloud_ips"""
-
-import dns
 import unittest
-from mock import Mock, MagicMock
+from mock import MagicMock
 
 import offline.gcloud_ips
 from offline.gcloud_ips import START, get_ip_ranges

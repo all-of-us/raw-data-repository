@@ -209,10 +209,10 @@ class ApiUtilNdbTest(NdbTestBase):
   def test_no_roles_supplied_to_decorator(self):
     with self.assertRaises(TypeError):
       @api_util.auth_required()
-      def placeholder(): pass
+      def unused_placeholder(): pass
     with self.assertRaises(AssertionError):
       @api_util.auth_required(None)
-      def placeholder(): pass
+      def unused_placeholder(): pass
 
   @patch('api_util.request', spec=api_util.request)
   @patch('api_util.get_oauth_id')

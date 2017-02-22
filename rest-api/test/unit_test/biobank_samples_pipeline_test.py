@@ -73,7 +73,7 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
     self.assertEquals(1, participant_summary_1.numBaselineSamplesArrived)
     self.assertEquals(1, participant_summary_2.numBaselineSamplesArrived)
 
-def test_end_to_end_missing_field(self):
+  def test_end_to_end_missing_field(self):
     # Insert participants to generate biobank IDs
     participant_dao.DAO().insert(participant_dao.DAO().from_json({}, None, 'P1'))
     participant_1 = participant_dao.DAO().load('P1')

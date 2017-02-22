@@ -9,7 +9,6 @@ import time
 import test_util
 
 from client.client import HttpException
-from dateutil.relativedelta import relativedelta
 
 
 class ParticipantTest(unittest.TestCase):
