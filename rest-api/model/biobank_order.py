@@ -6,9 +6,10 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, U
 
 
 class BiobankOrder(Base):
-  """An order requesting samples. The order contains a list of samples stored in
-  BiobankOrderedSample; the actual delivered and stored samples are stored in BiobankStoredSample.
-  Our reconciliation report compares the two.
+  """An order requesting samples.
+
+  The order contains a list of samples stored in BiobankOrderedSample; the actual delivered and
+  stored samples are tracked in BiobankStoredSample. Our reconciliation report compares the two.
   """
   __tablename__ = 'biobank_order'
   # We want autoincrement=False for the ID, but omit it to avoid warnings and enforce a
@@ -44,8 +45,8 @@ class BiobankOrderIdentifier(Base):
 class BiobankOrderedSample(Base):
   """Samples listed by a Biobank order.
 
-  These are distinct from BiobankSamples, which tracks received samples. The two should eventually
-  match up, but we see BiobankOrderedSamples first and track them separately.
+  These are distinct from BiobankStoredSamples, which tracks received samples. The two should
+  eventually match up, but we see BiobankOrderedSamples first and track them separately.
   """
   __tablename__ = 'biobank_ordered_sample'
   biobankOrderId = Column(
