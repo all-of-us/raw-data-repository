@@ -1,8 +1,8 @@
 """Initial schema
 
-Revision ID: 3130b3100bd1
+Revision ID: 4d4480ba89ef
 Revises: 
-Create Date: 2017-02-14 00:45:18.026355
+Create Date: 2017-02-23 14:17:13.515800
 
 """
 from alembic import op
@@ -14,7 +14,7 @@ from participant_enums import HPOId, PhysicalMeasurementsStatus, QuestionnaireSt
 from participant_enums import MembershipTier, GenderIdentity, Ethnicity, Race
 
 # revision identifiers, used by Alembic.
-revision = '3130b3100bd1'
+revision = '4d4480ba89ef'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -90,10 +90,10 @@ def upgrade():
     )
     op.create_table('questionnaire_concept',
     sa.Column('questionnaire_concept_id', sa.Integer(), nullable=False),
-    sa.Column('questionnaire_id', sa.Integer(), nullable=True),
-    sa.Column('questionnaire_version', sa.Integer(), nullable=True),
-    sa.Column('concept_system', sa.String(length=50), nullable=True),
-    sa.Column('concept_code', sa.String(length=20), nullable=True),
+    sa.Column('questionnaire_id', sa.Integer(), nullable=False),
+    sa.Column('questionnaire_version', sa.Integer(), nullable=False),
+    sa.Column('concept_system', sa.String(length=255), nullable=False),
+    sa.Column('concept_code', sa.String(length=20), nullable=False),
     sa.ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], ['questionnaire_history.questionnaire_id', 'questionnaire_history.version'], ),
     sa.PrimaryKeyConstraint('questionnaire_concept_id'),
     sa.UniqueConstraint('questionnaire_id', 'questionnaire_version', 'concept_system', 'concept_code')
@@ -104,7 +104,7 @@ def upgrade():
     sa.Column('questionnaire_id', sa.Integer(), nullable=True),
     sa.Column('questionnaire_version', sa.Integer(), nullable=True),
     sa.Column('link_id', sa.String(length=20), nullable=True),
-    sa.Column('concept_system', sa.String(length=50), nullable=True),
+    sa.Column('concept_system', sa.String(length=255), nullable=True),
     sa.Column('concept_code', sa.String(length=20), nullable=True),
     sa.ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], ['questionnaire_history.questionnaire_id', 'questionnaire_history.version'], ),
     sa.PrimaryKeyConstraint('questionnaire_question_id'),
@@ -112,7 +112,7 @@ def upgrade():
     )
     op.create_index('questionnaire_question_system_code', 'questionnaire_question', ['concept_system', 'concept_code'], unique=False)
     op.create_table('biobank_order',
-    sa.Column('biobank_order_id', sa.Integer(), autoincrement=False, nullable=False),
+    sa.Column('biobank_order_id', sa.Integer(), nullable=False),
     sa.Column('participant_id', sa.Integer(), nullable=False),
     sa.Column('created', sa.DateTime(), nullable=False),
     sa.Column('source_site_system', sa.String(length=80), nullable=True),
@@ -235,7 +235,7 @@ def upgrade():
     op.create_table('biobank_ordered_sample',
     sa.Column('order_id', sa.Integer(), nullable=False),
     sa.Column('test', sa.String(length=80), nullable=False),
-    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('description', sa.Text(), nullable=False),
     sa.Column('processing_required', sa.Boolean(), nullable=False),
     sa.Column('collected', sa.DateTime(), nullable=True),
     sa.Column('processed', sa.DateTime(), nullable=True),
@@ -245,8 +245,8 @@ def upgrade():
     )
     op.create_table('questionnaire_response_answer',
     sa.Column('questionnaire_response_answer_id', sa.Integer(), autoincrement=False, nullable=False),
-    sa.Column('questionnaire_response_id', sa.Integer(), nullable=True),
-    sa.Column('question_id', sa.Integer(), nullable=True),
+    sa.Column('questionnaire_response_id', sa.Integer(), nullable=False),
+    sa.Column('question_id', sa.Integer(), nullable=False),
     sa.Column('end_time', sa.DateTime(), nullable=True),
     sa.Column('value_system', sa.String(length=50), nullable=True),
     sa.Column('value_code', sa.String(length=20), nullable=True),
@@ -258,6 +258,34 @@ def upgrade():
     sa.PrimaryKeyConstraint('questionnaire_response_answer_id')
     )
     # ### end Alembic commands ###
+    
+    hpo_table = sa.Table('hpo', sa.MetaData(),
+      sa.Column('hpo_id', sa.Integer(), autoincrement=False, nullable=False),
+      sa.Column('name', sa.String(length=20), nullable=True),
+      sa.PrimaryKeyConstraint('hpo_id'),
+      sa.UniqueConstraint('name')
+    )
+
+    # Insert our HPO IDs into the HPO table.    
+    op.bulk_insert(hpo_table,
+    [
+        {'hpo_id': 0, 'name': 'UNSET' },
+        {'hpo_id': 1, 'name': 'PITT' },
+        {'hpo_id': 2, 'name': 'COLUMBIA' },
+        {'hpo_id': 3, 'name': 'ILLNOIS' },
+        {'hpo_id': 4, 'name': 'AZ_TUCSON' },
+        {'hpo_id': 5, 'name': 'COMM_HEALTH' },
+        {'hpo_id': 6, 'name': 'SAN_YSIDRO' },
+        {'hpo_id': 7, 'name': 'CHEROKEE' },
+        {'hpo_id': 8, 'name': 'EAU_CLAIRE' },
+        {'hpo_id': 9, 'name': 'HRHCARE' },
+        {'hpo_id': 10, 'name': 'JACKSON' },
+        {'hpo_id': 11, 'name': 'GEISINGER' },
+        {'hpo_id': 12, 'name': 'CAL_PMC' },
+        {'hpo_id': 13, 'name': 'NE_PMC' },
+        {'hpo_id': 14, 'name': 'TRANS_AM' },
+        {'hpo_id': 15, 'name': 'VA' }
+    ])
 
 
 def downgrade():

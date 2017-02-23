@@ -1,7 +1,8 @@
 import os
+import model.database
 
 from alembic import context
-from sqlalchemy import create_engine
+from sqlalchemy import engine_from_config, pool, create_engine
 from logging.config import fileConfig
 from model.base import Base
 
@@ -59,13 +60,12 @@ def run_migrations_online():
 
   with connectable.connect() as connection:
     context.configure(
-        connection=connection,
-        target_metadata=target_metadata
+          connection=connection,
+          target_metadata=target_metadata
     )
 
-      with context.begin_transaction():
-        context.run_migrations()
-
+    with context.begin_transaction():
+      context.run_migrations()
 
 if context.is_offline_mode():
   run_migrations_offline()
