@@ -35,12 +35,12 @@ class Questionnaire(QuestionnaireBase, Base):
                             'foreign(QuestionnaireQuestion.questionnaireId)')
                             
   @classmethod
-  def from_json(cls, resource_json, id=None, expected_version=None):
+  def from_json(cls, resource_json, id_=None, expected_version=None):
     fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
     if not fhir_q.group:
       raise BadRequest("No top-level group found in questionnaire")
         
-    q = Questionnaire(resource=json.dumps(fhir_q.as_json()), questionnaireId=id, 
+    q = Questionnaire(resource=json.dumps(fhir_q.as_json()), questionnaireId=id_, 
                       version=expected_version)
     if fhir_q.group.concept:
       for concept in fhir_q.group.concept:
@@ -56,7 +56,7 @@ class Questionnaire(QuestionnaireBase, Base):
     if group.question:
       for question in group.question:
         # Capture any questions that have a link ID and single concept with a system and code
-        if question.linkId and question.concept and len(question.concept) == 1 :
+        if question.linkId and question.concept and len(question.concept) == 1:
           concept = question.concept[0]
           if concept.system and concept.code:
             q.questions.append(QuestionnaireQuestion(linkId=question.linkId,

@@ -1,8 +1,9 @@
 import os
-import model.database
+# Importing this is what gets our model available for Alembic.
+import model.database # pylint: disable=unused-import
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool, create_engine
+from sqlalchemy import create_engine
 from logging.config import fileConfig
 from model.base import Base
 
@@ -46,7 +47,7 @@ def run_migrations_offline():
       url=url, target_metadata=target_metadata, literal_binds=True)
 
   with context.begin_transaction():
-      context.run_migrations()
+    context.run_migrations()
 
 
 def run_migrations_online():

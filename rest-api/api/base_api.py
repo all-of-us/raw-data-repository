@@ -1,7 +1,5 @@
 """Base class for API handlers."""
 
-import flask
-
 from flask import request
 from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest, NotFound
@@ -92,7 +90,7 @@ class UpdatableApi(BaseApi):
       return self.dao.model_type.from_json(resource, id=id_, expected_version=expected_version)
   
   def _make_response(self, obj):    
-    return obj.to_json(), 200, {'ETag': _make_etag(obj.version)}
+    return obj.to_json(), 200, {'ETag': self._make_etag(obj.version)}
   
   def put(self, id_, a_id=None):
     """Handles a PATCH (update) request.
