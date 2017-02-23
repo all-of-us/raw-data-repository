@@ -12,7 +12,6 @@ import participant
 import participant_dao
 import participant_enums
 import participant_summary
-import questionnaire
 import questionnaire_response
 
 from dao.questionnaire_dao import QuestionnaireDao
