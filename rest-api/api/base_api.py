@@ -26,9 +26,8 @@ class BaseApi(Resource):
       id: If provided this is the id of the object to fetch.  If this is not
         present, this is assumed to be a "list" request, and the list() function
         will be called.
-    """
-    print "ID = %s" % id_
-    if not id_:
+    """    
+    if id_ is None:
       return self.list()
     obj = self.dao.get(id_)
     if not obj:
@@ -36,13 +35,13 @@ class BaseApi(Resource):
     return self._make_response(obj)
 
   def _make_response(self, obj):
-    return obj.to_json()
+    return obj.to_client_json()
 
   def _get_model_to_insert(self, resource, a_id=None):
     if a_id:
-      return self.dao.model_type.from_json(resource, a_id=a_id)
+      return self.dao.model_type.from_client_json(resource, a_id=a_id)
     else:
-      return self.dao.model_type.from_json(resource)
+      return self.dao.model_type.from_client_json(resource)
       
   def post(self, a_id=None):
     """Handles a POST (insert) request.
@@ -84,17 +83,22 @@ class UpdatableApi(BaseApi):
     
   def _get_model_to_update(self, resource, id_, expected_version, a_id=None):
     if a_id:
-      return self.dao.model_type.from_json(resource, a_id=a_id, id=id_, 
-                                           expected_version=expected_version)
+      return self.dao.model_type.from_client_json(resource, a_id=a_id, id=id_, 
+                                                  expected_version=expected_version)
     else:
-      return self.dao.model_type.from_json(resource, id=id_, expected_version=expected_version)
+      return self.dao.model_type.from_client_json(resource, id=id_, 
+                                                  expected_version=expected_version)
   
   def _make_response(self, obj):    
-    return obj.to_json(), 200, {'ETag': self._make_etag(obj.version)}
+    result = super(UpdatableApi, self)._make_response(obj)
+    etag = self._make_etag(obj.version)
+    result['meta'] = {'versionId': etag}
+    return result, 200, {'ETag': etag}
   
   def put(self, id_, a_id=None):
-    """Handles a PATCH (update) request.
-
+    """Handles a PUT (replace) request; the current object must exist, and will be replaced 
+    completely.
+      
     Args:
       id: The id of the object to update.
       a_id: The ancestor id (if applicable).

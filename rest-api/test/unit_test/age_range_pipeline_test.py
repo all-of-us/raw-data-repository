@@ -30,7 +30,7 @@ class AgeRangePipelineTest(testutil.CloudStorageTestBase):
     participant_dao.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
 
     questionnaire_json = json.loads(open(data_path('consent_questionnaire.json')).read())
-    questionnaire = QuestionnaireDao().insert(Questionnaire.from_json(questionnaire_json))
+    questionnaire = QuestionnaireDao().insert(Questionnaire.from_client_json(questionnaire_json))
     questionnaire_response_template = open(data_path('consent_questionnaire_response.json')).read()    
     replacements = {'consent_questionnaire_id': str(questionnaire.questionnaireId),
                     'middle_name': 'Quentin',

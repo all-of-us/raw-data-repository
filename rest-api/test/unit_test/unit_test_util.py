@@ -58,13 +58,13 @@ class SqlTestBase(TestbedTestBase):
     SqlTestBase.teardown_database()
     super(SqlTestBase, self).tearDown()
 
-  @classmethod
-  def setup_database(cls):
+  @staticmethod
+  def setup_database():
     dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
     dao.database_factory.get_database().create_schema()
   
-  @classmethod
-  def teardown_database(cls):
+  @staticmethod
+  def teardown_database():
     dao.database_factory.get_database().get_engine().dispose()
   
   def get_database(self):

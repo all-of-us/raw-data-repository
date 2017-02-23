@@ -14,7 +14,8 @@ find . | grep \.pyc | xargs rm -if $*
 
 echo "Installing libs..."
 pip install -r requirements.txt -t lib/
-# MySQL-python must be installed outside the lib directory apparently?
+# MySQL-python must be installed outside the lib directory, or dev_appserver.py will fail with
+# "No module named _mysql"
 pip install MySQL-python
 
 echo "Installing Alembic..."

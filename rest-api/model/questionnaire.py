@@ -7,8 +7,6 @@ from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstr
 from sqlalchemy import UniqueConstraint
 from werkzeug.exceptions import BadRequest
 
-CONCEPTS_AND_QUESTIONS = {'concepts':{}, 'questions':{}}
-
 class QuestionnaireBase(object):
   """Mixin containing columns for Questionnaire and QuestionnaireHistory"""
   questionnaireId = Column('questionnaire_id', Integer, primary_key=True)
@@ -19,9 +17,9 @@ class QuestionnaireBase(object):
   resource = Column('resource', BLOB, nullable=False)  
 
   def asdict_with_children(self):
-    return self.asdict(follow=CONCEPTS_AND_QUESTIONS)
+    return self.asdict(follow={'concepts':{}, 'questions':{}})
   
-  def to_json(self):
+  def to_client_json(self):
     return json.loads(self.resource)    
         
 class Questionnaire(QuestionnaireBase, Base):  
@@ -34,8 +32,8 @@ class Questionnaire(QuestionnaireBase, Base):
                            primaryjoin='Questionnaire.questionnaireId==' + \
                             'foreign(QuestionnaireQuestion.questionnaireId)')
                             
-  @classmethod
-  def from_json(cls, resource_json, id_=None, expected_version=None):
+  @staticmethod
+  def from_client_json(resource_json, id_=None, expected_version=None):
     fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
     if not fhir_q.group:
       raise BadRequest("No top-level group found in questionnaire")
@@ -50,8 +48,8 @@ class Questionnaire(QuestionnaireBase, Base):
     Questionnaire._populate_questions(fhir_q.group, q)
     return q
   
-  @classmethod
-  def _populate_questions(cls, group, q):
+  @staticmethod
+  def _populate_questions(group, q):
     """Recursively populate questions under this group."""
     if group.question:
       for question in group.question:

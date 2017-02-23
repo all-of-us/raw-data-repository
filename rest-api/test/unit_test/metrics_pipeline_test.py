@@ -180,7 +180,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                                      dateOfBirth=datetime.datetime(1970, 8, 21))
     participant_summary.DAO().store(summary)
     questionnaire_json = json.loads(open(data_path('questionnaire_example.json')).read())
-    questionnaire = QuestionnaireDao().insert(Questionnaire.from_json(questionnaire_json))
+    questionnaire = QuestionnaireDao().insert(Questionnaire.from_client_json(questionnaire_json))
     # REGISTERED when signed up.
     questionnaire_response.DAO().store(make_questionnaire_response(
         key.id(),
@@ -439,7 +439,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
 
   def populate_questionnaire_responses(self, participant_key):
     questionnaire_json = json.loads(open(data_path('questionnaire_example.json')).read())
-    questionnaire = QuestionnaireDao().insert(Questionnaire.from_json(questionnaire_json))
+    questionnaire = QuestionnaireDao().insert(Questionnaire.from_client_json(questionnaire_json))
     unmapped_race = concepts.Concept(concepts.SYSTEM_RACE, 'unmapped-race')
     # Set race, ethnicity, state, and membership tier on 9/1/2016
     questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),

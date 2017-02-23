@@ -36,7 +36,7 @@ class ParticipantSummaryPipelineTest(testutil.CloudStorageTestBase):
     participant_dao.DAO().insert(participant_entry_2, datetime.datetime(2015, 9, 1))
 
     questionnaire_json = json.loads(open(data_path('questionnaire_example.json')).read())
-    questionnaire = QuestionnaireDao().insert(Questionnaire.from_json(questionnaire_json))
+    questionnaire = QuestionnaireDao().insert(Questionnaire.from_client_json(questionnaire_json))
     response = make_questionnaire_response(participant_key.id(),
                                            str(questionnaire.questionnaireId),
                                            [("race", concepts.WHITE),

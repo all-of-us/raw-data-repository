@@ -52,7 +52,7 @@ class ParticipantNdbTest(NdbTestBase):
 
     
     with open(os.path.join(test_data, 'questionnaire1.json')) as rfile:
-      questionnaire_entry = Questionnaire.from_json(json.load(rfile))
+      questionnaire_entry = Questionnaire.from_client_json(json.load(rfile))
     questionnaire = QuestionnaireDao().insert(questionnaire_entry)
 
     response_key = ndb.Key(
@@ -111,7 +111,7 @@ class ParticipantNdbTest(NdbTestBase):
     participant_dao.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
 
     questionnaire_json = json.loads(open(data_path('questionnaire_example.json')).read())
-    questionnaire = QuestionnaireDao().insert(Questionnaire.from_json(questionnaire_json))
+    questionnaire = QuestionnaireDao().insert(Questionnaire.from_client_json(questionnaire_json))
     response = make_questionnaire_response(participant_key.id(),
                                            str(questionnaire.questionnaireId),
                                            [("race", concepts.WHITE),

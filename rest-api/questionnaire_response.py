@@ -118,7 +118,7 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
     if not questionnaire:
       raise ValueError('Invalid Questionnaire id "{0}".'.format(questionnaire_id))
     
-    questionnaire_extractor = QuestionnaireExtractor(questionnaire.to_json())
+    questionnaire_extractor = QuestionnaireExtractor(questionnaire.to_client_json())
     
     link_ids = questionnaire_extractor.extract_link_id_for_concept(concept)    
     return link_ids
