@@ -1,4 +1,5 @@
 import fhirclient.models.questionnaire
+import json
 
 from model.base import Base
 from sqlalchemy.orm import relationship
@@ -21,7 +22,7 @@ class QuestionnaireBase(object):
     return self.asdict(follow=CONCEPTS_AND_QUESTIONS)
   
   def to_json(self):
-    return self.resource    
+    return json.loads(self.resource)    
         
 class Questionnaire(QuestionnaireBase, Base):  
   """A questionnaire containing questions to pose to participants."""
@@ -34,12 +35,13 @@ class Questionnaire(QuestionnaireBase, Base):
                             'foreign(QuestionnaireQuestion.questionnaireId)')
                             
   @classmethod
-  def from_json(cls, json, id=None, expected_version=None):
-    fhir_q = fhirclient.models.questionnaire.Questionnaire(json)
+  def from_json(cls, resource_json, id=None, expected_version=None):
+    fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
     if not fhir_q.group:
       raise BadRequest("No top-level group found in questionnaire")
-    
-    q = Questionnaire(resource=json, questionnaireId=id, version=expected_version)
+        
+    q = Questionnaire(resource=json.dumps(fhir_q.as_json()), questionnaireId=id, 
+                      version=expected_version)
     if fhir_q.group.concept:
       for concept in fhir_q.group.concept:
         if concept.system and concept.code:
@@ -80,7 +82,7 @@ class QuestionnaireConcept(Base):
   questionnaireConceptId = Column('questionnaire_concept_id', Integer, primary_key=True)
   questionnaireId = Column('questionnaire_id', Integer, nullable=False)
   questionnaireVersion = Column('questionnaire_version', Integer, nullable=False)
-  conceptSystem = Column('concept_system', String(50), nullable=False)
+  conceptSystem = Column('concept_system', String(255), nullable=False)
   conceptCode = Column('concept_code', String(20), nullable=False)
   __table_args__ = (
     ForeignKeyConstraint(
@@ -104,7 +106,7 @@ class QuestionnaireQuestion(Base):
   questionnaireId = Column('questionnaire_id', Integer)
   questionnaireVersion = Column('questionnaire_version', Integer)
   linkId = Column('link_id', String(20))
-  conceptSystem = Column('concept_system', String(50))
+  conceptSystem = Column('concept_system', String(255))
   conceptCode = Column('concept_code', String(20))
   # Should we also include valid answers here?  
   __table_args__ = (

@@ -4,20 +4,25 @@ import json
 import participant
 import participant_dao
 import participant_summary
-import questionnaire
 import questionnaire_response
 
 from offline import participant_summary_pipeline
 from google.appengine.ext import ndb
 from mapreduce import test_support
+from dao.questionnaire_dao import QuestionnaireDao
+from model.questionnaire import Questionnaire
 from testlib import testutil
-from unit_test_util import make_questionnaire_response
+from unit_test_util import make_questionnaire_response, SqlTestBase
 from test.test_data import data_path
 
 
 class ParticipantSummaryPipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
+    SqlTestBase.setup_database()
     testutil.HandlerTestBase.setUp(self)
+  
+  def tearDown(self):
+    SqlTestBase.teardown_database()
 
   def test_end_to_end(self):
     participant_id = '1'
@@ -31,11 +36,9 @@ class ParticipantSummaryPipelineTest(testutil.CloudStorageTestBase):
     participant_dao.DAO().insert(participant_entry_2, datetime.datetime(2015, 9, 1))
 
     questionnaire_json = json.loads(open(data_path('questionnaire_example.json')).read())
-    questionnaire_key = questionnaire.DAO().store(questionnaire.DAO().from_json(questionnaire_json,
-                                                                            None,
-                                                                            questionnaire.DAO().allocate_id()))
+    questionnaire = QuestionnaireDao().insert(Questionnaire.from_json(questionnaire_json))
     response = make_questionnaire_response(participant_key.id(),
-                                           questionnaire_key.id(),
+                                           str(questionnaire.questionnaireId),
                                            [("race", concepts.WHITE),
                                             ("ethnicity", concepts.NON_HISPANIC),
                                             ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),

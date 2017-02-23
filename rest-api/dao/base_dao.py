@@ -37,12 +37,13 @@ class BaseDao(object):
     """Adds the object into the session to be inserted."""
     self._validate_insert(session, obj)
     session.add(obj)
+    return obj
 
   def insert(self, obj):
     """Inserts an object into the database. The calling object may be mutated
     in the process."""
     with self.session() as session:
-      self.insert_with_session(session, obj)
+      return self.insert_with_session(session, obj)    
 
   def get_id(self, obj):
     """Returns the ID (for single primary key column tables) or a list of IDs (for multiple

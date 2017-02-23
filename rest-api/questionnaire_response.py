@@ -114,12 +114,14 @@ class QuestionnaireResponseExtractor(extraction.FhirExtractor):
 
   def extract_link_ids(self, concept):
     questionnaire_id = self.extract_questionnaire_id()
-    questionnaire = QuestionnaireDao().get(questionnaire_id)
+    questionnaire = QuestionnaireDao().get(questionnaire_id)    
     if not questionnaire:
       raise ValueError('Invalid Questionnaire id "{0}".'.format(questionnaire_id))
     
-    questionnaire_extractor = QuestionnaireExtractor(questionnaire.resource)
-    return questionnaire_extractor.extract_link_id_for_concept(concept)
+    questionnaire_extractor = QuestionnaireExtractor(questionnaire.to_json())
+    
+    link_ids = questionnaire_extractor.extract_link_id_for_concept(concept)    
+    return link_ids
 
 def submission_statuses():
   """Enumerates the questionnaire response submission values"""

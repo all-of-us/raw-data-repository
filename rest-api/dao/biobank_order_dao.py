@@ -26,7 +26,7 @@ class BiobankOrderDao(BaseDao):
 
   def insert_with_session(self, session, obj):
     obj.logPosition = LogPosition()
-    super(BiobankOrderDao, self).insert_with_session(session, obj)
+    return super(BiobankOrderDao, self).insert_with_session(session, obj)
 
   def _validate_model(self, session, obj):
     if obj.participantId is None:

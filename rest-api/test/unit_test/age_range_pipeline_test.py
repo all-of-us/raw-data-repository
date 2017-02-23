@@ -3,20 +3,25 @@ import json
 import participant
 import participant_dao
 import participant_summary
-import questionnaire
 import questionnaire_response
 
 from clock import FakeClock
 from offline import age_range_pipeline
 from google.appengine.ext import ndb
 from mapreduce import test_support
+from dao.questionnaire_dao import QuestionnaireDao
+from model.questionnaire import Questionnaire
 from testlib import testutil
 from test.test_data import data_path
-
+from unit_test_util import SqlTestBase
 
 class AgeRangePipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
+    SqlTestBase.setup_database()
     testutil.HandlerTestBase.setUp(self)
+  
+  def tearDown(self):
+    SqlTestBase.teardown_database()
 
   def test_end_to_end(self):
     participant_id = '1'
@@ -25,10 +30,9 @@ class AgeRangePipelineTest(testutil.CloudStorageTestBase):
     participant_dao.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
 
     questionnaire_json = json.loads(open(data_path('consent_questionnaire.json')).read())
-    questionnaire_key = questionnaire.DAO().store(
-        questionnaire.DAO().from_json(questionnaire_json, None, questionnaire.DAO().allocate_id()))
-    questionnaire_response_template = open(data_path('consent_questionnaire_response.json')).read()
-    replacements = {'consent_questionnaire_id': questionnaire_key.id(),
+    questionnaire = QuestionnaireDao().insert(Questionnaire.from_json(questionnaire_json))
+    questionnaire_response_template = open(data_path('consent_questionnaire_response.json')).read()    
+    replacements = {'consent_questionnaire_id': str(questionnaire.questionnaireId),
                     'middle_name': 'Quentin',
                     'first_name': 'Bob',
                     'last_name': 'Jones',

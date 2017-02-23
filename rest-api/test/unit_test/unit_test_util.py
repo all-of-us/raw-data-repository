@@ -49,16 +49,24 @@ class SqlTestBase(TestbedTestBase):
   """Base class for unit tests that use the SQL database."""
   def setUp(self, with_data=True):
     super(SqlTestBase, self).setUp()
-    dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
-    self.database = dao.database_factory.get_database()
-    self.database.create_schema()
+    SqlTestBase.setup_database()
+    self.database = dao.database_factory.get_database()    
     if with_data:
       self.setup_data()
 
   def tearDown(self):
-    self.database.get_engine().dispose()
+    SqlTestBase.teardown_database()
     super(SqlTestBase, self).tearDown()
 
+  @classmethod
+  def setup_database(cls):
+    dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
+    dao.database_factory.get_database().create_schema()
+  
+  @classmethod
+  def teardown_database(cls):
+    dao.database_factory.get_database().get_engine().dispose()
+  
   def get_database(self):
     return self.database
 
@@ -76,7 +84,7 @@ class SqlTestBase(TestbedTestBase):
     self.assertEquals(dict1, dict2)
     
 
-class NdbTestBase(TestbedTestBase):
+class NdbTestBase(SqlTestBase):
   """Base class for unit tests that need the NDB testbed."""
   def setUp(self):
     super(NdbTestBase, self).setUp()

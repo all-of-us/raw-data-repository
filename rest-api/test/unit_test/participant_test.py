@@ -15,6 +15,8 @@ import participant_summary
 import questionnaire
 import questionnaire_response
 
+from dao.questionnaire_dao import QuestionnaireDao
+from model.questionnaire import Questionnaire
 from google.appengine.ext import ndb
 from unit_test_util import NdbTestBase, to_dict_strip_last_modified
 from unit_test_util import make_questionnaire_response
@@ -49,12 +51,10 @@ class ParticipantNdbTest(NdbTestBase):
     self.assertEquals(participant_id, participant_summary_result.participantId)
     self.assertEquals(participant_result.biobankId, participant_summary_result.biobankId)    
 
-    questionnaire_id = questionnaire.DAO().allocate_id()
-    questionnaire_key = ndb.Key(questionnaire.Questionnaire, questionnaire_id)
+    
     with open(os.path.join(test_data, 'questionnaire1.json')) as rfile:
-      questionnaire_entry = questionnaire.Questionnaire(
-          key=questionnaire_key, resource=json.load(rfile))
-    questionnaire.DAO().store(questionnaire_entry, dates[1])
+      questionnaire_entry = Questionnaire.from_json(json.load(rfile))
+    questionnaire = QuestionnaireDao().insert(questionnaire_entry)
 
     response_key = ndb.Key(
         participant_key.flat()[0], participant_key.flat()[1],
@@ -64,7 +64,7 @@ class ParticipantNdbTest(NdbTestBase):
     resource['subject']['reference'] = resource['subject']['reference'].format(
         participant_id=participant_id)
     resource['questionnaire']['reference'] = resource['questionnaire']['reference'].format(
-        questionnaire_id=questionnaire_id)
+        questionnaire_id=str(questionnaire.questionnaireId))
     response_entry = questionnaire_response.QuestionnaireResponse(key=response_key,
                                                                   resource=resource)
     questionnaire_response.DAO().store(response_entry, dates[2])
@@ -112,10 +112,9 @@ class ParticipantNdbTest(NdbTestBase):
     participant_dao.DAO().insert(participant_entry, datetime.datetime(2015, 9, 1))
 
     questionnaire_json = json.loads(open(data_path('questionnaire_example.json')).read())
-    questionnaire_key = questionnaire.DAO().store(
-        questionnaire.DAO().from_json(questionnaire_json, None, questionnaire.DAO().allocate_id()))
+    questionnaire = QuestionnaireDao().insert(Questionnaire.from_json(questionnaire_json))
     response = make_questionnaire_response(participant_key.id(),
-                                           questionnaire_key.id(),
+                                           str(questionnaire.questionnaireId),
                                            [("race", concepts.WHITE),
                                             ("ethnicity", concepts.NON_HISPANIC),
                                             ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),

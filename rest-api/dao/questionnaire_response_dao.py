@@ -56,6 +56,7 @@ class QuestionnaireResponseDao(BaseDao):
     for answer in current_answers:
       answer.endTime = questionnaireResponse.created
       session.merge(answer)
+    return questionnaireResponse
 
 class QuestionnaireResponseAnswerDao(BaseDao):
 
