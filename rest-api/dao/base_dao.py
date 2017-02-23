@@ -3,8 +3,11 @@ from contextlib import contextmanager
 from werkzeug.exceptions import NotFound, PreconditionFailed
 
 class BaseDao(object):
-  """A data access object base class; defines common methods for inserting, updating, and retrieving
-  objects using SQLAlchemy.
+  """A data access object base class; defines common methods for inserting and retrieving
+  objects using SQLAlchemy. 
+  
+  Extend directly from BaseDao if entities cannot be updated after being
+  inserted; extend from UpdatableDao if they can be updated. 
   """
   def __init__(self, model_type):
     self.model_type = model_type
@@ -62,6 +65,12 @@ class BaseDao(object):
     """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
     return self.get(self, obj_id)
 
+class UpdatableDao(BaseDao):
+  """A DAO that allows updates to entities. 
+  
+  Extend from UpdatableDao if entities can be updated after being inserted.
+  """
+  
   def _validate_update(self, session, obj, existing_obj, expected_version=None):
     """Validates that an update is OK before performing it. (Not applied on insert.)
 

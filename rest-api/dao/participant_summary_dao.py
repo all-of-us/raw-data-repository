@@ -1,7 +1,7 @@
-from dao.base_dao import BaseDao
+from dao.base_dao import UpdatableDao
 from model.participant_summary import ParticipantSummary
 
-class ParticipantSummaryDao(BaseDao):
+class ParticipantSummaryDao(UpdatableDao):
   
   def __init__(self):
     super(ParticipantSummaryDao, self).__init__(ParticipantSummary)
