@@ -12,6 +12,7 @@ import physical_measurements_api
 import ppi_api
 import version_api
 
+from api.questionnaire_api import QuestionnaireApi
 from flask import Flask
 from flask_restful import Api
 
@@ -52,11 +53,11 @@ api.add_resource(metrics_api.MetricsFieldsAPI,
                  endpoint='metrics_fields',
                  methods=['GET'])
 
-api.add_resource(ppi_api.QuestionnaireAPI,
+api.add_resource(QuestionnaireApi,
                  PREFIX + 'Questionnaire',
                  PREFIX + 'Questionnaire/<string:id_>',
                  endpoint='questionnaire',
-                 methods=['POST', 'GET'])
+                 methods=['POST', 'GET', 'PATCH'])
 
 api.add_resource(ppi_api.QuestionnaireResponseAPI,
                  PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse/<string:id_>',

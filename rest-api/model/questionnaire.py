@@ -1,7 +1,12 @@
+import fhirclient.models.questionnaire
+
 from model.base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint, Index
 from sqlalchemy import UniqueConstraint
+from werkzeug.exceptions import BadRequest
+
+CONCEPTS_AND_QUESTIONS = {'concepts':{}, 'questions':{}}
 
 class QuestionnaireBase(object):
   """Mixin containing columns for Questionnaire and QuestionnaireHistory"""
@@ -11,8 +16,13 @@ class QuestionnaireBase(object):
   created = Column('created', DateTime, nullable=False)
   lastModified = Column('last_modified', DateTime, nullable=False)
   resource = Column('resource', BLOB, nullable=False)  
-  
 
+  def asdict_with_children(self):
+    return self.asdict(follow=CONCEPTS_AND_QUESTIONS)
+  
+  def to_json(self):
+    return self.resource    
+        
 class Questionnaire(QuestionnaireBase, Base):  
   """A questionnaire containing questions to pose to participants."""
   __tablename__ = 'questionnaire'
@@ -22,7 +32,41 @@ class Questionnaire(QuestionnaireBase, Base):
   questions = relationship('QuestionnaireQuestion', cascade="expunge", cascade_backrefs=False,
                            primaryjoin='Questionnaire.questionnaireId==' + \
                             'foreign(QuestionnaireQuestion.questionnaireId)')
-
+                            
+  @classmethod
+  def from_json(cls, json, id=None, expected_version=None):
+    fhir_q = fhirclient.models.questionnaire.Questionnaire(json)
+    if not fhir_q.group:
+      raise BadRequest("No top-level group found in questionnaire")
+    
+    q = Questionnaire(resource=json, questionnaireId=id, version=expected_version)
+    if fhir_q.group.concept:
+      for concept in fhir_q.group.concept:
+        if concept.system and concept.code:
+          q.concepts.append(QuestionnaireConcept(conceptSystem=concept.system, 
+                                                 conceptCode=concept.code))    
+    Questionnaire._populate_questions(fhir_q.group, q)
+    return q
+  
+  @classmethod
+  def _populate_questions(cls, group, q):
+    """Recursively populate questions under this group."""
+    if group.question:
+      for question in group.question:
+        # Capture any questions that have a link ID and single concept with a system and code
+        if question.linkId and question.concept and len(question.concept) == 1 :
+          concept = question.concept[0]
+          if concept.system and concept.code:
+            q.questions.append(QuestionnaireQuestion(linkId=question.linkId,
+                                                     conceptSystem=concept.system,
+                                                     conceptCode=concept.code))
+        if question.group:
+          for sub_group in question.group:
+            Questionnaire._populate_questions(sub_group, q)    
+    if group.group:
+      for sub_group in group.group:
+        Questionnaire._populate_questions(sub_group, q)
+      
 class QuestionnaireHistory(QuestionnaireBase, Base):  
   __tablename__ = 'questionnaire_history'
   version = Column('version', Integer, primary_key=True)

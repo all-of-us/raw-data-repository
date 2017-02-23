@@ -28,7 +28,6 @@ EXPECTED_QUESTION_2 = QuestionnaireQuestion(questionnaireQuestionId=2, questionn
                                             conceptCode='f')
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
-CONCEPTS_AND_QUESTIONS = {'concepts':{}, 'questions':{}}
 
 class QuestionnaireDaoTest(SqlTestBase):
   def setUp(self):
@@ -57,9 +56,6 @@ class QuestionnaireDaoTest(SqlTestBase):
     expected_history.concepts.append(EXPECTED_CONCEPT_2)
     expected_history.questions.append(EXPECTED_QUESTION_1)
     expected_history.questions.append(EXPECTED_QUESTION_2)
-
-    #self.assertEquals(expected_history.asdict(follow=CONCEPTS_AND_QUESTIONS),
-    #                  questionnaire_history.asdict(follow=CONCEPTS_AND_QUESTIONS))
 
     self.assertEquals(EXPECTED_CONCEPT_1.asdict(), self.questionnaire_concept_dao.get(1).asdict())
     self.assertEquals(EXPECTED_CONCEPT_2.asdict(), self.questionnaire_concept_dao.get(2).asdict())
@@ -91,8 +87,8 @@ class QuestionnaireDaoTest(SqlTestBase):
 
     questionnaire = self.dao.get_with_children(1)
     
-    self.assertEquals(sort_lists(expected_questionnaire.asdict(follow=CONCEPTS_AND_QUESTIONS)),
-                      sort_lists(questionnaire.asdict(follow=CONCEPTS_AND_QUESTIONS)))
+    self.assertEquals(sort_lists(expected_questionnaire.asdict_with_children()),
+                      sort_lists(questionnaire.asdict_with_children()))
   
   def test_insert_duplicate(self):    
     q = Questionnaire(questionnaireId=1, resource='blah')
@@ -157,8 +153,8 @@ class QuestionnaireDaoTest(SqlTestBase):
     expected_history.questions.append(expected_question_1)
     expected_history.questions.append(expected_question_2)
 
-    self.assertEquals(sort_lists(expected_history.asdict(follow=CONCEPTS_AND_QUESTIONS)),
-                      sort_lists(questionnaire_history.asdict(follow=CONCEPTS_AND_QUESTIONS)))
+    self.assertEquals(sort_lists(expected_history.asdict_with_children()),
+                      sort_lists(questionnaire_history.asdict_with_children()))
 
     self.assertEquals(expected_concept_1.asdict(), self.questionnaire_concept_dao.get(3).asdict())
     self.assertEquals(expected_concept_2.asdict(), self.questionnaire_concept_dao.get(4).asdict())
