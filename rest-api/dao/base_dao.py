@@ -3,7 +3,7 @@ import random
 import dao.database_factory
 from model.log_position import LogPosition
 from contextlib import contextmanager
-from werkzeug.exceptions import NotFound, PreconditionFailed, ServiceUnavailable
+from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 from sqlalchemy.exc import IntegrityError
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
@@ -13,6 +13,7 @@ MAX_INSERT_ATTEMPTS = 20
 # Range of possible values for random IDs.
 _MIN_ID = 100000000
 _MAX_ID = 999999999
+
 
 class BaseDao(object):
   """A data access object base class; defines common methods for inserting and retrieving
@@ -61,9 +62,9 @@ class BaseDao(object):
 
   def insert_with_session(self, session, obj):
     """Adds the object into the session to be inserted."""
+    self._validate_insert(session, obj)
     if self._use_log_position:
       obj.logPosition = LogPosition()
-    self._validate_insert(session, obj)
     session.add(obj)
     return obj
 
