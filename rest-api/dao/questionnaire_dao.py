@@ -50,7 +50,7 @@ class QuestionnaireDao(UpdatableDao):
     # This is needed to assign an ID to the questionnaire, as the client doesn't need to provide
     # one.
     session.flush()
-    questionnaire.resource['id'] = questionnaire.questionnaireId
+    questionnaire.resource['id'] = str(questionnaire.questionnaireId)
     history.questionnaireId = questionnaire.questionnaireId
     QuestionnaireHistoryDao().insert_with_session(session, history)
 
