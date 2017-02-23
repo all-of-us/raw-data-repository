@@ -1,7 +1,6 @@
 from dao.base_dao import BaseDao
 from dao.participant_dao import ParticipantDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier
-from model.log_position import LogPosition
 
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
@@ -12,7 +11,7 @@ VALID_TESTS = frozenset(['1ED10', '2ED10', '1ED04', '1SST8', '1PST8', '1HEP4', '
 
 class BiobankOrderDao(BaseDao):
   def __init__(self):
-    super(BiobankOrderDao, self).__init__(BiobankOrder)
+    super(BiobankOrderDao, self).__init__(BiobankOrder, use_log_position=True)
 
   def get_id(self, obj):
     return obj.biobankOrderId
@@ -21,11 +20,8 @@ class BiobankOrderDao(BaseDao):
     super(BiobankOrderDao, self)._validate_insert(session, obj)
     if obj.biobankOrderId is None:
       raise BadRequest('Client must supply biobankOrderId.')
-    if obj.logPositionId is not None:
-      raise BadRequest('BiobankOrder LogPosition ID must be auto-generated.')
 
   def insert_with_session(self, session, obj):
-    obj.logPosition = LogPosition()
     return super(BiobankOrderDao, self).insert_with_session(session, obj)
 
   def _validate_model(self, session, obj):
