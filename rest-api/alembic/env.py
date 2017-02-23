@@ -37,13 +37,10 @@ def my_compare_type(context, inspected_column,
   # return True if the types are different,
   # False if not, or None to allow the default implementation
   # to compare these types
-  if isinstance(metadata_type, sa.Boolean) and isinstance(inspected_type, TINYINT):    
-    print "A"
+  if isinstance(metadata_type, sa.Boolean) and isinstance(inspected_type, TINYINT):        
     return False
-  if isinstance(metadata_type, model.utils.Enum) and isinstance(inspected_type, SMALLINT):
-    print "B"
-    return False
-  print "inspected_column = %s, inspected type = %s, metadata_type = %s, type(it) = %s, type(mt) = %s" % (inspected_column, inspected_type, metadata_type, type(inspected_type), type(metadata_type))
+  if isinstance(metadata_type, model.utils.Enum) and isinstance(inspected_type, SMALLINT):    
+    return False  
   return None
 
 def run_migrations_offline():
