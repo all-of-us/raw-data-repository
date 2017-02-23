@@ -1,5 +1,12 @@
 #!/bin/bash -e
-# Use curl to issue requests to RDR API endpoints so a proxy can record them, for AppScan.
+# Use curl to issue requests to RDR API endpoints so a proxy can record them.
+#
+# This script is single-purpose, for Vanderbilt to record API interactions in
+# IBM AppScan and then replay them in a security scan against the PMI test
+# environment. It is expected to be run rarely (once to record the interactions,
+# and then only again when new interactions need to be recorded) so it's OK to
+# require manual setup (getting the bearer token). We also expect the script to
+# be run outside of the normal codebase.
 
 # To get the bearer token:
 # Save the test token from
@@ -7,6 +14,9 @@
 # Authenticate against it using gcloud (https://cloud.google.com/sdk/downloads):
 #     gcloud auth activate-service-account --key-file=<WHEREEVER YOU PUT THAT TOKEN>
 #     gcloud auth print-access-token
+# Note that during the security scan, AppScan will send a custom header to
+# provide its own / new bearer token. (This token need only last for the
+# recording phase, and then it can expire after an hour as is normal.)
 BEARER_TOKEN=$1
 
 # The HTTP proxy which will record requests.
