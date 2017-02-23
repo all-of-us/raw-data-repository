@@ -11,7 +11,7 @@ from extraction import UNMAPPED, SKIPPED
 from google.appengine.ext import ndb
 from participant_enums import GenderIdentity, MembershipTier, Ethnicity, Race
 from dao.questionnaire_dao import QuestionnaireDao
-from questionnaire import QuestionnaireExtractor
+from questionnaire_extractor import QuestionnaireExtractor
 
 
 class QuestionnaireResponse(ndb.Model):

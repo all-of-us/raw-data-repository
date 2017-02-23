@@ -5,7 +5,7 @@ import json
 import unittest
 
 from participant_summary import Race
-from questionnaire import QuestionnaireExtractor
+from questionnaire_extractor import QuestionnaireExtractor
 from questionnaire_response import QuestionnaireResponseExtractor
 
 from test.unit_test.unit_test_util import NdbTestBase

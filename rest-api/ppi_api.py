@@ -14,35 +14,6 @@ from api_util import PTC
 from dao.questionnaire_dao import QuestionnaireDao
 from werkzeug.exceptions import BadRequest
 
-class QuestionnaireAPI(base_api.BaseApi):
-  def __init__(self):
-    super(QuestionnaireAPI, self).__init__(questionnaire.DAO())
-
-  @api_util.auth_required(PTC)
-  def get(self, id_=None, a_id=None):
-    return super(QuestionnaireAPI, self).get(id_, a_id)
-
-  @api_util.auth_required(PTC)
-  def post(self, a_id=None):
-    return super(QuestionnaireAPI, self).post(a_id)
-
-  @api_util.auth_required(PTC)
-  def put(self, id_, a_id=None):
-    return super(QuestionnaireAPI, self).put(id_, a_id)
-
-  @api_util.auth_required(PTC)
-  def patch(self, id_, a_id=None):
-    return super(QuestionnaireAPI, self).patch(id_, a_id)
-
-  @api_util.auth_required(PTC)
-  def list(self, a_id=None):
-    return super(QuestionnaireAPI, self).list(a_id)
-
-  def validate_object(self, q, a_id=None):
-    """Makes sure that the questionnaire is valid."""
-    fhirclient.models.questionnaire.Questionnaire(q.resource)
-
-
 class QuestionnaireResponseAPI(base_api.BaseApi):
   def __init__(self):
     super(QuestionnaireResponseAPI, self).__init__(questionnaire_response.DAO())
