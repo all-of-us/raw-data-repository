@@ -7,10 +7,11 @@ import api_util
 import base_api
 
 import participant_dao
-import questionnaire
 import questionnaire_response
 import fhirclient.models.questionnaire
+
 from api_util import PTC
+from dao.questionnaire_dao import QuestionnaireDao
 from werkzeug.exceptions import BadRequest
 
 class QuestionnaireAPI(base_api.BaseApi):
@@ -84,6 +85,6 @@ class QuestionnaireResponseAPI(base_api.BaseApi):
       raise BadRequest(
           'Questionnaire id {} invalid or missing.'.format(questionnaire_id))
     questionnaire_id = questionnaire_id.replace('Questionnaire/', '', 1)
-    if not questionnaire.DAO().load_if_present(questionnaire_id):
+    if not QuestionnaireDao().get(questionnaire_id):
       raise BadRequest(
           'Questionnaire id {} invalid or missing.'.format(questionnaire_id))

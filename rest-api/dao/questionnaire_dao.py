@@ -46,10 +46,11 @@ class QuestionnaireDao(UpdatableDao):
     del questionnaire.concepts[:]
     del questionnaire.questions[:]
     
-    super(QuestionnaireDao, self).insert_with_session(session, questionnaire)
+    super(QuestionnaireDao, self).insert_with_session(session, questionnaire)    
     # This is needed to assign an ID to the questionnaire, as the client doesn't need to provide
     # one.
-    session.flush()    
+    session.flush()
+    questionnaire.resource['id'] = questionnaire.questionnaireId
     history.questionnaireId = questionnaire.questionnaireId
     QuestionnaireHistoryDao().insert_with_session(session, history)
 

@@ -21,7 +21,7 @@ class BaseApi(Resource):
   def __init__(self, dao):
     self.dao = dao    
 
-  def get(self, id=None):
+  def get(self, id_=None):
     """Handle a GET request.
 
     Args:
@@ -29,11 +29,12 @@ class BaseApi(Resource):
         present, this is assumed to be a "list" request, and the list() function
         will be called.
     """
-    if not id:
+    print "ID = %s" % id_
+    if not id_:
       return self.list()
-    obj = self.dao.get(id)
+    obj = self.dao.get(id_)
     if not obj:
-      raise NotFound("%s with ID %s not found" % (self.dao.model_type.__name__, id))    
+      raise NotFound("%s with ID %s not found" % (self.dao.model_type.__name__, id_))    
     return self._make_response(obj)
 
   def _make_response(self, obj):
@@ -66,7 +67,10 @@ class BaseApi(Resource):
 
 
 class UpdatableApi(BaseApi):
-  """Base class for API handlers that support PATCH requests."""
+  """Base class for API handlers that support PUT requests.
+  
+  To be used with UpdatableDao for model objects with a version field.
+  """
   
   def _make_etag(self, version):
     return 'W/"%d"' % version
@@ -80,14 +84,17 @@ class UpdatableApi(BaseApi):
         raise BadRequest("Invalid version: %s" % version_str)
     raise BadRequest("Invalid ETag: %s" % etag)
     
-  def _get_model_to_update(self, resource, id, expected_version, a_id=None):
+  def _get_model_to_update(self, resource, id_, expected_version, a_id=None):
     if a_id:
-      return self.dao.model_type.from_json(resource, a_id=a_id, id=id, 
+      return self.dao.model_type.from_json(resource, a_id=a_id, id=id_, 
                                            expected_version=expected_version)
     else:
-      return self.dao.model_type.from_json(resource, id=id, expected_version=expected_version)
+      return self.dao.model_type.from_json(resource, id=id_, expected_version=expected_version)
   
-  def patch(self, id, a_id=None):
+  def _make_response(self, obj):    
+    return obj.to_json(), 200, {'ETag': _make_etag(obj.version)}
+  
+  def put(self, id_, a_id=None):
     """Handles a PATCH (update) request.
 
     Args:
@@ -100,6 +107,6 @@ class UpdatableApi(BaseApi):
     if not etag:
       raise BadRequest("If-Match is missing for PATCH request")
     expected_version = self._parse_etag(etag)    
-    m = self._get_model_to_update(resource, id, expected_version, a_id)
+    m = self._get_model_to_update(resource, id_, expected_version, a_id)
     self.dao.update(m)
     return self._make_response(m)

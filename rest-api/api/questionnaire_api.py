@@ -9,14 +9,14 @@ class QuestionnaireApi(BaseApi):
     super(QuestionnaireApi, self).__init__(QuestionnaireDao())
 
   @api_util.auth_required(PTC)
-  def get(self, id=None):
-    return super(QuestionnaireApi, self).get(id)
+  def get(self, id_=None):
+    return super(QuestionnaireApi, self).get(id_)
 
   @api_util.auth_required(PTC)
   def post(self):
     return super(QuestionnaireApi, self).post()
 
   @api_util.auth_required(PTC)
-  def patch(self, id):
-    return super(QuestionnaireApi, self).patch(id)
+  def put(self, id_):
+    return super(QuestionnaireApi, self).patch(id_)
 

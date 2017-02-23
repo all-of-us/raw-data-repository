@@ -28,7 +28,7 @@ def create_questionnaire(client, json_file):
 
 def round_trip(test, client, path, resource):
   response = client.request_json(path, 'POST', resource)
-  q_id = response['id']
+  q_id = response['id']  
   del response['id']
   _compare_json(test, resource, response)
 
