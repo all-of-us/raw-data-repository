@@ -11,7 +11,6 @@ TIME = datetime.datetime(2016, 1, 1, 10, 0)
 TIME_2 = datetime.datetime(2016, 1, 2, 9, 59)
 TIME_3 = datetime.datetime(2016, 1, 2, 10, 0)
 PITT = 'PITT'
-BUCKETS = {'buckets': {}}
 
 class MetricsDaoTest(SqlTestBase):
   
@@ -34,8 +33,8 @@ class MetricsDaoTest(SqlTestBase):
     expected_mv = MetricsVersion(metricsVersionId=1, inProgress=True, complete=False,
                                  date=TIME, dataVersion=SERVING_METRICS_DATA_VERSION)
     self.assertEquals(expected_mv.asdict(), self.metrics_version_dao.get(1).asdict())
-    self.assertEquals(expected_mv.asdict(follow=BUCKETS), 
-                      self.metrics_version_dao.get_with_children(1).asdict(follow=BUCKETS))
+    self.assertEquals(expected_mv.asdict_with_children(), 
+                      self.metrics_version_dao.get_with_children(1).asdict_with_children())
     self.assertEquals(expected_mv.asdict(), 
                       self.metrics_version_dao.get_version_in_progress().asdict())
     self.assertIsNone(self.metrics_version_dao.get_serving_version())
@@ -71,8 +70,8 @@ class MetricsDaoTest(SqlTestBase):
     expected_mv = MetricsVersion(metricsVersionId=1, inProgress=False, complete=True,
                                  date=TIME, dataVersion=SERVING_METRICS_DATA_VERSION)
     self.assertEquals(expected_mv.asdict(), self.metrics_version_dao.get(1).asdict())
-    self.assertEquals(expected_mv.asdict(follow=BUCKETS), 
-                      self.metrics_version_dao.get_serving_version().asdict(follow=BUCKETS))
+    self.assertEquals(expected_mv.asdict_with_children(), 
+                      self.metrics_version_dao.get_serving_version().asdict_with_children())
   
   def test_set_pipeline_finished_in_progress_with_buckets(self):
     with FakeClock(TIME):
@@ -89,8 +88,8 @@ class MetricsDaoTest(SqlTestBase):
                                  date=TIME, dataVersion=SERVING_METRICS_DATA_VERSION)
     expected_mv.buckets.append(metrics_bucket_1)
     expected_mv.buckets.append(metrics_bucket_2)        
-    self.assertEquals(expected_mv.asdict(follow=BUCKETS), 
-                      self.metrics_version_dao.get_serving_version().asdict(follow=BUCKETS))
+    self.assertEquals(expected_mv.asdict_with_children(), 
+                      self.metrics_version_dao.get_serving_version().asdict_with_children())
   
   def test_insert_duplicate_bucket(self):
     with FakeClock(TIME):
