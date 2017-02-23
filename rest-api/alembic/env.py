@@ -1,7 +1,9 @@
 import os
 # Importing this is what gets our model available for Alembic.
 import model.database # pylint: disable=unused-import
+import sqlalchemy as sa
 
+from sqlalchemy.dialects.mysql.types import TINYINT, SMALLINT
 from alembic import context
 from sqlalchemy import create_engine
 from logging.config import fileConfig
@@ -30,6 +32,20 @@ target_metadata = Base.metadata
 def get_url():
   return os.getenv("DB_CONNECTION_STRING", "mysql+mysqldb://root:root@localhost/rdr")
 
+def my_compare_type(context, inspected_column,
+            metadata_column, inspected_type, metadata_type):
+  # return True if the types are different,
+  # False if not, or None to allow the default implementation
+  # to compare these types
+  if isinstance(metadata_type, sa.Boolean) and isinstance(inspected_type, TINYINT):    
+    print "A"
+    return False
+  if isinstance(metadata_type, model.utils.Enum) and isinstance(inspected_type, SMALLINT):
+    print "B"
+    return False
+  print "inspected_column = %s, inspected type = %s, metadata_type = %s, type(it) = %s, type(mt) = %s" % (inspected_column, inspected_type, metadata_type, type(inspected_type), type(metadata_type))
+  return None
+
 def run_migrations_offline():
   """Run migrations in 'offline' mode.
 
@@ -44,7 +60,7 @@ def run_migrations_offline():
   """
   url = get_url()
   context.configure(
-      url=url, target_metadata=target_metadata, literal_binds=True, compare_type=True)
+      url=url, target_metadata=target_metadata, literal_binds=True, compare_type=my_compare_type)
 
   with context.begin_transaction():
     context.run_migrations()
@@ -63,7 +79,7 @@ def run_migrations_online():
     context.configure(
           connection=connection,
           target_metadata=target_metadata,
-          compare_type=True
+          compare_type=my_compare_type
     )
 
     with context.begin_transaction():
