@@ -74,9 +74,9 @@ class SqlTestBase(TestbedTestBase):
     del dict1['lastModified']
     del dict2['lastModified']
     self.assertEquals(dict1, dict2)
-    
 
-class NdbTestBase(TestbedTestBase):
+
+class NdbTestBase(SqlTestBase):
   """Base class for unit tests that need the NDB testbed."""
   def setUp(self):
     super(NdbTestBase, self).setUp()
