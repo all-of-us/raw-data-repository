@@ -32,8 +32,9 @@ target_metadata = Base.metadata
 def get_url():
   return os.getenv("DB_CONNECTION_STRING", "mysql+mysqldb://root:root@localhost/rdr")
 
-# pylint: unused-argument
 def my_compare_type(ctx, inspected_column, metadata_column, inspected_type, metadata_type): 
+   #pylint: disable=unused-argument
+   
   # return True if the types are different,
   # False if not, or None to allow the default implementation
   # to compare these types
