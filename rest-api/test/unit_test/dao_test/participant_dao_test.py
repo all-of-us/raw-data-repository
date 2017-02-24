@@ -98,10 +98,11 @@ class ParticipantDaoTest(SqlTestBase):
     with FakeClock(time):
       self.dao.insert(p)
 
+    p.version = 1
     p.providerLink = test_data.primary_provider_link('PITT')
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
-      self.dao.update(p, expected_version=1)
+      self.dao.update(p)
     
     p2 = self.dao.get(1);
     expected_participant = Participant(participantId=1, version=2, biobankId=2, lastModified=time2,
@@ -115,11 +116,12 @@ class ParticipantDaoTest(SqlTestBase):
     with FakeClock(time):
       self.dao.insert(p)
 
+    p.version = 2
     p.providerLink = test_data.primary_provider_link('PITT')
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
       with self.assertRaises(PreconditionFailed):
-        self.dao.update(p, expected_version=2)
+        self.dao.update(p)
 
   def test_update_not_exists(self):
     p = Participant(participantId=1, biobankId=2)

@@ -1,10 +1,10 @@
 import api_util
 
-from api.base_api import BaseApi
+from api.base_api import UpdatableApi
 from api_util import PTC
 from dao.questionnaire_dao import QuestionnaireDao
 
-class QuestionnaireApi(BaseApi):
+class QuestionnaireApi(UpdatableApi):
   def __init__(self):
     super(QuestionnaireApi, self).__init__(QuestionnaireDao())
 
@@ -18,5 +18,5 @@ class QuestionnaireApi(BaseApi):
 
   @api_util.auth_required(PTC)
   def put(self, id_):
-    return super(QuestionnaireApi, self).patch(id_)
+    return super(QuestionnaireApi, self).put(id_)
 

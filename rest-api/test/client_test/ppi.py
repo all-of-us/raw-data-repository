@@ -15,20 +15,7 @@ def _questionnaire_response_url(participant_id):
 class TestPPI(unittest.TestCase):
   def setUp(self):
     self.maxDiff = None
-    self.client = test_util.get_client('rdr/v1')
-
-  def test_questionnaires(self):
-    questionnaire_files = [
-        'test-data/questionnaire1.json',
-        # Example from vibrent.
-        'test-data/questionnaire2.json',
-        'test-data/questionnaire_demographics.json',
-    ]
-
-    for json_file in questionnaire_files:
-      with open(json_file) as f:
-        questionnaire = json.load(f)
-        test_util.round_trip(self, self.client, 'Questionnaire', questionnaire)
+    self.client = test_util.get_client('rdr/v1')  
 
   def test_valid_and_invalid_questionnaire_responses(self):
     questionnaire_response_files = [

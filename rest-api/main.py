@@ -57,7 +57,7 @@ api.add_resource(QuestionnaireApi,
                  PREFIX + 'Questionnaire',
                  PREFIX + 'Questionnaire/<string:id_>',
                  endpoint='questionnaire',
-                 methods=['POST', 'GET', 'PATCH'])
+                 methods=['POST', 'GET', 'PUT'])
 
 api.add_resource(ppi_api.QuestionnaireResponseAPI,
                  PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse/<string:id_>',

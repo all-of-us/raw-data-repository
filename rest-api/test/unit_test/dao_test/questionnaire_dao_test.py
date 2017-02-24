@@ -170,9 +170,9 @@ class QuestionnaireDaoTest(SqlTestBase):
     with FakeClock(TIME):
       self.dao.insert(q)
     
-    q = Questionnaire(questionnaireId=1, resource=RESOURCE_2)    
+    q = Questionnaire(questionnaireId=1, version=1, resource=RESOURCE_2)    
     with FakeClock(TIME_2):
-      self.dao.update(q, expected_version=1)
+      self.dao.update(q)
     
     expected_questionnaire = Questionnaire(questionnaireId=1, version=2, created=TIME,
                                           lastModified=TIME_2, resource=RESOURCE_2)
@@ -184,10 +184,10 @@ class QuestionnaireDaoTest(SqlTestBase):
     with FakeClock(TIME):
       self.dao.insert(q)
     
-    q = Questionnaire(questionnaireId=1, resource=RESOURCE_2)    
+    q = Questionnaire(questionnaireId=1, version=2, resource=RESOURCE_2)    
     with FakeClock(TIME_2):
       try:
-        self.dao.update(q, expected_version=2)
+        self.dao.update(q)
         self.fail("PreconditionFailed expected")
       except PreconditionFailed:
         pass

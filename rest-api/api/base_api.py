@@ -38,7 +38,8 @@ class BaseApi(Resource):
     return obj.to_client_json()
 
   def _get_model_to_insert(self, resource, participant_id=None):
-    if participant_id:
+    # Children of participants accept a participant_id parameter to from_client_json; others don't.
+    if participant_id is not None:
       return self.dao.model_type.from_client_json(resource, participant_id=participant_id)
     else:
       return self.dao.model_type.from_client_json(resource)
@@ -68,12 +69,13 @@ class UpdatableApi(BaseApi):
   
   To be used with UpdatableDao for model objects with a version field.
   """    
-  def _get_model_to_update(self, resource, id_, expected_version, participant_id=None):
-    if participant_id:
-      return self.dao.model_type.from_client_json(resource, participant_id=participant_id, id=id_, 
+  def _get_model_to_update(self, resource, id_, expected_version, participant_id=None):    
+    # Children of participants accept a participant_id parameter to from_client_json; others don't.
+    if participant_id is not None:
+      return self.dao.model_type.from_client_json(resource, participant_id=participant_id, id_=id_, 
                                                   expected_version=expected_version)
     else:
-      return self.dao.model_type.from_client_json(resource, id=id_, 
+      return self.dao.model_type.from_client_json(resource, id_=id_, 
                                                   expected_version=expected_version)
   
   def _make_response(self, obj):    

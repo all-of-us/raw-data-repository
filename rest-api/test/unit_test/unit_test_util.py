@@ -1,3 +1,4 @@
+import copy
 import httplib
 import json
 import mock
@@ -138,11 +139,15 @@ class FlaskTestBase(NdbTestBase):
 
   def send_post(self, *args, **kwargs):
     return self.send_request('POST', *args, **kwargs)
+  
+  def send_put(self, *args, **kwargs):
+    return self.send_request('PUT', *args, **kwargs)
 
   def send_get(self, *args, **kwargs):
     return self.send_request('GET', *args, **kwargs)
 
-  def send_request(self, method, local_path, request_data=None, expected_status=httplib.OK):
+  def send_request(self, method, local_path, request_data=None, expected_status=httplib.OK,
+                   headers=None, expected_response_headers=None):
     """Makes a JSON API call against the test client and returns its response data.
 
     Args:
@@ -155,9 +160,35 @@ class FlaskTestBase(NdbTestBase):
         main.PREFIX + local_path,
         method=method,
         data=json.dumps(request_data) if request_data is not None else None,
-        content_type='application/json')
+        content_type='application/json',
+        headers=headers)
     self.assertEquals(response.status_code, expected_status, response.data)
+    if expected_response_headers:
+      self.assertTrue(set(expected_response_headers.items())
+                          .issubset(set(response.headers.items())),
+                      "Expected response headers: %s; actual: %s" % 
+                      (expected_response_headers, response.headers))    
     return json.loads(response.data)
+
+  def round_trip(self, path, resource):
+    response = self.send_post(path, resource)  
+    q_id = response['id']  
+    del response['id']
+    self.compare_json(resource, response)
+
+    response = self.send_get('{}/{}'.format(path, q_id))
+    del response['id']
+    self.compare_json(resource, response)
+    
+  def compare_json(self, obj_a, obj_b):
+    obj_b = copy.deepcopy(obj_b)
+    if 'etag' in obj_b:
+      del obj_b['etag']
+    if 'kind' in obj_b:
+      del obj_b['kind']
+    if 'meta' in obj_b:
+      del obj_b['meta']
+    self.assertMultiLineEqual(pretty(obj_a), pretty(obj_b))
 
 
 def to_dict_strip_last_modified(obj):
@@ -200,3 +231,6 @@ def make_questionnaire_response(participant_id, questionnaire_id, answers):
           "question": results
         }
       }, participant_id, questionnaire_response.DAO().allocate_id())
+
+def pretty(obj):
+  return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))

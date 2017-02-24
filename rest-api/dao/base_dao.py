@@ -72,7 +72,7 @@ class UpdatableDao(BaseDao):
   Extend from UpdatableDao if entities can be updated after being inserted.
   """
   
-  def _validate_update(self, session, obj, existing_obj, expected_version=None):
+  def _validate_update(self, session, obj, existing_obj):
     """Validates that an update is OK before performing it. (Not applied on insert.)
 
     By default, validates that the object already exists, and if an expected version ID is provided,
@@ -82,10 +82,10 @@ class UpdatableDao(BaseDao):
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
     # If an expected version was provided, make sure it matches the last modified timestamp of
     # the existing entity.
-    if expected_version:
-      if existing_obj.version != expected_version:
+    if obj.version:
+      if existing_obj.version != obj.version:
         raise PreconditionFailed('Expected version was %d; stored version was %d' % \
-                                 (expected_version, existing_obj.version))
+                                 (obj.version, existing_obj.version))
     self._validate_model(session, obj)
 
   # pylint: disable=unused-argument
@@ -93,16 +93,16 @@ class UpdatableDao(BaseDao):
     """Perform the update of the specified object. Subclasses can override to alter things."""
     session.merge(obj)
 
-  def update_with_session(self, session, obj, expected_version=None):
+  def update_with_session(self, session, obj):
     """Updates the object in the database with the specified session and (optionally)
     expected version ID."""
     existing_obj = self.get(self.get_id(obj))
-    self._validate_update(session, obj, existing_obj, expected_version)
+    self._validate_update(session, obj, existing_obj)
     self._do_update(session, obj, existing_obj)
 
-  def update(self, obj, expected_version=None):
+  def update(self, obj):
     """Updates the object in the database. Will fail if the object doesn't exist already, or
-    if expected_version is provided but does not match the version of the existing object.
+    if obj.version does not match the version of the existing object.
     May modify the passed in object."""
     with self.session() as session:
-      return self.update_with_session(session, obj, expected_version)
+      return self.update_with_session(session, obj)

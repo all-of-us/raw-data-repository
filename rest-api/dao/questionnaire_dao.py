@@ -71,8 +71,8 @@ class QuestionnaireDao(UpdatableDao):
     obj.created = existing_obj.created
     super(QuestionnaireDao, self)._do_update(session, obj, existing_obj)
 
-  def update_with_session(self, session, questionnaire, expected_version=None):
-    super(QuestionnaireDao, self).update_with_session(session, questionnaire, expected_version)
+  def update_with_session(self, session, questionnaire):
+    super(QuestionnaireDao, self).update_with_session(session, questionnaire)
     QuestionnaireHistoryDao().insert_with_session(session, 
                                                   self._make_history(questionnaire,
                                                                      questionnaire.concepts,
