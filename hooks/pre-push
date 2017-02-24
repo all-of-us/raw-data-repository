@@ -1,9 +1,11 @@
 #!/bin/bash
 #ci/test_pre_push.sh
 UNTRACKED=`git ls-files --others --exclude-standard`
-if [ "$UNTRACKED" ]
+UNCOMMITTED=`git diff --name-only`
+if [ "$UNTRACKED" -o "$UNCOMMITTED" ]
 then
-  echo "You have untracked files. Continue with push?"
+  echo "You have untracked or uncommitted files. Continue with push?"
+  echo $UNTRACKED $UNCOMMITTED
   select yn in "Yes" "No"
   do
     case $yn in
