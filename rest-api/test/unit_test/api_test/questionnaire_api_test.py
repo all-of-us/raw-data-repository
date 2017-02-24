@@ -3,7 +3,6 @@ import json
 
 from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import data_path
-from werkzeug.exceptions import BadRequest
 
 class QuestionnaireApiTest(FlaskTestBase):
   
