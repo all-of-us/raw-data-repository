@@ -93,7 +93,7 @@ class ParticipantDao(UpdatableDao):
       raise BadRequest('%s.participantId required.' % obj.__class__.__name__)
     if self.get_with_session(session, obj.participantId) is None:
       raise BadRequest(
-          '%s.participantId %r is not found.' % obj.__class__.__name__, obj.participantId)
+          '%s.participantId %r is not found.' % (obj.__class__.__name__, obj.participantId))
 
 
 # TODO(danrodney): remove this logic from old participant code when done

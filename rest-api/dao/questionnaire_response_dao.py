@@ -30,7 +30,6 @@ class QuestionnaireResponseDao(BaseDao):
 
   def _validate_model(self, session, obj):
     ParticipantDao().validate_participant_reference(session, obj)
-      raise BadRequest('QuestionnaireResponse.participantId is required.')
     if not obj.questionnaireId:
       raise BadRequest('QuestionnaireResponse.questionnaireId is required.')
     if not obj.questionnaireVersion:
