@@ -1,0 +1,14 @@
+#!/bin/bash
+#ci/test_pre_push.sh
+UNTRACKED=`git ls-files --others --exclude-standard`
+if [ "$UNTRACKED" ]
+then
+  echo "You have untracked files. Continue with push?"
+  select yn in "Yes" "No"
+  do
+    case $yn in
+      Yes ) break;;
+      No  ) exit 1;;
+    esac
+  done
+fi
