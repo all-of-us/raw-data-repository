@@ -42,8 +42,13 @@ PRIVATE_KEY=`grep private_key_id $CREDS_FILE | cut -d\" -f4`
 function get_instance_connection_name { 
   echo "Getting database info..."
   tools/install_config.sh --key db_config --instance $INSTANCE --creds_file ${CREDS_FILE} > $DB_INFO_FILE
-  INSTANCE_CONNECTION_NAME=`grep db_connection_name $DB_INFO_FILE | cut -d\" -f4`
-  echo "INSTANCE = ${INSTANCE_CONNECTION_NAME}"
+  INSTANCE_CONNECTION_NAME=`grep db_connection_name $DB_INFO_FILE | cut -d\" -f4`  
+}
+
+function get_db_password {
+  echo "Getting database password..."
+  tools/install_config.sh --key db_config --instance $INSTANCE --creds_file ${CREDS_FILE} > $DB_INFO_FILE
+  PASSWORD=`grep db_password $DB_INFO_FILE | cut -d\" -f4`
 }
 
 function run_cloud_sql_proxy {
