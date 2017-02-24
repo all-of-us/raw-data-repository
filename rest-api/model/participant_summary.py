@@ -6,6 +6,7 @@ from sqlalchemy import Column, Integer, String, Date, DateTime
 from sqlalchemy import ForeignKey, Index, SmallInteger
 from sqlalchemy.orm import relationship
 
+
 class ParticipantSummary(Base):
   __tablename__ = 'participant_summary'
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
@@ -55,6 +56,8 @@ class ParticipantSummary(Base):
   questionnaireOnFamilyHealthTime = Column('questionnaire_on_family_health_time', DateTime)
   numCompletedBaselinePPIModules = Column('num_completed_baseline_ppi_modules', SmallInteger,
                                           default=0)
+  # The number of BiobankStoredSamples recorded for this participant, limited to those samples
+  # where testCode is one of the baseline tests (listed in the config).
   numBaselineSamplesArrived = Column('num_baseline_samples_arrived', SmallInteger, default=0)
 
   participant = relationship("Participant", back_populates="participantSummary")

@@ -1,5 +1,6 @@
 from dao.base_dao import BaseDao
 from dao.participant_dao import ParticipantDao
+from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 
 
@@ -13,5 +14,6 @@ class BiobankStoredSampleDao(BaseDao):
   def _validate_insert(self, session, obj):
     ParticipantDao().validate_participant_reference(session, obj)
 
-  #def store(self, model):
-  #  update participant summary
+  def insert_with_session(self, session, obj):
+    super(BiobankStoredSampleDao, self).insert_with_session(session, obj)
+    ParticipantSummaryDao().update_from_biobank_stored_sample(session, obj)
