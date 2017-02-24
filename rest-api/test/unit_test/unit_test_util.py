@@ -19,9 +19,11 @@ import questionnaire_response
 import dao.base_dao
 import singletons
 
+from contextlib import contextmanager
 from dao.hpo_dao import HPODao
 from model.hpo import HPO
 from participant_enums import UNSET_HPO_ID
+from mock import patch
 
 PITT_HPO_ID = 2
 
@@ -230,3 +232,8 @@ def make_questionnaire_response(participant_id, questionnaire_id, answers):
 
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
+  
+@contextmanager
+def random_ids(ids):
+  with patch('random.randint', side_effect=ids):
+    yield

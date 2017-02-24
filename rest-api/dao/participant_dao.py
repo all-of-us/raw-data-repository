@@ -7,7 +7,6 @@ from model.participant import Participant, ParticipantHistory
 from participant_enums import UNSET_HPO_ID
 from werkzeug.exceptions import BadRequest
 
-
 class ParticipantHistoryDao(BaseDao):
   """Maintains version history for participants.
   
@@ -26,16 +25,13 @@ class ParticipantHistoryDao(BaseDao):
     return [obj.participantId, obj.version]
 
 
+
 class ParticipantDao(UpdatableDao):
   def __init__(self):
-    super(ParticipantDao, self).__init__(Participant)
+    super(ParticipantDao, self).__init__(Participant)    
 
   def get_id(self, obj):
     return obj.participantId
-
-  def _validate_model(self, session, obj):
-    if not obj.biobankId:
-      raise BadRequest('Biobank ID required.')
 
   def insert_with_session(self, session, obj):
     obj.hpoId = self.get_hpo_id(session, obj)
@@ -50,11 +46,18 @@ class ParticipantDao(UpdatableDao):
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
-    return obj                                                
+    return obj                            
+  
+  def insert(self, obj):
+    if obj.participantId:
+      assert obj.biobankId
+      return super(ParticipantDao, self).insert(obj)
+    assert not obj.biobankId
+    return self._insert_with_random_id(obj, ('participantId', 'biobankId'))        
 
   def _update_history(self, session, obj, existing_obj):
     # Increment the version and add a new history entry.
-    obj.version = existing_obj.version + 1
+    obj.version = existing_obj.version + 1    
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
@@ -63,6 +66,7 @@ class ParticipantDao(UpdatableDao):
     # If the provider link changes, update the HPO ID on the participant and its summary.
     obj.lastModified = clock.CLOCK.now()
     obj.signUpTime = existing_obj.signUpTime
+    obj.biobankId = existing_obj.biobankId
     if obj.providerLink != existing_obj.providerLink:
       new_hpo_id = self.get_hpo_id(session, obj)
       if new_hpo_id != existing_obj.hpoId:

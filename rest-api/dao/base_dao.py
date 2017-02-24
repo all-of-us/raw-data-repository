@@ -1,6 +1,17 @@
+import random
+
 import dao.database_factory
 from contextlib import contextmanager
-from werkzeug.exceptions import NotFound, PreconditionFailed
+from werkzeug.exceptions import NotFound, PreconditionFailed, ServiceUnavailable
+from sqlalchemy.exc import IntegrityError
+
+# Maximum number of times we will attempt to insert an entity with a random ID before 
+# giving up.
+MAX_INSERT_ATTEMPTS = 20
+
+# Range of possible values for random IDs.
+_MIN_ID = 100000000
+_MAX_ID = 999999999
 
 class BaseDao(object):
   """A data access object base class; defines common methods for inserting and retrieving
@@ -65,6 +76,24 @@ class BaseDao(object):
   def get_with_children(self, obj_id):
     """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
     return self.get(self, obj_id)
+  
+  def _get_random_id(self, field):
+    # pylint: disable=unused-argument
+    return random.randint(_MIN_ID, _MAX_ID)
+    
+  def _insert_with_random_id(self, obj, fields):    
+    """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
+    or a maximum number of attempts are performed."""    
+    for _ in range(0, MAX_INSERT_ATTEMPTS):
+      for field in fields:
+        setattr(obj, field, self._get_random_id(field))      
+      try:
+        with self.session() as session:
+          return self.insert_with_session(session, obj)
+      except IntegrityError:
+        pass                  
+    # We were unable to insert a participant (unlucky). Throw an error.
+    raise ServiceUnavailable("Giving up after %d insert attempts" % MAX_INSERT_ATTEMPTS)
 
 class UpdatableDao(BaseDao):
   """A DAO that allows updates to entities. 
