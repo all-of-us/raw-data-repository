@@ -65,3 +65,15 @@ class QuestionnaireApiTest(FlaskTestBase):
                                       expected_response_headers = { 'ETag': 'W/"2"'})
     self.assertJsonResponseMatches(questionnaire2, update_response)
     self.assertEquals('W/"2"', update_response['meta']['versionId'])
+
+  # TODO(DA-216): remove PATCH support
+  def test_patch_right_ifmatch_specified(self):
+    response = self.insert_questionnaire()
+    self.assertEquals('W/"1"', response['meta']['versionId'])
+    with open(data_path('questionnaire2.json')) as f2:
+      questionnaire2 = json.load(f2)
+      update_response = self.send_patch('Questionnaire/%s' % response['id'], questionnaire2,                    
+                                        headers={ 'If-Match': response['meta']['versionId'] },
+                                        expected_response_headers = { 'ETag': 'W/"2"'})
+    self.assertJsonResponseMatches(questionnaire2, update_response)
+    self.assertEquals('W/"2"', update_response['meta']['versionId'])

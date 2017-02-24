@@ -57,7 +57,8 @@ api.add_resource(QuestionnaireApi,
                  PREFIX + 'Questionnaire',
                  PREFIX + 'Questionnaire/<string:id_>',
                  endpoint='questionnaire',
-                 methods=['POST', 'GET', 'PUT'])
+                 # TODO(DA-216): remove PATCH support
+                 methods=['POST', 'GET', 'PUT', 'PATCH'])
 
 api.add_resource(ppi_api.QuestionnaireResponseAPI,
                  PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse/<string:id_>',

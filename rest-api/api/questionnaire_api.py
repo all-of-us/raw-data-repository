@@ -19,4 +19,9 @@ class QuestionnaireApi(UpdatableApi):
   @api_util.auth_required(PTC)
   def put(self, id_):
     return super(QuestionnaireApi, self).put(id_)
+    
+  # TODO(DA-216): remove PATCH support
+  @api_util.auth_required(PTC)
+  def patch(self, id_):
+    return super(QuestionnaireApi, self).put(id_)
 
