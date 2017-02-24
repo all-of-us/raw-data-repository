@@ -10,7 +10,6 @@ from participant_enums import UNSET_HPO_ID
 from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
-from sqlalchemy.exc import IntegrityError
 
 class ParticipantDaoTest(SqlTestBase):
   def setUp(self):
