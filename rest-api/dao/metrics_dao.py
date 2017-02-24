@@ -2,7 +2,7 @@ import clock
 import logging
 
 from model.metrics import MetricsVersion, MetricsBucket
-from dao.base_dao import BaseDao, UpdatableDao
+from dao.base_dao import BaseDao
 from werkzeug.exceptions import PreconditionFailed
 from sqlalchemy.orm import subqueryload
 from datetime import timedelta

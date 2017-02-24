@@ -70,6 +70,8 @@ class UpdatableDao(BaseDao):
   """A DAO that allows updates to entities. 
   
   Extend from UpdatableDao if entities can be updated after being inserted.
+  
+  All model objects using this DAO must define a "version" field.
   """
   
   def _validate_update(self, session, obj, existing_obj):
