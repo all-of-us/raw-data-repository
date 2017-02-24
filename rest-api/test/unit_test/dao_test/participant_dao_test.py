@@ -7,11 +7,10 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from participant_enums import UNSET_HPO_ID
-from unit_test_util import SqlTestBase, PITT_HPO_ID
+from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 from sqlalchemy.exc import IntegrityError
-from mock import patch
 
 class ParticipantDaoTest(SqlTestBase):
   def setUp(self):
@@ -28,7 +27,7 @@ class ParticipantDaoTest(SqlTestBase):
   def test_insert(self):
     p = Participant()
     time = datetime.datetime(2016, 1, 1)
-    with patch('random.randint', side_effect=[1, 2]):
+    with random_ids([1, 2]):
       with FakeClock(time):
         self.dao.insert(p)
     expected_participant = Participant(participantId=1, version=1, biobankId=2, lastModified=time,
@@ -51,11 +50,11 @@ class ParticipantDaoTest(SqlTestBase):
 
   def test_insert_duplicate_participant_id_retry(self):
     p = Participant()
-    with patch('random.randint', side_effect=[1, 2]):
+    with random_ids([1, 2]):
       self.dao.insert(p)
     p2 = Participant()    
     time = datetime.datetime(2016, 1, 1)
-    with patch('random.randint', side_effect=[1, 3, 2, 3]):
+    with random_ids([1, 3, 2, 3]):
       with FakeClock(time):      
         p2 = self.dao.insert(p2)
     expected_participant = Participant(participantId=2, version=1, biobankId=3, lastModified=time,
@@ -64,34 +63,34 @@ class ParticipantDaoTest(SqlTestBase):
 
   def test_insert_duplicate_participant_id_give_up(self):    
     p = Participant()
-    with patch('random.randint', side_effect=[1, 2]):
+    with random_ids([1, 2]):
       self.dao.insert(p)
     rand_ints = []
     for i in range(0, MAX_INSERT_ATTEMPTS):
       rand_ints.append(1)
       rand_ints.append(i)
     p2 = Participant()
-    with patch('random.randint', side_effect=rand_ints):      
+    with random_ids(rand_ints):      
       with self.assertRaises(ServiceUnavailable):
         self.dao.insert(p2)
 
   def test_insert_duplicate_biobank_id_give_up(self):    
     p = Participant()
-    with patch('random.randint', side_effect=[1, 2]):
+    with random_ids([1, 2]):
       self.dao.insert(p)
     rand_ints = []
     for i in range(0, MAX_INSERT_ATTEMPTS):
       rand_ints.append(i + 2)
       rand_ints.append(2)
     p2 = Participant()
-    with patch('random.randint', side_effect=rand_ints):      
+    with random_ids(rand_ints):      
       with self.assertRaises(ServiceUnavailable):
         self.dao.insert(p2)  
 
   def test_update_no_expected_version(self):
     p = Participant()
     time = datetime.datetime(2016, 1, 1)
-    with patch('random.randint', side_effect=[1, 2]):
+    with random_ids([1, 2]):
       with FakeClock(time):
         self.dao.insert(p)
 
@@ -129,7 +128,7 @@ class ParticipantDaoTest(SqlTestBase):
   def test_update_right_expected_version(self):
     p = Participant()
     time = datetime.datetime(2016, 1, 1)
-    with patch('random.randint', side_effect=[1, 2]):
+    with random_ids([1, 2]):
       with FakeClock(time):
         self.dao.insert(p)
 
@@ -148,7 +147,7 @@ class ParticipantDaoTest(SqlTestBase):
   def test_update_wrong_expected_version(self):
     p = Participant()
     time = datetime.datetime(2016, 1, 1)
-    with patch('random.randint', side_effect=[1, 2]):
+    with random_ids([1, 2]):
       with FakeClock(time):
         self.dao.insert(p)
 
