@@ -37,20 +37,20 @@ class BaseApi(Resource):
   def _make_response(self, obj):
     return obj.to_client_json()
 
-  def _get_model_to_insert(self, resource, a_id=None):
-    if a_id:
-      return self.dao.model_type.from_client_json(resource, a_id=a_id)
+  def _get_model_to_insert(self, resource, participant_id=None):
+    if participant_id:
+      return self.dao.model_type.from_client_json(resource, participant_id=participant_id)
     else:
       return self.dao.model_type.from_client_json(resource)
       
-  def post(self, a_id=None):
+  def post(self, participant_id=None):
     """Handles a POST (insert) request.
 
     Args:
-      a_id: The ancestor id.
+      participant_id: The ancestor id.
     """
     resource = request.get_json(force=True)
-    m = self._get_model_to_insert(resource, a_id)    
+    m = self._get_model_to_insert(resource, participant_id)    
     self.dao.insert(m)
     return self._make_response(m)
 
@@ -67,23 +67,10 @@ class UpdatableApi(BaseApi):
   """Base class for API handlers that support PUT requests.
   
   To be used with UpdatableDao for model objects with a version field.
-  """
-  
-  def _make_etag(self, version):
-    return 'W/"%d"' % version
-
-  def _parse_etag(self, etag):
-    if etag.startswith('W/"') and etag.endswith('"'):
-      version_str = etag.split('"')[1]
-      try:
-        return int(version_str)
-      except ValueError:
-        raise BadRequest("Invalid version: %s" % version_str)
-    raise BadRequest("Invalid ETag: %s" % etag)
-    
-  def _get_model_to_update(self, resource, id_, expected_version, a_id=None):
-    if a_id:
-      return self.dao.model_type.from_client_json(resource, a_id=a_id, id=id_, 
+  """    
+  def _get_model_to_update(self, resource, id_, expected_version, participant_id=None):
+    if participant_id:
+      return self.dao.model_type.from_client_json(resource, participant_id=participant_id, id=id_, 
                                                   expected_version=expected_version)
     else:
       return self.dao.model_type.from_client_json(resource, id=id_, 
@@ -91,24 +78,36 @@ class UpdatableApi(BaseApi):
   
   def _make_response(self, obj):    
     result = super(UpdatableApi, self)._make_response(obj)
-    etag = self._make_etag(obj.version)
+    etag = _make_etag(obj.version)
     result['meta'] = {'versionId': etag}
     return result, 200, {'ETag': etag}
   
-  def put(self, id_, a_id=None):
+  def put(self, id_, participant_id=None):
     """Handles a PUT (replace) request; the current object must exist, and will be replaced 
     completely.
       
     Args:
       id: The id of the object to update.
-      a_id: The ancestor id (if applicable).
+      participant_id: The ancestor id (if applicable).
     """
     resource = request.get_json(force=True)
     expected_version = None
     etag = request.headers.get('If-Match')
     if not etag:
       raise BadRequest("If-Match is missing for PATCH request")
-    expected_version = self._parse_etag(etag)    
-    m = self._get_model_to_update(resource, id_, expected_version, a_id)
+    expected_version = _parse_etag(etag)    
+    m = self._get_model_to_update(resource, id_, expected_version, participant_id)
     self.dao.update(m)
     return self._make_response(m)
+
+def _make_etag(self, version):
+  return 'W/"%d"' % version
+
+def _parse_etag(etag):
+  if etag.startswith('W/"') and etag.endswith('"'):
+    version_str = etag.split('"')[1]
+    try:
+      return int(version_str)
+    except ValueError:
+      raise BadRequest("Invalid version: %s" % version_str)
+  raise BadRequest("Invalid ETag: %s" % etag)

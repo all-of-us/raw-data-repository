@@ -14,6 +14,8 @@ class QuestionnaireBase(object):
   version = Column('version', Integer, nullable=False)      
   created = Column('created', DateTime, nullable=False)
   lastModified = Column('last_modified', DateTime, nullable=False)
+  # The JSON representation of the questionnaire provided by the client.
+  # Concepts and questions can be be parsed out of this for use in querying.
   resource = Column('resource', BLOB, nullable=False)  
 
   def asdict_with_children(self):
