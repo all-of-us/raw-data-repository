@@ -61,7 +61,8 @@ then
   exit 1
 fi
 
-INSTANCE_NAME=rdrmain
+INSTANCE_NAME=rdrmaindb
+FAILOVER_INSTANCE_NAME=rdrbackupdb
 DB_USER=root
 DB_NAME=rdr
 # The default configuration; uses a non-shared CPU, with 8 cores and 30 GB of memory
@@ -72,7 +73,10 @@ source tools/auth_setup.sh
 
 if [ "${CREATE_INSTANCE}" = "Y" ]
 then
-  gcloud beta sql instances create $INSTANCE_NAME --tier=$MACHINE_TYPE  --activation-policy=ALWAYS
+  gcloud beta sql instances create $INSTANCE_NAME --tier=$MACHINE_TYPE --activation-policy=ALWAYS \
+      --backup-start-time 00:00 --failover-replica-name $FAILOVER_INSTANCE_NAME --enable-bin-log \
+      --database-version MYSQL_5_7 --project $PROJECT
+  sleep 3
 fi
 gcloud sql instances set-root-password $INSTANCE_NAME --password $PASSWORD
 
