@@ -51,7 +51,9 @@ class ParticipantDao(UpdatableDao):
   
   def insert(self, obj):
     if obj.participantId:
+      assert obj.biobankId
       return super(ParticipantDao, self).insert(obj)
+    assert not obj.biobankId
     return self._insert_with_random_id(obj, ('participantId', 'biobankId'))        
 
   def _update_history(self, session, obj, existing_obj):
