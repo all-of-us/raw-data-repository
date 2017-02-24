@@ -2,7 +2,7 @@ import clock
 import logging
 
 from model.metrics import MetricsVersion, MetricsBucket
-from dao.base_dao import BaseDao, UpdatableDao
+from dao.base_dao import BaseDao
 from werkzeug.exceptions import PreconditionFailed
 from sqlalchemy.orm import subqueryload
 from datetime import timedelta
@@ -13,7 +13,7 @@ SERVING_METRICS_DATA_VERSION = 1
 
 METRICS_LOCK_TIMEOUT = timedelta(hours=24)
 
-class MetricsVersionDao(UpdatableDao):  
+class MetricsVersionDao(BaseDao):  
   def __init__(self):
     super(MetricsVersionDao, self).__init__(MetricsVersion)
 
@@ -43,7 +43,7 @@ class MetricsVersionDao(UpdatableDao):
           logging.warning("Metrics version %s timed out; breaking lock." % 
                           running_version.metricsVersionId)
           running_version.inProgress = False
-          self.update_with_session(session, running_version)
+          session.merge(running_version)
         else: 
           # If the timeout hasn't elapsed, don't allow a new pipeline to start.
           raise PreconditionFailed('Metrics pipeline is already running.')
@@ -57,7 +57,7 @@ class MetricsVersionDao(UpdatableDao):
       if running_version:
         running_version.inProgress = False
         running_version.complete = complete
-        self.update_with_session(session, running_version)
+        session.merge(running_version)
       else:
         raise PreconditionFailed('Metrics pipeline is not running')
 

@@ -20,6 +20,8 @@ TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 
 ANSWERS = {'answers': {}}
+QUESTIONNAIRE_RESOURCE = '{"x": "y"}'
+QUESTIONNAIRE_RESOURCE_2 = '{"x": "z"}'
 
 class QuestionnaireResponseDaoTest(SqlTestBase):
   def setUp(self):
@@ -43,7 +45,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
       self.questionnaire_response_dao.insert(qr)
 
   def test_insert_participant_not_found(self):
-    q = Questionnaire(resource='blah')
+    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
@@ -53,7 +55,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
   def test_insert_no_answers(self):
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
-    q = Questionnaire(resource='blah')
+    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
@@ -73,7 +75,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
   def test_insert_duplicate(self):
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
-    q = Questionnaire(resource='blah')
+    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
@@ -90,7 +92,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
   def test_insert_with_answers(self):
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
-    q = Questionnaire(resource='blah')
+    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
     q.questions.append(CONCEPT_1_QUESTION_1)
     q.questions.append(CONCEPT_2_QUESTION)
     self.questionnaire_dao.insert(q)
@@ -134,12 +136,12 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     """
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
-    q = Questionnaire(resource='blah')
+    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
     q.questions.append(CONCEPT_1_QUESTION_1)
     q.questions.append(CONCEPT_2_QUESTION)
     self.questionnaire_dao.insert(q)
 
-    q2 = Questionnaire(resource='blarg')
+    q2 = Questionnaire(resource=QUESTIONNAIRE_RESOURCE_2)
     # The question on the second questionnaire has the same concept as the first question on the
     # first questionnaire; answers to it will thus set endTime for answers to the first question.
     q2.questions.append(CONCEPT_1_QUESTION_2)

@@ -49,7 +49,8 @@ class ParticipantDao(UpdatableDao):
                                                 hpoId=obj.hpoId)
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
-    session.add(history)                                                
+    session.add(history)
+    return obj                                                
 
   def _update_history(self, session, obj, existing_obj):
     # Increment the version and add a new history entry.

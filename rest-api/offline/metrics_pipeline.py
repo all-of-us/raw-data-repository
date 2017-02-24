@@ -121,7 +121,7 @@ class MetricsPipeline(BasePipeline):
     validate_metrics(configs)
     metrics.set_pipeline_in_progress()
     futures = []
-
+    
     for config_name in configs:
       future = yield SummaryPipeline(bucket_name, config_name, now, mapper_params)
       futures.append(future)
@@ -129,7 +129,7 @@ class MetricsPipeline(BasePipeline):
     yield FinalizeMetrics(*futures)
 
 class FinalizeMetrics(pipeline.Pipeline):
-  def run(self, *args):  # pylint: disable=unused-argument
+  def run(self, *args):  # pylint: disable=unused-argument    
     set_serving_version()
 
 class SummaryPipeline(pipeline.Pipeline):
@@ -205,7 +205,7 @@ def map1(entity_key, now=None):
     else:
       new_state = copy.deepcopy(last_state)
 
-    run_extractors(hist_obj, metrics_conf, new_state)
+    run_extractors(hist_obj, metrics_conf, new_state)    
     if new_state == last_state:
       continue  # No changes so there's nothing to do.
     hpo_id = new_state.get('hpoId')
@@ -266,7 +266,7 @@ def reduce1(reducer_key, reducer_values, now=None):
     reducer_key: hpoId|metric
     reducer_values: list of date|delta strings
     now: use to set the clock for testing
-  """ 
+  """   
   delta_map = {}
   sum_deltas(reducer_values, delta_map)
   # Walk over the deltas by date  
@@ -300,7 +300,7 @@ def map2(row_buffer):
   """Emits (hpoId|date, metric|count) pairs for reducing ('*' for cross-HPO counts)
   Args:
      row_buffer: buffer containing hpoId|metric|date|count lines
-  """
+  """  
   reader = csv.reader(row_buffer, delimiter='|')
   for line in reader:
     hpo_id = line[0]
@@ -331,7 +331,7 @@ def reduce2(reducer_key, reducer_values):
   bucket = MetricsBucket(date=date,
                          parent=parent,
                          hpoId=hpo_id,
-                         metrics=json.dumps(metrics_dict))
+                         metrics=json.dumps(metrics_dict))  
   yield op.db.Put(bucket)                         
   
 def set_serving_version():

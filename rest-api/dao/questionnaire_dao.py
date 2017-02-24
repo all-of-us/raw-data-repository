@@ -1,4 +1,5 @@
 import clock
+import json
 
 from dao.base_dao import BaseDao, UpdatableDao
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireConcept, QuestionnaireQuestion  # pylint: disable=line-too-long
@@ -18,16 +19,16 @@ class QuestionnaireDao(UpdatableDao):
                                                    subqueryload(Questionnaire.questions))
       return query.get(questionnaireId)
 
-  def _make_history(self, questionnaire):
+  def _make_history(self, questionnaire, concepts, questions):
     history = QuestionnaireHistory()
     history.fromdict(questionnaire.asdict(), allow_pk=True)        
-    for concept in questionnaire.concepts:
+    for concept in concepts:
       new_concept = QuestionnaireConcept()
       new_concept.fromdict(concept.asdict())
       new_concept.questionnaireId = questionnaire.questionnaireId
       new_concept.questionnaireVersion = questionnaire.version
       history.concepts.append(new_concept)
-    for question in questionnaire.questions:
+    for question in questions:
       new_question = QuestionnaireQuestion()
       new_question.fromdict(question.asdict())      
       new_question.questionnaireId = questionnaire.questionnaireId
@@ -40,18 +41,28 @@ class QuestionnaireDao(UpdatableDao):
     questionnaire.created = clock.CLOCK.now()
     questionnaire.lastModified = clock.CLOCK.now()
     questionnaire.version = 1
-    history = self._make_history(questionnaire)
-    # SQLAlchemy emits warnings unnecessarily when these collections aren't cleared.
-    # We don't want these to be cascaded now anyway, so clear them.
-    del questionnaire.concepts[:]
-    del questionnaire.questions[:]
+    # SQLAlchemy emits warnings unnecessarily when these collections aren't empty.
+    # We don't want these to be cascaded now anyway, so point them at nothing, but save 
+    # the concepts and questions for use in history.
+    concepts = list(questionnaire.concepts)
+    questions = list(questionnaire.questions)
+    questionnaire.concepts = []
+    questionnaire.questions = []
     
-    super(QuestionnaireDao, self).insert_with_session(session, questionnaire)
+    super(QuestionnaireDao, self).insert_with_session(session, questionnaire)    
     # This is needed to assign an ID to the questionnaire, as the client doesn't need to provide
     # one.
-    session.flush()    
+    session.flush()            
+    
+    # Set the ID in the resource JSON
+    resource_json = json.loads(questionnaire.resource)
+    resource_json['id'] = str(questionnaire.questionnaireId)    
+    questionnaire.resource = json.dumps(resource_json)
+    
+    history = self._make_history(questionnaire, concepts, questions)    
     history.questionnaireId = questionnaire.questionnaireId
     QuestionnaireHistoryDao().insert_with_session(session, history)
+    return questionnaire
 
   def _do_update(self, session, obj, existing_obj):
     # If the provider link changes, update the HPO ID on the participant and its summary.
@@ -60,9 +71,12 @@ class QuestionnaireDao(UpdatableDao):
     obj.created = existing_obj.created
     super(QuestionnaireDao, self)._do_update(session, obj, existing_obj)
 
-  def update_with_session(self, session, questionnaire, expected_version=None):
-    super(QuestionnaireDao, self).update_with_session(session, questionnaire, expected_version)
-    QuestionnaireHistoryDao().insert_with_session(session, self._make_history(questionnaire))
+  def update_with_session(self, session, questionnaire):
+    super(QuestionnaireDao, self).update_with_session(session, questionnaire)
+    QuestionnaireHistoryDao().insert_with_session(session, 
+                                                  self._make_history(questionnaire,
+                                                                     questionnaire.concepts,
+                                                                     questionnaire.questions))
         
 class QuestionnaireHistoryDao(BaseDao):
   '''Maintains version history for questionnaires.

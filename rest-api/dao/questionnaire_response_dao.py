@@ -44,18 +44,19 @@ class QuestionnaireResponseDao(BaseDao):
                          answer.questionId)
 
 
-  def insert_with_session(self, session, questionnaireResponse):
-    questionnaireResponse.created = clock.CLOCK.now()
-    question_ids = [answer.questionId for answer in questionnaireResponse.answers]
+  def insert_with_session(self, session, questionnaire_response):
+    questionnaire_response.created = clock.CLOCK.now()
+    question_ids = [answer.questionId for answer in questionnaire_response.answers]
     current_answers = (QuestionnaireResponseAnswerDao().
-        get_current_answers_for_concepts(session, questionnaireResponse.participantId,
+        get_current_answers_for_concepts(session, questionnaire_response.participantId,
                                          question_ids))
-    super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaireResponse)
+    super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaire_response)
     # Mark existing answers for the questions in this response given previously by this participant
     # as ended.
     for answer in current_answers:
-      answer.endTime = questionnaireResponse.created
+      answer.endTime = questionnaire_response.created
       session.merge(answer)
+    return questionnaire_response
 
 class QuestionnaireResponseAnswerDao(BaseDao):
 

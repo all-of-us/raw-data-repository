@@ -12,7 +12,6 @@ import participant
 import participant_dao
 import participant_enums
 import participant_summary
-import questionnaire
 import questionnaire_response
 import measurements
 import unittest
@@ -22,8 +21,10 @@ from offline import metrics_pipeline
 from offline.metrics_config import FieldDef
 from google.appengine.ext import ndb
 from mapreduce import test_support
+from model.questionnaire import Questionnaire
+from dao.questionnaire_dao import QuestionnaireDao
 from testlib import testutil
-from unit_test_util import make_deferred_not_run, make_questionnaire_response
+from unit_test_util import make_deferred_not_run, make_questionnaire_response, SqlTestBase
 from test.test_data import data_path
 
 def compute_meta(summary):
@@ -96,6 +97,7 @@ CONFIGS_FOR_TEST = {
 class MetricsPipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
     testutil.HandlerTestBase.setUp(self)
+    SqlTestBase.setup_database()
     self.maxDiff = None
     self.longMessage = True
     self.saved_config_fn = offline.metrics_config.get_config
@@ -103,6 +105,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     make_deferred_not_run()
 
   def tearDown(self):
+    SqlTestBase.teardown_database()
     offline.metrics_config.get_config = self.saved_config_fn
 
   def test_map1(self):
@@ -177,17 +180,16 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                                      dateOfBirth=datetime.datetime(1970, 8, 21))
     participant_summary.DAO().store(summary)
     questionnaire_json = json.loads(open(data_path('questionnaire_example.json')).read())
-    questionnaire_key = questionnaire.DAO().store(
-        questionnaire.DAO().from_json(questionnaire_json, None, questionnaire.DAO().allocate_id()))
+    questionnaire = QuestionnaireDao().insert(Questionnaire.from_client_json(questionnaire_json))
     # REGISTERED when signed up.
     questionnaire_response.DAO().store(make_questionnaire_response(
         key.id(),
-        questionnaire_key.id(),
+        questionnaire.questionnaireId,
         [("membershipTier", concepts.REGISTERED)]),
         datetime.datetime(2013, 9, 1, 11, 0, 1))
     # FULL_PARTICIPANT two years later
     questionnaire_response.DAO().store(make_questionnaire_response(key.id(),
-                                                                 questionnaire_key.id(),
+                                                                 questionnaire.questionnaireId,
                                                                  [("membershipTier", concepts.FULL_PARTICIPANT)]),
                                      datetime.datetime(2015, 9, 1, 11, 0, 2))
     results = list(metrics_pipeline.map1(key.to_old_key(),
@@ -262,8 +264,8 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     key = ndb.Key(participant.Participant, '1')
     self._populate_sample_history(key, 'PITT')
     key2 = ndb.Key(participant.Participant, '2')
-    self._populate_sample_history(key2, 'COLUMBIA')
-    metrics_pipeline.MetricsPipeline('pmi-drc-biobank-test.appspot.com', NOW).start()
+    self._populate_sample_history(key2, 'COLUMBIA')    
+    metrics_pipeline.MetricsPipeline('pmi-drc-biobank-test.appspot.com', NOW).start()    
     test_support.execute_until_empty(self.taskqueue)
 
     serving_version = metrics.get_serving_version()
@@ -437,12 +439,11 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
 
   def populate_questionnaire_responses(self, participant_key):
     questionnaire_json = json.loads(open(data_path('questionnaire_example.json')).read())
-    questionnaire_key = questionnaire.DAO().store(
-        questionnaire.DAO().from_json(questionnaire_json, None, questionnaire.DAO().allocate_id()))
+    questionnaire = QuestionnaireDao().insert(Questionnaire.from_client_json(questionnaire_json))
     unmapped_race = concepts.Concept(concepts.SYSTEM_RACE, 'unmapped-race')
     # Set race, ethnicity, state, and membership tier on 9/1/2016
     questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),
-                                                                 questionnaire_key.id(),
+                                                                 questionnaire.questionnaireId,
                                                                  [("race", concepts.WHITE),
                                                                   ("ethnicity", concepts.NON_HISPANIC),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
@@ -450,14 +451,14 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
                                      datetime.datetime(2016, 9, 1, 11, 0, 2))
     # Accidentally change status to FULL_PARTICIPANT; don't fill out ethnicity and put in an unmapped race
     questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),
-                                                                 questionnaire_key.id(),
+                                                                 questionnaire.questionnaireId,
                                                                  [("membershipTier", concepts.FULL_PARTICIPANT),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
                                                                   ("race", unmapped_race)]),
                                      datetime.datetime(2016, 9, 1, 11, 0, 3))
     # Change it back to REGISTERED
     questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),
-                                                                 questionnaire_key.id(),
+                                                                 questionnaire.questionnaireId,
                                                                  [("membershipTier", concepts.REGISTERED),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
                                                                   ("race", unmapped_race)]),
@@ -466,7 +467,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
 
     # Change to VOLUNTEER on 9/10
     questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),
-                                                                 questionnaire_key.id(),
+                                                                 questionnaire.questionnaireId,
                                                                  [("membershipTier", concepts.VOLUNTEER),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['TX']),
                                                                   ("race", unmapped_race)]),
@@ -474,7 +475,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
 
     # Change state on 9/11
     questionnaire_response.DAO().store(make_questionnaire_response(participant_key.id(),
-                                                                 questionnaire_key.id(),
+                                                                 questionnaire.questionnaireId,
                                                                  [("membershipTier", concepts.VOLUNTEER),
                                                                   ("stateOfResidence", concepts.STATES_BY_ABBREV['CA']),
                                                                   ("race", unmapped_race)]),

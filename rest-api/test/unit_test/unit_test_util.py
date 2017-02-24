@@ -1,3 +1,4 @@
+import copy
 import httplib
 import json
 import mock
@@ -49,16 +50,24 @@ class SqlTestBase(TestbedTestBase):
   """Base class for unit tests that use the SQL database."""
   def setUp(self, with_data=True):
     super(SqlTestBase, self).setUp()
-    dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
-    self.database = dao.database_factory.get_database()
-    self.database.create_schema()
+    SqlTestBase.setup_database()
+    self.database = dao.database_factory.get_database()    
     if with_data:
       self.setup_data()
 
   def tearDown(self):
-    self.database.get_engine().dispose()
+    SqlTestBase.teardown_database()
     super(SqlTestBase, self).tearDown()
 
+  @staticmethod
+  def setup_database():
+    dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
+    dao.database_factory.get_database().create_schema()
+  
+  @staticmethod
+  def teardown_database():
+    dao.database_factory.get_database().get_engine().dispose()
+  
   def get_database(self):
     return self.database
 
@@ -76,7 +85,7 @@ class SqlTestBase(TestbedTestBase):
     self.assertEquals(dict1, dict2)
     
 
-class NdbTestBase(TestbedTestBase):
+class NdbTestBase(SqlTestBase):
   """Base class for unit tests that need the NDB testbed."""
   def setUp(self):
     super(NdbTestBase, self).setUp()
@@ -130,11 +139,15 @@ class FlaskTestBase(NdbTestBase):
 
   def send_post(self, *args, **kwargs):
     return self.send_request('POST', *args, **kwargs)
+  
+  def send_put(self, *args, **kwargs):
+    return self.send_request('PUT', *args, **kwargs)
 
   def send_get(self, *args, **kwargs):
     return self.send_request('GET', *args, **kwargs)
 
-  def send_request(self, method, local_path, request_data=None, expected_status=httplib.OK):
+  def send_request(self, method, local_path, request_data=None, expected_status=httplib.OK,
+                   headers=None, expected_response_headers=None):
     """Makes a JSON API call against the test client and returns its response data.
 
     Args:
@@ -147,9 +160,31 @@ class FlaskTestBase(NdbTestBase):
         main.PREFIX + local_path,
         method=method,
         data=json.dumps(request_data) if request_data is not None else None,
-        content_type='application/json')
+        content_type='application/json',
+        headers=headers)
     self.assertEquals(response.status_code, expected_status, response.data)
+    if expected_response_headers:
+      self.assertTrue(set(expected_response_headers.items())
+                          .issubset(set(response.headers.items())),
+                      "Expected response headers: %s; actual: %s" % 
+                      (expected_response_headers, response.headers))    
     return json.loads(response.data)
+
+  def create_and_verify_created_obj(self, path, resource):
+    response = self.send_post(path, resource)  
+    q_id = response['id']  
+    del response['id']
+    self.assertJsonResponseMatches(resource, response)
+
+    response = self.send_get('{}/{}'.format(path, q_id))
+    del response['id']
+    self.assertJsonResponseMatches(resource, response)
+    
+  def assertJsonResponseMatches(self, obj_a, obj_b):
+    obj_b = copy.deepcopy(obj_b)
+    if 'meta' in obj_b and not 'meta' in obj_a:
+      del obj_b['meta']
+    self.assertMultiLineEqual(pretty(obj_a), pretty(obj_b))
 
 
 def to_dict_strip_last_modified(obj):
@@ -192,3 +227,6 @@ def make_questionnaire_response(participant_id, questionnaire_id, answers):
           "question": results
         }
       }, participant_id, questionnaire_response.DAO().allocate_id())
+
+def pretty(obj):
+  return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
