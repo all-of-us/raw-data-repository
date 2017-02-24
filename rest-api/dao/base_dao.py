@@ -79,12 +79,13 @@ class BaseDao(object):
     return self.get(self, obj_id)
   
   def _get_random_id(self, field):
+    # pylint: disable=unused-argument
     return random.randint(_MIN_ID, _MAX_ID)
     
   def _insert_with_random_id(self, obj, fields):    
     """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
     or a maximum number of attempts are performed."""    
-    for i in range(0, MAX_INSERT_ATTEMPTS):
+    for _ in range(0, MAX_INSERT_ATTEMPTS):
       for field in fields:
         setattr(obj, field, self._get_random_id(field))      
       try:

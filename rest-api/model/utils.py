@@ -1,5 +1,5 @@
 from sqlalchemy.types import SmallInteger, TypeDecorator
-
+from werkzeug.exceptions import BadRequest
 
 class Enum(TypeDecorator):
   """A type for a SQLAlchemy column based on a protomsg Enum provided in the constructor"""

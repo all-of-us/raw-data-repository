@@ -1,6 +1,5 @@
 import clock
 import json
-import random
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary

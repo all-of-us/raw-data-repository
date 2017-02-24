@@ -27,12 +27,12 @@ class ParticipantBase(object):
     return Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
     
   def to_client_json(self):
-    return { 'participantId': to_client_participant_id(self.participantId),
-             'biobankId': to_client_biobank_id(self.biobankId),
-             'lastModified': lastModified.isoformat(),
-             'signUpTime': signUpTime.isoformat(),
-             'providerLink': json.loads(providerLink) 
-           };
+    return {'participantId': to_client_participant_id(self.participantId),
+            'biobankId': to_client_biobank_id(self.biobankId),
+            'lastModified': self.lastModified.isoformat(),
+            'signUpTime': self.signUpTime.isoformat(),
+            'providerLink': json.loads(self.providerLink) 
+            };
 
 class Participant(ParticipantBase, Base):  
   __tablename__ = 'participant'
