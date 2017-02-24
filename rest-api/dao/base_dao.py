@@ -31,12 +31,12 @@ class BaseDao(object):
           counter used for change tracking and synchronization. The model must have logPosition (a
           relationship) and logPositionId (foreign key to log_position.log_position_id).
     """
-    self._model_type = model_type
+    self.model_type = model_type
     self._database = dao.database_factory.get_database()
     self._use_log_position = bool(use_log_position)
     if self._use_log_position:
-      assert self._model_type.logPositionId is not None
-      assert self._model_type.logPosition is not None
+      assert self.model_type.logPositionId is not None
+      assert self.model_type.logPosition is not None
 
   @contextmanager
   def session(self):
@@ -57,7 +57,7 @@ class BaseDao(object):
   def _validate_insert(self, session, obj):
     """Override to validate a new model before inserting it (not applied to updates)."""
     if self._use_log_position and obj.logPosition is not None:
-      raise BadRequest('%s LogPosition ID must be auto-generated.' % self._model_type.__name__)
+      raise BadRequest('%s LogPosition ID must be auto-generated.' % self.model_type.__name__)
     self._validate_model(session, obj)
 
   def insert_with_session(self, session, obj):
@@ -81,7 +81,7 @@ class BaseDao(object):
 
   def get_with_session(self, session, obj_id):
     """Gets an object by ID for this type using the specified session. Returns None if not found."""
-    return session.query(self._model_type).get(obj_id)
+    return session.query(self.model_type).get(obj_id)
 
   def get(self, obj_id):
     """Gets an object with the specified ID for this type from the database.
