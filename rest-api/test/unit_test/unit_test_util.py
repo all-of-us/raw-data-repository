@@ -170,23 +170,19 @@ class FlaskTestBase(NdbTestBase):
                       (expected_response_headers, response.headers))    
     return json.loads(response.data)
 
-  def round_trip(self, path, resource):
+  def create_and_verify_created_obj(self, path, resource):
     response = self.send_post(path, resource)  
     q_id = response['id']  
     del response['id']
-    self.compare_json(resource, response)
+    self.assertJsonResponseMatches(resource, response)
 
     response = self.send_get('{}/{}'.format(path, q_id))
     del response['id']
-    self.compare_json(resource, response)
+    self.assertJsonResponseMatches(resource, response)
     
-  def compare_json(self, obj_a, obj_b):
+  def assertJsonResponseMatches(self, obj_a, obj_b):
     obj_b = copy.deepcopy(obj_b)
-    if 'etag' in obj_b:
-      del obj_b['etag']
-    if 'kind' in obj_b:
-      del obj_b['kind']
-    if 'meta' in obj_b:
+    if 'meta' in obj_b and not 'meta' in obj_a:
       del obj_b['meta']
     self.assertMultiLineEqual(pretty(obj_a), pretty(obj_b))
 
