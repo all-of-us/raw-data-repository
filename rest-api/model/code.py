@@ -1,11 +1,12 @@
 from protorpc import messages
 from model.base import Base
 from model.utils import Enum
-from sqlalchemy import Column, Integer, String, Text, UniqueConstraint, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, UniqueConstraint, ForeignKey
 from sqlalchemy.orm import relationship
 
 class CodeType(messages.Enum):
   """A type of code"""
+  UNMAPPED = 0
   MODULE = 1
   QUESTION = 2
   ANSWER = 3
@@ -22,7 +23,7 @@ class Code(Base):
   value = Column('value', String(80), nullable=False)
   display = Column('display', Text, nullable=False)
   topic = Column('topic', Text, nullable=False)
-  type = Column('type', Enum(CodeType))
+  type = Column('type', Enum(CodeType), nullable=False)
 
   parent = relationship("Code", remote_side=[codeId])
   children = relationship("Code")
