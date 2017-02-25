@@ -6,7 +6,7 @@ from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-from model.code import Code, CodeType
+from model.code import Code, CodeType, CodeBook, CodeVersion
 from model.hpo import HPO
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements
@@ -24,16 +24,29 @@ class DatabaseTest(SqlTestBase):
     session = self.get_database().make_session()
 
     hpo = HPO(hpoId=1, name='UNSET')
+    code_book = CodeBook(codeBookId=1, created=datetime.datetime.now())
     session.add(hpo)
+    session.add(code_book)
+    session.commit()
 
-    code1 = Code(codeId=1, system="a", value="b", display="c", topic="d", type=CodeType.MODULE)
-    code2 = Code(codeId=2, parentId=1, system="a", value="c", display="X", topic="d",
+    code1 = Code(codeId=1, codeBookId=1, system="a", value="b", display="c", topic="d",
+                 type=CodeType.MODULE)
+    code2 = Code(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
                  type=CodeType.QUESTION)
-    code3 = Code(codeId=3, parentId=2, system="a", value="d", display="Y", topic="d",
+    code3 = Code(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
                  type=CodeType.ANSWER)
+    codeVersion1 = CodeVersion(codeId=1, codeBookId=1, system="a", value="b", display="c",
+                               topic="d", type=CodeType.MODULE)
+    codeVersion2 = CodeVersion(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
+                               type=CodeType.QUESTION)
+    codeVersion3 = CodeVersion(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
+                               type=CodeType.ANSWER)
     session.add(code1)
     session.add(code2)
     session.add(code3)
+    session.add(codeVersion1)
+    session.add(codeVersion2)
+    session.add(codeVersion3)
     session.commit()
 
     session.commit()
@@ -42,7 +55,7 @@ class DatabaseTest(SqlTestBase):
                     signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now())
     ps = ParticipantSummary(participantId=1, biobankId=2, firstName='Bob', middleName='Q', 
                             lastName='Jones', zipCode='78751', dateOfBirth=datetime.date.today(), 
-                            genderIdentity=GenderIdentity.MALE, hpoId=1,
+                            genderIdentityId=1, hpoId=1,
                             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED, 
                             consentForStudyEnrollmentTime=datetime.datetime.now(),
                             numCompletedBaselinePPIModules=1,
