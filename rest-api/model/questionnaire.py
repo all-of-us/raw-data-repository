@@ -35,7 +35,7 @@ class Questionnaire(QuestionnaireBase, Base):
                             'foreign(QuestionnaireQuestion.questionnaireId)')
                             
   @staticmethod
-  def from_client_json(resource_json, id_=None, expected_version=None):
+  def from_client_json(resource_json, id_=None, expected_version=None, client_id=None):
     fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
     if not fhir_q.group:
       raise BadRequest("No top-level group found in questionnaire")

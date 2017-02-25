@@ -52,7 +52,8 @@ class DatabaseTest(SqlTestBase):
     session.commit()
 
     p = Participant(participantId=1, version=1, biobankId=2, hpoId=1, 
-                    signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now())
+                    signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now(),
+                    clientId="c")
     ps = ParticipantSummary(participantId=1, biobankId=2, firstName='Bob', middleName='Q', 
                             lastName='Jones', zipCode='78751', dateOfBirth=datetime.date.today(), 
                             genderIdentityId=1, hpoId=1,
@@ -64,7 +65,7 @@ class DatabaseTest(SqlTestBase):
     session.add(p)
     ph = ParticipantHistory(participantId=1, version=1, biobankId=2, hpoId=1, 
                             signUpTime=datetime.datetime.now(), 
-                            lastModified=datetime.datetime.now())
+                            lastModified=datetime.datetime.now(), clientId="d")
     session.add(ph)
     session.commit()
 

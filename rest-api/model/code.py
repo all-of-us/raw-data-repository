@@ -60,12 +60,12 @@ class Code(CodeBase, Base):
     UniqueConstraint('value'),
   )
 
-class CodeVersion(CodeBase, Base):
+class CodeHistory(CodeBase, Base):
   """A version of a code.
 
   New versions are inserted every time a code book is imported.
   """
-  __tablename__ = 'code_version'
+  __tablename__ = 'code_history'
 
   parentId = Column('parent_id', Integer)
 
