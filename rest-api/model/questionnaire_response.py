@@ -45,7 +45,7 @@ class QuestionnaireResponseAnswer(Base):
   # latest answer to the question.
   endTime = Column('end_time', DateTime)
   valueSystem = Column('value_system', String(50))
-  valueCode = Column('value_code', String(20))
+  valueCodeId = Column('value_code_id', Integer, ForeignKey('code.code_id'))
   valueDecimal = Column('value_decimal', Integer)
   # Is this big enough?
   valueString = Column('value_string', String(1024))

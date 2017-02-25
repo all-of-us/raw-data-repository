@@ -5,6 +5,7 @@ from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from model.code import Code
 from model.hpo import HPO
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements

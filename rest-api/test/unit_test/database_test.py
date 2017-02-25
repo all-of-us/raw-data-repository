@@ -6,6 +6,7 @@ from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from model.code import Code, CodeType
 from model.hpo import HPO
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements
@@ -24,6 +25,17 @@ class DatabaseTest(SqlTestBase):
 
     hpo = HPO(hpoId=1, name='UNSET')
     session.add(hpo)
+
+    code1 = Code(codeId=1, system="a", value="b", display="c", topic="d", type=CodeType.MODULE)
+    code2 = Code(codeId=2, parentId=1, system="a", value="c", display="X", topic="d",
+                 type=CodeType.QUESTION)
+    code3 = Code(codeId=3, parentId=2, system="a", value="d", display="Y", topic="d",
+                 type=CodeType.ANSWER)
+    session.add(code1)
+    session.add(code2)
+    session.add(code3)
+    session.commit()
+
     session.commit()
 
     p = Participant(participantId=1, version=1, biobankId=2, hpoId=1, 
@@ -84,10 +96,10 @@ class DatabaseTest(SqlTestBase):
                               lastModified=datetime.datetime.now(), resource='what?')
     qh.questions.append(QuestionnaireQuestion(questionnaireQuestionId=1, questionnaireId=1, 
                                               questionnaireVersion=1, 
-                                              linkId="1.2.3", conceptSystem='a', conceptCode='b'))
+                                              linkId="1.2.3", codeId=2))
     qh.concepts.append(QuestionnaireConcept(questionnaireConceptId=1, questionnaireId=1, 
                                             questionnaireVersion=1,
-                                            conceptSystem='a', conceptCode='b'))                
+                                            codeId=1))
     session.add(q)
     session.add(qh)
     session.commit()
@@ -97,7 +109,7 @@ class DatabaseTest(SqlTestBase):
     qr.answers.append(QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1, 
                                                   questionnaireResponseId=1, questionId=1, 
                                                   endTime=datetime.datetime.now(), valueSystem='a', 
-                                                  valueCode='b', valueDecimal=123, valueString='blah',
+                                                  valueCodeId=3, valueDecimal=123, valueString='blah',
                                                   valueDate=datetime.date.today()))
 
     session.add(qr)
