@@ -1,7 +1,5 @@
 #!/bin/bash -e
 # Run simple tests and check for forgotten changes.
-# To have this run automatically on `git push`, run:
-#     pmi-data/.git$ rm -r hooks && ln -s ../git-hooks hooks
 
 ci/test_pre_push.sh
 

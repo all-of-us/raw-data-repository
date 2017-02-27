@@ -64,12 +64,14 @@ If running in production, go to the
 project and then click on "datastore" in the left hand navigation bar.
 
 ### Running the tests against the local appserver
-Make sure that the dev appserver is running, then from the rest-api directory run:
+
+Start the dev appserver, then from the rest-api directory run:
+
 ```Shell
 test/run_tests.sh -g $sdk_dir
 ```
 
-This will run both the unit tests and the client tests. See below if what you want to do is to run 
+This will run both the unit tests and the client tests.
 
 If you want to be super slick, and have the tests run every time you change a
 source file, you can do this.
@@ -87,6 +89,20 @@ See `rest-api-client/README.md` for instructions.
 Your `config_dev.json` loaded earlier should include a Config entity with
 `config_key=allow_fake_history_dates` and `value=True`. You can check the
 current config by running `tools/install_config.sh` with no arguments.
+
+### Setting up git hooks
+
+Git can
+[automatically run scripts](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
+on certain actions (called "hooks"). Git looks for hook scripts in `.git/hooks`,
+which cannot be checked into the repository, so to enable the hooks packaged
+with this repository do:
+
+```Shell
+cd .git
+rm -r hooks  # Clear out the disabled samples Git puts in all repositories.
+ln -s ../git-hooks hooks
+```
 
 ## Deploying to test server
 
