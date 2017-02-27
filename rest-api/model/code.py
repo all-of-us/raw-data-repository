@@ -8,7 +8,6 @@ from sqlalchemy.ext.declarative import declared_attr
 
 class CodeType(messages.Enum):
   """A type of code"""
-  UNMAPPED = 0
   MODULE = 1
   QUESTION = 2
   ANSWER = 3
@@ -27,6 +26,7 @@ class CodeBase(object):
   display = Column('display', Text, nullable=False)
   topic = Column('topic', Text, nullable=False)
   type = Column('type', Enum(CodeType), nullable=False)
+  mapped = Column('mapped', Boolean, nullable=False)
 
   @declared_attr
   def codeBookId(cls):

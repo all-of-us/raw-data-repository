@@ -6,7 +6,7 @@ from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-from model.code import Code, CodeType, CodeBook, CodeVersion
+from model.code import Code, CodeType, CodeBook, CodeHistory
 from model.hpo import HPO
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements
@@ -30,23 +30,23 @@ class DatabaseTest(SqlTestBase):
     session.commit()
 
     code1 = Code(codeId=1, codeBookId=1, system="a", value="b", display="c", topic="d",
-                 type=CodeType.MODULE)
+                 type=CodeType.MODULE, mapped=True)
     code2 = Code(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
-                 type=CodeType.QUESTION)
+                 type=CodeType.QUESTION, mapped=True)
     code3 = Code(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
-                 type=CodeType.ANSWER)
-    codeVersion1 = CodeVersion(codeId=1, codeBookId=1, system="a", value="b", display="c",
-                               topic="d", type=CodeType.MODULE)
-    codeVersion2 = CodeVersion(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
-                               type=CodeType.QUESTION)
-    codeVersion3 = CodeVersion(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
-                               type=CodeType.ANSWER)
+                 type=CodeType.ANSWER, mapped=False)
+    codeHistory1 = CodeHistory(codeId=1, codeBookId=1, system="a", value="b", display="c",
+                               topic="d", type=CodeType.MODULE, mapped=True)
+    codeHistory2 = CodeHistory(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
+                               type=CodeType.QUESTION, mapped=True)
+    codeHistory3 = CodeHistory(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
+                               type=CodeType.ANSWER, mapped=False)
     session.add(code1)
     session.add(code2)
     session.add(code3)
-    session.add(codeVersion1)
-    session.add(codeVersion2)
-    session.add(codeVersion3)
+    session.add(codeHistory1)
+    session.add(codeHistory2)
+    session.add(codeHistory3)
     session.commit()
 
     session.commit()
