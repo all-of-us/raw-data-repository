@@ -1,4 +1,5 @@
 """Base class for API handlers."""
+import api_util
 
 from flask import request
 from flask.ext.restful import Resource

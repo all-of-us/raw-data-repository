@@ -1,6 +1,7 @@
 import fhirclient.models.questionnaire
 import json
 
+from model.code import CodeType
 from model.base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint, Index
@@ -42,16 +43,30 @@ class Questionnaire(QuestionnaireBase, Base):
         
     q = Questionnaire(resource=json.dumps(fhir_q.as_json()), questionnaireId=id_, 
                       version=expected_version)
+    code_map = {}
+    concepts = []
+    questions = []
     if fhir_q.group.concept:
       for concept in fhir_q.group.concept:
         if concept.system and concept.code:
-          q.concepts.append(QuestionnaireConcept(conceptSystem=concept.system, 
-                                                 conceptCode=concept.code))    
-    Questionnaire._populate_questions(fhir_q.group, q)
+          code_map[(concept.system, concept.code)] = (concept.display, CodeType.MODULE)
+          concepts.append((concept.system, concept.code))
+    Questionnaire._populate_questions(fhir_q.group, code_map, questions)
+    from dao.code_dao import CodeDao
+    code_id_map = CodeDao().get_or_add_codes(code_map)
+    for system, code in concepts:
+      q.concepts.append(QuestionnaireConcept(questionnaireId=id_,
+                                             questionnaireVersion=expected_version,
+                                             codeId=code_id_map.get((system, code))))
+    for system, code, linkId in questions:
+      q.questions.append(QuestionnaireQuestion(questionnaireId=id_,
+                                               questionnaireVersion=expected_version,
+                                               linkId=linkId,
+                                               codeId=code_id_map.get((system, code))))
     return q
   
   @staticmethod
-  def _populate_questions(group, q):
+  def _populate_questions(group, code_map, questions):
     """Recursively populate questions under this group."""
     if group.question:
       for question in group.question:
@@ -59,15 +74,14 @@ class Questionnaire(QuestionnaireBase, Base):
         if question.linkId and question.concept and len(question.concept) == 1:
           concept = question.concept[0]
           if concept.system and concept.code:
-            q.questions.append(QuestionnaireQuestion(linkId=question.linkId,
-                                                     conceptSystem=concept.system,
-                                                     conceptCode=concept.code))
+            code_map[(concept.system, concept.code)] = (concept.display, CodeType.QUESTION)
+            questions.append((concept.system, concept.code, question.linkId))
         if question.group:
           for sub_group in question.group:
-            Questionnaire._populate_questions(sub_group, q)    
+            Questionnaire._populate_questions(sub_group, code_map, questions)
     if group.group:
       for sub_group in group.group:
-        Questionnaire._populate_questions(sub_group, q)
+        Questionnaire._populate_questions(sub_group, code_map, questions)
       
 class QuestionnaireHistory(QuestionnaireBase, Base):  
   __tablename__ = 'questionnaire_history'

@@ -1,8 +1,10 @@
 import datetime
 
+from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
 from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
+from model.code import Code, CodeType
 from model.participant import Participant
 from model.questionnaire import Questionnaire, QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
@@ -10,11 +12,6 @@ from unit_test_util import SqlTestBase
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest
 from sqlalchemy.exc import IntegrityError
-
-CONCEPT_1_QUESTION_1 = QuestionnaireQuestion(linkId='a', conceptSystem='b', conceptCode='c')
-CONCEPT_2_QUESTION = QuestionnaireQuestion(linkId='d', conceptSystem='e', conceptCode='f')
-# Same concept as question 1
-CONCEPT_1_QUESTION_2 = QuestionnaireQuestion(linkId='x', conceptSystem='b', conceptCode='c')
 
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -26,10 +23,28 @@ QUESTIONNAIRE_RESOURCE_2 = '{"x": "z"}'
 class QuestionnaireResponseDaoTest(SqlTestBase):
   def setUp(self):
     super(QuestionnaireResponseDaoTest, self).setUp()    
+    self.code_dao = CodeDao()
     self.participant_dao = ParticipantDao()
     self.questionnaire_dao = QuestionnaireDao()
     self.questionnaire_response_dao = QuestionnaireResponseDao()
     self.questionnaire_response_answer_dao = QuestionnaireResponseAnswerDao()
+    self.CODE_1 = Code(codeId=1, system='a', value='b', display='c', topic='d',
+                       type=CodeType.QUESTION, mapped=True)
+    self.CODE_2 = Code(codeId=2, system='a', value='x', display='y', type=CodeType.QUESTION,
+                       mapped=False)
+    self.CODE_3 = Code(codeId=3, system='a', value='c', type=CodeType.ANSWER, mapped=True,
+                       parentId=1)
+    self.CODE_4 = Code(codeId=4, system='a', value='d', type=CodeType.ANSWER, mapped=True,
+                       parentId=2)
+    self.CODE_5 = Code(codeId=5, system='a', value='e', type=CodeType.ANSWER, mapped=False,
+                       parentId=1)
+    self.CODE_6 = Code(codeId=6, system='a', value='f', type=CodeType.ANSWER, mapped=True,
+                       parentId=1)
+    self.CODE_1_QUESTION_1 = QuestionnaireQuestion(linkId='a', codeId=1)
+    self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2)
+    # Same code as question 1
+    self.CODE_1_QUESTION_2 = QuestionnaireQuestion(linkId='x', codeId=1)
+
 
   def test_get_before_insert(self):
     self.assertIsNone(self.questionnaire_response_dao.get(1))
@@ -89,24 +104,33 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
     self.assertEquals(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
 
+  def insert_codes(self):
+    self.code_dao.insert(self.CODE_1)
+    self.code_dao.insert(self.CODE_2)
+    self.code_dao.insert(self.CODE_3)
+    self.code_dao.insert(self.CODE_4)
+    self.code_dao.insert(self.CODE_5)
+    self.code_dao.insert(self.CODE_6)
+
   def test_insert_with_answers(self):
+    self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
     q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
-    q.questions.append(CONCEPT_1_QUESTION_1)
-    q.questions.append(CONCEPT_2_QUESTION)
+    q.questions.append(self.CODE_1_QUESTION_1)
+    q.questions.append(self.CODE_2_QUESTION)
     self.questionnaire_dao.insert(q)
 
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
                                            questionnaireResponseId=1,
-                                           questionId=1, valueSystem='a', valueCode='b',
+                                           questionId=1, valueSystem='a', valueCodeId=3,
                                            valueDecimal=123, valueString='c',
                                            valueDate=datetime.date.today())
     answer_2 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=2,
                                            questionnaireResponseId=1,
-                                           questionId=2, valueSystem='c', valueCode='d')
+                                           questionId=2, valueSystem='c', valueCodeId=4)
     qr.answers.append(answer_1)
     qr.answers.append(answer_2)
     time = datetime.datetime(2016, 1, 1)
@@ -123,7 +147,6 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     expected_qr.answers.append(answer_2)
     self.check_response(expected_qr)
 
-
   def test_insert_qr_three_times(self):
     """Adds three questionnaire responses for the same participant.
 
@@ -134,29 +157,30 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     same participant, whether on the same questionnaire or a different questionnaire,
     without affecting other answers.
     """
+    self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
     q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
-    q.questions.append(CONCEPT_1_QUESTION_1)
-    q.questions.append(CONCEPT_2_QUESTION)
+    q.questions.append(self.CODE_1_QUESTION_1)
+    q.questions.append(self.CODE_2_QUESTION)
     self.questionnaire_dao.insert(q)
 
     q2 = Questionnaire(resource=QUESTIONNAIRE_RESOURCE_2)
     # The question on the second questionnaire has the same concept as the first question on the
     # first questionnaire; answers to it will thus set endTime for answers to the first question.
-    q2.questions.append(CONCEPT_1_QUESTION_2)
+    q2.questions.append(self.CODE_1_QUESTION_2)
     self.questionnaire_dao.insert(q2)
     
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource='blah')
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
                                            questionnaireResponseId=1,
-                                           questionId=1, valueSystem='a', valueCode='b',
+                                           questionId=1, valueSystem='a', valueCodeId=3,
                                            valueDecimal=123, valueString='c',
                                            valueDate=datetime.date.today())
     answer_2 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=2,
                                            questionnaireResponseId=1,
-                                           questionId=2, valueSystem='c', valueCode='d')
+                                           questionId=2, valueSystem='c', valueCodeId=4)
     qr.answers.append(answer_1)
     qr.answers.append(answer_2)
     time = datetime.datetime(2016, 1, 1)
@@ -167,7 +191,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
                                 questionnaireVersion=1, participantId=1, resource='foo')
     answer_3 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
                                            questionnaireResponseId=2,
-                                           questionId=3, valueSystem='x', valueCode='y',
+                                           questionId=3, valueSystem='x', valueCodeId=5,
                                            valueDecimal=123, valueString='z',
                                            valueDate=datetime.date.today())
     qr2.answers.append(answer_3)
@@ -197,7 +221,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
                                 questionnaireVersion=1, participantId=1, resource='zzz')
     answer_4 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=4,
                                            questionnaireResponseId=3,
-                                           questionId=3, valueSystem='z', valueCode='q',
+                                           questionId=3, valueSystem='z', valueCodeId=6,
                                            valueDecimal=456, valueString='v',
                                            valueDate=datetime.date.today())
     qr3.answers.append(answer_4)
@@ -218,4 +242,3 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
                                         resource='zzz', created=time3)
     expected_qr3.answers.append(answer_4)
     self.check_response(expected_qr3)
-

@@ -15,7 +15,7 @@ DB_NAME=rdr
 DB_INFO_FILE=/tmp/db_info.json
 CREATE_DB_FILE=/tmp/create_db.sql
 
-PASSWORD_ARGS='-p"${PASSWORD}"'
+PASSWORD_ARGS="-p${PASSWORD}"
 PASSWORD_STRING=":${PASSWORD}"
 while true; do
   case "$1" in
@@ -51,6 +51,7 @@ echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
 echo 'DROP DATABASE IF EXISTS '$DB_NAME'; CREATE DATABASE '$DB_NAME > $CREATE_DB_FILE
 
 echo "Creating empty database..."
+set -x
 mysql -u "$DB_USER" $PASSWORD_ARGS < ${CREATE_DB_FILE}
 if [ $? != '0' ]
 then

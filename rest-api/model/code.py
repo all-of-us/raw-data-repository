@@ -23,8 +23,8 @@ class CodeBase(object):
   codeId = Column('code_id', Integer, primary_key=True)
   system = Column('system', String(255), nullable=False)
   value = Column('value', String(80), nullable=False)
-  display = Column('display', Text, nullable=False)
-  topic = Column('topic', Text, nullable=False)
+  display = Column('display', Text)
+  topic = Column('topic', Text)
   type = Column('type', Enum(CodeType), nullable=False)
   mapped = Column('mapped', Boolean, nullable=False)
 

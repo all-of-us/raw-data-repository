@@ -1,3 +1,5 @@
+import logging
+
 from dao.base_dao import BaseDao
 from model.code import CodeBook, Code, CodeHistory
 
@@ -12,10 +14,14 @@ class CodeDao(BaseDao):
   def __init__(self):
     super(CodeDao, self).__init__(Code)
 
+  def insert(self, obj):
+    result = super(CodeDao, self).insert(obj)
+    return result
+
   def get_id(self, obj):
     return obj.codeId
 
-  def get_code_with_session(self, system, value):
+  def get_code_with_session(self, session, system, value):
     return (session.query(Code)
             .filter(Code.system == system)
             .filter(Code.value == value)
@@ -31,12 +37,14 @@ class CodeDao(BaseDao):
     result_map = {}
     with self.session() as session:
       for (system, value) in code_map.keys():
-        existing_code = self.get_code_with_session(system, value)
+        existing_code = self.get_code_with_session(session, system, value)
         if existing_code:
           result_map[(system, value)] = existing_code.codeId
         else:
           (display, type) = code_map[(system, value)]
-          code = Code(system=system, value=value, display=display, type=type, mapped=False)
+          code = Code(system=system, value=value, display=display,
+                      type=type, mapped=False)
+          logging.warn("Adding unmapped code: %s" % code)
           self.insert_with_session(session, code)
           session.flush()
           result_map[(system, value)] = code.codeId
