@@ -1,0 +1,19 @@
+#!/bin/bash -e
+# Run simple tests and check for forgotten changes.
+
+ci/test_pre_push.sh
+
+UNTRACKED=`git ls-files --others --exclude-standard`
+UNCOMMITTED=`git diff --name-only`
+if [ "$UNTRACKED" -o "$UNCOMMITTED" ]
+then
+  echo "You have untracked or uncommitted files. Continue with push?"
+  echo $UNTRACKED $UNCOMMITTED
+  select yn in "Yes" "No"
+  do
+    case $yn in
+      Yes ) break;;
+      No  ) exit 1;;
+    esac
+  done
+fi

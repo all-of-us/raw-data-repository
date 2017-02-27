@@ -1,25 +1,12 @@
-#!/bin/bash
-
-set -e
+#!/bin/bash -e
 
 trap 'kill $(jobs -p) || true' EXIT
+
+ci/test_pre_push.sh
 
 # No new checked-in credentials.
 grep -ril "BEGIN PRIVATE KEY" . | sort > credentials_files
 diff credentials_files ci/allowed_private_key_files
-
-# Pylint checks. Use pylint --list-msgs to see more available messages.
-# More options are set in rest-api/pylintrc.
-ENABLE_FOR_TESTS="\
-  --enable=bad-indentation,broad-except,bare-except,logging-too-many-args \
-  --enable=unused-argument,redefined-outer-name,redefined-builtin,superfluous-parens \
-  --enable=unused-import,unused-variable,undefined-variable"
-ENABLE_FOR_ALL="$ENABLE_FOR_TESTS --enable=bad-whitespace,line-too-long,unused-import,unused-variable"
-PYLINT_OPTS="-r n --disable=all"
-git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e '_test' | \
-    parallel pylint $PYLINT_OPTS $ENABLE_FOR_ALL
-git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' | \
-    parallel pylint $PYLINT_OPTS $ENABLE_FOR_TESTS
 
 function activate_local_venv {
   pip install virtualenv safety

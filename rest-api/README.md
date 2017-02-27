@@ -20,7 +20,7 @@ Make sure that you have google
 
 From the rest-api directory, run:
 
-* tools/setup_env.sh (get libs and Cloud SQL Proxy)
+* tools/setup_env.sh (get libs and Cloud SQL Proxy, set up git hooks)
 * sudo apt-get install mysql-server libmysqlclient-dev (to install MySQL server and client)
 * dev_appserver.py test.yaml --require_indexes (to run your local server)
 * tools/setup_local_database.sh (to create a database in MySQL, upgrade its schema, 
@@ -64,12 +64,14 @@ If running in production, go to the
 project and then click on "datastore" in the left hand navigation bar.
 
 ### Running the tests against the local appserver
-Make sure that the dev appserver is running, then from the rest-api directory run:
+
+Start the dev appserver, then from the rest-api directory run:
+
 ```Shell
 test/run_tests.sh -g $sdk_dir
 ```
 
-This will run both the unit tests and the client tests. See below if what you want to do is to run 
+This will run both the unit tests and the client tests.
 
 If you want to be super slick, and have the tests run every time you change a
 source file, you can do this.
