@@ -4,7 +4,7 @@ import json
 from model.code import CodeType
 from model.base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint, Index
+from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint
 from sqlalchemy import UniqueConstraint, ForeignKey
 from werkzeug.exceptions import BadRequest
 
@@ -37,6 +37,7 @@ class Questionnaire(QuestionnaireBase, Base):
                             
   @staticmethod
   def from_client_json(resource_json, id_=None, expected_version=None, client_id=None):
+    #pylint: disable=unused_argument
     fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
     if not fhir_q.group:
       raise BadRequest("No top-level group found in questionnaire")

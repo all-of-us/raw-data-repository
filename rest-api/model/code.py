@@ -2,7 +2,7 @@ from protorpc import messages
 from model.base import Base
 from model.utils import Enum
 from sqlalchemy import Column, Integer, String, Text, Boolean, UniqueConstraint
-from sqlalchemy import ForeignKey, ForeignKeyConstraint, DateTime
+from sqlalchemy import ForeignKey, DateTime
 from sqlalchemy.orm import backref, relationship
 from sqlalchemy.ext.declarative import declared_attr
 

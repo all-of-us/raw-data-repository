@@ -1,5 +1,5 @@
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import MembershipTier, GenderIdentity, Ethnicity, Race
+from participant_enums import MembershipTier
 from model.base import Base
 from model.utils import Enum
 from sqlalchemy import Column, Integer, String, Date, DateTime

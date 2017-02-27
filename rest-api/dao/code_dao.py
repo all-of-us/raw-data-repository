@@ -28,7 +28,7 @@ class CodeDao(BaseDao):
             .one_or_none())
 
   def get_or_add_codes(self, code_map):
-    """Accepts a map of (system, value) -> (display, type) for codes found in a questionnaire.
+    """Accepts a map of (system, value) -> (display, code_type) for codes found in a questionnaire.
 
     Returns a map of (system, value) -> codeId.
 
@@ -41,9 +41,9 @@ class CodeDao(BaseDao):
         if existing_code:
           result_map[(system, value)] = existing_code.codeId
         else:
-          (display, type) = code_map[(system, value)]
+          (display, code_type) = code_map[(system, value)]
           code = Code(system=system, value=value, display=display,
-                      type=type, mapped=False)
+                      type=code_type, mapped=False)
           logging.warn("Adding unmapped code: %s" % code)
           self.insert_with_session(session, code)
           session.flush()
