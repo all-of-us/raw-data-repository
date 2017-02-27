@@ -44,6 +44,9 @@ class Questionnaire(QuestionnaireBase, Base):
         
     q = Questionnaire(resource=json.dumps(fhir_q.as_json()), questionnaireId=id_, 
                       version=expected_version)
+    # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
+    # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,
+    # which we'll use later when assembling the child objects.
     code_map = {}
     concepts = []
     questions = []
@@ -55,6 +58,8 @@ class Questionnaire(QuestionnaireBase, Base):
     Questionnaire._populate_questions(fhir_q.group, code_map, questions)
     from dao.code_dao import CodeDao
     code_id_map = CodeDao().get_or_add_codes(code_map)
+
+    # Now assemble the child objects, using the IDs provided by CodeDao
     for system, code in concepts:
       q.concepts.append(QuestionnaireConcept(questionnaireId=id_,
                                              questionnaireVersion=expected_version,

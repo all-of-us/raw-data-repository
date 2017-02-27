@@ -38,7 +38,7 @@ class CodeDao(UpdatableDao):
     obj.created = clock.CLOCK.now()
     super(CodeDao, self).insert_with_session(session, obj)
     session.flush()
-    self._add_history(session ,obj)
+    self._add_history(session, obj)
     return obj
 
   def _validate_update(self, session, obj, existing_obj):
