@@ -1,10 +1,9 @@
-#!/bin/bash
+#!/bin/bash -e
 
-# Sets up the local working environment. Run this from the rest-api directory on checkout or 
-# whenever requirements.txt changes.
+# Sets up the local working environment. Run this on checkout or whenever
+# requirements.txt changes.
 
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-set -e
 cd ${BASE_DIR};
 
 
@@ -29,6 +28,5 @@ mkdir -p bin
 mv -f cloud_sql_proxy.linux.amd64 bin/cloud_sql_proxy
 chmod +x bin/cloud_sql_proxy
 
-
-
- 
+echo "Configuring Git hooks..."
+$(cd ../.git && rm -r hooks && ln -s ../git-hooks hooks)

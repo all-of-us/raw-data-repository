@@ -20,7 +20,7 @@ Make sure that you have google
 
 From the rest-api directory, run:
 
-* tools/setup_env.sh (get libs and Cloud SQL Proxy)
+* tools/setup_env.sh (get libs and Cloud SQL Proxy, set up git hooks)
 * sudo apt-get install mysql-server libmysqlclient-dev (to install MySQL server and client)
 * dev_appserver.py test.yaml --require_indexes (to run your local server)
 * tools/setup_local_database.sh (to create a database in MySQL, upgrade its schema, 
@@ -89,20 +89,6 @@ See `rest-api-client/README.md` for instructions.
 Your `config_dev.json` loaded earlier should include a Config entity with
 `config_key=allow_fake_history_dates` and `value=True`. You can check the
 current config by running `tools/install_config.sh` with no arguments.
-
-### Setting up git hooks
-
-Git can
-[automatically run scripts](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
-on certain actions (called "hooks"). Git looks for hook scripts in `.git/hooks`,
-which cannot be checked into the repository, so to enable the hooks packaged
-with this repository do:
-
-```Shell
-cd .git
-rm -r hooks  # Clear out the disabled samples Git puts in all repositories.
-ln -s ../git-hooks hooks
-```
 
 ## Deploying to test server
 
