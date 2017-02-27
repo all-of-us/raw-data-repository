@@ -29,16 +29,16 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     self.questionnaire_response_dao = QuestionnaireResponseDao()
     self.questionnaire_response_answer_dao = QuestionnaireResponseAnswerDao()
     self.CODE_1 = Code(codeId=1, system='a', value='b', display='c', topic='d',
-                       type=CodeType.QUESTION, mapped=True)
-    self.CODE_2 = Code(codeId=2, system='a', value='x', display='y', type=CodeType.QUESTION,
+                       codeType=CodeType.QUESTION, mapped=True)
+    self.CODE_2 = Code(codeId=2, system='a', value='x', display='y', codeType=CodeType.QUESTION,
                        mapped=False)
-    self.CODE_3 = Code(codeId=3, system='a', value='c', type=CodeType.ANSWER, mapped=True,
+    self.CODE_3 = Code(codeId=3, system='a', value='c', codeType=CodeType.ANSWER, mapped=True,
                        parentId=1)
-    self.CODE_4 = Code(codeId=4, system='a', value='d', type=CodeType.ANSWER, mapped=True,
+    self.CODE_4 = Code(codeId=4, system='a', value='d', codeType=CodeType.ANSWER, mapped=True,
                        parentId=2)
-    self.CODE_5 = Code(codeId=5, system='a', value='e', type=CodeType.ANSWER, mapped=False,
+    self.CODE_5 = Code(codeId=5, system='a', value='e', codeType=CodeType.ANSWER, mapped=False,
                        parentId=1)
-    self.CODE_6 = Code(codeId=6, system='a', value='f', type=CodeType.ANSWER, mapped=True,
+    self.CODE_6 = Code(codeId=6, system='a', value='f', codeType=CodeType.ANSWER, mapped=True,
                        parentId=1)
     self.CODE_1_QUESTION_1 = QuestionnaireQuestion(linkId='a', codeId=1)
     self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2)

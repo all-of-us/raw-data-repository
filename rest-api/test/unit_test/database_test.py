@@ -24,23 +24,26 @@ class DatabaseTest(SqlTestBase):
     session = self.get_database().make_session()
 
     hpo = HPO(hpoId=1, name='UNSET')
-    code_book = CodeBook(codeBookId=1, created=datetime.datetime.now())
+    code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True)
     session.add(hpo)
     session.add(code_book)
     session.commit()
 
     code1 = Code(codeId=1, codeBookId=1, system="a", value="b", display="c", topic="d",
-                 type=CodeType.MODULE, mapped=True)
+                 codeType=CodeType.MODULE, mapped=True, created=datetime.datetime.now())
     code2 = Code(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
-                 type=CodeType.QUESTION, mapped=True)
+                 codeType=CodeType.QUESTION, mapped=True, created=datetime.datetime.now())
     code3 = Code(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
-                 type=CodeType.ANSWER, mapped=False)
+                 codeType=CodeType.ANSWER, mapped=False, created=datetime.datetime.now())
     codeHistory1 = CodeHistory(codeId=1, codeBookId=1, system="a", value="b", display="c",
-                               topic="d", type=CodeType.MODULE, mapped=True)
+                               topic="d", codeType=CodeType.MODULE, mapped=True,
+                               created=datetime.datetime.now())
     codeHistory2 = CodeHistory(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
-                               type=CodeType.QUESTION, mapped=True)
+                               codeType=CodeType.QUESTION, mapped=True,
+                               created=datetime.datetime.now())
     codeHistory3 = CodeHistory(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
-                               type=CodeType.ANSWER, mapped=False)
+                               codeType=CodeType.ANSWER, mapped=False,
+                               created=datetime.datetime.now())
     session.add(code1)
     session.add(code2)
     session.add(code3)

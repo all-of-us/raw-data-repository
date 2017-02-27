@@ -1,8 +1,8 @@
 """Initial schema
 
-Revision ID: 3a55b8790578
+Revision ID: b9330da5511d
 Revises:
-Create Date: 2017-02-27 12:49:37.590038
+Create Date: 2017-02-27 15:39:12.887693
 
 """
 from alembic import op
@@ -15,7 +15,7 @@ from participant_enums import MembershipTier
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '3a55b8790578'
+revision = 'b9330da5511d'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -26,6 +26,7 @@ def upgrade():
     op.create_table('code_book',
     sa.Column('code_book_id', sa.Integer(), nullable=False),
     sa.Column('created', sa.DateTime(), nullable=False),
+    sa.Column('latest', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('code_book_id')
     )
     op.create_table('hpo',
@@ -68,28 +69,15 @@ def upgrade():
     sa.Column('value', sa.String(length=80), nullable=False),
     sa.Column('display', sa.Text(), nullable=True),
     sa.Column('topic', sa.Text(), nullable=True),
-    sa.Column('type', model.utils.Enum(CodeType), nullable=False),
+    sa.Column('code_type', model.utils.Enum(CodeType), nullable=False),
     sa.Column('mapped', sa.Boolean(), nullable=False),
+    sa.Column('created', sa.DateTime(), nullable=False),
     sa.Column('code_book_id', sa.Integer(), nullable=True),
     sa.Column('parent_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['code_book_id'], ['code_book.code_book_id'], ),
     sa.ForeignKeyConstraint(['parent_id'], ['code.code_id'], ),
     sa.PrimaryKeyConstraint('code_id'),
     sa.UniqueConstraint('value')
-    )
-    op.create_table('code_history',
-    sa.Column('code_id', sa.Integer(), nullable=False),
-    sa.Column('system', sa.String(length=255), nullable=False),
-    sa.Column('value', sa.String(length=80), nullable=False),
-    sa.Column('display', sa.Text(), nullable=True),
-    sa.Column('topic', sa.Text(), nullable=True),
-    sa.Column('type', model.utils.Enum(CodeType), nullable=False),
-    sa.Column('mapped', sa.Boolean(), nullable=False),
-    sa.Column('parent_id', sa.Integer(), nullable=True),
-    sa.Column('code_book_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['code_book_id'], ['code_book.code_book_id'], ),
-    sa.PrimaryKeyConstraint('code_id', 'code_book_id'),
-    sa.UniqueConstraint('code_book_id', 'value')
     )
     op.create_table('metrics_bucket',
     sa.Column('metrics_version_id', sa.Integer(), nullable=False),
@@ -161,6 +149,24 @@ def upgrade():
     sa.ForeignKeyConstraint(['parent_sample_id'], ['biobank_stored_sample.biobank_stored_sample_id'], ),
     sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
     sa.PrimaryKeyConstraint('biobank_stored_sample_id')
+    )
+    op.create_table('code_history',
+    sa.Column('system', sa.String(length=255), nullable=False),
+    sa.Column('value', sa.String(length=80), nullable=False),
+    sa.Column('display', sa.Text(), nullable=True),
+    sa.Column('topic', sa.Text(), nullable=True),
+    sa.Column('code_type', model.utils.Enum(CodeType), nullable=False),
+    sa.Column('mapped', sa.Boolean(), nullable=False),
+    sa.Column('created', sa.DateTime(), nullable=False),
+    sa.Column('code_history_id', sa.Integer(), nullable=False),
+    sa.Column('code_id', sa.Integer(), nullable=True),
+    sa.Column('code_book_id', sa.Integer(), nullable=True),
+    sa.Column('parent_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['code_book_id'], ['code_book.code_book_id'], ),
+    sa.ForeignKeyConstraint(['parent_id'], ['code.code_id'], ),
+    sa.PrimaryKeyConstraint('code_history_id'),
+    sa.UniqueConstraint('code_book_id', 'code_id'),
+    sa.UniqueConstraint('code_book_id', 'value')
     )
     op.create_table('participant_summary',
     sa.Column('participant_id', sa.Integer(), autoincrement=False, nullable=False),
@@ -350,6 +356,7 @@ def downgrade():
     op.drop_index('participant_summary_hpo', table_name='participant_summary')
     op.drop_index('participant_summary_biobank_id', table_name='participant_summary')
     op.drop_table('participant_summary')
+    op.drop_table('code_history')
     op.drop_table('biobank_stored_sample')
     op.drop_table('biobank_order')
     op.drop_table('participant_history')
@@ -357,7 +364,6 @@ def downgrade():
     op.drop_index('participant_biobank_id', table_name='participant')
     op.drop_table('participant')
     op.drop_table('metrics_bucket')
-    op.drop_table('code_history')
     op.drop_table('code')
     op.drop_table('questionnaire_history')
     op.drop_table('questionnaire')

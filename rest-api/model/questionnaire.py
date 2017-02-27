@@ -50,7 +50,7 @@ class Questionnaire(QuestionnaireBase, Base):
     if fhir_q.group.concept:
       for concept in fhir_q.group.concept:
         if concept.system and concept.code:
-          code_map[(concept.system, concept.code)] = (concept.display, CodeType.MODULE)
+          code_map[(concept.system, concept.code)] = (concept.display, CodeType.MODULE, None)
           concepts.append((concept.system, concept.code))
     Questionnaire._populate_questions(fhir_q.group, code_map, questions)
     from dao.code_dao import CodeDao
@@ -75,7 +75,7 @@ class Questionnaire(QuestionnaireBase, Base):
         if question.linkId and question.concept and len(question.concept) == 1:
           concept = question.concept[0]
           if concept.system and concept.code:
-            code_map[(concept.system, concept.code)] = (concept.display, CodeType.QUESTION)
+            code_map[(concept.system, concept.code)] = (concept.display, CodeType.QUESTION, None)
             questions.append((concept.system, concept.code, question.linkId))
         if question.group:
           for sub_group in question.group:
