@@ -112,7 +112,7 @@ class UpdatableDao(BaseDao):
     if not existing_obj:
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
     if existing_obj.version != obj.version:
-      raise PreconditionFailed('Expected version was %d; stored version was %d' % \
+      raise PreconditionFailed('Expected version was %s; stored version was %s' % \
                                (obj.version, existing_obj.version))
     self._validate_model(session, obj)
 

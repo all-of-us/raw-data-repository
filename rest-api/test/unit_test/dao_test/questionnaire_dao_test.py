@@ -120,65 +120,7 @@ class QuestionnaireDaoTest(SqlTestBase):
       self.dao.insert(q)
       self.fail("IntegrityError expected")
     except IntegrityError:
-      pass    
-  
-  def test_update_no_expected_version(self):
-    q = Questionnaire(resource=RESOURCE_1)
-    q.concepts.append(self.CONCEPT_1)
-    q.concepts.append(self.CONCEPT_2)
-    q.questions.append(self.QUESTION_1)
-    q.questions.append(self.QUESTION_2)
-    with FakeClock(TIME):
-      self.dao.insert(q)
-
-    # Creating a questionnaire creates a history entry with children
-    self.check_history()
-
-    q = Questionnaire(questionnaireId=1, resource=RESOURCE_2)
-    q.concepts.append(QuestionnaireConcept(codeId=1))
-    q.concepts.append(QuestionnaireConcept(codeId=3))
-    q.questions.append(QuestionnaireQuestion(linkId='x', codeId=6))
-    q.questions.append(QuestionnaireQuestion(linkId='d', codeId=4))
-    
-    with FakeClock(TIME_2):
-      self.dao.update(q)
-
-    expected_questionnaire = Questionnaire(questionnaireId=1, version=2, created=TIME,
-                                          lastModified=TIME_2, resource=RESOURCE_2)
-    questionnaire = self.dao.get(1)
-    self.assertEquals(expected_questionnaire.asdict(), questionnaire.asdict())
-
-    # Updating a questionnaire keeps the existing history, and 
-    # creates a new history element with children.
-    # self.check_history()
-    
-    expected_history = QuestionnaireHistory(questionnaireId=1, version=2, created=TIME,
-                                            lastModified=TIME_2, resource=RESOURCE_2)
-    questionnaire_history = self.questionnaire_history_dao.get([1, 2])
-    self.assertEquals(expected_history.asdict(), questionnaire_history.asdict())
-
-    questionnaire_history = self.questionnaire_history_dao.get_with_children([1, 2])
-    expected_concept_1 = QuestionnaireConcept(questionnaireConceptId=3, questionnaireId=1,
-                                              questionnaireVersion=2, codeId=1)
-    expected_concept_2 = QuestionnaireConcept(questionnaireConceptId=4, questionnaireId=1,
-                                              questionnaireVersion=2, codeId=3)
-    expected_question_1 = QuestionnaireQuestion(questionnaireQuestionId=3, questionnaireId=1,
-                                                questionnaireVersion=2, linkId='x', codeId=6)
-    expected_question_2 = QuestionnaireQuestion(questionnaireQuestionId=4, questionnaireId=1,
-                                                questionnaireVersion=2, linkId='d', codeId=4)
-
-    expected_history.concepts.append(expected_concept_1)
-    expected_history.concepts.append(expected_concept_2)
-    expected_history.questions.append(expected_question_1)
-    expected_history.questions.append(expected_question_2)
-
-    self.assertEquals(sort_lists(expected_history.asdict_with_children()),
-                      sort_lists(questionnaire_history.asdict_with_children()))
-
-    self.assertEquals(expected_concept_1.asdict(), self.questionnaire_concept_dao.get(3).asdict())
-    self.assertEquals(expected_concept_2.asdict(), self.questionnaire_concept_dao.get(4).asdict())
-    self.assertEquals(expected_question_1.asdict(), self.questionnaire_question_dao.get(3).asdict())
-    self.assertEquals(expected_question_2.asdict(), self.questionnaire_question_dao.get(4).asdict())
+      pass
   
   def test_update_right_expected_version(self):
     q = Questionnaire(resource=RESOURCE_1)

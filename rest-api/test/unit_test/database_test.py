@@ -31,24 +31,29 @@ class DatabaseTest(SqlTestBase):
 
     code1 = Code(codeId=1, codeBookId=1, system="a", value="b", display="c", topic="d",
                  codeType=CodeType.MODULE, mapped=True, created=datetime.datetime.now())
-    code2 = Code(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
-                 codeType=CodeType.QUESTION, mapped=True, created=datetime.datetime.now())
-    code3 = Code(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
-                 codeType=CodeType.ANSWER, mapped=False, created=datetime.datetime.now())
     codeHistory1 = CodeHistory(codeId=1, codeBookId=1, system="a", value="b", display="c",
                                topic="d", codeType=CodeType.MODULE, mapped=True,
                                created=datetime.datetime.now())
+    session.add(code1)
+    session.add(codeHistory1)
+    session.commit()
+
+    code2 = Code(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
+                 codeType=CodeType.QUESTION, mapped=True, created=datetime.datetime.now())
     codeHistory2 = CodeHistory(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
                                codeType=CodeType.QUESTION, mapped=True,
                                created=datetime.datetime.now())
+    session.add(code2)
+    session.add(codeHistory2)
+    session.commit()
+
+    code3 = Code(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
+                 codeType=CodeType.ANSWER, mapped=False, created=datetime.datetime.now())
     codeHistory3 = CodeHistory(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
                                codeType=CodeType.ANSWER, mapped=False,
                                created=datetime.datetime.now())
-    session.add(code1)
-    session.add(code2)
+
     session.add(code3)
-    session.add(codeHistory1)
-    session.add(codeHistory2)
     session.add(codeHistory3)
     session.commit()
 
