@@ -37,7 +37,7 @@ class Questionnaire(QuestionnaireBase, Base):
                             
   @staticmethod
   def from_client_json(resource_json, id_=None, expected_version=None, client_id=None):
-    #pylint: disable=unused_argument
+    #pylint: disable=unused-argument
     fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
     if not fhir_q.group:
       raise BadRequest("No top-level group found in questionnaire")
