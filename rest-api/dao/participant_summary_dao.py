@@ -13,6 +13,6 @@ class ParticipantSummaryDao(UpdatableDao):
   def update_from_biobank_stored_sample(self, session, sample):
     """Updates the count of samples (for baseline tests only) received for a participant."""
     if sample.testCode in config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES, []):
-      summary = self.get(sample.participantId)
+      summary = self.get_with_session(session, sample.participantId)
       summary.numBaselineSamplesArrived += 1
       session.merge(summary)
