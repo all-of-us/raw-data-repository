@@ -1,6 +1,6 @@
 import datetime
 
-from participant_enums import GenderIdentity, QuestionnaireStatus
+from participant_enums import QuestionnaireStatus
 
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
