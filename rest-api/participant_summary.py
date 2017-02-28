@@ -133,7 +133,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
 
   def properties_to_json(self, dict_):
     api_util.format_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
-    api_util.format_json_date(dict_, 'signUpTime')
+    api_util.format_json_date(dict_, 'signUpTime', date_format='%Y-%m-%dT%H:%M:%S')    
     api_util.format_json_date(dict_, 'consentForStudyEnrollmentTime')
     api_util.format_json_date(dict_, 'consentForElectronicHealthRecordsTime')
     api_util.format_json_date(dict_, 'questionnaireOnOverallHealthTime')

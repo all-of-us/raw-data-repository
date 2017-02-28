@@ -45,6 +45,9 @@ class BaseApi(Resource):
                                                   client_id=api_util.get_oauth_id())
     else:
       return self.dao.model_type.from_client_json(resource, client_id=api_util.get_oauth_id())
+  
+  def _do_insert(self, m):
+    self.dao.insert(m)
       
   def post(self, participant_id=None):
     """Handles a POST (insert) request.
@@ -54,7 +57,7 @@ class BaseApi(Resource):
     """
     resource = request.get_json(force=True)
     m = self._get_model_to_insert(resource, participant_id)    
-    self.dao.insert(m)
+    self._do_insert(m)
     return self._make_response(m)
 
   def list(self):
@@ -88,6 +91,9 @@ class UpdatableApi(BaseApi):
     result['meta'] = {'versionId': etag}
     return result, 200, {'ETag': etag}
   
+  def _do_update(self, m):
+    self.dao.update(m)
+    
   def put(self, id_, participant_id=None):
     """Handles a PUT (replace) request; the current object must exist, and will be replaced 
     completely.
@@ -103,7 +109,7 @@ class UpdatableApi(BaseApi):
       raise BadRequest("If-Match is missing for PATCH request")
     expected_version = _parse_etag(etag)    
     m = self._get_model_to_update(resource, id_, expected_version, participant_id)
-    self.dao.update(m)
+    self._do_update(m)
     return self._make_response(m)
 
 def _make_etag(version):

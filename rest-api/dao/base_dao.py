@@ -124,7 +124,7 @@ class UpdatableDao(BaseDao):
   def update_with_session(self, session, obj):
     """Updates the object in the database with the specified session and (optionally)
     expected version ID."""
-    existing_obj = self.get(self.get_id(obj))
+    existing_obj = self.get_with_session(session, self.get_id(obj))
     self._validate_update(session, obj, existing_obj)
     self._do_update(session, obj, existing_obj)
 

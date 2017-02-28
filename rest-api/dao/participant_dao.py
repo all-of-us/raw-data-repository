@@ -42,7 +42,7 @@ class ParticipantDao(UpdatableDao):
     obj.participantSummary = ParticipantSummary(participantId=obj.participantId, 
                                                 biobankId=obj.biobankId,
                                                 signUpTime=obj.signUpTime,
-                                                hpoId=obj.hpoId)
+                                                hpoId=obj.hpoId)    
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
@@ -70,8 +70,10 @@ class ParticipantDao(UpdatableDao):
     if obj.providerLink != existing_obj.providerLink:
       new_hpo_id = self.get_hpo_id(session, obj)
       if new_hpo_id != existing_obj.hpoId:
-        obj.hpoId = new_hpo_id        
-        obj.participantSummary.hpoId = new_hpo_id
+        obj.hpoId = new_hpo_id    
+        obj.participantSummary = ParticipantSummary()
+        obj.participantSummary.fromdict(existing_obj.participantSummary.asdict(), allow_pk=True)
+        obj.participantSummary.hpoId = new_hpo_id        
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
