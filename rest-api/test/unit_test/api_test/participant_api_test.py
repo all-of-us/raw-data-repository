@@ -24,6 +24,22 @@ class ParticipantApiTest(FlaskTestBase):
     self.participant = {
         'providerLink': [provider_link]
     }
+    self.provider_link_2 = {
+      "primary": True,
+      "organization": {
+        "display": None,
+        "reference": "Organization/PITT",
+      },
+      "site": [{
+        "display": None,
+        "reference": "mayo-clinic",
+      }],
+      "identifier": [{
+        "system": "http://any-columbia-mrn-system",
+        "value": "MRN456"
+      }]
+    }
+    
 
   def test_insert(self):
     response = self.send_post('Participant', self.participant)
@@ -39,26 +55,43 @@ class ParticipantApiTest(FlaskTestBase):
 
     self.assertJsonResponseMatches(self.participant, response)
 
-  def test_update(self):
+  def test_update_no_ifmatch_specified(self):
     response = self.send_post('Participant', self.participant)
 
-    # Change the provider link for the participant
-    provider_link = {
-      "primary": True,
-      "organization": {
-        "display": None,
-        "reference": "Organization/PITT",
-      },
-      "site": [{
-        "display": None,
-        "reference": "mayo-clinic",
-      }],
-      "identifier": [{
-        "system": "http://any-columbia-mrn-system",
-        "value": "MRN456"
-      }]
-    }
+    # Change the provider link for the participant    
     participant_id = response['participantId']
-    response['providerLink'] = [ provider_link ]
+    response['providerLink'] = [ self.provider_link_2 ]
     path = 'Participant/%s' % participant_id
     self.send_put(path, response, expected_status=httplib.BAD_REQUEST)
+
+  def test_update_bad_ifmatch_specified(self):
+    response = self.send_post('Participant', self.participant)
+
+    # Change the provider link for the participant    
+    participant_id = response['participantId']
+    response['providerLink'] = [ self.provider_link_2 ]
+    path = 'Participant/%s' % participant_id
+    self.send_put(path, response, headers={ 'If-Match': 'Blah' }, 
+                  expected_status=httplib.BAD_REQUEST)
+
+  def test_update_wrong_ifmatch_specified(self):
+    response = self.send_post('Participant', self.participant)
+
+    # Change the provider link for the participant    
+    participant_id = response['participantId']
+    response['providerLink'] = [ self.provider_link_2 ]
+    path = 'Participant/%s' % participant_id
+    self.send_put(path, response, headers={ 'If-Match': 'W/"123"' }, 
+                  expected_status=httplib.PRECONDITION_FAILED)
+
+  def test_update_right_ifmatch_specified(self):
+    response = self.send_post('Participant', self.participant)
+    self.assertEquals('W/"1"', response['meta']['versionId'])
+    # Change the provider link for the participant    
+    participant_id = response['participantId']
+    response['providerLink'] = [ self.provider_link_2 ]
+    path = 'Participant/%s' % participant_id
+    update_response = self.send_put(path, response, headers={ 'If-Match': 'W/"1"' })
+    response['meta']['versionId'] = 'W/"2"'    
+    self.assertJsonResponseMatches(response, update_response)    
+
