@@ -60,6 +60,8 @@ fi
 
 echo "Updating schema to latest..."
 tools/upgrade_database.sh
+echo "Importing codebook..."
+tools/import_codebook.sh
 
 echo "Setting database configuration..."
 tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update

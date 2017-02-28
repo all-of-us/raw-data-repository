@@ -24,7 +24,7 @@ From the rest-api directory, run:
 * sudo apt-get install mysql-server libmysqlclient-dev (to install MySQL server and client)
 * dev_appserver.py test.yaml --require_indexes (to run your local server)
 * tools/setup_local_database.sh (to create a database in MySQL, upgrade its schema, 
-  and put the config for it in Datastore)
+  import the latest codebook into it, and put the config for the database in Datastore)
 
 ### Running the development app server
 
@@ -152,6 +152,16 @@ Config updates happen automatically on deploy for some environments, controlled
 by `circle.yml`. To manually update configs, download the appropriate service
 account's private key in JSON format (or generate a new key which you can revoke
 after use), and pass it to `install_config.sh`.
+
+### Importing codebooks
+
+Codebooks are managed in Google Sheets; the PMI questionnaire codebook is
+[here] (https://docs.google.com/spreadsheets/d/1b1lmf2KywIVx3-WJBnsR21ImF6Bl345n5VMSdUNBwQI/edit).
+
+Codebooks are published to github as JSON. When you run tools/import_codebook.sh, this JSON
+is fetched and imported into the SQL database for use in RDR. Existing codes in the codebook are
+updated, new codes not in the database are inserted, and codes in the database but not in the
+code book are left untouched.
 
 ## API Endpoints
 

@@ -2,10 +2,19 @@
 
 ## Scripts to run directly
 
+### connect_to_database.sh
+
+Starts the Cloud SQL proxy and runs mysql so that you can issue SQL commands directly against
+a Cloud SQL instance.
+
 ### generate-schema.sh
 
 Generates an Alembic schema migration in alembic/versions after altering the SQLAlchemy
 schema in model/.
+
+### import_codebook.sh
+
+Imports a codebook into the database.
 
 ### install_config.sh
 
