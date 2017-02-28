@@ -70,7 +70,7 @@ class CodeDaoTest(SqlTestBase):
                            codeType=CodeType.QUESTION, mapped=False, created=TIME_3, parentId=1)
     self.assertEquals(expected_code_2.asdict(), self.code_dao.get(2).asdict())
 
-  def test_insert_second_codebook(self):
+  def test_insert_second_codebook_same_system(self):
     code_book_1 = CodeBook(name="pmi", version="v1", system="a")
     with FakeClock(TIME):
       self.code_book_dao.insert(code_book_1)
@@ -86,6 +86,31 @@ class CodeDaoTest(SqlTestBase):
     expected_code_book_2 = CodeBook(codeBookId=2, latest=True, created=TIME_2, name="pmi",
                                     version="v2", system="a")
     self.assertEquals(expected_code_book_2.asdict(), self.code_book_dao.get(2).asdict())
+    
+  def test_insert_second_codebook_different_system(self):
+    code_book_1 = CodeBook(name="pmi", version="v1", system="a")
+    with FakeClock(TIME):
+      self.code_book_dao.insert(code_book_1)
+
+    code_book_2 = CodeBook(name="pmi", version="v2", system="b")
+    with FakeClock(TIME_2):
+      self.code_book_dao.insert(code_book_2)
+
+    expected_code_book = CodeBook(codeBookId=1, latest=True, created=TIME, name="pmi",
+                                  version="v1", system="a")
+    self.assertEquals(expected_code_book.asdict(), self.code_book_dao.get(1).asdict())
+
+    expected_code_book_2 = CodeBook(codeBookId=2, latest=True, created=TIME_2, name="pmi",
+                                    version="v2", system="b")
+    self.assertEquals(expected_code_book_2.asdict(), self.code_book_dao.get(2).asdict())
+    
+  def test_insert_second_codebook_same_system_same_version(self):
+    code_book_1 = CodeBook(name="pmi", version="v1", system="a")
+    self.code_book_dao.insert(code_book_1)
+
+    code_book_2 = CodeBook(name="pmi", version="v1", system="a")
+    with self.assertRaises(BadRequest):
+      self.code_book_dao.insert(code_book_2)
 
   def test_update_codes_no_codebook_id(self):
     code_book_1 = CodeBook(name="pmi", version="v1", system="c")

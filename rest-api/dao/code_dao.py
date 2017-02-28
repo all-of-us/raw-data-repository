@@ -20,15 +20,21 @@ class CodeBookDao(BaseDao):
   def insert_with_session(self, session, obj):
     obj.created = clock.CLOCK.now()
     obj.latest = True
-    old_latest = self.get_latest_with_session(session)
+    old_latest = self.get_latest_with_session(session, obj.system)
     if old_latest:
+      if old_latest.version == obj.version:
+        raise BadRequest("Codebook with system %s, version %s already exists" % 
+                         (obj.system, obj.version))
       old_latest.latest = False
       session.merge(old_latest)
     super(CodeBookDao, self).insert_with_session(session, obj)
     return obj
 
-  def get_latest_with_session(self, session):
-    return session.query(CodeBook).filter(CodeBook.latest == True).one_or_none()
+  def get_latest_with_session(self, session, system):
+    return (session.query(CodeBook)
+        .filter(CodeBook.latest == True)
+        .filter(CodeBook.system == system)
+        .one_or_none())
 
   def get_id(self, obj):
     return obj.codeBookId
