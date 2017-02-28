@@ -41,11 +41,7 @@ class DatabaseTest(SqlTestBase):
 
     code2 = Code(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display=u"X", topic=u"d",
                  codeType=CodeType.QUESTION, mapped=True, created=datetime.datetime.now())
-<<<<<<< HEAD
-    codeHistory2 = CodeHistory(codeId=2, codeBookId=1, parentId=1, system="a", value="c", 
-=======
     codeHistory2 = CodeHistory(codeId=2, codeBookId=1, parentId=1, system="a", value="c",
->>>>>>> Changing code and biobank order fields to use UnicodeText instead of Text.
                                display=u"X", topic=u"d",
                                codeType=CodeType.QUESTION, mapped=True,
                                created=datetime.datetime.now())
@@ -54,19 +50,12 @@ class DatabaseTest(SqlTestBase):
     session.commit()
 
     code3 = Code(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display=u"Y",
-<<<<<<< HEAD
                  topic=u"d", codeType=CodeType.ANSWER, mapped=False, 
                  created=datetime.datetime.now())
     codeHistory3 = CodeHistory(codeId=3, codeBookId=1, parentId=2, system="a", value="d", 
-=======
-                 topic=u"d", codeType=CodeType.ANSWER, mapped=False,
-                 created=datetime.datetime.now())
-    codeHistory3 = CodeHistory(codeId=3, codeBookId=1, parentId=2, system="a", value="d",
->>>>>>> Changing code and biobank order fields to use UnicodeText instead of Text.
                                display=u"Y", topic=u"d",
                                codeType=CodeType.ANSWER, mapped=False,
                                created=datetime.datetime.now())
-
     session.add(code3)
     session.add(codeHistory3)
     session.commit()
