@@ -146,3 +146,22 @@ class CodeDaoTest(SqlTestBase):
                                           codeType=CodeType.MODULE, mapped=True, created=TIME_2)
     self.assertEquals(expected_code_history_2.asdict(), self.code_history_dao.get(2).asdict())
 
+  def _make_concept(self, concept_topic, concept_type, code, display, child_concepts=None):
+    concept = { 'property': [{ 'code': 'concept-topic', 'valueCode': concept_topic },
+                             { 'code': 'concept-type', 'valueCode': concept_type } ],
+                'code': code,
+                'display': display }
+    if child_concepts:
+      concept['concept'] = child_concepts
+    return concept
+
+  def test_import_codebook(self):
+    answer_1 = _make_concept("t1", "Answer", "c1", "d1") 
+    answer_2 = _make_concept("t2", "Answer", "c2", "d2")
+    answer_3 = _make_concept("t2", "Answer", "c3", "d3")
+    
+    
+    
+    codebook = { 'name': 'pmi', 'version': 'v1', 'system': 'sys' }
+    
+    
