@@ -53,20 +53,26 @@ class CodeBookDao(BaseDao):
     else:
       self.code_dao.insert_with_session(session, code)
     child_concepts = concept.get('concept')
+    code_count = 1
     if child_concepts:
       session.flush()
       for child_concept in child_concepts:
-        self._import_concept(session, child_concept, system, code_book_id, code.codeId)
+        code_count += self._import_concept(session, child_concept, system, code_book_id,
+                                           code.codeId)
+    return code_count
 
   def import_codebook(self, codebook_json):
     """Imports a codebook and all codes inside it."""
+    logging.info("Importing codes...")
     codebook = CodeBook(name=codebook_json['name'], version=codebook_json['version'])
     system = codebook_json['url']
+    code_count = 0
     with self.session() as session:
       self.insert_with_session(session, codebook)
       session.flush()
       for concept in codebook_json['concept']:
-        self._import_concept(session, concept, system, codebook.codeBookId, None)
+        code_count += self._import_concept(session, concept, system, codebook.codeBookId, None)
+    logging.info("%d codes imported.", code_count)
 
 class CodeDao(UpdatableDao):
   def __init__(self):

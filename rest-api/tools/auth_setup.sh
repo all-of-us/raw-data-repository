@@ -20,6 +20,8 @@ PORT=3308
 INSTANCE=https://${PROJECT}.appspot.com
 CLOUD_PROXY_PID=
 PRIVATE_KEY=
+DB_USER=root
+DB_NAME=rdr
 
 function cleanup {
   if [ "$CLOUD_PROXY_PID" ];

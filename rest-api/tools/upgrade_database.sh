@@ -37,9 +37,6 @@ then
   REVISION=head
 fi
 
-DB_USER=root
-DB_NAME=rdr
-
 if [ ! -z "${PROJECT}" ]
 then 
   source tools/auth_setup.sh
