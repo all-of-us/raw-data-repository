@@ -1,5 +1,4 @@
 import httplib
-import json
 
 from test.unit_test.unit_test_util import FlaskTestBase
 
