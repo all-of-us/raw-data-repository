@@ -51,7 +51,6 @@ class CodeBookDao(BaseDao):
       code.codeId = existing_code.codeId
       self.code_dao._do_update(session, code, existing_code)
     else:
-      print "code = %s" % code.asdict()
       self.code_dao.insert_with_session(session, code)
     child_concepts = concept.get('concept')
     if child_concepts:
