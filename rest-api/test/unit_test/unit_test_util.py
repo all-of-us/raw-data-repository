@@ -186,6 +186,10 @@ class FlaskTestBase(NdbTestBase):
     obj_b = copy.deepcopy(obj_b)
     if 'meta' in obj_b and not 'meta' in obj_a:
       del obj_b['meta']
+    if 'lastModified' in obj_a:
+      del obj_a['lastModified']
+    if 'lastModified' in obj_b:
+      del obj_b['lastModified']    
     self.assertMultiLineEqual(pretty(obj_a), pretty(obj_b))
 
 

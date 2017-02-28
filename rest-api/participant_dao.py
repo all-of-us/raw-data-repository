@@ -20,6 +20,7 @@ from google.appengine.ext import ndb
 from offline.metrics_fields import run_extractors
 from participant import Participant, BirthdayEvent
 
+# TODO(DA-218): remove
 class ParticipantDAO(data_access_object.DataAccessObject):
   def __init__(self):
     super(ParticipantDAO, self).__init__(Participant)
@@ -89,6 +90,9 @@ class ParticipantDAO(data_access_object.DataAccessObject):
     # Assign a new biobank ID when inserting a new participant
     model.biobankId = 'B{:d}'.format(identifier.get_id()).zfill(9)    
     model.signUpTime = date or clock.CLOCK.now()
+    self.do_insert(model, client_id)
+  
+  def do_insert(self, model, client_id):
     summary = self.make_participant_summary(model)
     result = super(ParticipantDAO, self).insert(model, model.signUpTime, client_id)    
     participant_summary.DAO().insert(summary, model.signUpTime, client_id)
