@@ -47,29 +47,45 @@ class Questionnaire(QuestionnaireBase, Base):
     # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
     # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,
     # which we'll use later when assembling the child objects.
+    code_map, concepts, questions = Questionnaire._extract_codes(fhir_q.group)
+    
+    from dao.code_dao import CodeDao
+    # Get or insert codes, and retrieve their database IDs.
+    code_id_map = CodeDao().get_or_add_codes(code_map)
+
+    # Now add the child objects, using the IDs in code_id_map
+    Questionnaire._add_concepts(q, code_id_map, concepts)
+    Questionnaire._add_questions(q, code_id_map, questions)
+   
+    return q
+  
+  @staticmethod
+  def _add_concepts(q, code_id_map, concepts):
+    for system, code in concepts:
+      q.concepts.append(QuestionnaireConcept(questionnaireId=q.questionnaireId,
+                                             questionnaireVersion=q.version,
+                                             codeId=code_id_map.get((system, code))))
+  
+  @staticmethod
+  def _add_questions(q, code_id_map, questions):
+    for system, code, linkId in questions:
+      q.questions.append(QuestionnaireQuestion(questionnaireId=q.questionnaireId,
+                                               questionnaireVersion=q.version,
+                                               linkId=linkId,
+                                               codeId=code_id_map.get((system, code))))
+    
+  @staticmethod
+  def _extract_codes(group):
     code_map = {}
     concepts = []
-    questions = []
-    if fhir_q.group.concept:
-      for concept in fhir_q.group.concept:
+    questions = []    
+    if group.concept:
+      for concept in group.concept:
         if concept.system and concept.code:
           code_map[(concept.system, concept.code)] = (concept.display, CodeType.MODULE, None)
           concepts.append((concept.system, concept.code))
-    Questionnaire._populate_questions(fhir_q.group, code_map, questions)
-    from dao.code_dao import CodeDao
-    code_id_map = CodeDao().get_or_add_codes(code_map)
-
-    # Now assemble the child objects, using the IDs provided by CodeDao
-    for system, code in concepts:
-      q.concepts.append(QuestionnaireConcept(questionnaireId=id_,
-                                             questionnaireVersion=expected_version,
-                                             codeId=code_id_map.get((system, code))))
-    for system, code, linkId in questions:
-      q.questions.append(QuestionnaireQuestion(questionnaireId=id_,
-                                               questionnaireVersion=expected_version,
-                                               linkId=linkId,
-                                               codeId=code_id_map.get((system, code))))
-    return q
+    Questionnaire._populate_questions(group, code_map, questions)
+    return (code_map, concepts, questions)
   
   @staticmethod
   def _populate_questions(group, code_map, questions):

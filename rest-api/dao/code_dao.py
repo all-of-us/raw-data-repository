@@ -37,12 +37,13 @@ class CodeDao(UpdatableDao):
   def insert_with_session(self, session, obj):
     obj.created = clock.CLOCK.now()
     super(CodeDao, self).insert_with_session(session, obj)
+    # Flush the insert so that the code's ID gets assigned and can be copied to history.
     session.flush()
     self._add_history(session, obj)
     return obj
 
   def _validate_update(self, session, obj, existing_obj):
-    if not obj.codeBookId or existing_obj.codeBookId == obj.codeBookId:
+    if obj.codeBookId is None or existing_obj.codeBookId == obj.codeBookId:
       raise BadRequest("codeBookId must be set to a new value when updating a code")
 
   def _do_update(self, session, obj, existing_obj):
@@ -63,18 +64,18 @@ class CodeDao(UpdatableDao):
     """Accepts a map of (system, value) -> (display, code_type, parent_id) for codes found in a
     questionnaire or questionnaire response.
 
-    Returns a map of (system, value) -> codeId.
+    Returns a map of (system, value) -> codeId for new and existing codes.
 
     Adds new unmapped codes for anything that is missing.
     """
     result_map = {}
     with self.session() as session:
-      for (system, value) in code_map.keys():
+      for system, value in code_map.keys():
         existing_code = self.get_code_with_session(session, system, value)
         if existing_code:
           result_map[(system, value)] = existing_code.codeId
         else:
-          (display, code_type, parent_id) = code_map[(system, value)]
+          display, code_type, parent_id = code_map[(system, value)]
           code = Code(system=system, value=value, display=display,
                       codeType=code_type, mapped=False, parentId=parent_id)
           logging.warn("Adding unmapped code: %s" % code)
