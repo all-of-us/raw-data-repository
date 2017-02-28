@@ -1,8 +1,8 @@
 """Initial schema
 
-Revision ID: b9330da5511d
-Revises:
-Create Date: 2017-02-27 15:39:12.887693
+Revision ID: 3cea32845d4b
+Revises: 
+Create Date: 2017-02-28 14:02:33.246219
 
 """
 from alembic import op
@@ -15,7 +15,7 @@ from participant_enums import MembershipTier
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = 'b9330da5511d'
+revision = '3cea32845d4b'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -27,6 +27,8 @@ def upgrade():
     sa.Column('code_book_id', sa.Integer(), nullable=False),
     sa.Column('created', sa.DateTime(), nullable=False),
     sa.Column('latest', sa.Boolean(), nullable=False),
+    sa.Column('name', sa.String(length=80), nullable=False),
+    sa.Column('version', sa.String(length=80), nullable=False),
     sa.PrimaryKeyConstraint('code_book_id')
     )
     op.create_table('hpo',
@@ -67,8 +69,8 @@ def upgrade():
     sa.Column('code_id', sa.Integer(), nullable=False),
     sa.Column('system', sa.String(length=255), nullable=False),
     sa.Column('value', sa.String(length=80), nullable=False),
-    sa.Column('display', sa.Text(), nullable=True),
-    sa.Column('topic', sa.Text(), nullable=True),
+    sa.Column('display', sa.UnicodeText(), nullable=True),
+    sa.Column('topic', sa.UnicodeText(), nullable=True),
     sa.Column('code_type', model.utils.Enum(CodeType), nullable=False),
     sa.Column('mapped', sa.Boolean(), nullable=False),
     sa.Column('created', sa.DateTime(), nullable=False),
@@ -119,9 +121,9 @@ def upgrade():
     sa.Column('created', sa.DateTime(), nullable=False),
     sa.Column('source_site_system', sa.String(length=80), nullable=True),
     sa.Column('source_site_value', sa.String(length=80), nullable=True),
-    sa.Column('collected', sa.Text(), nullable=True),
-    sa.Column('processed', sa.Text(), nullable=True),
-    sa.Column('finalized', sa.Text(), nullable=True),
+    sa.Column('collected', sa.UnicodeText(), nullable=True),
+    sa.Column('processed', sa.UnicodeText(), nullable=True),
+    sa.Column('finalized', sa.UnicodeText(), nullable=True),
     sa.Column('log_position_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['log_position_id'], ['log_position.log_position_id'], ),
     sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
@@ -153,8 +155,8 @@ def upgrade():
     op.create_table('code_history',
     sa.Column('system', sa.String(length=255), nullable=False),
     sa.Column('value', sa.String(length=80), nullable=False),
-    sa.Column('display', sa.Text(), nullable=True),
-    sa.Column('topic', sa.Text(), nullable=True),
+    sa.Column('display', sa.UnicodeText(), nullable=True),
+    sa.Column('topic', sa.UnicodeText(), nullable=True),
     sa.Column('code_type', model.utils.Enum(CodeType), nullable=False),
     sa.Column('mapped', sa.Boolean(), nullable=False),
     sa.Column('created', sa.DateTime(), nullable=False),
@@ -279,7 +281,7 @@ def upgrade():
     op.create_table('biobank_ordered_sample',
     sa.Column('order_id', sa.Integer(), nullable=False),
     sa.Column('test', sa.String(length=80), nullable=False),
-    sa.Column('description', sa.Text(), nullable=False),
+    sa.Column('description', sa.UnicodeText(), nullable=False),
     sa.Column('processing_required', sa.Boolean(), nullable=False),
     sa.Column('collected', sa.DateTime(), nullable=True),
     sa.Column('processed', sa.DateTime(), nullable=True),
