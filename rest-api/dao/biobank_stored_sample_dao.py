@@ -4,10 +4,12 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.log_position import LogPosition
 
+from werkzeug.exceptions import BadRequest
+
 
 class BiobankStoredSampleDao(BaseDao):
   def __init__(self):
-    super(BiobankStoredSampleDao, self).__init__(BiobankStoredSample, use_log_position=True)
+    super(BiobankStoredSampleDao, self).__init__(BiobankStoredSample)
 
   def get_id(self, obj):
     return obj.biobankStoredSampleId
@@ -47,12 +49,13 @@ class BiobankStoredSampleDao(BaseDao):
       return
     for sample in sample_list:
       sample.participantId = participant_id
-      sample.logPosition = LogPosition()  # TODO(mwf) What about use_log_position?
+      sample.logPosition = LogPosition()
     ParticipantDao().validate_participant_reference(session, sample_list[0])
 
     new_sample_ids = [sample.biobankStoredSampleId for sample in sample_list]
     self._validate_sample_ids_unused(session, participant_id, new_sample_ids)
-    untouched_existing_samples = self._list_existing_samples(session, participant_id, new_sample_ids)
+    untouched_existing_samples = self._list_existing_samples(
+        session, participant_id, new_sample_ids)
     # Add & flush parents. Committing children at the same time as or before parents causes errors.
     session.add_all([s for s in sample_list if s.parentSampleId is None])
     session.flush()

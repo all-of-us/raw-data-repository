@@ -1,9 +1,8 @@
 import random
 
 import dao.database_factory
-from model.log_position import LogPosition
 from contextlib import contextmanager
-from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
+from werkzeug.exceptions import NotFound, PreconditionFailed, ServiceUnavailable
 from sqlalchemy.exc import IntegrityError
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
@@ -22,21 +21,10 @@ class BaseDao(object):
   Extend directly from BaseDao if entities cannot be updated after being
   inserted; extend from UpdatableDao if they can be updated.
   """
-  def __init__(self, model_type, use_log_position=False):
-    """Creates an object manager for a specific model type.
-
-    Args:
-      use_log_position: If True, managed objects contribute to LogPosition. Whenever they are
-          created or updated, a new LogPosition is assigned which, on commit, increments the global
-          counter used for change tracking and synchronization. The model must have logPosition (a
-          relationship) and logPositionId (foreign key to log_position.log_position_id).
-    """
+  def __init__(self, model_type):
+    """Creates an object manager for a specific model type."""
     self.model_type = model_type
     self._database = dao.database_factory.get_database()
-    self._use_log_position = bool(use_log_position)
-    if self._use_log_position:
-      assert self.model_type.logPositionId is not None
-      assert self.model_type.logPosition is not None
 
   @contextmanager
   def session(self):
@@ -56,15 +44,11 @@ class BaseDao(object):
 
   def _validate_insert(self, session, obj):
     """Override to validate a new model before inserting it (not applied to updates)."""
-    if self._use_log_position and obj.logPosition is not None:
-      raise BadRequest('%s LogPosition ID must be auto-generated.' % self.model_type.__name__)
     self._validate_model(session, obj)
 
   def insert_with_session(self, session, obj):
     """Adds the object into the session to be inserted."""
     self._validate_insert(session, obj)
-    if self._use_log_position:
-      obj.logPosition = LogPosition()
     session.add(obj)
     return obj
 
@@ -144,8 +128,6 @@ class UpdatableDao(BaseDao):
     expected version ID."""
     existing_obj = self.get_with_session(session, self.get_id(obj))
     self._validate_update(session, obj, existing_obj)
-    if self._use_log_position:
-      obj.logPosition = LogPosition()
     self._do_update(session, obj, existing_obj)
 
   def update(self, obj):
