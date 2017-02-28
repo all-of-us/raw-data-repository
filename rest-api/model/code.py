@@ -31,7 +31,11 @@ class CodeBook(Base):
   # True if this is the latest imported code book.
   latest = Column('latest', Boolean, nullable=False)
   name = Column('name', String(80), nullable=False)
-  version = Column('version', String(80), nullable=False)
+  system = Column('system', String(255), nullable=False)
+  version = Column('version', String(80), nullable=False)  
+  __table_args__ = (
+    UniqueConstraint('system', 'version'),
+  )
 
 class _CodeBase(object):
   """Mixin with shared columns for Code and CodeHistory"""

@@ -64,8 +64,9 @@ class CodeBookDao(BaseDao):
   def import_codebook(self, codebook_json):
     """Imports a codebook and all codes inside it."""
     logging.info("Importing codes...")
-    codebook = CodeBook(name=codebook_json['name'], version=codebook_json['version'])
     system = codebook_json['url']
+    codebook = CodeBook(name=codebook_json['name'], version=codebook_json['version'],
+                        system=system)    
     code_count = 0
     with self.session() as session:
       self.insert_with_session(session, codebook)
