@@ -1,7 +1,7 @@
 from protorpc import messages
 from model.base import Base
 from model.utils import Enum
-from sqlalchemy import Column, Integer, String, Text, Boolean, UniqueConstraint
+from sqlalchemy import Column, Integer, String, UnicodeText, Boolean, UniqueConstraint
 from sqlalchemy import ForeignKey, DateTime
 from sqlalchemy.orm import backref, relationship
 from sqlalchemy.ext.declarative import declared_attr
@@ -29,14 +29,16 @@ class CodeBook(Base):
   created = Column('created', DateTime, nullable=False)
   # True if this is the latest imported code book.
   latest = Column('latest', Boolean, nullable=False)
+  name = Column('name', String(80), nullable=False)
+  version = Column('version', String(80), nullable=False)
 
 class _CodeBase(object):
   """Mixin with shared columns for Code and CodeHistory"""
   codeId = Column('code_id', Integer, primary_key=True)
   system = Column('system', String(255), nullable=False)
   value = Column('value', String(80), nullable=False)
-  display = Column('display', Text)
-  topic = Column('topic', Text)
+  display = Column('display', UnicodeText)
+  topic = Column('topic', UnicodeText)
   codeType = Column('code_type', Enum(CodeType), nullable=False)
   mapped = Column('mapped', Boolean, nullable=False)
   created = Column('created', DateTime, nullable=False)

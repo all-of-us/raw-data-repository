@@ -34,11 +34,11 @@ class QuestionnaireDaoTest(SqlTestBase):
     self.questionnaire_concept_dao = QuestionnaireConceptDao()
     self.questionnaire_question_dao = QuestionnaireQuestionDao()
     self.code_dao = CodeDao()
-    self.CODE_1 = Code(codeId=1, system='a', value='b', display='c', topic='d',
+    self.CODE_1 = Code(codeId=1, system='a', value='b', display=u'c', topic=u'd',
                        codeType=CodeType.MODULE, mapped=True)
-    self.CODE_2 = Code(codeId=2, system='a', value='x', display='y', codeType=CodeType.MODULE,
+    self.CODE_2 = Code(codeId=2, system='a', value='x', display=u'y', codeType=CodeType.MODULE,
                        mapped=False)
-    self.CODE_3 = Code(codeId=3, system='a', value='z', display='y', codeType=CodeType.MODULE,
+    self.CODE_3 = Code(codeId=3, system='a', value='z', display=u'y', codeType=CodeType.MODULE,
                        mapped=False)
     self.CODE_4 = Code(codeId=4, system='a', value='c', codeType=CodeType.QUESTION, mapped=True,
                        parentId=1)

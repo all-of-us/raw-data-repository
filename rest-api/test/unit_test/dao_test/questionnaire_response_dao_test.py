@@ -28,9 +28,9 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     self.questionnaire_dao = QuestionnaireDao()
     self.questionnaire_response_dao = QuestionnaireResponseDao()
     self.questionnaire_response_answer_dao = QuestionnaireResponseAnswerDao()
-    self.CODE_1 = Code(codeId=1, system='a', value='b', display='c', topic='d',
+    self.CODE_1 = Code(codeId=1, system='a', value='b', display=u'c', topic=u'd',
                        codeType=CodeType.QUESTION, mapped=True)
-    self.CODE_2 = Code(codeId=2, system='a', value='x', display='y', codeType=CodeType.QUESTION,
+    self.CODE_2 = Code(codeId=2, system='a', value='x', display=u'y', codeType=CodeType.QUESTION,
                        mapped=False)
     self.CODE_3 = Code(codeId=3, system='a', value='c', codeType=CodeType.ANSWER, mapped=True,
                        parentId=1)
