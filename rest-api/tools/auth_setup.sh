@@ -62,3 +62,13 @@ function run_cloud_sql_proxy {
   sleep 3
   CLOUD_PROXY_PID=%1
 }
+
+function set_db_connection_string {
+  PASSWORD=`grep db_password $DB_INFO_FILE | cut -d\" -f4`
+  function finish {
+    cleanup
+    export DB_CONNECTION_STRING=
+  }
+  trap finish EXIT
+  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${PASSWORD}@127.0.0.1:${PORT}/${DB_NAME}"
+}

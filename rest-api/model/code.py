@@ -9,8 +9,9 @@ from sqlalchemy.ext.declarative import declared_attr
 class CodeType(messages.Enum):
   """A type of code"""
   MODULE = 1
-  QUESTION = 2
-  ANSWER = 3
+  TOPIC = 2
+  QUESTION = 3
+  ANSWER = 4
 
 class CodeBook(Base):
   """A book of codes.
