@@ -7,11 +7,11 @@ import config_api
 import biobank_orders_api
 import metrics_api
 import participant_summary_api
-import participants_api
 import physical_measurements_api
 import ppi_api
 import version_api
 
+from api.participant_api import ParticipantApi
 from api.questionnaire_api import QuestionnaireApi
 from flask import Flask
 from flask_restful import Api
@@ -25,11 +25,12 @@ app = Flask(__name__)
 
 api = Api(app)
 
-api.add_resource(participants_api.ParticipantAPI,
+api.add_resource(ParticipantApi,
                  PREFIX + 'Participant/<string:id_>',
                  PREFIX + 'Participant',
                  endpoint='participant',
-                 methods=['GET', 'POST', 'PATCH'])
+                 # TODO(DA-216): remove PATCH once PTC migrates to PUT
+                 methods=['GET', 'POST', 'PATCH', 'PUT'])
 
 api.add_resource(participant_summary_api.ParticipantSummaryAPI,
                  PREFIX + 'Participant/<string:id_>/Summary',
