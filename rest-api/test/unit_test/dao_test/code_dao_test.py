@@ -78,7 +78,7 @@ class CodeDaoTest(SqlTestBase):
     with FakeClock(TIME_2):
       self.code_book_dao.insert(code_book_2)
 
-    expected_code_book = CodeBook(codeBookId=1, latest=False, created=TIME, name="pmi", 
+    expected_code_book = CodeBook(codeBookId=1, latest=False, created=TIME, name="pmi",
                                   version="v1")
     self.assertEquals(expected_code_book.asdict(), self.code_book_dao.get(1).asdict())
 

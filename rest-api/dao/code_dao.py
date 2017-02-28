@@ -25,6 +25,9 @@ class CodeBookDao(BaseDao):
   def get_id(self, obj):
     return obj.codeBookId
 
+  def import_codebook(self, codebook_json):
+    pass
+
 class CodeDao(UpdatableDao):
   def __init__(self):
     super(CodeDao, self).__init__(Code)
