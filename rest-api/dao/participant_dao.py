@@ -89,9 +89,10 @@ class ParticipantDao(UpdatableDao):
 def get_primary_provider_link(participant):
   if participant.providerLink:
     provider_links = json.loads(participant.providerLink)    
-    for provider in provider_links:
-      if provider.get('primary') == True:
-        return provider
+    if provider_links:
+      for provider in provider_links:
+        if provider.get('primary') == True:
+          return provider
   return None
   
 def get_HPO_name_from_participant(participant):
