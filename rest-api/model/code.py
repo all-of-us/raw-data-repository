@@ -29,6 +29,8 @@ class CodeBook(Base):
   created = Column('created', DateTime, nullable=False)
   # True if this is the latest imported code book.
   latest = Column('latest', Boolean, nullable=False)
+  name = Column('name', String(80), nullable=False)
+  version = Column('version', String(80), nullable=False)
 
 class _CodeBase(object):
   """Mixin with shared columns for Code and CodeHistory"""

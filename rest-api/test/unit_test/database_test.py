@@ -24,7 +24,8 @@ class DatabaseTest(SqlTestBase):
     session = self.get_database().make_session()
 
     hpo = HPO(hpoId=1, name='UNSET')
-    code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True)
+    code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True, name="pmi",
+                         version="v0.1.1")
     session.add(hpo)
     session.add(code_book)
     session.commit()
