@@ -56,11 +56,7 @@ class CodeDaoTest(SqlTestBase):
     self.assertEquals(expected_code.asdict(), self.code_dao.get(1).asdict())
 
     expected_code_history = CodeHistory(codeBookId=1, codeHistoryId=1, codeId=1, system="a",
-<<<<<<< HEAD
-                                        value=u"b", display=u"c", topic=u"d", 
-=======
                                         value=u"b", display=u"c", topic=u"d",
->>>>>>> Changing code and biobank order fields to use UnicodeText instead of Text.
                                         codeType=CodeType.MODULE, mapped=True, created=TIME_2)
     self.assertEquals(expected_code_history.asdict(), self.code_history_dao.get(1).asdict())
 
