@@ -15,7 +15,7 @@ DB_NAME=rdr
 DB_INFO_FILE=/tmp/db_info.json
 CREATE_DB_FILE=/tmp/create_db.sql
 
-PASSWORD_ARGS='-p"${PASSWORD}"'
+PASSWORD_ARGS="-p${PASSWORD}"
 PASSWORD_STRING=":${PASSWORD}"
 while true; do
   case "$1" in

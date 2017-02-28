@@ -1,11 +1,12 @@
 import datetime
 
-from participant_enums import GenderIdentity, QuestionnaireStatus
+from participant_enums import QuestionnaireStatus
 
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from model.code import Code, CodeType, CodeBook, CodeHistory
 from model.hpo import HPO
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements
@@ -23,14 +24,47 @@ class DatabaseTest(SqlTestBase):
     session = self.get_database().make_session()
 
     hpo = HPO(hpoId=1, name='UNSET')
+    code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True)
     session.add(hpo)
+    session.add(code_book)
+    session.commit()
+
+    code1 = Code(codeId=1, codeBookId=1, system="a", value="b", display="c", topic="d",
+                 codeType=CodeType.MODULE, mapped=True, created=datetime.datetime.now())
+    codeHistory1 = CodeHistory(codeId=1, codeBookId=1, system="a", value="b", display="c",
+                               topic="d", codeType=CodeType.MODULE, mapped=True,
+                               created=datetime.datetime.now())
+    session.add(code1)
+    session.add(codeHistory1)
+    session.commit()
+
+    code2 = Code(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
+                 codeType=CodeType.QUESTION, mapped=True, created=datetime.datetime.now())
+    codeHistory2 = CodeHistory(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display="X", topic="d",
+                               codeType=CodeType.QUESTION, mapped=True,
+                               created=datetime.datetime.now())
+    session.add(code2)
+    session.add(codeHistory2)
+    session.commit()
+
+    code3 = Code(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
+                 codeType=CodeType.ANSWER, mapped=False, created=datetime.datetime.now())
+    codeHistory3 = CodeHistory(codeId=3, codeBookId=1, parentId=2, system="a", value="d", display="Y", topic="d",
+                               codeType=CodeType.ANSWER, mapped=False,
+                               created=datetime.datetime.now())
+
+    session.add(code3)
+    session.add(codeHistory3)
+    session.commit()
+
     session.commit()
 
     p = Participant(participantId=1, version=1, biobankId=2, hpoId=1, 
-                    signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now())
+                    signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now(),
+                    clientId="c")
     ps = ParticipantSummary(participantId=1, biobankId=2, firstName='Bob', middleName='Q', 
                             lastName='Jones', zipCode='78751', dateOfBirth=datetime.date.today(), 
-                            genderIdentity=GenderIdentity.MALE, hpoId=1,
+                            genderIdentityId=1, hpoId=1,
                             consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED, 
                             consentForStudyEnrollmentTime=datetime.datetime.now(),
                             numCompletedBaselinePPIModules=1,
@@ -39,7 +73,7 @@ class DatabaseTest(SqlTestBase):
     session.add(p)
     ph = ParticipantHistory(participantId=1, version=1, biobankId=2, hpoId=1, 
                             signUpTime=datetime.datetime.now(), 
-                            lastModified=datetime.datetime.now())
+                            lastModified=datetime.datetime.now(), clientId="d")
     session.add(ph)
     session.commit()
 
@@ -84,10 +118,10 @@ class DatabaseTest(SqlTestBase):
                               lastModified=datetime.datetime.now(), resource='what?')
     qh.questions.append(QuestionnaireQuestion(questionnaireQuestionId=1, questionnaireId=1, 
                                               questionnaireVersion=1, 
-                                              linkId="1.2.3", conceptSystem='a', conceptCode='b'))
+                                              linkId="1.2.3", codeId=2))
     qh.concepts.append(QuestionnaireConcept(questionnaireConceptId=1, questionnaireId=1, 
                                             questionnaireVersion=1,
-                                            conceptSystem='a', conceptCode='b'))                
+                                            codeId=1))
     session.add(q)
     session.add(qh)
     session.commit()
@@ -97,7 +131,7 @@ class DatabaseTest(SqlTestBase):
     qr.answers.append(QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1, 
                                                   questionnaireResponseId=1, questionId=1, 
                                                   endTime=datetime.datetime.now(), valueSystem='a', 
-                                                  valueCode='b', valueDecimal=123, valueString='blah',
+                                                  valueCodeId=3, valueDecimal=123, valueString='blah',
                                                   valueDate=datetime.date.today()))
 
     session.add(qr)

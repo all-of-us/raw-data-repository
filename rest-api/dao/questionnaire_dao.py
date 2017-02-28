@@ -52,7 +52,7 @@ class QuestionnaireDao(UpdatableDao):
     super(QuestionnaireDao, self).insert_with_session(session, questionnaire)    
     # This is needed to assign an ID to the questionnaire, as the client doesn't need to provide
     # one.
-    session.flush()            
+    session.flush()
     
     # Set the ID in the resource JSON
     resource_json = json.loads(questionnaire.resource)

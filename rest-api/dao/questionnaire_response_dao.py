@@ -79,6 +79,5 @@ class QuestionnaireResponseAnswerDao(BaseDao):
         .join(QuestionnaireQuestion)
         .filter(QuestionnaireResponse.participantId == participant_id)
         .filter(QuestionnaireResponseAnswer.endTime == None)
-        .filter(QuestionnaireQuestion.conceptSystem == subquery.c.concept_system)
-        .filter(QuestionnaireQuestion.conceptCode == subquery.c.concept_code)
+        .filter(QuestionnaireQuestion.codeId == subquery.c.code_id)
         .all())

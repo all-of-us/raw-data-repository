@@ -1,7 +1,9 @@
 import datetime
 
+from dao.code_dao import CodeDao
 from dao.questionnaire_dao import QuestionnaireDao, QuestionnaireHistoryDao
 from dao.questionnaire_dao import QuestionnaireConceptDao, QuestionnaireQuestionDao
+from model.code import Code, CodeType
 from model.questionnaire import Questionnaire, QuestionnaireHistory
 from model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
 from unit_test_util import SqlTestBase, sort_lists
@@ -9,23 +11,14 @@ from clock import FakeClock
 from werkzeug.exceptions import NotFound, PreconditionFailed
 from sqlalchemy.exc import IntegrityError
 
-CONCEPT_1 = QuestionnaireConcept(conceptSystem='a', conceptCode='b')
-CONCEPT_2 = QuestionnaireConcept(conceptSystem='c', conceptCode='d')
-QUESTION_1 = QuestionnaireQuestion(linkId='a', conceptSystem='b', conceptCode='c')
-QUESTION_2 = QuestionnaireQuestion(linkId='d', conceptSystem='e', conceptCode='f')
-
 EXPECTED_CONCEPT_1 = QuestionnaireConcept(questionnaireConceptId=1, questionnaireId=1,
-                                          questionnaireVersion=1, conceptSystem='a', 
-                                          conceptCode='b')
+                                          questionnaireVersion=1, codeId=1)
 EXPECTED_CONCEPT_2 = QuestionnaireConcept(questionnaireConceptId=2, questionnaireId=1,
-                                          questionnaireVersion=1, conceptSystem='c', 
-                                          conceptCode='d')
+                                          questionnaireVersion=1, codeId=2)
 EXPECTED_QUESTION_1 = QuestionnaireQuestion(questionnaireQuestionId=1, questionnaireId=1,
-                                            questionnaireVersion=1, linkId='a', conceptSystem='b',
-                                            conceptCode='c')
+                                            questionnaireVersion=1, linkId='a', codeId=4)
 EXPECTED_QUESTION_2 = QuestionnaireQuestion(questionnaireQuestionId=2, questionnaireId=1,
-                                            questionnaireVersion=1, linkId='d', conceptSystem='e',
-                                            conceptCode='f')
+                                            questionnaireVersion=1, linkId='d', codeId=5)
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 RESOURCE_1 = '{"x": "y"}'
@@ -40,6 +33,32 @@ class QuestionnaireDaoTest(SqlTestBase):
     self.questionnaire_history_dao = QuestionnaireHistoryDao()
     self.questionnaire_concept_dao = QuestionnaireConceptDao()
     self.questionnaire_question_dao = QuestionnaireQuestionDao()
+    self.code_dao = CodeDao()
+    self.CODE_1 = Code(codeId=1, system='a', value='b', display='c', topic='d',
+                       codeType=CodeType.MODULE, mapped=True)
+    self.CODE_2 = Code(codeId=2, system='a', value='x', display='y', codeType=CodeType.MODULE,
+                       mapped=False)
+    self.CODE_3 = Code(codeId=3, system='a', value='z', display='y', codeType=CodeType.MODULE,
+                       mapped=False)
+    self.CODE_4 = Code(codeId=4, system='a', value='c', codeType=CodeType.QUESTION, mapped=True,
+                       parentId=1)
+    self.CODE_5 = Code(codeId=5, system='a', value='d', codeType=CodeType.QUESTION, mapped=True,
+                       parentId=2)
+    self.CODE_6 = Code(codeId=6, system='a', value='e', codeType=CodeType.QUESTION, mapped=True,
+                       parentId=2)
+    self.CONCEPT_1 = QuestionnaireConcept(codeId=1)
+    self.CONCEPT_2 = QuestionnaireConcept(codeId=2)
+    self.QUESTION_1 = QuestionnaireQuestion(linkId='a', codeId=4)
+    self.QUESTION_2 = QuestionnaireQuestion(linkId='d', codeId=5)
+    self.insert_codes()
+
+  def insert_codes(self):
+    self.code_dao.insert(self.CODE_1)
+    self.code_dao.insert(self.CODE_2)
+    self.code_dao.insert(self.CODE_3)
+    self.code_dao.insert(self.CODE_4)
+    self.code_dao.insert(self.CODE_5)
+    self.code_dao.insert(self.CODE_6)
 
   def test_get_before_insert(self):
     self.assertIsNone(self.dao.get(1))
@@ -68,10 +87,10 @@ class QuestionnaireDaoTest(SqlTestBase):
   
   def test_insert(self):
     q = Questionnaire(resource=RESOURCE_1)
-    q.concepts.append(CONCEPT_1)
-    q.concepts.append(CONCEPT_2)
-    q.questions.append(QUESTION_1)
-    q.questions.append(QUESTION_2)
+    q.concepts.append(self.CONCEPT_1)
+    q.concepts.append(self.CONCEPT_2)
+    q.questions.append(self.QUESTION_1)
+    q.questions.append(self.QUESTION_2)
     
     with FakeClock(TIME):
       self.dao.insert(q)
@@ -101,69 +120,7 @@ class QuestionnaireDaoTest(SqlTestBase):
       self.dao.insert(q)
       self.fail("IntegrityError expected")
     except IntegrityError:
-      pass    
-  
-  def test_update_no_expected_version(self):
-    q = Questionnaire(resource=RESOURCE_1)
-    q.concepts.append(CONCEPT_1)
-    q.concepts.append(CONCEPT_2)
-    q.questions.append(QUESTION_1)
-    q.questions.append(QUESTION_2)
-    with FakeClock(TIME):
-      self.dao.insert(q)
-
-    # Creating a questionnaire creates a history entry with children
-    self.check_history()
-
-    q = Questionnaire(questionnaireId=1, resource=RESOURCE_2)
-    q.concepts.append(QuestionnaireConcept(conceptSystem='a', conceptCode='b'))
-    q.concepts.append(QuestionnaireConcept(conceptSystem='x', conceptCode='y'))
-    q.questions.append(QuestionnaireQuestion(linkId='x', conceptSystem='y', conceptCode='z'))
-    q.questions.append(QuestionnaireQuestion(linkId='d', conceptSystem='e', conceptCode='f'))
-    
-    with FakeClock(TIME_2):
-      self.dao.update(q)
-
-    expected_questionnaire = Questionnaire(questionnaireId=1, version=2, created=TIME,
-                                          lastModified=TIME_2, resource=RESOURCE_2)
-    questionnaire = self.dao.get(1)
-    self.assertEquals(expected_questionnaire.asdict(), questionnaire.asdict())
-
-    # Updating a questionnaire keeps the existing history, and 
-    # creates a new history element with children.
-    # self.check_history()
-    
-    expected_history = QuestionnaireHistory(questionnaireId=1, version=2, created=TIME,
-                                            lastModified=TIME_2, resource=RESOURCE_2)
-    questionnaire_history = self.questionnaire_history_dao.get([1, 2])
-    self.assertEquals(expected_history.asdict(), questionnaire_history.asdict())
-
-    questionnaire_history = self.questionnaire_history_dao.get_with_children([1, 2])
-    expected_concept_1 = QuestionnaireConcept(questionnaireConceptId=3, questionnaireId=1,
-                                              questionnaireVersion=2, conceptSystem='a', 
-                                              conceptCode='b')
-    expected_concept_2 = QuestionnaireConcept(questionnaireConceptId=4, questionnaireId=1,
-                                              questionnaireVersion=2, conceptSystem='x', 
-                                              conceptCode='y')
-    expected_question_1 = QuestionnaireQuestion(questionnaireQuestionId=3, questionnaireId=1,
-                                                questionnaireVersion=2, linkId='x', 
-                                                conceptSystem='y', conceptCode='z')
-    expected_question_2 = QuestionnaireQuestion(questionnaireQuestionId=4, questionnaireId=1,
-                                                questionnaireVersion=2, linkId='d', 
-                                                conceptSystem='e', conceptCode='f')
-
-    expected_history.concepts.append(expected_concept_1)
-    expected_history.concepts.append(expected_concept_2)
-    expected_history.questions.append(expected_question_1)
-    expected_history.questions.append(expected_question_2)
-
-    self.assertEquals(sort_lists(expected_history.asdict_with_children()),
-                      sort_lists(questionnaire_history.asdict_with_children()))
-
-    self.assertEquals(expected_concept_1.asdict(), self.questionnaire_concept_dao.get(3).asdict())
-    self.assertEquals(expected_concept_2.asdict(), self.questionnaire_concept_dao.get(4).asdict())
-    self.assertEquals(expected_question_1.asdict(), self.questionnaire_question_dao.get(3).asdict())
-    self.assertEquals(expected_question_2.asdict(), self.questionnaire_question_dao.get(4).asdict())
+      pass
   
   def test_update_right_expected_version(self):
     q = Questionnaire(resource=RESOURCE_1)

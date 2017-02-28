@@ -1,5 +1,5 @@
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import MembershipTier, GenderIdentity, Ethnicity, Race
+from participant_enums import MembershipTier
 from model.base import Base
 from model.utils import Enum
 from sqlalchemy import Column, Integer, String, Date, DateTime
@@ -16,10 +16,11 @@ class ParticipantSummary(Base):
   lastName = Column('last_name', String(80))
   zipCode = Column('zip_code', String(10))
   dateOfBirth = Column('date_of_birth', Date)
-  genderIdentity = Column('gender_identity', Enum(GenderIdentity), default=GenderIdentity.UNSET)
+  genderIdentityId = Column('gender_identity_id', Integer, ForeignKey('code.code_id'))
+  # Does membershipTier come from questionnaires? Should this be an FK?
   membershipTier = Column('membership_tier', Enum(MembershipTier), default=MembershipTier.UNSET)
-  race = Column('race', Enum(Race), default=Race.UNSET)
-  ethnicity = Column('ethnicity', Enum(Ethnicity), default=Ethnicity.UNSET)
+  raceId = Column('race_id', Integer, ForeignKey('code.code_id'))
+  ethnicityId = Column('ethnicity_id', Integer, ForeignKey('code.code_id'))
   physicalMeasurementsStatus = Column('physical_measurements_status', 
                                       Enum(PhysicalMeasurementsStatus), 
                                       default=PhysicalMeasurementsStatus.UNSET)
@@ -70,10 +71,11 @@ Index('participant_summary_hpo', ParticipantSummary.hpoId)
 Index('participant_summary_hpo_fn', ParticipantSummary.hpoId, ParticipantSummary.firstName)
 Index('participant_summary_hpo_ln', ParticipantSummary.hpoId, ParticipantSummary.lastName)
 Index('participant_summary_hpo_dob', ParticipantSummary.hpoId, ParticipantSummary.dateOfBirth)
-Index('participant_summary_hpo_ethnicity', ParticipantSummary.hpoId, ParticipantSummary.ethnicity)
+Index('participant_summary_hpo_ethnicity', ParticipantSummary.hpoId,
+      ParticipantSummary.ethnicityId)
 Index('participant_summary_hpo_zip', ParticipantSummary.hpoId, ParticipantSummary.zipCode)
 Index('participant_summary_hpo_tier', ParticipantSummary.hpoId, ParticipantSummary.membershipTier)
-Index('participant_summary_hpo_consent', ParticipantSummary.hpoId, 
+Index('participant_summary_hpo_consent', ParticipantSummary.hpoId,
       ParticipantSummary.consentForStudyEnrollment)
 Index('participant_summary_hpo_num_baseline_ppi', ParticipantSummary.hpoId, 
       ParticipantSummary.numCompletedBaselinePPIModules)

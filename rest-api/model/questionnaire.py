@@ -1,10 +1,11 @@
 import fhirclient.models.questionnaire
 import json
 
+from model.code import CodeType
 from model.base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint, Index
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint
+from sqlalchemy import UniqueConstraint, ForeignKey
 from werkzeug.exceptions import BadRequest
 
 class QuestionnaireBase(object):
@@ -35,23 +36,59 @@ class Questionnaire(QuestionnaireBase, Base):
                             'foreign(QuestionnaireQuestion.questionnaireId)')
                             
   @staticmethod
-  def from_client_json(resource_json, id_=None, expected_version=None):
+  def from_client_json(resource_json, id_=None, expected_version=None, client_id=None):
+    #pylint: disable=unused-argument
     fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
     if not fhir_q.group:
       raise BadRequest("No top-level group found in questionnaire")
         
     q = Questionnaire(resource=json.dumps(fhir_q.as_json()), questionnaireId=id_, 
                       version=expected_version)
-    if fhir_q.group.concept:
-      for concept in fhir_q.group.concept:
-        if concept.system and concept.code:
-          q.concepts.append(QuestionnaireConcept(conceptSystem=concept.system, 
-                                                 conceptCode=concept.code))    
-    Questionnaire._populate_questions(fhir_q.group, q)
+    # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
+    # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,
+    # which we'll use later when assembling the child objects.
+    code_map, concepts, questions = Questionnaire._extract_codes(fhir_q.group)
+    
+    from dao.code_dao import CodeDao
+    # Get or insert codes, and retrieve their database IDs.
+    code_id_map = CodeDao().get_or_add_codes(code_map)
+
+    # Now add the child objects, using the IDs in code_id_map
+    Questionnaire._add_concepts(q, code_id_map, concepts)
+    Questionnaire._add_questions(q, code_id_map, questions)
+   
     return q
   
   @staticmethod
-  def _populate_questions(group, q):
+  def _add_concepts(q, code_id_map, concepts):
+    for system, code in concepts:
+      q.concepts.append(QuestionnaireConcept(questionnaireId=q.questionnaireId,
+                                             questionnaireVersion=q.version,
+                                             codeId=code_id_map.get((system, code))))
+  
+  @staticmethod
+  def _add_questions(q, code_id_map, questions):
+    for system, code, linkId in questions:
+      q.questions.append(QuestionnaireQuestion(questionnaireId=q.questionnaireId,
+                                               questionnaireVersion=q.version,
+                                               linkId=linkId,
+                                               codeId=code_id_map.get((system, code))))
+    
+  @staticmethod
+  def _extract_codes(group):
+    code_map = {}
+    concepts = []
+    questions = []    
+    if group.concept:
+      for concept in group.concept:
+        if concept.system and concept.code:
+          code_map[(concept.system, concept.code)] = (concept.display, CodeType.MODULE, None)
+          concepts.append((concept.system, concept.code))
+    Questionnaire._populate_questions(group, code_map, questions)
+    return (code_map, concepts, questions)
+  
+  @staticmethod
+  def _populate_questions(group, code_map, questions):
     """Recursively populate questions under this group."""
     if group.question:
       for question in group.question:
@@ -59,15 +96,14 @@ class Questionnaire(QuestionnaireBase, Base):
         if question.linkId and question.concept and len(question.concept) == 1:
           concept = question.concept[0]
           if concept.system and concept.code:
-            q.questions.append(QuestionnaireQuestion(linkId=question.linkId,
-                                                     conceptSystem=concept.system,
-                                                     conceptCode=concept.code))
+            code_map[(concept.system, concept.code)] = (concept.display, CodeType.QUESTION, None)
+            questions.append((concept.system, concept.code, question.linkId))
         if question.group:
           for sub_group in question.group:
-            Questionnaire._populate_questions(sub_group, q)    
+            Questionnaire._populate_questions(sub_group, code_map, questions)
     if group.group:
       for sub_group in group.group:
-        Questionnaire._populate_questions(sub_group, q)
+        Questionnaire._populate_questions(sub_group, code_map, questions)
       
 class QuestionnaireHistory(QuestionnaireBase, Base):  
   __tablename__ = 'questionnaire_history'
@@ -82,16 +118,13 @@ class QuestionnaireConcept(Base):
   questionnaireConceptId = Column('questionnaire_concept_id', Integer, primary_key=True)
   questionnaireId = Column('questionnaire_id', Integer, nullable=False)
   questionnaireVersion = Column('questionnaire_version', Integer, nullable=False)
-  conceptSystem = Column('concept_system', String(255), nullable=False)
-  conceptCode = Column('concept_code', String(20), nullable=False)
+  codeId = Column('code_id', Integer, ForeignKey('code.code_id'), nullable=False)
   __table_args__ = (
     ForeignKeyConstraint(
         ['questionnaire_id', 'questionnaire_version'], 
         ['questionnaire_history.questionnaire_id', 'questionnaire_history.version']),
-    UniqueConstraint('questionnaire_id', 'questionnaire_version', 'concept_system', 'concept_code')
+    UniqueConstraint('questionnaire_id', 'questionnaire_version', 'code_id')
   )
-Index('questionnaire_concept_system_code', QuestionnaireConcept.conceptSystem, 
-      QuestionnaireConcept.conceptCode)
 
 class QuestionnaireQuestion(Base):
   """A question in a questionnaire. These should be copied whenever a new version of a 
@@ -106,15 +139,10 @@ class QuestionnaireQuestion(Base):
   questionnaireId = Column('questionnaire_id', Integer)
   questionnaireVersion = Column('questionnaire_version', Integer)
   linkId = Column('link_id', String(20))
-  conceptSystem = Column('concept_system', String(255))
-  conceptCode = Column('concept_code', String(20))
-  # Should we also include valid answers here?  
+  codeId = Column('code_id', Integer, ForeignKey('code.code_id'), nullable=False)
   __table_args__ = (
     ForeignKeyConstraint(
         ['questionnaire_id', 'questionnaire_version'],
         ['questionnaire_history.questionnaire_id', 'questionnaire_history.version']),
     UniqueConstraint('questionnaire_id', 'questionnaire_version', 'link_id')
   )
-  
-Index('questionnaire_question_system_code', QuestionnaireQuestion.conceptSystem, 
-      QuestionnaireQuestion.conceptCode)

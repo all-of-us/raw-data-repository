@@ -11,7 +11,8 @@ import model.utils
 ${imports if imports else ""}
 
 from participant_enums import HPOId, PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import MembershipTier, GenderIdentity, Ethnicity, Race
+from participant_enums import MembershipTier
+from model.code import CodeType
 
 # revision identifiers, used by Alembic.
 revision = ${repr(up_revision)}

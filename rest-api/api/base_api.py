@@ -1,4 +1,5 @@
 """Base class for API handlers."""
+import api_util
 
 from flask import request
 from flask.ext.restful import Resource
@@ -40,9 +41,10 @@ class BaseApi(Resource):
   def _get_model_to_insert(self, resource, participant_id=None):
     # Children of participants accept a participant_id parameter to from_client_json; others don't.
     if participant_id is not None:
-      return self.dao.model_type.from_client_json(resource, participant_id=participant_id)
+      return self.dao.model_type.from_client_json(resource, participant_id=participant_id,
+                                                  client_id=api_util.get_oauth_id())
     else:
-      return self.dao.model_type.from_client_json(resource)
+      return self.dao.model_type.from_client_json(resource, client_id=api_util.get_oauth_id())
       
   def post(self, participant_id=None):
     """Handles a POST (insert) request.
@@ -73,10 +75,12 @@ class UpdatableApi(BaseApi):
     # Children of participants accept a participant_id parameter to from_client_json; others don't.
     if participant_id is not None:
       return self.dao.model_type.from_client_json(resource, participant_id=participant_id, id_=id_, 
-                                                  expected_version=expected_version)
+                                                  expected_version=expected_version,
+                                                  client_id=api_util.get_oauth_id())
     else:
       return self.dao.model_type.from_client_json(resource, id_=id_, 
-                                                  expected_version=expected_version)
+                                                  expected_version=expected_version,
+                                                  client_id=api_util.get_oauth_id())
   
   def _make_response(self, obj):    
     result = super(UpdatableApi, self)._make_response(obj)
