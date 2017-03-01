@@ -45,7 +45,7 @@ class CodeBookDao(BaseDao):
     Existing codes will be updated; codes that weren't there before will be inserted. Codes that
     are in the database but not in the codebook will be left untouched.
     """
-    property_dict = { p['code']: p['valueCode'] for p in concept['property'] }
+    property_dict = {p['code']: p['valueCode'] for p in concept['property']}
     topic = property_dict['concept-topic']
     value = concept['code']
     display = concept['display']
