@@ -1,11 +1,7 @@
 """Simple end to end test to exercise the participant and measurements APIs.
 """
 
-import datetime
-import json
 import unittest
-import time
-
 import test_util
 
 from client.client import HttpException

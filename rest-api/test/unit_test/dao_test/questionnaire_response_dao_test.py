@@ -24,9 +24,9 @@ QUESTIONNAIRE_RESPONSE_RESOURCE = '{"a": "b"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE_2 = '{"a": "c"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"a": "d"}'
 
-def with_id(resource, id):
+def with_id(resource, id_):
   resource_json = json.loads(resource)
-  resource_json['id'] = str(id)
+  resource_json['id'] = str(id_)
   return json.dumps(resource_json)
 
 class QuestionnaireResponseDaoTest(SqlTestBase):
