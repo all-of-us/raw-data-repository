@@ -10,6 +10,7 @@ from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from participant_enums import QuestionnaireStatus
+from field_config.participant_summary_config import num_completed_baseline_ppi_modules
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
@@ -96,18 +97,26 @@ class QuestionnaireResponseDao(BaseDao):
           if code:
             summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
             if summary_field:
-              setattr(participant_summary, summary_field, answer.valueCodeId)
-              something_changed = True
+              if getattr(participant_summary, summary_field) != answer.valueCodeId:
+                setattr(participant_summary, summary_field, answer.valueCodeId)
+                something_changed = True
 
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
     # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
+    module_changed = False
     for concept in qh.concepts:
       code = code_map.get(concept.codeId)
       if code:
         summary_field = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(code.value)
         if summary_field:
-          setattr(participant_summary, summary_field, QuestionnaireStatus.SUBMITTED)
-          something_changed = True
+          if getattr(participant_summary, summary_field) != QuestionnaireStatus.SUBMITTED:
+            setattr(participant_summary, summary_field, QuestionnaireStatus.SUBMITTED)
+            setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)
+            something_changed = True
+            module_changed = True
+    if module_changed:
+      participant_summary.numCompletedBaselinePPIModules = \
+          num_completed_baseline_ppi_modules(participant_summary)
 
     if something_changed:
       session.merge(participant_summary)
