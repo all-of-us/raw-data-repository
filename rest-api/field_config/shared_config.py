@@ -39,6 +39,3 @@ questionnaire_fields = [
   for k, concept in KNOWN_QUESTIONNAIRES.iteritems()]
 
 questionnaire_defaults = {f.name: UNSET for f in questionnaire_fields}
-
-question_concept_to_field = [
-]
