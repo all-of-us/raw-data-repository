@@ -12,7 +12,7 @@ from model.questionnaire_response import QuestionnaireResponse, QuestionnaireRes
 from participant_enums import QuestionnaireStatus
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
-from code_constants import FIELD_TO_QUESTION_CODE, FIELD_TO_QUESTIONNAIRE_MODULE_CODE
+from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
 
 class QuestionnaireResponseDao(BaseDao):
 

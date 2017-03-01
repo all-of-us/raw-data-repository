@@ -35,11 +35,11 @@ class QuestionnaireResponse(Base):
     return json.loads(self.resource)
 
   @staticmethod
-  def from_client_json(resource_json, participant_id=None, id_=None,
-                       expected_version=None, client_id=None):
+  def from_client_json(resource_json, participant_id=None, client_id=None):
+    #pylint: disable=unused-argument
     fhir_qr = fhirclient.models.questionnaireresponse.QuestionnaireResponse(resource_json)
     patient_id = fhir_qr.subject.reference
-    if (patient_id != 'Patient/P{}'.format(participant_id)):
+    if patient_id != 'Patient/P{}'.format(participant_id):
       raise BadRequest("Questionnaire response subject reference does not match participant_id %d"
                        % patient_id)
     questionnaire = QuestionnaireResponse._get_questionnaire(fhir_qr.questionnaire)
@@ -125,7 +125,8 @@ class QuestionnaireResponse(Base):
               if answer.valueCoding:
                 system_and_code = (answer.valueCoding.system, answer.valueCoding.code)
                 if not system_and_code in code_map:
-                  code_map[system_and_code] = (answer.valueCoding.display, CodeType.ANSWER, qq.codeId)
+                  code_map[system_and_code] = (answer.valueCoding.display, CodeType.ANSWER,
+                                               qq.codeId)
               if answer.valueDecimal:
                 qr_answer.valueDecimal = int(answer.valueDecimal)
               if answer.valueString:
