@@ -24,6 +24,7 @@ from dao.hpo_dao import HPODao
 from model.hpo import HPO
 from participant_enums import UNSET_HPO_ID
 from mock import patch
+from test.test_data import data_path
 
 PITT_HPO_ID = 2
 
@@ -171,6 +172,16 @@ class FlaskTestBase(NdbTestBase):
                       "Expected response headers: %s; actual: %s" % 
                       (expected_response_headers, response.headers))    
     return json.loads(response.data)
+
+  def create_participant(self):
+    response = self.send_post('Participant', {})
+    return response['participantId']
+
+  def create_questionnaire(self, filename):
+    with open(data_path(filename)) as f:
+      questionnaire = json.load(f)
+      response = self.send_post('Questionnaire', questionnaire)
+      return response['id']
 
   def create_and_verify_created_obj(self, path, resource):
     response = self.send_post(path, resource)  

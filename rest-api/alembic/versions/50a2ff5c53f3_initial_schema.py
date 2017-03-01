@@ -292,7 +292,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('order_id', 'test')
     )
     op.create_table('questionnaire_response_answer',
-    sa.Column('questionnaire_response_answer_id', sa.Integer(), autoincrement=False, nullable=False),
+    sa.Column('questionnaire_response_answer_id', sa.Integer(), nullable=False),
     sa.Column('questionnaire_response_id', sa.Integer(), nullable=False),
     sa.Column('question_id', sa.Integer(), nullable=False),
     sa.Column('end_time', sa.DateTime(), nullable=True),

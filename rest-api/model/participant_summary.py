@@ -17,8 +17,7 @@ class ParticipantSummary(Base):
   zipCode = Column('zip_code', String(10))
   dateOfBirth = Column('date_of_birth', Date)
   genderIdentityId = Column('gender_identity_id', Integer, ForeignKey('code.code_id'))
-  # Does membershipTier come from questionnaires? Should this be an FK?
-  membershipTier = Column('membership_tier', Enum(MembershipTier), default=MembershipTier.UNSET)
+  membershipTier = Column('membership_tier', Integer, ForeignKey('code.code_id'))
   raceId = Column('race_id', Integer, ForeignKey('code.code_id'))
   ethnicityId = Column('ethnicity_id', Integer, ForeignKey('code.code_id'))
   physicalMeasurementsStatus = Column('physical_measurements_status', 

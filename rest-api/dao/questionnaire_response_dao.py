@@ -1,12 +1,18 @@
 import clock
+import json
 
+from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
 from dao.base_dao import BaseDao
+from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
-from dao.questionnaire_dao import QuestionnaireHistoryDao
+from dao.participant_summary_dao import ParticipantSummaryDao
+from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from participant_enums import QuestionnaireStatus
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
+from code_constants import FIELD_TO_QUESTION_CODE, FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 
 class QuestionnaireResponseDao(BaseDao):
 
@@ -31,32 +37,86 @@ class QuestionnaireResponseDao(BaseDao):
       raise BadRequest('QuestionnaireResponse.questionnaireVersion is required.')
     if not ParticipantDao().get_with_session(session, obj.participantId):
       raise BadRequest('Participant with ID %s is not found.' % obj.participantId)
-    qh = QuestionnaireHistoryDao().get_with_children_with_session(session,
-                                                                  [obj.questionnaireId,
-                                                                   obj.questionnaireVersion])
-    if not qh:
-      raise BadRequest('Questionnaire with ID %s, version %s is not found' %
-                       (obj.questionnaireId, obj.questionnaireVersion))
-    question_ids = set([question.questionnaireQuestionId for question in qh.questions])
-    for answer in obj.answers:
-      if answer.questionId not in question_ids:
-        raise BadRequest('Questionnaire response contains question ID %s not in questionnaire.' %
-                         answer.questionId)
 
 
   def insert_with_session(self, session, questionnaire_response):
+    qh = (QuestionnaireHistoryDao().
+          get_with_children_with_session(session, [questionnaire_response.questionnaireId,
+                                                   questionnaire_response.questionnaireVersion]))
+    if not qh:
+      raise BadRequest('Questionnaire with ID %s, version %s is not found' %
+                       (questionnaire_response.questionnaireId,
+                        questionnaire_response.questionnaireVersion))
+    q_question_ids = set([question.questionnaireQuestionId for question in qh.questions])
+    for answer in questionnaire_response.answers:
+      if answer.questionId not in q_question_ids:
+        raise BadRequest('Questionnaire response contains question ID %s not in questionnaire.' %
+                         answer.questionId)
+
     questionnaire_response.created = clock.CLOCK.now()
+
+    # Put the ID into the resource.
+    resource_json = json.loads(questionnaire_response.resource)
+    resource_json['id'] = str(questionnaire_response.questionnaireResponseId)
+    questionnaire_response.resource = json.dumps(resource_json)
+
     question_ids = [answer.questionId for answer in questionnaire_response.answers]
+    questions = QuestionnaireQuestionDao().get_all_with_session(session, question_ids)
+    code_ids = [question.codeId for question in questions]
     current_answers = (QuestionnaireResponseAnswerDao().
-        get_current_answers_for_concepts(session, questionnaire_response.participantId,
-                                         question_ids))
+        get_current_answers_for_concepts(session, questionnaire_response.participantId, code_ids))
     super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaire_response)
     # Mark existing answers for the questions in this response given previously by this participant
     # as ended.
     for answer in current_answers:
       answer.endTime = questionnaire_response.created
       session.merge(answer)
+
+    self._update_participant_summary(session, questionnaire_response, code_ids, questions, qh)
     return questionnaire_response
+
+  def _update_participant_summary(self, session, questionnaire_response, code_ids, questions, qh):
+    """Updates the participant summary based on questions answered and modules completed
+    in the questionnaire response."""
+    participant_summary = (ParticipantSummaryDao().
+                           get_with_session(session, questionnaire_response.participantId))
+
+    code_ids.extend([concept.codeId for concept in qh.concepts])
+    # Fetch the codes for all questions and concepts
+    codes = CodeDao().get_all_with_session(session, code_ids)
+
+    code_map = {code.codeId: code for code in codes}
+    question_map = {question.questionnaireQuestionId: question for question in questions}
+    something_changed = False
+    # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
+    for answer in questionnaire_response.answers:
+      if answer.valueCodeId:
+        question = question_map.get(answer.questionId)
+        if question:
+          code = code_map.get(question.codeId)
+          if code:
+            summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
+            if summary_field:
+              setattr(participant_summary, summary_field, answer.valueCodeId)
+              something_changed = True
+
+    # Set summary fields to SUBMITTED for questionnaire concepts that are found in
+    # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
+    for concept in qh.concepts:
+      code = code_map.get(concept.codeId)
+      if code:
+        summary_field = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(code.value)
+        if summary_field:
+          setattr(participant_summary, summary_field, QuestionnaireStatus.SUBMITTED)
+          something_changed = True
+
+    if something_changed:
+      session.merge(participant_summary)
+
+  def insert(self, obj):
+    if obj.questionnaireResponseId:
+      return super(QuestionnaireResponseDao, self).insert(obj)
+    return self._insert_with_random_id(obj, ['questionnaireResponseId'])
 
 class QuestionnaireResponseAnswerDao(BaseDao):
 
@@ -66,18 +126,14 @@ class QuestionnaireResponseAnswerDao(BaseDao):
   def get_id(self, obj):
     return obj.questionnaireResponseAnswerId
 
-  def get_current_answers_for_concepts(self, session, participant_id, question_ids):
-    """Return any answers the participant has previously given to questions using the same
-    concepts as the questions with the provided IDs."""
-    if not question_ids:
+  def get_current_answers_for_concepts(self, session, participant_id, code_ids):
+    """Return any answers the participant has previously given to questions with the specified
+    code IDs."""
+    if not code_ids:
       return []
-    subquery = (session.query(QuestionnaireQuestion)
-        .filter(QuestionnaireQuestion.questionnaireQuestionId.in_(question_ids))
-        .subquery())
-
     return (session.query(QuestionnaireResponseAnswer).join(QuestionnaireResponse)
         .join(QuestionnaireQuestion)
         .filter(QuestionnaireResponse.participantId == participant_id)
         .filter(QuestionnaireResponseAnswer.endTime == None)
-        .filter(QuestionnaireQuestion.codeId == subquery.c.code_id)
+        .filter(QuestionnaireQuestion.codeId.in_(code_ids))
         .all())

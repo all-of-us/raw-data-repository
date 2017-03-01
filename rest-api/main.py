@@ -8,11 +8,11 @@ import biobank_orders_api
 import metrics_api
 import participant_summary_api
 import physical_measurements_api
-import ppi_api
 import version_api
 
 from api.participant_api import ParticipantApi
 from api.questionnaire_api import QuestionnaireApi
+from api.questionnaire_response_api import QuestionnaireResponseApi
 from flask import Flask
 from flask_restful import Api
 
@@ -60,7 +60,7 @@ api.add_resource(QuestionnaireApi,
                  endpoint='questionnaire',
                  methods=['POST', 'GET', 'PUT'])
 
-api.add_resource(ppi_api.QuestionnaireResponseAPI,
+api.add_resource(QuestionnaireResponseApi,
                  PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse/<string:id_>',
                  PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse',
                  endpoint='participant.questionnaire_response',

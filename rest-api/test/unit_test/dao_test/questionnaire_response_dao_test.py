@@ -1,4 +1,5 @@
 import datetime
+import json
 
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
@@ -19,6 +20,14 @@ TIME_2 = datetime.datetime(2016, 1, 2)
 ANSWERS = {'answers': {}}
 QUESTIONNAIRE_RESOURCE = '{"x": "y"}'
 QUESTIONNAIRE_RESOURCE_2 = '{"x": "z"}'
+QUESTIONNAIRE_RESPONSE_RESOURCE = '{"a": "b"}'
+QUESTIONNAIRE_RESPONSE_RESOURCE_2 = '{"a": "c"}'
+QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"a": "d"}'
+
+def with_id(resource, id):
+  resource_json = json.loads(resource)
+  resource_json['id'] = str(id)
+  return json.dumps(resource_json)
 
 class QuestionnaireResponseDaoTest(SqlTestBase):
   def setUp(self):
@@ -55,7 +64,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource='blah')
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
 
@@ -63,7 +72,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource='blah')
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
 
@@ -73,14 +82,15 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource='blah')
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     time = datetime.datetime(2016, 1, 1)
     with FakeClock(time):
       self.questionnaire_response_dao.insert(qr)
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
-                                        resource='blah', created=time)
+                                        resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
+                                        created=time)
     qr2 = self.questionnaire_response_dao.get(1)
     self.assertEquals(expected_qr.asdict(), qr2.asdict())
 
@@ -93,10 +103,10 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource='blah')
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     self.questionnaire_response_dao.insert(qr)
     qr2 = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                                participantId=1, resource='xxx')
+                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
     with self.assertRaises(IntegrityError):
       self.questionnaire_response_dao.insert(qr2)
 
@@ -122,7 +132,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     self.questionnaire_dao.insert(q)
 
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource='blah')
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
                                            questionnaireResponseId=1,
                                            questionId=1, valueSystem='a', valueCodeId=3,
@@ -139,7 +149,8 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
-                                        resource='blah', created=time)
+                                        resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
+                                        created=time)
     qr2 = self.questionnaire_response_dao.get(1)
     self.assertEquals(expected_qr.asdict(), qr2.asdict())
 
@@ -172,7 +183,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     self.questionnaire_dao.insert(q2)
     
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
-                               participantId=1, resource='blah')
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
                                            questionnaireResponseId=1,
                                            questionId=1, valueSystem='a', valueCodeId=3,
@@ -188,7 +199,8 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
       self.questionnaire_response_dao.insert(qr)
 
     qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
-                                questionnaireVersion=1, participantId=1, resource='foo')
+                                questionnaireVersion=1, participantId=1,
+                                resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
     answer_3 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
                                            questionnaireResponseId=2,
                                            questionId=3, valueSystem='x', valueCodeId=5,
@@ -201,7 +213,8 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
-                                        resource='blah', created=time)
+                                        resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
+                                        created=time)
     # Answer one on the original response should be marked as ended, since a question with
     # the same concept was answered. Answer two should be left alone.
     answer_1.endTime = time2
@@ -213,12 +226,14 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     # The new questionnaire response should be there, too.
     expected_qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
                                          questionnaireVersion=1, participantId=1,
-                                         resource='foo', created=time2)
+                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE_2, 2),
+                                         created=time2)
     expected_qr2.answers.append(answer_3)
     self.check_response(expected_qr2)
 
     qr3 = QuestionnaireResponse(questionnaireResponseId=3, questionnaireId=2,
-                                questionnaireVersion=1, participantId=1, resource='zzz')
+                                questionnaireVersion=1, participantId=1,
+                                resource=QUESTIONNAIRE_RESPONSE_RESOURCE_3)
     answer_4 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=4,
                                            questionnaireResponseId=3,
                                            questionId=3, valueSystem='z', valueCodeId=6,
@@ -239,6 +254,7 @@ class QuestionnaireResponseDaoTest(SqlTestBase):
     # The third questionnaire response should be there.
     expected_qr3 = QuestionnaireResponse(questionnaireResponseId=3, questionnaireId=2,
                                         questionnaireVersion=1, participantId=1,
-                                        resource='zzz', created=time3)
+                                        resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE_3, 3),
+                                        created=time3)
     expected_qr3.answers.append(answer_4)
     self.check_response(expected_qr3)
