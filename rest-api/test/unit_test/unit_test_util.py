@@ -99,7 +99,10 @@ class NdbTestBase(SqlTestBase):
 
 def read_dev_config():
   with open(os.path.join(os.path.dirname(__file__), '../../config/config_dev.json')) as config_file: 
-    return json.load(config_file)
+    with open(os.path.join(os.path.dirname(__file__), '../../config/base_config.json')) as b_cfg:
+      config_json = json.load(b_cfg)
+      config_json.update(json.load(config_file))
+      return config_json
 
 
 class FlaskTestBase(NdbTestBase):

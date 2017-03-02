@@ -1,7 +1,7 @@
 import clock
 import json
 
-from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
+from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, PPI_SYSTEM
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
@@ -10,7 +10,7 @@ from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from participant_enums import QuestionnaireStatus
-from field_config.participant_summary_config import num_completed_baseline_ppi_modules
+from field_config.participant_summary_config import count_completed_baseline_ppi_modules
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
@@ -85,7 +85,7 @@ class QuestionnaireResponseDao(BaseDao):
     # Fetch the codes for all questions and concepts
     codes = CodeDao().get_all_with_session(session, code_ids)
 
-    code_map = {code.codeId: code for code in codes}
+    code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
     question_map = {question.questionnaireQuestionId: question for question in questions}
     something_changed = False
     # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
@@ -116,7 +116,7 @@ class QuestionnaireResponseDao(BaseDao):
             module_changed = True
     if module_changed:
       participant_summary.numCompletedBaselinePPIModules = \
-          num_completed_baseline_ppi_modules(participant_summary)
+          count_completed_baseline_ppi_modules(participant_summary)
 
     if something_changed:
       session.merge(participant_summary)
