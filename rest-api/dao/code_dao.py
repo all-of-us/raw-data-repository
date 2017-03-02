@@ -5,7 +5,7 @@ from dao.base_dao import BaseDao, UpdatableDao
 from model.code import CodeBook, Code, CodeHistory, CodeType
 from werkzeug.exceptions import BadRequest
 
-CODE_TYPE_MAP = {
+_CODE_TYPE_MAP = {
   "Module Name": CodeType.MODULE,
   "Topic": CodeType.TOPIC,
   "Question": CodeType.QUESTION,
@@ -49,7 +49,7 @@ class CodeBookDao(BaseDao):
     topic = property_dict['concept-topic']
     value = concept['code']
     display = concept['display']
-    code_type = CODE_TYPE_MAP[property_dict['concept-type']]
+    code_type = _CODE_TYPE_MAP[property_dict['concept-type']]
     code = Code(system=system, codeBookId=code_book_id, value=value, display=display, topic=topic,
                 codeType=code_type, mapped=True, parentId=parent_id)
     existing_code = self.code_dao.get_code_with_session(session, system, value)
