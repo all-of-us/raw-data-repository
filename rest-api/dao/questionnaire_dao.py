@@ -124,3 +124,9 @@ class QuestionnaireQuestionDao(BaseDao):
 
   def get_id(self, obj):
     return obj.questionnaireQuestionId
+
+  def get_all_with_session(self, session, ids):
+    if not ids:
+      return []
+    return (session.query(QuestionnaireQuestion)
+            .filter(QuestionnaireQuestion.questionnaireQuestionId.in_(ids)).all())

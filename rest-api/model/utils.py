@@ -1,5 +1,6 @@
 from sqlalchemy.types import SmallInteger, TypeDecorator
 from werkzeug.exceptions import BadRequest
+from werkzeug.routing import BaseConverter, ValidationError
 
 class Enum(TypeDecorator):
   """A type for a SQLAlchemy column based on a protomsg Enum provided in the constructor"""
@@ -39,3 +40,14 @@ def from_client_biobank_id(biobank_id):
     return int(biobank_id[1:])
   except ValueError:
     raise BadRequest("Invalid biobank ID: %s" % biobank_id)
+    
+class ParticipantIdConverter(BaseConverter):
+    
+  def to_python(self, value):
+    try:
+      return from_client_participant_id(value)
+    except BadRequest as ex:
+      raise ValidationError(ex.description)    
+
+  def to_url(self, value):
+    return to_client_participant_id(value)    

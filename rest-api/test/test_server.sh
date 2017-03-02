@@ -61,8 +61,7 @@ function run_client_test {
 [[ ${instance} == *localhost* ]] || [[ ${instance} == https://* ]] ||
   echo "WARNING: ${instance} is non-local and not HTTPS; expect failure."
 
-TEST_FILES="ppi.py
-participant.py
+TEST_FILES="participant.py
 measurements.py
 metrics.py
 biobank_order.py"

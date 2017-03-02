@@ -18,6 +18,8 @@ KNOWN_QUESTIONNAIRES = {
   'questionnaireOnFamilyHealth': concepts.FAMILY_HEALTH_PPI_MODULE
 }
 
+# Deprecated. We will be using question_concept_to_field and questionnaire_concept_to_field in
+# future.
 questionnaire_fields = [
   FieldDef('race',
               extractor_for(concepts.RACE, extraction.VALUE_CODING),

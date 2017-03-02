@@ -8,17 +8,20 @@ import biobank_orders_api
 import metrics_api
 import participant_summary_api
 import physical_measurements_api
-import ppi_api
 import version_api
 
 from api.participant_api import ParticipantApi
 from api.questionnaire_api import QuestionnaireApi
+from api.questionnaire_response_api import QuestionnaireResponseApi
 from flask import Flask
 from flask_restful import Api
+from model.utils import ParticipantIdConverter
 
 PREFIX = '/rdr/v1/'
 
 app = Flask(__name__)
+app.url_map.converters['participant_id'] = ParticipantIdConverter
+
 #
 # The REST-ful resources that are the bulk of the API.
 #
@@ -60,9 +63,9 @@ api.add_resource(QuestionnaireApi,
                  endpoint='questionnaire',
                  methods=['POST', 'GET', 'PUT'])
 
-api.add_resource(ppi_api.QuestionnaireResponseAPI,
-                 PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse/<string:id_>',
-                 PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse',
+api.add_resource(QuestionnaireResponseApi,
+                 PREFIX + 'Participant/<participant_id:p_id>/QuestionnaireResponse/<string:id_>',
+                 PREFIX + 'Participant/<participant_id:p_id>/QuestionnaireResponse',
                  endpoint='participant.questionnaire_response',
                  methods=['POST', 'GET'])
 

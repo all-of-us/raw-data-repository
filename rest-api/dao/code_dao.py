@@ -116,6 +116,11 @@ class CodeDao(UpdatableDao):
             .filter(Code.value == value)
             .one_or_none())
 
+  def get_all_with_session(self, session, ids):
+    if not ids:
+      return []
+    return session.query(Code).filter(Code.codeId.in_(ids)).all()
+
   def get_or_add_codes(self, code_map):
     """Accepts a map of (system, value) -> (display, code_type, parent_id) for codes found in a
     questionnaire or questionnaire response.
@@ -134,7 +139,7 @@ class CodeDao(UpdatableDao):
           display, code_type, parent_id = code_map[(system, value)]
           code = Code(system=system, value=value, display=display,
                       codeType=code_type, mapped=False, parentId=parent_id)
-          logging.warn("Adding unmapped code: %s" % code)
+          logging.warn("Adding unmapped code: system = %s, value = %s" % (code.system, code.value))
           self.insert_with_session(session, code)
           session.flush()
           result_map[(system, value)] = code.codeId

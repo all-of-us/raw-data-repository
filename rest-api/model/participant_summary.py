@@ -17,11 +17,10 @@ class ParticipantSummary(Base):
   zipCode = Column('zip_code', String(10))
   dateOfBirth = Column('date_of_birth', Date)
   genderIdentityId = Column('gender_identity_id', Integer, ForeignKey('code.code_id'))
-  # Does membershipTier come from questionnaires? Should this be an FK?
   membershipTier = Column('membership_tier', Enum(MembershipTier), default=MembershipTier.UNSET)
   raceId = Column('race_id', Integer, ForeignKey('code.code_id'))
   ethnicityId = Column('ethnicity_id', Integer, ForeignKey('code.code_id'))
-  physicalMeasurementsStatus = Column('physical_measurements_status', 
+  physicalMeasurementsStatus = Column('physical_measurements_status',
                                       Enum(PhysicalMeasurementsStatus), 
                                       default=PhysicalMeasurementsStatus.UNSET)
   signUpTime = Column('sign_up_time', DateTime)

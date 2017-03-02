@@ -24,6 +24,7 @@ from dao.hpo_dao import HPODao
 from model.hpo import HPO
 from participant_enums import UNSET_HPO_ID
 from mock import patch
+from test.test_data import data_path
 
 PITT_HPO_ID = 2
 
@@ -98,7 +99,10 @@ class NdbTestBase(SqlTestBase):
 
 def read_dev_config():
   with open(os.path.join(os.path.dirname(__file__), '../../config/config_dev.json')) as config_file: 
-    return json.load(config_file)
+    with open(os.path.join(os.path.dirname(__file__), '../../config/base_config.json')) as b_cfg:
+      config_json = json.load(b_cfg)
+      config_json.update(json.load(config_file))
+      return config_json
 
 
 class FlaskTestBase(NdbTestBase):
@@ -170,7 +174,19 @@ class FlaskTestBase(NdbTestBase):
                           .issubset(set(response.headers.items())),
                       "Expected response headers: %s; actual: %s" % 
                       (expected_response_headers, response.headers))    
-    return json.loads(response.data)
+    if expected_status == httplib.OK:
+      return json.loads(response.data)
+    return None
+
+  def create_participant(self):
+    response = self.send_post('Participant', {})
+    return response['participantId']
+
+  def create_questionnaire(self, filename):
+    with open(data_path(filename)) as f:
+      questionnaire = json.load(f)
+      response = self.send_post('Questionnaire', questionnaire)
+      return response['id']
 
   def create_and_verify_created_obj(self, path, resource):
     response = self.send_post(path, resource)  

@@ -5,12 +5,18 @@ import shared_config
 
 from offline.metrics_fields import FieldDef
 from questionnaire_response import extractor_for, extract_concept_date
+from participant_enums import QuestionnaireStatus
 
 def make_sample_test_code_set(samples):
   return extraction.ExtractionResult(set(s.testCode for s in samples.samples))
 
+def count_completed_baseline_ppi_modules(participant_summary):
+  baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])  
+  return sum(1 for field in baseline_ppi_module_fields 
+             if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED)
+
 def num_completed_baseline_ppi_modules(summary):
-  baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
+  baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])  
   count = sum(1 for field in baseline_ppi_module_fields if summary.get(field) == 'SUBMITTED')
   return extraction.ExtractionResult(count)
 
