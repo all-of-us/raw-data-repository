@@ -156,7 +156,6 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                            questionId=2, valueSystem='c', valueCodeId=4)
     qr.answers.append(answer_1)
     qr.answers.append(answer_2)
-    time = datetime.datetime(2016, 1, 1)
     with FakeClock(TIME_2):
       self.questionnaire_response_dao.insert(qr)
 
