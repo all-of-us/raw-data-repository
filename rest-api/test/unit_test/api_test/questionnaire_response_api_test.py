@@ -16,7 +16,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
       resource = json.load(f)
     # Sending response with the dummy participant id in the file is an error
     self.send_post(_questionnaire_response_url('{participant_id}'), resource,
-                   expected_status=httplib.BAD_REQUEST)
+                   expected_status=httplib.NOT_FOUND)
     # Fixing participant id but not the questionnaire id is also an error
     resource['subject']['reference'] = \
         resource['subject']['reference'].format(participant_id=participant_id)

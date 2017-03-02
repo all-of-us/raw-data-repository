@@ -1,3 +1,5 @@
+'''Constants for code values for questions and modules and their mappings to fields on 
+participant summaries and metrics.'''
 
 PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 

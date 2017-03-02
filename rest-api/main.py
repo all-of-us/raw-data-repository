@@ -20,7 +20,7 @@ from model.utils import ParticipantIdConverter
 PREFIX = '/rdr/v1/'
 
 app = Flask(__name__)
-app.url_map.converters['participant'] = ParticipantIdConverter
+app.url_map.converters['participant_id'] = ParticipantIdConverter
 
 #
 # The REST-ful resources that are the bulk of the API.
@@ -64,8 +64,8 @@ api.add_resource(QuestionnaireApi,
                  methods=['POST', 'GET', 'PUT'])
 
 api.add_resource(QuestionnaireResponseApi,
-                 PREFIX + 'Participant/<participant:p_id>/QuestionnaireResponse/<string:id_>',
-                 PREFIX + 'Participant/<participant:p_id>/QuestionnaireResponse',
+                 PREFIX + 'Participant/<participant_id:p_id>/QuestionnaireResponse/<string:id_>',
+                 PREFIX + 'Participant/<participant_id:p_id>/QuestionnaireResponse',
                  endpoint='participant.questionnaire_response',
                  methods=['POST', 'GET'])
 

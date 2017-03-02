@@ -171,7 +171,9 @@ class FlaskTestBase(NdbTestBase):
                           .issubset(set(response.headers.items())),
                       "Expected response headers: %s; actual: %s" % 
                       (expected_response_headers, response.headers))    
-    return json.loads(response.data)
+    if expected_status == httplib.OK:
+      return json.loads(response.data)
+    return None
 
   def create_participant(self):
     response = self.send_post('Participant', {})
