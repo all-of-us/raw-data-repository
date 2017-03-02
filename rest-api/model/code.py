@@ -9,8 +9,9 @@ from sqlalchemy.ext.declarative import declared_attr
 class CodeType(messages.Enum):
   """A type of code"""
   MODULE = 1
-  QUESTION = 2
-  ANSWER = 3
+  TOPIC = 2
+  QUESTION = 3
+  ANSWER = 4
 
 class CodeBook(Base):
   """A book of codes.
@@ -30,7 +31,11 @@ class CodeBook(Base):
   # True if this is the latest imported code book.
   latest = Column('latest', Boolean, nullable=False)
   name = Column('name', String(80), nullable=False)
-  version = Column('version', String(80), nullable=False)
+  system = Column('system', String(255), nullable=False)
+  version = Column('version', String(80), nullable=False)  
+  __table_args__ = (
+    UniqueConstraint('system', 'version'),
+  )
 
 class _CodeBase(object):
   """Mixin with shared columns for Code and CodeHistory"""

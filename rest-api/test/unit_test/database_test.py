@@ -25,7 +25,7 @@ class DatabaseTest(SqlTestBase):
 
     hpo = HPO(hpoId=1, name='UNSET')
     code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True, name="pmi",
-                         version="v0.1.1")
+                         system="http://foo/bar", version="v0.1.1")
     session.add(hpo)
     session.add(code_book)
     session.commit()
@@ -41,7 +41,7 @@ class DatabaseTest(SqlTestBase):
 
     code2 = Code(codeId=2, codeBookId=1, parentId=1, system="a", value="c", display=u"X", topic=u"d",
                  codeType=CodeType.QUESTION, mapped=True, created=datetime.datetime.now())
-    codeHistory2 = CodeHistory(codeId=2, codeBookId=1, parentId=1, system="a", value="c", 
+    codeHistory2 = CodeHistory(codeId=2, codeBookId=1, parentId=1, system="a", value="c",
                                display=u"X", topic=u"d",
                                codeType=CodeType.QUESTION, mapped=True,
                                created=datetime.datetime.now())
@@ -56,7 +56,6 @@ class DatabaseTest(SqlTestBase):
                                display=u"Y", topic=u"d",
                                codeType=CodeType.ANSWER, mapped=False,
                                created=datetime.datetime.now())
-
     session.add(code3)
     session.add(codeHistory3)
     session.commit()
@@ -98,8 +97,8 @@ class DatabaseTest(SqlTestBase):
     session.add(sample2)
 
     bo = BiobankOrder(biobankOrderId=1, participantId=1, created=datetime.datetime.now(), 
-                      sourceSiteSystem='a', sourceSiteValue='b', collected=u'c', processed=u'd', 
-                      finalized=u'e', logPosition=LogPosition())                  
+                      sourceSiteSystem='a', sourceSiteValue='b', collected=u'c', processed=u'd',
+                      finalized=u'e', logPosition=LogPosition())
     bo.identifiers.append(BiobankOrderIdentifier(system='a', value='b'))
     bo.samples.append(BiobankOrderedSample(test='a', description=u'b', processingRequired=True,
                                            collected=datetime.datetime.now(), 

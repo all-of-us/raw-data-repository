@@ -20,6 +20,8 @@ PORT=3308
 INSTANCE=https://${PROJECT}.appspot.com
 CLOUD_PROXY_PID=
 PRIVATE_KEY=
+DB_USER=root
+DB_NAME=rdr
 
 function cleanup {
   if [ "$CLOUD_PROXY_PID" ];
@@ -61,4 +63,14 @@ function run_cloud_sql_proxy {
   bin/cloud_sql_proxy -instances=${INSTANCE_CONNECTION_NAME}=tcp:${PORT} -credential_file=${CREDS_FILE} &
   sleep 3
   CLOUD_PROXY_PID=%1
+}
+
+function set_db_connection_string {
+  PASSWORD=`grep db_password $DB_INFO_FILE | cut -d\" -f4`
+  function finish {
+    cleanup
+    export DB_CONNECTION_STRING=
+  }
+  trap finish EXIT
+  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${PASSWORD}@127.0.0.1:${PORT}/${DB_NAME}"
 }
