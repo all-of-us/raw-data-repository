@@ -139,7 +139,7 @@ class CodeDao(UpdatableDao):
           display, code_type, parent_id = code_map[(system, value)]
           code = Code(system=system, value=value, display=display,
                       codeType=code_type, mapped=False, parentId=parent_id)
-          logging.warn("Adding unmapped code: %s" % code)
+          logging.warn("Adding unmapped code: system = %s, value = %s" % (code.system, code.value))
           self.insert_with_session(session, code)
           session.flush()
           result_map[(system, value)] = code.codeId
