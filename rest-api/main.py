@@ -15,10 +15,13 @@ from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
 from flask import Flask
 from flask_restful import Api
+from model.utils import ParticipantIdConverter
 
 PREFIX = '/rdr/v1/'
 
 app = Flask(__name__)
+app.url_map.converters['participant'] = ParticipantIdConverter
+
 #
 # The REST-ful resources that are the bulk of the API.
 #
@@ -61,8 +64,8 @@ api.add_resource(QuestionnaireApi,
                  methods=['POST', 'GET', 'PUT'])
 
 api.add_resource(QuestionnaireResponseApi,
-                 PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse/<string:id_>',
-                 PREFIX + 'Participant/<string:a_id>/QuestionnaireResponse',
+                 PREFIX + 'Participant/<participant:p_id>/QuestionnaireResponse/<string:id_>',
+                 PREFIX + 'Participant/<participant:p_id>/QuestionnaireResponse',
                  endpoint='participant.questionnaire_response',
                  methods=['POST', 'GET'])
 
