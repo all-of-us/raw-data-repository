@@ -25,4 +25,4 @@ if __name__ == '__main__':
   parser.add_argument('--file', help='Path to the JSON representation of the codebook.',
                       required=True)
 
-main(parser.parse_args())
+  main(parser.parse_args())
