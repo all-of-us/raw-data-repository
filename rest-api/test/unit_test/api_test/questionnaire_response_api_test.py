@@ -1,6 +1,11 @@
+import datetime
 import httplib
 import json
 
+from dao.code_dao import CodeDao
+from dao.questionnaire_dao import QuestionnaireDao
+from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
+from model.utils import from_client_participant_id
 from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import data_path
 
@@ -30,8 +35,36 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     # The resource gets rewritten to include the version
     resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/1' % questionnaire_id
     self.assertJsonResponseMatches(resource, response)
-
-
+    
+    code_dao = CodeDao()
+    name_of_child = code_dao.get_code("sys", "nameOfChild")
+    birth_weight = code_dao.get_code("sys", "birthWeight")
+    birth_length = code_dao.get_code("sys", "birthLength")    
+    vitamin_k_dose_1 = code_dao.get_code("sys", "vitaminKDose1")
+    vitamin_k_dose_2 = code_dao.get_code("sys", "vitaminKDose2")
+    hep_b_given = code_dao.get_code("sys", "hepBgiven")
+    answer_dao = QuestionnaireResponseAnswerDao()
+    with answer_dao.session() as session:
+      code_ids = [code.codeId for code in 
+                  [name_of_child, birth_weight, birth_length, vitamin_k_dose_1, vitamin_k_dose_2,
+                  hep_b_given]]
+      current_answers = answer_dao.get_current_answers_for_concepts(session,\
+          from_client_participant_id(participant_id), code_ids)
+    self.assertEquals(6, len(current_answers))
+    questionnaire = QuestionnaireDao().get_with_children(questionnaire_id)
+    question_id_to_answer = {answer.questionId : answer for answer in current_answers}
+    code_id_to_answer = {question.codeId: 
+                         question_id_to_answer.get(question.questionnaireQuestionId)
+                         for question in questionnaire.questions}
+    self.assertEquals("Cathy Jones", code_id_to_answer[name_of_child.codeId].valueString)
+    self.assertEquals(3.25, code_id_to_answer[birth_weight.codeId].valueDecimal)
+    self.assertEquals(44.3, code_id_to_answer[birth_length.codeId].valueDecimal)
+    self.assertEquals(44, code_id_to_answer[birth_length.codeId].valueInteger)
+    self.assertEquals(True, code_id_to_answer[hep_b_given.codeId].valueBoolean)
+    self.assertEquals(datetime.date(1972, 11, 30), 
+                      code_id_to_answer[vitamin_k_dose_1.codeId].valueDate)
+    self.assertEquals(datetime.datetime(1972, 11, 30, 12, 34, 42), 
+                      code_id_to_answer[vitamin_k_dose_2.codeId].valueDateTime)
   '''
   TODO(DA-224): uncomment this once participant summary API is working again
   def test_demographic_questionnaire_responses(self):
