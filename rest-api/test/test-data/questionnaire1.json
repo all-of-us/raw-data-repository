@@ -1,53 +1,253 @@
 {
-  "resourceType":"Questionnaire",
-  "status":"published",
-  "date":"2016-09-13T10:19:52-04:00",
-  "publisher":"admin",
-  "group":{"linkId":"root",
-           "required":true,
-           "repeats":false,
-           "group":[{"linkId":"1"},
-                    {"linkId":"2",
-                     "group":[
-                       {"linkId":"2.1",
-                        "question":[
-                          {"linkId":"2.1.1",
-                           "text":"Do you have allergies?",
-                           "type":"choice",
-                           "option":[
-                             {"code":"1","display":"Yes"},
-                             {"code":"2","display":"No"}]}]},
-                       {"linkId":"2.2","question":[
-                         {"linkId":"2.2.1",
-                          "text":"What is your gender?",
-                          "type":"choice",
-                          "option":[
-                            {"code":"1","display":"Male"},
-                            {"code":"2","display":"Female"}]},
-                         {"linkId":"2.2.2",
-                          "text":"What is your date of birth?",
-                          "type":"date"},
-                         {"linkId":"2.2.3",
-                          "text":"What is your country of birth?",
-                          "type":"text"},
-                         {"linkId":"2.2.4",
-                          "text":"What is your marital status?",
-                          "type":"choice",
-                          "option":[
-                            {"code":"1","display":"Married"},
-                            {"code":"2","display":"Option 2"},
-                            {"code":"3","display":"Divorced"}]}]},
-                       {"linkId":"2.3",
-                        "question":[
-                          {"linkId":"2.3.1",
-                           "text":"Do you smoke?",
-                           "type":"choice",
-                           "option":[
-                             {"code":"1","display":"Yes"},
-                             {"code":"2","display":"No"}]},
-                          {"linkId":"2.3.2",
-                           "text":"Do you drink alcohol",
-                           "type":"choice",
-                           "option":[
-                             {"code":"1","display":"Yes"},
-                             {"code":"2","display":"No"}]}]}]}]}}
+  "resourceType": "Questionnaire",
+  "status": "published",
+  "date": "2016-09-13T10:19:52-04:00",
+  "publisher": "admin",
+  "group": {
+    "linkId": "root",
+    "required": true,
+    "repeats": false,
+    "group": [
+      {
+        "linkId": "1"
+      },
+      {
+        "linkId": "2",
+        "group": [
+          {
+            "linkId": "2.1",
+            "question": [
+              {
+                "linkId": "2.1.1",
+                "text": "Do you have allergies?",
+                "type": "choice",
+                "option": [
+                  {
+                    "code": "1",
+                    "display": "Yes"
+                  },
+                  {
+                    "code": "2",
+                    "display": "No"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "2.2",
+            "question": [
+              {
+                "linkId": "2.2.1",
+                "text": "What is your gender?",
+                "type": "choice",
+                "option": [
+                  {
+                    "code": "1",
+                    "display": "Male"
+                  },
+                  {
+                    "code": "2",
+                    "display": "Female"
+                  }
+                ]
+              },
+              {
+                "linkId": "2.2.2",
+                "text": "What is your date of birth?",
+                "type": "date"
+              },
+              {
+                "linkId": "2.2.3",
+                "text": "What is your country of birth?",
+                "type": "text"
+              },
+              {
+                "linkId": "2.2.4",
+                "text": "What is your marital status?",
+                "type": "choice",
+                "option": [
+                  {
+                    "code": "1",
+                    "display": "Married"
+                  },
+                  {
+                    "code": "2",
+                    "display": "Option 2"
+                  },
+                  {
+                    "code": "3",
+                    "display": "Divorced"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "2.3",
+            "question": [
+              {
+                "linkId": "2.3.1",
+                "text": "Do you smoke?",
+                "type": "choice",
+                "option": [
+                  {
+                    "code": "1",
+                    "display": "Yes"
+                  },
+                  {
+                    "code": "2",
+                    "display": "No"
+                  }
+                ]
+              },
+              {
+                "linkId": "2.3.2",
+                "text": "Do you drink alcohol",
+                "type": "choice",
+                "option": [
+                  {
+                    "code": "1",
+                    "display": "Yes"
+                  },
+                  {
+                    "code": "2",
+                    "display": "No"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "PHR",
+            "text": "NSW Government My Personal Health Record, january 2013",
+            "group": [
+              {
+                "linkId": "birthDetails",
+                "text": "Birth details - To be completed by health professional",
+                "group": [
+                  {
+                    "question": [
+                      {
+                        "linkId": "nameOfChild",
+                        "text": "Name of child",
+                        "concept": [
+                          {
+                            "system": "sys",
+                            "code": "nameOfChild",
+                            "display": "Name Of Child"
+                          }
+                        ]
+                      },
+                      {
+                        "linkId": "sex",
+                        "text": "Sex",
+                        "concept": [
+                          {
+                            "system": "sys",
+                            "code": "sex",
+                            "display": "Sex"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "linkId": "neonatalInformation",
+                    "title": "Neonatal Information",
+                    "question": [
+                      {
+                        "linkId": "birthWeight",
+                        "text": "Birth weight (kg)",
+                        "concept": [
+                          {
+                            "system": "sys",
+                            "code": "birthWeight",
+                            "display": "Birth weight"
+                          }
+                        ]
+                      },
+                      {
+                        "linkId": "birthLength",
+                        "text": "Birth length (cm)",
+                        "concept": [
+                          {
+                            "system": "sys",
+                            "code": "birthLength",
+                            "display": "Birth length"
+                          }
+                        ]
+                      },
+                      {
+                        "linkId": "vitaminKgiven",
+                        "text": "Vitamin K given",
+                        "concept": [
+                          {
+                            "system": "sys",
+                            "code": "vitaminKgiven",
+                            "display": "Vitamin K given"
+                          }
+                        ],
+                        "group": [
+                          {
+                            "linkId": "vitaminKgivenDoses",
+                            "question": [
+                              {
+                                "linkId": "vitaminiKDose1",
+                                "text": "1st dose",
+                                "concept": [
+                                  {
+                                    "system": "sys",
+                                    "code": "vitaminKDose1",
+                                    "display": "Vitamin K 1st dose"
+                                  }
+                                ]
+                              },
+                              {
+                                "linkId": "vitaminiKDose2",
+                                "text": "2nd dose",
+                                "concept": [
+                                  {
+                                    "system": "sys",
+                                    "code": "vitaminKDose2",
+                                    "display": "Vitamin K 2nd dose"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "linkId": "hepBgiven",
+                        "text": "Hep B given y / n",
+                        "concept": [
+                          {
+                            "system": "sys",
+                            "code": "hepBgiven",
+                            "display": "Hep B given"
+                          }
+                        ]
+                      },
+                      {
+                        "linkId": "abnormalitiesAtBirth",
+                        "text": "Abnormalities noted at birth",
+                        "concept": [
+                          {
+                            "system": "sys",
+                            "code": "abnormalitiesAtBirth",
+                            "display": "Abnormalities"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

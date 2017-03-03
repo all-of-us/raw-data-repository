@@ -3,7 +3,8 @@ import json
 from model.code import CodeType
 from model.base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, Date, DateTime, BLOB, ForeignKey, String, ForeignKeyConstraint  # pylint: disable=line-too-long
+from sqlalchemy import Column, Integer, Date, DateTime, BLOB, ForeignKey, String, Boolean, DateTime
+from sqlalchemy import ForeignKeyConstraint, Float
 import fhirclient.models.questionnaireresponse
 from werkzeug.exceptions import BadRequest
 
@@ -123,16 +124,26 @@ class QuestionnaireResponse(Base):
               qr_answer = QuestionnaireResponseAnswer(questionId=qq.questionnaireQuestionId)
               system_and_code = None
               if answer.valueCoding:
+                if not answer.valueCoding.system:
+                  raise BadRequest("No system provided for valueCoding: %s" % question.linkId)
+                if not answer.valueCoding.code:
+                  raise BadRequest("No code provided for valueCoding: %s" % question.linkId)
                 system_and_code = (answer.valueCoding.system, answer.valueCoding.code)
                 if not system_and_code in code_map:
                   code_map[system_and_code] = (answer.valueCoding.display, CodeType.ANSWER,
                                                qq.codeId)
               if answer.valueDecimal:
-                qr_answer.valueDecimal = int(answer.valueDecimal)
+                qr_answer.valueDecimal = answer.valueDecimal
+              if answer.valueInteger:
+                qr_answer.valueInteger = answer.valueInteger
               if answer.valueString:
                 qr_answer.valueString = answer.valueString
               if answer.valueDate:
                 qr_answer.valueDate = answer.valueDate.date
+              if answer.valueDateTime:                
+                qr_answer.valueDateTime = answer.valueDateTime.date
+              if answer.valueBoolean:
+                qr_answer.valueBoolean = answer.valueBoolean
               answers.append((qr_answer, system_and_code))
               if answer.group:
                 for sub_group in answer.group:
@@ -177,7 +188,10 @@ class QuestionnaireResponseAnswer(Base):
   endTime = Column('end_time', DateTime)
   valueSystem = Column('value_system', String(50))
   valueCodeId = Column('value_code_id', Integer, ForeignKey('code.code_id'))
-  valueDecimal = Column('value_decimal', Integer)
+  valueBoolean = Column('value_boolean', Boolean)
+  valueDecimal = Column('value_decimal', Float)
+  valueInteger = Column('value_integer', Integer)
   # Is this big enough?
   valueString = Column('value_string', String(1024))
   valueDate = Column('value_date', Date)
+  valueDateTime = Column('value_datetime', DateTime)

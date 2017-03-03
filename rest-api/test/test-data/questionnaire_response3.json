@@ -36,7 +36,8 @@
                 "answer": [
                   {
                     "valueCoding": {
-                      "code": "f"
+                      "code": "f",
+                      "system": "sex"
                     }
                   }
                 ]
@@ -61,7 +62,9 @@
                 "text": "Birth length (cm)",
                 "answer": [
                   {
-                    "valueDecimal": 44.3
+                    "valueDecimal": 44.3,
+                    "valueInteger": 44
+                    
                   }
                 ]
               },
@@ -71,7 +74,8 @@
                 "answer": [
                   {
                     "valueCoding": {
-                      "code": "INJECTION"
+                      "code": "INJECTION",
+                      "system": "sys"                      
                     },
                     "group": [
                       {
@@ -97,7 +101,7 @@
                             "text": "2nd dose",
                             "answer": [
                               {
-                                "valueDate": "1972-12-11"
+                                "valueDateTime": "1972-11-30T12:34:42"
                               }
                             ]
                           }

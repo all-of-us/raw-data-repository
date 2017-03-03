@@ -1,8 +1,8 @@
 """Initial schema
 
-Revision ID: 50a2ff5c53f3
+Revision ID: 1e52bced1705
 Revises: 
-Create Date: 2017-02-28 16:41:31.157503
+Create Date: 2017-03-03 09:48:55.385009
 
 """
 from alembic import op
@@ -15,7 +15,7 @@ from participant_enums import MembershipTier
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '50a2ff5c53f3'
+revision = '1e52bced1705'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -298,43 +298,18 @@ def upgrade():
     sa.Column('end_time', sa.DateTime(), nullable=True),
     sa.Column('value_system', sa.String(length=50), nullable=True),
     sa.Column('value_code_id', sa.Integer(), nullable=True),
-    sa.Column('value_decimal', sa.Integer(), nullable=True),
+    sa.Column('value_boolean', sa.Boolean(), nullable=True),
+    sa.Column('value_decimal', sa.Float(), nullable=True),
+    sa.Column('value_integer', sa.Integer(), nullable=True),
     sa.Column('value_string', sa.String(length=1024), nullable=True),
     sa.Column('value_date', sa.Date(), nullable=True),
+    sa.Column('value_datetime', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['question_id'], ['questionnaire_question.questionnaire_question_id'], ),
     sa.ForeignKeyConstraint(['questionnaire_response_id'], ['questionnaire_response.questionnaire_response_id'], ),
     sa.ForeignKeyConstraint(['value_code_id'], ['code.code_id'], ),
     sa.PrimaryKeyConstraint('questionnaire_response_answer_id')
     )
     # ### end Alembic commands ###
-    
-    hpo_table = sa.Table('hpo', sa.MetaData(),
-      sa.Column('hpo_id', sa.Integer(), autoincrement=False, nullable=False),
-      sa.Column('name', sa.String(length=20), nullable=True),
-      sa.PrimaryKeyConstraint('hpo_id'),
-      sa.UniqueConstraint('name')
-    )
-
-    # Insert our HPO IDs into the HPO table.
-    op.bulk_insert(hpo_table,
-    [
-        {'hpo_id': 0, 'name': 'UNSET' },
-        {'hpo_id': 1, 'name': 'PITT' },
-        {'hpo_id': 2, 'name': 'COLUMBIA' },
-        {'hpo_id': 3, 'name': 'ILLNOIS' },
-        {'hpo_id': 4, 'name': 'AZ_TUCSON' },
-        {'hpo_id': 5, 'name': 'COMM_HEALTH' },
-        {'hpo_id': 6, 'name': 'SAN_YSIDRO' },
-        {'hpo_id': 7, 'name': 'CHEROKEE' },
-        {'hpo_id': 8, 'name': 'EAU_CLAIRE' },
-        {'hpo_id': 9, 'name': 'HRHCARE' },
-        {'hpo_id': 10, 'name': 'JACKSON' },
-        {'hpo_id': 11, 'name': 'GEISINGER' },
-        {'hpo_id': 12, 'name': 'CAL_PMC' },
-        {'hpo_id': 13, 'name': 'NE_PMC' },
-        {'hpo_id': 14, 'name': 'TRANS_AM' },
-        {'hpo_id': 15, 'name': 'VA' }
-    ])
 
 
 def downgrade():

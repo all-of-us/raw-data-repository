@@ -121,6 +121,10 @@ class CodeDao(UpdatableDao):
       return []
     return session.query(Code).filter(Code.codeId.in_(ids)).all()
 
+  def get_code(self, system, value):
+    with self.session() as session:
+      return self.get_code_with_session(session, system, value)
+
   def get_or_add_codes(self, code_map):
     """Accepts a map of (system, value) -> (display, code_type, parent_id) for codes found in a
     questionnaire or questionnaire response.
