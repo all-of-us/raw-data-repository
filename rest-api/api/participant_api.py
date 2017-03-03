@@ -14,8 +14,8 @@ class ParticipantApi(UpdatableApi):
     super(ParticipantApi, self).__init__(ParticipantDao())
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
-  def get(self, id_=None):
-    return super(ParticipantApi, self).get(from_client_participant_id(id_))
+  def get(self, p_id):
+    return super(ParticipantApi, self).get(p_id)
 
   # TODO(DA-218): remove this
   def _do_insert(self, m):
@@ -36,13 +36,13 @@ class ParticipantApi(UpdatableApi):
     return result
 
   @api_util.auth_required(PTC)
-  def put(self, id_):
-    return super(ParticipantApi, self).put(from_client_participant_id(id_))
+  def put(self, p_id):
+    return super(ParticipantApi, self).put(p_id)
 
   # TODO(DA-216): remove once PTC migrates to PUT
   @api_util.auth_required(PTC)
-  def patch(self, id_):
-    return super(ParticipantApi, self).put(from_client_participant_id(id_))
+  def patch(self, p_id):
+    return super(ParticipantApi, self).put(p_id)
 
 def _make_ndb_participant(obj):
   key = ndb.Key(participant.Participant, to_client_participant_id(obj.participantId))

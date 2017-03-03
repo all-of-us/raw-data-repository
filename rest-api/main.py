@@ -29,7 +29,7 @@ app.url_map.converters['participant_id'] = ParticipantIdConverter
 api = Api(app)
 
 api.add_resource(ParticipantApi,
-                 PREFIX + 'Participant/<string:id_>',
+                 PREFIX + 'Participant/<participant_id:p_id>',
                  PREFIX + 'Participant',
                  endpoint='participant',
                  # TODO(DA-216): remove PATCH once PTC migrates to PUT
