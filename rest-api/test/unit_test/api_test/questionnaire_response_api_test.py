@@ -5,6 +5,7 @@ import json
 from dao.code_dao import CodeDao
 from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
+from model.utils import from_client_participant_id
 from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import data_path
 
@@ -47,9 +48,8 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
       code_ids = [code.codeId for code in 
                   [name_of_child, birth_weight, birth_length, vitamin_k_dose_1, vitamin_k_dose_2,
                   hep_b_given]]
-      current_answers = answer_dao.get_current_answers_for_concepts(session,
-                                                                    participant_id[1:],
-                                                                    code_ids)
+      current_answers = answer_dao.get_current_answers_for_concepts(session,\
+          from_client_participant_id(participant_id), code_ids)
     self.assertEquals(6, len(current_answers))
     questionnaire = QuestionnaireDao().get_with_children(questionnaire_id)
     question_id_to_answer = {answer.questionId : answer for answer in current_answers}
