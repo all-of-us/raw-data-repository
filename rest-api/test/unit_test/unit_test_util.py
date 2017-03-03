@@ -194,23 +194,29 @@ class FlaskTestBase(NdbTestBase):
 
   def create_and_verify_created_obj(self, path, resource):
     response = self.send_post(path, resource)
-    q_id = response['id']
+    resource_id = response['id']
     del response['id']
     self.assertJsonResponseMatches(resource, response)
 
-    response = self.send_get('{}/{}'.format(path, q_id))
+    response = self.send_get('{}/{}'.format(path, resource_id))
     del response['id']
     self.assertJsonResponseMatches(resource, response)
 
   def assertJsonResponseMatches(self, obj_a, obj_b):
-    obj_b = copy.deepcopy(obj_b)
-    if 'meta' in obj_b and not 'meta' in obj_a:
-      del obj_b['meta']
-    if 'lastModified' in obj_a:
-      del obj_a['lastModified']
-    if 'lastModified' in obj_b:
-      del obj_b['lastModified']
-    self.assertMultiLineEqual(pretty(obj_a), pretty(obj_b))
+    self.assertMultiLineEqual(
+        _clean_and_format_response_json(obj_a), _clean_and_format_response_json(obj_b))
+
+
+def _clean_and_format_response_json(input_obj):
+  obj = sort_lists(copy.deepcopy(input_obj))
+  for ephemeral_key in ('meta', 'lastModified'):
+    if ephemeral_key in obj:
+      del obj[ephemeral_key]
+  s = pretty(obj)
+  # TODO(DA-226) Make sure times are not skewed on round trip to CloudSQL. For now, strip tzinfo.
+  s = s.replace('+00:00', '')
+  s = s.replace('Z",', '",')
+  return s
 
 
 def to_dict_strip_last_modified(obj):
