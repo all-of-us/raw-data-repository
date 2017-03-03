@@ -13,4 +13,4 @@ class ParticipantSummaryApi(BaseApi):
     if p_id:
       return super(ParticipantSummaryApi, self).get(p_id)
     else:
-      return super(ParticipantSummaryAPI, self).query("participantId")
+      return super(ParticipantSummaryApi, self).query("participantId")

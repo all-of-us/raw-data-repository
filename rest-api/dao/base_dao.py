@@ -1,14 +1,17 @@
 import logging
 import random
 
+import api_util
 import dao.database_factory
+import json
 from contextlib import contextmanager
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 from sqlalchemy.exc import IntegrityError
-from query import Operator, PropertyType
+from query import Operator, PropertyType, FieldFilter, Results
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from singletons import get_cache
 from sqlalchemy import or_, and_
+from sqlalchemy.sql.expression import tuple_
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
@@ -27,7 +30,7 @@ _PROPERTY_TYPE_MAP = {
   "SmallInteger": PropertyType.INTEGER
 }
 
-_COMPARABLE_PROPERTY_TYPES = [ PropertyType.DATE, PropertyType.DATETIME, PropertyType.INTEGER ]
+_COMPARABLE_PROPERTY_TYPES = [PropertyType.DATE, PropertyType.DATETIME, PropertyType.INTEGER]
 
 _OPERATOR_PREFIX_MAP = {
   "lt": Operator.LESS_THAN,
@@ -161,15 +164,16 @@ class BaseDao(object):
       return None
 
   def query(self, query_def):
-    if not order_by_ending:
+    if not self.order_by_ending:
       raise BadRequest("Can't query on type %s -- no order by ending speciifed" % self.model_type)
     with self.session() as session:
       query, fields = self._make_query(session, query_def)
       items = query.all()
     if items:
       if len(items) > query_def.max_results:
-        return Results(items[0:query_def.max_results],
-                       _make_pagination_token(items[query_def.max_results - 1].asdict(), fields))
+        return Results(items[0:query_def.max_results], 
+                       self._make_pagination_token(items[query_def.max_results - 1].asdict(),
+                                                   fields))
       else:
         return Results(items, None)
     else:
@@ -222,41 +226,17 @@ class BaseDao(object):
     return query, fields
 
   def _add_pagination_filter(self, query, pagination_token, fields, field_ascending):
-    """Adds a pagination filter for the decoded values in the pagination token based on
-    the sort order. Example:
-
-    ParticipantSummary.lastName > 'Jones' or
-    (ParticipantSummary.lastName == 'Jones' and Participant.firstName > 'Bob') or
-    (ParticipantSummary.lastName == 'Jones' and ParticipantSummary.firstName == 'Bob' and
-     ParticipantSummary.dateOfBirth > <date>) or
-    (ParticipantSummary.lastName == 'Jones' and ParticipantSummary.firstName == 'Bob' and
-     ParticiapntSummary.dateOfBirth == <date> and ParticipantSummary.participantId > 123)
-    """
+    """Adds a pagination filter for the decoded values in the pagination token based on 
+    the sort order."""
     try:
-      decoded_vals = json.loads(urlsafe_b64decode(query_def.pagination_token))
+      decoded_vals = json.loads(urlsafe_b64decode(pagination_token))
     except:
-      raise BadRequest("Invalid pagination token: %s", query_def.pagination_token)
-    if not type(decoded_vals) is list or len(decoded_vals) != len(order_by_fields):
-      raise BadRequest("Invalid pagination token: %s" % query_def.pagination_token)
-    or_clauses = []
-    for i in range(0, len(fields)):
-      or_clause_parts = []
-      for j in range(0, i):
-        or_clause_parts.append(fields[j] == decoded_vals[j])
-      if field_ascending[i]:
-        or_clause_parts.append(fields[i] > decoded_vals[i])
-      else:
-        or_clause_parts.append(fields[i] < decoded_vals[i])
-      if len(or_clause_parts) == 1:
-        or_clauses.append(or_clause_parts[0])
-      else:
-        or_clauses.append(and_(or_clause_parts))
-    if len(or_clauses) == 1:
-      return query.filter(or_clauses[0])
-    else:
-      return query.filter(or_(or_clauses))
+      raise BadRequest("Invalid pagination token: %s", pagination_token)
+    if not type(decoded_vals) is list or len(decoded_vals) != len(fields):
+      raise BadRequest("Invalid pagination token: %s" % pagination_token)
+    return query.filter(tuple_(fields) > tuple_(decoded_vals))
 
-  def _add_order_by(self, order_by, order_fields, field_names, field_ascending, fields):
+  def _add_order_by(self, order_by, order_fields, field_names, field_ascending, fields):      
     for order_by_field in order_by:
       if order_by_field.field_name in field_names:
         continue

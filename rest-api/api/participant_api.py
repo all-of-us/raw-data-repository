@@ -7,7 +7,7 @@ from google.appengine.ext import ndb
 from api.base_api import UpdatableApi
 from api_util import PTC, PTC_AND_HEALTHPRO
 from dao.participant_dao import ParticipantDao
-from model.utils import from_client_participant_id, to_client_participant_id, to_client_biobank_id
+from model.utils import to_client_participant_id, to_client_biobank_id
 
 class ParticipantApi(UpdatableApi):
   def __init__(self):

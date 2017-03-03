@@ -1,7 +1,11 @@
 from code_constants import PPI_SYSTEM
 from dao.base_dao import UpdatableDao
+from dao.code_dao import CodeDao
+from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
 from query import OrderBy
+from werkzeug.exceptions import BadRequest
+
 
 # By default / secondarily order by last name, first name, DOB, and participant ID (all ascending)
 _ORDER_BY_ENDING = [OrderBy('lastName', True), OrderBy('firstName', True),
@@ -29,4 +33,8 @@ class ParticipantSummaryDao(UpdatableDao):
       if not code:
         raise BadRequest("No code found: %s" % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, code.codeId)
+<<<<<<< HEAD
     return super(ParticipantSumamryDao, self).make_query_filter(field_name, value)
+=======
+    return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
+>>>>>>> Fixing stuff

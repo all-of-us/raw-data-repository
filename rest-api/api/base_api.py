@@ -1,6 +1,7 @@
 """Base class for API handlers."""
 import api_util
 
+from query import OrderBy, Query
 from flask import request
 from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest, NotFound
@@ -86,7 +87,7 @@ class BaseApi(Resource):
     """
     query = self._make_query(participant_id)
     results = self.dao.query(query)
-    return self._make_bundle(results, id_field, a_id)
+    return self._make_bundle(results, id_field, participant_id)
 
   def _make_query(self, participant_id=None):
     field_filters = []
@@ -110,7 +111,7 @@ class BaseApi(Resource):
         field_filter = self.dao.make_query_filter(key, value)
         if field_filter:
           field_filters.append(field_filter)
-    return Query(field_filters, order_by, max_results, pagination_token, a_id)
+    return Query(field_filters, order_by, max_results, pagination_token, participant_id)
 
   def _make_bundle(self, results, id_field, participant_id):
     import main

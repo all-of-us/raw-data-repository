@@ -5,7 +5,6 @@ This defines the APIs and the handlers for the APIs. All responses are JSON.
 import app_util
 import config_api
 import metrics_api
-import participant_summary_api
 import physical_measurements_api
 import version_api
 
