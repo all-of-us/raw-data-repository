@@ -77,8 +77,8 @@ class BaseDao(object):
 
   def get_with_children(self, obj_id):
     """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
-    return self.get(self, obj_id)
-
+    return self.get(obj_id)
+  
   def _get_random_id(self, field):
     # pylint: disable=unused-argument
     return random.randint(_MIN_ID, _MAX_ID)
