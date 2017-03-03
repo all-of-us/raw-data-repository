@@ -8,7 +8,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, U
 from werkzeug.exceptions import BadRequest
 
 from model.base import Base, FhirMixin, FP
-from model.utils import from_client_participant_id, to_client_participant_id
+from model.utils import from_client_participant_id
 
 
 def _ToFhirDate(dt):
@@ -87,7 +87,7 @@ class BiobankOrder(Base):
   samples = relationship('BiobankOrderedSample', cascade='all, delete-orphan')
 
   @staticmethod
-  # pylint: disable=unused_argument No client_id recorded; always HealthPro.
+  # pylint: disable=unused-argument
   def from_client_json(resource_json, participant_id=None, client_id=None):
     participant_id = from_client_participant_id(participant_id)
     resource = _FhirBiobankOrder(resource_json)
@@ -117,7 +117,7 @@ class BiobankOrder(Base):
         found_main_id = True
     if not found_main_id:
       raise BadRequest(
-          'No identifier for system %r, required for primary key.' % self._MAIN_ID_SYSTEM)
+          'No identifier for system %r, required for primary key.' % BiobankOrder._MAIN_ID_SYSTEM)
 
   @staticmethod
   def _add_samples(order, resource):

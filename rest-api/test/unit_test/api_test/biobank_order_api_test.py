@@ -1,7 +1,4 @@
 import httplib
-import json
-
-from werkzeug.exceptions import BadRequest
 
 from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import load_biobank_order_json
