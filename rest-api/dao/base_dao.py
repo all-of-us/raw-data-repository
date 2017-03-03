@@ -34,7 +34,7 @@ class BaseDao(object):
       sess.commit()
     except Exception as ex:
       sess.rollback()
-      raise ex
+      raise
     finally:
       sess.close()
 
