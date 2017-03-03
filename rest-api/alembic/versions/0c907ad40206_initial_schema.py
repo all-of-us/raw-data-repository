@@ -298,6 +298,14 @@ def upgrade():
 
     # Manual edit to add HPO IDs.
     # TODO(DA-224) Import these from CSV as part of setup_local_database.sh.
+    hpo_table = sa.Table('hpo', sa.MetaData(),
+      sa.Column('hpo_id', sa.Integer(), autoincrement=False, nullable=False),
+      sa.Column('name', sa.String(length=20), nullable=True),
+      sa.PrimaryKeyConstraint('hpo_id'),
+      sa.UniqueConstraint('name')
+    )
+
+    # Insert our HPO IDs into the HPO table.
     op.bulk_insert(hpo_table,
     [
         {'hpo_id': 0, 'name': 'UNSET' },
