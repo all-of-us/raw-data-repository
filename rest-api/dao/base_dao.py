@@ -80,6 +80,18 @@ class BaseDao(object):
     """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
     return self.get(obj_id)
 
+  def query(self, query_def):
+    query = self._make_query(query_def)
+
+  def _make_query(self, query_def):
+    query = session.query(self.model_type)
+    for field_filter in query_def.field_filters:
+      try:
+        field = getattr(self.model_type, field_filter.field_name)
+      except AttributeError:
+        raise BadRequest("No field named %s found on %s",
+        (field_filter.field_name, self.model_type))
+        
   def _get_random_id(self):
     return random.randint(_MIN_ID, _MAX_ID)
 
