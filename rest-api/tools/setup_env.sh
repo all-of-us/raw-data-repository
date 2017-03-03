@@ -6,15 +6,16 @@
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
 cd ${BASE_DIR};
 
-
 echo "Removing old libs..."
 rm -rf lib
 find . | grep \.pyc | xargs rm -if $*
 
 echo "Installing libs..."
+# If this fails due to missing mysql_config, try `sudo apt-get install libmysqlclient-dev`.
 pip install -r requirements.txt -t lib/
+
 # MySQL-python must be installed outside the lib directory, or dev_appserver.py will fail with
-# "No module named _mysql"
+# "No module named _mysql".
 pip install MySQL-python
 
 echo "Installing Alembic..."
