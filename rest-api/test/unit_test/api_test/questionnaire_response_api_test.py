@@ -2,6 +2,7 @@ import datetime
 import httplib
 import json
 
+from clock import FakeClock
 from dao.code_dao import CodeDao
 from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
@@ -11,6 +12,9 @@ from test.test_data import data_path
 
 def _questionnaire_response_url(participant_id):
   return 'Participant/%s/QuestionnaireResponse' % participant_id
+
+TIME_1 = datetime.datetime(2016, 1, 1)
+TIME_2 = datetime.datetime(2016, 1, 2)
 
 class QuestionnaireResponseApiTest(FlaskTestBase):
 
@@ -65,10 +69,10 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                       code_id_to_answer[vitamin_k_dose_1.codeId].valueDate)
     self.assertEquals(datetime.datetime(1972, 11, 30, 12, 34, 42),
                       code_id_to_answer[vitamin_k_dose_2.codeId].valueDateTime)
-  '''
-  TODO(DA-224): uncomment this once participant summary API is working again
+
   def test_demographic_questionnaire_responses(self):
-    participant_id = self.create_participant()
+    with FakeClock(TIME_1):
+      participant_id = self.create_participant()
     questionnaire_id = self.create_questionnaire('questionnaire_demographics.json')
     with open(data_path('questionnaire_response_demographics.json')) as f:
       resource = json.load(f)
@@ -76,12 +80,13 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
       resource['subject']['reference'].format(participant_id=participant_id)
     resource['questionnaire']['reference'] = \
       resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
-    response = self.send_post(_questionnaire_response_url(participant_id), resource)
+    with FakeClock(TIME_2):
+      response = self.send_post(_questionnaire_response_url(participant_id), resource)
 
     participant = self.send_get('Participant/%s' % participant_id)
     summary = self.send_get('Participant/%s/Summary' % participant_id)
     expected = {'ageRange': 'UNSET',
-                'genderIdentity': 'MALE_TO_FEMALE_TRANSGENDER',
+                'genderIdentity': 'male-to-female-transgender',
                 'ethnicity': 'UNSET',
                 'race': 'UNSET',
                 'hpoId': 'UNSET',
@@ -101,10 +106,10 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'questionnaireOnHealthcareAccess': 'UNSET',
                 'questionnaireOnMedicalHistory' : 'UNSET',
                 'questionnaireOnMedications': 'UNSET',
-                'questionnaireOnOverallHealth': 'SUBMITTED',
+                'questionnaireOnOverallHealth': 'UNSET',
                 'questionnaireOnPersonalHabits': 'UNSET',
-                'questionnaireOnSociodemographics': 'UNSET',
-                'signUpTime': participant['signUpTime'],
+                'questionnaireOnSociodemographics': 'SUBMITTED',
+                'questionnaireOnSociodemographicsTime': TIME_2.isoformat(),
+                'signUpTime': TIME_1.isoformat(),
               }
     self.assertJsonResponseMatches(expected, summary)
-   '''

@@ -15,6 +15,10 @@
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-module",
         "code": "overall-health"
+      },
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "Sociodemographic"
       }],
       "group":[
          {
@@ -92,8 +96,8 @@
                         "text":"Please provide whatever you feel comfortable providing. These are optional- Gender",
                         "type":"choice",
                         "concept": [{
-                           "system": "http://loinc.org",
-                           "code": "76691-5",
+                           "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+                           "code": "Gender_GenderIdentity",
                            "display": "Gender Identity"
                         }],
                         "option":[

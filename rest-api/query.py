@@ -13,9 +13,10 @@ class Operator(messages.Enum):
 class PropertyType(messages.Enum):
   STRING = 0
   DATE = 1
-  ENUM = 2
-  INTEGER = 3
-  CODE = 4
+  DATETIME = 2
+  ENUM = 3
+  INTEGER = 4
+  CODE = 5
 
 class FieldFilter:
   def __init__(self, field_name, operator, value):

@@ -11,6 +11,7 @@ import version_api
 
 from api.biobank_order_api import BiobankOrderApi
 from api.participant_api import ParticipantApi
+from api.participant_summary_api import ParticipantSummaryApi
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
 from flask import Flask
@@ -35,8 +36,8 @@ api.add_resource(ParticipantApi,
                  # TODO(DA-216): remove PATCH once PTC migrates to PUT
                  methods=['GET', 'POST', 'PATCH', 'PUT'])
 
-api.add_resource(participant_summary_api.ParticipantSummaryAPI,
-                 PREFIX + 'Participant/<string:id_>/Summary',
+api.add_resource(ParticipantSummaryApi,
+                 PREFIX + 'Participant/<participant_id:p_id>/Summary',
                  PREFIX + 'ParticipantSummary',
                  endpoint='participant.summary',
                  methods=['GET',])

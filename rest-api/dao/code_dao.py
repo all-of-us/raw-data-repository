@@ -83,7 +83,7 @@ class CodeBookDao(BaseDao):
 
 class CodeDao(UpdatableDao):
   def __init__(self):
-    super(CodeDao, self).__init__(Code)
+    super(CodeDao, self).__init__(Code, cache_ttl_seconds=600)
 
   def _add_history(self, session, obj):
     history = CodeHistory()

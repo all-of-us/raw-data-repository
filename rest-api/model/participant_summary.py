@@ -1,13 +1,28 @@
+import clock
+
+from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import MembershipTier
+from participant_enums import MembershipTier, get_bucketed_age
 from model.base import Base
-from model.utils import Enum
+from model.utils import Enum, to_client_participant_id, to_client_biobank_id
 from sqlalchemy import Column, Integer, String, Date, DateTime
 from sqlalchemy import ForeignKey, Index, SmallInteger
 from sqlalchemy.orm import relationship
 
+_DATE_FIELDS = ['dateOfBirth', 'signUpTime', 'consentForStudyEnrollmentTime',
+                'consentForElectronicHealthRecordsTime', 'questionnaireOnOverallHealthTime',
+                'questionnaireOnPersonalHabitsTime', 'questionnaireOnSociodemographicsTime',
+                'questionnaireOnHealthcareAccessTime', 'questionnaireOnMedicalHistoryTime',
+                'questionnaireOnMedicationsTime', 'questionnaireOnFamilyHealthTime']
+_ENUM_FIELDS = ['membershipTier', 'physicalMeasurementsStatus',
+                'consentForStudyEnrollment', 'consentForElectronicHealthRecords',
+                'questionnaireOnOverallHealth', 'questionnaireOnPersonalHabits',
+                'questionnaireOnSociodemographics', 'questionnaireOnHealthcareAccess',
+                'questionnaireOnMedicalHistory', 'questionnaireOnMedications',
+                'questionnaireOnFamilyHealth']
+_CODE_FIELDS = ['genderIdentityId', 'raceId', 'ethnicityId']
 
-class ParticipantSummary(Base):
+class ParticipantSummary(Base):  
   __tablename__ = 'participant_summary'
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          primary_key=True, autoincrement=False)
@@ -62,6 +77,24 @@ class ParticipantSummary(Base):
 
   participant = relationship("Participant", back_populates="participantSummary")
 
+  def to_client_json(self):
+    result = self.asdict()
+    result['participantId'] = to_client_participant_id(self.participantId)
+    result['biobankId'] = to_client_biobank_id(self.biobankId)
+    date_of_birth = result.get('dateOfBirth')
+    if date_of_birth:
+      result['ageRange'] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
+    else:
+      result['ageRange'] = 'UNSET'
+    format_json_hpo(result, 'hpoId')
+    for fieldname in _DATE_FIELDS:
+      format_json_date(result, fieldname)
+    for fieldname in _CODE_FIELDS:
+      format_json_code(result, fieldname)
+    for fieldname in _ENUM_FIELDS:
+      format_json_enum(result, fieldname)
+    return result
+      
 Index('participant_summary_biobank_id', ParticipantSummary.biobankId)
 Index('participant_summary_ln_dob', ParticipantSummary.lastName,
       ParticipantSummary.dateOfBirth)

@@ -3,9 +3,9 @@ from model.hpo import HPO
 
 class HPODao(BaseDao):
   def __init__(self):
-    super(HPODao, self).__init__(HPO)
-
-  def get_by_name_with_session(self, session, name):
+    super(HPODao, self).__init__(HPO, cache_ttl_seconds=600)
+    
+  def get_by_name_with_session(self, session, name):  
     return session.query(HPO).filter(HPO.name == name).first()
 
   def get_by_name(self, name):
