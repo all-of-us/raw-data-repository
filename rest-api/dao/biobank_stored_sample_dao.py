@@ -1,10 +1,5 @@
 from dao.base_dao import BaseDao
-from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
-from model.log_position import LogPosition
-
-from werkzeug.exceptions import BadRequest
 
 
 class BiobankStoredSampleDao(BaseDao):
