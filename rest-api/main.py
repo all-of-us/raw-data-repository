@@ -4,12 +4,12 @@ This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import app_util
 import config_api
-import biobank_orders_api
 import metrics_api
 import participant_summary_api
 import physical_measurements_api
 import version_api
 
+from api.biobank_order_api import BiobankOrderApi
 from api.participant_api import ParticipantApi
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
@@ -69,9 +69,9 @@ api.add_resource(QuestionnaireResponseApi,
                  endpoint='participant.questionnaire_response',
                  methods=['POST', 'GET'])
 
-api.add_resource(biobank_orders_api.BiobankOrderAPI,
-                 PREFIX + 'Participant/<string:a_id>/BiobankOrder/<string:id_>',
-                 PREFIX + 'Participant/<string:a_id>/BiobankOrder',
+api.add_resource(BiobankOrderApi,
+                 PREFIX + 'Participant/<string:p_id>/BiobankOrder/<string:biobank_order_id>',
+                 PREFIX + 'Participant/<string:p_id>/BiobankOrder',
                  endpoint='participant.biobank_order',
                  methods=['POST', 'GET'])
 

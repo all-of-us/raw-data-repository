@@ -18,9 +18,9 @@ class BiobankOrderDao(BaseDao):
     return obj.biobankOrderId
 
   def _validate_insert(self, session, obj):
-    super(BiobankOrderDao, self)._validate_insert(session, obj)
     if obj.biobankOrderId is None:
       raise BadRequest('Client must supply biobankOrderId.')
+    super(BiobankOrderDao, self)._validate_insert(session, obj)
 
   def insert_with_session(self, session, obj):
     if obj.logPosition is not None:
@@ -31,14 +31,11 @@ class BiobankOrderDao(BaseDao):
   def _validate_model(self, session, obj):
     if obj.participantId is None:
       raise BadRequest('participantId is required')
-    participant = ParticipantDao().get_with_session(session, obj.participantId)
-    if not participant:
-      raise BadRequest('%r does not reference a valid participant.' % obj.participantId)
+    participant = ParticipantDao().validate_participant_reference(session, obj)
     for sample in obj.samples:
       self._validate_order_sample(sample)
-    if not obj.identifiers:
-      raise BadRequest('At least one identifier is required.')
-    # Verify that all no identifier is in use by another order.
+    # TODO(mwf) FHIR validation for identifiers?
+    # Verify that no identifier is in use by another order.
     for identifier in obj.identifiers:
       for existing in (session.query(BiobankOrderIdentifier)
           .filter_by(system=identifier.system)
@@ -48,10 +45,7 @@ class BiobankOrderDao(BaseDao):
             'Identifier %s is already in use by order %d' % (identifier, existing.biobankOrderId))
 
   def _validate_order_sample(self, sample):
-    if not sample.test:
-      raise BadRequest('Missing field: sample.test in %s.' % sample)
-    if not sample.description:
-      raise BadRequest('Missing field: sample.description in %s.' % sample)
+    # TODO(mwf) Make use of FHIR validation?
     if sample.test not in VALID_TESTS:
       raise BadRequest('Invalid test value %r not in %s.' % (sample.test, VALID_TESTS))
 
