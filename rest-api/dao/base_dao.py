@@ -32,7 +32,7 @@ class BaseDao(object):
     try:
       yield sess
       sess.commit()
-    except Exception as ex:
+    except Exception:
       sess.rollback()
       raise
     finally:
