@@ -65,11 +65,6 @@ class FhirMixin(object):
       if isinstance(self, DomainResource):
         # Only convert FHIR exceptions to BadError at the top level. For nested objects, FHIR
         # repackages exceptions itself.
-        print '\ngot an exception', e, dir(e)
-        for err in e.errors:
-          print 'ERROR:%r, %r, %s' % (err, err.message, dir(err))
-        for err in e.errors:
-          print '2 ERROR:%r, %r, %s' % (err, err.message, dir(err))
         raise BadRequest(e.message)
       else:
         raise
