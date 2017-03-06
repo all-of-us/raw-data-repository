@@ -2,6 +2,7 @@ import clock
 import json
 
 from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, PPI_SYSTEM
+from code_constants import FieldType
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
@@ -71,6 +72,23 @@ class QuestionnaireResponseDao(BaseDao):
     self._update_participant_summary(session, questionnaire_response, code_ids, questions, qh)
     return questionnaire_response
 
+  def _get_field_value(self, field_type, answer):
+    if field_type == FieldType.CODE:
+      return answer.valueCodeId
+    if field_type == FieldType.STRING:
+      return answer.valueString
+    if field_type == FieldType.DATE:
+      return answer.valueDate
+    raise BadRequest("Don't know how to map field of type %s" % field_type)
+
+  def _update_field(self, participant_summary, field_name, field_type, answer):
+    value = getattr(participant_summary, field_name)
+    new_value = self._get_field_value(field_type, answer)
+    if value != new_value:
+      setattr(participant_summary, field_name, new_value)
+      return True
+    return False
+
   def _update_participant_summary(self, session, questionnaire_response, code_ids, questions, qh):
     """Updates the participant summary based on questions answered and modules completed
     in the questionnaire response."""
@@ -93,9 +111,8 @@ class QuestionnaireResponseDao(BaseDao):
           if code:
             summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
             if summary_field:
-              if getattr(participant_summary, summary_field) != answer.valueCodeId:
-                setattr(participant_summary, summary_field, answer.valueCodeId)
-                something_changed = True
+              something_changed = self._update_field(participant_summary, summary_field[0],
+                                                     summary_field[1], answer)
 
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
     # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
