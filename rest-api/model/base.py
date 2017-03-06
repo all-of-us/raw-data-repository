@@ -33,7 +33,7 @@ _FhirProperty = collections.namedtuple(
     ('name', 'json_name', 'fhir_type', 'is_list', 'of_many', 'not_optional'))
 
 
-def FP(name, fhir_type, json_name=None, is_list=False, required=False):
+def FhirProperty(name, fhir_type, json_name=None, is_list=False, required=False):
   """Helper for declaring FHIR propertly tuples which fills in common default values.
 
   By default, JSON name is the camelCase version of the Python snake_case name.

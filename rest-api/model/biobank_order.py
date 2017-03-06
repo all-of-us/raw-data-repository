@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, UnicodeText
 from werkzeug.exceptions import BadRequest
 
-from model.base import Base, FhirMixin, FP
+from model.base import Base, FhirMixin, FhirProperty
 
 
 def _ToFhirDate(dt):
@@ -20,9 +20,9 @@ class _FhirBiobankOrderNotes(FhirMixin, BackboneElement):
   """Notes sub-element."""
   resource_name = "BiobankOrderNotes"
   _PROPERTIES = [
-    FP('collected', str),
-    FP('processed', str),
-    FP('finalized', str),
+    FhirProperty('collected', str),
+    FhirProperty('processed', str),
+    FhirProperty('finalized', str),
   ]
 
 
@@ -30,12 +30,12 @@ class _FhirBiobankOrderedSample(FhirMixin, BackboneElement):
   """Sample sub-element."""
   resource_name = "BiobankOrderedSample"
   _PROPERTIES = [
-    FP('test', str, required=True),
-    FP('description', str, required=True),
-    FP('processing_required', bool),
-    FP('collected', fhirdate.FHIRDate),
-    FP('processed', fhirdate.FHIRDate),
-    FP('finalized', fhirdate.FHIRDate),
+    FhirProperty('test', str, required=True),
+    FhirProperty('description', str, required=True),
+    FhirProperty('processing_required', bool),
+    FhirProperty('collected', fhirdate.FHIRDate),
+    FhirProperty('processed', fhirdate.FHIRDate),
+    FhirProperty('finalized', fhirdate.FHIRDate),
   ]
 
 
@@ -46,12 +46,12 @@ class _FhirBiobankOrder(FhirMixin, DomainResource):
   """
   resource_name = 'BiobankOrder'
   _PROPERTIES = [
-    FP('subject', str, required=True),
-    FP('identifier', Identifier, is_list=True, required=True),
-    FP('created', fhirdate.FHIRDate, required=True),
-    FP('samples', _FhirBiobankOrderedSample, is_list=True, required=True),
-    FP('notes', _FhirBiobankOrderNotes),
-    FP('source_site', Identifier, required=True),
+    FhirProperty('subject', str, required=True),
+    FhirProperty('identifier', Identifier, is_list=True, required=True),
+    FhirProperty('created', fhirdate.FHIRDate, required=True),
+    FhirProperty('samples', _FhirBiobankOrderedSample, is_list=True, required=True),
+    FhirProperty('notes', _FhirBiobankOrderNotes),
+    FhirProperty('source_site', Identifier, required=True),
   ]
 
 
