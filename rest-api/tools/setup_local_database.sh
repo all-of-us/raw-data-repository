@@ -1,12 +1,16 @@
-#!/bin/bash
+#!/bin/bash -e
 
-# Sets up a MySQL database named "rdr" locally (dropping the database if it already exists),
-# and sets the database config information in the
-# local Datastore instance. You must have MySQL installed and running and your local
+# Sets up a MySQL database named "rdr" locally (dropping the database if it
+# already exists), and sets the database config information in the local
+# Datastore instance. You must have MySQL installed and running and your local
 # dev_appserver instance running before using this.
-
-# If you have an environment variable named "MYSQL_ROOT_PASSWORD" it will be used as the password
-# to connect to the database; by default, the password "root" will be used.
+#
+# If you have an environment variable named "MYSQL_ROOT_PASSWORD" it will be
+# used as the password to connect to the database; by default, the password
+# "root" will be used.
+#
+# For a fresh database/schema, run this once to set up a blank db, then run
+# generate_schema.sh, and then run this again to create that initial schema.
 
 PASSWORD=root
 DB_CONNECTION_NAME=
@@ -32,6 +36,8 @@ then
   PASSWORD="${MYSQL_ROOT_PASSWORD}"
   PASSWORD_ARGS='-p"${PASSWORD}"'
   PASSWORD_STRING=":${PASSWORD}"
+else
+  echo "Using a default root mysql password. Set MYSQL_ROOT_PASSWORD to override."
 fi
 
 # Export this so Alembic can find it.
@@ -61,9 +67,10 @@ fi
 echo "Updating schema to latest..."
 tools/upgrade_database.sh
 echo "Importing codebook..."
+set +e
+# Importing the codebook may fail if this is a fresh database.
 tools/import_codebook.sh
+set -e
 
 echo "Setting database configuration..."
 tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update
-
-
