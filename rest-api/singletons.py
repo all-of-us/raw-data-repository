@@ -34,5 +34,6 @@ def get_cache(cache_type, ttl_seconds, get_method=None):
     return existing_cache
   with cache_lock:
     new_cache = cachetools.TTLCache(1, ttl=ttl_seconds, missing=get_method)
+    new_cache.lock = threading.RLock()
     cache_map[cache_type.__name__] = new_cache
     return new_cache

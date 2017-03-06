@@ -2,8 +2,12 @@ from base_dao import UpdatableDao
 from singletons import get_cache
 
 class EntityCache(object):
-
+  """A cache of entities of a particular type, indexed by ID (in id_to_entity) and optionally other
+   fields (in index_maps).
+   """
   def __init__(self, dao, entities, index_field_keys):
+    """Constructor taking the DAO, all the entities in the database for this type, and a list of
+    field names or tuples of field names to index the entities by."""
     self.id_to_entity = {}
     if index_field_keys:
       self.index_maps = {index_field_key: {} for index_field_key in index_field_keys}
@@ -41,13 +45,16 @@ class CacheAllDao(UpdatableDao):
     self.singleton_cache = get_cache(self.model_type, cache_ttl_seconds, self._load_cache)
 
   def _load_cache(self, key):
+    # The only key that should ever be used with the singleton cache is SINGLETON_KEY;
+    # it points to an EntityCache.
     assert key == SINGLETON_KEY
     with self.session() as session:
       all_entities = session.query(self.model_type).all()
     return EntityCache(self, all_entities, self.index_field_keys)
 
   def _get_cache(self):
-    return self.singleton_cache[SINGLETON_KEY]
+    with self.singleton_cache.lock:
+      return self.singleton_cache[SINGLETON_KEY]
 
   def get_with_session(self, session, obj_id):
     return self._get_cache().id_to_entity.get(obj_id)
@@ -56,11 +63,12 @@ class CacheAllDao(UpdatableDao):
     return self._get_cache().id_to_entity.get(obj_id)
 
   def _invalidate_cache(self):
-    try:
-      del self.singleton_cache[SINGLETON_KEY]
-    except KeyError:
-      # If TTLCache doesn't have this key already, it will throw an error; eat it.
-      pass
+    with self.singleton_cache.lock:
+      try:
+        del self.singleton_cache[SINGLETON_KEY]
+      except KeyError:
+        # If TTLCache doesn't have this key already, it will throw an error; eat it.
+        pass
 
   def insert_with_session(self, session, obj):
     super(CacheAllDao, self).insert_with_session(session, obj)

@@ -189,20 +189,7 @@ class BaseDao(object):
       except AttributeError:
         raise BadRequest("No field named %s found on %s", (field_filter.field_name,
                                                            self.model_type))
-      if field_filter.operator == Operator.EQUALS:
-        query = query.filter(f == field_filter.value)
-      elif field_filter.operator == Operator.LESS_THAN:
-        query = query.filter(f < field_filter.value)
-      elif field_filter.operator == Operator.GREATER_THAN:
-        query = query.filter(f > field_filter.value)
-      elif field_filter.operator == Operator.LESS_THAN_OR_EQUALS:
-        query = query.filter(f <= field_filter.value)
-      elif field_filter.operator == Operator.GREATER_THAN_OR_EQUALS:
-        query = query.filter(f >= field_filter.value)
-      elif field_filter.operator == Operator.NOT_EQUALS:
-        query = query.filter(f != field_filter.value)
-      else:
-        raise BadRequest("Invalid operator: %s" % field_filter.operator)
+      query = self._add_filter(query, field_filter, f)
     if query_def.ancestor_id:
       # For now, we only support participant IDs for ancestors.
       query = query.filter(self.model_type.participantId == query_def.ancestor_id)
@@ -222,8 +209,20 @@ class BaseDao(object):
 
     return query, order_by_field_names
 
+  def _add_filter(self, query, field_filter, f):
+    query = { Operator.EQUALS: query.filter(f == field_filter.value),
+              Operator.LESS_THAN: query.filter(f < field_filter.value),
+              Operator.GREATER_THAN: query.filter(f > field_filter.value),
+              Operator.LESS_THAN_OR_EQUALS: query.filter(f <= field_filter.value),
+              Operator.GREATER_THAN_OR_EQUALS: query.filter(f >= field_filter.value),
+              Operator.NOT_EQUALS: query.filter(f != field_filter.value)
+            }.get(field_filter.operator)
+    if not query:
+      raise BadRequest("Invalid operator: %s" % field_filter.operator)
+    return query
+
   def _add_pagination_filter(self, query, pagination_token, fields, first_descending):
-    """Adds a pagination filter for the decoded values in the pagination token based on 
+    """Adds a pagination filter for the decoded values in the pagination token based on
     the sort order."""    
     decoded_vals = self._decode_token(pagination_token, fields)
     # SQLite does not support tuple comparisons, so make an or-of-ands statements that is 
@@ -357,4 +356,4 @@ def json_serial(obj):
     return obj.isoformat()
   if isinstance(obj, messages.Enum):
     return str(obj)
-  raise TypeError ("Type not serializable")
+  raise TypeError("Type not serializable")
