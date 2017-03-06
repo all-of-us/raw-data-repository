@@ -31,7 +31,7 @@ class BaseApi(Resource):
     """
     if id_ is None:
       return self.list()
-    obj = self.dao.get_with_children(id_) if self._get_returns_children else dao.get(id_)
+    obj = self.dao.get_with_children(id_) if self._get_returns_children else self.dao.get(id_)
     if not obj:
       raise NotFound("%s with ID %s not found" % (self.dao.model_type.__name__, id_))
     return self._make_response(obj)
