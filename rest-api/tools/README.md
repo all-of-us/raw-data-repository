@@ -7,7 +7,7 @@
 Starts the Cloud SQL proxy and runs mysql so that you can issue SQL commands directly against
 a Cloud SQL instance.
 
-### generate-schema.sh
+### generate_schema.sh
 
 Generates an Alembic schema migration in alembic/versions after altering the SQLAlchemy
 schema in model/.
