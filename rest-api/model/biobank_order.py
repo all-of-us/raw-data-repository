@@ -64,7 +64,6 @@ class BiobankOrder(Base):
 
   # A GUID for the order, provided by Biobank. This is the ID assigned in HealthPro, which is sent
   # to us as an identifier with the mayomedicallaboritories.com "system".
-  # We omit autoincrement=False to avoid warnings & instead validate clients provide an ID upstream.
   biobankOrderId = Column('biobank_order_id', String(80), primary_key=True)
 
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
