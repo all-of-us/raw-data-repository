@@ -136,20 +136,23 @@ class DatabaseTest(SqlTestBase):
     session.add(mb)
     session.commit()
 
-  def test_schema_biobank_order(self):
+  def _create_participant(self, session):
+    hpo = HPO(hpoId=1, name='UNSET')
+    session.add(hpo)
+    session.commit()
+    p = Participant(
+        participantId=1, version=1, biobankId=2, hpoId=hpo.hpoId,
+        signUpTime=now, lastModified=now, clientId='c')
+    session.add(p)
+    session.commit()
+    return p
+
+  def test_schema_biobank_order_and_datetime_roundtrip(self):
     bo_id = 1
     now = isodate.parse_datetime('2016-01-04T10:28:50-04:00')
 
     write_session = self.get_database().make_session()
-
-    hpo = HPO(hpoId=1, name='UNSET')
-    write_session.add(hpo)
-    write_session.commit()
-    p = Participant(
-        participantId=1, version=1, biobankId=2, hpoId=hpo.hpoId,
-        signUpTime=now, lastModified=now, clientId='c')
-    write_session.add(p)
-    write_session.commit()
+    p = self._create_participant(write_session)
 
     bo = BiobankOrder(
         biobankOrderId=bo_id, participantId=p.participantId, created=now,
