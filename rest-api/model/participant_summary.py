@@ -93,7 +93,10 @@ class ParticipantSummary(Base):
       format_json_code(result, fieldname)
     for fieldname in _ENUM_FIELDS:
       format_json_enum(result, fieldname)
-    return result
+    # Strip None values.
+    result = {k: v for k, v in result.iteritems() if v is not None}
+
+    return result      
       
 Index('participant_summary_biobank_id', ParticipantSummary.biobankId)
 Index('participant_summary_ln_dob', ParticipantSummary.lastName,

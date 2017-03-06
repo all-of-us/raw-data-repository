@@ -225,7 +225,13 @@ def _clean_and_format_response_json(input_obj):
   s = s.replace('Z",', '",')
   return s
 
-
+def assertBundle(self, expected_entries, response):
+  self.assertEquals('Bundle', response['resourceType'])
+  self.assertEquals('searchset', response['type'])
+  self.assertEquals(len(expected_entries), len(response['entry']))
+  for i in range(0, len(expected_entries)):
+    self.assertJsonResponseMatches(expected_entries[i], response['entry'][i])
+     
 def list_as_dict(items):
   return [item.asdict() for item in items]
 

@@ -127,11 +127,11 @@ class BaseApi(Resource):
       if participant_id:
         full_url = main.api.url_for(self.__class__,
                                     id_=json[id_field],
-                                    participant_id=participant_id,
+                                    p_id=participant_id,
                                     _external=True)
       else:
         full_url = main.api.url_for(self.__class__,
-                                    id_=json[id_field],
+                                    p_id=json[id_field],
                                     _external=True)
       entries.append({"fullUrl": full_url,
                      "resource": json})
