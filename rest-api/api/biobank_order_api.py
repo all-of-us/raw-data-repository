@@ -5,7 +5,7 @@ from dao.biobank_order_dao import BiobankOrderDao
 
 class BiobankOrderApi(BaseApi):
   def __init__(self):
-    super(BiobankOrderApi, self).__init__(BiobankOrderDao(), get_with_children=True)
+    super(BiobankOrderApi, self).__init__(BiobankOrderDao(), get_returns_children=True)
 
   @auth_required(HEALTHPRO)
   def post(self, p_id):
