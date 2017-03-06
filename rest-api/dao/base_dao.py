@@ -217,13 +217,13 @@ class BaseDao(object):
       query = self._add_order_by(query, query_def.order_by, order_by_field_names, order_by_fields)
       first_descending = not query_def.order_by.ascending
     query = self._add_order_by_ending(query, order_by_field_names, order_by_fields)
-    # Return one more than max_results, so that we know if there are more results.
-    query = query.limit(query_def.max_results + 1)
-
     if query_def.pagination_token:
       # Add a query filter based on the pagination token.
       query = self._add_pagination_filter(query, query_def.pagination_token, order_by_fields,
                                           first_descending)
+    # Return one more than max_results, so that we know if there are more results.
+    query = query.limit(query_def.max_results + 1)
+
     return query, order_by_field_names
 
   def _add_pagination_filter(self, query, pagination_token, fields, first_descending):
@@ -233,6 +233,7 @@ class BaseDao(object):
       decoded_vals = json.loads(urlsafe_b64decode(pagination_token))
     except:
       raise BadRequest("Invalid pagination token: %s", pagination_token)
+    print "TYPE = %s, len() = %d, fields = %d" % (type(decoded_vals), len(decoded_vals), len(fields))
     if not type(decoded_vals) is list or len(decoded_vals) != len(fields):
       raise BadRequest("Invalid pagination token: %s" % pagination_token)
     if first_descending:

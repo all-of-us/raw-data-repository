@@ -84,6 +84,16 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     self.assert_results(self.descending_query, [ps_1, ps_3],
                         _make_pagination_token([3, None, None, None, 3]))
 
+    self.assert_results(_with_token(self.no_filter_query,
+                                    _make_pagination_token([None, None, None, 2])), [ps_3])
+    self.assert_results(_with_token(self.ascending_query,
+                                    _make_pagination_token([3, None, None, None, 3])), [ps_1])
+    self.assert_results(_with_token(self.descending_query,
+                                    _make_pagination_token([3, None, None, None, 3])), [ps_2])
+
+def _with_token(query, token):
+  return Query(query.field_filters, query.order_by, query.max_results, token)
+
 def _make_pagination_token(vals):
   vals_json = json.dumps(vals)
   return urlsafe_b64encode(vals_json)

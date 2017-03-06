@@ -22,7 +22,7 @@ class ParticipantSummaryAPI(base_api.BaseApi):
     if id_:
       return super(ParticipantSummaryAPI, self).get(participant_summary.SINGLETON_SUMMARY_ID, id_)
     else:
-      return super(ParticipantSummaryAPI, self).query("participantId", _PARTICIPANT_SUMMARY_ORDER)
+      return super(ParticipantSummaryAPI, self).query('participantId', _PARTICIPANT_SUMMARY_ORDER)
 
 
 @api_util.auth_required_cron
