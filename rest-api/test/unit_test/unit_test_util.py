@@ -90,7 +90,14 @@ class SqlTestBase(TestbedTestBase):
     del dict1['lastModified']
     del dict2['lastModified']
     self.assertEquals(dict1, dict2)
-
+    
+  def assertListAsDictEquals(self, list_a, list_b):
+    if len(list_a) != len(list_b):
+      self.fail("List lengths don't match: %d != %d; %s, %s" % (len(list_a), len(list_b),
+                                                                list_as_dict(list_a),
+                                                                list_as_dict(list_b)))
+    for i in range(0, len(list_a)):
+      self.assertEquals(list_a[i].asdict(), list_b[i].asdict())
 
 class NdbTestBase(SqlTestBase):
   """Base class for unit tests that need the NDB testbed."""
@@ -218,6 +225,9 @@ def _clean_and_format_response_json(input_obj):
   s = s.replace('Z",', '",')
   return s
 
+
+def list_as_dict(items):
+  return [item.asdict() for item in items]
 
 def to_dict_strip_last_modified(obj):
   assert obj.last_modified, 'Missing last_modified: {}'.format(obj)

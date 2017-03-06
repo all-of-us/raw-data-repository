@@ -7,10 +7,8 @@ from query import OrderBy
 from werkzeug.exceptions import BadRequest
 
 
-# By default / secondarily order by last name, first name, DOB, and participant ID (all ascending)
-_ORDER_BY_ENDING = [OrderBy('lastName', True), OrderBy('firstName', True),
-                    OrderBy('dateOfBirth', True), OrderBy('participantId', True)]
-
+# By default / secondarily order by last name, first name, DOB, and participant ID
+_ORDER_BY_ENDING = ['lastName','firstName', 'dateOfBirth', 'participantId']
 _CODE_FIELDS = ['genderIdentityId', 'ethnicityId', 'raceId']
 
 class ParticipantSummaryDao(UpdatableDao):
@@ -33,8 +31,4 @@ class ParticipantSummaryDao(UpdatableDao):
       if not code:
         raise BadRequest("No code found: %s" % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, code.codeId)
-<<<<<<< HEAD
-    return super(ParticipantSumamryDao, self).make_query_filter(field_name, value)
-=======
     return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
->>>>>>> Fixing stuff

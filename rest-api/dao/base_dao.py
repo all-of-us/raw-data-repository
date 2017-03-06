@@ -49,9 +49,10 @@ class BaseDao(object):
 
   cache_ttl_seconds can be specified to enable in-memory caching of results on get() calls only.
   Updates do not invalidate the cache on other servers, so beware.
-
-  order_by_ending is a list of OrderBy objects to always use when query() is invoked, which should
-  always end in the primary key; if not specified, query() is not supported.
+  
+  order_by_ending is a list of field names to always order by (in ascending order, possibly after
+  another sort field) when query() is invoked. It should always end in the primary key.
+  If not specified, query() is not supported.
   """
   def __init__(self, model_type, cache_ttl_seconds=None, order_by_ending=None):
     self.model_type = model_type
@@ -177,7 +178,7 @@ class BaseDao(object):
       else:
         return Results(items, None)
     else:
-      return Results(None, None)
+      return Results([], None)
 
   def _make_pagination_token(self, item_dict, fields):
     vals = [item_dict.get(field) for field in fields]
@@ -192,40 +193,40 @@ class BaseDao(object):
       except AttributeError:
         raise BadRequest("No field named %s found on %s", (field_filter.field_name,
                                                            self.model_type))
-      if field_filter.field_operator == Operator.EQUALS:
+      if field_filter.operator == Operator.EQUALS:
         query = query.filter(f == field_filter.value)
-      elif field_filter.field_operator == Operator.LESS_THAN:
+      elif field_filter.operator == Operator.LESS_THAN:
         query = query.filter(f < field_filter.value)
-      elif field_filter.field_operator == Operator.GREATER_THAN:
+      elif field_filter.operator == Operator.GREATER_THAN:
         query = query.filter(f > field_filter.value)
-      elif field_filter.field_operator == Operator.LESS_THAN_OR_EQUALS:
+      elif field_filter.operator == Operator.LESS_THAN_OR_EQUALS:
         query = query.filter(f <= field_filter.value)
-      elif field_filter.field_operator == Operator.GREATER_THAN_OR_EQUALS:
+      elif field_filter.operator == Operator.GREATER_THAN_OR_EQUALS:
         query = query.filter(f >= field_filter.value)
-      elif field_filter.field_operator == Operator.NOT_EQUALS:
+      elif field_filter.operator == Operator.NOT_EQUALS:
         query = query.filter(f != field_filter.value)
       else:
-        raise BadRequest("Invalid operator: %s" % field_filter.field_operator)
+        raise BadRequest("Invalid operator: %s" % field_filter.operator)
     if query_def.ancestor_id:
       # For now, we only support participant IDs for ancestors.
       query = query.filter(self.model_type.participantId == query_def.ancestor_id)
-    order_fields = []
     field_names = set()
-    field_ascending = []
     fields = []
+    first_descending = False
     if query_def.order_by:
-      self._add_order_by(query_def.order_by, order_fields, field_names, field_ascending, fields)
-    self._add_order_by(self.order_by_ending, order_fields, field_names, field_ascending, fields)
-    query = query.order_by(order_fields)
+      query = self._add_order_by(query, query_def.order_by, field_names, fields)
+      first_descending = not query_def.order_by.ascending
+    query = self._add_order_by_ending(query, field_names, fields)
     # Return one more than max_results, so that we know if there are more results.
     query = query.limit(query_def.max_results + 1)
+
     if query_def.pagination_token:
       # Add a query filter based on the pagination token.
-      query = self._add_pagination_filter(query, query_def.pagination_token, fields,
-                                          field_ascending)
+      query = self._add_pagination_filter(query, query_def.pagination_token, fields, 
+                                          first_descending)
     return query, fields
-
-  def _add_pagination_filter(self, query, pagination_token, fields, field_ascending):
+  
+  def _add_pagination_filter(self, query, pagination_token, fields, first_descending):
     """Adds a pagination filter for the decoded values in the pagination token based on 
     the sort order."""
     try:
@@ -234,25 +235,40 @@ class BaseDao(object):
       raise BadRequest("Invalid pagination token: %s", pagination_token)
     if not type(decoded_vals) is list or len(decoded_vals) != len(fields):
       raise BadRequest("Invalid pagination token: %s" % pagination_token)
-    return query.filter(tuple_(fields) > tuple_(decoded_vals))
+    if first_descending:
+      return query.filter(or_(fields[0] < decoded_vals[0],
+                              and_(fields[0] == decoded_vals[0],
+                                   tuple_(fields[1:]) > tuple_(decoded_vals[1:]))))
+    else:
+      return query.filter(tuple_(fields) > tuple_(decoded_vals))
+                          
+  def _add_order_by(self, query, order_by, field_names, fields):
+    """Adds a single order by field, as the primary sort order."""
+    try:
+      f = getattr(self.model_type, order_by.field_name)
+    except AttributeError:
+      raise BadRequest("No field named %s found on %s", (order_by.field_name, self.model_type))
+    field_names.add(order_by.field_name)
+    fields.append(f)
+    if order_by.ascending:
+      return query.order_by(f)
+    else:
+      return query.order_by(f.desc())
 
-  def _add_order_by(self, order_by, order_fields, field_names, field_ascending, fields):      
-    for order_by_field in order_by:
-      if order_by_field.field_name in field_names:
+  def _add_order_by_ending(self, query, field_names, fields):
+    """Adds the order by ending."""
+    for order_by_field in self.order_by_ending:
+      if order_by_field in field_names:
         continue
       try:
-        f = getattr(self.model_type, order_by_field.field_name)
+        f = getattr(self.model_type, order_by_field)
       except AttributeError:
-        raise BadRequest("No field named %s found on %s", (order_by_field.field_name,
-                                                             self.model_type))
-      field_names.add(order_by_field.field_name)
-      field_ascending.append(order_by_field.ascending)
+        raise BadRequest("No field named %s found on %s", (order_by_field,
+                                                           self.model_type))
       fields.append(f)
-      if order_by_field.ascending:
-        order_fields.append(f)
-      else:
-        order_fields.append(f.desc())
-  
+      query = query.order_by(f)
+    return query
+
   def _get_random_id(self):
     return random.randint(_MIN_ID, _MAX_ID)
 

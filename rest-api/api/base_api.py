@@ -104,9 +104,9 @@ class BaseApi(Resource):
       elif key == '_token':
         pagination_token = value
       elif key == '_sort' or key == '_sort:asc':
-        order_by = [OrderBy(value, True)]
+        order_by = OrderBy(value, True)
       elif key == '_sort:desc':
-        order_by = [OrderBy(value, False)]
+        order_by = OrderBy(value, False)
       else:
         field_filter = self.dao.make_query_filter(key, value)
         if field_filter:
