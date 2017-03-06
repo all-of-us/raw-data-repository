@@ -51,6 +51,8 @@ def FhirProperty(name, fhir_type, json_name=None, is_list=False, required=False)
 class FhirMixin(object):
   """Derive from this to simplify declaring custom FHIR resource or element classes.
 
+  This aids in (de)serialization of JSON, including validation of field presence and types.
+
   Subclasses should derive from DomainResource or (for nested fields) BackboneElement, and fill in
   two class-level fields: resource_name (an arbitrary string) and _PROPERTIES.
   """
