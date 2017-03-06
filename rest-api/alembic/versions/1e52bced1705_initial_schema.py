@@ -1,7 +1,7 @@
 """Initial schema
 
 Revision ID: 1e52bced1705
-Revises: 
+Revises:
 Create Date: 2017-03-03 09:48:55.385009
 
 """
@@ -310,7 +310,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('questionnaire_response_answer_id')
     )
     # ### end Alembic commands ###
-    
+
     hpo_table = sa.Table('hpo', sa.MetaData(),
       sa.Column('hpo_id', sa.Integer(), autoincrement=False, nullable=False),
       sa.Column('name', sa.String(length=20), nullable=True),
