@@ -2,7 +2,7 @@
 # Removes trailing whitespace from all files and optionally commits changes.
 MESSAGE="Remove trailing whitespace."
 
-git ls-files | grep '.py$' | parallel sed -i "'s/[ \t]*$//'"
+git ls-files | grep "\." | parallel sed -i "'s/[ \t]*$//'"
 
 UNCOMMITTED=`git diff --name-only`
 if [ "$UNCOMMITTED" ]

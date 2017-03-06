@@ -9,7 +9,7 @@ while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
     --creds_account) CREDS_ACCOUNT=$2; shift 2;;
-    --project) PROJECT=$2; shift 2;;        
+    --project) PROJECT=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
   esac

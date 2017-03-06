@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Sets up a Cloud SQL instance, sets the root password, creates an empty database, 
+# Sets up a Cloud SQL instance, sets the root password, creates an empty database,
 # and sets the database connection info in a database config in Datastore.
 #
 # Note that this script does *not* set up failover for the database. You can do that manually
@@ -20,7 +20,7 @@ while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
     --creds_account) CREDS_ACCOUNT=$2; shift 2;;
-    --project) PROJECT=$2; shift 2;;    
+    --project) PROJECT=$2; shift 2;;
     --create_instance) CREATE_INSTANCE=Y; shift 1;;
     -- ) shift; break ;;
     * ) break ;;

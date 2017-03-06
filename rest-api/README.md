@@ -4,7 +4,7 @@
 
 This api is implemented using Flask. They are served by a AppEngine instance.
 
-The App Engine project used for testing is pmi-drc-api-test, billed to Vanderbilt. 
+The App Engine project used for testing is pmi-drc-api-test, billed to Vanderbilt.
 
 The GCS bucket for biobank manifest testing is pmi-drc-biobank-test.
 
@@ -23,7 +23,7 @@ From the rest-api directory, run:
 * tools/setup_env.sh (get libs and Cloud SQL Proxy, set up git hooks)
 * sudo apt-get install mysql-server libmysqlclient-dev (to install MySQL server and client)
 * dev_appserver.py test.yaml --require_indexes (to run your local server)
-* tools/setup_local_database.sh (to create a database in MySQL, upgrade its schema, 
+* tools/setup_local_database.sh (to create a database in MySQL, upgrade its schema,
   import the latest codebook into it, and put the config for the database in Datastore)
 
 ### Running the development app server

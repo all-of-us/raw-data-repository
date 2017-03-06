@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Sets up a MySQL database named "rdr" locally (dropping the database if it already exists),
-# and sets the database config information in the 
+# and sets the database config information in the
 # local Datastore instance. You must have MySQL installed and running and your local
 # dev_appserver instance running before using this.
 

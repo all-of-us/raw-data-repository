@@ -18,7 +18,7 @@ PYTHONPATH=${GAE_SDK_ROOT}
 # Some modules have two or more versions available (Ex. django), so the loop
 # will import always its latest version.
 for module in ${GAE_SDK_ROOT}/lib/*; do
-  if [ -r ${module} ]; 
+  if [ -r ${module} ];
   then
     PYTHONPATH=${module}:${PYTHONPATH}
   fi

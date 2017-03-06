@@ -39,38 +39,38 @@ indexes:
   - name: hpoId
   - name: firstNameSearch
   - name: sortKey
- 
+
 - kind: ParticipantSummary
   properties:
   - name: lastNameSearch
   - name: dateOfBirth
   - name: firstNameSearch
   - name: sortKey
- 
+
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: middleNameSearch
   - name: sortKey
-  
+
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: dateOfBirth
-  - name: sortKey  
+  - name: sortKey
 
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: ageRange
-  - name: sortKey  
+  - name: sortKey
 
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: genderIdentity
   - name: sortKey
-  
+
 - kind: ParticipantSummary
   properties:
   - name: lastNameSearch
@@ -83,32 +83,32 @@ indexes:
   - name: hpoId
   - name: ethnicity
   - name: sortKey
-  
+
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: zipCode
-  - name: sortKey    
-  
+  - name: sortKey
+
 - kind: ParticipantSummary
   properties:
   - name: lastNameSearch
   - name: dateOfBirth
   - name: zipCode
   - name: sortKey
-  
+
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: membershipTier
   - name: sortKey
-  
+
 - kind: ParticipantSummary
   properties:
   - name: hpoId
   - name: consentForStudyEnrollment
   - name: sortKey
-  
+
 - kind: ParticipantSummary
   properties:
   - name: hpoId
@@ -120,7 +120,7 @@ indexes:
   - name: hpoId
   - name: numBaselineSamplesArrived
   - name: sortKey
- 
+
 - kind: PhysicalMeasurements
   ancestor: yes
   properties:
