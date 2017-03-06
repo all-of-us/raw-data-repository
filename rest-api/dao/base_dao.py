@@ -168,20 +168,20 @@ class BaseDao(object):
     if not self.order_by_ending:
       raise BadRequest("Can't query on type %s -- no order by ending speciifed" % self.model_type)
     with self.session() as session:
-      query, fields = self._make_query(session, query_def)
+      query, field_names = self._make_query(session, query_def)
       items = query.all()
     if items:
       if len(items) > query_def.max_results:
-        return Results(items[0:query_def.max_results], 
+        return Results(items[0:query_def.max_results],
                        self._make_pagination_token(items[query_def.max_results - 1].asdict(),
-                                                   fields))
+                                                   field_names))
       else:
         return Results(items, None)
     else:
       return Results([], None)
 
-  def _make_pagination_token(self, item_dict, fields):
-    vals = [item_dict.get(field) for field in fields]
+  def _make_pagination_token(self, item_dict, field_names):
+    vals = [item_dict.get(field_name) for field_name in field_names]
     vals_json = json.dumps(vals)
     return urlsafe_b64encode(vals_json)
 
@@ -210,24 +210,24 @@ class BaseDao(object):
     if query_def.ancestor_id:
       # For now, we only support participant IDs for ancestors.
       query = query.filter(self.model_type.participantId == query_def.ancestor_id)
-    field_names = set()
-    fields = []
+    order_by_field_names = []
+    order_by_fields = []
     first_descending = False
     if query_def.order_by:
-      query = self._add_order_by(query, query_def.order_by, field_names, fields)
+      query = self._add_order_by(query, query_def.order_by, order_by_field_names, order_by_fields)
       first_descending = not query_def.order_by.ascending
-    query = self._add_order_by_ending(query, field_names, fields)
+    query = self._add_order_by_ending(query, order_by_field_names, order_by_fields)
     # Return one more than max_results, so that we know if there are more results.
     query = query.limit(query_def.max_results + 1)
 
     if query_def.pagination_token:
       # Add a query filter based on the pagination token.
-      query = self._add_pagination_filter(query, query_def.pagination_token, fields, 
+      query = self._add_pagination_filter(query, query_def.pagination_token, order_by_fields,
                                           first_descending)
-    return query, fields
-  
+    return query, order_by_field_names
+
   def _add_pagination_filter(self, query, pagination_token, fields, first_descending):
-    """Adds a pagination filter for the decoded values in the pagination token based on 
+    """Adds a pagination filter for the decoded values in the pagination token based on
     the sort order."""
     try:
       decoded_vals = json.loads(urlsafe_b64decode(pagination_token))
@@ -248,7 +248,7 @@ class BaseDao(object):
       f = getattr(self.model_type, order_by.field_name)
     except AttributeError:
       raise BadRequest("No field named %s found on %s", (order_by.field_name, self.model_type))
-    field_names.add(order_by.field_name)
+    field_names.append(order_by.field_name)
     fields.append(f)
     if order_by.ascending:
       return query.order_by(f)
@@ -265,6 +265,7 @@ class BaseDao(object):
       except AttributeError:
         raise BadRequest("No field named %s found on %s", (order_by_field,
                                                            self.model_type))
+      field_names.append(order_by_field)
       fields.append(f)
       query = query.order_by(f)
     return query
