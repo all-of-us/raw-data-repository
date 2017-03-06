@@ -8,7 +8,6 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, U
 from werkzeug.exceptions import BadRequest
 
 from model.base import Base, FhirMixin, FP
-from model.utils import from_client_participant_id
 
 
 def _ToFhirDate(dt):
@@ -93,7 +92,6 @@ class BiobankOrder(Base):
   @staticmethod
   # pylint: disable=unused-argument
   def from_client_json(resource_json, participant_id=None, client_id=None):
-    participant_id = from_client_participant_id(participant_id)
     resource = _FhirBiobankOrder(resource_json)
     order = BiobankOrder(
         participantId=participant_id,

@@ -70,8 +70,8 @@ api.add_resource(QuestionnaireResponseApi,
                  methods=['POST', 'GET'])
 
 api.add_resource(BiobankOrderApi,
-                 PREFIX + 'Participant/<string:p_id>/BiobankOrder/<string:biobank_order_id>',
-                 PREFIX + 'Participant/<string:p_id>/BiobankOrder',
+                 PREFIX + 'Participant/<participant_id:p_id>/BiobankOrder/<string:bo_id>',
+                 PREFIX + 'Participant/<participant_id:p_id>/BiobankOrder',
                  endpoint='participant.biobank_order',
                  methods=['POST', 'GET'])
 

@@ -12,5 +12,5 @@ class BiobankOrderApi(BaseApi):
     return super(BiobankOrderApi, self).post(participant_id=p_id)
 
   @auth_required(PTC_AND_HEALTHPRO)
-  def get(self, p_id, biobank_order_id=None):  # pylint: disable=unused-argument
-    return super(BiobankOrderApi, self).get(biobank_order_id)
+  def get(self, p_id, bo_id=None):  # pylint: disable=unused-argument
+    return super(BiobankOrderApi, self).get(bo_id)
