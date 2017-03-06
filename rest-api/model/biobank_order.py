@@ -184,7 +184,7 @@ class BiobankOrderIdentifier(Base):
   system = Column('system', String(80), primary_key=True)
   value = Column('value', String(80), primary_key=True)
   biobankOrderId = Column(
-      'biobank_order_id', Integer, ForeignKey('biobank_order.biobank_order_id'), nullable=False)
+      'biobank_order_id', String(80), ForeignKey('biobank_order.biobank_order_id'), nullable=False)
 
 
 class BiobankOrderedSample(Base):
