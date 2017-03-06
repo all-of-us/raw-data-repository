@@ -12,7 +12,7 @@ then
   select yn in "Yes" "No"
   do
     case $yn in
-      Yes ) git commit -a -m "$MESSAGE";;
+      Yes ) git commit -a -m "$MESSAGE"; break;;
       No  ) break;;
     esac
   done
