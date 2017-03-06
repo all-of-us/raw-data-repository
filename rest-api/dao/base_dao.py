@@ -236,13 +236,39 @@ class BaseDao(object):
     print "TYPE = %s, len() = %d, fields = %d" % (type(decoded_vals), len(decoded_vals), len(fields))
     if not type(decoded_vals) is list or len(decoded_vals) != len(fields):
       raise BadRequest("Invalid pagination token: %s" % pagination_token)
-    if first_descending:
-      return query.filter(or_(fields[0] < decoded_vals[0],
-                              and_(fields[0] == decoded_vals[0],
-                                   tuple_(fields[1:]) > tuple_(decoded_vals[1:]))))
+    if self.database.db_type == 'sqlite':
+      # SQLite does not support tuple comparisons, so make an or-of-ands statements that is
+      # equivalent.
+      or_clauses = []
+      if first_descending:
+        if decoded_vals[0] is not None:
+          or_clauses.append(fields[0] < decoded_vals[0])
+      else:
+        if decoded_vals[0] is None:
+          or_clauses.append(fields[0].isnot(None))
+        else:
+          or_clauses.append(fields[0] > decoded_vals[0])
+      for i in range(1, len(fields)):
+        and_clauses = []
+        for j in range(0, i - 1):
+          and_clauses.append(fields[j] == decoded_vals[j])
+        if decoded_vals[i] is None:
+          and_clauses.append(fields[i].isnot(None))
+        else:
+          and_clauses.append(fields[i] > decoded_vals[i])
+        or_clauses.append(and_(*and_clauses))
+      return query.filter(or_(*or_clauses))
     else:
-      return query.filter(tuple_(fields) > tuple_(decoded_vals))
-                          
+      if first_descending:
+        if decoded_vals[0] is None:
+          return query.filter(and_(fields[0] is None,
+                                   tuple_(fields[1:]) > tuple_(decoded_vals[1:])))
+        return query.filter(or_(fields[0] < decoded_vals[0],
+                                and_(fields[0] == decoded_vals[0],
+                                     tuple_(fields[1:]) > tuple_(decoded_vals[1:]))))
+      else:
+        return query.filter(tuple_(fields) > tuple_(decoded_vals))
+
   def _add_order_by(self, query, order_by, field_names, fields):
     """Adds a single order by field, as the primary sort order."""
     try:
