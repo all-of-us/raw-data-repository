@@ -34,7 +34,7 @@ _FhirProperty = collections.namedtuple(
 
 
 def FP(name, fhir_type, json_name=None, is_list=False, required=False):
-  """Helper for declaring FHIR propertly tuples.
+  """Helper for declaring FHIR propertly tuples which fills in common default values.
 
   By default, JSON name is the camelCase version of the Python snake_case name.
 
