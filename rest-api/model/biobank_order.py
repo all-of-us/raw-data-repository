@@ -76,7 +76,7 @@ class BiobankOrder(Base):
 
   # The lab (client site) sending the order.
   sourceSiteSystem = Column('source_site_system', String(80))
-  sourceSiteValue = Column('source_site_value', Integer)
+  sourceSiteValue = Column('source_site_value', String(80))
 
   # Additional fields stored for future use.
   created = Column('created', DateTime, nullable=False)
@@ -93,7 +93,7 @@ class BiobankOrder(Base):
     order = BiobankOrder(
         participantId=participant_id,
         sourceSiteSystem=resource.source_site.system,
-        sourceSiteValue=int(resource.source_site.value),
+        sourceSiteValue=resource.source_site.value,
         created=resource.created.date,
         collectedNote=resource.notes.collected,
         processedNote=resource.notes.processed,
@@ -166,7 +166,7 @@ class BiobankOrder(Base):
     resource.notes.finalized = self.finalizedNote
     resource.source_site = Identifier()
     resource.source_site.system = self.sourceSiteSystem
-    resource.source_site.value = str(self.sourceSiteValue)
+    resource.source_site.value = self.sourceSiteValue
     self._add_identifiers_to_resource(resource)
     self._add_samples_to_resource(resource)
     client_json = resource.as_json()  # also validates required fields
