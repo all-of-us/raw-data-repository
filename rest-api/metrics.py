@@ -50,21 +50,21 @@ class MetricService(object):
 
   def get_metrics(self, request, serving_version):
     """Returns a list of JSON buckets that look like:
-        {"facets": {"date": <date> [, "hpoId": <hpo ID> ] }, 
+        {"facets": {"date": <date> [, "hpoId": <hpo ID> ] },
          "entries": [{ "Participant": <# of participants>, .... }] }
     """
-    query = MetricsBucket.query(ancestor=serving_version).order(MetricsBucket.date, 
+    query = MetricsBucket.query(ancestor=serving_version).order(MetricsBucket.date,
                                                                 MetricsBucket.hpoId)
     if request.start_date:
       start_date_val = datetime.datetime.strptime(request.start_date, DATE_FORMAT)
       query = query.filter(MetricsBucket.date >= start_date_val)
     if request.end_date:
-      end_date_val = datetime.datetime.strptime(request.end_date, DATE_FORMAT) 
-      query = query.filter(MetricsBucket.date <= end_date_val)     
+      end_date_val = datetime.datetime.strptime(request.end_date, DATE_FORMAT)
+      query = query.filter(MetricsBucket.date <= end_date_val)
     for db_bucket in query.fetch():
       facets_dict = {"date": db_bucket.date.isoformat()}
       if db_bucket.hpoId != '':
-        facets_dict["hpoId"] = db_bucket.hpoId      
+        facets_dict["hpoId"] = db_bucket.hpoId
       yield '{"facets": ' + json.dumps(facets_dict) + ', "entries": ' + db_bucket.metrics + '}'
 
 def set_pipeline_in_progress():

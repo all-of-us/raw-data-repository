@@ -23,7 +23,7 @@ class CodeBookDao(BaseDao):
     old_latest = self.get_latest_with_session(session, obj.system)
     if old_latest:
       if old_latest.version == obj.version:
-        raise BadRequest("Codebook with system %s, version %s already exists" % 
+        raise BadRequest("Codebook with system %s, version %s already exists" %
                          (obj.system, obj.version))
       old_latest.latest = False
       session.merge(old_latest)
@@ -72,7 +72,7 @@ class CodeBookDao(BaseDao):
     logging.info("Importing codes...")
     system = codebook_json['url']
     codebook = CodeBook(name=codebook_json['name'], version=codebook_json['version'],
-                        system=system)    
+                        system=system)
     code_count = 0
     with self.session() as session:
       self.insert_with_session(session, codebook)

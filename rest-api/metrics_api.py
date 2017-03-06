@@ -21,14 +21,14 @@ class MetricsAPI(Resource):
     if not serving_version:
       raise NotFound(
          'No Metrics with data version %r calculated yet.' % metrics.SERVING_METRICS_DATA_VERSION)
-    return Response(to_json_list(metrics.SERVICE.get_metrics(metrics_request, serving_version)), 
-                    content_type='application/json') 
-    
+    return Response(to_json_list(metrics.SERVICE.get_metrics(metrics_request, serving_version)),
+                    content_type='application/json')
+
 class MetricsFieldsAPI(Resource):
   @api_util.auth_required(HEALTHPRO)
   def get(self):
     return metrics.SERVICE.get_metrics_fields()
-    
+
 # Because we want to stream the JSON to the client, rather than load
 # it all into memory at once, we use this function (instead of json.dumps).
 def to_json_list(entries):

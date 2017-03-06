@@ -21,7 +21,7 @@ class ParticipantApi(UpdatableApi):
   def _do_insert(self, m):
     super(ParticipantApi, self)._do_insert(m)
     participant_dao.DAO().do_insert(_make_ndb_participant(m), client_id=m.clientId)
-    
+
   # TODO(DA-218): remove this
   def _do_update(self, m):
     super(ParticipantApi, self)._do_update(m)
@@ -44,7 +44,7 @@ class ParticipantApi(UpdatableApi):
   def patch(self, id_):
     return super(ParticipantApi, self).put(from_client_participant_id(id_))
 
-def _make_ndb_participant(obj):    
+def _make_ndb_participant(obj):
   key = ndb.Key(participant.Participant, to_client_participant_id(obj.participantId))
   p = participant.Participant(key=key,
                               biobankId=to_client_biobank_id(obj.biobankId),

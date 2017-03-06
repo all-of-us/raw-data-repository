@@ -21,7 +21,7 @@ class QuestionnaireDao(UpdatableDao):
 
   def _make_history(self, questionnaire, concepts, questions):
     history = QuestionnaireHistory()
-    history.fromdict(questionnaire.asdict(), allow_pk=True)        
+    history.fromdict(questionnaire.asdict(), allow_pk=True)
     for concept in concepts:
       new_concept = QuestionnaireConcept()
       new_concept.fromdict(concept.asdict())
@@ -30,11 +30,11 @@ class QuestionnaireDao(UpdatableDao):
       history.concepts.append(new_concept)
     for question in questions:
       new_question = QuestionnaireQuestion()
-      new_question.fromdict(question.asdict())      
+      new_question.fromdict(question.asdict())
       new_question.questionnaireId = questionnaire.questionnaireId
       new_question.questionnaireVersion = questionnaire.version
-      history.questions.append(new_question)    
-    
+      history.questions.append(new_question)
+
     return history
 
   def insert_with_session(self, session, questionnaire):
@@ -42,24 +42,24 @@ class QuestionnaireDao(UpdatableDao):
     questionnaire.lastModified = clock.CLOCK.now()
     questionnaire.version = 1
     # SQLAlchemy emits warnings unnecessarily when these collections aren't empty.
-    # We don't want these to be cascaded now anyway, so point them at nothing, but save 
+    # We don't want these to be cascaded now anyway, so point them at nothing, but save
     # the concepts and questions for use in history.
     concepts = list(questionnaire.concepts)
     questions = list(questionnaire.questions)
     questionnaire.concepts = []
     questionnaire.questions = []
-    
-    super(QuestionnaireDao, self).insert_with_session(session, questionnaire)    
+
+    super(QuestionnaireDao, self).insert_with_session(session, questionnaire)
     # This is needed to assign an ID to the questionnaire, as the client doesn't need to provide
     # one.
     session.flush()
-    
+
     # Set the ID in the resource JSON
     resource_json = json.loads(questionnaire.resource)
-    resource_json['id'] = str(questionnaire.questionnaireId)    
+    resource_json['id'] = str(questionnaire.questionnaireId)
     questionnaire.resource = json.dumps(resource_json)
-    
-    history = self._make_history(questionnaire, concepts, questions)    
+
+    history = self._make_history(questionnaire, concepts, questions)
     history.questionnaireId = questionnaire.questionnaireId
     QuestionnaireHistoryDao().insert_with_session(session, history)
     return questionnaire
@@ -73,24 +73,24 @@ class QuestionnaireDao(UpdatableDao):
 
   def update_with_session(self, session, questionnaire):
     super(QuestionnaireDao, self).update_with_session(session, questionnaire)
-    QuestionnaireHistoryDao().insert_with_session(session, 
+    QuestionnaireHistoryDao().insert_with_session(session,
                                                   self._make_history(questionnaire,
                                                                      questionnaire.concepts,
                                                                      questionnaire.questions))
-        
+
 class QuestionnaireHistoryDao(BaseDao):
   '''Maintains version history for questionnaires.
-  
+
   All previous versions of a questionnaire are maintained (with the same questionnaireId value and
   a new version value for each update.)
-  
-  Old versions of questionnaires and their questions can still be referenced by questionnaire 
-  responses, and are used when generating metrics / participant summaries, and in general 
+
+  Old versions of questionnaires and their questions can still be referenced by questionnaire
+  responses, and are used when generating metrics / participant summaries, and in general
   determining what answers participants gave to questions.
-  
+
   Concepts and questions live under a QuestionnaireHistory entry, such that when the questionnaire
   gets updated new concepts and questions are created and existing ones are left as they were.
-  
+
   Do not use this DAO for write operations directly; instead use QuestionnaireDao.
   '''
   def __init__(self):

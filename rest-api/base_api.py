@@ -189,20 +189,20 @@ class BaseApi(Resource):
 def sync(channel_index, max_results):
   token = request.args.get('_token')
   count_str = request.args.get('_count')
-  count = int(count_str) if count_str else max_results    
+  count = int(count_str) if count_str else max_results
   decoded_token = base64.b64decode(token) if token else None
   resources, next_token, more_available = sync_log.DAO().sync(channel_index, decoded_token, count)
   bundle_dict = {"resourceType": "Bundle", "type": "history"}
   query_params = request.args.copy()
-  query_params['_token'] = base64.b64encode(next_token)  
+  query_params['_token'] = base64.b64encode(next_token)
   link_type = "next" if more_available else "sync"
   next_url = flask.url_for(request.url_rule.endpoint, _external=True, **query_params)
-  bundle_dict['link'] = [{"relation": link_type, "url": next_url}]      
+  bundle_dict['link'] = [{"relation": link_type, "url": next_url}]
   entries = []
-  for resource in resources:            
+  for resource in resources:
     entries.append({"resource": resource})
   bundle_dict['entry'] = entries
-  return jsonify(bundle_dict)  
+  return jsonify(bundle_dict)
 
 def consider_fake_date():
   if "True" == config.getSetting(config.ALLOW_FAKE_HISTORY_DATES, None):

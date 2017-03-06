@@ -17,18 +17,18 @@ class QuestionnaireResponse(Base):
   """"A response to a questionnaire for a participant. Contains answers to questions found in the
   questionnaire."""
   __tablename__ = 'questionnaire_response'
-  questionnaireResponseId = Column('questionnaire_response_id', Integer, primary_key=True, 
+  questionnaireResponseId = Column('questionnaire_response_id', Integer, primary_key=True,
                                    autoincrement=False)
   questionnaireId = Column('questionnaire_id', Integer, nullable=False)
-  questionnaireVersion = Column('questionnaire_version', Integer, nullable=False)  
-  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'), 
+  questionnaireVersion = Column('questionnaire_version', Integer, nullable=False)
+  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
   created = Column('created', DateTime, nullable=False)
   resource = Column('resource', BLOB, nullable=False)
   answers = relationship('QuestionnaireResponseAnswer', cascade='all, delete-orphan')
   __table_args__ = (
-    ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], 
-                         ['questionnaire_history.questionnaire_id', 
+    ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'],
+                         ['questionnaire_history.questionnaire_id',
                           'questionnaire_history.version']),
   )
 
@@ -140,7 +140,7 @@ class QuestionnaireResponse(Base):
                 qr_answer.valueString = answer.valueString
               if answer.valueDate:
                 qr_answer.valueDate = answer.valueDate.date
-              if answer.valueDateTime:                
+              if answer.valueDateTime:
                 qr_answer.valueDateTime = answer.valueDateTime.date
               if answer.valueBoolean:
                 qr_answer.valueBoolean = answer.valueBoolean
@@ -164,7 +164,7 @@ class QuestionnaireResponse(Base):
 
 
 class QuestionnaireResponseAnswer(Base):
-  """An answer found in a questionnaire response. Note that there could be multiple answers to 
+  """An answer found in a questionnaire response. Note that there could be multiple answers to
   the same question, if the questionnaire allows for multiple answers.
 
   An answer is given to a particular question which has a particular concept code. The answer is
@@ -178,10 +178,10 @@ class QuestionnaireResponseAnswer(Base):
   __tablename__ = 'questionnaire_response_answer'
   questionnaireResponseAnswerId = Column('questionnaire_response_answer_id', Integer,
                                          primary_key=True)
-  questionnaireResponseId = Column('questionnaire_response_id', Integer, 
+  questionnaireResponseId = Column('questionnaire_response_id', Integer,
       ForeignKey('questionnaire_response.questionnaire_response_id'), nullable=False)
-  questionId = Column('question_id', Integer, 
-                      ForeignKey('questionnaire_question.questionnaire_question_id'), 
+  questionId = Column('question_id', Integer,
+                      ForeignKey('questionnaire_question.questionnaire_question_id'),
                       nullable=False)
   # The time at which this answer was replaced by another answer. Not set if this answer is the
   # latest answer to the question.

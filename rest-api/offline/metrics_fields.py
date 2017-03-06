@@ -27,7 +27,7 @@ FieldDef = namedtuple('FieldDef', ['name', 'func', 'func_range'])
 @ndb.non_transactional
 def run_extractors(hist_obj, config, new_state):
   """Runs a series of extractor functions to pull fields from a given history object. When
-     results are extracted succesfully, they are populated as entries in the new_state dict 
+     results are extracted succesfully, they are populated as entries in the new_state dict
      passed in, mutating its state."""
   hist_kind = hist_obj.key.kind()
   for field in config['fields'][hist_kind]:

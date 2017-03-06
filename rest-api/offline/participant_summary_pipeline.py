@@ -29,8 +29,8 @@ class ParticipantSummaryPipeline(BasePipeline):
         shards=num_shards)
 
 def regenerate_summary(entity_key):
-  """Takes a key for the entity. 
-  
+  """Takes a key for the entity.
+
   Writes a new participant summary if something has changed or the summary is missing.
 
   Args:

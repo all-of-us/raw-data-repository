@@ -20,7 +20,7 @@ class ParticipantBase(object):
 
   lastModified = Column('last_modified', DateTime, nullable=False)
   signUpTime = Column('sign_up_time', DateTime, nullable=False)
-  providerLink = Column('provider_link', BLOB)  
+  providerLink = Column('provider_link', BLOB)
 
   # Both HealthPro and PTC can mutate participants; we use clientId to track
   # which system did it.
@@ -29,20 +29,20 @@ class ParticipantBase(object):
   @declared_attr
   def hpoId(cls):
     return Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
-    
+
   def to_client_json(self):
     return {'participantId': to_client_participant_id(self.participantId),
             'biobankId': to_client_biobank_id(self.biobankId),
             'lastModified': self.lastModified.isoformat(),
             'signUpTime': self.signUpTime.isoformat(),
-            'providerLink': json.loads(self.providerLink) 
+            'providerLink': json.loads(self.providerLink)
             };
 
-class Participant(ParticipantBase, Base):  
+class Participant(ParticipantBase, Base):
   __tablename__ = 'participant'
-  participantSummary = relationship("ParticipantSummary", uselist=False, 
-                                    back_populates="participant", cascade='all, delete-orphan')  
-  
+  participantSummary = relationship("ParticipantSummary", uselist=False,
+                                    back_populates="participant", cascade='all, delete-orphan')
+
   @staticmethod
   def from_client_json(resource_json, id_=None, expected_version=None, client_id=None):
     # biobankId, lastModified, signUpTime are set by DAO.
@@ -50,10 +50,10 @@ class Participant(ParticipantBase, Base):
                        providerLink=json.dumps(resource_json.get('providerLink')),
                        clientId=client_id)
 
-Index('participant_biobank_id', Participant.biobankId, unique=True)  
+Index('participant_biobank_id', Participant.biobankId, unique=True)
 Index('participant_hpo_id', Participant.hpoId)
 
-class ParticipantHistory(ParticipantBase, Base):  
+class ParticipantHistory(ParticipantBase, Base):
   __tablename__ = 'participant_history'
   version = Column('version', Integer, primary_key=True)
 

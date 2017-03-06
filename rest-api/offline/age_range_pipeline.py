@@ -1,7 +1,7 @@
 """Offline process for updating participant summaries.
 
 This is mapreduce that goes over existing ParticipantSummary entities and updates their age
-range if it has changed based on the current date. 
+range if it has changed based on the current date.
 
 Having an age range field is necessary because Datastore does
 not support inequality filters on queries with a sort order starting with a different field.

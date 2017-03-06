@@ -20,7 +20,7 @@ class ParticipantSummaryPipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
     SqlTestBase.setup_database()
     testutil.HandlerTestBase.setUp(self)
-  
+
   def tearDown(self):
     SqlTestBase.teardown_database()
 

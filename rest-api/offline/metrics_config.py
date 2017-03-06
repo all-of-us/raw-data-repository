@@ -35,7 +35,7 @@ def biospecimen_summary(summary):
   if samples != UNSET:
     ret = samples
   return ExtractionResult(ret)
-  
+
 def consent_for_study_enrollment_and_ehr(summary):
   """True when both the study and EHR have been consented to."""
   consent_for_study = summary.get('consentForStudyEnrollment', UNSET)
@@ -56,7 +56,7 @@ def get_fields():
         field_dict = {'name': type_ + '.' + field.name,
                       'values': [str(r) for r in field.func_range]}
         fields.append(field_dict)
-  return sorted(fields, key=lambda field: field['name'])    
+  return sorted(fields, key=lambda field: field['name'])
 
 ALL_CONFIG = {
     'Participant': {
