@@ -67,7 +67,7 @@ class ParticipantSummary(ndb.Model):
   questionnaireOnOverallHealthTime = ndb.DateTimeProperty(indexed=False)
   questionnaireOnPersonalHabits = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
-  questionnaireOnPersonalHabitsTime = ndb.DateTimeProperty(indexed=False)      
+  questionnaireOnPersonalHabitsTime = ndb.DateTimeProperty(indexed=False)
   questionnaireOnSociodemographics = msgprop.EnumProperty(
       QuestionnaireStatus, default=QuestionnaireStatus.UNSET, indexed=False)
   questionnaireOnSociodemographicsTime = ndb.DateTimeProperty(indexed=False)
@@ -133,7 +133,7 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
 
   def properties_to_json(self, dict_):
     api_util.format_json_date(dict_, 'dateOfBirth', DATE_OF_BIRTH_FORMAT)
-    api_util.format_json_date(dict_, 'signUpTime', date_format='%Y-%m-%dT%H:%M:%S')    
+    api_util.format_json_date(dict_, 'signUpTime', date_format='%Y-%m-%dT%H:%M:%S')
     api_util.format_json_date(dict_, 'consentForStudyEnrollmentTime')
     api_util.format_json_date(dict_, 'consentForElectronicHealthRecordsTime')
     api_util.format_json_date(dict_, 'questionnaireOnOverallHealthTime')
@@ -193,14 +193,14 @@ class ParticipantSummaryDAO(data_access_object.DataAccessObject):
     summary = self.get_summary_for_participant(participant_id)
     summary.hpoId = hpo_id
     self.store(summary)
-    
+
   @ndb.transactional
   def update_with_incoming_data(self, participant_id, incoming_history_obj, config):
     old_summary = self.get_summary_for_participant(participant_id)
     old_summary_json = self.to_json(old_summary)
     new_summary = copy.deepcopy(old_summary_json)
     run_extractors(incoming_history_obj, config, new_summary)
-    
+
     # If the extracted fields don't match, update them
     changed = False
     for field_name, value in new_summary.iteritems():

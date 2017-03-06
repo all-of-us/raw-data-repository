@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from werkzeug.exceptions import NotFound, PreconditionFailed, ServiceUnavailable
 from sqlalchemy.exc import IntegrityError
 
-# Maximum number of times we will attempt to insert an entity with a random ID before 
+# Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
 MAX_INSERT_ATTEMPTS = 20
 
@@ -15,10 +15,10 @@ _MAX_ID = 999999999
 
 class BaseDao(object):
   """A data access object base class; defines common methods for inserting and retrieving
-  objects using SQLAlchemy. 
-  
+  objects using SQLAlchemy.
+
   Extend directly from BaseDao if entities cannot be updated after being
-  inserted; extend from UpdatableDao if they can be updated. 
+  inserted; extend from UpdatableDao if they can be updated.
   """
   def __init__(self, model_type):
     self.model_type = model_type
@@ -54,7 +54,7 @@ class BaseDao(object):
     """Inserts an object into the database. The calling object may be mutated
     in the process."""
     with self.session() as session:
-      return self.insert_with_session(session, obj)    
+      return self.insert_with_session(session, obj)
 
   def get_id(self, obj):
     """Returns the ID (for single primary key column tables) or a list of IDs (for multiple
@@ -76,33 +76,33 @@ class BaseDao(object):
   def get_with_children(self, obj_id):
     """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
     return self.get(self, obj_id)
-  
+
   def _get_random_id(self, field):
     # pylint: disable=unused-argument
     return random.randint(_MIN_ID, _MAX_ID)
-    
-  def _insert_with_random_id(self, obj, fields):    
+
+  def _insert_with_random_id(self, obj, fields):
     """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
-    or a maximum number of attempts are performed."""    
+    or a maximum number of attempts are performed."""
     for _ in range(0, MAX_INSERT_ATTEMPTS):
       for field in fields:
-        setattr(obj, field, self._get_random_id(field))      
+        setattr(obj, field, self._get_random_id(field))
       try:
         with self.session() as session:
           return self.insert_with_session(session, obj)
       except IntegrityError:
-        pass                  
+        pass
     # We were unable to insert a participant (unlucky). Throw an error.
     raise ServiceUnavailable("Giving up after %d insert attempts" % MAX_INSERT_ATTEMPTS)
 
 class UpdatableDao(BaseDao):
-  """A DAO that allows updates to entities. 
-  
+  """A DAO that allows updates to entities.
+
   Extend from UpdatableDao if entities can be updated after being inserted.
-  
+
   All model objects using this DAO must define a "version" field.
   """
-  
+
   def _validate_update(self, session, obj, existing_obj):
     """Validates that an update is OK before performing it. (Not applied on insert.)
 

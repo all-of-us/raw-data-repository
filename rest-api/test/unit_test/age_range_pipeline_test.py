@@ -19,7 +19,7 @@ class AgeRangePipelineTest(testutil.CloudStorageTestBase):
   def setUp(self):
     SqlTestBase.setup_database()
     testutil.HandlerTestBase.setUp(self)
-  
+
   def tearDown(self):
     SqlTestBase.teardown_database()
 
@@ -31,7 +31,7 @@ class AgeRangePipelineTest(testutil.CloudStorageTestBase):
 
     questionnaire_json = json.loads(open(data_path('consent_questionnaire.json')).read())
     questionnaire = QuestionnaireDao().insert(Questionnaire.from_client_json(questionnaire_json))
-    questionnaire_response_template = open(data_path('consent_questionnaire_response.json')).read()    
+    questionnaire_response_template = open(data_path('consent_questionnaire_response.json')).read()
     replacements = {'consent_questionnaire_id': str(questionnaire.questionnaireId),
                     'middle_name': 'Quentin',
                     'first_name': 'Bob',

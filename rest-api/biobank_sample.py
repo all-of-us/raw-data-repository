@@ -38,7 +38,7 @@ class BiobankSamplesDAO(data_access_object.DataAccessObject):
     super(BiobankSamplesDAO, self).__init__(BiobankSamples, participant.Participant, False)
 
   def get_samples_for_participant(self, participant_id):
-    return self.load_if_present(SINGLETON_SAMPLES_ID, participant_id)    
+    return self.load_if_present(SINGLETON_SAMPLES_ID, participant_id)
 
   def properties_from_json(self, dict_, ancestor_id, id_):
     for sample_dict in dict_['samples']:
@@ -46,7 +46,7 @@ class BiobankSamplesDAO(data_access_object.DataAccessObject):
       api_util.parse_json_date(sample_dict, 'disposedDate')
       api_util.parse_json_date(sample_dict, 'confirmedDate')
     return dict_
-    
+
   @ndb.transactional
   def store(self, model, date=None, client_id=None):
     super(BiobankSamplesDAO, self).store(model, date, client_id)

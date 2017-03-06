@@ -1,8 +1,6 @@
 #!/bin/bash -e
 # Run simple tests and check for forgotten changes.
 
-ci/test_pre_push.sh
-
 UNTRACKED=`git ls-files --others --exclude-standard`
 UNCOMMITTED=`git diff --name-only`
 if [ "$UNTRACKED" -o "$UNCOMMITTED" ]
@@ -17,3 +15,7 @@ then
     esac
   done
 fi
+
+rest-api/tools/remove_trailing_whitespace.sh
+
+ci/test_pre_push.sh

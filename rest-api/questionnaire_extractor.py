@@ -2,8 +2,8 @@ import extraction
 
 class QuestionnaireExtractor(extraction.FhirExtractor):
   """FHIR extractor for questionnaires."""
-  
-  def extract_root_group_concepts(self):  
+
+  def extract_root_group_concepts(self):
     return [extraction.Concept(node.system, node.code) for node in self.r_fhir.group.concept or []]
 
   def extract_link_id_for_concept(self, concept):
@@ -12,7 +12,7 @@ class QuestionnaireExtractor(extraction.FhirExtractor):
     return self.extract_link_id_for_concept_(self.r_fhir.group, concept)
 
   def extract_link_id_for_concept_(self, qr, concept):
-    # Sometimes concept is an existing attr with a value of None.    
+    # Sometimes concept is an existing attr with a value of None.
     for node in qr.concept or []:
       if concept == extraction.Concept(node.system, node.code):
         return [qr.linkId]

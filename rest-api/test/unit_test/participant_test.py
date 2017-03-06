@@ -39,7 +39,7 @@ class ParticipantNdbTest(NdbTestBase):
         key=participant_key,
         biobankId=None)
     participant_dao.DAO().insert(participant_entry, dates[0])
-    
+
     participant_result = participant_dao.DAO().load(participant_id)
     self.assertTrue(participant_result.biobankId)
     participant_summary_result = participant_summary.DAO().get_summary_for_participant(participant_id)
@@ -48,9 +48,9 @@ class ParticipantNdbTest(NdbTestBase):
     self.assertEquals(0, participant_summary_result.numCompletedBaselinePPIModules)
     self.assertEquals(0, participant_summary_result.numBaselineSamplesArrived)
     self.assertEquals(participant_id, participant_summary_result.participantId)
-    self.assertEquals(participant_result.biobankId, participant_summary_result.biobankId)    
+    self.assertEquals(participant_result.biobankId, participant_summary_result.biobankId)
 
-    
+
     with open(os.path.join(test_data, 'questionnaire1.json')) as rfile:
       questionnaire_entry = Questionnaire.from_client_json(json.load(rfile))
     questionnaire = QuestionnaireDao().insert(questionnaire_entry)

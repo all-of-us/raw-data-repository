@@ -40,7 +40,7 @@ class TestbedTestBase(TestBase):
   def setUp(self):
     super(TestbedTestBase, self).setUp()
     # Reset singletons, including the database, between tests.
-    singletons.reset_for_tests()    
+    singletons.reset_for_tests()
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.testbed.init_taskqueue_stub()
@@ -54,7 +54,7 @@ class SqlTestBase(TestbedTestBase):
   def setUp(self, with_data=True):
     super(SqlTestBase, self).setUp()
     SqlTestBase.setup_database()
-    self.database = dao.database_factory.get_database()    
+    self.database = dao.database_factory.get_database()
     if with_data:
       self.setup_data()
 
@@ -66,11 +66,11 @@ class SqlTestBase(TestbedTestBase):
   def setup_database():
     dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
     dao.database_factory.get_database().create_schema()
-  
+
   @staticmethod
   def teardown_database():
     dao.database_factory.get_database().get_engine().dispose()
-  
+
   def get_database(self):
     return self.database
 
@@ -86,7 +86,7 @@ class SqlTestBase(TestbedTestBase):
     del dict1['lastModified']
     del dict2['lastModified']
     self.assertEquals(dict1, dict2)
-    
+
 
 class NdbTestBase(SqlTestBase):
   """Base class for unit tests that need the NDB testbed."""
@@ -98,7 +98,7 @@ class NdbTestBase(SqlTestBase):
 
 
 def read_dev_config():
-  with open(os.path.join(os.path.dirname(__file__), '../../config/config_dev.json')) as config_file: 
+  with open(os.path.join(os.path.dirname(__file__), '../../config/config_dev.json')) as config_file:
     with open(os.path.join(os.path.dirname(__file__), '../../config/base_config.json')) as b_cfg:
       config_json = json.load(b_cfg)
       config_json.update(json.load(config_file))
@@ -145,7 +145,7 @@ class FlaskTestBase(NdbTestBase):
 
   def send_post(self, *args, **kwargs):
     return self.send_request('POST', *args, **kwargs)
-  
+
   def send_put(self, *args, **kwargs):
     return self.send_request('PUT', *args, **kwargs)
 
@@ -172,8 +172,8 @@ class FlaskTestBase(NdbTestBase):
     if expected_response_headers:
       self.assertTrue(set(expected_response_headers.items())
                           .issubset(set(response.headers.items())),
-                      "Expected response headers: %s; actual: %s" % 
-                      (expected_response_headers, response.headers))    
+                      "Expected response headers: %s; actual: %s" %
+                      (expected_response_headers, response.headers))
     if expected_status == httplib.OK:
       return json.loads(response.data)
     return None
@@ -189,15 +189,15 @@ class FlaskTestBase(NdbTestBase):
       return response['id']
 
   def create_and_verify_created_obj(self, path, resource):
-    response = self.send_post(path, resource)  
-    q_id = response['id']  
+    response = self.send_post(path, resource)
+    q_id = response['id']
     del response['id']
     self.assertJsonResponseMatches(resource, response)
 
     response = self.send_get('{}/{}'.format(path, q_id))
     del response['id']
     self.assertJsonResponseMatches(resource, response)
-    
+
   def assertJsonResponseMatches(self, obj_a, obj_b):
     obj_b = copy.deepcopy(obj_b)
     if 'meta' in obj_b and not 'meta' in obj_a:
@@ -205,7 +205,7 @@ class FlaskTestBase(NdbTestBase):
     if 'lastModified' in obj_a:
       del obj_a['lastModified']
     if 'lastModified' in obj_b:
-      del obj_b['lastModified']    
+      del obj_b['lastModified']
     self.assertMultiLineEqual(pretty(obj_a), pretty(obj_b))
 
 
@@ -252,7 +252,7 @@ def make_questionnaire_response(participant_id, questionnaire_id, answers):
 
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
-  
+
 @contextmanager
 def random_ids(ids):
   with patch('random.randint', side_effect=ids):

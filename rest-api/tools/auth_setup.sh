@@ -30,7 +30,7 @@ function cleanup {
   fi
   if [ "$PRIVATE_KEY" ];
   then
-    gcloud iam service-accounts keys delete $PRIVATE_KEY -q --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT       
+    gcloud iam service-accounts keys delete $PRIVATE_KEY -q --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
   fi
   rm -f ${CREDS_FILE}
   rm -f ${DB_INFO_FILE}
@@ -41,10 +41,10 @@ trap cleanup EXIT
 gcloud iam service-accounts keys create $CREDS_FILE --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
 PRIVATE_KEY=`grep private_key_id $CREDS_FILE | cut -d\" -f4`
 
-function get_instance_connection_name { 
+function get_instance_connection_name {
   echo "Getting database info..."
   tools/install_config.sh --key db_config --instance $INSTANCE --creds_file ${CREDS_FILE} > $DB_INFO_FILE
-  INSTANCE_CONNECTION_NAME=`grep db_connection_name $DB_INFO_FILE | cut -d\" -f4`  
+  INSTANCE_CONNECTION_NAME=`grep db_connection_name $DB_INFO_FILE | cut -d\" -f4`
 }
 
 function get_db_password {

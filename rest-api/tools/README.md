@@ -27,18 +27,22 @@ it, and populates database configuration in Datastore.
 
 ### setup_env.sh
 
-Sets up your workspace after checking out the code, or when something changes in 
+Sets up your workspace after checking out the code, or when something changes in
 requirements.txt.
 
 ### setup_local_database.sh
 
-Sets up an rdr database on your local MySQL instance, for use when running a local 
+Sets up an rdr database on your local MySQL instance, for use when running a local
 server.
 
 ### upgrade_database.sh
 
-Upgrades a database (either local or in Cloud SQL) to the latest or a specified Alembic revision, 
+Upgrades a database (either local or in Cloud SQL) to the latest or a specified Alembic revision,
 applying schema migrations. (If the schema is already up to date, this is a no-op.)
+
+### remove_trailing_whitespace.sh
+
+Trim trailing whitespace form all files and optionally commit changes.
 
 ## Included scripts (use with "source &lt;script name&gt;")
 

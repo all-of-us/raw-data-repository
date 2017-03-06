@@ -37,7 +37,7 @@ then
     EXTRA_ARGS+=" --update"
   fi
   echo "ARGS = ${EXTRA_ARGS}"
-  
+
 fi
 
 (cd ${BASE_DIR}; python tools/install_config.py $EXTRA_ARGS)

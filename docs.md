@@ -166,14 +166,14 @@ The summary includes the following fields:
 * `consentForStudyEnrollment`:  indicates whether enrollment consent has been received (`UNSET` or `SUBMITTED`)
 * `consentForStudyEnrollmentTime`: indicates the time at which enrollment consent has been received (ISO-8601 time)
 * `consentForElectronicHealthRecords`
-* `consentForElectronicHealthRecordsTime` 
+* `consentForElectronicHealthRecordsTime`
 * `questionnaireOnOverallHealth`: indicates status for Overall Health PPI module
 * `questionnaireOnOverallHealthTime`
-* `questionnaireOnPersonalHabits` 
+* `questionnaireOnPersonalHabits`
 * `questionnaireOnPersonalHabitsTime`
 * `questionnaireOnSociodemographics`
 * `questionnaireOnSociodemographicsTime`
-* `questionnaireOnHealthcareAccess` 
+* `questionnaireOnHealthcareAccess`
 * `questionnaireOnHealthcareAccessTime`
 * `questionnaireOnMedicalHistory`
 * `questionnaireOnMedicalHistoryTime`
@@ -298,7 +298,7 @@ where the first entry is a `Composition` including:
 
 ```
 
-* a series of `Observation`s each with times, codes, and values. 
+* a series of `Observation`s each with times, codes, and values.
 
 See also: [Physical measurements form
 specs](https://docs.google.com/spreadsheets/d/10kYqLSPigl02jUBpwEHpGAHwuwExFu-BedvMOJ5afpE/edit#gid=0)
@@ -388,14 +388,14 @@ The response body includes:
 
 ```
 {
-  "name": "Participant.genderIdentity", 
+  "name": "Participant.genderIdentity",
   "values": [
-    "FEMALE", 
-    "MALE", 
-    "FEMALE_TO_MALE_TRANSGENDER", 
-    "MALE_TO_FEMALE_TRANSGENDER", 
-    "INTERSEX", 
-    "OTHER", 
+    "FEMALE",
+    "MALE",
+    "FEMALE_TO_MALE_TRANSGENDER",
+    "MALE_TO_FEMALE_TRANSGENDER",
+    "INTERSEX",
+    "OTHER",
     "PREFER_NOT_TO_SAY"
   ]
 }

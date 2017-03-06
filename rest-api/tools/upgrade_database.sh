@@ -12,12 +12,12 @@ while true; do
     --revision) REVISION=$2; shift 2;;
     --account) ACCOUNT=$2; shift 2;;
     --creds_account) CREDS_ACCOUNT=$2; shift 2;;
-    --project) PROJECT=$2; shift 2;;        
+    --project) PROJECT=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
   esac
 done
- 
+
 if [ "${PROJECT}" ]
 then
   if [ -z "${ACCOUNT}" ]
@@ -29,8 +29,8 @@ then
   then
     CREDS_ACCOUNT="${ACCOUNT}"
   fi
-fi   
-    
+fi
+
 
 if [ -z "${REVISION}" ]
 then
@@ -38,7 +38,7 @@ then
 fi
 
 if [ ! -z "${PROJECT}" ]
-then 
+then
   source tools/auth_setup.sh
   run_cloud_sql_proxy
   set_db_connection_string

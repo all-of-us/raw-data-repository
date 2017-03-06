@@ -39,7 +39,7 @@ class ParticipantApiTest(FlaskTestBase):
         "value": "MRN456"
       }]
     }
-    
+
 
   def test_insert(self):
     response = self.send_post('Participant', self.participant)
@@ -58,7 +58,7 @@ class ParticipantApiTest(FlaskTestBase):
   def test_update_no_ifmatch_specified(self):
     response = self.send_post('Participant', self.participant)
 
-    # Change the provider link for the participant    
+    # Change the provider link for the participant
     participant_id = response['participantId']
     response['providerLink'] = [ self.provider_link_2 ]
     path = 'Participant/%s' % participant_id
@@ -67,31 +67,31 @@ class ParticipantApiTest(FlaskTestBase):
   def test_update_bad_ifmatch_specified(self):
     response = self.send_post('Participant', self.participant)
 
-    # Change the provider link for the participant    
+    # Change the provider link for the participant
     participant_id = response['participantId']
     response['providerLink'] = [ self.provider_link_2 ]
     path = 'Participant/%s' % participant_id
-    self.send_put(path, response, headers={ 'If-Match': 'Blah' }, 
+    self.send_put(path, response, headers={ 'If-Match': 'Blah' },
                   expected_status=httplib.BAD_REQUEST)
 
   def test_update_wrong_ifmatch_specified(self):
     response = self.send_post('Participant', self.participant)
 
-    # Change the provider link for the participant    
+    # Change the provider link for the participant
     participant_id = response['participantId']
     response['providerLink'] = [ self.provider_link_2 ]
     path = 'Participant/%s' % participant_id
-    self.send_put(path, response, headers={ 'If-Match': 'W/"123"' }, 
+    self.send_put(path, response, headers={ 'If-Match': 'W/"123"' },
                   expected_status=httplib.PRECONDITION_FAILED)
 
   def test_update_right_ifmatch_specified(self):
     response = self.send_post('Participant', self.participant)
     self.assertEquals('W/"1"', response['meta']['versionId'])
-    # Change the provider link for the participant    
+    # Change the provider link for the participant
     participant_id = response['participantId']
     response['providerLink'] = [ self.provider_link_2 ]
     path = 'Participant/%s' % participant_id
     update_response = self.send_put(path, response, headers={ 'If-Match': 'W/"1"' })
-    response['meta']['versionId'] = 'W/"2"'    
-    self.assertJsonResponseMatches(response, update_response)    
+    response['meta']['versionId'] = 'W/"2"'
+    self.assertJsonResponseMatches(response, update_response)
 

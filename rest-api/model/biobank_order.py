@@ -14,19 +14,19 @@ class BiobankOrder(Base):
   # We want autoincrement=False for the ID, but omit it to avoid warnings and enforce a
   # client-specified ID in the DAO layer.
   biobankOrderId = Column('biobank_order_id', Integer, primary_key=True)
-  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'), 
-                         nullable=False)  
-  created = Column('created', DateTime, default=clock.CLOCK.now, nullable=False)  
+  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
+                         nullable=False)
+  created = Column('created', DateTime, default=clock.CLOCK.now, nullable=False)
   sourceSiteSystem = Column('source_site_system', String(80))
-  sourceSiteValue = Column('source_site_value', String(80))  
+  sourceSiteValue = Column('source_site_value', String(80))
   collected = Column('collected', UnicodeText)
   processed = Column('processed', UnicodeText)
   finalized = Column('finalized', UnicodeText)
-  identifiers = relationship('BiobankOrderIdentifier', cascade='all, delete-orphan')    
+  identifiers = relationship('BiobankOrderIdentifier', cascade='all, delete-orphan')
   samples = relationship('BiobankOrderedSample', cascade='all, delete-orphan')
-  logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'), 
+  logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'),
                          nullable=False)
-  logPosition = relationship('LogPosition')  
+  logPosition = relationship('LogPosition')
 
 
 class BiobankOrderIdentifier(Base):

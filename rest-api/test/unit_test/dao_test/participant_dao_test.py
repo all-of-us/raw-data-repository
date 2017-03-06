@@ -51,16 +51,16 @@ class ParticipantDaoTest(SqlTestBase):
     p = Participant()
     with random_ids([1, 2]):
       self.dao.insert(p)
-    p2 = Participant()    
+    p2 = Participant()
     time = datetime.datetime(2016, 1, 1)
     with random_ids([1, 3, 2, 3]):
-      with FakeClock(time):      
+      with FakeClock(time):
         p2 = self.dao.insert(p2)
     expected_participant = Participant(participantId=2, version=1, biobankId=3, lastModified=time,
                                        signUpTime=time, hpoId=UNSET_HPO_ID)
     self.assertEquals(expected_participant.asdict(), p2.asdict())
 
-  def test_insert_duplicate_participant_id_give_up(self):    
+  def test_insert_duplicate_participant_id_give_up(self):
     p = Participant()
     with random_ids([1, 2]):
       self.dao.insert(p)
@@ -69,11 +69,11 @@ class ParticipantDaoTest(SqlTestBase):
       rand_ints.append(1)
       rand_ints.append(i)
     p2 = Participant()
-    with random_ids(rand_ints):      
+    with random_ids(rand_ints):
       with self.assertRaises(ServiceUnavailable):
         self.dao.insert(p2)
 
-  def test_insert_duplicate_biobank_id_give_up(self):    
+  def test_insert_duplicate_biobank_id_give_up(self):
     p = Participant()
     with random_ids([1, 2]):
       self.dao.insert(p)
@@ -82,9 +82,9 @@ class ParticipantDaoTest(SqlTestBase):
       rand_ints.append(i + 2)
       rand_ints.append(2)
     p2 = Participant()
-    with random_ids(rand_ints):      
+    with random_ids(rand_ints):
       with self.assertRaises(ServiceUnavailable):
-        self.dao.insert(p2)  
+        self.dao.insert(p2)
 
   def test_update_no_expected_version(self):
     p = Participant()
@@ -136,13 +136,13 @@ class ParticipantDaoTest(SqlTestBase):
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
       self.dao.update(p)
-    
+
     p2 = self.dao.get(1);
     expected_participant = Participant(participantId=1, version=2, biobankId=2, lastModified=time2,
                                        signUpTime=time, hpoId=PITT_HPO_ID,
                                        providerLink=p2.providerLink)
     self.assertEquals(expected_participant.asdict(), p2.asdict())
-    
+
   def test_update_wrong_expected_version(self):
     p = Participant()
     time = datetime.datetime(2016, 1, 1)

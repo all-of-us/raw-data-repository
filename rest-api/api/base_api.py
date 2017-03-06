@@ -9,16 +9,16 @@ class BaseApi(Resource):
   """Base class for API handlers.
 
   Provides a generic implementation for an API handler which is backed by a
-  BaseDao and supports POST and GET. 
-  
+  BaseDao and supports POST and GET.
+
   For APIs that support PATCH requests as well, extend from UpdatableApi instead.
-  
+
   When extending this class, prefer to use the method_decorators class property
   for uniform authentication, e.g.:
     method_decorators = [api_util.auth_required_cron]
   """
   def __init__(self, dao):
-    self.dao = dao    
+    self.dao = dao
 
   def get(self, id_=None):
     """Handle a GET request.
@@ -27,12 +27,12 @@ class BaseApi(Resource):
       id: If provided this is the id of the object to fetch.  If this is not
         present, this is assumed to be a "list" request, and the list() function
         will be called.
-    """    
+    """
     if id_ is None:
       return self.list()
     obj = self.dao.get(id_)
     if not obj:
-      raise NotFound("%s with ID %s not found" % (self.dao.model_type.__name__, id_))    
+      raise NotFound("%s with ID %s not found" % (self.dao.model_type.__name__, id_))
     return self._make_response(obj)
 
   def _make_response(self, obj):
@@ -45,10 +45,10 @@ class BaseApi(Resource):
                                                   client_id=api_util.get_oauth_id())
     else:
       return self.dao.model_type.from_client_json(resource, client_id=api_util.get_oauth_id())
-  
+
   def _do_insert(self, m):
     self.dao.insert(m)
-      
+
   def post(self, participant_id=None):
     """Handles a POST (insert) request.
 
@@ -56,7 +56,7 @@ class BaseApi(Resource):
       participant_id: The ancestor id.
     """
     resource = request.get_json(force=True)
-    m = self._get_model_to_insert(resource, participant_id)    
+    m = self._get_model_to_insert(resource, participant_id)
     self._do_insert(m)
     return self._make_response(m)
 
@@ -71,33 +71,33 @@ class BaseApi(Resource):
 
 class UpdatableApi(BaseApi):
   """Base class for API handlers that support PUT requests.
-  
+
   To be used with UpdatableDao for model objects with a version field.
-  """    
-  def _get_model_to_update(self, resource, id_, expected_version, participant_id=None):    
+  """
+  def _get_model_to_update(self, resource, id_, expected_version, participant_id=None):
     # Children of participants accept a participant_id parameter to from_client_json; others don't.
     if participant_id is not None:
-      return self.dao.model_type.from_client_json(resource, participant_id=participant_id, id_=id_, 
+      return self.dao.model_type.from_client_json(resource, participant_id=participant_id, id_=id_,
                                                   expected_version=expected_version,
                                                   client_id=api_util.get_oauth_id())
     else:
-      return self.dao.model_type.from_client_json(resource, id_=id_, 
+      return self.dao.model_type.from_client_json(resource, id_=id_,
                                                   expected_version=expected_version,
                                                   client_id=api_util.get_oauth_id())
-  
-  def _make_response(self, obj):    
+
+  def _make_response(self, obj):
     result = super(UpdatableApi, self)._make_response(obj)
     etag = _make_etag(obj.version)
     result['meta'] = {'versionId': etag}
     return result, 200, {'ETag': etag}
-  
+
   def _do_update(self, m):
     self.dao.update(m)
-    
+
   def put(self, id_, participant_id=None):
-    """Handles a PUT (replace) request; the current object must exist, and will be replaced 
+    """Handles a PUT (replace) request; the current object must exist, and will be replaced
     completely.
-      
+
     Args:
       id: The id of the object to update.
       participant_id: The ancestor id (if applicable).
@@ -107,7 +107,7 @@ class UpdatableApi(BaseApi):
     etag = request.headers.get('If-Match')
     if not etag:
       raise BadRequest("If-Match is missing for PATCH request")
-    expected_version = _parse_etag(etag)    
+    expected_version = _parse_etag(etag)
     m = self._get_model_to_update(resource, id_, expected_version, participant_id)
     self._do_update(m)
     return self._make_response(m)

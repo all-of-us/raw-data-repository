@@ -58,7 +58,7 @@ class Client(object):
               cron=False,
               test_unauthenticated=True,
               absolute_path=False):
-    if absolute_path:           
+    if absolute_path:
       url = path
     else:
       url = '{}/{}/{}'.format(self.instance, self.base_path, path)

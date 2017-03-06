@@ -68,7 +68,7 @@ class BiobankSamplesPipelineTest(testutil.CloudStorageTestBase):
         'P1', biobank_sample.SINGLETON_SAMPLES_ID).to_dict()
     del expected_samples_1['last_modified']
     self.assertEquals(expected_samples_1, to_dict_strip_last_modified(biobank_samples_1))
-    
+
     participant_summary_1 = participant_summary.DAO().get_summary_for_participant('P1')
     participant_summary_2 = participant_summary.DAO().get_summary_for_participant('P2')
     self.assertEquals(1, participant_summary_1.numBaselineSamplesArrived)

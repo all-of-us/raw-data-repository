@@ -11,7 +11,7 @@
       "concept": [{
         "system": "http://terminology.pmi-ops.org/CodeSystem/questionnaire",
         "code": "intake-demographics"
-      }, 
+      },
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-module",
         "code": "overall-health"

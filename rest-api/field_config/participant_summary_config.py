@@ -11,12 +11,12 @@ def make_sample_test_code_set(samples):
   return extraction.ExtractionResult(set(s.testCode for s in samples.samples))
 
 def count_completed_baseline_ppi_modules(participant_summary):
-  baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])  
-  return sum(1 for field in baseline_ppi_module_fields 
+  baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
+  return sum(1 for field in baseline_ppi_module_fields
              if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED)
 
 def num_completed_baseline_ppi_modules(summary):
-  baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])  
+  baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
   count = sum(1 for field in baseline_ppi_module_fields if summary.get(field) == 'SUBMITTED')
   return extraction.ExtractionResult(count)
 
@@ -39,7 +39,7 @@ questionnaire_fields = [
     FieldDef('dateOfBirth',
              extractor_for(concepts.DATE_OF_BIRTH, extraction.VALUE_STRING),
              None),
-] + [FieldDef(k + 'Time', extract_concept_date(concept), None) 
+] + [FieldDef(k + 'Time', extract_concept_date(concept), None)
      for k, concept in shared_config.KNOWN_QUESTIONNAIRES.iteritems()]
 
 CONFIG = {

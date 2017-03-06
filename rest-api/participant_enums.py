@@ -1,7 +1,7 @@
 from protorpc import messages
 from dateutil.relativedelta import relativedelta
 
-# These are handled specially in code; others will be inserted into the database and handled 
+# These are handled specially in code; others will be inserted into the database and handled
 # dynamically.
 UNSET_HPO_ID = 0
 

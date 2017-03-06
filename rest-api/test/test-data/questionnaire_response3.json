@@ -64,7 +64,7 @@
                   {
                     "valueDecimal": 44.3,
                     "valueInteger": 44
-                    
+
                   }
                 ]
               },
@@ -75,7 +75,7 @@
                   {
                     "valueCoding": {
                       "code": "INJECTION",
-                      "system": "sys"                      
+                      "system": "sys"
                     },
                     "group": [
                       {

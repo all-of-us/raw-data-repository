@@ -35,8 +35,8 @@ class BiobankOrder(ndb.Model):
   samples = ndb.LocalStructuredProperty(BiobankOrderSample, repeated=True)
   notes = ndb.LocalStructuredProperty(BiobankOrderNotes, repeated=False)
   last_modified = ndb.DateTimeProperty(auto_now=True)
-  
-class BiobankOrderDAO(data_access_object.DataAccessObject):  
+
+class BiobankOrderDAO(data_access_object.DataAccessObject):
   DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
   def __init__(self):

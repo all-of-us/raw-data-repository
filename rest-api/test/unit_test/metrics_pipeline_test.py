@@ -152,7 +152,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ('PITT|Participant.biospecimenSamples.SAMPLES_ARRIVED', '2016-09-01|1'),
         ('PITT|Participant.biospecimen.UNSET', '2016-09-01|1'),
         ('PITT|Participant.biospecimenSummary.UNSET', '2016-09-01|1'),
-        ('PITT|Participant.consentForStudyEnrollmentAndEHR.UNSET', '2016-09-01|1'),                
+        ('PITT|Participant.consentForStudyEnrollmentAndEHR.UNSET', '2016-09-01|1'),
         ('PITT|Participant.physicalMeasurements.UNSET', '2016-09-05|-1'),
         ('PITT|Participant.physicalMeasurements.COMPLETE', '2016-09-05|1'),
         ('PITT|Participant.membershipTier.REGISTERED', '2016-09-10|-1'),
@@ -160,7 +160,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
         ('PITT|Participant.membershipTier.VOLUNTEER', '2016-09-10|1'),
         ('PITT|Participant.meta.NOPE', '2016-09-10|1'),
         ('PITT|Participant.state.TX', '2016-09-11|-1'),
-        ('PITT|Participant.state.CA', '2016-09-11|1')        
+        ('PITT|Participant.state.CA', '2016-09-11|1')
         ]
     self._compare_json_list(sorted(expected), sorted(results))
 
@@ -264,8 +264,8 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     key = ndb.Key(participant.Participant, '1')
     self._populate_sample_history(key, 'PITT')
     key2 = ndb.Key(participant.Participant, '2')
-    self._populate_sample_history(key2, 'COLUMBIA')    
-    metrics_pipeline.MetricsPipeline('pmi-drc-biobank-test.appspot.com', NOW).start()    
+    self._populate_sample_history(key2, 'COLUMBIA')
+    metrics_pipeline.MetricsPipeline('pmi-drc-biobank-test.appspot.com', NOW).start()
     test_support.execute_until_empty(self.taskqueue)
 
     serving_version = metrics.get_serving_version()
@@ -275,17 +275,17 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     self.assertEquals(36, len(metrics_list))
     for i in range(0, 12):
       self.run_checks_for_all_dates(metrics_list, i)
-      
+
     for i in range(0, 4):
       self.check_first_dates(metrics_list, i)
-      
+
     for i in range(4, 9):
       self.check_second_dates(metrics_list, i)
-      
+
     for i in range(9, 12):
       self.check_third_dates(metrics_list, i)
-   
-    serving_version = metrics.get_serving_version()    
+
+    serving_version = metrics.get_serving_version()
     all_buckets = list(metrics.SERVICE.get_metrics(metrics.MetricsRequest(), serving_version))
     self.assertEquals(36, len(all_buckets))
     for i in range(0, 36):
@@ -295,10 +295,10 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
       self.assertEquals(metrics_entry.date.isoformat(), facets['date'])
       if metrics_entry.hpoId == '':
         self.assertFalse(facets.get('hpoId'))
-      else:          
+      else:
         self.assertEquals(metrics_entry.hpoId, facets['hpoId'])
       self.assertEquals(json.loads(metrics_entry.metrics), bucket['entries'])
-    
+
     request = metrics.MetricsRequest(start_date='2016-09-02', end_date='2016-09-04')
     sub_buckets = list(metrics.SERVICE.get_metrics(request, serving_version))
     self.assertEquals(9, len(sub_buckets))
@@ -309,17 +309,17 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
       self.assertEquals(metrics_entry.date.isoformat(), facets['date'])
       if metrics_entry.hpoId == '':
         self.assertFalse(facets.get('hpoId'))
-      else:          
+      else:
         self.assertEquals(metrics_entry.hpoId, facets['hpoId'])
       self.assertEquals(json.loads(metrics_entry.metrics), bucket['entries'])
-    
+
   def run_checks_for_all_dates(self, metrics_list, i):
     all_metrics_bucket = metrics_list[i * 3]
     columbia_metrics_bucket = metrics_list[(i * 3) + 1]
     pitt_metrics_bucket = metrics_list[(i * 3) + 2]
     all_metrics = json.loads(metrics_list[i * 3].metrics)
     columbia_metrics = json.loads(metrics_list[(i * 3) + 1].metrics)
-    pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)    
+    pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)
     self.assertEquals(datetime.date(2016, 9, 1 + i), all_metrics_bucket.date)
     self.assertEquals('', all_metrics_bucket.hpoId)
     self.assertEquals(datetime.date(2016, 9, 1 + i), columbia_metrics_bucket.date)
@@ -334,23 +334,23 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     self.assertEquals(1, pitt_metrics['Participant'])
     self.assertEquals(1, pitt_metrics['Participant.hpoId.PITT'])
     self.assertFalse(columbia_metrics.get('Participant.hpoId.PITT'))
-    self.assertFalse(pitt_metrics.get('Participant.hpoId.COLUMBIA'))  
-    
+    self.assertFalse(pitt_metrics.get('Participant.hpoId.COLUMBIA'))
+
   def check_first_dates(self, metrics_list, i):
     all_metrics = json.loads(metrics_list[i * 3].metrics)
     columbia_metrics = json.loads(metrics_list[(i * 3) + 1].metrics)
     pitt_metrics = json.loads(metrics_list[(i * 3) + 2].metrics)
     self.assertEquals(2, all_metrics['Participant.membershipTier.REGISTERED'])
     self.assertEquals(2, all_metrics['Participant.physicalMeasurements.UNSET'])
-    self.assertEquals(1, columbia_metrics['Participant.membershipTier.REGISTERED'])    
+    self.assertEquals(1, columbia_metrics['Participant.membershipTier.REGISTERED'])
     self.assertEquals(1, columbia_metrics['Participant.physicalMeasurements.UNSET'])
     self.assertFalse(columbia_metrics.get('Participant.physicalMeasurements.COMPLETE'))
-    self.assertFalse(columbia_metrics.get('Participant.membershipTier.VOLUNTEER'))    
-    self.assertEquals(1, pitt_metrics['Participant.membershipTier.REGISTERED'])    
+    self.assertFalse(columbia_metrics.get('Participant.membershipTier.VOLUNTEER'))
+    self.assertEquals(1, pitt_metrics['Participant.membershipTier.REGISTERED'])
     self.assertEquals(1, pitt_metrics['Participant.physicalMeasurements.UNSET'])
     self.assertFalse(pitt_metrics.get('Participant.physicalMeasurements.COMPLETE'))
     self.assertFalse(pitt_metrics.get('Participant.membershipTier.VOLUNTEER'))
-    
+
 
   def check_second_dates(self, metrics_list, i):
     all_metrics = json.loads(metrics_list[i * 3].metrics)
@@ -359,7 +359,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     self.assertEquals(2, all_metrics['Participant.membershipTier.REGISTERED'])
     self.assertEquals(2, all_metrics['Participant.physicalMeasurements.COMPLETE'])
     self.assertFalse(all_metrics.get('Participant.physicalMeasurements.UNSET'))
-    self.assertFalse(all_metrics.get('Participant.membershipTier.VOLUNTEER')) 
+    self.assertFalse(all_metrics.get('Participant.membershipTier.VOLUNTEER'))
     self.assertEquals(1, columbia_metrics['Participant.membershipTier.REGISTERED'])
     self.assertEquals(1, columbia_metrics['Participant.physicalMeasurements.COMPLETE'])
     self.assertFalse(columbia_metrics.get('Participant.physicalMeasurements.UNSET'))
@@ -379,11 +379,11 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
     self.assertEquals(1, columbia_metrics['Participant.membershipTier.VOLUNTEER'])
     self.assertEquals(1, columbia_metrics['Participant.physicalMeasurements.COMPLETE'])
     self.assertFalse(columbia_metrics.get('Participant.physicalMeasurements.UNSET'))
-    self.assertFalse(columbia_metrics.get('Participant.membershipTier.REGISTERED'))    
+    self.assertFalse(columbia_metrics.get('Participant.membershipTier.REGISTERED'))
     self.assertEquals(1, pitt_metrics['Participant.membershipTier.VOLUNTEER'])
     self.assertEquals(1, pitt_metrics['Participant.physicalMeasurements.COMPLETE'])
     self.assertFalse(pitt_metrics.get('Participant.physicalMeasurements.UNSET'))
-    self.assertFalse(pitt_metrics.get('Participant.membershipTier.REGISTERED'))    
+    self.assertFalse(pitt_metrics.get('Participant.membershipTier.REGISTERED'))
 
   def _compare_json(self, a, b, msg=None):
     if isinstance(a, str):

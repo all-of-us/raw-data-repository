@@ -13,5 +13,5 @@ class QuestionnaireResponseApi(BaseApi):
     return super(QuestionnaireResponseApi, self).get(id_)
 
   @api_util.auth_required(PTC)
-  def post(self, p_id):    
+  def post(self, p_id):
     return super(QuestionnaireResponseApi, self).post(participant_id=p_id)

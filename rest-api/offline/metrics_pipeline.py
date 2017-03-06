@@ -104,7 +104,7 @@ def get_config():
 PIPELINE_METRICS_DATA_VERSION = 1
 
 class BlobKeys(base_handler.PipelineBase):
-  """A generator for the mapper params for the second MapReduce pipeline, containing the blob 
+  """A generator for the mapper params for the second MapReduce pipeline, containing the blob
      keys produced by the first pipeline."""
   def run(self, bucket_name, keys, now):
     start_index = len(bucket_name) + 2
@@ -121,7 +121,7 @@ class MetricsPipeline(BasePipeline):
     validate_metrics(configs)
     metrics.set_pipeline_in_progress()
     futures = []
-    
+
     for config_name in configs:
       future = yield SummaryPipeline(bucket_name, config_name, now, mapper_params)
       futures.append(future)
@@ -129,13 +129,13 @@ class MetricsPipeline(BasePipeline):
     yield FinalizeMetrics(*futures)
 
 class FinalizeMetrics(pipeline.Pipeline):
-  def run(self, *args):  # pylint: disable=unused-argument    
+  def run(self, *args):  # pylint: disable=unused-argument
     set_serving_version()
 
 class SummaryPipeline(pipeline.Pipeline):
   def run(self, bucket_name, config_name, now, parent_params=None):
     logging.info('======= Starting %s Pipeline', config_name)
-    
+
     mapper_params = {
         'entity_kind': config_name,
         'now': now
@@ -164,13 +164,13 @@ class SummaryPipeline(pipeline.Pipeline):
             }
         },
         shards=num_shards))
-    # TODO(danrodney): 
-    # We need to find a way to delete blob written above (DA-167)    
+    # TODO(danrodney):
+    # We need to find a way to delete blob written above (DA-167)
     yield mapreduce_pipeline.MapreducePipeline(
         'Write Metrics',
         mapper_spec='offline.metrics_pipeline.map2',
         input_reader_spec='mapreduce.input_readers.GoogleCloudStorageInputReader',
-        mapper_params=(yield BlobKeys(bucket_name, blob_key, now)),                     
+        mapper_params=(yield BlobKeys(bucket_name, blob_key, now)),
         reducer_spec='offline.metrics_pipeline.reduce2',
         shards=num_shards)
 
@@ -205,7 +205,7 @@ def map1(entity_key, now=None):
     else:
       new_state = copy.deepcopy(last_state)
 
-    run_extractors(hist_obj, metrics_conf, new_state)    
+    run_extractors(hist_obj, metrics_conf, new_state)
     if new_state == last_state:
       continue  # No changes so there's nothing to do.
     hpo_id = new_state.get('hpoId')
@@ -216,11 +216,11 @@ def map1(entity_key, now=None):
       # we need deltas for all fields.
       old_val = last_state and last_state.get(k, None)
       if hpo_change or v != old_val:
-        yield (map_result_key(hpo_id, kind, k, v), 
+        yield (map_result_key(hpo_id, kind, k, v),
                make_pair_str(date.isoformat(), '1'))
         if last_state:
           # If the value changed, output -1 delta for the old value.
-          yield (map_result_key(last_hpo_id, kind, k, old_val), 
+          yield (map_result_key(last_hpo_id, kind, k, old_val),
                  make_pair_str(date.isoformat(), '-1'))
 
     last_state = new_state
@@ -266,30 +266,30 @@ def reduce1(reducer_key, reducer_values, now=None):
     reducer_key: hpoId|metric
     reducer_values: list of date|delta strings
     now: use to set the clock for testing
-  """   
+  """
   delta_map = {}
   sum_deltas(reducer_values, delta_map)
-  # Walk over the deltas by date  
+  # Walk over the deltas by date
   last_date = None
   count = 0
   one_day = timedelta(days=1)
-  for date_str, delta in sorted(delta_map.items()):    
-    date = datetime.strptime(date_str, DATE_FORMAT).date()      
+  for date_str, delta in sorted(delta_map.items()):
+    date = datetime.strptime(date_str, DATE_FORMAT).date()
     # Yield results for all the dates in between
     if last_date:
       middle_date = last_date + one_day
       while middle_date < date:
         yield reduce_result_value(reducer_key, middle_date.isoformat(), count)
-        middle_date = middle_date + one_day    
+        middle_date = middle_date + one_day
     count += delta
     if count > 0:
       yield reduce_result_value(reducer_key, date_str, count)
     last_date = date
-  now = now or context.get().mapreduce_spec.mapper.params.get('now')    
+  now = now or context.get().mapreduce_spec.mapper.params.get('now')
   # Yield results up until today.
   if count > 0 and last_date:
     last_date = last_date + one_day
-    while last_date <= now.date():      
+    while last_date <= now.date():
       yield reduce_result_value(reducer_key, last_date.isoformat(), count)
       last_date = last_date + one_day
 
@@ -300,7 +300,7 @@ def map2(row_buffer):
   """Emits (hpoId|date, metric|count) pairs for reducing ('*' for cross-HPO counts)
   Args:
      row_buffer: buffer containing hpoId|metric|date|count lines
-  """  
+  """
   reader = csv.reader(row_buffer, delimiter='|')
   for line in reader:
     hpo_id = line[0]
@@ -322,18 +322,18 @@ def reduce2(reducer_key, reducer_values):
   (hpo_id, date_str) = parse_tuple(reducer_key)
   if hpo_id == '*':
     hpo_id = ''
-  date = datetime.strptime(date_str, DATE_FORMAT)  
+  date = datetime.strptime(date_str, DATE_FORMAT)
   for reducer_value in reducer_values:
-    (metric_key, count) = parse_tuple(reducer_value)        
+    (metric_key, count) = parse_tuple(reducer_value)
     metrics_dict[metric_key] += int(count)
-  parent = metrics.get_in_progress_version().key  
-  
+  parent = metrics.get_in_progress_version().key
+
   bucket = MetricsBucket(date=date,
                          parent=parent,
                          hpoId=hpo_id,
-                         metrics=json.dumps(metrics_dict))  
-  yield op.db.Put(bucket)                         
-  
+                         metrics=json.dumps(metrics_dict))
+  yield op.db.Put(bucket)
+
 def set_serving_version():
   current_version = metrics.get_in_progress_version()
   if not current_version:

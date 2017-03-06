@@ -121,10 +121,10 @@ def reduce_samples(biobank_id, samples):
   if existing_samples:
     existing_samples_dict = biobank_sample.DAO().to_json(existing_samples)
     if biobank_samples_dict == existing_samples_dict:
-      return  
+      return
   biobank_samples = biobank_sample.DAO().from_json(biobank_samples_dict,
                                                  participant_id,
                                                  biobank_sample.SINGLETON_SAMPLES_ID)
   # This also takes care of updating the participant summary if necessary.
   biobank_sample.DAO().store(biobank_samples)
-  
+

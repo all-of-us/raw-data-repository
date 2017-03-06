@@ -6,12 +6,12 @@ import pipeline
 from google.appengine.ext import db
 from google.appengine.api import mail
 
-class BasePipeline(pipeline.Pipeline):  
+class BasePipeline(pipeline.Pipeline):
   def finalized(self):
     """Finalizes this Pipeline after execution.
-    
+
     Sends an e-mail to us if a pipeline fails; otherwise just logs an info message.
-    """    
+    """
     if self.pipeline_id == self.root_pipeline_id:
       app_id = os.environ['APPLICATION_ID']
       shard_index = app_id.find('~')
@@ -21,7 +21,7 @@ class BasePipeline(pipeline.Pipeline):
       base_path = '%s.appspot.com%s' % (app_id, self.base_path)
       status_link = 'http://%s/status?root=%s' % (base_path, self.root_pipeline_id)
       sender = 'test-client@%s.iam.gserviceaccount.com' % app_id
-      pipeline_record = db.get(self._root_pipeline_key) 
+      pipeline_record = db.get(self._root_pipeline_key)
       suffix = ''
       if pipeline_record and pipeline_record.start_time:
         duration = datetime.datetime.utcnow() - pipeline_record.start_time
@@ -29,7 +29,7 @@ class BasePipeline(pipeline.Pipeline):
         hours = seconds // 3600
         minutes = (seconds % 3600) // 60
         seconds = seconds % 60
-        suffix = 'after %d:%02d:%02d' % (hours, minutes, seconds)    
+        suffix = 'after %d:%02d:%02d' % (hours, minutes, seconds)
       if self.was_aborted:
         message = "%s failed %s; results are at %s" % (pipeline_name, suffix, status_link)
         logging.error(message)
@@ -40,5 +40,5 @@ class BasePipeline(pipeline.Pipeline):
                           'root pipeline ID "%s" from sender "%s"',
                           self.root_pipeline_id, sender, exc_info=True)
       else:
-        message = "%s succeeded %s; results are at %s" % (pipeline_name, suffix, status_link)        
+        message = "%s succeeded %s; results are at %s" % (pipeline_name, suffix, status_link)
         logging.info(message)
