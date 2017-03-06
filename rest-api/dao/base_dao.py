@@ -1,3 +1,4 @@
+import logging
 import random
 
 import dao.database_factory
@@ -79,23 +80,29 @@ class BaseDao(object):
     """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
     return self.get(obj_id)
 
-  def _get_random_id(self, field):
-    # pylint: disable=unused-argument
+  def _get_random_id(self):
     return random.randint(_MIN_ID, _MAX_ID)
 
   def _insert_with_random_id(self, obj, fields):
     """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
     or a maximum number of attempts are performed."""
+    all_tried_ids = []
     for _ in range(0, MAX_INSERT_ATTEMPTS):
+      tried_ids = {}
       for field in fields:
-        setattr(obj, field, self._get_random_id(field))
+        rand_id = self._get_random_id()
+        tried_ids[field] = rand_id
+        setattr(obj, field, rand_id)
+      all_tried_ids.append(tried_ids)
       try:
         with self.session() as session:
           return self.insert_with_session(session, obj)
       except IntegrityError:
-        pass
+        logging.warning('Failed insert with %s.', tried_ids, exc_info=True)
     # We were unable to insert a participant (unlucky). Throw an error.
-    raise ServiceUnavailable("Giving up after %d insert attempts" % MAX_INSERT_ATTEMPTS)
+    logging.warning(
+        'Giving up after %d insert attempts, tried %s.' % (MAX_INSERT_ATTEMPTS, all_tried_ids))
+    raise ServiceUnavailable('Giving up after %d insert attempts.' % MAX_INSERT_ATTEMPTS)
 
 
 class UpdatableDao(BaseDao):
