@@ -41,6 +41,10 @@ class _FhirBiobankOrderedSample(FhirMixin, BackboneElement):
 
 
 class _FhirBiobankOrder(FhirMixin, DomainResource):
+  """FHIR client definition of the expected JSON structure for a BiobankOrder resource.
+
+  This aids in (de)serialization of JSON, including validation of field presence and types.
+  """
   resource_name = 'BiobankOrder'
   _PROPERTIES = [
     FP('subject', str, required=True),
