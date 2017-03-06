@@ -1,6 +1,10 @@
 #!/bin/bash
 
-# Generates schema migrations in the "alembic/versions" directory.
+# Generates a schema migration script in the "alembic/versions" directory to
+# upgrade the current state of the local MySQL database to the schema declared
+# in code. (If alembic/versions/ is empty and MySQL is blank, as after running
+# setup_local_database.sh, this will be an initial schema version.)
+#
 # Run this before committing whenever you make a change to the model/ directory.
 
 if [ -z "$1" ]

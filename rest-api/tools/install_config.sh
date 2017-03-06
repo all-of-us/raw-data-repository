@@ -28,16 +28,15 @@ then
   echo "Getting credentials for ${PROJECT}..."
   source tools/auth_setup.sh
   EXTRA_ARGS="--creds_file ${CREDS_FILE} --instance ${INSTANCE}"
-  if [ "${CONFIG}" ]
-  then
-    EXTRA_ARGS+=" --config ${CONFIG}"
-  fi
-  if [ "${UPDATE}" ]
-  then
-    EXTRA_ARGS+=" --update"
-  fi
-  echo "ARGS = ${EXTRA_ARGS}"
-
 fi
+if [ "${CONFIG}" ]
+then
+  EXTRA_ARGS+=" --config ${CONFIG}"
+fi
+if [ "${UPDATE}" ]
+then
+  EXTRA_ARGS+=" --update"
+fi
+echo "ARGS = ${EXTRA_ARGS}"
 
 (cd ${BASE_DIR}; python tools/install_config.py $EXTRA_ARGS)

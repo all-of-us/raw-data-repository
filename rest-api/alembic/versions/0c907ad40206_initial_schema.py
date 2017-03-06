@@ -297,7 +297,7 @@ def upgrade():
     # ### end Alembic commands ###
 
     # Manual edit to add HPO IDs.
-    # TODO(danrodney) Import these from CSV as part of setup_local_database.sh.
+    # TODO(DA-224) Import these from CSV as part of setup_local_database.sh.
     op.bulk_insert(hpo_table,
     [
         {'hpo_id': 0, 'name': 'UNSET' },
