@@ -1,4 +1,5 @@
 import logging
+import datetime
 import random
 
 import api_util
@@ -10,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from query import Operator, PropertyType, FieldFilter, Results
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from sqlalchemy import or_, and_
+from protorpc import messages
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
@@ -107,15 +109,20 @@ class BaseDao(object):
     """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
     return self.get(obj_id)
 
+  def _get_property_type(self, prop):
+    property_classname = prop.property.columns[0].type.__class__.__name__
+    property_type = _PROPERTY_TYPE_MAP.get(property_classname)
+    if not property_type:
+      raise BadRequest("Unrecognized property of type %s" % property_classname)
+    return property_type
+
   def make_query_filter(self, field_name, value):
     """Attempts to make a query filter for the model property with the specified name, matching
     the specified value. If no such property exists, None is returned.
     """
     prop = getattr(self.model_type, field_name, None)
     if prop:
-      property_type = _PROPERTY_TYPE_MAP.get(prop.__class__.__name__)
-      if not property_type:
-        raise BadRequest("Unrecognized filter on property of type %s" % prop.__class__.__name__)
+      property_type = self._get_property_type(prop)
       filter_value = None
       operator = Operator.EQUALS
       # If we're dealing with a comparable property type, look for a prefix that indicates an
@@ -125,24 +132,33 @@ class BaseDao(object):
           if value.startswith(prefix):
             operator = op
             value = value[len(op)]
-            break
-      try:
-        if property_type == PropertyType.DATE:
-          filter_value = api_util.parse_date(value).date()
-        elif property_type == PropertyType.DATETIME:
-          filter_value = api_util.parse_date(value)
-        elif property_type == PropertyType.ENUM:
-          filter_value = prop._enum_type(value)
-        elif property_type == PropertyType.INTEGER:
-          filter_value = int(value)
-        else:
-          filter_value = value
-      except ValueError:
-        raise BadRequest("Invalid value for %s of type %s: %s" % (field_name, property_type,
-                                                                  value))
+            break      
+      filter_value = self._parse_value(prop, property_type, value)
       return FieldFilter(field_name, operator, filter_value)
     else:
       return None
+
+  def _parse_value(self, prop, property_type, value):
+    if value is None:
+      return None
+    try:
+      if property_type == PropertyType.DATE:
+        return api_util.parse_date(value).date()
+      elif property_type == PropertyType.DATETIME:
+        return api_util.parse_date(value)
+      elif property_type == PropertyType.ENUM:
+        return prop.property.columns[0].type.enum_type(value)
+      elif property_type == PropertyType.INTEGER:
+        return int(value)
+      else:
+        return value
+    except ValueError:
+      raise BadRequest("Invalid value for property of type %s: %s" % (property_type, value))
+
+  def _from_json_value(self, prop, value):
+    property_type = self._get_property_type(prop)
+    result = self._parse_value(prop, property_type, value)
+    return result
 
   def query(self, query_def):
     if not self.order_by_ending:
@@ -162,7 +178,7 @@ class BaseDao(object):
 
   def _make_pagination_token(self, item_dict, field_names):
     vals = [item_dict.get(field_name) for field_name in field_names]
-    vals_json = json.dumps(vals)
+    vals_json = json.dumps(vals, default=json_serial)
     return urlsafe_b64encode(vals_json)
 
   def _make_query(self, session, query_def):
@@ -207,15 +223,10 @@ class BaseDao(object):
     return query, order_by_field_names
 
   def _add_pagination_filter(self, query, pagination_token, fields, first_descending):
-    """Adds a pagination filter for the decoded values in the pagination token based on
-    the sort order."""
-    try:
-      decoded_vals = json.loads(urlsafe_b64decode(pagination_token))
-    except:
-      raise BadRequest("Invalid pagination token: %s", pagination_token)
-    if not type(decoded_vals) is list or len(decoded_vals) != len(fields):
-      raise BadRequest("Invalid pagination token: %s" % pagination_token)
-    # SQLite does not support tuple comparisons, so make an or-of-ands statements that is
+    """Adds a pagination filter for the decoded values in the pagination token based on 
+    the sort order."""    
+    decoded_vals = self._decode_token(pagination_token, fields)
+    # SQLite does not support tuple comparisons, so make an or-of-ands statements that is 
     # equivalent.
     or_clauses = []
     if first_descending:
@@ -228,14 +239,25 @@ class BaseDao(object):
         or_clauses.append(fields[0] > decoded_vals[0])
     for i in range(1, len(fields)):
       and_clauses = []
-      for j in range(0, i - 1):
+      for j in range(0, i):
         and_clauses.append(fields[j] == decoded_vals[j])
       if decoded_vals[i] is None:
         and_clauses.append(fields[i].isnot(None))
       else:
         and_clauses.append(fields[i] > decoded_vals[i])
       or_clauses.append(and_(*and_clauses))
-    return query.filter(or_(*or_clauses))
+    return query.filter(or_(*or_clauses))    
+
+  def _decode_token(self, pagination_token, fields):
+    try:
+      decoded_vals = json.loads(urlsafe_b64decode(pagination_token))
+    except:
+      raise BadRequest("Invalid pagination token: %s", pagination_token)
+    if not type(decoded_vals) is list or len(decoded_vals) != len(fields):
+      raise BadRequest("Invalid pagination token: %s" % pagination_token)
+    for i in range(0, len(fields)):
+      decoded_vals[i] = self._from_json_value(fields[i], decoded_vals[i])
+    return decoded_vals
                           
   def _add_order_by(self, query, order_by, field_names, fields):      
     """Adds a single order by field, as the primary sort order."""
@@ -328,3 +350,11 @@ class UpdatableDao(BaseDao):
     May modify the passed in object."""
     with self.session() as session:
       return self.update_with_session(session, obj)
+
+def json_serial(obj):
+  """JSON serializer for objects not serializable by default json code"""
+  if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
+    return obj.isoformat()
+  if isinstance(obj, messages.Enum):
+    return str(obj)
+  raise TypeError ("Type not serializable")
