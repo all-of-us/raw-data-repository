@@ -3,12 +3,11 @@ from dao.base_dao import UpdatableDao
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
-from query import OrderBy
 from werkzeug.exceptions import BadRequest
 
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
-_ORDER_BY_ENDING = ['lastName','firstName', 'dateOfBirth', 'participantId']
+_ORDER_BY_ENDING = ['lastName', 'firstName', 'dateOfBirth', 'participantId']
 _CODE_FIELDS = ['genderIdentityId', 'ethnicityId', 'raceId']
 
 class ParticipantSummaryDao(UpdatableDao):
@@ -27,7 +26,7 @@ class ParticipantSummaryDao(UpdatableDao):
         raise BadRequest("No HPO found with name %s" % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
     if field_name in _CODE_FIELDS:
-      code = CodeDAO().get_code(PPI_SYSTEM, value)
+      code = CodeDao().get_code(PPI_SYSTEM, value)
       if not code:
         raise BadRequest("No code found: %s" % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, code.codeId)
