@@ -4,7 +4,7 @@ Graphy>=1.0.0
 Werkzeug==0.11.11
 cachetools>=1.1.5
 dnspython>=1.15.0
-fhirclient==1.0.3
+fhirclient==1.0.6
 flask==0.10
 flask-restful==0.3.5
 isodate==0.5.4

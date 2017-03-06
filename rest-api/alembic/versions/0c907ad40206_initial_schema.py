@@ -1,8 +1,8 @@
-"""Initial schema
+"""Initial schema, with manual edits for HPO IDs.
 
-Revision ID: 1e52bced1705
+Revision ID: 0c907ad40206
 Revises:
-Create Date: 2017-03-03 09:48:55.385009
+Create Date: 2017-03-06 16:16:42.780730
 
 """
 from alembic import op
@@ -15,7 +15,7 @@ from participant_enums import MembershipTier
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '1e52bced1705'
+revision = '0c907ad40206'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -33,7 +33,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('code_book_id'),
     sa.UniqueConstraint('system', 'version')
     )
-    op.create_table('hpo',
+    hpo_table = op.create_table('hpo',
     sa.Column('hpo_id', sa.Integer(), autoincrement=False, nullable=False),
     sa.Column('name', sa.String(length=20), nullable=True),
     sa.PrimaryKeyConstraint('hpo_id'),
@@ -118,40 +118,25 @@ def upgrade():
     sa.PrimaryKeyConstraint('participant_id', 'version')
     )
     op.create_table('biobank_order',
-    sa.Column('biobank_order_id', sa.Integer(), nullable=False),
+    sa.Column('biobank_order_id', sa.String(length=80), nullable=False),
     sa.Column('participant_id', sa.Integer(), nullable=False),
-    sa.Column('created', sa.DateTime(), nullable=False),
+    sa.Column('log_position_id', sa.Integer(), nullable=False),
     sa.Column('source_site_system', sa.String(length=80), nullable=True),
     sa.Column('source_site_value', sa.String(length=80), nullable=True),
-    sa.Column('collected', sa.UnicodeText(), nullable=True),
-    sa.Column('processed', sa.UnicodeText(), nullable=True),
-    sa.Column('finalized', sa.UnicodeText(), nullable=True),
-    sa.Column('log_position_id', sa.Integer(), nullable=False),
+    sa.Column('created', sa.DateTime(), nullable=False),
+    sa.Column('collected_note', sa.UnicodeText(), nullable=True),
+    sa.Column('processed_note', sa.UnicodeText(), nullable=True),
+    sa.Column('finalized_note', sa.UnicodeText(), nullable=True),
     sa.ForeignKeyConstraint(['log_position_id'], ['log_position.log_position_id'], ),
     sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
     sa.PrimaryKeyConstraint('biobank_order_id')
     )
     op.create_table('biobank_stored_sample',
-    sa.Column('biobank_stored_sample_id', sa.Integer(), autoincrement=False, nullable=False),
-    sa.Column('participant_id', sa.Integer(), nullable=True),
-    sa.Column('family_id', sa.String(length=80), nullable=True),
-    sa.Column('sample_id', sa.String(length=80), nullable=True),
-    sa.Column('storage_status', sa.String(length=80), nullable=True),
-    sa.Column('type', sa.String(length=80), nullable=True),
+    sa.Column('biobank_stored_sample_id', sa.String(length=80), nullable=False),
+    sa.Column('biobank_id', sa.Integer(), nullable=True),
     sa.Column('test_code', sa.String(length=80), nullable=True),
-    sa.Column('treatments', sa.String(length=80), nullable=True),
-    sa.Column('expected_volume', sa.String(length=80), nullable=True),
-    sa.Column('quantity', sa.String(length=80), nullable=True),
-    sa.Column('container_type', sa.String(length=80), nullable=True),
-    sa.Column('collection_date', sa.DateTime(), nullable=True),
-    sa.Column('disposal_status', sa.String(length=80), nullable=True),
-    sa.Column('disposed_date', sa.DateTime(), nullable=True),
-    sa.Column('parent_sample_id', sa.Integer(), nullable=True),
     sa.Column('confirmed_date', sa.DateTime(), nullable=True),
-    sa.Column('log_position_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['log_position_id'], ['log_position.log_position_id'], ),
-    sa.ForeignKeyConstraint(['parent_sample_id'], ['biobank_stored_sample.biobank_stored_sample_id'], ),
-    sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
+    sa.ForeignKeyConstraint(['biobank_id'], ['participant.biobank_id'], ),
     sa.PrimaryKeyConstraint('biobank_stored_sample_id')
     )
     op.create_table('code_history',
@@ -276,12 +261,12 @@ def upgrade():
     op.create_table('biobank_order_identifier',
     sa.Column('system', sa.String(length=80), nullable=False),
     sa.Column('value', sa.String(length=80), nullable=False),
-    sa.Column('order_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['order_id'], ['biobank_order.biobank_order_id'], ),
+    sa.Column('biobank_order_id', sa.String(length=80), nullable=False),
+    sa.ForeignKeyConstraint(['biobank_order_id'], ['biobank_order.biobank_order_id'], ),
     sa.PrimaryKeyConstraint('system', 'value')
     )
     op.create_table('biobank_ordered_sample',
-    sa.Column('order_id', sa.Integer(), nullable=False),
+    sa.Column('order_id', sa.String(length=80), nullable=False),
     sa.Column('test', sa.String(length=80), nullable=False),
     sa.Column('description', sa.UnicodeText(), nullable=False),
     sa.Column('processing_required', sa.Boolean(), nullable=False),
@@ -311,14 +296,8 @@ def upgrade():
     )
     # ### end Alembic commands ###
 
-    hpo_table = sa.Table('hpo', sa.MetaData(),
-      sa.Column('hpo_id', sa.Integer(), autoincrement=False, nullable=False),
-      sa.Column('name', sa.String(length=20), nullable=True),
-      sa.PrimaryKeyConstraint('hpo_id'),
-      sa.UniqueConstraint('name')
-    )
-
-    # Insert our HPO IDs into the HPO table.
+    # Manual edit to add HPO IDs.
+    # TODO(danrodney) Import these from CSV as part of setup_local_database.sh.
     op.bulk_insert(hpo_table,
     [
         {'hpo_id': 0, 'name': 'UNSET' },

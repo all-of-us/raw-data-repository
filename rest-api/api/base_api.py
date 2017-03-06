@@ -17,8 +17,9 @@ class BaseApi(Resource):
   for uniform authentication, e.g.:
     method_decorators = [api_util.auth_required_cron]
   """
-  def __init__(self, dao):
+  def __init__(self, dao, get_returns_children=False):
     self.dao = dao
+    self._get_returns_children = get_returns_children
 
   def get(self, id_=None):
     """Handle a GET request.
@@ -30,7 +31,7 @@ class BaseApi(Resource):
     """
     if id_ is None:
       return self.list()
-    obj = self.dao.get(id_)
+    obj = self.dao.get_with_children(id_) if self._get_returns_children else self.dao.get(id_)
     if not obj:
       raise NotFound("%s with ID %s not found" % (self.dao.model_type.__name__, id_))
     return self._make_response(obj)

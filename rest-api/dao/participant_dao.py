@@ -87,6 +87,15 @@ class ParticipantDao(UpdatableDao):
     else:
       return UNSET_HPO_ID
 
+  def validate_participant_reference(self, session, obj):
+    """Raises BadRequest if an object has a missing or invalid participantId reference."""
+    if obj.participantId is None:
+      raise BadRequest('%s.participantId required.' % obj.__class__.__name__)
+    if self.get_with_session(session, obj.participantId) is None:
+      raise BadRequest(
+          '%s.participantId %r is not found.' % (obj.__class__.__name__, obj.participantId))
+
+
 # TODO(danrodney): remove this logic from old participant code when done
 def get_primary_provider_link(participant):
   if participant.providerLink:

@@ -21,7 +21,9 @@ import singletons
 
 from contextlib import contextmanager
 from dao.hpo_dao import HPODao
+from dao.participant_dao import ParticipantDao
 from model.hpo import HPO
+from model.participant import Participant
 from participant_enums import UNSET_HPO_ID
 from mock import patch
 from test.test_data import data_path
@@ -79,6 +81,8 @@ class SqlTestBase(TestbedTestBase):
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT'))
+    self.participant = Participant(participantId=123, biobankId=555)
+    ParticipantDao().insert(self.participant)
 
   def assertObjEqualsExceptLastModified(self, obj1, obj2):
     dict1 = obj1.asdict()
@@ -190,23 +194,29 @@ class FlaskTestBase(NdbTestBase):
 
   def create_and_verify_created_obj(self, path, resource):
     response = self.send_post(path, resource)
-    q_id = response['id']
+    resource_id = response['id']
     del response['id']
     self.assertJsonResponseMatches(resource, response)
 
-    response = self.send_get('{}/{}'.format(path, q_id))
+    response = self.send_get('{}/{}'.format(path, resource_id))
     del response['id']
     self.assertJsonResponseMatches(resource, response)
 
   def assertJsonResponseMatches(self, obj_a, obj_b):
-    obj_b = copy.deepcopy(obj_b)
-    if 'meta' in obj_b and not 'meta' in obj_a:
-      del obj_b['meta']
-    if 'lastModified' in obj_a:
-      del obj_a['lastModified']
-    if 'lastModified' in obj_b:
-      del obj_b['lastModified']
-    self.assertMultiLineEqual(pretty(obj_a), pretty(obj_b))
+    self.assertMultiLineEqual(
+        _clean_and_format_response_json(obj_a), _clean_and_format_response_json(obj_b))
+
+
+def _clean_and_format_response_json(input_obj):
+  obj = sort_lists(copy.deepcopy(input_obj))
+  for ephemeral_key in ('meta', 'lastModified'):
+    if ephemeral_key in obj:
+      del obj[ephemeral_key]
+  s = pretty(obj)
+  # TODO(DA-226) Make sure times are not skewed on round trip to CloudSQL. For now, strip tzinfo.
+  s = s.replace('+00:00', '')
+  s = s.replace('Z",', '",')
+  return s
 
 
 def to_dict_strip_last_modified(obj):

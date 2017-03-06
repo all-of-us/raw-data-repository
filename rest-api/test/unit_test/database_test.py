@@ -1,4 +1,5 @@
 import datetime
+import isodate
 
 from participant_enums import QuestionnaireStatus
 
@@ -80,31 +81,16 @@ class DatabaseTest(SqlTestBase):
     session.add(ph)
     session.commit()
 
-    sample1 = BiobankStoredSample(biobankStoredSampleId=1, participantId=1, familyId='a',
-                                  sampleId='b', storageStatus='c', type='d', testCode='e',
-                                  treatments='f', expectedVolume='g', quantity='h',
-                                  containerType='i', collectionDate=datetime.datetime.now(),
-                                  disposalStatus='j', disposedDate=datetime.datetime.now(),
-                                  confirmedDate=datetime.datetime.now(), logPosition=LogPosition())
-    sample2 = BiobankStoredSample(biobankStoredSampleId=2, participantId=1, familyId='a',
-                                  sampleId='b', storageStatus='c', type='d', testCode='e',
-                                  treatments='f', expectedVolume='g', quantity='h',
-                                  containerType='i', collectionDate=datetime.datetime.now(),
-                                  disposalStatus='j', disposedDate=datetime.datetime.now(),
-                                  parentSampleId=1, confirmedDate=datetime.datetime.now(),
-                                  logPosition=LogPosition())
-    session.add(sample1)
-    session.add(sample2)
-
-    bo = BiobankOrder(biobankOrderId=1, participantId=1, created=datetime.datetime.now(),
-                      sourceSiteSystem='a', sourceSiteValue='b', collected=u'c', processed=u'd',
-                      finalized=u'e', logPosition=LogPosition())
-    bo.identifiers.append(BiobankOrderIdentifier(system='a', value='b'))
-    bo.samples.append(BiobankOrderedSample(test='a', description=u'b', processingRequired=True,
-                                           collected=datetime.datetime.now(),
-                                           processed=datetime.datetime.now(),
-                                           finalized=datetime.datetime.now()))
-    session.add(bo)
+    session.add(BiobankStoredSample(
+        biobankStoredSampleId='WEB1234542',
+        biobankId=p.biobankId,
+        testCode='1UR10',
+        confirmedDate=datetime.datetime.utcnow()))
+    session.add(BiobankStoredSample(
+        biobankStoredSampleId='WEB99999',  # Sample ID must be unique.
+        biobankId=p.biobankId,  # Participant ID and test may be duplicated.
+        testCode='1UR10',
+        confirmedDate=datetime.datetime.utcnow()))
 
     pm = PhysicalMeasurements(physicalMeasurementsId=1, participantId=1,
                               created=datetime.datetime.now(), resource='blah',
@@ -149,3 +135,41 @@ class DatabaseTest(SqlTestBase):
                        hpoId='PITT', metrics='blah')
     session.add(mb)
     session.commit()
+
+  def _create_participant(self, session):
+    hpo = HPO(hpoId=1, name='UNSET')
+    session.add(hpo)
+    session.commit()
+    p = Participant(
+        participantId=1, version=1, biobankId=2, hpoId=hpo.hpoId,
+        signUpTime=datetime.datetime.utcnow(), lastModified=datetime.datetime.utcnow(),
+        clientId='c')
+    session.add(p)
+    session.commit()
+    return p
+
+  def test_schema_biobank_order_and_datetime_roundtrip(self):
+    bo_id = 1
+    now = isodate.parse_datetime('2016-01-04T10:28:50-04:00')
+
+    write_session = self.get_database().make_session()
+    p = self._create_participant(write_session)
+
+    bo = BiobankOrder(
+        biobankOrderId=bo_id, participantId=p.participantId, created=now,
+        sourceSiteSystem='a', sourceSiteValue='b',
+        collectedNote=u'c', processedNote=u'd', finalizedNote=u'e',
+        logPosition=LogPosition())
+    bo.identifiers.append(BiobankOrderIdentifier(system='a', value='b'))
+    bo.samples.append(BiobankOrderedSample(
+        test='a', description=u'b', processingRequired=True,
+        collected=now, processed=now, finalized=now))
+    write_session.add(bo)
+    write_session.commit()
+
+    read_session = self.get_database().make_session()
+    bo = read_session.query(BiobankOrder).get(bo_id)
+    # Check that the datetime is preserved.
+    # TODO(DA-226) Does this represent prod CloudSQL?
+    # SQLite (used in tests) drops time zone info, like the default sqlalchemy DateTime.
+    self.assertEquals(bo.created.isoformat(), now.replace(tzinfo=None).isoformat())

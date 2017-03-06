@@ -29,15 +29,11 @@ class QuestionnaireResponseDao(BaseDao):
       return query.get(questionnaire_response_id)
 
   def _validate_model(self, session, obj):
-    if not obj.participantId:
-      raise BadRequest('QuestionnaireResponse.participantId is required.')
+    ParticipantDao().validate_participant_reference(session, obj)
     if not obj.questionnaireId:
       raise BadRequest('QuestionnaireResponse.questionnaireId is required.')
     if not obj.questionnaireVersion:
       raise BadRequest('QuestionnaireResponse.questionnaireVersion is required.')
-    if not ParticipantDao().get_with_session(session, obj.participantId):
-      raise BadRequest('Participant with ID %s is not found.' % obj.participantId)
-
 
   def insert_with_session(self, session, questionnaire_response):
     qh = (QuestionnaireHistoryDao().

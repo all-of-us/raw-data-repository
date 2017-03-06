@@ -13,6 +13,7 @@ MAX_INSERT_ATTEMPTS = 20
 _MIN_ID = 100000000
 _MAX_ID = 999999999
 
+
 class BaseDao(object):
   """A data access object base class; defines common methods for inserting and retrieving
   objects using SQLAlchemy.
@@ -21,18 +22,19 @@ class BaseDao(object):
   inserted; extend from UpdatableDao if they can be updated.
   """
   def __init__(self, model_type):
+    """Creates an object manager for a specific model type."""
     self.model_type = model_type
-    self.database = dao.database_factory.get_database()
+    self._database = dao.database_factory.get_database()
 
   @contextmanager
   def session(self):
-    sess = self.database.make_session()
+    sess = self._database.make_session()
     try:
       yield sess
       sess.commit()
-    except Exception as ex:
+    except Exception:
       sess.rollback()
-      raise ex
+      raise
     finally:
       sess.close()
 
@@ -75,7 +77,7 @@ class BaseDao(object):
 
   def get_with_children(self, obj_id):
     """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
-    return self.get(self, obj_id)
+    return self.get(obj_id)
 
   def _get_random_id(self, field):
     # pylint: disable=unused-argument
@@ -95,6 +97,7 @@ class BaseDao(object):
     # We were unable to insert a participant (unlucky). Throw an error.
     raise ServiceUnavailable("Giving up after %d insert attempts" % MAX_INSERT_ATTEMPTS)
 
+
 class UpdatableDao(BaseDao):
   """A DAO that allows updates to entities.
 
@@ -102,7 +105,6 @@ class UpdatableDao(BaseDao):
 
   All model objects using this DAO must define a "version" field.
   """
-
   def _validate_update(self, session, obj, existing_obj):
     """Validates that an update is OK before performing it. (Not applied on insert.)
 

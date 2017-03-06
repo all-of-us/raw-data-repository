@@ -9,13 +9,13 @@ from sqlalchemy.orm import relationship
 class ParticipantBase(object):
   """Mixin with shared columns for Participant and ParticipantHistory"""
 
-  # We tack 'P' on the front whenever we use this externally
+  # Randomly assigned internal ID. We tack 'P' on the front whenever we use this externally.
   participantId = Column('participant_id', Integer, primary_key=True, autoincrement=False)
 
   # Incrementing version, starts at 1 and is incremented on each update.
   version = Column('version', Integer, nullable=False)
 
-  # We tack 'B' on the front whenever we use this externally
+  # Randomly assigned ID used with Biobank. Prefixed with 'B' whenever we use this externally.
   biobankId = Column('biobank_id', Integer, nullable=False)
 
   lastModified = Column('last_modified', DateTime, nullable=False)

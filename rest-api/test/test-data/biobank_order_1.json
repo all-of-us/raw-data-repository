@@ -1,15 +1,15 @@
 {
-  "subject": "Patient/{}",
+  "subject": "Patient/%(client_participant_id)s",
   "identifier": [{
     "system": "http://health-pro.org",
-    "value": "healthpro-order-id-123{}"
+    "value": "healthpro-order-id-123%(participant_id)d"
   },{
     "system": "https://orders.mayomedicallaboratories.com",
-    "value": "mayolink-order-id-456{}"
+    "value": "WEB1YLHV%(participant_id)d"
   }],
   "sourceSite": {
     "system": "http://health-pro.org",
-    "value": "healthpro-order-id-789{}"
+    "value": "789012"
   },
   "created": "2016-01-04T09:40:21Z",
   "samples": [{
