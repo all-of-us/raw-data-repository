@@ -142,7 +142,8 @@ class DatabaseTest(SqlTestBase):
     session.commit()
     p = Participant(
         participantId=1, version=1, biobankId=2, hpoId=hpo.hpoId,
-        signUpTime=now, lastModified=now, clientId='c')
+        signUpTime=datetime.datetime.utcnow(), lastModified=datetime.datetime.utcnow(),
+        clientId='c')
     session.add(p)
     session.commit()
     return p
