@@ -79,7 +79,7 @@ class QuestionnaireResponseDao(BaseDao):
 
     code_ids.extend([concept.codeId for concept in qh.concepts])
     # Fetch the codes for all questions and concepts
-    codes = CodeDao().get_all_with_session(session, code_ids)
+    codes = CodeDao().get_with_ids(code_ids)
 
     code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
     question_map = {question.questionnaireQuestionId: question for question in questions}

@@ -9,7 +9,6 @@ from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, Servic
 from sqlalchemy.exc import IntegrityError
 from query import Operator, PropertyType, FieldFilter, Results
 from base64 import urlsafe_b64decode, urlsafe_b64encode
-from singletons import get_cache
 from sqlalchemy import or_, and_
 from sqlalchemy.sql.expression import tuple_
 
@@ -47,21 +46,14 @@ class BaseDao(object):
   Extend directly from BaseDao if entities cannot be updated after being
   inserted; extend from UpdatableDao if they can be updated.
 
-  cache_ttl_seconds can be specified to enable in-memory caching of results on get() calls only.
-  Updates do not invalidate the cache on other servers, so beware.
-  
-  order_by_ending is a list of field names to always order by (in ascending order, possibly after
+  order_by_ending is a list of field names to always order by (in ascending order, possibly after 
   another sort field) when query() is invoked. It should always end in the primary key.
   If not specified, query() is not supported.
   """
-  def __init__(self, model_type, cache_ttl_seconds=None, order_by_ending=None):
+  def __init__(self, model_type, order_by_ending=None):
     self.model_type = model_type
     self._database = dao.database_factory.get_database()
     self.order_by_ending = order_by_ending
-    if cache_ttl_seconds:
-      self._cache = get_cache(self.model_type, cache_ttl_seconds)
-    else:
-      self._cache = None
 
   @contextmanager
   def session(self):
@@ -100,28 +92,17 @@ class BaseDao(object):
     primary key column tables). Must be overridden by subclasses."""
     raise NotImplementedError
 
-  def get_with_session(self, session, obj_id, check_cache=True):
-    """Gets an object by ID for this type using the specified session. Returns None if not found."""
-    if self._cache is not None and check_cache:
-      result = self._cache.get(obj_id)
-      if result:
-        return result
-    result = session.query(self.model_type).get(obj_id)
-    if result and self._cache is not None:
-      self._cache[obj_id] = result
-    return result
+  def get_with_session(self, session, obj_id):
+    """Gets an object by ID for this type using the specified session. Returns None if not found."""    
+    return session.query(self.model_type).get(obj_id)
 
   def get(self, obj_id):
     """Gets an object with the specified ID for this type from the database.
 
     Returns None if not found.
     """
-    if self._cache is not None:
-      result = self._cache.get(obj_id)
-      if result:
-        return result
     with self.session() as session:
-      return self.get_with_session(session, obj_id, check_cache=False)
+      return self.get_with_session(session, obj_id)
 
   def get_with_children(self, obj_id):
     """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
@@ -233,43 +214,31 @@ class BaseDao(object):
       decoded_vals = json.loads(urlsafe_b64decode(pagination_token))
     except:
       raise BadRequest("Invalid pagination token: %s", pagination_token)
-    print "TYPE = %s, len() = %d, fields = %d" % (type(decoded_vals), len(decoded_vals), len(fields))
     if not type(decoded_vals) is list or len(decoded_vals) != len(fields):
       raise BadRequest("Invalid pagination token: %s" % pagination_token)
-    if self.database.db_type == 'sqlite':
-      # SQLite does not support tuple comparisons, so make an or-of-ands statements that is
-      # equivalent.
-      or_clauses = []
-      if first_descending:
-        if decoded_vals[0] is not None:
-          or_clauses.append(fields[0] < decoded_vals[0])
-      else:
-        if decoded_vals[0] is None:
-          or_clauses.append(fields[0].isnot(None))
-        else:
-          or_clauses.append(fields[0] > decoded_vals[0])
-      for i in range(1, len(fields)):
-        and_clauses = []
-        for j in range(0, i - 1):
-          and_clauses.append(fields[j] == decoded_vals[j])
-        if decoded_vals[i] is None:
-          and_clauses.append(fields[i].isnot(None))
-        else:
-          and_clauses.append(fields[i] > decoded_vals[i])
-        or_clauses.append(and_(*and_clauses))
-      return query.filter(or_(*or_clauses))
+    # SQLite does not support tuple comparisons, so make an or-of-ands statements that is
+    # equivalent.
+    or_clauses = []
+    if first_descending:
+      if decoded_vals[0] is not None:
+        or_clauses.append(fields[0] < decoded_vals[0])
     else:
-      if first_descending:
-        if decoded_vals[0] is None:
-          return query.filter(and_(fields[0] is None,
-                                   tuple_(fields[1:]) > tuple_(decoded_vals[1:])))
-        return query.filter(or_(fields[0] < decoded_vals[0],
-                                and_(fields[0] == decoded_vals[0],
-                                     tuple_(fields[1:]) > tuple_(decoded_vals[1:]))))
+      if decoded_vals[0] is None:
+        or_clauses.append(fields[0].isnot(None))
       else:
-        return query.filter(tuple_(fields) > tuple_(decoded_vals))
-
-  def _add_order_by(self, query, order_by, field_names, fields):
+        or_clauses.append(fields[0] > decoded_vals[0])
+    for i in range(1, len(fields)):
+      and_clauses = []
+      for j in range(0, i - 1):
+        and_clauses.append(fields[j] == decoded_vals[j])
+      if decoded_vals[i] is None:
+        and_clauses.append(fields[i].isnot(None))
+      else:
+        and_clauses.append(fields[i] > decoded_vals[i])
+      or_clauses.append(and_(*and_clauses))
+    return query.filter(or_(*or_clauses))
+                          
+  def _add_order_by(self, query, order_by, field_names, fields):      
     """Adds a single order by field, as the primary sort order."""
     try:
       f = getattr(self.model_type, order_by.field_name)
@@ -353,8 +322,6 @@ class UpdatableDao(BaseDao):
     existing_obj = self.get_with_session(session, self.get_id(obj))
     self._validate_update(session, obj, existing_obj)
     self._do_update(session, obj, existing_obj)
-    if self._cache is not None:
-      del self._cache[self.get_id(obj)]
 
   def update(self, obj):
     """Updates the object in the database. Will fail if the object doesn't exist already, or

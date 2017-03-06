@@ -17,6 +17,11 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def get_id(self, obj):
     return obj.participantId
+  
+  def _validate_update(self, session, obj, existing_obj):
+    '''Participant summaries don't have a version value; drop it from validation logic.'''
+    if not existing_obj:
+      raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
 
   def make_query_filter(self, field_name, value):
     # Handle HPO and code values when parsing filter values.

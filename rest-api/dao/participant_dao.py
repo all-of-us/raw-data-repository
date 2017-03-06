@@ -80,7 +80,7 @@ class ParticipantDao(UpdatableDao):
   def get_hpo_id(self, session, obj):
     hpo_name = get_HPO_name_from_participant(obj)
     if hpo_name:
-      hpo = HPODao().get_by_name_with_session(session, hpo_name)
+      hpo = HPODao().get_by_name(hpo_name)
       if not hpo:
         raise BadRequest('No HPO found with name %s' % hpo_name)
       return hpo.hpoId

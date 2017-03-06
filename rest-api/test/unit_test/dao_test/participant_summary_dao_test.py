@@ -1,3 +1,4 @@
+import datetime
 import json
 
 from base64 import urlsafe_b64encode, urlsafe_b64decode
@@ -90,6 +91,44 @@ class ParticipantSummaryDaoTest(SqlTestBase):
                                     _make_pagination_token([3, None, None, None, 3])), [ps_1])
     self.assert_results(_with_token(self.descending_query,
                                     _make_pagination_token([3, None, None, None, 3])), [ps_2])
+
+  def testQuery_fourFullSummaries_paginate(self):
+    participant_1 = Participant(participantId=1, biobankId=4)
+    self.participant_dao.insert(participant_1)
+    participant_2 = Participant(participantId=2, biobankId=1)
+    self.participant_dao.insert(participant_2)
+    participant_3 = Participant(participantId=3, biobankId=3)
+    self.participant_dao.insert(participant_3)
+    participant_4 = Participant(participantId=4, biobankId=2)
+    self.participant_dao.insert(participant_4)
+    ps_1 = self.dao.get(1)
+    ps_2 = self.dao.get(2)
+    ps_3 = self.dao.get(3)
+    ps_4 = self.dao.get(4)
+
+    ps_1.lastName = 'Jones'
+    ps_1.firstName = 'Bob'
+    ps_1.dateOfBirth = datetime.date(1978, 10, 9)
+    self.dao.update(ps_1)
+
+    ps_2.lastName = 'Aardvark'
+    ps_2.firstName = 'Bob'
+    ps_2.dateOfBirth = datetime.date(1978, 10, 10)
+    self.dao.update(ps_2)
+
+    ps_3.lastName = 'Jones'
+    ps_3.firstName = 'Bob'
+    self.dao.update(ps_3)
+
+    ps_4.lastName = 'Jones'
+    self.dao.update(ps_4)
+
+
+
+
+
+
+
 
 def _with_token(query, token):
   return Query(query.field_filters, query.order_by, query.max_results, token)
