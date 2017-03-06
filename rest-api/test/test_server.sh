@@ -63,8 +63,7 @@ function run_client_test {
 
 TEST_FILES="participant.py
 measurements.py
-metrics.py
-biobank_order.py"
+metrics.py"
 
 for test in ${TEST_FILES}
 do
