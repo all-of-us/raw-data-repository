@@ -8,6 +8,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, U
 from werkzeug.exceptions import BadRequest
 
 from model.base import Base, FhirMixin, FhirProperty
+from model.utils import to_client_participant_id
 
 
 def _ToFhirDate(dt):
@@ -137,7 +138,7 @@ class BiobankOrder(Base):
           finalized=s.finalized and s.finalized.date))
 
   def _participant_id_to_subject(self):
-    return 'Patient/%d' % self.participantId
+    return 'Patient/%s' % to_client_participant_id(self.participantId)
 
   def _add_samples_to_resource(self, resource):
     resource.samples = []

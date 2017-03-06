@@ -1,5 +1,5 @@
 {
-  "subject": "Patient/%(participant_id)d",
+  "subject": "Patient/%(client_participant_id)s",
   "identifier": [{
     "system": "http://health-pro.org",
     "value": "healthpro-order-id-123%(participant_id)d"
