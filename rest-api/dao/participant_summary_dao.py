@@ -3,8 +3,7 @@ from dao.base_dao import UpdatableDao
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
-from werkzeug.exceptions import BadRequest
-
+from werkzeug.exceptions import BadRequest, NotFound
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ['lastName', 'firstName', 'dateOfBirth', 'participantId']

@@ -10,7 +10,6 @@ from sqlalchemy.exc import IntegrityError
 from query import Operator, PropertyType, FieldFilter, Results
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from sqlalchemy import or_, and_
-from sqlalchemy.sql.expression import tuple_
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.

@@ -34,7 +34,7 @@ class ParticipantDao(UpdatableDao):
     return obj.participantId
 
   def insert_with_session(self, session, obj):
-    obj.hpoId = self.get_hpo_id(session, obj)
+    obj.hpoId = self.get_hpo_id(obj)
     obj.version = 1
     obj.signUpTime = clock.CLOCK.now()
     obj.lastModified = obj.signUpTime
@@ -68,7 +68,7 @@ class ParticipantDao(UpdatableDao):
     obj.signUpTime = existing_obj.signUpTime
     obj.biobankId = existing_obj.biobankId
     if obj.providerLink != existing_obj.providerLink:
-      new_hpo_id = self.get_hpo_id(session, obj)
+      new_hpo_id = self.get_hpo_id(obj)
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id
         obj.participantSummary = ParticipantSummary()
@@ -77,7 +77,7 @@ class ParticipantDao(UpdatableDao):
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
-  def get_hpo_id(self, session, obj):
+  def get_hpo_id(self, obj):
     hpo_name = get_HPO_name_from_participant(obj)
     if hpo_name:
       hpo = HPODao().get_by_name(hpo_name)

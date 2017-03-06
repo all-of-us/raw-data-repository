@@ -41,6 +41,7 @@ class CacheAllDao(UpdatableDao):
     self.singleton_cache = get_cache(self.model_type, cache_ttl_seconds, self._load_cache)
 
   def _load_cache(self, key):
+    assert key == SINGLETON_KEY
     with self.session() as session:
       all_entities = session.query(self.model_type).all()
     return EntityCache(self, all_entities, self.index_field_keys)
@@ -74,6 +75,6 @@ class CacheAllDao(UpdatableDao):
       return []
     return [self.get(id_) for id_ in ids]
 
-  def get_all(self, ids=None):
+  def get_all(self):
     return self._get_cache().id_to_entity.values()
 
