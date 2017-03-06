@@ -8,6 +8,9 @@ class BiobankStoredSample(Base):
   Each participant has an associated list of samples. Biobank uploads a list of all received
   samples periodically, and we update our list of stored samples to match. The output is a
   reconciliation report of ordered and stored samples; see BiobankOrder.
+
+  Note that additional columns appear in the CSV uploaded from Biobank but are not persisted since
+  they are unused in the reconciliation report; we also only exclude child samples.
   """
   __tablename__ = 'biobank_stored_sample'
   # A unique ID assigned by Biobank for the sample. (AKA "RLIMS Sample ID.)
@@ -24,6 +27,3 @@ class BiobankStoredSample(Base):
   # Timestamp when Biobank finished receiving/preparing the sample (status changed from "In Prep"
   # to "In Circulation" in Mayo). This is the end time used for order-to-sample latency measurement.
   confirmedDate = Column('confirmed_date', DateTime)
-
-  # Note that additional columns appear in the CSV uploaded from Biobank but are not persisted since
-  # they are unused in the reconciliation report.
