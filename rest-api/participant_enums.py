@@ -1,3 +1,4 @@
+from code_constants import UNSET
 from protorpc import messages
 from dateutil.relativedelta import relativedelta
 
@@ -97,7 +98,7 @@ def extract_bucketed_age(participant_hist_obj):
 
 def get_bucketed_age(date_of_birth, today):
   if not date_of_birth:
-    return 'UNSET'
+    return UNSET
   age = relativedelta(today, date_of_birth).years
   for begin, end in zip(_AGE_LB, [age_lb - 1 for age_lb in _AGE_LB[1:]] + ['']):
     if (age >= begin) and (not end or age <= end):

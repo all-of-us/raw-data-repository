@@ -129,9 +129,9 @@ class BaseDao(object):
       # operator other than EQUALS and strip it off
       if property_type in _COMPARABLE_PROPERTY_TYPES:
         for prefix, op in _OPERATOR_PREFIX_MAP.iteritems():
-          if value.startswith(prefix):
+          if isinstance(value, (str, unicode)) and value.startswith(prefix):
             operator = op
-            value = value[len(op)]
+            value = value[len(prefix):]
             break      
       filter_value = self._parse_value(prop, property_type, value)
       return FieldFilter(field_name, operator, filter_value)
@@ -210,6 +210,8 @@ class BaseDao(object):
     return query, order_by_field_names
 
   def _add_filter(self, query, field_filter, f):
+    if field_filter.value is None:
+      return query.filter(f.is_(None))
     query = {Operator.EQUALS: query.filter(f == field_filter.value),
              Operator.LESS_THAN: query.filter(f < field_filter.value),
              Operator.GREATER_THAN: query.filter(f > field_filter.value),
@@ -230,6 +232,7 @@ class BaseDao(object):
     if first_descending:
       if decoded_vals[0] is not None:
         or_clauses.append(fields[0] < decoded_vals[0])
+        or_clauses.append(fields[0].is_(None))
     else:
       if decoded_vals[0] is None:
         or_clauses.append(fields[0].isnot(None))
@@ -248,7 +251,7 @@ class BaseDao(object):
 
   def _decode_token(self, pagination_token, fields):
     try:
-      decoded_vals = json.loads(urlsafe_b64decode(pagination_token))
+      decoded_vals = json.loads(urlsafe_b64decode(pagination_token.encode("ascii")))
     except:
       raise BadRequest("Invalid pagination token: %s", pagination_token)
     if not type(decoded_vals) is list or len(decoded_vals) != len(fields):

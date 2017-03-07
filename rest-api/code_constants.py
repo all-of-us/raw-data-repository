@@ -3,6 +3,8 @@ participant summaries and metrics.'''
 
 from protorpc import messages
 
+UNSET = 'UNSET'
+
 PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 
 FIRST_NAME_QUESTION_CODE = "PIIName_First"

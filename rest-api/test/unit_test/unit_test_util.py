@@ -213,6 +213,18 @@ class FlaskTestBase(NdbTestBase):
     self.assertMultiLineEqual(
         _clean_and_format_response_json(obj_a), _clean_and_format_response_json(obj_b))
 
+  def assertBundle(self, expected_entries, response, has_next=False):
+    self.assertEquals('Bundle', response['resourceType'])
+    self.assertEquals('searchset', response['type'])
+    self.assertEquals(len(expected_entries), len(response['entry']))
+    for i in range(0, len(expected_entries)):
+      self.assertJsonResponseMatches(expected_entries[i], response['entry'][i])
+    if has_next:
+      self.assertEquals('next', response['link'][0]['relation'])
+      return response['link'][0]['url']
+    else:
+      self.assertIsNone(response.get('link'))
+      return None
 
 def _clean_and_format_response_json(input_obj):
   obj = sort_lists(copy.deepcopy(input_obj))
@@ -223,15 +235,8 @@ def _clean_and_format_response_json(input_obj):
   # TODO(DA-226) Make sure times are not skewed on round trip to CloudSQL. For now, strip tzinfo.
   s = s.replace('+00:00', '')
   s = s.replace('Z",', '",')
-  return s
-
-def assertBundle(self, expected_entries, response):
-  self.assertEquals('Bundle', response['resourceType'])
-  self.assertEquals('searchset', response['type'])
-  self.assertEquals(len(expected_entries), len(response['entry']))
-  for i in range(0, len(expected_entries)):
-    self.assertJsonResponseMatches(expected_entries[i], response['entry'][i])
-     
+  return s     
+      
 def list_as_dict(items):
   return [item.asdict() for item in items]
 
@@ -255,26 +260,48 @@ def make_deferred_not_run():
   executors.defer = (lambda fn, *args, **kwargs: None)
 
 
-def make_questionnaire_response(participant_id, questionnaire_id, answers):
+def make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=None,
+                                string_answers=None, date_answers=None):
   results = []
-  for answer in answers:
-    results.append({"linkId": answer[0],
-                    "answer": [
-                       { "valueCoding": {
-                         "code": answer[1].code,
-                         "system": answer[1].system
-                       }
-                     }]
-                  })
-  return questionnaire_response.DAO().from_json({
-        "resourceType": "QuestionnaireResponse",
-        "status": "completed",
-        "subject": { "reference": "Patient/{}".format(participant_id) },
-        "questionnaire": { "reference": "Questionnaire/{}".format(questionnaire_id) },
-        "group": {
-          "question": results
-        }
-      }, participant_id, questionnaire_response.DAO().allocate_id())
+  if code_answers:
+    for answer in code_answers:
+      results.append({"linkId": answer[0],
+                      "answer": [
+                         { "valueCoding": {
+                           "code": answer[1].code,
+                           "system": answer[1].system
+                         }
+                       }]
+                    })
+  if string_answers:
+    for answer in string_answers:
+      results.append({"linkId": answer[0],
+                      "answer": [
+                         { "valueString": answer[1] }
+                       ]
+                    })
+  if date_answers:
+    for answer in date_answers:
+      results.append({"linkId": answer[0],
+                      "answer": [
+                         { "valueDate": "%s" % answer[1].isoformat() }
+                        ]
+                    })
+  return {"resourceType": "QuestionnaireResponse",
+          "status": "completed",
+          "subject": { "reference": "Patient/{}".format(participant_id) },
+          "questionnaire": { "reference": "Questionnaire/{}".format(questionnaire_id) },
+          "group": {
+            "question": results
+          }
+      }
+
+def make_questionnaire_response(participant_id, questionnaire_id, code_answers=None,
+                                string_answers=None, date_answers=None):
+  json = make_questionnaire_response_json(participant_id, questionnaire_id, code_answers,
+                                          string_answers, date_answers)
+  return questionnaire_response.DAO().from_json(json, participant_id,
+                                                questionnaire_response.DAO().allocate_id())
 
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))

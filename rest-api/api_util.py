@@ -9,6 +9,7 @@ from google.appengine.api import app_identity
 from google.appengine.api import oauth
 from google.appengine.ext import ndb
 
+from code_constants import UNSET
 from flask import request
 from protorpc import message_types
 from protorpc import messages
@@ -208,16 +209,16 @@ def format_json_code(obj, field_name):
     obj[field_without_id] = CodeDao().get(obj[field_name]).value
     del obj[field_name]
   else:
-    obj[field_without_id] = 'UNSET'
-    del obj[field_name]
-
+    obj[field_without_id] = UNSET
+    del obj[field_name]  
+    
 def format_json_hpo(obj, field_name):
   if obj[field_name]:
     from dao.hpo_dao import HPODao
     obj[field_name] = HPODao().get(obj[field_name]).name
   else:
-    obj[field_name] = 'UNSET'
-
+    obj[field_name] = UNSET
+        
 def unix_time_millis(dt):
   return int((dt - EPOCH).total_seconds() * 1000)
 
@@ -232,7 +233,7 @@ def format_json_enum(obj, field_name):
   if field_name in obj and obj[field_name] is not None:
     obj[field_name] = str(obj[field_name])
   else:
-    obj[field_name] = 'UNSET'
+    obj[field_name] = UNSET
 
 def remove_field(dict_, field_name):
   """Removes a field from the dict if it exists."""

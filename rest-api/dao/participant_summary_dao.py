@@ -1,13 +1,14 @@
-from code_constants import PPI_SYSTEM
+from code_constants import PPI_SYSTEM, UNSET
 from dao.base_dao import UpdatableDao
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
+from query import OrderBy
 from werkzeug.exceptions import BadRequest, NotFound
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ['lastName', 'firstName', 'dateOfBirth', 'participantId']
-_CODE_FIELDS = ['genderIdentityId', 'ethnicityId', 'raceId']
+_CODE_FIELDS = ['genderIdentity', 'ethnicity', 'race']
 
 class ParticipantSummaryDao(UpdatableDao):
   def __init__(self):
@@ -22,6 +23,15 @@ class ParticipantSummaryDao(UpdatableDao):
     if not existing_obj:
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
 
+  def _add_order_by(self, query, order_by, field_names, fields):
+    if order_by.field_name in _CODE_FIELDS:
+      return super(ParticipantSummaryDao, self)._add_order_by(query,
+                                                              OrderBy(order_by.field_name + 'Id',
+                                                                      order_by.ascending),
+                                                              field_names,
+                                                              fields)
+    return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
+
   def make_query_filter(self, field_name, value):
     # Handle HPO and code values when parsing filter values.
     if field_name == 'hpoId':
@@ -30,8 +40,10 @@ class ParticipantSummaryDao(UpdatableDao):
         raise BadRequest("No HPO found with name %s" % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
     if field_name in _CODE_FIELDS:
+      if value == UNSET:
+        return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
       code = CodeDao().get_code(PPI_SYSTEM, value)
       if not code:
         raise BadRequest("No code found: %s" % value)
-      return super(ParticipantSummaryDao, self).make_query_filter(field_name, code.codeId)
+      return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', code.codeId)
     return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)

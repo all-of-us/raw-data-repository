@@ -84,7 +84,7 @@ class QuestionnaireResponseDao(BaseDao):
   def _update_field(self, participant_summary, field_name, field_type, answer):
     value = getattr(participant_summary, field_name)
     new_value = self._get_field_value(field_type, answer)
-    if value != new_value:
+    if new_value is not None and value != new_value:
       setattr(participant_summary, field_name, new_value)
       return True
     return False
@@ -104,15 +104,14 @@ class QuestionnaireResponseDao(BaseDao):
     something_changed = False
     # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
     for answer in questionnaire_response.answers:
-      if answer.valueCodeId:
-        question = question_map.get(answer.questionId)
-        if question:
-          code = code_map.get(question.codeId)
-          if code:
-            summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
-            if summary_field:
-              something_changed = self._update_field(participant_summary, summary_field[0],
-                                                     summary_field[1], answer)
+      question = question_map.get(answer.questionId)
+      if question:
+        code = code_map.get(question.codeId)
+        if code:
+          summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
+          if summary_field:
+            something_changed = self._update_field(participant_summary, summary_field[0],
+                                                   summary_field[1], answer)
 
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
     # QUESTIONNAIRE_MODULE_CODE_TO_FIELD

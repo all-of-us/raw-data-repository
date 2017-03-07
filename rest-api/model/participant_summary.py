@@ -1,6 +1,7 @@
 import clock
 
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
+from code_constants import UNSET
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
 from participant_enums import MembershipTier, get_bucketed_age
 from model.base import Base
@@ -85,7 +86,7 @@ class ParticipantSummary(Base):
     if date_of_birth:
       result['ageRange'] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
     else:
-      result['ageRange'] = 'UNSET'
+      result['ageRange'] = UNSET
     format_json_hpo(result, 'hpoId')
     for fieldname in _DATE_FIELDS:
       format_json_date(result, fieldname)

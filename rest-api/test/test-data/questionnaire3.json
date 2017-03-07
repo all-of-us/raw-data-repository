@@ -1,0 +1,81 @@
+{
+  "resourceType": "Questionnaire",
+  "status":"published",
+  "date":"2015-01-01T00:00:00-00:00",
+  "publisher":"fake",
+  "group": {
+    "concept": [
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "Sociodemographic"
+      }],
+    "question": [
+      {
+        "linkId": "firstName",
+        "text": "First name",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIName_First",
+          "display": "First name"
+        }]
+      },{
+        "linkId": "middleName",
+        "text": "Middle name",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIName_Middle",
+          "display": "Middle name"
+        }]
+      },{
+        "linkId": "lastName",
+        "text": "Last name",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIName_Last",
+          "display": "Last name"
+        }]
+      },{
+        "linkId": "zipCode",
+        "text": "Zip code",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIAddress_ZIP",
+          "display": "Zip code"
+        }]
+      },{
+        "linkId": "race",
+        "text": "What is your race?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Sociodemographic_Race",
+          "display": "Race"
+        }]
+      }, {
+        "linkId": "ethnicity",
+        "text": "What is your ethnicity?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Sociodemographic_Ethnicity",
+          "display":"Ethnicity"
+        }]
+      }, {
+        "linkId":"genderIdentity",
+        "text":"What is your gender identity?",
+        "type":"choice",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Gender_GenderIdentity",
+          "display": "Gender identity"
+        }]
+      }, {
+        "linkId":"dateOfBirth",
+        "text":"What is your date of birth?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIBirthInformation_BirthDate",
+          "display": "Birth date"
+        }]
+      }
+    ]
+  }
+}
