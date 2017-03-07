@@ -21,8 +21,8 @@ class BiobankStoredSampleDaoTest(SqlTestBase):
     created = self.dao.insert(BiobankStoredSample(
         biobankStoredSampleId=sample_id,
         biobankId=self.participant.biobankId,
-        testCode=test_code,
-        confirmedDate=now))
+        test=test_code,
+        confirmed=now))
     fetched = self.dao.get(sample_id)
-    self.assertEquals(test_code, created.testCode)
-    self.assertEquals(test_code, fetched.testCode)
+    self.assertEquals(test_code, created.test)
+    self.assertEquals(test_code, fetched.test)

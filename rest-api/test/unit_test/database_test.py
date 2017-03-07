@@ -84,13 +84,13 @@ class DatabaseTest(SqlTestBase):
     session.add(BiobankStoredSample(
         biobankStoredSampleId='WEB1234542',
         biobankId=p.biobankId,
-        testCode='1UR10',
-        confirmedDate=datetime.datetime.utcnow()))
+        test='1UR10',
+        confirmed=datetime.datetime.utcnow()))
     session.add(BiobankStoredSample(
         biobankStoredSampleId='WEB99999',  # Sample ID must be unique.
         biobankId=p.biobankId,  # Participant ID and test may be duplicated.
-        testCode='1UR10',
-        confirmedDate=datetime.datetime.utcnow()))
+        test='1UR10',
+        confirmed=datetime.datetime.utcnow()))
 
     pm = PhysicalMeasurements(physicalMeasurementsId=1, participantId=1,
                               created=datetime.datetime.now(), resource='blah',
