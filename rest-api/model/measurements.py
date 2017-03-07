@@ -27,5 +27,6 @@ class PhysicalMeasurements(Base):
   @staticmethod
   def from_client_json(resource_json, participant_id=None, id_=None,
                        expected_version=None, client_id=None):
+    #pylint: disable=unused-argument
     return PhysicalMeasurements(participantId=participant_id, resource=json.dumps(resource_json))
 
