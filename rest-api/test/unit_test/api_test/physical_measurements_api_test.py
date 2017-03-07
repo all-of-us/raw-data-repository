@@ -1,6 +1,5 @@
 import main
 
-from clock import FakeClock
 from test.unit_test.unit_test_util import FlaskTestBase
 from test_data import load_measurement_json, load_measurement_json_amendment
 

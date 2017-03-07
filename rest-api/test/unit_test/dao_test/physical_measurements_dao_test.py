@@ -31,9 +31,9 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     with self.assertRaises(BadRequest):
       self.dao.insert(PhysicalMeasurements(participantId=2, resource=self.measurement_json))
 
-  def _with_id(self, resource, id):
+  def _with_id(self, resource, id_):
     measurements_json = json.loads(resource)
-    measurements_json['id'] = id
+    measurements_json['id'] = id_
     return json.dumps(measurements_json)
 
   def testInsert_rightParticipantId(self):
@@ -74,8 +74,8 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEquals('amended', amended_json['entry'][0]['resource']['status'])
     self.assertEquals('1', amended_json['id'])
 
-    amendment_json = json.loads(measurements_2.resource)
+    amendment_json = json.loads(new_measurements.resource)
     self.assertEquals('2', amendment_json['id'])
-    self.assertTrue(measurements_2.final)
-    self.assertEquals(TIME_3, measurements_2.created)
+    self.assertTrue(new_measurements.final)
+    self.assertEquals(TIME_3, new_measurements.created)
 
