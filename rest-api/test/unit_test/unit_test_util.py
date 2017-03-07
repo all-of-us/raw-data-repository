@@ -79,7 +79,7 @@ class SqlTestBase(TestbedTestBase):
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT'))
-   
+
   def assertObjEqualsExceptLastModified(self, obj1, obj2):
     dict1 = obj1.asdict()
     dict2 = obj2.asdict()
