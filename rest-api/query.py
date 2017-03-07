@@ -30,16 +30,19 @@ class OrderBy:
     self.ascending = ascending
 
 class Query:
-  def __init__(self, field_filters, order_by, max_results, pagination_token, a_id=None):
+  def __init__(self, field_filters, order_by, max_results, pagination_token, a_id=None,
+               always_return_token=False):
     self.field_filters = field_filters
     self.order_by = order_by
     self.max_results = max_results
     self.pagination_token = pagination_token
     self.ancestor_id = a_id
+    self.always_return_token = always_return_token
 
 class Results:
-  def __init__(self, items, pagination_token):
+  def __init__(self, items, pagination_token, more_available=False):
     self.items = items
     self.pagination_token = pagination_token
+    self.more_available = more_available
 
 

@@ -170,11 +170,17 @@ class BaseDao(object):
       if len(items) > query_def.max_results:
         return Results(items[0:query_def.max_results],
                        self._make_pagination_token(items[query_def.max_results - 1].asdict(),
-                                                   field_names))
+                                                   field_names),
+                       True)
       else:
-        return Results(items, None)
+        if query_def.always_return_token:
+          return Results(items,
+                         self._make_pagination_token(items[len(items) - 1].asdict(), field_names),
+                         False)
+        else:
+          return Results(items, None, False)
     else:
-      return Results([], None)
+      return Results([], None, False)
 
   def _make_pagination_token(self, item_dict, field_names):
     vals = [item_dict.get(field_name) for field_name in field_names]
@@ -190,9 +196,6 @@ class BaseDao(object):
         raise BadRequest("No field named %s found on %s", (field_filter.field_name,
                                                            self.model_type))
       query = self._add_filter(query, field_filter, f)
-    if query_def.ancestor_id:
-      # For now, we only support participant IDs for ancestors.
-      query = query.filter(self.model_type.participantId == query_def.ancestor_id)
     order_by_field_names = []
     order_by_fields = []
     first_descending = False
