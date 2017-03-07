@@ -22,8 +22,8 @@ class BiobankStoredSample(Base):
 
   # Which test was performed to produce this sample (ex: "1UR10" for blood draw). Rarely, the same
   # test may be performed multiple times for the same participant.
-  testCode = Column('test_code', String(80))
+  test = Column('test', String(80))
 
   # Timestamp when Biobank finished receiving/preparing the sample (status changed from "In Prep"
   # to "In Circulation" in Mayo). This is the end time used for order-to-sample latency measurement.
-  confirmedDate = Column('confirmed_date', DateTime)
+  confirmed = Column('confirmed', DateTime)
