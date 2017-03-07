@@ -1,4 +1,5 @@
 import json
+import logging
 
 from dao.base_dao import BaseDao
 from dao.participant_dao import ParticipantDao

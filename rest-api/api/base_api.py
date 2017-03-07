@@ -76,6 +76,7 @@ class BaseApi(Resource):
     Subclasses should pull the query parameters from the request with
     request.args.get().
     """
+    #pylint: disable=unused-argument
     raise BadRequest('List not implemented, provide GET with an ID.')
 
   def _query(self, id_field, participant_id=None):

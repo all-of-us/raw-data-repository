@@ -168,18 +168,22 @@ class BaseDao(object):
       items = query.all()
     if items:
       if len(items) > query_def.max_results:
+        # Items, pagination token, and more are available
         return Results(items[0:query_def.max_results],
                        self._make_pagination_token(items[query_def.max_results - 1].asdict(),
                                                    field_names),
                        True)
       else:
         if query_def.always_return_token:
+          # Items and pagination token, but no more available
           return Results(items,
                          self._make_pagination_token(items[len(items) - 1].asdict(), field_names),
                          False)
         else:
+          # Items but no pagination token, and no more available
           return Results(items, None, False)
     else:
+      # No items, no pagination token, and no more available
       return Results([], None, False)
 
   def _make_pagination_token(self, item_dict, field_names):
