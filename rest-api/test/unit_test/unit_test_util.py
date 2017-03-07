@@ -90,7 +90,7 @@ class SqlTestBase(TestbedTestBase):
     del dict1['lastModified']
     del dict2['lastModified']
     self.assertEquals(dict1, dict2)
-    
+
   def assertListAsDictEquals(self, list_a, list_b):
     if len(list_a) != len(list_b):
       self.fail("List lengths don't match: %d != %d; %s, %s" % (len(list_a), len(list_b),
@@ -235,8 +235,8 @@ def _clean_and_format_response_json(input_obj):
   # TODO(DA-226) Make sure times are not skewed on round trip to CloudSQL. For now, strip tzinfo.
   s = s.replace('+00:00', '')
   s = s.replace('Z",', '",')
-  return s     
-      
+  return s
+
 def list_as_dict(items):
   return [item.asdict() for item in items]
 

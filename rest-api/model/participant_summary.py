@@ -23,7 +23,7 @@ _ENUM_FIELDS = ['membershipTier', 'physicalMeasurementsStatus',
                 'questionnaireOnFamilyHealth']
 _CODE_FIELDS = ['genderIdentityId', 'raceId', 'ethnicityId']
 
-class ParticipantSummary(Base):  
+class ParticipantSummary(Base):
   __tablename__ = 'participant_summary'
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          primary_key=True, autoincrement=False)
@@ -97,8 +97,8 @@ class ParticipantSummary(Base):
     # Strip None values.
     result = {k: v for k, v in result.iteritems() if v is not None}
 
-    return result      
-      
+    return result
+
 Index('participant_summary_biobank_id', ParticipantSummary.biobankId)
 Index('participant_summary_ln_dob', ParticipantSummary.lastName,
       ParticipantSummary.dateOfBirth)

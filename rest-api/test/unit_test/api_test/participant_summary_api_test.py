@@ -56,7 +56,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                           date_answers = [("dateOfBirth", dateOfBirth)])
     with FakeClock(TIME_1):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
-      
+
   def testQuery_oneParticipant(self):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id = participant['participantId']
@@ -67,26 +67,26 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     with FakeClock(TIME_2):
       ps = self.send_get('Participant/%s/Summary' % participant_id)
-    expected_ps = {'questionnaireOnHealthcareAccess': 'UNSET', 
-                   'membershipTier': 'UNSET', 
-                   'questionnaireOnOverallHealth': 'UNSET', 
-                   'signUpTime': participant['signUpTime'], 
+    expected_ps = {'questionnaireOnHealthcareAccess': 'UNSET',
+                   'membershipTier': 'UNSET',
+                   'questionnaireOnOverallHealth': 'UNSET',
+                   'signUpTime': participant['signUpTime'],
                    'ethnicity': 'hispanic',
-                   'biobankId': participant['biobankId'], 
-                   'numBaselineSamplesArrived': 0, 
+                   'biobankId': participant['biobankId'],
+                   'numBaselineSamplesArrived': 0,
                    'questionnaireOnSociodemographics': 'SUBMITTED',
                    'questionnaireOnSociodemographicsTime': TIME_1.isoformat(),
-                   'questionnaireOnPersonalHabits': 'UNSET', 
-                   'questionnaireOnFamilyHealth': 'UNSET', 
+                   'questionnaireOnPersonalHabits': 'UNSET',
+                   'questionnaireOnFamilyHealth': 'UNSET',
                    'questionnaireOnMedications': 'UNSET',
-                   'physicalMeasurementsStatus': 'UNSET', 
+                   'physicalMeasurementsStatus': 'UNSET',
                    'genderIdentity': 'male',
-                   'consentForElectronicHealthRecords': 'UNSET', 
-                   'questionnaireOnMedicalHistory': u'UNSET', 
-                   'participantId': participant_id, 
-                   'hpoId': 'PITT', 
+                   'consentForElectronicHealthRecords': 'UNSET',
+                   'questionnaireOnMedicalHistory': u'UNSET',
+                   'participantId': participant_id,
+                   'hpoId': 'PITT',
                    'numCompletedBaselinePPIModules': 1,
-                   'consentForStudyEnrollment': 'UNSET', 
+                   'consentForStudyEnrollment': 'UNSET',
                    'race': 'white',
                    'dateOfBirth': '1978-10-09',
                    'ageRange': '36-45',
@@ -94,10 +94,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'middleName': 'Q',
                    'lastName': 'Jones',
                    'zipCode' : '78751'}
-    self.assertJsonResponseMatches(expected_ps, ps)    
+    self.assertJsonResponseMatches(expected_ps, ps)
     response = self.send_get('ParticipantSummary')
     self.assertBundle([_make_entry(ps)], response)
-    
+
   def _send_next(self, next_link):
     prefix_index = next_link.index(main.PREFIX)
     return self.send_get(next_link[prefix_index + len(main.PREFIX):])

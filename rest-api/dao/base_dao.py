@@ -47,7 +47,7 @@ class BaseDao(object):
   Extend directly from BaseDao if entities cannot be updated after being
   inserted; extend from UpdatableDao if they can be updated.
 
-  order_by_ending is a list of field names to always order by (in ascending order, possibly after 
+  order_by_ending is a list of field names to always order by (in ascending order, possibly after
   another sort field) when query() is invoked. It should always end in the primary key.
   If not specified, query() is not supported.
   """
@@ -94,7 +94,7 @@ class BaseDao(object):
     raise NotImplementedError
 
   def get_with_session(self, session, obj_id):
-    """Gets an object by ID for this type using the specified session. Returns None if not found."""    
+    """Gets an object by ID for this type using the specified session. Returns None if not found."""
     return session.query(self.model_type).get(obj_id)
 
   def get(self, obj_id):
@@ -132,7 +132,7 @@ class BaseDao(object):
           if isinstance(value, (str, unicode)) and value.startswith(prefix):
             operator = op
             value = value[len(prefix):]
-            break      
+            break
       filter_value = self._parse_value(prop, property_type, value)
       return FieldFilter(field_name, operator, filter_value)
     else:
@@ -224,9 +224,9 @@ class BaseDao(object):
 
   def _add_pagination_filter(self, query, pagination_token, fields, first_descending):
     """Adds a pagination filter for the decoded values in the pagination token based on
-    the sort order."""    
+    the sort order."""
     decoded_vals = self._decode_token(pagination_token, fields)
-    # SQLite does not support tuple comparisons, so make an or-of-ands statements that is 
+    # SQLite does not support tuple comparisons, so make an or-of-ands statements that is
     # equivalent.
     or_clauses = []
     if first_descending:
@@ -247,7 +247,7 @@ class BaseDao(object):
       else:
         and_clauses.append(fields[i] > decoded_vals[i])
       or_clauses.append(and_(*and_clauses))
-    return query.filter(or_(*or_clauses))    
+    return query.filter(or_(*or_clauses))
 
   def _decode_token(self, pagination_token, fields):
     try:
@@ -259,8 +259,8 @@ class BaseDao(object):
     for i in range(0, len(fields)):
       decoded_vals[i] = self._from_json_value(fields[i], decoded_vals[i])
     return decoded_vals
-                          
-  def _add_order_by(self, query, order_by, field_names, fields):      
+
+  def _add_order_by(self, query, order_by, field_names, fields):
     """Adds a single order by field, as the primary sort order."""
     try:
       f = getattr(self.model_type, order_by.field_name)

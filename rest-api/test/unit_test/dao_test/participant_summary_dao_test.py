@@ -26,7 +26,7 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     self.membership_tier_order_query = Query([], OrderBy("membershipTier", True), 2, None)
     self.hpo_id_order_query = Query([], OrderBy("hpoId", True), 2, None)
     self.first_name_order_query = Query([], OrderBy("firstName", True), 2, None)
-    
+
   def assert_no_results(self, query):
     results = self.dao.query(query)
     self.assertEquals([], results.items)
@@ -45,7 +45,7 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     self.assert_no_results(self.two_filter_query)
     self.assert_no_results(self.ascending_biobank_id_query)
     self.assert_no_results(self.descending_biobank_id_query)
-  
+
   def testQuery_oneSummary(self):
     participant = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(participant)
@@ -55,7 +55,7 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     self.assert_no_results(self.two_filter_query)
     self.assert_results(self.ascending_biobank_id_query, [participant_summary])
     self.assert_results(self.descending_biobank_id_query, [participant_summary])
-    
+
   def testQuery_twoSummaries(self):
     participant_1 = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(participant_1)
@@ -93,7 +93,7 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     self.assert_results(_with_token(self.ascending_biobank_id_query,
                                     _make_pagination_token([3, None, None, None, 3])), [ps_1])
     self.assert_results(_with_token(self.descending_biobank_id_query,
-                                    _make_pagination_token([3, None, None, None, 3])), [ps_2])                        
+                                    _make_pagination_token([3, None, None, None, 3])), [ps_2])
 
   def testQuery_fourFullSummaries_paginate(self):
     participant_1 = Participant(participantId=1, biobankId=4)
@@ -128,10 +128,10 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     ps_3.membershipTier = MembershipTier.REGISTERED
     self.dao.update(ps_3)
 
-    ps_4.lastName = 'Jones'    
+    ps_4.lastName = 'Jones'
     ps_4.membershipTier = MembershipTier.VOLUNTEER
     self.dao.update(ps_4)
-    
+
     self.assert_results(self.no_filter_query, [ps_2, ps_4],
                         _make_pagination_token(['Jones', None, None, 4]))
     self.assert_results(self.one_filter_query, [ps_1])
@@ -145,7 +145,7 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     self.assert_results(self.membership_tier_order_query, [ps_1, ps_2],
                         _make_pagination_token(['SKIPPED', 'Aardvark', 'Bob',
                                                 datetime.date(1978, 10, 10), 2]))
-    
+
     self.assert_results(_with_token(self.no_filter_query,
                                     _make_pagination_token(['Jones', None, None, 4])),
                         [ps_1, ps_3])
@@ -169,8 +169,8 @@ def _with_token(query, token):
 
 def _make_pagination_token(vals):
   vals_json = json.dumps(vals, default=json_serial)
-  return urlsafe_b64encode(vals_json)  
-  
+  return urlsafe_b64encode(vals_json)
+
 def _decode_token(token):
   if token is None:
     return None

@@ -210,15 +210,15 @@ def format_json_code(obj, field_name):
     del obj[field_name]
   else:
     obj[field_without_id] = UNSET
-    del obj[field_name]  
-    
+    del obj[field_name]
+
 def format_json_hpo(obj, field_name):
   if obj[field_name]:
     from dao.hpo_dao import HPODao
     obj[field_name] = HPODao().get(obj[field_name]).name
   else:
     obj[field_name] = UNSET
-        
+
 def unix_time_millis(dt):
   return int((dt - EPOCH).total_seconds() * 1000)
 
