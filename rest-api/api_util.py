@@ -227,7 +227,6 @@ def parse_json_enum(obj, field_name, enum):
   if field_name in obj and obj[field_name] is not None:
     obj[field_name] = enum(obj[field_name])
 
-
 def format_json_enum(obj, field_name):
   """Converts a field of a dictionary from a enum to an string."""
   if field_name in obj and obj[field_name] is not None:

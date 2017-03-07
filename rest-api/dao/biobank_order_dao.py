@@ -42,7 +42,7 @@ class BiobankOrderDao(BaseDao):
           .filter_by(value=identifier.value)
           .filter(BiobankOrderIdentifier.biobankOrderId != obj.biobankOrderId)):
         raise BadRequest(
-            'Identifier %s is already in use by order %d' % (identifier, existing.biobankOrderId))
+            'Identifier %s is already in use by order %s' % (identifier, existing.biobankOrderId))
 
   def _validate_order_sample(self, sample):
     # TODO(mwf) Make use of FHIR validation?

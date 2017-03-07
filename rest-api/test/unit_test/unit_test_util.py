@@ -81,8 +81,8 @@ class SqlTestBase(TestbedTestBase):
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT'))
-    self.participant = Participant(participantId=123, biobankId=555)
-    ParticipantDao().insert(self.participant)
+    #self.participant = Participant(participantId=123, biobankId=555)
+    #ParticipantDao().insert(self.participant)
 
   def assertObjEqualsExceptLastModified(self, obj1, obj2):
     dict1 = obj1.asdict()
