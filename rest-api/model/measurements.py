@@ -1,4 +1,5 @@
 import clock
+import json
 
 from model.base import Base
 from sqlalchemy.orm import relationship
@@ -19,4 +20,13 @@ class PhysicalMeasurements(Base):
   logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'),
                          nullable=False)
   logPosition = relationship('LogPosition')
+
+  def to_client_json(self):
+    return json.loads(self.resource)
+
+  @staticmethod
+  def from_client_json(resource_json, participant_id=None, id_=None,
+                       expected_version=None, client_id=None):
+    #pylint: disable=unused-argument
+    return PhysicalMeasurements(participantId=participant_id, resource=json.dumps(resource_json))
 

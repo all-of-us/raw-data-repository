@@ -2,8 +2,9 @@
 import api_util
 
 from query import OrderBy, Query
-from flask import request
+from flask import request, jsonify, url_for
 from flask.ext.restful import Resource
+from model.utils import to_client_participant_id
 from werkzeug.exceptions import BadRequest, NotFound
 
 DEFAULT_MAX_RESULTS = 100
@@ -25,7 +26,7 @@ class BaseApi(Resource):
     self.dao = dao
     self._get_returns_children = get_returns_children
 
-  def get(self, id_=None):
+  def get(self, id_=None, participant_id=None):
     """Handle a GET request.
 
     Args:
@@ -34,10 +35,14 @@ class BaseApi(Resource):
         will be called.
     """
     if id_ is None:
-      return self.list()
+      return self.list(participant_id)
     obj = self.dao.get_with_children(id_) if self._get_returns_children else self.dao.get(id_)
     if not obj:
       raise NotFound("%s with ID %s not found" % (self.dao.model_type.__name__, id_))
+    if participant_id:
+      if participant_id != obj.participantId:
+        raise NotFound("%s with ID %s is not for participant with ID %s" %
+                       (self.dao.model_type.__name__, id_, participant_id))
     return self._make_response(obj)
 
   def _make_response(self, obj):
@@ -65,31 +70,30 @@ class BaseApi(Resource):
     self._do_insert(m)
     return self._make_response(m)
 
-  def list(self):
+  def list(self, participant_id=None):
     """Handles a list request, as the default behavior when a GET has no id provided.
 
     Subclasses should pull the query parameters from the request with
     request.args.get().
     """
+    #pylint: disable=unused-argument
     raise BadRequest('List not implemented, provide GET with an ID.')
 
   def _query(self, id_field, participant_id=None):
     """Run a query against the DAO.
     Extracts query parameters from request using FHIR conventions.
-
     Returns an FHIR Bundle containing entries for each item in the
     results, with a "next" link if there are more results to fetch. An empty Bundle
     will be returned if no results match the query.
-
     Args:
       id_field: name of the field containing the ID used when constructing resource URLs for results
       participant_id: the participant ID under which to perform this query, if appropriate
     """
-    query = self._make_query(participant_id)
+    query = self._make_query()
     results = self.dao.query(query)
     return self._make_bundle(results, id_field, participant_id)
 
-  def _make_query(self, participant_id=None):
+  def _make_query(self):
     field_filters = []
     max_results = DEFAULT_MAX_RESULTS
     pagination_token = None
@@ -111,7 +115,7 @@ class BaseApi(Resource):
         field_filter = self.dao.make_query_filter(key, value)
         if field_filter:
           field_filters.append(field_filter)
-    return Query(field_filters, order_by, max_results, pagination_token, participant_id)
+    return Query(field_filters, order_by, max_results, pagination_token)
 
   def _make_bundle(self, results, id_field, participant_id):
     import main
@@ -127,7 +131,7 @@ class BaseApi(Resource):
       if participant_id:
         full_url = main.api.url_for(self.__class__,
                                     id_=json[id_field],
-                                    p_id=participant_id,
+                                    p_id=to_client_participant_id(participant_id),
                                     _external=True)
       else:
         full_url = main.api.url_for(self.__class__,
@@ -137,7 +141,6 @@ class BaseApi(Resource):
                      "resource": json})
     bundle_dict['entry'] = entries
     return bundle_dict
-
 
 class UpdatableApi(BaseApi):
   """Base class for API handlers that support PUT requests.
@@ -193,3 +196,22 @@ def _parse_etag(etag):
     except ValueError:
       raise BadRequest("Invalid version: %s" % version_str)
   raise BadRequest("Invalid ETag: %s" % etag)
+
+def _sync(dao, max_results):
+  token = request.args.get('_token')
+  count_str = request.args.get('_count')
+  count = int(count_str) if count_str else max_results
+  results = dao.query(Query([], OrderBy('logPositionId', True),
+                            count, token, always_return_token=True))
+  bundle_dict = {"resourceType": "Bundle", "type": "history"}
+  if results.pagination_token:
+    query_params = request.args.copy()
+    query_params['_token'] = results.pagination_token
+    link_type = "next" if results.more_available else "sync"
+    next_url = url_for(request.url_rule.endpoint, _external=True, **query_params)
+    bundle_dict['link'] = [{"relation": link_type, "url": next_url}]
+  entries = []
+  for item in results.items:
+    entries.append({"resource": item.to_client_json()})
+  bundle_dict['entry'] = entries
+  return jsonify(bundle_dict)

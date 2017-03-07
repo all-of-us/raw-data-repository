@@ -5,12 +5,12 @@ This defines the APIs and the handlers for the APIs. All responses are JSON.
 import app_util
 import config_api
 import metrics_api
-import physical_measurements_api
 import version_api
 
 from api.biobank_order_api import BiobankOrderApi
 from api.participant_api import ParticipantApi
 from api.participant_summary_api import ParticipantSummaryApi
+from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
 from flask import Flask
@@ -41,9 +41,9 @@ api.add_resource(ParticipantSummaryApi,
                  endpoint='participant.summary',
                  methods=['GET',])
 
-api.add_resource(physical_measurements_api.PhysicalMeasurementsAPI,
-                 PREFIX + 'Participant/<string:a_id>/PhysicalMeasurements',
-                 PREFIX + 'Participant/<string:a_id>/PhysicalMeasurements/<string:id_>',
+api.add_resource(PhysicalMeasurementsApi,
+                 PREFIX + 'Participant/<participant_id:p_id>/PhysicalMeasurements',
+                 PREFIX + 'Participant/<participant_id:p_id>/PhysicalMeasurements/<string:id_>',
                  endpoint='participant.physicalMeasurements',
                  methods=['GET', 'POST',])
 
@@ -96,7 +96,7 @@ api.add_resource(version_api.VersionApi,
 
 app.add_url_rule(PREFIX + 'PhysicalMeasurements/_history',
                  endpoint='physicalMeasurementsSync',
-                 view_func=physical_measurements_api.sync_physical_measurements,
+                 view_func=sync_physical_measurements,
                  methods=['GET'])
 
 app.after_request(app_util.add_headers)

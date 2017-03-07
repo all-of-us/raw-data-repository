@@ -62,7 +62,6 @@ function run_client_test {
   echo "WARNING: ${instance} is non-local and not HTTPS; expect failure."
 
 TEST_FILES="participant.py
-measurements.py
 metrics.py"
 
 for test in ${TEST_FILES}
