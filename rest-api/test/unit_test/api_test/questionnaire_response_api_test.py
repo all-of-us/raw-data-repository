@@ -81,7 +81,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     resource['questionnaire']['reference'] = \
       resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
     with FakeClock(TIME_2):
-      response = self.send_post(_questionnaire_response_url(participant_id), resource)
+      self.send_post(_questionnaire_response_url(participant_id), resource)
 
     participant = self.send_get('Participant/%s' % participant_id)
     summary = self.send_get('Participant/%s/Summary' % participant_id)
