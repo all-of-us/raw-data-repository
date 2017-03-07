@@ -1,7 +1,8 @@
 import clock
 import logging
 
-from dao.base_dao import BaseDao, UpdatableDao
+from dao.base_dao import BaseDao
+from dao.cache_all_dao import CacheAllDao
 from model.code import CodeBook, Code, CodeHistory, CodeType
 from werkzeug.exceptions import BadRequest
 
@@ -52,7 +53,7 @@ class CodeBookDao(BaseDao):
     code_type = _CODE_TYPE_MAP[property_dict['concept-type']]
     code = Code(system=system, codeBookId=code_book_id, value=value, display=display, topic=topic,
                 codeType=code_type, mapped=True, parentId=parent_id)
-    existing_code = self.code_dao.get_code_with_session(session, system, value)
+    existing_code = self.code_dao._get_code_with_session(session, system, value)
     if existing_code:
       code.codeId = existing_code.codeId
       self.code_dao._do_update(session, code, existing_code)
@@ -81,9 +82,11 @@ class CodeBookDao(BaseDao):
         code_count += self._import_concept(session, concept, system, codebook.codeBookId, None)
     logging.info("%d codes imported.", code_count)
 
-class CodeDao(UpdatableDao):
+SYSTEM_AND_VALUE = ('system', 'value')
+
+class CodeDao(CacheAllDao):
   def __init__(self):
-    super(CodeDao, self).__init__(Code)
+    super(CodeDao, self).__init__(Code, cache_ttl_seconds=600, index_field_keys=[SYSTEM_AND_VALUE])
 
   def _add_history(self, session, obj):
     history = CodeHistory()
@@ -110,20 +113,15 @@ class CodeDao(UpdatableDao):
   def get_id(self, obj):
     return obj.codeId
 
-  def get_code_with_session(self, session, system, value):
+  def _get_code_with_session(self, session, system, value):
+    # In the context of an import, where this is called, don't use the cache.
     return (session.query(Code)
             .filter(Code.system == system)
             .filter(Code.value == value)
             .one_or_none())
 
-  def get_all_with_session(self, session, ids):
-    if not ids:
-      return []
-    return session.query(Code).filter(Code.codeId.in_(ids)).all()
-
   def get_code(self, system, value):
-    with self.session() as session:
-      return self.get_code_with_session(session, system, value)
+    return self._get_cache().index_maps[SYSTEM_AND_VALUE].get((system, value))
 
   def get_or_add_codes(self, code_map):
     """Accepts a map of (system, value) -> (display, code_type, parent_id) for codes found in a
@@ -133,13 +131,25 @@ class CodeDao(UpdatableDao):
 
     Adds new unmapped codes for anything that is missing.
     """
+    # First get whatever is already in the cache.
     result_map = {}
+    for system, value in code_map.keys():
+      code = self.get_code(system, value)
+      if code:
+        result_map[(system, value)] = code.codeId
+    if len(result_map) == len(code_map):
+      return result_map
     with self.session() as session:
       for system, value in code_map.keys():
-        existing_code = self.get_code_with_session(session, system, value)
-        if existing_code:
-          result_map[(system, value)] = existing_code.codeId
-        else:
+        existing_code = result_map.get((system, value))
+        if not existing_code:
+          # Check to see if it's in the database. (Normally it won't be.)
+          existing_code = self._get_code_with_session(session, system, value)
+          if existing_code:
+            result_map[(system, value)] = code.codeId
+            continue
+
+          # If it's not in the database, add it.
           display, code_type, parent_id = code_map[(system, value)]
           code = Code(system=system, value=value, display=display,
                       codeType=code_type, mapped=False, parentId=parent_id)

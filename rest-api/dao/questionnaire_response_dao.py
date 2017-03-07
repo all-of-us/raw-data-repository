@@ -2,6 +2,7 @@ import clock
 import json
 
 from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, PPI_SYSTEM
+from code_constants import FieldType
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
@@ -71,6 +72,23 @@ class QuestionnaireResponseDao(BaseDao):
     self._update_participant_summary(session, questionnaire_response, code_ids, questions, qh)
     return questionnaire_response
 
+  def _get_field_value(self, field_type, answer):
+    if field_type == FieldType.CODE:
+      return answer.valueCodeId
+    if field_type == FieldType.STRING:
+      return answer.valueString
+    if field_type == FieldType.DATE:
+      return answer.valueDate
+    raise BadRequest("Don't know how to map field of type %s" % field_type)
+
+  def _update_field(self, participant_summary, field_name, field_type, answer):
+    value = getattr(participant_summary, field_name)
+    new_value = self._get_field_value(field_type, answer)
+    if new_value is not None and value != new_value:
+      setattr(participant_summary, field_name, new_value)
+      return True
+    return False
+
   def _update_participant_summary(self, session, questionnaire_response, code_ids, questions, qh):
     """Updates the participant summary based on questions answered and modules completed
     in the questionnaire response."""
@@ -79,23 +97,21 @@ class QuestionnaireResponseDao(BaseDao):
 
     code_ids.extend([concept.codeId for concept in qh.concepts])
     # Fetch the codes for all questions and concepts
-    codes = CodeDao().get_all_with_session(session, code_ids)
+    codes = CodeDao().get_with_ids(code_ids)
 
     code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
     question_map = {question.questionnaireQuestionId: question for question in questions}
     something_changed = False
     # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
     for answer in questionnaire_response.answers:
-      if answer.valueCodeId:
-        question = question_map.get(answer.questionId)
-        if question:
-          code = code_map.get(question.codeId)
-          if code:
-            summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
-            if summary_field:
-              if getattr(participant_summary, summary_field) != answer.valueCodeId:
-                setattr(participant_summary, summary_field, answer.valueCodeId)
-                something_changed = True
+      question = question_map.get(answer.questionId)
+      if question:
+        code = code_map.get(question.codeId)
+        if code:
+          summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
+          if summary_field:
+            something_changed = self._update_field(participant_summary, summary_field[0],
+                                                   summary_field[1], answer)
 
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
     # QUESTIONNAIRE_MODULE_CODE_TO_FIELD

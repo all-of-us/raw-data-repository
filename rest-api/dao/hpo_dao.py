@@ -1,13 +1,12 @@
-from dao.base_dao import BaseDao
+from dao.cache_all_dao import CacheAllDao
 from model.hpo import HPO
 
-class HPODao(BaseDao):
+class HPODao(CacheAllDao):
   def __init__(self):
-    super(HPODao, self).__init__(HPO)
+    super(HPODao, self).__init__(HPO, cache_ttl_seconds=600, index_field_keys=['name'])
 
-  def get_by_name_with_session(self, session, name):
-    return session.query(HPO).filter(HPO.name == name).first()
+  def get_id(self, obj):
+    return obj.hpoId
 
   def get_by_name(self, name):
-    with self.session() as session:
-      return self.get_by_name_with_session(session, name)
+    return self._get_cache().index_maps['name'].get(name)

@@ -50,4 +50,5 @@ class ParticipantIdConverter(BaseConverter):
       raise ValidationError(ex.description)
 
   def to_url(self, value):
-    return to_client_participant_id(value)
+    # Assume the client has already converted this.
+    return value

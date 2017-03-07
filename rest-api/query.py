@@ -7,13 +7,16 @@ class Operator(messages.Enum):
   GREATER_THAN = 2
   LESS_THAN_OR_EQUALS = 3
   GREATER_THAN_OR_EQUALS = 4
-  # Note: we don't support contains, not equals, or exact string comparison at this stage
+  NOT_EQUALS = 5
+  # Note: we don't support contains or exact string comparison at this stage
 
 class PropertyType(messages.Enum):
   STRING = 0
   DATE = 1
-  ENUM = 2
-  INTEGER = 3
+  DATETIME = 2
+  ENUM = 3
+  INTEGER = 4
+  CODE = 5
 
 class FieldFilter:
   def __init__(self, field_name, operator, value):

@@ -1,6 +1,8 @@
 import clock
 from dao.biobank_order_dao import BiobankOrderDao, VALID_TESTS
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from model.participant import Participant
+from dao.participant_dao import ParticipantDao
 from unit_test_util import SqlTestBase
 
 from werkzeug.exceptions import BadRequest
@@ -11,6 +13,8 @@ class BiobankOrderDaoTest(SqlTestBase):
 
   def setUp(self):
     super(BiobankOrderDaoTest, self).setUp()
+    self.participant = Participant(participantId=123, biobankId=555)
+    ParticipantDao().insert(self.participant)
     self.dao = BiobankOrderDao()
 
   def test_bad_participant(self):

@@ -1,7 +1,17 @@
 '''Constants for code values for questions and modules and their mappings to fields on
 participant summaries and metrics.'''
 
+from protorpc import messages
+
+UNSET = 'UNSET'
+
 PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
+
+FIRST_NAME_QUESTION_CODE = "PIIName_First"
+LAST_NAME_QUESTION_CODE = "PIIName_Last"
+MIDDLE_NAME_QUESTION_CODE = "PIIName_Middle"
+ZIPCODE_QUESTION_CODE = "PIIAddress_ZIP"
+DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
 # This is a topic in the codebook right now.
@@ -14,12 +24,23 @@ OVERALL_HEALTH_PPI_MODULE = "OverallHealth"
 PERSONAL_HABITS_PPI_MODULE = "PersonalHabits"
 SOCIODEMOGRAPHIC_PPI_MODULE = "Sociodemographic"
 
+class FieldType(messages.Enum):
+  """A type of field that shows up in a questionnaire response."""
+  CODE = 1
+  STRING = 2
+  DATE = 3
+
 FIELD_TO_QUESTION_CODE = {
-  "genderIdentityId": GENDER_IDENTITY_QUESTION_CODE,
-  "raceId": RACE_QUESTION_CODE,
-  "ethnicityId": ETHNICITY_QUESTION_CODE
+  "genderIdentityId": (GENDER_IDENTITY_QUESTION_CODE, FieldType.CODE),
+  "raceId": (RACE_QUESTION_CODE, FieldType.CODE),
+  "ethnicityId": (ETHNICITY_QUESTION_CODE, FieldType.CODE),
+  "firstName": (FIRST_NAME_QUESTION_CODE, FieldType.STRING),
+  "lastName": (LAST_NAME_QUESTION_CODE, FieldType.STRING),
+  "middleName": (MIDDLE_NAME_QUESTION_CODE, FieldType.STRING),
+  "zipCode": (ZIPCODE_QUESTION_CODE, FieldType.STRING),
+  "dateOfBirth": (DATE_OF_BIRTH_QUESTION_CODE, FieldType.DATE)
 }
-QUESTION_CODE_TO_FIELD = {v: k for k, v in FIELD_TO_QUESTION_CODE.iteritems()}
+QUESTION_CODE_TO_FIELD = {v[0]: (k, v[1]) for k, v in FIELD_TO_QUESTION_CODE.iteritems()}
 
 FIELD_TO_QUESTIONNAIRE_MODULE_CODE = {
   # TODO: fill this in when correct codes are defined

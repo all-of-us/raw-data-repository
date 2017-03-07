@@ -5,12 +5,12 @@ This defines the APIs and the handlers for the APIs. All responses are JSON.
 import app_util
 import config_api
 import metrics_api
-import participant_summary_api
 import physical_measurements_api
 import version_api
 
 from api.biobank_order_api import BiobankOrderApi
 from api.participant_api import ParticipantApi
+from api.participant_summary_api import ParticipantSummaryApi
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
 from flask import Flask
@@ -29,14 +29,14 @@ app.url_map.converters['participant_id'] = ParticipantIdConverter
 api = Api(app)
 
 api.add_resource(ParticipantApi,
-                 PREFIX + 'Participant/<string:id_>',
+                 PREFIX + 'Participant/<participant_id:p_id>',
                  PREFIX + 'Participant',
                  endpoint='participant',
                  # TODO(DA-216): remove PATCH once PTC migrates to PUT
                  methods=['GET', 'POST', 'PATCH', 'PUT'])
 
-api.add_resource(participant_summary_api.ParticipantSummaryAPI,
-                 PREFIX + 'Participant/<string:id_>/Summary',
+api.add_resource(ParticipantSummaryApi,
+                 PREFIX + 'Participant/<participant_id:p_id>/Summary',
                  PREFIX + 'ParticipantSummary',
                  endpoint='participant.summary',
                  methods=['GET',])

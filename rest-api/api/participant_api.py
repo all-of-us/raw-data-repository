@@ -7,15 +7,15 @@ from google.appengine.ext import ndb
 from api.base_api import UpdatableApi
 from api_util import PTC, PTC_AND_HEALTHPRO
 from dao.participant_dao import ParticipantDao
-from model.utils import from_client_participant_id, to_client_participant_id, to_client_biobank_id
+from model.utils import to_client_participant_id, to_client_biobank_id
 
 class ParticipantApi(UpdatableApi):
   def __init__(self):
     super(ParticipantApi, self).__init__(ParticipantDao())
 
   @api_util.auth_required(PTC_AND_HEALTHPRO)
-  def get(self, id_=None):
-    return super(ParticipantApi, self).get(from_client_participant_id(id_))
+  def get(self, p_id):
+    return super(ParticipantApi, self).get(p_id)
 
   # TODO(DA-218): remove this
   def _do_insert(self, m):
@@ -36,13 +36,13 @@ class ParticipantApi(UpdatableApi):
     return result
 
   @api_util.auth_required(PTC)
-  def put(self, id_):
-    return super(ParticipantApi, self).put(from_client_participant_id(id_))
+  def put(self, p_id):
+    return super(ParticipantApi, self).put(p_id)
 
   # TODO(DA-216): remove once PTC migrates to PUT
   @api_util.auth_required(PTC)
-  def patch(self, id_):
-    return super(ParticipantApi, self).put(from_client_participant_id(id_))
+  def patch(self, p_id):
+    return super(ParticipantApi, self).put(p_id)
 
 def _make_ndb_participant(obj):
   key = ndb.Key(participant.Participant, to_client_participant_id(obj.participantId))

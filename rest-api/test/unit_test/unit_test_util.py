@@ -21,9 +21,7 @@ import singletons
 
 from contextlib import contextmanager
 from dao.hpo_dao import HPODao
-from dao.participant_dao import ParticipantDao
 from model.hpo import HPO
-from model.participant import Participant
 from participant_enums import UNSET_HPO_ID
 from mock import patch
 from test.test_data import data_path
@@ -81,8 +79,6 @@ class SqlTestBase(TestbedTestBase):
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT'))
-    self.participant = Participant(participantId=123, biobankId=555)
-    ParticipantDao().insert(self.participant)
 
   def assertObjEqualsExceptLastModified(self, obj1, obj2):
     dict1 = obj1.asdict()
@@ -91,6 +87,13 @@ class SqlTestBase(TestbedTestBase):
     del dict2['lastModified']
     self.assertEquals(dict1, dict2)
 
+  def assertListAsDictEquals(self, list_a, list_b):
+    if len(list_a) != len(list_b):
+      self.fail("List lengths don't match: %d != %d; %s, %s" % (len(list_a), len(list_b),
+                                                                list_as_dict(list_a),
+                                                                list_as_dict(list_b)))
+    for i in range(0, len(list_a)):
+      self.assertEquals(list_a[i].asdict(), list_b[i].asdict())
 
 class NdbTestBase(SqlTestBase):
   """Base class for unit tests that need the NDB testbed."""
@@ -206,6 +209,18 @@ class FlaskTestBase(NdbTestBase):
     self.assertMultiLineEqual(
         _clean_and_format_response_json(obj_a), _clean_and_format_response_json(obj_b))
 
+  def assertBundle(self, expected_entries, response, has_next=False):
+    self.assertEquals('Bundle', response['resourceType'])
+    self.assertEquals('searchset', response['type'])
+    self.assertEquals(len(expected_entries), len(response['entry']))
+    for i in range(0, len(expected_entries)):
+      self.assertJsonResponseMatches(expected_entries[i], response['entry'][i])
+    if has_next:
+      self.assertEquals('next', response['link'][0]['relation'])
+      return response['link'][0]['url']
+    else:
+      self.assertIsNone(response.get('link'))
+      return None
 
 def _clean_and_format_response_json(input_obj):
   obj = sort_lists(copy.deepcopy(input_obj))
@@ -218,6 +233,8 @@ def _clean_and_format_response_json(input_obj):
   s = s.replace('Z",', '",')
   return s
 
+def list_as_dict(items):
+  return [item.asdict() for item in items]
 
 def to_dict_strip_last_modified(obj):
   assert obj.last_modified, 'Missing last_modified: {}'.format(obj)
@@ -239,26 +256,48 @@ def make_deferred_not_run():
   executors.defer = (lambda fn, *args, **kwargs: None)
 
 
-def make_questionnaire_response(participant_id, questionnaire_id, answers):
+def make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=None,
+                                string_answers=None, date_answers=None):
   results = []
-  for answer in answers:
-    results.append({"linkId": answer[0],
-                    "answer": [
-                       { "valueCoding": {
-                         "code": answer[1].code,
-                         "system": answer[1].system
-                       }
-                     }]
-                  })
-  return questionnaire_response.DAO().from_json({
-        "resourceType": "QuestionnaireResponse",
-        "status": "completed",
-        "subject": { "reference": "Patient/{}".format(participant_id) },
-        "questionnaire": { "reference": "Questionnaire/{}".format(questionnaire_id) },
-        "group": {
-          "question": results
-        }
-      }, participant_id, questionnaire_response.DAO().allocate_id())
+  if code_answers:
+    for answer in code_answers:
+      results.append({"linkId": answer[0],
+                      "answer": [
+                         { "valueCoding": {
+                           "code": answer[1].code,
+                           "system": answer[1].system
+                         }
+                       }]
+                    })
+  if string_answers:
+    for answer in string_answers:
+      results.append({"linkId": answer[0],
+                      "answer": [
+                         { "valueString": answer[1] }
+                       ]
+                    })
+  if date_answers:
+    for answer in date_answers:
+      results.append({"linkId": answer[0],
+                      "answer": [
+                         { "valueDate": "%s" % answer[1].isoformat() }
+                        ]
+                    })
+  return {"resourceType": "QuestionnaireResponse",
+          "status": "completed",
+          "subject": { "reference": "Patient/{}".format(participant_id) },
+          "questionnaire": { "reference": "Questionnaire/{}".format(questionnaire_id) },
+          "group": {
+            "question": results
+          }
+      }
+
+def make_questionnaire_response(participant_id, questionnaire_id, code_answers=None,
+                                string_answers=None, date_answers=None):
+  qr_json = make_questionnaire_response_json(participant_id, questionnaire_id, code_answers,
+                                             string_answers, date_answers)
+  return questionnaire_response.DAO().from_json(qr_json, participant_id,
+                                                questionnaire_response.DAO().allocate_id())
 
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))

@@ -1,9 +1,13 @@
 """Base class for API handlers."""
 import api_util
 
+from query import OrderBy, Query
 from flask import request
 from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest, NotFound
+
+DEFAULT_MAX_RESULTS = 100
+MAX_MAX_RESULTS = 10000
 
 class BaseApi(Resource):
   """Base class for API handlers.
@@ -68,6 +72,71 @@ class BaseApi(Resource):
     request.args.get().
     """
     raise BadRequest('List not implemented, provide GET with an ID.')
+
+  def _query(self, id_field, participant_id=None):
+    """Run a query against the DAO.
+    Extracts query parameters from request using FHIR conventions.
+
+    Returns an FHIR Bundle containing entries for each item in the
+    results, with a "next" link if there are more results to fetch. An empty Bundle
+    will be returned if no results match the query.
+
+    Args:
+      id_field: name of the field containing the ID used when constructing resource URLs for results
+      participant_id: the participant ID under which to perform this query, if appropriate
+    """
+    query = self._make_query(participant_id)
+    results = self.dao.query(query)
+    return self._make_bundle(results, id_field, participant_id)
+
+  def _make_query(self, participant_id=None):
+    field_filters = []
+    max_results = DEFAULT_MAX_RESULTS
+    pagination_token = None
+    order_by = None
+    for key, value in request.args.iteritems():
+      if key == '_count':
+        max_results = int(request.args['_count'])
+        if max_results < 1:
+          raise BadRequest("_count < 1")
+        if max_results > MAX_MAX_RESULTS:
+          raise BadRequest("_count exceeds {}".format(MAX_MAX_RESULTS))
+      elif key == '_token':
+        pagination_token = value
+      elif key == '_sort' or key == '_sort:asc':
+        order_by = OrderBy(value, True)
+      elif key == '_sort:desc':
+        order_by = OrderBy(value, False)
+      else:
+        field_filter = self.dao.make_query_filter(key, value)
+        if field_filter:
+          field_filters.append(field_filter)
+    return Query(field_filters, order_by, max_results, pagination_token, participant_id)
+
+  def _make_bundle(self, results, id_field, participant_id):
+    import main
+    bundle_dict = {"resourceType": "Bundle", "type": "searchset"}
+    if results.pagination_token:
+      query_params = request.args.copy()
+      query_params['_token'] = results.pagination_token
+      next_url = main.api.url_for(self.__class__, _external=True, **query_params)
+      bundle_dict['link'] = [{"relation": "next", "url": next_url}]
+    entries = []
+    for item in results.items:
+      json = item.to_client_json()
+      if participant_id:
+        full_url = main.api.url_for(self.__class__,
+                                    id_=json[id_field],
+                                    p_id=participant_id,
+                                    _external=True)
+      else:
+        full_url = main.api.url_for(self.__class__,
+                                    p_id=json[id_field],
+                                    _external=True)
+      entries.append({"fullUrl": full_url,
+                     "resource": json})
+    bundle_dict['entry'] = entries
+    return bundle_dict
 
 
 class UpdatableApi(BaseApi):
