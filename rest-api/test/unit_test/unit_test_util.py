@@ -298,9 +298,9 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
 
 def make_questionnaire_response(participant_id, questionnaire_id, code_answers=None,
                                 string_answers=None, date_answers=None):
-  json = make_questionnaire_response_json(participant_id, questionnaire_id, code_answers,
-                                          string_answers, date_answers)
-  return questionnaire_response.DAO().from_json(json, participant_id,
+  qr_json = make_questionnaire_response_json(participant_id, questionnaire_id, code_answers,
+                                             string_answers, date_answers)
+  return questionnaire_response.DAO().from_json(qr_json, participant_id,
                                                 questionnaire_response.DAO().allocate_id())
 
 def pretty(obj):
