@@ -1,7 +1,3 @@
-import csv
-
-from dao.hpo_dao import HPODao
-from model.hpo import HPO
 from offline.sql_exporter import SqlExporter
 from participant_enums import UNSET_HPO_ID
 from offline_test.gcs_utils import assertCsvContents

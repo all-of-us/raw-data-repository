@@ -1,15 +1,11 @@
-import csv
 import datetime
 
 from clock import FakeClock
 from code_constants import METRIC_FIELD_TO_QUESTION_CODE, FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from model.code import CodeType
 from dao.participant_dao import ParticipantDao
-from google.appengine.ext import deferred
 from model.participant import Participant
-from mapreduce import test_support
-from offline.metrics_export import MetricsExport, PARTICIPANTS_CSV, HPO_IDS_CSV, ANSWERS_CSV
-from offline.sql_exporter import SqlExporter
+from offline.metrics_export import MetricsExport, HPO_IDS_CSV
 from offline_test.gcs_utils import assertCsvContents
 from participant_enums import UNSET_HPO_ID
 from test_data import primary_provider_link
