@@ -57,7 +57,7 @@ def get_participant_sql(num_shards, shard_number):
     modules_statements.append(MODULE_SQL_TEMPLATE.format(code.codeId, field_name))
   modules_sql = ', '.join(modules_statements)
   return (replace_isodate(PARTICIPANT_SQL_TEMPLATE.format(modules_sql)),
-          {"num_shards": num_shards, "shard_number": shard_number })
+          {"num_shards": num_shards, "shard_number": shard_number})
 
 def get_hpo_id_sql(num_shards, shard_number):
   return (replace_isodate(HPO_ID_QUERY),

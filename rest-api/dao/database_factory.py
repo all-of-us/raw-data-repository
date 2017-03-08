@@ -15,8 +15,8 @@ def get_database():
   """Returns a singleton _SqlDatabase."""
   return singletons.get(_SqlDatabase)
 
-DATE_FORMAT="%Y-%m-%dT%H:%M:%SZ"
-ISODATE_PATTERN='ISODATE\[([^\]]+)\]'
+DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+ISODATE_PATTERN = 'ISODATE\[([^\]]+)\]'
 IS_SQLITE = None
 
 def is_sqlite():
