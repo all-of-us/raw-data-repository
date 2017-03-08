@@ -70,7 +70,7 @@ class MetricsExport(object):
   Exports are performed in a chain of tasks, each of which can run for up to 10 minutes.
   A configurable number of shards allows each data set being exported to be broken up into pieces
   that can complete in time; sharded output also makes MapReduce on the result run faster.
-  
+
   When the last task is done, the MapReduce pipeline for metrics is kicked off.
   """
 
@@ -81,12 +81,12 @@ class MetricsExport(object):
 
   @classmethod
   def export_hpo_ids(self, bucket_name, filename_prefix, num_shards, shard_number):
-    SqlExporter(bucket_name).run_export(filename_prefix + HPO_IDS_CSV % shard_number, 
+    SqlExporter(bucket_name).run_export(filename_prefix + HPO_IDS_CSV % shard_number,
                                         get_hpo_id_sql(num_shards, shard_number))
 
   @classmethod
   def export_answers(self, bucket_name, filename_prefix, num_shards, shard_number):
-    SqlExporter(bucket_name).run_export(filename_prefix + ANSWERS_CSV % shard_number, 
+    SqlExporter(bucket_name).run_export(filename_prefix + ANSWERS_CSV % shard_number,
                                         get_answer_sql(num_shards, shard_number))
 
   @staticmethod
@@ -97,39 +97,39 @@ class MetricsExport(object):
 
   @staticmethod
   def _start_export(bucket_name, filename_prefix, num_shards, shard_number, export_methodname,
-                    next_shard_methodname, next_type_methodname, finish_methodname=None):    
-    getattr(MetricsExport, export_methodname)(bucket_name, filename_prefix, 
+                    next_shard_methodname, next_type_methodname, finish_methodname=None):
+    getattr(MetricsExport, export_methodname)(bucket_name, filename_prefix,
                                               num_shards, shard_number)
     shard_number += 1
     if shard_number == num_shards:
       if next_type_methodname:
-        executors.defer(getattr(MetricsExport, next_type_methodname), bucket_name, filename_prefix, 
+        executors.defer(getattr(MetricsExport, next_type_methodname), bucket_name, filename_prefix,
                         num_shards, 0)
       else:
         getattr(MetricsExport, finish_methodname)(bucket_name, filename_prefix, num_shards)
     else:
       executors.defer(getattr(MetricsExport, next_shard_methodname), bucket_name, filename_prefix,
                       num_shards, shard_number)
-                      
+
 
   @classmethod
   def start_participant_export(cls, bucket_name, filename_prefix, num_shards, shard_number):
-    MetricsExport._start_export(bucket_name, filename_prefix, num_shards, shard_number, 
+    MetricsExport._start_export(bucket_name, filename_prefix, num_shards, shard_number,
                                 "export_participants", "start_participant_export",
                                 "start_hpo_id_export")
-    
+
   @classmethod
   def start_hpo_id_export(cls, bucket_name, filename_prefix, num_shards, shard_number):
-    MetricsExport._start_export(bucket_name, filename_prefix, num_shards, shard_number, 
+    MetricsExport._start_export(bucket_name, filename_prefix, num_shards, shard_number,
                                 "export_hpo_ids", "start_hpo_id_export",
                                 "start_answers_export")
   @classmethod
   def start_answers_export(cls, bucket_name, filename_prefix, num_shards, shard_number):
-    MetricsExport._start_export(bucket_name, filename_prefix, num_shards, shard_number, 
+    MetricsExport._start_export(bucket_name, filename_prefix, num_shards, shard_number,
                                 "export_answers", "start_answers_export", None,
                                 "start_metrics_pipeline")
-  
+
   @classmethod
   def start_metrics_pipeline(cls, bucket_name, filename_prefix, num_shards):
     pass
-    
+

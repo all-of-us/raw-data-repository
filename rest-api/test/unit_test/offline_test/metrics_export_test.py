@@ -39,7 +39,7 @@ class MetricsExportTest(testutil.CloudStorageTestBase):
     with FakeClock(TIME):
       participant = Participant(participantId=1, biobankId=2)
       participant_dao.insert(participant)
-      
+
     with FakeClock(TIME):
       participant2 = Participant(participantId=2, biobankId=3)
       participant_dao.insert(participant2)
