@@ -1,7 +1,9 @@
+
 import executors
 
 from offline.sql_exporter import SqlExporter
 from dao.code_dao import CodeDao
+from dao.database_factory import replace_isodate
 from code_constants import FIELD_TO_QUESTIONNAIRE_MODULE_CODE, PPI_SYSTEM
 from code_constants import METRIC_FIELD_TO_QUESTION_CODE
 
@@ -13,26 +15,29 @@ ANSWERS_CSV = "answers_%d.csv"
 
 PARTICIPANT_SQL_TEMPLATE = (
 "SELECT ps.date_of_birth date_of_birth, "
-+ "(SELECT MIN(bo.created) FROM biobank_order bo "
++ "(SELECT ISODATE[MIN(bo.created)] FROM biobank_order bo "
 + "  WHERE bo.participant_id = p.participant_id) first_order_date, "
-+ "(SELECT MIN(bs.confirmed) FROM biobank_stored_sample bs "
++ "(SELECT ISODATE[MIN(bs.confirmed)] FROM biobank_stored_sample bs "
 + "  WHERE bs.biobank_id = p.biobank_id) first_samples_arrived_date, "
-+ "(SELECT MIN(pm.created) FROM physical_measurements pm "
-+ "  WHERE pm.participant_id = p.participant_id) first_physical_measurements_date, %s"
++ "(SELECT ISODATE[MIN(pm.created)] FROM physical_measurements pm "
++ "  WHERE pm.participant_id = p.participant_id) first_physical_measurements_date, {}"
 + " FROM participant p, participant_summary ps "
 + "WHERE p.participant_id = ps.participant_id"
-+ "  AND p.participant_id %% %d = %d")
++ "  AND p.participant_id % :num_shards = :shard_number")
 
 MODULE_SQL_TEMPLATE = (
-"(SELECT MIN(qr.created) FROM questionnaire_response qr, questionnaire_concept qc "
-+ " WHERE qr.questionnaire_id = qc.questionnaire_id and qc.code_id = %d) %s")
+"(SELECT ISODATE[MIN(qr.created)] FROM questionnaire_response qr, "
++ "questionnaire_concept qc "
++ " WHERE qr.questionnaire_id = qc.questionnaire_id and qc.code_id = {}) {}")
 
 HPO_ID_QUERY = (
-"SELECT participant_id, hpo_id, last_modified FROM participant_history "
-+ "WHERE participant_id %% %d = %d")
+"SELECT participant_id, hpo_id, ISODATE[last_modified] last_modified "
++" FROM participant_history "
++ "WHERE participant_id % :num_shards = :shard_number")
 
-ANSWER_QUERY_TEMPLATE = (
-"SELECT qr.participant_id participant_id, qr.created start_time, qra.end_time end_time, "
+ANSWER_QUERY = (
+"SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time, "
++ "ISODATE[qra.end_time] end_time, "
 + "qc.value question_code, ac.value answer_code "
 + "FROM questionnaire_response_answer qra, questionnaire_response qr, questionnaire_question qq, "
 + " code qc, code ac "
@@ -40,8 +45,8 @@ ANSWER_QUERY_TEMPLATE = (
 + "  AND qra.question_id = qq.questionnaire_question_id "
 + "  AND qq.code_id = qc.code_id "
 + "  AND qra.value_code_id = ac.code_id"
-+ "  AND qq.code_id IN (%s)"
-+ "  AND qr.participant_id %% %d = %d"
++ "  AND qq.code_id in ({})"
++ "  AND qr.participant_id % :num_shards = :shard_number"
 )
 
 def get_participant_sql(num_shards, shard_number):
@@ -49,12 +54,14 @@ def get_participant_sql(num_shards, shard_number):
   code_dao = CodeDao()
   for field_name, code_value in FIELD_TO_QUESTIONNAIRE_MODULE_CODE.iteritems():
     code = code_dao.get_code(PPI_SYSTEM, code_value)
-    modules_statements.append(MODULE_SQL_TEMPLATE % (code.codeId, field_name))
+    modules_statements.append(MODULE_SQL_TEMPLATE.format(code.codeId, field_name))
   modules_sql = ', '.join(modules_statements)
-  return PARTICIPANT_SQL_TEMPLATE % (modules_sql, num_shards, shard_number)
+  return (replace_isodate(PARTICIPANT_SQL_TEMPLATE.format(modules_sql)), 
+          {"num_shards": num_shards, "shard_number": shard_number })
 
 def get_hpo_id_sql(num_shards, shard_number):
-  return HPO_ID_QUERY % (num_shards, shard_number)
+  return (replace_isodate(HPO_ID_QUERY), 
+          {"num_shards": num_shards, "shard_number": shard_number})
 
 def get_answer_sql(num_shards, shard_number):
   code_dao = CodeDao()
@@ -62,7 +69,9 @@ def get_answer_sql(num_shards, shard_number):
   for code_value in METRIC_FIELD_TO_QUESTION_CODE.values():
     code = code_dao.get_code(PPI_SYSTEM, code_value)
     code_ids.append(str(code.codeId))
-  return ANSWER_QUERY_TEMPLATE % (",".join(code_ids), num_shards, shard_number)
+  return (replace_isodate(ANSWER_QUERY.format((",".join(code_ids)))), 
+          {"num_shards": num_shards, 
+           "shard_number": shard_number})
 
 class MetricsExport(object):
   """Exports data from the database needed to generate metrics.
@@ -76,18 +85,21 @@ class MetricsExport(object):
 
   @classmethod
   def export_participants(self, bucket_name, filename_prefix, num_shards, shard_number):
+    sql, params = get_participant_sql(num_shards, shard_number)
     SqlExporter(bucket_name).run_export(filename_prefix + PARTICIPANTS_CSV % shard_number,
-                                        get_participant_sql(num_shards, shard_number))
+                                        sql, **params)
 
   @classmethod
   def export_hpo_ids(self, bucket_name, filename_prefix, num_shards, shard_number):
+    sql, params = get_hpo_id_sql(num_shards, shard_number)
     SqlExporter(bucket_name).run_export(filename_prefix + HPO_IDS_CSV % shard_number,
-                                        get_hpo_id_sql(num_shards, shard_number))
+                                        sql, **params)
 
   @classmethod
   def export_answers(self, bucket_name, filename_prefix, num_shards, shard_number):
+    sql, params = get_answer_sql(num_shards, shard_number)
     SqlExporter(bucket_name).run_export(filename_prefix + ANSWERS_CSV % shard_number,
-                                        get_answer_sql(num_shards, shard_number))
+                                        sql, **params)
 
   @staticmethod
   def start_export_tasks(bucket_name, now, num_shards):

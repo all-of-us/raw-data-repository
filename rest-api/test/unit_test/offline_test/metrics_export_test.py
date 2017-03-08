@@ -16,7 +16,7 @@ BUCKET_NAME = 'pmi-drc-biobank-test.appspot.com'
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
-TIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
+TIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 
 class MetricsExportTest(testutil.CloudStorageTestBase):
 

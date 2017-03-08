@@ -12,11 +12,11 @@ class SqlExporter(object):
     self.database = database_factory.get_database()
     self.bucket_name = bucket_name
 
-  def run_export(self, file_name, sql):
+  def run_export(self, file_name, sql, **kwargs):
     # Each query from AppEngine standard environment must finish in 60 seconds.
     # If we start running into trouble with that, we'll either
-    # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.
-    cursor = self.database.get_engine().execute(sql)
+    # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.    
+    cursor = self.database.get_engine().execute(sql, **kwargs)
     try:
       filename = '/%s/%s' % (self.bucket_name, file_name)
       logging.info('Exporting data to %s...', filename)
