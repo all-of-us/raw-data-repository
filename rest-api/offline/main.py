@@ -5,10 +5,8 @@ import app_util
 import config
 import datetime
 import metrics
-import offline.age_range_pipeline
 import offline.biobank_samples_pipeline
 import offline.metrics_pipeline
-import offline.participant_summary_pipeline
 
 import logging
 
@@ -26,9 +24,9 @@ def recalculate_metrics():
     return '{"metrics-pipeline-status": "running"}'
   else:
     bucket_name = app_identity.get_default_gcs_bucket_name()
-    logging.info("=========== Starting metrics pipeline ============")
-    pipeline = offline.metrics_pipeline.MetricsPipeline(bucket_name, datetime.datetime.utcnow())
-    pipeline.start(queue_name='metrics-pipeline')
+    logging.info("=========== Starting metrics export ============")
+    export = MetricsExport.start_export_tasks(bucket_name, datetime.datetime.utcnow())
+    export.start()
     return '{"metrics-pipeline-status": "started"}'
 
 @api_util.auth_required_cron
@@ -41,23 +39,6 @@ def reload_biobank_samples():
   pipeline = offline.biobank_samples_pipeline.BiobankSamplesPipeline(bucket_name)
   pipeline.start(queue_name='biobank-samples-pipeline')
   return '{"biobank-samples-pipeline-status": "started"}'
-
-@api_util.auth_required_cron
-def regenerate_participant_summaries():
-  # TODO(danrodney): check to see if it's already running?
-  logging.info("=========== Starting participant summary regeneration pipeline ============")
-  pipeline = offline.participant_summary_pipeline.ParticipantSummaryPipeline()
-  pipeline.start(queue_name='participant-summary-pipeline')
-  return '{"metrics-pipeline-status": "started"}'
-
-
-@api_util.auth_required_cron
-def update_participant_summary_age_ranges():
-  # TODO(danrodney): check to see if it's already running?
-  logging.info("=========== Starting age range update pipeline ============")
-  pipeline = offline.age_range_pipeline.AgeRangePipeline(datetime.datetime.utcnow())
-  pipeline.start(queue_name='age-range-pipeline')
-  return '{"metrics-pipeline-status": "started"}'
 
 
 app = Flask(__name__)
@@ -79,16 +60,6 @@ app.add_url_rule(PREFIX + 'BiobankSamplesReload',
 app.add_url_rule(PREFIX + 'MetricsRecalculate',
                  endpoint='metrics_recalc',
                  view_func=recalculate_metrics,
-                 methods=['GET'])
-
-app.add_url_rule(PREFIX + 'AgeRangeUpdate',
-                 endpoint='ageRangeUpdate',
-                 view_func=update_participant_summary_age_ranges,
-                 methods=['GET'])
-
-app.add_url_rule(PREFIX + 'RegenerateParticipantSummaries',
-                 endpoint='regenerateParticipantSummaries',
-                 view_func=regenerate_participant_summaries,
                  methods=['GET'])
 
 app.after_request(app_util.add_headers)
