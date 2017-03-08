@@ -29,32 +29,31 @@ class MetricsExportTest(testutil.CloudStorageTestBase):
     testutil.HandlerTestBase.setUp(self)
     SqlTestBase.setup_database()
     self.taskqueue.FlushQueue("default")
-    
+
   def tearDown(self):
     super(MetricsExportTest, self).tearDown()
     SqlTestBase.teardown_database()
-    
+
   def testMetricExport(self):
     SqlTestBase.setup_hpos()
     SqlTestBase.setup_codes(METRIC_FIELD_TO_QUESTION_CODE.values(), code_type=CodeType.QUESTION)
     SqlTestBase.setup_codes(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(), code_type=CodeType.MODULE)
     participant_dao = ParticipantDao()
-    
+
     with FakeClock(TIME):
       participant = Participant(participantId=1, biobankId=2)
       participant_dao.insert(participant)
-      
+
     with FakeClock(TIME_2):
       participant = Participant(participantId=1, version=1, biobankId=2,
                                 providerLink=primary_provider_link('PITT'))
       participant_dao.update(participant)
-      
+
     MetricsExport.start_export_tasks(BUCKET_NAME, TIME_3)
     run_deferred_tasks(self)
-          
-    assertCsvContents(self, BUCKET_NAME, TIME_3.isoformat() + "/" + HPO_IDS_CSV, 
+
+    assertCsvContents(self, BUCKET_NAME, TIME_3.isoformat() + "/" + HPO_IDS_CSV,
                       [['participant_id', 'hpo_id', 'last_modified'],
                        ['1', str(UNSET_HPO_ID), TIME.strftime(TIME_FORMAT)],
                        ['1', str(PITT_HPO_ID), TIME_2.strftime(TIME_FORMAT)]])
-    
-    
+

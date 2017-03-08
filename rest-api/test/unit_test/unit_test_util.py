@@ -93,7 +93,7 @@ class SqlTestBase(TestbedTestBase):
     code_dao = CodeDao()
     for value in values:
       code_dao.insert(Code(system=PPI_SYSTEM, value=value, codeType=code_type, mapped=True))
-    
+
   def assertObjEqualsExceptLastModified(self, obj1, obj2):
     dict1 = obj1.asdict()
     dict2 = obj2.asdict()
@@ -268,7 +268,7 @@ def sort_lists(obj):
 
 def make_deferred_run():
   executors.defer = executors._do_defer
-  
+
 def make_deferred_not_run():
   executors.defer = (lambda fn, *args, **kwargs: None)
 
@@ -323,13 +323,13 @@ def pretty(obj):
 def random_ids(ids):
   with patch('random.randint', side_effect=ids):
     yield
-    
+
 def run_deferred_tasks(test):
   tasks = test.taskqueue.get_filtered_tasks()
   test.taskqueue.FlushQueue("default")
   while tasks:
     for task in tasks:
-      deferred.run(task.payload)    
-    tasks = test.taskqueue.get_filtered_tasks()    
+      deferred.run(task.payload)
+    tasks = test.taskqueue.get_filtered_tasks()
     test.taskqueue.FlushQueue("default")
 

@@ -16,21 +16,21 @@ class SqlExporterTest(testutil.CloudStorageTestBase):
   def setUp(self):
     super(SqlExporterTest, self).setUp()
     testutil.HandlerTestBase.setUp(self)
-    SqlTestBase.setup_database()  
-    
+    SqlTestBase.setup_database()
+
   def tearDown(self):
     super(SqlExporterTest, self).tearDown()
     SqlTestBase.teardown_database()
-  
+
   def testHpoExport_withoutRows(self):
-    SqlExporter(BUCKET_NAME).run_export(FILE_NAME, 
+    SqlExporter(BUCKET_NAME).run_export(FILE_NAME,
                                         "SELECT hpo_id id, name name FROM hpo ORDER BY hpo_id")
-    
+
     assertCsvContents(self, BUCKET_NAME, FILE_NAME, [['id', 'name']])
-  
+
   def testHpoExport_withRows(self):
     SqlTestBase.setup_hpos()
-    SqlExporter(BUCKET_NAME).run_export(FILE_NAME, 
+    SqlExporter(BUCKET_NAME).run_export(FILE_NAME,
                                         "SELECT hpo_id id, name name FROM hpo ORDER BY hpo_id")
     assertCsvContents(self, BUCKET_NAME, FILE_NAME, [['id', 'name'],
                                                      [str(UNSET_HPO_ID), 'UNSET'],

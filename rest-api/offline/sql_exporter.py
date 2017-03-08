@@ -7,13 +7,13 @@ from cloudstorage import cloudstorage_api
 BATCH_SIZE = 1000
 
 class SqlExporter(object):
-  
+
    def __init__(self, bucket_name):
      self.database = database_factory.get_database()
      self.bucket_name = bucket_name
-  
-   def run_export(self, file_name, sql):     
-     # Each query from AppEngine standard environment must finish in 60 seconds. 
+
+   def run_export(self, file_name, sql):
+     # Each query from AppEngine standard environment must finish in 60 seconds.
      # If we start running into trouble with that, we'll either
      # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.
      cursor = self.database.get_engine().execute(sql)
@@ -24,7 +24,7 @@ class SqlExporter(object):
          writer = csv.writer(dest, delimiter=',')
          writer.writerow(cursor.keys())
          results = cursor.fetchmany(BATCH_SIZE)
-         while results:         
+         while results:
            writer.writerows(results)
            results = cursor.fetchmany(BATCH_SIZE)
      finally:
