@@ -26,7 +26,8 @@ def recalculate_metrics():
   else:
     bucket_name = app_identity.get_default_gcs_bucket_name()
     logging.info("=========== Starting metrics export ============")
-    export = MetricsExport.start_export_tasks(bucket_name, datetime.datetime.utcnow())
+    export = MetricsExport.start_export_tasks(bucket_name, datetime.datetime.utcnow(),
+                                              int(config.getSetting(config.METRICS_SHARDS, 1)))
     export.start()
     return '{"metrics-pipeline-status": "started"}'
 
