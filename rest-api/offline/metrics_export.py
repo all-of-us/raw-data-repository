@@ -1,15 +1,9 @@
 import executors
-import logging
 
 from offline.sql_exporter import SqlExporter
-from config import get_db_config
 from dao.code_dao import CodeDao
 from code_constants import FIELD_TO_QUESTIONNAIRE_MODULE_CODE, PPI_SYSTEM
 from code_constants import METRIC_FIELD_TO_QUESTION_CODE
-from googleapiclient import discovery
-from oauth2client.client import GoogleCredentials
-from google.appengine.api import app_identity
-from werkzeug.exceptions import InternalServerError
 
 # TODO: filter out participants that have withdrawn in here
 

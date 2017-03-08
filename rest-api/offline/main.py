@@ -13,6 +13,7 @@ import logging
 from flask import Flask
 from flask_restful import Api
 from google.appengine.api import app_identity
+from offline.metrics_export import MetricsExport
 
 PREFIX = '/offline/'
 
