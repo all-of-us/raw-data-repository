@@ -56,11 +56,11 @@ def get_participant_sql(num_shards, shard_number):
     code = code_dao.get_code(PPI_SYSTEM, code_value)
     modules_statements.append(MODULE_SQL_TEMPLATE.format(code.codeId, field_name))
   modules_sql = ', '.join(modules_statements)
-  return (replace_isodate(PARTICIPANT_SQL_TEMPLATE.format(modules_sql)), 
+  return (replace_isodate(PARTICIPANT_SQL_TEMPLATE.format(modules_sql)),
           {"num_shards": num_shards, "shard_number": shard_number })
 
 def get_hpo_id_sql(num_shards, shard_number):
-  return (replace_isodate(HPO_ID_QUERY), 
+  return (replace_isodate(HPO_ID_QUERY),
           {"num_shards": num_shards, "shard_number": shard_number})
 
 def get_answer_sql(num_shards, shard_number):
@@ -69,8 +69,8 @@ def get_answer_sql(num_shards, shard_number):
   for code_value in METRIC_FIELD_TO_QUESTION_CODE.values():
     code = code_dao.get_code(PPI_SYSTEM, code_value)
     code_ids.append(str(code.codeId))
-  return (replace_isodate(ANSWER_QUERY.format((",".join(code_ids)))), 
-          {"num_shards": num_shards, 
+  return (replace_isodate(ANSWER_QUERY.format((",".join(code_ids)))),
+          {"num_shards": num_shards,
            "shard_number": shard_number})
 
 class MetricsExport(object):

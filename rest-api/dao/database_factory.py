@@ -24,7 +24,7 @@ def is_sqlite():
   if IS_SQLITE is None:
     IS_SQLITE = get_database().db_type == 'sqlite'
   return IS_SQLITE
-  
+
 def format_date(expression, date_format=DATE_FORMAT):
   if is_sqlite():
     return "strftime('{}', {})".format(date_format, expression)
