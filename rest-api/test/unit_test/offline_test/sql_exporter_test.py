@@ -5,7 +5,7 @@ from testlib import testutil
 from unit_test_util import SqlTestBase, PITT_HPO_ID
 
 BUCKET_NAME = 'pmi-drc-biobank-test.appspot.com'
-FILE_NAME = "hpo_ids.csv"
+FILE_NAME = 'hpo_ids.csv'
 
 class SqlExporterTest(testutil.CloudStorageTestBase):
 
@@ -20,14 +20,14 @@ class SqlExporterTest(testutil.CloudStorageTestBase):
 
   def testHpoExport_withoutRows(self):
     SqlExporter(BUCKET_NAME).run_export(FILE_NAME,
-                                        "SELECT hpo_id id, name name FROM hpo ORDER BY hpo_id")
+                                        'SELECT hpo_id id, name name FROM hpo ORDER BY hpo_id')
 
     assertCsvContents(self, BUCKET_NAME, FILE_NAME, [['id', 'name']])
 
   def testHpoExport_withRows(self):
     SqlTestBase.setup_hpos()
     SqlExporter(BUCKET_NAME).run_export(FILE_NAME,
-                                        "SELECT hpo_id id, name name FROM hpo ORDER BY hpo_id")
+                                        'SELECT hpo_id id, name name FROM hpo ORDER BY hpo_id')
     assertCsvContents(self, BUCKET_NAME, FILE_NAME, [['id', 'name'],
                                                      [str(UNSET_HPO_ID), 'UNSET'],
                                                      [str(PITT_HPO_ID), 'PITT']])

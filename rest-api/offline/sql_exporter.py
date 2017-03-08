@@ -19,7 +19,7 @@ class SqlExporter(object):
     cursor = self.database.get_engine().execute(sql)
     try:
       filename = '/%s/%s' % (self.bucket_name, file_name)
-      logging.info('Exporting data to %s...' % filename)
+      logging.info('Exporting data to %s...', filename)
       with cloudstorage_api.open(filename, mode='w') as dest:
         writer = csv.writer(dest, delimiter=',')
         writer.writerow(cursor.keys())
@@ -29,4 +29,4 @@ class SqlExporter(object):
           results = cursor.fetchmany(BATCH_SIZE)
     finally:
       cursor.close()
-    logging.info('Export to %s complete.' % filename)
+    logging.info('Export to %s complete.', filename)

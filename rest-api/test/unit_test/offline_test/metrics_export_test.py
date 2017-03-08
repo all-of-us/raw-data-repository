@@ -16,7 +16,7 @@ BUCKET_NAME = 'pmi-drc-biobank-test.appspot.com'
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
-TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
+TIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 
 class MetricsExportTest(testutil.CloudStorageTestBase):
 
@@ -24,7 +24,7 @@ class MetricsExportTest(testutil.CloudStorageTestBase):
     super(MetricsExportTest, self).setUp()
     testutil.HandlerTestBase.setUp(self)
     SqlTestBase.setup_database()
-    self.taskqueue.FlushQueue("default")
+    self.taskqueue.FlushQueue('default')
 
   def tearDown(self):
     super(MetricsExportTest, self).tearDown()
@@ -39,16 +39,24 @@ class MetricsExportTest(testutil.CloudStorageTestBase):
     with FakeClock(TIME):
       participant = Participant(participantId=1, biobankId=2)
       participant_dao.insert(participant)
+      
+    with FakeClock(TIME):
+      participant2 = Participant(participantId=2, biobankId=3)
+      participant_dao.insert(participant2)
 
     with FakeClock(TIME_2):
       participant = Participant(participantId=1, version=1, biobankId=2,
                                 providerLink=primary_provider_link('PITT'))
       participant_dao.update(participant)
 
-    MetricsExport.start_export_tasks(BUCKET_NAME, TIME_3)
+    MetricsExport.start_export_tasks(BUCKET_NAME, TIME_3, 2)
     run_deferred_tasks(self)
 
-    assertCsvContents(self, BUCKET_NAME, TIME_3.isoformat() + "/" + HPO_IDS_CSV,
+    # Two shards are written, with different participants.
+    assertCsvContents(self, BUCKET_NAME, TIME_3.isoformat() + "/" + HPO_IDS_CSV % 0,
+                      [['participant_id', 'hpo_id', 'last_modified'],
+                       ['2', str(UNSET_HPO_ID), TIME.strftime(TIME_FORMAT)]])
+    assertCsvContents(self, BUCKET_NAME, TIME_3.isoformat() + "/" + HPO_IDS_CSV % 1,
                       [['participant_id', 'hpo_id', 'last_modified'],
                        ['1', str(UNSET_HPO_ID), TIME.strftime(TIME_FORMAT)],
                        ['1', str(PITT_HPO_ID), TIME_2.strftime(TIME_FORMAT)]])
