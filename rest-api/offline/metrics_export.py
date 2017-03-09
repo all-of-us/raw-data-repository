@@ -46,9 +46,9 @@ ANSWER_QUERY = (
 + "  AND qr.participant_id % :num_shards = :shard_number"
 )
 
-def get_participant_sql(num_shards, shard_number):  
-  module_time_fields = ['ISODATE[ps.{0}] {0}'.format(get_column_name(ParticipantSummary, 
-                                                            field_name + 'Time'))                      
+def get_participant_sql(num_shards, shard_number):
+  module_time_fields = ['ISODATE[ps.{0}] {0}'.format(get_column_name(ParticipantSummary,
+                                                            field_name + 'Time'))
                         for field_name in QUESTIONNAIRE_MODULE_FIELD_NAMES]
   modules_sql = ', '.join(module_time_fields)
   return (replace_isodate(PARTICIPANT_SQL_TEMPLATE.format(modules_sql)),

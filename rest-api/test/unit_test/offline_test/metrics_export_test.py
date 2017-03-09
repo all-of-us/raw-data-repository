@@ -26,11 +26,11 @@ TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
 TIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 PARTICIPANT_FIELDS = ['date_of_birth', 'first_order_date', 'first_samples_arrived_date',
-                      'first_physical_measurements_date', 
+                      'first_physical_measurements_date',
                       'questionnaire_on_overall_health_time',
                       'questionnaire_on_personal_habits_time',
                       'questionnaire_on_sociodemographics_time']
-HPO_ID_FIELDS = ['participant_id', 'hpo_id', 'last_modified'] 
+HPO_ID_FIELDS = ['participant_id', 'hpo_id', 'last_modified']
 ANSWER_FIELDS = ['participant_id', 'start_time', 'end_time', 'question_code', 'answer_code']
 
 class MetricsExportTest(testutil.CloudStorageTestBase, FlaskTestBase):
@@ -68,7 +68,7 @@ class MetricsExportTest(testutil.CloudStorageTestBase, FlaskTestBase):
 
   def _create_data(self):
     SqlTestBase.setup_hpos()
-    SqlTestBase.setup_codes(METRIC_FIELD_TO_QUESTION_CODE.values(), 
+    SqlTestBase.setup_codes(METRIC_FIELD_TO_QUESTION_CODE.values(),
                             code_type=CodeType.QUESTION)
     SqlTestBase.setup_codes(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(),
                             code_type=CodeType.MODULE)
@@ -88,8 +88,8 @@ class MetricsExportTest(testutil.CloudStorageTestBase, FlaskTestBase):
                                 providerLink=primary_provider_link('PITT'))
       participant_dao.update(participant)
       self.submit_questionnaire_response('P1', questionnaire_id, "white", "male",
-                                         "hispanic", datetime.date(1978, 10, 9))  
-      self.submit_questionnaire_response('P2', questionnaire_id, None, None, None, None)  
+                                         "hispanic", datetime.date(1978, 10, 9))
+      self.submit_questionnaire_response('P2', questionnaire_id, None, None, None, None)
 
     with FakeClock(TIME_3):
       self.send_post('Participant/P2/PhysicalMeasurements', load_measurement_json(2))
@@ -100,7 +100,7 @@ class MetricsExportTest(testutil.CloudStorageTestBase, FlaskTestBase):
         biobankId=2,
         test='test',
         confirmed=TIME_2))
-        
+
   def testMetricExport(self):
     self._create_data()
 

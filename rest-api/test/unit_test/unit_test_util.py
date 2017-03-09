@@ -139,7 +139,7 @@ class FlaskTestBase(NdbTestBase):
   def setUp(self):
     super(FlaskTestBase, self).setUp()
     self.doSetUp()
-  
+
   def doSetUp(self):
     # http://flask.pocoo.org/docs/0.12/testing/
     main.app.config['TESTING'] = True
