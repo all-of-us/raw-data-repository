@@ -4,7 +4,9 @@ import executors
 from offline.sql_exporter import SqlExporter
 from dao.code_dao import CodeDao
 from dao.database_factory import replace_isodate
-from code_constants import FIELD_TO_QUESTIONNAIRE_MODULE_CODE, PPI_SYSTEM
+from model.base import get_column_name
+from model.participant_summary import ParticipantSummary
+from code_constants import QUESTIONNAIRE_MODULE_FIELD_NAMES, PPI_SYSTEM
 from code_constants import METRIC_FIELD_TO_QUESTION_CODE
 
 # TODO: filter out participants that have withdrawn in here
@@ -25,11 +27,6 @@ PARTICIPANT_SQL_TEMPLATE = (
 + "WHERE p.participant_id = ps.participant_id"
 + "  AND p.participant_id % :num_shards = :shard_number")
 
-MODULE_SQL_TEMPLATE = (
-"(SELECT ISODATE[MIN(qr.created)] FROM questionnaire_response qr, "
-+ "questionnaire_concept qc "
-+ " WHERE qr.questionnaire_id = qc.questionnaire_id and qc.code_id = {}) {}")
-
 HPO_ID_QUERY = (
 "SELECT participant_id, hpo_id, ISODATE[last_modified] last_modified "
 +" FROM participant_history "
@@ -49,13 +46,11 @@ ANSWER_QUERY = (
 + "  AND qr.participant_id % :num_shards = :shard_number"
 )
 
-def get_participant_sql(num_shards, shard_number):
-  modules_statements = []
-  code_dao = CodeDao()
-  for field_name, code_value in FIELD_TO_QUESTIONNAIRE_MODULE_CODE.iteritems():
-    code = code_dao.get_code(PPI_SYSTEM, code_value)
-    modules_statements.append(MODULE_SQL_TEMPLATE.format(code.codeId, field_name))
-  modules_sql = ', '.join(modules_statements)
+def get_participant_sql(num_shards, shard_number):  
+  module_time_fields = ['ISODATE[ps.{0}] {0}'.format(get_column_name(ParticipantSummary, 
+                                                            field_name + 'Time'))                      
+                        for field_name in QUESTIONNAIRE_MODULE_FIELD_NAMES]
+  modules_sql = ', '.join(module_time_fields)
   return (replace_isodate(PARTICIPANT_SQL_TEMPLATE.format(modules_sql)),
           {"num_shards": num_shards, "shard_number": shard_number})
 

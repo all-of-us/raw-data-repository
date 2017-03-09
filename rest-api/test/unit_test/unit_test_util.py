@@ -138,6 +138,9 @@ class FlaskTestBase(NdbTestBase):
 
   def setUp(self):
     super(FlaskTestBase, self).setUp()
+    self.doSetUp()
+  
+  def doSetUp(self):
     # http://flask.pocoo.org/docs/0.12/testing/
     main.app.config['TESTING'] = True
     self._app = main.app.test_client()
@@ -158,6 +161,9 @@ class FlaskTestBase(NdbTestBase):
 
   def tearDown(self):
     super(FlaskTestBase, self).tearDown()
+    self.doTearDown()
+
+  def doTearDown(self):
     for patcher in self._patchers:
       patcher.stop()
 
