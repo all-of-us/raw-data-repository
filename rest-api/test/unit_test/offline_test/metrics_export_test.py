@@ -110,7 +110,7 @@ class MetricsExportTest(testutil.CloudStorageTestBase, FlaskTestBase):
     t2 = TIME_2.strftime(TIME_FORMAT)
     t3 = TIME_3.strftime(TIME_FORMAT)
     prefix = TIME_3.isoformat() + "/"
-    
+
     # Two shards are written for each file, one with the first participant and
     # one with the second.
     assertCsvContents(self, BUCKET_NAME, prefix + HPO_IDS_CSV % 0,
