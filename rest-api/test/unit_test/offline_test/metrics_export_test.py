@@ -8,7 +8,6 @@ from concepts import Concept
 from model.biobank_stored_sample import BiobankStoredSample
 from model.code import CodeType
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
 from model.participant import Participant
 from offline.metrics_export import MetricsExport, HPO_IDS_CSV, PARTICIPANTS_CSV, ANSWERS_CSV
