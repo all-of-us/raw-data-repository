@@ -74,6 +74,7 @@ class MetricsExportTest(testutil.CloudStorageTestBase, FlaskTestBase):
     participant_dao = ParticipantDao()
 
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
     with FakeClock(TIME):
       participant = Participant(participantId=1, biobankId=2)
       participant_dao.insert(participant)
@@ -93,6 +94,9 @@ class MetricsExportTest(testutil.CloudStorageTestBase, FlaskTestBase):
     with FakeClock(TIME_3):
       self.send_post('Participant/P2/PhysicalMeasurements', load_measurement_json(2))
       self.send_post('Participant/P2/BiobankOrder', load_biobank_order_json(2))
+      self.submit_questionnaire_response('P1', questionnaire_id, "black", "female",
+                                         "hispanic", datetime.date(1978, 10, 10))
+      self.submit_questionnaire_response('P2', questionnaire_id_2, None, None, None, None)
       sample_dao = BiobankStoredSampleDao()
       sample_dao.insert(BiobankStoredSample(
         biobankStoredSampleId='abc',
@@ -122,15 +126,18 @@ class MetricsExportTest(testutil.CloudStorageTestBase, FlaskTestBase):
                        ['1', str(PITT_HPO_ID), t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + PARTICIPANTS_CSV % 0,
                       [PARTICIPANT_FIELDS,
-                       ['', '2016-01-04T09:40:21Z', '', t3, '', '', t2]])
+                       ['', '2016-01-04T09:40:21Z', '', t3, t3, t3, t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + PARTICIPANTS_CSV % 1,
                       [PARTICIPANT_FIELDS,
-                       ['1978-10-09', '', t2, '', '', '', t2]])
+                       ['1978-10-10', '', t2, '', '', '', t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + ANSWERS_CSV % 0,
                       [ANSWER_FIELDS])
     assertCsvContents(self, BUCKET_NAME, prefix + ANSWERS_CSV % 1,
                       [ANSWER_FIELDS,
-                       ['1', t2, '', GENDER_IDENTITY_QUESTION_CODE, 'male'],
-                       ['1', t2, '', RACE_QUESTION_CODE, 'white'],
-                       ['1', t2, '', ETHNICITY_QUESTION_CODE, 'hispanic']])
+                       ['1', t2, t3, GENDER_IDENTITY_QUESTION_CODE, 'male'],
+                       ['1', t2, t3, RACE_QUESTION_CODE, 'white'],
+                       ['1', t2, t3, ETHNICITY_QUESTION_CODE, 'hispanic'],
+                       ['1', t3, '', GENDER_IDENTITY_QUESTION_CODE, 'female'],
+                       ['1', t3, '', RACE_QUESTION_CODE, 'black'],
+                       ['1', t3, '', ETHNICITY_QUESTION_CODE, 'hispanic']])
 
