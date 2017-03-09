@@ -42,7 +42,7 @@ class QuestionnaireResponse(Base):
     patient_id = fhir_qr.subject.reference
     if patient_id != 'Patient/P{}'.format(participant_id):
       raise BadRequest("Questionnaire response subject reference does not match participant_id %d"
-                       % patient_id)
+                       % participant_id)
     questionnaire = QuestionnaireResponse._get_questionnaire(fhir_qr.questionnaire)
     qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
                                questionnaireVersion=questionnaire.version,

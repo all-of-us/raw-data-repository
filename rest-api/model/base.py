@@ -27,6 +27,8 @@ from werkzeug.exceptions import BadRequest
 # Subclasses should define to_client_json and from_client_json for client request (de)serialization.
 Base = declarative_base(cls=DictableModel)
 
+def get_column_name(model_type, field_name):
+  return getattr(model_type, field_name).property.columns[0].name
 
 _FhirProperty = collections.namedtuple(
     'FhirProperty',

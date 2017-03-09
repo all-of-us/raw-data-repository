@@ -42,6 +42,10 @@ FIELD_TO_QUESTION_CODE = {
 }
 QUESTION_CODE_TO_FIELD = {v[0]: (k, v[1]) for k, v in FIELD_TO_QUESTION_CODE.iteritems()}
 
+METRIC_FIELDS = ["genderIdentityId", "raceId", "ethnicityId"]
+
+METRIC_FIELD_TO_QUESTION_CODE = {k: FIELD_TO_QUESTION_CODE[k][0] for k in METRIC_FIELDS}
+
 FIELD_TO_QUESTIONNAIRE_MODULE_CODE = {
   # TODO: fill this in when correct codes are defined
   #'consentForStudyEnrollment': concepts.ENROLLMENT_CONSENT_FORM,
@@ -56,3 +60,4 @@ FIELD_TO_QUESTIONNAIRE_MODULE_CODE = {
 }
 QUESTIONNAIRE_MODULE_CODE_TO_FIELD = {v: k for k, v in
                                       FIELD_TO_QUESTIONNAIRE_MODULE_CODE.iteritems()}
+QUESTIONNAIRE_MODULE_FIELD_NAMES = sorted(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.keys())

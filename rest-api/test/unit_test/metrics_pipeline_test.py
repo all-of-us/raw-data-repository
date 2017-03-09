@@ -24,7 +24,8 @@ from mapreduce import test_support
 from model.questionnaire import Questionnaire
 from dao.questionnaire_dao import QuestionnaireDao
 from testlib import testutil
-from unit_test_util import make_deferred_not_run, make_questionnaire_response, SqlTestBase
+from unit_test_util import make_deferred_run, make_deferred_not_run, make_questionnaire_response
+from unit_test_util import SqlTestBase
 from test.test_data import data_path
 
 def compute_meta(summary):
@@ -107,6 +108,7 @@ class MetricsPipelineTest(testutil.CloudStorageTestBase):
   def tearDown(self):
     SqlTestBase.teardown_database()
     offline.metrics_config.get_config = self.saved_config_fn
+    make_deferred_run()
 
   def test_map1(self):
     key = ndb.Key(participant.Participant, '1')

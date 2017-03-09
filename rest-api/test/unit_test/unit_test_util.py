@@ -7,6 +7,7 @@ import unittest
 import dao.database_factory
 
 from google.appengine.api import app_identity
+from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 
@@ -19,8 +20,11 @@ import questionnaire_response
 import dao.base_dao
 import singletons
 
+from code_constants import PPI_SYSTEM
 from contextlib import contextmanager
+from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
+from model.code import Code
 from model.hpo import HPO
 from participant_enums import UNSET_HPO_ID
 from mock import patch
@@ -76,9 +80,19 @@ class SqlTestBase(TestbedTestBase):
 
   def setup_data(self):
     """Creates default data necessary for basic testing."""
+    SqlTestBase.setup_hpos()
+
+  @staticmethod
+  def setup_hpos():
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT'))
+
+  @staticmethod
+  def setup_codes(values, code_type):
+    code_dao = CodeDao()
+    for value in values:
+      code_dao.insert(Code(system=PPI_SYSTEM, value=value, codeType=code_type, mapped=True))
 
   def assertObjEqualsExceptLastModified(self, obj1, obj2):
     dict1 = obj1.asdict()
@@ -124,6 +138,9 @@ class FlaskTestBase(NdbTestBase):
 
   def setUp(self):
     super(FlaskTestBase, self).setUp()
+    self.doSetUp()
+
+  def doSetUp(self):
     # http://flask.pocoo.org/docs/0.12/testing/
     main.app.config['TESTING'] = True
     self._app = main.app.test_client()
@@ -144,6 +161,9 @@ class FlaskTestBase(NdbTestBase):
 
   def tearDown(self):
     super(FlaskTestBase, self).tearDown()
+    self.doTearDown()
+
+  def doTearDown(self):
     for patcher in self._patchers:
       patcher.stop()
 
@@ -252,6 +272,9 @@ def sort_lists(obj):
   return obj
 
 
+def make_deferred_run():
+  executors.defer = executors._do_defer
+
 def make_deferred_not_run():
   executors.defer = (lambda fn, *args, **kwargs: None)
 
@@ -306,3 +329,13 @@ def pretty(obj):
 def random_ids(ids):
   with patch('random.randint', side_effect=ids):
     yield
+
+def run_deferred_tasks(test):
+  tasks = test.taskqueue.get_filtered_tasks()
+  test.taskqueue.FlushQueue("default")
+  while tasks:
+    for task in tasks:
+      deferred.run(task.payload)
+    tasks = test.taskqueue.get_filtered_tasks()
+    test.taskqueue.FlushQueue("default")
+
