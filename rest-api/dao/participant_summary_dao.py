@@ -55,7 +55,7 @@ class ParticipantSummaryDao(UpdatableDao):
     """Rewrites sample-related summary data. Call this after reloading BiobankStoredSamples."""
     baseline_tests_sql, baseline_tests_params = _get_sql_and_params_for_array(
         config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES), 'baseline')
-    sql ="""
+    sql = """
     UPDATE
       participant_summary
     SET
