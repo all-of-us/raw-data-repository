@@ -1,5 +1,5 @@
-"""The main API definition file for endpoints that trigger MapReduces.
-"""
+"""The main API definition file for endpoints that trigger MapReduces and batch tasks."""
+
 import api_util
 import app_util
 import config
@@ -17,6 +17,7 @@ from offline.metrics_export import MetricsExport
 
 PREFIX = '/offline/'
 
+
 @api_util.auth_required_cron
 def recalculate_metrics():
   in_progress = metrics.get_in_progress_version()
@@ -31,16 +32,12 @@ def recalculate_metrics():
     export.start()
     return '{"metrics-pipeline-status": "started"}'
 
+
 @api_util.auth_required_cron
 def reload_biobank_samples():
-  bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME, None)
-  if not bucket_name:
-    logging.error("No bucket configured for %s", config.BIOBANK_SAMPLES_BUCKET_NAME)
-    return '{"biobank-samples-pipeline-status": "error: no bucket configured"}'
-  logging.info("=========== Starting biobank samples pipeline ============")
-  pipeline = offline.biobank_samples_pipeline.BiobankSamplesPipeline(bucket_name)
-  pipeline.start(queue_name='biobank-samples-pipeline')
-  return '{"biobank-samples-pipeline-status": "started"}'
+  # Note that crons have a 10 minute deadline instead of the normal 60s.
+  biobank_samples_pipeline.reload_biobank_samples()
+
 
 
 app = Flask(__name__)
