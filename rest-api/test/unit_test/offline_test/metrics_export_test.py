@@ -1,4 +1,3 @@
-import dao.database_factory
 import datetime
 import json
 import offline.metrics_export
@@ -7,22 +6,19 @@ from clock import FakeClock
 from code_constants import PPI_SYSTEM
 from code_constants import FIELD_TO_QUESTIONNAIRE_MODULE_CODE, GENDER_IDENTITY_QUESTION_CODE
 from code_constants import RACE_QUESTION_CODE, ETHNICITY_QUESTION_CODE, STATE_QUESTION_CODE
-from code_constants import ZIPCODE_QUESTION_CODE
 from concepts import Concept
 from mapreduce import test_support
 from model.biobank_stored_sample import BiobankStoredSample
-from model.code import Code, CodeType
+from model.code import CodeType
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from dao.code_dao import CodeDao
-from dao.metrics_dao import MetricsVersionDao, MetricsBucketDao, SERVING_METRICS_DATA_VERSION
+from dao.metrics_dao import MetricsVersionDao, SERVING_METRICS_DATA_VERSION
 from dao.participant_dao import ParticipantDao
-from model.metrics import MetricsVersion, MetricsBucket
+from model.metrics import MetricsVersion
 from model.participant import Participant
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from offline.metrics_config import get_participant_fields, HPO_ID_FIELDS, ANSWER_FIELDS
 from offline.metrics_export import MetricsExport, HPO_IDS_CSV, PARTICIPANTS_CSV, ANSWERS_CSV
 from offline_test.gcs_utils import assertCsvContents
-from participant_enums import UNSET_HPO_ID
 from test_data import primary_provider_link, load_biobank_order_json, load_measurement_json
 from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, PITT_HPO_ID, 
 from unit_test_util import make_questionnaire_response_json, pretty, run_deferred_tasks
@@ -34,8 +30,9 @@ TIME_3 = datetime.datetime(2016, 1, 3)
 TIME_4 = datetime.datetime(2016, 1, 4)
 TIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 
-
 class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
+  """Tests exporting of metrics AND the output of the metrics pipeline that runs when the
+   export completes."""
   def setUp(self):
     super(MetricsExportTest, self).setUp()
     FlaskTestBase.doSetUp(self)
