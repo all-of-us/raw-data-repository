@@ -5,7 +5,6 @@ import shared_config
 
 from offline.metrics_fields import FieldDef
 from questionnaire_response import extractor_for, extract_concept_date
-from participant_enums import QuestionnaireStatus
 
 def make_sample_test_code_set(samples):
   return extraction.ExtractionResult(set(s.testCode for s in samples.samples))

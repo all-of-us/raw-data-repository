@@ -16,7 +16,6 @@ from offline.metrics_export import MetricsExport
 
 PREFIX = '/offline/'
 
-
 @api_util.auth_required_cron
 def recalculate_metrics():
   in_progress = metrics.get_in_progress_version()

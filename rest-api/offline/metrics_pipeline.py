@@ -47,10 +47,8 @@ import offline.metrics_config
 import offline.sql_exporter
 
 from datetime import datetime, timedelta
-from google.appengine.ext import ndb
 from mapreduce import base_handler
 from mapreduce import mapreduce_pipeline
-from mapreduce import operation as op
 from mapreduce import context
 
 from dao.database_factory import DATETIME_FORMAT
@@ -137,7 +135,6 @@ class SummaryPipeline(pipeline.Pipeline):
       mapper_params.update(parent_params)
 
     num_shards = mapper_params[_NUM_SHARDS]
-    dir_name = now.isoformat()
     # Chain together three map reduces; see module comments
     blob_key_1 = (yield mapreduce_pipeline.MapreducePipeline(
         'Process Input CSV',
@@ -151,7 +148,6 @@ class SummaryPipeline(pipeline.Pipeline):
             'output_writer': {
                 'bucket_name': bucket_name,
                 'content_type': 'text/plain'
-                #'naming_format': '%s/first-mr-$num.csv'
             }
         },
         shards=num_shards))
@@ -217,7 +213,7 @@ def map_hpo_ids(reader):
   and is the starting point for that participant's history.
   """
   for participant_id, hpo, last_modified in reader:
-     yield(participant_id, make_pair_str(last_modified, make_metric(HPO_ID_METRIC, hpo)))
+    yield(participant_id, make_pair_str(last_modified, make_metric(HPO_ID_METRIC, hpo)))
 
 
 def map_answers(reader):
@@ -311,7 +307,7 @@ def _add_age_range_metrics(dates_and_metrics, date_of_birth, now):
   while date and date < now.date():
     age_range = get_bucketed_age(date_of_birth, date)
     if age_range != previous_age_range:
-      date_and_metrics.append((date, make_metric(AGE_RANGE_METRIC, age_range)))
+      dates_and_metrics.append((date, make_metric(AGE_RANGE_METRIC, age_range)))
       previous_age_range = age_range
     date = date + year
   return start_age_range
@@ -341,6 +337,7 @@ def reduce1(reducer_key, reducer_values, now=None):
   Sorts everything by date, and emits hpoId|metric|date|delta strings representing increments or
   decrements of metrics based on this participant.
   """
+  #pylint: disable=unused-argument
   metrics_conf = get_config()
   metric_fields = get_fieldnames()
   summary_fields = metrics_conf['summary_fields']
@@ -350,11 +347,11 @@ def reduce1(reducer_key, reducer_values, now=None):
 
   date_of_birth = None
   for reducer_value in reducer_values:
-    tuple = parse_tuple(reducer_value)
-    if tuple[0] == DATE_OF_BIRTH_PREFIX:
-      date_of_birth = datetime.strptime(tuple[1], DATE_FORMAT).date()
+    t = parse_tuple(reducer_value)
+    if t[0] == DATE_OF_BIRTH_PREFIX:
+      date_of_birth = datetime.strptime(t[1], DATE_FORMAT).date()
     else:
-      dates_and_metrics.append((datetime.strptime(tuple[0], DATETIME_FORMAT), tuple[1]))
+      dates_and_metrics.append((datetime.strptime(t[0], DATETIME_FORMAT), t[1]))
 
   if not dates_and_metrics:
     return
@@ -388,8 +385,8 @@ def reduce1(reducer_key, reducer_values, now=None):
   # Emit 1 values for the initial state before any metrics change.
   initial_date = dates_and_metrics[0][0]
   for k, v in initial_state.iteritems():
-     yield reduce_result_value(map_result_key(initial_hpo_id, k, v),
-                               initial_date.date().isoformat(), '1')
+    yield reduce_result_value(map_result_key(initial_hpo_id, k, v),
+                              initial_date.date().isoformat(), '1')
 
   # Loop through all the metric changes for the participant.
   for dt, metric in dates_and_metrics:

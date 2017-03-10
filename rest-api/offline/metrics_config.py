@@ -4,7 +4,6 @@ CONFIG contains all the fields that will appear in metrics, with functions
 returning their possible valid values. Summary fields are used to derive values
 from other field values.
 '''
-import concepts
 import participant_enums
 
 from census_regions import census_regions
@@ -72,14 +71,14 @@ def _get_biospecimen_summary_values():
   return [UNSET, SPECIMEN_COLLECTED_VALUE, SAMPLES_ARRIVED_VALUE]
 
 def _get_answer_values(question_code_value):
-  question_code = CodeDao().get_code(PPI_SYSTEM, question_code_value)
-  if not question_code:
+  q_code = CodeDao().get_code(PPI_SYSTEM, question_code_value)
+  if not q_code:
     return []
-  return [answer_code.value for answer_code in question_code.children()
+  return [answer_code.value for answer_code in q_code.children()
           if answer_code.codeType == CodeType.ANSWER]
 
 def _get_answer_values_func(question_code_value):
-  return lambda: BASE_VALUES + _get_answer_values(question_code)
+  return lambda: BASE_VALUES + _get_answer_values(question_code_value)
 
 # These questionnaire answer fields are used to generate metrics.
 ANSWER_FIELDS = ["genderIdentityId", "raceId", "ethnicityId", "state"]
@@ -136,7 +135,7 @@ def get_fields():
   conf = get_config()
   for field in conf['fields'] + conf['summary_fields']:
     field_dict = {'name': PARTICIPANT_KIND + '.' + field.name,
-                  'values': field.values_func() }
+                  'values': field.values_func()}
     fields.append(field_dict)
   return sorted(fields, key=lambda field: field['name'])
 
