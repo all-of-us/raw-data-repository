@@ -95,6 +95,9 @@ class ParticipantDao(UpdatableDao):
       raise BadRequest(
           '%s.participantId %r is not found.' % (obj.__class__.__name__, obj.participantId))
 
+  def get_valid_biobank_id_set(self, session):
+    return set(session.query(Participant.biobankId).distinct())
+
 
 # TODO(danrodney): remove this logic from old participant code when done
 def get_primary_provider_link(participant):
