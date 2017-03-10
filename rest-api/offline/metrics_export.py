@@ -33,8 +33,7 @@ PARTICIPANT_SQL_TEMPLATE = (
 + "WHERE p.participant_id = ps.participant_id"
 + "  AND p.participant_id % :num_shards = :shard_number")
 
-# Find HPO ID changes in participant history. Use a subselect for HPO name since LEFT JOIN combined
-# with INNER JOIN doesn't seem to work in SQLite.
+# Find HPO ID changes in participant history.
 HPO_ID_QUERY = (
 "SELECT ph.participant_id participant_id, hpo.name hpo, "
 +" ISODATE[ph.last_modified] last_modified "
