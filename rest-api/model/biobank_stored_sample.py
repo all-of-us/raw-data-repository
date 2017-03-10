@@ -1,3 +1,4 @@
+import clock
 from model.base import Base
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 
@@ -22,8 +23,11 @@ class BiobankStoredSample(Base):
 
   # Which test was performed to produce this sample (ex: "1UR10" for blood draw). Rarely, the same
   # test may be performed multiple times for the same participant.
-  test = Column('test', String(80))
+  test = Column('test', String(80), nullable=False)
 
   # Timestamp when Biobank finished receiving/preparing the sample (status changed from "In Prep"
   # to "In Circulation" in Mayo). This is the end time used for order-to-sample latency measurement.
   confirmed = Column('confirmed', DateTime)
+
+  # For syncing sample updates, the last time the batch import modified the sample.
+  lastUpdated = Column('last_updated', DateTime, onupdate=clock.CLOCK.now)
