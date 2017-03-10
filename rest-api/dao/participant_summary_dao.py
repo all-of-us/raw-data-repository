@@ -1,14 +1,17 @@
+from query import OrderBy
+from werkzeug.exceptions import BadRequest, NotFound
+
+import config
 from code_constants import PPI_SYSTEM, UNSET
 from dao.base_dao import UpdatableDao
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
-from query import OrderBy
-from werkzeug.exceptions import BadRequest, NotFound
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ['lastName', 'firstName', 'dateOfBirth', 'participantId']
 _CODE_FIELDS = ['genderIdentity', 'ethnicity', 'race']
+
 
 class ParticipantSummaryDao(UpdatableDao):
   def __init__(self):
@@ -19,7 +22,7 @@ class ParticipantSummaryDao(UpdatableDao):
     return obj.participantId
 
   def _validate_update(self, session, obj, existing_obj):
-    '''Participant summaries don't have a version value; drop it from validation logic.'''
+    """Participant summaries don't have a version value; drop it from validation logic."""
     if not existing_obj:
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
 
@@ -47,3 +50,37 @@ class ParticipantSummaryDao(UpdatableDao):
         raise BadRequest("No code found: %s" % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', code.codeId)
     return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
+
+  def update_from_biobank_stored_samples(self):
+    """Rewrites sample-related summary data. Call this after reloading BiobankStoredSamples."""
+    baseline_tests_sql, baseline_tests_params = _get_sql_and_params_for_array(
+        config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES), 'baseline')
+    sql ="""
+    UPDATE
+      participant_summary
+    SET
+      num_baseline_samples_arrived = (
+        SELECT
+          COUNT(*)
+        FROM
+          biobank_stored_sample
+        WHERE
+          biobank_stored_sample.biobank_id = participant_summary.biobank_id
+          AND biobank_stored_sample.test IN %s
+      )""" % baseline_tests_sql
+
+    with self.session() as session:
+      session.execute(sql, baseline_tests_params)
+
+
+def _get_sql_and_params_for_array(arr, name_prefix):
+  """Returns an SQL expression and associated params dict for an array of values.
+
+  SQLAlchemy can't format array parameters. Work around it by building the :param style expression
+  and creating a dictionary of individual params for that.
+  """
+  array_values = {}
+  for i, v in enumerate(arr):
+    array_values['%s%d' % (name_prefix, i)] = v
+  sql_expr = '(%s)' % ','.join([':' + param_name for param_name in array_values])
+  return sql_expr, array_values
