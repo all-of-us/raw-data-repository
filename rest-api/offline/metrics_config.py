@@ -13,6 +13,7 @@ from collections import namedtuple
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from model.base import get_column_name
+from model.code import CodeType
 from model.participant_summary import ParticipantSummary
 
 PARTICIPANT_KIND = 'Participant'
