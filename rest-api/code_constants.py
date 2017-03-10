@@ -4,6 +4,9 @@ participant summaries and metrics.'''
 from protorpc import messages
 
 UNSET = 'UNSET'
+SKIPPED = 'SKIPPED'
+UNMAPPED = 'UNMAPPED'
+BASE_VALUES = [UNSET, SKIPPED, UNMAPPED]
 
 PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 
@@ -11,6 +14,7 @@ FIRST_NAME_QUESTION_CODE = "PIIName_First"
 LAST_NAME_QUESTION_CODE = "PIIName_Last"
 MIDDLE_NAME_QUESTION_CODE = "PIIName_Middle"
 ZIPCODE_QUESTION_CODE = "PIIAddress_ZIP"
+STATE_QUESTION_CODE = "PIIAddress_State"
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
@@ -38,13 +42,10 @@ FIELD_TO_QUESTION_CODE = {
   "lastName": (LAST_NAME_QUESTION_CODE, FieldType.STRING),
   "middleName": (MIDDLE_NAME_QUESTION_CODE, FieldType.STRING),
   "zipCode": (ZIPCODE_QUESTION_CODE, FieldType.STRING),
+  "state": (STATE_QUESTION_CODE, FieldType.STRING),
   "dateOfBirth": (DATE_OF_BIRTH_QUESTION_CODE, FieldType.DATE)
 }
 QUESTION_CODE_TO_FIELD = {v[0]: (k, v[1]) for k, v in FIELD_TO_QUESTION_CODE.iteritems()}
-
-METRIC_FIELDS = ["genderIdentityId", "raceId", "ethnicityId"]
-
-METRIC_FIELD_TO_QUESTION_CODE = {k: FIELD_TO_QUESTION_CODE[k][0] for k in METRIC_FIELDS}
 
 FIELD_TO_QUESTIONNAIRE_MODULE_CODE = {
   # TODO: fill this in when correct codes are defined

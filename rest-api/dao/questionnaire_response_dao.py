@@ -1,4 +1,5 @@
 import clock
+import config
 import json
 
 from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, PPI_SYSTEM
@@ -11,9 +12,13 @@ from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from participant_enums import QuestionnaireStatus
-from field_config.participant_summary_config import count_completed_baseline_ppi_modules
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
+
+def count_completed_baseline_ppi_modules(participant_summary):
+  baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
+  return sum(1 for field in baseline_ppi_module_fields
+             if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED)
 
 class QuestionnaireResponseDao(BaseDao):
 

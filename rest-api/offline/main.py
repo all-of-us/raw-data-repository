@@ -4,7 +4,7 @@ import api_util
 import app_util
 import config
 import datetime
-import metrics
+import offline.metrics_pipeline
 
 import logging
 
@@ -26,7 +26,7 @@ def recalculate_metrics():
   else:
     bucket_name = app_identity.get_default_gcs_bucket_name()
     logging.info("=========== Starting metrics export ============")
-    export = MetricsExport.start_export_tasks(bucket_name, datetime.datetime.utcnow(),
+    export = MetricsExport.start_export_tasks(bucket_name,
                                               int(config.getSetting(config.METRICS_SHARDS, 1)))
     export.start()
     return '{"metrics-pipeline-status": "started"}'
@@ -38,7 +38,6 @@ def import_biobank_samples():
   biobank_samples_pipeline.upsert_from_latest_csv()
   # Flask view functions must return something (or raise ValueError), though the response is unused.
   return 'OK'
-
 
 app = Flask(__name__)
 #

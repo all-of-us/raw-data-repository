@@ -351,7 +351,12 @@ def run_deferred_tasks(test):
   test.taskqueue.FlushQueue("default")
   while tasks:
     for task in tasks:
-      deferred.run(task.payload)
+      if task.url == '/_ah/queue/deferred':
+        deferred.run(task.payload)
     tasks = test.taskqueue.get_filtered_tasks()
+    for task in tasks:
+      # As soon as we hit a non-deferred task, bail out of here.
+      if task.url != '/_ah/queue/deferred':
+        return
     test.taskqueue.FlushQueue("default")
 

@@ -32,6 +32,7 @@ class ParticipantSummary(Base):
   middleName = Column('middle_name', String(80))
   lastName = Column('last_name', String(80))
   zipCode = Column('zip_code', String(10))
+  state = Column('state', String(2))
   dateOfBirth = Column('date_of_birth', Date)
   genderIdentityId = Column('gender_identity_id', Integer, ForeignKey('code.code_id'))
   membershipTier = Column('membership_tier', Enum(MembershipTier), default=MembershipTier.UNSET)

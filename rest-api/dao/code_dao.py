@@ -86,7 +86,17 @@ SYSTEM_AND_VALUE = ('system', 'value')
 
 class CodeDao(CacheAllDao):
   def __init__(self):
-    super(CodeDao, self).__init__(Code, cache_ttl_seconds=600, index_field_keys=[SYSTEM_AND_VALUE])
+    super(CodeDao, self).__init__(Code, cache_ttl_seconds=600,
+                                  index_field_keys=[SYSTEM_AND_VALUE])
+
+  def _load_cache(self, key):
+    result = super(CodeDao, self)._load_cache(key)
+    for code in result.id_to_entity.values():
+      if code.parentId is not None:
+        parent = result.id_to_entity.get(code.parentId)
+        if parent:
+          parent.children.append(code)
+    return result
 
   def _add_history(self, session, obj):
     history = CodeHistory()

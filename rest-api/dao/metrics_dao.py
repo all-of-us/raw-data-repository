@@ -49,7 +49,7 @@ class MetricsVersionDao(BaseDao):
           raise PreconditionFailed('Metrics pipeline is already running.')
       new_version = MetricsVersion(inProgress=True, dataVersion=SERVING_METRICS_DATA_VERSION)
       self.insert_with_session(session, new_version)
-      return new_version.metricsVersionId
+    return new_version.metricsVersionId
 
   def set_pipeline_finished(self, complete):
     with self.session() as session:
