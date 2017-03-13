@@ -9,7 +9,6 @@ import participant_enums
 from census_regions import census_regions
 from code_constants import BASE_VALUES, UNSET, FIELD_TO_QUESTION_CODE
 from code_constants import QUESTIONNAIRE_MODULE_FIELD_NAMES, PPI_SYSTEM
-from collections import namedtuple
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from model.base import get_column_name
