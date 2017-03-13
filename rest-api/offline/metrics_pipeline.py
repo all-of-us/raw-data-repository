@@ -65,6 +65,7 @@ from metrics_config import PHYSICAL_MEASUREMENTS_METRIC, AGE_RANGE_METRIC, CENSU
 from metrics_config import SPECIMEN_COLLECTED_VALUE, COMPLETE_VALUE
 from metrics_config import SAMPLES_ARRIVED_VALUE, SUBMITTED_VALUE, PARTICIPANT_KIND
 from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields, get_fieldnames
+from metrics_config import transform_participant_summary_field
 from participant_enums import get_bucketed_age
 
 class PipelineNotRunningException(BaseException):
@@ -181,12 +182,6 @@ class SummaryPipeline(pipeline.Pipeline):
         },
         shards=num_shards)
 
-# Remove the trailing 'Id' part of fields other than HPO ID.
-def _strip_trailing_id(metric):
-  if metric.endswith('Id') and metric != 'hpoId':
-    return metric[0:len(metric) - 2]
-  return metric
-
 def map1(csv_buffer):
   """Takes a CSV file as input. Emits (participantId, date|metric) tuples.
   """
@@ -225,7 +220,7 @@ def map_answers(reader):
   """
   for participant_id, start_time, question_code, answer_code, answer_string in reader:
     question_field = QUESTION_CODE_TO_FIELD[question_code]
-    metric = _strip_trailing_id(question_field[0])
+    metric = transform_participant_summary_field(question_field[0])
     if question_field[1] == FieldType.CODE:
       answer_value = answer_code
       # TODO(danrodney): map race to ethnicity instead of looking for an ethnicity
@@ -314,7 +309,7 @@ def _add_age_range_metrics(dates_and_metrics, date_of_birth, now):
 
 def _update_summary_fields(summary_fields, new_state):
   for summary_field in summary_fields:
-    new_state[summary_field.name] = summary_field.func(new_state)
+    new_state[summary_field.name] = summary_field.compute_func(new_state)
 
 def _process_metric(metrics_fields, summary_fields, metric, new_state):
   metric_name, value = parse_metric(metric)
@@ -359,7 +354,7 @@ def reduce1(reducer_key, reducer_values, now=None):
   # Sort the dates and metrics, date first then metric.
   dates_and_metrics = sorted(dates_and_metrics)
 
-  initial_state = {_strip_trailing_id(f.name): UNSET for f in metrics_conf['fields']}
+  initial_state = {f.name: UNSET for f in metrics_conf['fields']}
   initial_state[TOTAL_SENTINEL] = 1
   initial_hpo_id = UNSET
   # Look for the starting HPO, update the initial state with it, and remove it from

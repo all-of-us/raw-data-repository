@@ -28,8 +28,22 @@ COMPLETE_VALUE = 'COMPLETE'
 SAMPLES_ARRIVED_VALUE = 'SAMPLES_ARRIVED'
 SUBMITTED_VALUE = 'SUBMITTED'
 
-FieldDef = namedtuple('FieldDef', ['name', 'values_func'])
-SummaryFieldDef = namedtuple('SummaryFieldDef', ['name', 'func', 'values_func'])
+class FieldDef(object):
+  def __init__(self, name, values_func, participant_summary_field=None):
+    self.name = name
+    self.values_func = values_func
+    self.participant_summary_field = participant_summary_field
+
+# Fields for codes have a participant summary field name that ends with "Id".
+class CodeIdFieldDef(FieldDef):
+  def __init__(self, name, values_func):
+    super(CodeIdFieldDef, self).__init__(name[0:len(name) - 2], values_func, name)
+
+class SummaryFieldDef(object):
+  def __init__(self, name, compute_func, values_func):
+    self.name = name
+    self.compute_func = compute_func
+    self.values_func = values_func
 
 def _biospecimen_summary(summary):
   '''Summarizes the two biospecimen statuses into one.'''
@@ -114,7 +128,7 @@ CONFIG = {
     FieldDef(BIOSPECIMEN_SAMPLES_METRIC, _get_biospecimen_samples_values)
   ] + [FieldDef(fieldname, _get_submission_statuses) for fieldname in
        QUESTIONNAIRE_MODULE_FIELD_NAMES]
-    + [FieldDef(fieldname, _get_answer_values_func(question_code)) for
+    + [CodeIdFieldDef(fieldname, _get_answer_values_func(question_code)) for
        fieldname, question_code in ANSWER_FIELD_TO_QUESTION_CODE.iteritems()
        if fieldname not in NON_METRIC_ANSWER_FIELDS],
   # These fields are computed using the first provided function in the definition,
@@ -127,6 +141,14 @@ CONFIG = {
                     _get_submission_statuses)
   ]
 }
+
+PARTICIPANT_SUMMARY_FIELD_TO_METRIC_FIELD = {f.participant_summary_field: f.name
+                                             for f in CONFIG['fields']
+                                             if f.participant_summary_field}
+
+def transform_participant_summary_field(f):
+  metric_field = PARTICIPANT_SUMMARY_FIELD_TO_METRIC_FIELD.get(f)
+  return metric_field or f
 
 def get_fieldnames():
   return set([field.name for field in get_config()['fields']])

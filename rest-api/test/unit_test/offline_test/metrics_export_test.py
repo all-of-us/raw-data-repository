@@ -186,4 +186,5 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
   def assertBucket(self, bucket_map, dt, hpoId, metrics):
     bucket = bucket_map.get((dt.date(), hpoId))
     self.assertIsNotNone(bucket)
-    self.assertMultiLineEqual(pretty(json.loads(bucket.metrics)), pretty(metrics))
+    self.assertMultiLineEqual(pretty(metrics),
+                              pretty(json.loads(bucket.metrics)))
