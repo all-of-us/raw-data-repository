@@ -83,7 +83,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant_dao.insert(participant)
 
     with FakeClock(TIME):
-      participant2 = Participant(participantId=2, biobankId=3)
+      participant2 = Participant(participantId=2, biobankId=3,
+                                 providerLink=primary_provider_link('PITT'))
       participant_dao.insert(participant2)
 
     with FakeClock(TIME_2):
@@ -130,7 +131,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     # one with the second.
     assertCsvContents(self, BUCKET_NAME, prefix + HPO_IDS_CSV % 0,
                       [HPO_ID_FIELDS,
-                       ['2', 'UNSET', t1]])
+                       ['2', 'PITT', t1]])
     assertCsvContents(self, BUCKET_NAME, prefix + HPO_IDS_CSV % 1,
                       [HPO_ID_FIELDS,
                        ['1', 'UNSET', t1],
@@ -165,7 +166,40 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     buckets = MetricsVersionDao().get_with_children(metrics_version.metricsVersionId).buckets
     bucket_map = {(bucket.date, bucket.hpoId): bucket for bucket in buckets}
+    # At TIME, P1 has no HPO and P2 has PITT.
     self.assertBucket(bucket_map, TIME, 'UNSET',
+                      { 'Participant': 1,
+                        'Participant.ageRange.26-35': 1,
+                        'Participant.censusRegion.UNSET': 1,
+                        'Participant.physicalMeasurements.UNSET': 1,
+                        'Participant.biospecimen.UNSET': 1,
+                        'Participant.biospecimenSamples.UNSET': 1,
+                        'Participant.hpoId.UNSET': 1,
+                        'Participant.questionnaireOnOverallHealth.UNSET': 1,
+                        'Participant.questionnaireOnPersonalHabits.UNSET': 1,
+                        'Participant.questionnaireOnSociodemographics.UNSET': 1,
+                        'Participant.genderIdentity.UNSET': 1,
+                        'Participant.race.UNSET': 1,
+                        'Participant.ethnicity.UNSET': 1,
+                        'Participant.biospecimenSummary.UNSET': 1,
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
+    self.assertBucket(bucket_map, TIME, 'PITT',
+                      { 'Participant': 1,
+                        'Participant.ageRange.UNSET': 1,
+                        'Participant.censusRegion.UNSET': 1,
+                        'Participant.physicalMeasurements.UNSET': 1,
+                        'Participant.biospecimen.UNSET': 1,
+                        'Participant.biospecimenSamples.UNSET': 1,
+                        'Participant.hpoId.PITT': 1,
+                        'Participant.questionnaireOnOverallHealth.UNSET': 1,
+                        'Participant.questionnaireOnPersonalHabits.UNSET': 1,
+                        'Participant.questionnaireOnSociodemographics.UNSET': 1,
+                        'Participant.genderIdentity.UNSET': 1,
+                        'Participant.race.UNSET': 1,
+                        'Participant.ethnicity.UNSET': 1,
+                        'Participant.biospecimenSummary.UNSET': 1,
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
+    self.assertBucket(bucket_map, TIME, '',
                       { 'Participant': 2,
                         'Participant.ageRange.26-35': 1,
                         'Participant.ageRange.UNSET': 1,
@@ -173,7 +207,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.physicalMeasurements.UNSET': 2,
                         'Participant.biospecimen.UNSET': 2,
                         'Participant.biospecimenSamples.UNSET': 2,
-                        'Participant.hpoId.UNSET': 2,
+                        'Participant.hpoId.PITT': 1,
+                        'Participant.hpoId.UNSET': 1,
                         'Participant.questionnaireOnOverallHealth.UNSET': 2,
                         'Participant.questionnaireOnPersonalHabits.UNSET': 2,
                         'Participant.questionnaireOnSociodemographics.UNSET': 2,
@@ -182,9 +217,128 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.ethnicity.UNSET': 2,
                         'Participant.biospecimenSummary.UNSET': 2,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
+    # At TIME_2, P1 is white, UNMAPPED gender and hispanic ethnicity; biobank samples
+    # arrived for P1; and both participants have submitted the sociodemographics questionnaire.
+    self.assertBucket(bucket_map, TIME_2, 'UNSET',
+                      { 'Participant': 1,
+                        'Participant.ageRange.26-35': 1,
+                        'Participant.censusRegion.UNSET': 1,
+                        'Participant.physicalMeasurements.UNSET': 1,
+                        'Participant.biospecimen.UNSET': 1,
+                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
+                        'Participant.hpoId.UNSET': 1,
+                        'Participant.questionnaireOnOverallHealth.UNSET': 1,
+                        'Participant.questionnaireOnPersonalHabits.UNSET': 1,
+                        'Participant.questionnaireOnSociodemographics.SUBMITTED': 1,
+                        'Participant.genderIdentity.UNMAPPED': 1,
+                        'Participant.race.white': 1,
+                        'Participant.ethnicity.hispanic': 1,
+                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
+    self.assertBucket(bucket_map, TIME_2, 'PITT',
+                      { 'Participant': 1,
+                        'Participant.ageRange.UNSET': 1,
+                        'Participant.censusRegion.UNSET': 1,
+                        'Participant.physicalMeasurements.UNSET': 1,
+                        'Participant.biospecimen.UNSET': 1,
+                        'Participant.biospecimenSamples.UNSET': 1,
+                        'Participant.hpoId.PITT': 1,
+                        'Participant.questionnaireOnOverallHealth.UNSET': 1,
+                        'Participant.questionnaireOnPersonalHabits.UNSET': 1,
+                        'Participant.questionnaireOnSociodemographics.SUBMITTED': 1,
+                        'Participant.genderIdentity.UNSET': 1,
+                        'Participant.race.UNSET': 1,
+                        'Participant.ethnicity.UNSET': 1,
+                        'Participant.biospecimenSummary.UNSET': 1,
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
+    self.assertBucket(bucket_map, TIME_2, '',
+                      { 'Participant': 2,
+                        'Participant.ageRange.26-35': 1,
+                        'Participant.ageRange.UNSET': 1,
+                        'Participant.censusRegion.UNSET': 2,
+                        'Participant.physicalMeasurements.UNSET': 2,
+                        'Participant.biospecimen.UNSET': 2,
+                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
+                        'Participant.biospecimenSamples.UNSET': 1,
+                        'Participant.hpoId.PITT': 1,
+                        'Participant.hpoId.UNSET': 1,
+                        'Participant.questionnaireOnOverallHealth.UNSET': 2,
+                        'Participant.questionnaireOnPersonalHabits.UNSET': 2,
+                        'Participant.questionnaireOnSociodemographics.SUBMITTED': 2,
+                        'Participant.genderIdentity.UNMAPPED': 1,
+                        'Participant.genderIdentity.UNSET': 1,
+                        'Participant.race.white': 1,
+                        'Participant.race.UNSET': 1,
+                        'Participant.ethnicity.hispanic': 1,
+                        'Participant.ethnicity.UNSET': 1,
+                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
+                        'Participant.biospecimenSummary.UNSET': 1,
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
+    # At TIME_3, P1 is UNMAPPED race, female gender, and now in PITT HPO;
+    # physical measurements and a questionnaire for personal
+    # habits and overall health are submitted for P2, and P2 is in SOUTH census region
+    # and in a new age bucket (since it was their birthday.)
+    self.assertBucket(bucket_map, TIME_3, 'UNSET')
+    self.assertBucket(bucket_map, TIME_3, 'PITT',
+                      { 'Participant': 2,
+                        'Participant.ageRange.36-45': 1,
+                        'Participant.ageRange.UNSET': 1,
+                        'Participant.censusRegion.SOUTH': 1,
+                        'Participant.censusRegion.UNSET': 1,
+                        'Participant.physicalMeasurements.COMPLETE': 1,
+                        'Participant.physicalMeasurements.UNSET': 1,
+                        'Participant.biospecimen.UNSET': 2,
+                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
+                        'Participant.biospecimenSamples.UNSET': 1,
+                        'Participant.hpoId.PITT': 2,
+                        'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
+                        'Participant.questionnaireOnOverallHealth.UNSET': 1,
+                        'Participant.questionnaireOnPersonalHabits.SUBMITTED': 1,
+                        'Participant.questionnaireOnPersonalHabits.UNSET': 1,
+                        'Participant.questionnaireOnSociodemographics.SUBMITTED': 2,
+                        'Participant.genderIdentity.female': 1,
+                        'Participant.genderIdentity.UNSET': 1,
+                        'Participant.race.UNMAPPED': 1,
+                        'Participant.race.UNSET': 1,
+                        'Participant.ethnicity.hispanic': 1,
+                        'Participant.ethnicity.UNSET': 1,
+                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
+                        'Participant.biospecimenSummary.UNSET': 1,
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
+    self.assertBucket(bucket_map, TIME_3, '',
+                      { 'Participant': 2,
+                        'Participant.ageRange.36-45': 1,
+                        'Participant.ageRange.UNSET': 1,
+                        'Participant.censusRegion.SOUTH': 1,
+                        'Participant.censusRegion.UNSET': 1,
+                        'Participant.physicalMeasurements.COMPLETE': 1,
+                        'Participant.physicalMeasurements.UNSET': 1,
+                        'Participant.biospecimen.UNSET': 2,
+                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
+                        'Participant.biospecimenSamples.UNSET': 1,
+                        'Participant.hpoId.PITT': 2,
+                        'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
+                        'Participant.questionnaireOnOverallHealth.UNSET': 1,
+                        'Participant.questionnaireOnPersonalHabits.SUBMITTED': 1,
+                        'Participant.questionnaireOnPersonalHabits.UNSET': 1,
+                        'Participant.questionnaireOnSociodemographics.SUBMITTED': 2,
+                        'Participant.genderIdentity.female': 1,
+                        'Participant.genderIdentity.UNSET': 1,
+                        'Participant.race.UNMAPPED': 1,
+                        'Participant.race.UNSET': 1,
+                        'Participant.ethnicity.hispanic': 1,
+                        'Participant.ethnicity.UNSET': 1,
+                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
+                        'Participant.biospecimenSummary.UNSET': 1,
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
+    # There si a biobank order on 1/4, but it gets ignored since it's after the run date.
+    self.assertBucket(bucket_map, TIME_4, '')
 
-  def assertBucket(self, bucket_map, dt, hpoId, metrics):
+  def assertBucket(self, bucket_map, dt, hpoId, metrics=None):
     bucket = bucket_map.get((dt.date(), hpoId))
-    self.assertIsNotNone(bucket)
-    self.assertMultiLineEqual(pretty(metrics),
-                              pretty(json.loads(bucket.metrics)))
+    if metrics:
+      self.assertIsNotNone(bucket)
+      self.assertMultiLineEqual(pretty(metrics),
+                                pretty(json.loads(bucket.metrics)))
+    else:
+      self.assertIsNone(bucket)

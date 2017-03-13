@@ -299,10 +299,11 @@ def _add_age_range_metrics(dates_and_metrics, date_of_birth, now):
   year = relativedelta(years=1)
   date = date_of_birth + relativedelta(years=difference_in_years + 1)
   previous_age_range = start_age_range
-  while date and date < now.date():
+  while date and date <= now.date():
     age_range = get_bucketed_age(date_of_birth, date)
     if age_range != previous_age_range:
-      dates_and_metrics.append((date, make_metric(AGE_RANGE_METRIC, age_range)))
+      dates_and_metrics.append((datetime(year=date.year, month=date.month, day=date.day),
+                                make_metric(AGE_RANGE_METRIC, age_range)))
       previous_age_range = age_range
     date = date + year
   return start_age_range
@@ -356,15 +357,15 @@ def reduce1(reducer_key, reducer_values, now=None):
 
   initial_state = {f.name: UNSET for f in metrics_conf['fields']}
   initial_state[TOTAL_SENTINEL] = 1
-  initial_hpo_id = UNSET
+  last_hpo_id = UNSET
   # Look for the starting HPO, update the initial state with it, and remove it from
   # the list of date-and-metrics pairs.
   for i in range(0, len(dates_and_metrics)):
     metric = dates_and_metrics[i][1]
     metric_name, value = parse_metric(metric)
     if metric_name == HPO_ID_METRIC:
-      initial_hpo_id = value
-      initial_state[HPO_ID_METRIC] = initial_hpo_id
+      last_hpo_id = value
+      initial_state[HPO_ID_METRIC] = last_hpo_id
       break
 
   # If we know the participant's date of birth, and a starting age range
@@ -380,23 +381,20 @@ def reduce1(reducer_key, reducer_values, now=None):
   # Emit 1 values for the initial state before any metrics change.
   initial_date = dates_and_metrics[0][0]
   for k, v in initial_state.iteritems():
-    yield reduce_result_value(map_result_key(initial_hpo_id, k, v),
+    yield reduce_result_value(map_result_key(last_hpo_id, k, v),
                               initial_date.date().isoformat(), '1')
 
+  last_state = initial_state
   # Loop through all the metric changes for the participant.
   for dt, metric in dates_and_metrics:
     date = dt.date()
-    if not last_state:
-      # Initial state is UNSET for everything.
-      new_state = initial_state
-    else:
-      new_state = copy.deepcopy(last_state)
+    new_state = copy.deepcopy(last_state)
 
     if not _process_metric(metric_fields, summary_fields, metric, new_state):
       continue  # No changes so there's nothing to do.
-
     hpo_id = new_state.get(HPO_ID_METRIC)
-    hpo_change = (last_hpo_id is None or last_hpo_id != hpo_id)
+    hpo_change = last_hpo_id != hpo_id
+
     for k, v in new_state.iteritems():
       # Output a delta for this field if it is either the first value we have,
       # or if it has changed. In the case that one of the facets has changed,
@@ -455,8 +453,12 @@ def reduce2(reducer_key, reducer_values, now=None):
   last_date = None
   count = 0
   one_day = timedelta(days=1)
+  now = now or context.get().mapreduce_spec.mapper.params.get('now')
   for date_str, delta in sorted(delta_map.items()):
     date = datetime.strptime(date_str, DATE_FORMAT).date()
+    if date > now.date():
+      # Ignore any data after the current run date.
+      break
     # Yield results for all the dates in between
     if last_date:
       middle_date = last_date + one_day
@@ -467,7 +469,6 @@ def reduce2(reducer_key, reducer_values, now=None):
     if count > 0:
       yield reduce_result_value(reducer_key, date_str, count)
     last_date = date
-  now = now or context.get().mapreduce_spec.mapper.params.get('now')
   # Yield results up until today.
   if count > 0 and last_date:
     last_date = last_date + one_day
