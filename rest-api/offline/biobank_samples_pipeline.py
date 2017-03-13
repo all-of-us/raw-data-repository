@@ -1,130 +1,98 @@
-"""Pipeline that populates BiobankSamples for participants
+"""Reads a CSV that Biobank uploads to GCS and upserts to the BiobankStoredSample table.
 
-This is a mapreduce that reads CSV data uploaded to a GCS bucket and generates
-BiobankSamples entries under participants in datastore.
+Also updates ParticipantSummary data related to samples.
 """
 
-import ast
-import biobank_sample
 import csv
-import config
+import datetime
 import logging
-import participant_dao
+
+# cloud.google.com/appengine/docs/standard/python/googlecloudstorageclient/read-write-to-cloud-storage
 from cloudstorage import cloudstorage_api
+from werkzeug.exceptions import BadRequest
 
-from mapreduce import mapreduce_pipeline
-from mapreduce.lib.input_reader._gcs import GCSInputReader
-from offline.base_pipeline import BasePipeline
+import config
+from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from dao.participant_summary_dao import ParticipantSummaryDao
+from model.biobank_stored_sample import BiobankStoredSample
+from model.utils import from_client_biobank_id
 
-BIOBANK_SAMPLE_FIELDS = [
-  'familyId',
-  'sampleId',
-  'storageStatus',
-  'type',
-  'testCode',
-  'treatments',
-  'expectedVolume',
-  'quantity',
-  'containerType',
-  'collectionDate',
-  'disposalStatus',
-  'disposedDate',
-  'parentSampleId',
-  'confirmedDate'
-]
 
-EXPECTED_HEADERS = [
-    "External Participant Id", "Sample Family Id", "Sample Id",
-    "Sample Storage Status", "Sample Type", "Test Code",
-    "Sample Treatment", "Parent Expected Volume", "Sample Quantity",
-    "Sample Container Type", "Sample Family Collection Date",
-    "Sample Disposal Status", "Sample Disposed Date", "Parent Sample Id",
-    "Sample Confirmed Date"
-]
+def upsert_from_latest_csv():
+  bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
+  csv_file = _open_latest_samples_file(bucket_name)
+  csv_reader = csv.DictReader(csv_file, delimiter='\t')
+  _upsert_samples_from_csv(csv_reader)
+  ParticipantSummaryDao().update_from_biobank_stored_samples()
 
-class BiobankSamplesPipeline(BasePipeline):
-  def run(self, *args, **kwargs):  # pylint: disable=unused-argument
-    bucket_name = args[0]
-    newest_filename = None
-    newest_timestamp = 0
-    for gcs_file in cloudstorage_api.listbucket('/' + bucket_name):
-      if gcs_file.filename.lower().endswith(
-          ".csv") and gcs_file.st_ctime > newest_timestamp:
-        newest_filename = gcs_file.filename.split('/')[2]
-        newest_timestamp = gcs_file.st_ctime
 
-    if not newest_filename:
-      logging.warning('No CSV files found in bucket %s; aborting pipeline.', bucket_name)
-      return
+def _open_latest_samples_file(cloud_bucket_name):
+  path = _find_latest_samples_csv(cloud_bucket_name)
+  logging.info('Opening latest samples CSV in %r: %r.', cloud_bucket_name, path)
+  return cloudstorage_api.open(path)
 
-    logging.info('======= Starting Biobank Samples Pipeline with file %s in bucket %s',
-        newest_filename, bucket_name)
-    mapper_params = {
-        'input_reader': {
-            GCSInputReader.BUCKET_NAME_PARAM: bucket_name,
-            GCSInputReader.OBJECT_NAMES_PARAM: [newest_filename]
-        }
-    }
-    num_shards = int(config.getSetting(config.BIOBANK_SAMPLES_SHARDS, 1))
-    # The result of yield is a future that will contain the files that were
-    # produced by MapreducePipeline.
-    # Note that GoogleCloudStorageInputReader uses only one shard for reading
-    # the input CSV file. If this becomes too slow in future, we could consider
-    # dividing the file into pieces before processing.
-    yield mapreduce_pipeline.MapreducePipeline(
-        'Import Biobank Samples',
-        mapper_spec='offline.biobank_samples_pipeline.map_samples',
-        input_reader_spec='mapreduce.input_readers.GoogleCloudStorageInputReader',
-        mapper_params=mapper_params,
-        reducer_spec='offline.biobank_samples_pipeline.reduce_samples',
-        shards=num_shards)
 
-def map_samples(csv_buffer):
-  reader = csv.DictReader(csv_buffer, delimiter='\t')
-  headers = set(reader.fieldnames)
-  expected_headers_set = set(EXPECTED_HEADERS)
-  missing_headers = expected_headers_set - headers
-  if len(missing_headers) > 0:
-    logging.warning('Missing headers: %s; aborting.', missing_headers)
-    return
-  else:
-    extra_headers = headers - expected_headers_set
-    if len(extra_headers) > 0:
-      logging.warning('Warning -- unexpected extra headers: %s', extra_headers)
-  for row_dict in reader:
-    participant_id = row_dict.get("External Participant Id")
-    if participant_id:
-      values = []
-      for header in EXPECTED_HEADERS:
-        if header != "External Participant Id":
-          values.append(row_dict.get(header))
-      yield (participant_id, values)
+def _find_latest_samples_csv(cloud_bucket_name):
+  """Returns the full path (including bucket name) of the most recently created CSV in the bucket.
 
-def reduce_samples(biobank_id, samples):
-  # TODO: fetch existing samples, don't write when nothing changes
-  sample_dicts = []
-  participant_id = participant_dao.DAO().find_participant_id_by_biobank_id(biobank_id)
-  if not participant_id:
-    logging.info('Participant with biobank ID %s not found; skipping.', biobank_id)
-    return
+  Raises:
+    RuntimeError: if no CSVs are found in the cloud storage bucket.
+  """
+  bucket_stat_list = cloudstorage_api.listbucket('/' + cloud_bucket_name)
+  if not bucket_stat_list:
+    raise RuntimeError('No files in cloud bucket %r.' % cloud_bucket_name)
+  bucket_stat_list = [s for s in bucket_stat_list if s.filename.lower().endswith('.csv')]
+  if not bucket_stat_list:
+    raise RuntimeError(
+        'No CSVs in cloud bucket %r (all files: %s).' % (cloud_bucket_name, bucket_stat_list))
+  bucket_stat_list.sort(key=lambda s: s.st_ctime)
+  return bucket_stat_list[-1].filename
 
-  for sample in samples:
-    sample_arr = ast.literal_eval(sample)
-    sample_dict = {}
-    for i, sample_value in enumerate(sample_arr):
-      stripped_value = sample_value.strip("'")
-      if stripped_value:
-        sample_dict[BIOBANK_SAMPLE_FIELDS[i]] = stripped_value
-    sample_dicts.append(sample_dict)
-  biobank_samples_dict = {'samples': sample_dicts}
-  existing_samples = biobank_sample.DAO().get_samples_for_participant(participant_id)
-  if existing_samples:
-    existing_samples_dict = biobank_sample.DAO().to_json(existing_samples)
-    if biobank_samples_dict == existing_samples_dict:
-      return
-  biobank_samples = biobank_sample.DAO().from_json(biobank_samples_dict,
-                                                 participant_id,
-                                                 biobank_sample.SINGLETON_SAMPLES_ID)
-  # This also takes care of updating the participant summary if necessary.
-  biobank_sample.DAO().store(biobank_samples)
 
+class _Columns(object):
+  SAMPLE_ID = 'Sample Id'
+  PARENT_ID = 'Parent Sample Id'
+  CONFIRMED_DATE = 'Sample Confirmed Date'
+  EXTERNAL_PARTICIPANT_ID = 'External Participant Id'
+  TEST_CODE = 'Test Code'
+  ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID, TEST_CODE])
+
+
+def _upsert_samples_from_csv(csv_reader):
+  missing_cols = _Columns.ALL - set(csv_reader.fieldnames)
+  if missing_cols:
+    raise RuntimeError(
+        'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
+  samples_dao = BiobankStoredSampleDao()
+  samples_dao.upsert_batched(
+      (s for s in (_create_sample_from_row(row) for row in csv_reader) if s is not None))
+
+
+# TODO(mwf) Have Biobank switch to a timestamp format with time zone information (pref. isoformat).
+_TIMESTAMP_FORMAT = '%Y/%m/%d %H:%M:%S'  # like 2016/11/30 14:32:18
+
+
+def _create_sample_from_row(row):
+  biobank_id_str = row[_Columns.EXTERNAL_PARTICIPANT_ID]
+  try:
+    biobank_id = from_client_biobank_id(biobank_id_str)
+  except BadRequest, e:
+    logging.error('Bad external participant ID (Biobank ID) %r: %s', biobank_id_str, e.message)
+    return None
+  sample = BiobankStoredSample(
+      biobankStoredSampleId=row[_Columns.SAMPLE_ID],
+      biobankId=biobank_id,
+      test=row[_Columns.TEST_CODE])
+  if row[_Columns.PARENT_ID]:
+    logging.info('Skipping child sample %r for %r', sample.biobankStoredSampleId, sample.biobankId)
+    return None
+  confirmed_str = row[_Columns.CONFIRMED_DATE]
+  if confirmed_str:
+    try:
+      sample.confirmed = datetime.datetime.strptime(confirmed_str, _TIMESTAMP_FORMAT)
+    except ValueError, e:
+      logging.error(
+          'Skipping sample %r for %r with bad confirmed timestamp %r: %s',
+          sample.biobankStoredSampleId, sample.biobankId, confirmed_str, e.message)
+      return None
+  return sample
