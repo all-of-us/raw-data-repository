@@ -1,4 +1,5 @@
 import clock
+from dao.biobank_order_dao import VALID_TESTS
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.participant import Participant
@@ -26,3 +27,13 @@ class BiobankStoredSampleDaoTest(SqlTestBase):
     fetched = self.dao.get(sample_id)
     self.assertEquals(test_code, created.test)
     self.assertEquals(test_code, fetched.test)
+
+  def test_batched_write_multi_batch(self):
+    num_samples = int(2.5 * self.dao._UPDATE_BATCH_SIZE)
+    test_code = iter(VALID_TESTS).next()
+    self.dao.upsert_batched(BiobankStoredSample(
+        biobankStoredSampleId='W%d' % i,
+        biobankId=self.participant.biobankId,
+        test=test_code,
+        confirmed=clock.CLOCK.now()) for i in xrange(num_samples))
+    self.assertEquals(self.dao.count(), num_samples)
