@@ -18,6 +18,7 @@ from model.utils import from_client_biobank_id
 
 
 def upsert_from_latest_csv():
+  """Main entry point: Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
   csv_file = _open_latest_samples_file(bucket_name)
   csv_reader = csv.DictReader(csv_file, delimiter='\t')
@@ -26,6 +27,7 @@ def upsert_from_latest_csv():
 
 
 def _open_latest_samples_file(cloud_bucket_name):
+  """Returns an open stream for the most recently created CSV in the given bucket."""
   path = _find_latest_samples_csv(cloud_bucket_name)
   logging.info('Opening latest samples CSV in %r: %r.', cloud_bucket_name, path)
   return cloudstorage_api.open(path)
@@ -49,6 +51,7 @@ def _find_latest_samples_csv(cloud_bucket_name):
 
 
 class _Columns(object):
+  """Names of CSV columns that we read from the Biobank samples upload."""
   SAMPLE_ID = 'Sample Id'
   PARENT_ID = 'Parent Sample Id'
   CONFIRMED_DATE = 'Sample Confirmed Date'
@@ -58,6 +61,7 @@ class _Columns(object):
 
 
 def _upsert_samples_from_csv(csv_reader):
+  """Inserts/updates BiobankStoredSamples from a csv.DictReader."""
   missing_cols = _Columns.ALL - set(csv_reader.fieldnames)
   if missing_cols:
     raise RuntimeError(
@@ -72,6 +76,7 @@ _TIMESTAMP_FORMAT = '%Y/%m/%d %H:%M:%S'  # like 2016/11/30 14:32:18
 
 
 def _create_sample_from_row(row):
+  """Returns a new BiobankStoredSample object from a CSV row, or None if the row is invalid."""
   biobank_id_str = row[_Columns.EXTERNAL_PARTICIPANT_ID]
   try:
     biobank_id = from_client_biobank_id(biobank_id_str)
