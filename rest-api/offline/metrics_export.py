@@ -3,7 +3,7 @@ import executors
 
 from offline.sql_exporter import SqlExporter
 from dao.code_dao import CodeDao
-from dao.database_factory import replace_isodate
+from dao.database_utils import replace_isodate
 from model.base import get_column_name
 from model.participant_summary import ParticipantSummary
 from code_constants import QUESTIONNAIRE_MODULE_FIELD_NAMES, PPI_SYSTEM
