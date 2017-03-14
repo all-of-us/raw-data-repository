@@ -1,10 +1,13 @@
+import itertools
+
 import clock
 from dao.biobank_order_dao import VALID_TESTS
-from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from dao.biobank_stored_sample_dao import BiobankStoredSampleDao, _split_into_batches
 from model.biobank_stored_sample import BiobankStoredSample
 from model.participant import Participant
 from dao.participant_dao import ParticipantDao
 from unit_test_util import SqlTestBase
+
 
 class BiobankStoredSampleDaoTest(SqlTestBase):
   """Tests only that a sample can be written and read; see the reconciliation pipeline."""
@@ -37,3 +40,12 @@ class BiobankStoredSampleDaoTest(SqlTestBase):
         test=test_code,
         confirmed=clock.CLOCK.now()) for i in xrange(num_samples))
     self.assertEquals(self.dao.count(), num_samples)
+
+  def test_batching(self):
+    zero_to_ten = range(10)
+    batches = list(_split_into_batches(zero_to_ten, 4))
+    self.assertItemsEqual(zero_to_ten, itertools.chain(*batches))
+    self.assertEquals(len(batches), 3)
+    self.assertEquals(batches[0], [0, 1, 2, 3])
+    self.assertEquals(batches[1], [4, 5, 6, 7])
+    self.assertEquals(batches[2], [8, 9])

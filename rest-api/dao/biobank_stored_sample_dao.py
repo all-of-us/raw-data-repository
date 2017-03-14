@@ -50,7 +50,7 @@ class BiobankStoredSampleDao(BaseDao):
 
 def _split_into_batches(iterable, batch_size):
   batch = []
-  for i, v in enumerate(iterable):
+  for i, v in enumerate(iterable, start=1):
     batch.append(v)
     if i % batch_size == 0:
       yield batch
