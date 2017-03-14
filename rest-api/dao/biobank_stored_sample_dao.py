@@ -24,7 +24,7 @@ class BiobankStoredSampleDao(BaseDao):
       valid_biobank_ids = ParticipantDao().get_valid_biobank_id_set(session)
     for samples_batch in _split_into_batches(sample_generator, self._UPDATE_BATCH_SIZE):
       with self.session() as session:
-        written, skipped = self._upsert_batch(samples_batch, valid_biobank_ids)
+        written, skipped = self._upsert_batch(session, samples_batch, valid_biobank_ids)
       logging.info('Wrote %d samples, skipped %d invalid samples.', written, skipped)
 
   def _upsert_batch(self, session, samples, valid_biobank_ids):
