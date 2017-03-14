@@ -37,7 +37,8 @@ class BiobankStoredSampleDao(BaseDao):
           continue
         if sample.test not in VALID_TESTS:
           logging.warning(
-              'Skipping sample %r: invalid test code %r.', sample.test, sample.biobankStoredSampleId)
+              'Skipping sample %r: invalid test code %r.',
+              sample.test, sample.biobankStoredSampleId)
           skipped += 1
           continue
         session.merge(sample)
