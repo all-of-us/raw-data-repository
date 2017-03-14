@@ -44,6 +44,10 @@ applying schema migrations. (If the schema is already up to date, this is a no-o
 
 Trim trailing whitespace form all files and optionally commit changes.
 
+## check_uncommitted.sh
+
+Returns nonzero if there are uncommitted changes, for use as a pre-push hook.
+
 ## Included scripts (use with "source &lt;script name&gt;")
 
 ### auth_setup.sh
