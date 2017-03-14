@@ -1,5 +1,7 @@
 """Helpers for querying the SQL database."""
 
+import re
+
 from dao.database_factory import get_database
 
 

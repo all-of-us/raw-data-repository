@@ -1,5 +1,4 @@
 import config
-import re
 import singletons
 
 from model.database import Database
