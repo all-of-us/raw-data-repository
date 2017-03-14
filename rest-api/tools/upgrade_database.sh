@@ -37,7 +37,7 @@ then
   REVISION=head
 fi
 
-if [ ! -z "${PROJECT}" ]
+if [ "${PROJECT}" ]
 then
   source tools/auth_setup.sh
   run_cloud_sql_proxy
