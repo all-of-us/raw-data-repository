@@ -96,7 +96,7 @@ class ParticipantDao(UpdatableDao):
           '%s.participantId %r is not found.' % (obj.__class__.__name__, obj.participantId))
 
   def get_valid_biobank_id_set(self, session):
-    return set([row[0] for row in session.query(Participant.biobankId).distinct()])
+    return set([row[0] for row in session.query(Participant.biobankId)])
 
 
 # TODO(danrodney): remove this logic from old participant code when done
