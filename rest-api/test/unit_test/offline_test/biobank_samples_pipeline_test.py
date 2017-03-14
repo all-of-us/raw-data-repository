@@ -1,5 +1,4 @@
 import csv
-import os
 import time
 
 from cloudstorage import cloudstorage_api

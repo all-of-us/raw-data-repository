@@ -1,4 +1,4 @@
-from offline import main
+from offline import main  # pylint: disable=unused-import
 from test.unit_test.unit_test_util import TestBase
 
 
