@@ -1,7 +1,4 @@
-import itertools
-
 import clock
-from dao.biobank_order_dao import VALID_TESTS
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.participant import Participant
