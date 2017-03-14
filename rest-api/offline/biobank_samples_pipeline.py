@@ -7,7 +7,6 @@ import csv
 import datetime
 import logging
 
-# cloud.google.com/appengine/docs/standard/python/googlecloudstorageclient/read-write-to-cloud-storage
 from cloudstorage import cloudstorage_api
 from werkzeug.exceptions import BadRequest
 

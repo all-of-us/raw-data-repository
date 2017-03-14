@@ -1,3 +1,5 @@
+# cloudstorage_api docs are at
+# cloud.google.com/appengine/docs/standard/python/googlecloudstorageclient/read-write-to-cloud-storage
 GoogleAppEngineCloudStorageClient>=1.9.21
 GoogleAppEnginePipeline>=1.9.21
 Graphy>=1.0.0
