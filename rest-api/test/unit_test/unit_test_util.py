@@ -6,6 +6,7 @@ import os
 import unittest
 import dao.database_factory
 
+from cloudstorage import cloudstorage_api  # stubbed by testbed
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from google.appengine.ext import ndb
