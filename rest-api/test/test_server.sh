@@ -6,7 +6,7 @@
 set -e
 
 function usage() {
-  echo "Usage: test_server.sh [-i instance] [-r <name match substring>]" >& 2
+  echo "Usage: test_server.sh [-i instance] [-r <name match glob>]" >& 2
   exit 1
 }
 
@@ -41,7 +41,7 @@ fi
 
 if [[ $substring ]];
 then
-   echo Excuting tests that match $substring
+   echo Excuting tests that match glob $substring
 fi
 
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
