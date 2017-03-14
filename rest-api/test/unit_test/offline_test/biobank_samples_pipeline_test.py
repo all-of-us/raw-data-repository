@@ -1,8 +1,7 @@
 import csv
 import time
 
-from cloudstorage import cloudstorage_api
-from testlib import testutil
+from cloudstorage import cloudstorage_api  # stubbed by testbed
 
 import config
 from dao.biobank_order_dao import VALID_TESTS
@@ -10,7 +9,7 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import SqlTestBase
+from test.unit_test.unit_test_util import CloudStorageSqlTestBase
 from test import test_data
 from model.utils import to_client_biobank_id
 from model.participant import Participant
@@ -19,19 +18,12 @@ _BASELINE_TESTS = list(VALID_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
 
 
-# TODO(mwf) HandlerTestBase overlaps (conflicts) with our TestbedTest, fix or make a reusable base.
-class BiobankSamplesPipelineTest(testutil.HandlerTestBase):
+class BiobankSamplesPipelineTest(CloudStorageSqlTestBase):
   def setUp(self):
     super(BiobankSamplesPipelineTest, self).setUp()
-    SqlTestBase.setup_database()
-    SqlTestBase.setup_hpos()
     config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, _BASELINE_TESTS)
     # Everything is stored as a list, so override bucket name as a 1-element list.
     config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BUCKET])
-
-  def tearDown(self):
-    super(BiobankSamplesPipelineTest, self).tearDown()
-    SqlTestBase.teardown_database()
 
   def _write_cloud_csv(self, file_name, contents_str):
     with cloudstorage_api.open('/%s/%s' % (_FAKE_BUCKET, file_name), mode='w') as cloud_file:

@@ -6,10 +6,12 @@ import os
 import unittest
 import dao.database_factory
 
+from cloudstorage import cloudstorage_api  # stubbed by testbed
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
+from testlib import testutil
 
 import api_util
 import config
@@ -116,6 +118,21 @@ class NdbTestBase(SqlTestBase):
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
     ndb.get_context().clear_cache()
+
+
+class CloudStorageSqlTestBase(testutil.CloudStorageTestBase):
+  """Merge AppEngine's provided CloudStorageTestBase and our SqlTestBase.
+
+  Both try to set up a testbed (which stubs out various AppEngine APIs, including cloudstorage_api).
+  """
+  def setUp(self):
+    super(CloudStorageSqlTestBase, self).setUp()
+    SqlTestBase.setup_database()
+    SqlTestBase.setup_hpos()
+
+  def tearDown(self):
+    super(CloudStorageSqlTestBase, self).tearDown()
+    SqlTestBase.teardown_database()
 
 
 def read_dev_config():
