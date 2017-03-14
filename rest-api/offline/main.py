@@ -37,6 +37,8 @@ def recalculate_metrics():
 def import_biobank_samples():
   # Note that crons have a 10 minute deadline instead of the normal 60s.
   biobank_samples_pipeline.upsert_from_latest_csv()
+  # Flask view functions must return something (or raise ValueError), though the response is unused.
+  return 'OK'
 
 
 app = Flask(__name__)
