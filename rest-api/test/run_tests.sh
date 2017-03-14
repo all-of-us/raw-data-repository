@@ -11,7 +11,7 @@ subset="all"
 function usage() {
   echo "Usage: run_test.sh -g /path/to/google/cloud/sdk_dir" \
       "[-s all|unit|client]" \
-      "[-r <file name match substring, e.g. 'extraction_*'>]" >& 2
+      "[-r <file name match glob, e.g. 'extraction_*'>]" >& 2
   exit 1
 }
 
@@ -54,7 +54,7 @@ fi
 
 if [[ $substring ]];
 then
-   echo Excuting tests that match $substring
+   echo Excuting tests that match glob $substring
 fi
 
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
