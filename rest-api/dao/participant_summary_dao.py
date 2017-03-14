@@ -4,6 +4,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 import config
 from code_constants import PPI_SYSTEM, UNSET
 from dao.base_dao import UpdatableDao
+from dao.database_utils import get_sql_and_params_for_array
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
@@ -53,7 +54,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def update_from_biobank_stored_samples(self):
     """Rewrites sample-related summary data. Call this after reloading BiobankStoredSamples."""
-    baseline_tests_sql, baseline_tests_params = _get_sql_and_params_for_array(
+    baseline_tests_sql, baseline_tests_params = get_sql_and_params_for_array(
         config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES), 'baseline')
     sql = """
     UPDATE
@@ -71,16 +72,3 @@ class ParticipantSummaryDao(UpdatableDao):
 
     with self.session() as session:
       session.execute(sql, baseline_tests_params)
-
-
-def _get_sql_and_params_for_array(arr, name_prefix):
-  """Returns an SQL expression and associated params dict for an array of values.
-
-  SQLAlchemy can't format array parameters. Work around it by building the :param style expression
-  and creating a dictionary of individual params for that.
-  """
-  array_values = {}
-  for i, v in enumerate(arr):
-    array_values['%s%d' % (name_prefix, i)] = v
-  sql_expr = '(%s)' % ','.join([':' + param_name for param_name in array_values])
-  return sql_expr, array_values
