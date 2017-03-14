@@ -33,16 +33,18 @@ class BiobankStoredSampleDao(BaseDao):
     for sample in samples:
       if sample.biobankId not in valid_biobank_ids:
         logging.warning(
-            'Skipping sample: invalid participant Biobank ID %r (%d valid IDs).',
-            sample.biobankId, len(valid_biobank_ids))
+            'Skipping sample %r: invalid participant Biobank ID %r (%d valid IDs).',
+            sample.biobankStoredSampleId, sample.biobankId, len(valid_biobank_ids))
         skipped += 1
         continue
       if sample.confirmed is None:
-        logging.warning('Skipping sample: no "confirmed" timestmap.')
+        logging.warning(
+            'Skipping sample %r: no "confirmed" timestmap.', sample.biobankStoredSampleId)
         skipped += 1
         continue
       if sample.test not in VALID_TESTS:
-        logging.warning('Skipping sample: invalid test code %r.', sample.test)
+        logging.warning(
+            'Skipping sample %r: invalid test code %r.', sample.test, sample.biobankStoredSampleId)
         skipped += 1
         continue
       # We could switch to add_all or bulk_save_objects if this is slow.
