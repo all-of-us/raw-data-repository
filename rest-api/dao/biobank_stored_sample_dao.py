@@ -19,10 +19,13 @@ class BiobankStoredSampleDao(BaseDao):
   def upsert_batched(self, sample_generator):
     """Inserts/updates samples, skipping any invalid samples."""
     with self.session() as session:
+      # It's OK for the valid ID set to be slightly stale relative to upcoming sessions used for
+      # insertion, since we don't delete participant IDs.
       valid_biobank_ids = ParticipantDao().get_valid_biobank_id_set(session)
-      for samples_batch in _split_into_batches(sample_generator, self._UPDATE_BATCH_SIZE):
-        written, skipped = self._upsert_batch(session, samples_batch, valid_biobank_ids)
-        logging.info('Wrote %d samples, skipped %d invalid samples.', written, skipped)
+    for samples_batch in _split_into_batches(sample_generator, self._UPDATE_BATCH_SIZE):
+      with self.session() as session:
+        written, skipped = self._upsert_batch(samples_batch, valid_biobank_ids)
+      logging.info('Wrote %d samples, skipped %d invalid samples.', written, skipped)
 
   def _upsert_batch(self, session, samples, valid_biobank_ids):
     written = 0
