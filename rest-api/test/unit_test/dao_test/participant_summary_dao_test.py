@@ -1,14 +1,19 @@
 import datetime
 import json
-
 from base64 import urlsafe_b64encode, urlsafe_b64decode
+
+from query import Query, Operator, FieldFilter, OrderBy
+
+import config
 from dao.base_dao import json_serial
+from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
+from model.biobank_stored_sample import BiobankStoredSample
 from participant_enums import MembershipTier
-from query import Query, Operator, FieldFilter, OrderBy
 from unit_test_util import SqlTestBase, PITT_HPO_ID
+
 
 class ParticipantSummaryDaoTest(SqlTestBase):
   def setUp(self):
@@ -163,6 +168,32 @@ class ParticipantSummaryDaoTest(SqlTestBase):
                                     _make_pagination_token(['SKIPPED', 'Aardvark', 'Bob',
                                                 datetime.date(1978, 10, 10), 2])),
                         [ps_3, ps_4])
+
+  def test_update_from_samples(self):
+    baseline_tests = ['BASELINE1', 'BASELINE2']
+    config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
+    self.dao.update_from_biobank_stored_samples()  # safe noop
+
+    p_baseline_samples = self.participant_dao.insert(Participant(participantId=1, biobankId=11))
+    p_mixed_samples = self.participant_dao.insert(Participant(participantId=2, biobankId=22))
+    p_no_samples = self.participant_dao.insert(Participant(participantId=3, biobankId=33))
+    self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 0)
+
+    sample_dao = BiobankStoredSampleDao()
+    def add_sample(participant, test_code, sample_id):
+      sample_dao.insert(BiobankStoredSample(
+          biobankStoredSampleId=sample_id, biobankId=participant.biobankId, test=test_code))
+
+    add_sample(p_baseline_samples, baseline_tests[0], '11111')
+    add_sample(p_baseline_samples, baseline_tests[1], '22223')
+    add_sample(p_mixed_samples, baseline_tests[0], '11112')
+    add_sample(p_mixed_samples, 'NOT1', '44441')
+
+    self.dao.update_from_biobank_stored_samples()
+    self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 2)
+    self.assertEquals(self.dao.get(p_mixed_samples.participantId).numBaselineSamplesArrived, 1)
+    self.assertEquals(self.dao.get(p_no_samples.participantId).numBaselineSamplesArrived, 0)
+
 
 def _with_token(query, token):
   return Query(query.field_filters, query.order_by, query.max_results, token)
