@@ -1,5 +1,4 @@
 #!/bin/bash -e
-
 # Sets up the local working environment. Run this on checkout or whenever
 # requirements.txt changes.
 
@@ -30,4 +29,20 @@ mv -f cloud_sql_proxy.linux.amd64 bin/cloud_sql_proxy
 chmod +x bin/cloud_sql_proxy
 
 echo "Configuring Git hooks..."
-$(cd ../.git && rm -r hooks && ln -s ../git-hooks hooks)
+HOOKS_DIR=../.git/hooks
+HOOKS_FILE=$HOOKS_DIR/pre-push
+if [ -f $HOOKS_FILE ]
+then
+  echo Hooks file $HOOKS_FILE already exists.
+else
+  mkdir -p $HOOKS_DIR
+  echo Creating $HOOKS_FILE, edit to add/enable additional checks.
+  # Add default hooks (linting) and tools scripts to optionally run as hooks.
+  cat > $HOOKS_FILE <<EOF
+#!/bin/bash -e
+git-hooks/pre-push
+#rest-api/tools/check_uncommitted.sh
+#rest-api/tools/remove_trailing_whitespace.sh -y
+EOF
+  chmod +x $HOOKS_FILE
+fi
