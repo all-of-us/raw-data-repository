@@ -5,7 +5,6 @@ import app_util
 import config
 import datetime
 import metrics
-import offline.metrics_pipeline
 
 import logging
 
