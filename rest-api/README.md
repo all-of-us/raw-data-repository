@@ -109,13 +109,21 @@ If you've changed other files you may need to deploy them as well, for instance 
 gcloud app deploy cron.yaml
 ```
 
-After uploading a new version you should run the metrics cron job on the
-appengine server: from the AppEngine console select the Task queues panel, and
-then the Cron Jobs tab.  Click the "Run now" button for the MetricsRecalculate
-cron job.  (Note: if there is a stale MetricsVersion with `in_progress=true`, the
-MetricsRecalculate will report that a pipeline is already running.  To fix this,
-use the Datastore viewer to manually edit the MetricsVersion to set
-`in_progress=false` and then try again.
+### After uploading a new version
+
+Update the database schema. (If you are replacing (and not updating) the schema,
+run
+`tools/connect_to_database.sh --project pmi-drc-api-test --account $USER@google.com`
+and `DROP DATABASE rdr; CREATE DATABASE rdr;`.)
+`tools/upgrade_database.sh --project pmi-drc-api-test --account $USER@google.com`
+will upgrade the test project's database. TODO(DA-211) automate this.
+
+Run the metrics cron job on the appengine server: from the AppEngine console
+select the Task queues panel, and then the Cron Jobs tab.  Click the "Run now"
+button for the MetricsRecalculate cron job.  (Note: if there is a stale
+MetricsVersion with `in_progress=true`, the MetricsRecalculate will report that
+a pipeline is already running.  To fix this, use the Datastore viewer to
+manually edit the MetricsVersion to set `in_progress=false` and then try again.
 
 ### Running client tests against test server
 
