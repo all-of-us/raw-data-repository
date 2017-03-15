@@ -121,15 +121,6 @@ If you've changed other files you may need to deploy them as well, for instance 
 gcloud app deploy cron.yaml
 ```
 
-### After uploading a new version
-
-Run the metrics cron job on the appengine server: from the AppEngine console
-select the Task queues panel, and then the Cron Jobs tab.  Click the "Run now"
-button for the MetricsRecalculate cron job.  (Note: if there is a stale
-MetricsVersion with `in_progress=true`, the MetricsRecalculate will report that
-a pipeline is already running.  To fix this, use the Datastore viewer to
-manually edit the MetricsVersion to set `in_progress=false` and then try again.
-
 ### Running client tests against test server
 
 From the rest-api directory, run:
