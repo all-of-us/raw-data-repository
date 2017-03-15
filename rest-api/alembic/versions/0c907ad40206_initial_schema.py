@@ -134,7 +134,7 @@ def upgrade():
     op.create_table('biobank_stored_sample',
     sa.Column('biobank_stored_sample_id', sa.String(length=80), nullable=False),
     sa.Column('biobank_id', sa.Integer(), nullable=True),
-    sa.Column('test', sa.String(length=80), nullable=True),
+    sa.Column('test', sa.String(length=80), nullable=False),
     sa.Column('confirmed', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['biobank_id'], ['participant.biobank_id'], ),
     sa.PrimaryKeyConstraint('biobank_stored_sample_id')
