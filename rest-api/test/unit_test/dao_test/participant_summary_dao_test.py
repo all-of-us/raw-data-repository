@@ -10,7 +10,6 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
-from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
 from participant_enums import MembershipTier
 from unit_test_util import SqlTestBase, PITT_HPO_ID
