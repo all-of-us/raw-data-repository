@@ -1,4 +1,5 @@
 import copy
+import faker
 import httplib
 import json
 import mock
@@ -37,6 +38,9 @@ class TestBase(unittest.TestCase):
   def setUp(self):
     # Allow printing the full diff report on errors.
     self.maxDiff = None
+    # Make a faker which produces unicode text available.
+    self.fake = faker.Faker('ru_RU')
+    self.fake.seed(1)
 
 
 class TestbedTestBase(TestBase):
