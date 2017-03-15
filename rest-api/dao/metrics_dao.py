@@ -87,7 +87,7 @@ class MetricsBucketDao(BaseDao):
       if version is None:
         return None
       version_id = version.metricsVersionId
-      query = session.query(MetricsBucket).filter(MetricsBucket.metricsVersionId==version_id)
+      query = session.query(MetricsBucket).filter(MetricsBucket.metricsVersionId == version_id)
       if start_date:
         query = query.filter(MetricsBucket.date >= start_date)
       if end_date:

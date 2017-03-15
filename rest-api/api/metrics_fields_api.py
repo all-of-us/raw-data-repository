@@ -1,7 +1,6 @@
 import api_util
 import offline.metrics_config
 
-from api.base_api import BaseApi
 from api_util import HEALTHPRO
 from flask.ext.restful import Resource
 
