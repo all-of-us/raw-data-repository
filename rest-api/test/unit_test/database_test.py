@@ -17,6 +17,7 @@ from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from unit_test_util import SqlTestBase
 
+
 class DatabaseTest(SqlTestBase):
   def setUp(self):
     super(DatabaseTest, self).setUp(with_data=False)
@@ -66,13 +67,20 @@ class DatabaseTest(SqlTestBase):
     p = Participant(participantId=1, version=1, biobankId=2, hpoId=1,
                     signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now(),
                     clientId="c")
-    ps = ParticipantSummary(participantId=1, biobankId=2, firstName='Bob', middleName='Q',
-                            lastName='Jones', zipCode='78751', dateOfBirth=datetime.date.today(),
-                            genderIdentityId=1, hpoId=1,
-                            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
-                            consentForStudyEnrollmentTime=datetime.datetime.now(),
-                            numCompletedBaselinePPIModules=1,
-                            numBaselineSamplesArrived=2)
+    ps = ParticipantSummary(
+        participantId=1,
+        biobankId=2,
+        firstName=self.fake.first_name(),
+        middleName=self.fake.first_name(),
+        lastName=self.fake.last_name(),
+        zipCode='78751',
+        dateOfBirth=datetime.date.today(),
+        genderIdentityId=1,
+        hpoId=1,
+        consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+        consentForStudyEnrollmentTime=datetime.datetime.now(),
+        numCompletedBaselinePPIModules=1,
+        numBaselineSamplesArrived=2)
     p.participantSummary = ps
     session.add(p)
     ph = ParticipantHistory(participantId=1, version=1, biobankId=2, hpoId=1,
@@ -117,11 +125,16 @@ class DatabaseTest(SqlTestBase):
 
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, created=datetime.datetime.now(), resource='blah')
-    qr.answers.append(QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
-                                                  questionnaireResponseId=1, questionId=1,
-                                                  endTime=datetime.datetime.now(), valueSystem='a',
-                                                  valueCodeId=3, valueDecimal=123, valueString='blah',
-                                                  valueDate=datetime.date.today()))
+    qr.answers.append(QuestionnaireResponseAnswer(
+        questionnaireResponseAnswerId=1,
+        questionnaireResponseId=1,
+        questionId=1,
+        endTime=datetime.datetime.now(),
+        valueSystem='a',
+        valueCodeId=3,
+        valueDecimal=123,
+        valueString=self.fake.first_name(),
+        valueDate=datetime.date.today()))
 
     session.add(qr)
     session.commit()
@@ -156,14 +169,23 @@ class DatabaseTest(SqlTestBase):
     p = self._create_participant(write_session)
 
     bo = BiobankOrder(
-        biobankOrderId=bo_id, participantId=p.participantId, created=now,
-        sourceSiteSystem='a', sourceSiteValue='b',
-        collectedNote=u'c', processedNote=u'd', finalizedNote=u'e',
+        biobankOrderId=bo_id,
+        participantId=p.participantId,
+        created=now,
+        sourceSiteSystem='a',
+        sourceSiteValue='b',
+        collectedNote=r'written by ' + self.fake.last_name(),
+        processedNote=u'd',
+        finalizedNote=u'e',
         logPosition=LogPosition())
     bo.identifiers.append(BiobankOrderIdentifier(system='a', value='b'))
     bo.samples.append(BiobankOrderedSample(
-        test='a', description=u'b', processingRequired=True,
-        collected=now, processed=now, finalized=now))
+        test='a',
+        description=u'a test invented by ' + self.fake.first_name(),
+        processingRequired=True,
+        collected=now,
+        processed=now,
+        finalized=now))
     write_session.add(bo)
     write_session.commit()
 

@@ -10,6 +10,7 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
+from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
 from participant_enums import MembershipTier
 from unit_test_util import SqlTestBase, PITT_HPO_ID
@@ -60,6 +61,17 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     self.assert_no_results(self.two_filter_query)
     self.assert_results(self.ascending_biobank_id_query, [participant_summary])
     self.assert_results(self.descending_biobank_id_query, [participant_summary])
+
+  def testUnicodeNameRoundTrip(self):
+    name = self.fake.first_name()
+    with self.assertRaises(UnicodeEncodeError):
+      str(name)  # sanity check that the name contains non-ASCII
+    participant = self.participant_dao.insert(Participant(participantId=1, biobankId=2))
+    summary = self.dao.get(participant.participantId)
+    summary.firstName = name
+    self.dao.update(summary)
+    fetched_summary = self.dao.get(participant.participantId)
+    self.assertEquals(name, fetched_summary.firstName)
 
   def testQuery_twoSummaries(self):
     participant_1 = Participant(participantId=1, biobankId=2)

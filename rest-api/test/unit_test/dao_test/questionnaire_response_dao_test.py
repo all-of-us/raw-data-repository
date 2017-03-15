@@ -149,7 +149,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
                                            questionnaireResponseId=1,
                                            questionId=1, valueSystem='a', valueCodeId=3,
-                                           valueDecimal=123, valueString='c',
+                                           valueDecimal=123, valueString=self.fake.first_name(),
                                            valueDate=datetime.date.today())
     answer_2 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=2,
                                            questionnaireResponseId=1,
@@ -210,7 +210,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
                                            questionnaireResponseId=1,
                                            questionId=1, valueSystem='a', valueCodeId=3,
-                                           valueDecimal=123, valueString='c',
+                                           valueDecimal=123, valueString=self.fake.first_name(),
                                            valueDate=datetime.date.today())
     answer_2 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=2,
                                            questionnaireResponseId=1,
@@ -234,7 +234,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     answer_3 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
                                            questionnaireResponseId=2,
                                            questionId=3, valueSystem='x', valueCodeId=5,
-                                           valueDecimal=123, valueString='z',
+                                           valueDecimal=123, valueString=self.fake.last_name(),
                                            valueDate=datetime.date.today())
     qr2.answers.append(answer_3)
     with FakeClock(TIME_3):
@@ -276,7 +276,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     answer_4 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=4,
                                            questionnaireResponseId=3,
                                            questionId=3, valueSystem='z', valueCodeId=6,
-                                           valueDecimal=456, valueString='v',
+                                           valueDecimal=456, valueString=self.fake.last_name(),
                                            valueDate=datetime.date.today())
     qr3.answers.append(answer_4)
     with FakeClock(TIME_4):
