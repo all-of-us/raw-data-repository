@@ -72,5 +72,5 @@ function set_db_connection_string {
     export DB_CONNECTION_STRING=
   }
   trap finish EXIT
-  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${PASSWORD}@127.0.0.1:${PORT}/${DB_NAME}"
+  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${PASSWORD}@127.0.0.1:${PORT}/${DB_NAME}?charset=utf8"
 }
