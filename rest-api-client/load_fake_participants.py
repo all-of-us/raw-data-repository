@@ -3,15 +3,18 @@
 import argparse
 import datetime
 import json
+import os
 import random
 
 from faker import Factory
-fake = Factory.create()
 
 from client.client import Client
 
 random.seed(1)
-fake.random.seed(1)
+us_fake = Factory.create()
+us_fake.seed(1)
+intl_fake = Factory.create('ru_RU')
+intl_fake.seed(1)
 
 _ONE_MONTH = datetime.timedelta(30)
 
@@ -23,6 +26,11 @@ _EXTRA_PPI_MODULES = [
     "medications",
     "family-health",
 ]
+
+
+def _load_test_json(relative_path):
+  with open(os.path.join(os.path.dirname(__file__), 'test-data', relative_path)) as f:
+    return json.load(f)
 
 
 def _random_hpo():
@@ -78,17 +86,17 @@ def create_fake_participant():
     when: A fake "now" timestamp to send as X-Pretend-Date.
   """
   birth_sex = random.choice(["male", "female"])
-  first_name_fn = fake.first_name_male if birth_sex == "male" else fake.first_name_female
-  (first_name, middle_name, last_name) = (first_name_fn(), first_name_fn(), fake.last_name())
+  first_name_fn = intl_fake.first_name_male if birth_sex == "male" else intl_fake.first_name_female
+  first_name, middle_name, last_name = first_name_fn(), first_name_fn(), intl_fake.last_name()
 
   hpo_id = _random_hpo()
   gender_identity = birth_sex
-  date_of_birth = fake.date(pattern="%Y-%m-%d")
+  date_of_birth = us_fake.date(pattern="%Y-%m-%d")
   if random.random() < 0.05:
     gender_identity = random.choice([
         "male", "female", "other", "female-to-male-transgender", "male-to-female-transgender"])
 
-  sign_up_time = fake.date_time_between(start_date="2016-12-20", end_date="+1y", tzinfo=None)
+  sign_up_time = us_fake.date_time_between(start_date="2016-12-20", end_date="+1y", tzinfo=None)
 
   initial_participant = {
     'providerLink': [{
@@ -102,12 +110,12 @@ def create_fake_participant():
   if random.random() < 0.3:
     del initial_participant['providerLink']
 
-  consent_questionnaire_time = fake.date_time_between(
+  consent_questionnaire_time = us_fake.date_time_between(
       start_date=sign_up_time,
       end_date=sign_up_time + 2 * _ONE_MONTH,
       tzinfo=None)
 
-  sociodemographics_questionnaire_time = fake.date_time_between(
+  sociodemographics_questionnaire_time = us_fake.date_time_between(
       start_date=consent_questionnaire_time,
       end_date=consent_questionnaire_time + _ONE_MONTH,
       tzinfo=None)
@@ -131,7 +139,7 @@ def create_fake_participant():
         'ethnicity_system': ethnicity[0],
         'ethnicity_code': ethnicity[1],
         'ethnicity_display': ethnicity[2],
-        'state': fake.state_abbr(),
+        'state': us_fake.state_abbr(),
         'consent_questionnaire_authored': consent_questionnaire_time.isoformat(),
         'sociodemographics_questionnaire_authored':
             sociodemographics_questionnaire_time.isoformat(),
@@ -142,18 +150,18 @@ def create_fake_participant():
   ret.append({
     'when': consent_questionnaire_time.isoformat(),
     'endpoint': 'Participant/$participant_id/QuestionnaireResponse',
-    'payload': json.load(open("test-data/consent_questionnaire_response.json"))
+    'payload': _load_test_json('consent_questionnaire_response.json')
   })
 
   ret.append({
     'when': sociodemographics_questionnaire_time.isoformat(),
     'endpoint': 'Participant/$participant_id/QuestionnaireResponse',
-    'payload': json.load(open("test-data/sociodemographics_questionnaire_response.json"))
+    'payload': _load_test_json('sociodemographics_questionnaire_response.json')
   })
 
   for m in _EXTRA_PPI_MODULES:
     if random.random() < 0.5:
-      when = fake.date_time_between(
+      when = us_fake.date_time_between(
               start_date=sociodemographics_questionnaire_time,
               end_date=sociodemographics_questionnaire_time + 2 * _ONE_MONTH,
               tzinfo=None)
@@ -179,7 +187,7 @@ def create_fake_participant():
       })
 
   if random.random() < 0.4:
-    when = fake.date_time_between(
+    when = us_fake.date_time_between(
         start_date=sociodemographics_questionnaire_time + 2 * _ONE_MONTH,
         end_date=sociodemographics_questionnaire_time + 12 * _ONE_MONTH,
         tzinfo=None)
@@ -190,7 +198,7 @@ def create_fake_participant():
       'vars': {
         'authored_time': when.isoformat(),
       },
-      'payload': json.load(open("test-data/measurements-as-fhir.json")),
+      'payload': _load_test_json('measurements-as-fhir.json'),
     })
 
   return ret
@@ -217,12 +225,11 @@ def main():
   args = parse_args()
   client = Client('rdr/v1', default_instance=args.instance, parse_cli=False)
 
-  consent_questionnaire = json.load(open('test-data/consent_questionnaire.json'))
+  consent_questionnaire = _load_test_json('consent_questionnaire.json')
   consent_questionnaire_id = client.request_json(
       'Questionnaire', 'POST', consent_questionnaire)['id']
 
-  sociodemographics_questionnaire = json.load(
-      open('test-data/sociodemographics_questionnaire.json'))
+  sociodemographics_questionnaire = _load_test_json('sociodemographics_questionnaire.json')
   sociodemographics_questionnaire_id = client.request_json(
       'Questionnaire', 'POST', sociodemographics_questionnaire)['id']
 
@@ -254,8 +261,8 @@ def main():
       payload_json = json.dumps(request_details['payload'])
       variables.update(request_details.get('vars', {}))
       for k, v in variables.iteritems():
-        payload_json = payload_json.replace('$%s' % k, str(v))
-        endpoint = endpoint.replace('$%s' % k, str(v))
+        payload_json = payload_json.replace('$%s' % k, unicode(v))
+        endpoint = endpoint.replace('$%s' % k, unicode(v))
       payload = json.loads(payload_json)
       response = client.request_json(endpoint, 'POST', payload, headers={'X-Pretend-Date': when})
       for k, f in request_details.get('gather', {}).iteritems():
