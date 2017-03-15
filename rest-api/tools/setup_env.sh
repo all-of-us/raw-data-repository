@@ -15,7 +15,7 @@ pip install -r requirements.txt -t lib/
 
 # MySQL-python must be installed outside the lib directory, or dev_appserver.py will fail with
 # "No module named _mysql".
-pip install MySQL-python
+sudo pip install MySQL-python
 
 echo "Installing Alembic..."
 sudo pip install alembic
