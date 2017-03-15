@@ -1,4 +1,5 @@
 import clock
+import json
 
 from model.base import Base
 from sqlalchemy.orm import relationship
@@ -31,3 +32,9 @@ class MetricsBucket(Base):
   date = Column('date', Date, primary_key=True)
   hpoId = Column('hpo_id', String(20), primary_key=True) # Set to '' for cross-HPO metrics
   metrics = Column('metrics', BLOB, nullable=False)
+
+  def to_client_json(self):
+    facets = {'date': self.date.isoformat()}
+    if self.hpoId:
+      facets['hpoId'] = self.hpoId
+    return {'facets': facets, 'entries': json.loads(self.metrics)}

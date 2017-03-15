@@ -67,7 +67,7 @@ def _get_age_buckets():
   return [UNSET] + participant_enums.AGE_BUCKETS
 
 def _get_census_regions():
-  return [UNSET] + census_regions.values()
+  return [UNSET] + sorted(list(set(census_regions.values())))
 
 def _get_submission_statuses():
   return [UNSET, SUBMITTED_VALUE]
