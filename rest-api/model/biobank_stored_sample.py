@@ -1,4 +1,3 @@
-import clock
 from model.base import Base
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 
@@ -28,6 +27,3 @@ class BiobankStoredSample(Base):
   # Timestamp when Biobank finished receiving/preparing the sample (status changed from "In Prep"
   # to "In Circulation" in Mayo). This is the end time used for order-to-sample latency measurement.
   confirmed = Column('confirmed', DateTime)
-
-  # For syncing sample updates, the last time the batch import modified the sample.
-  lastUpdated = Column('last_updated', DateTime, onupdate=clock.CLOCK.now)

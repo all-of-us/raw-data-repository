@@ -80,7 +80,6 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase):
     self.assertEquals(
         sample.confirmed.strftime(biobank_samples_pipeline._TIMESTAMP_FORMAT),
         row[cols.CONFIRMED_DATE])
-    self.assertIsNone(sample.lastUpdated)
 
   def test_column_missing(self):
     with open(test_data.data_path('biobank_samples_missing_field.csv')) as samples_file:
