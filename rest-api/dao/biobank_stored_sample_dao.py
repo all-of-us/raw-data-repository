@@ -30,11 +30,6 @@ class BiobankStoredSampleDao(BaseDao):
               sample.biobankStoredSampleId, sample.biobankId, len(valid_biobank_ids))
           skipped += 1
           continue
-        if sample.confirmed is None:
-          logging.warning(
-              'Skipping sample %r: no "confirmed" timestmap.', sample.biobankStoredSampleId)
-          skipped += 1
-          continue
         if sample.test not in VALID_TESTS:
           logging.warning(
               'Skipping sample %r: invalid test code %r.',
