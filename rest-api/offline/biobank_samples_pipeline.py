@@ -88,7 +88,7 @@ def _create_sample_from_row(row):
       biobankId=biobank_id,
       test=row[_Columns.TEST_CODE])
   if row[_Columns.PARENT_ID]:
-    logging.info('Skipping child sample %r for %r', sample.biobankStoredSampleId, sample.biobankId)
+    # Skip child samples.
     return None
   confirmed_str = row[_Columns.CONFIRMED_DATE]
   if confirmed_str:
