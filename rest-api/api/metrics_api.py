@@ -13,7 +13,6 @@ DATE_FORMAT = '%Y-%m-%d'
 
 class MetricsApi(Resource):
 
-  # Should we start using GET with query params instead of POST?
   @api_util.auth_required(HEALTHPRO)
   def post(self):
     resource = request.get_data()
