@@ -13,3 +13,4 @@ class _SqlDatabase(Database):
 def get_database():
   """Returns a singleton _SqlDatabase."""
   return singletons.get(_SqlDatabase)
+

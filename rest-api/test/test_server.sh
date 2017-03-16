@@ -69,12 +69,6 @@ do
   run_client_test "client_test/${test}"
 done
 
-if [[ ${instance} == *localhost* ]]
-then
-  # These tests fail on real servers because of auth issues.
-  run_client_test "client_test/biobank_samples.py"
-fi
-
 # Security test: check that HTTPS is required for non-local endpoints.
 if [[ ${instance} == https://* ]]
    then

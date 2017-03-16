@@ -49,7 +49,7 @@ class MetricsVersionDao(BaseDao):
           raise PreconditionFailed('Metrics pipeline is already running.')
       new_version = MetricsVersion(inProgress=True, dataVersion=SERVING_METRICS_DATA_VERSION)
       self.insert_with_session(session, new_version)
-      return new_version.metricsVersionId
+    return new_version.metricsVersionId
 
   def set_pipeline_finished(self, complete):
     with self.session() as session:
@@ -61,14 +61,17 @@ class MetricsVersionDao(BaseDao):
       else:
         raise PreconditionFailed('Metrics pipeline is not running')
 
-  def get_serving_version(self):
-    with self.session() as session:
-      return (session.query(MetricsVersion)
+  def get_serving_version_with_session(self, session):
+    return (session.query(MetricsVersion)
         .filter(MetricsVersion.complete == True)
         .filter(MetricsVersion.dataVersion == SERVING_METRICS_DATA_VERSION)
         .options(subqueryload(MetricsVersion.buckets))
         .order_by(MetricsVersion.date.desc())
         .first())
+
+  def get_serving_version(self):
+    with self.session() as session:
+      return self.get_serving_version_with_session(session)
 
 class MetricsBucketDao(BaseDao):
 
@@ -77,3 +80,16 @@ class MetricsBucketDao(BaseDao):
 
   def get_id(self, obj):
     return [obj.metricsVersionId, obj.date, obj.hpoId]
+
+  def get_active_buckets(self, start_date=None, end_date=None):
+    with self.session() as session:
+      version = MetricsVersionDao().get_serving_version_with_session(session)
+      if version is None:
+        return None
+      version_id = version.metricsVersionId
+      query = session.query(MetricsBucket).filter(MetricsBucket.metricsVersionId == version_id)
+      if start_date:
+        query = query.filter(MetricsBucket.date >= start_date)
+      if end_date:
+        query = query.filter(MetricsBucket.date <= end_date)
+      return query.order_by(MetricsBucket.date).order_by(MetricsBucket.hpoId).all()

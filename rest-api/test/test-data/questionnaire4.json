@@ -12,6 +12,16 @@
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
         "code": "PersonalHabits"
+      }],
+    "question": [
+      {
+        "linkId": "state",
+        "text": "State",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIAddress_State",
+          "display": "State"
+        }]
       }]
   }
 }

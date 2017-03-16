@@ -1,5 +1,6 @@
 from base_dao import UpdatableDao
 from singletons import get_cache
+from sqlalchemy.orm.session import make_transient
 
 class EntityCache(object):
   """A cache of entities of a particular type, indexed by ID (in id_to_entity) and optionally other
@@ -12,6 +13,7 @@ class EntityCache(object):
     if index_field_keys:
       self.index_maps = {index_field_key: {} for index_field_key in index_field_keys}
     for entity in entities:
+      make_transient(entity)
       self.id_to_entity[dao.get_id(entity)] = entity
       if index_field_keys:
         for index_field_key in index_field_keys:

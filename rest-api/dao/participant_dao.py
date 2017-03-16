@@ -67,6 +67,7 @@ class ParticipantDao(UpdatableDao):
     obj.lastModified = clock.CLOCK.now()
     obj.signUpTime = existing_obj.signUpTime
     obj.biobankId = existing_obj.biobankId
+    obj.hpoId = existing_obj.hpoId
     if obj.providerLink != existing_obj.providerLink:
       new_hpo_id = self.get_hpo_id(obj)
       if new_hpo_id != existing_obj.hpoId:

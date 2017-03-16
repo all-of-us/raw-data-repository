@@ -4,10 +4,11 @@ This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import app_util
 import config_api
-import metrics_api
 import version_api
 
 from api.biobank_order_api import BiobankOrderApi
+from api.metrics_api import MetricsApi
+from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
 from api.participant_summary_api import ParticipantSummaryApi
 from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
@@ -47,12 +48,12 @@ api.add_resource(PhysicalMeasurementsApi,
                  endpoint='participant.physicalMeasurements',
                  methods=['GET', 'POST',])
 
-api.add_resource(metrics_api.MetricsAPI,
+api.add_resource(MetricsApi,
                  PREFIX + 'Metrics',
                  endpoint='metrics',
                  methods=['POST'])
 
-api.add_resource(metrics_api.MetricsFieldsAPI,
+api.add_resource(MetricsFieldsApi,
                  PREFIX + 'MetricsFields',
                  endpoint='metrics_fields',
                  methods=['GET'])

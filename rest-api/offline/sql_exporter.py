@@ -4,6 +4,7 @@ import logging
 from dao import database_factory
 from cloudstorage import cloudstorage_api
 
+DELIMITER = ','
 BATCH_SIZE = 1000
 
 class SqlExporter(object):
@@ -21,7 +22,7 @@ class SqlExporter(object):
       filename = '/%s/%s' % (self.bucket_name, file_name)
       logging.info('Exporting data to %s...', filename)
       with cloudstorage_api.open(filename, mode='w') as dest:
-        writer = csv.writer(dest, delimiter=',')
+        writer = csv.writer(dest, delimiter=DELIMITER)
         writer.writerow(cursor.keys())
         results = cursor.fetchmany(BATCH_SIZE)
         while results:
