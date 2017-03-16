@@ -1,5 +1,3 @@
-"""Tests for metrics_pipeline."""
-
 import biobank_sample
 import concepts
 import datetime
@@ -23,9 +21,8 @@ from google.appengine.ext import ndb
 from mapreduce import test_support
 from model.questionnaire import Questionnaire
 from dao.questionnaire_dao import QuestionnaireDao
-from testlib import testutil
 from unit_test_util import make_deferred_run, make_deferred_not_run, make_questionnaire_response
-from unit_test_util import SqlTestBase
+from unit_test_util import CloudStorageSqlTestBase
 from test.test_data import data_path
 
 def compute_meta(summary):
@@ -95,18 +92,17 @@ CONFIGS_FOR_TEST = {
     },
 }
 
-class MetricsPipelineTest(testutil.CloudStorageTestBase):
+
+class MetricsPipelineTest(CloudStorageSqlTestBase):
   def setUp(self):
-    testutil.HandlerTestBase.setUp(self)
-    SqlTestBase.setup_database()
-    self.maxDiff = None
+    super(MetricsPipelineTest, self).setUp()
     self.longMessage = True
     self.saved_config_fn = offline.metrics_config.get_config
     offline.metrics_config.get_config = (lambda: CONFIGS_FOR_TEST)
     make_deferred_not_run()
 
   def tearDown(self):
-    SqlTestBase.teardown_database()
+    super(MetricsPipelineTest, self).tearDown()
     offline.metrics_config.get_config = self.saved_config_fn
     make_deferred_run()
 

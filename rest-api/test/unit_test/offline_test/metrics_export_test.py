@@ -14,8 +14,7 @@ from offline.metrics_export import MetricsExport, HPO_IDS_CSV, PARTICIPANTS_CSV,
 from offline_test.gcs_utils import assertCsvContents
 from participant_enums import UNSET_HPO_ID
 from test_data import primary_provider_link, load_biobank_order_json, load_measurement_json
-from testlib import testutil
-from unit_test_util import FlaskTestBase, SqlTestBase, PITT_HPO_ID, run_deferred_tasks
+from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, PITT_HPO_ID, run_deferred_tasks
 from unit_test_util import make_questionnaire_response_json
 
 
@@ -32,18 +31,15 @@ PARTICIPANT_FIELDS = ['date_of_birth', 'first_order_date', 'first_samples_arrive
 HPO_ID_FIELDS = ['participant_id', 'hpo_id', 'last_modified']
 ANSWER_FIELDS = ['participant_id', 'start_time', 'end_time', 'question_code', 'answer_code']
 
-class MetricsExportTest(testutil.CloudStorageTestBase, FlaskTestBase):
 
+class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
   def setUp(self):
     super(MetricsExportTest, self).setUp()
-    testutil.HandlerTestBase.setUp(self)
-    SqlTestBase.setup_database()
     FlaskTestBase.doSetUp(self)
     self.taskqueue.FlushQueue('default')
 
   def tearDown(self):
     super(MetricsExportTest, self).tearDown()
-    SqlTestBase.teardown_database()
     FlaskTestBase.doTearDown(self)
 
   def submit_questionnaire_response(self, participant_id, questionnaire_id,
@@ -66,7 +62,6 @@ class MetricsExportTest(testutil.CloudStorageTestBase, FlaskTestBase):
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
   def _create_data(self):
-    SqlTestBase.setup_hpos()
     SqlTestBase.setup_codes(METRIC_FIELD_TO_QUESTION_CODE.values(),
                             code_type=CodeType.QUESTION)
     SqlTestBase.setup_codes(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(),
