@@ -1,17 +1,21 @@
 """Utilities for loading test data."""
 
+import StringIO
 import datetime
 import json
 import os
+import random
 
-from model.utils import to_client_participant_id
+from model.utils import to_client_participant_id, to_client_biobank_id
 
 
 def data_path(filename):
   return os.path.join(os.path.dirname(__file__), 'test-data', filename)
 
+
 def primary_provider_link(hpo_name):
   return '[ { "primary": true, "organization": { "reference": "Organization/%s" } } ]' % hpo_name
+
 
 def load_measurement_json(participant_id, now=None):
   """Loads a PhysicalMeasurement FHIR resource returns it as parsed JSON."""
@@ -44,3 +48,18 @@ def load_biobank_order_json(participant_id):
       'participant_id': participant_id,
       'client_participant_id': to_client_participant_id(participant_id),
     })
+
+
+def open_biobank_samples(
+      biobank_id1, biobank_id2, biobank_id3, tests_from=['1ED10', '1HEP4', '1ED04']):
+  """Returns an readable stream for the biobank samples CSV."""
+  with open(data_path('biobank_samples_1.csv')) as f:
+    csv_str = f.read() % {
+      'biobank_id1': to_client_biobank_id(biobank_id1),
+      'biobank_id2': to_client_biobank_id(biobank_id2),
+      'biobank_id3': to_client_biobank_id(biobank_id3),
+      'test1': random.choice(tests_from),
+      'test2': random.choice(tests_from),
+      'test3': random.choice(tests_from),
+    }
+  return StringIO.StringIO(csv_str)

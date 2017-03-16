@@ -1,21 +1,21 @@
-"""The main API definition file for endpoints that trigger MapReduces.
-"""
+"""The main API definition file for endpoints that trigger MapReduces and batch tasks."""
+
 import api_util
 import app_util
 import config
 import datetime
 import metrics
-import offline.biobank_samples_pipeline
-import offline.metrics_pipeline
 
 import logging
 
 from flask import Flask
 from flask_restful import Api
 from google.appengine.api import app_identity
+from offline import biobank_samples_pipeline
 from offline.metrics_export import MetricsExport
 
 PREFIX = '/offline/'
+
 
 @api_util.auth_required_cron
 def recalculate_metrics():
@@ -31,16 +31,13 @@ def recalculate_metrics():
     export.start()
     return '{"metrics-pipeline-status": "started"}'
 
+
 @api_util.auth_required_cron
-def reload_biobank_samples():
-  bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME, None)
-  if not bucket_name:
-    logging.error("No bucket configured for %s", config.BIOBANK_SAMPLES_BUCKET_NAME)
-    return '{"biobank-samples-pipeline-status": "error: no bucket configured"}'
-  logging.info("=========== Starting biobank samples pipeline ============")
-  pipeline = offline.biobank_samples_pipeline.BiobankSamplesPipeline(bucket_name)
-  pipeline.start(queue_name='biobank-samples-pipeline')
-  return '{"biobank-samples-pipeline-status": "started"}'
+def import_biobank_samples():
+  # Note that crons have a 10 minute deadline instead of the normal 60s.
+  biobank_samples_pipeline.upsert_from_latest_csv()
+  # Flask view functions must return something (or raise ValueError), though the response is unused.
+  return 'OK'
 
 
 app = Flask(__name__)
@@ -54,9 +51,9 @@ api = Api(app)
 # Non-resource pipeline-trigger endpoints
 #
 
-app.add_url_rule(PREFIX + 'BiobankSamplesReload',
-                 endpoint='biobankSamplesReload',
-                 view_func=reload_biobank_samples,
+app.add_url_rule(PREFIX + 'BiobankSamplesImport',
+                 endpoint='biobankSamplesImport',
+                 view_func=import_biobank_samples,
                  methods=['GET'])
 
 app.add_url_rule(PREFIX + 'MetricsRecalculate',

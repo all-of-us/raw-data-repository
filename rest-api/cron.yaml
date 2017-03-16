@@ -3,8 +3,8 @@ cron:
   url: /offline/MetricsRecalculate
   schedule: every day 01:00
   target: offline
-- description: Daily biosample reconciliation
-  url: /offline/BiobankSamplesReload
+- description: Daily Biobank sample import and order reconciliation
+  url: /offline/BiobankSamplesImport
   schedule: every day 08:00
   timezone: America/New_York
   target: offline

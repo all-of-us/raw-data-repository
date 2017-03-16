@@ -319,6 +319,10 @@ class BaseDao(object):
         'Giving up after %d insert attempts, tried %s.' % (MAX_INSERT_ATTEMPTS, all_tried_ids))
     raise ServiceUnavailable('Giving up after %d insert attempts.' % MAX_INSERT_ATTEMPTS)
 
+  def count(self):
+    with self.session() as session:
+      return session.query(self.model_type).count()
+
 
 class UpdatableDao(BaseDao):
   """A DAO that allows updates to entities.

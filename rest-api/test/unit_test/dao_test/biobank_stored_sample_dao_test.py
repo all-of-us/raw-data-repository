@@ -5,6 +5,7 @@ from model.participant import Participant
 from dao.participant_dao import ParticipantDao
 from unit_test_util import SqlTestBase
 
+
 class BiobankStoredSampleDaoTest(SqlTestBase):
   """Tests only that a sample can be written and read; see the reconciliation pipeline."""
 

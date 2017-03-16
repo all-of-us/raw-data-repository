@@ -1,4 +1,4 @@
 Sample Family Id	Sample Id	Sample Storage Status	Sample Type	Parent Expected Volume	Sample Quantity	Sample Container Type	Sample Family Collection Date	Sample Disposal Status	Sample Disposed Date	Parent Sample Id	Sample Confirmed Date	External Participant Id	Test Code	Sample Treatment
-SF161129-000713	16334002110	Disposed	Whole Blood	10 mL	10 mL	Vacutainer Tube, 10m	2016/11/28 02:00:00	Accessioning Error	2016/11/30 12:17:33		2016/11/29 12:19:32	{biobank_id_1}	1ED10	EDTA
-SF161129-000767	16334002356	Disposed	Whole Blood	4 mL	4 mL	Vacutainer Tube, 4mL	2016/11/28 02:00:00	Accessioning Error	2016/11/30 12:21:06		2016/11/29 12:38:58	{biobank_id_2}	1HEP4	Sodium Heparin
-SF161129-000774	16334002367	Disposed	Whole Blood	4 mL	4 mL	Vacutainer Tube, 4mL	2016/11/28 02:00:00	Accessioning Error	2016/11/30 12:21:06		2016/11/29 12:41:26	{biobank_id_2}	1ED04	EDTA
+SF161129-000713	16334002110	Disposed	Whole Blood	10 mL	10 mL	Vacutainer Tube, 10m	2016/11/28 02:00:00	Accessioning Error	2016/11/30 12:17:33		2016/11/29 12:19:32	%(biobank_id1)s	%(test1)s	EDTA
+SF161129-000767	16334002356	Disposed	Whole Blood	4 mL	4 mL	Vacutainer Tube, 4mL	2016/11/28 02:00:00	Accessioning Error	2016/11/30 12:21:06		2016/11/29 12:38:58	%(biobank_id2)s	%(test2)s	Sodium Heparin
+SF161129-000774	16334002367	Disposed	Whole Blood	4 mL	4 mL	Vacutainer Tube, 4mL	2016/11/28 02:00:00	Accessioning Error	2016/11/30 12:21:06		2016/11/29 12:41:26	%(biobank_id3)s	%(test3)s	EDTA
