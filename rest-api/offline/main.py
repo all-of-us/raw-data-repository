@@ -3,11 +3,10 @@
 import api_util
 import app_util
 import config
-import datetime
-import offline.metrics_pipeline
 
 import logging
 
+from dao.metrics_dao import MetricsVersionDao
 from flask import Flask
 from flask_restful import Api
 from google.appengine.api import app_identity
@@ -18,7 +17,7 @@ PREFIX = '/offline/'
 
 @api_util.auth_required_cron
 def recalculate_metrics():
-  in_progress = metrics.get_in_progress_version()
+  in_progress = MetricsVersionDao().get_version_in_progress()
   if in_progress:
     logging.info("=========== Metrics pipeline already running ============")
     return '{"metrics-pipeline-status": "running"}'
