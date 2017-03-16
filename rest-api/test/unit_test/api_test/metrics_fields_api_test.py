@@ -2,7 +2,7 @@ from test.unit_test.unit_test_util import FlaskTestBase
 
 class MetricsFieldsApiTest(FlaskTestBase):
 
-  def testMetricFields(self):
+  def test_metrics_fields(self):
     response = self.send_get('MetricsFields')
     fields_dict = {item['name']: item['values'] for item in response}
     # Rather than asserting all the fields (replicating the config),

@@ -17,7 +17,7 @@ from model.metrics import MetricsVersion
 from model.participant import Participant
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from offline.metrics_config import get_participant_fields, HPO_ID_FIELDS, ANSWER_FIELDS
-from offline.metrics_export import MetricsExport, HPO_IDS_CSV, PARTICIPANTS_CSV, ANSWERS_CSV
+from offline.metrics_export import MetricsExport, _HPO_IDS_CSV, _PARTICIPANTS_CSV, _ANSWERS_CSV
 from offline_test.gcs_utils import assertCsvContents
 from test_data import primary_provider_link, load_biobank_order_json, load_measurement_json
 from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, PITT_HPO_ID, 
@@ -36,7 +36,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
   def setUp(self):
     super(MetricsExportTest, self).setUp()
     FlaskTestBase.doSetUp(self)
-    offline.metrics_export.QUEUE_NAME = 'default'
+    offline.metrics_export._QUEUE_NAME = 'default'
     self.taskqueue.FlushQueue('default')
     self.maxDiff = None
 
@@ -112,10 +112,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         test='test',
         confirmed=TIME_2))
 
-  def disabled_test_metric_export(self):
-    # TODO(DA-228) Fix and re-enable. The _create_data call fails locally due to 'foo' in
-    # BASELINE_PPI_QUESTIONNAIRE_FIELDS (the other value is 'questionnaireOnSociodemographics'), but
-    # only when running other unit tests as well as this one.
+  def test_metric_export(self):
     self._create_data()
 
     with FakeClock(TIME_3):
@@ -129,24 +126,24 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     # Two shards are written for each file, one with the first participant and
     # one with the second.
-    assertCsvContents(self, BUCKET_NAME, prefix + HPO_IDS_CSV % 0,
+    assertCsvContents(self, BUCKET_NAME, prefix + _HPO_IDS_CSV % 0,
                       [HPO_ID_FIELDS,
                        ['2', 'PITT', t1]])
-    assertCsvContents(self, BUCKET_NAME, prefix + HPO_IDS_CSV % 1,
+    assertCsvContents(self, BUCKET_NAME, prefix + _HPO_IDS_CSV % 1,
                       [HPO_ID_FIELDS,
                        ['1', 'UNSET', t1],
                        ['1', 'PITT', t3]])
     participant_fields = get_participant_fields()
-    assertCsvContents(self, BUCKET_NAME, prefix + PARTICIPANTS_CSV % 0,
+    assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0,
                       [participant_fields,
                        ['2', '', '2016-01-04T09:40:21Z', '', t3, t3, t3, t2]])
-    assertCsvContents(self, BUCKET_NAME, prefix + PARTICIPANTS_CSV % 1,
+    assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1,
                       [participant_fields,
                        ['1', '1980-01-03', '', t2, '', '', '', t2]])
-    assertCsvContents(self, BUCKET_NAME, prefix + ANSWERS_CSV % 0,
+    assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 0,
                       [ANSWER_FIELDS,
                       ['2', t3, STATE_QUESTION_CODE, '', 'VA']])
-    assertCsvContents(self, BUCKET_NAME, prefix + ANSWERS_CSV % 1,
+    assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 1,
                       [ANSWER_FIELDS,
                        ['1', t2, GENDER_IDENTITY_QUESTION_CODE, 'UNMAPPED', ''],
                        ['1', t2, RACE_QUESTION_CODE, 'white', ''],

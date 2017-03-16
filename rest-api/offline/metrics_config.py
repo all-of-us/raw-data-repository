@@ -114,6 +114,8 @@ def get_participant_fields():
                                     for field_name in QUESTIONNAIRE_MODULE_FIELD_NAMES]
 
 #TODO(danrodney): handle membership tier
+# CONFIG defines the fields that can appear in metrics, and functions that can be used
+# to determine the valid values for each field.
 CONFIG = {
    # These fields are set by logic defined in metrics_pipeline directly, and emitted to metrics
    # buckets. (Any fields mapped to in the pipeline that are *not* in this list will *not* be

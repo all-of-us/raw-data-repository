@@ -14,7 +14,11 @@ for each HPO and date combination, from the first date we have data to the curre
 This data is generated anew on a nightly basis (run by cron), performing the following two steps:
 
 * Using a series of SQL statements (sharded by participant ID), generate CSV files in GCS
-  where every row contains a participant ID and some relevant info (see metrics_export.py)
+  where every row contains a participant ID and some relevant info (see metrics_export.py).
+  The three files contain participant data, a history of HPO IDs for participants, and
+  a history of questionnaire response answers for participants. The participant data file will
+  have one row per participant; the latter two can have many rows per participant (including
+  changes in values over time.)
 * Run an pipeline (see metrics_pipeline.py) which in a series of MRs:
 	* Writes out a processing metrics version
 	* Joins all the CSV data together by participant ID

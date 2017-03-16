@@ -22,11 +22,11 @@ class MetricsApiTest(FlaskTestBase):
                               'entries': {'y': 'c'}}
 
 
-  def testGetMetricsNoData(self):
+  def test_get_metrics_no_data(self):
     response = self.send_post('Metrics')
     self.assertEquals([], response)
 
-  def testGetMetricsNoBuckets(self):
+  def test_get_metrics_no_buckets(self):
     self.version_dao.set_pipeline_in_progress()
     self.version_dao.set_pipeline_finished(True)
     response = self.send_post('Metrics')
@@ -46,13 +46,13 @@ class MetricsApiTest(FlaskTestBase):
     self.bucket_dao.insert(metrics_bucket_3)
     self.version_dao.set_pipeline_finished(True)
 
-  def testGetMetricsWithBuckets(self):
+  def test_get_metrics_with_buckets(self):
     self.setup_buckets()
     response = self.send_post('Metrics')
     self.assertEquals([self.expected_bucket_1, self.expected_bucket_2,
                        self.expected_bucket_3], response)
 
-  def testGetMetricsWithBucketsAndStartDate(self):
+  def test_get_metrics_with_buckets_and_start_date(self):
     self.setup_buckets()
     response = self.send_post('Metrics', { 'start_date': self.today.isoformat() })
     self.assertEquals([self.expected_bucket_1, self.expected_bucket_2,
@@ -60,7 +60,7 @@ class MetricsApiTest(FlaskTestBase):
     response = self.send_post('Metrics', { 'start_date': self.tomorrow.isoformat() })
     self.assertEquals([self.expected_bucket_3], response)
 
-  def testGetMetricsWithBucketsAndEndDate(self):
+  def test_get_metrics_with_buckets_and_end_date(self):
     self.setup_buckets()
     response = self.send_post('Metrics', { 'end_date': self.tomorrow.isoformat() })
     self.assertEquals([self.expected_bucket_1, self.expected_bucket_2,
