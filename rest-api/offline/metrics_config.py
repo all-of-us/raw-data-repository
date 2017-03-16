@@ -88,7 +88,7 @@ def _get_answer_values(question_code_value):
   q_code = CodeDao().get_code(PPI_SYSTEM, question_code_value)
   if not q_code:
     return []
-  return [answer_code.value for answer_code in q_code.children()
+  return [answer_code.value for answer_code in q_code.children
           if answer_code.codeType == CodeType.ANSWER]
 
 def _get_answer_values_func(question_code_value):
