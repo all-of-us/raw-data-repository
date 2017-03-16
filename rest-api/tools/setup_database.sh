@@ -81,7 +81,7 @@ fi
 gcloud sql instances set-root-password $INSTANCE_NAME --password $PASSWORD
 
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
-CONNECTION_STRING=mysql+mysqldb://${DB_USER}:${PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$INSTANCE_CONNECTION_NAME?charset=utf8
+CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$INSTANCE_CONNECTION_NAME&charset=utf8"
 
 CREATE_DB_FILE=/tmp/create_db.sql
 
