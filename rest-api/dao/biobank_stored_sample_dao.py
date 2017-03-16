@@ -16,6 +16,7 @@ class BiobankStoredSampleDao(BaseDao):
 
   def upsert_batched(self, sample_generator):
     """Inserts/updates samples, skipping any invalid samples."""
+    # TODO(DA-230) Scale this to handle full study data.
     # SQLAlchemy does not provide batch upserting; individual session.merge() calls as below may be
     # expensive but cannot be effectively batched, see stackoverflow.com/questions/25955200. If this
     # proves to be a bottleneck, we can switch to generating "INSERT .. ON DUPLICATE KEY UPDATE".
