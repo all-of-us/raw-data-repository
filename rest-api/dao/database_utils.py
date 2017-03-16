@@ -1,9 +1,8 @@
 """Helpers for querying the SQL database."""
-
 import re
 
 from dao.database_factory import get_database
-
+from datetime import datetime
 
 _DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 _ISODATE_PATTERN = 'ISODATE\[([^\]]+)\]'
@@ -36,6 +35,8 @@ def format_date(expression, date_format=_DATE_FORMAT):
   else:
     return "DATE_FORMAT({}, '{}')".format(expression, date_format)
 
+def parse_datetime(datetime_str):
+  return datetime.strptime(datetime_str, _DATE_FORMAT)
 
 def replace_isodate(sql, date_format=_DATE_FORMAT):
   if _is_sqlite():

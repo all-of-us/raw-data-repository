@@ -63,7 +63,7 @@ from mapreduce import base_handler
 from mapreduce import mapreduce_pipeline
 from mapreduce import context
 
-from dao.database_factory import DATETIME_FORMAT
+from dao.database_utils import parse_datetime
 from dateutil.relativedelta import relativedelta
 from census_regions import census_regions
 from code_constants import QUESTION_CODE_TO_FIELD, FieldType, QUESTIONNAIRE_MODULE_FIELD_NAMES
@@ -359,7 +359,7 @@ def reduce_participant_data_to_hpo_metric_date_deltas(reducer_key, reducer_value
     if t[0] == DATE_OF_BIRTH_PREFIX:
       date_of_birth = datetime.strptime(t[1], DATE_FORMAT).date()
     else:
-      dates_and_metrics.append((datetime.strptime(t[0], DATETIME_FORMAT), t[1]))
+      dates_and_metrics.append((parse_datetime(t[0]), t[1]))
 
   if not dates_and_metrics:
     return

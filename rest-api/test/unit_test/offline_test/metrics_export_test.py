@@ -20,7 +20,7 @@ from offline.metrics_config import get_participant_fields, HPO_ID_FIELDS, ANSWER
 from offline.metrics_export import MetricsExport, _HPO_IDS_CSV, _PARTICIPANTS_CSV, _ANSWERS_CSV
 from offline_test.gcs_utils import assertCsvContents
 from test_data import primary_provider_link, load_biobank_order_json, load_measurement_json
-from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, PITT_HPO_ID, 
+from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, PITT_HPO_ID
 from unit_test_util import make_questionnaire_response_json, pretty, run_deferred_tasks
 
 BUCKET_NAME = 'pmi-drc-biobank-test.appspot.com'
@@ -68,7 +68,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
   def _create_data(self):
-    SqlTestBase.setup_codes(METRIC_FIELD_TO_QUESTION_CODE.values(),
+    SqlTestBase.setup_codes(ANSWER_FIELD_TO_QUESTION_CODE.values(),
                             code_type=CodeType.QUESTION)
     SqlTestBase.setup_codes(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(),
                             code_type=CodeType.MODULE)
