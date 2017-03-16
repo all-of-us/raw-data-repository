@@ -17,7 +17,6 @@ import config
 import config_api
 import executors
 import main
-import questionnaire_response
 import dao.base_dao
 import singletons
 
@@ -330,13 +329,6 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
             "question": results
           }
       }
-
-def make_questionnaire_response(participant_id, questionnaire_id, code_answers=None,
-                                string_answers=None, date_answers=None):
-  qr_json = make_questionnaire_response_json(participant_id, questionnaire_id, code_answers,
-                                             string_answers, date_answers)
-  return questionnaire_response.DAO().from_json(qr_json, participant_id,
-                                                questionnaire_response.DAO().allocate_id())
 
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
