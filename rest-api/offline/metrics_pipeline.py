@@ -124,7 +124,7 @@ class MetricsPipeline(BasePipeline):
     input_files = args[2]
     mapper_params = default_params()
     version_id = MetricsVersionDao().set_pipeline_in_progress()
-    future = yield SummaryPipeline(bucket_name, now, input_files, version_id, mapper_params)
+    yield SummaryPipeline(bucket_name, now, input_files, version_id, mapper_params)
     yield FinalizeMetrics()
     # TODO(danrodney): figure out how to set the metrics version to finished but not complete on
     # failure?
