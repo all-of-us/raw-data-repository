@@ -61,6 +61,17 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     self.assert_results(self.ascending_biobank_id_query, [participant_summary])
     self.assert_results(self.descending_biobank_id_query, [participant_summary])
 
+  def testUnicodeNameRoundTrip(self):
+    name = self.fake.first_name()
+    with self.assertRaises(UnicodeEncodeError):
+      str(name)  # sanity check that the name contains non-ASCII
+    participant = self.participant_dao.insert(Participant(participantId=1, biobankId=2))
+    summary = self.dao.get(participant.participantId)
+    summary.firstName = name
+    self.dao.update(summary)
+    fetched_summary = self.dao.get(participant.participantId)
+    self.assertEquals(name, fetched_summary.firstName)
+
   def testQuery_twoSummaries(self):
     participant_1 = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(participant_1)

@@ -1,12 +1,14 @@
 import argparse
+import copy
+import httplib
 import httplib2
 import json
-import copy
+import os
 
 from oauth2client.service_account import ServiceAccountCredentials
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
-CREDS_FILE = '../rest-api/test/test-data/test-client-cert.json'
+CREDS_FILE = os.path.join(os.path.dirname(__file__), '../test/test-data/test-client-cert.json')
 DEFAULT_INSTANCE = 'https://pmi-drc-api-test.appspot.com'
 POST_HEADERS = {
     'Content-Type': 'application/json; charset=UTF-8',
@@ -81,7 +83,11 @@ class Client(object):
       print 'Trying unauthenticated {} to {}.'.format(method, url)
       resp, content = httplib2.Http().request(
           url, method, headers=unauthenticated_headers, body=body)
-      if resp.status != 401:
+      if resp.status == httplib.INTERNAL_SERVER_ERROR:
+        raise HttpException(
+            'API server error ({}) for {} to {}.'.format(resp.status, method, url),
+            resp.status)
+      if resp.status != httplib.UNAUTHORIZED:
         raise HttpException(
             'API is allowing unauthenticated {} to {}. Status: {}'.format(method, url, resp.status),
             resp.status)
@@ -98,7 +104,10 @@ class Client(object):
 
     print resp
 
-    if resp.status != 200:
+    if resp.status == httplib.UNAUTHORIZED:
+      print 'If you expect this request to be allowed, try'
+      print 'tools/install_config.sh --config config/config_dev.json --update'
+    if resp.status != httplib.OK:
       raise HttpException(
           '{}:{} - {}\n---{}'.format(url, method, resp.status, content), resp.status)
 

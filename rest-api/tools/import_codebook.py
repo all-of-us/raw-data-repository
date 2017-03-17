@@ -12,8 +12,7 @@ from dao.code_dao import CodeBookDao
 
 def main(args):
   logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(levelname)s: %(message)s')
-  dao.database_factory.DB_CONNECTION_STRING = os.getenv("DB_CONNECTION_STRING",
-                                                        "mysql+mysqldb://root:root@localhost/rdr")
+  dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
   with open(args.file) as f:
     codebook_json = json.load(f)
     CodeBookDao().import_codebook(codebook_json)

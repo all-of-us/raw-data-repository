@@ -41,7 +41,7 @@ else
 fi
 
 # Export this so Alembic can find it.
-export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}${PASSWORD_STRING}@localhost/${DB_NAME}"
+export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}${PASSWORD_STRING}@localhost/${DB_NAME}?charset=utf8"
 
 function finish {
   rm -f ${DB_INFO_FILE}
