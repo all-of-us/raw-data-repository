@@ -61,10 +61,9 @@ then
   exit 1
 fi
 
+source tools/setup_vars.sh
 INSTANCE_NAME=rdrmaindb
 FAILOVER_INSTANCE_NAME=rdrbackupdb
-DB_USER=root
-DB_NAME=rdr
 # The default configuration; uses a non-shared CPU, with 8 cores and 30 GB of memory
 # (Consider making this something different in production.)
 MACHINE_TYPE=db-n1-standard-8

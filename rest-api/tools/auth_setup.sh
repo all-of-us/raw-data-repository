@@ -14,14 +14,13 @@ then
   SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
 fi
 
+source tools/setup_vars.sh
 CREDS_FILE=/tmp/creds.json
 DB_INFO_FILE=/tmp/db_info.json
 PORT=3308
 INSTANCE=https://${PROJECT}.appspot.com
 CLOUD_PROXY_PID=
 PRIVATE_KEY=
-DB_USER=root
-DB_NAME=rdr
 
 function cleanup {
   if [ "$CLOUD_PROXY_PID" ];
