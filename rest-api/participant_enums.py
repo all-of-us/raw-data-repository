@@ -30,7 +30,7 @@ class MembershipTier(messages.Enum):
   # Note that these are out of order; ENROLEE was added after FULL_PARTICIPANT.
 
 # These race values are derived from one or more answers to the race/ethnicity question
-# in questionnaire responses. 
+# in questionnaire responses.
 class Race(messages.Enum):
   UNSET = 0
   SKIPPED = 1
@@ -63,9 +63,9 @@ ANSWER_CODE_TO_RACE = {
   'PMI_PreferNotToAnswer': Race.PREFER_NOT_TO_SAY,
   'PMI_Other': Race.OTHER_RACE,
   'PMI_FreeText': Race.OTHER_RACE,
-  'PMI_Unanswered': Race.UNSET 
+  'PMI_Unanswered': Race.UNSET
 }
-  
+
 # The lower bounds of the age buckets.
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
 AGE_BUCKETS = ['{}-{}'.format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
@@ -84,7 +84,7 @@ def get_bucketed_age(date_of_birth, today):
   age = relativedelta(today, date_of_birth).years
   for begin, end in zip(_AGE_LB, [age_lb - 1 for age_lb in _AGE_LB[1:]] + ['']):
     if (age >= begin) and (not end or age <= end):
-      return str(begin) + '-' + str(end)        
+      return str(begin) + '-' + str(end)
 
 def _map_single_race(self, code):
   race_value = ANSWER_CODE_TO_RACE.get(code.value)
@@ -92,7 +92,7 @@ def _map_single_race(self, code):
     return race_value
   return ANSWER_CODE_TO_RACE.get(code.parent)
 
-# See: https://docs.google.com/document/d/1Z1rGULWVlmSIAO38ACjMnz0aMuua3sKqFZXjGqw3gqQ      
+# See: https://docs.google.com/document/d/1Z1rGULWVlmSIAO38ACjMnz0aMuua3sKqFZXjGqw3gqQ
 def get_race(race_codes):
   if not race_codes:
     return None
@@ -111,4 +111,3 @@ def get_race(race_codes):
       return Race.HLS_AND_ONE_OTHER_RACE
     else:
       return Race.MORE_THAN_ONE_RACE
-      

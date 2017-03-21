@@ -107,7 +107,7 @@ class QuestionnaireHistoryDao(BaseDao):
 
   def get_with_children(self, questionnaireIdAndVersion):
     with self.session() as session:
-      return self.get_with_children_with_session(session, questionnaireIdAndVersion)  
+      return self.get_with_children_with_session(session, questionnaireIdAndVersion)
 
 class QuestionnaireConceptDao(BaseDao):
 
@@ -134,7 +134,7 @@ class QuestionnaireQuestionDao(BaseDao):
       return []
     return (session.query(QuestionnaireQuestion)
             .filter(QuestionnaireQuestion.questionnaireQuestionId.in_(ids)).all())
-  
+
   def get_all(self):
     with self.session() as session:
       return session.query(QuestionnaireQuestion).all()

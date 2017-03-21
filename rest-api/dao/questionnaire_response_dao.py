@@ -121,15 +121,15 @@ class QuestionnaireResponseDao(BaseDao):
                                                    summary_field[1], answer)
           elif code.value == RACE_QUESTION_CODE:
             race_code_ids.append(answer.valueCodeId)
-    
-    # If race was provided in the response in one or more answers, set the new value.        
+
+    # If race was provided in the response in one or more answers, set the new value.
     if race_code_ids:
       race_codes = [code_dao.get(code_id) for code_id in race_code_ids]
       race = get_race(race_codes)
       if race != participant_summary.race:
         participant_summary.race = race_values
         something_changed = True
-             
+
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
     # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
     module_changed = False

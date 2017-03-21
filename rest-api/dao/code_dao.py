@@ -137,7 +137,7 @@ class CodeDao(CacheAllDao):
   def find_ancestor_of_type(self, code, code_type):
     if code.codeType == code_type:
       return code
-    if code.parentId:      
+    if code.parentId:
       return find_ancestor(self.get(code.parentId), code_type)
     return None
 

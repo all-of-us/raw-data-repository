@@ -229,7 +229,7 @@ def map_answers(reader):
   Metric names are taken from the field name in code_constants.
 
   Code and string answers are accepted.
-  
+
   Incoming rows are expected to be sorted by participant ID, start time, and question code,
   such that repeated answers for the same question are next to each other.
   """
@@ -238,15 +238,15 @@ def map_answers(reader):
   race_code_values = []
   code_dao = CodeDao()
   for participant_id, start_time, question_code, answer_code, answer_string in reader:
-    
-    # Multiple race answer values for the participant at a single time 
+
+    # Multiple race answer values for the participant at a single time
     # are combined into a single race enum.
-    if race_code_values and (last_participant_id != participant_id or 
+    if race_code_values and (last_participant_id != participant_id or
                              last_start_time != start_time or
                              question_code != RACE_QUESTION_CODE):
       race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
       race = get_race(race_codes)
-      yield(last_participant_id, make_pair_str(last_start_time, 
+      yield(last_participant_id, make_pair_str(last_start_time,
                                                make_metric(RACE_METRIC, str(race))))
       race_code_values = []
     last_participant_id = participant_id
@@ -270,13 +270,13 @@ def map_answers(reader):
     else:
       raise AssertionError("Invalid field type: %s" % question_field[1])
     yield(participant_id, make_pair_str(start_time, make_metric(metric, answer_value)))
-  
+
   # Emit race for the last participant if we saved some values for it.
   if race_code_values:
     race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
     race = get_race(race_codes)
-    yield(last_participant_id, make_pair_str(last_start_time, 
-                                             make_metric(RACE_METRIC, str(race))))    
+    yield(last_participant_id, make_pair_str(last_start_time,
+                                             make_metric(RACE_METRIC, str(race))))
 
 def map_participants(reader):
   """Emits any or all of the following:

@@ -36,7 +36,7 @@ class ParticipantSummary(Base):
   dateOfBirth = Column('date_of_birth', Date)
   genderIdentityId = Column('gender_identity_id', Integer, ForeignKey('code.code_id'))
   membershipTier = Column('membership_tier', Enum(MembershipTier), default=MembershipTier.UNSET)
-  race = Column('race', Enum(Race), default=Race.UNSET)  
+  race = Column('race', Enum(Race), default=Race.UNSET)
   physicalMeasurementsStatus = Column('physical_measurements_status',
                                       Enum(PhysicalMeasurementsStatus),
                                       default=PhysicalMeasurementsStatus.UNSET)
