@@ -13,5 +13,5 @@ then
   exit 1
 fi
 
-(source tools/get_local_db_info.sh; source tools/set_path.sh; cd ${BASE_DIR}; 
+(source tools/get_local_db_info.sh; source tools/set_path.sh; cd ${BASE_DIR};
  alembic revision --autogenerate -m "$1")

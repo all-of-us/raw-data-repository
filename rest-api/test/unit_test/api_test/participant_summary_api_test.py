@@ -35,7 +35,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
-  def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code, 
+  def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code,
                                     firstName, middleName, lastName, zipCode, dateOfBirth):
     code_answers = []
     if race_code:
