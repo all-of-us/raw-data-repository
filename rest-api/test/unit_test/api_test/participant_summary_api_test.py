@@ -3,7 +3,7 @@ import httplib
 import main
 
 from clock import FakeClock
-from code_constants import PPI_SYSTEM
+from code_constants import PPI_SYSTEM, RACE_WHITE_CODE
 from concepts import Concept
 from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
 
@@ -35,17 +35,13 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
-  def submit_questionnaire_response(self, participant_id, questionnaire_id,
-                                    race_code, gender_code, ethnicity_code,
-                                    firstName, middleName, lastName, zipCode,
-                                    dateOfBirth):
+  def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code, 
+                                    firstName, middleName, lastName, zipCode, dateOfBirth):
     code_answers = []
     if race_code:
       code_answers.append(("race", Concept(PPI_SYSTEM, race_code)))
     if gender_code:
       code_answers.append(("genderIdentity", Concept(PPI_SYSTEM, gender_code)))
-    if ethnicity_code:
-      code_answers.append(("ethnicity", Concept(PPI_SYSTEM, ethnicity_code)))
     qr = make_questionnaire_response_json(participant_id,
                                           questionnaire_id,
                                           code_answers = code_answers,
@@ -61,9 +57,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id = participant['participantId']
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
-    self.submit_questionnaire_response(participant_id, questionnaire_id, "white", "male",
-                                       "hispanic", "Bob", "Q", "Jones", "78751",
-                                       datetime.date(1978, 10, 9))
+    self.submit_questionnaire_response(participant_id, questionnaire_id, RACE_WHITE_CODE, "male",
+                                       "Bob", "Q", "Jones", "78751", datetime.date(1978, 10, 9))
 
     with FakeClock(TIME_2):
       ps = self.send_get('Participant/%s/Summary' % participant_id)
@@ -71,7 +66,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'membershipTier': 'UNSET',
                    'questionnaireOnOverallHealth': 'UNSET',
                    'signUpTime': participant['signUpTime'],
-                   'ethnicity': 'hispanic',
                    'biobankId': participant['biobankId'],
                    'numBaselineSamplesArrived': 0,
                    'questionnaireOnSociodemographics': 'SUBMITTED',
@@ -87,7 +81,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'hpoId': 'PITT',
                    'numCompletedBaselinePPIModules': 1,
                    'consentForStudyEnrollment': 'UNSET',
-                   'race': 'white',
+                   'race': 'WHITE',
                    'dateOfBirth': '1978-10-09',
                    'ageRange': '36-45',
                    'firstName': 'Bob',
@@ -122,15 +116,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     participant_3 = self.send_post('Participant', {})
     participant_id_3 = participant_3['participantId']
 
-    self.submit_questionnaire_response(participant_id_1, questionnaire_id, "white", "male",
-                                       "hispanic", "Bob", "Q", "Jones", "78751",
-                                       datetime.date(1978, 10, 9))
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
+                                       "Bob", "Q", "Jones", "78751", datetime.date(1978, 10, 9))
     self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, None,
-                                       None, "Mary", "Q", "Jones", "78751",
-                                       datetime.date(1978, 10, 8))
-    self.submit_questionnaire_response(participant_id_3, questionnaire_id, "white", "male",
-                                       "non-hispanic", "Fred", "T", "Smith", "78752",
-                                       datetime.date(1978, 10, 10))
+                                       "Mary", "Q", "Jones", "78751", datetime.date(1978, 10, 8))
+    self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_WHITE_CODE, "male",
+                                       "Fred", "T", "Smith", "78752", datetime.date(1978, 10, 10))
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
@@ -180,14 +171,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                          [[ps_1, ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&genderIdentity=UNSET',
                          [[ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&race=white',
+    self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
                          [[ps_1, ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=white',
+    self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE',
                          [[ps_1]])
-    self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=white&zipCode=78752',
+    self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE&zipCode=78752',
                          [[]])
-    self.assertResponses('ParticipantSummary?_count=2&ethnicity=hispanic',
-                         [[ps_1]])
     self.assertResponses('ParticipantSummary?_count=2&questionnaireOnSociodemographics=SUBMITTED',
                          [[ps_1, ps_2], [ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&consentForStudyEnrollment=UNSET',

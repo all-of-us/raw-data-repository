@@ -42,6 +42,8 @@ then
   source tools/auth_setup.sh
   run_cloud_sql_proxy
   set_db_connection_string
+else
+  source tools/get_local_db_info.sh
 fi
 
 (source tools/set_path.sh; alembic upgrade ${REVISION})

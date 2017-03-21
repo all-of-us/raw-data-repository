@@ -63,7 +63,6 @@ from mapreduce import base_handler
 from mapreduce import mapreduce_pipeline
 from mapreduce import context
 
-from dao.code_dao import CodeDao
 from dao.database_utils import parse_datetime
 from dateutil.relativedelta import relativedelta
 from census_regions import census_regions
@@ -80,6 +79,7 @@ from metrics_config import SAMPLES_ARRIVED_VALUE, SUBMITTED_VALUE, PARTICIPANT_K
 from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields, get_fieldnames
 from metrics_config import transform_participant_summary_field
 from participant_enums import get_bucketed_age, get_race
+from dao.code_dao import CodeDao
 
 class PipelineNotRunningException(BaseException):
   """Exception thrown when a pipeline is expected to be running but is not."""

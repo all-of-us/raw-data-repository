@@ -11,7 +11,7 @@ from model.participant_summary import ParticipantSummary
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ['lastName', 'firstName', 'dateOfBirth', 'participantId']
-_CODE_FIELDS = ['genderIdentity', 'ethnicity', 'race']
+_CODE_FIELDS = ['genderIdentity']
 
 
 class ParticipantSummaryDao(UpdatableDao):

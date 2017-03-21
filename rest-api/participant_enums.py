@@ -1,4 +1,7 @@
-from code_constants import UNSET
+from code_constants import UNSET, RACE_AIAN_CODE, RACE_ASIAN_CODE, RACE_BLACK_CODE, RACE_MENA_CODE
+from code_constants import RACE_NHDPI_CODE, RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_FREETEXT_CODE
+from code_constants import PMI_SKIP_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE
+from code_constants import PMI_FREE_TEXT_CODE, PMI_UNANSWERED_CODE
 from protorpc import messages
 from dateutil.relativedelta import relativedelta
 
@@ -51,19 +54,19 @@ class Race(messages.Enum):
   PREFER_NOT_TO_SAY = 16
 
 ANSWER_CODE_TO_RACE = {
-  'WhatRaceEthnicity_AIAN': Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE,
-  'WhatRaceEthnicity_Asian': Race.ASIAN,
-  'WhatRaceEthnicity_Black': Race.BLACK_OR_AFRICAN_AMERICAN,
-  'WhatRaceEthnicity_MENA': Race.MIDDLE_EASTERN_OR_NORTH_AFRICAN,
-  'WhatRaceEthnicity_NHPI': Race.NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER,
-  'WhatRaceEthnicity_White': Race.WHITE,
-  'WhatRaceEthnicity_Hispanic': Race.HISPANIC_LATINO_OR_SPANISH,
-  'WhatRaceEthnicity_FreeText': Race.OTHER_RACE,
-  'PMI_Skip': Race.SKIPPED,
-  'PMI_PreferNotToAnswer': Race.PREFER_NOT_TO_SAY,
-  'PMI_Other': Race.OTHER_RACE,
-  'PMI_FreeText': Race.OTHER_RACE,
-  'PMI_Unanswered': Race.UNSET
+  RACE_AIAN_CODE: Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE,
+  RACE_ASIAN_CODE: Race.ASIAN,
+  RACE_BLACK_CODE: Race.BLACK_OR_AFRICAN_AMERICAN,
+  RACE_MENA_CODE: Race.MIDDLE_EASTERN_OR_NORTH_AFRICAN,
+  RACE_NHDPI_CODE: Race.NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER,
+  RACE_WHITE_CODE: Race.WHITE,
+  RACE_HISPANIC_CODE: Race.HISPANIC_LATINO_OR_SPANISH,
+  RACE_FREETEXT_CODE: Race.OTHER_RACE,
+  PMI_SKIP_CODE: Race.SKIPPED,
+  PMI_PREFER_NOT_TO_ANSWER_CODE: Race.PREFER_NOT_TO_SAY,
+  PMI_OTHER_CODE: Race.OTHER_RACE,
+  PMI_FREE_TEXT_CODE: Race.OTHER_RACE,
+  PMI_UNANSWERED_CODE: Race.UNSET
 }
 
 # The lower bounds of the age buckets.
@@ -87,6 +90,8 @@ def get_bucketed_age(date_of_birth, today):
       return str(begin) + '-' + str(end)
 
 def _map_single_race(code):
+  if code is None:
+    return Race.UNMAPPED
   race_value = ANSWER_CODE_TO_RACE.get(code.value)
   if race_value:
     return race_value
