@@ -6,6 +6,7 @@ from sqlalchemy import Column, Integer, DateTime, BLOB, ForeignKey, Index, Strin
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
+
 class ParticipantBase(object):
   """Mixin with shared columns for Participant and ParticipantHistory"""
 
@@ -39,6 +40,7 @@ class ParticipantBase(object):
             'providerLink': json.loads(self.providerLink)
             };
 
+
 class Participant(ParticipantBase, Base):
   __tablename__ = 'participant'
   participantSummary = relationship("ParticipantSummary", uselist=False,
@@ -51,11 +53,11 @@ class Participant(ParticipantBase, Base):
                        providerLink=json.dumps(resource_json.get('providerLink')),
                        clientId=client_id)
 
+
 Index('participant_biobank_id', Participant.biobankId, unique=True)
 Index('participant_hpo_id', Participant.hpoId)
+
 
 class ParticipantHistory(ParticipantBase, Base):
   __tablename__ = 'participant_history'
   version = Column('version', Integer, primary_key=True)
-
-
