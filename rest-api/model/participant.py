@@ -1,7 +1,8 @@
 import json
 
 from model.base import Base
-from model.utils import to_client_participant_id, to_client_biobank_id
+from model.utils import Enum, to_client_participant_id, to_client_biobank_id
+from participant_enums import WithdrawalStatus, SuspensionStatus
 from sqlalchemy import Column, Integer, DateTime, BLOB, ForeignKey, Index, String
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
@@ -27,6 +28,10 @@ class ParticipantBase(object):
   # which system did it. An client ID of example@example.com means we created fake data for this
   # participant.
   clientId = Column('client_id', String(80))
+
+  # Withdrawal from the study of the participant's own accord.
+  withdrawalStatus = Column('withdrawal_status', Enum(WithdrawalStatus), nullable=False)
+  suspensionStatus = Column('suspension_status', Enum(SuspensionStatus), nullable=False)
 
   @declared_attr
   def hpoId(cls):
