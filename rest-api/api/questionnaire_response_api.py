@@ -10,7 +10,7 @@ class QuestionnaireResponseApi(BaseApi):
 
   @api_util.auth_required(PTC)
   def get(self, p_id, id_):
-    #pylint: ignore=unused-argument
+    #pylint: ignored=unused-argument
     return super(QuestionnaireResponseApi, self).get(id_)
 
   @api_util.auth_required(PTC)
