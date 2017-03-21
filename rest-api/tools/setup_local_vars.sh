@@ -2,7 +2,7 @@ source tools/setup_vars.sh
 PASSWORD=root
 
 function set_local_db_connection_string {
-  if [ $PASSWORD ]  
+  if [ $PASSWORD ]
   then
     PASSWORD_STRING=":${PASSWORD}"
   else
