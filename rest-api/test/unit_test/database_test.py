@@ -1,7 +1,7 @@
 import datetime
 import isodate
 
-from participant_enums import QuestionnaireStatus
+from participant_enums import QuestionnaireStatus, WithdrawalStatus, SuspensionStatus
 
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
@@ -66,7 +66,9 @@ class DatabaseTest(SqlTestBase):
 
     p = Participant(participantId=1, version=1, biobankId=2, hpoId=1,
                     signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now(),
-                    clientId="c")
+                    clientId="c",
+                    withdrawalStatus=WithdrawalStatus.NOT_WITHDRAWN,
+                    suspensionStatus=SuspensionStatus.NOT_SUSPENDED)
     ps = ParticipantSummary(
         participantId=1,
         biobankId=2,
@@ -80,12 +82,16 @@ class DatabaseTest(SqlTestBase):
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=datetime.datetime.now(),
         numCompletedBaselinePPIModules=1,
-        numBaselineSamplesArrived=2)
+        numBaselineSamplesArrived=2,
+        withdrawalStatus=WithdrawalStatus.NOT_WITHDRAWN,
+        suspensionStatus=SuspensionStatus.NOT_SUSPENDED)
     p.participantSummary = ps
     session.add(p)
     ph = ParticipantHistory(participantId=1, version=1, biobankId=2, hpoId=1,
                             signUpTime=datetime.datetime.now(),
-                            lastModified=datetime.datetime.now(), clientId="d")
+                            lastModified=datetime.datetime.now(), clientId="d",
+                            withdrawalStatus=WithdrawalStatus.NOT_WITHDRAWN,
+                            suspensionStatus=SuspensionStatus.NOT_SUSPENDED)
     session.add(ph)
     session.commit()
 
@@ -156,7 +162,9 @@ class DatabaseTest(SqlTestBase):
     p = Participant(
         participantId=1, version=1, biobankId=2, hpoId=hpo.hpoId,
         signUpTime=datetime.datetime.utcnow(), lastModified=datetime.datetime.utcnow(),
-        clientId='c')
+        clientId='c',
+        withdrawalStatus=WithdrawalStatus.NOT_WITHDRAWN,
+        suspensionStatus=SuspensionStatus.NOT_SUSPENDED)
     session.add(p)
     session.commit()
     return p
