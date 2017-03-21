@@ -57,8 +57,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id = participant['participantId']
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    first_name = self.fake.first_name()
+    middle_name = self.fake.first_name()
+    last_name = self.fake.last_name()
     self.submit_questionnaire_response(participant_id, questionnaire_id, RACE_WHITE_CODE, "male",
-                                       "Bob", "Q", "Jones", "78751", datetime.date(1978, 10, 9))
+                                       first_name, middle_name, last_name, "78751", 
+                                       datetime.date(1978, 10, 9))
 
     with FakeClock(TIME_2):
       ps = self.send_get('Participant/%s/Summary' % participant_id)
@@ -84,9 +88,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'race': 'WHITE',
                    'dateOfBirth': '1978-10-09',
                    'ageRange': '36-45',
-                   'firstName': 'Bob',
-                   'middleName': 'Q',
-                   'lastName': 'Jones',
+                   'firstName': first_name,
+                   'middleName': middle_name,
+                   'lastName': last_name,
                    'zipCode' : '78751'}
     self.assertJsonResponseMatches(expected_ps, ps)
     response = self.send_get('ParticipantSummary')

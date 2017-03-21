@@ -117,10 +117,6 @@ class QuestionnaireConceptDao(BaseDao):
   def get_id(self, obj):
     return obj.questionnaireConceptId
 
-  def get_all(self):
-    with self.session() as session:
-      return session.query(QuestionnaireConcept).all()
-
 class QuestionnaireQuestionDao(BaseDao):
 
   def __init__(self):
@@ -134,7 +130,3 @@ class QuestionnaireQuestionDao(BaseDao):
       return []
     return (session.query(QuestionnaireQuestion)
             .filter(QuestionnaireQuestion.questionnaireQuestionId.in_(ids)).all())
-
-  def get_all(self):
-    with self.session() as session:
-      return session.query(QuestionnaireQuestion).all()

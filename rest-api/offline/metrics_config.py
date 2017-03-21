@@ -99,7 +99,7 @@ def _get_answer_values_func(question_code_value):
   return lambda: BASE_VALUES + _get_answer_values(question_code_value)
 
 # These questionnaire answer fields are used to generate metrics.
-ANSWER_FIELDS = ["genderIdentityId", "state"]
+ANSWER_FIELDS = ['genderIdentityId', 'state']
 
 ANSWER_FIELD_TO_QUESTION_CODE = {k: FIELD_TO_QUESTION_CODE[k][0] for k in ANSWER_FIELDS}
 
