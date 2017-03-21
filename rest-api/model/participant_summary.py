@@ -110,7 +110,7 @@ Index('participant_summary_hpo', ParticipantSummary.hpoId)
 Index('participant_summary_hpo_fn', ParticipantSummary.hpoId, ParticipantSummary.firstName)
 Index('participant_summary_hpo_ln', ParticipantSummary.hpoId, ParticipantSummary.lastName)
 Index('participant_summary_hpo_dob', ParticipantSummary.hpoId, ParticipantSummary.dateOfBirth)
-Index('participant_summary_hpo_race', ParticipantSummary.hpoId,ParticipantSummary.race)
+Index('participant_summary_hpo_race', ParticipantSummary.hpoId, ParticipantSummary.race)
 Index('participant_summary_hpo_zip', ParticipantSummary.hpoId, ParticipantSummary.zipCode)
 Index('participant_summary_hpo_tier', ParticipantSummary.hpoId, ParticipantSummary.membershipTier)
 Index('participant_summary_hpo_consent', ParticipantSummary.hpoId,
