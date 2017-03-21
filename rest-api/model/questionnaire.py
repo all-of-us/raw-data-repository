@@ -38,11 +38,13 @@ class Questionnaire(QuestionnaireBase, Base):
   @staticmethod
   def from_client_json(resource_json, id_=None, expected_version=None, client_id=None):
     #pylint: disable=unused-argument
+    # Parse the questionnaire to make sure it's valid, but preserve the original JSON
+    # when saving.
     fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
     if not fhir_q.group:
       raise BadRequest("No top-level group found in questionnaire")
 
-    q = Questionnaire(resource=json.dumps(fhir_q.as_json()), questionnaireId=id_,
+    q = Questionnaire(resource=json.dumps(resource_json), questionnaireId=id_,
                       version=expected_version)
     # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
     # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,

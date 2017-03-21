@@ -20,6 +20,13 @@
               {
                 "linkId": "2.1.1",
                 "text": "Do you have allergies?",
+                "_text": {
+					"extension": [
+						{
+						  "foo": "bar"
+						}
+					]
+                },
                 "type": "choice",
                 "option": [
                   {
