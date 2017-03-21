@@ -75,7 +75,7 @@ from mapreduce.lib.input_reader._gcs import GCSInputReader
 from offline.base_pipeline import BasePipeline
 from metrics_config import BIOSPECIMEN_METRIC, BIOSPECIMEN_SAMPLES_METRIC, HPO_ID_METRIC
 from metrics_config import PHYSICAL_MEASUREMENTS_METRIC, AGE_RANGE_METRIC, CENSUS_REGION_METRIC
-from metrics_config import SPECIMEN_COLLECTED_VALUE, COMPLETE_VALUE
+from metrics_config import SPECIMEN_COLLECTED_VALUE, COMPLETE_VALUE, RACE_METRIC
 from metrics_config import SAMPLES_ARRIVED_VALUE, SUBMITTED_VALUE, PARTICIPANT_KIND
 from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields, get_fieldnames
 from metrics_config import transform_participant_summary_field

@@ -86,7 +86,7 @@ def get_bucketed_age(date_of_birth, today):
     if (age >= begin) and (not end or age <= end):
       return str(begin) + '-' + str(end)
 
-def _map_single_race(self, code):
+def _map_single_race(code):
   race_value = ANSWER_CODE_TO_RACE.get(code.value)
   if race_value:
     return race_value
@@ -99,7 +99,6 @@ def get_race(race_codes):
   if len(race_codes) == 1:
     return _map_single_race(race_codes[0])
   else:
-    hispanic = False
     all_races = set([_map_single_race(race_code) for race_code in race_codes])
     if Race.HISPANIC_LATINO_OR_SPANISH in all_races:
       if len(all_races) > 2:

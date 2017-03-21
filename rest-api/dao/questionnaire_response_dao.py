@@ -3,7 +3,7 @@ import config
 import json
 
 from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, PPI_SYSTEM
-from code_constants import FieldType
+from code_constants import FieldType, RACE_QUESTION_CODE
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
@@ -127,7 +127,7 @@ class QuestionnaireResponseDao(BaseDao):
       race_codes = [code_dao.get(code_id) for code_id in race_code_ids]
       race = get_race(race_codes)
       if race != participant_summary.race:
-        participant_summary.race = race_values
+        participant_summary.race = race
         something_changed = True
 
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
