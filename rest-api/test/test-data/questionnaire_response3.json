@@ -24,6 +24,13 @@
               {
                 "linkId": "nameOfChild",
                 "text": "Name of child",
+                "_text": {
+					"extension": [
+						{
+						  "foo": "bar"
+						}
+					]
+                },
                 "answer": [
                   {
                     "valueString": "Cathy Jones"
