@@ -54,7 +54,7 @@ class ParticipantGenerator(object):
     return self._now - datetime.timedelta(days=num_days)
 
   def _setup_questionnaires(self):
-    '''Locates or creates questionnaires for the question and module codes.'''
+    '''Locates questionnaires and verifies that they have the appropriate questions in them.'''
     modules_by_code = {concept.codeId: concept for concept in
                        QuestionnaireConceptDao.get_all()}
     questions_by_code = {question.codeId: question for question in
