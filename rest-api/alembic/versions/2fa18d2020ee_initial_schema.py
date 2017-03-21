@@ -1,7 +1,7 @@
 """Initial schema
 
 Revision ID: 2fa18d2020ee
-Revises: 
+Revises:
 Create Date: 2017-03-21 09:59:59.609778
 
 """
@@ -363,5 +363,5 @@ def downgrade():
     op.drop_table('hpo')
     op.drop_table('code_book')
     # ### end Alembic commands ###
-    
+
 

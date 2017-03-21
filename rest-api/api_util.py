@@ -26,7 +26,7 @@ PTC = "ptc"
 HEALTHPRO = "healthpro"
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
 ALL_ROLES = [PTC, HEALTHPRO]
-# Header passed by the server to itself to propagate the e-mail address of 
+# Header passed by the server to itself to propagate the e-mail address of
 # the client when generating fake data.
 USER_EMAIL_HEADER = 'X-User-Email'
 
@@ -98,8 +98,8 @@ def get_validated_user_info():
   user_email = get_oauth_id()
   # If this is a request from ourselves, and the configuration allows for it,
   # look for the user e-mail in another header and don't try to enforce the IP address.
-  if (request.remote_addr is None 
-      and config.getSettingJson(config.ALLOW_REQUESTS_FROM_SERVER, False) 
+  if (request.remote_addr is None
+      and config.getSettingJson(config.ALLOW_REQUESTS_FROM_SERVER, False)
       and not user_email and not request.headers.get('unauthenticated')):
     user_email = request.headers.get(USER_EMAIL_HEADER)
     user_info = lookup_user_info(user_email)

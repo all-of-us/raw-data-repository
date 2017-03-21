@@ -61,7 +61,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     middle_name = self.fake.first_name()
     last_name = self.fake.last_name()
     self.submit_questionnaire_response(participant_id, questionnaire_id, RACE_WHITE_CODE, "male",
-                                       first_name, middle_name, last_name, "78751", 
+                                       first_name, middle_name, last_name, "78751",
                                        datetime.date(1978, 10, 9))
 
     with FakeClock(TIME_2):

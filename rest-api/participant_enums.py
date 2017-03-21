@@ -97,7 +97,7 @@ def _map_single_race(code):
     return race_value
   return ANSWER_CODE_TO_RACE.get(code.parent)
 
-# Transforms one or more race codes from questionnaire response answers about race 
+# Transforms one or more race codes from questionnaire response answers about race
 # into a single race enum; the enum includes values for multiple races.
 # See: https://docs.google.com/document/d/1Z1rGULWVlmSIAO38ACjMnz0aMuua3sKqFZXjGqw3gqQ
 def get_race(race_codes):
