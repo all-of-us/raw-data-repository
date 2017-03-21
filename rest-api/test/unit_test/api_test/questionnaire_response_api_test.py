@@ -39,6 +39,10 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     # The resource gets rewritten to include the version
     resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/1' % questionnaire_id
     self.assertJsonResponseMatches(resource, response)
+    
+    # Do a get to fetch the questionnaire
+    get_response = self.send_get(_questionnaire_response_url(participant_id) + "/" + response['id'])
+    self.assertJsonResponseMatches(resource, get_response)
 
     code_dao = CodeDao()
     name_of_child = code_dao.get_code("sys", "nameOfChild")

@@ -9,7 +9,7 @@ class QuestionnaireResponseApi(BaseApi):
     super(QuestionnaireResponseApi, self).__init__(QuestionnaireResponseDao())
 
   @api_util.auth_required(PTC)
-  def get(self, id_=None):
+  def get(self, p_id, id_):
     return super(QuestionnaireResponseApi, self).get(id_)
 
   @api_util.auth_required(PTC)
