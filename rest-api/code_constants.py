@@ -18,10 +18,7 @@ STATE_QUESTION_CODE = "PIIAddress_State"
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
-# This is a topic in the codebook right now.
-RACE_QUESTION_CODE = "Sociodemographic_Race"
-# This doesn't exist in the codebook right now.
-ETHNICITY_QUESTION_CODE = "Sociodemographic_Ethnicity"
+RACE_QUESTION_CODE = "Race_WhatRaceEthnicity"
 
 # Module names for questionnaires / consent forms
 OVERALL_HEALTH_PPI_MODULE = "OverallHealth"
@@ -36,8 +33,6 @@ class FieldType(messages.Enum):
 
 FIELD_TO_QUESTION_CODE = {
   "genderIdentityId": (GENDER_IDENTITY_QUESTION_CODE, FieldType.CODE),
-  "raceId": (RACE_QUESTION_CODE, FieldType.CODE),
-  "ethnicityId": (ETHNICITY_QUESTION_CODE, FieldType.CODE),
   "firstName": (FIRST_NAME_QUESTION_CODE, FieldType.STRING),
   "lastName": (LAST_NAME_QUESTION_CODE, FieldType.STRING),
   "middleName": (MIDDLE_NAME_QUESTION_CODE, FieldType.STRING),

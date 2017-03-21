@@ -23,7 +23,8 @@ class ParticipantBase(object):
   providerLink = Column('provider_link', BLOB)
 
   # Both HealthPro and PTC can mutate participants; we use clientId to track
-  # which system did it.
+  # which system did it. An client ID of example@example.com means we created fake data for this
+  # participant. 
   clientId = Column('client_id', String(80))
 
   @declared_attr

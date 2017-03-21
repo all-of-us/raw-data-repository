@@ -26,6 +26,7 @@ PTC = "ptc"
 HEALTHPRO = "healthpro"
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
 ALL_ROLES = [PTC, HEALTHPRO]
+USER_EMAIL_HEADER = 'X-User-Email'
 
 
 def auth_required(role_whitelist):
@@ -91,7 +92,14 @@ def lookup_user_info(user_email):
 
 def get_validated_user_info():
   """Returns a valid (user email, user info), or raises Unauthorized."""
+      
   user_email = get_oauth_id()
+  # If this is a request from ourselves, look for the user e-mail in another header and 
+  # don't try to enforce the IP address.
+  if request.remote_addr == None and not user_email and not request.headers.get('unauthenticated'):
+    user_email = request.headers.get(USER_EMAIL_HEADER)
+    user_info = lookup_user_info(user_email)
+    return (user_email, user_info)
 
   # Allow clients to simulate an unauthentiated request (for testing)
   # becaues we haven't found another way to create an unauthenticated request
@@ -100,7 +108,7 @@ def get_validated_user_info():
   # The `application_id` check ensures this feature only works in dev_appserver.
   if request.headers.get('unauthenticated') and app_identity.get_application_id() == "None":
     user_email = None
-
+  
   if user_email:
     user_info = lookup_user_info(user_email)
     if user_info:

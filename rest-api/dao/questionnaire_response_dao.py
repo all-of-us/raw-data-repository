@@ -11,7 +11,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from participant_enums import QuestionnaireStatus
+from participant_enums import QuestionnaireStatus, get_race
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
@@ -102,11 +102,13 @@ class QuestionnaireResponseDao(BaseDao):
 
     code_ids.extend([concept.codeId for concept in qh.concepts])
     # Fetch the codes for all questions and concepts
-    codes = CodeDao().get_with_ids(code_ids)
+    code_dao = CodeDao()
+    codes = code_dao.get_with_ids(code_ids)
 
     code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
     question_map = {question.questionnaireQuestionId: question for question in questions}
     something_changed = False
+    race_code_ids = []
     # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
     for answer in questionnaire_response.answers:
       question = question_map.get(answer.questionId)
@@ -117,7 +119,17 @@ class QuestionnaireResponseDao(BaseDao):
           if summary_field:
             something_changed = self._update_field(participant_summary, summary_field[0],
                                                    summary_field[1], answer)
-
+          elif code.value == RACE_QUESTION_CODE:
+            race_code_ids.append(answer.valueCodeId)
+    
+    # If race was provided in the response in one or more answers, set the new value.        
+    if race_code_ids:
+      race_codes = [code_dao.get(code_id) for code_id in race_code_ids]
+      race = get_race(race_codes)
+      if race != participant_summary.race:
+        participant_summary.race = race_values
+        something_changed = True
+             
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
     # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
     module_changed = False

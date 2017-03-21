@@ -59,10 +59,10 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.MODULE_CODE_7 = Code(codeId=7, system=PPI_SYSTEM, value=SOCIODEMOGRAPHIC_PPI_MODULE,
                               codeType=CodeType.MODULE, mapped=True)
     self.CONCEPT_1 = QuestionnaireConcept(codeId=7)
-    self.CODE_1_QUESTION_1 = QuestionnaireQuestion(linkId='a', codeId=1)
-    self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2)
+    self.CODE_1_QUESTION_1 = QuestionnaireQuestion(linkId='a', codeId=1, repeats=False)
+    self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2, repeats=True)
     # Same code as question 1
-    self.CODE_1_QUESTION_2 = QuestionnaireQuestion(linkId='x', codeId=1)
+    self.CODE_1_QUESTION_2 = QuestionnaireQuestion(linkId='x', codeId=1, repeats=False)
 
 
   def test_get_before_insert(self):

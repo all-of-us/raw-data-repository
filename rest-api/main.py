@@ -7,6 +7,7 @@ import config_api
 import version_api
 
 from api.biobank_order_api import BiobankOrderApi
+from api.data_gen_api import DataGenApi
 from api.metrics_api import MetricsApi
 from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
@@ -91,6 +92,11 @@ api.add_resource(version_api.VersionApi,
                  endpoint='version',
                  methods=['GET'])
 
+# Data generator API used to load fake data into the database.
+api.add_resource(DataGenApi,
+                 PREFIX + 'DataGen',
+                 endpoint='datagen',
+                 methods=['POST'])
 #
 # Non-resource endpoints
 #

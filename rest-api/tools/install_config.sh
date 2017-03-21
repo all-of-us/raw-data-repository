@@ -42,6 +42,5 @@ if [ "${KEY}" ]
 then
   EXTRA_ARGS+=" --key $KEY"
 fi
-echo "ARGS = ${EXTRA_ARGS}"
 
 (cd ${BASE_DIR}; python tools/install_config.py $EXTRA_ARGS)
