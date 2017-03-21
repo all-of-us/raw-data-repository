@@ -8,5 +8,5 @@ function set_local_db_connection_string {
   else
     PASSWORD_STRING=""
   fi
-  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}${PASSWORD_STRING}@localhost/${DB_NAME}?charset=utf8"  
+  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}${PASSWORD_STRING}@localhost/${DB_NAME}?charset=utf8"
 }

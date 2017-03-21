@@ -43,8 +43,11 @@ then
   run_cloud_sql_proxy
   set_db_connection_string
 else
-  source tools/setup_local_vars.sh
-  set_local_db_connection_string
+  if [ -z ${DB_CONNECTION_STRING} ]
+  then
+    source tools/setup_local_vars.sh
+    set_local_db_connection_string
+  fi
 fi
 
 (source tools/set_path.sh; alembic upgrade ${REVISION})
