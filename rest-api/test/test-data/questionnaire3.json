@@ -47,16 +47,8 @@
         "text": "What is your race?",
         "concept": [{
           "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-          "code": "Sociodemographic_Race",
+          "code": "Race_WhatRaceEthnicity",
           "display": "Race"
-        }]
-      }, {
-        "linkId": "ethnicity",
-        "text": "What is your ethnicity?",
-        "concept": [{
-          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-          "code": "Sociodemographic_Ethnicity",
-          "display":"Ethnicity"
         }]
       }, {
         "linkId":"genderIdentity",

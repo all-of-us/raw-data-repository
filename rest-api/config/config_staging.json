@@ -2,6 +2,7 @@
   "biobank_samples_shards": [
     "2"
   ],
+  "allow_faking_requests_from_server": true,
   "user_info": {
     "pmi-hpo-staging@appspot.gserviceaccount.com": {
       "roles": ["ptc", "healthpro", "admin"],

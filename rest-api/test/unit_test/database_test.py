@@ -115,7 +115,7 @@ class DatabaseTest(SqlTestBase):
                               lastModified=datetime.datetime.now(), resource='what?')
     qh.questions.append(QuestionnaireQuestion(questionnaireQuestionId=1, questionnaireId=1,
                                               questionnaireVersion=1,
-                                              linkId="1.2.3", codeId=2))
+                                              linkId="1.2.3", codeId=2, repeats=True))
     qh.concepts.append(QuestionnaireConcept(questionnaireConceptId=1, questionnaireId=1,
                                             questionnaireVersion=1,
                                             codeId=1))

@@ -21,6 +21,7 @@ CENSUS_REGION_METRIC = 'censusRegion'
 BIOSPECIMEN_METRIC = 'biospecimen'
 BIOSPECIMEN_SAMPLES_METRIC = 'biospecimenSamples'
 PHYSICAL_MEASUREMENTS_METRIC = 'physicalMeasurements'
+RACE_METRIC = 'race'
 AGE_RANGE_METRIC = 'ageRange'
 SPECIMEN_COLLECTED_VALUE = 'SPECIMEN_COLLECTED'
 COMPLETE_VALUE = 'COMPLETE'
@@ -63,6 +64,9 @@ def _consent_for_study_enrollment_and_ehr(summary):
 def _get_hpo_ids():
   return [hpo.name for hpo in HPODao().get_all()]
 
+def _get_race_values():
+  return [str(race) for race in participant_enums.Race]
+
 def _get_age_buckets():
   return [UNSET] + participant_enums.AGE_BUCKETS
 
@@ -95,7 +99,7 @@ def _get_answer_values_func(question_code_value):
   return lambda: BASE_VALUES + _get_answer_values(question_code_value)
 
 # These questionnaire answer fields are used to generate metrics.
-ANSWER_FIELDS = ["genderIdentityId", "raceId", "ethnicityId", "state"]
+ANSWER_FIELDS = ['genderIdentityId', 'state']
 
 ANSWER_FIELD_TO_QUESTION_CODE = {k: FIELD_TO_QUESTION_CODE[k][0] for k in ANSWER_FIELDS}
 
@@ -126,7 +130,8 @@ CONFIG = {
     FieldDef(CENSUS_REGION_METRIC, _get_census_regions),
     FieldDef(PHYSICAL_MEASUREMENTS_METRIC, _get_physical_measurements_values),
     FieldDef(BIOSPECIMEN_METRIC, _get_biospecimen_values),
-    FieldDef(BIOSPECIMEN_SAMPLES_METRIC, _get_biospecimen_samples_values)
+    FieldDef(BIOSPECIMEN_SAMPLES_METRIC, _get_biospecimen_samples_values),
+    FieldDef(RACE_METRIC, _get_race_values),
   ] + [FieldDef(fieldname, _get_submission_statuses) for fieldname in
        QUESTIONNAIRE_MODULE_FIELD_NAMES]
     + [CodeIdFieldDef(fieldname, _get_answer_values_func(question_code)) for

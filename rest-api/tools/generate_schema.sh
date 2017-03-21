@@ -13,4 +13,11 @@ then
   exit 1
 fi
 
-(source tools/set_path.sh; cd ${BASE_DIR}; alembic revision --autogenerate -m "$1")
+if [ -z "${DB_CONNECTION_STRING}" ]
+then
+  source tools/setup_local_vars.sh
+  set_local_db_connection_string
+fi
+
+(source tools/set_path.sh; cd ${BASE_DIR};
+ alembic revision --autogenerate -m "$1")

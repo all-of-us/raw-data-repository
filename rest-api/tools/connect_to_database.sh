@@ -25,8 +25,7 @@ then
   CREDS_ACCOUNT="${ACCOUNT}"
 fi
 
-DB_USER=root
-
+source tools/setup_vars.sh
 source tools/auth_setup.sh
 get_db_password
 run_cloud_sql_proxy

@@ -8,7 +8,7 @@ from dao.database_utils import replace_isodate
 from model.base import get_column_name
 from model.participant_summary import ParticipantSummary
 from code_constants import QUESTIONNAIRE_MODULE_FIELD_NAMES, PPI_SYSTEM
-from code_constants import UNMAPPED
+from code_constants import UNMAPPED, RACE_QUESTION_CODE
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from offline.metrics_pipeline import MetricsPipeline
 
@@ -56,7 +56,8 @@ _ANSWER_QUERY = (
 + "  AND qra.question_id = qq.questionnaire_question_id "
 + "  AND qq.code_id = qc.code_id "
 + "  AND qq.code_id in ({})"
-+ "  AND qr.participant_id % :num_shards = :shard_number"
++ "  AND qr.participant_id % :num_shards = :shard_number "
++ "ORDER BY qr.participant_id, qr.created, qc.value"
 )
 
 def _get_participant_sql(num_shards, shard_number):
@@ -74,7 +75,9 @@ def _get_hpo_id_sql(num_shards, shard_number):
 def _get_answer_sql(num_shards, shard_number):
   code_dao = CodeDao()
   code_ids = []
-  for code_value in ANSWER_FIELD_TO_QUESTION_CODE.values():
+  question_codes = list(ANSWER_FIELD_TO_QUESTION_CODE.values())
+  question_codes.append(RACE_QUESTION_CODE)
+  for code_value in question_codes:
     code = code_dao.get_code(PPI_SYSTEM, code_value)
     code_ids.append(str(code.codeId))
   return (replace_isodate(_ANSWER_QUERY.format((",".join(code_ids)))),

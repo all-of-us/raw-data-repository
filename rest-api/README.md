@@ -102,6 +102,10 @@ and `DROP DATABASE rdr; CREATE DATABASE rdr;`.)
 `tools/upgrade_database.sh --project pmi-drc-api-test --account $USER@google.com`
 will upgrade the test project's database. TODO(DA-211) automate this.
 
+If you are adding a new enum or custom type referenced by fields to the schema,
+you will need to update script.py.mako to import them. (The imports listed there
+are used in our generated Alembic versions.)
+
 ### Deploying
 
 To deploy to the test server, `https://pmi-drc-api-test.appspot.com/`, first get your

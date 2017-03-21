@@ -96,6 +96,7 @@ class CodeDao(CacheAllDao):
         parent = result.id_to_entity.get(code.parentId)
         if parent:
           parent.children.append(code)
+          code.parent = parent
     return result
 
   def _add_history(self, session, obj):
@@ -132,6 +133,13 @@ class CodeDao(CacheAllDao):
 
   def get_code(self, system, value):
     return self._get_cache().index_maps[SYSTEM_AND_VALUE].get((system, value))
+
+  def find_ancestor_of_type(self, code, code_type):
+    if code.codeType == code_type:
+      return code
+    if code.parentId:
+      return self.find_ancestor_of_type(self.get(code.parentId), code_type)
+    return None
 
   def get_or_add_codes(self, code_map):
     """Accepts a map of (system, value) -> (display, code_type, parent_id) for codes found in a

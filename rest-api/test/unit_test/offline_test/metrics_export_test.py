@@ -5,7 +5,7 @@ import offline.metrics_export
 from clock import FakeClock
 from code_constants import PPI_SYSTEM
 from code_constants import FIELD_TO_QUESTIONNAIRE_MODULE_CODE, GENDER_IDENTITY_QUESTION_CODE
-from code_constants import RACE_QUESTION_CODE, ETHNICITY_QUESTION_CODE, STATE_QUESTION_CODE
+from code_constants import RACE_QUESTION_CODE, STATE_QUESTION_CODE, RACE_WHITE_CODE
 from concepts import Concept
 from mapreduce import test_support
 from model.biobank_stored_sample import BiobankStoredSample
@@ -45,8 +45,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     FlaskTestBase.doTearDown(self)
 
   def submit_questionnaire_response(self, participant_id, questionnaire_id,
-                                    race_code, gender_code, ethnicity_code,
-                                    state, date_of_birth):
+                                    race_code, gender_code, state, date_of_birth):
     code_answers = []
     date_answers = []
     string_answers = []
@@ -54,8 +53,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       code_answers.append(('race', Concept(PPI_SYSTEM, race_code)))
     if gender_code:
       code_answers.append(('genderIdentity', Concept(PPI_SYSTEM, gender_code)))
-    if ethnicity_code:
-      code_answers.append(('ethnicity', Concept(PPI_SYSTEM, ethnicity_code)))
     if date_of_birth:
       date_answers.append(("dateOfBirth", date_of_birth))
     if state:
@@ -72,8 +69,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                             code_type=CodeType.QUESTION)
     SqlTestBase.setup_codes(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(),
                             code_type=CodeType.MODULE)
-    # Import codes for white, female, and hispanic, but not male or black.
-    SqlTestBase.setup_codes(["white", "female", "hispanic"], code_type=CodeType.ANSWER)
+    # Import codes for white and female, but not male or black.
+    SqlTestBase.setup_codes([RACE_WHITE_CODE, "female"], code_type=CodeType.ANSWER)
     participant_dao = ParticipantDao()
 
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
@@ -92,9 +89,9 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant = Participant(participantId=1, version=1, biobankId=2,
                                 clientId='blah')
       participant_dao.update(participant)
-      self.submit_questionnaire_response('P1', questionnaire_id, "white", "male",
-                                         "hispanic", None, datetime.date(1980, 1, 2))
-      self.submit_questionnaire_response('P2', questionnaire_id, None, None, None, None, None)
+      self.submit_questionnaire_response('P1', questionnaire_id, RACE_WHITE_CODE, "male",
+                                         None, datetime.date(1980, 1, 2))
+      self.submit_questionnaire_response('P2', questionnaire_id, None, None, None, None)
 
     with FakeClock(TIME_3):
       participant = Participant(participantId=1, version=2, biobankId=2, clientId='blah',
@@ -103,8 +100,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       self.send_post('Participant/P2/PhysicalMeasurements', load_measurement_json(2))
       self.send_post('Participant/P2/BiobankOrder', load_biobank_order_json(2))
       self.submit_questionnaire_response('P1', questionnaire_id, "black", "female",
-                                         "hispanic", None, datetime.date(1980, 1, 3))
-      self.submit_questionnaire_response('P2', questionnaire_id_2, None, None, None, 'VA', None)
+                                         None, datetime.date(1980, 1, 3))
+      self.submit_questionnaire_response('P2', questionnaire_id_2, None, None, 'VA', None)
       sample_dao = BiobankStoredSampleDao()
       sample_dao.insert(BiobankStoredSample(
         biobankStoredSampleId='abc',
@@ -146,11 +143,9 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 1,
                       [ANSWER_FIELDS,
                        ['1', t2, GENDER_IDENTITY_QUESTION_CODE, 'UNMAPPED', ''],
-                       ['1', t2, RACE_QUESTION_CODE, 'white', ''],
-                       ['1', t2, ETHNICITY_QUESTION_CODE, 'hispanic', ''],
+                       ['1', t2, RACE_QUESTION_CODE, RACE_WHITE_CODE, ''],
                        ['1', t3, GENDER_IDENTITY_QUESTION_CODE, 'female', ''],
-                       ['1', t3, RACE_QUESTION_CODE, 'UNMAPPED', ''],
-                       ['1', t3, ETHNICITY_QUESTION_CODE, 'hispanic', '']])
+                       ['1', t3, RACE_QUESTION_CODE, 'UNMAPPED', '']])
 
     # Wait for the metrics pipeline to run, processing the CSV output.
     with FakeClock(TIME_4):
@@ -177,7 +172,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.questionnaireOnSociodemographics.UNSET': 1,
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.ethnicity.UNSET': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
     self.assertBucket(bucket_map, TIME, 'PITT',
@@ -193,7 +187,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.questionnaireOnSociodemographics.UNSET': 1,
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.ethnicity.UNSET': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
     self.assertBucket(bucket_map, TIME, '',
@@ -211,10 +204,9 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.questionnaireOnSociodemographics.UNSET': 2,
                         'Participant.genderIdentity.UNSET': 2,
                         'Participant.race.UNSET': 2,
-                        'Participant.ethnicity.UNSET': 2,
                         'Participant.biospecimenSummary.UNSET': 2,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
-    # At TIME_2, P1 is white, UNMAPPED gender and hispanic ethnicity; biobank samples
+    # At TIME_2, P1 is white, UNMAPPED gender; biobank samples
     # arrived for P1; and both participants have submitted the sociodemographics questionnaire.
     self.assertBucket(bucket_map, TIME_2, 'UNSET',
                       { 'Participant': 1,
@@ -228,8 +220,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.questionnaireOnPersonalHabits.UNSET': 1,
                         'Participant.questionnaireOnSociodemographics.SUBMITTED': 1,
                         'Participant.genderIdentity.UNMAPPED': 1,
-                        'Participant.race.white': 1,
-                        'Participant.ethnicity.hispanic': 1,
+                        'Participant.race.WHITE': 1,
                         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
     self.assertBucket(bucket_map, TIME_2, 'PITT',
@@ -245,7 +236,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.questionnaireOnSociodemographics.SUBMITTED': 1,
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.ethnicity.UNSET': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
     self.assertBucket(bucket_map, TIME_2, '',
@@ -264,10 +254,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.questionnaireOnSociodemographics.SUBMITTED': 2,
                         'Participant.genderIdentity.UNMAPPED': 1,
                         'Participant.genderIdentity.UNSET': 1,
-                        'Participant.race.white': 1,
+                        'Participant.race.WHITE': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.ethnicity.hispanic': 1,
-                        'Participant.ethnicity.UNSET': 1,
                         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
@@ -297,8 +285,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNMAPPED': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.ethnicity.hispanic': 1,
-                        'Participant.ethnicity.UNSET': 1,
                         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
@@ -323,8 +309,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNMAPPED': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.ethnicity.hispanic': 1,
-                        'Participant.ethnicity.UNSET': 1,
                         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })

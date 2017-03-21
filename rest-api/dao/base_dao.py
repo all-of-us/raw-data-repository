@@ -109,6 +109,11 @@ class BaseDao(object):
     """Subclasses may override this to eagerly loads any child objects (using subqueryload)."""
     return self.get(obj_id)
 
+  def get_all(self):
+    """Fetches all entities from the database. For use on small tables."""
+    with self.session() as session:
+      return session.query(self.model_type).all()
+
   def _get_property_type(self, prop):
     property_classname = prop.property.columns[0].type.__class__.__name__
     property_type = _PROPERTY_TYPE_MAP.get(property_classname)

@@ -16,9 +16,11 @@ EXPECTED_CONCEPT_1 = QuestionnaireConcept(questionnaireConceptId=1, questionnair
 EXPECTED_CONCEPT_2 = QuestionnaireConcept(questionnaireConceptId=2, questionnaireId=1,
                                           questionnaireVersion=1, codeId=2)
 EXPECTED_QUESTION_1 = QuestionnaireQuestion(questionnaireQuestionId=1, questionnaireId=1,
-                                            questionnaireVersion=1, linkId='a', codeId=4)
+                                            questionnaireVersion=1, linkId='a', codeId=4,
+                                            repeats=False)
 EXPECTED_QUESTION_2 = QuestionnaireQuestion(questionnaireQuestionId=2, questionnaireId=1,
-                                            questionnaireVersion=1, linkId='d', codeId=5)
+                                            questionnaireVersion=1, linkId='d', codeId=5,
+                                            repeats=True)
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 RESOURCE_1 = '{"x": "y"}'
@@ -48,8 +50,8 @@ class QuestionnaireDaoTest(SqlTestBase):
                        parentId=2)
     self.CONCEPT_1 = QuestionnaireConcept(codeId=1)
     self.CONCEPT_2 = QuestionnaireConcept(codeId=2)
-    self.QUESTION_1 = QuestionnaireQuestion(linkId='a', codeId=4)
-    self.QUESTION_2 = QuestionnaireQuestion(linkId='d', codeId=5)
+    self.QUESTION_1 = QuestionnaireQuestion(linkId='a', codeId=4, repeats=False)
+    self.QUESTION_2 = QuestionnaireQuestion(linkId='d', codeId=5, repeats=True)
     self.insert_codes()
 
   def insert_codes(self):

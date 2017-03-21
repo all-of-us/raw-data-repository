@@ -1,8 +1,8 @@
 """Initial schema
 
-Revision ID: 0212ae24cc9a
+Revision ID: 2fa18d2020ee
 Revises:
-Create Date: 2017-03-10 08:46:15.049788
+Create Date: 2017-03-21 09:59:59.609778
 
 """
 from alembic import op
@@ -10,12 +10,12 @@ import sqlalchemy as sa
 import model.utils
 
 
-from participant_enums import HPOId, PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import MembershipTier
+from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
+from participant_enums import MembershipTier, Race
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '0212ae24cc9a'
+revision = '2fa18d2020ee'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -168,8 +168,7 @@ def upgrade():
     sa.Column('date_of_birth', sa.Date(), nullable=True),
     sa.Column('gender_identity_id', sa.Integer(), nullable=True),
     sa.Column('membership_tier', model.utils.Enum(MembershipTier), nullable=True),
-    sa.Column('race_id', sa.Integer(), nullable=True),
-    sa.Column('ethnicity_id', sa.Integer(), nullable=True),
+    sa.Column('race', model.utils.Enum(Race), nullable=True),
     sa.Column('physical_measurements_status', model.utils.Enum(PhysicalMeasurementsStatus), nullable=True),
     sa.Column('sign_up_time', sa.DateTime(), nullable=True),
     sa.Column('hpo_id', sa.Integer(), nullable=False),
@@ -193,22 +192,20 @@ def upgrade():
     sa.Column('questionnaire_on_family_health_time', sa.DateTime(), nullable=True),
     sa.Column('num_completed_baseline_ppi_modules', sa.SmallInteger(), nullable=True),
     sa.Column('num_baseline_samples_arrived', sa.SmallInteger(), nullable=True),
-    sa.ForeignKeyConstraint(['ethnicity_id'], ['code.code_id'], ),
     sa.ForeignKeyConstraint(['gender_identity_id'], ['code.code_id'], ),
     sa.ForeignKeyConstraint(['hpo_id'], ['hpo.hpo_id'], ),
     sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
-    sa.ForeignKeyConstraint(['race_id'], ['code.code_id'], ),
     sa.PrimaryKeyConstraint('participant_id')
     )
     op.create_index('participant_summary_biobank_id', 'participant_summary', ['biobank_id'], unique=False)
     op.create_index('participant_summary_hpo', 'participant_summary', ['hpo_id'], unique=False)
     op.create_index('participant_summary_hpo_consent', 'participant_summary', ['hpo_id', 'consent_for_study_enrollment'], unique=False)
     op.create_index('participant_summary_hpo_dob', 'participant_summary', ['hpo_id', 'date_of_birth'], unique=False)
-    op.create_index('participant_summary_hpo_ethnicity', 'participant_summary', ['hpo_id', 'ethnicity_id'], unique=False)
     op.create_index('participant_summary_hpo_fn', 'participant_summary', ['hpo_id', 'first_name'], unique=False)
     op.create_index('participant_summary_hpo_ln', 'participant_summary', ['hpo_id', 'last_name'], unique=False)
     op.create_index('participant_summary_hpo_num_baseline_ppi', 'participant_summary', ['hpo_id', 'num_completed_baseline_ppi_modules'], unique=False)
     op.create_index('participant_summary_hpo_num_baseline_samples', 'participant_summary', ['hpo_id', 'num_baseline_samples_arrived'], unique=False)
+    op.create_index('participant_summary_hpo_race', 'participant_summary', ['hpo_id', 'race'], unique=False)
     op.create_index('participant_summary_hpo_tier', 'participant_summary', ['hpo_id', 'membership_tier'], unique=False)
     op.create_index('participant_summary_hpo_zip', 'participant_summary', ['hpo_id', 'zip_code'], unique=False)
     op.create_index('participant_summary_ln_dob', 'participant_summary', ['last_name', 'date_of_birth'], unique=False)
@@ -243,6 +240,7 @@ def upgrade():
     sa.Column('questionnaire_version', sa.Integer(), nullable=True),
     sa.Column('link_id', sa.String(length=20), nullable=True),
     sa.Column('code_id', sa.Integer(), nullable=False),
+    sa.Column('repeats', sa.Boolean(), nullable=False),
     sa.ForeignKeyConstraint(['code_id'], ['code.code_id'], ),
     sa.ForeignKeyConstraint(['questionnaire_id', 'questionnaire_version'], ['questionnaire_history.questionnaire_id', 'questionnaire_history.version'], ),
     sa.PrimaryKeyConstraint('questionnaire_question_id'),
@@ -296,7 +294,6 @@ def upgrade():
     sa.PrimaryKeyConstraint('questionnaire_response_answer_id')
     )
     # ### end Alembic commands ###
-
     # Manual edit to add HPO IDs.
     # TODO(DA-224) Import these from CSV as part of setup_local_database.sh.
     hpo_table = sa.Table('hpo', sa.MetaData(),
@@ -305,7 +302,6 @@ def upgrade():
       sa.PrimaryKeyConstraint('hpo_id'),
       sa.UniqueConstraint('name')
     )
-
     # Insert our HPO IDs into the HPO table.
     op.bulk_insert(hpo_table,
     [
@@ -341,11 +337,11 @@ def downgrade():
     op.drop_index('participant_summary_ln_dob', table_name='participant_summary')
     op.drop_index('participant_summary_hpo_zip', table_name='participant_summary')
     op.drop_index('participant_summary_hpo_tier', table_name='participant_summary')
+    op.drop_index('participant_summary_hpo_race', table_name='participant_summary')
     op.drop_index('participant_summary_hpo_num_baseline_samples', table_name='participant_summary')
     op.drop_index('participant_summary_hpo_num_baseline_ppi', table_name='participant_summary')
     op.drop_index('participant_summary_hpo_ln', table_name='participant_summary')
     op.drop_index('participant_summary_hpo_fn', table_name='participant_summary')
-    op.drop_index('participant_summary_hpo_ethnicity', table_name='participant_summary')
     op.drop_index('participant_summary_hpo_dob', table_name='participant_summary')
     op.drop_index('participant_summary_hpo_consent', table_name='participant_summary')
     op.drop_index('participant_summary_hpo', table_name='participant_summary')
@@ -367,3 +363,5 @@ def downgrade():
     op.drop_table('hpo')
     op.drop_table('code_book')
     # ### end Alembic commands ###
+
+

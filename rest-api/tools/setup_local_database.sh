@@ -12,15 +12,12 @@
 # For a fresh database/schema, run this once to set up a blank db, then run
 # generate_schema.sh, and then run this again to create that initial schema.
 
-PASSWORD=root
+source tools/setup_local_vars.sh
 DB_CONNECTION_NAME=
-DB_USER=root
-DB_NAME=rdr
 DB_INFO_FILE=/tmp/db_info.json
 CREATE_DB_FILE=/tmp/create_db.sql
 
 PASSWORD_ARGS="-p${PASSWORD}"
-PASSWORD_STRING=":${PASSWORD}"
 while true; do
   case "$1" in
     --nopassword) PASSWORD=; PASSWORD_ARGS=; PASSWORD_STRING=; shift 1;;
@@ -34,14 +31,13 @@ done
 if [ "${MYSQL_ROOT_PASSWORD}" ]
 then
   PASSWORD="${MYSQL_ROOT_PASSWORD}"
-  PASSWORD_ARGS='-p"${PASSWORD}"'
-  PASSWORD_STRING=":${PASSWORD}"
+  PASSWORD_ARGS='-p"${PASSWORD}"'  
 else
   echo "Using a default root mysql password. Set MYSQL_ROOT_PASSWORD to override."
 fi
 
 # Export this so Alembic can find it.
-export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}${PASSWORD_STRING}@localhost/${DB_NAME}?charset=utf8"
+set_local_db_connection_string
 
 function finish {
   rm -f ${DB_INFO_FILE}

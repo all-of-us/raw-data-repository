@@ -4,7 +4,7 @@ import json
 from model.code import CodeType
 from model.base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint
+from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint, Boolean
 from sqlalchemy import UniqueConstraint, ForeignKey
 from werkzeug.exceptions import BadRequest
 
@@ -68,11 +68,12 @@ class Questionnaire(QuestionnaireBase, Base):
 
   @staticmethod
   def _add_questions(q, code_id_map, questions):
-    for system, code, linkId in questions:
+    for system, code, linkId, repeats in questions:
       q.questions.append(QuestionnaireQuestion(questionnaireId=q.questionnaireId,
                                                questionnaireVersion=q.version,
                                                linkId=linkId,
-                                               codeId=code_id_map.get((system, code))))
+                                               codeId=code_id_map.get((system, code)),
+                                               repeats=repeats if repeats else False))
 
   @staticmethod
   def _extract_codes(group):
@@ -97,7 +98,7 @@ class Questionnaire(QuestionnaireBase, Base):
           concept = question.concept[0]
           if concept.system and concept.code:
             code_map[(concept.system, concept.code)] = (concept.display, CodeType.QUESTION, None)
-            questions.append((concept.system, concept.code, question.linkId))
+            questions.append((concept.system, concept.code, question.linkId, question.repeats))
         if question.group:
           for sub_group in question.group:
             Questionnaire._populate_questions(sub_group, code_map, questions)
@@ -140,6 +141,7 @@ class QuestionnaireQuestion(Base):
   questionnaireVersion = Column('questionnaire_version', Integer)
   linkId = Column('link_id', String(20))
   codeId = Column('code_id', Integer, ForeignKey('code.code_id'), nullable=False)
+  repeats = Column('repeats', Boolean, nullable=False)
   __table_args__ = (
     ForeignKeyConstraint(
         ['questionnaire_id', 'questionnaire_version'],

@@ -31,6 +31,9 @@ SYNC_SHARDS_PER_CHANNEL = 'sync_shards_per_channel'
 MEASUREMENTS_ENTITIES_PER_SYNC = 'measurements_entities_per_sync'
 BASELINE_PPI_QUESTIONNAIRE_FIELDS = 'baseline_ppi_questionnaire_fields'
 BASELINE_SAMPLE_TEST_CODES = 'baseline_sample_test_codes'
+# True if we can send requests to ourselves; used in non-prod environments for loading
+# fake data.
+ALLOW_FAKE_REQUESTS_FROM_SERVER = 'allow_fake_requests_from_server'
 
 
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]

@@ -67,18 +67,19 @@ from dao.database_utils import parse_datetime
 from dateutil.relativedelta import relativedelta
 from census_regions import census_regions
 from code_constants import QUESTION_CODE_TO_FIELD, FieldType, QUESTIONNAIRE_MODULE_FIELD_NAMES
-from code_constants import UNSET
+from code_constants import UNSET, RACE_QUESTION_CODE, PPI_SYSTEM
 from dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
 from model.metrics import MetricsBucket
 from mapreduce.lib.input_reader._gcs import GCSInputReader
 from offline.base_pipeline import BasePipeline
 from metrics_config import BIOSPECIMEN_METRIC, BIOSPECIMEN_SAMPLES_METRIC, HPO_ID_METRIC
 from metrics_config import PHYSICAL_MEASUREMENTS_METRIC, AGE_RANGE_METRIC, CENSUS_REGION_METRIC
-from metrics_config import SPECIMEN_COLLECTED_VALUE, COMPLETE_VALUE
+from metrics_config import SPECIMEN_COLLECTED_VALUE, COMPLETE_VALUE, RACE_METRIC
 from metrics_config import SAMPLES_ARRIVED_VALUE, SUBMITTED_VALUE, PARTICIPANT_KIND
 from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields, get_fieldnames
 from metrics_config import transform_participant_summary_field
-from participant_enums import get_bucketed_age
+from participant_enums import get_bucketed_age, get_race
+from dao.code_dao import CodeDao
 
 class PipelineNotRunningException(BaseException):
   """Exception thrown when a pipeline is expected to be running but is not."""
@@ -222,15 +223,37 @@ def map_hpo_ids(reader):
   for participant_id, hpo, last_modified in reader:
     yield(participant_id, make_pair_str(last_modified, make_metric(HPO_ID_METRIC, hpo)))
 
-
 def map_answers(reader):
   """Emit (participantId, date|<metric>.<answer>) for each answer.
 
   Metric names are taken from the field name in code_constants.
 
   Code and string answers are accepted.
+
+  Incoming rows are expected to be sorted by participant ID, start time, and question code,
+  such that repeated answers for the same question are next to each other.
   """
+  last_participant_id = None
+  last_start_time = None
+  race_code_values = []
+  code_dao = CodeDao()
   for participant_id, start_time, question_code, answer_code, answer_string in reader:
+
+    # Multiple race answer values for the participant at a single time
+    # are combined into a single race enum.
+    if race_code_values and (last_participant_id != participant_id or
+                             last_start_time != start_time or
+                             question_code != RACE_QUESTION_CODE):
+      race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
+      race = get_race(race_codes)
+      yield(last_participant_id, make_pair_str(last_start_time,
+                                               make_metric(RACE_METRIC, str(race))))
+      race_code_values = []
+    last_participant_id = participant_id
+    last_start_time = start_time
+    if question_code == RACE_QUESTION_CODE:
+      race_code_values.append(answer_code)
+      continue
     question_field = QUESTION_CODE_TO_FIELD[question_code]
     metric = transform_participant_summary_field(question_field[0])
     if question_field[1] == FieldType.CODE:
@@ -248,6 +271,12 @@ def map_answers(reader):
       raise AssertionError("Invalid field type: %s" % question_field[1])
     yield(participant_id, make_pair_str(start_time, make_metric(metric, answer_value)))
 
+  # Emit race for the last participant if we saved some values for it.
+  if race_code_values:
+    race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
+    race = get_race(race_codes)
+    yield(last_participant_id, make_pair_str(last_start_time,
+                                             make_metric(RACE_METRIC, str(race))))
 
 def map_participants(reader):
   """Emits any or all of the following:
