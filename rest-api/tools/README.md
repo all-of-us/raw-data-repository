@@ -17,8 +17,9 @@ To regenerate an initial schema:
 ```
 # Remove the existing schema definition.
 rm alembic/versions/*.py
-# Clear the database.
-mysql -u root -p -e 'DROP DATABASE rdr; CREATE DATABASE rdr'
+# Clear the database. (The setup script clears the db, creates an empty one,
+# and then fails everything else leaving it empty.)
+tools/setup_local_database.sh
 # Optionally add any new imports to the Alembic bootstrap.
 $EDITOR alembic/script.py.mako
 # Regenerate the schema.
