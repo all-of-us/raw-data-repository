@@ -114,6 +114,7 @@ class ParticipantSummary(Base):
 
     return result
 
+# TODO(DA-234) Add an index for withdrawal status when querying summaries & filtering by withdrawal.
 Index('participant_summary_biobank_id', ParticipantSummary.biobankId)
 Index('participant_summary_ln_dob', ParticipantSummary.lastName,
       ParticipantSummary.dateOfBirth)
