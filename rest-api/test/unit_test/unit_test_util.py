@@ -174,6 +174,7 @@ class NdbTestBase(SqlTestBase):
     dev_config = read_dev_config()
     dev_config[config.USER_INFO] = self._CONFIG_USER_INFO
     config.store_current_config(dev_config)
+    config.CONFIG_OVERRIDES = {}
 
 class CloudStorageSqlTestBase(testutil.CloudStorageTestBase):
   """Merge AppEngine's provided CloudStorageTestBase and our SqlTestBase.
