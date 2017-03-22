@@ -64,19 +64,19 @@ class ParticipantTest(unittest.TestCase):
     response['providerLink'] = [ provider_link, provider_link_2 ]
     try:
       response = self.client.request_json(
-          'Participant/{}'.format(participant_id), 'PATCH', response)
+          'Participant/{}'.format(participant_id), 'PUT', response)
       self.fail("Need If-Match header for update")
     except HttpException, ex:
       self.assertEqual(ex.code, 400)
     try:
       response = self.client.request_json(
-          'Participant/{}'.format(participant_id), 'PATCH', response,
+          'Participant/{}'.format(participant_id), 'PUT', response,
           headers = { 'If-Match': 'W/"12345"' })
       self.fail("Wrong If-Match header for update")
     except HttpException, ex:
       self.assertEqual(ex.code, 412)
     response = self.client.request_json(
-          'Participant/{}'.format(participant_id), 'PATCH', response,
+          'Participant/{}'.format(participant_id), 'PUT', response,
           headers = { 'If-Match': last_etag})
 
     self.assertEqual(response['biobankId'], biobank_id)

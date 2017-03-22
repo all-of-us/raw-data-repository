@@ -23,7 +23,7 @@ class BaseApi(Resource):
 
   Subclasses should override the list() method; they can use the query() method
   to return an FHIR bundle containing the results.  The generic implementations
-  of get(), post() and patch() should be sufficient for most subclasses.
+  of get() and post() should be sufficient for most subclasses.
 
   When extending this class, prefer to use the method_decorators class property
   for uniform authentication, e.g.:
@@ -33,9 +33,8 @@ class BaseApi(Resource):
   resources when populated; if False, it will be ignored.
 
   meta.versionId will be used to populate an ETag header on resource responses;
-  an If-Match header must be sent on patch requests that matches the current ETag
+  an If-Match header must be sent on put requests that matches the current ETag
   value
-
   """
   def __init__(self, dao, include_meta=True):
     self.dao = dao
@@ -103,22 +102,6 @@ class BaseApi(Resource):
     self.dao.insert(m, date=consider_fake_date(),
                     client_id=api_util.get_oauth_id())
     return self.make_response_for_resource(self.dao.to_json(m))
-
-  def patch(self, id_, a_id=None):
-    """Handles a PATCH (update) request.
-
-    Args:
-      id_: The id of the object to update.
-      a_id: The ancestor id.
-    """
-    old_m = self.dao.load(id_, a_id)
-    new_m = self.dao.from_json(request.get_json(force=True), a_id, id_)
-    self.validate_object(new_m, a_id)
-    api_util.update_model(old_model=old_m, new_model=new_m)
-    self.dao.update(old_m, request.headers.get('If-Match'),
-                    date=consider_fake_date(),
-                    client_id=api_util.get_oauth_id())
-    return self.make_response_for_resource(self.dao.to_json(old_m))
 
   def put(self, id_, a_id=None):
     """Handles a PUT (replace) request.

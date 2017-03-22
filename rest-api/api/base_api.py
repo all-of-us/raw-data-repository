@@ -16,7 +16,7 @@ class BaseApi(Resource):
   Provides a generic implementation for an API handler which is backed by a
   BaseDao and supports POST and GET.
 
-  For APIs that support PATCH requests as well, extend from UpdatableApi instead.
+  For APIs that support PUT requests as well, extend from UpdatableApi instead.
 
   When extending this class, prefer to use the method_decorators class property
   for uniform authentication, e.g.:
@@ -179,7 +179,7 @@ class UpdatableApi(BaseApi):
     expected_version = None
     etag = request.headers.get('If-Match')
     if not etag:
-      raise BadRequest("If-Match is missing for PATCH request")
+      raise BadRequest("If-Match is missing for PUT request")
     expected_version = _parse_etag(etag)
     m = self._get_model_to_update(resource, id_, expected_version, participant_id)
     self._do_update(m)

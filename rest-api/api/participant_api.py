@@ -19,8 +19,3 @@ class ParticipantApi(UpdatableApi):
   @api_util.auth_required(PTC)
   def put(self, p_id):
     return super(ParticipantApi, self).put(p_id)
-
-  # TODO(DA-216): remove once PTC migrates to PUT
-  @api_util.auth_required(PTC)
-  def patch(self, p_id):
-    return super(ParticipantApi, self).put(p_id)
