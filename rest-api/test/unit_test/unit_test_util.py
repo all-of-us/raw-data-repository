@@ -27,7 +27,7 @@ from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from model.code import Code
 from model.hpo import HPO
-from model.participant import Participant
+from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus
 from mock import patch
@@ -51,7 +51,7 @@ class TestBase(unittest.TestCase):
     This is intended especially for updates, where more fields are required than for inserts.
     """
     common_args = {
-      'clientId': 'testing_acct@unittests.com',
+      'hpoId': UNSET_HPO_ID,
       'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
       'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
     }
@@ -61,13 +61,23 @@ class TestBase(unittest.TestCase):
   def _participant_summary_with_defaults(self, **kwargs):
     common_args = {
       'hpoId': UNSET_HPO_ID,
-      'numCompletedBaselinePPIModules': 1,
+      'numCompletedBaselinePPIModules': 0,
       'numBaselineSamplesArrived': 0,
       'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
       'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
     }
     common_args.update(kwargs)
     return ParticipantSummary(**common_args)
+
+  def _participant_history_with_defaults(self, **kwargs):
+    common_args = {
+      'hpoId': UNSET_HPO_ID,
+      'version': 1,
+      'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
+      'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
+    }
+    common_args.update(kwargs)
+    return ParticipantHistory(**common_args)
 
 
 class TestbedTestBase(TestBase):
