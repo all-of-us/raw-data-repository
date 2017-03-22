@@ -104,7 +104,7 @@ class ParticipantDao(UpdatableDao):
         hpoId=obj.hpoId,
         withdrawalStatus=obj.withdrawalStatus,
         suspensionStatus=obj.suspensionStatus,
-        enrollmentStatus=enrollmentStatus)
+        enrollmentStatus=enrollment_status)
 
   @staticmethod
   def _get_hpo_id(obj):
