@@ -205,42 +205,42 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 2)
     self.assertEquals(self.dao.get(p_mixed_samples.participantId).numBaselineSamplesArrived, 1)
     self.assertEquals(self.dao.get(p_no_samples.participantId).numBaselineSamplesArrived, 0)
-    
+
   def test_calculate_enrollment_status(self):
     self.assertEquals(EnrollmentStatus.FULL_PARTICIPANT,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
                                                            QuestionnaireStatus.SUBMITTED,
-                                                           3, 
+                                                           3,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.RECEIVED))
     self.assertEquals(EnrollmentStatus.MEMBER,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
                                                            QuestionnaireStatus.SUBMITTED,
-                                                           2, 
+                                                           2,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.RECEIVED))
     self.assertEquals(EnrollmentStatus.MEMBER,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
                                                            QuestionnaireStatus.SUBMITTED,
-                                                           3, 
+                                                           3,
                                                            PhysicalMeasurementsStatus.UNSET,
                                                            SampleStatus.RECEIVED))
     self.assertEquals(EnrollmentStatus.MEMBER,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
                                                            QuestionnaireStatus.SUBMITTED,
-                                                           3, 
+                                                           3,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.UNSET))
     self.assertEquals(EnrollmentStatus.INTERESTED,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.UNSET,
                                                            QuestionnaireStatus.SUBMITTED,
-                                                           3, 
+                                                           3,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.RECEIVED))
     self.assertEquals(EnrollmentStatus.INTERESTED,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
                                                            QuestionnaireStatus.UNSET,
-                                                           3, 
+                                                           3,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.RECEIVED))
 
