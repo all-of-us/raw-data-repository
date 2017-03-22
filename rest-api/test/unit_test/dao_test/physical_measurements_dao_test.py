@@ -5,7 +5,9 @@ from clock import FakeClock
 from model.participant import Participant
 from model.measurements import PhysicalMeasurements
 from dao.participant_dao import ParticipantDao
+from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
+from participant_enums import PhysicalMeasurementsStatus
 from test_data import load_measurement_json, load_measurement_json_amendment
 from unit_test_util import SqlTestBase
 from werkzeug.exceptions import BadRequest
@@ -40,6 +42,8 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
                                                   participantId=self.participant.participantId,
                                                   resource=self.measurement_json)
+    summary = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertIsNone(summary.physicalMeasurementsStatus)
     with FakeClock(TIME_2):
       measurements = self.dao.insert(measurements_to_insert)
 
@@ -52,7 +56,10 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEquals(expected_measurements.asdict(), measurements.asdict())
     measurements = self.dao.get(measurements.physicalMeasurementsId)
     self.assertEquals(expected_measurements.asdict(), measurements.asdict())
-
+    # Completing physical measurements changes the participant summary status
+    summary = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertEquals(PhysicalMeasurementsStatus.COMPLETED, summary.physicalMeasurementsStatus)
+    
   def testInsert_amend(self):
     measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
                                                   participantId=self.participant.participantId,

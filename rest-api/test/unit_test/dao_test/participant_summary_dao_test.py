@@ -11,7 +11,8 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
 from model.biobank_stored_sample import BiobankStoredSample
-from participant_enums import EnrollmentStatus
+from participant_enums import EnrollmentStatus, QuestionnaireStatus, PhysicalMeasurementsStatus
+from participant_enums import SampleStatus
 from unit_test_util import NdbTestBase, PITT_HPO_ID
 
 
@@ -204,7 +205,44 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 2)
     self.assertEquals(self.dao.get(p_mixed_samples.participantId).numBaselineSamplesArrived, 1)
     self.assertEquals(self.dao.get(p_no_samples.participantId).numBaselineSamplesArrived, 0)
-
+    
+  def test_calculate_enrollment_status(self):
+    self.assertEquals(EnrollmentStatus.FULL_PARTICIPANT,
+                      self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
+                                                           QuestionnaireStatus.SUBMITTED,
+                                                           3, 
+                                                           PhysicalMeasurementsStatus.COMPLETED,
+                                                           SampleStatus.RECEIVED))
+    self.assertEquals(EnrollmentStatus.MEMBER,
+                      self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
+                                                           QuestionnaireStatus.SUBMITTED,
+                                                           2, 
+                                                           PhysicalMeasurementsStatus.COMPLETED,
+                                                           SampleStatus.RECEIVED))
+    self.assertEquals(EnrollmentStatus.MEMBER,
+                      self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
+                                                           QuestionnaireStatus.SUBMITTED,
+                                                           3, 
+                                                           PhysicalMeasurementsStatus.UNSET,
+                                                           SampleStatus.RECEIVED))
+    self.assertEquals(EnrollmentStatus.MEMBER,
+                      self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
+                                                           QuestionnaireStatus.SUBMITTED,
+                                                           3, 
+                                                           PhysicalMeasurementsStatus.COMPLETED,
+                                                           SampleStatus.UNSET))
+    self.assertEquals(EnrollmentStatus.INTERESTED,
+                      self.dao.calculate_enrollment_status(QuestionnaireStatus.UNSET,
+                                                           QuestionnaireStatus.SUBMITTED,
+                                                           3, 
+                                                           PhysicalMeasurementsStatus.COMPLETED,
+                                                           SampleStatus.RECEIVED))
+    self.assertEquals(EnrollmentStatus.INTERESTED,
+                      self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
+                                                           QuestionnaireStatus.UNSET,
+                                                           3, 
+                                                           PhysicalMeasurementsStatus.COMPLETED,
+                                                           SampleStatus.RECEIVED))
 
 def _with_token(query, token):
   return Query(query.field_filters, query.order_by, query.max_results, token)
