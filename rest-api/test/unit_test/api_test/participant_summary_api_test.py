@@ -147,14 +147,14 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "Mary", "Q", "Jones", "78751", datetime.date(1978, 10, 8))
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_WHITE_CODE, "male",
                                        "Fred", "T", "Smith", "78752", datetime.date(1978, 10, 10))
-    # Send an empty questionnaire response for the consent questionnaire for participants 2 and 3  
-    self._submit_empty_questionnaire_response(participant_id_2, questionnaire_id_3)  
+    # Send an empty questionnaire response for the consent questionnaire for participants 2 and 3
+    self._submit_empty_questionnaire_response(participant_id_2, questionnaire_id_3)
     self._submit_empty_questionnaire_response(participant_id_3, questionnaire_id_3)
 
     # Send an empty questionnaire response for another questionnaire for participant 3,
     # completing the baseline PPI modules.
     self._submit_empty_questionnaire_response(participant_id_3, questionnaire_id_2)
-    
+
     # Send physical measurements for participants 2 and 3
     measurements_2 = load_measurement_json(participant_id_2)
     measurements_3 = load_measurement_json(participant_id_3)
@@ -162,7 +162,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     path_3 = 'Participant/%s/PhysicalMeasurements' % participant_id_3
     self.send_post(path_2, measurements_2)
     self.send_post(path_3, measurements_3)
-   
+
     # Store samples for DNA for participants 1 and 3
     self._store_biobank_sample(participant_1, '1ED10')
     self._store_biobank_sample(participant_3, 'Saliva')
@@ -172,13 +172,13 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
     ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
-    
+
     self.assertEquals(1, ps_1['numCompletedBaselinePPIModules'])
     self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
     self.assertEquals('UNSET', ps_1['samplesToIsolateDNA'])
-    self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])        
+    self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
     self.assertEquals(1, ps_2['numCompletedBaselinePPIModules'])
-    self.assertEquals(0, ps_2['numBaselineSamplesArrived'])    
+    self.assertEquals(0, ps_2['numBaselineSamplesArrived'])
     self.assertEquals('UNSET', ps_2['samplesToIsolateDNA'])
     self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
     self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
