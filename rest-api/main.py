@@ -33,8 +33,7 @@ api.add_resource(ParticipantApi,
                  PREFIX + 'Participant/<participant_id:p_id>',
                  PREFIX + 'Participant',
                  endpoint='participant',
-                 # TODO(DA-216): remove PATCH once PTC migrates to PUT
-                 methods=['GET', 'POST', 'PATCH', 'PUT'])
+                 methods=['GET', 'POST', 'PUT'])
 
 api.add_resource(ParticipantSummaryApi,
                  PREFIX + 'Participant/<participant_id:p_id>/Summary',
