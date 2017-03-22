@@ -3,6 +3,8 @@ import os
 import model.database # pylint: disable=unused-import
 import sqlalchemy as sa
 
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.types import BLOB
 from sqlalchemy.dialects.mysql.types import TINYINT, SMALLINT
 from alembic import context
 from sqlalchemy import create_engine
@@ -28,6 +30,12 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+# In MySQL, make BLOB fields be LONGBLOB (which supports large blobs)
+@compiles(BLOB, "mysql")
+def compile_blob_in_mysql_to_longblob(type_, compiler, **kw):
+  #pylint: disable=unused-argument
+  return "LONGBLOB"
 
 def get_url():
   return os.environ['DB_CONNECTION_STRING']

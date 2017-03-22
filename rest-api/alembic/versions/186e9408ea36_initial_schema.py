@@ -1,8 +1,8 @@
 """Initial schema
 
-Revision ID: 7ccb7cc4ff77
-Revises:
-Create Date: 2017-03-22 14:20:06.233569
+Revision ID: 186e9408ea36
+Revises: 
+Create Date: 2017-03-22 17:36:28.086825
 
 """
 from alembic import op
@@ -16,7 +16,7 @@ from participant_enums import EnrollmentStatus, Race, SampleStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '7ccb7cc4ff77'
+revision = '186e9408ea36'
 down_revision = None
 branch_labels = None
 depends_on = None
