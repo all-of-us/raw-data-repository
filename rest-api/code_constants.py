@@ -38,6 +38,10 @@ RACE_HISPANIC_CODE = 'WhatRaceEthnicity_Hispanic'
 RACE_FREETEXT_CODE = 'WhatRaceEthnicity_FreeText'
 
 # Module names for questionnaires / consent forms
+# TODO: UPDATE THIS TO REAL CODEBOOK VALUES WHEN PRESENT
+CONSENT_FOR_STUDY_ENROLLMENT_MODULE = "ConsentForEnrollment"
+CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE = "ConsentForEHR"
+
 OVERALL_HEALTH_PPI_MODULE = "OverallHealth"
 PERSONAL_HABITS_PPI_MODULE = "PersonalHabits"
 SOCIODEMOGRAPHIC_PPI_MODULE = "Sociodemographic"
@@ -61,8 +65,8 @@ QUESTION_CODE_TO_FIELD = {v[0]: (k, v[1]) for k, v in FIELD_TO_QUESTION_CODE.ite
 
 FIELD_TO_QUESTIONNAIRE_MODULE_CODE = {
   # TODO: fill this in when correct codes are defined
-  #'consentForStudyEnrollment': concepts.ENROLLMENT_CONSENT_FORM,
-  #'consentForElectronicHealthRecords': concepts.ELECTRONIC_HEALTH_RECORDS_CONSENT_FORM,
+  'consentForStudyEnrollment': CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
+  'consentForElectronicHealthRecords': CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
   'questionnaireOnOverallHealth': OVERALL_HEALTH_PPI_MODULE,
   'questionnaireOnPersonalHabits': PERSONAL_HABITS_PPI_MODULE,
   'questionnaireOnSociodemographics': SOCIODEMOGRAPHIC_PPI_MODULE

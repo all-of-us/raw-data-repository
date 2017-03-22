@@ -12,7 +12,7 @@ ${imports if imports else ""}
 
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
 from participant_enums import WithdrawalStatus, SuspensionStatus
-from participant_enums import MembershipTier, Race
+from participant_enums import EnrollmentStatus, Race, SampleStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.

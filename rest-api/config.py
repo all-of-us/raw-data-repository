@@ -31,6 +31,7 @@ SYNC_SHARDS_PER_CHANNEL = 'sync_shards_per_channel'
 MEASUREMENTS_ENTITIES_PER_SYNC = 'measurements_entities_per_sync'
 BASELINE_PPI_QUESTIONNAIRE_FIELDS = 'baseline_ppi_questionnaire_fields'
 BASELINE_SAMPLE_TEST_CODES = 'baseline_sample_test_codes'
+DNA_SAMPLE_TEST_CODES = 'dna_sample_test_codes'
 # True if we can send requests to ourselves; used in non-prod environments for loading
 # fake data.
 ALLOW_FAKE_REQUESTS_FROM_SERVER = 'allow_fake_requests_from_server'
@@ -53,6 +54,12 @@ def override_setting(key, value):
 
 CONFIG_CACHE = cachetools.TTLCache(1, ttl=CONFIG_CACHE_TTL_SECONDS, missing=_get_config)
 CONFIG_OVERRIDES = {}
+
+# Used to override the whole config in tests without use of the REST API
+def store_current_config(config_json):
+  conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
+  conf = Configuration(key=conf_ndb_key, configuration=config_json)
+  DAO().store(conf)
 
 class MissingConfigException(BaseException):
   """Exception raised if the setting does not exist"""

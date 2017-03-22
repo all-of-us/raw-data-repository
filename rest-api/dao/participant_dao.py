@@ -4,7 +4,8 @@ from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
-from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus
+from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
+from sqlalchemy.orm.session import make_transient
 from werkzeug.exceptions import BadRequest
 
 
@@ -90,7 +91,14 @@ class ParticipantDao(UpdatableDao):
         need_new_summary = True
 
     if need_new_summary:
-      obj.participantSummary = self._create_summary_for_participant(obj)
+      # Copy the existing participant summary, and mutate the fields that
+      # come from participant.
+      summary = existing_obj.participantSummary
+      summary.hpoId = obj.hpoId
+      summary.withdrawalStatus = obj.withdrawalStatus
+      summary.suspensionStatus = obj.suspensionStatus
+      make_transient(summary)
+      obj.participantSummary = summary
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
@@ -102,7 +110,8 @@ class ParticipantDao(UpdatableDao):
         signUpTime=obj.signUpTime,
         hpoId=obj.hpoId,
         withdrawalStatus=obj.withdrawalStatus,
-        suspensionStatus=obj.suspensionStatus)
+        suspensionStatus=obj.suspensionStatus,
+        enrollmentStatus=EnrollmentStatus.INTERESTED)
 
   @staticmethod
   def _get_hpo_id(obj):
