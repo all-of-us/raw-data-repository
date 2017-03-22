@@ -55,19 +55,21 @@ class ParticipantBase(object):
 
 class Participant(ParticipantBase, Base):
   __tablename__ = 'participant'
-  participantSummary = relationship("ParticipantSummary", uselist=False,
-                                    back_populates="participant", cascade='all, delete-orphan')
+  participantSummary = relationship('ParticipantSummary', uselist=False,
+                                    back_populates='participant', cascade='all, delete-orphan')
 
   @staticmethod
   def from_client_json(resource_json, id_=None, expected_version=None, client_id=None):
+    parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus)
+    parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus)
     # biobankId, lastModified, signUpTime are set by DAO.
     return Participant(
         participantId=id_,
         version=expected_version,
         providerLink=json.dumps(resource_json.get('providerLink')),
         clientId=client_id,
-        withdrawalStatus=parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus),
-        suspensionStatus=parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus))
+        withdrawalStatus=resource_json.get('withdrawalStatus'),
+        suspensionStatus=resource_json.get('suspensionStatus'))
 
 
 Index('participant_biobank_id', Participant.biobankId, unique=True)
