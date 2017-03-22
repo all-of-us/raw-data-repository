@@ -4,8 +4,9 @@ from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
-from participant_enums import UNSET_HPO_ID
+from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus
 from werkzeug.exceptions import BadRequest
+
 
 class ParticipantHistoryDao(BaseDao):
   """Maintains version history for participants.
@@ -25,7 +26,6 @@ class ParticipantHistoryDao(BaseDao):
     return [obj.participantId, obj.version]
 
 
-
 class ParticipantDao(UpdatableDao):
   def __init__(self):
     super(ParticipantDao, self).__init__(Participant)
@@ -34,15 +34,16 @@ class ParticipantDao(UpdatableDao):
     return obj.participantId
 
   def insert_with_session(self, session, obj):
-    obj.hpoId = self.get_hpo_id(obj)
+    obj.hpoId = self._get_hpo_id(obj)
     obj.version = 1
     obj.signUpTime = clock.CLOCK.now()
     obj.lastModified = obj.signUpTime
+    if obj.withdrawalStatus is None:
+      obj.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
+    if obj.suspensionStatus is None:
+      obj.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
     super(ParticipantDao, self).insert_with_session(session, obj)
-    obj.participantSummary = ParticipantSummary(participantId=obj.participantId,
-                                                biobankId=obj.biobankId,
-                                                signUpTime=obj.signUpTime,
-                                                hpoId=obj.hpoId)
+    obj.participantSummary = self._create_summary_for_participant(obj)
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
@@ -62,23 +63,49 @@ class ParticipantDao(UpdatableDao):
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
 
+  def _validate_update(self, session, obj, existing_obj):
+    # Withdrawal and suspension have default values assigned on insert, so they should always have
+    # explicit values in updates.
+    if obj.withdrawalStatus is None:
+      raise BadRequest('missing withdrawal status in update')
+    if obj.suspensionStatus is None:
+      raise BadRequest('missing suspension status in update')
+    super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
+
   def _do_update(self, session, obj, existing_obj):
-    # If the provider link changes, update the HPO ID on the participant and its summary.
+    """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link."""
     obj.lastModified = clock.CLOCK.now()
     obj.signUpTime = existing_obj.signUpTime
     obj.biobankId = existing_obj.biobankId
+    need_new_summary = (
+        obj.withdrawalStatus != existing_obj.withdrawalStatus or
+        obj.suspensionStatus != existing_obj.suspensionStatus)
+
+    # If the provider link changes, update the HPO ID on the participant and its summary.
     obj.hpoId = existing_obj.hpoId
     if obj.providerLink != existing_obj.providerLink:
-      new_hpo_id = self.get_hpo_id(obj)
+      new_hpo_id = self._get_hpo_id(obj)
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id
-        obj.participantSummary = ParticipantSummary()
-        obj.participantSummary.fromdict(existing_obj.participantSummary.asdict(), allow_pk=True)
-        obj.participantSummary.hpoId = new_hpo_id
+        need_new_summary = True
+
+    if need_new_summary:
+      obj.participantSummary = self._create_summary_for_participant(obj)
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
-  def get_hpo_id(self, obj):
+  @staticmethod
+  def _create_summary_for_participant(obj):
+    return ParticipantSummary(
+        participantId=obj.participantId,
+        biobankId=obj.biobankId,
+        signUpTime=obj.signUpTime,
+        hpoId=obj.hpoId,
+        withdrawalStatus=obj.withdrawalStatus,
+        suspensionStatus=obj.suspensionStatus)
+
+  @staticmethod
+  def _get_hpo_id(obj):
     hpo_name = get_HPO_name_from_participant(obj)
     if hpo_name:
       hpo = HPODao().get_by_name(hpo_name)
