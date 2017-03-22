@@ -27,11 +27,13 @@ from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from model.code import Code
 from model.hpo import HPO
-from participant_enums import UNSET_HPO_ID
+from model.participant import Participant
+from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus
 from mock import patch
 from test.test_data import data_path
 
 PITT_HPO_ID = 2
+
 
 class TestBase(unittest.TestCase):
   """Base class for unit tests."""
@@ -41,6 +43,19 @@ class TestBase(unittest.TestCase):
     # Make a faker which produces unicode text available.
     self.fake = faker.Faker('ru_RU')
     self.fake.seed(1)
+
+  def _make_participant(self, **kwargs):
+    """Creates a new Participant model, filling in some default constructor args.
+
+    This is intended especially for updates, where more fields are required than for inserts.
+    """
+    common_args = {
+      'clientId': 'testing_acct@unittests.com',
+      'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
+      'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
+    }
+    common_args.update(kwargs)
+    return Participant(**common_args)
 
 
 class TestbedTestBase(TestBase):
