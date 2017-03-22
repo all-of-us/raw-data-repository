@@ -26,9 +26,9 @@
                 "text": "Name of child",
                 "_text": {
 					"extension": [
-						{
-						  "foo": "bar"
-						}
+					  {
+						  "arbitrary_extension": "should_be_preserved"
+					  }
 					]
                 },
                 "answer": [

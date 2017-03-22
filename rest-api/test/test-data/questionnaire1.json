@@ -22,9 +22,9 @@
                 "text": "Do you have allergies?",
                 "_text": {
 					"extension": [
-						{
-						  "foo": "bar"
-						}
+					  {
+						  "arbitrary_extension": "should_be_preserved"
+					  }
 					]
                 },
                 "type": "choice",
