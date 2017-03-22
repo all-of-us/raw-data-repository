@@ -62,14 +62,14 @@ class ParticipantSummaryDao(UpdatableDao):
     if field_name == 'hpoId':
       hpo = HPODao().get_by_name(value)
       if not hpo:
-        raise BadRequest("No HPO found with name %s" % value)
+        raise BadRequest('No HPO found with name %s' % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
     if field_name in _CODE_FIELDS:
       if value == UNSET:
         return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
       code = CodeDao().get_code(PPI_SYSTEM, value)
       if not code:
-        raise BadRequest("No code found: %s" % value)
+        raise BadRequest('No code found: %s' % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', code.codeId)
     return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
 
@@ -99,16 +99,16 @@ class ParticipantSummaryDao(UpdatableDao):
                            AND biobank_stored_sample.test IN %s)
           THEN :received ELSE :unset END
       )""" % (baseline_tests_sql, dna_tests_sql)
-    params = {"received": int(SampleStatus.RECEIVED), "unset": int(SampleStatus.UNSET)}
+    params = {'received': int(SampleStatus.RECEIVED), 'unset': int(SampleStatus.UNSET)}
     params.update(baseline_tests_params)
     params.update(dna_tests_params)
-    enrollment_status_params = {"submitted": int(QuestionnaireStatus.SUBMITTED),
-                                "num_baseline_ppi_modules": self._get_num_baseline_ppi_modules(),
-                                "completed": int(PhysicalMeasurementsStatus.COMPLETED),
-                                "received": int(SampleStatus.RECEIVED),
-                                "full_participant": int(EnrollmentStatus.FULL_PARTICIPANT),
-                                "member": int(EnrollmentStatus.MEMBER),
-                                "interested": int(EnrollmentStatus.INTERESTED)}
+    enrollment_status_params = {'submitted': int(QuestionnaireStatus.SUBMITTED),
+                                'num_baseline_ppi_modules': self._get_num_baseline_ppi_modules(),
+                                'completed': int(PhysicalMeasurementsStatus.COMPLETED),
+                                'received': int(SampleStatus.RECEIVED),
+                                'full_participant': int(EnrollmentStatus.FULL_PARTICIPANT),
+                                'member': int(EnrollmentStatus.MEMBER),
+                                'interested': int(EnrollmentStatus.INTERESTED)}
     with self.session() as session:
       session.execute(sql, params)
       session.execute(_ENROLLMENT_STATUS_SQL, enrollment_status_params)
@@ -117,9 +117,9 @@ class ParticipantSummaryDao(UpdatableDao):
     return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
 
   def update_enrollment_status(self, summary):
-    '''Updates the enrollment status field on the provided participant summary to
+    """Updates the enrollment status field on the provided participant summary to
     the correct value based on the other fields on it. Called after
-    a questionnaire response or physical measurements are submitted.'''
+    a questionnaire response or physical measurements are submitted."""
     enrollment_status = self.calculate_enrollment_status(summary.consentForStudyEnrollment,
                                                          summary.consentForElectronicHealthRecords,
                                                          summary.numCompletedBaselinePPIModules,

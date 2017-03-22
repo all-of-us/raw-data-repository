@@ -321,7 +321,7 @@ def upgrade():
          {'hpo_id': 12, 'name': 'CAL_PMC' },
          {'hpo_id': 13, 'name': 'NE_PMC' },
          {'hpo_id': 14, 'name': 'TRANS_AM' },
-          {'hpo_id': 15, 'name': 'VA' }
+         {'hpo_id': 15, 'name': 'VA' }
       ])
 
 def downgrade():
