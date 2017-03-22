@@ -49,8 +49,8 @@ class ParticipantApiTest(FlaskTestBase):
     self.assertEquals(response, get_response)
     biobank_id = response['biobankId']
     self.assertTrue(biobank_id.startswith('B'))
-    self.assertEquals(WithdrawalStatus.NOT_WITHDRAWN.number, response['withdrawalStatus'])
-    self.assertEquals(SuspensionStatus.NOT_SUSPENDED.number, response['suspensionStatus'])
+    self.assertEquals(str(WithdrawalStatus.NOT_WITHDRAWN), response['withdrawalStatus'])
+    self.assertEquals(str(SuspensionStatus.NOT_SUSPENDED), response['suspensionStatus'])
     for auto_generated in (
         'participantId',
         'biobankId',
