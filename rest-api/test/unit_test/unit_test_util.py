@@ -45,7 +45,8 @@ class TestBase(unittest.TestCase):
     self.fake = faker.Faker('ru_RU')
     self.fake.seed(1)
 
-  def _participant_with_defaults(self, **kwargs):
+  @staticmethod
+  def _participant_with_defaults(**kwargs):
     """Creates a new Participant model, filling in some default constructor args.
 
     This is intended especially for updates, where more fields are required than for inserts.
@@ -58,7 +59,8 @@ class TestBase(unittest.TestCase):
     common_args.update(kwargs)
     return Participant(**common_args)
 
-  def _participant_summary_with_defaults(self, **kwargs):
+  @staticmethod
+  def _participant_summary_with_defaults(**kwargs):
     common_args = {
       'hpoId': UNSET_HPO_ID,
       'numCompletedBaselinePPIModules': 0,
@@ -69,7 +71,8 @@ class TestBase(unittest.TestCase):
     common_args.update(kwargs)
     return ParticipantSummary(**common_args)
 
-  def _participant_history_with_defaults(self, **kwargs):
+  @staticmethod
+  def _participant_history_with_defaults(**kwargs):
     common_args = {
       'hpoId': UNSET_HPO_ID,
       'version': 1,
