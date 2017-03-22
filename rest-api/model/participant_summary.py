@@ -3,12 +3,13 @@ import clock
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
 from code_constants import UNSET
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import MembershipTier, Race, get_bucketed_age
+from participant_enums import MembershipTier, Race, get_bucketed_age, WithdrawalStatus, SuspensionStatus
 from model.base import Base
 from model.utils import Enum, to_client_participant_id, to_client_biobank_id
 from sqlalchemy import Column, Integer, String, Date, DateTime
 from sqlalchemy import ForeignKey, Index, SmallInteger
 from sqlalchemy.orm import relationship
+
 
 _DATE_FIELDS = ['dateOfBirth', 'signUpTime', 'consentForStudyEnrollmentTime',
                 'consentForElectronicHealthRecordsTime', 'questionnaireOnOverallHealthTime',
@@ -20,8 +21,9 @@ _ENUM_FIELDS = ['membershipTier', 'race', 'physicalMeasurementsStatus',
                 'questionnaireOnOverallHealth', 'questionnaireOnPersonalHabits',
                 'questionnaireOnSociodemographics', 'questionnaireOnHealthcareAccess',
                 'questionnaireOnMedicalHistory', 'questionnaireOnMedications',
-                'questionnaireOnFamilyHealth']
+                'questionnaireOnFamilyHealth', 'suspensionStatus', 'withdrawalStatus']
 _CODE_FIELDS = ['genderIdentityId']
+
 
 class ParticipantSummary(Base):
   __tablename__ = 'participant_summary'
@@ -75,6 +77,19 @@ class ParticipantSummary(Base):
   # The number of BiobankStoredSamples recorded for this participant, limited to those samples
   # where testCode is one of the baseline tests (listed in the config).
   numBaselineSamplesArrived = Column('num_baseline_samples_arrived', SmallInteger, default=0)
+
+  # Withdrawal from the study of the participant's own accord.
+  withdrawalStatus = Column(
+      'withdrawal_status',
+      Enum(WithdrawalStatus),
+      nullable=False,
+      onupdate=WithdrawalStatus.NOT_WITHDRAWN)
+
+  suspensionStatus = Column(
+      'suspension_status',
+      Enum(SuspensionStatus),
+      nullable=False,
+      onupdate=SuspensionStatus.NOT_SUSPENDED)
 
   participant = relationship("Participant", back_populates="participantSummary")
 
