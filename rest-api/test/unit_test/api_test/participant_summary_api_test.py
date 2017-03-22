@@ -114,8 +114,15 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       else:
         break
 
+  def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id):
+    qr = make_questionnaire_response_json(participant_id, questionnaire_id)
+    with FakeClock(TIME_1):
+      self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+
   def testQuery_manyParticipants(self):
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
+    questionnaire_id_3 = self.create_questionnaire('all_consents_questionnaire.json')
     participant_1 = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id_1 = participant_1['participantId']
     participant_2 = self.send_post('Participant', {"providerLink": [self.provider_link]})
@@ -129,10 +136,21 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "Mary", "Q", "Jones", "78751", datetime.date(1978, 10, 8))
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_WHITE_CODE, "male",
                                        "Fred", "T", "Smith", "78752", datetime.date(1978, 10, 10))
+    # Send an empty questionnaire response for the consent questionnaire for participants 2 and 3  
+    self._submit_empty_questionnaire_response(participant_id_2, questionnaire_id_3)  
+    self._submit_empty_questionnaire_response(participant_id_3, questionnaire_id_3)
+
+    # Send an empty questionnaire response for another questionnaire for participant 3,
+    # completing the baseline PPI modules.
+    self._submit_empty_questionnaire_response(participant_id_3, questionnaire_id_2)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
     ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
+    
+    self.assertEquals(1, ps_1['numCompletedBaselinePPIModules'])
+    self.assertEquals(3, ps_2['numCompletedBaselinePPIModules'])
+    self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
 
     response = self.send_get('ParticipantSummary')
     self.assertBundle([_make_entry(ps_1), _make_entry(ps_2), _make_entry(ps_3)], response)
