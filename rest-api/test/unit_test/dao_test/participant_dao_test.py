@@ -4,9 +4,7 @@ import test_data
 from dao.base_dao import MAX_INSERT_ATTEMPTS
 from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from model.participant import Participant, ParticipantHistory
-from model.participant_summary import ParticipantSummary
-from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus
+from model.participant import Participant
 from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable

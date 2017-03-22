@@ -9,10 +9,9 @@ from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
 from model.code import Code, CodeType
 from model.participant import Participant
-from model.participant_summary import ParticipantSummary
 from model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from participant_enums import QuestionnaireStatus, UNSET_HPO_ID
+from participant_enums import QuestionnaireStatus
 from unit_test_util import FlaskTestBase
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest
