@@ -47,8 +47,8 @@ class SummaryFieldDef(object):
 
 def _biospecimen_summary(summary):
   '''Summarizes the two biospecimen statuses into one.'''
-  samples = summary.get('biospecimenSamples', UNSET)
-  order = summary.get('biospecimen', UNSET)
+  samples = summary.get(BIOSPECIMEN_SAMPLES_METRIC, UNSET)
+  order = summary.get(BIOSPECIMEN_METRIC, UNSET)
   if samples != UNSET:
     return samples
   return order
