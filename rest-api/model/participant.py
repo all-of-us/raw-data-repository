@@ -30,7 +30,8 @@ class ParticipantBase(object):
   # participant.
   clientId = Column('client_id', String(80))
 
-  # Withdrawal from the study of the participant's own accord.
+  # Withdrawal from the study of the participant's own accord. Default values are managed through
+  # the DAO (instead of column defaults here) to simplify insert v. update semantics.
   withdrawalStatus = Column('withdrawal_status', Enum(WithdrawalStatus), nullable=False)
   suspensionStatus = Column('suspension_status', Enum(SuspensionStatus), nullable=False)
 
