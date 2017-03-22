@@ -15,6 +15,7 @@ from participant_enums import EnrollmentStatus, QuestionnaireStatus, PhysicalMea
 from participant_enums import SampleStatus
 from unit_test_util import NdbTestBase, PITT_HPO_ID
 
+NUM_BASELINE_PPI_MODULES = 3
 
 class ParticipantSummaryDaoTest(NdbTestBase):
   def setUp(self):
@@ -210,37 +211,37 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertEquals(EnrollmentStatus.FULL_PARTICIPANT,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
                                                            QuestionnaireStatus.SUBMITTED,
-                                                           3,
+                                                           NUM_BASELINE_PPI_MODULES,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.RECEIVED))
     self.assertEquals(EnrollmentStatus.MEMBER,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
                                                            QuestionnaireStatus.SUBMITTED,
-                                                           2,
+                                                           NUM_BASELINE_PPI_MODULES - 1,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.RECEIVED))
     self.assertEquals(EnrollmentStatus.MEMBER,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
                                                            QuestionnaireStatus.SUBMITTED,
-                                                           3,
+                                                           NUM_BASELINE_PPI_MODULES,
                                                            PhysicalMeasurementsStatus.UNSET,
                                                            SampleStatus.RECEIVED))
     self.assertEquals(EnrollmentStatus.MEMBER,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
                                                            QuestionnaireStatus.SUBMITTED,
-                                                           3,
+                                                           NUM_BASELINE_PPI_MODULES,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.UNSET))
     self.assertEquals(EnrollmentStatus.INTERESTED,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.UNSET,
                                                            QuestionnaireStatus.SUBMITTED,
-                                                           3,
+                                                           NUM_BASELINE_PPI_MODULES,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.RECEIVED))
     self.assertEquals(EnrollmentStatus.INTERESTED,
                       self.dao.calculate_enrollment_status(QuestionnaireStatus.SUBMITTED,
                                                            QuestionnaireStatus.UNSET,
-                                                           3,
+                                                           NUM_BASELINE_PPI_MODULES,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.RECEIVED))
 
