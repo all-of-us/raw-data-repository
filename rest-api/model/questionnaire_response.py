@@ -38,16 +38,17 @@ class QuestionnaireResponse(Base):
   @staticmethod
   def from_client_json(resource_json, participant_id=None, client_id=None):
     #pylint: disable=unused-argument
+    # Parse the questionnaire response, but preserve the original response when persisting
     fhir_qr = fhirclient.models.questionnaireresponse.QuestionnaireResponse(resource_json)
     patient_id = fhir_qr.subject.reference
     if patient_id != 'Patient/P{}'.format(participant_id):
       raise BadRequest("Questionnaire response subject reference does not match participant_id %d"
                        % participant_id)
-    questionnaire = QuestionnaireResponse._get_questionnaire(fhir_qr.questionnaire)
+    questionnaire = QuestionnaireResponse._get_questionnaire(fhir_qr.questionnaire, resource_json)
     qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
                                questionnaireVersion=questionnaire.version,
                                participantId=participant_id,
-                               resource=json.dumps(fhir_qr.as_json()))
+                               resource=json.dumps(resource_json))
 
     # Extract a code map and answers from the questionnaire response.
     code_map, answers = QuestionnaireResponse._extract_codes_and_answers(fhir_qr.group,
@@ -62,8 +63,8 @@ class QuestionnaireResponse(Base):
     return qr
 
   @staticmethod
-  def _get_questionnaire(questionnaire):
-    """Retrieves the questionnaire referenced by this response; mutates the reference to include
+  def _get_questionnaire(questionnaire, resource_json):
+    """Retrieves the questionnaire referenced by this response; mutates the resource JSON to include
     the version if it doesn't already."""
     if not questionnaire.reference.startswith(_QUESTIONNAIRE_PREFIX):
       raise BadRequest('Questionnaire reference %s is invalid' % questionnaire.reference)
@@ -92,7 +93,8 @@ class QuestionnaireResponse(Base):
         if not q:
           raise BadRequest('Questionnaire with id %d is not found' % questionnaire_id)
         # Mutate the questionnaire reference to include the version.
-        questionnaire.reference = _QUESTIONNAIRE_REFERENCE_FORMAT % (questionnaire_id, q.version)
+        questionnaire_reference = _QUESTIONNAIRE_REFERENCE_FORMAT % (questionnaire_id, q.version)
+        resource_json["questionnaire"]["reference"] = questionnaire_reference
         return q
       except ValueError:
         raise BadRequest('Questionnaire id %s is invalid' % questionnaire_reference)
