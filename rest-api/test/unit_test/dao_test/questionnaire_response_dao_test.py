@@ -172,6 +172,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_ps = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, genderIdentityId=3, signUpTime=TIME,
+        numCompletedBaselinePPIModules=1,
         questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
         questionnaireOnSociodemographicsTime=TIME_2)
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -220,6 +221,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_ps = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, genderIdentityId=3, signUpTime=TIME,
+        numCompletedBaselinePPIModules=1,
         questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
         questionnaireOnSociodemographicsTime=TIME_2)
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -258,6 +260,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_ps2 = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, genderIdentityId=5, signUpTime=TIME,
+        numCompletedBaselinePPIModules=1,
         questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
         questionnaireOnSociodemographicsTime=TIME_2)
     # The participant summary should be updated with the new gender identity, but nothing else
@@ -293,6 +296,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_ps3 = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, genderIdentityId=6, signUpTime=TIME,
+        numCompletedBaselinePPIModules=1,
         questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
         questionnaireOnSociodemographicsTime=TIME_2)
     # The participant summary should be updated with the new gender identity, but nothing else
