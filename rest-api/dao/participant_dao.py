@@ -2,9 +2,11 @@ import clock
 import json
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
+from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
+from sqlalchemy.orm.session import make_transient
 from werkzeug.exceptions import BadRequest
 
 
@@ -43,7 +45,7 @@ class ParticipantDao(UpdatableDao):
     if obj.suspensionStatus is None:
       obj.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
     super(ParticipantDao, self).insert_with_session(session, obj)
-    obj.participantSummary = self._create_summary_for_participant(obj, EnrollmentStatus.INTERESTED)
+    obj.participantSummary = self._create_summary_for_participant(obj)
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
@@ -90,13 +92,19 @@ class ParticipantDao(UpdatableDao):
         need_new_summary = True
 
     if need_new_summary:
-      obj.participantSummary = self._create_summary_for_participant(obj,
-                                                                    existing_obj.enrollmentStatus)
+      # Copy the existing participant summary, and mutate the fields that 
+      # come from participant.
+      summary = existing_obj.participantSummary
+      summary.hpoId = obj.hpoId
+      summary.withdrawalStatus = obj.withdrawalStatus
+      summary.suspensionStatus = obj.suspensionStatus
+      make_transient(summary)
+      obj.participantSummary = summary
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
   @staticmethod
-  def _create_summary_for_participant(obj, enrollment_status):
+  def _create_summary_for_participant(obj):
     return ParticipantSummary(
         participantId=obj.participantId,
         biobankId=obj.biobankId,
@@ -104,7 +112,7 @@ class ParticipantDao(UpdatableDao):
         hpoId=obj.hpoId,
         withdrawalStatus=obj.withdrawalStatus,
         suspensionStatus=obj.suspensionStatus,
-        enrollmentStatus=enrollment_status)
+        enrollmentStatus=EnrollmentStatus.INTERESTED)
 
   @staticmethod
   def _get_hpo_id(obj):
