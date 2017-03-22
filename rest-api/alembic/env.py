@@ -33,7 +33,7 @@ target_metadata = Base.metadata
 
 # In MySQL, make BLOB fields be LONGBLOB (which supports large blobs)
 @compiles(BLOB, "mysql")
-def compile_binary_sqlite(type_, compiler, **kw):
+def compile_blob_in_mysql_to_longblob(type_, compiler, **kw):
   #pylint: disable=unused-argument
   return "LONGBLOB"
 
