@@ -317,8 +317,11 @@ class BaseDao(object):
       try:
         with self.session() as session:
           return self.insert_with_session(session, obj)
-      except IntegrityError:
-        logging.warning('Failed insert with %s.', tried_ids, exc_info=True)
+      except IntegrityError, e:
+        if 'UNIQUE constraint failed' in e.message:
+          logging.warning('Failed insert with %s.', tried_ids)
+        else:
+          raise
     # We were unable to insert a participant (unlucky). Throw an error.
     logging.warning(
         'Giving up after %d insert attempts, tried %s.' % (MAX_INSERT_ATTEMPTS, all_tried_ids))
