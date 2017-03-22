@@ -92,7 +92,7 @@ class ParticipantDao(UpdatableDao):
         need_new_summary = True
 
     if need_new_summary:
-      # Copy the existing participant summary, and mutate the fields that 
+      # Copy the existing participant summary, and mutate the fields that
       # come from participant.
       summary = existing_obj.participantSummary
       summary.hpoId = obj.hpoId
