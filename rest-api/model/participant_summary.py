@@ -2,8 +2,8 @@ import clock
 
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
 from code_constants import UNSET
-from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import MembershipTier, Race, get_bucketed_age, WithdrawalStatus, SuspensionStatus
+from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, MembershipTier
+from participant_enums import Race, WithdrawalStatus, SuspensionStatus, get_bucketed_age
 from model.base import Base
 from model.utils import Enum, to_client_participant_id, to_client_biobank_id
 from sqlalchemy import Column, Integer, String, Date, DateTime
