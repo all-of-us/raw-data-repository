@@ -28,6 +28,7 @@ from dao.hpo_dao import HPODao
 from model.code import Code
 from model.hpo import HPO
 from model.participant import Participant
+from model.participant_summary import ParticipantSummary
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus
 from mock import patch
 from test.test_data import data_path
@@ -44,7 +45,7 @@ class TestBase(unittest.TestCase):
     self.fake = faker.Faker('ru_RU')
     self.fake.seed(1)
 
-  def _make_participant(self, **kwargs):
+  def _participant_with_defaults(self, **kwargs):
     """Creates a new Participant model, filling in some default constructor args.
 
     This is intended especially for updates, where more fields are required than for inserts.
@@ -56,6 +57,17 @@ class TestBase(unittest.TestCase):
     }
     common_args.update(kwargs)
     return Participant(**common_args)
+
+  def _participant_summary_with_defaults(self, **kwargs):
+    common_args = {
+      'hpoId': UNSET_HPO_ID,
+      'numCompletedBaselinePPIModules': 1,
+      'numBaselineSamplesArrived': 0,
+      'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
+      'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
+    }
+    common_args.update(kwargs)
+    return ParticipantSummary(**common_args)
 
 
 class TestbedTestBase(TestBase):
