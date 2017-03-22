@@ -12,25 +12,23 @@ UNSET_HPO_ID = 0
 class PhysicalMeasurementsStatus(messages.Enum):
   """The state of the participant's physical measurements"""
   UNSET = 0
-  SCHEDULED = 1
-  COMPLETED = 2
-  RESULT_READY = 3
+  COMPLETED = 1
 
 class QuestionnaireStatus(messages.Enum):
   """The status of a given questionnaire for this participant"""
   UNSET = 0
   SUBMITTED = 1
 
-class MembershipTier(messages.Enum):
-  """The state of the participant"""
+class EnrollmentStatus(messages.Enum):
+  """A status reflecting how fully enrolled a participant is"""
+  INTERESTED = 1
+  MEMBER = 2
+  FULL_PARTICIPANT = 3
+
+class SampleStatus(messages.Enum):
+  """Status of biobank samples"""
   UNSET = 0
-  SKIPPED = 1
-  UNMAPPED = 2
-  REGISTERED = 3
-  VOLUNTEER = 4
-  FULL_PARTICIPANT = 5
-  ENROLLEE = 6
-  # Note that these are out of order; ENROLEE was added after FULL_PARTICIPANT.
+  RECEIVED = 1
 
 # These race values are derived from one or more answers to the race/ethnicity question
 # in questionnaire responses.

@@ -67,7 +67,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     with FakeClock(TIME_2):
       ps = self.send_get('Participant/%s/Summary' % participant_id)
     expected_ps = {'questionnaireOnHealthcareAccess': 'UNSET',
-                   'membershipTier': 'UNSET',
+                   'enrollmentStatus': 'INTERESTED',
+                   'samplesToIsolateDNA': 'UNSET',
                    'questionnaireOnOverallHealth': 'UNSET',
                    'signUpTime': participant['signUpTime'],
                    'biobankId': participant['biobankId'],

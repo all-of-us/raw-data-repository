@@ -8,11 +8,32 @@ from dao.database_utils import get_sql_and_params_for_array
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
+from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus
+from participant_enums import EnrollmentStatus
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ['lastName', 'firstName', 'dateOfBirth', 'participantId']
 _CODE_FIELDS = ['genderIdentity']
 
+# Query used to update the enrollment status for all participant summaries after
+# a Biobank samples import.
+_ENROLLMENT_STATUS_SQL = """
+    UPDATE
+      participant_summary
+    SET
+      enrollment_status =
+        CASE WHEN (consent_for_study_enrollment = :submitted
+                   AND consent_for_electronic_health_records = :submitted
+                   AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
+                   AND physical_measurements_status = :completed
+                   AND samples_to_isolate_dna = :received)
+             THEN :full_participant
+             WHEN (consent_for_study_enrollment = :submitted
+                   AND consent_for_electronic_health_records = :submitted)
+             THEN :member
+             ELSE :interested
+        END
+   """
 
 class ParticipantSummaryDao(UpdatableDao):
   def __init__(self):
@@ -56,6 +77,8 @@ class ParticipantSummaryDao(UpdatableDao):
     """Rewrites sample-related summary data. Call this after reloading BiobankStoredSamples."""
     baseline_tests_sql, baseline_tests_params = get_sql_and_params_for_array(
         config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES), 'baseline')
+    dna_tests_sql, dna_tests_params = get_sql_and_params_for_array(
+        config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
     sql = """
     UPDATE
       participant_summary
@@ -68,7 +91,52 @@ class ParticipantSummaryDao(UpdatableDao):
         WHERE
           biobank_stored_sample.biobank_id = participant_summary.biobank_id
           AND biobank_stored_sample.test IN %s
-      )""" % baseline_tests_sql
-
+      ),
+      samples_to_isolate_dna = (
+        SELECT
+          CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
+                           WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
+                           AND biobank_stored_sample.test IN %s)
+          THEN :received ELSE :unset END
+      )""" % (baseline_tests_sql, dna_tests_sql)
+    params = {"received": int(SampleStatus.RECEIVED), "unset": int(SampleStatus.UNSET)}
+    params.update(baseline_tests_params)
+    params.update(dna_tests_params)
+    enrollment_status_params = {"submitted": int(QuestionnaireStatus.SUBMITTED),
+                                "num_baseline_ppi_modules": self._get_num_baseline_ppi_modules(),
+                                "completed": int(PhysicalMeasurementsStatus.COMPLETED),
+                                "received": int(SampleStatus.RECEIVED),
+                                "full_participant": int(EnrollmentStatus.FULL_PARTICIPANT),
+                                "member": int(EnrollmentStatus.MEMBER),
+                                "interested": int(EnrollmentStatus.INTERESTED)}
     with self.session() as session:
-      session.execute(sql, baseline_tests_params)
+      session.execute(sql, params)
+      session.execute(_ENROLLMENT_STATUS_SQL, enrollment_status_params)
+
+  def _get_num_baseline_ppi_modules(self):
+    return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
+
+  def update_enrollment_status(self, summary):
+    '''Updates the enrollment status field on the provided participant summary to
+    the correct value based on the other fields on it. Called after
+    a questionnaire response or physical measurements are submitted.'''
+    enrollment_status = self.calculate_enrollment_status(summary.consentForStudyEnrollment,
+                                                         summary.consentForElectronicHealthRecords,
+                                                         summary.numCompletedBaselinePPIModules,
+                                                         summary.physicalMeasurementsStatus,
+                                                         summary.samplesToIsolateDNA)
+    summary.enrollment_status = enrollment_status
+
+  def calculate_enrollment_status(self, consent_for_study_enrollment,
+                                  consent_for_electronic_health_records,
+                                  num_completed_baseline_ppi_modules,
+                                  physical_measurements_status,
+                                  samples_to_isolate_dna):
+    if (consent_for_study_enrollment == QuestionnaireStatus.SUBMITTED and
+        consent_for_electronic_health_records == QuestionnaireStatus.SUBMITTED):
+      if (num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules() and
+          physical_measurements_status == PhysicalMeasurementsStatus.COMPLETED and
+          samples_to_isolate_dna == SampleStatus.RECEIVED):
+        return EnrollmentStatus.FULL_PARTICIPANT
+      return EnrollmentStatus.MEMBER
+    return EnrollmentStatus.INTERESTED

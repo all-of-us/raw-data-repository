@@ -29,7 +29,7 @@ from model.code import Code
 from model.hpo import HPO
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
-from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus
+from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
 from mock import patch
 from test.test_data import data_path
 
@@ -67,6 +67,7 @@ class TestBase(unittest.TestCase):
       'numBaselineSamplesArrived': 0,
       'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
       'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
+      'enrollmentStatus': EnrollmentStatus.INTERESTED
     }
     common_args.update(kwargs)
     return ParticipantSummary(**common_args)
@@ -155,12 +156,24 @@ class SqlTestBase(TestbedTestBase):
 
 class NdbTestBase(SqlTestBase):
   """Base class for unit tests that need the NDB testbed."""
+  _AUTH_USER = 'authorized@gservices.act'  # authorized for typical API usage roles
+  _CONFIG_USER_INFO = {
+    _AUTH_USER: {
+      'roles': api_util.ALL_ROLES,
+    },
+  }
+
   def setUp(self):
     super(NdbTestBase, self).setUp()
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
     ndb.get_context().clear_cache()
+    self.doSetUp()
 
+  def doSetUp(self):
+    dev_config = read_dev_config()
+    dev_config[config.USER_INFO] = self._CONFIG_USER_INFO
+    config.store_current_config(dev_config)
 
 class CloudStorageSqlTestBase(testutil.CloudStorageTestBase):
   """Merge AppEngine's provided CloudStorageTestBase and our SqlTestBase.
@@ -188,18 +201,9 @@ def read_dev_config():
 class FlaskTestBase(NdbTestBase):
   """Provide a local flask server to exercise handlers and storage."""
   _ADMIN_USER = 'config_admin@fake.google.com'  # allowed to update config
-  _AUTH_USER = 'authorized@gservices.act'  # authorized for typical API usage roles
-  _CONFIG_USER_INFO = {
-    _AUTH_USER: {
-      'roles': api_util.ALL_ROLES,
-    },
-  }
-
-  def setUp(self):
-    super(FlaskTestBase, self).setUp()
-    self.doSetUp()
 
   def doSetUp(self):
+    super(FlaskTestBase, self).doSetUp()
     # http://flask.pocoo.org/docs/0.12/testing/
     main.app.config['TESTING'] = True
     self._app = main.app.test_client()
@@ -211,11 +215,7 @@ class FlaskTestBase(NdbTestBase):
 
     config_api.CONFIG_ADMIN_MAP[app_identity.get_application_id()] = self._ADMIN_USER
 
-    config.initialize_config()
-    dev_config = read_dev_config()
-    dev_config[config.USER_INFO] = self._CONFIG_USER_INFO
     self.set_auth_user(self._ADMIN_USER)
-    self.send_request('PUT', 'Config', request_data=dev_config)
     self.set_auth_user(self._AUTH_USER)
 
   def tearDown(self):

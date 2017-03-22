@@ -9,14 +9,13 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase
+from test.unit_test.unit_test_util import CloudStorageSqlTestBase, read_dev_config
 from test import test_data
 from model.utils import to_client_biobank_id
 from model.participant import Participant
 
 _BASELINE_TESTS = list(VALID_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
-
 
 class BiobankSamplesPipelineTest(CloudStorageSqlTestBase):
   def setUp(self):

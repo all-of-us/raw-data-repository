@@ -4,7 +4,7 @@ from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
-from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus
+from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
 from werkzeug.exceptions import BadRequest
 
 
@@ -43,7 +43,7 @@ class ParticipantDao(UpdatableDao):
     if obj.suspensionStatus is None:
       obj.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
     super(ParticipantDao, self).insert_with_session(session, obj)
-    obj.participantSummary = self._create_summary_for_participant(obj)
+    obj.participantSummary = self._create_summary_for_participant(obj, EnrollmentStatus.INTERESTED)
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
@@ -90,19 +90,21 @@ class ParticipantDao(UpdatableDao):
         need_new_summary = True
 
     if need_new_summary:
-      obj.participantSummary = self._create_summary_for_participant(obj)
+      obj.participantSummary = self._create_summary_for_participant(obj,
+                                                                    existing_obj.enrollmentStatus)
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
   @staticmethod
-  def _create_summary_for_participant(obj):
+  def _create_summary_for_participant(obj, enrollment_status):
     return ParticipantSummary(
         participantId=obj.participantId,
         biobankId=obj.biobankId,
         signUpTime=obj.signUpTime,
         hpoId=obj.hpoId,
         withdrawalStatus=obj.withdrawalStatus,
-        suspensionStatus=obj.suspensionStatus)
+        suspensionStatus=obj.suspensionStatus,
+        enrollmentStatus=enrollmentStatus)
 
   @staticmethod
   def _get_hpo_id(obj):

@@ -9,7 +9,6 @@ from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
-
 class ParticipantDaoTest(SqlTestBase):
   def setUp(self):
     super(ParticipantDaoTest, self).setUp()

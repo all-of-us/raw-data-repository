@@ -148,6 +148,7 @@ class QuestionnaireResponseDao(BaseDao):
           count_completed_baseline_ppi_modules(participant_summary)
 
     if something_changed:
+      ParticipantSummaryDao().update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 
   def insert(self, obj):

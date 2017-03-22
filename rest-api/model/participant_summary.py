@@ -2,8 +2,9 @@ import clock
 
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
 from code_constants import UNSET
-from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, MembershipTier
-from participant_enums import Race, WithdrawalStatus, SuspensionStatus, get_bucketed_age
+from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
+from participant_enums import EnrollmentStatus, Race, get_bucketed_age, SampleStatus
+from participant_enums import WithdrawalStatus, SuspensionStatus
 from model.base import Base
 from model.utils import Enum, to_client_participant_id, to_client_biobank_id
 from sqlalchemy import Column, Integer, String, Date, DateTime
@@ -16,12 +17,13 @@ _DATE_FIELDS = ['dateOfBirth', 'signUpTime', 'consentForStudyEnrollmentTime',
                 'questionnaireOnPersonalHabitsTime', 'questionnaireOnSociodemographicsTime',
                 'questionnaireOnHealthcareAccessTime', 'questionnaireOnMedicalHistoryTime',
                 'questionnaireOnMedicationsTime', 'questionnaireOnFamilyHealthTime']
-_ENUM_FIELDS = ['membershipTier', 'race', 'physicalMeasurementsStatus',
+_ENUM_FIELDS = ['enrollmentStatus', 'race', 'physicalMeasurementsStatus',
                 'consentForStudyEnrollment', 'consentForElectronicHealthRecords',
                 'questionnaireOnOverallHealth', 'questionnaireOnPersonalHabits',
                 'questionnaireOnSociodemographics', 'questionnaireOnHealthcareAccess',
                 'questionnaireOnMedicalHistory', 'questionnaireOnMedications',
-                'questionnaireOnFamilyHealth', 'suspensionStatus', 'withdrawalStatus']
+                'questionnaireOnFamilyHealth', 'suspensionStatus', 'withdrawalStatus',
+                'samplesToIsolateDNA']
 _CODE_FIELDS = ['genderIdentityId']
 
 
@@ -37,7 +39,8 @@ class ParticipantSummary(Base):
   state = Column('state', String(2))
   dateOfBirth = Column('date_of_birth', Date)
   genderIdentityId = Column('gender_identity_id', Integer, ForeignKey('code.code_id'))
-  membershipTier = Column('membership_tier', Enum(MembershipTier), default=MembershipTier.UNSET)
+  enrollmentStatus = Column('enrollment_status', Enum(EnrollmentStatus),
+                            default=EnrollmentStatus.INTERESTED)
   race = Column('race', Enum(Race), default=Race.UNSET)
   physicalMeasurementsStatus = Column('physical_measurements_status',
                                       Enum(PhysicalMeasurementsStatus),
@@ -77,6 +80,8 @@ class ParticipantSummary(Base):
   # The number of BiobankStoredSamples recorded for this participant, limited to those samples
   # where testCode is one of the baseline tests (listed in the config).
   numBaselineSamplesArrived = Column('num_baseline_samples_arrived', SmallInteger, default=0)
+  samplesToIsolateDNA = Column('samples_to_isolate_dna', Enum(SampleStatus),
+                               default=SampleStatus.UNSET)
 
   # Withdrawal from the study of the participant's own accord.
   withdrawalStatus = Column(
@@ -128,7 +133,8 @@ Index('participant_summary_hpo_ln', ParticipantSummary.hpoId, ParticipantSummary
 Index('participant_summary_hpo_dob', ParticipantSummary.hpoId, ParticipantSummary.dateOfBirth)
 Index('participant_summary_hpo_race', ParticipantSummary.hpoId, ParticipantSummary.race)
 Index('participant_summary_hpo_zip', ParticipantSummary.hpoId, ParticipantSummary.zipCode)
-Index('participant_summary_hpo_tier', ParticipantSummary.hpoId, ParticipantSummary.membershipTier)
+Index('participant_summary_hpo_status', ParticipantSummary.hpoId,
+      ParticipantSummary.enrollmentStatus)
 Index('participant_summary_hpo_consent', ParticipantSummary.hpoId,
       ParticipantSummary.consentForStudyEnrollment)
 Index('participant_summary_hpo_num_baseline_ppi', ParticipantSummary.hpoId,

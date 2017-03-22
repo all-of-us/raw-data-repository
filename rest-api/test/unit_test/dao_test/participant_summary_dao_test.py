@@ -11,13 +11,13 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
 from model.biobank_stored_sample import BiobankStoredSample
-from participant_enums import MembershipTier
-from unit_test_util import SqlTestBase, PITT_HPO_ID
+from participant_enums import EnrollmentStatus
+from unit_test_util import NdbTestBase, PITT_HPO_ID
 
 
-class ParticipantSummaryDaoTest(SqlTestBase):
+class ParticipantSummaryDaoTest(NdbTestBase):
   def setUp(self):
-    super(ParticipantSummaryDaoTest, self).setUp(with_data=True)
+    super(ParticipantSummaryDaoTest, self).setUp()
     self.dao = ParticipantSummaryDao()
     self.participant_dao = ParticipantDao()
     self.no_filter_query = Query([], None, 2, None)
@@ -28,7 +28,7 @@ class ParticipantSummaryDaoTest(SqlTestBase):
                                   None, 2, None)
     self.ascending_biobank_id_query = Query([], OrderBy("biobankId", True), 2, None)
     self.descending_biobank_id_query = Query([], OrderBy("biobankId", False), 2, None)
-    self.membership_tier_order_query = Query([], OrderBy("membershipTier", True), 2, None)
+    self.enrollment_status_order_query = Query([], OrderBy("enrollmentStatus", True), 2, None)
     self.hpo_id_order_query = Query([], OrderBy("hpoId", True), 2, None)
     self.first_name_order_query = Query([], OrderBy("firstName", True), 2, None)
 
@@ -134,18 +134,18 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     ps_2.lastName = 'Aardvark'
     ps_2.firstName = 'Bob'
     ps_2.dateOfBirth = datetime.date(1978, 10, 10)
-    ps_2.membershipTier = MembershipTier.SKIPPED
+    ps_2.enrollmentStatus = EnrollmentStatus.MEMBER
     self.dao.update(ps_2)
 
     ps_3.lastName = 'Jones'
     ps_3.firstName = 'Bob'
     ps_3.dateOfBirth = datetime.date(1978, 10, 10)
     ps_3.hpoId = PITT_HPO_ID
-    ps_3.membershipTier = MembershipTier.REGISTERED
+    ps_3.enrollmentStatus = EnrollmentStatus.MEMBER
     self.dao.update(ps_3)
 
     ps_4.lastName = 'Jones'
-    ps_4.membershipTier = MembershipTier.VOLUNTEER
+    ps_4.enrollmentStatus = EnrollmentStatus.FULL_PARTICIPANT
     self.dao.update(ps_4)
 
     self.assert_results(self.no_filter_query, [ps_2, ps_4],
@@ -158,8 +158,8 @@ class ParticipantSummaryDaoTest(SqlTestBase):
                         _make_pagination_token([3, 'Jones', 'Bob', datetime.date(1978, 10, 10), 3]))
     self.assert_results(self.hpo_id_order_query, [ps_2, ps_4],
                         _make_pagination_token([0, 'Jones', None, None, 4]))
-    self.assert_results(self.membership_tier_order_query, [ps_1, ps_2],
-                        _make_pagination_token(['SKIPPED', 'Aardvark', 'Bob',
+    self.assert_results(self.enrollment_status_order_query, [ps_1, ps_2],
+                        _make_pagination_token(['MEMBER', 'Aardvark', 'Bob',
                                                 datetime.date(1978, 10, 10), 2]))
 
     self.assert_results(_with_token(self.no_filter_query,
@@ -175,8 +175,8 @@ class ParticipantSummaryDaoTest(SqlTestBase):
     self.assert_results(_with_token(self.hpo_id_order_query,
                                     _make_pagination_token([0, 'Jones', None, None, 4])),
                         [ps_1, ps_3])
-    self.assert_results(_with_token(self.membership_tier_order_query,
-                                    _make_pagination_token(['SKIPPED', 'Aardvark', 'Bob',
+    self.assert_results(_with_token(self.enrollment_status_order_query,
+                                    _make_pagination_token(['MEMBER', 'Aardvark', 'Bob',
                                                 datetime.date(1978, 10, 10), 2])),
                         [ps_3, ps_4])
 

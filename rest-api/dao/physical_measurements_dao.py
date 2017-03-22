@@ -3,8 +3,10 @@ import logging
 
 from dao.base_dao import BaseDao
 from dao.participant_dao import ParticipantDao
+from dao.participant_summary_dao import ParticipantSummaryDao
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements
+from participant_enums import PhysicalMeasurementsStatus
 from werkzeug.exceptions import BadRequest
 
 _AMENDMENT_URL = 'http://terminology.pmi-ops.org/StructureDefinition/amends'
@@ -32,12 +34,23 @@ class PhysicalMeasurementsDao(BaseDao):
       self._update_amended(obj, extension, url, session)
       break
     super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
+    self._update_participant_summary(session, obj.participantId)
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
     session.flush()
     # Update the resource to contain the ID.
     resource_json['id'] = str(obj.physicalMeasurementsId)
     obj.resource = json.dumps(resource_json)
     return obj
+
+  def _update_participant_summary(self, session, participant_id):
+    participant_summary_dao = ParticipantSummaryDao()
+    participant_summary = participant_summary_dao.get_with_session(session, participant_id)
+    if (not participant_summary.physicalMeasurementsStatus or
+        participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.UNSET):
+      participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+      participant_summary_dao.update_enrollment_status(participant_summary)
+      session.merge(participant_summary)
+
 
   def _validate_model(self, session, obj):
     if obj.participantId is None:
