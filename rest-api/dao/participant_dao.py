@@ -2,7 +2,6 @@ import clock
 import json
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
-from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
