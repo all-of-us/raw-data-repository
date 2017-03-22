@@ -110,5 +110,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'questionnaireOnSociodemographics': 'SUBMITTED',
                 'questionnaireOnSociodemographicsTime': TIME_2.isoformat(),
                 'signUpTime': TIME_1.isoformat(),
+                'withdrawalStatus': 'NOT_WITHDRAWN',
+                'suspensionStatus': 'NOT_SUSPENDED',
               }
     self.assertJsonResponseMatches(expected, summary)

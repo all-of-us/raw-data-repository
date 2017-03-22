@@ -40,13 +40,13 @@ api.add_resource(ParticipantSummaryApi,
                  PREFIX + 'Participant/<participant_id:p_id>/Summary',
                  PREFIX + 'ParticipantSummary',
                  endpoint='participant.summary',
-                 methods=['GET',])
+                 methods=['GET'])
 
 api.add_resource(PhysicalMeasurementsApi,
                  PREFIX + 'Participant/<participant_id:p_id>/PhysicalMeasurements',
                  PREFIX + 'Participant/<participant_id:p_id>/PhysicalMeasurements/<string:id_>',
                  endpoint='participant.physicalMeasurements',
-                 methods=['GET', 'POST',])
+                 methods=['GET', 'POST'])
 
 api.add_resource(MetricsApi,
                  PREFIX + 'Metrics',

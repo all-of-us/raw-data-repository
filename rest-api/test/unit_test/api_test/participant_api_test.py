@@ -1,6 +1,7 @@
 import httplib
 
 from test.unit_test.unit_test_util import FlaskTestBase
+from participant_enums import WithdrawalStatus, SuspensionStatus
 
 class ParticipantApiTest(FlaskTestBase):
 
@@ -48,10 +49,16 @@ class ParticipantApiTest(FlaskTestBase):
     self.assertEquals(response, get_response)
     biobank_id = response['biobankId']
     self.assertTrue(biobank_id.startswith('B'))
-    del response['participantId']
-    del response['biobankId']
-    del response['signUpTime']
-    del response['lastModified']
+    self.assertEquals(str(WithdrawalStatus.NOT_WITHDRAWN), response['withdrawalStatus'])
+    self.assertEquals(str(SuspensionStatus.NOT_SUSPENDED), response['suspensionStatus'])
+    for auto_generated in (
+        'participantId',
+        'biobankId',
+        'signUpTime',
+        'lastModified',
+        'withdrawalStatus',
+        'suspensionStatus'):
+      del response[auto_generated]
 
     self.assertJsonResponseMatches(self.participant, response)
 

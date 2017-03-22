@@ -9,10 +9,9 @@ from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
 from model.code import Code, CodeType
 from model.participant import Participant
-from model.participant_summary import ParticipantSummary
 from model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from participant_enums import QuestionnaireStatus, UNSET_HPO_ID
+from participant_enums import QuestionnaireStatus
 from unit_test_util import FlaskTestBase
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest
@@ -170,12 +169,11 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_qr.answers.append(answer_2)
     self.check_response(expected_qr)
 
-    expected_ps = ParticipantSummary(participantId=1, biobankId=2, genderIdentityId=3,
-                                     signUpTime=TIME, hpoId=UNSET_HPO_ID,
-                                     questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
-                                     questionnaireOnSociodemographicsTime=TIME_2,
-                                     numCompletedBaselinePPIModules=1,
-                                     numBaselineSamplesArrived=0)
+    expected_ps = self._participant_summary_with_defaults(
+        participantId=1, biobankId=2, genderIdentityId=3, signUpTime=TIME,
+        numCompletedBaselinePPIModules=1,
+        questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
+        questionnaireOnSociodemographicsTime=TIME_2)
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
   def test_insert_qr_three_times(self):
@@ -220,12 +218,11 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     with FakeClock(TIME_2):
       self.questionnaire_response_dao.insert(qr)
 
-    expected_ps = ParticipantSummary(participantId=1, biobankId=2, genderIdentityId=3,
-                                     signUpTime=TIME, hpoId=UNSET_HPO_ID,
-                                     questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
-                                     questionnaireOnSociodemographicsTime=TIME_2,
-                                     numCompletedBaselinePPIModules=1,
-                                     numBaselineSamplesArrived=0)
+    expected_ps = self._participant_summary_with_defaults(
+        participantId=1, biobankId=2, genderIdentityId=3, signUpTime=TIME,
+        numCompletedBaselinePPIModules=1,
+        questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
+        questionnaireOnSociodemographicsTime=TIME_2)
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
     qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
@@ -260,12 +257,11 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_qr2.answers.append(answer_3)
     self.check_response(expected_qr2)
 
-    expected_ps2 = ParticipantSummary(participantId=1, biobankId=2, genderIdentityId=5,
-                                      signUpTime=TIME, hpoId=UNSET_HPO_ID,
-                                      questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
-                                      questionnaireOnSociodemographicsTime=TIME_2,
-                                      numCompletedBaselinePPIModules=1,
-                                      numBaselineSamplesArrived=0)
+    expected_ps2 = self._participant_summary_with_defaults(
+        participantId=1, biobankId=2, genderIdentityId=5, signUpTime=TIME,
+        numCompletedBaselinePPIModules=1,
+        questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
+        questionnaireOnSociodemographicsTime=TIME_2)
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps2.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -297,12 +293,11 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_qr3.answers.append(answer_4)
     self.check_response(expected_qr3)
 
-    expected_ps3 = ParticipantSummary(participantId=1, biobankId=2, genderIdentityId=6,
-                                      signUpTime=TIME, hpoId=UNSET_HPO_ID,
-                                      questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
-                                      questionnaireOnSociodemographicsTime=TIME_2,
-                                      numCompletedBaselinePPIModules=1,
-                                      numBaselineSamplesArrived=0)
+    expected_ps3 = self._participant_summary_with_defaults(
+        participantId=1, biobankId=2, genderIdentityId=6, signUpTime=TIME,
+        numCompletedBaselinePPIModules=1,
+        questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
+        questionnaireOnSociodemographicsTime=TIME_2)
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())

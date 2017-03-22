@@ -2,13 +2,14 @@ import clock
 
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
 from code_constants import UNSET
-from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import MembershipTier, Race, get_bucketed_age
+from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, MembershipTier
+from participant_enums import Race, WithdrawalStatus, SuspensionStatus, get_bucketed_age
 from model.base import Base
 from model.utils import Enum, to_client_participant_id, to_client_biobank_id
 from sqlalchemy import Column, Integer, String, Date, DateTime
 from sqlalchemy import ForeignKey, Index, SmallInteger
 from sqlalchemy.orm import relationship
+
 
 _DATE_FIELDS = ['dateOfBirth', 'signUpTime', 'consentForStudyEnrollmentTime',
                 'consentForElectronicHealthRecordsTime', 'questionnaireOnOverallHealthTime',
@@ -20,8 +21,9 @@ _ENUM_FIELDS = ['membershipTier', 'race', 'physicalMeasurementsStatus',
                 'questionnaireOnOverallHealth', 'questionnaireOnPersonalHabits',
                 'questionnaireOnSociodemographics', 'questionnaireOnHealthcareAccess',
                 'questionnaireOnMedicalHistory', 'questionnaireOnMedications',
-                'questionnaireOnFamilyHealth']
+                'questionnaireOnFamilyHealth', 'suspensionStatus', 'withdrawalStatus']
 _CODE_FIELDS = ['genderIdentityId']
+
 
 class ParticipantSummary(Base):
   __tablename__ = 'participant_summary'
@@ -76,6 +78,19 @@ class ParticipantSummary(Base):
   # where testCode is one of the baseline tests (listed in the config).
   numBaselineSamplesArrived = Column('num_baseline_samples_arrived', SmallInteger, default=0)
 
+  # Withdrawal from the study of the participant's own accord.
+  withdrawalStatus = Column(
+      'withdrawal_status',
+      Enum(WithdrawalStatus),
+      nullable=False,
+      onupdate=WithdrawalStatus.NOT_WITHDRAWN)
+
+  suspensionStatus = Column(
+      'suspension_status',
+      Enum(SuspensionStatus),
+      nullable=False,
+      onupdate=SuspensionStatus.NOT_SUSPENDED)
+
   participant = relationship("Participant", back_populates="participantSummary")
 
   def to_client_json(self):
@@ -99,6 +114,7 @@ class ParticipantSummary(Base):
 
     return result
 
+# TODO(DA-234) Add an index for withdrawal status when querying summaries & filtering by withdrawal.
 Index('participant_summary_biobank_id', ParticipantSummary.biobankId)
 Index('participant_summary_ln_dob', ParticipantSummary.lastName,
       ParticipantSummary.dateOfBirth)

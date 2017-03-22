@@ -14,8 +14,7 @@ class ParticipantApi(UpdatableApi):
 
   @api_util.auth_required(PTC)
   def post(self):
-    result = super(ParticipantApi, self).post()
-    return result
+    return super(ParticipantApi, self).post()
 
   @api_util.auth_required(PTC)
   def put(self, p_id):

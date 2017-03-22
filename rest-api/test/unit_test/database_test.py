@@ -3,8 +3,6 @@ import isodate
 
 from participant_enums import QuestionnaireStatus
 
-from model.participant import Participant, ParticipantHistory
-from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.code import Code, CodeType, CodeBook, CodeHistory
@@ -64,28 +62,27 @@ class DatabaseTest(SqlTestBase):
 
     session.commit()
 
-    p = Participant(participantId=1, version=1, biobankId=2, hpoId=1,
-                    signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now(),
-                    clientId="c")
-    ps = ParticipantSummary(
+    p = self._participant_with_defaults(
+        participantId=1, version=1, biobankId=2, clientId='fake@client.id', hpoId=hpo.hpoId,
+        signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now())
+    ps = self._participant_summary_with_defaults(
         participantId=1,
         biobankId=2,
+        hpoId=hpo.hpoId,
         firstName=self.fake.first_name(),
         middleName=self.fake.first_name(),
         lastName=self.fake.last_name(),
         zipCode='78751',
         dateOfBirth=datetime.date.today(),
         genderIdentityId=1,
-        hpoId=1,
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=datetime.datetime.now(),
-        numCompletedBaselinePPIModules=1,
         numBaselineSamplesArrived=2)
     p.participantSummary = ps
     session.add(p)
-    ph = ParticipantHistory(participantId=1, version=1, biobankId=2, hpoId=1,
-                            signUpTime=datetime.datetime.now(),
-                            lastModified=datetime.datetime.now(), clientId="d")
+    ph = self._participant_history_with_defaults(
+        participantId=1, biobankId=2, clientId='fake@client.id', hpoId=hpo.hpoId,
+        signUpTime=datetime.datetime.now(), lastModified=datetime.datetime.now())
     session.add(ph)
     session.commit()
 
@@ -153,7 +150,7 @@ class DatabaseTest(SqlTestBase):
     hpo = HPO(hpoId=1, name='UNSET')
     session.add(hpo)
     session.commit()
-    p = Participant(
+    p = self._participant_with_defaults(
         participantId=1, version=1, biobankId=2, hpoId=hpo.hpoId,
         signUpTime=datetime.datetime.utcnow(), lastModified=datetime.datetime.utcnow(),
         clientId='c')

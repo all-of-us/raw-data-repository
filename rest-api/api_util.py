@@ -234,10 +234,10 @@ def format_json_hpo(obj, field_name):
 def unix_time_millis(dt):
   return int((dt - EPOCH).total_seconds() * 1000)
 
-def parse_json_enum(obj, field_name, enum):
+def parse_json_enum(obj, field_name, enum_cls):
   """Converts a field of a dictionary from a string to an enum."""
   if field_name in obj and obj[field_name] is not None:
-    obj[field_name] = enum(obj[field_name])
+    obj[field_name] = enum_cls(obj[field_name])
 
 def format_json_enum(obj, field_name):
   """Converts a field of a dictionary from a enum to an string."""
