@@ -1,5 +1,6 @@
 import json
 
+from api_util import format_json_enum, parse_json_enum
 from model.base import Base
 from model.utils import Enum, to_client_participant_id, to_client_biobank_id
 from participant_enums import WithdrawalStatus, SuspensionStatus
@@ -38,15 +39,18 @@ class ParticipantBase(object):
     return Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
 
   def to_client_json(self):
-    return {
+    client_json = {
         'participantId': to_client_participant_id(self.participantId),
         'biobankId': to_client_biobank_id(self.biobankId),
         'lastModified': self.lastModified.isoformat(),
         'signUpTime': self.signUpTime.isoformat(),
         'providerLink': json.loads(self.providerLink),
-        'withdrawalStatus': self.withdrawalStatus.number,
-        'suspensionStatus': self.suspensionStatus.number,
+        'withdrawalStatus': self.withdrawalStatus,
+        'suspensionStatus': self.suspensionStatus,
     }
+    format_json_enum(client_json, 'withdrawalStatus')
+    format_json_enum(client_json, 'suspensionStatus')
+    return client_json
 
 
 class Participant(ParticipantBase, Base):
@@ -56,16 +60,14 @@ class Participant(ParticipantBase, Base):
 
   @staticmethod
   def from_client_json(resource_json, id_=None, expected_version=None, client_id=None):
-    withdrawal_value = resource_json.get('withdrawalStatus')
-    suspension_value = resource_json.get('suspensionStatus')
     # biobankId, lastModified, signUpTime are set by DAO.
     return Participant(
         participantId=id_,
         version=expected_version,
         providerLink=json.dumps(resource_json.get('providerLink')),
         clientId=client_id,
-        withdrawalStatus=withdrawal_value and WithdrawalStatus(withdrawal_value),
-        suspensionStatus=suspension_value and SuspensionStatus(suspension_value))
+        withdrawalStatus=parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus),
+        suspensionStatus=parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus))
 
 
 Index('participant_biobank_id', Participant.biobankId, unique=True)
