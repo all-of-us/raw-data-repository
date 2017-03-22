@@ -5,6 +5,10 @@ import main
 from clock import FakeClock
 from code_constants import PPI_SYSTEM, RACE_WHITE_CODE
 from concepts import Concept
+from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from dao.participant_summary_dao import ParticipantSummaryDao
+from model.biobank_stored_sample import BiobankStoredSample
+from test_data import load_measurement_json
 from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -119,6 +123,13 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     with FakeClock(TIME_1):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
+  def _store_biobank_sample(self, participant, test_code):
+    BiobankStoredSampleDao().insert(BiobankStoredSample(
+        biobankStoredSampleId='s' + participant['participantId'] + test_code,
+        biobankId=participant['biobankId'][1:],
+        test=test_code,
+        confirmed=TIME_1))
+
   def testQuery_manyParticipants(self):
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
     questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
@@ -143,14 +154,37 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # Send an empty questionnaire response for another questionnaire for participant 3,
     # completing the baseline PPI modules.
     self._submit_empty_questionnaire_response(participant_id_3, questionnaire_id_2)
+    
+    # Send physical measurements for participants 2 and 3
+    measurements_2 = load_measurement_json(participant_id_2)
+    measurements_3 = load_measurement_json(participant_id_3)
+    path_2 = 'Participant/%s/PhysicalMeasurements' % participant_id_2
+    path_3 = 'Participant/%s/PhysicalMeasurements' % participant_id_3
+    self.send_post(path_2, measurements_2)
+    self.send_post(path_3, measurements_3)
+   
+    # Store samples for DNA for participants 1 and 3
+    self._store_biobank_sample(participant_1, '1ED10')
+    self._store_biobank_sample(participant_3, 'Saliva')
+    # Update participant summaries based on these changes.
+    ParticipantSummaryDao().update_from_biobank_stored_samples()
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
     ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
     
     self.assertEquals(1, ps_1['numCompletedBaselinePPIModules'])
-    self.assertEquals(3, ps_2['numCompletedBaselinePPIModules'])
+    self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
+    self.assertEquals('UNSET', ps_1['samplesToIsolateDNA'])
+    self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])        
+    self.assertEquals(1, ps_2['numCompletedBaselinePPIModules'])
+    self.assertEquals(0, ps_2['numBaselineSamplesArrived'])    
+    self.assertEquals('UNSET', ps_2['samplesToIsolateDNA'])
+    self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
     self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
+    self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
+    self.assertEquals('RECEIVED', ps_3['samplesToIsolateDNA'])
+    self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
 
     response = self.send_get('ParticipantSummary')
     self.assertBundle([_make_entry(ps_1), _make_entry(ps_2), _make_entry(ps_3)], response)
@@ -205,9 +239,19 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertResponses('ParticipantSummary?_count=2&questionnaireOnSociodemographics=SUBMITTED',
                          [[ps_1, ps_2], [ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&consentForStudyEnrollment=UNSET',
-                         [[ps_1, ps_2], [ps_3]])
+                         [[ps_1]])
     self.assertResponses('ParticipantSummary?_count=2&consentForStudyEnrollment=SUBMITTED',
-                         [[]])
+                         [[ps_2, ps_3]])
+    self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=UNSET',
+                         [[ps_1]])
+    self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=COMPLETED',
+                         [[ps_2, ps_3]])
+    self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=INTERESTED',
+                         [[ps_1]])
+    self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=MEMBER',
+                         [[ps_2]])
+    self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=FULL_PARTICIPANT',
+                         [[ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=1978-10-08',
                          [[ps_2]])
     self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=gt1978-10-08',

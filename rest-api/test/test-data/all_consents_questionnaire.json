@@ -1,0 +1,17 @@
+{
+  "resourceType": "Questionnaire",
+  "status":"published",
+  "date":"2015-01-01T00:00:00-00:00",
+  "publisher":"fake",
+  "group": {
+    "concept": [
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "ConsentForEnrollment"
+      },
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "ConsentForEHR"
+      }]
+  }
+}
