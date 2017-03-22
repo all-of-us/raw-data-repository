@@ -71,7 +71,7 @@ ANSWER_CODE_TO_RACE = {
 class WithdrawalStatus(messages.Enum):
   """Whether a participant has withdrawn from the study."""
   NOT_WITHDRAWN = 1
-  NO_CONTACT = 2
+  NO_USE = 2
 
 
 class SuspensionStatus(messages.Enum):
