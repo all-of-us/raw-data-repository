@@ -318,7 +318,8 @@ class BaseDao(object):
         with self.session() as session:
           return self.insert_with_session(session, obj)
       except IntegrityError, e:
-        if 'UNIQUE constraint failed' in e.message:
+        # SQLite and MySQL variants of the error message, respectively.
+        if 'UNIQUE constraint failed' in e.message or 'Duplicate entry' in e.message:
           logging.warning('Failed insert with %s.', tried_ids)
         else:
           raise
