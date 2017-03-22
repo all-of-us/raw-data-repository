@@ -91,7 +91,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'firstName': first_name,
                    'middleName': middle_name,
                    'lastName': last_name,
-                   'zipCode' : '78751'}
+                   'zipCode' : '78751',
+                   'withdrawalStatus': 'NOT_WITHDRAWN',
+                   'suspensionStatus': 'NOT_SUSPENDED'}
     self.assertJsonResponseMatches(expected_ps, ps)
     response = self.send_get('ParticipantSummary')
     self.assertBundle([_make_entry(ps)], response)
