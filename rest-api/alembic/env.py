@@ -34,7 +34,8 @@ target_metadata = Base.metadata
 # In MySQL, make BLOB fields be LONGBLOB (which supports large blobs)
 @compiles(BLOB, "mysql")
 def compile_binary_sqlite(type_, compiler, **kw):
-    return "LONGBLOB"
+  #pylint: disable=unused-argument
+  return "LONGBLOB"
 
 def get_url():
   return os.environ['DB_CONNECTION_STRING']
