@@ -11,7 +11,7 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
 from model.biobank_stored_sample import BiobankStoredSample
-from participant_enums import EnrollmentStatus, QuestionnaireStatus, PhysicalMeasurementsStatus
+from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus
 from participant_enums import SampleStatus
 from unit_test_util import NdbTestBase, PITT_HPO_ID
 
