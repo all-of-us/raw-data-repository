@@ -167,7 +167,7 @@ class QuestionnaireDaoTest(SqlTestBase):
     q.concepts.append(self.CONCEPT_1)
     q.concepts.append(self.CONCEPT_2)
     with FakeClock(TIME):
-       self.dao.insert(q)
+      self.dao.insert(q)
 
     q2 = Questionnaire(resource=RESOURCE_2)
     q2.concepts.append(self.CONCEPT_1)
