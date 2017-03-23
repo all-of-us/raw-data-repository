@@ -3,6 +3,7 @@ import isodate
 
 from participant_enums import QuestionnaireStatus
 
+from dao import database_factory
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.code import Code, CodeType, CodeBook, CodeHistory
@@ -13,7 +14,8 @@ from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from unit_test_util import SqlTestBase
+from unit_test_util import TestBase, SqlTestBase
+import temporary_mysql
 
 
 class DatabaseTest(SqlTestBase):
@@ -192,3 +194,30 @@ class DatabaseTest(SqlTestBase):
     # TODO(DA-226) Does this represent prod CloudSQL?
     # SQLite (used in tests) drops time zone info, like the default sqlalchemy DateTime.
     self.assertEquals(bo.created.isoformat(), now.replace(tzinfo=None).isoformat())
+
+
+class MySqlDatabaseTest(TestBase):
+  @classmethod
+  def setUpClass(cls):
+    cls._temp_mysql = temporary_mysql.TemporaryMysql()
+    cls._temp_mysql.start_and_install()
+
+  @classmethod
+  def tearDownClass(cls):
+    cls._temp_mysql.stop()
+
+  def setUp(self):
+    super(MySqlDatabaseTest, self).setUp()
+    self._temp_mysql.reset()
+    self.database = database_factory.get_database()
+    self.database.create_schema()
+
+  def tearDown(self):
+    super(MySqlDatabaseTest, self).tearDown()
+
+  def test_create_hpo(self):
+    session = self.database.make_session()
+    hpo = HPO(hpoId=1, name='UNSET')
+    session.add(hpo)
+    session.commit()
+    session.close()
