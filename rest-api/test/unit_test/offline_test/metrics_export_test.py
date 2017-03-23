@@ -132,10 +132,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     participant_fields = get_participant_fields()
     assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0,
                       [participant_fields,
-                       ['2', '', '2016-01-04T09:40:21Z', '', t3, '', '', t3, t3, t2]])
+                       ['2', '', '2016-01-04T09:40:21Z', '', t3, '', '', '', t3, t3, t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1,
                       [participant_fields,
-                       ['1', '1980-01-03', '', t2, '', '', '', '', '', t2]])
+                       ['1', '1980-01-03', '', t2, '', '', '', '', '', '', t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 0,
                       [ANSWER_FIELDS,
                       ['2', t3, STATE_QUESTION_CODE, '', 'VA']])
@@ -174,7 +174,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNSET': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
-                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
+                        'Participant.numCompletedBaselinePPIModules.0' : 1,
+                        'Participant.samplesToIsolateDNA.UNSET' : 1,
+                        'Participant.enrollmentStatus.INTERESTED' : 1 })
     self.assertBucket(bucket_map, TIME, 'PITT',
                       { 'Participant': 1,
                         'Participant.ageRange.UNSET': 1,
@@ -191,7 +194,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNSET': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
-                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
+                        'Participant.numCompletedBaselinePPIModules.0' : 1,
+                        'Participant.samplesToIsolateDNA.UNSET' : 1,
+                        'Participant.enrollmentStatus.INTERESTED' : 1 })
     self.assertBucket(bucket_map, TIME, '',
                       { 'Participant': 2,
                         'Participant.ageRange.26-35': 1,
@@ -210,7 +216,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNSET': 2,
                         'Participant.race.UNSET': 2,
                         'Participant.biospecimenSummary.UNSET': 2,
-                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
+                        'Participant.numCompletedBaselinePPIModules.0' : 2,
+                        'Participant.samplesToIsolateDNA.UNSET' : 2,
+                        'Participant.enrollmentStatus.INTERESTED' : 2})
     # At TIME_2, P1 is white, UNMAPPED gender; biobank samples
     # arrived for P1; and both participants have submitted the sociodemographics questionnaire.
     self.assertBucket(bucket_map, TIME_2, 'UNSET',
@@ -229,7 +238,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNMAPPED': 1,
                         'Participant.race.WHITE': 1,
                         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
-                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
+                        'Participant.numCompletedBaselinePPIModules.1' : 1,
+                        'Participant.samplesToIsolateDNA.UNSET' : 1,
+                        'Participant.enrollmentStatus.INTERESTED' : 1 })
     self.assertBucket(bucket_map, TIME_2, 'PITT',
                       { 'Participant': 1,
                         'Participant.ageRange.UNSET': 1,
@@ -246,7 +258,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNSET': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
-                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1 })
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
+                        'Participant.numCompletedBaselinePPIModules.1' : 1,
+                        'Participant.samplesToIsolateDNA.UNSET' : 1,
+                        'Participant.enrollmentStatus.INTERESTED' : 1 })
     self.assertBucket(bucket_map, TIME_2, '',
                       { 'Participant': 2,
                         'Participant.ageRange.26-35': 1,
@@ -269,7 +284,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.race.UNSET': 1,
                         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
-                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
+                        'Participant.numCompletedBaselinePPIModules.1' : 2,
+                        'Participant.samplesToIsolateDNA.UNSET' : 2,
+                        'Participant.enrollmentStatus.INTERESTED' : 2 })
     # At TIME_3, P1 is UNMAPPED race, female gender, and now in PITT HPO;
     # physical measurements and a questionnaire for personal
     # habits and overall health are submitted for P2, and P2 is in SOUTH census region
@@ -281,7 +299,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.ageRange.UNSET': 1,
                         'Participant.censusRegion.SOUTH': 1,
                         'Participant.censusRegion.UNSET': 1,
-                        'Participant.physicalMeasurements.COMPLETE': 1,
+                        'Participant.physicalMeasurements.COMPLETED': 1,
                         'Participant.physicalMeasurements.UNSET': 1,
                         'Participant.biospecimen.UNSET': 2,
                         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
@@ -300,14 +318,18 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.race.UNSET': 1,
                         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
-                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
+                        'Participant.numCompletedBaselinePPIModules.1' : 1,
+                        'Participant.numCompletedBaselinePPIModules.3' : 1,
+                        'Participant.samplesToIsolateDNA.UNSET' : 2,
+                        'Participant.enrollmentStatus.INTERESTED' : 2 })
     self.assertBucket(bucket_map, TIME_3, '',
                       { 'Participant': 2,
                         'Participant.ageRange.36-45': 1,
                         'Participant.ageRange.UNSET': 1,
                         'Participant.censusRegion.SOUTH': 1,
                         'Participant.censusRegion.UNSET': 1,
-                        'Participant.physicalMeasurements.COMPLETE': 1,
+                        'Participant.physicalMeasurements.COMPLETED': 1,
                         'Participant.physicalMeasurements.UNSET': 1,
                         'Participant.biospecimen.UNSET': 2,
                         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
@@ -326,7 +348,11 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.race.UNSET': 1,
                         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
-                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2 })
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
+                        'Participant.numCompletedBaselinePPIModules.1' : 1,
+                        'Participant.numCompletedBaselinePPIModules.3' : 1,
+                        'Participant.samplesToIsolateDNA.UNSET' : 2,
+                        'Participant.enrollmentStatus.INTERESTED' : 2 })
     # There si a biobank order on 1/4, but it gets ignored since it's after the run date.
     self.assertBucket(bucket_map, TIME_4, '')
 

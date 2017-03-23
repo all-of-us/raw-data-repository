@@ -120,20 +120,19 @@ class ParticipantSummaryDao(UpdatableDao):
     """Updates the enrollment status field on the provided participant summary to
     the correct value based on the other fields on it. Called after
     a questionnaire response or physical measurements are submitted."""
-    enrollment_status = self.calculate_enrollment_status(summary.consentForStudyEnrollment,
-                                                         summary.consentForElectronicHealthRecords,
+    consent = (summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED and
+               summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED)
+    enrollment_status = self.calculate_enrollment_status(consent,
                                                          summary.numCompletedBaselinePPIModules,
                                                          summary.physicalMeasurementsStatus,
                                                          summary.samplesToIsolateDNA)
     summary.enrollment_status = enrollment_status
 
-  def calculate_enrollment_status(self, consent_for_study_enrollment,
-                                  consent_for_electronic_health_records,
+  def calculate_enrollment_status(self, consent_for_study_enrollment_and_ehr,
                                   num_completed_baseline_ppi_modules,
                                   physical_measurements_status,
                                   samples_to_isolate_dna):
-    if (consent_for_study_enrollment == QuestionnaireStatus.SUBMITTED and
-        consent_for_electronic_health_records == QuestionnaireStatus.SUBMITTED):
+    if consent_for_study_enrollment_and_ehr:
       if (num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules() and
           physical_measurements_status == PhysicalMeasurementsStatus.COMPLETED and
           samples_to_isolate_dna == SampleStatus.RECEIVED):
