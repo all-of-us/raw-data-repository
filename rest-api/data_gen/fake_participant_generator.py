@@ -57,7 +57,7 @@ _QUESTION_CODES = QUESTION_CODE_TO_FIELD.keys() + [RACE_QUESTION_CODE]
 
 _CONSTANT_CODES = [PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE]
 
-class ParticipantGenerator(object):
+class FakeParticipantGenerator(object):
 
   def __init__(self, request_sender):
     self._request_sender = request_sender

@@ -1,7 +1,7 @@
 import json
 
 from config_api import auth_required_config_admin
-from data_gen.participant_generator import ParticipantGenerator
+from data_gen.fake_participant_generator import FakeParticipantGenerator
 from data_gen.request_sender import ServerRequestSender
 from flask import request
 from flask.ext.restful import Resource
@@ -13,7 +13,7 @@ class DataGenApi(Resource):
   method_decorators = [auth_required_config_admin]
 
   def __init__(self):
-    self.participant_generator = ParticipantGenerator(ServerRequestSender())
+    self.participant_generator = FakeParticipantGenerator(ServerRequestSender())
 
   def post(self):
     resource = request.get_data()
