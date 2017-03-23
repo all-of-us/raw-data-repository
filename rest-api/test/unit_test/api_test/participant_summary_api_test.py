@@ -77,8 +77,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'signUpTime': participant['signUpTime'],
                    'biobankId': participant['biobankId'],
                    'numBaselineSamplesArrived': 0,
-                   'questionnaireOnSociodemographics': 'SUBMITTED',
-                   'questionnaireOnSociodemographicsTime': TIME_1.isoformat(),
+                   'questionnaireOnTheBasics': 'SUBMITTED',
+                   'questionnaireOnTheBasicsTime': TIME_1.isoformat(),
                    'questionnaireOnPersonalHabits': 'UNSET',
                    'questionnaireOnFamilyHealth': 'UNSET',
                    'questionnaireOnMedications': 'UNSET',
@@ -206,7 +206,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                          [[ps_2, ps_1], [ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&_sort:desc=genderIdentity',
                          [[ps_1, ps_3], [ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnSociodemographics',
+    self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
                          [[ps_1, ps_2], [ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
                          [[ps_3, ps_1], [ps_2]])
@@ -236,7 +236,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                          [[ps_1]])
     self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE&zipCode=78752',
                          [[]])
-    self.assertResponses('ParticipantSummary?_count=2&questionnaireOnSociodemographics=SUBMITTED',
+    self.assertResponses('ParticipantSummary?_count=2&questionnaireOnTheBasics=SUBMITTED',
                          [[ps_1, ps_2], [ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&consentForStudyEnrollment=UNSET',
                          [[ps_1]])

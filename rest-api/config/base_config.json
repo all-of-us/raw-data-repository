@@ -1,6 +1,6 @@
 {
   "baseline_ppi_questionnaire_fields": [
-    "questionnaireOnSociodemographics",
+    "questionnaireOnTheBasics",
     "questionnaireOnOverallHealth",
     "questionnaireOnPersonalHabits"
   ],

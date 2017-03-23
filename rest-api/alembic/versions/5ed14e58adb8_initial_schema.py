@@ -1,8 +1,8 @@
 """Initial schema
 
-Revision ID: 186e9408ea36
+Revision ID: 5ed14e58adb8
 Revises: 
-Create Date: 2017-03-22 17:36:28.086825
+Create Date: 2017-03-23 10:09:10.688121
 
 """
 from alembic import op
@@ -16,7 +16,7 @@ from participant_enums import EnrollmentStatus, Race, SampleStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '186e9408ea36'
+revision = '5ed14e58adb8'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -185,8 +185,8 @@ def upgrade():
     sa.Column('questionnaire_on_overall_health_time', sa.DateTime(), nullable=True),
     sa.Column('questionnaire_on_personal_habits', model.utils.Enum(QuestionnaireStatus), nullable=True),
     sa.Column('questionnaire_on_personal_habits_time', sa.DateTime(), nullable=True),
-    sa.Column('questionnaire_on_sociodemographics', model.utils.Enum(QuestionnaireStatus), nullable=True),
-    sa.Column('questionnaire_on_sociodemographics_time', sa.DateTime(), nullable=True),
+    sa.Column('questionnaire_on_the_basics', model.utils.Enum(QuestionnaireStatus), nullable=True),
+    sa.Column('questionnaire_on_the_basics_time', sa.DateTime(), nullable=True),
     sa.Column('questionnaire_on_healthcare_access', model.utils.Enum(QuestionnaireStatus), nullable=True),
     sa.Column('questionnaire_on_healthcare_access_time', sa.DateTime(), nullable=True),
     sa.Column('questionnaire_on_medical_history', model.utils.Enum(QuestionnaireStatus), nullable=True),

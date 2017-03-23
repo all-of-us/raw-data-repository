@@ -14,13 +14,13 @@ from sqlalchemy.orm import relationship
 
 _DATE_FIELDS = ['dateOfBirth', 'signUpTime', 'consentForStudyEnrollmentTime',
                 'consentForElectronicHealthRecordsTime', 'questionnaireOnOverallHealthTime',
-                'questionnaireOnPersonalHabitsTime', 'questionnaireOnSociodemographicsTime',
+                'questionnaireOnPersonalHabitsTime', 'questionnaireOnTheBasicsTime',
                 'questionnaireOnHealthcareAccessTime', 'questionnaireOnMedicalHistoryTime',
                 'questionnaireOnMedicationsTime', 'questionnaireOnFamilyHealthTime']
 _ENUM_FIELDS = ['enrollmentStatus', 'race', 'physicalMeasurementsStatus',
                 'consentForStudyEnrollment', 'consentForElectronicHealthRecords',
                 'questionnaireOnOverallHealth', 'questionnaireOnPersonalHabits',
-                'questionnaireOnSociodemographics', 'questionnaireOnHealthcareAccess',
+                'questionnaireOnTheBasics', 'questionnaireOnHealthcareAccess',
                 'questionnaireOnMedicalHistory', 'questionnaireOnMedications',
                 'questionnaireOnFamilyHealth', 'suspensionStatus', 'withdrawalStatus',
                 'samplesToIsolateDNA']
@@ -60,9 +60,9 @@ class ParticipantSummary(Base):
   questionnaireOnPersonalHabits = Column('questionnaire_on_personal_habits',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnPersonalHabitsTime = Column('questionnaire_on_personal_habits_time', DateTime)
-  questionnaireOnSociodemographics = Column('questionnaire_on_sociodemographics',
+  questionnaireOnTheBasics = Column('questionnaire_on_the_basics',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnSociodemographicsTime = Column('questionnaire_on_sociodemographics_time', DateTime)
+  questionnaireOnTheBasicsTime = Column('questionnaire_on_the_basics_time', DateTime)
   questionnaireOnHealthcareAccess = Column('questionnaire_on_healthcare_access',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnHealthcareAccessTime = Column('questionnaire_on_healthcare_access_time', DateTime)

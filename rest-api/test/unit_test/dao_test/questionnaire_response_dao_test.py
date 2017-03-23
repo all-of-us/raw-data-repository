@@ -1,7 +1,7 @@
 import datetime
 import json
 
-from code_constants import PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, SOCIODEMOGRAPHIC_PPI_MODULE
+from code_constants import PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, THE_BASICS_PPI_MODULE
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -55,7 +55,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                        parentId=1)
     self.CODE_6 = Code(codeId=6, system='a', value='f', codeType=CodeType.ANSWER, mapped=True,
                        parentId=1)
-    self.MODULE_CODE_7 = Code(codeId=7, system=PPI_SYSTEM, value=SOCIODEMOGRAPHIC_PPI_MODULE,
+    self.MODULE_CODE_7 = Code(codeId=7, system=PPI_SYSTEM, value=THE_BASICS_PPI_MODULE,
                               codeType=CodeType.MODULE, mapped=True)
     self.CONCEPT_1 = QuestionnaireConcept(codeId=7)
     self.CODE_1_QUESTION_1 = QuestionnaireQuestion(linkId='a', codeId=1, repeats=False)
@@ -172,8 +172,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_ps = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, genderIdentityId=3, signUpTime=TIME,
         numCompletedBaselinePPIModules=1,
-        questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
-        questionnaireOnSociodemographicsTime=TIME_2)
+        questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
+        questionnaireOnTheBasicsTime=TIME_2)
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
   def test_insert_qr_three_times(self):
@@ -221,8 +221,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_ps = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, genderIdentityId=3, signUpTime=TIME,
         numCompletedBaselinePPIModules=1,
-        questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
-        questionnaireOnSociodemographicsTime=TIME_2)
+        questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
+        questionnaireOnTheBasicsTime=TIME_2)
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
     qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
@@ -260,8 +260,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_ps2 = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, genderIdentityId=5, signUpTime=TIME,
         numCompletedBaselinePPIModules=1,
-        questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
-        questionnaireOnSociodemographicsTime=TIME_2)
+        questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
+        questionnaireOnTheBasicsTime=TIME_2)
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps2.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -296,8 +296,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_ps3 = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, genderIdentityId=6, signUpTime=TIME,
         numCompletedBaselinePPIModules=1,
-        questionnaireOnSociodemographics=QuestionnaireStatus.SUBMITTED,
-        questionnaireOnSociodemographicsTime=TIME_2)
+        questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
+        questionnaireOnTheBasicsTime=TIME_2)
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())
