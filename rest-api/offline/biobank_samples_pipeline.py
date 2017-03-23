@@ -19,13 +19,104 @@ from model.utils import from_client_biobank_id
 
 
 def upsert_from_latest_csv():
-  """Main entry point: Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
+  """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
   csv_file = _open_latest_samples_file(bucket_name)
   csv_reader = csv.DictReader(csv_file, delimiter='\t')
   written, skipped = _upsert_samples_from_csv(csv_reader)
   ParticipantSummaryDao().update_from_biobank_stored_samples()
   return written, skipped
+
+_CREATE_VIEW_PREAMBLE_SQLITE = 'CREATE TEMPORARY VIEW IF NOT EXISTS reconciliation_data AS '
+_CREATE_VIEW_PREAMBLE_MYSQL = 'CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS '
+_CREATE_VIEW_QUERY = """
+  SELECT
+    CASE
+      WHEN orders.participant_id IS NOT NULL THEN orders.participant_id
+      ELSE samples.participant_id
+      END AS participant_id,
+
+    orders.test,
+    COUNT(biobank_order_id) AS num_orders,
+    GROUP_CONCAT(biobank_order_id),
+    MAX(collected),
+    MAX(finalized),
+    GROUP_CONCAT(source_site_value),
+
+    samples.test,
+    COUNT(biobank_stored_sample_id) AS num_samples,
+    GROUP_CONCAT(biobank_stored_sample_id),
+    MAX(confirmed)
+  FROM
+   (SELECT
+      participant_id,
+      test,
+      biobank_order_id,
+      collected,
+      finalized,
+      source_site_value
+    FROM
+      biobank_order
+    JOIN
+      biobank_ordered_sample
+    ON
+      biobank_ordered_sample.order_id = biobank_order.biobank_order_id
+    ) orders
+  JOIN
+   (SELECT
+      participant_id,
+      biobank_stored_sample_id,
+      test,
+      confirmed
+    FROM
+      biobank_stored_sample
+    LEFT JOIN
+      participant
+    ON
+      biobank_stored_sample.biobank_id = participant.biobank_id
+    ) samples
+  ON
+    samples.participant_id = orders.participant_id
+    AND samples.test = orders.test
+  GROUP BY
+    orders.participant_id, orders.test, samples.participant_id, samples.test
+"""
+_SELECT_FROM_VIEW_SQL = """
+  SELECT * FROM reconciliation_data
+"""
+
+def write_reconciliation_report():
+  """Writes order/sample reconciliation reports to GCS."""
+  bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
+  # Pick a filename prefix for output.
+  # Open gcloud files and attach DictWriters for outputs.
+  # Write out reports:
+  #   Define a temporary table view `report_data` which contains report columns from the RDR:
+  #      *BiobankStoredSample.biobankId (JOIN w/ BiobankOrder.participantId)
+  #      *BiobankOrderedSample.test (JOIN w/ BiobankStoredSample.test)
+  #       BiobankOrder.biobankorderId (may be a list of the same participant/test happened >1x)
+  #       BiobankStoredSample.biobankStoredSampleId (may be a list)
+  #       BiobankOrder.sourceSiteValue (ANY_VALUE)
+  #       BiobankOrderedSample.finalized (ALL(IS NOT NULL))
+  #    and derived elapsed time:
+  #       elapsed_hours = MAX(BiobankStoredSample.confirmedDate) - MAX(BiobankOrderedSample.collected)
+  #  Then generate reports from the above:
+  #      SELECT * FROM report_data WHERE
+  #          length of ID lists match AND
+  #          BiobankStoredSample.test IS NOT NULL -> samples_received.csv;
+  #      SELECT * FROM report_data WHERE elapsed_hours > 24 -> samples_gt_24h.csv;
+  #      SELECT * FROM report_data WHERE
+  #          length of ID lists doesn't match OR
+  #          (BiobankOrderedSample.finalized IS NOT NULL
+  #           AND BiobankStoredSample.test IS NULL) -> samples_not_received.csv;
+  from dao import database_factory
+  db = database_factory.get_database()
+  session = db.make_session()
+  session.execute(_CREATE_VIEW_PREAMBLE_SQLITE +_CREATE_VIEW_QUERY)
+  session.execute(_CREATE_VIEW_PREAMBLE_SQLITE +_CREATE_VIEW_QUERY)  # safe to call twice?
+  for line in session.execute(_SELECT_FROM_VIEW_SQL):
+    print line
+  session.close()
 
 
 def _open_latest_samples_file(cloud_bucket_name):

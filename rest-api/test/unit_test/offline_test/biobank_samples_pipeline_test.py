@@ -5,8 +5,10 @@ import time
 
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 
+import clock
 import config
 from code_constants import BIOBANK_TESTS
+from dao.biobank_order_dao import BiobankOrderDao
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.hpo_dao import HPO
 from dao.participant_dao import ParticipantDao
@@ -14,6 +16,8 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 from test import test_data
+from model.biobank_order import BiobankOrder, BiobankOrderedSample
+from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import to_client_biobank_id
 from model.participant import Participant
 from participant_enums import SampleStatus
@@ -29,6 +33,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, _BASELINE_TESTS)
     # Everything is stored as a list, so override bucket name as a 1-element list.
     config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BUCKET])
+    self.participant_dao = ParticipantDao()
 
   def _write_cloud_csv(self, file_name, contents_str):
     with cloudstorage_api.open('/%s/%s' % (_FAKE_BUCKET, file_name), mode='w') as cloud_file:
@@ -39,13 +44,17 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEquals(dao.count(), 0)
 
     # Create 3 participants and pass their (random) IDs into sample rows.
-    participant_dao = ParticipantDao()
     summary_dao = ParticipantSummaryDao()
     biobank_ids = []
     participant_ids = []
     for _ in xrange(3):
+<<<<<<< HEAD
       participant = participant_dao.insert(Participant())
       summary_dao.insert(self.participant_summary(participant))
+=======
+      participant = self.participant_dao.insert(Participant())
+      summary_dao.insert(participant_summary(participant))
+>>>>>>> Write reconciliation query and stub call sites / test.
       participant_ids.append(participant.participantId)
       biobank_ids.append(participant.biobankId)
       self.assertEquals(summary_dao.get(participant.participantId).numBaselineSamplesArrived, 0)
@@ -110,20 +119,34 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         biobank_samples_pipeline._upsert_samples_from_csv(reader)
 
 
-# TODO(mwf) Add Biobank reconciliation test using this stub.
 class MySqlReconciliationTest(CloudStorageSqlTestBase, NdbTestBase):
   def setUp(self):
-    super(MySqlReconciliationTest, self).setUp(use_mysql=True, with_data=False)
+    super(MySqlReconciliationTest, self).setUp(use_mysql=True)
 
-  def _create_hpo_as_sanity_check(self):
-    session = self.database.make_session()
-    hpo = HPO(hpoId=1, name='UNSET')
-    session.add(hpo)
-    session.commit()
-    session.close()
+  def test_reconciliation_query(self):
+    # Create 3 participants, each with some corresponding orders and samples.
+    order_dao = BiobankOrderDao()
+    sample_dao = BiobankStoredSampleDao()
+    for i in xrange(3):
+      p = self.participant_dao.insert(Participant())
+      order = BiobankOrder(
+          biobankOrderId='OrderFromHealthPro%d' % i,
+          participantId=p.participantId,
+          sourceSiteValue='SiteValueTest',
+          created=clock.CLOCK.now(),
+          samples=[])
+      for test_code in _BASELINE_TESTS:
+        order.samples.append(BiobankOrderedSample(
+            biobankOrderId=order.biobankOrderId,
+            test=test_code,
+            description=u'test',
+            processingRequired=False,
+            finalized=clock.CLOCK.now()))
+        sample_dao.insert(BiobankStoredSample(
+            biobankStoredSampleId='StoredSample%d%s' % (i, test_code),
+            biobankId=p.biobankId,
+            test=test_code,
+            confirmed=clock.CLOCK.now()))
+      order_dao.insert(order)
 
-  def test_mysql_db_connection_works(self):
-    self._create_hpo_as_sanity_check()
-
-  def test_mysql_db_connection_works_after_reset(self):
-    self._create_hpo_as_sanity_check()
+    biobank_samples_pipeline.write_reconciliation_report()

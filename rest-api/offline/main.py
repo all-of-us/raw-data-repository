@@ -33,6 +33,7 @@ def recalculate_metrics():
 def import_biobank_samples():
   # Note that crons have a 10 minute deadline instead of the normal 60s.
   written, skipped = biobank_samples_pipeline.upsert_from_latest_csv()
+  biobank_samples_pipeline.write_reconciliation_report()
   return json.dumps({'written': written, 'skipped': skipped})
 
 
