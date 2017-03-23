@@ -64,6 +64,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                                           date_answers = date_answers)
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
+  def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id):
+    qr = make_questionnaire_response_json(participant_id, questionnaire_id)
+    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+
   def _create_data(self):
     SqlTestBase.setup_codes(ANSWER_FIELD_TO_QUESTION_CODE.values(),
                             code_type=CodeType.QUESTION)
@@ -75,6 +79,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
     questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
+    questionnaire_id_3 = self.create_questionnaire('all_consents_questionnaire.json')
     with FakeClock(TIME):
       participant = Participant(participantId=1, biobankId=2)
       participant_dao.insert(participant)
@@ -101,11 +106,18 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       self.submit_questionnaire_response('P1', questionnaire_id, "black", "female",
                                          None, datetime.date(1980, 1, 3))
       self.submit_questionnaire_response('P2', questionnaire_id_2, None, None, 'VA', None)
+      self._submit_empty_questionnaire_response('P1', questionnaire_id_3)
+      self._submit_empty_questionnaire_response('P2', questionnaire_id_3)
       sample_dao = BiobankStoredSampleDao()
       sample_dao.insert(BiobankStoredSample(
         biobankStoredSampleId='abc',
         biobankId=2,
         test='test',
+        confirmed=TIME_2))
+      sample_dao.insert(BiobankStoredSample(
+        biobankStoredSampleId='def',
+        biobankId=3,
+        test='Saliva',
         confirmed=TIME_2))
 
   def test_metric_export(self):
@@ -132,10 +144,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     participant_fields = get_participant_fields()
     assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0,
                       [participant_fields,
-                       ['2', '', '2016-01-04T09:40:21Z', '', t3, '', '', '', t3, t3, t2]])
+                       ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t3, t3, t3, t3, t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1,
                       [participant_fields,
-                       ['1', '1980-01-03', '', t2, '', '', '', '', '', '', t2]])
+                       ['1', '1980-01-03', '', t2, '', '', t3, t3, '', '', t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 0,
                       [ANSWER_FIELDS,
                       ['2', t3, STATE_QUESTION_CODE, '', 'VA']])
@@ -221,7 +233,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.samplesToIsolateDNA.UNSET' : 2,
                         'Participant.enrollmentStatus.INTERESTED' : 2})
     # At TIME_2, P1 is white, UNMAPPED gender; biobank samples
-    # arrived for P1; and both participants have submitted the sociodemographics questionnaire.
+    # arrived for P1 and P2 (the latter updating samplesToIsolateDNA); 
+    # and both participants have submitted the sociodemographics questionnaire.
     self.assertBucket(bucket_map, TIME_2, 'UNSET',
                       { 'Participant': 1,
                         'Participant.ageRange.26-35': 1,
@@ -248,7 +261,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.censusRegion.UNSET': 1,
                         'Participant.physicalMeasurements.UNSET': 1,
                         'Participant.biospecimen.UNSET': 1,
-                        'Participant.biospecimenSamples.UNSET': 1,
+                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
                         'Participant.hpoId.PITT': 1,
                         'Participant.consentForElectronicHealthRecords.UNSET': 1,
                         'Participant.consentForStudyEnrollment.UNSET': 1,
@@ -257,10 +270,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.questionnaireOnSociodemographics.SUBMITTED': 1,
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.biospecimenSummary.UNSET': 1,
+                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
                         'Participant.numCompletedBaselinePPIModules.1' : 1,
-                        'Participant.samplesToIsolateDNA.UNSET' : 1,
+                        'Participant.samplesToIsolateDNA.RECEIVED' : 1,
                         'Participant.enrollmentStatus.INTERESTED' : 1 })
     self.assertBucket(bucket_map, TIME_2, '',
                       { 'Participant': 2,
@@ -269,8 +282,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.censusRegion.UNSET': 2,
                         'Participant.physicalMeasurements.UNSET': 2,
                         'Participant.biospecimen.UNSET': 2,
-                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
-                        'Participant.biospecimenSamples.UNSET': 1,
+                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
                         'Participant.hpoId.PITT': 1,
                         'Participant.hpoId.UNSET': 1,
                         'Participant.consentForElectronicHealthRecords.UNSET': 2,
@@ -282,16 +294,18 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.WHITE': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
-                        'Participant.biospecimenSummary.UNSET': 1,
+                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
                         'Participant.numCompletedBaselinePPIModules.1' : 2,
-                        'Participant.samplesToIsolateDNA.UNSET' : 2,
+                        'Participant.samplesToIsolateDNA.UNSET' : 1,
+                        'Participant.samplesToIsolateDNA.RECEIVED' : 1,
                         'Participant.enrollmentStatus.INTERESTED' : 2 })
     # At TIME_3, P1 is UNMAPPED race, female gender, and now in PITT HPO;
     # physical measurements and a questionnaire for personal
-    # habits and overall health are submitted for P2, and P2 is in SOUTH census region
+    # habits and overall health are submitted for P2, both participants submit consent
+    # questionnaires, and P2 is in SOUTH census region
     # and in a new age bucket (since it was their birthday.)
+    # P2 now has an enrollment status of FULL_MEMBER, and P1 has MEMBER
     self.assertBucket(bucket_map, TIME_3, 'UNSET')
     self.assertBucket(bucket_map, TIME_3, 'PITT',
                       { 'Participant': 2,
@@ -302,11 +316,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.physicalMeasurements.COMPLETED': 1,
                         'Participant.physicalMeasurements.UNSET': 1,
                         'Participant.biospecimen.UNSET': 2,
-                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
-                        'Participant.biospecimenSamples.UNSET': 1,
+                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
                         'Participant.hpoId.PITT': 2,
-                        'Participant.consentForElectronicHealthRecords.UNSET': 2,
-                        'Participant.consentForStudyEnrollment.UNSET': 2,
+                        'Participant.consentForElectronicHealthRecords.SUBMITTED': 2,
+                        'Participant.consentForStudyEnrollment.SUBMITTED': 2,
                         'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
                         'Participant.questionnaireOnOverallHealth.UNSET': 1,
                         'Participant.questionnaireOnPersonalHabits.SUBMITTED': 1,
@@ -316,13 +329,14 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNMAPPED': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
-                        'Participant.biospecimenSummary.UNSET': 1,
-                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
+                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
+                        'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 2,
                         'Participant.numCompletedBaselinePPIModules.1' : 1,
                         'Participant.numCompletedBaselinePPIModules.3' : 1,
-                        'Participant.samplesToIsolateDNA.UNSET' : 2,
-                        'Participant.enrollmentStatus.INTERESTED' : 2 })
+                        'Participant.samplesToIsolateDNA.UNSET' : 1,
+                        'Participant.samplesToIsolateDNA.RECEIVED' : 1,
+                        'Participant.enrollmentStatus.MEMBER' : 1,
+                        'Participant.enrollmentStatus.FULL_PARTICIPANT' : 1})
     self.assertBucket(bucket_map, TIME_3, '',
                       { 'Participant': 2,
                         'Participant.ageRange.36-45': 1,
@@ -332,11 +346,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.physicalMeasurements.COMPLETED': 1,
                         'Participant.physicalMeasurements.UNSET': 1,
                         'Participant.biospecimen.UNSET': 2,
-                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
-                        'Participant.biospecimenSamples.UNSET': 1,
+                        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
                         'Participant.hpoId.PITT': 2,
-                        'Participant.consentForElectronicHealthRecords.UNSET': 2,
-                        'Participant.consentForStudyEnrollment.UNSET': 2,
+                        'Participant.consentForElectronicHealthRecords.SUBMITTED': 2,
+                        'Participant.consentForStudyEnrollment.SUBMITTED': 2,
                         'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
                         'Participant.questionnaireOnOverallHealth.UNSET': 1,
                         'Participant.questionnaireOnPersonalHabits.SUBMITTED': 1,
@@ -346,13 +359,14 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNMAPPED': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
-                        'Participant.biospecimenSummary.UNSET': 1,
-                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
+                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
+                        'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 2,
                         'Participant.numCompletedBaselinePPIModules.1' : 1,
                         'Participant.numCompletedBaselinePPIModules.3' : 1,
-                        'Participant.samplesToIsolateDNA.UNSET' : 2,
-                        'Participant.enrollmentStatus.INTERESTED' : 2 })
+                        'Participant.samplesToIsolateDNA.UNSET' : 1,                        
+                        'Participant.samplesToIsolateDNA.RECEIVED' : 1,
+                        'Participant.enrollmentStatus.MEMBER' : 1,
+                        'Participant.enrollmentStatus.FULL_PARTICIPANT' : 1 })
     # There si a biobank order on 1/4, but it gets ignored since it's after the run date.
     self.assertBucket(bucket_map, TIME_4, '')
 
