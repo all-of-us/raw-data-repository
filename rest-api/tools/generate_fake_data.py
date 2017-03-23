@@ -35,4 +35,4 @@ if __name__ == '__main__':
                       help='The number of participants to create.',
                       default=1)
 
-main(parser.parse_args())
+  main(parser.parse_args())

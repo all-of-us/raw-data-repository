@@ -1,5 +1,6 @@
-'''Creates a participant, physical measurements, questionnaire responses, and biobank
-orders.'''
+"""Creates a participant, physical measurements, questionnaire responses, and biobank
+orders."""
+import clock
 import csv
 import datetime
 import random
@@ -61,7 +62,7 @@ class ParticipantGenerator(object):
   def __init__(self, request_sender):
     self._request_sender = request_sender
     self._hpos = HPODao().get_all()
-    self._now = datetime.datetime.now()
+    self._now = clock.CLOCK.now()
     self._setup_questionnaires()
     self._setup_data()
     self._min_birth_date = self._now - datetime.timedelta(days=_MAX_PARTICIPANT_AGE * 365)

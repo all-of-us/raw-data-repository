@@ -1,4 +1,5 @@
-"""Imports a codebook into the database, using JSON found at a specified path.
+"""Imports questionnaires into the database, using JSON found in specified files
+in a specified directory.
 """
 
 import argparse
