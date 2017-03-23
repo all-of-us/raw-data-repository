@@ -28,7 +28,7 @@ class QuestionnaireDao(UpdatableDao):
                 .order_by(Questionnaire.lastModified.desc())
                 .options(subqueryload(Questionnaire.questions))
                 .first())
-          
+
   def _make_history(self, questionnaire, concepts, questions):
     history = QuestionnaireHistory()
     history.fromdict(questionnaire.asdict(), allow_pk=True)

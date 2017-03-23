@@ -39,6 +39,6 @@ class ServerRequestSender(object):
           response = app.make_response(rv)
           response = app.process_response(response)
     if response.status_code != httplib.OK:
-      raise RuntimeError("Request failed: %s, %s, response = %s" % (local_path, request_data, 
+      raise RuntimeError("Request failed: %s, %s, response = %s" % (local_path, request_data,
                                                                     response))
     return json.loads(response.data)

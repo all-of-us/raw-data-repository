@@ -114,7 +114,7 @@ class QuestionnaireDaoTest(SqlTestBase):
     questionnaire = self.dao.get_with_children(1)
 
     self.assertEquals(sort_lists(expected_questionnaire.asdict_with_children()),
-                      sort_lists(questionnaire.asdict_with_children()))                      
+                      sort_lists(questionnaire.asdict_with_children()))
     self.assertEquals(questionnaire.asdict(),
                       self.dao.get_latest_questionnaire_with_concept(self.CODE_1.codeId).asdict())
 
@@ -161,22 +161,22 @@ class QuestionnaireDaoTest(SqlTestBase):
       self.fail("NotFound expected")
     except NotFound:
       pass
-      
+
   def test_insert_multiple_questionnaires_same_concept(self):
     q = Questionnaire(resource=RESOURCE_1)
     q.concepts.append(self.CONCEPT_1)
     q.concepts.append(self.CONCEPT_2)
     with FakeClock(TIME):
        self.dao.insert(q)
-       
+
     q2 = Questionnaire(resource=RESOURCE_2)
     q2.concepts.append(self.CONCEPT_1)
     with FakeClock(TIME_2):
       self.dao.insert(q2)
-      
-    self.assertEquals(2, 
+
+    self.assertEquals(2,
                       self.dao.get_latest_questionnaire_with_concept(self.CODE_1.codeId)
                         .questionnaireId)
-    self.assertEquals(1, 
+    self.assertEquals(1,
                       self.dao.get_latest_questionnaire_with_concept(self.CODE_2.codeId)
                         .questionnaireId)

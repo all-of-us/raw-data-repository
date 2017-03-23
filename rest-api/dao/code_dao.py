@@ -52,7 +52,7 @@ class CodeBookDao(BaseDao):
     display = concept['display']
     code_type = _CODE_TYPE_MAP.get(property_dict['concept-type'])
     if code_type is None:
-      logging.warning("Unrecognized concept type: %s, value: %s; ignoring." % 
+      logging.warning("Unrecognized concept type: %s, value: %s; ignoring." %
                       (property_dict['concept-type'], value))
       return 0
     code = Code(system=system, codeBookId=code_book_id, value=value, display=display, topic=topic,

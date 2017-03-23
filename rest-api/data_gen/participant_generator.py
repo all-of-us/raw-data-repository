@@ -40,7 +40,7 @@ _MULTIPLE_RACE_ANSWERS = 0.2
 # Maximum number of race answers
 _MAX_RACE_ANSWERS = 3
 
-# Maximum age of participants 
+# Maximum age of participants
 _MAX_PARTICIPANT_AGE = 102
 
 # Minimum age of participants
@@ -65,7 +65,7 @@ class ParticipantGenerator(object):
     self._setup_questionnaires()
     self._setup_data()
     self._min_birth_date = self._now - datetime.timedelta(days=_MAX_PARTICIPANT_AGE * 365)
-    self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE) 
+    self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE)
 
   def _days_ago(self, num_days):
     return self._now - datetime.timedelta(days=num_days)
@@ -79,13 +79,13 @@ class ParticipantGenerator(object):
     return result
 
   def _setup_questionnaires(self):
-    '''Locates questionnaires and verifies that they have the appropriate questions in them.'''    
+    '''Locates questionnaires and verifies that they have the appropriate questions in them.'''
     questionnaire_dao = QuestionnaireDao()
-    code_dao = CodeDao()    
+    code_dao = CodeDao()
     question_code_to_questionnaire_id = {}
     self._questionnaire_to_questions = {}
     self._question_code_to_answer_codes = {}
-    # Populate maps of questionnaire ID/version to [(question_code, link ID)] and 
+    # Populate maps of questionnaire ID/version to [(question_code, link ID)] and
     # question code to answer codes.
     for concept in _QUESTIONNAIRE_CONCEPTS:
       code = code_dao.get_code(PPI_SYSTEM, concept)
@@ -107,21 +107,21 @@ class ParticipantGenerator(object):
             questions.append(code_and_link_id)
           answer_codes = self._get_answer_codes(question_code)
           if answer_codes:
-            self._question_code_to_answer_codes[question_code.value] = (answer_codes + 
+            self._question_code_to_answer_codes[question_code.value] = (answer_codes +
                                                                         _CONSTANT_CODES)
     # Make sure that all the questions are in the questionnaires.
     for code_value in _QUESTION_CODES:
       questionnaire_id = question_code_to_questionnaire_id.get(code_value)
       if not questionnaire_id:
         raise BadRequest("Question for code %s missing; import questionnaires" % code_value)
-  
+
   def _read_all_lines(self, filename):
     with open('app_data/%s' % filename) as f:
       reader = csv.reader(f)
       return [line[0].strip() for line in reader]
-      
+
   def _setup_data(self):
-    self._zip_code_to_state = {}    
+    self._zip_code_to_state = {}
     with open('app_data/zipcodes.txt') as zipcodes:
       reader = csv.reader(zipcodes)
       for zipcode, state in reader:
@@ -129,7 +129,7 @@ class ParticipantGenerator(object):
     self._first_names = self._read_all_lines('first_names.txt')
     self._middle_names = self._read_all_lines('middle_names.txt')
     self._last_names = self._read_all_lines('last_names.txt')
-  
+
   def generate_participant(self):
     participant_id, creation_time = self._create_participant()
     self._submit_questionnaire_responses(participant_id, creation_time)
@@ -148,48 +148,48 @@ class ParticipantGenerator(object):
   def _random_code_answer(self, question_code):
     code = random.choice(self._question_code_to_answer_codes[question_code])
     return [{"valueCoding": {"system": PPI_SYSTEM, "code": code}}]
-    
+
   def _choose_answer_code(self, question_code):
     if random.random() <= _QUESTION_NOT_ANSWERED:
-      return None                   
+      return None
     return self._random_code_answer(question_code)
-  
+
   def _choose_answer_codes(self, question_code, percent_with_multiple, max_answers):
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return None
     if random.random() > percent_with_multiple:
-      return self._random_code_answer(question_code)                   
+      return self._random_code_answer(question_code)
     num_answers = random.randint(2, max_answers)
     codes = random.sample(self._question_code_to_answer_codes[question_code], num_answers)
-    return [{"valueCoding": {"system": PPI_SYSTEM, "code": code}} for code in codes] 
-      
-  def _choose_state_and_zip(self, answer_map):  
+    return [{"valueCoding": {"system": PPI_SYSTEM, "code": code}} for code in codes]
+
+  def _choose_state_and_zip(self, answer_map):
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return
     zip_code = random.choice(self._zip_code_to_state.keys())
     state = self._zip_code_to_state.get(zip)
     answer_map[ZIPCODE_QUESTION_CODE] = _string_answer(zip_code)
     answer_map[STATE_QUESTION_CODE] = _string_answer(state)
-  
+
   def _choose_name(self, answer_map):
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return
     answer_map[FIRST_NAME_QUESTION_CODE] = _string_answer(random.choice(self._first_names))
     answer_map[MIDDLE_NAME_QUESTION_CODE] = _string_answer(random.choice(self._middle_names))
     answer_map[LAST_NAME_QUESTION_CODE] = _string_answer(random.choice(self._last_names))
-  
-  def _choose_date_of_birth(self, answer_map):      
+
+  def _choose_date_of_birth(self, answer_map):
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return
     delta = datetime.timedelta(days=random.randint(0, self._max_days_for_birth_date))
     date_of_birth = (self._min_birth_date + delta).date()
     answer_map[DATE_OF_BIRTH_QUESTION_CODE] = [{"valueDate": date_of_birth.isoformat()}]
-        
+
   def _make_answer_map(self):
     answer_map = {}
     gender_identity_answers = self._choose_answer_code(GENDER_IDENTITY_QUESTION_CODE)
     answer_map[GENDER_IDENTITY_QUESTION_CODE] = gender_identity_answers
-    answer_map[RACE_QUESTION_CODE] = self._choose_answer_codes(RACE_QUESTION_CODE, 
+    answer_map[RACE_QUESTION_CODE] = self._choose_answer_codes(RACE_QUESTION_CODE,
                                                                _MULTIPLE_RACE_ANSWERS,
                                                                _MAX_RACE_ANSWERS)
     self._choose_state_and_zip(answer_map)
@@ -226,7 +226,7 @@ class ParticipantGenerator(object):
         questions_with_answers.append(self._create_question_answer(link_id, answer))
     qr_json = self._create_questionnaire_response(participant_id, q_id_and_version,
                                                   questions_with_answers)
-    self._request_sender.send_request(submission_time, 'POST', 
+    self._request_sender.send_request(submission_time, 'POST',
                                       _questionnaire_response_url(participant_id), qr_json)
 
   def _create_questionnaire_response(self, participant_id, q_id_and_version,
@@ -244,10 +244,10 @@ class ParticipantGenerator(object):
 
 def _questionnaire_response_url(participant_id):
   return 'Participant/%s/QuestionnaireResponse' % participant_id
-  
+
 def _string_answer(value):
   return [{"valueString": value}]
-    
+
 def _make_primary_provider_link(hpo):
    return {'primary': True,
            'organization': { 'reference': 'Organization/' + hpo.name}}
