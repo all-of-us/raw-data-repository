@@ -98,17 +98,18 @@ class TestbedTestBase(TestBase):
     self.testbed.deactivate()
     super(TestbedTestBase, self).tearDown()
 
+
 class SqlTestBase(TestbedTestBase):
   """Base class for unit tests that use the SQL database."""
   def setUp(self, with_data=True):
     super(SqlTestBase, self).setUp()
-    SqlTestBase.setup_database()
+    self.setup_database()
     self.database = dao.database_factory.get_database()
     if with_data:
       self.setup_data()
 
   def tearDown(self):
-    SqlTestBase.teardown_database()
+    self.teardown_database()
     super(SqlTestBase, self).tearDown()
 
   @staticmethod
@@ -119,6 +120,8 @@ class SqlTestBase(TestbedTestBase):
   @staticmethod
   def teardown_database():
     dao.database_factory.get_database().get_engine().dispose()
+    # Reconnecting to in-memory SQLite (because singletons are cleared above)
+    # effectively clears the database.
 
   def get_database(self):
     return self.database
