@@ -1,8 +1,8 @@
 """Initial schema
 
-Revision ID: 107821c4a736
-Revises:
-Create Date: 2017-03-23 13:32:57.658965
+Revision ID: 8f4cff7a0fd1
+Revises: 
+Create Date: 2017-03-23 17:05:59.429476
 
 """
 from alembic import op
@@ -16,7 +16,7 @@ from participant_enums import EnrollmentStatus, Race, SampleStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '107821c4a736'
+revision = '8f4cff7a0fd1'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -82,7 +82,7 @@ def upgrade():
     sa.ForeignKeyConstraint(['code_book_id'], ['code_book.code_book_id'], ),
     sa.ForeignKeyConstraint(['parent_id'], ['code.code_id'], ),
     sa.PrimaryKeyConstraint('code_id'),
-    sa.UniqueConstraint('value')
+    sa.UniqueConstraint('system', 'value')
     )
     op.create_table('metrics_bucket',
     sa.Column('metrics_version_id', sa.Integer(), nullable=False),
@@ -160,7 +160,7 @@ def upgrade():
     sa.ForeignKeyConstraint(['parent_id'], ['code.code_id'], ),
     sa.PrimaryKeyConstraint('code_history_id'),
     sa.UniqueConstraint('code_book_id', 'code_id'),
-    sa.UniqueConstraint('code_book_id', 'value')
+    sa.UniqueConstraint('code_book_id', 'system', 'value')
     )
     op.create_table('participant_summary',
     sa.Column('participant_id', sa.Integer(), autoincrement=False, nullable=False),
@@ -303,7 +303,7 @@ def upgrade():
     )
     # ### end Alembic commands ###
 
-   # Insert our HPO IDs into the HPO table.
+    # Insert our HPO IDs into the HPO table.
     op.bulk_insert(hpo_table,
       [
          {'hpo_id': 0, 'name': 'UNSET' },
