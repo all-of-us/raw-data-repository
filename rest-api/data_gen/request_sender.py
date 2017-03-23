@@ -32,8 +32,8 @@ class ServerRequestSender(object):
             if rv is None:
               # Main Dispatch
               rv = app.dispatch_request()
+          #pylint: disable=broad-except           
           except Exception as e:
-            #pylint: disable=broad-except
             rv = app.handle_user_exception(e)
 
           response = app.make_response(rv)
