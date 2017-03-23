@@ -3,6 +3,7 @@ import singletons
 
 from model.database import Database
 
+DB_NAME = 'rdr'
 DB_CONNECTION_STRING = None
 
 class _SqlDatabase(Database):
@@ -13,4 +14,3 @@ class _SqlDatabase(Database):
 def get_database():
   """Returns a singleton _SqlDatabase."""
   return singletons.get(_SqlDatabase)
-
