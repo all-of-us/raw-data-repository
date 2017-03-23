@@ -79,8 +79,7 @@ from metrics_config import SPECIMEN_COLLECTED_VALUE, RACE_METRIC
 from metrics_config import SAMPLES_ARRIVED_VALUE, SUBMITTED_VALUE, PARTICIPANT_KIND
 from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields, get_fieldnames
 from metrics_config import transform_participant_summary_field, SAMPLES_TO_ISOLATE_DNA_METRIC
-from participant_enums import get_bucketed_age, get_race, PhysicalMeasurementsStatus
-from participant_enums import QuestionnaireStatus, SampleStatus
+from participant_enums import get_bucketed_age, get_race, PhysicalMeasurementsStatus, SampleStatus
 from dao.code_dao import CodeDao
 
 class PipelineNotRunningException(BaseException):
