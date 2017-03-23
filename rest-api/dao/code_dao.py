@@ -50,7 +50,11 @@ class CodeBookDao(BaseDao):
     topic = property_dict['concept-topic']
     value = concept['code']
     display = concept['display']
-    code_type = _CODE_TYPE_MAP[property_dict['concept-type']]
+    code_type = _CODE_TYPE_MAP.get(property_dict['concept-type'])
+    if code_type is None:
+      logging.warning("Unrecognized concept type: %s, value: %s; ignoring." % 
+                      (property_dict['concept-type'], value))
+      return 0
     code = Code(system=system, codeBookId=code_book_id, value=value, display=display, topic=topic,
                 codeType=code_type, mapped=True, parentId=parent_id)
     existing_code = self.code_dao._get_code_with_session(session, system, value)
@@ -138,7 +142,7 @@ class CodeDao(CacheAllDao):
     if code.codeType == code_type:
       return code
     if code.parentId:
-      return self.find_ancestor_of_type(self.get(code.parentId), code_type)
+      return self.find_ancestor_of_type(code.parent, code_type)
     return None
 
   def get_or_add_codes(self, code_map):

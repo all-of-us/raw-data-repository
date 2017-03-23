@@ -19,6 +19,16 @@ class QuestionnaireDao(UpdatableDao):
                                                    subqueryload(Questionnaire.questions))
       return query.get(questionnaireId)
 
+  def get_latest_questionnaire_with_concept(self, codeId):
+    """Find the questionnaire most recently modified that has the specified concept code."""
+    with self.session() as session:
+      return (session.query(Questionnaire)
+                .join(Questionnaire.concepts)
+                .filter(QuestionnaireConcept.codeId == codeId)
+                .order_by(Questionnaire.lastModified.desc())
+                .options(subqueryload(Questionnaire.questions))
+                .first())
+          
   def _make_history(self, questionnaire, concepts, questions):
     history = QuestionnaireHistory()
     history.fromdict(questionnaire.asdict(), allow_pk=True)

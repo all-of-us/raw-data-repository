@@ -1,15 +1,24 @@
 '''Creates a participant, physical measurements, questionnaire responses, and biobank
 orders.'''
+import csv
 import datetime
 import logging
 import random
 
 from clock import FakeClock
-from model.code import CodeType
-from code_constants import PPI_SYSTEM
+from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, OVERALL_HEALTH_PPI_MODULE
+from code_constants import LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
+from code_constants import QUESTION_CODE_TO_FIELD, RACE_QUESTION_CODE, GENDER_IDENTITY_QUESTION_CODE
+from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE
+from code_constants import MIDDLE_NAME_QUESTION_CODE, ZIPCODE_QUESTION_CODE
+from code_constants import STATE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE
+from code_constants import PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE
+
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
-from dao.questionnaire_dao import QuestionnaireConceptDao, QuestionnaireQuestionDao
+from dao.questionnaire_dao import QuestionnaireDao
+from model.code import CodeType
 from participant_enums import UNSET_HPO_ID
 from werkzeug.exceptions import BadRequest
 
@@ -27,20 +36,27 @@ _MAX_DAYS_BETWEEN_SUBMISSIONS = 30
 # Start creating participants from 4 years ago
 _MAX_DAYS_HISTORY = 4 * 365
 
-# Maximum number of answers for multi-answer questions
-_MAX_ANSWERS_PER_QUESTION = 3
+# Percentage of participants with multiple race answers
+_MULTIPLE_RACE_ANSWERS = 0.2
 
-_CODE_TO_ANSWERS_GENERATOR = {
-  FIRST_NAME_QUESTION_CODE: _pick_first_name(),
-  LAST_NAME_QUESTION_CODE: _pick_last_name(),
-  MIDDLE_NAME_QUESTION_CODE: _pick_middle_name(),
-  ZIPCODE_QUESTION_CODE: _pick_zipcode(),
-  STATE_QUESTION_CODE: _pick_state(),
-  DATE_OF_BIRTH_QUESTION_CODE: _pick_date_of_birth()
-}
+# Maximum number of race answers
+_MAX_RACE_ANSWERS = 3
 
+# Maximum age of participants 
+_MAX_PARTICIPANT_AGE = 102
 
+# Minimum age of participants
+_MIN_PARTICIPANT_AGE = 12
 
+_QUESTIONNAIRE_CONCEPTS = [CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
+                          CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
+                          OVERALL_HEALTH_PPI_MODULE,
+                          LIFESTYLE_PPI_MODULE,
+                          THE_BASICS_PPI_MODULE]
+
+_QUESTION_CODES = QUESTION_CODE_TO_FIELD.keys() + [RACE_QUESTION_CODE]
+
+_CONSTANT_CODES = [PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE]
 
 class ParticipantGenerator(object):
 
@@ -49,108 +65,76 @@ class ParticipantGenerator(object):
     self._hpos = HPODao().get_all()
     self._now = datetime.datetime.now()
     self._setup_questionnaires()
+    self._setup_data()
+    self._min_birth_date = self._now - datetime.timedelta(days=_MAX_PARTICIPANT_AGE * 365)
+    self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE) 
 
   def _days_ago(self, num_days):
     return self._now - datetime.timedelta(days=num_days)
 
+  def _get_answer_codes(self, code):
+    result = []
+    for child in code.children:
+      if child.codeType == CodeType.ANSWER:
+        result.append(child.value)
+        result.extend(self._get_answer_codes(child))
+    return result
+
   def _setup_questionnaires(self):
-    '''Locates questionnaires and verifies that they have the appropriate questions in them.'''
-    modules_by_code = {concept.codeId: concept for concept in
-                       QuestionnaireConceptDao.get_all()}
-    questions_by_code = {question.codeId: question for question in
-                         QuestionnaireQuestionDao.get_all()}
-    code_dao = CodeDao()
-
-    # Construct a map from module code value to missing question code values
-    missing_question_codes_by_module = {}
-    for question_code in QUESTION_CODE_TO_FIELD.keys():
-      code = code_dao.get_code(PPI_SYSTEM, question_code)
-      if not code:
-        raise BadRequest('Missing question code %s, import codebook first' % question_code)
-      if not questions_by_code.get(code.codeId):
-        module_code = code_dao.find_ancestor_of_type(code, CodeType.MODULE)
-        if not module_code:
-          raise BadRequest('Code %s is missing module ancestor' % question_code)
-        questions = missing_question_codes_by_module.get(module_code.value)
-        if not questions:
-          missing_question_codes_by_module[module_code.value] = [code]
-        else:
-          questions.append(code)
-
-    created_questionnaire = False
-
-    # Create questionnaires for missing modules
-    for module_code in FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values():
-      code = code_dao.get_code(PPI_SYSTEM, module_code)
-      if not code:
-        raise BadRequest('Missing module code %s, import codebook first' % module_code)
-      if not modules_by_code.get(code.codeId):
-        missing_question_codes = missing_question_codes_by_module.get(module_code.value)
-        self._create_questionnaire(code, missing_question_codes)
-        created_questionnaire = True
-        del missing_question_codes_by_module[module_code.value]
-
-    # Create a questionnaire for any remaining question codes
-    for module_code_value, missing_question_codes in missing_question_codes_by_module.iteritems():
-      code = code_dao.get_code(PPI_SYSTEM, module_code_value)
-      self._create_questionnaire(module_code, missing_question_codes)
-      created_questionnaire = True
-
-    # If we created any questionnaires, reload everything.
-    if created_questionnaire:
-      modules_by_code = {concept.codeId: concept for concept in
-                         QuestionnaireConceptDao.get_all()}
-      questions_by_code = {question.codeId: question for question in
-                           QuestionnaireQuestionDao.get_all()}
-
-    _populate_questionnaire_map(modules_by_code, questions_by_code)
-
-
-  def _populate_questionnaire_map(self, modules_by_code, questions_by_code):
-    # Construct a map from questionnaire ID and version to questions we care
-    # about. Participants will randomly submit some of these questionnaires.
-    self._questionnaire_map = {}
-    for module_code in FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values():
-      code = code_dao.get_code(PPI_SYSTEM, module_code)
-      module = modules_by_code.get(code.codeId)
-      self._questionnaire_map[(module.questionnaireId, module.questionnaireVersion)] = []
-    for question_code in QUESTION_CODE_TO_FIELD.keys():
-      code = code_dao.get_code(PPI_SYSTEM, question_code)
-      question = questions_by_code.get(code.codeId)
-      id_and_version = (question.questionnaireId, question.questionnaireVersion)
-      questions = self._questionnaire_map.get(id_and_version)
-      if not questions:
-        self._questionnaire_map[id_and_version] = [question]
-      else:
-        questions.append(question)
-
-  def _create_questionnaire(self, module_code, question_codes):
-    module_concept = {
-      'system': PPI_SYSTEM,
-      'code': module_code.value
-    }
-    questionnaire_json = { 'resourceType': 'Questionnaire',
-                           'status':'published',
-                           'date': self._now.isoformat(),
-                           'publisher':'fake',
-                           'group': { 'concept': [ module_concept ] } }
-
-    if question_codes:
-      questions = []
-      for i in range(0, len(question_codes)):
-        question_code = question_codes[i]
-        questions.append({'linkId': '%d' % (i + 1),
-                          'text': question_code.display,
-                          'concept': [{'system': PPI_SYSTEM,
-                                       'code': question_code.value,
-                                       'display': question_code.display }]})
-      questionnaire_json['group']['question'] = questions
-    response = self.request_sender.send_request(self._now, 'POST', 'Questionnaire',
-                                                questionnaire_json)
-
+    '''Locates questionnaires and verifies that they have the appropriate questions in them.'''    
+    questionnaire_dao = QuestionnaireDao()
+    code_dao = CodeDao()    
+    question_code_to_questionnaire_id = {}
+    self._questionnaire_to_questions = {}
+    self._question_code_to_answer_codes = {}
+    # Populate maps of questionnaire ID/version to [(question_code, link ID)] and 
+    # question code to answer codes.
+    for concept in _QUESTIONNAIRE_CONCEPTS:
+      code = code_dao.get_code(PPI_SYSTEM, concept)
+      if code is None:
+        raise BadRequest("Code missing: %s; import codebook" % concept)
+      questionnaire = questionnaire_dao.get_latest_questionnaire_with_concept(code.codeId)
+      if questionnaire is None:
+        raise BadRequest("Questionnaire for code %s missing; import questionnaires" % concept)
+      for question in questionnaire.questions:
+        question_code = code_dao.get(question.codeId)
+        if question_code.value in _QUESTION_CODES:
+          question_code_to_questionnaire_id[question_code.value] = questionnaire.questionnaireId
+          questionnaire_id_and_version = (questionnaire.questionnaireId, questionnaire.version)
+          code_and_link_id = (question_code.value, question.linkId)
+          questions = self._questionnaire_to_questions.get(questionnaire_id_and_version)
+          if not questions:
+            self._questionnaire_to_questions[questionnaire_id_and_version] = [code_and_link_id]
+          else:
+            questions.append(code_and_link_id)
+          answer_codes = self._get_answer_codes(question_code)
+          if answer_codes:
+            self._question_code_to_answer_codes[question_code.value] = (answer_codes + 
+                                                                        _CONSTANT_CODES)
+    # Make sure that all the questions are in the questionnaires.
+    for code_value in _QUESTION_CODES:
+      questionnaire_id = question_code_to_questionnaire_id.get(code_value)
+      if not questionnaire_id:
+        raise BadRequest("Question for code %s missing; import questionnaires" % code_value)
+  
+  def _read_all_lines(self, filename):
+    with open('app_data/%s' % filename) as f:
+      reader = csv.reader(f)
+      return [line[0].strip() for line in reader]
+      
+  def _setup_data(self):
+    self._zip_code_to_state = {}    
+    with open('app_data/zipcodes.txt') as zipcodes:
+      reader = csv.reader(zipcodes)
+      for zip, state in reader:
+        self._zip_code_to_state[zip] = state
+    self._first_names = self._read_all_lines('first_names.txt')
+    self._middle_names = self._read_all_lines('middle_names.txt')
+    self._last_names = self._read_all_lines('last_names.txt')
+  
   def generate_participant(self):
-    participant_id = self._create_participant()
-    self._submit_questionnaire_responses(participant_id)
+    participant_id, creation_time = self._create_participant()
+    self._submit_questionnaire_responses(participant_id, creation_time)
 
   def _create_participant(self):
     participant_json = {}
@@ -163,46 +147,89 @@ class ParticipantGenerator(object):
                                                              participant_json)
     return (participant_response['participantId'], creation_time)
 
+  def _random_code_answer(self, question_code):
+    code = random.choice(self._question_code_to_answer_codes[question_code])
+    return [{ "valueCoding": { "system": PPI_SYSTEM, "code": code } }]
+    
+  def _choose_answer_code(self, question_code):
+    if random.random() <= _QUESTION_NOT_ANSWERED:
+      return None                   
+    return self._random_code_answer(question_code)
+  
+  def _choose_answer_codes(self, question_code, percent_with_multiple, max_answers):
+    if random.random() <= _QUESTION_NOT_ANSWERED:
+      return None
+    if random.random() > percent_with_multiple:
+      return self._random_code_answer(question_code)                   
+    num_answers = random.randint(2, max_answers)
+    codes = random.sample(self._question_code_to_answer_codes[question_code], num_answers)
+    return [{ "valueCoding": { "system": PPI_SYSTEM, "code": code } } for code in codes] 
+      
+  def _choose_state_and_zip(self, answer_map):  
+    if random.random() <= _QUESTION_NOT_ANSWERED:
+      return
+    zip_code = random.choice(self._zip_code_to_state.keys())
+    state = self._zip_code_to_state.get(zip)
+    answer_map[ZIPCODE_QUESTION_CODE] = _string_answer(zip_code)
+    answer_map[STATE_QUESTION_CODE] = _string_answer(state)
+  
+  def _choose_name(self, answer_map):
+    if random.random() <= _QUESTION_NOT_ANSWERED:
+      return
+    answer_map[FIRST_NAME_QUESTION_CODE] = _string_answer(random.choice(self._first_names))
+    answer_map[MIDDLE_NAME_QUESTION_CODE] = _string_answer(random.choice(self._middle_names))
+    answer_map[LAST_NAME_QUESTION_CODE] = _string_answer(random.choice(self._last_names))
+  
+  def _choose_date_of_birth(self, answer_map):      
+    if random.random() <= _QUESTION_NOT_ANSWERED:
+      return
+    delta = datetime.timedelta(days=random.randint(0, self._max_days_for_birth_date))
+    date_of_birth = (self._min_birth_date + delta).date()
+    answer_map[DATE_OF_BIRTH_QUESTION_CODE] = [{ "valueDate": date_of_birth.isoformat() }]
+        
   def _make_answer_map(self):
     answer_map = {}
-    answer_map[GENDER_IDENTITY_QUESTION_CODE] = choose_random(GENDER_IDENTITY_QUESTION_CODE)
-    answer_map[RACE_QUESTION_CODE] = choose_random(GENDER_IDENTITY_QUESTION_CODE)
-
+    answer_map[GENDER_IDENTITY_QUESTION_CODE] = self._choose_answer_code(GENDER_IDENTITY_QUESTION_CODE)
+    answer_map[RACE_QUESTION_CODE] = self._choose_answer_codes(RACE_QUESTION_CODE, 
+                                                               _MULTIPLE_RACE_ANSWERS,
+                                                               _MAX_RACE_ANSWERS)
+    self._choose_state_and_zip(answer_map)
+    self._choose_name(answer_map)
+    self._choose_date_of_birth(answer_map)
+    return answer_map
 
   def _submit_questionnaire_responses(self, participant_id, start_time):
     if random.random() <= _NO_QUESTIONNAIRES_SUBMITTED:
       return
     submission_time = start_time
-    answer_map = _make_answer_map()
-    for questionnaire_id_and_version, questions in self._questionnaire_map.iteritems():
+    answer_map = self._make_answer_map()
+    for questionnaire_id_and_version, questions in self._questionnaire_to_questions.iteritems():
       if random.random() > _QUESTIONNAIRE_NOT_SUBMITTED:
         delta = datetime.timedelta(days=random.randint(0, _MAX_DAYS_BETWEEN_SUBMISSIONS))
         submission_time = submission_time + delta
         self._submit_questionnaire_response(participant_id, questionnaire_id_and_version,
-                                            questions, submission_time)
+                                            questions, submission_time, answer_map)
 
   def _create_code_answer(self, answer_code):
     return {"valueCoding": {"code": answer_code.value,
                             "system": answer_code.system}};
 
-  def _create_question_answer(self, question, code, answers):
-    return { "linkId": question.linkId,
-             "text": code.display,
+  def _create_question_answer(self, link_id, answers):
+    return { "linkId": link_id,
              "answer": answers }
 
   def _submit_questionnaire_response(self, participant_id, q_id_and_version, questions,
                                      submission_time, answer_map):
     code_dao = CodeDao()
     questions_with_answers = []
-    for question in questions:
-      code = code_dao.get(question.codeId)
-      answers = answer_map.get(code.value)
-      if answers:
-        questions_with_answers.append(self._create_question_answer(question, code, answers))
+    for question_code, link_id in questions:
+      answer = answer_map.get(question_code)
+      if answer:
+        questions_with_answers.append(self._create_question_answer(link_id, answer))
     qr_json = self._create_questionnaire_response(participant_id, q_id_and_version,
                                                   questions_with_answers)
-    self._request_sender.send_request(submission_time, 'POST', 'QuestionnaireResponse',
-                                      qr_json)
+    self._request_sender.send_request(submission_time, 'POST', 
+                                      _questionnaire_response_url(participant_id), qr_json)
 
   def _create_questionnaire_response(self, participant_id, q_id_and_version,
                                      questions_with_answers):
@@ -217,6 +244,12 @@ class ParticipantGenerator(object):
       qr_json['group']['question'] = questions_with_answers
     return qr_json
 
+def _questionnaire_response_url(participant_id):
+  return 'Participant/%s/QuestionnaireResponse' % participant_id
+  
+def _string_answer(value):
+  return [{ "valueString": value }]
+    
 def _make_primary_provider_link(hpo):
    return {'primary': True,
            'organization': { 'reference': 'Organization/' + hpo.name }}

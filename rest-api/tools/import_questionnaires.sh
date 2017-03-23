@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Retrieves a codebook from a specified URL and imports it into the database.
+# Retrieves questionnaires from a URL and imports them into the database.
 # Can be used for either your local database or Cloud SQL.
 
-USAGE="tools/import_codebook.sh [--url <URL>] [--account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]]"
+USAGE="tools/import_questionnaires.sh [--url <URL>] [--account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]]"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
@@ -36,15 +36,11 @@ else
     set_local_db_connection_string
   fi
 fi
-if [ -z "${URL}" ]
-then
-  # TODO -- update with the URL for the latest released version of the codebook
-  URL="https://raw.githubusercontent.com/all-of-us-terminology/codebook-to-fhir/v0.1.0/CodeSystem/ppi.json"
-fi
 
-CODEBOOK_FILE=/tmp/pmi-codebook.json
+#TODO: fetch questionnaires from github; for now, we'll use fake test questionnaires
+QUESTIONNAIRE_FILES=(all_consents_questionnaire.json questionnaire3.json questionnaire4.json)
+QUESTIONNAIRE_FILES_STR=$(IFS=, ; echo "${QUESTIONNAIRE_FILES[*]}")
+QUESTIONNAIRE_DIR=test/test-data/
 
-echo "Fetching codebook from ${URL}..."
-wget -O $CODEBOOK_FILE $URL
-
-(source tools/set_path.sh; python tools/import_codebook.py --file $CODEBOOK_FILE)
+(source tools/set_path.sh; python tools/import_questionnaires.py --dir $QUESTIONNAIRE_DIR \
+ --files $QUESTIONNAIRE_FILES_STR)

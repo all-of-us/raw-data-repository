@@ -79,7 +79,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'numBaselineSamplesArrived': 0,
                    'questionnaireOnTheBasics': 'SUBMITTED',
                    'questionnaireOnTheBasicsTime': TIME_1.isoformat(),
-                   'questionnaireOnPersonalHabits': 'UNSET',
+                   'questionnaireOnLifestyle': 'UNSET',
                    'questionnaireOnFamilyHealth': 'UNSET',
                    'questionnaireOnMedications': 'UNSET',
                    'physicalMeasurementsStatus': 'UNSET',

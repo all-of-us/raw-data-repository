@@ -1,8 +1,8 @@
 """Initial schema
 
-Revision ID: 5ed14e58adb8
+Revision ID: 107821c4a736
 Revises: 
-Create Date: 2017-03-23 10:09:10.688121
+Create Date: 2017-03-23 13:32:57.658965
 
 """
 from alembic import op
@@ -16,7 +16,7 @@ from participant_enums import EnrollmentStatus, Race, SampleStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '5ed14e58adb8'
+revision = '107821c4a736'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -183,8 +183,8 @@ def upgrade():
     sa.Column('consent_for_electronic_health_records_time', sa.DateTime(), nullable=True),
     sa.Column('questionnaire_on_overall_health', model.utils.Enum(QuestionnaireStatus), nullable=True),
     sa.Column('questionnaire_on_overall_health_time', sa.DateTime(), nullable=True),
-    sa.Column('questionnaire_on_personal_habits', model.utils.Enum(QuestionnaireStatus), nullable=True),
-    sa.Column('questionnaire_on_personal_habits_time', sa.DateTime(), nullable=True),
+    sa.Column('questionnaire_on_lifestyle', model.utils.Enum(QuestionnaireStatus), nullable=True),
+    sa.Column('questionnaire_on_lifestyle_time', sa.DateTime(), nullable=True),
     sa.Column('questionnaire_on_the_basics', model.utils.Enum(QuestionnaireStatus), nullable=True),
     sa.Column('questionnaire_on_the_basics_time', sa.DateTime(), nullable=True),
     sa.Column('questionnaire_on_healthcare_access', model.utils.Enum(QuestionnaireStatus), nullable=True),
@@ -303,7 +303,7 @@ def upgrade():
     )
     # ### end Alembic commands ###
 
-    # Insert our HPO IDs into the HPO table.
+   # Insert our HPO IDs into the HPO table.
     op.bulk_insert(hpo_table,
       [
          {'hpo_id': 0, 'name': 'UNSET' },

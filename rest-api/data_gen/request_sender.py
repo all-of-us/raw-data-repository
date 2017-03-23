@@ -2,7 +2,6 @@ import httplib
 import json
 import main
 
-from api_util import USER_EMAIL_HEADER, get_oauth_id
 from clock import FakeClock
 from flask import request
 from werkzeug.datastructures import Headers
@@ -24,8 +23,6 @@ class ServerRequestSender(object):
       headers: the headers for the request.
     """
     app = main.app
-    headers = Headers(request.headers)
-    headers.add(USER_EMAIL_HEADER, get_oauth_id())
     with FakeClock(request_time):
       with app.app_context():
         with app.test_request_context(main.PREFIX + local_path,

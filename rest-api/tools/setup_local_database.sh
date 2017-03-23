@@ -63,10 +63,13 @@ fi
 echo "Updating schema to latest..."
 tools/upgrade_database.sh
 echo "Importing codebook..."
-set +e
 # Importing the codebook may fail if this is a fresh database.
 tools/import_codebook.sh
-set -e
+echo "Importing questionnaires..."
+tools/import_questionnaires.sh
+
+echo "Setting general configuration..."
+tools/install_config.sh --config config/config_dev.json --update
 
 echo "Setting database configuration..."
 tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update

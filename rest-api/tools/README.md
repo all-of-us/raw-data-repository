@@ -36,6 +36,10 @@ tools/setup_local_database.sh
 
 Imports a codebook into the database.
 
+### import_questionnaires.sh
+
+Imports questionnaires into the database
+
 ### install_config.sh
 
 Populates configuration JSON in Datastore, for use by the AppEngine app.

@@ -14,12 +14,12 @@ from sqlalchemy.orm import relationship
 
 _DATE_FIELDS = ['dateOfBirth', 'signUpTime', 'consentForStudyEnrollmentTime',
                 'consentForElectronicHealthRecordsTime', 'questionnaireOnOverallHealthTime',
-                'questionnaireOnPersonalHabitsTime', 'questionnaireOnTheBasicsTime',
+                'questionnaireOnLifestyleTime', 'questionnaireOnTheBasicsTime',
                 'questionnaireOnHealthcareAccessTime', 'questionnaireOnMedicalHistoryTime',
                 'questionnaireOnMedicationsTime', 'questionnaireOnFamilyHealthTime']
 _ENUM_FIELDS = ['enrollmentStatus', 'race', 'physicalMeasurementsStatus',
                 'consentForStudyEnrollment', 'consentForElectronicHealthRecords',
-                'questionnaireOnOverallHealth', 'questionnaireOnPersonalHabits',
+                'questionnaireOnOverallHealth', 'questionnaireOnLifestyle',
                 'questionnaireOnTheBasics', 'questionnaireOnHealthcareAccess',
                 'questionnaireOnMedicalHistory', 'questionnaireOnMedications',
                 'questionnaireOnFamilyHealth', 'suspensionStatus', 'withdrawalStatus',
@@ -57,9 +57,9 @@ class ParticipantSummary(Base):
   questionnaireOnOverallHealth = Column('questionnaire_on_overall_health',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnOverallHealthTime = Column('questionnaire_on_overall_health_time', DateTime)
-  questionnaireOnPersonalHabits = Column('questionnaire_on_personal_habits',
+  questionnaireOnLifestyle = Column('questionnaire_on_lifestyle',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnPersonalHabitsTime = Column('questionnaire_on_personal_habits_time', DateTime)
+  questionnaireOnLifestyleTime = Column('questionnaire_on_lifestyle_time', DateTime)
   questionnaireOnTheBasics = Column('questionnaire_on_the_basics',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnTheBasicsTime = Column('questionnaire_on_the_basics_time', DateTime)

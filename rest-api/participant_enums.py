@@ -123,7 +123,7 @@ def get_race(race_codes):
         return Race.HLS_AND_MORE_THAN_ONE_OTHER_RACE
       if Race.WHITE in all_races:
         return Race.HLS_AND_WHITE
-      if Race.BLACK in all_races:
+      if Race.BLACK_OR_AFRICAN_AMERICAN in all_races:
         return Race.HLS_AND_BLACK
       return Race.HLS_AND_ONE_OTHER_RACE
     else:

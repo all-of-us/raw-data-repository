@@ -27,6 +27,11 @@ handlers:
   script: offline.main.app
 - url: /.*
   script: main.app
+# App data directory used to load static files in AppEngine; not used for actual serving.
+- url: /app_data/.*
+  login: admin
+  static_dir: app_data
+  application_readable: true
   
 libraries:
 - name: pycrypto
