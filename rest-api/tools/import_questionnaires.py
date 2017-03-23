@@ -16,8 +16,8 @@ def main(args):
   dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
   files = args.files.split(',')
   questionnaire_dao = QuestionnaireDao()
-  for file in files:
-    with open(args.dir + file) as f:
+  for filename in files:
+    with open(args.dir + filename) as f:
       questionnaire_json = json.load(f)
       questionnaire = Questionnaire.from_client_json(questionnaire_json)
       questionnaire_dao.insert(questionnaire)

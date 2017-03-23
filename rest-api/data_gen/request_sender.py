@@ -3,8 +3,6 @@ import json
 import main
 
 from clock import FakeClock
-from flask import request
-from werkzeug.datastructures import Headers
 
 class ServerRequestSender(object):
   """A request sender that invokes API endpoints directly on the server.
@@ -35,10 +33,12 @@ class ServerRequestSender(object):
               # Main Dispatch
               rv = app.dispatch_request()
           except Exception as e:
+            #pylint: disabled=broad-except
             rv = app.handle_user_exception(e)
 
           response = app.make_response(rv)
           response = app.process_response(response)
     if response.status_code != httplib.OK:
-      raise RuntimeError("Request failed: %s, %s, response = %s" % (local_path, request_data, response))
+      raise RuntimeError("Request failed: %s, %s, response = %s" % (local_path, request_data, 
+                                                                    response))
     return json.loads(response.data)

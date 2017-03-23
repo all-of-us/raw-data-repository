@@ -2,10 +2,8 @@
 orders.'''
 import csv
 import datetime
-import logging
 import random
 
-from clock import FakeClock
 from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, OVERALL_HEALTH_PPI_MODULE
 from code_constants import LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
@@ -126,8 +124,8 @@ class ParticipantGenerator(object):
     self._zip_code_to_state = {}    
     with open('app_data/zipcodes.txt') as zipcodes:
       reader = csv.reader(zipcodes)
-      for zip, state in reader:
-        self._zip_code_to_state[zip] = state
+      for zipcode, state in reader:
+        self._zip_code_to_state[zipcode] = state
     self._first_names = self._read_all_lines('first_names.txt')
     self._middle_names = self._read_all_lines('middle_names.txt')
     self._last_names = self._read_all_lines('last_names.txt')
@@ -149,7 +147,7 @@ class ParticipantGenerator(object):
 
   def _random_code_answer(self, question_code):
     code = random.choice(self._question_code_to_answer_codes[question_code])
-    return [{ "valueCoding": { "system": PPI_SYSTEM, "code": code } }]
+    return [{"valueCoding": {"system": PPI_SYSTEM, "code": code}}]
     
   def _choose_answer_code(self, question_code):
     if random.random() <= _QUESTION_NOT_ANSWERED:
@@ -163,7 +161,7 @@ class ParticipantGenerator(object):
       return self._random_code_answer(question_code)                   
     num_answers = random.randint(2, max_answers)
     codes = random.sample(self._question_code_to_answer_codes[question_code], num_answers)
-    return [{ "valueCoding": { "system": PPI_SYSTEM, "code": code } } for code in codes] 
+    return [{"valueCoding": {"system": PPI_SYSTEM, "code": code}} for code in codes] 
       
   def _choose_state_and_zip(self, answer_map):  
     if random.random() <= _QUESTION_NOT_ANSWERED:
@@ -185,11 +183,12 @@ class ParticipantGenerator(object):
       return
     delta = datetime.timedelta(days=random.randint(0, self._max_days_for_birth_date))
     date_of_birth = (self._min_birth_date + delta).date()
-    answer_map[DATE_OF_BIRTH_QUESTION_CODE] = [{ "valueDate": date_of_birth.isoformat() }]
+    answer_map[DATE_OF_BIRTH_QUESTION_CODE] = [{"valueDate": date_of_birth.isoformat()}]
         
   def _make_answer_map(self):
     answer_map = {}
-    answer_map[GENDER_IDENTITY_QUESTION_CODE] = self._choose_answer_code(GENDER_IDENTITY_QUESTION_CODE)
+    gender_identity_answers = self._choose_answer_code(GENDER_IDENTITY_QUESTION_CODE)
+    answer_map[GENDER_IDENTITY_QUESTION_CODE] = gender_identity_answers
     answer_map[RACE_QUESTION_CODE] = self._choose_answer_codes(RACE_QUESTION_CODE, 
                                                                _MULTIPLE_RACE_ANSWERS,
                                                                _MAX_RACE_ANSWERS)
@@ -215,8 +214,7 @@ class ParticipantGenerator(object):
                             "system": answer_code.system}};
 
   def _create_question_answer(self, link_id, answers):
-    return { "linkId": link_id,
-             "answer": answers }
+    return {"linkId": link_id, "answer": answers}
 
   def _submit_questionnaire_response(self, participant_id, q_id_and_version, questions,
                                      submission_time, answer_map):
@@ -233,13 +231,13 @@ class ParticipantGenerator(object):
 
   def _create_questionnaire_response(self, participant_id, q_id_and_version,
                                      questions_with_answers):
-    qr_json =  {'resourceType': 'QuestionnaireResponse',
-                'status': 'completed',
-                'subject': {'reference': 'Patient/%s' % participant_id },
-                'questionnaire': {'reference':
-                                  'Questionnaire/%d/_history/%d' % (q_id_and_version[0],
-                                                                    q_id_and_version[1]) },
-                'group': {}}
+    qr_json = {'resourceType': 'QuestionnaireResponse',
+               'status': 'completed',
+               'subject': {'reference': 'Patient/%s' % participant_id },
+               'questionnaire': {'reference':
+                                 'Questionnaire/%d/_history/%d' % (q_id_and_version[0],
+                                                                    q_id_and_version[1])},
+               'group': {}}
     if questions_with_answers:
       qr_json['group']['question'] = questions_with_answers
     return qr_json
@@ -248,8 +246,8 @@ def _questionnaire_response_url(participant_id):
   return 'Participant/%s/QuestionnaireResponse' % participant_id
   
 def _string_answer(value):
-  return [{ "valueString": value }]
+  return [{"valueString": value}]
     
 def _make_primary_provider_link(hpo):
    return {'primary': True,
-           'organization': { 'reference': 'Organization/' + hpo.name }}
+           'organization': { 'reference': 'Organization/' + hpo.name}}

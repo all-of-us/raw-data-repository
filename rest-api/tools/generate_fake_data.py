@@ -1,14 +1,10 @@
 """Generates fake data on a RDR server."""
 
 import argparse
-import difflib
-import copy
-import json
-import httplib
 
 from client.client import Client
 
-MAX_PARTICIPANTS_PER_REQUEST=100
+MAX_PARTICIPANTS_PER_REQUEST = 100
 CREDS_FILE = 'test/test-data/test-client-cert.json'
 
 def main(args):
