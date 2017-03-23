@@ -12,7 +12,7 @@
       "code": "basic-consent"
     },{
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-module",
-        "code": "sociodemographics"
+        "code": "TheBasics"
     }],
     "question": [
       {

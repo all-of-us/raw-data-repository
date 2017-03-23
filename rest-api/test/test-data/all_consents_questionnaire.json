@@ -7,7 +7,7 @@
     "concept": [
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-        "code": "ConsentForEnrollment"
+        "code": "ConsentForPII"
       },
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
