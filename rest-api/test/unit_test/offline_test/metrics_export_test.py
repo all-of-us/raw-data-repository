@@ -233,7 +233,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.samplesToIsolateDNA.UNSET' : 2,
                         'Participant.enrollmentStatus.INTERESTED' : 2})
     # At TIME_2, P1 is white, UNMAPPED gender; biobank samples
-    # arrived for P1 and P2 (the latter updating samplesToIsolateDNA); 
+    # arrived for P1 and P2 (the latter updating samplesToIsolateDNA);
     # and both participants have submitted the sociodemographics questionnaire.
     self.assertBucket(bucket_map, TIME_2, 'UNSET',
                       { 'Participant': 1,
@@ -363,7 +363,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 2,
                         'Participant.numCompletedBaselinePPIModules.1' : 1,
                         'Participant.numCompletedBaselinePPIModules.3' : 1,
-                        'Participant.samplesToIsolateDNA.UNSET' : 1,                        
+                        'Participant.samplesToIsolateDNA.UNSET' : 1,
                         'Participant.samplesToIsolateDNA.RECEIVED' : 1,
                         'Participant.enrollmentStatus.MEMBER' : 1,
                         'Participant.enrollmentStatus.FULL_PARTICIPANT' : 1 })
