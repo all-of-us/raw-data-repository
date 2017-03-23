@@ -32,6 +32,7 @@ class TemporaryMysql(object):
     print (
         'Temporary MySQL starting, PID %d, stderr to %r.'
         % (self.__mysql_proc.pid, log_file_path))
+    # Note CircleCI hangs after this point without showing any output from mysqld.
     with open(log_file_path) as log_file:
       while True:
         text = log_file.readline()
