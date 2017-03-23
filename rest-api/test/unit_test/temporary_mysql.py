@@ -1,10 +1,7 @@
 import os
 import shutil
-import signal
 import subprocess
 import tempfile
-import threading
-import time
 
 from dao import database_factory
 import singletons
