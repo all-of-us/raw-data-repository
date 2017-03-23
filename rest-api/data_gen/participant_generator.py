@@ -218,7 +218,6 @@ class ParticipantGenerator(object):
 
   def _submit_questionnaire_response(self, participant_id, q_id_and_version, questions,
                                      submission_time, answer_map):
-    code_dao = CodeDao()
     questions_with_answers = []
     for question_code, link_id in questions:
       answer = answer_map.get(question_code)
@@ -233,7 +232,7 @@ class ParticipantGenerator(object):
                                      questions_with_answers):
     qr_json = {'resourceType': 'QuestionnaireResponse',
                'status': 'completed',
-               'subject': {'reference': 'Patient/%s' % participant_id },
+               'subject': {'reference': 'Patient/%s' % participant_id},
                'questionnaire': {'reference':
                                  'Questionnaire/%d/_history/%d' % (q_id_and_version[0],
                                                                     q_id_and_version[1])},
@@ -249,5 +248,4 @@ def _string_answer(value):
   return [{"valueString": value}]
 
 def _make_primary_provider_link(hpo):
-   return {'primary': True,
-           'organization': { 'reference': 'Organization/' + hpo.name}}
+  return {'primary': True, 'organization': {'reference': 'Organization/' + hpo.name}}
