@@ -6,6 +6,8 @@ from datetime import datetime
 from sqlalchemy.orm.base import SQL_OK
 
 _DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+# MySQL uses %i for minutes
+_MYSQL_DATE_FORMAT = '%Y-%m-%dT%H:%i:%SZ'
 _ISODATE_PATTERN = 'ISODATE\[([^\]]+)\]'
 _IS_SQLITE = None
 
@@ -29,19 +31,12 @@ def _is_sqlite():
     _IS_SQLITE = get_database().db_type == 'sqlite'
   return _IS_SQLITE
 
-
-# MySQL uses percent-escaping
-def escape(sql):
-  if _is_sqlite():
-    return sql
-  return sql.replace('%', '%%')
-
 def parse_datetime(datetime_str):
   return datetime.strptime(datetime_str, _DATE_FORMAT)
 
-def replace_isodate(sql, date_format=_DATE_FORMAT):
+def replace_isodate(sql):
   if _is_sqlite():
-    return re.sub(_ISODATE_PATTERN, r"strftime('{}', \1)".format(date_format), sql)
+    return re.sub(_ISODATE_PATTERN, r"strftime('{}', \1)".format(_DATE_FORMAT), sql)
   else:
-    return re.sub(_ISODATE_PATTERN, r"DATE_FORMAT(\1, '{}')".format(date_format), 
+    return re.sub(_ISODATE_PATTERN, r"DATE_FORMAT(\1, '{}')".format(_MYSQL_DATE_FORMAT), 
                   sql)
