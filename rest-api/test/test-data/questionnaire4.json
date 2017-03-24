@@ -11,7 +11,7 @@
       },
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-        "code": "PersonalHabits"
+        "code": "Lifestyle"
       }],
     "question": [
       {

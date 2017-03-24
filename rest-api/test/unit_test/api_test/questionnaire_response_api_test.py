@@ -107,7 +107,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'questionnaireOnMedicalHistory' : 'UNSET',
                 'questionnaireOnMedications': 'UNSET',
                 'questionnaireOnOverallHealth': 'UNSET',
-                'questionnaireOnPersonalHabits': 'UNSET',
+                'questionnaireOnLifestyle': 'UNSET',
                 'questionnaireOnTheBasics': 'SUBMITTED',
                 'questionnaireOnTheBasicsTime': TIME_2.isoformat(),
                 'signUpTime': TIME_1.isoformat(),

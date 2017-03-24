@@ -75,7 +75,7 @@ class Code(_CodeBase, Base):
     )
 
   __table_args__ = (
-    UniqueConstraint('value'),
+    UniqueConstraint('system', 'value'),
   )
 
 class CodeHistory(_CodeBase, Base):
@@ -94,6 +94,6 @@ class CodeHistory(_CodeBase, Base):
   codeId = Column('code_id', Integer)
 
   __table_args__ = (
-    UniqueConstraint('code_book_id', 'value'),
+    UniqueConstraint('code_book_id', 'system', 'value'),
     UniqueConstraint('code_book_id', 'code_id'),
   )
