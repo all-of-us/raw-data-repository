@@ -14,11 +14,11 @@ _BASE_PATH = 'rdr/v1'
 
 
 class BaseClientTest(unittest.TestCase):
-  def setUp(self):
+  def setUp(self, base_path=_BASE_PATH):
     super(BaseClientTest, self).setUp()
     self.maxDiff = None
     instance = os.environ.get('PMI_DRC_RDR_INSTANCE') or _DEFAULT_INSTANCE
-    self.client = Client(_BASE_PATH, False, _CREDS_FILE, instance)
+    self.client = Client(base_path, False, _CREDS_FILE, instance)
 
   def assertJsonEquals(self, obj_a, obj_b):
     obj_b = copy.deepcopy(obj_b)
