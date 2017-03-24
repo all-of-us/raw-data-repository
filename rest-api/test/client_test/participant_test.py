@@ -1,18 +1,14 @@
-"""Simple end to end test to exercise the participant and measurements APIs.
-"""
-
+import datetime
+import json
+import time
 import unittest
-import test_util
+from base import BaseClientTest
 
 from client.client import HttpException
 
 
-class ParticipantTest(unittest.TestCase):
-  def setUp(self):
-    self.maxDiff = None
-    self.client = test_util.get_client('rdr/v1')
-
-  def testCreateAndModifyParticipant(self):
+class ParticipantTest(BaseClientTest):
+  def test_create_and_modify_participant(self):
     provider_link = {
       "primary": False,
       "organization": {
@@ -35,7 +31,7 @@ class ParticipantTest(unittest.TestCase):
     }
 
     response = self.client.request_json('Participant', 'POST', participant)
-    test_util._compare_json(self, response['providerLink'], [provider_link])
+    self.assertJsonEquals(response['providerLink'], [provider_link])
     biobank_id = response['biobankId']
     self.assertTrue(biobank_id.startswith('B'))
 
@@ -80,7 +76,7 @@ class ParticipantTest(unittest.TestCase):
           headers = { 'If-Match': last_etag})
 
     self.assertEqual(response['biobankId'], biobank_id)
-    test_util._compare_json(self, response['providerLink'], [provider_link, provider_link_2])
+    self.assertJsonEquals(response['providerLink'], [provider_link, provider_link_2])
 
     # Fetch the participant summary
     summary_response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
@@ -88,11 +84,12 @@ class ParticipantTest(unittest.TestCase):
     self.assertEquals('PITT', summary_response['hpoId'])
     self.assertEquals(participant_id, summary_response['participantId'])
 
-  """
-  TODO(DA-224): uncomment this once participant summary API is working again
-  def testCreateAndListSummaries(self):
+
+  # TODO(DA-224): Enable this once participant summary API is working again
+  def disabled_test_create_and_list_summaries(self):
     consent_questionnaire = json.load(open('test-data/consent_questionnaire.json'))
-    consent_questionnaire_id = self.client.request_json('Questionnaire', 'POST', consent_questionnaire)['id']
+    consent_questionnaire_id = self.client.request_json(
+        'Questionnaire', 'POST', consent_questionnaire)['id']
     questionnaire_response_template = open('test-data/consent_questionnaire_response.json').read()
     current_time = time.time()
     provider_link = {
@@ -139,7 +136,8 @@ class ParticipantTest(unittest.TestCase):
                                'POST', json.loads(questionnaire_response))
     # Wait for up to 60 seconds for the indexes to update.
     for i in range(60):
-      response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}'.format(first_name))
+      response = self.client.request_json(
+          'ParticipantSummary?hpoId=COLUMBIA&firstName={}'.format(first_name))
       if response.get('entry') and len(response['entry']) == 9:
         break
       time.sleep(1)
@@ -152,7 +150,8 @@ class ParticipantTest(unittest.TestCase):
       self.assertEquals('LN{}'.format(i + 1), response['entry'][i]['resource']['lastName'])
 
     # Returns just one participant summary (exact match on last name)
-    response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}&lastName=LN7'.format(first_name))
+    response = self.client.request_json(
+        'ParticipantSummary?hpoId=COLUMBIA&firstName={}&lastName=LN7'.format(first_name))
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
@@ -162,7 +161,9 @@ class ParticipantTest(unittest.TestCase):
 
     # Returns just one participant summary (exact match on date of birth)
     date_of_birth = dates_of_birth[3].isoformat()
-    response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}&dateOfBirth={}'.format(first_name, date_of_birth))
+    response = self.client.request_json(
+        'ParticipantSummary?hpoId=COLUMBIA&firstName={}&dateOfBirth={}'.format(
+            first_name, date_of_birth))
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
@@ -171,7 +172,8 @@ class ParticipantTest(unittest.TestCase):
     self.assertEquals(date_of_birth, response['entry'][0]['resource']['dateOfBirth'])
 
     # Returns the one participant in the age range 18-25
-    response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}&ageRange=18-25'.format(first_name))
+    response = self.client.request_json(
+        'ParticipantSummary?hpoId=COLUMBIA&firstName={}&ageRange=18-25'.format(first_name))
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
@@ -180,11 +182,12 @@ class ParticipantTest(unittest.TestCase):
     self.assertEquals('18-25', response['entry'][0]['resource']['ageRange'])
 
     # Returns the one participant matching everything
-    response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}'.format(first_name) + \
-                                        '&middleName=Quentin&lastName=LN2&genderIdentity=MALE' + \
-                                        '&dateOfBirth={}&ageRange=18-25&ethnicity=UNSET'.format(dates_of_birth[1]) + \
-                                        '&membershipTier=UNSET&consentForStudyEnrollment=SUBMITTED' + \
-                                        '&numCompletedBaselinePPIModules=1&numBaselineSamplesArrived=0')
+    response = self.client.request_json(
+        'ParticipantSummary?hpoId=COLUMBIA&firstName={}'.format(first_name) +
+        '&middleName=Quentin&lastName=LN2&genderIdentity=MALE' +
+        '&dateOfBirth={}&ageRange=18-25&ethnicity=UNSET'.format(dates_of_birth[1]) +
+        '&membershipTier=UNSET&consentForStudyEnrollment=SUBMITTED' +
+        '&numCompletedBaselinePPIModules=1&numBaselineSamplesArrived=0')
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
@@ -195,35 +198,42 @@ class ParticipantTest(unittest.TestCase):
     self.assertEquals('Quentin', response['entry'][0]['resource']['middleName'])
     self.assertEquals('LN2', response['entry'][0]['resource']['lastName'])
     self.assertEquals('MALE', response['entry'][0]['resource']['genderIdentity'])
-    self.assertEquals(dates_of_birth[1].isoformat(), response['entry'][0]['resource']['dateOfBirth'])
+    self.assertEquals(
+        dates_of_birth[1].isoformat(), response['entry'][0]['resource']['dateOfBirth'])
     self.assertEquals('18-25', response['entry'][0]['resource']['ageRange'])
     self.assertEquals('UNSET', response['entry'][0]['resource']['ethnicity'])
     self.assertEquals('UNSET', response['entry'][0]['resource']['membershipTier'])
     self.assertEquals('SUBMITTED', response['entry'][0]['resource']['consentForStudyEnrollment'])
 
     # Returns no participant summary (no match on date of birth)
-    response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}&dateOfBirth=2525-01-15'.format(first_name))
+    response = self.client.request_json(
+        'ParticipantSummary?hpoId=COLUMBIA&firstName={}&dateOfBirth=2525-01-15'.format(first_name))
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
     self.assertFalse(response.get('entry'))
 
     # Returns no participant summary (no match on number of completed baseline PPI modules)
-    response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}&numCompletedBaselinePPIModules=2'.format(first_name))
+    response = self.client.request_json(
+        'ParticipantSummary?hpoId=COLUMBIA&firstName={}&numCompletedBaselinePPIModules=2'.format(
+            first_name))
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
     self.assertFalse(response.get('entry'))
 
     # Returns no participant summary (no match on number of baseline samples arrived)
-    response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}&numBaselineSamplesArrived=1'.format(first_name))
+    response = self.client.request_json(
+        'ParticipantSummary?hpoId=COLUMBIA&firstName={}&numBaselineSamplesArrived=1'.format(
+            first_name))
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
     self.assertFalse(response.get('entry'))
 
     # Returns 5 participant summaries, ordered by last name ascending, with pagination token
-    response = self.client.request_json('ParticipantSummary?hpoId=COLUMBIA&firstName={}&_count=5'.format(first_name))
+    response = self.client.request_json(
+        'ParticipantSummary?hpoId=COLUMBIA&firstName={}&_count=5'.format(first_name))
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertTrue(response.get('link'))
@@ -245,13 +255,16 @@ class ParticipantTest(unittest.TestCase):
       self.assertEquals('LN{}'.format(i + 6), response['entry'][i]['resource']['lastName'])
 
     # Query on last name and date of birth without HPO ID succeeds
-    response = self.client.request_json('ParticipantSummary?firstName={}&lastName=LN9&dateOfBirth={}'.format(first_name, dates_of_birth[8]))
+    response = self.client.request_json(
+        'ParticipantSummary?firstName={}&lastName=LN9&dateOfBirth={}'.format(
+            first_name, dates_of_birth[8]))
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
     self.assertFalse(response.get('link'))
     self.assertTrue(response.get('entry'))
     self.assertEquals(1, len(response['entry']))
-    self.assertEquals(dates_of_birth[8].isoformat(), response['entry'][0]['resource']['dateOfBirth'])
+    self.assertEquals(
+        dates_of_birth[8].isoformat(), response['entry'][0]['resource']['dateOfBirth'])
     self.assertEquals('LN9', response['entry'][0]['resource']['lastName'])
 
     # Returns the one participant matching first name, gender identity without hpoId in the query
@@ -276,11 +289,13 @@ class ParticipantTest(unittest.TestCase):
 
     # Query on date of birth with last name but no HPO ID and middle name fails
     with self.assertRaises(HttpException):
-      self.client.request_json('ParticipantSummary?dateOfBirth=2017-01-09&lastName=LN2&middleName=bob')
+      self.client.request_json(
+          'ParticipantSummary?dateOfBirth=2017-01-09&lastName=LN2&middleName=bob')
 
     # Query with no HPO ID, last name, or date of birth fails
     with self.assertRaises(HttpException):
       self.client.request_json('ParticipantSummary?firstName={}'.format(first_name))
-  """
+
+
 if __name__ == '__main__':
   unittest.main()

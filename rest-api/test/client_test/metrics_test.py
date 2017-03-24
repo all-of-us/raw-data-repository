@@ -5,18 +5,15 @@ As we don't know the state of the database, this is really just testing
 that metrics come back and that it doen't crash.
 """
 
+import httplib
 import unittest
 import pprint
 import client
 
-import test_util
+from base import BaseClientTest
 
-class MetricsTest(unittest.TestCase):
-  def setUp(self):
-    self.maxDiff = None
-    self.client = test_util.get_client('rdr/v1')
-
-  def testMetrics(self):
+class MetricsTest(BaseClientTest):
+  def test_metrics(self):
     request = {
         'start_date': '2017-01-21',
         'end_date': '2017-01-22'
@@ -25,14 +22,15 @@ class MetricsTest(unittest.TestCase):
       response = self.client.request_json('Metrics', 'POST', request)
       pprint.pprint(response)
     except client.client.HttpException as ex:
-      if ex.code == 404:
+      if ex.code == httplib.NOT_FOUND:
         print "No metrics loaded"
       else:
-        raise ex
+        raise
 
-  def testMetricsFields(self):
+  def test_metrics_fields(self):
     response = self.client.request_json('MetricsFields')
     self.assertEquals('Participant.ageRange', response[0]['name'])
+
 
 if __name__ == '__main__':
   unittest.main()
