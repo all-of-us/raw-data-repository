@@ -33,7 +33,7 @@ class _FhirBiobankOrderedSample(FhirMixin, BackboneElement):
   _PROPERTIES = [
     FhirProperty('test', str, required=True),
     FhirProperty('description', str, required=True),
-    FhirProperty('processing_required', bool),
+    FhirProperty('processing_required', bool, required=True),
     FhirProperty('collected', fhirdate.FHIRDate),
     FhirProperty('processed', fhirdate.FHIRDate),
     FhirProperty('finalized', fhirdate.FHIRDate),
@@ -90,18 +90,21 @@ class BiobankOrder(Base):
   # pylint: disable=unused-argument
   def from_client_json(resource_json, participant_id=None, client_id=None):
     resource = _FhirBiobankOrder(resource_json)
+    if not resource.created.date:  # FHIR warns but does not error on bad date values.
+      raise BadRequest('Invalid created date %r.' % resource.created.origval)
     order = BiobankOrder(
         participantId=participant_id,
         sourceSiteSystem=resource.source_site.system,
         sourceSiteValue=resource.source_site.value,
-        created=resource.created.date,
-        collectedNote=resource.notes.collected,
-        processedNote=resource.notes.processed,
-        finalizedNote=resource.notes.finalized)
+        created=resource.created.date)
+    if resource.notes:
+      order.collectedNote = resource.notes.collected
+      order.processedNote = resource.notes.processed
+      order.finalizedNote = resource.notes.finalized
     if resource.subject != order._participant_id_to_subject():
       raise BadRequest(
-          'Participant ID %d from path and %r in request do not match.'
-          % (participant_id, resource.subject))
+          'Participant ID %d from path and %r in request do not match, should be %r.'
+          % (participant_id, resource.subject, order._participant_id_to_subject()))
     BiobankOrder._add_identifiers_and_main_id(order, resource)
     BiobankOrder._add_samples(order, resource)
     return order
