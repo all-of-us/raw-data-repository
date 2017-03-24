@@ -41,7 +41,8 @@ def auth_required(role_whitelist):
   def auth_required_wrapper(func):
     def wrapped(*args, **kwargs):
       appid = app_identity.get_application_id()
-      if request.scheme.lower() != 'https' and appid not in ('None', 'testbed-test', 'testapp'):
+      if (request.scheme.lower() != 'https' and appid not in ('None', 'testbed-test', 'testapp')
+          and not _is_self_request()):
         raise Unauthorized('HTTPS is required for %r' % appid)
       check_auth(role_whitelist)
       return func(*args, **kwargs)
@@ -89,15 +90,18 @@ def check_cron():
 def lookup_user_info(user_email):
   return config.getSettingJson(config.USER_INFO, {}).get(user_email)
 
+def _is_self_request():
+  return (request.remote_addr is None
+      and config.getSettingJson(config.ALLOW_FAKE_REQUESTS_FROM_SERVER, False)
+      and not request.headers.get('unauthenticated'))
+
 def get_validated_user_info():
   """Returns a valid (user email, user info), or raises Unauthorized."""
 
   user_email = get_oauth_id()
   # If this is a request from ourselves, and the configuration allows for it,
   # look for the user e-mail in another header and don't try to enforce the IP address.
-  if (request.remote_addr is None
-      and config.getSettingJson(config.ALLOW_FAKE_REQUESTS_FROM_SERVER, False)
-      and not request.headers.get('unauthenticated')):
+  if _is_self_request():
     user_info = lookup_user_info(user_email)
     return user_email, user_info
 
