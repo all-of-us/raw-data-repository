@@ -48,12 +48,14 @@ BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
 export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
 
 function run_client_test {
-  if [[ $1 == *"$substring"* ]]
+  # Use | instead of / for sed delimiter since we're editing file paths.
+  test=`echo $1 | sed -e "s|^$BASE_DIR/test/||"`
+  if [[ $test == *"$substring"* ]]
   then
-    echo Running $1 as it matches substring \"${substring}.\"
-    (cd $BASE_DIR/test && PMI_DRC_RDR_INSTANCE=${instance} python $1)
+    echo Running $test as it matches substring \"${substring}.\"
+    (cd $BASE_DIR/test && PMI_DRC_RDR_INSTANCE=${instance} python $test)
   else
-    echo Skipping $1 as it doesn\'t match substring \"${substring}.\"
+    echo Skipping $test as it doesn\'t match substring \"${substring}.\"
   fi
 }
 
@@ -61,12 +63,9 @@ function run_client_test {
 [[ ${instance} == *localhost* ]] || [[ ${instance} == https://* ]] ||
   echo "WARNING: ${instance} is non-local and not HTTPS; expect failure."
 
-TEST_FILES="participant.py
-metrics.py"
-
-for test in ${TEST_FILES}
+for test in $BASE_DIR/test/client_test/*_test.py
 do
-  run_client_test "client_test/${test}"
+  run_client_test "${test}"
 done
 
 # Security test: check that HTTPS is required for non-local endpoints.
@@ -74,10 +73,10 @@ if [[ ${instance} == https://* ]]
    then
      instance=${instance/https:/http:}
      echo "Checking RDR server at $instance is unreachable over HTTP."
-     for test in ${TEST_FILES}
+     for test in $BASE_DIR/test/client_test/*_test.py
      do
-       ( run_client_test "client_test/${test}" 2>&1 | grep "HttpException" ) && echo "OK"
+       ( run_client_test "${test}" 2>&1 | grep "HttpException" ) && echo "OK"
      done
 fi
 
-echo "Test passed!"
+echo "All client tests passed!"
