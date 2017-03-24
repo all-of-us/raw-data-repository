@@ -51,7 +51,7 @@ _HPO_ID_QUERY = (
 _ANSWER_QUERY = (
 'SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time, '
 + 'qc.value question_code, '
-+ '(SELECT CASE WHEN ac.mapped THEN ac.value ELSE :unmapped END FROM Code ac '
++ '(SELECT CASE WHEN ac.mapped THEN ac.value ELSE :unmapped END FROM code ac '
 +'   WHERE ac.code_id = qra.value_code_id) answer_code, '
 + 'qra.value_string answer_string '
 + 'FROM questionnaire_response_answer qra, questionnaire_response qr, questionnaire_question qq, '
