@@ -8,12 +8,12 @@ import logging
 
 from dao.metrics_dao import MetricsVersionDao
 from flask import Flask
-from flask_restful import Api
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
 from offline.metrics_export import MetricsExport
 
 PREFIX = '/offline/'
+
 
 @api_util.auth_required_cron
 def recalculate_metrics():
@@ -37,26 +37,38 @@ def import_biobank_samples():
   return json.dumps({'written': written, 'skipped': skipped})
 
 
-app = Flask(__name__)
-#
-# The REST-ful resources that are the bulk of the API.
-#
+@api_util.auth_required_cron
+def write_biobank_samples_reconciliation_report():
+  # Provide a separate endpoint for testing, but run combined with the import above by default.
+  biobank_samples_pipeline.write_reconciliation_report()
+  return 'OK'
 
-api = Api(app)
 
-#
-# Non-resource pipeline-trigger endpoints
-#
+def _build_pipeline_app():
+  """Configure and return the app with non-resource pipeline-triggering endpoints."""
+  offline_app = Flask(__name__)
 
-app.add_url_rule(PREFIX + 'BiobankSamplesImport',
-                 endpoint='biobankSamplesImport',
-                 view_func=import_biobank_samples,
-                 methods=['GET'])
+  offline_app.add_url_rule(
+      PREFIX + 'BiobankSamplesImport',
+      endpoint='biobankSamplesImport',
+      view_func=import_biobank_samples,
+      methods=['GET'])
 
-app.add_url_rule(PREFIX + 'MetricsRecalculate',
-                 endpoint='metrics_recalc',
-                 view_func=recalculate_metrics,
-                 methods=['GET'])
+  offline_app.add_url_rule(
+      PREFIX + 'BiobankSamplesReconciliation',
+      endpoint='biobankSamplesReconciliation',
+      view_func=write_biobank_samples_reconciliation_report,
+      methods=['GET'])
 
-app.after_request(app_util.add_headers)
-app.before_request(app_util.request_logging)
+  offline_app.add_url_rule(
+      PREFIX + 'MetricsRecalculate',
+      endpoint='metrics_recalc',
+      view_func=recalculate_metrics,
+      methods=['GET'])
+
+  offline_app.after_request(app_util.add_headers)
+  offline_app.before_request(app_util.request_logging)
+  return offline_app
+
+
+app = _build_pipeline_app()
