@@ -3,7 +3,6 @@ import re
 
 from dao.database_factory import get_database
 from datetime import datetime
-from sqlalchemy.orm.base import SQL_OK
 
 _DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 # MySQL uses %i for minutes
@@ -23,7 +22,6 @@ def get_sql_and_params_for_array(arr, name_prefix):
     array_values['%s%d' % (name_prefix, i)] = v
   sql_expr = '(%s)' % ','.join([':' + param_name for param_name in array_values])
   return sql_expr, array_values
-
 
 def _is_sqlite():
   global _IS_SQLITE
