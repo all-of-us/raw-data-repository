@@ -27,26 +27,27 @@ def upsert_from_latest_csv():
   ParticipantSummaryDao().update_from_biobank_stored_samples()
   return written, skipped
 
-_CREATE_VIEW_PREAMBLE_SQLITE = 'CREATE TEMPORARY VIEW IF NOT EXISTS reconciliation_data AS '
-_CREATE_VIEW_PREAMBLE_MYSQL = 'CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS '
-_CREATE_VIEW_QUERY = """
+
+_CREATE_VIEW_MYSQL = """CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
   SELECT
     CASE
       WHEN orders.participant_id IS NOT NULL THEN orders.participant_id
       ELSE samples.participant_id
-      END AS participant_id,
+      END participant_id,
 
-    orders.test,
-    COUNT(biobank_order_id) AS num_orders,
+    orders.test order_test,
+    COUNT(biobank_order_id) num_orders,
     GROUP_CONCAT(biobank_order_id),
     MAX(collected),
     MAX(finalized),
     GROUP_CONCAT(source_site_value),
 
-    samples.test,
-    COUNT(biobank_stored_sample_id) AS num_samples,
+    samples.test sample_test,
+    COUNT(biobank_stored_sample_id) num_samples,
     GROUP_CONCAT(biobank_stored_sample_id),
-    MAX(confirmed)
+    MAX(confirmed),
+
+    MAX(TIMESTAMPDIFF(HOUR, confirmed, collected)) elapsed_hours
   FROM
    (SELECT
       participant_id,
@@ -87,6 +88,7 @@ _SELECT_FROM_VIEW_SQL = """
 
 def write_reconciliation_report():
   """Writes order/sample reconciliation reports to GCS."""
+  # Note that due to syntax differences, the query runs on MySQL only (not SQLite / unit tests).
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
   # Pick a filename prefix for output.
   # Open gcloud files and attach DictWriters for outputs.
@@ -112,8 +114,7 @@ def write_reconciliation_report():
   from dao import database_factory
   db = database_factory.get_database()
   session = db.make_session()
-  session.execute(_CREATE_VIEW_PREAMBLE_SQLITE +_CREATE_VIEW_QUERY)
-  session.execute(_CREATE_VIEW_PREAMBLE_SQLITE +_CREATE_VIEW_QUERY)  # safe to call twice?
+  session.execute(_CREATE_VIEW_MYSQL)
   for line in session.execute(_SELECT_FROM_VIEW_SQL):
     print line
   session.close()
