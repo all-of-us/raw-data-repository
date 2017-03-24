@@ -24,7 +24,7 @@ if [ "${PROJECT}" ]
 then
   echo "Getting credentials for ${PROJECT}..."
   source tools/auth_setup.sh
-  EXTRA_ARGS="--creds_file ${CREDS_FILE} --instance ${INSTANCE}"
+  EXTRA_ARGS="--creds_file ${CREDS_FILE} --instance ${INSTANCE} ${EXTRA_ARGS}"
 fi
 
 (cd ${BASE_DIR}; python tools/generate_fake_data.py $EXTRA_ARGS)

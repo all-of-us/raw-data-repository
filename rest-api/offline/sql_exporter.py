@@ -2,6 +2,7 @@ import csv
 import logging
 
 from dao import database_factory
+from dao.database_utils import escape
 from cloudstorage import cloudstorage_api
 
 DELIMITER = ','
@@ -17,7 +18,7 @@ class SqlExporter(object):
     # Each query from AppEngine standard environment must finish in 60 seconds.
     # If we start running into trouble with that, we'll either
     # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.
-    cursor = self.database.get_engine().execute(sql, **kwargs)
+    cursor = self.database.get_engine().execute(escape(sql), **kwargs)
     try:
       filename = '/%s/%s' % (self.bucket_name, file_name)
       logging.info('Exporting data to %s...', filename)

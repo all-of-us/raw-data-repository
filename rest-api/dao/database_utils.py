@@ -3,6 +3,7 @@ import re
 
 from dao.database_factory import get_database
 from datetime import datetime
+from sqlalchemy.orm.base import SQL_OK
 
 _DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 _ISODATE_PATTERN = 'ISODATE\[([^\]]+)\]'
@@ -29,11 +30,11 @@ def _is_sqlite():
   return _IS_SQLITE
 
 
-def format_date(expression, date_format=_DATE_FORMAT):
+# MySQL uses percent-escaping
+def escape(sql):
   if _is_sqlite():
-    return "strftime('{}', {})".format(date_format, expression)
-  else:
-    return "DATE_FORMAT({}, '{}')".format(expression, date_format)
+    return sql
+  return sql.replace('%', '%%')
 
 def parse_datetime(datetime_str):
   return datetime.strptime(datetime_str, _DATE_FORMAT)
@@ -42,4 +43,5 @@ def replace_isodate(sql, date_format=_DATE_FORMAT):
   if _is_sqlite():
     return re.sub(_ISODATE_PATTERN, r"strftime('{}', \1)".format(date_format), sql)
   else:
-    return re.sub(_ISODATE_PATTERN, r"DATE_FORMAT(\1, '{}')".format(date_format), sql)
+    return re.sub(_ISODATE_PATTERN, r"DATE_FORMAT(\1, '{}')".format(date_format), 
+                  sql)
