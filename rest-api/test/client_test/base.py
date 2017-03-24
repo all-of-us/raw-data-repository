@@ -11,14 +11,16 @@ _DEFAULT_INSTANCE = 'http://localhost:8080'
 
 _CREDS_FILE = './test-data/test-client-cert.json'
 _BASE_PATH = 'rdr/v1'
+_OFFLINE_BASE_PATH = 'offline'
 
 
 class BaseClientTest(unittest.TestCase):
-  def setUp(self, base_path=_BASE_PATH):
+  def setUp(self):
     super(BaseClientTest, self).setUp()
     self.maxDiff = None
     instance = os.environ.get('PMI_DRC_RDR_INSTANCE') or _DEFAULT_INSTANCE
-    self.client = Client(base_path, False, _CREDS_FILE, instance)
+    self.client = Client(_BASE_PATH, False, _CREDS_FILE, instance)
+    self.offline_client = Client(_OFFLINE_BASE_PATH, False, _CREDS_FILE, instance)
 
   def assertJsonEquals(self, obj_a, obj_b):
     obj_b = copy.deepcopy(obj_b)
