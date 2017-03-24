@@ -1,18 +1,11 @@
-"""Simple end to end test to exercise the participant and measurements APIs.
-"""
-
 import unittest
-import test_util
+from base import BaseClientTest
 
 from client.client import HttpException
 
 
-class ParticipantTest(unittest.TestCase):
-  def setUp(self):
-    self.maxDiff = None
-    self.client = test_util.get_client('rdr/v1')
-
-  def testCreateAndModifyParticipant(self):
+class ParticipantTest(BaseClientTest):
+  def test_create_and_modify_participant(self):
     provider_link = {
       "primary": False,
       "organization": {
@@ -35,7 +28,7 @@ class ParticipantTest(unittest.TestCase):
     }
 
     response = self.client.request_json('Participant', 'POST', participant)
-    test_util._compare_json(self, response['providerLink'], [provider_link])
+    self.assertJsonEquals(response['providerLink'], [provider_link])
     biobank_id = response['biobankId']
     self.assertTrue(biobank_id.startswith('B'))
 
@@ -80,7 +73,7 @@ class ParticipantTest(unittest.TestCase):
           headers = { 'If-Match': last_etag})
 
     self.assertEqual(response['biobankId'], biobank_id)
-    test_util._compare_json(self, response['providerLink'], [provider_link, provider_link_2])
+    self.assertJsonEquals(response['providerLink'], [provider_link, provider_link_2])
 
     # Fetch the participant summary
     summary_response = self.client.request_json('Participant/{}/Summary'.format(participant_id))
@@ -88,9 +81,9 @@ class ParticipantTest(unittest.TestCase):
     self.assertEquals('PITT', summary_response['hpoId'])
     self.assertEquals(participant_id, summary_response['participantId'])
 
-  """
-  TODO(DA-224): uncomment this once participant summary API is working again
-  def testCreateAndListSummaries(self):
+
+  # TODO(DA-224): Enable this once participant summary API is working again
+  def disabled_test_create_and_list_summaries(self):
     consent_questionnaire = json.load(open('test-data/consent_questionnaire.json'))
     consent_questionnaire_id = self.client.request_json('Questionnaire', 'POST', consent_questionnaire)['id']
     questionnaire_response_template = open('test-data/consent_questionnaire_response.json').read()
@@ -281,6 +274,7 @@ class ParticipantTest(unittest.TestCase):
     # Query with no HPO ID, last name, or date of birth fails
     with self.assertRaises(HttpException):
       self.client.request_json('ParticipantSummary?firstName={}'.format(first_name))
-  """
+
+
 if __name__ == '__main__':
   unittest.main()
