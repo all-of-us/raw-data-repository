@@ -101,7 +101,7 @@ def get_validated_user_info():
   user_email = get_oauth_id()
   # If this is a request from ourselves, and the configuration allows for it,
   # look for the user e-mail in another header and don't try to enforce the IP address.
-  if (_is_self_request()):
+  if _is_self_request():
     user_info = lookup_user_info(user_email)
     return user_email, user_info
 
