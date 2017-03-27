@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Set up PYTHONPATH for and call install_config.py.
+# Set up PYTHONPATH for and call install_config.py, see README for usage.
 
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
 export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
@@ -23,13 +23,7 @@ then
   CREDS_ACCOUNT="${ACCOUNT}"
 fi
 
-UNRECOGNIZED="$@"
-if [ "$UNRECOGNIZED" ]
-then
-  echo Warning: unrecognized extra arguments: "$UNRECOGNIZED"
-fi
-EXTRA_ARGS=""
-
+EXTRA_ARGS="$@"
 if [ "${PROJECT}" ]
 then
   echo "Getting credentials for ${PROJECT}..."
