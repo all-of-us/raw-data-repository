@@ -87,7 +87,7 @@ until ack-grep -f --python | entr -r test/run_tests.sh -g $sdk_dir unit;do sleep
 See `rest-api-client/README.md` for instructions.
 
 Your `config_dev.json` loaded earlier should include a Config entity with
-`config_key=allow_fake_history_dates` and `value=True`. You can check the
+`config_key=allow_nonprod_requests` and `value=True`. You can check the
 current config by running `tools/install_config.sh` with no arguments.
 
 ## Deploying to test server

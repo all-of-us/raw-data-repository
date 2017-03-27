@@ -21,6 +21,11 @@ def cron_required(x):
   return x + 1
 
 
+@api_util.nonprod
+def not_in_prod():
+  pass
+
+
 class ApiUtilNdbTest(NdbTestBase):
 
   def setUp(self):
@@ -225,3 +230,12 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_request.headers = {}
     with self.assertRaises(Unauthorized):
       cron_required(1)
+
+  def test_nonprod(self):
+    # The dev config is isntalled by default for tests, reset.
+    config.override_setting(config.ALLOW_NONPROD_REQUESTS, False)
+    with self.assertRaises(Unauthorized):
+      not_in_prod()
+
+    config.override_setting(config.ALLOW_NONPROD_REQUESTS, True)
+    not_in_prod()
