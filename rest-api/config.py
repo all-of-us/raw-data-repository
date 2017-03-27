@@ -20,7 +20,6 @@ DB_CONFIG_KEY = 'db_config'
 
 CONFIG_CACHE_TTL_SECONDS = 60
 
-ALLOW_FAKE_HISTORY_DATES = 'allow_fake_history_dates'
 METRICS_SHARDS = 'metrics_shards'
 PARTICIPANT_SUMMARY_SHARDS = 'participant_summary_shards'
 AGE_RANGE_SHARDS = 'age_range_shards'
@@ -32,9 +31,9 @@ MEASUREMENTS_ENTITIES_PER_SYNC = 'measurements_entities_per_sync'
 BASELINE_PPI_QUESTIONNAIRE_FIELDS = 'baseline_ppi_questionnaire_fields'
 BASELINE_SAMPLE_TEST_CODES = 'baseline_sample_test_codes'
 DNA_SAMPLE_TEST_CODES = 'dna_sample_test_codes'
-# True if we can send requests to ourselves; used in non-prod environments for loading
-# fake data.
-ALLOW_FAKE_REQUESTS_FROM_SERVER = 'allow_fake_requests_from_server'
+# Allow requests which are never permitted in production. These include fake
+# timestamps for reuqests, unauthenticated requests to create fake data, etc.
+ALLOW_NONPROD_REQUESTS = 'allow_nonprod_requests'
 
 
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
