@@ -23,7 +23,14 @@ then
   CREDS_ACCOUNT="${ACCOUNT}"
 fi
 
-EXTRA_ARGS="$@"
+UNRECOGNIZED="$@"
+if [ "$UNRECOGNIZED" ]
+then
+  echo Unrecognized extra arguments: "$UNRECOGNIZED"
+  exit 1
+fi
+EXTRA_ARGS=""
+
 if [ "${PROJECT}" ]
 then
   echo "Getting credentials for ${PROJECT}..."
