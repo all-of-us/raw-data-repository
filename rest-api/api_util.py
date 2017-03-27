@@ -58,6 +58,14 @@ def auth_required_cron(func):
     return func(*args, **kwargs)
   return wrapped
 
+def nonprod(func):
+  """The decorated function may never run in environments without config.ALLOW_NONPROD_REQUESTS."""
+  def wrapped(*args, **kwargs):
+    if not config.getSettingJson(ALLOW_NONPROD_REQUESTS, False):
+      raise Unauthorized('Request not allowed in production environment (according to config).')
+    return func(*args, **kwargs)
+  return wrapped
+
 def check_auth(role_whitelist):
   """Raises Unauthorized if the current user is not authorized."""
   user_email, user_info = get_validated_user_info()
@@ -94,7 +102,7 @@ def lookup_user_info(user_email):
 
 def _is_self_request():
   return (request.remote_addr is None
-      and config.getSettingJson(config.ALLOW_FAKE_REQUESTS_FROM_SERVER, False)
+      and config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False)
       and not request.headers.get('unauthenticated'))
 
 def get_validated_user_info():
