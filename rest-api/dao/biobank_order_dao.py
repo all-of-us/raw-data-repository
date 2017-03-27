@@ -32,6 +32,8 @@ class BiobankOrderDao(BaseDao):
     if obj.participantId is None:
       raise BadRequest('participantId is required')
     ParticipantDao().validate_participant_reference(session, obj)
+    if not participant_summary_dao.get_with_session(session, participant_id):
+
     for sample in obj.samples:
       self._validate_order_sample(sample)
     # TODO(mwf) FHIR validation for identifiers?

@@ -45,6 +45,9 @@ class PhysicalMeasurementsDao(BaseDao):
   def _update_participant_summary(self, session, participant_id):
     participant_summary_dao = ParticipantSummaryDao()
     participant_summary = participant_summary_dao.get_with_session(session, participant_id)
+    if not participant_summary:
+      raise BadRequest("Can't submit physical measurements for participant %s without consent" %
+                       participant_id)
     if (not participant_summary.physicalMeasurementsStatus or
         participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.UNSET):
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED

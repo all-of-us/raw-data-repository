@@ -44,7 +44,6 @@ class ParticipantDao(UpdatableDao):
     if obj.suspensionStatus is None:
       obj.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
     super(ParticipantDao, self).insert_with_session(session, obj)
-    obj.participantSummary = self._create_summary_for_participant(obj)
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
@@ -90,7 +89,7 @@ class ParticipantDao(UpdatableDao):
         obj.hpoId = new_hpo_id
         need_new_summary = True
 
-    if need_new_summary:
+    if need_new_summary and existing_obj.participantSummary:
       # Copy the existing participant summary, and mutate the fields that
       # come from participant.
       summary = existing_obj.participantSummary
