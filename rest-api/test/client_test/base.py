@@ -19,6 +19,9 @@ class BaseClientTest(unittest.TestCase):
     self.maxDiff = None
     instance = os.environ.get('PMI_DRC_RDR_INSTANCE') or _DEFAULT_INSTANCE
     self.client = Client(_BASE_PATH, False, _CREDS_FILE, instance)
+    self.client.request_json(
+        'DataReset', method='POST', body={'really_delete_everything': True},
+        test_unauthenticated=False)
 
   def assertJsonEquals(self, obj_a, obj_b):
     obj_b = copy.deepcopy(obj_b)
