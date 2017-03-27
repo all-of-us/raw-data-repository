@@ -23,7 +23,7 @@ from werkzeug.exceptions import BadRequest
 
 # 30%+ of participants have no primary provider link / HPO set
 _NO_HPO_PERCENT = 0.3
-# 20%+ of participants have no questionnaires submitted
+# 20%+ of participants have no questionnaires submitted (including consent)
 _NO_QUESTIONNAIRES_SUBMITTED = 0.2
 # Any given questionnaire has a 40% chance of not being submitted
 _QUESTIONNAIRE_NOT_SUBMITTED = 0.4
@@ -67,6 +67,7 @@ class FakeParticipantGenerator(object):
     self._setup_data()
     self._min_birth_date = self._now - datetime.timedelta(days=_MAX_PARTICIPANT_AGE * 365)
     self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE)
+    self._consent_questionnaire_id_and_version = None
 
   def _days_ago(self, num_days):
     return self._now - datetime.timedelta(days=num_days)
@@ -95,17 +96,22 @@ class FakeParticipantGenerator(object):
       questionnaire = questionnaire_dao.get_latest_questionnaire_with_concept(code.codeId)
       if questionnaire is None:
         raise BadRequest("Questionnaire for code %s missing; import questionnaires" % concept)
+      questionnaire_id_and_version = (questionnaire.questionnaireId, questionnaire.version)
+      if concept == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
+        self._consent_questionnaire_id_and_version = questionnaire_id_and_version
+      questions = self._questionnaire_to_questions.get(questionnaire_id_and_version)
+      if questions:
+        # We already handled this questionnaire.
+        continue
+      else:
+        questions = []
+        self._questionnaire_to_questions[questionnaire_id_and_version] = questions
+
       for question in questionnaire.questions:
         question_code = code_dao.get(question.codeId)
         if question_code.value in _QUESTION_CODES:
           question_code_to_questionnaire_id[question_code.value] = questionnaire.questionnaireId
-          questionnaire_id_and_version = (questionnaire.questionnaireId, questionnaire.version)
-          code_and_link_id = (question_code.value, question.linkId)
-          questions = self._questionnaire_to_questions.get(questionnaire_id_and_version)
-          if not questions:
-            self._questionnaire_to_questions[questionnaire_id_and_version] = [code_and_link_id]
-          else:
-            questions.append(code_and_link_id)
+          questions.append((question_code.value, question.linkId))
           answer_codes = self._get_answer_codes(question_code)
           if answer_codes:
             self._question_code_to_answer_codes[question_code.value] = (answer_codes +
@@ -173,8 +179,6 @@ class FakeParticipantGenerator(object):
     answer_map[STATE_QUESTION_CODE] = _string_answer(state)
 
   def _choose_name(self, answer_map):
-    if random.random() <= _QUESTION_NOT_ANSWERED:
-      return
     answer_map[FIRST_NAME_QUESTION_CODE] = _string_answer(random.choice(self._first_names))
     answer_map[MIDDLE_NAME_QUESTION_CODE] = _string_answer(random.choice(self._middle_names))
     answer_map[LAST_NAME_QUESTION_CODE] = _string_answer(random.choice(self._last_names))
@@ -204,7 +208,9 @@ class FakeParticipantGenerator(object):
     submission_time = start_time
     answer_map = self._make_answer_map()
     for questionnaire_id_and_version, questions in self._questionnaire_to_questions.iteritems():
-      if random.random() > _QUESTIONNAIRE_NOT_SUBMITTED:
+      # Submit the consent questionnaire always and other questionnaires at random.
+      if (questionnaire_id_and_version == self._consent_questionnaire_id_and_version or
+          random.random() > _QUESTIONNAIRE_NOT_SUBMITTED):
         delta = datetime.timedelta(days=random.randint(0, _MAX_DAYS_BETWEEN_SUBMISSIONS))
         submission_time = submission_time + delta
         self._submit_questionnaire_response(participant_id, questionnaire_id_and_version,

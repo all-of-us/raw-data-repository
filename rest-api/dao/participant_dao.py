@@ -102,7 +102,7 @@ class ParticipantDao(UpdatableDao):
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
   @staticmethod
-  def _create_summary_for_participant(obj):
+  def create_summary_for_participant(obj):
     return ParticipantSummary(
         participantId=obj.participantId,
         biobankId=obj.biobankId,
@@ -127,9 +127,11 @@ class ParticipantDao(UpdatableDao):
     """Raises BadRequest if an object has a missing or invalid participantId reference."""
     if obj.participantId is None:
       raise BadRequest('%s.participantId required.' % obj.__class__.__name__)
-    if self.get_with_session(session, obj.participantId) is None:
+    participant = self.get_with_session(session, obj.participantId)
+    if participant is None:
       raise BadRequest(
           '%s.participantId %r is not found.' % (obj.__class__.__name__, obj.participantId))
+    return participant
 
   def get_valid_biobank_id_set(self, session):
     return set([row[0] for row in session.query(Participant.biobankId)])
