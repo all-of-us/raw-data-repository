@@ -62,8 +62,8 @@ def reset_for_tests():
       if table.name not in _NON_USER_GEN_TABLES:
         session.execute(table.delete())  # DELETE FROM, does not drop table
     session.commit()
-  except Exception, e:
-    logging.error('Failed clearing db, aborting.', exc_info=True)
+  except:
     session.rollback()
+    raise
   finally:
     session.close()
