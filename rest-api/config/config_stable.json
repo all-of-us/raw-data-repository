@@ -15,6 +15,6 @@
     "stable_biobank_samples_upload_bucket"
   ],
   "metrics_shards": [
-    "30"
+    "10"
   ]
 }
