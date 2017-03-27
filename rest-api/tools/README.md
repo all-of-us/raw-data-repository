@@ -53,8 +53,8 @@ tools/install_config.sh --config config/config_dev.json --update
 And updating a deployed environment:
 
 ```
-tools/install_config.sh --project pmi-drc-api-test --account $USER@google.com \
-    --update --config config_test.json
+tools/install_config.sh --project pmi-drc-api-test --account $USER@pmi-ops.com \
+    --update --config config/config_test.json
 ```
 
 ### setup_database.sh
