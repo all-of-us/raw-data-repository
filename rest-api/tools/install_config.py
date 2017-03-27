@@ -89,7 +89,4 @@ if __name__ == '__main__':
   parser.add_argument('--key',
                       type=str,
                       help='Specifies a key for a configuration to update.')
-  parser.add_argument('--value',
-                      type=str,
-                      help='Specifies a value for a configuration to use; alternative to --config.')
-main(parser.parse_args())
+  main(parser.parse_args())
