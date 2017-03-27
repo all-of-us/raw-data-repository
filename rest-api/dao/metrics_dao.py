@@ -65,7 +65,6 @@ class MetricsVersionDao(BaseDao):
     return (session.query(MetricsVersion)
         .filter(MetricsVersion.complete == True)
         .filter(MetricsVersion.dataVersion == SERVING_METRICS_DATA_VERSION)
-        .options(subqueryload(MetricsVersion.buckets))
         .order_by(MetricsVersion.date.desc())
         .first())
 

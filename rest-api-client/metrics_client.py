@@ -10,6 +10,8 @@ def main():
 
   request = {
       'facets':['HPO_ID'],
+      'start_date': '2017-03-26',
+      'end_date': '2017-03-26'
   }
 
   response = client.request_json('Metrics', 'POST', request)
