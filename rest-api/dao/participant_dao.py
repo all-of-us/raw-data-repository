@@ -43,7 +43,7 @@ class ParticipantDao(UpdatableDao):
       obj.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
     if obj.suspensionStatus is None:
       obj.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
-    super(ParticipantDao, self).insert_with_session(session, obj)
+    super(ParticipantDao, self).insert_with_session(session, obj)    
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)

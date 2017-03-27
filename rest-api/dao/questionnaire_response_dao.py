@@ -3,7 +3,7 @@ import config
 import json
 
 from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, PPI_SYSTEM
-from code_constants import FieldType, RACE_QUESTION_CODE
+from code_constants import FieldType, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
@@ -161,6 +161,8 @@ class QuestionnaireResponseDao(BaseDao):
           count_completed_baseline_ppi_modules(participant_summary)
 
     if something_changed:
+      if not participant_summary.firstName or not participant_summary.lastName:
+        raise BadRequest('First name and last name are required for consenting participants')
       ParticipantSummaryDao().update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 

@@ -268,6 +268,12 @@ class FlaskTestBase(NdbTestBase):
   def create_participant(self):
     response = self.send_post('Participant', {})
     return response['participantId']
+    
+  def send_consent(self, participant_id):
+    if not self._consent_questionnaire_id:
+      self._consent_questionnaire_id = self.create_questionnaire('all_consents_questionnaire')
+    qr_json = make_questionnaire_response_json(participant_id, self._consent_questionnaire_id)
+    self.send_post(questionnaire_response_url(participant_id), qr_json)    
 
   def create_questionnaire(self, filename):
     with open(data_path(filename)) as f:
@@ -374,6 +380,9 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
             "question": results
           }
       }
+
+def questionnaire_response_url(participant_id):
+    return 'Participant/%s/QuestionnaireResponse' % participant_id
 
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))

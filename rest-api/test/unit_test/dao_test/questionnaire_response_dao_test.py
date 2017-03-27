@@ -12,6 +12,7 @@ from model.participant import Participant
 from model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from participant_enums import QuestionnaireStatus
+from test_data import consent_code, first_name_code, last_name_code
 from unit_test_util import FlaskTestBase
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest
@@ -59,7 +60,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                               codeType=CodeType.MODULE, mapped=True)
     self.CONCEPT_1 = QuestionnaireConcept(codeId=7)
     self.CODE_1_QUESTION_1 = QuestionnaireQuestion(linkId='a', codeId=1, repeats=False)
-    self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2, repeats=True)
+    self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2, repeats=True)    
     # Same code as question 1
     self.CODE_1_QUESTION_2 = QuestionnaireQuestion(linkId='x', codeId=1, repeats=False)
 
@@ -78,20 +79,26 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
       self.questionnaire_response_dao.insert(qr)
 
   def test_insert_participant_not_found(self):
+    self.insert_codes()
     q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
+    q.concepts.append(QuestionnaireConcept(codeId=self.consent_code_id))    
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.append(self.FN_ANSWER)
+    qr.answers.append(self.LN_ANSWER)
     with self.assertRaises(BadRequest):
-      self.questionnaire_response_dao.insert(qr)
-
+      self.questionnaire_response_dao.insert(qr)      
+  
   def test_insert_no_answers(self):
+    self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
-    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
-    self.questionnaire_dao.insert(q)
+    self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.append(self.FN_ANSWER)
+    qr.answers.append(self.LN_ANSWER)
     time = datetime.datetime(2016, 1, 1)
     with FakeClock(time):
       self.questionnaire_response_dao.insert(qr)
@@ -100,19 +107,21 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                         questionnaireVersion=1, participantId=1,
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
                                         created=time)
+    expected_qr.answers.append(self.FN_ANSWER)
+    expected_qr.answers.append(self.LN_ANSWER)
     qr2 = self.questionnaire_response_dao.get(1)
     self.assertEquals(expected_qr.asdict(), qr2.asdict())
-
-    qr3 = self.questionnaire_response_dao.get_with_children(1)
-    self.assertEquals([], qr3.answers)
+    self.check_response(expected_qr)
 
   def test_insert_duplicate(self):
+    self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(p)
-    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
-    self.questionnaire_dao.insert(q)
+    self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.append(self.FN_ANSWER)
+    qr.answers.append(self.LN_ANSWER)          
     self.questionnaire_response_dao.insert(qr)
     qr2 = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                 participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
@@ -131,18 +140,36 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.code_dao.insert(self.CODE_5)
     self.code_dao.insert(self.CODE_6)
     self.code_dao.insert(self.MODULE_CODE_7)
+    self.consent_code_id = self.code_dao.insert(consent_code()).codeId
+    self.first_name_code_id = self.code_dao.insert(first_name_code()).codeId
+    self.last_name_code_id = self.code_dao.insert(last_name_code()).codeId
+    self.FN_QUESTION = QuestionnaireQuestion(linkId='fn', codeId=self.first_name_code_id, 
+                                             repeats=False)
+    self.LN_QUESTION = QuestionnaireQuestion(linkId='ln', codeId=self.last_name_code_id, 
+                                             repeats=False)
+    self.FN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
+                                                 questionnaireResponseId=1,
+                                                 questionId=3, valueString='Bob')
+    self.LN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=4,
+                                                 questionnaireResponseId=1,
+                                                 questionId=4, valueString='Jones')
+
+  def _setup_questionnaire(self):
+    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
+    q.concepts.append(self.CONCEPT_1)
+    q.concepts.append(QuestionnaireConcept(codeId=self.consent_code_id))
+    q.questions.append(self.CODE_1_QUESTION_1)
+    q.questions.append(self.CODE_2_QUESTION)
+    q.questions.append(self.FN_QUESTION)
+    q.questions.append(self.LN_QUESTION)
+    self.questionnaire_dao.insert(q)
 
   def test_insert_with_answers(self):
     self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
     with FakeClock(TIME):
       self.participant_dao.insert(p)
-    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
-    q.concepts.append(self.CONCEPT_1)
-    q.questions.append(self.CODE_1_QUESTION_1)
-    q.questions.append(self.CODE_2_QUESTION)
-    self.questionnaire_dao.insert(q)
-
+    self._setup_questionnaire()    
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
@@ -155,6 +182,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                            questionId=2, valueSystem='c', valueCodeId=4)
     qr.answers.append(answer_1)
     qr.answers.append(answer_2)
+    qr.answers.append(self.FN_ANSWER)
+    qr.answers.append(self.LN_ANSWER)
     with FakeClock(TIME_2):
       self.questionnaire_response_dao.insert(qr)
 
@@ -167,13 +196,18 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_qr.answers.append(answer_1)
     expected_qr.answers.append(answer_2)
+    expected_qr.answers.append(self.FN_ANSWER)
+    expected_qr.answers.append(self.LN_ANSWER)
     self.check_response(expected_qr)
 
     expected_ps = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, genderIdentityId=3, signUpTime=TIME,
         numCompletedBaselinePPIModules=1,
         questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
-        questionnaireOnTheBasicsTime=TIME_2)
+        questionnaireOnTheBasicsTime=TIME_2,
+        consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+        consentForStudyEnrollmentTime=TIME_2,
+        firstName='Bob', lastName='Jones')
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
   def test_insert_qr_three_times(self):
@@ -190,17 +224,12 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     p = Participant(participantId=1, biobankId=2)
     with FakeClock(TIME):
       self.participant_dao.insert(p)
-    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
-    q.concepts.append(self.CONCEPT_1)
-    q.questions.append(self.CODE_1_QUESTION_1)
-    q.questions.append(self.CODE_2_QUESTION)
-
+    self._setup_questionnaire()
     q2 = Questionnaire(resource=QUESTIONNAIRE_RESOURCE_2)
     # The question on the second questionnaire has the same concept as the first question on the
     # first questionnaire; answers to it will thus set endTime for answers to the first question.
     q2.questions.append(self.CODE_1_QUESTION_2)
-
-    self.questionnaire_dao.insert(q)
+    
     self.questionnaire_dao.insert(q2)
 
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
@@ -215,6 +244,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                            questionId=2, valueSystem='c', valueCodeId=4)
     qr.answers.append(answer_1)
     qr.answers.append(answer_2)
+    qr.answers.append(self.FN_ANSWER)
+    qr.answers.append(self.LN_ANSWER)
     with FakeClock(TIME_2):
       self.questionnaire_response_dao.insert(qr)
 
@@ -222,15 +253,18 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         participantId=1, biobankId=2, genderIdentityId=3, signUpTime=TIME,
         numCompletedBaselinePPIModules=1,
         questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
-        questionnaireOnTheBasicsTime=TIME_2)
+        questionnaireOnTheBasicsTime=TIME_2,
+        consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+        consentForStudyEnrollmentTime=TIME_2,
+        firstName='Bob', lastName='Jones')
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
     qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
                                 questionnaireVersion=1, participantId=1,
                                 resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
-    answer_3 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
+    answer_3 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=5,
                                            questionnaireResponseId=2,
-                                           questionId=3, valueSystem='x', valueCodeId=5,
+                                           questionId=5, valueSystem='x', valueCodeId=5,
                                            valueDecimal=123, valueString=self.fake.last_name(),
                                            valueDate=datetime.date.today())
     qr2.answers.append(answer_3)
@@ -246,7 +280,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     answer_1.endTime = TIME_3
     expected_qr.answers.append(answer_1)
     expected_qr.answers.append(answer_2)
-
+    expected_qr.answers.append(self.FN_ANSWER)
+    expected_qr.answers.append(self.LN_ANSWER)
     self.check_response(expected_qr)
 
     # The new questionnaire response should be there, too.
@@ -261,7 +296,10 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         participantId=1, biobankId=2, genderIdentityId=5, signUpTime=TIME,
         numCompletedBaselinePPIModules=1,
         questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
-        questionnaireOnTheBasicsTime=TIME_2)
+        questionnaireOnTheBasicsTime=TIME_2,
+        consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+        consentForStudyEnrollmentTime=TIME_2,
+        firstName='Bob', lastName='Jones')
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps2.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -269,9 +307,9 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     qr3 = QuestionnaireResponse(questionnaireResponseId=3, questionnaireId=2,
                                 questionnaireVersion=1, participantId=1,
                                 resource=QUESTIONNAIRE_RESPONSE_RESOURCE_3)
-    answer_4 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=4,
+    answer_4 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=6,
                                            questionnaireResponseId=3,
-                                           questionId=3, valueSystem='z', valueCodeId=6,
+                                           questionId=5, valueSystem='z', valueCodeId=6,
                                            valueDecimal=456, valueString=self.fake.last_name(),
                                            valueDate=datetime.date.today())
     qr3.answers.append(answer_4)
@@ -297,7 +335,10 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         participantId=1, biobankId=2, genderIdentityId=6, signUpTime=TIME,
         numCompletedBaselinePPIModules=1,
         questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
-        questionnaireOnTheBasicsTime=TIME_2)
+        questionnaireOnTheBasicsTime=TIME_2,
+        consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+        consentForStudyEnrollmentTime=TIME_2,
+        firstName='Bob', lastName='Jones')
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())

@@ -5,6 +5,7 @@ from dao.base_dao import MAX_INSERT_ATTEMPTS
 from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
+from test_data import participant_summary
 from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
@@ -34,11 +35,9 @@ class ParticipantDaoTest(SqlTestBase):
     p2 = self.dao.get(1)
     self.assertEquals(p.asdict(), p2.asdict())
 
-    # Creating a participant also creates a ParticipantSummary and a ParticipantHistory row
+    # Creating a participant also creates a ParticipantHistory row, but not a ParticipantSummary row
     ps = self.participant_summary_dao.get(1)
-    expected_ps = self._participant_summary_with_defaults(
-        participantId=1, biobankId=2, signUpTime=time)
-    self.assertEquals(expected_ps.asdict(), ps.asdict())
+    self.assertIsNone(ps)
     ph = self.participant_history_dao.get([1, 1])
     expected_ph = self._participant_history_with_defaults(
         participantId=1, biobankId=2, lastModified=time, signUpTime=time)
@@ -83,7 +82,7 @@ class ParticipantDaoTest(SqlTestBase):
       with self.assertRaises(ServiceUnavailable):
         self.dao.insert(p2)
 
-  def test_update_no_expected_version(self):
+  def test_update_no_expected_version_no_ps(self):
     p = Participant()
     time = datetime.datetime(2016, 1, 1)
     with random_ids([1, 2]):
@@ -102,11 +101,49 @@ class ParticipantDaoTest(SqlTestBase):
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
     self.assertEquals(expected_participant.asdict(), p2.asdict())
     self.assertEquals(p.asdict(), p2.asdict())
+    
+    ps = self.participant_summary_dao.get(1)
+    self.assertIsNone(ps)
+
+    expected_ph = self._participant_history_with_defaults(
+        participantId=1, biobankId=2, lastModified=time, signUpTime=time)
+    # Updating the participant adds a new ParticipantHistory row.
+    ph = self.participant_history_dao.get([1, 1])
+    self.assertEquals(expected_ph.asdict(), ph.asdict())
+    ph2 = self.participant_history_dao.get([1, 2])
+    expected_ph2 = self._participant_history_with_defaults(
+        participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
+        hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
+    self.assertEquals(expected_ph2.asdict(), ph2.asdict())
+
+  def test_update_no_expected_version_with_ps(self):
+    p = Participant()
+    time = datetime.datetime(2016, 1, 1)
+    with random_ids([1, 2]):
+      with FakeClock(time):
+        self.dao.insert(p)
+
+    p.providerLink = test_data.primary_provider_link('PITT')
+    time2 = datetime.datetime(2016, 1, 2)
+    with FakeClock(time2):
+      self.dao.update(p)
+
+    summary = participant_summary(p)
+    ParticipantSummaryDao().insert(summary)
+
+    # lastModified, hpoId, version is updated on p after being passed in
+    p2 = self.dao.get(1);
+    expected_participant = self._participant_with_defaults(
+        participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
+        hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
+    self.assertEquals(expected_participant.asdict(), p2.asdict())
+    self.assertEquals(p.asdict(), p2.asdict())
 
     # Updating the participant provider link also updates the HPO ID on the participant summary.
     ps = self.participant_summary_dao.get(1)
     expected_ps = self._participant_summary_with_defaults(
-        participantId=1, biobankId=2, signUpTime=time, hpoId=PITT_HPO_ID)
+        participantId=1, biobankId=2, signUpTime=time, hpoId=PITT_HPO_ID,
+        firstName=summary.firstName, lastName=summary.lastName)
     self.assertEquals(expected_ps.asdict(), ps.asdict())
 
     expected_ph = self._participant_history_with_defaults(
