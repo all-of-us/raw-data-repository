@@ -103,7 +103,7 @@ def _get_sample_statuses():
   return [str(status) for status in participant_enums.SampleStatus]
 
 def _get_completed_baseline_ppi_modules_values():
-  return range(0, len(_get_baseline_ppi_module_fields()))
+  return range(0, len(_get_baseline_ppi_module_fields()) + 1)
 
 def _get_submission_statuses():
   return [str(status) for status in participant_enums.QuestionnaireStatus]
