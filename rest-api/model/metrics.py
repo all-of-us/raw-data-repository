@@ -18,10 +18,7 @@ class MetricsVersion(Base):
   complete = Column('complete', Boolean, default=False, nullable=False)
   date = Column('date', DateTime, default=clock.CLOCK.now, nullable=False)
   dataVersion = Column('data_version', Integer, nullable=False)
-  buckets = relationship('MetricsBucket', cascade='all, delete-orphan')
-
-  def asdict_with_children(self):
-    return self.asdict(follow=BUCKETS)
+  buckets = relationship('MetricsBucket', cascade='all, delete-orphan')  
 
 class MetricsBucket(Base):
   """A bucket belonging to a MetricsVersion, containing metrics for a particular HPO ID and date.
