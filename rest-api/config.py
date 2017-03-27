@@ -116,7 +116,7 @@ def getSettingJson(key, default=_NO_DEFAULT):
       and a default is not provided.
   """
   config_values = CONFIG_OVERRIDES.get(key)
-  if config_values:
+  if config_values is not None:
     return config_values
 
   current_config = CONFIG_CACHE[CONFIG_SINGLETON_KEY]
