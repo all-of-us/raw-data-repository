@@ -4,6 +4,7 @@ threadsafe: true
 runtime: python27
 api_version: 1
 service: offline
+instance_class: B4_1G
 
 builtins:
 - deferred: on
