@@ -44,6 +44,19 @@ Imports questionnaires into the database
 
 Populates configuration JSON in Datastore, for use by the AppEngine app.
 
+Example updating the local config:
+
+```
+tools/install_config.sh --config config/config_dev.json --update
+```
+
+And updating a deployed environment:
+
+```
+tools/install_config.sh --project pmi-drc-api-test --account $USER@pmi-ops.com \
+    --update --config config/config_test.json
+```
+
 ### setup_database.sh
 
 Sets up a Cloud SQL database instance, sets the root password, creates an rdr database in

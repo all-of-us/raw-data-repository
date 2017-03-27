@@ -1,6 +1,6 @@
 """Installs a configuration on a RDR server.
 
-See "Config Updates" in the README for permissions details.
+See "Config Updates" in the README for usage and permissions details.
 """
 
 import argparse
