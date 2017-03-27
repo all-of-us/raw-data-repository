@@ -61,7 +61,7 @@ def auth_required_cron(func):
 def nonprod(func):
   """The decorated function may never run in environments without config.ALLOW_NONPROD_REQUESTS."""
   def wrapped(*args, **kwargs):
-    if not config.getSettingJson(ALLOW_NONPROD_REQUESTS, False):
+    if not config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False):
       raise Unauthorized('Request not allowed in production environment (according to config).')
     return func(*args, **kwargs)
   return wrapped
