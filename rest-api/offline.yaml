@@ -7,6 +7,10 @@ service: offline
 # Default AppEngine configuration (B1) has only 128 MB of RAM and 600 MhZ CPU, which makes
 # the metrics pipeline run very slowly. Bumping up to 1 GB of RAM and 2.4 GHz to speed things up.
 instance_class: B4_1G
+# We need to specify basic scaling in order to use a backend instance class.
+basic_scaling:
+  max_instances: 10
+  idle_timeout: 10m
 
 builtins:
 - deferred: on
