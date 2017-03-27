@@ -188,7 +188,7 @@ def sync(channel_index, max_results):
   return jsonify(bundle_dict)
 
 def consider_fake_date():
-  if "True" == config.getSetting(config.ALLOW_FAKE_HISTORY_DATES, None):
+  if config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False):
     date = request.headers.get('x-pretend-date', None)
     if date:
       return api_util.parse_date(date)
