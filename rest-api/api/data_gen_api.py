@@ -9,14 +9,13 @@ from flask.ext.restful import Resource
 
 DATE_FORMAT = '%Y-%m-%d'
 
-class DataGenApi(Resource):
 
-  method_decorators = [auth_required_config_admin]
+class DataGenApi(Resource):
+  method_decorators = [auth_required_config_admin, nonprod]
 
   def __init__(self):
     self._participant_generator = FakeParticipantGenerator(ServerRequestSender())
 
-  @nonprod
   def post(self):
     resource = request.get_data()
     resource_json = json.loads(resource)
