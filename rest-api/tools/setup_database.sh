@@ -64,9 +64,9 @@ fi
 source tools/setup_vars.sh
 INSTANCE_NAME=rdrmaindb
 FAILOVER_INSTANCE_NAME=rdrbackupdb
-# The default configuration; uses a non-shared CPU, with 8 cores and 30 GB of memory
-# (Consider making this something different in production.)
-MACHINE_TYPE=db-n1-standard-8
+# Default to a lightweight config; uses a non-shared CPU, with 1 core and 3.75 GB of memory
+# (consider making this something different in production).
+MACHINE_TYPE=db-n1-standard-1
 
 source tools/auth_setup.sh
 
