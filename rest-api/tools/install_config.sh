@@ -26,8 +26,7 @@ fi
 UNRECOGNIZED="$@"
 if [ "$UNRECOGNIZED" ]
 then
-  echo Unrecognized extra arguments: "$UNRECOGNIZED"
-  exit 1
+  echo Warning: unrecognized extra arguments: "$UNRECOGNIZED"
 fi
 EXTRA_ARGS=""
 
