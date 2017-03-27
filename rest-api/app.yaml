@@ -3,8 +3,6 @@
 threadsafe: true
 runtime: python27
 api_version: 1
-# Set instance class to F4 to increase memory to 512 MB (thus avoiding exceeding memory limits)
-instance_class: F4
 
 builtins:
 - deferred: on  
