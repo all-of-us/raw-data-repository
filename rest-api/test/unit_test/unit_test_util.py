@@ -218,6 +218,7 @@ class FlaskTestBase(NdbTestBase):
 
     self.set_auth_user(self._ADMIN_USER)
     self.set_auth_user(self._AUTH_USER)
+    self._consent_questionnaire_id = None
 
   def tearDown(self):
     super(FlaskTestBase, self).tearDown()
@@ -271,8 +272,10 @@ class FlaskTestBase(NdbTestBase):
     
   def send_consent(self, participant_id):
     if not self._consent_questionnaire_id:
-      self._consent_questionnaire_id = self.create_questionnaire('all_consents_questionnaire')
-    qr_json = make_questionnaire_response_json(participant_id, self._consent_questionnaire_id)
+      self._consent_questionnaire_id = self.create_questionnaire('study_consent.json')
+    qr_json = make_questionnaire_response_json(participant_id, self._consent_questionnaire_id,
+                                               string_answers=[("firstName", "Bob"), 
+                                                               ("lastName", "Jones")])
     self.send_post(questionnaire_response_url(participant_id), qr_json)    
 
   def create_questionnaire(self, filename):
