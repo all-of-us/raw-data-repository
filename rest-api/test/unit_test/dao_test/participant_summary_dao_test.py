@@ -152,7 +152,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     ps_3.enrollmentStatus = EnrollmentStatus.MEMBER
     self.dao.update(ps_3)
 
-    ps_4.lastName = 'Jones'    
+    ps_4.lastName = 'Jones'
     ps_4.enrollmentStatus = EnrollmentStatus.FULL_PARTICIPANT
     self.dao.update(ps_4)
 

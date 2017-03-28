@@ -60,7 +60,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                               codeType=CodeType.MODULE, mapped=True)
     self.CONCEPT_1 = QuestionnaireConcept(codeId=7)
     self.CODE_1_QUESTION_1 = QuestionnaireQuestion(linkId='a', codeId=1, repeats=False)
-    self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2, repeats=True)    
+    self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2, repeats=True)
     # Same code as question 1
     self.CODE_1_QUESTION_2 = QuestionnaireQuestion(linkId='x', codeId=1, repeats=False)
 
@@ -81,7 +81,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
   def test_insert_participant_not_found(self):
     self.insert_codes()
     q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
-    q.concepts.append(QuestionnaireConcept(codeId=self.consent_code_id))    
+    q.concepts.append(QuestionnaireConcept(codeId=self.consent_code_id))
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
@@ -89,8 +89,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     qr.answers.append(self.LN_ANSWER)
     # First and last name are required.
     with self.assertRaises(BadRequest):
-      self.questionnaire_response_dao.insert(qr)      
-  
+      self.questionnaire_response_dao.insert(qr)
+
   def test_insert_not_name_answers(self):
     self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
@@ -100,11 +100,11 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.append(QuestionnaireResponseAnswer(questionnaireResponseAnswerId=2,
                                            questionnaireResponseId=1,
-                                           questionId=2, valueSystem='c', valueCodeId=4))       
+                                           questionId=2, valueSystem='c', valueCodeId=4))
     # Both first and last name are required.
-    with self.assertRaises(BadRequest):      
+    with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
-      
+
   def test_insert_first_name_only(self):
     self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
@@ -112,8 +112,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
-    qr.answers.append(self.FN_ANSWER)       
-    with self.assertRaises(BadRequest):      
+    qr.answers.append(self.FN_ANSWER)
+    with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
 
   def test_insert_last_name_only(self):
@@ -123,11 +123,11 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
-    qr.answers.append(self.LN_ANSWER)    
+    qr.answers.append(self.LN_ANSWER)
     # Both first and last name are required.
-    with self.assertRaises(BadRequest):      
+    with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
-  
+
   def test_insert_both_names(self):
     self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
@@ -159,7 +159,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     qr.answers.append(self.FN_ANSWER)
-    qr.answers.append(self.LN_ANSWER)          
+    qr.answers.append(self.LN_ANSWER)
     self.questionnaire_response_dao.insert(qr)
     qr2 = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                 participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
@@ -181,9 +181,9 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.consent_code_id = self.code_dao.insert(consent_code()).codeId
     self.first_name_code_id = self.code_dao.insert(first_name_code()).codeId
     self.last_name_code_id = self.code_dao.insert(last_name_code()).codeId
-    self.FN_QUESTION = QuestionnaireQuestion(linkId='fn', codeId=self.first_name_code_id, 
+    self.FN_QUESTION = QuestionnaireQuestion(linkId='fn', codeId=self.first_name_code_id,
                                              repeats=False)
-    self.LN_QUESTION = QuestionnaireQuestion(linkId='ln', codeId=self.last_name_code_id, 
+    self.LN_QUESTION = QuestionnaireQuestion(linkId='ln', codeId=self.last_name_code_id,
                                              repeats=False)
     self.FN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
                                                  questionnaireResponseId=1,
@@ -207,7 +207,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     p = Participant(participantId=1, biobankId=2)
     with FakeClock(TIME):
       self.participant_dao.insert(p)
-    self._setup_questionnaire()    
+    self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
     answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
@@ -267,7 +267,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     # The question on the second questionnaire has the same concept as the first question on the
     # first questionnaire; answers to it will thus set endTime for answers to the first question.
     q2.questions.append(self.CODE_1_QUESTION_2)
-    
+
     self.questionnaire_dao.insert(q2)
 
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,

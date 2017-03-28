@@ -20,10 +20,10 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
 
   def test_insert(self):
     participant_id = self.create_participant()
-    
+
     questionnaire_id = self.create_questionnaire('questionnaire1.json')
     with open(data_path('questionnaire_response3.json')) as f:
-      resource = json.load(f)    
+      resource = json.load(f)
     # Sending response with the dummy participant id in the file is an error
     self.send_post(_questionnaire_response_url('{participant_id}'), resource,
                    expected_status=httplib.NOT_FOUND)
@@ -31,7 +31,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     resource['subject']['reference'] = \
         resource['subject']['reference'].format(participant_id=participant_id)
     self.send_post(_questionnaire_response_url(participant_id), resource,
-                   expected_status=httplib.BAD_REQUEST)      
+                   expected_status=httplib.BAD_REQUEST)
     # Fix the reference
     resource['questionnaire']['reference'] = \
         resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
@@ -40,7 +40,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     self.send_post(_questionnaire_response_url(participant_id), resource,
                    expected_status=httplib.BAD_REQUEST)
 
-    self.send_consent(participant_id)                       
+    self.send_consent(participant_id)
     # After consent, the post succeeds
     response = self.send_post(_questionnaire_response_url(participant_id), resource)
     resource['id'] = response['id']

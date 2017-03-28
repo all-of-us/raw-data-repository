@@ -41,13 +41,13 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
 
   def testInsert_noSummary(self):
     with self.assertRaises(BadRequest):
-      self.dao.insert(PhysicalMeasurements(participantId=self.participant.participantId, 
+      self.dao.insert(PhysicalMeasurements(participantId=self.participant.participantId,
                                            resource=self.measurement_json))
 
-  def _make_summary(self):    
+  def _make_summary(self):
     self.participant_summary_dao.insert(participant_summary(self.participant))
 
-  def testInsert_rightParticipantId(self):    
+  def testInsert_rightParticipantId(self):
     self._make_summary()
     measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
                                                   participantId=self.participant.participantId,

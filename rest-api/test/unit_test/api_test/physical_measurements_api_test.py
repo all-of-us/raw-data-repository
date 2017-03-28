@@ -22,7 +22,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
   def test_insert_before_consent_fails(self):
     measurements_1 = load_measurement_json(self.participant_id)
     path_1 = 'Participant/%s/PhysicalMeasurements' % self.participant_id
-    self.send_post(path_1, measurements_1, expected_status=httplib.BAD_REQUEST)    
+    self.send_post(path_1, measurements_1, expected_status=httplib.BAD_REQUEST)
 
   def test_insert(self):
     self.send_consent(self.participant_id)
@@ -44,7 +44,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertEquals(1, len(response['entry']))
 
   def test_insert_and_amend(self):
-    self.send_consent(self.participant_id)    
+    self.send_consent(self.participant_id)
     measurements_1 = load_measurement_json(self.participant_id)
     path_1 = 'Participant/%s/PhysicalMeasurements' % self.participant_id
     response = self.send_post(path_1, measurements_1)

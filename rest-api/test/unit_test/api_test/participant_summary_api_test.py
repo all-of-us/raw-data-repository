@@ -145,7 +145,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
     questionnaire_id_3 = self.create_questionnaire('all_consents_questionnaire.json')
     participant_1 = self.send_post('Participant', {"providerLink": [self.provider_link]})
-    participant_id_1 = participant_1['participantId']    
+    participant_id_1 = participant_1['participantId']
     participant_2 = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id_2 = participant_2['participantId']
     participant_3 = self.send_post('Participant', {})

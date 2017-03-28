@@ -21,7 +21,7 @@ class BiobankOrderApiTest(FlaskTestBase):
         self.path, load_biobank_order_json(self.participant.participantId))
 
   def test_error_no_summary(self):
-    order_json = load_biobank_order_json(self.participant.participantId)    
+    order_json = load_biobank_order_json(self.participant.participantId)
     self.send_post(self.path, order_json, expected_status=httplib.BAD_REQUEST)
 
   def test_error_missing_required_fields(self):

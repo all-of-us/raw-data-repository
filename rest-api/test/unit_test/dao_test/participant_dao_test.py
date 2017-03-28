@@ -101,7 +101,7 @@ class ParticipantDaoTest(SqlTestBase):
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
     self.assertEquals(expected_participant.asdict(), p2.asdict())
     self.assertEquals(p.asdict(), p2.asdict())
-    
+
     ps = self.participant_summary_dao.get(1)
     self.assertIsNone(ps)
 
