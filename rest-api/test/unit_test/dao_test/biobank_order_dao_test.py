@@ -4,8 +4,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.participant import Participant
 from dao.participant_dao import ParticipantDao
-from test_data import participant_summary
-from unit_test_util import SqlTestBase
+from unit_test_util import SqlTestBase, participant_summary
 
 from werkzeug.exceptions import BadRequest
 

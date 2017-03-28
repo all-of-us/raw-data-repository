@@ -25,6 +25,7 @@ from code_constants import PPI_SYSTEM
 from contextlib import contextmanager
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
+from dao.participant_dao import ParticipantDao
 from model.code import Code
 from model.hpo import HPO
 from model.participant import Participant, ParticipantHistory
@@ -386,6 +387,12 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
 
 def questionnaire_response_url(participant_id):
   return 'Participant/%s/QuestionnaireResponse' % participant_id
+
+def participant_summary(participant):
+  summary = ParticipantDao.create_summary_for_participant(participant)
+  summary.firstName = 'Bob'
+  summary.lastName = 'Jones'
+  return summary
 
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))

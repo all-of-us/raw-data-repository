@@ -1,7 +1,7 @@
 import httplib
 
-from test.unit_test.unit_test_util import FlaskTestBase
-from test.test_data import load_biobank_order_json, participant_summary
+from test.unit_test.unit_test_util import FlaskTestBase, participant_summary
+from test.test_data import load_biobank_order_json
 from model.utils import to_client_participant_id
 from model.participant import Participant
 from dao.participant_dao import ParticipantDao

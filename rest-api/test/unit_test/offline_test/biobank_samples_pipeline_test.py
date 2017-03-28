@@ -9,9 +9,8 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase
+from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, participant_summary
 from test import test_data
-from test_data import participant_summary
 from model.utils import to_client_biobank_id
 from model.participant import Participant
 

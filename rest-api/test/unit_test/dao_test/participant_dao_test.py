@@ -5,8 +5,7 @@ from dao.base_dao import MAX_INSERT_ATTEMPTS
 from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
-from test_data import participant_summary
-from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
+from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids, participant_summary
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 

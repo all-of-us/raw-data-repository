@@ -32,7 +32,7 @@ class BiobankOrderDao(BaseDao):
     if obj.participantId is None:
       raise BadRequest('participantId is required')
     if not ParticipantSummaryDao().get_with_session(session, obj.participantId):
-      raise BadRequest('Can''t submit order for participant %s without consent' % obj.participantId)
+      raise BadRequest("Can't submit order for participant %s without consent" % obj.participantId)
     for sample in obj.samples:
       self._validate_order_sample(sample)
     # TODO(mwf) FHIR validation for identifiers?

@@ -13,8 +13,7 @@ from model.participant import Participant
 from model.biobank_stored_sample import BiobankStoredSample
 from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus
 from participant_enums import SampleStatus
-from test_data import participant_summary
-from unit_test_util import NdbTestBase, PITT_HPO_ID
+from unit_test_util import NdbTestBase, PITT_HPO_ID, participant_summary
 
 NUM_BASELINE_PPI_MODULES = 3
 

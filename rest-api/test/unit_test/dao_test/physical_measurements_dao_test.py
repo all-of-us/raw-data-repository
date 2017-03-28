@@ -8,8 +8,8 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from participant_enums import PhysicalMeasurementsStatus
-from test_data import load_measurement_json, load_measurement_json_amendment, participant_summary
-from unit_test_util import SqlTestBase
+from test_data import load_measurement_json, load_measurement_json_amendment
+from unit_test_util import SqlTestBase, participant_summary
 from werkzeug.exceptions import BadRequest
 
 TIME_1 = datetime.datetime(2016, 1, 1)

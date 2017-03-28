@@ -85,7 +85,7 @@ class FakeParticipantGenerator(object):
     questionnaire_dao = QuestionnaireDao()
     code_dao = CodeDao()
     question_code_to_questionnaire_id = {}
-    self._questionnaire_to_questions = {}
+    self._questionnaire_to_questions = collections.defaultdict(list)
     self._question_code_to_answer_codes = {}
     # Populate maps of questionnaire ID/version to [(question_code, link ID)] and
     # question code to answer codes.
@@ -103,9 +103,6 @@ class FakeParticipantGenerator(object):
       if questions:
         # We already handled this questionnaire.
         continue
-      else:
-        questions = []
-        self._questionnaire_to_questions[questionnaire_id_and_version] = questions
 
       for question in questionnaire.questions:
         question_code = code_dao.get(question.codeId)

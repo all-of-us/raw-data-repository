@@ -95,7 +95,11 @@ class QuestionnaireResponseDao(BaseDao):
 
   def _update_participant_summary(self, session, questionnaire_response, code_ids, questions, qh):
     """Updates the participant summary based on questions answered and modules completed
-    in the questionnaire response."""
+    in the questionnaire response.
+    
+    If no participant summary exists already, only a response to the study enrollment consent
+    questionnaire can be submitted, and it must include both first and last name.
+    """
     participant_summary = (ParticipantSummaryDao().
                            get_with_session(session, questionnaire_response.participantId))
 
@@ -104,13 +108,13 @@ class QuestionnaireResponseDao(BaseDao):
     code_dao = CodeDao()
 
     something_changed = False
-    # Only allow a questionnaire response to be submitted if this is the consent questionnaire.
+    # If no participant summary exists, make sure this is the study enrollment consent.
     if not participant_summary:
       consent_code = code_dao.get_code(PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE)
       if not consent_code:
         raise BadRequest('No study enrollment consent code found; import codebook.')
       if not consent_code.codeId in code_ids:
-        raise BadRequest('Can''t submit order for participant %s without consent' %
+        raise BadRequest("Can't submit order for participant %s without consent" %
                          questionnaire_response.participantId)
       participant = ParticipantDao().validate_participant_reference(session, questionnaire_response)
       participant_summary = ParticipantDao.create_summary_for_participant(participant)
