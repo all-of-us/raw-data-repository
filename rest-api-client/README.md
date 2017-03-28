@@ -16,11 +16,3 @@ source venv/bin/activate
 # Install client deps into venv/lib/.
 pip install -r requirements.txt
 ```
-
-## Add fake participants to a local appserver
-
-```sh
-python load_fake_participants.py --instance=http://localhost:8080 --count=10
-```
-
-Each fake participant is random. Run the script repeatedly to add more.
