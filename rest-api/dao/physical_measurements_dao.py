@@ -33,7 +33,7 @@ class PhysicalMeasurementsDao(BaseDao):
       self._update_amended(obj, extension, url, session)
       break
     self._update_participant_summary(session, obj.participantId)
-    super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)   
+    super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
     session.flush()
     # Update the resource to contain the ID.
@@ -43,7 +43,7 @@ class PhysicalMeasurementsDao(BaseDao):
 
   def _update_participant_summary(self, session, participant_id):
     if participant_id is None:
-      raise BadRequest('participantId is required')    
+      raise BadRequest('participantId is required')
     participant_summary_dao = ParticipantSummaryDao()
     participant_summary = participant_summary_dao.get_with_session(session, participant_id)
     if not participant_summary:
