@@ -62,12 +62,12 @@ class ParticipantSummaryDaoTest(NdbTestBase):
   def testQuery_oneSummary(self):
     participant = Participant(participantId=1, biobankId=2)
     self._insert(participant)
-    participant_summary = self.dao.get(1)
-    self.assert_results(self.no_filter_query, [participant_summary])
-    self.assert_results(self.one_filter_query, [participant_summary])
+    summary = self.dao.get(1)
+    self.assert_results(self.no_filter_query, [summary])
+    self.assert_results(self.one_filter_query, [summary])
     self.assert_no_results(self.two_filter_query)
-    self.assert_results(self.ascending_biobank_id_query, [participant_summary])
-    self.assert_results(self.descending_biobank_id_query, [participant_summary])
+    self.assert_results(self.ascending_biobank_id_query, [summary])
+    self.assert_results(self.descending_biobank_id_query, [summary])
 
   def testUnicodeNameRoundTrip(self):
     name = self.fake.first_name()

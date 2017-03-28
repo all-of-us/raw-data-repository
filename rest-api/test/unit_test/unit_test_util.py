@@ -385,7 +385,7 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
       }
 
 def questionnaire_response_url(participant_id):
-    return 'Participant/%s/QuestionnaireResponse' % participant_id
+  return 'Participant/%s/QuestionnaireResponse' % participant_id
 
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
