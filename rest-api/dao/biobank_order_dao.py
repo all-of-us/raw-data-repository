@@ -1,5 +1,4 @@
 from dao.base_dao import BaseDao
-from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from model.log_position import LogPosition

@@ -2,7 +2,6 @@ import json
 import logging
 
 from dao.base_dao import BaseDao
-from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements
