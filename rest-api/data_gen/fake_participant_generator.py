@@ -63,12 +63,12 @@ class FakeParticipantGenerator(object):
     self._request_sender = request_sender
     self._hpos = HPODao().get_all()
     self._now = clock.CLOCK.now()
+    self._consent_questionnaire_id_and_version = None
     self._setup_questionnaires()
     self._setup_data()
     self._min_birth_date = self._now - datetime.timedelta(days=_MAX_PARTICIPANT_AGE * 365)
     self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE)
-    self._consent_questionnaire_id_and_version = None
-
+    
   def _days_ago(self, num_days):
     return self._now - datetime.timedelta(days=num_days)
 
@@ -98,7 +98,7 @@ class FakeParticipantGenerator(object):
         raise BadRequest("Questionnaire for code %s missing; import questionnaires" % concept)
       questionnaire_id_and_version = (questionnaire.questionnaireId, questionnaire.version)
       if concept == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
-        self._consent_questionnaire_id_and_version = questionnaire_id_and_version
+        self._consent_questionnaire_id_and_version = questionnaire_id_and_version        
       questions = self._questionnaire_to_questions.get(questionnaire_id_and_version)
       if questions:
         # We already handled this questionnaire.
@@ -207,9 +207,16 @@ class FakeParticipantGenerator(object):
       return
     submission_time = start_time
     answer_map = self._make_answer_map()
-    for questionnaire_id_and_version, questions in self._questionnaire_to_questions.iteritems():
-      # Submit the consent questionnaire always and other questionnaires at random.
-      if (questionnaire_id_and_version == self._consent_questionnaire_id_and_version or
+    
+    delta = datetime.timedelta(days=random.randint(0, _MAX_DAYS_BETWEEN_SUBMISSIONS))
+    submission_time = submission_time + delta    
+    # Submit the consent questionnaire always and other questionnaires at random.
+    questions = self._questionnaire_to_questions[self._consent_questionnaire_id_and_version]
+    self._submit_questionnaire_response(participant_id, self._consent_questionnaire_id_and_version,
+                                        questions, submission_time, answer_map)
+    
+    for questionnaire_id_and_version, questions in self._questionnaire_to_questions.iteritems():      
+      if (questionnaire_id_and_version != self._consent_questionnaire_id_and_version and
           random.random() > _QUESTIONNAIRE_NOT_SUBMITTED):
         delta = datetime.timedelta(days=random.randint(0, _MAX_DAYS_BETWEEN_SUBMISSIONS))
         submission_time = submission_time + delta
