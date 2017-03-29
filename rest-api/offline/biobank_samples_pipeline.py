@@ -4,6 +4,7 @@ Also updates ParticipantSummary data related to samples.
 """
 
 import csv
+import contextlib
 import datetime
 import logging
 import pytz
@@ -11,11 +12,17 @@ import pytz
 from cloudstorage import cloudstorage_api
 from werkzeug.exceptions import BadRequest
 
+import clock
 import config
+from dao import database_factory
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import from_client_biobank_id
+
+
+# Format for dates in output filenames for the reconciliation report.
+_FILENAME_DATE_FORMAT = '%Y-%m-%d'
 
 
 def upsert_from_latest_csv():
@@ -26,98 +33,6 @@ def upsert_from_latest_csv():
   written, skipped = _upsert_samples_from_csv(csv_reader)
   ParticipantSummaryDao().update_from_biobank_stored_samples()
   return written, skipped
-
-
-_CREATE_VIEW_MYSQL = """CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
-  SELECT
-    CASE
-      WHEN orders.participant_id IS NOT NULL THEN orders.participant_id
-      ELSE samples.participant_id
-      END participant_id,
-
-    orders.test order_test,
-    COUNT(biobank_order_id) num_orders,
-    GROUP_CONCAT(biobank_order_id),
-    MAX(collected),
-    MAX(finalized),
-    GROUP_CONCAT(source_site_value),
-
-    samples.test sample_test,
-    COUNT(biobank_stored_sample_id) num_samples,
-    GROUP_CONCAT(biobank_stored_sample_id),
-    MAX(confirmed),
-
-    MAX(TIMESTAMPDIFF(HOUR, confirmed, collected)) elapsed_hours
-  FROM
-   (SELECT
-      participant_id,
-      test,
-      biobank_order_id,
-      collected,
-      finalized,
-      source_site_value
-    FROM
-      biobank_order
-    JOIN
-      biobank_ordered_sample
-    ON
-      biobank_ordered_sample.order_id = biobank_order.biobank_order_id
-    ) orders
-  JOIN
-   (SELECT
-      participant_id,
-      biobank_stored_sample_id,
-      test,
-      confirmed
-    FROM
-      biobank_stored_sample
-    LEFT JOIN
-      participant
-    ON
-      biobank_stored_sample.biobank_id = participant.biobank_id
-    ) samples
-  ON
-    samples.participant_id = orders.participant_id
-    AND samples.test = orders.test
-  GROUP BY
-    orders.participant_id, orders.test, samples.participant_id, samples.test
-"""
-_SELECT_FROM_VIEW_SQL = """
-  SELECT * FROM reconciliation_data
-"""
-
-def write_reconciliation_report():
-  """Writes order/sample reconciliation reports to GCS."""
-  # Note that due to syntax differences, the query runs on MySQL only (not SQLite / unit tests).
-  bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
-  # Pick a filename prefix for output.
-  # Open gcloud files and attach DictWriters for outputs.
-  # Write out reports:
-  #   Define a temporary table view `report_data` which contains report columns from the RDR:
-  #      *BiobankStoredSample.biobankId (JOIN w/ BiobankOrder.participantId)
-  #      *BiobankOrderedSample.test (JOIN w/ BiobankStoredSample.test)
-  #       BiobankOrder.biobankorderId (may be a list of the same participant/test happened >1x)
-  #       BiobankStoredSample.biobankStoredSampleId (may be a list)
-  #       BiobankOrder.sourceSiteValue (ANY_VALUE)
-  #       BiobankOrderedSample.finalized (ALL(IS NOT NULL))
-  #    and derived elapsed time:
-  #       elapsed_hours = MAX(BiobankStoredSample.confirmedDate) - MAX(BiobankOrderedSample.collected)
-  #  Then generate reports from the above:
-  #      SELECT * FROM report_data WHERE
-  #          length of ID lists match AND
-  #          BiobankStoredSample.test IS NOT NULL -> samples_received.csv;
-  #      SELECT * FROM report_data WHERE elapsed_hours > 24 -> samples_gt_24h.csv;
-  #      SELECT * FROM report_data WHERE
-  #          length of ID lists doesn't match OR
-  #          (BiobankOrderedSample.finalized IS NOT NULL
-  #           AND BiobankStoredSample.test IS NULL) -> samples_not_received.csv;
-  from dao import database_factory
-  db = database_factory.get_database()
-  session = db.make_session()
-  session.execute(_CREATE_VIEW_MYSQL)
-  for line in session.execute(_SELECT_FROM_VIEW_SQL):
-    print line
-  session.close()
 
 
 def _open_latest_samples_file(cloud_bucket_name):
@@ -199,3 +114,140 @@ def _create_sample_from_row(row):
     sample.confirmed = _US_CENTRAL.localize(
         confirmed_naive).astimezone(pytz.utc).replace(tzinfo=None)
   return sample
+
+
+def write_reconciliation_report():
+  """Writes order/sample reconciliation reports to GCS."""
+  now = clock.CLOCK.now()
+  bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
+  path_received, path_late, path_missing = _get_report_paths(bucket_name, now)
+  with _writer_guard(path_received) as writer_received:
+    with _writer_guard(path_late) as writer_late:
+      with _writer_guard(path_missing) as writer_missing:
+        _query_and_write_reports(writer_received, writer_late, writer_missing)
+
+
+def _get_report_paths(bucket_name, report_dt):
+  return [
+      '%s/reconciliation/report_%s_%s.csv' % (
+          output_bucket_name, report_dt.strftime(_FILENAME_DATE_FORMAT), report_name)
+      for reportname in ('received', 'over_24h', 'missing')]
+
+
+@contextlib.contextmanager
+def _writer_guard(path):
+  """Opens CSV writer on a GCS file and writes common headers."""
+  with cloudstorage_api.open(path, mode='w') as cloud_file:
+    writer = csv.Writer(cloud_file)
+    writer.writerow(_CSV_COLUMN_NAMES)
+    yield writer
+
+
+def _query_and_write_reports(writer_received, writer_late, writer_missing):
+  """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers."""
+  db = database_factory.get_database()
+  session = db.make_session()
+  session.execute(_CREATE_VIEW_MYSQL)
+  for query, writer in (
+    (_SELECT_FROM_VIEW_MYSQL_RECEIVED, writer_recieved),
+    (_SELECT_FROM_VIEW_MYSQL_LATE, writer_late),
+    (_SELECT_FROM_VIEW_MYSQL_MISSING, writer_missing)):
+    for line in session.execute(query):
+      writer.writerow(line)
+  session.close()
+
+
+# Names for the reconciliation_data columns in output CSVs.
+_CSV_COLUMN_NAMES = (
+  'biobank_id',
+
+  'sent_test',
+  'sent_count',
+  'sent_order_id',
+  'sent_collection_time',
+  'sent_finalized_time',
+  'site_id',
+
+  'received_test',
+  'received_count',
+  'received_sample_id',
+  'received_time',
+
+  'elapsed_hours',
+)
+
+
+# Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
+_CREATE_VIEW_MYSQL = """CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
+  SELECT
+    CASE
+      WHEN orders.biobank_id IS NOT NULL THEN orders.biobank_id
+      ELSE samples.biobank_id
+      END biobank_id,
+
+    orders.test order_test,
+    COUNT(biobank_order_id) orders_count,
+    GROUP_CONCAT(biobank_order_id),
+    MAX(collected),
+    MAX(finalized),
+    GROUP_CONCAT(source_site_value),
+
+    samples.test sample_test,
+    COUNT(biobank_stored_sample_id) samples_count,
+    GROUP_CONCAT(biobank_stored_sample_id),
+    MAX(confirmed),
+
+    MAX(TIMESTAMPDIFF(HOUR, confirmed, collected)) elapsed_hours
+  FROM
+   (SELECT
+      participant_id,
+      test,
+      biobank_order_id,
+      collected,
+      finalized,
+      source_site_value
+    FROM
+      biobank_order
+    JOIN
+      biobank_ordered_sample
+    ON
+      biobank_ordered_sample.order_id = biobank_order.biobank_order_id
+    ) orders
+  JOIN
+   (SELECT
+      participant_id,
+      biobank_stored_sample_id,
+      test,
+      confirmed
+    FROM
+      biobank_stored_sample
+    LEFT JOIN
+      participant
+    ON
+      biobank_stored_sample.biobank_id = participant.biobank_id
+    ) samples
+  ON
+    samples.participant_id = orders.participant_id
+    AND samples.test = orders.test
+  GROUP BY
+    orders.participant_id, orders.test, samples.participant_id, samples.test
+"""
+
+
+_SELECT_FROM_VIEW_MYSQL_RECEIVED = """
+SELECT * FROM reconciliation_data
+WHERE
+  sample_test IS NOT NULL
+  AND sample_count = order_count
+"""
+
+_SELECT_FROM_VIEW_MYSQL_LATE = "SELECT * FROM reconciliation_data WHERE elapsed_hours > 24"
+
+
+_SELECT_FROM_VIEW_MYSQL_MISSING = """
+SELECT * FROM reconciliation_data
+WHERE
+  (sample_count != order_count)
+  OR
+  (finalized IS NOT NULL AND sample_test IS NULL)
+"""
