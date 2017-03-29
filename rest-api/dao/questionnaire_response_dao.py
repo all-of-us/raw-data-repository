@@ -96,7 +96,7 @@ class QuestionnaireResponseDao(BaseDao):
   def _update_participant_summary(self, session, questionnaire_response, code_ids, questions, qh):
     """Updates the participant summary based on questions answered and modules completed
     in the questionnaire response.
-    
+
     If no participant summary exists already, only a response to the study enrollment consent
     questionnaire can be submitted, and it must include both first and last name.
     """
