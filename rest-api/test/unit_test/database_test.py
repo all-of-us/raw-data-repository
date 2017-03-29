@@ -14,8 +14,7 @@ from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from unit_test_util import TestBase, SqlTestBase
-import temporary_mysql
+from unit_test_util import SqlTestBase
 
 
 class DatabaseTest(SqlTestBase):
@@ -196,19 +195,38 @@ class DatabaseTest(SqlTestBase):
     self.assertEquals(bo.created.isoformat(), now.replace(tzinfo=None).isoformat())
 
 
+from unit_test_util import TestBase
 class MySqlDatabaseTest(TestBase):
   @classmethod
   def setUpClass(cls):
-    cls._temp_mysql = temporary_mysql.TemporaryMysql()
-    cls._temp_mysql.start_and_install()
+    import uuid
+    cls._temp_db_name = 'unittestdb' + uuid.uuid4().hex
+
+  @classmethod
+  def _reset_db(cls):
+    import singletons, os
+    if os.environ['USER'] == 'mwf':
+      mysql_login = 'root:root'  # local
+    else:
+      mysql_login = 'ubuntu'  # CircleCI
+    singletons.reset_for_tests()
+    database_factory.DB_CONNECTION_STRING = (
+        'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
+    db = database_factory.get_database()
+    db.get_engine().execute('DROP DATABASE IF EXISTS %s' % cls._temp_db_name)
+    db.get_engine().execute('CREATE DATABASE %s' % cls._temp_db_name)
+    singletons.reset_for_tests()
+    database_factory.DB_CONNECTION_STRING = (
+        'mysql+mysqldb://%s@localhost/%s?charset=utf8' % (mysql_login, cls._temp_db_name))
 
   @classmethod
   def tearDownClass(cls):
-    cls._temp_mysql.stop()
+    db = database_factory.get_database()
+    db.get_engine().execute('DROP DATABASE IF EXISTS %s' % cls._temp_db_name)
 
   def setUp(self):
     super(MySqlDatabaseTest, self).setUp()
-    self._temp_mysql.reset()
+    self._reset_db()
     self.database = database_factory.get_database()
     self.database.create_schema()
 
