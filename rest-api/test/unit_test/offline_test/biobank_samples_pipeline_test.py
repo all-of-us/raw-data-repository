@@ -1,6 +1,7 @@
 import csv
 import random
 import pytz
+import datetime
 import time
 
 from cloudstorage import cloudstorage_api  # stubbed by testbed
@@ -131,42 +132,69 @@ class _CsvListWriter(object):
 class MySqlReconciliationTest(SqlTestBase):
   def setUp(self):
     super(MySqlReconciliationTest, self).setUp(use_mysql=True)
+    self.participant_dao = ParticipantDao()
+    self.summary_dao = ParticipantSummaryDao()
+    self.order_dao = BiobankOrderDao()
+    self.sample_dao = BiobankStoredSampleDao()
+
+  def _insert_participant(self):
+    participant = self.participant_dao.insert(Participant())
+    self.summary_dao.insert(participant_summary(participant))  # satisfies the consent requirement
+    return participant
+
+  def _insert_order(self, participant, order_id, tests, order_time):
+    order = BiobankOrder(
+        biobankOrderId=order_id,
+        participantId=participant.participantId,
+        sourceSiteValue='SiteValue-%s' % participant.participantId,
+        created=order_time,
+        samples=[])
+    for test_code in tests:
+      order.samples.append(BiobankOrderedSample(
+          biobankOrderId=order.biobankOrderId,
+          test=test_code,
+          description=u'test',
+          processingRequired=False,
+          collected=order_time,
+          finalized=order_time))
+    return self.order_dao.insert(order)
+
+  def _insert_samples(self, participant, tests, received_time):
+    for test_code in tests:
+      self.sample_dao.insert(BiobankStoredSample(
+          biobankStoredSampleId='StoredSample-%s-%s' % (participant.participantId, test_code),
+          biobankId=participant.biobankId,
+          test=test_code,
+          confirmed=received_time))
 
   def test_reconciliation_query(self):
-    # Create 3 participants, each with some corresponding orders and samples.
-    participant_dao = ParticipantDao()
-    summary_dao = ParticipantSummaryDao()
-    order_dao = BiobankOrderDao()
-    sample_dao = BiobankStoredSampleDao()
-    for i in xrange(3):
-      p = participant_dao.insert(Participant())
-      summary_dao.insert(participant_summary(p))  # satisfies the consent requirement
-      order = BiobankOrder(
-          biobankOrderId='OrderFromHealthPro%d' % i,
-          participantId=p.participantId,
-          sourceSiteValue='SiteValueTest',
-          created=clock.CLOCK.now(),
-          samples=[])
-      for test_code in _BASELINE_TESTS:
-        order.samples.append(BiobankOrderedSample(
-            biobankOrderId=order.biobankOrderId,
-            test=test_code,
-            description=u'test',
-            processingRequired=False,
-            finalized=clock.CLOCK.now()))
-        sample_dao.insert(BiobankStoredSample(
-            biobankStoredSampleId='StoredSample%d%s' % (i, test_code),
-            biobankId=p.biobankId,
-            test=test_code,
-            confirmed=clock.CLOCK.now()))
-      order_dao.insert(order)
+    order_time = clock.CLOCK.now()
+    within_a_day = order_time + datetime.timedelta(hours=23)
+    late_time = order_time + datetime.timedelta(hours=25)
+    days_later = order_time + datetime.timedelta(days=5)
+
+    p_on_time = self._insert_participant()
+    self._insert_order(p_on_time, 'GoodOrder', _BASELINE_TESTS[:2], order_time)
+    self._insert_samples(p_on_time, _BASELINE_TESTS[:2], within_a_day)
+
+    p_late_and_missing = self._insert_participant()
+    self._insert_order(p_late_and_missing, 'SlowOrder', _BASELINE_TESTS[:2], order_time)
+    self._insert_samples(p_late_and_missing, [_BASELINE_TESTS[0]], late_time)
+
+    p_extra = self._insert_participant()
+    self._insert_samples(p_extra, [_BASELINE_TESTS[-1]], order_time)
+
+    p_repeated = self._insert_participant()
+    self._insert_order(p_repeated, 'OrigOrder', [_BASELINE_TESTS[0]], order_time)
+    self._insert_samples(p_repeated, [_BASELINE_TESTS[0]], within_a_day)
+    self._insert_order(p_repeated, 'RepeatedOrder', [_BASELINE_TESTS[0]], days_later)
 
     rows_received = _CsvListWriter(self)
     rows_late = _CsvListWriter(self)
     rows_missing = _CsvListWriter(self)
-
     biobank_samples_pipeline._query_and_write_reports(rows_received, rows_late, rows_missing)
 
     for rows in (rows_received, rows_late, rows_missing):
+      print ''
       for row in rows.rows:
         print '\t'.join([str(v) for v in row])
