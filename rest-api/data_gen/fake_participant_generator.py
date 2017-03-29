@@ -1,6 +1,7 @@
 """Creates a participant, physical measurements, questionnaire responses, and biobank
 orders."""
 import clock
+import collections
 import csv
 import datetime
 import random

@@ -9,7 +9,6 @@ import random
 from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE
 from model.code import Code, CodeType
-from dao.participant_dao import ParticipantDao
 from model.utils import to_client_participant_id, to_client_biobank_id
 
 def consent_code():
