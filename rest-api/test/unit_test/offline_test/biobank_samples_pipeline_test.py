@@ -14,7 +14,8 @@ from dao.hpo_dao import HPO
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
+from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase
+from test.unit_test.unit_test_util import SqlTestBase, TestBase, participant_summary
 from test import test_data
 from model.biobank_order import BiobankOrder, BiobankOrderedSample
 from model.biobank_stored_sample import BiobankStoredSample
@@ -24,6 +25,7 @@ from participant_enums import SampleStatus
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
+
 
 class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
   def setUp(self):
@@ -48,13 +50,8 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     biobank_ids = []
     participant_ids = []
     for _ in xrange(3):
-<<<<<<< HEAD
-      participant = participant_dao.insert(Participant())
-      summary_dao.insert(self.participant_summary(participant))
-=======
       participant = self.participant_dao.insert(Participant())
       summary_dao.insert(participant_summary(participant))
->>>>>>> Write reconciliation query and stub call sites / test.
       participant_ids.append(participant.participantId)
       biobank_ids.append(participant.biobankId)
       self.assertEquals(summary_dao.get(participant.participantId).numBaselineSamplesArrived, 0)
@@ -119,16 +116,31 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         biobank_samples_pipeline._upsert_samples_from_csv(reader)
 
 
-class MySqlReconciliationTest(CloudStorageSqlTestBase, NdbTestBase):
+class _CsvListWriter(object):
+  """Accumulate written CSV rows as a list."""
+  def __init__(self, test):
+    self._test = test
+    self.rows = []
+
+  def writerow(self, row):
+    if self.rows:
+      self._test.assertEquals(len(self.rows[0]), len(row))
+    self.rows.append(row)
+
+
+class MySqlReconciliationTest(SqlTestBase):
   def setUp(self):
     super(MySqlReconciliationTest, self).setUp(use_mysql=True)
 
   def test_reconciliation_query(self):
     # Create 3 participants, each with some corresponding orders and samples.
+    participant_dao = ParticipantDao()
+    summary_dao = ParticipantSummaryDao()
     order_dao = BiobankOrderDao()
     sample_dao = BiobankStoredSampleDao()
     for i in xrange(3):
-      p = self.participant_dao.insert(Participant())
+      p = participant_dao.insert(Participant())
+      summary_dao.insert(participant_summary(p))  # satisfies the consent requirement
       order = BiobankOrder(
           biobankOrderId='OrderFromHealthPro%d' % i,
           participantId=p.participantId,
@@ -149,4 +161,12 @@ class MySqlReconciliationTest(CloudStorageSqlTestBase, NdbTestBase):
             confirmed=clock.CLOCK.now()))
       order_dao.insert(order)
 
-    biobank_samples_pipeline.write_reconciliation_report()
+    rows_received = _CsvListWriter(self)
+    rows_late = _CsvListWriter(self)
+    rows_missing = _CsvListWriter(self)
+
+    biobank_samples_pipeline._query_and_write_reports(rows_received, rows_late, rows_missing)
+
+    for rows in (rows_received, rows_late, rows_missing):
+      for row in rows.rows:
+        print '\t'.join([str(v) for v in row])

@@ -136,25 +136,23 @@ def _get_report_paths(bucket_name, report_dt):
 
 @contextlib.contextmanager
 def _writer_guard(path):
-  """Opens CSV writer on a GCS file and writes common headers."""
+  """Opens CSV writer on a GCS file."""
   with cloudstorage_api.open(path, mode='w') as cloud_file:
     writer = csv.Writer(cloud_file)
-    writer.writerow(_CSV_COLUMN_NAMES)
     yield writer
 
 
 def _query_and_write_reports(writer_received, writer_late, writer_missing):
   """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers."""
-  db = database_factory.get_database()
-  session = db.make_session()
-  session.execute(_CREATE_VIEW_MYSQL)
-  for query, writer in (
-    (_SELECT_FROM_VIEW_MYSQL_RECEIVED, writer_recieved),
-    (_SELECT_FROM_VIEW_MYSQL_LATE, writer_late),
-    (_SELECT_FROM_VIEW_MYSQL_MISSING, writer_missing)):
-    for line in session.execute(query):
-      writer.writerow(line)
-  session.close()
+  with database_factory.get_database().session() as session:
+    session.execute(_CREATE_VIEW_MYSQL)
+    for query, writer in (
+        (_SELECT_FROM_VIEW_MYSQL_RECEIVED, writer_received),
+        (_SELECT_FROM_VIEW_MYSQL_LATE, writer_late),
+        (_SELECT_FROM_VIEW_MYSQL_MISSING, writer_missing)):
+      writer.writerow(_CSV_COLUMN_NAMES)
+      for line in session.execute(query):
+        writer.writerow(line)
 
 
 # Names for the reconciliation_data columns in output CSVs.
@@ -189,7 +187,7 @@ _CREATE_VIEW_MYSQL = """CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliatio
     COUNT(biobank_order_id) orders_count,
     GROUP_CONCAT(biobank_order_id),
     MAX(collected),
-    MAX(finalized),
+    MAX(finalized) finalized,
     GROUP_CONCAT(source_site_value),
 
     samples.test sample_test,
@@ -200,37 +198,34 @@ _CREATE_VIEW_MYSQL = """CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliatio
     MAX(TIMESTAMPDIFF(HOUR, confirmed, collected)) elapsed_hours
   FROM
    (SELECT
-      participant_id,
-      test,
+      biobank_id,
       biobank_order_id,
+      source_site_value,
+      test,
       collected,
-      finalized,
-      source_site_value
+      finalized
     FROM
-      biobank_order
+     (SELECT
+        biobank_id, biobank_order_id, source_site_value
+      FROM
+        biobank_order
+      LEFT JOIN
+        participant
+      ON
+        biobank_order.participant_id = participant.participant_id
+      ) orders_rekeyed_by_biobank_id
     JOIN
       biobank_ordered_sample
     ON
-      biobank_ordered_sample.order_id = biobank_order.biobank_order_id
+      biobank_order_id = order_id
     ) orders
   JOIN
-   (SELECT
-      participant_id,
-      biobank_stored_sample_id,
-      test,
-      confirmed
-    FROM
-      biobank_stored_sample
-    LEFT JOIN
-      participant
-    ON
-      biobank_stored_sample.biobank_id = participant.biobank_id
-    ) samples
+   biobank_stored_sample samples
   ON
-    samples.participant_id = orders.participant_id
+    samples.biobank_id = orders.biobank_id
     AND samples.test = orders.test
   GROUP BY
-    orders.participant_id, orders.test, samples.participant_id, samples.test
+    orders.biobank_id, orders.test, samples.biobank_id, samples.test
 """
 
 
@@ -238,7 +233,7 @@ _SELECT_FROM_VIEW_MYSQL_RECEIVED = """
 SELECT * FROM reconciliation_data
 WHERE
   sample_test IS NOT NULL
-  AND sample_count = order_count
+  AND samples_count = orders_count
 """
 
 _SELECT_FROM_VIEW_MYSQL_LATE = "SELECT * FROM reconciliation_data WHERE elapsed_hours > 24"
@@ -247,7 +242,7 @@ _SELECT_FROM_VIEW_MYSQL_LATE = "SELECT * FROM reconciliation_data WHERE elapsed_
 _SELECT_FROM_VIEW_MYSQL_MISSING = """
 SELECT * FROM reconciliation_data
 WHERE
-  (sample_count != order_count)
+  (samples_count != orders_count)
   OR
   (finalized IS NOT NULL AND sample_test IS NULL)
 """
