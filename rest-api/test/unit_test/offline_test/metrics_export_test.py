@@ -83,11 +83,13 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     with FakeClock(TIME):
       participant = Participant(participantId=1, biobankId=2)
       participant_dao.insert(participant)
+      self.send_consent('P1')
 
     with FakeClock(TIME):
       participant2 = Participant(participantId=2, biobankId=3,
                                  providerLink=primary_provider_link('PITT'))
       participant_dao.insert(participant2)
+      self.send_consent('P2')
 
     with FakeClock(TIME_2):
       # This update to participant has no effect, as the HPO ID didn't change.
@@ -144,10 +146,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     participant_fields = get_participant_fields()
     assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0,
                       [participant_fields,
-                       ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t3, t3, t3, t3, t2]])
+                       ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t3, t1, t3, t3, t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1,
                       [participant_fields,
-                       ['1', '1980-01-03', '', t2, '', '', t3, t3, '', '', t2]])
+                       ['1', '1980-01-03', '', t2, '', '', t3, t1, '', '', t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 0,
                       [ANSWER_FIELDS,
                       ['2', t3, STATE_QUESTION_CODE, '', 'VA']])
@@ -179,7 +181,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.biospecimenSamples.UNSET': 1,
                         'Participant.hpoId.UNSET': 1,
                         'Participant.consentForElectronicHealthRecords.UNSET': 1,
-                        'Participant.consentForStudyEnrollment.UNSET': 1,
+                        'Participant.consentForStudyEnrollment.SUBMITTED': 1,
                         'Participant.questionnaireOnOverallHealth.UNSET': 1,
                         'Participant.questionnaireOnLifestyle.UNSET': 1,
                         'Participant.questionnaireOnTheBasics.UNSET': 1,
@@ -199,7 +201,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.biospecimenSamples.UNSET': 1,
                         'Participant.hpoId.PITT': 1,
                         'Participant.consentForElectronicHealthRecords.UNSET': 1,
-                        'Participant.consentForStudyEnrollment.UNSET': 1,
+                        'Participant.consentForStudyEnrollment.SUBMITTED': 1,
                         'Participant.questionnaireOnOverallHealth.UNSET': 1,
                         'Participant.questionnaireOnLifestyle.UNSET': 1,
                         'Participant.questionnaireOnTheBasics.UNSET': 1,
@@ -221,7 +223,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.hpoId.PITT': 1,
                         'Participant.hpoId.UNSET': 1,
                         'Participant.consentForElectronicHealthRecords.UNSET': 2,
-                        'Participant.consentForStudyEnrollment.UNSET': 2,
+                        'Participant.consentForStudyEnrollment.SUBMITTED': 2,
                         'Participant.questionnaireOnOverallHealth.UNSET': 2,
                         'Participant.questionnaireOnLifestyle.UNSET': 2,
                         'Participant.questionnaireOnTheBasics.UNSET': 2,
@@ -244,7 +246,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
                         'Participant.hpoId.UNSET': 1,
                         'Participant.consentForElectronicHealthRecords.UNSET': 1,
-                        'Participant.consentForStudyEnrollment.UNSET': 1,
+                        'Participant.consentForStudyEnrollment.SUBMITTED': 1,
                         'Participant.questionnaireOnOverallHealth.UNSET': 1,
                         'Participant.questionnaireOnLifestyle.UNSET': 1,
                         'Participant.questionnaireOnTheBasics.SUBMITTED': 1,
@@ -264,7 +266,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
                         'Participant.hpoId.PITT': 1,
                         'Participant.consentForElectronicHealthRecords.UNSET': 1,
-                        'Participant.consentForStudyEnrollment.UNSET': 1,
+                        'Participant.consentForStudyEnrollment.SUBMITTED': 1,
                         'Participant.questionnaireOnOverallHealth.UNSET': 1,
                         'Participant.questionnaireOnLifestyle.UNSET': 1,
                         'Participant.questionnaireOnTheBasics.SUBMITTED': 1,
@@ -286,7 +288,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.hpoId.PITT': 1,
                         'Participant.hpoId.UNSET': 1,
                         'Participant.consentForElectronicHealthRecords.UNSET': 2,
-                        'Participant.consentForStudyEnrollment.UNSET': 2,
+                        'Participant.consentForStudyEnrollment.SUBMITTED': 2,
                         'Participant.questionnaireOnOverallHealth.UNSET': 2,
                         'Participant.questionnaireOnLifestyle.UNSET': 2,
                         'Participant.questionnaireOnTheBasics.SUBMITTED': 2,

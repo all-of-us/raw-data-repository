@@ -6,8 +6,22 @@ import json
 import os
 import random
 
+from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE
+from model.code import Code, CodeType
 from model.utils import to_client_participant_id, to_client_biobank_id
 
+def consent_code():
+  return Code(system=PPI_SYSTEM, value=CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
+              mapped=True, codeType=CodeType.MODULE)
+
+def first_name_code():
+  return Code(system=PPI_SYSTEM, value=FIRST_NAME_QUESTION_CODE,
+              mapped=True, codeType=CodeType.QUESTION)
+
+def last_name_code():
+  return Code(system=PPI_SYSTEM, value=LAST_NAME_QUESTION_CODE,
+              mapped=True, codeType=CodeType.QUESTION)
 
 def data_path(filename):
   return os.path.join(os.path.dirname(__file__), 'test-data', filename)
@@ -15,7 +29,6 @@ def data_path(filename):
 
 def primary_provider_link(hpo_name):
   return '[ { "primary": true, "organization": { "reference": "Organization/%s" } } ]' % hpo_name
-
 
 def load_measurement_json(participant_id, now=None):
   """Loads a PhysicalMeasurement FHIR resource returns it as parsed JSON."""

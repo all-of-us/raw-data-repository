@@ -3,7 +3,7 @@ import config
 import json
 
 from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, PPI_SYSTEM
-from code_constants import FieldType, RACE_QUESTION_CODE
+from code_constants import FieldType, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
@@ -35,7 +35,6 @@ class QuestionnaireResponseDao(BaseDao):
       return query.get(questionnaire_response_id)
 
   def _validate_model(self, session, obj):
-    ParticipantDao().validate_participant_reference(session, obj)
     if not obj.questionnaireId:
       raise BadRequest('QuestionnaireResponse.questionnaireId is required.')
     if not obj.questionnaireVersion:
@@ -96,18 +95,36 @@ class QuestionnaireResponseDao(BaseDao):
 
   def _update_participant_summary(self, session, questionnaire_response, code_ids, questions, qh):
     """Updates the participant summary based on questions answered and modules completed
-    in the questionnaire response."""
+    in the questionnaire response.
+
+    If no participant summary exists already, only a response to the study enrollment consent
+    questionnaire can be submitted, and it must include both first and last name.
+    """
     participant_summary = (ParticipantSummaryDao().
                            get_with_session(session, questionnaire_response.participantId))
 
     code_ids.extend([concept.codeId for concept in qh.concepts])
-    # Fetch the codes for all questions and concepts
+
     code_dao = CodeDao()
+
+    something_changed = False
+    # If no participant summary exists, make sure this is the study enrollment consent.
+    if not participant_summary:
+      consent_code = code_dao.get_code(PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE)
+      if not consent_code:
+        raise BadRequest('No study enrollment consent code found; import codebook.')
+      if not consent_code.codeId in code_ids:
+        raise BadRequest("Can't submit order for participant %s without consent" %
+                         questionnaire_response.participantId)
+      participant = ParticipantDao().validate_participant_reference(session, questionnaire_response)
+      participant_summary = ParticipantDao.create_summary_for_participant(participant)
+      something_changed = True
+
+    # Fetch the codes for all questions and concepts
     codes = code_dao.get_with_ids(code_ids)
 
     code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
     question_map = {question.questionnaireQuestionId: question for question in questions}
-    something_changed = False
     race_code_ids = []
     # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
     for answer in questionnaire_response.answers:
@@ -148,6 +165,8 @@ class QuestionnaireResponseDao(BaseDao):
           count_completed_baseline_ppi_modules(participant_summary)
 
     if something_changed:
+      if not participant_summary.firstName or not participant_summary.lastName:
+        raise BadRequest('First name and last name are required for consenting participants')
       ParticipantSummaryDao().update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 

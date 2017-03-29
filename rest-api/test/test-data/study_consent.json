@@ -1,0 +1,31 @@
+{
+  "resourceType": "Questionnaire",
+  "status":"published",
+  "date":"2015-01-01T00:00:00-00:00",
+  "publisher":"fake",
+  "group": {
+    "concept": [
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "ConsentPII"
+      }],
+    "question": [
+      {
+        "linkId": "firstName",
+        "text": "First name",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIName_First",
+          "display": "First name"
+        }]
+      },{
+        "linkId": "lastName",
+        "text": "Last name",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIName_Last",
+          "display": "Last name"
+        }]
+      }]
+  }
+}

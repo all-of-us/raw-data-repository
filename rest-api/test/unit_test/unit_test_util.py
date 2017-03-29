@@ -25,6 +25,7 @@ from code_constants import PPI_SYSTEM
 from contextlib import contextmanager
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
+from dao.participant_dao import ParticipantDao
 from model.code import Code
 from model.hpo import HPO
 from model.participant import Participant, ParticipantHistory
@@ -218,6 +219,7 @@ class FlaskTestBase(NdbTestBase):
 
     self.set_auth_user(self._ADMIN_USER)
     self.set_auth_user(self._AUTH_USER)
+    self._consent_questionnaire_id = None
 
   def tearDown(self):
     super(FlaskTestBase, self).tearDown()
@@ -268,6 +270,14 @@ class FlaskTestBase(NdbTestBase):
   def create_participant(self):
     response = self.send_post('Participant', {})
     return response['participantId']
+
+  def send_consent(self, participant_id):
+    if not self._consent_questionnaire_id:
+      self._consent_questionnaire_id = self.create_questionnaire('study_consent.json')
+    qr_json = make_questionnaire_response_json(participant_id, self._consent_questionnaire_id,
+                                               string_answers=[("firstName", "Bob"),
+                                                               ("lastName", "Jones")])
+    self.send_post(questionnaire_response_url(participant_id), qr_json)
 
   def create_questionnaire(self, filename):
     with open(data_path(filename)) as f:
@@ -374,6 +384,15 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
             "question": results
           }
       }
+
+def questionnaire_response_url(participant_id):
+  return 'Participant/%s/QuestionnaireResponse' % participant_id
+
+def participant_summary(participant):
+  summary = ParticipantDao.create_summary_for_participant(participant)
+  summary.firstName = 'Bob'
+  summary.lastName = 'Jones'
+  return summary
 
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))

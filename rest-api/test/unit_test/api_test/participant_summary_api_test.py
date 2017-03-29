@@ -57,9 +57,18 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     with FakeClock(TIME_1):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
+  def testQuery_noSummaries(self):
+    participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id = participant['participantId']
+    self.send_get('Participant/%s/Summary' % participant_id, expected_status=httplib.NOT_FOUND)
+    response = self.send_get('ParticipantSummary')
+    self.assertBundle([], response)
+
   def testQuery_oneParticipant(self):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id = participant['participantId']
+    with FakeClock(TIME_1):
+      self.send_consent(participant_id)
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
     first_name = self.fake.first_name()
     middle_name = self.fake.first_name()
@@ -89,7 +98,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'participantId': participant_id,
                    'hpoId': 'PITT',
                    'numCompletedBaselinePPIModules': 1,
-                   'consentForStudyEnrollment': 'UNSET',
+                   'consentForStudyEnrollment': 'SUBMITTED',
+                   'consentForStudyEnrollmentTime': TIME_1.isoformat(),
                    'race': 'WHITE',
                    'dateOfBirth': '1978-10-09',
                    'ageRange': '36-45',
@@ -140,6 +150,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     participant_id_2 = participant_2['participantId']
     participant_3 = self.send_post('Participant', {})
     participant_id_3 = participant_3['participantId']
+    with FakeClock(TIME_1):
+      self.send_consent(participant_id_1)
+      self.send_consent(participant_id_2)
+      self.send_consent(participant_id_3)
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
                                        "Bob", "Q", "Jones", "78751", datetime.date(1978, 10, 9))
@@ -238,10 +252,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                          [[]])
     self.assertResponses('ParticipantSummary?_count=2&questionnaireOnTheBasics=SUBMITTED',
                          [[ps_1, ps_2], [ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&consentForStudyEnrollment=UNSET',
-                         [[ps_1]])
     self.assertResponses('ParticipantSummary?_count=2&consentForStudyEnrollment=SUBMITTED',
-                         [[ps_2, ps_3]])
+                         [[ps_1, ps_2], [ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=UNSET',
                          [[ps_1]])
     self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=COMPLETED',

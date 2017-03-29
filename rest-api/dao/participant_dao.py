@@ -44,7 +44,6 @@ class ParticipantDao(UpdatableDao):
     if obj.suspensionStatus is None:
       obj.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
     super(ParticipantDao, self).insert_with_session(session, obj)
-    obj.participantSummary = self._create_summary_for_participant(obj)
     history = ParticipantHistory()
     history.fromdict(obj.asdict(), allow_pk=True)
     session.add(history)
@@ -90,7 +89,7 @@ class ParticipantDao(UpdatableDao):
         obj.hpoId = new_hpo_id
         need_new_summary = True
 
-    if need_new_summary:
+    if need_new_summary and existing_obj.participantSummary:
       # Copy the existing participant summary, and mutate the fields that
       # come from participant.
       summary = existing_obj.participantSummary
@@ -103,7 +102,7 @@ class ParticipantDao(UpdatableDao):
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
   @staticmethod
-  def _create_summary_for_participant(obj):
+  def create_summary_for_participant(obj):
     return ParticipantSummary(
         participantId=obj.participantId,
         biobankId=obj.biobankId,
@@ -128,9 +127,11 @@ class ParticipantDao(UpdatableDao):
     """Raises BadRequest if an object has a missing or invalid participantId reference."""
     if obj.participantId is None:
       raise BadRequest('%s.participantId required.' % obj.__class__.__name__)
-    if self.get_with_session(session, obj.participantId) is None:
+    participant = self.get_with_session(session, obj.participantId)
+    if participant is None:
       raise BadRequest(
           '%s.participantId %r is not found.' % (obj.__class__.__name__, obj.participantId))
+    return participant
 
   def get_valid_biobank_id_set(self, session):
     return set([row[0] for row in session.query(Participant.biobankId)])

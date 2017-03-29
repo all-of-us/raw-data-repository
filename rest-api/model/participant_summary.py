@@ -32,9 +32,9 @@ class ParticipantSummary(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          primary_key=True, autoincrement=False)
   biobankId = Column('biobank_id', Integer, nullable=False)
-  firstName = Column('first_name', String(80))
+  firstName = Column('first_name', String(80), nullable=False)
   middleName = Column('middle_name', String(80))
-  lastName = Column('last_name', String(80))
+  lastName = Column('last_name', String(80), nullable=False)
   zipCode = Column('zip_code', String(10))
   state = Column('state', String(2))
   dateOfBirth = Column('date_of_birth', Date)

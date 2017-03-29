@@ -9,7 +9,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from participant_enums import PhysicalMeasurementsStatus
 from test_data import load_measurement_json, load_measurement_json_amendment
-from unit_test_util import SqlTestBase
+from unit_test_util import SqlTestBase, participant_summary
 from werkzeug.exceptions import BadRequest
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -22,6 +22,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.participant = Participant(participantId=1, biobankId=2)
     ParticipantDao().insert(self.participant)
     self.dao = PhysicalMeasurementsDao()
+    self.participant_summary_dao = ParticipantSummaryDao()
     self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
                                                              TIME_1))
 
@@ -38,7 +39,16 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     measurements_json['id'] = id_
     return json.dumps(measurements_json)
 
+  def testInsert_noSummary(self):
+    with self.assertRaises(BadRequest):
+      self.dao.insert(PhysicalMeasurements(participantId=self.participant.participantId,
+                                           resource=self.measurement_json))
+
+  def _make_summary(self):
+    self.participant_summary_dao.insert(participant_summary(self.participant))
+
   def testInsert_rightParticipantId(self):
+    self._make_summary()
     measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
                                                   participantId=self.participant.participantId,
                                                   resource=self.measurement_json)
@@ -61,6 +71,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEquals(PhysicalMeasurementsStatus.COMPLETED, summary.physicalMeasurementsStatus)
 
   def testInsert_amend(self):
+    self._make_summary()
     measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
                                                   participantId=self.participant.participantId,
                                                   resource=self.measurement_json)

@@ -1,5 +1,5 @@
 from dao.base_dao import BaseDao
-from dao.participant_dao import ParticipantDao
+from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from model.log_position import LogPosition
 
@@ -31,7 +31,8 @@ class BiobankOrderDao(BaseDao):
   def _validate_model(self, session, obj):
     if obj.participantId is None:
       raise BadRequest('participantId is required')
-    ParticipantDao().validate_participant_reference(session, obj)
+    if not ParticipantSummaryDao().get_with_session(session, obj.participantId):
+      raise BadRequest("Can't submit order for participant %s without consent" % obj.participantId)
     for sample in obj.samples:
       self._validate_order_sample(sample)
     # TODO(mwf) FHIR validation for identifiers?

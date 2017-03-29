@@ -20,6 +20,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
 
   def test_insert(self):
     participant_id = self.create_participant()
+
     questionnaire_id = self.create_questionnaire('questionnaire1.json')
     with open(data_path('questionnaire_response3.json')) as f:
       resource = json.load(f)
@@ -31,9 +32,16 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
         resource['subject']['reference'].format(participant_id=participant_id)
     self.send_post(_questionnaire_response_url(participant_id), resource,
                    expected_status=httplib.BAD_REQUEST)
-    # Also fixing questionnaire id succeeds
+    # Fix the reference
     resource['questionnaire']['reference'] = \
         resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+
+    # Sending the response before the consent is an error.
+    self.send_post(_questionnaire_response_url(participant_id), resource,
+                   expected_status=httplib.BAD_REQUEST)
+
+    self.send_consent(participant_id)
+    # After consent, the post succeeds
     response = self.send_post(_questionnaire_response_url(participant_id), resource)
     resource['id'] = response['id']
     # The resource gets rewritten to include the version
@@ -77,6 +85,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
   def test_demographic_questionnaire_responses(self):
     with FakeClock(TIME_1):
       participant_id = self.create_participant()
+      self.send_consent(participant_id)
     questionnaire_id = self.create_questionnaire('questionnaire_demographics.json')
     with open(data_path('questionnaire_response_demographics.json')) as f:
       resource = json.load(f)
@@ -91,6 +100,8 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     summary = self.send_get('Participant/%s/Summary' % participant_id)
     expected = {'ageRange': 'UNSET',
                 'genderIdentity': 'male-to-female-transgender',
+                'firstName': 'Bob',
+                'lastName': 'Jones',
                 'race': 'UNSET',
                 'hpoId': 'UNSET',
                 'enrollmentStatus': 'INTERESTED',
@@ -101,7 +112,8 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'participantId': participant_id,
                 'physicalMeasurementsStatus': 'UNSET',
                 'consentForElectronicHealthRecords': 'UNSET',
-                'consentForStudyEnrollment': 'UNSET',
+                'consentForStudyEnrollment': 'SUBMITTED',
+                'consentForStudyEnrollmentTime': TIME_1.isoformat(),
                 'questionnaireOnFamilyHealth': 'UNSET',
                 'questionnaireOnHealthcareAccess': 'UNSET',
                 'questionnaireOnMedicalHistory' : 'UNSET',

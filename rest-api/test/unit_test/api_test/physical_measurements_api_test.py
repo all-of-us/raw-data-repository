@@ -1,3 +1,4 @@
+import httplib
 import main
 
 from test.unit_test.unit_test_util import FlaskTestBase
@@ -18,7 +19,14 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.send_post(path_1, measurements_1)
     self.send_post(path_2, measurements_2)
 
+  def test_insert_before_consent_fails(self):
+    measurements_1 = load_measurement_json(self.participant_id)
+    path_1 = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    self.send_post(path_1, measurements_1, expected_status=httplib.BAD_REQUEST)
+
   def test_insert(self):
+    self.send_consent(self.participant_id)
+    self.send_consent(self.participant_id_2)
     self.insert_measurements()
 
     response = self.send_get('Participant/%s/PhysicalMeasurements' % self.participant_id)
@@ -36,6 +44,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertEquals(1, len(response['entry']))
 
   def test_insert_and_amend(self):
+    self.send_consent(self.participant_id)
     measurements_1 = load_measurement_json(self.participant_id)
     path_1 = 'Participant/%s/PhysicalMeasurements' % self.participant_id
     response = self.send_post(path_1, measurements_1)
@@ -48,6 +57,8 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
 
 
   def test_physical_measurements_sync(self):
+    self.send_consent(self.participant_id)
+    self.send_consent(self.participant_id_2)
     sync_response = self.send_get('PhysicalMeasurements/_history')
     self.assertEquals('Bundle', sync_response['resourceType'])
     self.assertEquals('history', sync_response['type'])

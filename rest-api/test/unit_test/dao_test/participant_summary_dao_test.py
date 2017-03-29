@@ -13,7 +13,7 @@ from model.participant import Participant
 from model.biobank_stored_sample import BiobankStoredSample
 from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus
 from participant_enums import SampleStatus
-from unit_test_util import NdbTestBase, PITT_HPO_ID
+from unit_test_util import NdbTestBase, PITT_HPO_ID, participant_summary
 
 NUM_BASELINE_PPI_MODULES = 3
 
@@ -53,21 +53,26 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assert_no_results(self.ascending_biobank_id_query)
     self.assert_no_results(self.descending_biobank_id_query)
 
+  def _insert(self, participant):
+    self.participant_dao.insert(participant)
+    self.dao.insert(participant_summary(participant))
+    return participant
+
   def testQuery_oneSummary(self):
     participant = Participant(participantId=1, biobankId=2)
-    self.participant_dao.insert(participant)
-    participant_summary = self.dao.get(1)
-    self.assert_results(self.no_filter_query, [participant_summary])
-    self.assert_results(self.one_filter_query, [participant_summary])
+    self._insert(participant)
+    summary = self.dao.get(1)
+    self.assert_results(self.no_filter_query, [summary])
+    self.assert_results(self.one_filter_query, [summary])
     self.assert_no_results(self.two_filter_query)
-    self.assert_results(self.ascending_biobank_id_query, [participant_summary])
-    self.assert_results(self.descending_biobank_id_query, [participant_summary])
+    self.assert_results(self.ascending_biobank_id_query, [summary])
+    self.assert_results(self.descending_biobank_id_query, [summary])
 
   def testUnicodeNameRoundTrip(self):
     name = self.fake.first_name()
     with self.assertRaises(UnicodeEncodeError):
       str(name)  # sanity check that the name contains non-ASCII
-    participant = self.participant_dao.insert(Participant(participantId=1, biobankId=2))
+    participant = self._insert(Participant(participantId=1, biobankId=2))
     summary = self.dao.get(participant.participantId)
     summary.firstName = name
     self.dao.update(summary)
@@ -76,9 +81,9 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
   def testQuery_twoSummaries(self):
     participant_1 = Participant(participantId=1, biobankId=2)
-    self.participant_dao.insert(participant_1)
+    self._insert(participant_1)
     participant_2 = Participant(participantId=2, biobankId=1)
-    self.participant_dao.insert(participant_2)
+    self._insert(participant_2)
     ps_1 = self.dao.get(1)
     ps_2 = self.dao.get(2)
     self.assert_results(self.no_filter_query, [ps_1, ps_2])
@@ -89,39 +94,39 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
   def testQuery_threeSummaries_paginate(self):
     participant_1 = Participant(participantId=1, biobankId=4)
-    self.participant_dao.insert(participant_1)
+    self._insert(participant_1)
     participant_2 = Participant(participantId=2, biobankId=1)
-    self.participant_dao.insert(participant_2)
+    self._insert(participant_2)
     participant_3 = Participant(participantId=3, biobankId=3)
-    self.participant_dao.insert(participant_3)
+    self._insert(participant_3)
     ps_1 = self.dao.get(1)
     ps_2 = self.dao.get(2)
     ps_3 = self.dao.get(3)
     self.assert_results(self.no_filter_query, [ps_1, ps_2],
-                        _make_pagination_token([None, None, None, 2]))
+                        _make_pagination_token(['Jones', 'Bob', None, 2]))
     self.assert_results(self.one_filter_query, [ps_1])
     self.assert_no_results(self.two_filter_query)
     self.assert_results(self.ascending_biobank_id_query, [ps_2, ps_3],
-                        _make_pagination_token([3, None, None, None, 3]))
+                        _make_pagination_token([3, 'Jones', 'Bob', None, 3]))
     self.assert_results(self.descending_biobank_id_query, [ps_1, ps_3],
-                        _make_pagination_token([3, None, None, None, 3]))
+                        _make_pagination_token([3, 'Jones', 'Bob', None, 3]))
 
     self.assert_results(_with_token(self.no_filter_query,
-                                    _make_pagination_token([None, None, None, 2])), [ps_3])
+                                    _make_pagination_token(['Jones', 'Bob', None, 2])), [ps_3])
     self.assert_results(_with_token(self.ascending_biobank_id_query,
-                                    _make_pagination_token([3, None, None, None, 3])), [ps_1])
+                                    _make_pagination_token([3, 'Jones', 'Bob', None, 3])), [ps_1])
     self.assert_results(_with_token(self.descending_biobank_id_query,
-                                    _make_pagination_token([3, None, None, None, 3])), [ps_2])
+                                    _make_pagination_token([3, 'Jones', 'Bob', None, 3])), [ps_2])
 
   def testQuery_fourFullSummaries_paginate(self):
     participant_1 = Participant(participantId=1, biobankId=4)
-    self.participant_dao.insert(participant_1)
+    self._insert(participant_1)
     participant_2 = Participant(participantId=2, biobankId=1)
-    self.participant_dao.insert(participant_2)
+    self._insert(participant_2)
     participant_3 = Participant(participantId=3, biobankId=3)
-    self.participant_dao.insert(participant_3)
+    self._insert(participant_3)
     participant_4 = Participant(participantId=4, biobankId=2)
-    self.participant_dao.insert(participant_4)
+    self._insert(participant_4)
     ps_1 = self.dao.get(1)
     ps_2 = self.dao.get(2)
     ps_3 = self.dao.get(3)
@@ -151,31 +156,31 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.dao.update(ps_4)
 
     self.assert_results(self.no_filter_query, [ps_2, ps_4],
-                        _make_pagination_token(['Jones', None, None, 4]))
+                        _make_pagination_token(['Jones', 'Bob', None, 4]))
     self.assert_results(self.one_filter_query, [ps_1])
     self.assert_results(self.two_filter_query, [ps_1])
     self.assert_results(self.ascending_biobank_id_query, [ps_2, ps_4],
-                        _make_pagination_token([2, 'Jones', None, None, 4]))
+                        _make_pagination_token([2, 'Jones', 'Bob', None, 4]))
     self.assert_results(self.descending_biobank_id_query, [ps_1, ps_3],
                         _make_pagination_token([3, 'Jones', 'Bob', datetime.date(1978, 10, 10), 3]))
     self.assert_results(self.hpo_id_order_query, [ps_2, ps_4],
-                        _make_pagination_token([0, 'Jones', None, None, 4]))
+                        _make_pagination_token([0, 'Jones', 'Bob', None, 4]))
     self.assert_results(self.enrollment_status_order_query, [ps_1, ps_2],
                         _make_pagination_token(['MEMBER', 'Aardvark', 'Bob',
                                                 datetime.date(1978, 10, 10), 2]))
 
     self.assert_results(_with_token(self.no_filter_query,
-                                    _make_pagination_token(['Jones', None, None, 4])),
+                                    _make_pagination_token(['Jones', 'Bob', None, 4])),
                         [ps_1, ps_3])
     self.assert_results(_with_token(self.ascending_biobank_id_query,
-                                    _make_pagination_token([2, 'Jones', None, None, 4])),
+                                    _make_pagination_token([2, 'Jones', 'Bob', None, 4])),
                         [ps_3, ps_1])
     self.assert_results(_with_token(self.descending_biobank_id_query,
                                     _make_pagination_token([3, 'Jones', 'Bob',
                                                             datetime.date(1978, 10, 10), 3])),
                         [ps_4, ps_2])
     self.assert_results(_with_token(self.hpo_id_order_query,
-                                    _make_pagination_token([0, 'Jones', None, None, 4])),
+                                    _make_pagination_token([0, 'Jones', 'Bob', None, 4])),
                         [ps_1, ps_3])
     self.assert_results(_with_token(self.enrollment_status_order_query,
                                     _make_pagination_token(['MEMBER', 'Aardvark', 'Bob',
@@ -187,9 +192,9 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
     self.dao.update_from_biobank_stored_samples()  # safe noop
 
-    p_baseline_samples = self.participant_dao.insert(Participant(participantId=1, biobankId=11))
-    p_mixed_samples = self.participant_dao.insert(Participant(participantId=2, biobankId=22))
-    p_no_samples = self.participant_dao.insert(Participant(participantId=3, biobankId=33))
+    p_baseline_samples = self._insert(Participant(participantId=1, biobankId=11))
+    p_mixed_samples = self._insert(Participant(participantId=2, biobankId=22))
+    p_no_samples = self._insert(Participant(participantId=3, biobankId=33))
     self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 0)
 
     sample_dao = BiobankStoredSampleDao()
