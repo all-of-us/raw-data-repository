@@ -3,7 +3,6 @@ import isodate
 
 from participant_enums import QuestionnaireStatus
 
-from dao import database_factory
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.code import Code, CodeType, CodeBook, CodeHistory

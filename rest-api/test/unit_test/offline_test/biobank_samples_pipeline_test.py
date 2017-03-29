@@ -1,22 +1,19 @@
 import csv
 import time
-import uuid
 
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 
 import config
-from dao import database_factory
 from dao.biobank_order_dao import VALID_TESTS
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.hpo_dao import HPO
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
+from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase
 from test import test_data
 from model.utils import to_client_biobank_id
 from model.participant import Participant
-import singletons
 
 _BASELINE_TESTS = list(VALID_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'

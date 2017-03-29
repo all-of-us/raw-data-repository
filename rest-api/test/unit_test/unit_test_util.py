@@ -101,6 +101,12 @@ class TestbedTestBase(TestBase):
 
 
 class _TestDb(object):
+  """Container for common testing database setup/teardown, using SQLite or MySQL.
+
+  SQLite uses a fast/lightweight in-memory database. MySQL requires a local mysqldb configured with
+  tools/setup_local_database.sh, and is slower but matches deployed environments; it uses a
+  temporary database.
+  """
   def __init__(self, use_mysql=False):
     self.__use_mysql = use_mysql
     if self.__use_mysql:
