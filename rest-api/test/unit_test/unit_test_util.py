@@ -5,6 +5,7 @@ import json
 import mock
 import os
 import unittest
+import uuid
 import dao.database_factory
 
 from google.appengine.api import app_identity
@@ -99,42 +100,57 @@ class TestbedTestBase(TestBase):
     super(TestbedTestBase, self).tearDown()
 
 
-class SqlTestBase(TestbedTestBase):
-  """Base class for unit tests that use the SQL database."""
-  def setUp(self, with_data=True):
-    super(SqlTestBase, self).setUp()
-    self.setup_database()
-    self.database = dao.database_factory.get_database()
-    if with_data:
-      self.setup_data()
+class _TestDb(object):
+  def __init__(self, use_mysql=False):
+    self.__use_mysql = use_mysql
+    if self.__use_mysql:
+      self.__temp_db_name = 'unittestdb' + uuid.uuid4().hex
 
-  def tearDown(self):
-    self.teardown_database()
-    super(SqlTestBase, self).tearDown()
+  def setup(self, with_data=True):
+    singletons.reset_for_tests()  # Clear the db connection cache.
+    if self.__use_mysql:
+      # Match setup_local_database.sh which is run locally and on CircleCI.
+      mysql_login = 'root:root'
+      dao.database_factory.DB_CONNECTION_STRING = (
+          'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
+      db = dao.database_factory.get_database()
+      db.get_engine().execute('CREATE DATABASE %s' % self.__temp_db_name)
 
-  @staticmethod
-  def setup_database():
-    dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
+      dao.database_factory.DB_CONNECTION_STRING = (
+          'mysql+mysqldb://%s@localhost/%s?charset=utf8' % (mysql_login, self.__temp_db_name))
+      singletons.reset_for_tests()
+    else:
+      dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
     dao.database_factory.get_database().create_schema()
+    if with_data:
+      self._setup_hpos()
 
-  @staticmethod
-  def teardown_database():
-    dao.database_factory.get_database().get_engine().dispose()
+  def teardown(self):
+    db = dao.database_factory.get_database()
+    if self.__use_mysql:
+      db.get_engine().execute('DROP DATABASE IF EXISTS %s' % self.__temp_db_name)
+    db.get_engine().dispose()
     # Reconnecting to in-memory SQLite (because singletons are cleared above)
     # effectively clears the database.
 
-  def get_database(self):
-    return self.database
-
-  def setup_data(self):
-    """Creates default data necessary for basic testing."""
-    SqlTestBase.setup_hpos()
-
   @staticmethod
-  def setup_hpos():
+  def _setup_hpos():
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT'))
+
+
+class SqlTestBase(TestbedTestBase):
+  """Base class for unit tests that use the SQL database."""
+  def setUp(self, with_data=True, use_mysql=False):
+    super(SqlTestBase, self).setUp()
+    self._test_db = _TestDb(use_mysql=use_mysql)
+    self._test_db.setup(with_data=with_data)
+    self.database = dao.database_factory.get_database()
+
+  def tearDown(self):
+    self._test_db.teardown()
+    super(SqlTestBase, self).tearDown()
 
   @staticmethod
   def setup_codes(values, code_type):
@@ -156,6 +172,7 @@ class SqlTestBase(TestbedTestBase):
                                                                 list_as_dict(list_b)))
     for i in range(0, len(list_a)):
       self.assertEquals(list_a[i].asdict(), list_b[i].asdict())
+
 
 class NdbTestBase(SqlTestBase):
   """Base class for unit tests that need the NDB testbed."""
@@ -184,14 +201,15 @@ class CloudStorageSqlTestBase(testutil.CloudStorageTestBase):
 
   Both try to set up a testbed (which stubs out various AppEngine APIs, including cloudstorage_api).
   """
-  def setUp(self):
+  def setUp(self, use_mysql=False, with_data=True):
     super(CloudStorageSqlTestBase, self).setUp()
-    SqlTestBase.setup_database()
-    SqlTestBase.setup_hpos()
+    self._test_db = _TestDb(use_mysql=use_mysql)
+    self._test_db.setup(with_data=with_data)
+    self.database = dao.database_factory.get_database()
 
   def tearDown(self):
     super(CloudStorageSqlTestBase, self).tearDown()
-    SqlTestBase.teardown_database()
+    self._test_db.teardown()
 
 
 def read_dev_config():

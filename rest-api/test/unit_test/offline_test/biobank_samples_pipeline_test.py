@@ -93,37 +93,9 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
 
 # TODO(mwf) Add Biobank reconciliation test using this stub.
-class MySqlReconciliationTest(TestBase):
-  @classmethod
-  def setUpClass(cls):
-    cls._temp_db_name = 'unittestdb' + uuid.uuid4().hex
-
-  @classmethod
-  def _reset_db(cls):
-    mysql_login = 'root:root'  # Match setup_local_database.sh which is run locally and on CircleCI.
-    singletons.reset_for_tests()
-    database_factory.DB_CONNECTION_STRING = (
-        'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
-    db = database_factory.get_database()
-    db.get_engine().execute('DROP DATABASE IF EXISTS %s' % cls._temp_db_name)
-    db.get_engine().execute('CREATE DATABASE %s' % cls._temp_db_name)
-    singletons.reset_for_tests()
-    database_factory.DB_CONNECTION_STRING = (
-        'mysql+mysqldb://%s@localhost/%s?charset=utf8' % (mysql_login, cls._temp_db_name))
-
-  @classmethod
-  def tearDownClass(cls):
-    db = database_factory.get_database()
-    db.get_engine().execute('DROP DATABASE IF EXISTS %s' % cls._temp_db_name)
-
+class MySqlReconciliationTest(CloudStorageSqlTestBase, NdbTestBase):
   def setUp(self):
-    super(MySqlReconciliationTest, self).setUp()
-    self._reset_db()
-    self.database = database_factory.get_database()
-    self.database.create_schema()
-
-  def tearDown(self):
-    super(MySqlReconciliationTest, self).tearDown()
+    super(MySqlReconciliationTest, self).setUp(use_mysql=True, with_data=False)
 
   def _create_hpo_as_sanity_check(self):
     session = self.database.make_session()
