@@ -143,16 +143,20 @@ def _writer_guard(path):
 
 
 def _query_and_write_reports(writer_received, writer_late, writer_missing):
-  """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers."""
+  """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
+
+  Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
+  """
   with database_factory.get_database().session() as session:
-    session.execute(_CREATE_VIEW_MYSQL)
+    session.execute(_CREATE_ORDERES_BY_BIOBANK_ID_MYSQL)
+    session.execute(_CREATE_RECONCILIATION_VIEW_MYSQL)
     for query, writer in (
         (_SELECT_FROM_VIEW_MYSQL_RECEIVED, writer_received),
         (_SELECT_FROM_VIEW_MYSQL_LATE, writer_late),
         (_SELECT_FROM_VIEW_MYSQL_MISSING, writer_missing)):
       writer.writerow(_CSV_COLUMN_NAMES)
-      for line in session.execute(query):
-        writer.writerow(line)
+      for row in session.execute(query):
+        writer.writerow(row)
 
 
 # Names for the reconciliation_data columns in output CSVs.
@@ -175,57 +179,74 @@ _CSV_COLUMN_NAMES = (
 )
 
 
-# Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
-_CREATE_VIEW_MYSQL = """CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
+# Get orders with ordered samples (child rows), and key by biobank_id to match the desired output.
+_CREATE_ORDERES_BY_BIOBANK_ID_MYSQL = """
+CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW orders_by_biobank_id AS
   SELECT
-    CASE
-      WHEN orders.biobank_id IS NOT NULL THEN orders.biobank_id
-      ELSE samples.biobank_id
-      END biobank_id,
-
-    orders.test order_test,
-    COUNT(biobank_order_id) orders_count,
-    GROUP_CONCAT(biobank_order_id),
-    MAX(collected),
-    MAX(finalized) finalized,
-    GROUP_CONCAT(source_site_value),
-
-    samples.test sample_test,
-    COUNT(biobank_stored_sample_id) samples_count,
-    GROUP_CONCAT(biobank_stored_sample_id),
-    MAX(confirmed),
-
-    MAX(TIMESTAMPDIFF(HOUR, confirmed, collected)) elapsed_hours
+    biobank_id biobank_id_from_order,
+    biobank_order_id,
+    source_site_value,
+    test order_test,
+    collected,
+    finalized
   FROM
    (SELECT
-      biobank_id,
-      biobank_order_id,
-      source_site_value,
-      test,
-      collected,
-      finalized
+      biobank_id, biobank_order_id, source_site_value
     FROM
-     (SELECT
-        biobank_id, biobank_order_id, source_site_value
-      FROM
-        biobank_order
-      LEFT JOIN
-        participant
-      ON
-        biobank_order.participant_id = participant.participant_id
-      ) orders_rekeyed_by_biobank_id
-    JOIN
-      biobank_ordered_sample
+      biobank_order
+    LEFT JOIN
+      participant
     ON
-      biobank_order_id = order_id
-    ) orders
+      biobank_order.participant_id = participant.participant_id
+    ) orders_rekeyed_by_biobank_id
   JOIN
-   biobank_stored_sample samples
+    biobank_ordered_sample
   ON
-    samples.biobank_id = orders.biobank_id
-    AND samples.test = orders.test
+    biobank_order_id = order_id
+"""
+
+
+# MySQL does not support FULL OUTER JOIN, so instead we UNION a RIGHT and LEFT OUTER JOIN.
+_CREATE_RECONCILIATION_VIEW_MYSQL = """
+CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
+  SELECT
+    CASE
+      WHEN biobank_id_from_order IS NOT NULL THEN biobank_id_from_order
+      ELSE biobank_id
+      END biobank_id,
+
+    order_test,
+    COUNT(DISTINCT biobank_order_id) orders_count,
+    GROUP_CONCAT(DISTINCT biobank_order_id),
+    MAX(collected),
+    MAX(finalized) finalized,
+    GROUP_CONCAT(DISTINCT source_site_value),
+
+    test sample_test,
+    COUNT(DISTINCT biobank_stored_sample_id) samples_count,
+    GROUP_CONCAT(DISTINCT biobank_stored_sample_id),
+    MAX(confirmed),
+
+    TIMESTAMPDIFF(HOUR, MAX(collected), MAX(confirmed)) elapsed_hours
+  FROM
+   (SELECT * FROM
+      orders_by_biobank_id
+    LEFT OUTER JOIN
+      biobank_stored_sample
+    ON
+      biobank_stored_sample.biobank_id = biobank_id_from_order
+      AND biobank_stored_sample.test = order_test
+    UNION
+    SELECT * FROM
+      orders_by_biobank_id
+    RIGHT OUTER JOIN
+      biobank_stored_sample
+    ON
+      biobank_stored_sample.biobank_id = biobank_id_from_order
+      AND biobank_stored_sample.test = order_test
+    ) reconciled
   GROUP BY
-    orders.biobank_id, orders.test, samples.biobank_id, samples.test
+    biobank_id_from_order, order_test, biobank_id, test
 """
 
 
@@ -236,7 +257,7 @@ WHERE
   AND samples_count = orders_count
 """
 
-_SELECT_FROM_VIEW_MYSQL_LATE = "SELECT * FROM reconciliation_data WHERE elapsed_hours > 24"
+_SELECT_FROM_VIEW_MYSQL_LATE = 'SELECT * FROM reconciliation_data WHERE elapsed_hours > 24'
 
 
 _SELECT_FROM_VIEW_MYSQL_MISSING = """
