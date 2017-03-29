@@ -115,8 +115,12 @@ class _TestDb(object):
   def setup(self, with_data=True):
     singletons.reset_for_tests()  # Clear the db connection cache.
     if self.__use_mysql:
-      # Match setup_local_database.sh which is run locally and on CircleCI.
-      mysql_login = 'root:root'
+      if 'CIRCLECI' in os.environ:
+        # Default no-pw login, according to https://circleci.com/docs/1.0/manually/#databases .
+        mysql_login = 'ubuntu'
+      else:
+        # Match setup_local_database.sh which is run locally.
+        mysql_login = 'root:root'
       dao.database_factory.DB_CONNECTION_STRING = (
           'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
       db = dao.database_factory.get_database()
