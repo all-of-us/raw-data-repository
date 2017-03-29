@@ -3,8 +3,8 @@ import singletons
 
 from model.database import Database
 
-DB_NAME = 'rdr'
 DB_CONNECTION_STRING = None
+
 
 class _SqlDatabase(Database):
   def __init__(self):
