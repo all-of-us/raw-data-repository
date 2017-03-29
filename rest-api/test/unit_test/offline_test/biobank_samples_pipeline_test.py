@@ -1,18 +1,22 @@
 import csv
 import time
+import uuid
 
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 
 import config
+from dao import database_factory
 from dao.biobank_order_dao import VALID_TESTS
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from dao.hpo_dao import HPO
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase
+from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 from test import test_data
 from model.utils import to_client_biobank_id
 from model.participant import Participant
+import singletons
 
 _BASELINE_TESTS = list(VALID_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
@@ -86,3 +90,50 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
       reader = csv.DictReader(samples_file, delimiter='\t')
       with self.assertRaises(RuntimeError):
         biobank_samples_pipeline._upsert_samples_from_csv(reader)
+
+
+# TODO(mwf) Add Biobank reconciliation test using this stub.
+class MySqlReconciliationTest(TestBase):
+  @classmethod
+  def setUpClass(cls):
+    cls._temp_db_name = 'unittestdb' + uuid.uuid4().hex
+
+  @classmethod
+  def _reset_db(cls):
+    mysql_login = 'root:root'  # Match setup_local_database.sh which is run locally and on CircleCI.
+    singletons.reset_for_tests()
+    database_factory.DB_CONNECTION_STRING = (
+        'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
+    db = database_factory.get_database()
+    db.get_engine().execute('DROP DATABASE IF EXISTS %s' % cls._temp_db_name)
+    db.get_engine().execute('CREATE DATABASE %s' % cls._temp_db_name)
+    singletons.reset_for_tests()
+    database_factory.DB_CONNECTION_STRING = (
+        'mysql+mysqldb://%s@localhost/%s?charset=utf8' % (mysql_login, cls._temp_db_name))
+
+  @classmethod
+  def tearDownClass(cls):
+    db = database_factory.get_database()
+    db.get_engine().execute('DROP DATABASE IF EXISTS %s' % cls._temp_db_name)
+
+  def setUp(self):
+    super(MySqlReconciliationTest, self).setUp()
+    self._reset_db()
+    self.database = database_factory.get_database()
+    self.database.create_schema()
+
+  def tearDown(self):
+    super(MySqlReconciliationTest, self).tearDown()
+
+  def _create_hpo_as_sanity_check(self):
+    session = self.database.make_session()
+    hpo = HPO(hpoId=1, name='UNSET')
+    session.add(hpo)
+    session.commit()
+    session.close()
+
+  def test_mysql_db_connection_works(self):
+    self._create_hpo_as_sanity_check()
+
+  def test_mysql_db_connection_works_after_reset(self):
+    self._create_hpo_as_sanity_check()
