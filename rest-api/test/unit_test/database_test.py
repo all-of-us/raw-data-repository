@@ -21,7 +21,7 @@ class DatabaseTest(SqlTestBase):
     super(DatabaseTest, self).setUp(with_data=False)
 
   def test_schema(self):
-    session = self.get_database().make_session()
+    session = self.database.make_session()
 
     hpo = HPO(hpoId=1, name='UNSET')
     code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True, name="pmi",
@@ -162,7 +162,7 @@ class DatabaseTest(SqlTestBase):
     bo_id = 1
     now = isodate.parse_datetime('2016-01-04T10:28:50-04:00')
 
-    write_session = self.get_database().make_session()
+    write_session = self.database.make_session()
     p = self._create_participant(write_session)
 
     bo = BiobankOrder(
@@ -186,7 +186,7 @@ class DatabaseTest(SqlTestBase):
     write_session.add(bo)
     write_session.commit()
 
-    read_session = self.get_database().make_session()
+    read_session = self.database.make_session()
     bo = read_session.query(BiobankOrder).get(bo_id)
     # Check that the datetime is preserved.
     # TODO(DA-226) Does this represent prod CloudSQL?
