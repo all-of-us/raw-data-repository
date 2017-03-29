@@ -100,7 +100,7 @@ class FakeParticipantGenerator(object):
       questionnaire_id_and_version = (questionnaire.questionnaireId, questionnaire.version)
       if concept == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
         self._consent_questionnaire_id_and_version = questionnaire_id_and_version
-      questions = self._questionnaire_to_questions.get(questionnaire_id_and_version)
+      questions = self._questionnaire_to_questions[questionnaire_id_and_version]
       if questions:
         # We already handled this questionnaire.
         continue
