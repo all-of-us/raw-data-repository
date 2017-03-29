@@ -5,7 +5,6 @@ from model.database import Database
 
 DB_CONNECTION_STRING = None
 
-
 class _SqlDatabase(Database):
   def __init__(self):
     super(_SqlDatabase, self).__init__(DB_CONNECTION_STRING or
@@ -14,3 +13,4 @@ class _SqlDatabase(Database):
 def get_database():
   """Returns a singleton _SqlDatabase."""
   return singletons.get(_SqlDatabase)
+
