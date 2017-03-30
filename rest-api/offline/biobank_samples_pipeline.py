@@ -130,7 +130,7 @@ def write_reconciliation_report():
 
 def _get_report_paths(bucket_name, report_dt):
   return [
-      '%s/reconciliation/report_%s_%s.csv' % (
+      '/%s/reconciliation/report_%s_%s.csv' % (
           bucket_name, report_dt.strftime(_FILENAME_DATE_FORMAT), report_name)
       for report_name in ('received', 'over_24h', 'missing')]
 
