@@ -58,7 +58,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       code_answers.append(("state", Concept(PPI_SYSTEM, state)))
     qr = make_questionnaire_response_json(participant_id,
                                           questionnaire_id,
-                                          code_answers = code_answers,                                          
+                                          code_answers = code_answers,
                                           date_answers = date_answers)
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
@@ -72,7 +72,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     SqlTestBase.setup_codes(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(),
                             code_type=CodeType.MODULE)
     # Import codes for white and female, but not male or black.
-    SqlTestBase.setup_codes([RACE_WHITE_CODE, "female", "PIIState_VA"], code_type=CodeType.ANSWER)    
+    SqlTestBase.setup_codes([RACE_WHITE_CODE, "female", "PIIState_VA"], code_type=CodeType.ANSWER)
     participant_dao = ParticipantDao()
 
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
@@ -174,7 +174,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                       { 'Participant': 1,
                         'Participant.ageRange.26-35': 1,
                         'Participant.state.UNSET': 1,
-                        'Participant.censusRegion.UNSET': 1,                        
+                        'Participant.censusRegion.UNSET': 1,
                         'Participant.physicalMeasurements.UNSET': 1,
                         'Participant.biospecimen.UNSET': 1,
                         'Participant.biospecimenSamples.UNSET': 1,
@@ -185,7 +185,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.questionnaireOnLifestyle.UNSET': 1,
                         'Participant.questionnaireOnTheBasics.UNSET': 1,
                         'Participant.genderIdentity.UNSET': 1,
-                        'Participant.race.UNSET': 1,                        
+                        'Participant.race.UNSET': 1,
                         'Participant.biospecimenSummary.UNSET': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
                         'Participant.numCompletedBaselinePPIModules.0' : 1,

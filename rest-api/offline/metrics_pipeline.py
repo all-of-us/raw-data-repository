@@ -262,8 +262,8 @@ def map_answers(reader):
       if metric == 'state':
         state_val = answer_code[len(answer_code) - 2:]
         census_region = census_regions.get(state_val) or UNSET
-        yield(participant_id, make_pair_str(start_time, make_metric(CENSUS_REGION_METRIC, 
-                                                                    census_region)))              
+        yield(participant_id, make_pair_str(start_time, make_metric(CENSUS_REGION_METRIC,
+                                                                    census_region)))
     elif question_field[1] == FieldType.STRING:
       answer_value = answer_string
     else:

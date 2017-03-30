@@ -34,25 +34,25 @@ _ENROLLMENT_STATUS_SQL = """
              ELSE :interested
         END
    """
-   
+
 _SAMPLE_SQL = """,
-      sample_status_%s = 
+      sample_status_%s =
         CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
                          WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
                          AND biobank_stored_sample.test = %s)
              THEN :received ELSE :unset END,
-      sample_status_%s_time = 
+      sample_status_%s_time =
         (SELECT confirmed FROM biobank_stored_sample
                          WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
                            AND biobank_stored_sample.test = %s)
    """
-   
-def _get_sample_sql_and_params():    
-  """Gets SQL and params needed to update status and time fields on the participant summary for 
+
+def _get_sample_sql_and_params():
+  """Gets SQL and params needed to update status and time fields on the participant summary for
   each biobank sample.
-  """  
+  """
   sql = ''
-  params = {}  
+  params = {}
   for i in range(0, len(BIOBANK_TESTS)):
     sample_param = 'sample%d' % i
     sample_param_ref = ':%s' % sample_param
@@ -105,7 +105,7 @@ class ParticipantSummaryDao(UpdatableDao):
         config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES), 'baseline')
     dna_tests_sql, dna_tests_params = get_sql_and_params_for_array(
         config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
-    sample_sql, sample_params = _get_sample_sql_and_params()    
+    sample_sql, sample_params = _get_sample_sql_and_params()
     sql = """
     UPDATE
       participant_summary
@@ -119,12 +119,12 @@ class ParticipantSummaryDao(UpdatableDao):
           biobank_stored_sample.biobank_id = participant_summary.biobank_id
           AND biobank_stored_sample.test IN %s
       ),
-      samples_to_isolate_dna = (        
+      samples_to_isolate_dna = (
           CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
                            WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
                            AND biobank_stored_sample.test IN %s)
           THEN :received ELSE :unset END
-      ) %s""" % (baseline_tests_sql, dna_tests_sql, sample_sql)    
+      ) %s""" % (baseline_tests_sql, dna_tests_sql, sample_sql)
     params = {'received': int(SampleStatus.RECEIVED), 'unset': int(SampleStatus.UNSET)}
     params.update(baseline_tests_params)
     params.update(dna_tests_params)

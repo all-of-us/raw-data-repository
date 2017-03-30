@@ -25,7 +25,7 @@ class PhysicalMeasurementsDao(BaseDao):
       raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
     obj.logPosition = LogPosition()
     obj.final = True
-    obj.created = clock.CLOCK.now() 
+    obj.created = clock.CLOCK.now()
     resource_json = json.loads(obj.resource)
     for extension in resource_json['entry'][0]['resource'].get('extension', []):
       url = extension.get('url', '')

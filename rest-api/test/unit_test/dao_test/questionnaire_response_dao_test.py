@@ -87,7 +87,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.questionnaire_dao.insert(q)
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
-    qr.answers.extend(self._names_and_email_answers())    
+    qr.answers.extend(self._names_and_email_answers())
     # Answers are there but the participant is not.
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
@@ -210,7 +210,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.LN_QUESTION = QuestionnaireQuestion(linkId='ln', codeId=self.last_name_code_id,
                                              repeats=False)
     self.EMAIL_QUESTION = QuestionnaireQuestion(linkId='email', codeId=self.email_code_id,
-                                                repeats=False)                                             
+                                                repeats=False)
     self.FN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
                                                  questionnaireResponseId=1,
                                                  questionId=3, valueString='Bob')
@@ -264,7 +264,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_qr.answers.append(answer_1)
     expected_qr.answers.append(answer_2)
-    expected_qr.answers.extend(self._names_and_email_answers())    
+    expected_qr.answers.extend(self._names_and_email_answers())
     self.check_response(expected_qr)
 
     expected_ps = self._participant_summary_with_defaults(
@@ -311,7 +311,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                            questionId=2, valueSystem='c', valueCodeId=4)
     qr.answers.append(answer_1)
     qr.answers.append(answer_2)
-    qr.answers.extend(self._names_and_email_answers())    
+    qr.answers.extend(self._names_and_email_answers())
     with FakeClock(TIME_2):
       self.questionnaire_response_dao.insert(qr)
 
@@ -346,7 +346,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     answer_1.endTime = TIME_3
     expected_qr.answers.append(answer_1)
     expected_qr.answers.append(answer_2)
-    expected_qr.answers.extend(self._names_and_email_answers())    
+    expected_qr.answers.extend(self._names_and_email_answers())
     self.check_response(expected_qr)
 
     # The new questionnaire response should be there, too.

@@ -37,10 +37,10 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
     # Create 3 participants and pass their (random) IDs into sample rows.
     participant_dao = ParticipantDao()
-    summary_dao = ParticipantSummaryDao()    
+    summary_dao = ParticipantSummaryDao()
     biobank_ids = []
     participant_ids = []
-    test_map = {}    
+    test_map = {}
     for _ in xrange(3):
       participant = participant_dao.insert(Participant())
       summary_dao.insert(participant_summary(participant))
@@ -50,7 +50,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     test1 = random.choice(_BASELINE_TESTS)
     test2 = random.choice(_BASELINE_TESTS)
     test3 = random.choice(_BASELINE_TESTS)
-    samples_file = test_data.open_biobank_samples(*biobank_ids, test1=test1, test2=test2, 
+    samples_file = test_data.open_biobank_samples(*biobank_ids, test1=test1, test2=test2,
                                                   test3=test3)
     self._write_cloud_csv('cloud.csv', samples_file.read())
 
@@ -59,13 +59,13 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEquals(dao.count(), 3)
     self._check_summary(participant_ids[0], test1, '2016-11-29T12:19:32')
     self._check_summary(participant_ids[1], test2, '2016-11-29T12:38:58')
-    self._check_summary(participant_ids[2], test3, '2016-11-29T12:41:26')      
+    self._check_summary(participant_ids[2], test3, '2016-11-29T12:41:26')
 
   def _check_summary(self, participant_id, test, date):
     summary = ParticipantSummaryDao().get(participant_id)
     self.assertEquals(summary.numBaselineSamplesArrived, 1)
     self.assertEquals(SampleStatus.RECEIVED, getattr(summary, 'sampleStatus' + test))
-    self.assertEquals(date, 
+    self.assertEquals(date,
                       getattr(summary, 'sampleStatus' + test + 'Time').isoformat())
 
   def test_find_latest_csv(self):

@@ -24,7 +24,7 @@ LANGUAGE_QUESTION_CODE = "ConsentPII_Language"
 SEX_QUESTION_CODE = "Gender_BiologicalSexBirth"
 SEXUAL_ORIENTATION_QUESTION_CODE = "TheBasics_SexualOrientation"
 EDUCATION_QUESTION_CODE = "Education_EducationLevel"
-INCOME_QUESTION_CODE = "Income_AnnualIncome"  
+INCOME_QUESTION_CODE = "Income_AnnualIncome"
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
@@ -88,7 +88,7 @@ FIELD_TO_QUESTION_CODE = {
   "sexId": (SEX_QUESTION_CODE, FieldType.CODE),
   "sexualOrientationId": (SEXUAL_ORIENTATION_QUESTION_CODE, FieldType.CODE),
   "educationId": (EDUCATION_QUESTION_CODE, FieldType.CODE),
-  "incomeId": (INCOME_QUESTION_CODE, FieldType.CODE),  
+  "incomeId": (INCOME_QUESTION_CODE, FieldType.CODE),
   "dateOfBirth": (DATE_OF_BIRTH_QUESTION_CODE, FieldType.DATE)
 }
 QUESTION_CODE_TO_FIELD = {v[0]: (k, v[1]) for k, v in FIELD_TO_QUESTION_CODE.iteritems()}
@@ -109,6 +109,6 @@ QUESTIONNAIRE_MODULE_CODE_TO_FIELD = {v: k for k, v in
                                       FIELD_TO_QUESTIONNAIRE_MODULE_CODE.iteritems()}
 QUESTIONNAIRE_MODULE_FIELD_NAMES = sorted(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.keys())
 
-FIELD_TO_BIOBANK_TEST = {"sampleStatus%s" % test : test for test in BIOBANK_TESTS} 
+FIELD_TO_BIOBANK_TEST = {"sampleStatus%s" % test : test for test in BIOBANK_TESTS}
 BIOBANK_TEST_TO_FIELD = {v: k for k, v in FIELD_TO_BIOBANK_TEST.iteritems()}
 

@@ -18,8 +18,8 @@ _DATE_FIELDS = ['dateOfBirth', 'signUpTime', 'consentForStudyEnrollmentTime',
                 'questionnaireOnLifestyleTime', 'questionnaireOnTheBasicsTime',
                 'questionnaireOnHealthcareAccessTime', 'questionnaireOnMedicalHistoryTime',
                 'questionnaireOnMedicationsTime', 'questionnaireOnFamilyHealthTime',
-                'samplesToIsolateDNATime', 'sampleStatus1SST8Time', 'sampleStatus1PST8Time', 
-                'sampleStatus1HEP4Time', 'sampleStatus1ED04Time', 'sampleStatus1ED10Time', 
+                'samplesToIsolateDNATime', 'sampleStatus1SST8Time', 'sampleStatus1PST8Time',
+                'sampleStatus1HEP4Time', 'sampleStatus1ED04Time', 'sampleStatus1ED10Time',
                 'sampleStatus2ED10Time', 'sampleStatus1UR10Time', 'sampleStatus1SALTime']
 _ENUM_FIELDS = ['enrollmentStatus', 'race', 'physicalMeasurementsStatus',
                 'consentForStudyEnrollment', 'consentForElectronicHealthRecords',
@@ -27,8 +27,8 @@ _ENUM_FIELDS = ['enrollmentStatus', 'race', 'physicalMeasurementsStatus',
                 'questionnaireOnTheBasics', 'questionnaireOnHealthcareAccess',
                 'questionnaireOnMedicalHistory', 'questionnaireOnMedications',
                 'questionnaireOnFamilyHealth', 'suspensionStatus', 'withdrawalStatus',
-                'samplesToIsolateDNA', 'sampleStatus1SST8', 'sampleStatus1PST8', 
-                'sampleStatus1HEP4', 'sampleStatus1ED04', 'sampleStatus1ED10', 
+                'samplesToIsolateDNA', 'sampleStatus1SST8', 'sampleStatus1PST8',
+                'sampleStatus1HEP4', 'sampleStatus1ED04', 'sampleStatus1ED10',
                 'sampleStatus2ED10', 'sampleStatus1UR10', 'sampleStatus1SAL'
 ]
 _CODE_FIELDS = ['genderIdentityId']
@@ -46,10 +46,10 @@ class ParticipantSummary(Base):
   stateId = Column('state_id', Integer, ForeignKey('code.code_id'))
   city = Column('city', String(80))
   streetAddress = Column('street_address', String(255))
-  phoneNumber = Column('phone_number', String(80))  
+  phoneNumber = Column('phone_number', String(80))
   email = Column('email', String(255), nullable=False)
   recontactMethodId = Column('recontact_method_id', Integer, ForeignKey('code.code_id'))
-  languageId = Column('language_id', Integer, ForeignKey('code.code_id')) 
+  languageId = Column('language_id', Integer, ForeignKey('code.code_id'))
   dateOfBirth = Column('date_of_birth', Date)
   genderIdentityId = Column('gender_identity_id', Integer, ForeignKey('code.code_id'))
   sexId = Column('sex_id', Integer, ForeignKey('code.code_id'))
@@ -65,7 +65,7 @@ class ParticipantSummary(Base):
   physicalMeasurementsTime = Column('physical_measurements_time', DateTime)
   signUpTime = Column('sign_up_time', DateTime)
   hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
-  
+
   # Fields for which questionnaires have been submitted, and at what times.
   consentForStudyEnrollment = Column('consent_for_study_enrollment',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
@@ -95,7 +95,7 @@ class ParticipantSummary(Base):
   questionnaireOnFamilyHealth = Column('questionnaire_on_family_health',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnFamilyHealthTime = Column('questionnaire_on_family_health_time', DateTime)
-  
+
   # Fields for which samples have been received, and at what times.
   sampleStatus1SST8 = Column('sample_status_1sst8', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1SST8Time = Column('sample_status_1sst8_time', DateTime)
@@ -113,11 +113,11 @@ class ParticipantSummary(Base):
   sampleStatus1UR10Time = Column('sample_status_1ur10_time', DateTime)
   sampleStatus1SAL = Column('sample_status_1sal', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1SALTime = Column('sample_status_1sal_time', DateTime)
-  
+
   numCompletedBaselinePPIModules = Column('num_completed_baseline_ppi_modules', SmallInteger,
                                           default=0)
   numCompletedPPIModules = Column('num_completed_ppi_modules', SmallInteger, default=0)
-  
+
   # The number of BiobankStoredSamples recorded for this participant, limited to those samples
   # where testCode is one of the baseline tests (listed in the config).
   numBaselineSamplesArrived = Column('num_baseline_samples_arrived', SmallInteger, default=0)
