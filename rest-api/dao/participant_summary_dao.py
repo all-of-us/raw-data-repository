@@ -57,7 +57,7 @@ def _get_sample_sql_and_params():
     sample_param = 'sample%d' % i
     sample_param_ref = ':%s' % sample_param
     lower_test = BIOBANK_TESTS[i].lower()
-    sql += _SAMPLE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref }
+    sql += _SAMPLE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
     params[sample_param] = BIOBANK_TESTS[i]
   return sql, params
 
