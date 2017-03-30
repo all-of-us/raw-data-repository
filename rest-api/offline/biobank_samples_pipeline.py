@@ -150,7 +150,7 @@ def _query_and_write_reports(writer_received, writer_late, writer_missing):
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
   """
   with database_factory.get_database().session() as session:
-    session.execute(_CREATE_ORDERES_BY_BIOBANK_ID_MYSQL)
+    session.execute(_CREATE_ORDERS_BY_BIOBANK_ID_MYSQL)
     session.execute(_CREATE_RECONCILIATION_VIEW_MYSQL)
     for query, writer in (
         (_SELECT_FROM_VIEW_MYSQL_RECEIVED, writer_received),
@@ -192,7 +192,7 @@ _CSV_COLUMN_NAMES = (
 
 
 # Gets orders with ordered samples (child rows), and keys by biobank_id to match the desired output.
-_CREATE_ORDERES_BY_BIOBANK_ID_MYSQL = """
+_CREATE_ORDERS_BY_BIOBANK_ID_MYSQL = """
 CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW orders_by_biobank_id AS
   SELECT
     biobank_id biobank_id_from_order,
