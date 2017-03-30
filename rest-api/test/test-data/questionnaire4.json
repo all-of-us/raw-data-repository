@@ -19,7 +19,7 @@
         "text": "State",
         "concept": [{
           "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-          "code": "StreetAddress_PIIState",
+          "code": "PIIAddress_PIIState",
           "display": "State"
         }]
       }]

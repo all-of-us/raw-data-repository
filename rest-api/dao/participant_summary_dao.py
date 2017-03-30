@@ -36,15 +36,15 @@ _ENROLLMENT_STATUS_SQL = """
    """
 
 _SAMPLE_SQL = """,
-      sample_status_%(test)s =
+      sample_status_%s =
         CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
                          WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
-                         AND biobank_stored_sample.test = %(sample_param_ref)s)
+                         AND biobank_stored_sample.test = %s)
              THEN :received ELSE :unset END,
-      sample_status_%(test)s_time =
+      sample_status_%s_time =
         (SELECT confirmed FROM biobank_stored_sample
                          WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
-                           AND biobank_stored_sample.test = %(sample_param_ref)s)
+                           AND biobank_stored_sample.test = %s)
    """
 
 def _get_sample_sql_and_params():
@@ -57,7 +57,7 @@ def _get_sample_sql_and_params():
     sample_param = 'sample%d' % i
     sample_param_ref = ':%s' % sample_param
     lower_test = BIOBANK_TESTS[i].lower()
-    sql += _SAMPLE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
+    sql += _SAMPLE_SQL % (lower_test, sample_param_ref, lower_test, sample_param_ref)
     params[sample_param] = BIOBANK_TESTS[i]
   return sql, params
 

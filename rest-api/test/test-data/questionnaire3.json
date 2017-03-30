@@ -39,7 +39,7 @@
         "text": "Zip code",
         "concept": [{
           "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-          "code": "StreetAddress_PIIZIP",
+          "code": "PIIAddress_PIIZIP",
           "display": "Zip code"
         }]
       },{
@@ -80,7 +80,7 @@
         "text":"What is your city?",
         "concept": [{
           "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-          "code": "StreetAddress_PIICity",
+          "code": "PIIAddress_PIICity",
           "display": "City"
         }]
       }, {
@@ -144,7 +144,7 @@
         "text": "State",
         "concept": [{
           "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-          "code": "StreetAddress_PIIState",
+          "code": "PIIAddress_PIIState",
           "display": "State"
         }]
       }]

@@ -7,6 +7,7 @@ from cloudstorage import cloudstorage_api  # stubbed by testbed
 import config
 from code_constants import BIOBANK_TESTS
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from dao.hpo_dao import HPO
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
@@ -100,3 +101,22 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
       reader = csv.DictReader(samples_file, delimiter='\t')
       with self.assertRaises(RuntimeError):
         biobank_samples_pipeline._upsert_samples_from_csv(reader)
+
+
+# TODO(mwf) Add Biobank reconciliation test using this stub.
+class MySqlReconciliationTest(CloudStorageSqlTestBase, NdbTestBase):
+  def setUp(self):
+    super(MySqlReconciliationTest, self).setUp(use_mysql=True, with_data=False)
+
+  def _create_hpo_as_sanity_check(self):
+    session = self.database.make_session()
+    hpo = HPO(hpoId=1, name='UNSET')
+    session.add(hpo)
+    session.commit()
+    session.close()
+
+  def test_mysql_db_connection_works(self):
+    self._create_hpo_as_sanity_check()
+
+  def test_mysql_db_connection_works_after_reset(self):
+    self._create_hpo_as_sanity_check()
