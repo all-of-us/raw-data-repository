@@ -7,9 +7,10 @@ from code_constants import PPI_SYSTEM, RACE_WHITE_CODE
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
+from model.code import CodeType
 from model.biobank_stored_sample import BiobankStoredSample
 from test_data import load_measurement_json
-from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
+from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -39,21 +40,34 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
+
   def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code,
-                                    firstName, middleName, lastName, zipCode, dateOfBirth):
+                                    first_name, middle_name, last_name, zip_code,
+                                    state_code, street_address, city, sex_code,
+                                    sexual_orientation_code, phone_number, recontact_method_code,
+                                    language_code, education_code, income_code, date_of_birth):
     code_answers = []
-    if race_code:
-      code_answers.append(("race", Concept(PPI_SYSTEM, race_code)))
-    if gender_code:
-      code_answers.append(("genderIdentity", Concept(PPI_SYSTEM, gender_code)))
+    _add_code_answer(code_answers, "race", race_code)
+    _add_code_answer(code_answers, "genderIdentity", gender_code)
+    _add_code_answer(code_answers, "state", state_code)
+    _add_code_answer(code_answers, "sex", sex_code)
+    _add_code_answer(code_answers, "sexualOrientation", sexual_orientation_code)
+    _add_code_answer(code_answers, "recontactMethod", recontact_method_code)
+    _add_code_answer(code_answers, "language", language_code)
+    _add_code_answer(code_answers, "education", education_code)
+    _add_code_answer(code_answers, "income", income_code)
+
     qr = make_questionnaire_response_json(participant_id,
                                           questionnaire_id,
                                           code_answers = code_answers,
-                                          string_answers = [("firstName", firstName),
-                                                            ("middleName", middleName),
-                                                            ("lastName", lastName),
-                                                            ("zipCode", zipCode)],
-                                          date_answers = [("dateOfBirth", dateOfBirth)])
+                                          string_answers = [("firstName", first_name),
+                                                            ("middleName", middle_name),
+                                                            ("lastName", last_name),
+                                                            ("streetAddress", street_address),
+                                                            ("city", city),
+                                                            ("phoneNumber", phone_number),
+                                                            ("zipCode", zip_code)],
+                                          date_answers = [("dateOfBirth", date_of_birth)])
     with FakeClock(TIME_1):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
@@ -65,6 +79,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertBundle([], response)
 
   def testQuery_oneParticipant(self):
+    # Set up the codes so they are mapped later.
+    SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
+                             "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id = participant['participantId']
     with FakeClock(TIME_1):
@@ -74,7 +91,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     middle_name = self.fake.first_name()
     last_name = self.fake.last_name()
     self.submit_questionnaire_response(participant_id, questionnaire_id, RACE_WHITE_CODE, "male",
-                                       first_name, middle_name, last_name, "78751",
+                                       first_name, middle_name, last_name, "78751", "PIIState_VA",
+                                       "1234 Main Street", "Austin", "male_sex",
+                                       "straight", "512-555-5555", "email_code",
+                                       "en", "highschool", "lotsofmoney",
                                        datetime.date(1978, 10, 9))
 
     with FakeClock(TIME_2):
@@ -92,11 +112,30 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'questionnaireOnFamilyHealth': 'UNSET',
                    'questionnaireOnMedications': 'UNSET',
                    'physicalMeasurementsStatus': 'UNSET',
+                   'state': 'PIIState_VA',
+                   'streetAddress': '1234 Main Street',
+                   'city': 'Austin',
+                   'sex': 'male_sex',
+                   'sexualOrientation': 'straight',
+                   'phoneNumber': '512-555-5555',
+                   'recontactMethod': 'email_code',
+                   'language': 'en',
+                   'education': 'highschool',
+                   'income': 'lotsofmoney',
+                   'sampleStatus1ED04': 'UNSET',
+                   'sampleStatus1ED10': 'UNSET',
+                   'sampleStatus1HEP4': 'UNSET',
+                   'sampleStatus1PST8': 'UNSET',
+                   'sampleStatus1SAL': 'UNSET',
+                   'sampleStatus1SST8': 'UNSET',
+                   'sampleStatus1UR10': 'UNSET',
+                   'sampleStatus2ED10': 'UNSET',
                    'genderIdentity': 'male',
                    'consentForElectronicHealthRecords': 'UNSET',
                    'questionnaireOnMedicalHistory': u'UNSET',
                    'participantId': participant_id,
                    'hpoId': 'PITT',
+                   'numCompletedPPIModules': 1,
                    'numCompletedBaselinePPIModules': 1,
                    'consentForStudyEnrollment': 'SUBMITTED',
                    'consentForStudyEnrollmentTime': TIME_1.isoformat(),
@@ -106,6 +145,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'firstName': first_name,
                    'middleName': middle_name,
                    'lastName': last_name,
+                   'email': self.email,
                    'zipCode' : '78751',
                    'withdrawalStatus': 'NOT_WITHDRAWN',
                    'suspensionStatus': 'NOT_SUSPENDED'}
@@ -141,6 +181,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         confirmed=TIME_1))
 
   def testQuery_manyParticipants(self):
+    SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
+                             "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
+
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
     questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
     questionnaire_id_3 = self.create_questionnaire('all_consents_questionnaire.json')
@@ -156,11 +199,19 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_consent(participant_id_3)
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
-                                       "Bob", "Q", "Jones", "78751", datetime.date(1978, 10, 9))
-    self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, None,
-                                       "Mary", "Q", "Jones", "78751", datetime.date(1978, 10, 8))
+                                       "Bob", "Q", "Jones", "78751", "PIIState_VA",
+                                       "1234 Main Street", "Austin", "male_sex",
+                                       "straight", "512-555-5555", "email_code",
+                                       "en", "highschool", "lotsofmoney",
+                                       datetime.date(1978, 10, 9))
+    self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "female",
+                                       "Mary", "Q", "Jones", "78751", None,
+                                       None, None, None, None, None, None, None, None, None,
+                                       datetime.date(1978, 10, 8))
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_WHITE_CODE, "male",
-                                       "Fred", "T", "Smith", "78752", datetime.date(1978, 10, 10))
+                                       "Fred", "T", "Smith", "78752", None,
+                                       None, None, None, None, None, None, None, None, None,
+                                       datetime.date(1978, 10, 10))
     # Send an empty questionnaire response for the consent questionnaire for participants 2 and 3
     self._submit_empty_questionnaire_response(participant_id_2, questionnaire_id_3)
     self._submit_empty_questionnaire_response(participant_id_3, questionnaire_id_3)
@@ -174,12 +225,13 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     measurements_3 = load_measurement_json(participant_id_3)
     path_2 = 'Participant/%s/PhysicalMeasurements' % participant_id_2
     path_3 = 'Participant/%s/PhysicalMeasurements' % participant_id_3
-    self.send_post(path_2, measurements_2)
-    self.send_post(path_3, measurements_3)
+    with FakeClock(TIME_2):
+      self.send_post(path_2, measurements_2)
+      self.send_post(path_3, measurements_3)
 
     # Store samples for DNA for participants 1 and 3
     self._store_biobank_sample(participant_1, '1ED10')
-    self._store_biobank_sample(participant_3, 'Saliva')
+    self._store_biobank_sample(participant_3, '1SAL')
     # Update participant summaries based on these changes.
     ParticipantSummaryDao().update_from_biobank_stored_samples()
 
@@ -189,16 +241,33 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.assertEquals(1, ps_1['numCompletedBaselinePPIModules'])
     self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
+    self.assertEquals('RECEIVED', ps_1['sampleStatus1ED10'])
+    self.assertEquals(TIME_1.isoformat(), ps_1['sampleStatus1ED10Time'])
+    self.assertEquals('UNSET', ps_1['sampleStatus1SAL'])
     self.assertEquals('UNSET', ps_1['samplesToIsolateDNA'])
     self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
+    self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
+    self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
+    self.assertEquals('male', ps_1['genderIdentity'])
     self.assertEquals(1, ps_2['numCompletedBaselinePPIModules'])
     self.assertEquals(0, ps_2['numBaselineSamplesArrived'])
+    self.assertEquals('UNSET', ps_2['sampleStatus1ED10'])
+    self.assertEquals('UNSET', ps_2['sampleStatus1SAL'])
     self.assertEquals('UNSET', ps_2['samplesToIsolateDNA'])
     self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
+    self.assertEquals('COMPLETED', ps_2['physicalMeasurementsStatus'])
+    self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
+    self.assertEquals('UNMAPPED', ps_2['genderIdentity'])
     self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
-    self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
+    self.assertEquals(0, ps_3['numBaselineSamplesArrived'])
+    self.assertEquals('UNSET', ps_3['sampleStatus1ED10'])
+    self.assertEquals('RECEIVED', ps_3['sampleStatus1SAL'])
+    self.assertEquals(TIME_1.isoformat(), ps_3['sampleStatus1SALTime'])
     self.assertEquals('RECEIVED', ps_3['samplesToIsolateDNA'])
     self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
+    self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
+    self.assertEquals(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
+    self.assertEquals('male', ps_3['genderIdentity'])
 
     response = self.send_get('ParticipantSummary')
     self.assertBundle([_make_entry(ps_1), _make_entry(ps_2), _make_entry(ps_3)], response)
@@ -217,9 +286,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertResponses('ParticipantSummary?_count=2&_sort:desc=dateOfBirth',
                          [[ps_3, ps_1], [ps_2]])
     self.assertResponses('ParticipantSummary?_count=2&_sort=genderIdentity',
-                         [[ps_2, ps_1], [ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort:desc=genderIdentity',
                          [[ps_1, ps_3], [ps_2]])
+    self.assertResponses('ParticipantSummary?_count=2&_sort:desc=genderIdentity',
+                         [[ps_2, ps_1], [ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
                          [[ps_1, ps_2], [ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
@@ -242,8 +311,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                          [[ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&genderIdentity=male',
                          [[ps_1, ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&genderIdentity=UNSET',
-                         [[ps_2]])
     self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
                          [[ps_1, ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE',
@@ -276,6 +343,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                          [[ps_1, ps_2], [ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09',
                          [[ps_2, ps_3]])
+
+def _add_code_answer(code_answers, link_id, code):
+  if code:
+    code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
 
 def _make_entry(ps):
   return { 'fullUrl': 'http://localhost/rdr/v1/Participant/%s/Summary' % ps['participantId'],

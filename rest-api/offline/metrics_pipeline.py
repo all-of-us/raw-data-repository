@@ -259,15 +259,13 @@ def map_answers(reader):
     metric = transform_participant_summary_field(question_field[0])
     if question_field[1] == FieldType.CODE:
       answer_value = answer_code
-      # TODO(danrodney): map race to ethnicity instead of looking for an ethnicity
-      # column as input; map more specific race values to high-level categories.
-    elif question_field[1] == FieldType.STRING:
       if metric == 'state':
-        # Transform the state value to a census region.
-        metric = CENSUS_REGION_METRIC
-        answer_value = census_regions.get(answer_string) or UNSET
-      else:
-        answer_value = answer_string
+        state_val = answer_code[len(answer_code) - 2:]
+        census_region = census_regions.get(state_val) or UNSET
+        yield(participant_id, make_pair_str(start_time, make_metric(CENSUS_REGION_METRIC,
+                                                                    census_region)))
+    elif question_field[1] == FieldType.STRING:
+      answer_value = answer_string
     else:
       raise AssertionError("Invalid field type: %s" % question_field[1])
     yield(participant_id, make_pair_str(start_time, make_metric(metric, answer_value)))

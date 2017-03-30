@@ -1,6 +1,16 @@
+from query import PropertyType
 from sqlalchemy.types import SmallInteger, TypeDecorator
 from werkzeug.exceptions import BadRequest
 from werkzeug.routing import BaseConverter, ValidationError
+
+_PROPERTY_TYPE_MAP = {
+  'String': PropertyType.STRING,
+  'Date': PropertyType.DATE,
+  'DateTime': PropertyType.DATETIME,
+  'Enum': PropertyType.ENUM,
+  'Integer': PropertyType.INTEGER,
+  'SmallInteger': PropertyType.INTEGER
+}
 
 class Enum(TypeDecorator):
   """A type for a SQLAlchemy column based on a protomsg Enum provided in the constructor"""
@@ -52,3 +62,16 @@ class ParticipantIdConverter(BaseConverter):
   def to_url(self, value):
     # Assume the client has already converted this.
     return value
+
+def get_property_type(prop):
+  prop_property = getattr(prop, "property", None)
+  if not prop_property:
+    return None
+  columns = getattr(prop_property, "columns", None)
+  if not columns:
+    return None
+  property_classname = columns[0].type.__class__.__name__
+  property_type = _PROPERTY_TYPE_MAP.get(property_classname)
+  if not property_type:
+    return None
+  return property_type

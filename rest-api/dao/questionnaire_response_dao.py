@@ -20,6 +20,11 @@ def count_completed_baseline_ppi_modules(participant_summary):
   return sum(1 for field in baseline_ppi_module_fields
              if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED)
 
+def count_completed_ppi_modules(participant_summary):
+  ppi_module_fields = config.getSettingList(config.PPI_QUESTIONNAIRE_FIELDS, [])
+  return sum(1 for field in ppi_module_fields
+             if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED)
+
 class QuestionnaireResponseDao(BaseDao):
 
   def __init__(self):
@@ -98,7 +103,7 @@ class QuestionnaireResponseDao(BaseDao):
     in the questionnaire response.
 
     If no participant summary exists already, only a response to the study enrollment consent
-    questionnaire can be submitted, and it must include both first and last name.
+    questionnaire can be submitted, and it must include first and last name and e-mail address.
     """
     participant_summary = (ParticipantSummaryDao().
                            get_with_session(session, questionnaire_response.participantId))
@@ -163,10 +168,14 @@ class QuestionnaireResponseDao(BaseDao):
     if module_changed:
       participant_summary.numCompletedBaselinePPIModules = \
           count_completed_baseline_ppi_modules(participant_summary)
+      participant_summary.numCompletedPPIModules = \
+          count_completed_ppi_modules(participant_summary)
 
     if something_changed:
-      if not participant_summary.firstName or not participant_summary.lastName:
-        raise BadRequest('First name and last name are required for consenting participants')
+      if (not participant_summary.firstName or not participant_summary.lastName
+          or not participant_summary.email):
+        raise BadRequest('First name, last name, and email address are required for consenting '
+                         'participants')
       ParticipantSummaryDao().update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 

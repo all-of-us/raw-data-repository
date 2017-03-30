@@ -72,6 +72,7 @@ class DatabaseTest(SqlTestBase):
         firstName=self.fake.first_name(),
         middleName=self.fake.first_name(),
         lastName=self.fake.last_name(),
+        email=self.fake.email(),
         zipCode='78751',
         dateOfBirth=datetime.date.today(),
         genderIdentityId=1,

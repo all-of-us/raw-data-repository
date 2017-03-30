@@ -152,7 +152,7 @@ class FakeParticipantGenerator(object):
 
   def _random_code_answer(self, question_code):
     code = random.choice(self._question_code_to_answer_codes[question_code])
-    return [{"valueCoding": {"system": PPI_SYSTEM, "code": code}}]
+    return [_code_answer(code)]
 
   def _choose_answer_code(self, question_code):
     if random.random() <= _QUESTION_NOT_ANSWERED:
@@ -166,7 +166,7 @@ class FakeParticipantGenerator(object):
       return self._random_code_answer(question_code)
     num_answers = random.randint(2, max_answers)
     codes = random.sample(self._question_code_to_answer_codes[question_code], num_answers)
-    return [{"valueCoding": {"system": PPI_SYSTEM, "code": code}} for code in codes]
+    return [_code_answer(code) for code in codes]
 
   def _choose_state_and_zip(self, answer_map):
     if random.random() <= _QUESTION_NOT_ANSWERED:
@@ -174,7 +174,7 @@ class FakeParticipantGenerator(object):
     zip_code = random.choice(self._zip_code_to_state.keys())
     state = self._zip_code_to_state.get(zip)
     answer_map[ZIPCODE_QUESTION_CODE] = _string_answer(zip_code)
-    answer_map[STATE_QUESTION_CODE] = _string_answer(state)
+    answer_map[STATE_QUESTION_CODE] = _code_answer('PIIState_%s' % state)
 
   def _choose_name(self, answer_map):
     answer_map[FIRST_NAME_QUESTION_CODE] = _string_answer(random.choice(self._first_names))
@@ -221,10 +221,6 @@ class FakeParticipantGenerator(object):
         self._submit_questionnaire_response(participant_id, questionnaire_id_and_version,
                                             questions, submission_time, answer_map)
 
-  def _create_code_answer(self, answer_code):
-    return {"valueCoding": {"code": answer_code.value,
-                            "system": answer_code.system}};
-
   def _create_question_answer(self, link_id, answers):
     return {"linkId": link_id, "answer": answers}
 
@@ -258,6 +254,9 @@ def _questionnaire_response_url(participant_id):
 
 def _string_answer(value):
   return [{"valueString": value}]
+
+def _code_answer(code):
+  return {"valueCoding": {"system": PPI_SYSTEM, "code": code}}
 
 def _make_primary_provider_link(hpo):
   return {'primary': True, 'organization': {'reference': 'Organization/' + hpo.name}}

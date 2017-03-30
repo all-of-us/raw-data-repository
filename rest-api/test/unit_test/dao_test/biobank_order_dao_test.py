@@ -1,16 +1,17 @@
 import clock
-from dao.biobank_order_dao import BiobankOrderDao, VALID_TESTS
+from code_constants import BIOBANK_TESTS
+from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.participant import Participant
 from dao.participant_dao import ParticipantDao
-from unit_test_util import SqlTestBase, participant_summary
+from unit_test_util import SqlTestBase
 
 from werkzeug.exceptions import BadRequest
 
 
 class BiobankOrderDaoTest(SqlTestBase):
-  _A_TEST = iter(VALID_TESTS).next()
+  _A_TEST = iter(BIOBANK_TESTS).next()
 
   def setUp(self):
     super(BiobankOrderDaoTest, self).setUp()
@@ -23,7 +24,7 @@ class BiobankOrderDaoTest(SqlTestBase):
       self.dao.insert(BiobankOrder(participantId=999))
 
   def test_reject_used_identifier(self):
-    ParticipantSummaryDao().insert(participant_summary(self.participant))
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     self.dao.insert(BiobankOrder(
         biobankOrderId=1,
         participantId=self.participant.participantId,

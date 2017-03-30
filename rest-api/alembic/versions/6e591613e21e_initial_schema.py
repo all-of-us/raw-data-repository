@@ -1,8 +1,8 @@
 """Initial schema
 
-Revision ID: 8f4cff7a0fd1
+Revision ID: 6e591613e21e
 Revises:
-Create Date: 2017-03-23 17:05:59.429476
+Create Date: 2017-03-29 16:18:20.538171
 
 """
 from alembic import op
@@ -16,7 +16,7 @@ from participant_enums import EnrollmentStatus, Race, SampleStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '8f4cff7a0fd1'
+revision = '6e591613e21e'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -165,16 +165,27 @@ def upgrade():
     op.create_table('participant_summary',
     sa.Column('participant_id', sa.Integer(), autoincrement=False, nullable=False),
     sa.Column('biobank_id', sa.Integer(), nullable=False),
-    sa.Column('first_name', sa.String(length=80), nullable=True),
+    sa.Column('first_name', sa.String(length=80), nullable=False),
     sa.Column('middle_name', sa.String(length=80), nullable=True),
-    sa.Column('last_name', sa.String(length=80), nullable=True),
+    sa.Column('last_name', sa.String(length=80), nullable=False),
     sa.Column('zip_code', sa.String(length=10), nullable=True),
-    sa.Column('state', sa.String(length=2), nullable=True),
+    sa.Column('state_id', sa.Integer(), nullable=True),
+    sa.Column('city', sa.String(length=80), nullable=True),
+    sa.Column('street_address', sa.String(length=255), nullable=True),
+    sa.Column('phone_number', sa.String(length=80), nullable=True),
+    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('recontact_method_id', sa.Integer(), nullable=True),
+    sa.Column('language_id', sa.Integer(), nullable=True),
     sa.Column('date_of_birth', sa.Date(), nullable=True),
     sa.Column('gender_identity_id', sa.Integer(), nullable=True),
+    sa.Column('sex_id', sa.Integer(), nullable=True),
+    sa.Column('sexual_orientation_id', sa.Integer(), nullable=True),
+    sa.Column('education_id', sa.Integer(), nullable=True),
+    sa.Column('income_id', sa.Integer(), nullable=True),
     sa.Column('enrollment_status', model.utils.Enum(EnrollmentStatus), nullable=True),
     sa.Column('race', model.utils.Enum(Race), nullable=True),
     sa.Column('physical_measurements_status', model.utils.Enum(PhysicalMeasurementsStatus), nullable=True),
+    sa.Column('physical_measurements_time', sa.DateTime(), nullable=True),
     sa.Column('sign_up_time', sa.DateTime(), nullable=True),
     sa.Column('hpo_id', sa.Integer(), nullable=False),
     sa.Column('consent_for_study_enrollment', model.utils.Enum(QuestionnaireStatus), nullable=True),
@@ -195,14 +206,38 @@ def upgrade():
     sa.Column('questionnaire_on_medications_time', sa.DateTime(), nullable=True),
     sa.Column('questionnaire_on_family_health', model.utils.Enum(QuestionnaireStatus), nullable=True),
     sa.Column('questionnaire_on_family_health_time', sa.DateTime(), nullable=True),
+    sa.Column('sample_status_1sst8', model.utils.Enum(SampleStatus), nullable=True),
+    sa.Column('sample_status_1sst8_time', sa.DateTime(), nullable=True),
+    sa.Column('sample_status_1pst8', model.utils.Enum(SampleStatus), nullable=True),
+    sa.Column('sample_status_1pst8_time', sa.DateTime(), nullable=True),
+    sa.Column('sample_status_1hep4', model.utils.Enum(SampleStatus), nullable=True),
+    sa.Column('sample_status_1hep4_time', sa.DateTime(), nullable=True),
+    sa.Column('sample_status_1ed04', model.utils.Enum(SampleStatus), nullable=True),
+    sa.Column('sample_status_1ed04_time', sa.DateTime(), nullable=True),
+    sa.Column('sample_status_1ed10', model.utils.Enum(SampleStatus), nullable=True),
+    sa.Column('sample_status_1ed10_time', sa.DateTime(), nullable=True),
+    sa.Column('sample_status_2ed10', model.utils.Enum(SampleStatus), nullable=True),
+    sa.Column('sample_status_2ed10_time', sa.DateTime(), nullable=True),
+    sa.Column('sample_status_1ur10', model.utils.Enum(SampleStatus), nullable=True),
+    sa.Column('sample_status_1ur10_time', sa.DateTime(), nullable=True),
+    sa.Column('sample_status_1sal', model.utils.Enum(SampleStatus), nullable=True),
+    sa.Column('sample_status_1sal_time', sa.DateTime(), nullable=True),
     sa.Column('num_completed_baseline_ppi_modules', sa.SmallInteger(), nullable=True),
+    sa.Column('num_completed_ppi_modules', sa.SmallInteger(), nullable=True),
     sa.Column('num_baseline_samples_arrived', sa.SmallInteger(), nullable=True),
     sa.Column('samples_to_isolate_dna', model.utils.Enum(SampleStatus), nullable=True),
     sa.Column('withdrawal_status', model.utils.Enum(WithdrawalStatus), nullable=False),
     sa.Column('suspension_status', model.utils.Enum(SuspensionStatus), nullable=False),
+    sa.ForeignKeyConstraint(['education_id'], ['code.code_id'], ),
     sa.ForeignKeyConstraint(['gender_identity_id'], ['code.code_id'], ),
     sa.ForeignKeyConstraint(['hpo_id'], ['hpo.hpo_id'], ),
+    sa.ForeignKeyConstraint(['income_id'], ['code.code_id'], ),
+    sa.ForeignKeyConstraint(['language_id'], ['code.code_id'], ),
     sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
+    sa.ForeignKeyConstraint(['recontact_method_id'], ['code.code_id'], ),
+    sa.ForeignKeyConstraint(['sex_id'], ['code.code_id'], ),
+    sa.ForeignKeyConstraint(['sexual_orientation_id'], ['code.code_id'], ),
+    sa.ForeignKeyConstraint(['state_id'], ['code.code_id'], ),
     sa.PrimaryKeyConstraint('participant_id')
     )
     op.create_index('participant_summary_biobank_id', 'participant_summary', ['biobank_id'], unique=False)

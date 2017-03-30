@@ -2,7 +2,7 @@ from query import OrderBy
 from werkzeug.exceptions import BadRequest, NotFound
 
 import config
-from code_constants import PPI_SYSTEM, UNSET
+from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
 from dao.base_dao import UpdatableDao
 from dao.database_utils import get_sql_and_params_for_array
 from dao.code_dao import CodeDao
@@ -34,6 +34,32 @@ _ENROLLMENT_STATUS_SQL = """
              ELSE :interested
         END
    """
+
+_SAMPLE_SQL = """,
+      sample_status_%(test)s =
+        CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
+                         WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
+                         AND biobank_stored_sample.test = %(sample_param_ref)s)
+             THEN :received ELSE :unset END,
+      sample_status_%(test)s_time =
+        (SELECT confirmed FROM biobank_stored_sample
+                         WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
+                           AND biobank_stored_sample.test = %(sample_param_ref)s)
+   """
+
+def _get_sample_sql_and_params():
+  """Gets SQL and params needed to update status and time fields on the participant summary for
+  each biobank sample.
+  """
+  sql = ''
+  params = {}
+  for i in range(0, len(BIOBANK_TESTS)):
+    sample_param = 'sample%d' % i
+    sample_param_ref = ':%s' % sample_param
+    lower_test = BIOBANK_TESTS[i].lower()
+    sql += _SAMPLE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
+    params[sample_param] = BIOBANK_TESTS[i]
+  return sql, params
 
 class ParticipantSummaryDao(UpdatableDao):
   def __init__(self):
@@ -67,6 +93,7 @@ class ParticipantSummaryDao(UpdatableDao):
     if field_name in _CODE_FIELDS:
       if value == UNSET:
         return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
+      # Note: we do not at present support querying for UNMAPPED code values.
       code = CodeDao().get_code(PPI_SYSTEM, value)
       if not code:
         raise BadRequest('No code found: %s' % value)
@@ -79,6 +106,7 @@ class ParticipantSummaryDao(UpdatableDao):
         config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES), 'baseline')
     dna_tests_sql, dna_tests_params = get_sql_and_params_for_array(
         config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
+    sample_sql, sample_params = _get_sample_sql_and_params()
     sql = """
     UPDATE
       participant_summary
@@ -93,15 +121,15 @@ class ParticipantSummaryDao(UpdatableDao):
           AND biobank_stored_sample.test IN %s
       ),
       samples_to_isolate_dna = (
-        SELECT
           CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
                            WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
                            AND biobank_stored_sample.test IN %s)
           THEN :received ELSE :unset END
-      )""" % (baseline_tests_sql, dna_tests_sql)
+      ) %s""" % (baseline_tests_sql, dna_tests_sql, sample_sql)
     params = {'received': int(SampleStatus.RECEIVED), 'unset': int(SampleStatus.UNSET)}
     params.update(baseline_tests_params)
     params.update(dna_tests_params)
+    params.update(sample_params)
     enrollment_status_params = {'submitted': int(QuestionnaireStatus.SUBMITTED),
                                 'num_baseline_ppi_modules': self._get_num_baseline_ppi_modules(),
                                 'completed': int(PhysicalMeasurementsStatus.COMPLETED),

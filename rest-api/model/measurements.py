@@ -1,4 +1,3 @@
-import clock
 import json
 
 from model.base import Base
@@ -11,7 +10,7 @@ class PhysicalMeasurements(Base):
                                   autoincrement=False)
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
-  created = Column('created', DateTime, default=clock.CLOCK.now, nullable=False)
+  created = Column('created', DateTime, nullable=False)
   resource = Column('resource', BLOB, nullable=False)
   final = Column('final', Boolean, nullable=False)
   # The ID that these measurements are an amendment of (points from new to old)

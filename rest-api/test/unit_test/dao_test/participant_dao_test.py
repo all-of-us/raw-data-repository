@@ -5,7 +5,7 @@ from dao.base_dao import MAX_INSERT_ATTEMPTS
 from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
-from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids, participant_summary
+from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
@@ -127,7 +127,7 @@ class ParticipantDaoTest(SqlTestBase):
     with FakeClock(time2):
       self.dao.update(p)
 
-    summary = participant_summary(p)
+    summary = self.participant_summary(p)
     ParticipantSummaryDao().insert(summary)
 
     # lastModified, hpoId, version is updated on p after being passed in
@@ -142,7 +142,7 @@ class ParticipantDaoTest(SqlTestBase):
     ps = self.participant_summary_dao.get(1)
     expected_ps = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, signUpTime=time, hpoId=PITT_HPO_ID,
-        firstName=summary.firstName, lastName=summary.lastName)
+        firstName=summary.firstName, lastName=summary.lastName, email=summary.email)
     self.assertEquals(expected_ps.asdict(), ps.asdict())
 
     expected_ph = self._participant_history_with_defaults(

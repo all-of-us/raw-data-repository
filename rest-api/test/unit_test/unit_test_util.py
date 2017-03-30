@@ -43,6 +43,9 @@ class TestBase(unittest.TestCase):
   def setUp(self):
     # Allow printing the full diff report on errors.
     self.maxDiff = None
+    self.setup_fake()
+
+  def setup_fake(self):
     # Make a faker which produces unicode text available.
     self.fake = faker.Faker('ru_RU')
     self.fake.seed(1)
@@ -65,6 +68,7 @@ class TestBase(unittest.TestCase):
   def _participant_summary_with_defaults(**kwargs):
     common_args = {
       'hpoId': UNSET_HPO_ID,
+      'numCompletedPPIModules': 0,
       'numCompletedBaselinePPIModules': 0,
       'numBaselineSamplesArrived': 0,
       'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
@@ -85,6 +89,12 @@ class TestBase(unittest.TestCase):
     common_args.update(kwargs)
     return ParticipantHistory(**common_args)
 
+  def participant_summary(self, participant):
+    summary = ParticipantDao.create_summary_for_participant(participant)
+    summary.firstName = self.fake.first_name()
+    summary.lastName = self.fake.last_name()
+    summary.email = self.fake.email()
+    return summary
 
 class TestbedTestBase(TestBase):
   """Base class for unit tests that need the testbed."""
@@ -305,9 +315,13 @@ class FlaskTestBase(NdbTestBase):
   def send_consent(self, participant_id):
     if not self._consent_questionnaire_id:
       self._consent_questionnaire_id = self.create_questionnaire('study_consent.json')
+    self.first_name = self.fake.first_name()
+    self.last_name = self.fake.last_name()
+    self.email = self.fake.email()
     qr_json = make_questionnaire_response_json(participant_id, self._consent_questionnaire_id,
-                                               string_answers=[("firstName", "Bob"),
-                                                               ("lastName", "Jones")])
+                                               string_answers=[("firstName", self.first_name),
+                                                               ("lastName", self.last_name),
+                                                               ("email", self.email)])
     self.send_post(questionnaire_response_url(participant_id), qr_json)
 
   def create_questionnaire(self, filename):
@@ -418,12 +432,6 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
 
 def questionnaire_response_url(participant_id):
   return 'Participant/%s/QuestionnaireResponse' % participant_id
-
-def participant_summary(participant):
-  summary = ParticipantDao.create_summary_for_participant(participant)
-  summary.firstName = 'Bob'
-  summary.lastName = 'Jones'
-  return summary
 
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))

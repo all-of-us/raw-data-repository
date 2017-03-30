@@ -1,6 +1,6 @@
 import httplib
 
-from test.unit_test.unit_test_util import FlaskTestBase, participant_summary
+from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import load_biobank_order_json
 from model.utils import to_client_participant_id
 from model.participant import Participant
@@ -16,7 +16,7 @@ class BiobankOrderApiTest(FlaskTestBase):
         'Participant/%s/BiobankOrder' % to_client_participant_id(self.participant.participantId))
 
   def test_insert_and_refetch(self):
-    ParticipantSummaryDao().insert(participant_summary(self.participant))
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     self.create_and_verify_created_obj(
         self.path, load_biobank_order_json(self.participant.participantId))
 
