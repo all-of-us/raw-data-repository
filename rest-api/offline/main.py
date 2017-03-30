@@ -37,13 +37,6 @@ def import_biobank_samples():
   return json.dumps({'written': written, 'skipped': skipped})
 
 
-@api_util.auth_required_cron
-def write_biobank_samples_reconciliation_report():
-  # Provide a separate endpoint for testing, but run combined with the import above by default.
-  biobank_samples_pipeline.write_reconciliation_report()
-  return 'OK'
-
-
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
   offline_app = Flask(__name__)
