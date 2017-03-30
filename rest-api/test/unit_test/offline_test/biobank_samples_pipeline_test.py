@@ -126,12 +126,12 @@ class _CsvListWriter(object):
     self._test = test
     self.rows = []
 
+  def writeheader(self):
+    pass
+
   def writerow(self, row):
-    if row == _COLS:  # skip the header
-      return
-    self._test.assertEquals(len(_COLS), len(row))
-    row_dict = dict(zip(_COLS, row))
-    self.rows.append(row_dict)
+    self._test.assertItemsEqual(_COLS, row.keys())
+    self.rows.append(row)
 
   def assertRowCount(self, n):
     self._test.assertEquals(
@@ -226,24 +226,30 @@ class MySqlReconciliationTest(SqlTestBase):
 
     # sent-and-received: 2 on-time, 1 late, none of the missing/extra/repeated ones
     rows_received.assertRowCount(3)
-    rows_received.assertHasRow({'biobank_id': p_on_time.biobankId, 'sent_test': _BASELINE_TESTS[0]})
-    rows_received.assertHasRow({'biobank_id': p_on_time.biobankId, 'sent_test': _BASELINE_TESTS[1]})
-    rows_received.assertHasRow(
-        {'biobank_id': p_late_and_missing.biobankId, 'sent_test': _BASELINE_TESTS[0]})
+    rows_received.assertHasRow({
+        'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': _BASELINE_TESTS[0]})
+    rows_received.assertHasRow({
+        'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': _BASELINE_TESTS[1]})
+    rows_received.assertHasRow({
+        'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
+        'sent_test': _BASELINE_TESTS[0]})
 
     # sent-and-received: 1 late
     rows_late.assertRowCount(1)
     rows_late.assertHasRow({
-        'biobank_id': p_late_and_missing.biobankId,
+        'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_order_id': o_late_and_missing.biobankOrderId,
         'elapsed_hours': 25})
 
     # gone awry
     rows_missing.assertRowCount(3)
     rows_missing.assertHasRow({
-        'biobank_id': p_late_and_missing.biobankId,
+        'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_order_id': o_late_and_missing.biobankOrderId,
         'elapsed_hours': None})
     rows_missing.assertHasRow({
-        'biobank_id': p_repeated.biobankId, 'sent_count': 2, 'received_count': 1})
-    rows_missing.assertHasRow({'biobank_id': p_extra.biobankId, 'sent_order_id': None})
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_count': 2,
+        'received_count': 1})
+    rows_missing.assertHasRow({
+        'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id': None})
