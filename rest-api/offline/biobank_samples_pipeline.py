@@ -18,7 +18,7 @@ from dao import database_factory
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
-from model.utils import from_client_biobank_id
+from model.utils import from_client_biobank_id, to_client_biobank_id
 
 
 # Format for dates in output filenames for the reconciliation report.
@@ -138,7 +138,8 @@ def _get_report_paths(bucket_name, report_dt):
 def _writer_guard(path):
   """Opens CSV writer on a GCS file."""
   with cloudstorage_api.open(path, mode='w') as cloud_file:
-    writer = csv.Writer(cloud_file)
+    writer = csv.DictWriter(cloud_file, fieldnames=_CSV_COLUMN_NAMES)
+    writer.writeheader()
     yield writer
 
 
@@ -154,14 +155,30 @@ def _query_and_write_reports(writer_received, writer_late, writer_missing):
         (_SELECT_FROM_VIEW_MYSQL_RECEIVED, writer_received),
         (_SELECT_FROM_VIEW_MYSQL_LATE, writer_late),
         (_SELECT_FROM_VIEW_MYSQL_MISSING, writer_missing)):
-      writer.writerow(_CSV_COLUMN_NAMES)
       for row in session.execute(query):
-        writer.writerow(row)
+        writer.writerow(_post_process_row(row))
+
+
+class _UtcTz(datetime.tzinfo):
+  def utcoffset(self, dt):
+    return datetime.timedelta(hours=0)
+_UTC = _UtcTz()
+
+
+def _post_process_row(raw_row):
+  """Formats values in an SQL result row for CSV dict output."""
+  row = dict(zip(_CSV_COLUMN_NAMES, raw_row))
+  row[_COLUMN_BIOBANK_ID] = to_client_biobank_id(row[_COLUMN_BIOBANK_ID])
+  for k in row.keys():
+    if isinstance(row[k], datetime.datetime):
+      row[k] = row[k].replace(tzinfo=_UTC).isoformat()
+  return row
 
 
 # Names for the reconciliation_data columns in output CSVs.
+_COLUMN_BIOBANK_ID = 'biobank_id'
 _CSV_COLUMN_NAMES = (
-  'biobank_id',
+  _COLUMN_BIOBANK_ID,
 
   'sent_test',
   'sent_count',
@@ -179,7 +196,7 @@ _CSV_COLUMN_NAMES = (
 )
 
 
-# Get orders with ordered samples (child rows), and key by biobank_id to match the desired output.
+# Gets orders with ordered samples (child rows), and keys by biobank_id to match the desired output.
 _CREATE_ORDERES_BY_BIOBANK_ID_MYSQL = """
 CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW orders_by_biobank_id AS
   SELECT
@@ -206,7 +223,7 @@ CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW orders_by_biobank_id AS
 """
 
 
-# Join orders and samples, and compute some derived values (elapsed_hours, counts).
+# Joins orders and samples, and computes some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION a RIGHT and LEFT OUTER JOIN.
 _CREATE_RECONCILIATION_VIEW_MYSQL = """
 CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
@@ -251,6 +268,7 @@ CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
 """
 
 
+# Gets all sample/order pairs where everything arrived, regardless of timing.
 _SELECT_FROM_VIEW_MYSQL_RECEIVED = """
 SELECT * FROM reconciliation_data
 WHERE
@@ -258,9 +276,11 @@ WHERE
   AND samples_count = orders_count
 """
 
+# Gets orders for which the samples arrived, but they arrived late.
 _SELECT_FROM_VIEW_MYSQL_LATE = 'SELECT * FROM reconciliation_data WHERE elapsed_hours > 24'
 
 
+# Gets samples or orders where something has gone missing.
 _SELECT_FROM_VIEW_MYSQL_MISSING = """
 SELECT * FROM reconciliation_data
 WHERE
