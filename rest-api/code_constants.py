@@ -109,6 +109,6 @@ QUESTIONNAIRE_MODULE_CODE_TO_FIELD = {v: k for k, v in
                                       FIELD_TO_QUESTIONNAIRE_MODULE_CODE.iteritems()}
 QUESTIONNAIRE_MODULE_FIELD_NAMES = sorted(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.keys())
 
-FIELD_TO_BIOBANK_TEST = { "sampleStatus%s" % test : test for test in BIOBANK_TESTS } 
-BIOBANK_TEST_TO_FIELD = { v: k for k, v in FIELD_TO_BIOBANK_TEST.iteritems()}
+FIELD_TO_BIOBANK_TEST = {"sampleStatus%s" % test : test for test in BIOBANK_TESTS} 
+BIOBANK_TEST_TO_FIELD = {v: k for k, v in FIELD_TO_BIOBANK_TEST.iteritems()}
 

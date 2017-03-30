@@ -50,8 +50,7 @@ _SAMPLE_SQL = """,
 def _get_sample_sql_and_params():    
   """Gets SQL and params needed to update status and time fields on the participant summary for 
   each biobank sample.
-  """
-  sample_num = 0
+  """  
   sql = ''
   params = {}  
   for i in range(0, len(BIOBANK_TESTS)):
