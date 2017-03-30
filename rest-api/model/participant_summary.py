@@ -190,16 +190,15 @@ def _initialize_field_type_sets():
         continue    
       property_type = get_property_type(prop)    
       if property_type:
-         if property_type == PropertyType.DATE or property_type == PropertyType.DATETIME:
-           _DATE_FIELDS.add(prop_name)
-         elif property_type == PropertyType.ENUM:
-           _ENUM_FIELDS.add(prop_name)
-         elif property_type == PropertyType.INTEGER:
-           fks = prop.property.columns[0].foreign_keys
-           if fks:
-             for fk in fks:             
-               if fk._get_colspec() == 'code.code_id':               
-                 _CODE_FIELDS.add(prop_name)
-                 break
+        if property_type == PropertyType.DATE or property_type == PropertyType.DATETIME:
+          _DATE_FIELDS.add(prop_name)
+        elif property_type == PropertyType.ENUM:
+          _ENUM_FIELDS.add(prop_name)
+        elif property_type == PropertyType.INTEGER:
+          fks = prop.property.columns[0].foreign_keys
+          if fks:
+            for fk in fks:             
+              if fk._get_colspec() == 'code.code_id':               
+                _CODE_FIELDS.add(prop_name)
+                break
          
-

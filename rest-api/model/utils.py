@@ -64,10 +64,10 @@ class ParticipantIdConverter(BaseConverter):
     return value
 
 def get_property_type(prop):
-  property = getattr(prop, "property", None)
-  if not property:
+  prop_property = getattr(prop, "property", None)
+  if not prop_property:
     return None
-  columns = getattr(property, "columns", None)
+  columns = getattr(prop_property, "columns", None)
   if not columns:
     return None
   property_classname = columns[0].type.__class__.__name__
