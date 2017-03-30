@@ -298,6 +298,25 @@ The response is an FHIR Bundle containing participant summaries. If more than th
  of participant summaries match the specified criteria, a "next" link will be returned that can
  be used in a follow on request to fetch more participant summaries.
 
+
+Other supported parameters from the FHIR spec:
+
+* `_count`: the maximum number of participant summaries to return; the default is 100, the maximum
+  supported value is 10,000
+
+* `_sort`: the name of a field to sort results by, in ascending order, followed by last name, first
+  name, date of birth, and participant ID.
+
+* `_sort:desc`: the name of a field to sort results by, in descending order, followed by last name,
+  first name, date of birth, and participant ID.
+
+If no sort order is requested, the default sort order is last name, first name, date of birth, and
+participant ID.
+
+The response is an FHIR Bundle containing participant summaries. If more than the requested number
+ of participant summaries match the specified criteria, a "next" link will be returned that can
+ be used in a follow on request to fetch more participant summaries.
+
 ## Questionnaire and QuestionnaireResponse API
 
 We use the FHIR [Questionnaire](http://hl7.org/fhir/questionnaire.html) and
