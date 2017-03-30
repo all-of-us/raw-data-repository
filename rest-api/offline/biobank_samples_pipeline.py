@@ -198,12 +198,14 @@ CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW orders_by_biobank_id AS
     biobank_id biobank_id_from_order,
     biobank_order_id,
     source_site_value,
-    test order_test,
-    collected,
-    finalized
+    biobank_ordered_sample.test order_test,
+    biobank_ordered_sample.collected,
+    biobank_ordered_sample.finalized
   FROM
    (SELECT
-      biobank_id, biobank_order_id, source_site_value
+      participant.biobank_id,
+      biobank_order.biobank_order_id,
+      biobank_order.source_site_value
     FROM
       biobank_order
     LEFT JOIN
@@ -259,7 +261,10 @@ CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
       AND biobank_stored_sample.test = order_test
     ) reconciled
   GROUP BY
-    biobank_id_from_order, order_test, biobank_id, test
+    reconciled.biobank_id_from_order,
+    reconciled.biobank_id,
+    reconciled.order_test,
+    reconciled.test
 """
 
 
