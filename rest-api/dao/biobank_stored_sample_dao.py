@@ -1,7 +1,7 @@
 import logging
 
+from code_constants import BIOBANK_TESTS_SET
 from dao.base_dao import BaseDao
-from dao.biobank_order_dao import VALID_TESTS
 from dao.participant_dao import ParticipantDao
 from model.biobank_stored_sample import BiobankStoredSample
 
@@ -31,7 +31,7 @@ class BiobankStoredSampleDao(BaseDao):
               sample.biobankStoredSampleId, sample.biobankId, len(valid_biobank_ids))
           skipped += 1
           continue
-        if sample.test not in VALID_TESTS:
+        if sample.test not in BIOBANK_TESTS_SET:
           logging.warning(
               'Skipping sample %r: invalid test code %r.',
               sample.test, sample.biobankStoredSampleId)

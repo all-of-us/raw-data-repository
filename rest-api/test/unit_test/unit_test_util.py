@@ -64,6 +64,7 @@ class TestBase(unittest.TestCase):
   def _participant_summary_with_defaults(**kwargs):
     common_args = {
       'hpoId': UNSET_HPO_ID,
+      'numCompletedPPIModules': 0,
       'numCompletedBaselinePPIModules': 0,
       'numBaselineSamplesArrived': 0,
       'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
@@ -276,7 +277,8 @@ class FlaskTestBase(NdbTestBase):
       self._consent_questionnaire_id = self.create_questionnaire('study_consent.json')
     qr_json = make_questionnaire_response_json(participant_id, self._consent_questionnaire_id,
                                                string_answers=[("firstName", "Bob"),
-                                                               ("lastName", "Jones")])
+                                                               ("lastName", "Jones"),
+                                                               ("email", "bob@gmail.com")])
     self.send_post(questionnaire_response_url(participant_id), qr_json)
 
   def create_questionnaire(self, filename):
@@ -392,6 +394,7 @@ def participant_summary(participant):
   summary = ParticipantDao.create_summary_for_participant(participant)
   summary.firstName = 'Bob'
   summary.lastName = 'Jones'
+  summary.email = 'bob@gmail.com'
   return summary
 
 def pretty(obj):

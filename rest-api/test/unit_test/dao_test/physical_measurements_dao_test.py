@@ -69,6 +69,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     # Completing physical measurements changes the participant summary status
     summary = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertEquals(PhysicalMeasurementsStatus.COMPLETED, summary.physicalMeasurementsStatus)
+    self.assertEquals(TIME_2, summary.physicalMeasurementsTime)
 
   def testInsert_amend(self):
     self._make_summary()

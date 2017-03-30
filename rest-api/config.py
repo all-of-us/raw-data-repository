@@ -29,6 +29,7 @@ USER_INFO = 'user_info'
 SYNC_SHARDS_PER_CHANNEL = 'sync_shards_per_channel'
 MEASUREMENTS_ENTITIES_PER_SYNC = 'measurements_entities_per_sync'
 BASELINE_PPI_QUESTIONNAIRE_FIELDS = 'baseline_ppi_questionnaire_fields'
+PPI_QUESTIONNAIRE_FIELDS = 'ppi_questionnaire_fields'
 BASELINE_SAMPLE_TEST_CODES = 'baseline_sample_test_codes'
 DNA_SAMPLE_TEST_CODES = 'dna_sample_test_codes'
 # Allow requests which are never permitted in production. These include fake

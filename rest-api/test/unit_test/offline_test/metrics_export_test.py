@@ -48,7 +48,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                                     race_code, gender_code, state, date_of_birth):
     code_answers = []
     date_answers = []
-    string_answers = []
     if race_code:
       code_answers.append(('race', Concept(PPI_SYSTEM, race_code)))
     if gender_code:
@@ -56,11 +55,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     if date_of_birth:
       date_answers.append(("dateOfBirth", date_of_birth))
     if state:
-      string_answers.append(("state", state))
+      code_answers.append(("state", Concept(PPI_SYSTEM, state)))
     qr = make_questionnaire_response_json(participant_id,
                                           questionnaire_id,
-                                          code_answers = code_answers,
-                                          string_answers = string_answers,
+                                          code_answers = code_answers,                                          
                                           date_answers = date_answers)
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
@@ -74,7 +72,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     SqlTestBase.setup_codes(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(),
                             code_type=CodeType.MODULE)
     # Import codes for white and female, but not male or black.
-    SqlTestBase.setup_codes([RACE_WHITE_CODE, "female"], code_type=CodeType.ANSWER)
+    SqlTestBase.setup_codes([RACE_WHITE_CODE, "female", "PIIState_VA"], code_type=CodeType.ANSWER)    
     participant_dao = ParticipantDao()
 
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
@@ -107,7 +105,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       self.send_post('Participant/P2/BiobankOrder', load_biobank_order_json(2))
       self.submit_questionnaire_response('P1', questionnaire_id, "black", "female",
                                          None, datetime.date(1980, 1, 3))
-      self.submit_questionnaire_response('P2', questionnaire_id_2, None, None, 'VA', None)
+      self.submit_questionnaire_response('P2', questionnaire_id_2, None, None, 'PIIState_VA', None)
       self._submit_empty_questionnaire_response('P1', questionnaire_id_3)
       self._submit_empty_questionnaire_response('P2', questionnaire_id_3)
       sample_dao = BiobankStoredSampleDao()
@@ -119,7 +117,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       sample_dao.insert(BiobankStoredSample(
         biobankStoredSampleId='def',
         biobankId=3,
-        test='Saliva',
+        test='1SAL',
         confirmed=TIME_2))
 
   def test_metric_export(self):
@@ -152,7 +150,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                        ['1', '1980-01-03', '', t2, '', '', t3, t1, '', '', t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 0,
                       [ANSWER_FIELDS,
-                      ['2', t3, STATE_QUESTION_CODE, '', 'VA']])
+                      ['2', t3, STATE_QUESTION_CODE, 'PIIState_VA', '']])
     assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 1,
                       [ANSWER_FIELDS,
                        ['1', t2, GENDER_IDENTITY_QUESTION_CODE, 'UNMAPPED', ''],
@@ -175,7 +173,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     self.assertBucket(bucket_map, TIME, 'UNSET',
                       { 'Participant': 1,
                         'Participant.ageRange.26-35': 1,
-                        'Participant.censusRegion.UNSET': 1,
+                        'Participant.state.UNSET': 1,
+                        'Participant.censusRegion.UNSET': 1,                        
                         'Participant.physicalMeasurements.UNSET': 1,
                         'Participant.biospecimen.UNSET': 1,
                         'Participant.biospecimenSamples.UNSET': 1,
@@ -186,7 +185,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.questionnaireOnLifestyle.UNSET': 1,
                         'Participant.questionnaireOnTheBasics.UNSET': 1,
                         'Participant.genderIdentity.UNSET': 1,
-                        'Participant.race.UNSET': 1,
+                        'Participant.race.UNSET': 1,                        
                         'Participant.biospecimenSummary.UNSET': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
                         'Participant.numCompletedBaselinePPIModules.0' : 1,
@@ -195,6 +194,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     self.assertBucket(bucket_map, TIME, 'PITT',
                       { 'Participant': 1,
                         'Participant.ageRange.UNSET': 1,
+                        'Participant.state.UNSET': 1,
                         'Participant.censusRegion.UNSET': 1,
                         'Participant.physicalMeasurements.UNSET': 1,
                         'Participant.biospecimen.UNSET': 1,
@@ -216,6 +216,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                       { 'Participant': 2,
                         'Participant.ageRange.26-35': 1,
                         'Participant.ageRange.UNSET': 1,
+                        'Participant.state.UNSET': 2,
                         'Participant.censusRegion.UNSET': 2,
                         'Participant.physicalMeasurements.UNSET': 2,
                         'Participant.biospecimen.UNSET': 2,
@@ -240,6 +241,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     self.assertBucket(bucket_map, TIME_2, 'UNSET',
                       { 'Participant': 1,
                         'Participant.ageRange.26-35': 1,
+                        'Participant.state.UNSET': 1,
                         'Participant.censusRegion.UNSET': 1,
                         'Participant.physicalMeasurements.UNSET': 1,
                         'Participant.biospecimen.UNSET': 1,
@@ -260,6 +262,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     self.assertBucket(bucket_map, TIME_2, 'PITT',
                       { 'Participant': 1,
                         'Participant.ageRange.UNSET': 1,
+                        'Participant.state.UNSET': 1,
                         'Participant.censusRegion.UNSET': 1,
                         'Participant.physicalMeasurements.UNSET': 1,
                         'Participant.biospecimen.UNSET': 1,
@@ -281,6 +284,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                       { 'Participant': 2,
                         'Participant.ageRange.26-35': 1,
                         'Participant.ageRange.UNSET': 1,
+                        'Participant.state.UNSET': 2,
                         'Participant.censusRegion.UNSET': 2,
                         'Participant.physicalMeasurements.UNSET': 2,
                         'Participant.biospecimen.UNSET': 2,
@@ -313,6 +317,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                       { 'Participant': 2,
                         'Participant.ageRange.36-45': 1,
                         'Participant.ageRange.UNSET': 1,
+                        'Participant.state.PIIState_VA': 1,
+                        'Participant.state.UNSET': 1,
                         'Participant.censusRegion.SOUTH': 1,
                         'Participant.censusRegion.UNSET': 1,
                         'Participant.physicalMeasurements.COMPLETED': 1,
@@ -343,6 +349,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                       { 'Participant': 2,
                         'Participant.ageRange.36-45': 1,
                         'Participant.ageRange.UNSET': 1,
+                        'Participant.state.PIIState_VA': 1,
+                        'Participant.state.UNSET': 1,
                         'Participant.censusRegion.SOUTH': 1,
                         'Participant.censusRegion.UNSET': 1,
                         'Participant.physicalMeasurements.COMPLETED': 1,

@@ -142,7 +142,7 @@ class ParticipantDaoTest(SqlTestBase):
     ps = self.participant_summary_dao.get(1)
     expected_ps = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, signUpTime=time, hpoId=PITT_HPO_ID,
-        firstName=summary.firstName, lastName=summary.lastName)
+        firstName=summary.firstName, lastName=summary.lastName, email=summary.email)
     self.assertEquals(expected_ps.asdict(), ps.asdict())
 
     expected_ph = self._participant_history_with_defaults(

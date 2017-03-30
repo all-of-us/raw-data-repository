@@ -7,7 +7,7 @@ import os
 import random
 
 from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
-from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE
+from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE, EMAIL_QUESTION_CODE
 from model.code import Code, CodeType
 from model.utils import to_client_participant_id, to_client_biobank_id
 
@@ -21,6 +21,10 @@ def first_name_code():
 
 def last_name_code():
   return Code(system=PPI_SYSTEM, value=LAST_NAME_QUESTION_CODE,
+              mapped=True, codeType=CodeType.QUESTION)
+
+def email_code():
+  return Code(system=PPI_SYSTEM, value=EMAIL_QUESTION_CODE,
               mapped=True, codeType=CodeType.QUESTION)
 
 def data_path(filename):
@@ -64,15 +68,16 @@ def load_biobank_order_json(participant_id):
 
 
 def open_biobank_samples(
-      biobank_id1, biobank_id2, biobank_id3, tests_from=['1ED10', '1HEP4', '1ED04']):
+      biobank_id1, biobank_id2, biobank_id3, tests_from=['1ED10', '1HEP4', '1ED04'],
+      test1=None, test2=None, test3=None):
   """Returns an readable stream for the biobank samples CSV."""
   with open(data_path('biobank_samples_1.csv')) as f:
     csv_str = f.read() % {
       'biobank_id1': to_client_biobank_id(biobank_id1),
       'biobank_id2': to_client_biobank_id(biobank_id2),
       'biobank_id3': to_client_biobank_id(biobank_id3),
-      'test1': random.choice(tests_from),
-      'test2': random.choice(tests_from),
-      'test3': random.choice(tests_from),
+      'test1': test1 or random.choice(tests_from),
+      'test2': test2 or random.choice(tests_from),
+      'test3': test3 or random.choice(tests_from),
     }
   return StringIO.StringIO(csv_str)

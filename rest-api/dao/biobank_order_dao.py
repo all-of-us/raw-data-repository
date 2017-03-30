@@ -1,3 +1,4 @@
+from code_constants import BIOBANK_TESTS_SET
 from dao.base_dao import BaseDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier
@@ -5,10 +6,6 @@ from model.log_position import LogPosition
 
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
-
-
-VALID_TESTS = frozenset(['1ED10', '2ED10', '1ED04', '1SST8', '1PST8', '1HEP4', '1UR10', '1SAL'])
-
 
 class BiobankOrderDao(BaseDao):
   def __init__(self):
@@ -47,8 +44,8 @@ class BiobankOrderDao(BaseDao):
 
   def _validate_order_sample(self, sample):
     # TODO(mwf) Make use of FHIR validation?
-    if sample.test not in VALID_TESTS:
-      raise BadRequest('Invalid test value %r not in %s.' % (sample.test, VALID_TESTS))
+    if sample.test not in BIOBANK_TESTS_SET:
+      raise BadRequest('Invalid test value %r not in %s.' % (sample.test, BIOBANK_TESTS_SET))
 
   def get_with_children(self, obj_id):
     with self.session() as session:

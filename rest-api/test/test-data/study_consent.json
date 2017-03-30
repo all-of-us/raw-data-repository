@@ -26,6 +26,14 @@
           "code": "PIIName_Last",
           "display": "Last name"
         }]
+      }, {
+        "linkId": "email",
+        "text": "Email",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "ConsentPII_EmailAddress",
+          "display": "Email"
+        }]
       }]
   }
 }

@@ -1,5 +1,6 @@
 import clock
-from dao.biobank_order_dao import BiobankOrderDao, VALID_TESTS
+from code_constants import BIOBANK_TESTS
+from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.participant import Participant
@@ -10,7 +11,7 @@ from werkzeug.exceptions import BadRequest
 
 
 class BiobankOrderDaoTest(SqlTestBase):
-  _A_TEST = iter(VALID_TESTS).next()
+  _A_TEST = iter(BIOBANK_TESTS).next()
 
   def setUp(self):
     super(BiobankOrderDaoTest, self).setUp()

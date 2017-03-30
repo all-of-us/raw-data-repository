@@ -39,7 +39,7 @@
         "text": "Zip code",
         "concept": [{
           "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-          "code": "PIIAddress_ZIP",
+          "code": "PIIAddress_PIIZIP",
           "display": "Zip code"
         }]
       },{
@@ -67,7 +67,70 @@
           "code": "PIIBirthInformation_BirthDate",
           "display": "Birth date"
         }]
-      }
-    ]
+      }, {
+        "linkId":"streetAddress",
+        "text":"What is your street address?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIAddress_StreetAddress",
+          "display": "Street address"
+        }]
+      }, {
+        "linkId":"city",
+        "text":"What is your city?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIAddress_PIICity",
+          "display": "City"
+        }]
+      }, {
+        "linkId":"phoneNumber",
+        "text":"What is your phone number?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIContactInformation_Phone",
+          "display": "Phone number"
+        }]
+      }, {
+        "linkId":"recontactMethod",
+        "text":"What is your recontact method?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIContactInformation_RecontactMethod",
+          "display": "Recontact method"
+        }]
+      }, {
+        "linkId":"sex",
+        "text":"What is your sex?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Gender_BiologicalSexBirth",
+          "display": "Sex"
+        }]
+      }, {
+        "linkId":"sexualOrientation",
+        "text":"What is your sexual orientation?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "TheBasics_SexualOrientation",
+          "display": "Sexual orientation"
+        }]
+      }, {
+        "linkId":"education",
+        "text":"What is your education level?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Education_EducationLevel",
+          "display": "Education level"
+        }]
+      }, {
+        "linkId":"income",
+        "text":"What is your income?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Income_AnnualIncome",
+          "display": "Income"
+        }]
+      }]      
   }
 }

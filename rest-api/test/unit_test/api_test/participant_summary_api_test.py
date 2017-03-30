@@ -92,11 +92,20 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'questionnaireOnFamilyHealth': 'UNSET',
                    'questionnaireOnMedications': 'UNSET',
                    'physicalMeasurementsStatus': 'UNSET',
+                   'sampleStatus1ED04': 'UNSET',
+                   'sampleStatus1ED10': 'UNSET',
+                   'sampleStatus1HEP4': 'UNSET',
+                   'sampleStatus1PST8': 'UNSET',
+                   'sampleStatus1SAL': 'UNSET',
+                   'sampleStatus1SST8': 'UNSET',
+                   'sampleStatus1UR10': 'UNSET',
+                   'sampleStatus2ED10': 'UNSET',
                    'genderIdentity': 'male',
                    'consentForElectronicHealthRecords': 'UNSET',
                    'questionnaireOnMedicalHistory': u'UNSET',
                    'participantId': participant_id,
                    'hpoId': 'PITT',
+                   'numCompletedPPIModules': 1,
                    'numCompletedBaselinePPIModules': 1,
                    'consentForStudyEnrollment': 'SUBMITTED',
                    'consentForStudyEnrollmentTime': TIME_1.isoformat(),
@@ -106,6 +115,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'firstName': first_name,
                    'middleName': middle_name,
                    'lastName': last_name,
+                   'email': 'bob@gmail.com',
                    'zipCode' : '78751',
                    'withdrawalStatus': 'NOT_WITHDRAWN',
                    'suspensionStatus': 'NOT_SUSPENDED'}
@@ -174,12 +184,13 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     measurements_3 = load_measurement_json(participant_id_3)
     path_2 = 'Participant/%s/PhysicalMeasurements' % participant_id_2
     path_3 = 'Participant/%s/PhysicalMeasurements' % participant_id_3
-    self.send_post(path_2, measurements_2)
-    self.send_post(path_3, measurements_3)
+    with FakeClock(TIME_2):
+      self.send_post(path_2, measurements_2)
+      self.send_post(path_3, measurements_3)
 
     # Store samples for DNA for participants 1 and 3
     self._store_biobank_sample(participant_1, '1ED10')
-    self._store_biobank_sample(participant_3, 'Saliva')
+    self._store_biobank_sample(participant_3, '1SAL')
     # Update participant summaries based on these changes.
     ParticipantSummaryDao().update_from_biobank_stored_samples()
 
@@ -189,16 +200,30 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.assertEquals(1, ps_1['numCompletedBaselinePPIModules'])
     self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
+    self.assertEquals('RECEIVED', ps_1['sampleStatus1ED10'])
+    self.assertEquals(TIME_1.isoformat(), ps_1['sampleStatus1ED10Time'])
+    self.assertEquals('UNSET', ps_1['sampleStatus1SAL'])
     self.assertEquals('UNSET', ps_1['samplesToIsolateDNA'])
     self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
+    self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
+    self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
     self.assertEquals(1, ps_2['numCompletedBaselinePPIModules'])
     self.assertEquals(0, ps_2['numBaselineSamplesArrived'])
+    self.assertEquals('UNSET', ps_2['sampleStatus1ED10'])
+    self.assertEquals('UNSET', ps_2['sampleStatus1SAL'])
     self.assertEquals('UNSET', ps_2['samplesToIsolateDNA'])
     self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
+    self.assertEquals('COMPLETED', ps_2['physicalMeasurementsStatus'])
+    self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
     self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
-    self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
+    self.assertEquals(0, ps_3['numBaselineSamplesArrived'])
+    self.assertEquals('UNSET', ps_3['sampleStatus1ED10'])
+    self.assertEquals('RECEIVED', ps_3['sampleStatus1SAL'])
+    self.assertEquals(TIME_1.isoformat(), ps_3['sampleStatus1SALTime'])
     self.assertEquals('RECEIVED', ps_3['samplesToIsolateDNA'])
     self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
+    self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
+    self.assertEquals(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
 
     response = self.send_get('ParticipantSummary')
     self.assertBundle([_make_entry(ps_1), _make_entry(ps_2), _make_entry(ps_3)], response)

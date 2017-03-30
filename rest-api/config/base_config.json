@@ -4,6 +4,15 @@
     "questionnaireOnOverallHealth",
     "questionnaireOnLifestyle"
   ],
+  "ppi_questionnaire_fields": [
+    "questionnaireOnTheBasics",
+    "questionnaireOnOverallHealth",
+    "questionnaireOnLifestyle",
+    "questionnaireOnFamilyHealth",
+    "questionnaireOnHealthcareAccess",
+    "questionnaireOnMedicalHistory",
+    "questionnaireOnMedications"
+  ],
   "baseline_sample_test_codes": [
   	"1ED04",
   	"1ED10",
@@ -15,6 +24,6 @@
   ],
   "dna_sample_test_codes": [
     "1ED04",
-    "Saliva"
+    "1SAL"
   ]
 }

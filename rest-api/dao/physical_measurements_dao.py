@@ -1,3 +1,4 @@
+import clock
 import json
 import logging
 
@@ -24,6 +25,7 @@ class PhysicalMeasurementsDao(BaseDao):
       raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
     obj.logPosition = LogPosition()
     obj.final = True
+    obj.created = clock.CLOCK.now() 
     resource_json = json.loads(obj.resource)
     for extension in resource_json['entry'][0]['resource'].get('extension', []):
       url = extension.get('url', '')
@@ -32,7 +34,7 @@ class PhysicalMeasurementsDao(BaseDao):
         continue
       self._update_amended(obj, extension, url, session)
       break
-    self._update_participant_summary(session, obj.participantId)
+    self._update_participant_summary(session, obj.created, obj.participantId)
     super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
     session.flush()
@@ -41,7 +43,7 @@ class PhysicalMeasurementsDao(BaseDao):
     obj.resource = json.dumps(resource_json)
     return obj
 
-  def _update_participant_summary(self, session, participant_id):
+  def _update_participant_summary(self, session, created, participant_id):
     if participant_id is None:
       raise BadRequest('participantId is required')
     participant_summary_dao = ParticipantSummaryDao()
@@ -52,6 +54,7 @@ class PhysicalMeasurementsDao(BaseDao):
     if (not participant_summary.physicalMeasurementsStatus or
         participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.UNSET):
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+      participant_summary.physicalMeasurementsTime = created
       participant_summary_dao.update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 

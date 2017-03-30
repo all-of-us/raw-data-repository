@@ -13,8 +13,19 @@ PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 FIRST_NAME_QUESTION_CODE = "PIIName_First"
 LAST_NAME_QUESTION_CODE = "PIIName_Last"
 MIDDLE_NAME_QUESTION_CODE = "PIIName_Middle"
-ZIPCODE_QUESTION_CODE = "PIIAddress_ZIP"
-STATE_QUESTION_CODE = "PIIAddress_State"
+ZIPCODE_QUESTION_CODE = "PIIAddress_PIIZIP"
+STATE_QUESTION_CODE = "PIIAddress_PIIState"
+STREET_ADDRESS_QUESTION_CODE = "PIIAddress_StreetAddress"
+CITY_QUESTION_CODE = "PIIAddress_PIICity"
+PHONE_NUMBER_QUESTION_CODE = "PIIContactInformation_Phone"
+EMAIL_QUESTION_CODE = "ConsentPII_EmailAddress"
+RECONTACT_METHOD_QUESTION_CODE = "PIIContactInformation_RecontactMethod"
+LANGUAGE_QUESTION_CODE = "ConsentPII_Language"
+SEX_QUESTION_CODE = "Gender_BiologicalSexBirth"
+SEXUAL_ORIENTATION_QUESTION_CODE = "TheBasics_SexualOrientation"
+EDUCATION_QUESTION_CODE = "Education_EducationLevel"
+INCOME_QUESTION_CODE = "Income_AnnualIncome"  
+
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
@@ -52,6 +63,9 @@ QUESTIONNAIRE_ON_OVERALL_HEALTH_FIELD = "questionnaireOnOverallHealth"
 QUESTIONNAIRE_ON_LIFESTYLE_FIELD = "questionnaireOnLifestyle"
 QUESTIONNAIRE_ON_THE_BASICS_FIELD = "questionnaireOnTheBasics"
 
+BIOBANK_TESTS = ['1ED10', '2ED10', '1ED04', '1SST8', '1PST8', '1HEP4', '1UR10', '1SAL']
+BIOBANK_TESTS_SET = frozenset(BIOBANK_TESTS)
+
 class FieldType(messages.Enum):
   """A type of field that shows up in a questionnaire response."""
   CODE = 1
@@ -63,8 +77,18 @@ FIELD_TO_QUESTION_CODE = {
   "firstName": (FIRST_NAME_QUESTION_CODE, FieldType.STRING),
   "lastName": (LAST_NAME_QUESTION_CODE, FieldType.STRING),
   "middleName": (MIDDLE_NAME_QUESTION_CODE, FieldType.STRING),
+  "streetAddress": (STREET_ADDRESS_QUESTION_CODE, FieldType.STRING),
+  "city": (CITY_QUESTION_CODE, FieldType.STRING),
   "zipCode": (ZIPCODE_QUESTION_CODE, FieldType.STRING),
-  "state": (STATE_QUESTION_CODE, FieldType.STRING),
+  "stateId": (STATE_QUESTION_CODE, FieldType.CODE),
+  "phoneNumber": (PHONE_NUMBER_QUESTION_CODE, FieldType.STRING),
+  "email": (EMAIL_QUESTION_CODE, FieldType.STRING),
+  "recontactMethodId": (RECONTACT_METHOD_QUESTION_CODE, FieldType.CODE),
+  "languageId": (LANGUAGE_QUESTION_CODE, FieldType.CODE),
+  "sexId": (SEX_QUESTION_CODE, FieldType.CODE),
+  "sexualOrientationId": (SEXUAL_ORIENTATION_QUESTION_CODE, FieldType.CODE),
+  "educationId": (EDUCATION_QUESTION_CODE, FieldType.CODE),
+  "incomeId": (INCOME_QUESTION_CODE, FieldType.CODE),  
   "dateOfBirth": (DATE_OF_BIRTH_QUESTION_CODE, FieldType.DATE)
 }
 QUESTION_CODE_TO_FIELD = {v[0]: (k, v[1]) for k, v in FIELD_TO_QUESTION_CODE.iteritems()}
@@ -84,3 +108,7 @@ FIELD_TO_QUESTIONNAIRE_MODULE_CODE = {
 QUESTIONNAIRE_MODULE_CODE_TO_FIELD = {v: k for k, v in
                                       FIELD_TO_QUESTIONNAIRE_MODULE_CODE.iteritems()}
 QUESTIONNAIRE_MODULE_FIELD_NAMES = sorted(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.keys())
+
+FIELD_TO_BIOBANK_TEST = { "sampleStatus%s" % test : test for test in BIOBANK_TESTS } 
+BIOBANK_TEST_TO_FIELD = { v: k for k, v in FIELD_TO_BIOBANK_TEST.iteritems()}
+
