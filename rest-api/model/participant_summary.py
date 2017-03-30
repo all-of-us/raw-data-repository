@@ -7,7 +7,6 @@ from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
 from participant_enums import EnrollmentStatus, Race, get_bucketed_age, SampleStatus
 from participant_enums import WithdrawalStatus, SuspensionStatus
 from model.base import Base
-from model.code import Code
 from model.utils import Enum, to_client_participant_id, to_client_biobank_id, get_property_type
 from query import PropertyType
 from sqlalchemy import Column, Integer, String, Date, DateTime
