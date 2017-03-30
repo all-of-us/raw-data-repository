@@ -265,7 +265,7 @@ an exact match. Examples:
     GET /ParticipantSummary?hpoId=PITT
     GET /ParticipantSummary?hpoId=PITT&state=PIIState_MA
 
-For integer and date fields, the following prefixes can be provided for query parameter values to 
+For integer and date fields, the following prefixes can be provided for query parameter values to
 indicate inequality searches, as per the [FHIR search spec] (https://www.hl7.org/fhir/search.html):
 
   * `lt`: less than
