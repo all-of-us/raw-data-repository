@@ -4,12 +4,12 @@ from werkzeug.exceptions import BadRequest
 from werkzeug.routing import BaseConverter, ValidationError
 
 _PROPERTY_TYPE_MAP = {
-  "String": PropertyType.STRING,
-  "Date": PropertyType.DATE,
-  "DateTime": PropertyType.DATETIME,
-  "Enum": PropertyType.ENUM,
-  "Integer": PropertyType.INTEGER,
-  "SmallInteger": PropertyType.INTEGER
+  'String': PropertyType.STRING,
+  'Date': PropertyType.DATE,
+  'DateTime': PropertyType.DATETIME,
+  'Enum': PropertyType.ENUM,
+  'Integer': PropertyType.INTEGER,
+  'SmallInteger': PropertyType.INTEGER
 }
 
 class Enum(TypeDecorator):
