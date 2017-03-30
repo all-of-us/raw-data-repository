@@ -223,10 +223,10 @@ def format_json_code(obj, field_name):
   if obj[field_name]:
     from dao.code_dao import CodeDao
     code = CodeDao().get(obj[field_name])
-    if code.mapped:      
+    if code.mapped:
       obj[field_without_id] = code.value
     else:
-      obj[field_without_id] = UNMAPPED    
+      obj[field_without_id] = UNMAPPED
   else:
     obj[field_without_id] = UNSET
   del obj[field_name]

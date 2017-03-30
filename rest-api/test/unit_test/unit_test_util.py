@@ -43,7 +43,7 @@ class TestBase(unittest.TestCase):
     # Allow printing the full diff report on errors.
     self.maxDiff = None
     self.setup_fake()
- 
+
   def setup_fake(self):
     # Make a faker which produces unicode text available.
     self.fake = faker.Faker('ru_RU')
@@ -175,13 +175,13 @@ class NdbTestBase(SqlTestBase):
   }
 
   def setUp(self):
-    super(NdbTestBase, self).setUp()  
+    super(NdbTestBase, self).setUp()
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
     ndb.get_context().clear_cache()
     self.doSetUp()
 
-  def doSetUp(self):    
+  def doSetUp(self):
     dev_config = read_dev_config()
     dev_config[config.USER_INFO] = self._CONFIG_USER_INFO
     config.store_current_config(dev_config)

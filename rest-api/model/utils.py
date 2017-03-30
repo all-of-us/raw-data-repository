@@ -1,4 +1,4 @@
-from query import PropertyType 
+from query import PropertyType
 from sqlalchemy.types import SmallInteger, TypeDecorator
 from werkzeug.exceptions import BadRequest
 from werkzeug.routing import BaseConverter, ValidationError

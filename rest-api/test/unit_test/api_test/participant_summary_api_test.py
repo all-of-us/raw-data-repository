@@ -40,11 +40,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
-  
+
   def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code,
-                                    first_name, middle_name, last_name, zip_code, 
-                                    state_code, street_address, city, sex_code, 
-                                    sexual_orientation_code, phone_number, recontact_method_code, 
+                                    first_name, middle_name, last_name, zip_code,
+                                    state_code, street_address, city, sex_code,
+                                    sexual_orientation_code, phone_number, recontact_method_code,
                                     language_code, education_code, income_code, date_of_birth):
     code_answers = []
     _add_code_answer(code_answers, "race", race_code)
@@ -80,7 +80,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
   def testQuery_oneParticipant(self):
     # Set up the codes so they are mapped later.
-    SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en", 
+    SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
                              "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id = participant['participantId']
@@ -120,7 +120,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'phoneNumber': '512-555-5555',
                    'recontactMethod': 'email_code',
                    'language': 'en',
-                   'education': 'highschool', 
+                   'education': 'highschool',
                    'income': 'lotsofmoney',
                    'sampleStatus1ED04': 'UNSET',
                    'sampleStatus1ED10': 'UNSET',
@@ -181,9 +181,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         confirmed=TIME_1))
 
   def testQuery_manyParticipants(self):
-    SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en", 
+    SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
                              "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
-                             
+
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
     questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
     questionnaire_id_3 = self.create_questionnaire('all_consents_questionnaire.json')
@@ -202,15 +202,15 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "Bob", "Q", "Jones", "78751", "PIIState_VA",
                                        "1234 Main Street", "Austin", "male_sex",
                                        "straight", "512-555-5555", "email_code",
-                                       "en", "highschool", "lotsofmoney",                                                                  
+                                       "en", "highschool", "lotsofmoney",
                                        datetime.date(1978, 10, 9))
     self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "female",
-                                       "Mary", "Q", "Jones", "78751", None, 
+                                       "Mary", "Q", "Jones", "78751", None,
                                        None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 8))
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_WHITE_CODE, "male",
-                                       "Fred", "T", "Smith", "78752", None, 
-                                       None, None, None, None, None, None, None, None, None, 
+                                       "Fred", "T", "Smith", "78752", None,
+                                       None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10))
     # Send an empty questionnaire response for the consent questionnaire for participants 2 and 3
     self._submit_empty_questionnaire_response(participant_id_2, questionnaire_id_3)
@@ -310,7 +310,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertResponses('ParticipantSummary?_count=2&hpoId=UNSET',
                          [[ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&genderIdentity=male',
-                         [[ps_1, ps_3]])    
+                         [[ps_1, ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
                          [[ps_1, ps_3]])
     self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE',

@@ -105,7 +105,7 @@ class BaseDao(object):
     """Fetches all entities from the database. For use on small tables."""
     with self.session() as session:
       return session.query(self.model_type).all()
-      
+
   def make_query_filter(self, field_name, value):
     """Attempts to make a query filter for the model property with the specified name, matching
     the specified value. If no such property exists, None is returned.

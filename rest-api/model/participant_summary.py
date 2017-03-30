@@ -171,10 +171,10 @@ Index('participant_summary_hpo_num_baseline_ppi', ParticipantSummary.hpoId,
 Index('participant_summary_hpo_num_baseline_samples', ParticipantSummary.hpoId,
       ParticipantSummary.numBaselineSamplesArrived)
 
-def _initialize_field_type_sets():    
-  """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are 
+def _initialize_field_type_sets():
+  """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are
   used when formatting JSON from participant summaries.
-  
+
   We call this lazily to avoid having issues with the code getting executed while SQLAlchemy
   is still initializing itself. Locking ensures we only run throught the code once.
   """
@@ -187,8 +187,8 @@ def _initialize_field_type_sets():
         continue
       prop = getattr(ParticipantSummary, prop_name)
       if callable(prop):
-        continue    
-      property_type = get_property_type(prop)    
+        continue
+      property_type = get_property_type(prop)
       if property_type:
         if property_type == PropertyType.DATE or property_type == PropertyType.DATETIME:
           _DATE_FIELDS.add(prop_name)
@@ -197,8 +197,7 @@ def _initialize_field_type_sets():
         elif property_type == PropertyType.INTEGER:
           fks = prop.property.columns[0].foreign_keys
           if fks:
-            for fk in fks:             
-              if fk._get_colspec() == 'code.code_id':               
+            for fk in fks:
+              if fk._get_colspec() == 'code.code_id':
                 _CODE_FIELDS.add(prop_name)
                 break
-         
