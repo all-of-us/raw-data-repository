@@ -12,6 +12,7 @@ import pytz
 from cloudstorage import cloudstorage_api
 from werkzeug.exceptions import BadRequest
 
+from api_util import coerce_to_utc
 import clock
 import config
 from dao import database_factory
@@ -130,8 +131,8 @@ def write_reconciliation_report():
 def _get_report_paths(bucket_name, report_dt):
   return [
       '%s/reconciliation/report_%s_%s.csv' % (
-          output_bucket_name, report_dt.strftime(_FILENAME_DATE_FORMAT), report_name)
-      for reportname in ('received', 'over_24h', 'missing')]
+          bucket_name, report_dt.strftime(_FILENAME_DATE_FORMAT), report_name)
+      for report_name in ('received', 'over_24h', 'missing')]
 
 
 @contextlib.contextmanager
@@ -159,19 +160,13 @@ def _query_and_write_reports(writer_received, writer_late, writer_missing):
         writer.writerow(_post_process_row(row))
 
 
-class _UtcTz(datetime.tzinfo):
-  def utcoffset(self, dt):
-    return datetime.timedelta(hours=0)
-_UTC = _UtcTz()
-
-
 def _post_process_row(raw_row):
   """Formats values in an SQL result row for CSV dict output."""
   row = dict(zip(_CSV_COLUMN_NAMES, raw_row))
   row[_COLUMN_BIOBANK_ID] = to_client_biobank_id(row[_COLUMN_BIOBANK_ID])
   for k in row.keys():
     if isinstance(row[k], datetime.datetime):
-      row[k] = row[k].replace(tzinfo=_UTC).isoformat()
+      row[k] = coerce_to_utc(row[k]).isoformat()
   return row
 
 
