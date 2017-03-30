@@ -8,6 +8,7 @@ import json
 from contextlib import contextmanager
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 from sqlalchemy.exc import IntegrityError
+from model.utils import get_property_type
 from query import Operator, PropertyType, FieldFilter, Results
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from sqlalchemy import or_, and_
@@ -20,15 +21,6 @@ MAX_INSERT_ATTEMPTS = 20
 # Range of possible values for random IDs.
 _MIN_ID = 100000000
 _MAX_ID = 999999999
-
-_PROPERTY_TYPE_MAP = {
-  "String": PropertyType.STRING,
-  "Date": PropertyType.DATE,
-  "DateTime": PropertyType.DATETIME,
-  "Enum": PropertyType.ENUM,
-  "Integer": PropertyType.INTEGER,
-  "SmallInteger": PropertyType.INTEGER
-}
 
 _COMPARABLE_PROPERTY_TYPES = [PropertyType.DATE, PropertyType.DATETIME, PropertyType.INTEGER]
 
@@ -113,21 +105,14 @@ class BaseDao(object):
     """Fetches all entities from the database. For use on small tables."""
     with self.session() as session:
       return session.query(self.model_type).all()
-
-  def _get_property_type(self, prop):
-    property_classname = prop.property.columns[0].type.__class__.__name__
-    property_type = _PROPERTY_TYPE_MAP.get(property_classname)
-    if not property_type:
-      raise BadRequest("Unrecognized property of type %s" % property_classname)
-    return property_type
-
+      
   def make_query_filter(self, field_name, value):
     """Attempts to make a query filter for the model property with the specified name, matching
     the specified value. If no such property exists, None is returned.
     """
     prop = getattr(self.model_type, field_name, None)
     if prop:
-      property_type = self._get_property_type(prop)
+      property_type = get_property_type(prop)
       filter_value = None
       operator = Operator.EQUALS
       # If we're dealing with a comparable property type, look for a prefix that indicates an
@@ -161,7 +146,7 @@ class BaseDao(object):
       raise BadRequest("Invalid value for property of type %s: %s" % (property_type, value))
 
   def _from_json_value(self, prop, value):
-    property_type = self._get_property_type(prop)
+    property_type = get_property_type(prop)
     result = self._parse_value(prop, property_type, value)
     return result
 

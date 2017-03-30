@@ -174,7 +174,7 @@ class QuestionnaireResponseDao(BaseDao):
     if something_changed:
       if (not participant_summary.firstName or not participant_summary.lastName
           or not participant_summary.email):
-        raise BadRequest('First name, last name, and email address are required for consenting ' +
+        raise BadRequest('First name, last name, and email address are required for consenting '
                          'participants')
       ParticipantSummaryDao().update_enrollment_status(participant_summary)
       session.merge(participant_summary)

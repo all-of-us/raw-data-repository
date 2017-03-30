@@ -9,7 +9,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from participant_enums import PhysicalMeasurementsStatus
 from test_data import load_measurement_json, load_measurement_json_amendment
-from unit_test_util import SqlTestBase, participant_summary
+from unit_test_util import SqlTestBase
 from werkzeug.exceptions import BadRequest
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -45,7 +45,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
                                            resource=self.measurement_json))
 
   def _make_summary(self):
-    self.participant_summary_dao.insert(participant_summary(self.participant))
+    self.participant_summary_dao.insert(self.participant_summary(self.participant))
 
   def testInsert_rightParticipantId(self):
     self._make_summary()

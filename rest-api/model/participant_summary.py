@@ -1,4 +1,5 @@
 import clock
+import threading
 
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
 from code_constants import UNSET
@@ -6,33 +7,18 @@ from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
 from participant_enums import EnrollmentStatus, Race, get_bucketed_age, SampleStatus
 from participant_enums import WithdrawalStatus, SuspensionStatus
 from model.base import Base
-from model.utils import Enum, to_client_participant_id, to_client_biobank_id
+from model.code import Code
+from model.utils import Enum, to_client_participant_id, to_client_biobank_id, get_property_type
+from query import PropertyType
 from sqlalchemy import Column, Integer, String, Date, DateTime
 from sqlalchemy import ForeignKey, Index, SmallInteger
 from sqlalchemy.orm import relationship
 
 
-_DATE_FIELDS = ['dateOfBirth', 'signUpTime', 'consentForStudyEnrollmentTime',
-                'consentForElectronicHealthRecordsTime', 'physicalMeasurementsTime',
-                'questionnaireOnOverallHealthTime',
-                'questionnaireOnLifestyleTime', 'questionnaireOnTheBasicsTime',
-                'questionnaireOnHealthcareAccessTime', 'questionnaireOnMedicalHistoryTime',
-                'questionnaireOnMedicationsTime', 'questionnaireOnFamilyHealthTime',
-                'samplesToIsolateDNATime', 'sampleStatus1SST8Time', 'sampleStatus1PST8Time',
-                'sampleStatus1HEP4Time', 'sampleStatus1ED04Time', 'sampleStatus1ED10Time',
-                'sampleStatus2ED10Time', 'sampleStatus1UR10Time', 'sampleStatus1SALTime']
-_ENUM_FIELDS = ['enrollmentStatus', 'race', 'physicalMeasurementsStatus',
-                'consentForStudyEnrollment', 'consentForElectronicHealthRecords',
-                'questionnaireOnOverallHealth', 'questionnaireOnLifestyle',
-                'questionnaireOnTheBasics', 'questionnaireOnHealthcareAccess',
-                'questionnaireOnMedicalHistory', 'questionnaireOnMedications',
-                'questionnaireOnFamilyHealth', 'suspensionStatus', 'withdrawalStatus',
-                'samplesToIsolateDNA', 'sampleStatus1SST8', 'sampleStatus1PST8',
-                'sampleStatus1HEP4', 'sampleStatus1ED04', 'sampleStatus1ED10',
-                'sampleStatus2ED10', 'sampleStatus1UR10', 'sampleStatus1SAL'
-]
-_CODE_FIELDS = ['genderIdentityId']
-
+_DATE_FIELDS = set()
+_ENUM_FIELDS = set()
+_CODE_FIELDS = set()
+fields_lock = threading.RLock()
 
 class ParticipantSummary(Base):
   __tablename__ = 'participant_summary'
@@ -62,6 +48,7 @@ class ParticipantSummary(Base):
   physicalMeasurementsStatus = Column('physical_measurements_status',
                                       Enum(PhysicalMeasurementsStatus),
                                       default=PhysicalMeasurementsStatus.UNSET)
+  # The first time that physical measurements were submitted for the participant.
   physicalMeasurementsTime = Column('physical_measurements_time', DateTime)
   signUpTime = Column('sign_up_time', DateTime)
   hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
@@ -149,6 +136,7 @@ class ParticipantSummary(Base):
     else:
       result['ageRange'] = UNSET
     format_json_hpo(result, 'hpoId')
+    _initialize_field_type_sets()
     for fieldname in _DATE_FIELDS:
       format_json_date(result, fieldname)
     for fieldname in _CODE_FIELDS:
@@ -182,3 +170,36 @@ Index('participant_summary_hpo_num_baseline_ppi', ParticipantSummary.hpoId,
       ParticipantSummary.numCompletedBaselinePPIModules)
 Index('participant_summary_hpo_num_baseline_samples', ParticipantSummary.hpoId,
       ParticipantSummary.numBaselineSamplesArrived)
+
+def _initialize_field_type_sets():    
+  """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are 
+  used when formatting JSON from participant summaries.
+  
+  We call this lazily to avoid having issues with the code getting executed while SQLAlchemy
+  is still initializing itself. Locking ensures we only run throught the code once.
+  """
+  with fields_lock:
+    # Return if this is already initialized.
+    if _DATE_FIELDS:
+      return
+    for prop_name in dir(ParticipantSummary):
+      if prop_name.startswith("_"):
+        continue
+      prop = getattr(ParticipantSummary, prop_name)
+      if callable(prop):
+        continue    
+      property_type = get_property_type(prop)    
+      if property_type:
+         if property_type == PropertyType.DATE or property_type == PropertyType.DATETIME:
+           _DATE_FIELDS.add(prop_name)
+         elif property_type == PropertyType.ENUM:
+           _ENUM_FIELDS.add(prop_name)
+         elif property_type == PropertyType.INTEGER:
+           fks = prop.property.columns[0].foreign_keys
+           if fks:
+             for fk in fks:             
+               if fk._get_colspec() == 'code.code_id':               
+                 _CODE_FIELDS.add(prop_name)
+                 break
+         
+

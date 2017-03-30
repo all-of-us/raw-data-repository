@@ -13,7 +13,7 @@ from model.participant import Participant
 from model.biobank_stored_sample import BiobankStoredSample
 from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus
 from participant_enums import SampleStatus
-from unit_test_util import NdbTestBase, PITT_HPO_ID, participant_summary
+from unit_test_util import NdbTestBase, PITT_HPO_ID
 
 NUM_BASELINE_PPI_MODULES = 3
 
@@ -53,9 +53,14 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assert_no_results(self.ascending_biobank_id_query)
     self.assert_no_results(self.descending_biobank_id_query)
 
-  def _insert(self, participant):
+  def _insert(self, participant, first_name=None, last_name=None):
     self.participant_dao.insert(participant)
-    self.dao.insert(participant_summary(participant))
+    summary = self.participant_summary(participant)
+    if first_name:
+      summary.firstName = first_name
+    if last_name:
+      summary.lastName = last_name
+    self.dao.insert(summary)
     return participant
 
   def testQuery_oneSummary(self):
@@ -81,9 +86,9 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
   def testQuery_twoSummaries(self):
     participant_1 = Participant(participantId=1, biobankId=2)
-    self._insert(participant_1)
+    self._insert(participant_1, 'Alice', 'Smith')
     participant_2 = Participant(participantId=2, biobankId=1)
-    self._insert(participant_2)
+    self._insert(participant_2, 'Zed', 'Zebra')
     ps_1 = self.dao.get(1)
     ps_2 = self.dao.get(2)
     self.assert_results(self.no_filter_query, [ps_1, ps_2])
@@ -94,39 +99,39 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
   def testQuery_threeSummaries_paginate(self):
     participant_1 = Participant(participantId=1, biobankId=4)
-    self._insert(participant_1)
+    self._insert(participant_1, 'Alice', 'Aardvark')
     participant_2 = Participant(participantId=2, biobankId=1)
-    self._insert(participant_2)
+    self._insert(participant_2, 'Bob', 'Builder')
     participant_3 = Participant(participantId=3, biobankId=3)
-    self._insert(participant_3)
+    self._insert(participant_3, 'Chad', 'Caterpillar')
     ps_1 = self.dao.get(1)
     ps_2 = self.dao.get(2)
     ps_3 = self.dao.get(3)
     self.assert_results(self.no_filter_query, [ps_1, ps_2],
-                        _make_pagination_token(['Jones', 'Bob', None, 2]))
+                        _make_pagination_token(['Builder', 'Bob', None, 2]))
     self.assert_results(self.one_filter_query, [ps_1])
     self.assert_no_results(self.two_filter_query)
     self.assert_results(self.ascending_biobank_id_query, [ps_2, ps_3],
-                        _make_pagination_token([3, 'Jones', 'Bob', None, 3]))
+                        _make_pagination_token([3, 'Caterpillar', 'Chad', None, 3]))
     self.assert_results(self.descending_biobank_id_query, [ps_1, ps_3],
-                        _make_pagination_token([3, 'Jones', 'Bob', None, 3]))
+                        _make_pagination_token([3, 'Caterpillar', 'Chad', None, 3]))
 
     self.assert_results(_with_token(self.no_filter_query,
-                                    _make_pagination_token(['Jones', 'Bob', None, 2])), [ps_3])
+                                    _make_pagination_token(['Builder', 'Bob', None, 2])), [ps_3])
     self.assert_results(_with_token(self.ascending_biobank_id_query,
-                                    _make_pagination_token([3, 'Jones', 'Bob', None, 3])), [ps_1])
+                                    _make_pagination_token([3, 'Caterpillar', 'Chad', None, 3])), [ps_1])
     self.assert_results(_with_token(self.descending_biobank_id_query,
-                                    _make_pagination_token([3, 'Jones', 'Bob', None, 3])), [ps_2])
+                                    _make_pagination_token([3, 'Caterpillar', 'Chad', None, 3])), [ps_2])
 
   def testQuery_fourFullSummaries_paginate(self):
     participant_1 = Participant(participantId=1, biobankId=4)
-    self._insert(participant_1)
+    self._insert(participant_1, 'Bob', 'Jones')
     participant_2 = Participant(participantId=2, biobankId=1)
-    self._insert(participant_2)
+    self._insert(participant_2, 'Bob', 'Jones')
     participant_3 = Participant(participantId=3, biobankId=3)
-    self._insert(participant_3)
+    self._insert(participant_3, 'Bob', 'Jones')
     participant_4 = Participant(participantId=4, biobankId=2)
-    self._insert(participant_4)
+    self._insert(participant_4, 'Bob', 'Jones')
     ps_1 = self.dao.get(1)
     ps_2 = self.dao.get(2)
     ps_3 = self.dao.get(3)

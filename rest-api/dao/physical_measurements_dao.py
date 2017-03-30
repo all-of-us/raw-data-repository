@@ -54,7 +54,8 @@ class PhysicalMeasurementsDao(BaseDao):
     if (not participant_summary.physicalMeasurementsStatus or
         participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.UNSET):
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
-      participant_summary.physicalMeasurementsTime = created
+      if not participant_summary.physicalMeasurementsTime:
+        participant_summary.physicalMeasurementsTime = created
       participant_summary_dao.update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 

@@ -10,7 +10,7 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, participant_summary
+from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 from test import test_data
 from model.utils import to_client_biobank_id
 from model.participant import Participant
@@ -23,6 +23,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
   def setUp(self):
     super(BiobankSamplesPipelineTest, self).setUp()
     NdbTestBase.doSetUp(self)
+    TestBase.setup_fake(self)
     config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, _BASELINE_TESTS)
     # Everything is stored as a list, so override bucket name as a 1-element list.
     config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BUCKET])
@@ -42,13 +43,11 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     participant_ids = []
     for _ in xrange(3):
       participant = participant_dao.insert(Participant())
-      summary_dao.insert(participant_summary(participant))
+      summary_dao.insert(self.participant_summary(participant))
       participant_ids.append(participant.participantId)
       biobank_ids.append(participant.biobankId)
       self.assertEquals(summary_dao.get(participant.participantId).numBaselineSamplesArrived, 0)
-    test1 = random.choice(_BASELINE_TESTS)
-    test2 = random.choice(_BASELINE_TESTS)
-    test3 = random.choice(_BASELINE_TESTS)
+    test1, test2, test3 = random.sample(_BASELINE_TESTS, 3)
     samples_file = test_data.open_biobank_samples(*biobank_ids, test1=test1, test2=test2,
                                                   test3=test3)
     self._write_cloud_csv('cloud.csv', samples_file.read())

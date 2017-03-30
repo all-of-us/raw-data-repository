@@ -93,6 +93,7 @@ class ParticipantSummaryDao(UpdatableDao):
     if field_name in _CODE_FIELDS:
       if value == UNSET:
         return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
+      # Note: we do not at present support querying for UNMAPPED code values.
       code = CodeDao().get_code(PPI_SYSTEM, value)
       if not code:
         raise BadRequest('No code found: %s' % value)

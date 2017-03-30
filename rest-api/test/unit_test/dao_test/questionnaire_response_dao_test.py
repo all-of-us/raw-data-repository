@@ -211,15 +211,18 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                              repeats=False)
     self.EMAIL_QUESTION = QuestionnaireQuestion(linkId='email', codeId=self.email_code_id,
                                                 repeats=False)
+    self.first_name = self.fake.first_name()
+    self.last_name = self.fake.last_name()
+    self.email = self.fake.email()
     self.FN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
                                                  questionnaireResponseId=1,
-                                                 questionId=3, valueString='Bob')
+                                                 questionId=3, valueString=self.first_name)
     self.LN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=4,
                                                  questionnaireResponseId=1,
-                                                 questionId=4, valueString='Jones')
+                                                 questionId=4, valueString=self.last_name)
     self.EMAIL_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=5,
                                                     questionnaireResponseId=1,
-                                                    questionId=5, valueString='bob@gmail.com')
+                                                    questionId=5, valueString=self.email)
 
 
   def _setup_questionnaire(self):
@@ -251,7 +254,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                            questionId=2, valueSystem='c', valueCodeId=4)
     qr.answers.append(answer_1)
     qr.answers.append(answer_2)
-    qr.answers.extend(self._names_and_email_answers())
+    names_and_email_answers = self._names_and_email_answers()
+    qr.answers.extend(names_and_email_answers)
     with FakeClock(TIME_2):
       self.questionnaire_response_dao.insert(qr)
 
@@ -264,7 +268,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     expected_qr.answers.append(answer_1)
     expected_qr.answers.append(answer_2)
-    expected_qr.answers.extend(self._names_and_email_answers())
+    expected_qr.answers.extend(names_and_email_answers)
     self.check_response(expected_qr)
 
     expected_ps = self._participant_summary_with_defaults(
@@ -274,7 +278,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         questionnaireOnTheBasicsTime=TIME_2,
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=TIME_2,
-        firstName='Bob', lastName='Jones', email='bob@gmail.com')
+        firstName=self.first_name, lastName=self.last_name, email=self.email)
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
   def test_insert_qr_three_times(self):
@@ -322,7 +326,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         questionnaireOnTheBasicsTime=TIME_2,
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=TIME_2,
-        firstName='Bob', lastName='Jones', email='bob@gmail.com')
+        firstName=self.first_name, lastName=self.last_name, email=self.email)
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
     qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
@@ -364,7 +368,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         questionnaireOnTheBasicsTime=TIME_2,
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=TIME_2,
-        firstName='Bob', lastName='Jones', email='bob@gmail.com')
+        firstName=self.first_name, lastName=self.last_name, email=self.email)
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps2.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -403,7 +407,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         questionnaireOnTheBasicsTime=TIME_2,
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=TIME_2,
-        firstName='Bob', lastName='Jones', email='bob@gmail.com')
+        firstName=self.first_name, lastName=self.last_name, email=self.email)
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())

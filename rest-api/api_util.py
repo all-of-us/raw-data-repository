@@ -9,7 +9,7 @@ from google.appengine.api import app_identity
 from google.appengine.api import oauth
 from google.appengine.ext import ndb
 
-from code_constants import UNSET
+from code_constants import UNSET, UNMAPPED
 from flask import request
 from protorpc import message_types
 from protorpc import messages
@@ -222,11 +222,14 @@ def format_json_code(obj, field_name):
   field_without_id = field_name[0:len(field_name) - 2]
   if obj[field_name]:
     from dao.code_dao import CodeDao
-    obj[field_without_id] = CodeDao().get(obj[field_name]).value
-    del obj[field_name]
+    code = CodeDao().get(obj[field_name])
+    if code.mapped:      
+      obj[field_without_id] = code.value
+    else:
+      obj[field_without_id] = UNMAPPED    
   else:
     obj[field_without_id] = UNSET
-    del obj[field_name]
+  del obj[field_name]
 
 def format_json_hpo(obj, field_name):
   if obj[field_name]:

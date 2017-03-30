@@ -20,7 +20,7 @@ from offline.metrics_config import get_participant_fields, HPO_ID_FIELDS, ANSWER
 from offline.metrics_export import MetricsExport, _HPO_IDS_CSV, _PARTICIPANTS_CSV, _ANSWERS_CSV
 from offline_test.gcs_utils import assertCsvContents
 from test_data import primary_provider_link, load_biobank_order_json, load_measurement_json
-from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase
+from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase
 from unit_test_util import make_questionnaire_response_json, pretty, run_deferred_tasks
 
 BUCKET_NAME = 'pmi-drc-biobank-test.appspot.com'
@@ -36,6 +36,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
   def setUp(self):
     super(MetricsExportTest, self).setUp()
     FlaskTestBase.doSetUp(self)
+    TestBase.setup_fake(self)
     offline.metrics_export._QUEUE_NAME = 'default'
     self.taskqueue.FlushQueue('default')
     self.maxDiff = None
