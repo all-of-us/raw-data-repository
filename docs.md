@@ -235,8 +235,13 @@ For enumeration fields, the following values are defined:
 
 `withdrawalStatus`: `NOT_WITHDRAWN`, `NO_USE`
 `suspensionStatus`: `NOT_SUSPENDED`, `NO_CONTACT`
-`enrollmentStatus`: 
-`race`:
+`enrollmentStatus`: `INTERESTED`, `MEMBER`, `FULL_PARTICIPANT`
+`race`: `UNSET`, `UNMAPPED`, `AMERICAN_INDIAN_OR_ALASKA_NATIVE`, `BLACK_OR_AFRICAN_AMERICAN`,
+        `ASIAN`, `NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER`, `WHITE`, `HISPANIC_LATINO_OR_SPANISH`,
+        `MIDDLE_EASTERN_OR_NORTH_AFRICAN`, `HLS_AND_WHITE`, `HLS_AND_BLACK`, 
+        `HLS_AND_ONE_OTHER_RACE`, `HLS_AND_MORE_THAN_ONE_OTHER_RACE`, `MORE_THAN_ONE_RACE`,
+  		`OTHER_RACE`, `PREFER_NOT_TO_SAY`
+
 
 The following fields have code values defined in the [codebook] 
 (https://docs.google.com/spreadsheets/d/1TNqJ1ekLFHF4vYA2SNCb-4NL8QgoJrfuJsxnUuXd-is/edit):
