@@ -12,7 +12,7 @@ from code_constants import LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
 from code_constants import QUESTION_CODE_TO_FIELD, RACE_QUESTION_CODE, GENDER_IDENTITY_QUESTION_CODE
 from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE
 from code_constants import MIDDLE_NAME_QUESTION_CODE, ZIPCODE_QUESTION_CODE
-from code_constants import STATE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE
+from code_constants import STATE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE, EMAIL_QUESTION_CODE
 from code_constants import PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE
 
 from dao.code_dao import CodeDao
@@ -174,12 +174,17 @@ class FakeParticipantGenerator(object):
     zip_code = random.choice(self._zip_code_to_state.keys())
     state = self._zip_code_to_state.get(zip)
     answer_map[ZIPCODE_QUESTION_CODE] = _string_answer(zip_code)
-    answer_map[STATE_QUESTION_CODE] = _code_answer('PIIState_%s' % state)
+    answer_map[STATE_QUESTION_CODE] = [_code_answer('PIIState_%s' % state)]
 
   def _choose_name(self, answer_map):
-    answer_map[FIRST_NAME_QUESTION_CODE] = _string_answer(random.choice(self._first_names))
-    answer_map[MIDDLE_NAME_QUESTION_CODE] = _string_answer(random.choice(self._middle_names))
-    answer_map[LAST_NAME_QUESTION_CODE] = _string_answer(random.choice(self._last_names))
+    first_name = random.choice(self._first_names)
+    middle_name = random.choice(self._middle_names)
+    last_name = random.choice(self._last_names)
+    email = first_name + last_name + '@example.com'
+    answer_map[FIRST_NAME_QUESTION_CODE] = _string_answer(first_name)
+    answer_map[MIDDLE_NAME_QUESTION_CODE] = _string_answer(middle_name)
+    answer_map[LAST_NAME_QUESTION_CODE] = _string_answer(last_name)
+    answer_map[EMAIL_QUESTION_CODE] = _string_answer(email)
 
   def _choose_date_of_birth(self, answer_map):
     if random.random() <= _QUESTION_NOT_ANSWERED:

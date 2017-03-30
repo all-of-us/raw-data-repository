@@ -235,8 +235,13 @@ For enumeration fields, the following values are defined:
 
 `withdrawalStatus`: `NOT_WITHDRAWN`, `NO_USE`
 `suspensionStatus`: `NOT_SUSPENDED`, `NO_CONTACT`
-`enrollmentStatus`: 
-`race`:
+`enrollmentStatus`: `INTERESTED`, `MEMBER`, `FULL_PARTICIPANT`
+`race`: `UNSET`, `UNMAPPED`, `AMERICAN_INDIAN_OR_ALASKA_NATIVE`, `BLACK_OR_AFRICAN_AMERICAN`,
+        `ASIAN`, `NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER`, `WHITE`, `HISPANIC_LATINO_OR_SPANISH`,
+        `MIDDLE_EASTERN_OR_NORTH_AFRICAN`, `HLS_AND_WHITE`, `HLS_AND_BLACK`, 
+        `HLS_AND_ONE_OTHER_RACE`, `HLS_AND_MORE_THAN_ONE_OTHER_RACE`, `MORE_THAN_ONE_RACE`,
+  		`OTHER_RACE`, `PREFER_NOT_TO_SAY`
+
 
 The following fields have code values defined in the [codebook] 
 (https://docs.google.com/spreadsheets/d/1TNqJ1ekLFHF4vYA2SNCb-4NL8QgoJrfuJsxnUuXd-is/edit):
@@ -265,7 +270,7 @@ an exact match. Examples:
     GET /ParticipantSummary?hpoId=PITT
     GET /ParticipantSummary?hpoId=PITT&state=PIIState_MA
 
-For integer and date fields, the following prefixes can be provided for query parameter values to 
+For integer and date fields, the following prefixes can be provided for query parameter values to
 indicate inequality searches, as per the [FHIR search spec] (https://www.hl7.org/fhir/search.html):
 
   * `lt`: less than
@@ -292,6 +297,25 @@ Other supported parameters from the FHIR spec:
   first name, date of birth, and participant ID.
   
 If no sort order is requested, the default sort order is last name, first name, date of birth, and 
+participant ID.
+
+The response is an FHIR Bundle containing participant summaries. If more than the requested number
+ of participant summaries match the specified criteria, a "next" link will be returned that can
+ be used in a follow on request to fetch more participant summaries.
+
+
+Other supported parameters from the FHIR spec:
+
+* `_count`: the maximum number of participant summaries to return; the default is 100, the maximum
+  supported value is 10,000
+
+* `_sort`: the name of a field to sort results by, in ascending order, followed by last name, first
+  name, date of birth, and participant ID.
+
+* `_sort:desc`: the name of a field to sort results by, in descending order, followed by last name,
+  first name, date of birth, and participant ID.
+
+If no sort order is requested, the default sort order is last name, first name, date of birth, and
 participant ID.
 
 The response is an FHIR Bundle containing participant summaries. If more than the requested number
