@@ -39,7 +39,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     participant_dao = ParticipantDao()
     summary_dao = ParticipantSummaryDao()
     biobank_ids = []
-    participant_ids = []    
+    participant_ids = []
     for _ in xrange(3):
       participant = participant_dao.insert(Participant())
       summary_dao.insert(participant_summary(participant))
