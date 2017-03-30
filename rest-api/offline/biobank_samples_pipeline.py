@@ -206,6 +206,7 @@ CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW orders_by_biobank_id AS
 """
 
 
+# Join orders and samples, and compute some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION a RIGHT and LEFT OUTER JOIN.
 _CREATE_RECONCILIATION_VIEW_MYSQL = """
 CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS

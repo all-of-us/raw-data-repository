@@ -117,6 +117,9 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         biobank_samples_pipeline._upsert_samples_from_csv(reader)
 
 
+_COLS = biobank_samples_pipeline._CSV_COLUMN_NAMES
+
+
 class _CsvListWriter(object):
   """Accumulate written CSV rows as a list."""
   def __init__(self, test):
@@ -124,9 +127,35 @@ class _CsvListWriter(object):
     self.rows = []
 
   def writerow(self, row):
-    if self.rows:
-      self._test.assertEquals(len(self.rows[0]), len(row))
-    self.rows.append(row)
+    if row == _COLS:  # skip the header
+      return
+    self._test.assertEquals(len(_COLS), len(row))
+    row_dict = dict(zip(_COLS, row))
+    self.rows.append(row_dict)
+
+  def assertRowCount(self, n):
+    self._test.assertEquals(
+        n, len(self.rows),
+        'Expected %d rows but found %d: %s.' % (n, len(self.rows), self.rows))
+
+  def assertHasRow(self, expected_row):
+    """Asserts that this writer got a row that has all the values specified in the given row.
+
+    Args:
+      expected_row: A dict like {'biobank_id': 557741928, sent_test: None} specifying a subset of
+          the fields in a row that should have been written.
+    """
+    for row in self.rows:
+      found_all = True
+      for required_k, required_v in expected_row.iteritems():
+        if required_k not in row or row[required_k] != required_v:
+          found_all = False
+          break
+      if found_all:
+        return
+    self._test.fail(
+        'No match found for expected row %s among %d rows: %s'
+        % (expected_row, len(self.rows), self.rows))
 
 
 class MySqlReconciliationTest(SqlTestBase):
@@ -178,7 +207,8 @@ class MySqlReconciliationTest(SqlTestBase):
     self._insert_samples(p_on_time, _BASELINE_TESTS[:2], within_a_day)
 
     p_late_and_missing = self._insert_participant()
-    self._insert_order(p_late_and_missing, 'SlowOrder', _BASELINE_TESTS[:2], order_time)
+    o_late_and_missing = self._insert_order(
+        p_late_and_missing, 'SlowOrder', _BASELINE_TESTS[:2], order_time)
     self._insert_samples(p_late_and_missing, [_BASELINE_TESTS[0]], late_time)
 
     p_extra = self._insert_participant()
@@ -194,7 +224,26 @@ class MySqlReconciliationTest(SqlTestBase):
     rows_missing = _CsvListWriter(self)
     biobank_samples_pipeline._query_and_write_reports(rows_received, rows_late, rows_missing)
 
-    for rows in (rows_received, rows_late, rows_missing):
-      print ''
-      for row in rows.rows:
-        print '\t'.join([str(v) for v in row])
+    # sent-and-received: 2 on-time, 1 late, none of the missing/extra/repeated ones
+    rows_received.assertRowCount(3)
+    rows_received.assertHasRow({'biobank_id': p_on_time.biobankId, 'sent_test': _BASELINE_TESTS[0]})
+    rows_received.assertHasRow({'biobank_id': p_on_time.biobankId, 'sent_test': _BASELINE_TESTS[1]})
+    rows_received.assertHasRow(
+        {'biobank_id': p_late_and_missing.biobankId, 'sent_test': _BASELINE_TESTS[0]})
+
+    # sent-and-received: 1 late
+    rows_late.assertRowCount(1)
+    rows_late.assertHasRow({
+        'biobank_id': p_late_and_missing.biobankId,
+        'sent_order_id': o_late_and_missing.biobankOrderId,
+        'elapsed_hours': 25})
+
+    # gone awry
+    rows_missing.assertRowCount(3)
+    rows_missing.assertHasRow({
+        'biobank_id': p_late_and_missing.biobankId,
+        'sent_order_id': o_late_and_missing.biobankOrderId,
+        'elapsed_hours': None})
+    rows_missing.assertHasRow({
+        'biobank_id': p_repeated.biobankId, 'sent_count': 2, 'received_count': 1})
+    rows_missing.assertHasRow({'biobank_id': p_extra.biobankId, 'sent_order_id': None})
