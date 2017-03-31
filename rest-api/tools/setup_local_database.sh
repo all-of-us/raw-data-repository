@@ -51,7 +51,7 @@ echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
      ' "db_user": "'$DB_USER'", '\
      ' "db_name": "'$DB_NAME'" }' > $DB_INFO_FILE
 # Include charset here since mysqld defaults to Latin1 (even though CloudSQL
-# is configured with UTF8 as the default).
+# is configured with UTF8 as the default). Keep in sync with unit_test_util.py.
 cat <<EOSQL > $CREATE_DB_FILE
 DROP DATABASE IF EXISTS $DB_NAME;
 CREATE DATABASE $DB_NAME CHARACTER SET utf8 COLLATE utf8_general_ci;

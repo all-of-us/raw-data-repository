@@ -135,7 +135,9 @@ class _TestDb(object):
       dao.database_factory.DB_CONNECTION_STRING = (
           'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
       db = dao.database_factory.get_database()
-      db.get_engine().execute('CREATE DATABASE %s' % self.__temp_db_name)
+      # Keep in sync with tools/setup_local_database.sh.
+      db.get_engine().execute(
+          'CREATE DATABASE %s CHARACTER SET utf8 COLLATE utf8_general_ci' % self.__temp_db_name)
 
       dao.database_factory.DB_CONNECTION_STRING = (
           'mysql+mysqldb://%s@localhost/%s?charset=utf8' % (mysql_login, self.__temp_db_name))
