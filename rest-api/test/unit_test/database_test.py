@@ -190,5 +190,5 @@ class DatabaseTest(SqlTestBase):
 
     read_session = self.database.make_session()
     bo = read_session.query(BiobankOrder).get(bo_id)
-    self.assertEquals(bo.created.isoformat(), 
+    self.assertEquals(bo.created.isoformat(),
                       now.astimezone(tzutc()).replace(tzinfo=None).isoformat())
