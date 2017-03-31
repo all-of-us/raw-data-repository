@@ -42,9 +42,9 @@ _SAMPLE_SQL = """,
                          AND biobank_stored_sample.test = %(sample_param_ref)s)
              THEN :received ELSE :unset END,
       sample_status_%(test)s_time =
-        (SELECT confirmed FROM biobank_stored_sample
-                         WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
-                           AND biobank_stored_sample.test = %(sample_param_ref)s)
+        (SELECT MIN(confirmed) FROM biobank_stored_sample
+          WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
+          AND biobank_stored_sample.test = %(sample_param_ref)s)
    """
 
 def _get_sample_sql_and_params():

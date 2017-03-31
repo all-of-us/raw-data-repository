@@ -22,8 +22,9 @@ def upsert_from_latest_csv():
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
   csv_file = _open_latest_samples_file(bucket_name)
   csv_reader = csv.DictReader(csv_file, delimiter='\t')
-  _upsert_samples_from_csv(csv_reader)
+  written, skipped = _upsert_samples_from_csv(csv_reader)
   ParticipantSummaryDao().update_from_biobank_stored_samples()
+  return written, skipped
 
 
 def _open_latest_samples_file(cloud_bucket_name):
@@ -67,7 +68,7 @@ def _upsert_samples_from_csv(csv_reader):
     raise RuntimeError(
         'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
   samples_dao = BiobankStoredSampleDao()
-  samples_dao.upsert_batched(
+  return samples_dao.upsert_batched(
       (s for s in (_create_sample_from_row(row) for row in csv_reader) if s is not None))
 
 

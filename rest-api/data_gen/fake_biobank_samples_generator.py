@@ -20,7 +20,7 @@ _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED = 72 * 60
 # Max amount of time between creating a participant and orphaned biobank samples
 _MAX_MINUTES_BETWEEN_PARTICIPANT_CREATED_AND_CONFIRMED = 30 * 24 * 60
 
-_TIME_FORMAT = "%Y/%m/%d H:%M:%S"
+_TIME_FORMAT = "%Y/%m/%d %H:%M:%S"
 
 #_GET_ORDERED_SAMPLES_SQL = """
 #  SELECT participant.biobank_id, sample.collected, sample.test
@@ -46,7 +46,7 @@ class FakeBiobankSamplesGenerator(object):
     sample_id_start = random.randint(1000000, 10000000)
     with cloudstorage_api.open(file_name, mode='w') as dest:
       writer = csv.writer(dest, delimiter="\t")
-
+      writer.writerow(_HEADERS)
       biobank_order_dao = BiobankOrderDao()
       with biobank_order_dao.session() as session:
         rows = biobank_order_dao.get_ordered_samples_sample(session,

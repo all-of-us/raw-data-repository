@@ -3,7 +3,7 @@
 import api_util
 import app_util
 import config
-
+import json
 import logging
 
 from dao.metrics_dao import MetricsVersionDao
@@ -32,9 +32,9 @@ def recalculate_metrics():
 @api_util.auth_required_cron
 def import_biobank_samples():
   # Note that crons have a 10 minute deadline instead of the normal 60s.
-  biobank_samples_pipeline.upsert_from_latest_csv()
-  # Flask view functions must return something (or raise ValueError), though the response is unused.
-  return 'OK'
+  written, skipped = biobank_samples_pipeline.upsert_from_latest_csv()  
+  return json.dumps({'written': written, 'skipped': skipped})
+  
 
 app = Flask(__name__)
 #

@@ -158,11 +158,12 @@ class FakeParticipantGenerator(object):
 
   def _make_biobank_order_request(self, participant_id, sample_tests, created_time):
     samples = []
+    order_id_suffix = '%s-%d' % (participant_id, random.randint(0, 100000000)) 
     request = {"subject": "Patient/%s" % participant_id,
                "identifier": [{"system": "http://health-pro.org",
-                                "value": "healthpro-order-id-123%s" % participant_id},
+                                "value": "healthpro-order-id-123%s" % order_id_suffix},
                               {"system": "https://orders.mayomedicallaboratories.com",
-                                "value": "WEB1YLHV%s" % participant_id}],
+                                "value": "WEB1YLHV%s" % order_id_suffix}],
                # TODO: randomize this?
                "sourceSite": {"system": "http://health-pro.org",
                               "value": "789012"},
