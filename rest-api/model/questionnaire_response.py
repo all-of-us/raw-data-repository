@@ -2,8 +2,9 @@ import json
 
 from model.code import CodeType
 from model.base import Base
+from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, Date, DateTime, BLOB, ForeignKey, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, Date, BLOB, ForeignKey, String, Boolean
 from sqlalchemy import ForeignKeyConstraint, Float
 import fhirclient.models.questionnaireresponse
 from werkzeug.exceptions import BadRequest
@@ -23,7 +24,7 @@ class QuestionnaireResponse(Base):
   questionnaireVersion = Column('questionnaire_version', Integer, nullable=False)
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
-  created = Column('created', DateTime, nullable=False)
+  created = Column('created', UTCDateTime, nullable=False)
   resource = Column('resource', BLOB, nullable=False)
   answers = relationship('QuestionnaireResponseAnswer', cascade='all, delete-orphan')
   __table_args__ = (
@@ -187,7 +188,7 @@ class QuestionnaireResponseAnswer(Base):
                       nullable=False)
   # The time at which this answer was replaced by another answer. Not set if this answer is the
   # latest answer to the question.
-  endTime = Column('end_time', DateTime)
+  endTime = Column('end_time', UTCDateTime)
   valueSystem = Column('value_system', String(50))
   valueCodeId = Column('value_code_id', Integer, ForeignKey('code.code_id'))
   valueBoolean = Column('value_boolean', Boolean)
@@ -196,4 +197,4 @@ class QuestionnaireResponseAnswer(Base):
   # Is this big enough?
   valueString = Column('value_string', String(1024))
   valueDate = Column('value_date', Date)
-  valueDateTime = Column('value_datetime', DateTime)
+  valueDateTime = Column('value_datetime', UTCDateTime)

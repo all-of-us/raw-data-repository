@@ -1,8 +1,9 @@
 import json
 
 from model.base import Base
+from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Boolean, Integer, DateTime, BLOB, ForeignKey
+from sqlalchemy import Column, Boolean, Integer, BLOB, ForeignKey
 
 class PhysicalMeasurements(Base):
   __tablename__ = 'physical_measurements'
@@ -10,7 +11,7 @@ class PhysicalMeasurements(Base):
                                   autoincrement=False)
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
-  created = Column('created', DateTime, nullable=False)
+  created = Column('created', UTCDateTime, nullable=False)
   resource = Column('resource', BLOB, nullable=False)
   final = Column('final', Boolean, nullable=False)
   # The ID that these measurements are an amendment of (points from new to old)

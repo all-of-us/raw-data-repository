@@ -4,11 +4,11 @@ from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models.identifier import Identifier
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, UnicodeText
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, UnicodeText
 from werkzeug.exceptions import BadRequest
 
 from model.base import Base, FhirMixin, FhirProperty
-from model.utils import to_client_participant_id
+from model.utils import to_client_participant_id, UTCDateTime
 
 
 def _ToFhirDate(dt):
@@ -79,7 +79,7 @@ class BiobankOrder(Base):
   sourceSiteValue = Column('source_site_value', String(80))
 
   # Additional fields stored for future use.
-  created = Column('created', DateTime, nullable=False)
+  created = Column('created', UTCDateTime, nullable=False)
   collectedNote = Column('collected_note', UnicodeText)
   processedNote = Column('processed_note', UnicodeText)
   finalizedNote = Column('finalized_note', UnicodeText)
@@ -207,6 +207,6 @@ class BiobankOrderedSample(Base):
   description = Column('description', UnicodeText, nullable=False)
 
   processingRequired = Column('processing_required', Boolean, nullable=False)
-  collected = Column('collected', DateTime)
-  processed = Column('processed', DateTime)
-  finalized = Column('finalized', DateTime)
+  collected = Column('collected', UTCDateTime)
+  processed = Column('processed', UTCDateTime)
+  finalized = Column('finalized', UTCDateTime)

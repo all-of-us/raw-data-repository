@@ -1,8 +1,8 @@
 from protorpc import messages
 from model.base import Base
-from model.utils import Enum
+from model.utils import Enum, UTCDateTime
 from sqlalchemy import Column, Integer, String, UnicodeText, Boolean, UniqueConstraint
-from sqlalchemy import ForeignKey, DateTime
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import backref, relationship
 from sqlalchemy.ext.declarative import declared_attr
 
@@ -27,7 +27,7 @@ class CodeBook(Base):
   """
   __tablename__ = 'code_book'
   codeBookId = Column('code_book_id', Integer, primary_key=True)
-  created = Column('created', DateTime, nullable=False)
+  created = Column('created', UTCDateTime, nullable=False)
   # True if this is the latest imported code book.
   latest = Column('latest', Boolean, nullable=False)
   name = Column('name', String(80), nullable=False)
@@ -46,7 +46,7 @@ class _CodeBase(object):
   topic = Column('topic', UnicodeText)
   codeType = Column('code_type', Enum(CodeType), nullable=False)
   mapped = Column('mapped', Boolean, nullable=False)
-  created = Column('created', DateTime, nullable=False)
+  created = Column('created', UTCDateTime, nullable=False)
 
   @declared_attr
   def codeBookId(cls):

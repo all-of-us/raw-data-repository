@@ -8,8 +8,9 @@ from participant_enums import EnrollmentStatus, Race, get_bucketed_age, SampleSt
 from participant_enums import WithdrawalStatus, SuspensionStatus
 from model.base import Base
 from model.utils import Enum, to_client_participant_id, to_client_biobank_id, get_property_type
+from model.utils import UTCDateTime
 from query import PropertyType
-from sqlalchemy import Column, Integer, String, Date, DateTime
+from sqlalchemy import Column, Integer, String, Date
 from sqlalchemy import ForeignKey, Index, SmallInteger
 from sqlalchemy.orm import relationship
 
@@ -48,57 +49,58 @@ class ParticipantSummary(Base):
                                       Enum(PhysicalMeasurementsStatus),
                                       default=PhysicalMeasurementsStatus.UNSET)
   # The first time that physical measurements were submitted for the participant.
-  physicalMeasurementsTime = Column('physical_measurements_time', DateTime)
-  signUpTime = Column('sign_up_time', DateTime)
+  physicalMeasurementsTime = Column('physical_measurements_time', UTCDateTime)
+  signUpTime = Column('sign_up_time', UTCDateTime)
   hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
 
   # Fields for which questionnaires have been submitted, and at what times.
   consentForStudyEnrollment = Column('consent_for_study_enrollment',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  consentForStudyEnrollmentTime = Column('consent_for_study_enrollment_time', DateTime)
+  consentForStudyEnrollmentTime = Column('consent_for_study_enrollment_time', UTCDateTime)
   consentForElectronicHealthRecords = Column('consent_for_electronic_health_records',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   consentForElectronicHealthRecordsTime = Column('consent_for_electronic_health_records_time',
-                                                 DateTime)
+                                                 UTCDateTime)
   questionnaireOnOverallHealth = Column('questionnaire_on_overall_health',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnOverallHealthTime = Column('questionnaire_on_overall_health_time', DateTime)
+  questionnaireOnOverallHealthTime = Column('questionnaire_on_overall_health_time', UTCDateTime)
   questionnaireOnLifestyle = Column('questionnaire_on_lifestyle',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnLifestyleTime = Column('questionnaire_on_lifestyle_time', DateTime)
+  questionnaireOnLifestyleTime = Column('questionnaire_on_lifestyle_time', UTCDateTime)
   questionnaireOnTheBasics = Column('questionnaire_on_the_basics',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnTheBasicsTime = Column('questionnaire_on_the_basics_time', DateTime)
+  questionnaireOnTheBasicsTime = Column('questionnaire_on_the_basics_time', UTCDateTime)
   questionnaireOnHealthcareAccess = Column('questionnaire_on_healthcare_access',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnHealthcareAccessTime = Column('questionnaire_on_healthcare_access_time', DateTime)
+  questionnaireOnHealthcareAccessTime = Column('questionnaire_on_healthcare_access_time',
+                                               UTCDateTime)
   questionnaireOnMedicalHistory = Column('questionnaire_on_medical_history',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnMedicalHistoryTime = Column('questionnaire_on_medical_history_time', DateTime)
+  questionnaireOnMedicalHistoryTime = Column('questionnaire_on_medical_history_time', UTCDateTime)
   questionnaireOnMedications = Column('questionnaire_on_medications',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnMedicationsTime = Column('questionnaire_on_medications_time', DateTime)
+  questionnaireOnMedicationsTime = Column('questionnaire_on_medications_time', UTCDateTime)
   questionnaireOnFamilyHealth = Column('questionnaire_on_family_health',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnFamilyHealthTime = Column('questionnaire_on_family_health_time', DateTime)
+  questionnaireOnFamilyHealthTime = Column('questionnaire_on_family_health_time', UTCDateTime)
 
   # Fields for which samples have been received, and at what times.
   sampleStatus1SST8 = Column('sample_status_1sst8', Enum(SampleStatus), default=SampleStatus.UNSET)
-  sampleStatus1SST8Time = Column('sample_status_1sst8_time', DateTime)
+  sampleStatus1SST8Time = Column('sample_status_1sst8_time', UTCDateTime)
   sampleStatus1PST8 = Column('sample_status_1pst8', Enum(SampleStatus), default=SampleStatus.UNSET)
-  sampleStatus1PST8Time = Column('sample_status_1pst8_time', DateTime)
+  sampleStatus1PST8Time = Column('sample_status_1pst8_time', UTCDateTime)
   sampleStatus1HEP4 = Column('sample_status_1hep4', Enum(SampleStatus), default=SampleStatus.UNSET)
-  sampleStatus1HEP4Time = Column('sample_status_1hep4_time', DateTime)
+  sampleStatus1HEP4Time = Column('sample_status_1hep4_time', UTCDateTime)
   sampleStatus1ED04 = Column('sample_status_1ed04', Enum(SampleStatus), default=SampleStatus.UNSET)
-  sampleStatus1ED04Time = Column('sample_status_1ed04_time', DateTime)
+  sampleStatus1ED04Time = Column('sample_status_1ed04_time', UTCDateTime)
   sampleStatus1ED10 = Column('sample_status_1ed10', Enum(SampleStatus), default=SampleStatus.UNSET)
-  sampleStatus1ED10Time = Column('sample_status_1ed10_time', DateTime)
+  sampleStatus1ED10Time = Column('sample_status_1ed10_time', UTCDateTime)
   sampleStatus2ED10 = Column('sample_status_2ed10', Enum(SampleStatus), default=SampleStatus.UNSET)
-  sampleStatus2ED10Time = Column('sample_status_2ed10_time', DateTime)
+  sampleStatus2ED10Time = Column('sample_status_2ed10_time', UTCDateTime)
   sampleStatus1UR10 = Column('sample_status_1ur10', Enum(SampleStatus), default=SampleStatus.UNSET)
-  sampleStatus1UR10Time = Column('sample_status_1ur10_time', DateTime)
+  sampleStatus1UR10Time = Column('sample_status_1ur10_time', UTCDateTime)
   sampleStatus1SAL = Column('sample_status_1sal', Enum(SampleStatus), default=SampleStatus.UNSET)
-  sampleStatus1SALTime = Column('sample_status_1sal_time', DateTime)
+  sampleStatus1SALTime = Column('sample_status_1sal_time', UTCDateTime)
 
   numCompletedBaselinePPIModules = Column('num_completed_baseline_ppi_modules', SmallInteger,
                                           default=0)

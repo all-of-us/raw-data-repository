@@ -2,9 +2,9 @@ import json
 
 from api_util import format_json_enum, parse_json_enum
 from model.base import Base
-from model.utils import Enum, to_client_participant_id, to_client_biobank_id
+from model.utils import Enum, to_client_participant_id, to_client_biobank_id, UTCDateTime
 from participant_enums import WithdrawalStatus, SuspensionStatus
-from sqlalchemy import Column, Integer, DateTime, BLOB, ForeignKey, Index, String
+from sqlalchemy import Column, Integer, BLOB, ForeignKey, Index, String
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -21,8 +21,8 @@ class ParticipantBase(object):
   # Randomly assigned ID used with Biobank. Prefixed with 'B' whenever we use this externally.
   biobankId = Column('biobank_id', Integer, nullable=False)
 
-  lastModified = Column('last_modified', DateTime, nullable=False)
-  signUpTime = Column('sign_up_time', DateTime, nullable=False)
+  lastModified = Column('last_modified', UTCDateTime, nullable=False)
+  signUpTime = Column('sign_up_time', UTCDateTime, nullable=False)
   providerLink = Column('provider_link', BLOB)
 
   # Both HealthPro and PTC can mutate participants; we use clientId to track

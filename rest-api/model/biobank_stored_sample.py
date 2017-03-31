@@ -1,5 +1,6 @@
 from model.base import Base
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from model.utils import UTCDateTime
+from sqlalchemy import Column, Integer, String, ForeignKey
 
 
 class BiobankStoredSample(Base):
@@ -27,4 +28,4 @@ class BiobankStoredSample(Base):
   # Timestamp when Biobank finished receiving/preparing the sample (status changed from "In Prep"
   # to "In Circulation" in Mayo). This is the end time used for order-to-sample latency measurement.
   # We may receive samples before they are confirmed (and see a confirmed date added later).
-  confirmed = Column('confirmed', DateTime)
+  confirmed = Column('confirmed', UTCDateTime)

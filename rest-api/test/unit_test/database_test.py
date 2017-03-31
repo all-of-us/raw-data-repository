@@ -3,6 +3,7 @@ import isodate
 
 from participant_enums import QuestionnaireStatus
 
+from dateutil.tz import tzutc
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.code import Code, CodeType, CodeBook, CodeHistory
@@ -138,7 +139,7 @@ class DatabaseTest(SqlTestBase):
     session.commit()
 
     mv = MetricsVersion(metricsVersionId=1, inProgress=False, complete=True,
-                        date=datetime.date.today(), dataVersion=1)
+                        date=datetime.datetime.utcnow(), dataVersion=1)
     session.add(mv)
     session.commit()
 
@@ -189,7 +190,5 @@ class DatabaseTest(SqlTestBase):
 
     read_session = self.database.make_session()
     bo = read_session.query(BiobankOrder).get(bo_id)
-    # Check that the datetime is preserved.
-    # TODO(DA-226) Does this represent prod CloudSQL?
-    # SQLite (used in tests) drops time zone info, like the default sqlalchemy DateTime.
-    self.assertEquals(bo.created.isoformat(), now.replace(tzinfo=None).isoformat())
+    self.assertEquals(bo.created.isoformat(),
+                      now.astimezone(tzutc()).replace(tzinfo=None).isoformat())
