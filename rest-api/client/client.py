@@ -24,13 +24,16 @@ class HttpException(BaseException):
 
 class Client(object):
 
-  def __init__(self, base_path, parse_cli=True, creds_file=CREDS_FILE, default_instance=None):
+  def __init__(self, base_path, parse_cli=True, creds_file=CREDS_FILE, default_instance=None,
+               service=None):
     default_instance = default_instance or DEFAULT_INSTANCE
     if parse_cli:
       args = self.parse_args(default_instance)
       self.instance = args.instance
     else:
       self.instance = default_instance
+    if service and not 'localhost' in self.instance:
+      self.instance = 'https://%s.%s' % (service, self.instance[8:])
     self.base_path = base_path
     self.creds_file = creds_file
     self.fetcher = self._get_fetcher()
