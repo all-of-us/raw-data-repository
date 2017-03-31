@@ -50,7 +50,12 @@ echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
      ' "db_connection_name": "", '\
      ' "db_user": "'$DB_USER'", '\
      ' "db_name": "'$DB_NAME'" }' > $DB_INFO_FILE
-echo 'DROP DATABASE IF EXISTS '$DB_NAME'; CREATE DATABASE '$DB_NAME > $CREATE_DB_FILE
+# Include charset here since mysqld defaults to Latin1 (even though CloudSQL
+# is configured with UTF8 as the default).
+cat <<EOSQL > $CREATE_DB_FILE
+DROP DATABASE IF EXISTS $DB_NAME;
+CREATE DATABASE $DB_NAME CHARACTER SET utf8 COLLATE utf8_general_ci;
+EOSQL
 
 echo "Creating empty database..."
 mysql -u "$DB_USER" $PASSWORD_ARGS < ${CREATE_DB_FILE}
