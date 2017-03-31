@@ -29,6 +29,8 @@ _NO_HPO_PERCENT = 0.3
 _NO_QUESTIONNAIRES_SUBMITTED = 0.2
 # 20% of consented participants have no biobank orders
 _NO_BIOBANK_ORDERS = 0.2
+# 20% of consented participants have no physical measurements
+_NO_PHYSICAL_MEASUREMENTS = 0.2
 # 5% of participants with biobank orders have multiple
 _MULTIPLE_BIOBANK_ORDERS = 0.05
 # 20% of participants with biobank orders have no biobank samples
@@ -152,9 +154,101 @@ class FakeParticipantGenerator(object):
     self._last_names = self._read_all_lines('last_names.txt')
 
   def _submit_physical_measurements(self, participant_id, consent_time):
-    #pylint: disable=unused-argument
-    # TODO: submit physical measurements
-    return consent_time
+    if random.random() <= _NO_PHYSICAL_MEASUREMENTS:
+      return consent_time
+    entry_1 = {
+      "fullUrl": "urn:example:report",
+      "resource":
+        {"author": [{ "display": "N/A"}],
+         "date": "%s",
+         "resourceType": "Composition",
+         "section": [{"entry": [{"reference": "urn:example:blood-pressure-1"}]}],
+         "status": "final",
+         "subject": {
+          "reference": "Patient/%(participant_id)s"
+         },
+         "title": "PMI Intake Evaluation",
+         "type": {"coding": [{"code": "intake-exam-v0.0.1",
+                              "display": "PMI Intake Evaluation v0.0.1",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/document-type"
+                            }],
+                  "text": "PMI Intake Evaluation v0.0.1"
+                }
+        }
+    }
+    {
+      "fullUrl": "urn:example:blood-pressure-1",
+      "resource": {
+        "bodySite": {
+          "coding": [
+            {
+              "code": "368209003",
+              "display": "Right arm",
+              "system": "http://snomed.info/sct"
+            }
+          ],
+          "text": "Right arm"
+        },
+        "code": {
+          "coding": [
+            {
+              "code": "55284-4",
+              "display": "Blood pressure systolic and diastolic",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Blood pressure systolic and diastolic"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Systolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 109
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Diastolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 44
+            }
+          }
+        ],
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%(participant_id)s"
+        }
+      }
+    },
+    request = {"entry": [{"fullUrl": "urn:example:report",
+                          "resource":
+
+
 
   def _make_biobank_order_request(self, participant_id, sample_tests, created_time):
     samples = []
