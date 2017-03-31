@@ -393,12 +393,12 @@ class FakeParticipantGenerator(object):
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return None
     return '%d %s' % (random.randint(100, 9999), random.choice(self._street_names))
-    
+
   def _choose_city(self):
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return None
     return random.choice(self._city_names)
-    
+
   def _choose_phone_number(self):
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return None
@@ -439,9 +439,9 @@ class FakeParticipantGenerator(object):
     answer_map[CITY_QUESTION_CODE] = _string_answer(self._choose_city())
     answer_map[PHONE_NUMBER_QUESTION_CODE] = _string_answer(self._choose_phone_number())
     for question_code in [GENDER_IDENTITY_QUESTION_CODE, RECONTACT_METHOD_QUESTION_CODE,
-                          LANGUAGE_QUESTION_CODE, SEX_QUESTION_CODE, 
+                          LANGUAGE_QUESTION_CODE, SEX_QUESTION_CODE,
                           SEXUAL_ORIENTATION_QUESTION_CODE, EDUCATION_QUESTION_CODE,
-                          INCOME_QUESTION_CODE]:      
+                          INCOME_QUESTION_CODE]:
       answer_map[question_code] = self._choose_answer_code(question_code)
 
     self._choose_state_and_zip(answer_map)
