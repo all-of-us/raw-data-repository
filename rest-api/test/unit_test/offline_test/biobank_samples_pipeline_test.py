@@ -15,7 +15,7 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase
-from test.unit_test.unit_test_util import SqlTestBase, TestBase, participant_summary
+from test.unit_test.unit_test_util import SqlTestBase, TestBase
 from test import test_data
 from model.biobank_order import BiobankOrder, BiobankOrderedSample
 from model.biobank_stored_sample import BiobankStoredSample
@@ -51,7 +51,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     participant_ids = []
     for _ in xrange(3):
       participant = self.participant_dao.insert(Participant())
-      summary_dao.insert(participant_summary(participant))
+      summary_dao.insert(self.participant_summary(participant))
       participant_ids.append(participant.participantId)
       biobank_ids.append(participant.biobankId)
       self.assertEquals(summary_dao.get(participant.participantId).numBaselineSamplesArrived, 0)
@@ -167,7 +167,8 @@ class MySqlReconciliationTest(SqlTestBase):
 
   def _insert_participant(self):
     participant = self.participant_dao.insert(Participant())
-    self.summary_dao.insert(participant_summary(participant))  # satisfies the consent requirement
+    # satisfies the consent requirement
+    self.summary_dao.insert(self.participant_summary(participant))
     return participant
 
   def _insert_order(self, participant, order_id, tests, order_time):
