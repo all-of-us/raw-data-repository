@@ -306,6 +306,14 @@ class FakeParticipantGenerator(object):
       last_request_time = self._submit_biobank_order(participant_id, last_request_time)
     return last_request_time
 
+  def _update_participant(self, change_time, participant_response, participant_id):
+    return self._request_sender.send_request(change_time, 'PUT',
+                                             _participant_url(participant_id),
+                                             participant_response,
+                                             headers={'If-Match':
+                                                      participant_response['meta']['versionId'] }
+                                            )
+
   def _submit_hpo_changes(self, participant_response, participant_id, consent_time):
     if random.random() <= _NO_HPO_CHANGE:
       return consent_time, participant_response
@@ -313,19 +321,21 @@ class FakeParticipantGenerator(object):
     participant_response['providerLink'] = [_make_primary_provider_link(hpo)]
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_HPO_CHANGE)
     change_time = consent_time + datetime.timedelta(days=days_delta)
-    result = self._request_sender.send_request(change_time, 'PUT',
-                                               _participant_url(participant_id),
-                                                participant_response,
-                                                headers={ 'If-Match':
-                                                         participant_response['meta']['versionId'] }
-                                              )
+    result = self._update_participant(change_time, participant_response, participant_id) 
     return change_time, result
 
-  def _submit_status_changes(self, participant_response, participant_id, consent_time,
-                             last_request_time):
-    # TODO: submit HPO and withdrawal status / suspension status changes
-    pass
-
+  def _submit_status_changes(self, participant_response, participant_id, last_request_time):
+    if random.random() <= _SUSPENDED_PERCENT:
+      participant_response['suspensionStatus'] = 'NO_CONTACT'
+      days_delta = random.randint(0, _MAX_DAYS_BEFORE_SUSPENSION)
+      change_time = last_request_time + datetime.timedelta(days=days_delta)
+      result = self._update_participant(change_time, participant_response, participant_id)
+      last_request_time = change_time
+    if random.random() <= _WITHDRAWN_PERCENT:
+      participant_response['withdrawalStatus'] = 'NO_USE'
+      days_delta = random.randint(0, _MAX_DAYS_BEFORE_WITHDRAWAL)
+      change_time = last_request_time + datetime.timedelta(days=days_delta)
+      self._update_participant(change_time, participant_response, participant_id)
 
   def generate_participant(self):
     participant_response, creation_time = self._create_participant()
@@ -340,8 +350,7 @@ class FakeParticipantGenerator(object):
                                                                             consent_time)
       last_request_time = max(last_qr_time, last_measurement_time, last_biobank_time,
                               last_hpo_change_time)
-      self._submit_status_changes(participant_response, participant_id, consent_time,
-                                  last_request_time)
+      self._submit_status_changes(participant_response, participant_id, last_request_time)
 
   def _create_participant(self):
     participant_json = {}
