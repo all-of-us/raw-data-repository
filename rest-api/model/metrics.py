@@ -2,8 +2,9 @@ import clock
 import json
 
 from model.base import Base
+from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, BLOB, Boolean, DateTime, Date, String, ForeignKey
+from sqlalchemy import Column, Integer, BLOB, Boolean, Date, String, ForeignKey
 
 BUCKETS = {'buckets': {}}
 
@@ -16,7 +17,7 @@ class MetricsVersion(Base):
   metricsVersionId = Column('metrics_version_id', Integer, primary_key=True)
   inProgress = Column('in_progress', Boolean, default=False, nullable=False)
   complete = Column('complete', Boolean, default=False, nullable=False)
-  date = Column('date', DateTime, default=clock.CLOCK.now, nullable=False)
+  date = Column('date', UTCDateTime, default=clock.CLOCK.now, nullable=False)
   dataVersion = Column('data_version', Integer, nullable=False)
   buckets = relationship('MetricsBucket', cascade='all, delete-orphan')
 

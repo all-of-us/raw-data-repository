@@ -3,8 +3,9 @@ import json
 
 from model.code import CodeType
 from model.base import Base
+from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, DateTime, BLOB, String, ForeignKeyConstraint, Boolean
+from sqlalchemy import Column, Integer, BLOB, String, ForeignKeyConstraint, Boolean
 from sqlalchemy import UniqueConstraint, ForeignKey
 from werkzeug.exceptions import BadRequest
 
@@ -13,8 +14,8 @@ class QuestionnaireBase(object):
   questionnaireId = Column('questionnaire_id', Integer, primary_key=True)
   # Incrementing version, starts at 1 and is incremented on each update.
   version = Column('version', Integer, nullable=False)
-  created = Column('created', DateTime, nullable=False)
-  lastModified = Column('last_modified', DateTime, nullable=False)
+  created = Column('created', UTCDateTime, nullable=False)
+  lastModified = Column('last_modified', UTCDateTime, nullable=False)
   # The JSON representation of the questionnaire provided by the client.
   # Concepts and questions can be be parsed out of this for use in querying.
   resource = Column('resource', BLOB, nullable=False)
