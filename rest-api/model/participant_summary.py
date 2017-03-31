@@ -72,7 +72,8 @@ class ParticipantSummary(Base):
   questionnaireOnTheBasicsTime = Column('questionnaire_on_the_basics_time', UTCDateTime)
   questionnaireOnHealthcareAccess = Column('questionnaire_on_healthcare_access',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnHealthcareAccessTime = Column('questionnaire_on_healthcare_access_time', UTCDateTime)
+  questionnaireOnHealthcareAccessTime = Column('questionnaire_on_healthcare_access_time', 
+                                               UTCDateTime)
   questionnaireOnMedicalHistory = Column('questionnaire_on_medical_history',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnMedicalHistoryTime = Column('questionnaire_on_medical_history_time', UTCDateTime)

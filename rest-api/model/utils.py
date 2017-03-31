@@ -35,16 +35,10 @@ class UTCDateTime(TypeDecorator):
   impl = DateTime
 
   def process_bind_param(self, value, engine):
+    #pylint: disable=unused-argument
     if value is not None and value.tzinfo:      
       return value.astimezone(tzutc()).replace(tzinfo=None)
     return value
-
-    def process_result_value(self, value, engine):
-      if value is not None:
-        return datetime(value.year, value.month, value.day,
-                        value.hour, value.minute, value.second,
-                        value.microsecond, tzinfo=tzutc())
-      return value
 
 def to_client_participant_id(participant_id):
   return 'P%d' % participant_id
