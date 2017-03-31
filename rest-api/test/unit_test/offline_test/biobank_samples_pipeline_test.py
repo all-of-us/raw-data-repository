@@ -84,10 +84,12 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     # Creation time is stored at second granularity.
     self._write_cloud_csv('a_lex_first_created_first.csv', 'any contents')
     time.sleep(1.0)
-    self._write_cloud_csv('c_lex_last_created_middle.csv', 'any contents')
+    self._write_cloud_csv('z_lex_last_created_middle.csv', 'any contents')
     time.sleep(1.0)
     created_last = 'b_lex_middle_created_last.csv'
     self._write_cloud_csv(created_last, 'any contents')
+    self._write_cloud_csv(
+        '%s/created_last_in_subdir.csv' % biobank_samples_pipeline._REPORT_SUBDIR, 'any contents')
 
     latest_filename = biobank_samples_pipeline._find_latest_samples_csv(_FAKE_BUCKET)
     self.assertEquals(latest_filename, '/%s/%s' % (_FAKE_BUCKET, created_last))

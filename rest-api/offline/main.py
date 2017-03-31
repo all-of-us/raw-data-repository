@@ -32,8 +32,12 @@ def recalculate_metrics():
 @api_util.auth_required_cron
 def import_biobank_samples():
   # Note that crons have a 10 minute deadline instead of the normal 60s.
+  logging.info('Starting samples import.')
   written, skipped = biobank_samples_pipeline.upsert_from_latest_csv()
+  logging.info(
+      'Import complete (%d written / %d skipped), generating report.', written, skipped)
   biobank_samples_pipeline.write_reconciliation_report()
+  logging.info('Generated reconciliation report.')
   return json.dumps({'written': written, 'skipped': skipped})
 
 

@@ -24,6 +24,8 @@ from model.utils import from_client_biobank_id, to_client_biobank_id
 
 # Format for dates in output filenames for the reconciliation report.
 _FILENAME_DATE_FORMAT = '%Y-%m-%d'
+# The output of the reconciliation report goes into this subdirectory within the upload bucket.
+_REPORT_SUBDIR = 'reconciliation'
 
 
 def upsert_from_latest_csv():
@@ -52,7 +54,11 @@ def _find_latest_samples_csv(cloud_bucket_name):
   bucket_stat_list = cloudstorage_api.listbucket('/' + cloud_bucket_name)
   if not bucket_stat_list:
     raise RuntimeError('No files in cloud bucket %r.' % cloud_bucket_name)
-  bucket_stat_list = [s for s in bucket_stat_list if s.filename.lower().endswith('.csv')]
+  # GCS does not really have the concept of directories (it's just a filename convention), so all
+  # directory listings are recursive and we must filter out subdirectory contents.
+  bucket_stat_list = [
+      s for s in bucket_stat_list
+      if s.filename.lower().endswith('.csv') and '/%s/' % _REPORT_SUBDIR not in s.filename]
   if not bucket_stat_list:
     raise RuntimeError(
         'No CSVs in cloud bucket %r (all files: %s).' % (cloud_bucket_name, bucket_stat_list))
@@ -130,8 +136,8 @@ def write_reconciliation_report():
 
 def _get_report_paths(bucket_name, report_dt):
   return [
-      '/%s/reconciliation/report_%s_%s.csv' % (
-          bucket_name, report_dt.strftime(_FILENAME_DATE_FORMAT), report_name)
+      '/%s/%s/report_%s_%s.csv' % (
+          bucket_name, _REPORT_SUBDIR, report_dt.strftime(_FILENAME_DATE_FORMAT), report_name)
       for report_name in ('received', 'over_24h', 'missing')]
 
 
