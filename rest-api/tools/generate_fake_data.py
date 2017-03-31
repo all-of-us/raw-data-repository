@@ -15,7 +15,7 @@ def main(args):
   while total_participants_created < args.num_participants:
     participants_for_batch = min(MAX_PARTICIPANTS_PER_REQUEST,
                                  args.num_participants - total_participants_created)
-    request_body = {'num_participants': participants_for_batch }
+    request_body = {'num_participants': participants_for_batch}
     client.request_json('DataGen', 'POST', request_body, test_unauthenticated=False)
     total_participants_created += participants_for_batch
     print "Total participants created: %d" % total_participants_created

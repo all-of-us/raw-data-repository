@@ -6,7 +6,6 @@ import random
 
 from cloudstorage import cloudstorage_api
 from code_constants import BIOBANK_TESTS
-from dao import database_factory
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_dao import ParticipantDao
 

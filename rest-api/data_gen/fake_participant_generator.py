@@ -157,21 +157,21 @@ class FakeParticipantGenerator(object):
   
   def _make_biobank_order_request(self, participant_id, sample_tests, created_time):
     samples = []
-    request = { "subject": "Patient/%s" % participant_id,
-                "identifier": [{"system": "http://health-pro.org",
+    request = {"subject": "Patient/%s" % participant_id,
+               "identifier": [{"system": "http://health-pro.org",
                                 "value": "healthpro-order-id-123%s" % participant_id},
                               {"system": "https://orders.mayomedicallaboratories.com",
                                 "value": "WEB1YLHV%s" % participant_id}],
-                # TODO: randomize this?
-                "sourceSite": {"system": "http://health-pro.org",
-                               "value": "789012"},
-                "created": created_time.strftime(_TIME_FORMAT),
-                "samples": samples,
-                "notes": {
-                  "collected": "Collected notes",
-                  "processed": "Processed notes",
-                  "finalized": "Finalized notes"
-                }                
+               # TODO: randomize this?
+               "sourceSite": {"system": "http://health-pro.org",
+                              "value": "789012"},
+               "created": created_time.strftime(_TIME_FORMAT),
+               "samples": samples,
+               "notes": {
+                 "collected": "Collected notes",
+                 "processed": "Processed notes",
+                 "finalized": "Finalized notes"
+               }                
               }    
     for sample_test in sample_tests:
       minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_ORDER_CREATED_AND_SAMPLE_COLLECTED)
@@ -186,7 +186,7 @@ class FakeParticipantGenerator(object):
                       "collected": collected_time.strftime(_TIME_FORMAT),
                       "processed": processed_time.strftime(_TIME_FORMAT),
                       "finalized": finalized_time.strftime(_TIME_FORMAT),
-                      "processingRequired": processing_required })    
+                      "processingRequired": processing_required})    
     return request
     
   def _submit_biobank_order(self, participant_id, start_time):
