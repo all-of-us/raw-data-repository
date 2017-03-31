@@ -42,10 +42,10 @@ _MAX_DAYS_BEFORE_BIOBANK_ORDER = 60
 # Max amount of time between created biobank orders and collected time for a sample.
 _MAX_MINUTES_BETWEEN_ORDER_CREATED_AND_SAMPLE_COLLECTED = 72 * 60
 # Max amount of time between collected and processed biobank order samples.
-_MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_PROCESSED = 72 * 60 
+_MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_PROCESSED = 72 * 60
 # Max amount of time between processed and finalized biobank order samples.
 _MAX_MINUTES_BETWEEN_SAMPLE_PROCESSED_AND_FINALIZED = 72 * 60
-# Max amount of time between processed and finalized biobank orders. 
+# Max amount of time between processed and finalized biobank orders.
 # Random amount of time between questionnaire submissions
 _MAX_DAYS_BETWEEN_SUBMISSIONS = 30
 
@@ -154,7 +154,7 @@ class FakeParticipantGenerator(object):
   def _submit_physical_measurements(self, participant_id, consent_time):
     # TODO: submit physical measurements
     return consent_time
-  
+
   def _make_biobank_order_request(self, participant_id, sample_tests, created_time):
     samples = []
     request = {"subject": "Patient/%s" % participant_id,
@@ -171,8 +171,8 @@ class FakeParticipantGenerator(object):
                  "collected": "Collected notes",
                  "processed": "Processed notes",
                  "finalized": "Finalized notes"
-               }                
-              }    
+               }
+              }
     for sample_test in sample_tests:
       minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_ORDER_CREATED_AND_SAMPLE_COLLECTED)
       collected_time = created_time + datetime.timedelta(minutes=minutes_delta)
@@ -180,47 +180,47 @@ class FakeParticipantGenerator(object):
       processed_time = collected_time + datetime.timedelta(minutes=minutes_delta)
       minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_PROCESSED_AND_FINALIZED)
       finalized_time = processed_time + datetime.timedelta(minutes=minutes_delta)
-      processing_required = True if random.random() <= 0.5 else False      
+      processing_required = True if random.random() <= 0.5 else False
       samples.append({"test": sample_test,
                       "description": "Description for %s" % sample_test,
                       "collected": collected_time.strftime(_TIME_FORMAT),
                       "processed": processed_time.strftime(_TIME_FORMAT),
                       "finalized": finalized_time.strftime(_TIME_FORMAT),
-                      "processingRequired": processing_required})    
+                      "processingRequired": processing_required})
     return request
-    
+
   def _submit_biobank_order(self, participant_id, start_time):
     num_samples = random.randint(1, len(BIOBANK_TESTS))
     order_tests = random.sample(BIOBANK_TESTS, num_samples)
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_BIOBANK_ORDER)
     created_time = start_time + datetime.timedelta(days=days_delta)
-    order_json = self._make_biobank_order_request(participant_id, order_tests, created_time)    
+    order_json = self._make_biobank_order_request(participant_id, order_tests, created_time)
     self._request_sender.send_request(created_time, 'POST',
                                       _biobank_order_url(participant_id), order_json)
     return created_time
-    
+
   def _submit_biobank_data(self, participant_id, consent_time):
     if random.random() <= _NO_BIOBANK_ORDERS:
       return consent_time
     last_request_time = self._submit_biobank_order(participant_id, consent_time)
     if random.random() <= _MULTIPLE_BIOBANK_ORDERS:
-      last_request_time = self._submit_biobank_order(participant_id, last_request_time)    
+      last_request_time = self._submit_biobank_order(participant_id, last_request_time)
     return last_request_time
-  
+
   def _submit_participant_changes(self, participant_id, consent_time, last_request_time):
     # TODO: submit HPO and withdrawal status / suspension status changes
     pass
 
   def generate_participant(self):
     participant_id, creation_time = self._create_participant()
-    consent_time, last_qr_time = self._submit_questionnaire_responses(participant_id, 
+    consent_time, last_qr_time = self._submit_questionnaire_responses(participant_id,
                                                                            creation_time)
     if consent_time:
       last_measurement_time = self._submit_physical_measurements(participant_id, consent_time)
       last_biobank_time = self._submit_biobank_data(participant_id, consent_time)
       last_request_time = max(last_qr_time, last_measurement_time, last_biobank_time)
       self._submit_participant_changes(participant_id, consent_time, last_request_time)
-      
+
   def _create_participant(self):
     participant_json = {}
     if random.random() > _NO_HPO_PERCENT:

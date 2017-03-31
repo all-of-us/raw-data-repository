@@ -1,7 +1,7 @@
 import csv
 import clock
 import config
-import datetime 
+import datetime
 import random
 
 from cloudstorage import cloudstorage_api
@@ -37,32 +37,32 @@ _HEADERS = ['Sample Id', 'Parent Sample Id', 'Sample Confirmed Date', 'External 
 
 class FakeBiobankSamplesGenerator(object):
   """Generates fake biobank samples for the participants in the database."""
-  
+
   def generate_samples(self):
     bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     now = clock.CLOCK.now()
     file_name = '/%s/fake_%s.csv' % (bucket_name, now.isoformat())
-    num_rows = 0    
+    num_rows = 0
     sample_id_start = random.randint(1000000, 10000000)
-    with cloudstorage_api.open(file_name, mode='w') as dest:        
-      writer = csv.writer(dest, delimiter="\t")        
-        
+    with cloudstorage_api.open(file_name, mode='w') as dest:
+      writer = csv.writer(dest, delimiter="\t")
+
       biobank_order_dao = BiobankOrderDao()
       with biobank_order_dao.session() as session:
-        rows = biobank_order_dao.get_ordered_samples_sample(session, 
-                                                            _PARTICIPANTS_WITH_STORED_SAMPLES, 
+        rows = biobank_order_dao.get_ordered_samples_sample(session,
+                                                            _PARTICIPANTS_WITH_STORED_SAMPLES,
                                                             _BATCH_SIZE)
         for biobank_id, collected_time, test in rows:
           if random.random() <= _MISSING_STORED_SAMPLE:
             continue
           minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED)
           confirmed_time = collected_time + datetime.timedelta(minutes=minutes_delta)
-          writer.writerow([sample_id_start + num_rows, None, 
-                           confirmed_time.strftime(_TIME_FORMAT), 'B%d' % biobank_id, test])          
+          writer.writerow([sample_id_start + num_rows, None,
+                           confirmed_time.strftime(_TIME_FORMAT), 'B%d' % biobank_id, test])
           num_rows += 1
       participant_dao = ParticipantDao()
       with participant_dao.session() as session:
-        rows = participant_dao.get_biobank_ids_sample(session, 
+        rows = participant_dao.get_biobank_ids_sample(session,
                                                       _PARTICIPANTS_WITH_ORPHAN_SAMPLES,
                                                       _BATCH_SIZE)
         for biobank_id, sign_up_time in rows:
@@ -70,7 +70,7 @@ class FakeBiobankSamplesGenerator(object):
           confirmed_time = sign_up_time + datetime.timedelta(minutes=minutes_delta)
           tests = random.sample(BIOBANK_TESTS, random.randint(1, len(BIOBANK_TESTS)))
           for test in tests:
-            writer.writerow([sample_id_start + num_rows, None, 
+            writer.writerow([sample_id_start + num_rows, None,
                              confirmed_time.strftime(_TIME_FORMAT), 'B%d' % biobank_id, test])
             num_rows += 1
     return num_rows, file_name

@@ -21,8 +21,8 @@ class DataGenApi(Resource):
   @nonprod
   def post(self):
     resource = request.get_data()
-    resource_json = json.loads(resource)    
-    num_participants = int(resource_json.get('num_participants', 0))    
+    resource_json = json.loads(resource)
+    num_participants = int(resource_json.get('num_participants', 0))
     response = {}
     for _ in range(0, num_participants):
       self._participant_generator.generate_participant()
@@ -30,5 +30,5 @@ class DataGenApi(Resource):
       num_samples, path = FakeBiobankSamplesGenerator().generate_samples()
       logging.info("Generated %d samples in %s." % (num_samples, path))
       response['num_samples'] = num_samples
-      response['samples_path'] = path      
+      response['samples_path'] = path
     return response

@@ -53,7 +53,7 @@ class BiobankOrderDao(BaseDao):
       return (session.query(BiobankOrder)
           .options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples))
           .get(obj_id))
-  
+
   def get_ordered_samples_sample(self, session, percentage, batch_size):
     """Retrieves the biobank ID, collected time, and test for a percentage of ordered samples.
     Used in fake data generation."""

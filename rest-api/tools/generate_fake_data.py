@@ -21,9 +21,9 @@ def main(args):
     print "Total participants created: %d" % total_participants_created
   if args.create_biobank_samples:
     request_body = {'create_biobank_samples': True}
-    response = client.request_json('DataGen', 'POST', request_body, test_unauthenticated=False)    
+    response = client.request_json('DataGen', 'POST', request_body, test_unauthenticated=False)
     print "%d samples generated at %s." % (response['num_samples'], response['samples_path'])
-    
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
       description=__doc__,
@@ -39,10 +39,10 @@ if __name__ == '__main__':
   parser.add_argument('--num_participants',
                       type=int,
                       help='The number of participants to create.',
-                      default=0)  
+                      default=0)
   parser.add_argument('--create_biobank_samples',
                       dest="create_biobank_samples",
                       action='store_true',
-                      help='True if biobank samples should be created')                      
+                      help='True if biobank samples should be created')
 
   main(parser.parse_args())
