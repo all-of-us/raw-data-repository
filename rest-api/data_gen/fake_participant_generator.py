@@ -152,6 +152,7 @@ class FakeParticipantGenerator(object):
     self._last_names = self._read_all_lines('last_names.txt')
 
   def _submit_physical_measurements(self, participant_id, consent_time):
+    #pylint: disable=unused-argument
     # TODO: submit physical measurements
     return consent_time
 
