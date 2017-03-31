@@ -173,7 +173,7 @@ class FakeParticipantGenerator(object):
     entry_1 = {
       "fullUrl": "urn:example:report",
       "resource":
-        {"author": [{ "display": "N/A"}],
+        {"author": [{"display": "N/A"}],
          "date": time_str,
          "resourceType": "Composition",
          "section": [{"entry": [{"reference": "urn:example:blood-pressure-1"}]}],
@@ -311,7 +311,7 @@ class FakeParticipantGenerator(object):
                                              _participant_url(participant_id),
                                              participant_response,
                                              headers={'If-Match':
-                                                      participant_response['meta']['versionId'] }
+                                                      participant_response['meta']['versionId']}
                                             )
 
   def _submit_hpo_changes(self, participant_response, participant_id, consent_time):
@@ -329,7 +329,8 @@ class FakeParticipantGenerator(object):
       participant_response['suspensionStatus'] = 'NO_CONTACT'
       days_delta = random.randint(0, _MAX_DAYS_BEFORE_SUSPENSION)
       change_time = last_request_time + datetime.timedelta(days=days_delta)
-      result = self._update_participant(change_time, participant_response, participant_id)
+      participant_response = self._update_participant(change_time, participant_response, 
+                                                      participant_id)
       last_request_time = change_time
     if random.random() <= _WITHDRAWN_PERCENT:
       participant_response['withdrawalStatus'] = 'NO_USE'
