@@ -321,7 +321,7 @@ class FakeParticipantGenerator(object):
     participant_response['providerLink'] = [_make_primary_provider_link(hpo)]
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_HPO_CHANGE)
     change_time = consent_time + datetime.timedelta(days=days_delta)
-    result = self._update_participant(change_time, participant_response, participant_id) 
+    result = self._update_participant(change_time, participant_response, participant_id)
     return change_time, result
 
   def _submit_status_changes(self, participant_response, participant_id, last_request_time):
@@ -329,7 +329,7 @@ class FakeParticipantGenerator(object):
       participant_response['suspensionStatus'] = 'NO_CONTACT'
       days_delta = random.randint(0, _MAX_DAYS_BEFORE_SUSPENSION)
       change_time = last_request_time + datetime.timedelta(days=days_delta)
-      participant_response = self._update_participant(change_time, participant_response, 
+      participant_response = self._update_participant(change_time, participant_response,
                                                       participant_id)
       last_request_time = change_time
     if random.random() <= _WITHDRAWN_PERCENT:
