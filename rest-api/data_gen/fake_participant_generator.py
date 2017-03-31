@@ -13,6 +13,12 @@ from code_constants import QUESTION_CODE_TO_FIELD, RACE_QUESTION_CODE, GENDER_ID
 from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE
 from code_constants import MIDDLE_NAME_QUESTION_CODE, ZIPCODE_QUESTION_CODE
 from code_constants import STATE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE, EMAIL_QUESTION_CODE
+from code_constants import STREET_ADDRESS_QUESTION_CODE, CITY_QUESTION_CODE
+from code_constants import PHONE_NUMBER_QUESTION_CODE, RECONTACT_METHOD_QUESTION_CODE
+from code_constants import LANGUAGE_QUESTION_CODE, SEX_QUESTION_CODE
+from code_constants import SEXUAL_ORIENTATION_QUESTION_CODE, EDUCATION_QUESTION_CODE
+from code_constants import INCOME_QUESTION_CODE
+
 from code_constants import PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE, BIOBANK_TESTS
 
 from dao.code_dao import CodeDao
@@ -143,9 +149,8 @@ class FakeParticipantGenerator(object):
           question_code_to_questionnaire_id[question_code.value] = questionnaire.questionnaireId
           questions.append((question_code.value, question.linkId))
           answer_codes = self._get_answer_codes(question_code)
-          if answer_codes:
-            self._question_code_to_answer_codes[question_code.value] = (answer_codes +
-                                                                        _CONSTANT_CODES)
+          all_codes = (answer_codes + _CONSTANT_CODES) if answer_codes else _CONSTANT_CODES
+          self._question_code_to_answer_codes[question_code.value] = all_codes
     # Make sure that all the questions are in the questionnaires.
     for code_value in _QUESTION_CODES:
       questionnaire_id = question_code_to_questionnaire_id.get(code_value)
@@ -166,6 +171,8 @@ class FakeParticipantGenerator(object):
     self._first_names = self._read_all_lines('first_names.txt')
     self._middle_names = self._read_all_lines('middle_names.txt')
     self._last_names = self._read_all_lines('last_names.txt')
+    self._city_names = self._read_all_lines('city_names.txt')
+    self._street_names = self._read_all_lines('street_names.txt')
 
   def _make_physical_measurements(self, participant_id, measurements_time):
     time_str = measurements_time.isoformat()
@@ -382,6 +389,22 @@ class FakeParticipantGenerator(object):
     codes = random.sample(self._question_code_to_answer_codes[question_code], num_answers)
     return [_code_answer(code) for code in codes]
 
+  def _choose_street_address(self):
+    if random.random() <= _QUESTION_NOT_ANSWERED:
+      return None
+    return '%d %s' % (random.randint(100, 9999), random.choice(self._street_names))
+    
+  def _choose_city(self):
+    if random.random() <= _QUESTION_NOT_ANSWERED:
+      return None
+    return random.choice(self._city_names)
+    
+  def _choose_phone_number(self):
+    if random.random() <= _QUESTION_NOT_ANSWERED:
+      return None
+    return '(%d) %d-%d' % (random.randint(200, 999), random.randint(200, 999),
+                           random.randint(0, 9999))
+
   def _choose_state_and_zip(self, answer_map):
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return
@@ -409,11 +432,18 @@ class FakeParticipantGenerator(object):
 
   def _make_answer_map(self):
     answer_map = {}
-    gender_identity_answers = self._choose_answer_code(GENDER_IDENTITY_QUESTION_CODE)
-    answer_map[GENDER_IDENTITY_QUESTION_CODE] = gender_identity_answers
     answer_map[RACE_QUESTION_CODE] = self._choose_answer_codes(RACE_QUESTION_CODE,
                                                                _MULTIPLE_RACE_ANSWERS,
                                                                _MAX_RACE_ANSWERS)
+    answer_map[STREET_ADDRESS_QUESTION_CODE] = _string_answer(self._choose_street_address())
+    answer_map[CITY_QUESTION_CODE] = _string_answer(self._choose_city())
+    answer_map[PHONE_NUMBER_QUESTION_CODE] = _string_answer(self._choose_phone_number())
+    for question_code in [GENDER_IDENTITY_QUESTION_CODE, RECONTACT_METHOD_QUESTION_CODE,
+                          LANGUAGE_QUESTION_CODE, SEX_QUESTION_CODE, 
+                          SEXUAL_ORIENTATION_QUESTION_CODE, EDUCATION_QUESTION_CODE,
+                          INCOME_QUESTION_CODE]:      
+      answer_map[question_code] = self._choose_answer_code(question_code)
+
     self._choose_state_and_zip(answer_map)
     self._choose_name(answer_map)
     self._choose_date_of_birth(answer_map)

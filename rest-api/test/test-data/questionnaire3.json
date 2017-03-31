@@ -136,7 +136,7 @@
         "text": "Language",
         "concept": [{
           "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-          "code": "ConsentPII_Language",
+          "code": "Language_SpokenWrittenLanguage",
           "display": "Language"
         }]
       }, {
