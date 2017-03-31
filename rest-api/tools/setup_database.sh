@@ -74,7 +74,7 @@ if [ "${CREATE_INSTANCE}" = "Y" ]
 then
   gcloud beta sql instances create $INSTANCE_NAME --tier=$MACHINE_TYPE --activation-policy=ALWAYS \
       --backup-start-time 00:00 --failover-replica-name $FAILOVER_INSTANCE_NAME --enable-bin-log \
-      --database-version MYSQL_5_7 --project $PROJECT
+      --database-version MYSQL_5_7 --project $PROJECT --storage-auto-increase
   sleep 3
 fi
 gcloud sql instances set-root-password $INSTANCE_NAME --password $PASSWORD

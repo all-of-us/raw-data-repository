@@ -1,8 +1,10 @@
+import logging
 import json
 
 from api_util import nonprod
 from config_api import auth_required_config_admin
 from data_gen.fake_participant_generator import FakeParticipantGenerator
+from data_gen.fake_biobank_samples_generator import FakeBiobankSamplesGenerator
 from data_gen.request_sender import ServerRequestSender
 from flask import request
 from flask.ext.restful import Resource
@@ -19,8 +21,14 @@ class DataGenApi(Resource):
   @nonprod
   def post(self):
     resource = request.get_data()
-    resource_json = json.loads(resource)
-    num_participants = int(resource_json['num_participants'])
+    resource_json = json.loads(resource)    
+    num_participants = int(resource_json.get('num_participants', 0))    
+    response = {}
     for _ in range(0, num_participants):
       self._participant_generator.generate_participant()
-    return 'OK'
+    if resource_json.get('create_biobank_samples', False):
+      num_samples, path = FakeBiobankSamplesGenerator().generate_samples()
+      logging.info("Generated %d samples in %s." % (num_samples, path))
+      response['num_samples'] = num_samples
+      response['samples_path'] = path      
+    return response
