@@ -48,12 +48,6 @@ def _build_pipeline_app():
       methods=['GET'])
 
   offline_app.add_url_rule(
-      PREFIX + 'BiobankSamplesReconciliation',
-      endpoint='biobankSamplesReconciliation',
-      view_func=write_biobank_samples_reconciliation_report,
-      methods=['GET'])
-
-  offline_app.add_url_rule(
       PREFIX + 'MetricsRecalculate',
       endpoint='metrics_recalc',
       view_func=recalculate_metrics,
