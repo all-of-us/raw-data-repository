@@ -29,6 +29,14 @@ _NO_HPO_PERCENT = 0.3
 _NO_QUESTIONNAIRES_SUBMITTED = 0.2
 # 20% of consented participants have no biobank orders
 _NO_BIOBANK_ORDERS = 0.2
+# 20% of consented participants have no physical measurements
+_NO_PHYSICAL_MEASUREMENTS = 0.2
+# 80% of consented participants have no changes to their HPO
+_NO_HPO_CHANGE = 0.8
+# 5% of participants withdraw from the study
+_WITHDRAWN_PERCENT = 0.05
+# 5% of participants suspend their account
+_SUSPENDED_PERCENT = 0.05
 # 5% of participants with biobank orders have multiple
 _MULTIPLE_BIOBANK_ORDERS = 0.05
 # 20% of participants with biobank orders have no biobank samples
@@ -37,8 +45,16 @@ _NO_BIOBANK_SAMPLES = 0.2
 _QUESTIONNAIRE_NOT_SUBMITTED = 0.4
 # Any given question on a submitted questionnaire has a 10% chance of not being answered
 _QUESTION_NOT_ANSWERED = 0.1
+# Maximum number of days between a participant consenting and submitting physical measurements
+_MAX_DAYS_BEFORE_PHYSICAL_MEASUREMENTS = 60
 # Maximum number of days between a participant consenting and submitting a biobank order.
 _MAX_DAYS_BEFORE_BIOBANK_ORDER = 60
+# Maximum number of days between a participant consenting and changing their HPO
+_MAX_DAYS_BEFORE_HPO_CHANGE = 60
+# Maximum number of days between the last request and the participant withdrawing from the study
+_MAX_DAYS_BEFORE_WITHDRAWAL = 30
+# Maximum number of days between the last request and the participant suspending their account
+_MAX_DAYS_BEFORE_SUSPENSION = 30
 # Max amount of time between created biobank orders and collected time for a sample.
 _MAX_MINUTES_BETWEEN_ORDER_CREATED_AND_SAMPLE_COLLECTED = 72 * 60
 # Max amount of time between collected and processed biobank order samples.
@@ -151,10 +167,91 @@ class FakeParticipantGenerator(object):
     self._middle_names = self._read_all_lines('middle_names.txt')
     self._last_names = self._read_all_lines('last_names.txt')
 
+  def _make_physical_measurements(self, participant_id, measurements_time):
+    time_str = measurements_time.isoformat()
+    blood_pressure = random.randint(50, 200)
+    entry_1 = {
+      "fullUrl": "urn:example:report",
+      "resource":
+        {"author": [{"display": "N/A"}],
+         "date": time_str,
+         "resourceType": "Composition",
+         "section": [{"entry": [{"reference": "urn:example:blood-pressure-1"}]}],
+         "status": "final",
+         "subject": {
+          "reference": "Patient/%s" % participant_id
+         },
+         "title": "PMI Intake Evaluation",
+         "type": {"coding": [{"code": "intake-exam-v0.0.1",
+                              "display": "PMI Intake Evaluation v0.0.1",
+                              "system": "http://terminology.pmi-ops.org/CodeSystem/document-type"
+                            }],
+                  "text": "PMI Intake Evaluation v0.0.1"
+                }
+        }
+    }
+    entry_2 = {
+      "fullUrl": "urn:example:blood-pressure-1",
+      "resource": {
+        "bodySite": {
+          "coding": [
+            {
+              "code": "368209003",
+              "display": "Right arm",
+              "system": "http://snomed.info/sct"
+            }
+          ],
+          "text": "Right arm"
+        },
+        "code": {
+          "coding": [
+            {
+              "code": "55284-4",
+              "display": "Blood pressure systolic and diastolic",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Blood pressure systolic and diastolic"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Systolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": blood_pressure
+            }
+          }
+        ],
+        "effectiveDateTime": time_str,
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/%s" % participant_id
+        }
+      }
+    },
+    return {"entry": [entry_1, entry_2]}
+
   def _submit_physical_measurements(self, participant_id, consent_time):
-    #pylint: disable=unused-argument
-    # TODO: submit physical measurements
-    return consent_time
+    if random.random() <= _NO_PHYSICAL_MEASUREMENTS:
+      return consent_time
+    days_delta = random.randint(0, _MAX_DAYS_BEFORE_BIOBANK_ORDER)
+    measurements_time = consent_time + datetime.timedelta(days=days_delta)
+    request_json = self._make_physical_measurements(participant_id, measurements_time)
+    self._request_sender.send_request(measurements_time, 'POST',
+                                      _physical_measurements_url(participant_id), request_json)
+    return measurements_time
 
   def _make_biobank_order_request(self, participant_id, sample_tests, created_time):
     samples = []
@@ -209,19 +306,52 @@ class FakeParticipantGenerator(object):
       last_request_time = self._submit_biobank_order(participant_id, last_request_time)
     return last_request_time
 
-  def _submit_participant_changes(self, participant_id, consent_time, last_request_time):
-    # TODO: submit HPO and withdrawal status / suspension status changes
-    pass
+  def _update_participant(self, change_time, participant_response, participant_id):
+    return self._request_sender.send_request(change_time, 'PUT',
+                                             _participant_url(participant_id),
+                                             participant_response,
+                                             headers={'If-Match':
+                                                      participant_response['meta']['versionId']}
+                                            )
+
+  def _submit_hpo_changes(self, participant_response, participant_id, consent_time):
+    if random.random() <= _NO_HPO_CHANGE:
+      return consent_time, participant_response
+    hpo = random.choice(self._hpos)
+    participant_response['providerLink'] = [_make_primary_provider_link(hpo)]
+    days_delta = random.randint(0, _MAX_DAYS_BEFORE_HPO_CHANGE)
+    change_time = consent_time + datetime.timedelta(days=days_delta)
+    result = self._update_participant(change_time, participant_response, participant_id)
+    return change_time, result
+
+  def _submit_status_changes(self, participant_response, participant_id, last_request_time):
+    if random.random() <= _SUSPENDED_PERCENT:
+      participant_response['suspensionStatus'] = 'NO_CONTACT'
+      days_delta = random.randint(0, _MAX_DAYS_BEFORE_SUSPENSION)
+      change_time = last_request_time + datetime.timedelta(days=days_delta)
+      participant_response = self._update_participant(change_time, participant_response,
+                                                      participant_id)
+      last_request_time = change_time
+    if random.random() <= _WITHDRAWN_PERCENT:
+      participant_response['withdrawalStatus'] = 'NO_USE'
+      days_delta = random.randint(0, _MAX_DAYS_BEFORE_WITHDRAWAL)
+      change_time = last_request_time + datetime.timedelta(days=days_delta)
+      self._update_participant(change_time, participant_response, participant_id)
 
   def generate_participant(self):
-    participant_id, creation_time = self._create_participant()
+    participant_response, creation_time = self._create_participant()
+    participant_id = participant_response['participantId']
     consent_time, last_qr_time = self._submit_questionnaire_responses(participant_id,
                                                                            creation_time)
     if consent_time:
       last_measurement_time = self._submit_physical_measurements(participant_id, consent_time)
       last_biobank_time = self._submit_biobank_data(participant_id, consent_time)
-      last_request_time = max(last_qr_time, last_measurement_time, last_biobank_time)
-      self._submit_participant_changes(participant_id, consent_time, last_request_time)
+      last_hpo_change_time, participant_response = self._submit_hpo_changes(participant_response,
+                                                                            participant_id,
+                                                                            consent_time)
+      last_request_time = max(last_qr_time, last_measurement_time, last_biobank_time,
+                              last_hpo_change_time)
+      self._submit_status_changes(participant_response, participant_id, last_request_time)
 
   def _create_participant(self):
     participant_json = {}
@@ -232,7 +362,7 @@ class FakeParticipantGenerator(object):
     creation_time = self._days_ago(random.randint(0, _MAX_DAYS_HISTORY))
     participant_response = self._request_sender.send_request(creation_time, 'POST', 'Participant',
                                                              participant_json)
-    return (participant_response['participantId'], creation_time)
+    return (participant_response, creation_time)
 
   def _random_code_answer(self, question_code):
     code = random.choice(self._question_code_to_answer_codes[question_code])
@@ -345,6 +475,12 @@ def _questionnaire_response_url(participant_id):
 
 def _biobank_order_url(participant_id):
   return 'Participant/%s/BiobankOrder' % participant_id
+
+def _physical_measurements_url(participant_id):
+  return 'Participant/%s/PhysicalMeasurements' % participant_id
+
+def _participant_url(participant_id):
+  return 'Participant/%s' % participant_id
 
 def _string_answer(value):
   return [{"valueString": value}]
