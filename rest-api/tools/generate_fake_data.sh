@@ -27,4 +27,5 @@ then
   EXTRA_ARGS="--creds_file ${CREDS_FILE} --instance ${INSTANCE} ${EXTRA_ARGS}"
 fi
 
+echo "BLAH: $EXTRA_ARGS"
 (cd ${BASE_DIR}; python tools/generate_fake_data.py $EXTRA_ARGS)

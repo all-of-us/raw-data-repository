@@ -40,3 +40,4 @@ class BiobankStoredSampleDao(BaseDao):
         session.merge(sample)
         written += 1
     logging.info('Wrote %d samples, skipped %d invalid samples.', written, skipped)
+    return written, skipped

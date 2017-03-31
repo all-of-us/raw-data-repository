@@ -1,8 +1,9 @@
 from code_constants import BIOBANK_TESTS_SET
 from dao.base_dao import BaseDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from model.biobank_order import BiobankOrder, BiobankOrderIdentifier
+from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from model.log_position import LogPosition
+from model.participant import Participant
 
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
@@ -52,3 +53,13 @@ class BiobankOrderDao(BaseDao):
       return (session.query(BiobankOrder)
           .options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples))
           .get(obj_id))
+
+  def get_ordered_samples_sample(self, session, percentage, batch_size):
+    """Retrieves the biobank ID, collected time, and test for a percentage of ordered samples.
+    Used in fake data generation."""
+    return (session.query(Participant.biobankId, BiobankOrderedSample.collected,
+                          BiobankOrderedSample.test)
+                .join(BiobankOrder)
+                .join(BiobankOrderedSample)
+                .filter(Participant.biobankId % 100 < percentage * 100)
+                .yield_per(batch_size))
