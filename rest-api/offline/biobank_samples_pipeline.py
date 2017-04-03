@@ -4,7 +4,6 @@ Also updates ParticipantSummary data related to samples.
 """
 
 import csv
-import contextlib
 import datetime
 import logging
 import pytz
@@ -12,7 +11,6 @@ import pytz
 from cloudstorage import cloudstorage_api
 from werkzeug.exceptions import BadRequest
 
-from api_util import coerce_to_utc
 import clock
 import config
 from dao import database_factory
@@ -20,7 +18,7 @@ from dao.database_utils import replace_isodate
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
-from model.utils import from_client_biobank_id, to_client_biobank_id
+from model.utils import from_client_biobank_id
 from offline.sql_exporter import SqlExporter
 
 

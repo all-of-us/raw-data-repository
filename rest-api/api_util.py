@@ -219,23 +219,6 @@ def format_json_date(obj, field_name, date_format=None):
         obj[field_name] = obj[field_name].isoformat()
 
 
-class _UtcTz(datetime.tzinfo):
-  def utcoffset(self, dt): # pylint: disable=unused-argument
-    return datetime.timedelta(hours=0)
-_UTC = _UtcTz()
-
-
-def coerce_to_utc(dt):
-  """Converts a naive datetime to timezone-aware in UTC.
-
-  This is safe so long as the datetime was stored as UTC (see DA-226); it's useful for output
-  so isoformat() will include time zone info for clients.
-  """
-  if dt.tzinfo is not None:
-    raise ValueError('Cannot coerce timezone-aware datetime %s.' % dt)
-  return dt.replace(tzinfo=_UTC)
-
-
 def format_json_code(obj, field_name):
   field_without_id = field_name[0:len(field_name) - 2]
   value = obj.get(field_name)
