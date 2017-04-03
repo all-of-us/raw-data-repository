@@ -123,8 +123,7 @@ def main(args):
       for questionnaire_id_and_version, questions in questionnaire_to_questions.iteritems():
         if questionnaire_id_and_version != consent_questionnaire_id_and_version:
           _submit_questionnaire_response(client, participant_id, questionnaire_id_and_version,
-                                         questionnaire_to_questions[questionnaire_id_and_version],
-                                         answer_map)
+                                         questions, answer_map)
       num_participants += 1
   logging.info("%d participants imported." % num_participants)
 
