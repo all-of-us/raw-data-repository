@@ -229,6 +229,8 @@ CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
     reconciled.biobank_id,
     reconciled.order_test,
     reconciled.test
+  ORDER BY
+    MAX(collected), MAX(confirmed)
 """
 
 
