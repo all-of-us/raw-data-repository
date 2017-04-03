@@ -8,6 +8,7 @@ import version_api
 
 from api.biobank_order_api import BiobankOrderApi
 from api.data_gen_api import DataGenApi
+from api.data_reset_api import DataResetApi
 from api.metrics_api import MetricsApi
 from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
@@ -95,6 +96,10 @@ api.add_resource(version_api.VersionApi,
 api.add_resource(DataGenApi,
                  PREFIX + 'DataGen',
                  endpoint='datagen',
+                 methods=['POST'])
+api.add_resource(DataResetApi,
+                 PREFIX + 'DataReset',
+                 endpoint='datareset',
                  methods=['POST'])
 #
 # Non-resource endpoints

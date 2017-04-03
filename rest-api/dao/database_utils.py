@@ -1,8 +1,12 @@
 """Helpers for querying the SQL database."""
+import datetime
+import logging
 import re
 
 from dao.database_factory import get_database
-from datetime import datetime
+from model.base import Base
+from model.hpo import HPO
+from model.code import Code, CodeHistory, CodeBook
 
 _DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 # MySQL uses %i for minutes
@@ -23,14 +27,17 @@ def get_sql_and_params_for_array(arr, name_prefix):
   sql_expr = '(%s)' % ','.join([':' + param_name for param_name in array_values])
   return sql_expr, array_values
 
+
 def _is_sqlite():
   global _IS_SQLITE
   if _IS_SQLITE is None:
     _IS_SQLITE = get_database().db_type == 'sqlite'
   return _IS_SQLITE
 
+
 def parse_datetime(datetime_str):
-  return datetime.strptime(datetime_str, _DATE_FORMAT)
+  return datetime.datetime.strptime(datetime_str, _DATE_FORMAT)
+
 
 def replace_isodate(sql):
   if _is_sqlite():
@@ -38,3 +45,25 @@ def replace_isodate(sql):
   else:
     return re.sub(_ISODATE_PATTERN, r"DATE_FORMAT(\1, '{}')".format(_MYSQL_DATE_FORMAT),
                   sql)
+
+
+_NON_USER_GEN_TABLES = frozenset(
+    [t.__tablename__ for t in (HPO, Code, CodeHistory, CodeBook)]
+    + ['alembic_version'])
+
+
+def reset_for_tests():
+  """Resets all user data. For test use only. Skips HPOs and codes."""
+  logging.info('Deleting all user data! This should never be called in prod.')
+  db = get_database()
+  session = db.make_session()
+  try:
+    for table in reversed(Base.metadata.sorted_tables):
+      if table.name not in _NON_USER_GEN_TABLES:
+        session.execute(table.delete())  # DELETE FROM, does not drop table
+    session.commit()
+  except:
+    session.rollback()
+    raise
+  finally:
+    session.close()
