@@ -21,8 +21,8 @@ class QuestionnaireApiTest(FlaskTestBase):
       del response['id']
       questionnaire['version'] = '1'
       self.assertJsonResponseMatches(questionnaire, response)
-      
-      response = self.send_get('Questionnaire/%s' % questionnaire_id) 
+
+      response = self.send_get('Questionnaire/%s' % questionnaire_id)
       del response['id']
       self.assertJsonResponseMatches(questionnaire, response)
 
