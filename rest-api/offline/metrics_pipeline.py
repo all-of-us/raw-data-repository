@@ -130,7 +130,7 @@ class MetricsPipeline(BasePipeline):
     # Pass future to FinalizeMetrics to ensure it doesn't start running until SummaryPipeline
     # completes
     yield FinalizeMetrics(future)
-    
+
     # TODO(danrodney): figure out how to set the metrics version to finished but not complete on
     # failure?
 
