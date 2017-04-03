@@ -332,7 +332,7 @@ class FlaskTestBase(NdbTestBase):
 
   def create_and_verify_created_obj(self, path, resource):
     response = self.send_post(path, resource)
-    resource_id = response['id']
+    resource_id = response['id']    
     del response['id']
     self.assertJsonResponseMatches(resource, response)
 

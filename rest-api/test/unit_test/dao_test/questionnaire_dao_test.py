@@ -24,9 +24,9 @@ EXPECTED_QUESTION_2 = QuestionnaireQuestion(questionnaireQuestionId=2, questionn
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 RESOURCE_1 = '{"x": "y"}'
-RESOURCE_1_WITH_ID = '{"x": "y", "id": "1"}'
-RESOURCE_2 = '{"x": "z"}'
-RESOURCE_2_WITH_ID = '{"x": "z", "id": "1"}'
+RESOURCE_1_WITH_ID = '{"x": "y", "version": "1", "id": "1"}'
+RESOURCE_2 = '{"x": "z", "version": "2"}'
+RESOURCE_2_WITH_ID = '{"x": "z", "version": "2", "id": "1"}'
 
 class QuestionnaireDaoTest(SqlTestBase):
   def setUp(self):
@@ -137,7 +137,7 @@ class QuestionnaireDaoTest(SqlTestBase):
       self.dao.update(q)
 
     expected_questionnaire = Questionnaire(questionnaireId=1, version=2, created=TIME,
-                                          lastModified=TIME_2, resource=RESOURCE_2)
+                                           lastModified=TIME_2, resource=RESOURCE_2_WITH_ID)
     questionnaire = self.dao.get(1)
     self.assertEquals(expected_questionnaire.asdict(), questionnaire.asdict())
 

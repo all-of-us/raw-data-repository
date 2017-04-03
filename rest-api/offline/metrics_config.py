@@ -8,13 +8,14 @@ import config
 import participant_enums
 
 from census_regions import census_regions
-from code_constants import BASE_VALUES, UNSET, FIELD_TO_QUESTION_CODE
-from code_constants import QUESTIONNAIRE_MODULE_FIELD_NAMES, PPI_SYSTEM
-from code_constants import CONSENT_FOR_STUDY_ENROLLMENT_FIELD
-from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
+from code_constants import BASE_VALUES, UNSET
+from code_constants import PPI_SYSTEM
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from dao.participant_summary_dao import ParticipantSummaryDao
+from field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES, FIELD_TO_QUESTION_CODE
+from field_mappings import CONSENT_FOR_STUDY_ENROLLMENT_FIELD
+from field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
 from model.base import get_column_name
 from model.code import CodeType
 from model.participant_summary import ParticipantSummary

@@ -9,7 +9,7 @@ import random
 from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, OVERALL_HEALTH_PPI_MODULE
 from code_constants import LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
-from code_constants import QUESTION_CODE_TO_FIELD, RACE_QUESTION_CODE, GENDER_IDENTITY_QUESTION_CODE
+from code_constants import RACE_QUESTION_CODE, GENDER_IDENTITY_QUESTION_CODE
 from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE
 from code_constants import MIDDLE_NAME_QUESTION_CODE, ZIPCODE_QUESTION_CODE
 from code_constants import STATE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE, EMAIL_QUESTION_CODE
@@ -18,8 +18,8 @@ from code_constants import PHONE_NUMBER_QUESTION_CODE, RECONTACT_METHOD_QUESTION
 from code_constants import LANGUAGE_QUESTION_CODE, SEX_QUESTION_CODE
 from code_constants import SEXUAL_ORIENTATION_QUESTION_CODE, EDUCATION_QUESTION_CODE
 from code_constants import INCOME_QUESTION_CODE
-
 from code_constants import PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE, BIOBANK_TESTS
+from field_mappings import QUESTION_CODE_TO_FIELD
 
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
