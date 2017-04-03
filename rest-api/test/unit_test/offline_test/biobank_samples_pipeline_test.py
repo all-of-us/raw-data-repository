@@ -14,8 +14,8 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase
-from test.unit_test.unit_test_util import SqlTestBase, TestBase
+from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, InMemorySqlExporter
+from test.unit_test.unit_test_util import SqlTestBase, InMemorySqlExporter, TestBase
 from test import test_data
 from model.biobank_order import BiobankOrder, BiobankOrderedSample
 from model.biobank_stored_sample import BiobankStoredSample
@@ -118,45 +118,24 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         biobank_samples_pipeline._upsert_samples_from_csv(reader)
 
 
-_COLS = biobank_samples_pipeline._CSV_COLUMN_NAMES
+# Expected names for the reconciliation_data columns in output CSVs.
+_CSV_COLUMN_NAMES = (
+  'biobank_id',
 
+  'sent_test',
+  'sent_count',
+  'sent_order_id',
+  'sent_collection_time',
+  'sent_finalized_time',
+  'site_id',
 
-class _CsvListWriter(object):
-  """Accumulate written CSV rows as a list."""
-  def __init__(self, test):
-    self._test = test
-    self.rows = []
+  'received_test',
+  'received_count',
+  'received_sample_id',
+  'received_time',
 
-  def writeheader(self):
-    pass
-
-  def writerow(self, row):
-    self._test.assertItemsEqual(_COLS, row.keys())
-    self.rows.append(row)
-
-  def assertRowCount(self, n):
-    self._test.assertEquals(
-        n, len(self.rows),
-        'Expected %d rows but found %d: %s.' % (n, len(self.rows), self.rows))
-
-  def assertHasRow(self, expected_row):
-    """Asserts that this writer got a row that has all the values specified in the given row.
-
-    Args:
-      expected_row: A dict like {'biobank_id': 557741928, sent_test: None} specifying a subset of
-          the fields in a row that should have been written.
-    """
-    for row in self.rows:
-      found_all = True
-      for required_k, required_v in expected_row.iteritems():
-        if required_k not in row or row[required_k] != required_v:
-          found_all = False
-          break
-      if found_all:
-        return
-    self._test.fail(
-        'No match found for expected row %s among %d rows: %s'
-        % (expected_row, len(self.rows), self.rows))
+  'elapsed_hours',
+)
 
 
 class MySqlReconciliationTest(SqlTestBase):
@@ -221,37 +200,39 @@ class MySqlReconciliationTest(SqlTestBase):
     self._insert_samples(p_repeated, [_BASELINE_TESTS[0]], within_a_day)
     self._insert_order(p_repeated, 'RepeatedOrder', [_BASELINE_TESTS[0]], days_later)
 
-    rows_received = _CsvListWriter(self)
-    rows_late = _CsvListWriter(self)
-    rows_missing = _CsvListWriter(self)
-    biobank_samples_pipeline._query_and_write_reports(rows_received, rows_late, rows_missing)
+    received, late, missing = 'rx.csv', 'late.csv', 'missing.csv'
+    exporter = InMemorySqlExporter(self)
+    biobank_samples_pipeline._query_and_write_reports(exporter, received, late, missing)
+
+    exporter.assertFilesEqual((received, late, missing))
 
     # sent-and-received: 2 on-time, 1 late, none of the missing/extra/repeated ones
-    rows_received.assertRowCount(3)
-    rows_received.assertHasRow({
+    exporter.assertRowCount(received, 3)
+    exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
+    exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': _BASELINE_TESTS[0]})
-    rows_received.assertHasRow({
+    exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': _BASELINE_TESTS[1]})
-    rows_received.assertHasRow({
+    exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_test': _BASELINE_TESTS[0]})
 
     # sent-and-received: 1 late
-    rows_late.assertRowCount(1)
-    rows_late.assertHasRow({
+    exporter.assertRowCount(late, 1)
+    exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_order_id': o_late_and_missing.biobankOrderId,
-        'elapsed_hours': 25})
+        'elapsed_hours': '25'})
 
     # gone awry
-    rows_missing.assertRowCount(3)
-    rows_missing.assertHasRow({
+    exporter.assertRowCount(missing, 3)
+    exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_order_id': o_late_and_missing.biobankOrderId,
-        'elapsed_hours': None})
-    rows_missing.assertHasRow({
+        'elapsed_hours': ''})
+    exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_repeated.biobankId),
-        'sent_count': 2,
-        'received_count': 1})
-    rows_missing.assertHasRow({
-        'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id': None})
+        'sent_count': '2',
+        'received_count': '1'})
+    exporter.assertHasRow(missing, {
+        'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id': ''})

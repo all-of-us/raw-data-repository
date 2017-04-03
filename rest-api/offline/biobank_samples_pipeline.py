@@ -16,10 +16,12 @@ from api_util import coerce_to_utc
 import clock
 import config
 from dao import database_factory
+from dao.database_utils import replace_isodate
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import from_client_biobank_id, to_client_biobank_id
+from offline.sql_exporter import SqlExporter
 
 
 # Format for dates in output filenames for the reconciliation report.
@@ -127,74 +129,30 @@ def write_reconciliation_report():
   """Writes order/sample reconciliation reports to GCS."""
   now = clock.CLOCK.now()
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
-  path_received, path_late, path_missing = _get_report_paths(bucket_name, now)
-  with _writer_guard(path_received) as writer_received:
-    with _writer_guard(path_late) as writer_late:
-      with _writer_guard(path_missing) as writer_missing:
-        _query_and_write_reports(writer_received, writer_late, writer_missing)
+  _query_and_write_reports(SqlExporter(bucket_name), *_get_report_paths(now))
 
 
-def _get_report_paths(bucket_name, report_dt):
+def _get_report_paths(report_datetime):
+  """Returns a triple of output filenames for samples: (received, late, missing)."""
   return [
-      '/%s/%s/report_%s_%s.csv' % (
-          bucket_name, _REPORT_SUBDIR, report_dt.strftime(_FILENAME_DATE_FORMAT), report_name)
+      '%s/report_%s_%s.csv' % (
+          _REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
       for report_name in ('received', 'over_24h', 'missing')]
 
 
-@contextlib.contextmanager
-def _writer_guard(path):
-  """Opens CSV writer on a GCS file."""
-  with cloudstorage_api.open(path, mode='w') as cloud_file:
-    writer = csv.DictWriter(cloud_file, fieldnames=_CSV_COLUMN_NAMES)
-    writer.writeheader()
-    yield writer
-
-
-def _query_and_write_reports(writer_received, writer_late, writer_missing):
+def _query_and_write_reports(exporter, path_received, path_late, path_missing):
   """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
   """
   with database_factory.get_database().session() as session:
     session.execute(_CREATE_ORDERS_BY_BIOBANK_ID_MYSQL)
-    session.execute(_CREATE_RECONCILIATION_VIEW_MYSQL)
-    for query, writer in (
-        (_SELECT_FROM_VIEW_MYSQL_RECEIVED, writer_received),
-        (_SELECT_FROM_VIEW_MYSQL_LATE, writer_late),
-        (_SELECT_FROM_VIEW_MYSQL_MISSING, writer_missing)):
-      for row in session.execute(query):
-        writer.writerow(_post_process_row(row))
-
-
-def _post_process_row(raw_row):
-  """Formats values in an SQL result row for CSV dict output."""
-  row = dict(zip(_CSV_COLUMN_NAMES, raw_row))
-  row[_COLUMN_BIOBANK_ID] = to_client_biobank_id(row[_COLUMN_BIOBANK_ID])
-  for k in row.keys():
-    if isinstance(row[k], datetime.datetime):
-      row[k] = coerce_to_utc(row[k]).isoformat()
-  return row
-
-
-# Names for the reconciliation_data columns in output CSVs.
-_COLUMN_BIOBANK_ID = 'biobank_id'
-_CSV_COLUMN_NAMES = (
-  _COLUMN_BIOBANK_ID,
-
-  'sent_test',
-  'sent_count',
-  'sent_order_id',
-  'sent_collection_time',
-  'sent_finalized_time',
-  'site_id',
-
-  'received_test',
-  'received_count',
-  'received_sample_id',
-  'received_time',
-
-  'elapsed_hours',
-)
+    session.execute(replace_isodate(_CREATE_RECONCILIATION_VIEW_MYSQL))
+    for sql, file_name in (
+        (_SELECT_FROM_VIEW_MYSQL_RECEIVED, path_received),
+        (_SELECT_FROM_VIEW_MYSQL_LATE, path_late),
+        (_SELECT_FROM_VIEW_MYSQL_MISSING, path_missing)):
+      exporter.run_export_with_session(file_name, session, sql)
 
 
 # Gets orders with ordered samples (child rows), and keys by biobank_id to match the desired output.
@@ -228,25 +186,27 @@ CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW orders_by_biobank_id AS
 
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION a RIGHT and LEFT OUTER JOIN.
+# Index of 'biobank_id' must match index 0 above.
+# Biobank ID formatting must match to_client_biobank_id.
 _CREATE_RECONCILIATION_VIEW_MYSQL = """
 CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
   SELECT
-    CASE
-      WHEN biobank_id_from_order IS NOT NULL THEN biobank_id_from_order
-      ELSE biobank_id
-      END biobank_id,
+    CONCAT(
+        "B",
+        CASE WHEN biobank_id_from_order IS NOT NULL THEN biobank_id_from_order
+        ELSE biobank_id END) biobank_id,
 
-    order_test,
-    COUNT(DISTINCT biobank_order_id) orders_count,
-    GROUP_CONCAT(DISTINCT biobank_order_id),
-    MAX(collected),
-    MAX(finalized) finalized,
-    GROUP_CONCAT(DISTINCT source_site_value),
+    order_test sent_test,
+    COUNT(DISTINCT biobank_order_id) sent_count,
+    GROUP_CONCAT(DISTINCT biobank_order_id) sent_order_id,
+    ISODATE[MAX(collected)] sent_collection_time,
+    ISODATE[MAX(finalized)] sent_finalized_time,
+    GROUP_CONCAT(DISTINCT source_site_value) site_id,
 
-    test sample_test,
-    COUNT(DISTINCT biobank_stored_sample_id) samples_count,
-    GROUP_CONCAT(DISTINCT biobank_stored_sample_id),
-    MAX(confirmed),
+    test received_test,
+    COUNT(DISTINCT biobank_stored_sample_id) received_count,
+    GROUP_CONCAT(DISTINCT biobank_stored_sample_id) received_sample_id,
+    ISODATE[MAX(confirmed)] received_time,
 
     TIMESTAMPDIFF(HOUR, MAX(collected), MAX(confirmed)) elapsed_hours
   FROM
@@ -278,8 +238,8 @@ CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
 _SELECT_FROM_VIEW_MYSQL_RECEIVED = """
 SELECT * FROM reconciliation_data
 WHERE
-  sample_test IS NOT NULL
-  AND samples_count = orders_count
+  received_test IS NOT NULL
+  AND sent_count = received_count
 """
 
 # Gets orders for which the samples arrived, but they arrived late.
@@ -290,7 +250,7 @@ _SELECT_FROM_VIEW_MYSQL_LATE = 'SELECT * FROM reconciliation_data WHERE elapsed_
 _SELECT_FROM_VIEW_MYSQL_MISSING = """
 SELECT * FROM reconciliation_data
 WHERE
-  (samples_count != orders_count)
+  (sent_count != received_count)
   OR
-  (finalized IS NOT NULL AND sample_test IS NULL)
+  (sent_finalized_time IS NOT NULL AND received_test IS NULL)
 """
