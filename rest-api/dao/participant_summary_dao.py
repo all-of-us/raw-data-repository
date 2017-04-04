@@ -91,9 +91,10 @@ class ParticipantSummaryDao(UpdatableDao):
     if self._has_withdrawn_filter(query_def):
       # When querying for withdrawn particiapnts, ensure that the only fields being filtered on or 
       # ordered by are in WITHDRAWN_PARTICIPANT_FIELDS.
-      for filter in query_def.field_filters:
-        if not filter.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
-          raise BadRequest("Can't filter on %s for withdrawn participants" % filter.field_name)
+      for field_filter in query_def.field_filters:
+        if not field_filter.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
+          raise BadRequest("Can't filter on %s for withdrawn participants" % 
+                           field_filter.field_name)
       if query_def.order_by:
         if not query_def.order_by.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
           raise BadRequest("Can't order by %s for withdrawn participants" % 
