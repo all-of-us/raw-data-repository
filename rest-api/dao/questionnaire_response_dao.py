@@ -2,13 +2,13 @@ import clock
 import config
 import json
 
-from code_constants import QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, PPI_SYSTEM
-from code_constants import FieldType, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
+from field_mappings import FieldType, QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from participant_enums import QuestionnaireStatus, get_race

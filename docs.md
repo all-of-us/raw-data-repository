@@ -345,6 +345,11 @@ resource. Response is the stored resource, which includes an `id`.
 
 Read a single Questionnaire from the RDR. Response is the stored resource.
 
+#### `GET /Questionnaire?concept=:concept_code`
+
+Returns the last submitted questionnaire that has the specified top-level concept code. Response
+is the stored resource.
+
 #### `POST /Participant/:pid/QuestionnaireResponse`
 
 Create a new QuestionnaireResponse in the RDR. Body is a FHIR DSTU2

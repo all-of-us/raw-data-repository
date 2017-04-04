@@ -67,6 +67,7 @@ class QuestionnaireDao(UpdatableDao):
     # Set the ID in the resource JSON
     resource_json = json.loads(questionnaire.resource)
     resource_json['id'] = str(questionnaire.questionnaireId)
+    resource_json['version'] = str(questionnaire.version)
     questionnaire.resource = json.dumps(resource_json)
 
     history = self._make_history(questionnaire, concepts, questions)
@@ -79,6 +80,10 @@ class QuestionnaireDao(UpdatableDao):
     obj.lastModified = clock.CLOCK.now()
     obj.version = existing_obj.version + 1
     obj.created = existing_obj.created
+    resource_json = json.loads(obj.resource)
+    resource_json['id'] = str(obj.questionnaireId)
+    resource_json['version'] = str(obj.version)
+    obj.resource = json.dumps(resource_json)
     super(QuestionnaireDao, self)._do_update(session, obj, existing_obj)
 
   def update_with_session(self, session, questionnaire):

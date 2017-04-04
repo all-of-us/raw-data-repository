@@ -4,9 +4,10 @@ import offline.metrics_export
 
 from clock import FakeClock
 from code_constants import PPI_SYSTEM
-from code_constants import FIELD_TO_QUESTIONNAIRE_MODULE_CODE, GENDER_IDENTITY_QUESTION_CODE
+from code_constants import GENDER_IDENTITY_QUESTION_CODE
 from code_constants import RACE_QUESTION_CODE, STATE_QUESTION_CODE, RACE_WHITE_CODE
 from concepts import Concept
+from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from mapreduce import test_support
 from model.biobank_stored_sample import BiobankStoredSample
 from model.code import CodeType

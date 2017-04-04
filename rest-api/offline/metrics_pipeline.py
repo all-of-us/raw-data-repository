@@ -67,9 +67,9 @@ from mapreduce import context
 from dao.database_utils import parse_datetime
 from dateutil.relativedelta import relativedelta
 from census_regions import census_regions
-from code_constants import QUESTION_CODE_TO_FIELD, FieldType, QUESTIONNAIRE_MODULE_FIELD_NAMES
 from code_constants import UNSET, RACE_QUESTION_CODE, PPI_SYSTEM
 from dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
+from field_mappings import QUESTION_CODE_TO_FIELD, FieldType, QUESTIONNAIRE_MODULE_FIELD_NAMES
 from model.metrics import MetricsBucket
 from mapreduce.lib.input_reader._gcs import GCSInputReader
 from offline.base_pipeline import BasePipeline

@@ -8,8 +8,8 @@ from dao.code_dao import CodeDao
 from dao.database_utils import replace_isodate, get_sql_and_params_for_array
 from model.base import get_column_name
 from model.participant_summary import ParticipantSummary
-from code_constants import QUESTIONNAIRE_MODULE_FIELD_NAMES, PPI_SYSTEM
-from code_constants import UNMAPPED, RACE_QUESTION_CODE
+from code_constants import PPI_SYSTEM, UNMAPPED, RACE_QUESTION_CODE
+from field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from offline.metrics_pipeline import MetricsPipeline
 
