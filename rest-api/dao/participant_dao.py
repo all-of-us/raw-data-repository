@@ -76,10 +76,16 @@ class ParticipantDao(UpdatableDao):
     """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link."""
     obj.lastModified = clock.CLOCK.now()
     obj.signUpTime = existing_obj.signUpTime
-    obj.biobankId = existing_obj.biobankId
-    need_new_summary = (
-        obj.withdrawalStatus != existing_obj.withdrawalStatus or
-        obj.suspensionStatus != existing_obj.suspensionStatus)
+    obj.biobankId = existing_obj.biobankId    
+    need_new_summary = False              
+    if obj.withdrawalStatus != existing_obj.withdrawalStatus:      
+      obj.withdrawalTime = (obj.lastModified if obj.withdrawalStatus == WithdrawalStatus.NO_USE
+                            else None)
+      need_new_summary = True
+    if obj.suspensionStatus != existing_obj.suspensionStatus:
+      obj.suspensionTime = (obj.lastModified if obj.suspensionStatus == SuspensionStatus.NO_CONTACT
+                            else None)
+      need_new_summary = True      
 
     # If the provider link changes, update the HPO ID on the participant and its summary.
     obj.hpoId = existing_obj.hpoId
@@ -95,7 +101,9 @@ class ParticipantDao(UpdatableDao):
       summary = existing_obj.participantSummary
       summary.hpoId = obj.hpoId
       summary.withdrawalStatus = obj.withdrawalStatus
+      summary.withdrawalTime = obj.withdrawalTime
       summary.suspensionStatus = obj.suspensionStatus
+      summary.suspensionTime = obj.suspensionTime
       make_transient(summary)
       obj.participantSummary = summary
     self._update_history(session, obj, existing_obj)

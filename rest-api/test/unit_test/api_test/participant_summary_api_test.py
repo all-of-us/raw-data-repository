@@ -14,6 +14,9 @@ from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlT
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
+TIME_3 = datetime.datetime(2016, 1, 3)
+TIME_4 = datetime.datetime(2016, 1, 4)
+TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
 
 class ParticipantSummaryApiTest(FlaskTestBase):
 
@@ -235,9 +238,18 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # Update participant summaries based on these changes.
     ParticipantSummaryDao().update_from_biobank_stored_samples()
 
-    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
-    ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
+    with FakeClock(TIME_3):
+      participant_2['withdrawalStatus'] = 'NO_USE'
+      participant_3['suspensionStatus'] = 'NO_CONTACT'
+      self.send_put('Participant/%s' % participant_id_2, participant_2,
+                     headers={ 'If-Match': participant_2['meta']['versionId'] })
+      self.send_put('Participant/%s' % participant_id_3, participant_3,
+                     headers={ 'If-Match': participant_3['meta']['versionId'] })
+    
+    with FakeClock(TIME_4):
+      ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+      ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
+      ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
 
     self.assertEquals(1, ps_1['numCompletedBaselinePPIModules'])
     self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
@@ -249,6 +261,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
     self.assertEquals('male', ps_1['genderIdentity'])
+    self.assertEquals('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
+    self.assertEquals('NOT_SUSPENDED', ps_1['suspensionStatus'])
+    self.assertEquals('email_code', ps_1['recontactMethod'])
+    self.assertIsNone(ps_1.get('withdrawalTime'))
+    self.assertIsNone(ps_1.get('suspensionTime'))
+    # One day after participant 2 withdraws, their fields are still all populated.
     self.assertEquals(1, ps_2['numCompletedBaselinePPIModules'])
     self.assertEquals(0, ps_2['numBaselineSamplesArrived'])
     self.assertEquals('UNSET', ps_2['sampleStatus1ED10'])
@@ -258,6 +276,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('COMPLETED', ps_2['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
     self.assertEquals('UNMAPPED', ps_2['genderIdentity'])
+    self.assertEquals('NO_USE', ps_2['withdrawalStatus'])
+    self.assertEquals('NOT_SUSPENDED', ps_2['suspensionStatus'])
+    self.assertEquals('NO_CONTACT', ps_2['recontactMethod'])
+    self.assertIsNotNone(ps_2['withdrawalTime'])
+    self.assertIsNone(ps_2.get('suspensionTime'))
     self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
     self.assertEquals(0, ps_3['numBaselineSamplesArrived'])
     self.assertEquals('UNSET', ps_3['sampleStatus1ED10'])
@@ -268,81 +291,169 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
     self.assertEquals('male', ps_3['genderIdentity'])
+    self.assertEquals('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
+    self.assertEquals('NO_CONTACT', ps_3['suspensionStatus'])
+    self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
+    self.assertIsNone(ps_3.get('withdrawalTime'))
+    self.assertIsNotNone(ps_3['suspensionTime'])
+    
+    # One day after participant 2 withdraws, the participant is still returned.
+    with FakeClock(TIME_4):
+      response = self.send_get('ParticipantSummary')
+      self.assertBundle([_make_entry(ps_1), _make_entry(ps_2), _make_entry(ps_3)], response)
 
-    response = self.send_get('ParticipantSummary')
-    self.assertBundle([_make_entry(ps_1), _make_entry(ps_2), _make_entry(ps_3)], response)
+      self.assertResponses('ParticipantSummary?_count=2', [[ps_1, ps_2], [ps_3]])
 
-    self.assertResponses('ParticipantSummary?_count=2', [[ps_1, ps_2], [ps_3]])
+      # Test sorting on fields of different types.
+      self.assertResponses('ParticipantSummary?_count=2&_sort=firstName',
+                           [[ps_1, ps_3], [ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:asc=firstName',
+                           [[ps_1, ps_3], [ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:desc=firstName',
+                           [[ps_2, ps_3], [ps_1]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort=dateOfBirth',
+                           [[ps_2, ps_1], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:desc=dateOfBirth',
+                           [[ps_3, ps_1], [ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort=genderIdentity',
+                           [[ps_1, ps_3], [ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:desc=genderIdentity',
+                           [[ps_2, ps_1], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
+                           [[ps_1, ps_2], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
+                           [[ps_3, ps_1], [ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:desc=hpoId',
+                           [[ps_1, ps_2], [ps_3]])
 
-    # Test sorting on fields of different types.
-    self.assertResponses('ParticipantSummary?_count=2&_sort=firstName',
-                         [[ps_1, ps_3], [ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort:asc=firstName',
-                         [[ps_1, ps_3], [ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort:desc=firstName',
-                         [[ps_2, ps_3], [ps_1]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort=dateOfBirth',
-                         [[ps_2, ps_1], [ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort:desc=dateOfBirth',
-                         [[ps_3, ps_1], [ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort=genderIdentity',
-                         [[ps_1, ps_3], [ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort:desc=genderIdentity',
-                         [[ps_2, ps_1], [ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
-                         [[ps_1, ps_2], [ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
-                         [[ps_3, ps_1], [ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&_sort:desc=hpoId',
-                         [[ps_1, ps_2], [ps_3]])
-
-    # Test filtering on fields.
-    self.assertResponses('ParticipantSummary?_count=2&firstName=Mary',
-                         [[ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&middleName=Q',
-                         [[ps_1, ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&lastName=Smith',
-                         [[ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&zipCode=78752',
-                         [[ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&hpoId=PITT',
-                         [[ps_1, ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&hpoId=UNSET',
-                         [[ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&genderIdentity=male',
-                         [[ps_1, ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
-                         [[ps_1, ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE',
-                         [[ps_1]])
-    self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE&zipCode=78752',
-                         [[]])
-    self.assertResponses('ParticipantSummary?_count=2&questionnaireOnTheBasics=SUBMITTED',
-                         [[ps_1, ps_2], [ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&consentForStudyEnrollment=SUBMITTED',
-                         [[ps_1, ps_2], [ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=UNSET',
-                         [[ps_1]])
-    self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=COMPLETED',
-                         [[ps_2, ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=INTERESTED',
-                         [[ps_1]])
-    self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=MEMBER',
-                         [[ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=FULL_PARTICIPANT',
-                         [[ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=1978-10-08',
-                         [[ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=gt1978-10-08',
-                         [[ps_1, ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=lt1978-10-08',
-                         [[]])
-    self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=le1978-10-08',
-                         [[ps_2]])
-    self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08',
-                         [[ps_1, ps_2], [ps_3]])
-    self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09',
-                         [[ps_2, ps_3]])
+      # Test filtering on fields.
+      self.assertResponses('ParticipantSummary?_count=2&firstName=Mary',
+                           [[ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&middleName=Q',
+                           [[ps_1, ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&lastName=Smith',
+                           [[ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&zipCode=78752',
+                           [[ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&hpoId=PITT',
+                           [[ps_1, ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&hpoId=UNSET',
+                           [[ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&genderIdentity=male',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE',
+                           [[ps_1]])
+      self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE&zipCode=78752',
+                           [[]])
+      self.assertResponses('ParticipantSummary?_count=2&questionnaireOnTheBasics=SUBMITTED',
+                           [[ps_1, ps_2], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&consentForStudyEnrollment=SUBMITTED',
+                           [[ps_1, ps_2], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=UNSET',
+                           [[ps_1]])
+      self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=COMPLETED',
+                           [[ps_2, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=INTERESTED',
+                           [[ps_1]])
+      self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=MEMBER',
+                           [[ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=FULL_PARTICIPANT',
+                           [[ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=1978-10-08',
+                           [[ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=gt1978-10-08',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=lt1978-10-08',
+                           [[]])
+      self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=le1978-10-08',
+                           [[ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08',
+                           [[ps_1, ps_2], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09',
+                           [[ps_2, ps_3]])
+    
+      self.assertResponses('ParticipantSummary?_count=2&withdrawalStatus=NOT_WITHDRAWN',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&withdrawalStatus=NO_USE',
+                           [[ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03',
+                           [[]])
+      self.assertResponses('ParticipantSummary?_count=2&withdrawalTime=ge2016-01-03',
+                           [[ps_2]])  
+      self.assertResponses('ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED',
+                           [[ps_1, ps_2]])    
+      self.assertResponses('ParticipantSummary?_count=2&suspensionStatus=NO_CONTACT',
+                           [[ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&suspensionTime=lt2016-01-03',
+                           [[]])
+      self.assertResponses('ParticipantSummary?_count=2&suspensionTime=ge2016-01-03',
+                           [[ps_3]])
+  
+    # Two days after participant 2 withdraws, their fields are not set for anything but
+    # participant ID, HPO ID, withdrawal status, and withdrawal time
+    with FakeClock(TIME_5):  
+      new_ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+      new_ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
+      new_ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
+      
+    self.assertEquals(ps_1, new_ps_1)
+    self.assertEquals(ps_3, new_ps_3)
+    self.assertIsNone(new_ps_2.get('numCompletedBaselinePPIModules'))
+    self.assertIsNone(new_ps_2.get('numBaselineSamplesArrived'))
+    self.assertEquals('UNSET', new_ps_2['sampleStatus1ED10'])
+    self.assertEquals('UNSET', new_ps_2['sampleStatus1SAL'])
+    self.assertEquals('UNSET', new_ps_2['samplesToIsolateDNA'])
+    self.assertEquals('UNSET', new_ps_2['enrollmentStatus'])
+    self.assertEquals('UNSET', new_ps_2['physicalMeasurementsStatus'])
+    self.assertIsNone(new_ps_2.get('physicalMeasurementsTime'))
+    self.assertEquals('UNSET', new_ps_2['genderIdentity'])
+    self.assertEquals('NO_USE', new_ps_2['withdrawalStatus'])
+    self.assertEquals('UNSET', new_ps_2['suspensionStatus'])
+    self.assertEquals('NO_CONTACT', new_ps_2['recontactMethod'])
+    self.assertIsNotNone(ps_2['withdrawalTime'])
+    self.assertIsNone(new_ps_2.get('suspensionTime'))
+    
+    # Queries that don't ask for withdrawn participants no longer return participant 2;
+    # queries that ask for withdrawn participants get back the participant
+    with FakeClock(TIME_5):
+      self.assertResponses('ParticipantSummary?_count=2&_sort=firstName',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:asc=firstName',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:desc=firstName',
+                           [[ps_3, ps_1]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort=dateOfBirth',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:desc=dateOfBirth',
+                           [[ps_3, ps_1]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort=genderIdentity',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:desc=genderIdentity',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
+                           [[ps_3, ps_1]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:desc=hpoId',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&firstName=Mary',
+                           [[]])
+      self.assertResponses('ParticipantSummary?_count=2&middleName=Q',
+                           [[ps_1]])
+      self.assertResponses('ParticipantSummary?_count=2&lastName=Smith',
+                           [[ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&hpoId=PITT',
+                           [[ps_1]])            
+      self.assertResponses('ParticipantSummary?_count=2&withdrawalStatus=NO_USE',
+                           [[new_ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03',
+                           [[]])
+      self.assertResponses('ParticipantSummary?_count=2&withdrawalTime=ge2016-01-03',
+                           [[new_ps_2]])  
+      self.assertResponses('ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED',
+                           [[ps_1]])    
 
 def _add_code_answer(code_answers, link_id, code):
   if code:

@@ -1,4 +1,5 @@
 import clock
+import datetime
 import threading
 
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
@@ -14,6 +15,12 @@ from sqlalchemy import Column, Integer, String, Date
 from sqlalchemy import ForeignKey, Index, SmallInteger
 from sqlalchemy.orm import relationship
 
+# The only fields that can be returned, queried on, or ordered by for queries for withdrawn
+# participants.
+WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime', 'participantId', 'hpoId']
+# The period of time for which withdrawn participants will still be returned in results for 
+# queries that don't ask for withdrawn participants.
+WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days = 2)
 
 _DATE_FIELDS = set()
 _ENUM_FIELDS = set()
@@ -117,20 +124,32 @@ class ParticipantSummary(Base):
       'withdrawal_status',
       Enum(WithdrawalStatus),
       nullable=False,
-      onupdate=WithdrawalStatus.NOT_WITHDRAWN)
+      onupdate=WithdrawalStatus.NOT_WITHDRAWN)  
+  withdrawalTime = Column('withdrawal_time', UTCDateTime)
 
   suspensionStatus = Column(
       'suspension_status',
       Enum(SuspensionStatus),
       nullable=False,
       onupdate=SuspensionStatus.NOT_SUSPENDED)
+  suspensionTime = Column('suspension_time', UTCDateTime)
 
   participant = relationship("Participant", back_populates="participantSummary")
 
   def to_client_json(self):
     result = self.asdict()
+    # Participants that withdrew more than 48 hours ago should have fields other than
+    # WITHDRAWN_PARTICIPANT_FIELDS cleared.
+    if (self.withdrawalStatus == WithdrawalStatus.NO_USE and 
+        self.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME):
+      for k in result.keys():
+        if not k in WITHDRAWN_PARTICIPANT_FIELDS:
+          del result[k]
+          
     result['participantId'] = to_client_participant_id(self.participantId)
-    result['biobankId'] = to_client_biobank_id(self.biobankId)
+    biobank_id = result.get('biobankId')
+    if biobank_id:
+      result['biobankId'] = to_client_biobank_id(biobank_id)
     date_of_birth = result.get('dateOfBirth')
     if date_of_birth:
       result['ageRange'] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
@@ -144,6 +163,9 @@ class ParticipantSummary(Base):
       format_json_code(result, fieldname)
     for fieldname in _ENUM_FIELDS:
       format_json_enum(result, fieldname)
+    if (self.withdrawalStatus == WithdrawalStatus.NO_USE or 
+        self.suspensionStatus == SuspensionStatus.NO_CONTACT):
+      result['recontactMethod'] = 'NO_CONTACT'
     # Strip None values.
     result = {k: v for k, v in result.iteritems() if v is not None}
 
@@ -171,6 +193,8 @@ Index('participant_summary_hpo_num_baseline_ppi', ParticipantSummary.hpoId,
       ParticipantSummary.numCompletedBaselinePPIModules)
 Index('participant_summary_hpo_num_baseline_samples', ParticipantSummary.hpoId,
       ParticipantSummary.numBaselineSamplesArrived)
+Index('participant_summary_hpo_withdrawal_status_time', ParticipantSummary.hpoId, 
+      ParticipantSummary.withdrawalStatus, ParticipantSummary.withdrawalTime)
 
 def _initialize_field_type_sets():
   """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are
