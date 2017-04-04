@@ -81,7 +81,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def _has_withdrawn_filter(self, query):
     for field_filter in query.field_filters:
-      if (field_filter.field_name == 'withdrawalStatus' and 
+      if (field_filter.field_name == 'withdrawalStatus' and
           field_filter.value == WithdrawalStatus.NO_USE):
         return True
       if field_filter.field_name == 'withdrawalTime' and field_filter.value is not None:
