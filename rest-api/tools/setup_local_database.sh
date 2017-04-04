@@ -68,10 +68,10 @@ fi
 echo "Updating schema to latest..."
 tools/upgrade_database.sh
 
-tools/import_data.sh
-
 echo "Setting general configuration..."
 tools/install_config.sh --config config/config_dev.json --update
 
 echo "Setting database configuration..."
 tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update
+
+tools/import_data.sh
