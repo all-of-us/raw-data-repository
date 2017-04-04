@@ -184,7 +184,7 @@ class BaseDao(object):
   def _create_query(self, session, query_def):
     #pylint: disable=unused-argument
     return session.query(self.model_type)
-    
+
   def _make_query(self, session, query_def):
     query = self._create_query(session, query_def)
     for field_filter in query_def.field_filters:

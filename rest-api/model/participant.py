@@ -35,7 +35,7 @@ class ParticipantBase(object):
   # Withdrawal is permanent, and indicates we should neither contact the participant nor use their
   # data in the future.
   withdrawalStatus = Column('withdrawal_status', Enum(WithdrawalStatus), nullable=False)
-  
+
   # The time at which the participants set their withdrawal status to NO_USE.
   withdrawalTime = Column('withdrawal_time', UTCDateTime)
 
@@ -58,7 +58,7 @@ class ParticipantBase(object):
         'signUpTime': self.signUpTime.isoformat(),
         'providerLink': json.loads(self.providerLink),
         'withdrawalStatus': self.withdrawalStatus,
-        'withdrawalTime': self.withdrawalTime,     
+        'withdrawalTime': self.withdrawalTime,
         'suspensionStatus': self.suspensionStatus,
         'suspensionTime': self.suspensionTime
     }

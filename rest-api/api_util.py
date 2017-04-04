@@ -230,7 +230,7 @@ def format_json_code(obj, field_name):
       obj[field_without_id] = UNMAPPED
     del obj[field_name]
   else:
-    obj[field_without_id] = UNSET  
+    obj[field_without_id] = UNSET
 
 def format_json_hpo(obj, field_name):
   if obj[field_name]:

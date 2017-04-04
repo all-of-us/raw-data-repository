@@ -245,7 +245,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                      headers={ 'If-Match': participant_2['meta']['versionId'] })
       self.send_put('Participant/%s' % participant_id_3, participant_3,
                      headers={ 'If-Match': participant_3['meta']['versionId'] })
-    
+
     with FakeClock(TIME_4):
       ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
       ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
@@ -296,7 +296,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
     self.assertIsNone(ps_3.get('withdrawalTime'))
     self.assertIsNotNone(ps_3['suspensionTime'])
-    
+
     # One day after participant 2 withdraws, the participant is still returned.
     with FakeClock(TIME_4):
       response = self.send_get('ParticipantSummary')
@@ -373,7 +373,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09',
                            [[ps_2, ps_3]])
-    
+
       self.assertResponses('ParticipantSummary?_count=2&withdrawalStatus=NOT_WITHDRAWN',
                            [[ps_1, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&withdrawalStatus=NO_USE',
@@ -381,23 +381,23 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03',
                            [[]])
       self.assertResponses('ParticipantSummary?_count=2&withdrawalTime=ge2016-01-03',
-                           [[ps_2]])  
+                           [[ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED',
-                           [[ps_1, ps_2]])    
+                           [[ps_1, ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&suspensionStatus=NO_CONTACT',
                            [[ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&suspensionTime=lt2016-01-03',
                            [[]])
       self.assertResponses('ParticipantSummary?_count=2&suspensionTime=ge2016-01-03',
                            [[ps_3]])
-  
+
     # Two days after participant 2 withdraws, their fields are not set for anything but
     # participant ID, HPO ID, withdrawal status, and withdrawal time
-    with FakeClock(TIME_5):  
+    with FakeClock(TIME_5):
       new_ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
       new_ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
       new_ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
-      
+
     self.assertEquals(ps_1, new_ps_1)
     self.assertEquals(ps_3, new_ps_3)
     self.assertIsNone(new_ps_2.get('numCompletedBaselinePPIModules'))
@@ -416,7 +416,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals(participant_id_2, new_ps_2['participantId'])
     self.assertIsNotNone(ps_2['withdrawalTime'])
     self.assertIsNone(new_ps_2.get('suspensionTime'))
-    
+
     # Queries that don't ask for withdrawn participants no longer return participant 2;
     # queries that ask for withdrawn participants get back the participant
     with FakeClock(TIME_5):
@@ -447,15 +447,15 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&lastName=Smith',
                            [[ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=PITT',
-                           [[ps_1]])            
+                           [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&withdrawalStatus=NO_USE',
                            [[new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03',
                            [[]])
       self.assertResponses('ParticipantSummary?_count=2&withdrawalTime=ge2016-01-03',
-                           [[new_ps_2]])  
+                           [[new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED',
-                           [[ps_1]])    
+                           [[ps_1]])
 
 def _add_code_answer(code_answers, link_id, code):
   if code:

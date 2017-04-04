@@ -1,7 +1,7 @@
 """Initial schema
 
 Revision ID: ae11bf43cab2
-Revises: 
+Revises:
 Create Date: 2017-04-04 11:13:10.154107
 
 """
@@ -344,7 +344,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('questionnaire_response_answer_id')
     )
     # ### end Alembic commands ###
-    
+
     # Insert our HPO IDs into the HPO table.
     op.bulk_insert(hpo_table,
       [
