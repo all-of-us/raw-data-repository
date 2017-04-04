@@ -80,10 +80,11 @@ class ParticipantSummaryDao(UpdatableDao):
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
 
   def _has_withdrawn_filter(self, query):
-    for filter in query.field_filters:
-      if filter.field_name == 'withdrawalStatus' and filter.value == WithdrawalStatus.NO_USE:
+    for field_filter in query.field_filters:
+      if (field_filter.field_name == 'withdrawalStatus' and 
+          field_filter.value == WithdrawalStatus.NO_USE):
         return True
-      if filter.field_name == 'withdrawalTime' and filter.value is not None:
+      if field_filter.field_name == 'withdrawalTime' and field_filter.value is not None:
         return True
     return False
 
