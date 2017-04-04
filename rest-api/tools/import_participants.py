@@ -1,5 +1,6 @@
 """Imports participants into the database, using fake CSV data specifying attributes of the
-participants.
+participants. This is used by HealthPro to insert some participants in the database in non-prod
+environments that are expected to be there for testing and training purposes.
 """
 
 from client.client import Client
