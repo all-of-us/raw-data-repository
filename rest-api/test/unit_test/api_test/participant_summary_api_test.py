@@ -412,6 +412,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('NO_USE', new_ps_2['withdrawalStatus'])
     self.assertEquals('UNSET', new_ps_2['suspensionStatus'])
     self.assertEquals('NO_CONTACT', new_ps_2['recontactMethod'])
+    self.assertEquals('PITT', new_ps_2['hpoId'])
+    self.assertEquals(participant_id_2, new_ps_2['participantId'])
     self.assertIsNotNone(ps_2['withdrawalTime'])
     self.assertIsNone(new_ps_2.get('suspensionTime'))
     
