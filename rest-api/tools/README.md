@@ -44,6 +44,10 @@ Imports a set of fake participants into the database.
 
 Imports questionnaires into the database
 
+### import_data.sh
+
+Imports the codebook, questionnaires, and fake participants into the database.
+
 ### install_config.sh
 
 Populates configuration JSON in Datastore, for use by the AppEngine app.
