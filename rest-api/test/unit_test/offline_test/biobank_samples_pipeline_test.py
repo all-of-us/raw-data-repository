@@ -106,6 +106,14 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         confirmed_date.strftime(biobank_samples_pipeline._INPUT_TIMESTAMP_FORMAT),
         row[cols.CONFIRMED_DATE])
 
+  def test_sample_from_row_invalid(self):
+    samples_file = test_data.open_biobank_samples(111, 222, 333)
+    reader = csv.DictReader(samples_file, delimiter='\t')
+    row = reader.next()
+    row[biobank_samples_pipeline._Columns.CONFIRMED_DATE] = '2016 11 19'
+    with self.assertRaises(biobank_samples_pipeline.DataError):
+      biobank_samples_pipeline._create_sample_from_row(row)
+
   def test_column_missing(self):
     with open(test_data.data_path('biobank_samples_missing_field.csv')) as samples_file:
       reader = csv.DictReader(samples_file, delimiter='\t')
