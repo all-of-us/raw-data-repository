@@ -5,7 +5,7 @@ import json
 from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
-from dao.participant_dao import ParticipantDao
+from dao.participant_dao import ParticipantDao, check_not_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from field_mappings import FieldType, QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
@@ -33,11 +33,20 @@ class QuestionnaireResponseDao(BaseDao):
   def get_id(self, obj):
     return obj.questionnaireResponseId
 
+  def get_with_session(self, session, obj_id):
+    result = super(QuestionnaireResponseDao, self).get_with_session(session, obj_id)
+    if result:
+      ParticipantDao().validate_participant_reference(session, result)
+    return result
+
   def get_with_children(self, questionnaire_response_id):
     with self.session() as session:
       query = session.query(QuestionnaireResponse) \
           .options(subqueryload(QuestionnaireResponse.answers))
-      return query.get(questionnaire_response_id)
+      result = query.get(questionnaire_response_id)
+      if result:
+        ParticipantDao().validate_participant_reference(session, result)
+      return result
 
   def _validate_model(self, session, obj):
     if not obj.questionnaireId:
@@ -124,6 +133,8 @@ class QuestionnaireResponseDao(BaseDao):
       participant = ParticipantDao().validate_participant_reference(session, questionnaire_response)
       participant_summary = ParticipantDao.create_summary_for_participant(participant)
       something_changed = True
+    else:
+      check_not_withdrawn(participant_summary)
 
     # Fetch the codes for all questions and concepts
     codes = code_dao.get_with_ids(code_ids)

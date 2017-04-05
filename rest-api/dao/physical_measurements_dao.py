@@ -3,6 +3,7 @@ import json
 import logging
 
 from dao.base_dao import BaseDao
+from dao.participant_dao import check_not_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements
@@ -19,6 +20,23 @@ class PhysicalMeasurementsDao(BaseDao):
 
   def get_id(self, obj):
     return obj.physicalMeasurementsId
+
+  def get_with_session(self, session, obj_id):
+    result = super(PhysicalMeasurementsDao, self).get_with_session(session, obj_id)
+    if result:
+      ParticipantDao().validate_participant_reference(session, result)
+    return result
+
+  def _initialize_query(self, session, query_def):
+    participant_id = None
+    for field_filter in query_def.field_filters:
+      if field_filter.field_name == 'participantId':
+        participant_id = field_filter.value
+        break
+    if not participant_id:
+      raise BadRequest('Physical measurement queries must specify participantId')
+    ParticipantDao().validate_participant_id(session, participant_id)
+    return super(PhysicalMeasurementsDao, self)._initialize_query(session, query_def)
 
   def insert_with_session(self, session, obj):
     if obj.logPosition is not None:
@@ -51,6 +69,7 @@ class PhysicalMeasurementsDao(BaseDao):
     if not participant_summary:
       raise BadRequest("Can't submit physical measurements for participant %s without consent" %
                        participant_id)
+    check_not_withdrawn(participant_summary)
     if (not participant_summary.physicalMeasurementsStatus or
         participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.UNSET):
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
