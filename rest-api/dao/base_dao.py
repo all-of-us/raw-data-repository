@@ -184,7 +184,7 @@ class BaseDao(object):
   def _initialize_query(self, session, query_def):
     """Creates the initial query, before the filters, order by, and limit portions are added
     from the query definition. Clients can subclass to manipulate the initial query criteria
-    or validate the query definition.""" 
+    or validate the query definition."""
     #pylint: disable=unused-argument
     return session.query(self.model_type)
 
