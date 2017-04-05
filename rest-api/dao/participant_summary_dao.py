@@ -88,7 +88,7 @@ class ParticipantSummaryDao(UpdatableDao):
         return True
     return False
 
-  def _create_query(self, session, query_def):
+  def _initialize_query(self, session, query_def):
     if self._has_withdrawn_filter(query_def):
       # When querying for withdrawn particiapnts, ensure that the only fields being filtered on or
       # ordered by are in WITHDRAWN_PARTICIPANT_FIELDS.
@@ -100,11 +100,11 @@ class ParticipantSummaryDao(UpdatableDao):
         if not query_def.order_by.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
           raise BadRequest("Can't order by %s for withdrawn participants" %
                            query_def.order_by.field_name)
-      return super(ParticipantSummaryDao, self)._create_query(session, query_def)
+      return super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
     else:
       # When *not* querying for withdrawn participants, ensure that we only return participants
       # who have not withdrawn or withdrew in the past 48 hours.
-      query = super(ParticipantSummaryDao, self)._create_query(session, query_def)
+      query = super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
       withdrawn_visible_start = clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
       return query.filter(or_(ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE,
                               ParticipantSummary.withdrawalTime >= withdrawn_visible_start))

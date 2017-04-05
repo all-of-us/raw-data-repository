@@ -181,12 +181,15 @@ class BaseDao(object):
     vals_json = json.dumps(vals, default=json_serial)
     return urlsafe_b64encode(vals_json)
 
-  def _create_query(self, session, query_def):
+  def _initialize_query(self, session, query_def):
+    """Creates the initial query, before the filters, order by, and limit portions are added
+    from the query definition. Clients can subclass to manipulate the initial query criteria
+    or validate the query definition.""" 
     #pylint: disable=unused-argument
     return session.query(self.model_type)
 
   def _make_query(self, session, query_def):
-    query = self._create_query(session, query_def)
+    query = self._initialize_query(session, query_def)
     for field_filter in query_def.field_filters:
       try:
         f = getattr(self.model_type, field_filter.field_name)

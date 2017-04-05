@@ -142,9 +142,7 @@ class ParticipantSummary(Base):
     # WITHDRAWN_PARTICIPANT_FIELDS cleared.
     if (self.withdrawalStatus == WithdrawalStatus.NO_USE and
         self.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME):
-      for k in result.keys():
-        if not k in WITHDRAWN_PARTICIPANT_FIELDS:
-          del result[k]
+      result = {k: result.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
 
     result['participantId'] = to_client_participant_id(self.participantId)
     biobank_id = result.get('biobankId')
