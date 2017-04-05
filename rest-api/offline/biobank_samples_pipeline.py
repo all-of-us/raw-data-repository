@@ -37,9 +37,9 @@ def upsert_from_latest_csv():
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
   csv_file = _open_latest_samples_file(bucket_name)
   csv_reader = csv.DictReader(csv_file, delimiter='\t')
-  written, skipped = _upsert_samples_from_csv(csv_reader)
+  written = _upsert_samples_from_csv(csv_reader)
   ParticipantSummaryDao().update_from_biobank_stored_samples()
-  return written, skipped
+  return written
 
 
 def _open_latest_samples_file(cloud_bucket_name):

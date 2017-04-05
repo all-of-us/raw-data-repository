@@ -18,6 +18,7 @@ class BiobankStoredSampleDao(BaseDao):
     # SQLAlchemy does not provide batch upserting; individual session.merge() calls as below may be
     # expensive but cannot be effectively batched, see stackoverflow.com/questions/25955200. If this
     # proves to be a bottleneck, we can switch to generating "INSERT .. ON DUPLICATE KEY UPDATE".
+    written = 0
     with self.session() as session:
       valid_biobank_ids = ParticipantDao().get_valid_biobank_id_set(session)
       for sample in sample_generator:
