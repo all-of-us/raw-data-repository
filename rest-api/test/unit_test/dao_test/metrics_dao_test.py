@@ -10,6 +10,8 @@ from werkzeug.exceptions import PreconditionFailed
 TIME = datetime.datetime(2016, 1, 1, 10, 0)
 TIME_2 = datetime.datetime(2016, 1, 2, 9, 59)
 TIME_3 = datetime.datetime(2016, 1, 2, 10, 0)
+TIME_4 = datetime.datetime(2016, 1, 4, 10, 0)
+TIME_5 = datetime.datetime(2016, 1, 4, 10, 1)
 PITT = 'PITT'
 
 class MetricsDaoTest(SqlTestBase):
@@ -130,3 +132,28 @@ class MetricsDaoTest(SqlTestBase):
     self.metrics_bucket_dao.insert(metrics_bucket_1)
     with self.assertRaises(IntegrityError):
       self.metrics_bucket_dao.insert(metrics_bucket_2)
+
+  def test_delete_old_metrics(self):
+    with FakeClock(TIME):
+      self.metrics_version_dao.set_pipeline_in_progress()
+    metrics_bucket_1 = MetricsBucket(metricsVersionId=1, date=datetime.date.today(), hpoId='',
+                                     metrics='foo')
+    metrics_bucket_2 = MetricsBucket(metricsVersionId=1, date=datetime.date.today(), hpoId=PITT,
+                                     metrics='bar')
+    self.metrics_bucket_dao.insert(metrics_bucket_1)
+    self.metrics_bucket_dao.insert(metrics_bucket_2)
+
+    # For up to 3 days, the metrics stay around.
+    with FakeClock(TIME_4):
+      self.metrics_version_dao.delete_old_versions()
+      expected_mv = MetricsVersion(metricsVersionId=1, inProgress=True, complete=False,
+                                   date=TIME, dataVersion=SERVING_METRICS_DATA_VERSION)
+      expected_mv.buckets.append(metrics_bucket_1)
+      expected_mv.buckets.append(metrics_bucket_2)
+      self.assertEquals(expected_mv.asdict(follow=['buckets']),
+                        self.metrics_version_dao.get_with_children(1).asdict(follow=['buckets']))
+
+     # After 3 days, the metrics are gone.
+    with FakeClock(TIME_5):
+      self.metrics_version_dao.delete_old_versions()
+      self.assertIsNone(self.metrics_version_dao.get_with_children(1))
