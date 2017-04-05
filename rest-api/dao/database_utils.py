@@ -1,4 +1,5 @@
 """Helpers for querying the SQL database."""
+import pytz
 import re
 
 from dao.database_factory import get_database
@@ -8,7 +9,6 @@ _DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 # MySQL uses %i for minutes
 _MYSQL_DATE_FORMAT = '%Y-%m-%dT%H:%i:%SZ'
 _ISODATE_PATTERN = 'ISODATE\[([^\]]+)\]'
-_IS_SQLITE = None
 
 
 def get_sql_and_params_for_array(arr, name_prefix):
@@ -23,14 +23,18 @@ def get_sql_and_params_for_array(arr, name_prefix):
   sql_expr = '(%s)' % ','.join([':' + param_name for param_name in array_values])
   return sql_expr, array_values
 
+
 def _is_sqlite():
-  global _IS_SQLITE
-  if _IS_SQLITE is None:
-    _IS_SQLITE = get_database().db_type == 'sqlite'
-  return _IS_SQLITE
+  return get_database().db_type == 'sqlite'
+
 
 def parse_datetime(datetime_str):
   return datetime.strptime(datetime_str, _DATE_FORMAT)
+
+def format_datetime(dt):
+  """ISO formats a datetime. Converts naive datetimes to UTC first."""
+  aware_dt = dt if dt.tzinfo is None else pytz.utc.localize(dt)
+  return aware_dt.strftime(_DATE_FORMAT)
 
 def replace_isodate(sql):
   if _is_sqlite():

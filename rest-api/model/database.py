@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 from model.base import Base
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
@@ -39,6 +41,14 @@ class Database(object):
   def make_session(self):
     return self._Session()
 
-
-
-
+  @contextmanager
+  def session(self):
+    sess = self.make_session()
+    try:
+      yield sess
+      sess.commit()
+    except Exception:
+      sess.rollback()
+      raise
+    finally:
+      sess.close()

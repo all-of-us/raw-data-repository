@@ -5,7 +5,6 @@ import random
 import api_util
 import dao.database_factory
 import json
-from contextlib import contextmanager
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 from sqlalchemy.exc import IntegrityError
 from model.utils import get_property_type
@@ -48,17 +47,8 @@ class BaseDao(object):
     self._database = dao.database_factory.get_database()
     self.order_by_ending = order_by_ending
 
-  @contextmanager
   def session(self):
-    sess = self._database.make_session()
-    try:
-      yield sess
-      sess.commit()
-    except Exception:
-      sess.rollback()
-      raise
-    finally:
-      sess.close()
+    return self._database.session()
 
   def _validate_model(self, session, obj):
     """Override to validate a model before any db write (insert or update)."""

@@ -1,6 +1,7 @@
 import csv
 import random
 import pytz
+import datetime
 import time
 
 from cloudstorage import cloudstorage_api  # stubbed by testbed
@@ -8,7 +9,6 @@ from cloudstorage import cloudstorage_api  # stubbed by testbed
 import config
 from code_constants import BIOBANK_TESTS
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from dao.hpo_dao import HPO
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
@@ -21,6 +21,7 @@ from participant_enums import SampleStatus
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
 
+
 class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
   def setUp(self):
     super(BiobankSamplesPipelineTest, self).setUp()
@@ -29,6 +30,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, _BASELINE_TESTS)
     # Everything is stored as a list, so override bucket name as a 1-element list.
     config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BUCKET])
+    self.participant_dao = ParticipantDao()
 
   def _write_cloud_csv(self, file_name, contents_str):
     with cloudstorage_api.open('/%s/%s' % (_FAKE_BUCKET, file_name), mode='w') as cloud_file:
@@ -39,12 +41,11 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEquals(dao.count(), 0)
 
     # Create 3 participants and pass their (random) IDs into sample rows.
-    participant_dao = ParticipantDao()
     summary_dao = ParticipantSummaryDao()
     biobank_ids = []
     participant_ids = []
     for _ in xrange(3):
-      participant = participant_dao.insert(Participant())
+      participant = self.participant_dao.insert(Participant())
       summary_dao.insert(self.participant_summary(participant))
       participant_ids.append(participant.participantId)
       biobank_ids.append(participant.biobankId)
@@ -78,10 +79,12 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     # Creation time is stored at second granularity.
     self._write_cloud_csv('a_lex_first_created_first.csv', 'any contents')
     time.sleep(1.0)
-    self._write_cloud_csv('c_lex_last_created_middle.csv', 'any contents')
+    self._write_cloud_csv('z_lex_last_created_middle.csv', 'any contents')
     time.sleep(1.0)
     created_last = 'b_lex_middle_created_last.csv'
     self._write_cloud_csv(created_last, 'any contents')
+    self._write_cloud_csv(
+        '%s/created_last_in_subdir.csv' % biobank_samples_pipeline._REPORT_SUBDIR, 'any contents')
 
     latest_filename = biobank_samples_pipeline._find_latest_samples_csv(_FAKE_BUCKET)
     self.assertEquals(latest_filename, '/%s/%s' % (_FAKE_BUCKET, created_last))
@@ -109,21 +112,13 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
       with self.assertRaises(RuntimeError):
         biobank_samples_pipeline._upsert_samples_from_csv(reader)
 
-
-# TODO(mwf) Add Biobank reconciliation test using this stub.
-class MySqlReconciliationTest(CloudStorageSqlTestBase, NdbTestBase):
-  def setUp(self):
-    super(MySqlReconciliationTest, self).setUp(use_mysql=True, with_data=False)
-
-  def _create_hpo_as_sanity_check(self):
-    session = self.database.make_session()
-    hpo = HPO(hpoId=1, name='UNSET')
-    session.add(hpo)
-    session.commit()
-    session.close()
-
-  def test_mysql_db_connection_works(self):
-    self._create_hpo_as_sanity_check()
-
-  def test_mysql_db_connection_works_after_reset(self):
-    self._create_hpo_as_sanity_check()
+  def test_get_reconciliation_report_paths(self):
+    dt = datetime.datetime(2016, 12, 22, 18, 30, 45)
+    expected_prefix = 'reconciliation/report_2016-12-22'
+    paths = biobank_samples_pipeline._get_report_paths(dt)
+    self.assertEquals(len(paths), 3)
+    for path in paths:
+      self.assertTrue(
+          path.startswith(expected_prefix),
+          'Report path %r must start with %r.' % (expected_prefix, path))
+      self.assertTrue(path.endswith('.csv'))

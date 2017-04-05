@@ -1,4 +1,8 @@
+import StringIO
+import collections
+import contextlib
 import copy
+import csv
 import faker
 import httplib
 import json
@@ -12,6 +16,7 @@ from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
+from mock import patch
 from testlib import testutil
 
 import api_util
@@ -23,7 +28,6 @@ import dao.base_dao
 import singletons
 
 from code_constants import PPI_SYSTEM
-from contextlib import contextmanager
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from dao.participant_dao import ParticipantDao
@@ -31,8 +35,8 @@ from model.code import Code
 from model.hpo import HPO
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
+from offline import sql_exporter
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
-from mock import patch
 from test.test_data import data_path
 
 PITT_HPO_ID = 2
@@ -135,7 +139,9 @@ class _TestDb(object):
       dao.database_factory.DB_CONNECTION_STRING = (
           'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
       db = dao.database_factory.get_database()
-      db.get_engine().execute('CREATE DATABASE %s' % self.__temp_db_name)
+      # Keep in sync with tools/setup_local_database.sh.
+      db.get_engine().execute(
+          'CREATE DATABASE %s CHARACTER SET utf8 COLLATE utf8_general_ci' % self.__temp_db_name)
 
       dao.database_factory.DB_CONNECTION_STRING = (
           'mysql+mysqldb://%s@localhost/%s?charset=utf8' % (mysql_login, self.__temp_db_name))
@@ -195,6 +201,60 @@ class SqlTestBase(TestbedTestBase):
       self.assertEquals(list_a[i].asdict(), list_b[i].asdict())
 
 
+class InMemorySqlExporter(sql_exporter.SqlExporter):
+  """Store rows that would be written to GCS CSV in a StringIO instead.
+
+  Provide some assertion helpers related to CSV contents.
+  """
+  def __init__(self, test):
+    super(InMemorySqlExporter, self).__init__('inmemory')  # fake bucket name
+    self._test = test
+    self._path_to_buffer = collections.defaultdict(StringIO.StringIO)
+
+  @contextlib.contextmanager
+  def _open_writer(self, file_name):
+    yield csv.writer(self._path_to_buffer[file_name])
+
+  def assertFilesEqual(self, paths):
+    self._test.assertItemsEqual(paths, self._path_to_buffer.keys())
+
+  def _get_dict_reader(self, file_name):
+    return csv.DictReader(
+        StringIO.StringIO(self._path_to_buffer[file_name].getvalue()),
+        delimiter=sql_exporter.DELIMITER)
+
+  def assertColumnNamesEqual(self, file_name, col_names):
+    self._test.assertItemsEqual(col_names, self._get_dict_reader(file_name).fieldnames)
+
+  def assertRowCount(self, file_name, n):
+    rows = list(self._get_dict_reader(file_name))
+    self._test.assertEquals(
+        n, len(rows), 'Expected %d rows in %r but found %d: %s.' % (n, file_name, len(rows), rows))
+
+  def assertHasRow(self, file_name, expected_row):
+    """Asserts that the writer got a row that has all the values specified in the given row.
+
+    Args:
+      file_name: The bucket-relative path of the file that should have the row.
+      expected_row: A dict like {'biobank_id': 557741928, sent_test: None} specifying a subset of
+          the fields in a row that should have been written.
+    Returns:
+      The matched row.
+    """
+    rows = list(self._get_dict_reader(file_name))
+    for row in rows:
+      found_all = True
+      for required_k, required_v in expected_row.iteritems():
+        if required_k not in row or row[required_k] != required_v:
+          found_all = False
+          break
+      if found_all:
+        return row
+    self._test.fail(
+        'No match found for expected row %s among %d rows: %s'
+        % (expected_row, len(rows), rows))
+
+
 class NdbTestBase(SqlTestBase):
   """Base class for unit tests that need the NDB testbed."""
   _AUTH_USER = 'authorized@gservices.act'  # authorized for typical API usage roles
@@ -216,6 +276,7 @@ class NdbTestBase(SqlTestBase):
     dev_config[config.USER_INFO] = self._CONFIG_USER_INFO
     config.store_current_config(dev_config)
     config.CONFIG_OVERRIDES = {}
+
 
 class CloudStorageSqlTestBase(testutil.CloudStorageTestBase):
   """Merge AppEngine's provided CloudStorageTestBase and our SqlTestBase.
@@ -436,7 +497,7 @@ def questionnaire_response_url(participant_id):
 def pretty(obj):
   return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
 
-@contextmanager
+@contextlib.contextmanager
 def random_ids(ids):
   with patch('random.randint', side_effect=ids):
     yield

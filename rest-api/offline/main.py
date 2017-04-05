@@ -8,12 +8,12 @@ import logging
 
 from dao.metrics_dao import MetricsVersionDao
 from flask import Flask
-from flask_restful import Api
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
 from offline.metrics_export import MetricsExport
 
 PREFIX = '/offline/'
+
 
 @api_util.auth_required_cron
 def recalculate_metrics():
@@ -32,30 +32,34 @@ def recalculate_metrics():
 @api_util.auth_required_cron
 def import_biobank_samples():
   # Note that crons have a 10 minute deadline instead of the normal 60s.
+  logging.info('Starting samples import.')
   written, skipped = biobank_samples_pipeline.upsert_from_latest_csv()
+  logging.info(
+      'Import complete (%d written / %d skipped), generating report.', written, skipped)
+  biobank_samples_pipeline.write_reconciliation_report()
+  logging.info('Generated reconciliation report.')
   return json.dumps({'written': written, 'skipped': skipped})
 
 
-app = Flask(__name__)
-#
-# The REST-ful resources that are the bulk of the API.
-#
+def _build_pipeline_app():
+  """Configure and return the app with non-resource pipeline-triggering endpoints."""
+  offline_app = Flask(__name__)
 
-api = Api(app)
+  offline_app.add_url_rule(
+      PREFIX + 'BiobankSamplesImport',
+      endpoint='biobankSamplesImport',
+      view_func=import_biobank_samples,
+      methods=['GET'])
 
-#
-# Non-resource pipeline-trigger endpoints
-#
+  offline_app.add_url_rule(
+      PREFIX + 'MetricsRecalculate',
+      endpoint='metrics_recalc',
+      view_func=recalculate_metrics,
+      methods=['GET'])
 
-app.add_url_rule(PREFIX + 'BiobankSamplesImport',
-                 endpoint='biobankSamplesImport',
-                 view_func=import_biobank_samples,
-                 methods=['GET'])
+  offline_app.after_request(app_util.add_headers)
+  offline_app.before_request(app_util.request_logging)
+  return offline_app
 
-app.add_url_rule(PREFIX + 'MetricsRecalculate',
-                 endpoint='metrics_recalc',
-                 view_func=recalculate_metrics,
-                 methods=['GET'])
 
-app.after_request(app_util.add_headers)
-app.before_request(app_util.request_logging)
+app = _build_pipeline_app()

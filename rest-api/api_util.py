@@ -218,6 +218,7 @@ def format_json_date(obj, field_name, date_format=None):
       else:
         obj[field_name] = obj[field_name].isoformat()
 
+
 def format_json_code(obj, field_name):
   field_without_id = field_name[0:len(field_name) - 2]
   value = obj.get(field_name)

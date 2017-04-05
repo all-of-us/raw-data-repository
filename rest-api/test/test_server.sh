@@ -52,10 +52,10 @@ function run_client_test {
   test=`echo $1 | sed -e "s|^$BASE_DIR/test/||"`
   if [[ $test == *"$substring"* ]]
   then
-    echo Running $test as it matches substring \"${substring}.\"
+    echo Running $test as it matches substring \"${substring}\".
     (cd $BASE_DIR/test && PMI_DRC_RDR_INSTANCE=${instance} python $test)
   else
-    echo Skipping $test as it doesn\'t match substring \"${substring}.\"
+    echo Skipping $test as it doesn\'t match substring \"${substring}\".
   fi
 }
 
