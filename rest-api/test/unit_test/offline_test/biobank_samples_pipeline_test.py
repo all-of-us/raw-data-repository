@@ -109,7 +109,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
   def test_column_missing(self):
     with open(test_data.data_path('biobank_samples_missing_field.csv')) as samples_file:
       reader = csv.DictReader(samples_file, delimiter='\t')
-      with self.assertRaises(RuntimeError):
+      with self.assertRaises(biobank_samples_pipeline.DataError):
         biobank_samples_pipeline._upsert_samples_from_csv(reader)
 
   def test_get_reconciliation_report_paths(self):

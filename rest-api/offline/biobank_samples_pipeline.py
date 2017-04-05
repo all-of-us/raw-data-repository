@@ -57,14 +57,14 @@ def _find_latest_samples_csv(cloud_bucket_name):
   """
   bucket_stat_list = cloudstorage_api.listbucket('/' + cloud_bucket_name)
   if not bucket_stat_list:
-    raise RuntimeError('No files in cloud bucket %r.' % cloud_bucket_name)
+    raise DataError('No files in cloud bucket %r.' % cloud_bucket_name)
   # GCS does not really have the concept of directories (it's just a filename convention), so all
   # directory listings are recursive and we must filter out subdirectory contents.
   bucket_stat_list = [
       s for s in bucket_stat_list
       if s.filename.lower().endswith('.csv') and '/%s/' % _REPORT_SUBDIR not in s.filename]
   if not bucket_stat_list:
-    raise RuntimeError(
+    raise DataError(
         'No CSVs in cloud bucket %r (all files: %s).' % (cloud_bucket_name, bucket_stat_list))
   bucket_stat_list.sort(key=lambda s: s.st_ctime)
   return bucket_stat_list[-1].filename
@@ -84,7 +84,7 @@ def _upsert_samples_from_csv(csv_reader):
   """Inserts/updates BiobankStoredSamples from a csv.DictReader."""
   missing_cols = _Columns.ALL - set(csv_reader.fieldnames)
   if missing_cols:
-    raise RuntimeError(
+    raise DataError(
         'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
   samples_dao = BiobankStoredSampleDao()
   try:
