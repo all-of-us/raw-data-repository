@@ -37,7 +37,7 @@ def import_biobank_samples():
     written = biobank_samples_pipeline.upsert_from_latest_csv()
     logging.info(
         'Import complete (%d written), generating report.', written)
-  except biobank_samples_pipeline.DataError, e:
+  except biobank_samples_pipeline.DataError:
     written = None
     logging.error('Import failed: bad data in CSV.', exc_info=True)
 
