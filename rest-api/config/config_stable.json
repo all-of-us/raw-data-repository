@@ -10,6 +10,9 @@
     },
     "test-client@pmi-rdr-api-test.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]
+    },
+    "configurator@all-of-us-rdr-stable.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro", "admin"]
     }
   },
   "biobank_samples_bucket_name": [
