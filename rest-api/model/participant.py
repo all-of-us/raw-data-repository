@@ -1,6 +1,6 @@
 import json
 
-from api_util import format_json_enum, parse_json_enum
+from api_util import format_json_enum, parse_json_enum, format_json_date
 from model.base import Base
 from model.utils import Enum, to_client_participant_id, to_client_biobank_id, UTCDateTime
 from participant_enums import WithdrawalStatus, SuspensionStatus
@@ -35,9 +35,16 @@ class ParticipantBase(object):
   # Withdrawal is permanent, and indicates we should neither contact the participant nor use their
   # data in the future.
   withdrawalStatus = Column('withdrawal_status', Enum(WithdrawalStatus), nullable=False)
+
+  # The time at which the participants set their withdrawal status to NO_USE.
+  withdrawalTime = Column('withdrawal_time', UTCDateTime)
+
   # Suspension may be temporary, and indicates we should not contact the participant but may
   # continue using their data.
   suspensionStatus = Column('suspension_status', Enum(SuspensionStatus), nullable=False)
+
+  # The time at which the participant set their suspension status to NO_CONTACT.
+  suspensionTime = Column('suspension_time', UTCDateTime)
 
   @declared_attr
   def hpoId(cls):
@@ -51,10 +58,14 @@ class ParticipantBase(object):
         'signUpTime': self.signUpTime.isoformat(),
         'providerLink': json.loads(self.providerLink),
         'withdrawalStatus': self.withdrawalStatus,
+        'withdrawalTime': self.withdrawalTime,
         'suspensionStatus': self.suspensionStatus,
+        'suspensionTime': self.suspensionTime
     }
     format_json_enum(client_json, 'withdrawalStatus')
     format_json_enum(client_json, 'suspensionStatus')
+    format_json_date(client_json, 'withdrawalTime')
+    format_json_date(client_json, 'suspensionTime')
     return client_json
 
 

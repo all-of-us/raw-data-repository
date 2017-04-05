@@ -97,8 +97,12 @@ class ParticipantApiTest(FlaskTestBase):
     # Change the provider link for the participant
     participant_id = response['participantId']
     response['providerLink'] = [ self.provider_link_2 ]
+    response['withdrawalStatus'] = 'NO_USE'
+    response['suspensionStatus'] = 'NO_CONTACT'
     path = 'Participant/%s' % participant_id
     update_response = self.send_put(path, response, headers={ 'If-Match': 'W/"1"' })
     response['meta']['versionId'] = 'W/"2"'
+    response['withdrawalTime'] = update_response['lastModified']
+    response['suspensionTime'] = update_response['lastModified']
     self.assertJsonResponseMatches(response, update_response)
 

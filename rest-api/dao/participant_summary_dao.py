@@ -1,18 +1,23 @@
+import clock
+import config
+
 from query import OrderBy
 from werkzeug.exceptions import BadRequest, NotFound
-
-import config
 from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
 from dao.base_dao import UpdatableDao
 from dao.database_utils import get_sql_and_params_for_array
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
-from model.participant_summary import ParticipantSummary
+from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS
+from model.participant_summary import WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus
-from participant_enums import EnrollmentStatus
+from participant_enums import EnrollmentStatus, WithdrawalStatus
+from sqlalchemy import or_
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ['lastName', 'firstName', 'dateOfBirth', 'participantId']
+# The default ordering of results for queries for withdrawn participants.
+_WITHDRAWN_ORDER_BY_ENDING = ['withdrawalTime', 'participantId']
 _CODE_FIELDS = ['genderIdentity']
 
 # Query used to update the enrollment status for all participant summaries after
@@ -73,6 +78,41 @@ class ParticipantSummaryDao(UpdatableDao):
     """Participant summaries don't have a version value; drop it from validation logic."""
     if not existing_obj:
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
+
+  def _has_withdrawn_filter(self, query):
+    for field_filter in query.field_filters:
+      if (field_filter.field_name == 'withdrawalStatus' and
+          field_filter.value == WithdrawalStatus.NO_USE):
+        return True
+      if field_filter.field_name == 'withdrawalTime' and field_filter.value is not None:
+        return True
+    return False
+
+  def _initialize_query(self, session, query_def):
+    if self._has_withdrawn_filter(query_def):
+      # When querying for withdrawn particiapnts, ensure that the only fields being filtered on or
+      # ordered by are in WITHDRAWN_PARTICIPANT_FIELDS.
+      for field_filter in query_def.field_filters:
+        if not field_filter.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
+          raise BadRequest("Can't filter on %s for withdrawn participants" %
+                           field_filter.field_name)
+      if query_def.order_by:
+        if not query_def.order_by.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
+          raise BadRequest("Can't order by %s for withdrawn participants" %
+                           query_def.order_by.field_name)
+      return super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
+    else:
+      # When *not* querying for withdrawn participants, ensure that we only return participants
+      # who have not withdrawn or withdrew in the past 48 hours.
+      query = super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
+      withdrawn_visible_start = clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
+      return query.filter(or_(ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE,
+                              ParticipantSummary.withdrawalTime >= withdrawn_visible_start))
+
+  def _get_order_by_ending(self, query):
+    if self._has_withdrawn_filter(query):
+      return _WITHDRAWN_ORDER_BY_ENDING
+    return self.order_by_ending
 
   def _add_order_by(self, query, order_by, field_names, fields):
     if order_by.field_name in _CODE_FIELDS:
