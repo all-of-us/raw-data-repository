@@ -229,8 +229,10 @@ CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
     reconciled.biobank_id,
     reconciled.order_test,
     reconciled.test
-  ORDER BY
-    MAX(collected), MAX(confirmed)
+"""
+_ORDER_BY = """
+ORDER BY
+  sent_collection_time, received_time, sent_order_id, received_sample_id
 """
 
 
@@ -240,10 +242,12 @@ SELECT * FROM reconciliation_data
 WHERE
   received_test IS NOT NULL
   AND sent_count = received_count
-"""
+""" + _ORDER_BY
 
 # Gets orders for which the samples arrived, but they arrived late.
-_SELECT_FROM_VIEW_MYSQL_LATE = 'SELECT * FROM reconciliation_data WHERE elapsed_hours > 24'
+_SELECT_FROM_VIEW_MYSQL_LATE = """
+SELECT * FROM reconciliation_data WHERE elapsed_hours > 24
+""" + _ORDER_BY
 
 
 # Gets samples or orders where something has gone missing.
@@ -253,4 +257,4 @@ WHERE
   (sent_count != received_count)
   OR
   (sent_finalized_time IS NOT NULL AND received_test IS NULL)
-"""
+""" + _ORDER_BY
