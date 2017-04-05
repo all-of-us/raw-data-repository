@@ -1,4 +1,5 @@
 """Helpers for querying the SQL database."""
+import pytz
 import re
 
 from dao.database_factory import get_database
@@ -31,6 +32,11 @@ def _is_sqlite():
 
 def parse_datetime(datetime_str):
   return datetime.strptime(datetime_str, _DATE_FORMAT)
+
+def format_datetime(dt):
+  """ISO formats a datetime. Converts naive datetimes to UTC first."""
+  aware_dt = dt if dt.tzinfo is None else pytz.utc.localize(dt)
+  return aware_dt.strftime(_DATE_FORMAT)
 
 def replace_isodate(sql):
   if _is_sqlite():

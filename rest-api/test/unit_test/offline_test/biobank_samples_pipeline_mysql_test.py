@@ -5,6 +5,7 @@ import time
 
 import clock
 from code_constants import BIOBANK_TESTS
+from dao import database_utils
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
@@ -69,36 +70,46 @@ class MySqlReconciliationTest(SqlTestBase):
           finalized=order_time))
     return self.order_dao.insert(order)
 
-  def _insert_samples(self, participant, tests, received_time):
-    for test_code in tests:
+  def _insert_samples(self, participant, tests, sample_ids, received_time):
+    for test_code, sample_id in zip(tests, sample_ids):
       self.sample_dao.insert(BiobankStoredSample(
-          biobankStoredSampleId='StoredSample-%s-%s' % (participant.participantId, test_code),
+          biobankStoredSampleId=sample_id,
           biobankId=participant.biobankId,
           test=test_code,
           confirmed=received_time))
 
   def test_reconciliation_query(self):
-    order_time = clock.CLOCK.now()
+    # MySQL and Python sub-second rounding differs, so trim micros from generated times.
+    order_time = clock.CLOCK.now().replace(microsecond=0)
     within_a_day = order_time + datetime.timedelta(hours=23)
     late_time = order_time + datetime.timedelta(hours=25)
-    days_later = order_time + datetime.timedelta(days=5)
 
     p_on_time = self._insert_participant()
     self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:2], order_time)
-    self._insert_samples(p_on_time, BIOBANK_TESTS[:2], within_a_day)
+    self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], within_a_day)
 
     p_late_and_missing = self._insert_participant()
     o_late_and_missing = self._insert_order(
         p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:2], order_time)
-    self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], late_time)
+    self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], ['LateSample'], late_time)
 
     p_extra = self._insert_participant()
-    self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], order_time)
+    self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], ['NobodyOrderedThisSample'], order_time)
 
+    # for the same participant/test, 3 orders sent and only 2 samples received.
     p_repeated = self._insert_participant()
-    self._insert_order(p_repeated, 'OrigOrder', [BIOBANK_TESTS[0]], order_time)
-    self._insert_samples(p_repeated, [BIOBANK_TESTS[0]], within_a_day)
-    self._insert_order(p_repeated, 'RepeatedOrder', [BIOBANK_TESTS[0]], days_later)
+    for repetition in xrange(3):
+      self._insert_order(
+          p_repeated,
+          'RepeatedOrder%d' % repetition,
+          [BIOBANK_TESTS[0]],
+          order_time + datetime.timedelta(weeks=repetition))
+      if repetition != 2:
+        self._insert_samples(
+            p_repeated,
+            [BIOBANK_TESTS[0]],
+            ['RepeatedSample%d' % repetition],
+            within_a_day + datetime.timedelta(weeks=repetition))
 
     received, late, missing = 'rx.csv', 'late.csv', 'missing.csv'
     exporter = InMemorySqlExporter(self)
@@ -109,8 +120,20 @@ class MySqlReconciliationTest(SqlTestBase):
     # sent-and-received: 2 on-time, 1 late, none of the missing/extra/repeated ones
     exporter.assertRowCount(received, 3)
     exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
-    exporter.assertHasRow(received, {
-        'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': BIOBANK_TESTS[0]})
+    row = exporter.assertHasRow(received, {
+        'biobank_id': to_client_biobank_id(p_on_time.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0]})
+    # Also check the values of all remaining fields on one row.
+    self.assertEquals(row['site_id'], 'SiteValue-%d' % p_on_time.participantId)
+    self.assertEquals(row['sent_finalized_time'], database_utils.format_datetime(order_time))
+    self.assertEquals(row['sent_collection_time'], database_utils.format_datetime(order_time))
+    self.assertEquals(row['received_time'], database_utils.format_datetime(within_a_day))
+    self.assertEquals(row['sent_count'], '1')
+    self.assertEquals(row['received_count'], '1')
+    self.assertEquals(row['sent_order_id'], 'GoodOrder')
+    self.assertEquals(row['received_sample_id'], 'GoodSample1')
+    # the other sent-and-received rows
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': BIOBANK_TESTS[1]})
     exporter.assertHasRow(received, {
@@ -119,20 +142,32 @@ class MySqlReconciliationTest(SqlTestBase):
 
     # sent-and-received: 1 late
     exporter.assertRowCount(late, 1)
+    exporter.assertColumnNamesEqual(late, _CSV_COLUMN_NAMES)
     exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_order_id': o_late_and_missing.biobankOrderId,
         'elapsed_hours': '25'})
 
-    # gone awry
+    # orders/samples where something went wrong
     exporter.assertRowCount(missing, 3)
+    exporter.assertColumnNamesEqual(missing, _CSV_COLUMN_NAMES)
+    # order sent, no sample received
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_order_id': o_late_and_missing.biobankOrderId,
         'elapsed_hours': ''})
-    exporter.assertHasRow(missing, {
-        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
-        'sent_count': '2',
-        'received_count': '1'})
+    # sample received, nothing ordered
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id': ''})
+    # 3 orders sent, only 2 received
+    multi_sample_row = exporter.assertHasRow(missing, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_count': '3',
+        'received_count': '2'})
+    # Also verify the comma-joined fields of the row with multiple orders/samples.
+    self.assertItemsEqual(
+        multi_sample_row['sent_order_id'].split(','),
+        ['RepeatedOrder1', 'RepeatedOrder0', 'RepeatedOrder2'])
+    self.assertItemsEqual(
+        multi_sample_row['received_sample_id'].split(','),
+        ['RepeatedSample0', 'RepeatedSample1'])

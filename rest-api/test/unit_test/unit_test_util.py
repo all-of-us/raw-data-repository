@@ -227,7 +227,9 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
     self._test.assertItemsEqual(col_names, self._get_dict_reader(file_name).fieldnames)
 
   def assertRowCount(self, file_name, n):
-    self._test.assertEquals(n, len(list(self._get_dict_reader(file_name))))
+    rows = list(self._get_dict_reader(file_name))
+    self._test.assertEquals(
+        n, len(rows), 'Expected %d rows in %r but found %d: %s.' % (n, file_name, len(rows), rows))
 
   def assertHasRow(self, file_name, expected_row):
     """Asserts that the writer got a row that has all the values specified in the given row.
@@ -236,6 +238,8 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
       file_name: The bucket-relative path of the file that should have the row.
       expected_row: A dict like {'biobank_id': 557741928, sent_test: None} specifying a subset of
           the fields in a row that should have been written.
+    Returns:
+      The matched row.
     """
     rows = list(self._get_dict_reader(file_name))
     for row in rows:
@@ -245,7 +249,7 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
           found_all = False
           break
       if found_all:
-        return
+        return row
     self._test.fail(
         'No match found for expected row %s among %d rows: %s'
         % (expected_row, len(rows), rows))
