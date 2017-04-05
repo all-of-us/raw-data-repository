@@ -141,9 +141,6 @@ class ParticipantDao(UpdatableDao):
           '%s.participantId %r is not found.' % (obj.__class__.__name__, obj.participantId))
     return participant
 
-  def get_valid_biobank_id_set(self, session):
-    return set([row[0] for row in session.query(Participant.biobankId)])
-
   def get_biobank_ids_sample(self, session, percentage, batch_size):
     """Returns biobank ID and signUpTime for a percentage of participants.
 
@@ -151,6 +148,7 @@ class ParticipantDao(UpdatableDao):
     return (session.query(Participant.biobankId, Participant.signUpTime)
               .filter(Participant.biobankId % 100 <= percentage * 100)
               .yield_per(batch_size))
+
 
 # TODO(danrodney): remove this logic from old participant code when done
 def get_primary_provider_link(participant):

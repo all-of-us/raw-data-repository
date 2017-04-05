@@ -20,12 +20,7 @@ class BiobankStoredSampleDao(BaseDao):
     # proves to be a bottleneck, we can switch to generating "INSERT .. ON DUPLICATE KEY UPDATE".
     written = 0
     with self.session() as session:
-      valid_biobank_ids = ParticipantDao().get_valid_biobank_id_set(session)
       for sample in sample_generator:
-        if sample.biobankId not in valid_biobank_ids:
-          raise ValueError(
-              'Sample %r has invalid participant Biobank ID %r (%d valid IDs).'
-              % (sample.biobankStoredSampleId, sample.biobankId, len(valid_biobank_ids)))
         if sample.test not in BIOBANK_TESTS_SET:
           raise ValueError(
               'Sample %r has invalid test code %r.'
