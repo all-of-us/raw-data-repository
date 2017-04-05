@@ -1,6 +1,5 @@
 from code_constants import BIOBANK_TESTS_SET
 from dao.base_dao import BaseDao
-from dao.participant_dao import ParticipantDao
 from model.biobank_stored_sample import BiobankStoredSample
 
 
