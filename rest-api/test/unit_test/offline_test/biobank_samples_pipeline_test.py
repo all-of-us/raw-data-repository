@@ -1,5 +1,6 @@
 import csv
 import random
+import pytz
 import time
 
 from cloudstorage import cloudstorage_api  # stubbed by testbed
@@ -60,12 +61,17 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self._check_summary(participant_ids[1], test2, '2016-11-29T12:38:58')
     self._check_summary(participant_ids[2], test3, '2016-11-29T12:41:26')
 
-  def _check_summary(self, participant_id, test, date):
+  def _naive_utc_to_naive_central(self, naive_utc_date):
+    utc_date = pytz.utc.localize(naive_utc_date)
+    central_date = utc_date.astimezone(pytz.timezone('US/Central'))
+    return central_date.replace(tzinfo=None)
+
+  def _check_summary(self, participant_id, test, date_formatted):
     summary = ParticipantSummaryDao().get(participant_id)
     self.assertEquals(summary.numBaselineSamplesArrived, 1)
     self.assertEquals(SampleStatus.RECEIVED, getattr(summary, 'sampleStatus' + test))
-    self.assertEquals(date,
-                      getattr(summary, 'sampleStatus' + test + 'Time').isoformat())
+    sample_time = self._naive_utc_to_naive_central(getattr(summary, 'sampleStatus' + test + 'Time'))
+    self.assertEquals(date_formatted, sample_time.isoformat())
 
   def test_find_latest_csv(self):
     # The cloud storage testbed does not expose an injectable time function.
@@ -92,8 +98,9 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEquals(sample.biobankStoredSampleId, row[cols.SAMPLE_ID])
     self.assertEquals(to_client_biobank_id(sample.biobankId), row[cols.EXTERNAL_PARTICIPANT_ID])
     self.assertEquals(sample.test, row[cols.TEST_CODE])
+    confirmed_date = self._naive_utc_to_naive_central(sample.confirmed)
     self.assertEquals(
-        sample.confirmed.strftime(biobank_samples_pipeline._TIMESTAMP_FORMAT),
+        confirmed_date.strftime(biobank_samples_pipeline._INPUT_TIMESTAMP_FORMAT),
         row[cols.CONFIRMED_DATE])
 
   def test_column_missing(self):

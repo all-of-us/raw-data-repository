@@ -6,6 +6,7 @@ Also updates ParticipantSummary data related to samples.
 import csv
 import datetime
 import logging
+import pytz
 
 from cloudstorage import cloudstorage_api
 from werkzeug.exceptions import BadRequest
@@ -72,8 +73,9 @@ def _upsert_samples_from_csv(csv_reader):
       (s for s in (_create_sample_from_row(row) for row in csv_reader) if s is not None))
 
 
-# TODO(mwf) Have Biobank switch to a timestamp format with time zone information (pref. isoformat).
-_TIMESTAMP_FORMAT = '%Y/%m/%d %H:%M:%S'  # like 2016/11/30 14:32:18
+# Biobank provides timestamps without time zone info, which should be in central time (see DA-235).
+_INPUT_TIMESTAMP_FORMAT = '%Y/%m/%d %H:%M:%S'  # like 2016/11/30 14:32:18
+_US_CENTRAL = pytz.timezone('US/Central')
 
 
 def _create_sample_from_row(row):
@@ -94,10 +96,14 @@ def _create_sample_from_row(row):
   confirmed_str = row[_Columns.CONFIRMED_DATE]
   if confirmed_str:
     try:
-      sample.confirmed = datetime.datetime.strptime(confirmed_str, _TIMESTAMP_FORMAT)
+      confirmed_naive = datetime.datetime.strptime(confirmed_str, _INPUT_TIMESTAMP_FORMAT)
     except ValueError, e:
       logging.error(
           'Skipping sample %r for %r with bad confirmed timestamp %r: %s',
           sample.biobankStoredSampleId, sample.biobankId, confirmed_str, e.message)
       return None
+    # Assume incoming times are in Central time (CST or CDT). Convert to UTC for storage, but drop
+    # tzinfo since storage is naive anyway (to make stored/fetched values consistent).
+    sample.confirmed = _US_CENTRAL.localize(
+        confirmed_naive).astimezone(pytz.utc).replace(tzinfo=None)
   return sample
