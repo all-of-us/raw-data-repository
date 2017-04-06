@@ -34,7 +34,7 @@ class PhysicalMeasurementsDao(BaseDao):
         participant_id = field_filter.value
         break
     # Sync queries don't specify a participant ID, can can returns measurements for participants
-    # who have subsequently withdrawn; for all requests that do specify a participant ID, 
+    # who have subsequently withdrawn; for all requests that do specify a participant ID,
     # make sure the participant exists and is not withdrawn.
     if participant_id:
       ParticipantDao().validate_participant_id(session, participant_id)

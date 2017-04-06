@@ -71,7 +71,7 @@ class ParticipantDao(UpdatableDao):
       raise BadRequest('missing suspension status in update')
     super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
     # Once a participant marks their withdrawal status as NO_USE, the participant can't be modified.
-    check_not_withdrawn(existing_obj)    
+    check_not_withdrawn(existing_obj)
 
   def _do_update(self, session, obj, existing_obj):
     """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link."""

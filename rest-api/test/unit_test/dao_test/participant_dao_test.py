@@ -204,12 +204,12 @@ class ParticipantDaoTest(SqlTestBase):
     self.assertEquals(expected_participant.asdict(), p.asdict())
 
     p2 = self.dao.get(1)
-    self.assertEquals(p.asdict(), p2.asdict()) 
-    
+    self.assertEquals(p.asdict(), p2.asdict())
+
     p.version = 1
     p.providerLink = test_data.primary_provider_link('PITT')
     time2 = datetime.datetime(2016, 1, 2)
-    with self.assertRaises(Forbidden):      
+    with self.assertRaises(Forbidden):
       self.dao.update(p)
 
   def test_update_not_exists(self):

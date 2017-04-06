@@ -99,7 +99,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self._setup_questionnaire()
     qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
-    qr.answers.extend(self._names_and_email_answers())    
+    qr.answers.extend(self._names_and_email_answers())
     with self.assertRaises(Forbidden):
       self.questionnaire_response_dao.insert(qr)
 
@@ -199,7 +199,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                 participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
     with self.assertRaises(IntegrityError):
       self.questionnaire_response_dao.insert(qr2)
-  
+
   def test_get_after_withdrawal_fails(self):
     self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
