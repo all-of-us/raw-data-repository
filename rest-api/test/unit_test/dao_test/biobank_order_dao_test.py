@@ -4,11 +4,11 @@ from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.participant import Participant
+from participant_enums import WithdrawalStatus
 from dao.participant_dao import ParticipantDao
 from unit_test_util import SqlTestBase
 
-from werkzeug.exceptions import BadRequest
-
+from werkzeug.exceptions import BadRequest, Forbidden
 
 class BiobankOrderDaoTest(SqlTestBase):
   _A_TEST = iter(BIOBANK_TESTS).next()
@@ -36,6 +36,29 @@ class BiobankOrderDaoTest(SqlTestBase):
           created=clock.CLOCK.now(),
           participantId=self.participant.participantId,
           identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
+
+  def test_order_for_withdrawn_participant_fails(self):
+    self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
+    ParticipantDao().update(self.participant)
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    with self.assertRaises(Forbidden):
+      self.dao.insert(BiobankOrder(
+          biobankOrderId=1,
+          participantId=self.participant.participantId,
+          created=clock.CLOCK.now(),
+          identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
+
+  def test_get_for_withdrawn_participant_fails(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    self.dao.insert(BiobankOrder(
+        biobankOrderId=1,
+        participantId=self.participant.participantId,
+        created=clock.CLOCK.now(),
+        identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
+    self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
+    ParticipantDao().update(self.participant)
+    with self.assertRaises(Forbidden):
+      self.dao.get(1)
 
   def test_store_invalid_test(self):
     with self.assertRaises(BadRequest):

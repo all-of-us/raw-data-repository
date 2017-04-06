@@ -3,7 +3,7 @@ import json
 import logging
 
 from dao.base_dao import BaseDao
-from dao.participant_dao import check_not_withdrawn
+from dao.participant_dao import ParticipantDao, check_not_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements
@@ -33,9 +33,11 @@ class PhysicalMeasurementsDao(BaseDao):
       if field_filter.field_name == 'participantId':
         participant_id = field_filter.value
         break
-    if not participant_id:
-      raise BadRequest('Physical measurement queries must specify participantId')
-    ParticipantDao().validate_participant_id(session, participant_id)
+    # Sync queries don't specify a participant ID, can can returns measurements for participants
+    # who have subsequently withdrawn; for all requests that do specify a participant ID, 
+    # make sure the participant exists and is not withdrawn.
+    if participant_id:
+      ParticipantDao().validate_participant_id(session, participant_id)
     return super(PhysicalMeasurementsDao, self)._initialize_query(session, query_def)
 
   def insert_with_session(self, session, obj):

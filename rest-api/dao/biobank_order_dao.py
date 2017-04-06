@@ -1,6 +1,6 @@
 from code_constants import BIOBANK_TESTS_SET
 from dao.base_dao import BaseDao
-from dao.participant_dao import check_not_withdrawn
+from dao.participant_dao import ParticipantDao, check_not_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from model.log_position import LogPosition

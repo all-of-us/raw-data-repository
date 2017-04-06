@@ -11,11 +11,11 @@ from model.code import Code, CodeType
 from model.participant import Participant
 from model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from participant_enums import QuestionnaireStatus
+from participant_enums import QuestionnaireStatus, WithdrawalStatus
 from test_data import consent_code, first_name_code, last_name_code, email_code
 from unit_test_util import FlaskTestBase
 from clock import FakeClock
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, Forbidden
 from sqlalchemy.exc import IntegrityError
 
 TIME = datetime.datetime(2016, 1, 1)
@@ -90,6 +90,17 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     qr.answers.extend(self._names_and_email_answers())
     # Answers are there but the participant is not.
     with self.assertRaises(BadRequest):
+      self.questionnaire_response_dao.insert(qr)
+
+  def test_insert_participant_withdrawn(self):
+    self.insert_codes()
+    p = Participant(participantId=1, biobankId=2, withdrawalStatus=WithdrawalStatus.NO_USE)
+    self.participant_dao.insert(p)
+    self._setup_questionnaire()
+    qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.extend(self._names_and_email_answers())    
+    with self.assertRaises(Forbidden):
       self.questionnaire_response_dao.insert(qr)
 
   def test_insert_not_name_answers(self):
@@ -188,6 +199,20 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                 participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
     with self.assertRaises(IntegrityError):
       self.questionnaire_response_dao.insert(qr2)
+  
+  def test_get_after_withdrawal_fails(self):
+    self.insert_codes()
+    p = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(p)
+    self._setup_questionnaire()
+    qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.extend(self._names_and_email_answers())
+    self.questionnaire_response_dao.insert(qr)
+    p.withdrawalStatus = WithdrawalStatus.NO_USE
+    self.participant_dao.update(p)
+    with self.assertRaises(Forbidden):
+      self.questionnaire_response_dao.get(qr.questionnaireResponseId)
 
   def check_response(self, expected_qr):
     qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
