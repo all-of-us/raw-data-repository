@@ -33,12 +33,18 @@ def recalculate_metrics():
 def import_biobank_samples():
   # Note that crons have a 10 minute deadline instead of the normal 60s.
   logging.info('Starting samples import.')
-  written, skipped = biobank_samples_pipeline.upsert_from_latest_csv()
-  logging.info(
-      'Import complete (%d written / %d skipped), generating report.', written, skipped)
+  try:
+    written = biobank_samples_pipeline.upsert_from_latest_csv()
+    logging.info(
+        'Import complete (%d written), generating report.', written)
+  except biobank_samples_pipeline.DataError:
+    written = None
+    logging.error('Import failed: bad data in CSV.', exc_info=True)
+
+  logging.info('Generating reconciliation report.')
   biobank_samples_pipeline.write_reconciliation_report()
   logging.info('Generated reconciliation report.')
-  return json.dumps({'written': written, 'skipped': skipped})
+  return json.dumps({'written': written})
 
 
 def _build_pipeline_app():

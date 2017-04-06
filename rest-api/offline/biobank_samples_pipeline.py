@@ -28,14 +28,18 @@ _FILENAME_DATE_FORMAT = '%Y-%m-%d'
 _REPORT_SUBDIR = 'reconciliation'
 
 
+class DataError(RuntimeError):
+  """Bad sample data during import."""
+
+
 def upsert_from_latest_csv():
   """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
   csv_file = _open_latest_samples_file(bucket_name)
   csv_reader = csv.DictReader(csv_file, delimiter='\t')
-  written, skipped = _upsert_samples_from_csv(csv_reader)
+  written = _upsert_samples_from_csv(csv_reader)
   ParticipantSummaryDao().update_from_biobank_stored_samples()
-  return written, skipped
+  return written
 
 
 def _open_latest_samples_file(cloud_bucket_name):
@@ -53,14 +57,14 @@ def _find_latest_samples_csv(cloud_bucket_name):
   """
   bucket_stat_list = cloudstorage_api.listbucket('/' + cloud_bucket_name)
   if not bucket_stat_list:
-    raise RuntimeError('No files in cloud bucket %r.' % cloud_bucket_name)
+    raise DataError('No files in cloud bucket %r.' % cloud_bucket_name)
   # GCS does not really have the concept of directories (it's just a filename convention), so all
   # directory listings are recursive and we must filter out subdirectory contents.
   bucket_stat_list = [
       s for s in bucket_stat_list
       if s.filename.lower().endswith('.csv') and '/%s/' % _REPORT_SUBDIR not in s.filename]
   if not bucket_stat_list:
-    raise RuntimeError(
+    raise DataError(
         'No CSVs in cloud bucket %r (all files: %s).' % (cloud_bucket_name, bucket_stat_list))
   bucket_stat_list.sort(key=lambda s: s.st_ctime)
   return bucket_stat_list[-1].filename
@@ -80,11 +84,14 @@ def _upsert_samples_from_csv(csv_reader):
   """Inserts/updates BiobankStoredSamples from a csv.DictReader."""
   missing_cols = _Columns.ALL - set(csv_reader.fieldnames)
   if missing_cols:
-    raise RuntimeError(
+    raise DataError(
         'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
   samples_dao = BiobankStoredSampleDao()
-  return samples_dao.upsert_batched(
-      (s for s in (_create_sample_from_row(row) for row in csv_reader) if s is not None))
+  try:
+    return samples_dao.upsert_all(
+        (s for s in (_create_sample_from_row(row) for row in csv_reader) if s is not None))
+  except ValueError, e:
+    raise DataError(e)
 
 
 # Biobank provides timestamps without time zone info, which should be in central time (see DA-235).
@@ -93,13 +100,18 @@ _US_CENTRAL = pytz.timezone('US/Central')
 
 
 def _create_sample_from_row(row):
-  """Returns a new BiobankStoredSample object from a CSV row, or None if the row is invalid."""
+  """Creates a new BiobankStoredSample object from a CSV row.
+
+  Raises:
+    DataError if the row is invalid.
+  Returns:
+    A new BiobankStoredSample, or None if the row should be skipped.
+  """
   biobank_id_str = row[_Columns.EXTERNAL_PARTICIPANT_ID]
   try:
     biobank_id = from_client_biobank_id(biobank_id_str)
   except BadRequest, e:
-    logging.error('Bad external participant ID (Biobank ID) %r: %s', biobank_id_str, e.message)
-    return None
+    raise DataError('Bad external participant ID (Biobank ID) %r: %s' % (biobank_id_str, e.message))
   sample = BiobankStoredSample(
       biobankStoredSampleId=row[_Columns.SAMPLE_ID],
       biobankId=biobank_id,
@@ -112,10 +124,9 @@ def _create_sample_from_row(row):
     try:
       confirmed_naive = datetime.datetime.strptime(confirmed_str, _INPUT_TIMESTAMP_FORMAT)
     except ValueError, e:
-      logging.error(
-          'Skipping sample %r for %r with bad confirmed timestamp %r: %s',
-          sample.biobankStoredSampleId, sample.biobankId, confirmed_str, e.message)
-      return None
+      raise DataError(
+          'Sample %r for %r has bad confirmed timestamp %r: %s'
+          % (sample.biobankStoredSampleId, sample.biobankId, confirmed_str, e.message))
     # Assume incoming times are in Central time (CST or CDT). Convert to UTC for storage, but drop
     # tzinfo since storage is naive anyway (to make stored/fetched values consistent).
     sample.confirmed = _US_CENTRAL.localize(

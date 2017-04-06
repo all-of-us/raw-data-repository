@@ -30,7 +30,7 @@ def main(args):
       offline_client = Client('offline', False, args.creds_file, args.instance)
       response = offline_client.request_json('BiobankSamplesImport', 'GET', cron=True,
                                   test_unauthenticated=False)
-      print "%d samples imported, %d skipped." % (response['written'], response['skipped'])
+      print "%d samples imported." % response['written']
     else:
       print "Use the cron tab in AppEngine to start the biobank samples pipeline."
   print "Done."
