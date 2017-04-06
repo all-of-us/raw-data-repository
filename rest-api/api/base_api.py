@@ -111,10 +111,10 @@ class BaseApi(Resource):
         order_by = OrderBy(value, True)
       elif key == '_sort:desc':
         order_by = OrderBy(value, False)
-      else:        
+      else:
         field_filter = self.dao.make_query_filter(key, value)
         if field_filter:
-          field_filters.append(field_filter)            
+          field_filters.append(field_filter)
     return Query(field_filters, order_by, max_results, pagination_token)
 
   def _make_bundle(self, results, id_field, participant_id):
