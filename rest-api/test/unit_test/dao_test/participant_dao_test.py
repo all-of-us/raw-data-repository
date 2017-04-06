@@ -208,7 +208,6 @@ class ParticipantDaoTest(SqlTestBase):
 
     p.version = 1
     p.providerLink = test_data.primary_provider_link('PITT')
-    time2 = datetime.datetime(2016, 1, 2)
     with self.assertRaises(Forbidden):
       self.dao.update(p)
 

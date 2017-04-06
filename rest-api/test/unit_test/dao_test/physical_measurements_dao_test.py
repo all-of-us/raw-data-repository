@@ -91,7 +91,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
                                                   resource=self.measurement_json)
     summary = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertIsNone(summary.physicalMeasurementsStatus)
-    measurements = self.dao.insert(measurements_to_insert)
+    self.dao.insert(measurements_to_insert)
     self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
     ParticipantDao().update(self.participant)
     with self.assertRaises(Forbidden):
