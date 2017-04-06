@@ -145,8 +145,7 @@ class ParticipantDao(UpdatableDao):
     or if the participant has a withdrawal status of NO_USE."""
     participant = self.get_with_session(session, participant_id)
     if participant is None:
-      raise BadRequest(
-          '%s.participantId %r is not found.' % (obj.__class__.__name__, participant_id))
+      raise BadRequest('Participant with ID %d is not found.' % participant_id)
     check_not_withdrawn(participant)
     return participant
 
