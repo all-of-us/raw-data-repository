@@ -1,55 +1,77 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Utility functions and setup for scripts that need to generate credentials and (optionally)
 # run the Cloud SQL proxy
 # Expected environment variables: $ACCOUNT, $PROJECT, $CREDS_ACCOUNT
 
-set -e
-gcloud auth login $ACCOUNT
-gcloud config set project $PROJECT
-
-SERVICE_ACCOUNT="circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
-if [ "${PROJECT}" != "pmi-drc-api-test" ] && [ "${PROJECT}" != "all-of-us-rdr-staging" ]
+if [ "${CREDS_FILE}" ]
 then
-  SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
+  if [ -z "${INSTANCE}" ]
+  then
+    echo "INSTANCE required if CREDS_FILE specified directly."
+    exit 1
+  fi
+else
+  if [ -z "${ACCOUNT}" -o -z "${PROJECT}" -o -z "${CREDS_ACCOUNT}" ]
+  then
+    echo "ACCOUNT, PROJECT, and CREDS_ACCOUNT required when CREDS_FILE not given."
+    exit 1
+  fi
+fi
+
+if [ "${CREDS_FILE}" ]
+then
+  echo "Creds file specified directly, skipping gcloud auth."
+else
+  gcloud auth login $ACCOUNT
+  gcloud config set project $PROJECT
+  INSTANCE=https://${PROJECT}.appspot.com
+  SERVICE_ACCOUNT="circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
+  if [ "${PROJECT}" != "pmi-drc-api-test" ] && [ "${PROJECT}" != "all-of-us-rdr-staging" ]
+  then
+    SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
+  fi
+  CREDS_FILE=/tmp/creds.json
+  TMP_CREDS_FILE=$CREDS_FILE
+  gcloud iam service-accounts keys create $CREDS_FILE \
+      --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
+  TMP_PRIVATE_KEY=`grep private_key_id $CREDS_FILE | cut -d\" -f4`
 fi
 
 source tools/setup_vars.sh
-CREDS_FILE=/tmp/creds.json
-DB_INFO_FILE=/tmp/db_info.json
+TMP_DB_INFO_FILE=/tmp/db_info.json
 PORT=3308
-INSTANCE=https://${PROJECT}.appspot.com
 CLOUD_PROXY_PID=
-PRIVATE_KEY=
+
 
 function cleanup {
   if [ "$CLOUD_PROXY_PID" ];
   then
     kill $CLOUD_PROXY_PID
   fi
-  if [ "$PRIVATE_KEY" ];
+  if [ "$TMP_PRIVATE_KEY" ];
   then
-    gcloud iam service-accounts keys delete $PRIVATE_KEY -q --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
+    gcloud iam service-accounts keys delete $TMP_PRIVATE_KEY -q \
+        --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
   fi
-  rm -f ${CREDS_FILE}
-  rm -f ${DB_INFO_FILE}
+  rm -f ${TMP_CREDS_FILE}
+  rm -f ${TMP_DB_INFO_FILE}
 }
 
 trap cleanup EXIT
 
-gcloud iam service-accounts keys create $CREDS_FILE --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
-PRIVATE_KEY=`grep private_key_id $CREDS_FILE | cut -d\" -f4`
-
 function get_instance_connection_name {
   echo "Getting database info..."
-  tools/install_config.sh --key db_config --instance $INSTANCE --creds_file ${CREDS_FILE} > $DB_INFO_FILE
-  INSTANCE_CONNECTION_NAME=`grep db_connection_name $DB_INFO_FILE | cut -d\" -f4`
+  tools/install_config.sh --key db_config --instance $INSTANCE \
+      --creds_file ${CREDS_FILE} > $TMP_DB_INFO_FILE
+  INSTANCE_CONNECTION_NAME=`grep db_connection_name $TMP_DB_INFO_FILE | cut -d\" -f4`
 }
 
 function get_db_password {
   echo "Getting database password..."
-  tools/install_config.sh --key db_config --instance $INSTANCE --creds_file ${CREDS_FILE} > $DB_INFO_FILE
-  PASSWORD=`grep db_password $DB_INFO_FILE | cut -d\" -f4`
+  tools/install_config.sh --key db_config --instance $INSTANCE \
+      --creds_file ${CREDS_FILE} > $TMP_DB_INFO_FILE
+  PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
 }
 
 function run_cloud_sql_proxy {
@@ -65,7 +87,7 @@ function run_cloud_sql_proxy {
 }
 
 function set_db_connection_string {
-  PASSWORD=`grep db_password $DB_INFO_FILE | cut -d\" -f4`
+  PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
   function finish {
     cleanup
     export DB_CONNECTION_STRING=
