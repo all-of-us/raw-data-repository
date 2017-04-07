@@ -3,7 +3,7 @@ import json
 import logging
 
 from dao.base_dao import BaseDao
-from dao.participant_dao import ParticipantDao, check_not_withdrawn
+from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements
@@ -33,7 +33,7 @@ class PhysicalMeasurementsDao(BaseDao):
       if field_filter.field_name == 'participantId':
         participant_id = field_filter.value
         break
-    # Sync queries don't specify a participant ID, can can returns measurements for participants
+    # Sync queries don't specify a participant ID, and can return measurements for participants
     # who have subsequently withdrawn; for all requests that do specify a participant ID,
     # make sure the participant exists and is not withdrawn.
     if participant_id:
@@ -71,7 +71,7 @@ class PhysicalMeasurementsDao(BaseDao):
     if not participant_summary:
       raise BadRequest("Can't submit physical measurements for participant %s without consent" %
                        participant_id)
-    check_not_withdrawn(participant_summary)
+    raise_if_withdrawn(participant_summary)
     if (not participant_summary.physicalMeasurementsStatus or
         participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.UNSET):
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED

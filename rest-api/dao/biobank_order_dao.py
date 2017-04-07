@@ -1,6 +1,6 @@
 from code_constants import BIOBANK_TESTS_SET
 from dao.base_dao import BaseDao
-from dao.participant_dao import ParticipantDao, check_not_withdrawn
+from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from model.log_position import LogPosition
@@ -33,7 +33,7 @@ class BiobankOrderDao(BaseDao):
     participant_summary = ParticipantSummaryDao().get_with_session(session, obj.participantId)
     if not participant_summary:
       raise BadRequest("Can't submit order for participant %s without consent" % obj.participantId)
-    check_not_withdrawn(participant_summary)
+    raise_if_withdrawn(participant_summary)
     for sample in obj.samples:
       self._validate_order_sample(sample)
     # TODO(mwf) FHIR validation for identifiers?

@@ -71,7 +71,7 @@ class ParticipantDao(UpdatableDao):
       raise BadRequest('missing suspension status in update')
     super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
     # Once a participant marks their withdrawal status as NO_USE, the participant can't be modified.
-    check_not_withdrawn(existing_obj)
+    raise_if_withdrawn(existing_obj)
 
   def _do_update(self, session, obj, existing_obj):
     """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link."""
@@ -146,7 +146,7 @@ class ParticipantDao(UpdatableDao):
     participant = self.get_with_session(session, participant_id)
     if participant is None:
       raise BadRequest('Participant with ID %d is not found.' % participant_id)
-    check_not_withdrawn(participant)
+    raise_if_withdrawn(participant)
     return participant
 
   def get_valid_biobank_id_set(self, session):
@@ -179,6 +179,6 @@ def get_HPO_name_from_participant(participant):
       return reference[13:]
   return None
 
-def check_not_withdrawn(obj):
+def raise_if_withdrawn(obj):
   if obj.withdrawalStatus == WithdrawalStatus.NO_USE:
     raise Forbidden('Participant %d has withdrawn' % obj.participantId)

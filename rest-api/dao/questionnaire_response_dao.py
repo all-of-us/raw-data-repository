@@ -5,7 +5,7 @@ import json
 from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
-from dao.participant_dao import ParticipantDao, check_not_withdrawn
+from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from field_mappings import FieldType, QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
@@ -134,7 +134,7 @@ class QuestionnaireResponseDao(BaseDao):
       participant_summary = ParticipantDao.create_summary_for_participant(participant)
       something_changed = True
     else:
-      check_not_withdrawn(participant_summary)
+      raise_if_withdrawn(participant_summary)
 
     # Fetch the codes for all questions and concepts
     codes = code_dao.get_with_ids(code_ids)
