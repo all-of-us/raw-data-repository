@@ -29,4 +29,4 @@ source tools/setup_vars.sh
 source tools/auth_setup.sh
 get_db_password
 run_cloud_sql_proxy
-mysql -u "$DB_USER" -p"$PASSWORD" --host 127.0.0.1 --port ${PORT}
+mysql -u "$DB_USER" -p"$PASSWORD" --host 127.0.0.1 --port ${PORT} "$DB_NAME"
