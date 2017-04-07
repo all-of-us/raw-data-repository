@@ -7,7 +7,7 @@
     "concept": [
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-        "code": "ConsentForEHR"
+        "code": "EHRConsentPII"
       }]
   }
 }

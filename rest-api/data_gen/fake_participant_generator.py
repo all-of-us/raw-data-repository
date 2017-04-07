@@ -409,7 +409,7 @@ class FakeParticipantGenerator(object):
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return
     zip_code = random.choice(self._zip_code_to_state.keys())
-    state = self._zip_code_to_state.get(zip)
+    state = self._zip_code_to_state.get(zip_code)
     answer_map[ZIPCODE_QUESTION_CODE] = _string_answer(zip_code)
     answer_map[STATE_QUESTION_CODE] = [_code_answer('PIIState_%s' % state)]
 
