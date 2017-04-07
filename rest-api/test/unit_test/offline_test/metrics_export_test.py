@@ -146,7 +146,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     participant_fields = get_participant_fields()
     assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0,
                       [participant_fields,
-                       ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t3, t1, '', '', t3, 
+                       ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t3, t1, '', '', t3,
                         '', '', t3, t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1,
                       [participant_fields,
