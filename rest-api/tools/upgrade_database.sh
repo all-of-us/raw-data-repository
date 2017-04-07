@@ -9,7 +9,8 @@ Examples:
 Upgrade the local development database:
     tools/upgrade_database.sh [--revision <REVISION>]
 Upgrade a deployed db from your development box:
-    tools/upgrade_database.sh --project all-or-us-rdr-staging --account $USER@pmi-ops.org
+    tools/upgrade_database.sh --project all-or-us-rdr-staging \
+        --account $USER@google.com [--creds_account $USER@pmi-ops.org]
 Upgrade a deployed db from CircleCI:
     tools/upgrade_database.sh --instance https://all-of-us-x.appspot.com --creds_file ~/creds_file.key
 "
@@ -18,6 +19,7 @@ while true; do
   case "$1" in
     --revision) REVISION=$2; shift 2;;
     --account) ACCOUNT=$2; shift 2;;
+    --creds_account) CREDS_ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
     --instance) INSTANCE=$2; shift 2;;
     -i) INSTANCE=$2; shift 2;;
@@ -34,7 +36,10 @@ then
     echo "--account must be specified with --project. $USAGE"
     exit 1
   fi
-  CREDS_ACCOUNT="${ACCOUNT}"
+  if [ -z "${CREDS_ACCOUNT}" ]
+  then
+    CREDS_ACCOUNT="${ACCOUNT}"
+  fi
 elif [ "${INSTANCE}" ]
 then
   if [ -z "${CREDS_FILE}" ]
