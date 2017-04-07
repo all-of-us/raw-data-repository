@@ -371,6 +371,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08',
                            [[ps_1, ps_2], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08&'
+                           'dateOfBirth=le1978-10-09', [[ps_1, ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09',
                            [[ps_2, ps_3]])
 

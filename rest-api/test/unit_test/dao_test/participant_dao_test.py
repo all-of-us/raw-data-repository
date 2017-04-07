@@ -5,9 +5,11 @@ from dao.base_dao import MAX_INSERT_ATTEMPTS
 from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
+from participant_enums import WithdrawalStatus
 from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
+from werkzeug.exceptions import Forbidden
 
 class ParticipantDaoTest(SqlTestBase):
   def setUp(self):
@@ -188,6 +190,26 @@ class ParticipantDaoTest(SqlTestBase):
     with FakeClock(time2):
       with self.assertRaises(PreconditionFailed):
         self.dao.update(p)
+
+  def test_update_withdrawn_fails(self):
+    p = Participant(withdrawalStatus=WithdrawalStatus.NO_USE)
+    time = datetime.datetime(2016, 1, 1)
+    with random_ids([1, 2]):
+      with FakeClock(time):
+        self.dao.insert(p)
+
+    expected_participant = self._participant_with_defaults(
+        participantId=1, version=1, biobankId=2, lastModified=time, signUpTime=time,
+        withdrawalStatus=WithdrawalStatus.NO_USE)
+    self.assertEquals(expected_participant.asdict(), p.asdict())
+
+    p2 = self.dao.get(1)
+    self.assertEquals(p.asdict(), p2.asdict())
+
+    p.version = 1
+    p.providerLink = test_data.primary_provider_link('PITT')
+    with self.assertRaises(Forbidden):
+      self.dao.update(p)
 
   def test_update_not_exists(self):
     p = self._participant_with_defaults(participantId=1, biobankId=2)

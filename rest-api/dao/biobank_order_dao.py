@@ -1,5 +1,6 @@
 from code_constants import BIOBANK_TESTS_SET
 from dao.base_dao import BaseDao
+from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from model.log_position import LogPosition
@@ -29,8 +30,10 @@ class BiobankOrderDao(BaseDao):
   def _validate_model(self, session, obj):
     if obj.participantId is None:
       raise BadRequest('participantId is required')
-    if not ParticipantSummaryDao().get_with_session(session, obj.participantId):
+    participant_summary = ParticipantSummaryDao().get_with_session(session, obj.participantId)
+    if not participant_summary:
       raise BadRequest("Can't submit order for participant %s without consent" % obj.participantId)
+    raise_if_withdrawn(participant_summary)
     for sample in obj.samples:
       self._validate_order_sample(sample)
     # TODO(mwf) FHIR validation for identifiers?
@@ -48,11 +51,20 @@ class BiobankOrderDao(BaseDao):
     if sample.test not in BIOBANK_TESTS_SET:
       raise BadRequest('Invalid test value %r not in %s.' % (sample.test, BIOBANK_TESTS_SET))
 
+  def get_with_session(self, session, obj_id):
+    result = super(BiobankOrderDao, self).get_with_session(session, obj_id)
+    if result:
+      ParticipantDao().validate_participant_reference(session, result)
+    return result
+
   def get_with_children(self, obj_id):
     with self.session() as session:
-      return (session.query(BiobankOrder)
+      result = (session.query(BiobankOrder)
           .options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples))
           .get(obj_id))
+      if result:
+        ParticipantDao().validate_participant_reference(session, result)
+      return result
 
   def get_ordered_samples_sample(self, session, percentage, batch_size):
     """Retrieves the biobank ID, collected time, and test for a percentage of ordered samples.

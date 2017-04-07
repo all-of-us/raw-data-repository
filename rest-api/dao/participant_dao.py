@@ -6,8 +6,7 @@ from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
 from sqlalchemy.orm.session import make_transient
-from werkzeug.exceptions import BadRequest
-
+from werkzeug.exceptions import BadRequest, Forbidden
 
 class ParticipantHistoryDao(BaseDao):
   """Maintains version history for participants.
@@ -71,6 +70,8 @@ class ParticipantDao(UpdatableDao):
     if obj.suspensionStatus is None:
       raise BadRequest('missing suspension status in update')
     super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
+    # Once a participant marks their withdrawal status as NO_USE, the participant can't be modified.
+    raise_if_withdrawn(existing_obj)
 
   def _do_update(self, session, obj, existing_obj):
     """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link."""
@@ -105,6 +106,7 @@ class ParticipantDao(UpdatableDao):
       summary.suspensionStatus = obj.suspensionStatus
       summary.suspensionTime = obj.suspensionTime
       make_transient(summary)
+      make_transient(obj)
       obj.participantSummary = summary
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
@@ -132,13 +134,19 @@ class ParticipantDao(UpdatableDao):
       return UNSET_HPO_ID
 
   def validate_participant_reference(self, session, obj):
-    """Raises BadRequest if an object has a missing or invalid participantId reference."""
+    """Raises BadRequest if an object has a missing or invalid participantId reference,
+    or if the participant has a withdrawal status of NO_USE."""
     if obj.participantId is None:
       raise BadRequest('%s.participantId required.' % obj.__class__.__name__)
-    participant = self.get_with_session(session, obj.participantId)
+    return self.validate_participant_id(session, obj.participantId)
+
+  def validate_participant_id(self, session, participant_id):
+    """Raises BadRequest if a participant ID is invalid,
+    or if the participant has a withdrawal status of NO_USE."""
+    participant = self.get_with_session(session, participant_id)
     if participant is None:
-      raise BadRequest(
-          '%s.participantId %r is not found.' % (obj.__class__.__name__, obj.participantId))
+      raise BadRequest('Participant with ID %d is not found.' % participant_id)
+    raise_if_withdrawn(participant)
     return participant
 
   def get_biobank_ids_sample(self, session, percentage, batch_size):
@@ -169,4 +177,6 @@ def get_HPO_name_from_participant(participant):
       return reference[13:]
   return None
 
-
+def raise_if_withdrawn(obj):
+  if obj.withdrawalStatus == WithdrawalStatus.NO_USE:
+    raise Forbidden('Participant %d has withdrawn' % obj.participantId)

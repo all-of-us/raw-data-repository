@@ -98,7 +98,7 @@ class BaseApi(Resource):
     max_results = DEFAULT_MAX_RESULTS
     pagination_token = None
     order_by = None
-    for key, value in request.args.iteritems():
+    for key, value in request.args.iteritems(multi=True):
       if key == '_count':
         max_results = int(request.args['_count'])
         if max_results < 1:

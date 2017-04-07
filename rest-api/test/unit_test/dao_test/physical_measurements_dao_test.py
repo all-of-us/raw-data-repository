@@ -4,13 +4,14 @@ import json
 from clock import FakeClock
 from model.participant import Participant
 from model.measurements import PhysicalMeasurements
+from query import Query, FieldFilter, Operator
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
-from participant_enums import PhysicalMeasurementsStatus
+from participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus
 from test_data import load_measurement_json, load_measurement_json_amendment
 from unit_test_util import SqlTestBase
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, Forbidden
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -70,6 +71,35 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     summary = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertEquals(PhysicalMeasurementsStatus.COMPLETED, summary.physicalMeasurementsStatus)
     self.assertEquals(TIME_2, summary.physicalMeasurementsTime)
+
+  def testInsert_withdrawnParticipantFails(self):
+    self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
+    ParticipantDao().update(self.participant)
+    self._make_summary()
+    measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
+                                                  participantId=self.participant.participantId,
+                                                  resource=self.measurement_json)
+    summary = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertIsNone(summary.physicalMeasurementsStatus)
+    with self.assertRaises(Forbidden):
+      self.dao.insert(measurements_to_insert)
+
+  def testInsert_getFailsForWithdrawnParticipant(self):
+    self._make_summary()
+    measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
+                                                  participantId=self.participant.participantId,
+                                                  resource=self.measurement_json)
+    summary = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertIsNone(summary.physicalMeasurementsStatus)
+    self.dao.insert(measurements_to_insert)
+    self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
+    ParticipantDao().update(self.participant)
+    with self.assertRaises(Forbidden):
+      self.dao.get(1)
+    with self.assertRaises(Forbidden):
+      self.dao.query(Query([FieldFilter('participantId', Operator.EQUALS,
+                                        self.participant.participantId)],
+                           None, 10, None))
 
   def testInsert_amend(self):
     self._make_summary()
