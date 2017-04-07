@@ -39,7 +39,7 @@ fi
 if [ -z "${URL}" ]
 then
   # TODO -- update with the URL for the latest released version of the codebook
-  URL="https://raw.githubusercontent.com/all-of-us-terminology/codebook-to-fhir/v0.2.5/CodeSystem/ppi.json"
+  URL="https://raw.githubusercontent.com/all-of-us-terminology/codebook-to-fhir/v0.2.10/CodeSystem/ppi.json"
 fi
 
 CODEBOOK_FILE=/tmp/pmi-codebook.json
