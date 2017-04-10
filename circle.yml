@@ -35,7 +35,7 @@ deployment:
     commands:
       - ./ci/activate_creds.sh ~/gcloud-credentials.key
       - ./ci/release_notes.py all-of-us-rdr-staging
-      - ./tools/upgrade_database.sh -i https://pmi-drc-api-staging.appspot.com --creds_file ~/gcloud-credentials.key:
+      - ./tools/upgrade_database.sh -i https://all-of-us-rdr-staging.appspot.com --creds_file ~/gcloud-credentials.key:
           pwd:
             rest-api
       - ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
