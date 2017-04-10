@@ -22,7 +22,7 @@ deployment:
       - ./ci/activate_creds.sh ~/gcloud-credentials.key
       - ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
       - ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com
-      - ./rest-api/tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
+
   # To deploy to staging, cut a GitHub release on a green build, with tag of
   # the form v0-1-1-rc0. We use tags as AppEngine version names, so they must
   # follow AE rules (no dots).
@@ -34,7 +34,6 @@ deployment:
       - ./ci/release_notes.py all-of-us-rdr-staging
       - ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
       - ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com
-      - ./rest-api/tools/upgrade_database.sh -i https://all-of-us-rdr-staging.appspot.com --creds_file ~/gcloud-credentials.key
 
 # Stable and production deployments are not done automatically but can be
 # manually executed with the test.sh and deploy.sh pair, e.g.:
