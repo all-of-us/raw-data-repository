@@ -1,10 +1,10 @@
-# Checks out RDR code from git in the current directory; by default, uses the same version of the 
-# app that is currently running in the staging environment. 
-# After a Y/N confirmation, deploys the code, upgrades the database, or 
+# Checks out RDR code from git in the current directory; by default, uses the same version of the
+# app that is currently running in the staging environment.
+# After a Y/N confirmation, deploys the code, upgrades the database, or
 # (by default) upgrades the database and then deploys the code.
 
-# Run this in the rest-api dir of the git repo with no uncommitted changes. You will need to 
-# check out whatever branch you want to work in after it's done. 
+# Run this in the rest-api dir of the git repo with no uncommitted changes. You will need to
+# check out whatever branch you want to work in after it's done.
 
 TARGET="app_and_db"
 
@@ -13,7 +13,7 @@ while true; do
     --account) ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
     --version) VERSION=$2; shift 2;;
-    --target) TARGET=$2; shift 2;;   
+    --target) TARGET=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -39,13 +39,13 @@ fi
 
 gcloud auth login $ACCOUNT
 if [ -z "${VERSION}" ]
-then 
-  VERSION=`gcloud app versions --project all-of-us-rdr-staging list | grep default | grep " 1.00" | tr -s ' ' | cut -f2 -d" "`  
+then
+  VERSION=`gcloud app versions --project all-of-us-rdr-staging list | grep default | grep " 1.00" | tr -s ' ' | cut -f2 -d" "`
   if [ -z "${VERSION}" ]
   then
     echo "App version for $PROJECT could not be determined; exiting."
     exit 1
-  fi    
+  fi
 fi
 
 BOLD=$(tput bold)
