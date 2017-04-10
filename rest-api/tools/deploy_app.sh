@@ -3,7 +3,7 @@
 # After a Y/N confirmation, deploys the code, upgrades the database, or 
 # (by default) upgrades the database and then deploys the code.
 
-# Run this in the rest-api dir of the git repo with nothing checked out. You will need to 
+# Run this in the rest-api dir of the git repo with no uncommitted changes. You will need to 
 # check out whatever branch you want to work in after it's done. 
 
 TARGET="app_and_db"
