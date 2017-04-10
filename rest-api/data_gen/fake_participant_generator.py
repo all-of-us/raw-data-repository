@@ -345,19 +345,23 @@ class FakeParticipantGenerator(object):
       change_time = last_request_time + datetime.timedelta(days=days_delta)
       self._update_participant(change_time, participant_response, participant_id)
 
-  def generate_participant(self):
+  def generate_participant(self, include_physical_measurements, include_biobank_orders):
     participant_response, creation_time = self._create_participant()
     participant_id = participant_response['participantId']
     consent_time, last_qr_time = self._submit_questionnaire_responses(participant_id,
                                                                            creation_time)
     if consent_time:
-      last_measurement_time = self._submit_physical_measurements(participant_id, consent_time)
-      last_biobank_time = self._submit_biobank_data(participant_id, consent_time)
+      last_request_time = last_qr_time
+      if include_physical_measurements:        
+        last_measurement_time = self._submit_physical_measurements(participant_id, consent_time)
+        last_request_time = max(last_request_time, last_measurement_time)
+      if include_biobank_orders:            
+        last_biobank_time = self._submit_biobank_data(participant_id, consent_time)
+        last_request_time = max(last_request_time, last_biobank_time)
       last_hpo_change_time, participant_response = self._submit_hpo_changes(participant_response,
                                                                             participant_id,
                                                                             consent_time)
-      last_request_time = max(last_qr_time, last_measurement_time, last_biobank_time,
-                              last_hpo_change_time)
+      last_request_time = max(last_request_time, last_hpo_change_time)
       self._submit_status_changes(participant_response, participant_id, last_request_time)
 
   def _create_participant(self):

@@ -10,13 +10,15 @@ CREDS_FILE = 'test/test-data/test-client-cert.json'
 def main(args):
   if args.num_participants == 0 and not args.create_biobank_samples:
     print "Usage: tools/generate_fake_data.py [--num_participants #] [--create_biobank_samples]"
-    return
+    return  
   client = Client('rdr/v1', False, args.creds_file, args.instance)
   total_participants_created = 0
   while total_participants_created < args.num_participants:
     participants_for_batch = min(MAX_PARTICIPANTS_PER_REQUEST,
                                  args.num_participants - total_participants_created)
-    request_body = {'num_participants': participants_for_batch}
+    request_body = {'num_participants': participants_for_batch,
+                    'include_physical_measurements': bool(args.include_physical_measurements),
+                    'include_biobank_orders': bool(args.include_biobank_orders)}
     client.request_json('DataGen', 'POST', request_body, test_unauthenticated=False)
     total_participants_created += participants_for_batch
     print "Total participants created: %d" % total_participants_created
@@ -51,6 +53,14 @@ if __name__ == '__main__':
                       type=int,
                       help='The number of participants to create.',
                       default=0)
+  parser.add_argument('--include_physical_measurements',
+                      dest='include_physical_measurements',
+                      action='store_true',
+                      help='True if physical measurements should be created')
+  parser.add_argument('--include_biobank_orders',
+                      dest='include_biobank_orders',
+                      action='store_true',
+                      help='True if biobank orders should be created')
   parser.add_argument('--create_biobank_samples',
                       dest="create_biobank_samples",
                       action='store_true',

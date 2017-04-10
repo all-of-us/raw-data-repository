@@ -24,8 +24,11 @@ class DataGenApi(Resource):
     resource_json = json.loads(resource)
     num_participants = int(resource_json.get('num_participants', 0))
     response = {}
+    include_physical_measurements = bool(resource_json.get('include_physical_measurements', False))
+    include_biobank_orders = bool(resource_json.get('include_biobank_orders', False))
     for _ in range(0, num_participants):
-      self._participant_generator.generate_participant()
+      self._participant_generator.generate_participant(include_physical_measurements,
+                                                       include_biobank_orders)
     if resource_json.get('create_biobank_samples', False):
       num_samples, path = FakeBiobankSamplesGenerator().generate_samples()
       logging.info("Generated %d samples in %s." % (num_samples, path))
