@@ -4,7 +4,7 @@ dependencies:
     # and wants to make a .staging directory (as a sibling!)
     # when upgrading or installing new components.
     - sudo chmod o+w /opt
-    - pip install --upgrade httplib2 jira oauth2client parallel pylint
+    - pip install --upgrade alembic httplib2 jira oauth2client parallel pylint
 
 machine:
   services:
@@ -20,6 +20,9 @@ deployment:
     branch: master
     commands:
       - ./ci/activate_creds.sh ~/gcloud-credentials.key
+      - ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key:
+          pwd:
+            rest-api
       - ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
       - ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com
 
@@ -32,6 +35,9 @@ deployment:
     commands:
       - ./ci/activate_creds.sh ~/gcloud-credentials.key
       - ./ci/release_notes.py all-of-us-rdr-staging
+      - ./tools/upgrade_database.sh -i https://pmi-drc-api-staging.appspot.com --creds_file ~/gcloud-credentials.key:
+          pwd:
+            rest-api
       - ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
       - ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com
 

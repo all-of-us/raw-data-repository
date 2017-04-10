@@ -20,7 +20,7 @@ Make sure that you have google
 
 From the rest-api directory, run:
 
-* tools/setup_env.sh (get libs and Cloud SQL Proxy, set up git hooks)
+* tools/setup_env.sh (get libs, set up git hooks)
 * sudo apt-get install mysql-server libmysqlclient-dev (to install MySQL server and client)
 * dev_appserver.py test.yaml --require_indexes (to run your local server)
 * tools/setup_local_database.sh (to create a database in MySQL, upgrade its schema,
