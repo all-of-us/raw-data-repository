@@ -10,7 +10,7 @@ CREDS_FILE = 'test/test-data/test-client-cert.json'
 def main(args):
   if args.num_participants == 0 and not args.create_biobank_samples:
     print "Usage: tools/generate_fake_data.py [--num_participants #] [--create_biobank_samples]"
-    return  
+    return
   client = Client('rdr/v1', False, args.creds_file, args.instance)
   total_participants_created = 0
   while total_participants_created < args.num_participants:

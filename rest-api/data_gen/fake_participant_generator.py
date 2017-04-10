@@ -352,10 +352,10 @@ class FakeParticipantGenerator(object):
                                                                            creation_time)
     if consent_time:
       last_request_time = last_qr_time
-      if include_physical_measurements:        
+      if include_physical_measurements:
         last_measurement_time = self._submit_physical_measurements(participant_id, consent_time)
         last_request_time = max(last_request_time, last_measurement_time)
-      if include_biobank_orders:            
+      if include_biobank_orders:
         last_biobank_time = self._submit_biobank_data(participant_id, consent_time)
         last_request_time = max(last_request_time, last_biobank_time)
       last_hpo_change_time, participant_response = self._submit_hpo_changes(participant_response,
