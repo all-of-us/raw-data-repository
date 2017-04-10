@@ -20,14 +20,14 @@ deployment:
     branch: mwf-fix-upgrade-db
     commands:
       - ./ci/activate_creds.sh ~/gcloud-credentials.key
-      - ./rest-api/tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
+      - ./rest-api/tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key:
           pwd:
             rest-api
   test:
     branch: master
     commands:
       - ./ci/activate_creds.sh ~/gcloud-credentials.key
-      - ./rest-api/tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
+      - ./rest-api/tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key:
           pwd:
             rest-api
       - ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
@@ -42,7 +42,7 @@ deployment:
     commands:
       - ./ci/activate_creds.sh ~/gcloud-credentials.key
       - ./ci/release_notes.py all-of-us-rdr-staging
-      - ./rest-api/tools/upgrade_database.sh -i https://pmi-drc-api-staging.appspot.com --creds_file ~/gcloud-credentials.key
+      - ./rest-api/tools/upgrade_database.sh -i https://pmi-drc-api-staging.appspot.com --creds_file ~/gcloud-credentials.key:
           pwd:
             rest-api
       - ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
