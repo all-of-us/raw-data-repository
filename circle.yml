@@ -16,13 +16,6 @@ test:
 
 deployment:
   # Deploy master to the pmi-drc-api-test project whenever the tests pass
-  mwftest:
-    branch: mwf-fix-upgrade-db
-    commands:
-      - ./ci/activate_creds.sh ~/gcloud-credentials.key
-      - ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key:
-          pwd:
-            rest-api
   test:
     branch: master
     commands:
