@@ -80,8 +80,18 @@ function run_cloud_sql_proxy {
     get_instance_connection_name
   fi
 
+  CLOUD_SQL_PROXY=bin/cloud_sql_proxy
+  if [ ! -f "${CLOUD_SQL_PROXY}" ]
+  then
+    echo "Installing Cloud SQL Proxy at $CLOUD_SQL_PROXY..."
+    wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64
+    mkdir -p bin
+    mv -f cloud_sql_proxy.linux.amd64 "$CLOUD_SQL_PROXY"
+    chmod +x "$CLOUD_SQL_PROXY"
+  fi
+
   echo "Running cloud proxy..."
-  bin/cloud_sql_proxy -instances=${INSTANCE_CONNECTION_NAME}=tcp:${PORT} -credential_file=${CREDS_FILE} &
+  $CLOUD_SQL_PROXY -instances=${INSTANCE_CONNECTION_NAME}=tcp:${PORT} -credential_file=${CREDS_FILE} &
   sleep 3
   CLOUD_PROXY_PID=%1
 }

@@ -22,12 +22,6 @@ sudo pip install alembic
 
 git submodule update --init
 
-echo "Getting Cloud SQL Proxy..."
-wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64
-mkdir -p bin
-mv -f cloud_sql_proxy.linux.amd64 bin/cloud_sql_proxy
-chmod +x bin/cloud_sql_proxy
-
 echo "Configuring Git hooks..."
 HOOKS_DIR=../.git/hooks
 HOOKS_FILE=$HOOKS_DIR/pre-push
