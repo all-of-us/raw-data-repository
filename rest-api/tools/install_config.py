@@ -21,11 +21,11 @@ def main(args):
     config_server = client.request_json(config_path, 'GET',
                                         test_unauthenticated=False)
     comparable_server = _comparable_string(config_server)
-  except HttpException as ex:
-    if ex.code == httplib.NOT_FOUND:
+  except HttpException as e:
+    if e.code == httplib.NOT_FOUND:
       comparable_server = ''
     else:
-      raise ex
+      raise
 
   if not args.config:
     print '----------------- Current Server Config --------------------'
