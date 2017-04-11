@@ -11,7 +11,7 @@ def add_headers(response):
   """
   response.headers['Content-Disposition'] = 'attachment'
   response.headers['X-Content-Type-Options'] = 'nosniff'
-  response.headers['Content-Type'] = 'application/json'
+  response.headers['Content-Type'] = 'application/json; charset=utf-8'
   return response
 
 def request_logging():
