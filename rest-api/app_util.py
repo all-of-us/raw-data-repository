@@ -22,6 +22,8 @@ def add_headers(response):
   response.headers['Date'] = email.utils.formatdate(
       time.mktime(pytz.utc.localize(clock.CLOCK.now()).astimezone(_GMT).timetuple()),
       usegmt=True)
+  response.headers['Pragma'] = 'no-cache'
+  response.headers['Cache-control'] = 'no-cache, must-revalidate'
   return response
 
 
