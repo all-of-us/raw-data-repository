@@ -1,0 +1,24 @@
+{
+  "allow_nonprod_requests": true,
+  "biobank_samples_shards": [
+    "2"
+  ],
+  "user_info": {
+    "pmi-hpo-staging@appspot.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"],
+      "whitelisted_appids": ["pmi-hpo-staging"]
+    },
+    "test-client@pmi-rdr-api-test.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"]
+    },
+    "configurator@all-of-us-rdr-dryrun.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro", "admin"]
+    }
+  },
+  "biobank_samples_bucket_name": [
+    "dryrun_biobank_samples_upload_bucket"
+  ],
+  "metrics_shards": [
+    "10"
+  ]
+}
