@@ -24,6 +24,8 @@ def add_headers(response):
       usegmt=True)
   response.headers['Pragma'] = 'no-cache'
   response.headers['Cache-control'] = 'no-cache, must-revalidate'
+  # Expire at some date in the past: the epoch.
+  response.headers['Expires'] = email.utils.formatdate(0.0, usegmt=True)
   return response
 
 
