@@ -1,6 +1,13 @@
+import email.utils
 import logging
+import pytz
+import time
 
 from flask import request
+
+import clock
+
+_GMT = pytz.timezone('GMT')
 
 
 def add_headers(response):
@@ -12,7 +19,11 @@ def add_headers(response):
   response.headers['Content-Disposition'] = 'attachment; filename="f.txt"'
   response.headers['X-Content-Type-Options'] = 'nosniff'
   response.headers['Content-Type'] = 'application/json; charset=utf-8'
+  response.headers['Date'] = email.utils.formatdate(
+      time.mktime(pytz.utc.localize(clock.CLOCK.now()).astimezone(_GMT).timetuple()),
+      usegmt=True)
   return response
+
 
 def request_logging():
   """Some uniform logging of request characteristics before any checks are applied."""
