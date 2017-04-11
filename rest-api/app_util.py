@@ -18,7 +18,7 @@ def add_headers(response):
   """
   response.headers['Content-Disposition'] = 'attachment; filename="f.txt"'
   response.headers['X-Content-Type-Options'] = 'nosniff'
-  response.headers['Content-Type'] = 'application/json; charset=utf-8'
+  response.headers['Content-Type'] = 'application/json; charset=utf-8'  # override to add charset
   response.headers['Date'] = email.utils.formatdate(
       time.mktime(pytz.utc.localize(clock.CLOCK.now()).astimezone(_GMT).timetuple()),
       usegmt=True)
