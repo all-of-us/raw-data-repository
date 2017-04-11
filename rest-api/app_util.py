@@ -9,7 +9,7 @@ def add_headers(response):
   All responses are JSON, so we tag them as such at the app level to provide uniform protection
   against content-sniffing-based attacks.
   """
-  response.headers['Content-Disposition'] = 'attachment'
+  response.headers['Content-Disposition'] = 'attachment; filename="f.txt"'
   response.headers['X-Content-Type-Options'] = 'nosniff'
   response.headers['Content-Type'] = 'application/json; charset=utf-8'
   return response
