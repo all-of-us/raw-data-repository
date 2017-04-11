@@ -1,0 +1,17 @@
+{
+  "user_info": {
+    "healthpro-prod@appspot.gserviceaccount.com": {
+      "roles": ["healthpro", "ptc"],
+      "whitelisted_appids": ["healthpro-prod"]
+    },
+    "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro", "admin"]
+    }
+  },
+  "biobank_samples_bucket_name": [
+    "prod_biobank_samples_upload_bucket"
+  ],
+  "metrics_shards": [
+    "10"
+  ]
+}

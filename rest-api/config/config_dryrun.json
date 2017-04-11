@@ -4,9 +4,9 @@
     "2"
   ],
   "user_info": {
-    "pmi-hpo-test@appspot.gserviceaccount.com": {
+    "pmi-hpo-staging@appspot.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"],
-      "whitelisted_appids": ["pmi-hpo-test"]
+      "whitelisted_appids": ["pmi-hpo-staging"]
     },
     "test-client@pmi-rdr-api-test.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]
