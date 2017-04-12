@@ -82,12 +82,18 @@ def _create_questionnaire_response(participant_id, q_id_and_version,
   return qr_json
 
 def _string_answer(value):
+  if not value:
+    return None
   return [{"valueString": value}]
 
 def _date_answer(value):
+  if not value:
+    return None
   return [{"valueDate": value}]
 
 def _code_answer(code):
+  if not code:
+    return None
   return [{"valueCoding": {"system": PPI_SYSTEM, "code": code}}]
 
 def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_version,
@@ -95,7 +101,11 @@ def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_
   questions_with_answers = []
   for question_code, link_id in questions.iteritems():
     answer = answer_map.get(question_code)
-    questions_with_answers.append(_create_question_answer(link_id, answer))
+    if answer:
+      questions_with_answers.append(_create_question_answer(link_id, answer))
+  if not questions_with_answers:
+    # Don't submit a questionnaire with no questions answered.
+    return
   qr_json = _create_questionnaire_response(participant_id, questionnaire_id_and_version,
                                            questions_with_answers)
   client.request_json('Participant/%s/QuestionnaireResponse' % participant_id, 'POST',

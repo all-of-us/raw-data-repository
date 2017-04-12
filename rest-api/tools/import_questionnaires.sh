@@ -38,7 +38,7 @@ else
 fi
 
 #TODO: fetch questionnaires from github; for now, we'll use fake test questionnaires
-QUESTIONNAIRE_FILES=(study_consent.json ehr_consent.json questionnaire3.json questionnaire4.json)
+QUESTIONNAIRE_FILES=(study_consent.json ehr_consent.json the_basics_questionnaire.json questionnaire4.json)
 QUESTIONNAIRE_FILES_STR=$(IFS=, ; echo "${QUESTIONNAIRE_FILES[*]}")
 QUESTIONNAIRE_DIR=test/test-data/
 

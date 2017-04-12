@@ -19,6 +19,14 @@
           "display": "First name"
         }]
       },{
+        "linkId": "middleName",
+        "text": "Middle name",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIName_Middle",
+          "display": "Middle name"
+        }]
+      }, {
         "linkId": "lastName",
         "text": "Last name",
         "concept": [{
@@ -33,6 +41,70 @@
           "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
           "code": "ConsentPII_EmailAddress",
           "display": "Email"
+        }]
+      }, {
+        "linkId":"dateOfBirth",
+        "text":"What is your date of birth?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIBirthInformation_BirthDate",
+          "display": "Birth date"
+        }]
+      }, {
+        "linkId": "zipCode",
+        "text": "Zip code",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "StreetAddress_PIIZIP",
+          "display": "Zip code"
+        }]
+      }, {
+        "linkId":"streetAddress",
+        "text":"What is your street address?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIAddress_StreetAddress",
+          "display": "Street address"
+        }]
+      }, {
+        "linkId":"city",
+        "text":"What is your city?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "StreetAddress_PIICity",
+          "display": "City"
+        }]
+      }, {
+        "linkId":"phoneNumber",
+        "text":"What is your phone number?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIContactInformation_Phone",
+          "display": "Phone number"
+        }]
+      }, {
+        "linkId":"recontactMethod",
+        "text":"What is your recontact method?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIContactInformation_RecontactMethod",
+          "display": "Recontact method"
+        }]
+      }, {
+        "linkId": "state",
+        "text": "State",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "StreetAddress_PIIState",
+          "display": "State"
+        }]
+      }, {
+        "linkId": "language",
+        "text": "Language",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Language_SpokenWrittenLanguage",
+          "display": "Language"
         }]
       }]
   }

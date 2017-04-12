@@ -33,9 +33,9 @@ _TIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 _NO_HPO_PERCENT = 0.3
 # 20%+ of participants have no questionnaires submitted (including consent)
 _NO_QUESTIONNAIRES_SUBMITTED = 0.2
-# 20% of consented participants have no biobank orders
+# 20% of consented participants that submit the basics questionnaire have no biobank orders
 _NO_BIOBANK_ORDERS = 0.2
-# 20% of consented participants have no physical measurements
+# 20% of consented participants that submit the basics questionnaire have no physical measurements
 _NO_PHYSICAL_MEASUREMENTS = 0.2
 # 80% of consented participants have no changes to their HPO
 _NO_HPO_CHANGE = 0.8
@@ -47,7 +47,7 @@ _SUSPENDED_PERCENT = 0.05
 _MULTIPLE_BIOBANK_ORDERS = 0.05
 # 20% of participants with biobank orders have no biobank samples
 _NO_BIOBANK_SAMPLES = 0.2
-# Any given questionnaire has a 40% chance of not being submitted
+# Any other questionnaire has a 40% chance of not being submitted
 _QUESTIONNAIRE_NOT_SUBMITTED = 0.4
 # Any given question on a submitted questionnaire has a 10% chance of not being answered
 _QUESTION_NOT_ANSWERED = 0.1
@@ -138,6 +138,8 @@ class FakeParticipantGenerator(object):
       questionnaire_id_and_version = (questionnaire.questionnaireId, questionnaire.version)
       if concept == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
         self._consent_questionnaire_id_and_version = questionnaire_id_and_version
+      elif concept == THE_BASICS_PPI_MODULE:
+        self._the_basics_questionnaire_id_and_version = questionnaire_id_and_version
       questions = self._questionnaire_to_questions[questionnaire_id_and_version]
       if questions:
         # We already handled this questionnaire.
@@ -348,15 +350,19 @@ class FakeParticipantGenerator(object):
   def generate_participant(self, include_physical_measurements, include_biobank_orders):
     participant_response, creation_time = self._create_participant()
     participant_id = participant_response['participantId']
-    consent_time, last_qr_time = self._submit_questionnaire_responses(participant_id,
-                                                                           creation_time)
+    consent_time, last_qr_time, the_basics_submission_time = \
+      self._submit_questionnaire_responses(participant_id, creation_time)
     if consent_time:
       last_request_time = last_qr_time
-      if include_physical_measurements:
-        last_measurement_time = self._submit_physical_measurements(participant_id, consent_time)
+      # Potentially include physical measurements and biobank orders if the client requested it
+      # and the participant has submitted the basics questionnaire. 
+      if include_physical_measurements and the_basics_submission_time:
+        last_measurement_time = self._submit_physical_measurements(participant_id, 
+                                                                   the_basics_submission_time)
         last_request_time = max(last_request_time, last_measurement_time)
-      if include_biobank_orders:
-        last_biobank_time = self._submit_biobank_data(participant_id, consent_time)
+      if include_biobank_orders and the_basics_submission_time:
+        last_biobank_time = self._submit_biobank_data(participant_id, 
+                                                      the_basics_submission_time)
         last_request_time = max(last_request_time, last_biobank_time)
       last_hpo_change_time, participant_response = self._submit_hpo_changes(participant_response,
                                                                             participant_id,
@@ -455,7 +461,7 @@ class FakeParticipantGenerator(object):
 
   def _submit_questionnaire_responses(self, participant_id, start_time):
     if random.random() <= _NO_QUESTIONNAIRES_SUBMITTED:
-      return None, None
+      return None, None, None
     submission_time = start_time
     answer_map = self._make_answer_map()
 
@@ -467,6 +473,7 @@ class FakeParticipantGenerator(object):
     self._submit_questionnaire_response(participant_id, self._consent_questionnaire_id_and_version,
                                         questions, submission_time, answer_map)
 
+    the_basics_submission_time = None
     for questionnaire_id_and_version, questions in self._questionnaire_to_questions.iteritems():
       if (questionnaire_id_and_version != self._consent_questionnaire_id_and_version and
           random.random() > _QUESTIONNAIRE_NOT_SUBMITTED):
@@ -474,7 +481,9 @@ class FakeParticipantGenerator(object):
         submission_time = submission_time + delta
         self._submit_questionnaire_response(participant_id, questionnaire_id_and_version,
                                             questions, submission_time, answer_map)
-    return consent_time, submission_time
+        if questionnaire_id_and_version == self._the_basics_questionnaire_id_and_version:
+          the_basics_submission_time = submission_time
+    return consent_time, submission_time, the_basics_submission_time
 
   def _create_question_answer(self, link_id, answers):
     return {"linkId": link_id, "answer": answers}
