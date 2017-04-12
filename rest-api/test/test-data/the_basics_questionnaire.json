@@ -1,0 +1,64 @@
+{
+  "resourceType": "Questionnaire",
+  "status":"published",
+  "date":"2015-01-01T00:00:00-00:00",
+  "publisher":"fake",
+  "group": {
+    "concept": [
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "TheBasics"
+      }],
+    "question": [
+	   {
+        "linkId": "race",
+        "text": "What is your race?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Race_WhatRaceEthnicity",
+          "display": "Race"
+        }]
+      }, {
+        "linkId":"genderIdentity",
+        "text":"What is your gender identity?",
+        "type":"choice",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Gender_GenderIdentity",
+          "display": "Gender identity"
+        }]
+      }, {
+        "linkId":"sex",
+        "text":"What is your sex?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "BiologicalSex_SexAtBirth",
+          "display": "Sex"
+        }]
+      }, {
+        "linkId":"sexualOrientation",
+        "text":"What is your sexual orientation?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "TheBasics_SexualOrientation",
+          "display": "Sexual orientation"
+        }]
+      }, {
+        "linkId":"education",
+        "text":"What is your education level?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "EducationLevel_HighestGrade",
+          "display": "Education level"
+        }]
+      }, {
+        "linkId":"income",
+        "text":"What is your income?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "Income_AnnualIncome",
+          "display": "Income"
+        }]
+      }]
+  }
+}
