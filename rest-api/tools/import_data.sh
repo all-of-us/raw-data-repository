@@ -1,3 +1,4 @@
+#!/bin/bash -e
 # Imports the codebook, questionnaires, and participants into a non-prod environment.
 # Used after setting up a database.
 

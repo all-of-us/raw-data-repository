@@ -1,12 +1,18 @@
 #!/bin/bash -e
 
-trap 'kill $(jobs -p) || true' EXIT
+trap '[[ "$(jobs -p)" ]] && kill $(jobs -p)' EXIT
 
 ci/test_pre_push.sh
 
-# No new checked-in credentials.
-grep -ril "BEGIN PRIVATE KEY" . | sort > credentials_files
-diff credentials_files ci/allowed_private_key_files
+echo "Grepping for checked-in credentials..."
+set +e  # OK if grep does not find any matches.
+KEY_FILES=`grep -ril "BEGIN PRIVATE KEY" . | grep -v $0 | grep -v oauth2client`
+set -e
+if [ "${KEY_FILES}" ]
+then
+  echo "No keys may be checked in, but found: $KEY_FILES"
+  exit 1
+fi
 
 function activate_local_venv {
   pip install virtualenv safety

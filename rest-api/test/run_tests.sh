@@ -1,12 +1,9 @@
-#!/bin/bash
-
-# Runs the offline unit tests.  (The ones that don't involve hitting the server)
-
-
-# Fail if any test fails
-set -e
+#!/bin/bash -e
+# Runs unit tests (no server interaction) and client tests (hit a local dev
+# server). Fails if any test fails.
 
 subset="all"
+
 
 function usage() {
   echo "Usage: run_test.sh -g /path/to/google/cloud/sdk_dir" \
@@ -62,7 +59,6 @@ export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
 
 if [[ "$subset" == "all" || "$subset" == "unit" ]];
 then
-  # This must be run from the base directory of the appengine app.
   if [[ -z $substring ]]
   then
     cmd="test/runner.py --test-path test/unit_test/ ${sdk_dir}"
@@ -75,5 +71,5 @@ fi
 if [[ "$subset" == "all" || "$subset" == "client" ]];
 then
   # Run client tests against local dev_server.
-  ${BASE_DIR}/test/test_server.sh -i http://localhost:8080 ${substring:+-r $substring}
+  ${BASE_DIR}/test/test_server.sh ${substring:+-r $substring}
 fi

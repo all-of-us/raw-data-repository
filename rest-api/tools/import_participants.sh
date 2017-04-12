@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Set up PYTHONPATH for and call import_participants.py
 

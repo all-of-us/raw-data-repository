@@ -3,16 +3,15 @@ import copy
 import httplib
 import httplib2
 import json
-import os
 
 from oauth2client.service_account import ServiceAccountCredentials
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
-CREDS_FILE = os.path.join(os.path.dirname(__file__), '../test/test-data/test-client-cert.json')
 DEFAULT_INSTANCE = 'https://pmi-drc-api-test.appspot.com'
 POST_HEADERS = {
     'Content-Type': 'application/json; charset=utf-8',
 }
+
 
 class HttpException(BaseException):
   """Indicates an http error occurred."""
@@ -23,8 +22,7 @@ class HttpException(BaseException):
 
 
 class Client(object):
-
-  def __init__(self, base_path, parse_cli=True, creds_file=CREDS_FILE, default_instance=None):
+  def __init__(self, base_path, parse_cli=True, creds_file=None, default_instance=None):
     default_instance = default_instance or DEFAULT_INSTANCE
     if parse_cli:
       args = self.parse_args(default_instance)
@@ -32,8 +30,10 @@ class Client(object):
     else:
       self.instance = default_instance
     self.base_path = base_path
+    if not creds_file and 'localhost' not in self.instance:
+      raise ValueError('Client requires credentials for non-local instance %r.' % self.instance)
     self.creds_file = creds_file
-    self.fetcher = self._get_fetcher()
+    self._http = self._get_authorized_http()
     self.last_etag = None
 
   def parse_args(self, default_instance):
@@ -46,10 +46,12 @@ class Client(object):
         default=default_instance)
     return parser.parse_args()
 
-  def _get_fetcher(self):
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(
-        self.creds_file, [SCOPE])
-    return credentials.authorize(httplib2.Http())
+  def _get_authorized_http(self):
+    if self.creds_file:
+      credentials = ServiceAccountCredentials.from_json_keyfile_name(self.creds_file, [SCOPE])
+      return credentials.authorize(httplib2.Http())
+    else:
+      return httplib2.Http()
 
   def request(self,
               path,
@@ -99,7 +101,7 @@ class Client(object):
       headers['X-Appengine-Cron'] = 'true'
 
     print '{} to {}'.format(method, url)
-    resp, content = self.fetcher.request(
+    resp, content = self._http.request(
         url, method, headers=headers, body=body)
 
     print resp
