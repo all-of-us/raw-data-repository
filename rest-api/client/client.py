@@ -11,7 +11,7 @@ SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 CREDS_FILE = os.path.join(os.path.dirname(__file__), '../test/test-data/test-client-cert.json')
 DEFAULT_INSTANCE = 'https://pmi-drc-api-test.appspot.com'
 POST_HEADERS = {
-    'Content-Type': 'application/json; charset=UTF-8',
+    'Content-Type': 'application/json; charset=utf-8',
 }
 
 class HttpException(BaseException):
@@ -111,15 +111,15 @@ class Client(object):
       raise HttpException(
           '{}:{} - {}\n---{}'.format(url, method, resp.status, content), resp.status)
 
-    if resp['content-disposition'] != 'attachment':
-      raise HttpException(
-          'content-disposition header is set to {}'.format(resp['content-disposition']))
-    if resp['x-content-type-options'] != 'nosniff':
-      raise HttpException(
-          'x-content-type-options header is set to {}'.format(resp['x-content-type-options']))
-    if resp['content-type'] != 'application/json':
-      raise HttpException(
-          'content-type header is set to {}'.format(resp['content-type']))
+    for required_header, required_value in (
+        ('content-disposition', 'attachment; filename="f.txt"'),
+        ('content-type', 'application/json; charset=utf-8'),
+        ('x-content-type-options', 'nosniff')):
+      if resp[required_header] != required_value:
+        raise HttpException(
+            'Header %r is set to %r, expected %r.'
+            % (required_header, resp[required_header], required_value),
+            httplib.INTERNAL_SERVER_ERROR)
     if resp.get('etag'):
       self.last_etag = resp['etag']
 

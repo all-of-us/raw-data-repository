@@ -1,5 +1,9 @@
-"""A clock that returns system time by default, but can be overridden for testing purposes."""
+"""A clock that returns system time by default, but can be overridden for testing purposes.
+
+Clocks are timezone naive, and operate in UTC.
+"""
 import datetime
+
 
 class FakeClock:
   def __init__(self, now):
@@ -24,7 +28,7 @@ class Clock:
     self.t = now
 
   def now(self):
-    return self.t or datetime.datetime.now()
+    return self.t or datetime.datetime.utcnow()
 
 
 CLOCK = Clock()
