@@ -135,7 +135,7 @@ test/test_server.sh
 
 This will execute all the client tests in turn against the test server, stopping
 if any one of them fails. To run a particular test use the -r flag as for
-run_tests.  Use the -i flag to override the default instance.
+run_tests.
 
 ## Auth Model
 

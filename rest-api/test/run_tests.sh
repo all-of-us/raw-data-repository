@@ -71,5 +71,5 @@ fi
 if [[ "$subset" == "all" || "$subset" == "client" ]];
 then
   # Run client tests against local dev_server.
-  ${BASE_DIR}/test/test_server.sh -i http://localhost:8080 ${substring:+-r $substring}
+  ${BASE_DIR}/test/test_server.sh ${substring:+-r $substring}
 fi
