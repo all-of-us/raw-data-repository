@@ -350,8 +350,8 @@ class FakeParticipantGenerator(object):
   def generate_participant(self, include_physical_measurements, include_biobank_orders):
     participant_response, creation_time = self._create_participant()
     participant_id = participant_response['participantId']
-    consent_time, last_qr_time, the_basics_submission_time = \
-      self._submit_questionnaire_responses(participant_id, creation_time)
+    consent_time, last_qr_time, the_basics_submission_time = (self._submit_questionnaire_responses(
+      participant_id, creation_time))
     if consent_time:
       last_request_time = last_qr_time
       # Potentially include physical measurements and biobank orders if the client requested it
