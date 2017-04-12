@@ -235,7 +235,7 @@ def map_hpo_ids(reader):
   and is the starting point for that participant's history.
   """
   for participant_id, hpo, last_modified in reader:
-    yield(participant_id, make_pair_str(last_modified, make_metric(HPO_ID_METRIC, hpo)))
+    yield(participant_id, make_tuple(last_modified, make_metric(HPO_ID_METRIC, hpo)))
 
 def map_answers(reader):
   """Emit (participantId, date|<metric>.<answer>) for each answer.
@@ -260,7 +260,7 @@ def map_answers(reader):
                              question_code != RACE_QUESTION_CODE):
       race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
       race = get_race(race_codes)
-      yield(last_participant_id, make_pair_str(last_start_time,
+      yield(last_participant_id, make_tuple(last_start_time,
                                                make_metric(RACE_METRIC, str(race))))
       race_code_values = []
     last_participant_id = participant_id
@@ -275,19 +275,19 @@ def map_answers(reader):
       if metric == 'state':
         state_val = answer_code[len(answer_code) - 2:]
         census_region = census_regions.get(state_val) or UNSET
-        yield(participant_id, make_pair_str(start_time, make_metric(CENSUS_REGION_METRIC,
+        yield(participant_id, make_tuple(start_time, make_metric(CENSUS_REGION_METRIC,
                                                                     census_region)))
     elif question_field[1] == FieldType.STRING:
       answer_value = answer_string
     else:
       raise AssertionError("Invalid field type: %s" % question_field[1])
-    yield(participant_id, make_pair_str(start_time, make_metric(metric, answer_value)))
+    yield(participant_id, make_tuple(start_time, make_metric(metric, answer_value)))
 
   # Emit race for the last participant if we saved some values for it.
   if race_code_values:
     race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
     race = get_race(race_codes)
-    yield(last_participant_id, make_pair_str(last_start_time,
+    yield(last_participant_id, make_tuple(last_start_time,
                                              make_metric(RACE_METRIC, str(race))))
 
 def map_participants(reader):
@@ -307,41 +307,38 @@ def map_participants(reader):
     first_physical_measurements_date = row[4]
     first_samples_to_isolate_dna = row[5]
     if date_of_birth:
-      yield(participant_id, make_pair_str(DATE_OF_BIRTH_PREFIX, date_of_birth))
+      yield(participant_id, make_tuple(DATE_OF_BIRTH_PREFIX, date_of_birth))
     if first_order_date:
-      yield(participant_id, make_pair_str(first_order_date,
+      yield(participant_id, make_tuple(first_order_date,
                                           make_metric(BIOSPECIMEN_METRIC,
                                                       SPECIMEN_COLLECTED_VALUE)))
     if first_samples_arrived_date:
-      yield(participant_id, make_pair_str(first_samples_arrived_date,
+      yield(participant_id, make_tuple(first_samples_arrived_date,
                                           make_metric(BIOSPECIMEN_SAMPLES_METRIC,
                                                       SAMPLES_ARRIVED_VALUE)))
     if first_physical_measurements_date:
-      yield(participant_id, make_pair_str(first_physical_measurements_date,
+      yield(participant_id, make_tuple(first_physical_measurements_date,
                                           make_metric(PHYSICAL_MEASUREMENTS_METRIC,
                                                       str(PhysicalMeasurementsStatus.COMPLETED))))
     if first_samples_to_isolate_dna:
-      yield(participant_id, make_pair_str(first_samples_to_isolate_dna,
+      yield(participant_id, make_tuple(first_samples_to_isolate_dna,
                                           make_metric(SAMPLES_TO_ISOLATE_DNA_METRIC,
                                                       str(SampleStatus.RECEIVED))))
     for i in range(6, len(row)):
       questionnaire_submitted_time = row[i]
       if questionnaire_submitted_time:
         metric = QUESTIONNAIRE_MODULE_FIELD_NAMES[i - 6]
-        yield(participant_id, make_pair_str(questionnaire_submitted_time,
+        yield(participant_id, make_tuple(questionnaire_submitted_time,
                                             make_metric(metric, SUBMITTED_VALUE)))
 
-def make_pair_str(v1, v2):
-  return v1 + '|' + v2
-
-def make_triple(v1, v2, v3):
-  return v1 + '|' + v2 + '|' + v3
+def make_tuple(*args):
+  return '|'.join(args)
 
 def parse_tuple(row):
   return tuple(row.split('|'))
 
 def map_result_key(hpo_id, participant_type, k, v):
-  return make_triple(hpo_id, participant_type, make_metric(k, v))
+  return make_tuple(hpo_id, participant_type, make_metric(k, v))
 
 def sum_deltas(values, delta_map):
   for value in values:
@@ -503,7 +500,7 @@ def map_hpo_metric_date_deltas_to_hpo_metric_key(row_buffer):
     date_str = line[3]
     delta = line[4]
     # Yield HPO ID|participant_type|metric -> date|delta
-    yield (make_triple(hpo_id, participant_type, metric_key), make_pair_str(date_str, delta))
+    yield (make_tuple(hpo_id, participant_type, metric_key), make_tuple(date_str, delta))
 
 def combine_hpo_metric_date_deltas(key, new_values, old_values):  # pylint: disable=unused-argument
   """ Combines deltas generated for users into a single delta per date
@@ -518,7 +515,7 @@ def combine_hpo_metric_date_deltas(key, new_values, old_values):  # pylint: disa
     delta_map[date] = int(delta)
   sum_deltas(new_values, delta_map)
   for date, delta in delta_map.iteritems():
-    yield make_pair_str(date, str(delta))
+    yield make_tuple(date, str(delta))
 
 def reduce_hpo_metric_date_deltas_to_all_date_counts(reducer_key, reducer_values, now=None):
   """Emits hpoId|participant_type|metric|date|count for each date until today.
@@ -572,9 +569,9 @@ def map_hpo_metric_date_counts_to_hpo_date_key(row_buffer):
     date_str = line[3]
     count = line[4]
     # Yield HPO ID + date -> metric + count
-    yield (make_pair_str(hpo_id, date_str), make_triple(participant_type, metric_key, count))
+    yield (make_tuple(hpo_id, date_str), make_tuple(participant_type, metric_key, count))
     # Yield '*' + date -> metric + count (for all HPO counts)
-    yield (make_pair_str('*', date_str), make_triple(participant_type, metric_key, count))
+    yield (make_tuple('*', date_str), make_tuple(participant_type, metric_key, count))
 
 def reduce_hpo_date_metric_counts_to_database_buckets(reducer_key, reducer_values, version_id=None):
   """Emits a metrics bucket with counts for metrics for a given hpoId + date to SQL
