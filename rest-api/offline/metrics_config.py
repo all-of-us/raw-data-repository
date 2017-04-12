@@ -22,6 +22,7 @@ from model.participant_summary import ParticipantSummary
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus
 
 PARTICIPANT_KIND = 'Participant'
+FULL_PARTICIPANT_KIND = 'FullParticipant'
 HPO_ID_METRIC = 'hpoId'
 CENSUS_REGION_METRIC = 'censusRegion'
 BIOSPECIMEN_METRIC = 'biospecimen'
