@@ -18,19 +18,18 @@ def main(args):
     request_body = {'num_participants': participants_for_batch,
                     'include_physical_measurements': bool(args.include_physical_measurements),
                     'include_biobank_orders': bool(args.include_biobank_orders)}
-    client.request_json('DataGen', 'POST', request_body, test_unauthenticated=False)
+    client.request_json('DataGen', 'POST', request_body)
     total_participants_created += participants_for_batch
     print "Total participants created: %d" % total_participants_created
   if args.create_biobank_samples:
     request_body = {'create_biobank_samples': True}
-    response = client.request_json('DataGen', 'POST', request_body, test_unauthenticated=False)
+    response = client.request_json('DataGen', 'POST', request_body)
     print "%d samples generated at %s." % (response['num_samples'],
                                            response['samples_path'])
     if 'localhost' in args.instance:
       print "Starting pipeline..."
       offline_client = Client('offline', False, args.creds_file, args.instance)
-      response = offline_client.request_json('BiobankSamplesImport', 'GET', cron=True,
-                                  test_unauthenticated=False)
+      response = offline_client.request_json('BiobankSamplesImport', 'GET', cron=True)
       print "%d samples imported." % response['written']
     else:
       print "Use the cron tab in AppEngine to start the biobank samples pipeline."

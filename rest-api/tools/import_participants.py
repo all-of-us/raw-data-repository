@@ -52,8 +52,7 @@ def _setup_questionnaires(client):
   questionnaire_to_questions = {}
   consent_questionnaire_id_and_version = None
   for module_code in ALL_MODULE_CODES:
-    questionnaire = client.request_json('Questionnaire?concept=%s' % module_code, 'GET',
-                                        test_unauthenticated=False)
+    questionnaire = client.request_json('Questionnaire?concept=%s' % module_code, 'GET')
     questionnaire_id = questionnaire['id']
     version = questionnaire['version']
     if module_code == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
@@ -107,8 +106,7 @@ def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_
     return
   qr_json = _create_questionnaire_response(participant_id, questionnaire_id_and_version,
                                            questions_with_answers)
-  client.request_json('Participant/%s/QuestionnaireResponse' % participant_id, 'POST',
-                      qr_json, test_unauthenticated=False)
+  client.request_json('Participant/%s/QuestionnaireResponse' % participant_id, 'POST', qr_json)
 
 def main(args):
   logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -126,7 +124,7 @@ def main(args):
       answer_map[ZIPCODE_QUESTION_CODE] = _string_answer(row['zip_code'])
       answer_map[DATE_OF_BIRTH_QUESTION_CODE] = _date_answer(row['date_of_birth'])
       answer_map[GENDER_IDENTITY_QUESTION_CODE] = _code_answer(row['gender_identity'])
-      participant_response = client.request_json('Participant', 'POST', test_unauthenticated=False)
+      participant_response = client.request_json('Participant', 'POST')
       participant_id = participant_response['participantId']
       _submit_questionnaire_response(client, participant_id, consent_questionnaire_id_and_version,
                                      consent_questions, answer_map)
