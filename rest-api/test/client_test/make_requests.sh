@@ -9,8 +9,7 @@
 # be run outside of the normal codebase.
 
 # To get the bearer token:
-# Save the test token from
-#     github.com/vanderbilt/pmi-data/blob/master/rest-api/test/test-data/test-client-cert.json
+# Generate and save a new service account key (and delete it after you're done).
 # Authenticate against it using gcloud (https://cloud.google.com/sdk/downloads):
 #     gcloud auth activate-service-account --key-file=<WHEREEVER YOU PUT THAT TOKEN>
 #     gcloud auth print-access-token
