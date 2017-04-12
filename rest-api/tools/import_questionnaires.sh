@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Retrieves questionnaires from a URL and imports them into the database.
 # Can be used for either your local database or Cloud SQL.

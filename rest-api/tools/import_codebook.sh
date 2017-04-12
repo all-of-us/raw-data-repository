@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Retrieves a codebook from a specified URL and imports it into the database.
 # Can be used for either your local database or Cloud SQL.
