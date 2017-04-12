@@ -131,10 +131,10 @@ class FakeParticipantGenerator(object):
     for concept in _QUESTIONNAIRE_CONCEPTS:
       code = code_dao.get_code(PPI_SYSTEM, concept)
       if code is None:
-        raise BadRequest('Code missing: %s; import codebook and clear cache.' % concept)
+        raise BadRequest('Code missing: %s; import data and clear cache.' % concept)
       questionnaire = questionnaire_dao.get_latest_questionnaire_with_concept(code.codeId)
       if questionnaire is None:
-        raise BadRequest('Questionnaire for code %s missing; import questionnaires' % concept)
+        raise BadRequest('Questionnaire for code %s missing; import data.' % concept)
       questionnaire_id_and_version = (questionnaire.questionnaireId, questionnaire.version)
       if concept == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
         self._consent_questionnaire_id_and_version = questionnaire_id_and_version
