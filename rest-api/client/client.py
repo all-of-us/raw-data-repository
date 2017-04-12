@@ -3,7 +3,6 @@ import copy
 import httplib
 import httplib2
 import json
-import os
 
 from oauth2client.service_account import ServiceAccountCredentials
 
