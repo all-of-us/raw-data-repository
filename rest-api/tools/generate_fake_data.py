@@ -5,7 +5,6 @@ import argparse
 from client.client import Client
 
 MAX_PARTICIPANTS_PER_REQUEST = 50
-CREDS_FILE = 'test/test-data/test-client-cert.json'
 
 def main(args):
   if args.num_participants == 0 and not args.create_biobank_samples:
@@ -47,8 +46,7 @@ if __name__ == '__main__':
                       default='http://localhost:8080')
   parser.add_argument('--creds_file',
                       type=str,
-                      help='Path to credentials JSON file.',
-                      default=CREDS_FILE)
+                      help='Path to credentials JSON file.')
   parser.add_argument('--num_participants',
                       type=int,
                       help='The number of participants to create.',

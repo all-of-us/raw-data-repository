@@ -18,7 +18,6 @@ from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
 from code_constants import OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
 from code_constants import PPI_SYSTEM
 
-CREDS_FILE = 'test/test-data/test-client-cert.json'
 HEALTHPRO_PARTICIPANTS_FILE = 'test/test-data/healthpro_test_participants.csv'
 
 ALL_MODULE_CODES = [CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
@@ -140,6 +139,5 @@ if __name__ == '__main__':
                       default='http://localhost:8080')
   parser.add_argument('--creds_file',
                       type=str,
-                      help='Path to credentials JSON file.',
-                      default=CREDS_FILE)
+                      help='Path to credentials JSON file.')
   main(parser.parse_args())

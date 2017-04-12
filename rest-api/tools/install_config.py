@@ -11,7 +11,6 @@ import httplib
 
 from client.client import Client, HttpException
 
-CREDS_FILE = 'test/test-data/test-client-cert.json'
 BASE_CONFIG_FILE = 'config/base_config.json'
 
 def main(args):
@@ -84,8 +83,7 @@ if __name__ == '__main__':
                       action='store_true')
   parser.add_argument('--creds_file',
                       type=str,
-                      help='Path to credentials JSON file.',
-                      default=CREDS_FILE)
+                      help='Path to credentials JSON file.')
   parser.add_argument('--key',
                       type=str,
                       help='Specifies a key for a configuration to update.')
