@@ -8,10 +8,6 @@ builtins:
 - deferred: on  
 
 handlers:
-- url: /_ah/datastore_admin.*
-  script: google.appengine.ext.datastore_admin.main
-  login: admin  
-  secure: always
 - url: /_ah/queue/deferred
   script: google.appengine.ext.deferred.deferred.application
   login: admin
