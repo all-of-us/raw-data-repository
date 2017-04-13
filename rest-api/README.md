@@ -207,3 +207,18 @@ existing issue for cherry picks).
 ### Tools
 
 Please see the [Tools README](tools/README.md) for more information on command line tools.
+
+# Biobank ID prefixes
+
+Biobank receives samples for participants from multiple RDR environments in its production 
+environment. In order to ensure there aren't any collisions, we tack on a unique prefix to 
+client biobank IDs in each environment; the values are:
+
+"A" - production (post-launch)
+"B" - dry run / stable
+"C" - production (pre-launch)
+"X" - staging
+"Y" - test
+"Z" - dev
+
+ 
