@@ -1,5 +1,5 @@
 {
-  "allow_nonprod_requests": true,  
+  "allow_nonprod_requests": true,
   # Dry run environment should be going away; we won't keep using the same prefix as stable in
   # a different environment for much longer.
   "biobank_id_prefix": ["B"],

@@ -89,7 +89,7 @@ def _upsert_samples_from_csv(csv_reader):
   biobank_id_prefix = get_biobank_id_prefix()
   try:
     return samples_dao.upsert_all(
-        (s for s in (_create_sample_from_row(row, biobank_id_prefix) for row in csv_reader) 
+        (s for s in (_create_sample_from_row(row, biobank_id_prefix) for row in csv_reader)
          if s is not None))
   except ValueError, e:
     raise DataError(e)
@@ -157,7 +157,7 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing):
   """
   with database_factory.get_database().session() as session:
     session.execute(_CREATE_ORDERS_BY_BIOBANK_ID_MYSQL)
-    session.execute(replace_isodate(_CREATE_RECONCILIATION_VIEW_MYSQL), 
+    session.execute(replace_isodate(_CREATE_RECONCILIATION_VIEW_MYSQL),
                     {"biobank_id_prefix": get_biobank_id_prefix()})
     for sql, file_name in (
         (_SELECT_FROM_VIEW_MYSQL_RECEIVED, path_received),

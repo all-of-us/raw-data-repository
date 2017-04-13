@@ -110,7 +110,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     samples_file = test_data.open_biobank_samples(111, 222, 333)
     reader = csv.DictReader(samples_file, delimiter='\t')
     row = reader.next()
-    row[biobank_samples_pipeline._Columns.CONFIRMED_DATE] = '2016 11 19'    
+    row[biobank_samples_pipeline._Columns.CONFIRMED_DATE] = '2016 11 19'
     self.assertIsNone(biobank_samples_pipeline._create_sample_from_row(row, 'Q'))
 
   def test_sample_from_row_invalid(self):
