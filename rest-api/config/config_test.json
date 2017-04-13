@@ -6,7 +6,7 @@
   "user_info": {
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
       "roles": ["healthpro"],
-      "comment": "for HealthPro testing",
+      "comment": "for HealthPro testing"
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro", "admin"],
