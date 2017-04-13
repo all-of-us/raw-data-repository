@@ -6,12 +6,16 @@
   ],
   "allow_faking_requests_from_server": true,
   "user_info": {
-    "pmi-hpo-staging@appspot.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro", "admin"],
+    "healthpro-staging@appspot.gserviceaccount.com": {
+      "roles": ["healthpro", "admin"],
       "whitelisted_ip_ranges": {
         "ip6": [],
         "ip4": ["0.1.0.40"]
       }
+    },
+    "pmi-hpo-dev@appspot.gserviceaccount.com": {
+      "roles": ["healthpro"],
+      "comment": "for HealthPro testing"
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro", "admin"],
