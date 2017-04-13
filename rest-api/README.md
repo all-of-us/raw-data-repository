@@ -112,9 +112,8 @@ To deploy to the test server, `https://pmi-drc-api-test.appspot.com/`, first get
 Git repo into the desired state, then run the following from the rest-api directory:
 
 ```Shell
-gcloud auth login  # do interactive OAuth in browser, copy token
-gcloud config set project pmi-drc-api-test
-gcloud app deploy app.yaml offline.yaml [--version=VERSION] [--no-promote]
+tools/deploy_app.sh --version HEAD --deploy_as_version $USER_my_feature \
+    --account $USER@google.com --project pmi-drc-api-test
 ```
 
 By default this creates an automatically named version like `20170314t094223`
