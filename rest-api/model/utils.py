@@ -53,7 +53,7 @@ def from_client_participant_id(participant_id):
     raise BadRequest("Invalid participant ID: %s" % participant_id)
 
 def get_biobank_id_prefix():
-  return str(config.getSetting(config.BIOBANK_ID_PREFIX, 'Z'))
+  return config.getSetting(config.BIOBANK_ID_PREFIX)
 
 def to_client_biobank_id(biobank_id):
   return '%s%d' % (get_biobank_id_prefix(), biobank_id)

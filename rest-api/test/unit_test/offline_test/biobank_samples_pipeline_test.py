@@ -34,7 +34,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
   def _write_cloud_csv(self, file_name, contents_str):
     with cloudstorage_api.open('/%s/%s' % (_FAKE_BUCKET, file_name), mode='w') as cloud_file:
-      cloud_file.write(contents_str)
+      cloud_file.write(contents_str.encode('utf-8'))
 
   def test_end_to_end(self):
     dao = BiobankStoredSampleDao()
