@@ -20,6 +20,7 @@ DB_CONFIG_KEY = 'db_config'
 
 CONFIG_CACHE_TTL_SECONDS = 60
 
+BIOBANK_ID_PREFIX = 'biobank_id_prefix'
 METRICS_SHARDS = 'metrics_shards'
 PARTICIPANT_SUMMARY_SHARDS = 'participant_summary_shards'
 AGE_RANGE_SHARDS = 'age_range_shards'

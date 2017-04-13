@@ -9,7 +9,6 @@ import logging
 import pytz
 
 from cloudstorage import cloudstorage_api
-from werkzeug.exceptions import BadRequest
 
 import clock
 import config
@@ -18,7 +17,7 @@ from dao.database_utils import replace_isodate
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
-from model.utils import from_client_biobank_id
+from model.utils import from_client_biobank_id, get_biobank_id_prefix
 from offline.sql_exporter import SqlExporter
 
 
@@ -87,9 +86,11 @@ def _upsert_samples_from_csv(csv_reader):
     raise DataError(
         'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
   samples_dao = BiobankStoredSampleDao()
+  biobank_id_prefix = get_biobank_id_prefix()
   try:
     return samples_dao.upsert_all(
-        (s for s in (_create_sample_from_row(row) for row in csv_reader) if s is not None))
+        (s for s in (_create_sample_from_row(row, biobank_id_prefix) for row in csv_reader)
+         if s is not None))
   except ValueError, e:
     raise DataError(e)
 
@@ -99,7 +100,7 @@ _INPUT_TIMESTAMP_FORMAT = '%Y/%m/%d %H:%M:%S'  # like 2016/11/30 14:32:18
 _US_CENTRAL = pytz.timezone('US/Central')
 
 
-def _create_sample_from_row(row):
+def _create_sample_from_row(row, biobank_id_prefix):
   """Creates a new BiobankStoredSample object from a CSV row.
 
   Raises:
@@ -108,10 +109,10 @@ def _create_sample_from_row(row):
     A new BiobankStoredSample, or None if the row should be skipped.
   """
   biobank_id_str = row[_Columns.EXTERNAL_PARTICIPANT_ID]
-  try:
-    biobank_id = from_client_biobank_id(biobank_id_str)
-  except BadRequest, e:
-    raise DataError('Bad external participant ID (Biobank ID) %r: %s' % (biobank_id_str, e.message))
+  if not biobank_id_str.startswith(biobank_id_prefix):
+    # This is a biobank sample for another environment. Ignore it.
+    return None
+  biobank_id = from_client_biobank_id(biobank_id_str)
   sample = BiobankStoredSample(
       biobankStoredSampleId=row[_Columns.SAMPLE_ID],
       biobankId=biobank_id,
@@ -156,7 +157,8 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing):
   """
   with database_factory.get_database().session() as session:
     session.execute(_CREATE_ORDERS_BY_BIOBANK_ID_MYSQL)
-    session.execute(replace_isodate(_CREATE_RECONCILIATION_VIEW_MYSQL))
+    session.execute(replace_isodate(_CREATE_RECONCILIATION_VIEW_MYSQL),
+                    {"biobank_id_prefix": get_biobank_id_prefix()})
     for sql, file_name in (
         (_SELECT_FROM_VIEW_MYSQL_RECEIVED, path_received),
         (_SELECT_FROM_VIEW_MYSQL_LATE, path_late),
@@ -201,7 +203,7 @@ _CREATE_RECONCILIATION_VIEW_MYSQL = """
 CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
   SELECT
     CONCAT(
-        "B",
+        :biobank_id_prefix,
         CASE WHEN biobank_id_from_order IS NOT NULL THEN biobank_id_from_order
         ELSE biobank_id END) biobank_id,
 

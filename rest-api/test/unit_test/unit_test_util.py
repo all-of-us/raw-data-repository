@@ -264,8 +264,8 @@ class NdbTestBase(SqlTestBase):
     },
   }
 
-  def setUp(self):
-    super(NdbTestBase, self).setUp()
+  def setUp(self, use_mysql=False):
+    super(NdbTestBase, self).setUp(use_mysql=use_mysql)
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
     ndb.get_context().clear_cache()

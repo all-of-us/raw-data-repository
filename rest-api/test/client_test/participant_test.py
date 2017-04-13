@@ -29,7 +29,6 @@ class ParticipantTest(BaseClientTest):
     response = self.client.request_json('Participant', 'POST', participant)
     self.assertJsonEquals(response['providerLink'], [provider_link])
     biobank_id = response['biobankId']
-    self.assertTrue(biobank_id.startswith('B'))
 
     participant_id = response['participantId']
 

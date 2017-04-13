@@ -14,7 +14,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 from test import test_data
-from model.utils import to_client_biobank_id
+from model.utils import to_client_biobank_id, get_biobank_id_prefix
 from model.participant import Participant
 from participant_enums import SampleStatus
 
@@ -34,7 +34,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
   def _write_cloud_csv(self, file_name, contents_str):
     with cloudstorage_api.open('/%s/%s' % (_FAKE_BUCKET, file_name), mode='w') as cloud_file:
-      cloud_file.write(contents_str)
+      cloud_file.write(contents_str.encode('utf-8'))
 
   def test_end_to_end(self):
     dao = BiobankStoredSampleDao()
@@ -94,7 +94,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     reader = csv.DictReader(samples_file, delimiter='\t')
     row = reader.next()
 
-    sample = biobank_samples_pipeline._create_sample_from_row(row)
+    sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
     self.assertIsNotNone(sample)
 
     cols = biobank_samples_pipeline._Columns
@@ -106,13 +106,20 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         confirmed_date.strftime(biobank_samples_pipeline._INPUT_TIMESTAMP_FORMAT),
         row[cols.CONFIRMED_DATE])
 
+  def test_sample_from_row_wrong_prefix(self):
+    samples_file = test_data.open_biobank_samples(111, 222, 333)
+    reader = csv.DictReader(samples_file, delimiter='\t')
+    row = reader.next()
+    row[biobank_samples_pipeline._Columns.CONFIRMED_DATE] = '2016 11 19'
+    self.assertIsNone(biobank_samples_pipeline._create_sample_from_row(row, 'Q'))
+
   def test_sample_from_row_invalid(self):
     samples_file = test_data.open_biobank_samples(111, 222, 333)
     reader = csv.DictReader(samples_file, delimiter='\t')
     row = reader.next()
     row[biobank_samples_pipeline._Columns.CONFIRMED_DATE] = '2016 11 19'
     with self.assertRaises(biobank_samples_pipeline.DataError):
-      biobank_samples_pipeline._create_sample_from_row(row)
+      biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
 
   def test_column_missing(self):
     with open(test_data.data_path('biobank_samples_missing_field.csv')) as samples_file:

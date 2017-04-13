@@ -1,4 +1,5 @@
 {
+  "biobank_id_prefix": ["C"],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {
       "roles": ["healthpro", "ptc"],
