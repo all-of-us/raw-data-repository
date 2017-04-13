@@ -221,4 +221,5 @@ client biobank IDs in each environment; the values are:
 "Y" - test
 "Z" - dev
 
- 
+Note that these values are only present in our config and responses and Biobank reconciliation 
+report. They are not actually stored in the database.
