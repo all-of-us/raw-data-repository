@@ -10,7 +10,7 @@
       "whitelisted_appids": ["pmi-hpo-test"]
     },
     "configurator@all-of-us-rdr-stable.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro", "admin"]
+      "roles": ["ptc", "healthpro"]
     }
   },
   "biobank_samples_bucket_name": [
