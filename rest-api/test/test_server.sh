@@ -2,14 +2,20 @@
 # Runs all client tests against the local dev server. Fails if any test fails.
 
 function usage() {
-  echo "Usage: test_server.sh [-r <name match glob>]" >& 2
+  echo "Usage: test_server.sh [-r <name match glob>] [-i <instance URL> -c <creds file>]" >& 2
   exit 1
 }
 
-while getopts "i:r:" opt; do
+while getopts "i:r:c:" opt; do
   case $opt in
     r)
       substring=$OPTARG
+      ;;
+    i)
+      instance=$OPTARG
+      ;;
+    c)
+      creds_file=$OPTARG
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -25,7 +31,15 @@ while getopts "i:r:" opt; do
   esac
 done
 
-instance=http://localhost:8080
+if [ "${instance}" ]
+then
+  if [ -z "${creds_file}" ]
+  then
+    usage
+  fi
+else
+  instance=http://localhost:8080
+fi
 echo "Testing ${instance}"
 
 if [[ $substring ]];
@@ -42,7 +56,8 @@ function run_client_test {
   if [[ $test == *"$substring"* ]]
   then
     echo Running $test as it matches substring \"${substring}\".
-    (cd $BASE_DIR/test && PMI_DRC_RDR_INSTANCE=${instance} python $test)
+    (cd $BASE_DIR/test && \
+        PMI_DRC_RDR_INSTANCE=${instance} TESTING_CREDS_FILE=${creds_file} python $test)
   else
     echo Skipping $test as it doesn\'t match substring \"${substring}\".
   fi
