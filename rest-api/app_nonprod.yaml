@@ -4,10 +4,6 @@ threadsafe: true
 runtime: python27
 api_version: 1
 
-# Since we expect low QPS, keep at least 1 idle instance to avoid high latency.
-automatic_scaling:
-  min_idle_instances: 1
-
 builtins:
 - deferred: on
 
