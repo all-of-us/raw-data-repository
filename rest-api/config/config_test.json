@@ -4,12 +4,9 @@
     "2"
   ],
   "user_info": {
-    "pmi-hpo-staging@appspot.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro", "admin"],
-      "whitelisted_ip_ranges": {
-        "ip6": ["::0/0"],
-        "ip4": ["0.0.0.0/0"]
-      }
+    "pmi-hpo-dev@appspot.gserviceaccount.com": {
+      "roles": ["healthpro"],
+      "comment": "for HealthPro testing",
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro", "admin"],
