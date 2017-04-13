@@ -13,7 +13,7 @@ while true; do
     --account) ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
     --version) VERSION=$2; shift 2;;
-    --deployed_as_version) DEPLOY_AS_VERSION=$2; shift 2;;
+    --deploy_as_version) DEPLOY_AS_VERSION=$2; shift 2;;
     --target) TARGET=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
@@ -60,7 +60,7 @@ echo "Project: ${BOLD}$PROJECT${NONE}"
 echo "Source Version: ${BOLD}$VERSION${NONE}"
 echo "Target Version: ${BOLD}$DEPLOY_AS_VERSION${NONE}"
 echo "Target: ${BOLD}$TARGET${NONE}"
-read -p "Are you sure? (Y/N)" -n 1 -r
+read -p "Are you sure? (Y/N) " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]
 then
@@ -89,7 +89,7 @@ then
   fi
   echo "${BOLD}Deploying application...${NONE}"
   cp $APP_YAML app.yaml
-  gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml offline.yaml \
+  gcloud app deploy app.yaml app_base.yaml cron.yaml index.yaml queue.yaml offline.yaml \
       --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
   rm app.yaml
 fi
