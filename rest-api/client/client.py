@@ -60,8 +60,8 @@ class Client(object):
               query_args=None,
               headers=None,
               cron=False,
-              test_unauthenticated=True,
-              absolute_path=False):
+              absolute_path=False,
+              check_status=True):
     if absolute_path:
       url = path
     else:
@@ -76,26 +76,6 @@ class Client(object):
     if method == 'POST':
       headers.update(POST_HEADERS)
 
-    if test_unauthenticated:
-      unauthenticated_headers = copy.deepcopy(headers)
-      # On dev_appserver, there is no way to tell if a request is authenticated or not.
-      # This adds a header that we can use to reject 'unauthenticated' requests.  What this
-      # is really testing is that the auth_required annotation is in all the right places.
-      unauthenticated_headers['unauthenticated'] = 'YES'
-      print 'Trying unauthenticated {} to {}.'.format(method, url)
-      resp, content = httplib2.Http().request(
-          url, method, headers=unauthenticated_headers, body=body)
-      if resp.status == httplib.INTERNAL_SERVER_ERROR:
-        raise HttpException(
-            'API server error ({}) for {} to {}.'.format(resp.status, method, url),
-            resp.status)
-      if resp.status != httplib.UNAUTHORIZED:
-        raise HttpException(
-            'API is allowing unauthenticated {} to {}. Status: {}'.format(method, url, resp.status),
-            resp.status)
-      else:
-        print 'Not allowed. Good!'
-
     if cron:
       # Provide the header the dev_appserver uses for cron calls.
       headers['X-Appengine-Cron'] = 'true'
@@ -109,23 +89,13 @@ class Client(object):
     if resp.status == httplib.UNAUTHORIZED:
       print 'If you expect this request to be allowed, try'
       print 'tools/install_config.sh --config config/config_dev.json --update'
-    if resp.status != httplib.OK:
+    if check_status and resp.status != httplib.OK:
       raise HttpException(
           '{}:{} - {}\n---{}'.format(url, method, resp.status, content), resp.status)
-
-    for required_header, required_value in (
-        ('content-disposition', 'attachment; filename="f.txt"'),
-        ('content-type', 'application/json; charset=utf-8'),
-        ('x-content-type-options', 'nosniff')):
-      if resp[required_header] != required_value:
-        raise HttpException(
-            'Header %r is set to %r, expected %r.'
-            % (required_header, resp[required_header], required_value),
-            httplib.INTERNAL_SERVER_ERROR)
     if resp.get('etag'):
       self.last_etag = resp['etag']
 
-    return content
+    return resp, content
 
   def request_json(self,
                    path,
@@ -134,19 +104,18 @@ class Client(object):
                    query_args=None,
                    headers=None,
                    cron=False,
-                   test_unauthenticated=True,
                    absolute_path=False):
     json_body = None
     if body:
       json_body = json.dumps(body)
     elif method == 'POST':
       json_body = '{}'
-    response = self.request(path,
-                            method,
-                            body=json_body,
-                            query_args=query_args,
-                            headers=headers,
-                            cron=cron,
-                            test_unauthenticated=test_unauthenticated,
-                            absolute_path=absolute_path)
-    return json.loads(response)
+    _, content = self.request(
+        path,
+        method,
+        body=json_body,
+        query_args=query_args,
+        headers=headers,
+        cron=cron,
+        absolute_path=absolute_path)
+    return json.loads(content)

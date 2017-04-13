@@ -17,8 +17,7 @@ def main(args):
   client = Client('rdr/v1', False, args.creds_file, args.instance)
   config_path = 'Config/%s' % args.key if args.key else 'Config'
   try:
-    config_server = client.request_json(config_path, 'GET',
-                                        test_unauthenticated=False)
+    config_server = client.request_json(config_path, 'GET')
     comparable_server = _comparable_string(config_server)
   except HttpException as e:
     if e.code == httplib.NOT_FOUND:
@@ -44,8 +43,7 @@ def main(args):
     if not configs_match and args.update:
       print '-------------- Updating Server -------------------'
       method = 'POST' if args.key else 'PUT'
-      client.request_json(config_path, method, combined_config,
-                          test_unauthenticated=False)
+      client.request_json(config_path, method, combined_config)
 
 def compare_configs(comparable_file, comparable_server):
   if comparable_file == comparable_server:
