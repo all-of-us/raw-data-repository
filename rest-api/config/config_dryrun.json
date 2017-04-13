@@ -8,9 +8,6 @@
       "roles": ["ptc", "healthpro"],
       "whitelisted_appids": ["pmi-hpo-staging"]
     },
-    "test-client@pmi-rdr-api-test.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"]
-    },
     "configurator@all-of-us-rdr-dryrun.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro", "admin"]
     }

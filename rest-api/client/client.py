@@ -61,7 +61,8 @@ class Client(object):
               headers=None,
               cron=False,
               absolute_path=False,
-              check_status=True):
+              check_status=True,
+              authenticated=True):
     if absolute_path:
       url = path
     else:
@@ -81,9 +82,14 @@ class Client(object):
       headers['X-Appengine-Cron'] = 'true'
 
     print '{} to {}'.format(method, url)
-    resp, content = self._http.request(
-        url, method, headers=headers, body=body)
-
+    if authenticated:
+      resp, content = self._http.request(url, method, headers=headers, body=body)
+    else:
+      # On dev_appserver, there is no way to tell if a request is authenticated or not.
+      # This adds a header that we can use to reject 'unauthenticated' requests.  What this
+      # is really testing is that the auth_required annotation is in all the right places.
+      headers['unauthenticated'] = 'Yes'
+      resp, content = httplib2.Http().request(url, method, headers=headers, body=body)
     print resp
 
     if resp.status == httplib.UNAUTHORIZED:

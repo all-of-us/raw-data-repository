@@ -18,8 +18,10 @@ class BaseClientTest(unittest.TestCase):
     super(BaseClientTest, self).setUp()
     self.maxDiff = None
     instance = os.environ.get('PMI_DRC_RDR_INSTANCE') or _DEFAULT_INSTANCE
-    self.client = Client(_BASE_PATH, False, default_instance=instance)
-    self.offline_client = Client(_OFFLINE_BASE_PATH, False, default_instance=instance)
+    creds_file = os.environ.get('TESTING_CREDS_FILE')
+    self.client = Client(_BASE_PATH, False, default_instance=instance, creds_file=creds_file)
+    self.offline_client = Client(
+        _OFFLINE_BASE_PATH, False, default_instance=instance, creds_file=creds_file)
 
   def assertJsonEquals(self, obj_a, obj_b):
     obj_b = copy.deepcopy(obj_b)

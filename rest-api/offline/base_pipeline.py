@@ -20,7 +20,7 @@ class BasePipeline(pipeline.Pipeline):
       pipeline_name = self.__class__.__name__
       base_path = '%s.appspot.com%s' % (app_id, self.base_path)
       status_link = 'http://%s/status?root=%s' % (base_path, self.root_pipeline_id)
-      sender = 'test-client@%s.iam.gserviceaccount.com' % app_id
+      sender = '%s@appspot.gserviceaccount.com' % app_id
       pipeline_record = db.get(self._root_pipeline_key)
       suffix = ''
       if pipeline_record and pipeline_record.start_time:
