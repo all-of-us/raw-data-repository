@@ -1,5 +1,6 @@
 {
-  "allow_nonprod_requests": true,
+  "allow_nonprod_requests": true,  
+  "biobank_id_prefix": ["Z"],
   "biobank_samples_shards": [
     "2"
   ],

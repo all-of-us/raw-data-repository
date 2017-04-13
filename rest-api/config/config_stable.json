@@ -1,5 +1,8 @@
 {
   "allow_nonprod_requests": true,
+  # This is the prefix used by all dry runs with Biobank, past and future; stable is the 
+  # new "dry run" environment.
+  "biobank_id_prefix": ["B"],
   "biobank_samples_shards": [
     "2"
   ],

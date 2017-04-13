@@ -1,3 +1,4 @@
+import config
 from dateutil.tz import tzutc
 from query import PropertyType
 from sqlalchemy.types import SmallInteger, TypeDecorator, DateTime
@@ -51,11 +52,14 @@ def from_client_participant_id(participant_id):
   except ValueError:
     raise BadRequest("Invalid participant ID: %s" % participant_id)
 
+def get_biobank_id_prefix():
+  return str(config.getSetting(config.BIOBANK_ID_PREFIX, 'Z'))
+
 def to_client_biobank_id(biobank_id):
-  return 'B%d' % biobank_id
+  return '%s%d' % (get_biobank_id_prefix(), biobank_id)
 
 def from_client_biobank_id(biobank_id):
-  if not biobank_id.startswith('B'):
+  if not biobank_id.startswith(get_biobank_id_prefix()):
     raise BadRequest("Invalid biobank ID: %s" % biobank_id)
   try:
     return int(biobank_id[1:])

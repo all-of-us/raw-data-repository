@@ -1,4 +1,6 @@
 {
+  # TODO: change this to 'A' before launch (DA-249)
+  "biobank_id_prefix": ["C"],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {
       "roles": ["healthpro", "ptc"],

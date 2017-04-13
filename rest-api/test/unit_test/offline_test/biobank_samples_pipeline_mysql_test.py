@@ -8,7 +8,7 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import SqlTestBase, InMemorySqlExporter
+from test.unit_test.unit_test_util import NdbTestBase, InMemorySqlExporter
 from model.biobank_order import BiobankOrder, BiobankOrderedSample
 from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import to_client_biobank_id
@@ -35,7 +35,7 @@ _CSV_COLUMN_NAMES = (
 )
 
 
-class MySqlReconciliationTest(SqlTestBase):
+class MySqlReconciliationTest(NdbTestBase):
   """Biobank samples pipeline tests requiring slower MySQL (not SQLite)."""
   def setUp(self):
     super(MySqlReconciliationTest, self).setUp(use_mysql=True)
