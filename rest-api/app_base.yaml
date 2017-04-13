@@ -1,4 +1,6 @@
 # Configuration for main API service. Should be kept in sync with test.yaml.
+# This file is concatenated at the beginning of app_(non)?prod.yaml (instead of
+# using an "includes" since "includes" only imports some directives).
 
 threadsafe: true
 runtime: python27

@@ -88,8 +88,8 @@ then
     APP_YAML=app_nonprod.yaml
   fi
   echo "${BOLD}Deploying application...${NONE}"
-  cp $APP_YAML app.yaml
-  gcloud app deploy app.yaml app_base.yaml cron.yaml index.yaml queue.yaml offline.yaml \
+  cat app_base.yaml $APP_YAML > app.yaml
+  gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml offline.yaml \
       --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
   rm app.yaml
 fi

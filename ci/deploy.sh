@@ -56,8 +56,8 @@ echo "Fixing cron.yaml "
 sed -i -e "s/{PROJECT_ID}/${PROJECT_ID}/" cron.yaml
 
 echo "Deploying RDR to ${PROJECT_ID}"
-cp app_nonprod.yaml app.yaml
-gcloud app deploy app.yaml app_base.yaml cron.yaml index.yaml offline.yaml queue.yaml --project=${PROJECT_ID} --version=${VERSION}
+cat app_base.yaml app_nonprod.yaml > app.yaml
+gcloud app deploy app.yaml cron.yaml index.yaml offline.yaml queue.yaml --project=${PROJECT_ID} --version=${VERSION}
 rm app.yaml
 
 ENDPOINT="https://${PROJECT_ID}.appspot.com"

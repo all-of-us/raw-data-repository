@@ -1,2 +1,1 @@
-includes:
-  app_base.yaml
+# app_base.yaml is concatenated to the beginning of this file for deployment.
