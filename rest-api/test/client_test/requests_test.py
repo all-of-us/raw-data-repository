@@ -11,7 +11,7 @@ class RequestsTest(BaseClientTest):
         'Participant',
         method='POST',
         body='{}',
-        unauthenticated=True,
+        authenticated=False,
         check_status=False)
     self.assertEquals(response.status, httplib.UNAUTHORIZED)
 
