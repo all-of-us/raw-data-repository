@@ -9,7 +9,6 @@ import logging
 import pytz
 
 from cloudstorage import cloudstorage_api
-from werkzeug.exceptions import BadRequest
 
 import clock
 import config
