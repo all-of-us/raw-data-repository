@@ -27,11 +27,13 @@ class Client(object):
     if parse_cli:
       args = self.parse_args(default_instance)
       self.instance = args.instance
+      if args.creds_file:
+        creds_file = args.creds_file
     else:
       self.instance = default_instance
     self.base_path = base_path
     if not creds_file and 'localhost' not in self.instance:
-      raise ValueError('Client requires credentials for non-local instance %r.' % self.instance)
+      raise ValueError('Client requires credentials for non-local instance %r.' % self.instance)    
     self.creds_file = creds_file
     self._http = self._get_authorized_http()
     self.last_etag = None
@@ -44,6 +46,10 @@ class Client(object):
         help='The instance to hit, either https://xxx.appspot.com, '
         'or http://localhost:8080',
         default=default_instance)
+    parser.add_argument(
+        '--creds_file',
+        type=str,
+        help='Path to a credentials file to use when talking to the server.')
     return parser.parse_args()
 
   def _get_authorized_http(self):
