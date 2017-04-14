@@ -13,6 +13,7 @@ while true; do
     --account) ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
     --version) VERSION=$2; shift 2;;
+    --deploy_as_version) DEPLOY_AS_VERSION=$2; shift 2;;
     --target) TARGET=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
@@ -47,14 +48,19 @@ then
     exit 1
   fi
 fi
+if [ -z ${DEPLOY_AS_VERSION} ]
+then
+  DEPLOY_AS_VERSION="$VERSION"
+fi
 
 BOLD=$(tput bold)
 NONE=$(tput sgr0)
 
 echo "Project: ${BOLD}$PROJECT${NONE}"
-echo "Version: ${BOLD}$VERSION${NONE}"
+echo "Source Version: ${BOLD}$VERSION${NONE}"
+echo "Target Version: ${BOLD}$DEPLOY_AS_VERSION${NONE}"
 echo "Target: ${BOLD}$TARGET${NONE}"
-read -p "Are you sure? (Y/N)" -n 1 -r
+read -p "Are you sure? (Y/N) " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]
 then
@@ -74,8 +80,18 @@ fi
 
 if [ "$TARGET" == "app_and_db" ] || [ "$TARGET" == "app" ]
 then
+  if [ "${PROJECT}" = "all-of-us-rdr-prod" ]
+  then
+    echo "Using ${BOLD}prod${NONE} app.yaml for project $PROJECT."
+    APP_YAML=app_prod.yaml
+  else
+    APP_YAML=app_nonprod.yaml
+  fi
   echo "${BOLD}Deploying application...${NONE}"
-  gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml offline.yaml --project $PROJECT --version $VERSION
+  cat app_base.yaml $APP_YAML > app.yaml
+  gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml offline.yaml \
+      --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
+  rm app.yaml
 fi
 
 echo "${BOLD}Done!${NONE}"
