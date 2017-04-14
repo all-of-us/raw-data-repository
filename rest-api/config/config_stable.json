@@ -5,6 +5,10 @@
     "2"
   ],
   "user_info": {
+    "test-client@pmi-rdr-api-test.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"],
+      "comment": "Legacy testing account. Remove once penetration scans switch away, DA-245"
+    },
     "pmi-hpo-test@appspot.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"],
       "whitelisted_appids": ["pmi-hpo-test"]
