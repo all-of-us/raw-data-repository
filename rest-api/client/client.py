@@ -33,7 +33,7 @@ class Client(object):
       self.instance = default_instance
     self.base_path = base_path
     if not creds_file and 'localhost' not in self.instance:
-      raise ValueError('Client requires credentials for non-local instance %r.' % self.instance)    
+      raise ValueError('Client requires credentials for non-local instance %r.' % self.instance)
     self.creds_file = creds_file
     self._http = self._get_authorized_http()
     self.last_etag = None

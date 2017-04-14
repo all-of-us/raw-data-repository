@@ -209,8 +209,8 @@ Please see the [Tools README](tools/README.md) for more information on command l
 
 # Biobank ID prefixes
 
-Biobank receives samples for participants from multiple RDR environments in its production 
-environment. In order to ensure there aren't any collisions, we tack on a unique prefix to 
+Biobank receives samples for participants from multiple RDR environments in its production
+environment. In order to ensure there aren't any collisions, we tack on a unique prefix to
 client biobank IDs in each environment; the values are:
 
 "A" - production (post-launch)
@@ -220,5 +220,5 @@ client biobank IDs in each environment; the values are:
 "Y" - test
 "Z" - dev
 
-Note that these values are only present in our config and responses and Biobank reconciliation 
+Note that these values are only present in our config and responses and Biobank reconciliation
 report. They are not actually stored in the database.

@@ -209,9 +209,9 @@ The summary includes the following fields:
 * `sampleStatus1ED10`
 * `sampleStatus1ED10Time`
 * `sampleStatus2ED10`
-* `sampleStatus2ED10Time`  
+* `sampleStatus2ED10Time`
 * `sampleStatus1UR10`
-* `sampleStatus1UR10Time`  
+* `sampleStatus1UR10Time`
 * `sampleStatus1SAL`
 * `sampleStatus1SALTime`
 * `numCompletedBaselinePPIModules`
@@ -238,12 +238,12 @@ For enumeration fields, the following values are defined:
 `enrollmentStatus`: `INTERESTED`, `MEMBER`, `FULL_PARTICIPANT`
 `race`: `UNSET`, `UNMAPPED`, `AMERICAN_INDIAN_OR_ALASKA_NATIVE`, `BLACK_OR_AFRICAN_AMERICAN`,
         `ASIAN`, `NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER`, `WHITE`, `HISPANIC_LATINO_OR_SPANISH`,
-        `MIDDLE_EASTERN_OR_NORTH_AFRICAN`, `HLS_AND_WHITE`, `HLS_AND_BLACK`, 
+        `MIDDLE_EASTERN_OR_NORTH_AFRICAN`, `HLS_AND_WHITE`, `HLS_AND_BLACK`,
         `HLS_AND_ONE_OTHER_RACE`, `HLS_AND_MORE_THAN_ONE_OTHER_RACE`, `MORE_THAN_ONE_RACE`,
   		`OTHER_RACE`, `PREFER_NOT_TO_SAY`
 
 
-The following fields have code values defined in the [codebook] 
+The following fields have code values defined in the [codebook]
 (https://docs.google.com/spreadsheets/d/1TNqJ1ekLFHF4vYA2SNCb-4NL8QgoJrfuJsxnUuXd-is/edit):
 
 * `state`
@@ -264,7 +264,7 @@ in the codebook.
 
 List participants matching a set of search parameters. This supports in-clinic
 lookup (for physical measurements and biospecimen donation) as well as a
-Participant Work Queue. Any of the above parameters can be provided as a query parameter to do 
+Participant Work Queue. Any of the above parameters can be provided as a query parameter to do
 an exact match. Examples:
 
     GET /ParticipantSummary?hpoId=PITT
@@ -282,21 +282,21 @@ indicate inequality searches, as per the [FHIR search spec] (https://www.hl7.org
 If no HPO is provided, then a last name and date of birth (at minimum) should be
 supplied. Example query:
 
-    GET /ParticipantSummary?dateOfBirth=1980-12-30&lastName=Smith    
-    
+    GET /ParticipantSummary?dateOfBirth=1980-12-30&lastName=Smith
+
 
 Other supported parameters from the FHIR spec:
 
 * `_count`: the maximum number of participant summaries to return; the default is 100, the maximum
   supported value is 10,000
-  
+
 * `_sort`: the name of a field to sort results by, in ascending order, followed by last name, first
-  name, date of birth, and participant ID. 
-  
+  name, date of birth, and participant ID.
+
 * `_sort:desc`: the name of a field to sort results by, in descending order, followed by last name,
   first name, date of birth, and participant ID.
-  
-If no sort order is requested, the default sort order is last name, first name, date of birth, and 
+
+If no sort order is requested, the default sort order is last name, first name, date of birth, and
 participant ID.
 
 The response is an FHIR Bundle containing participant summaries. If more than the requested number
