@@ -6,7 +6,7 @@
       "whitelisted_appids": ["healthpro-prod"]
     },
     "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro", "admin"]
+      "roles": ["ptc", "healthpro"]
     }
   },
   "biobank_samples_bucket_name": [

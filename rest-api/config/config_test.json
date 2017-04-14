@@ -10,14 +10,14 @@
       "comment": "for HealthPro testing"
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro", "admin"],
+      "roles": ["ptc", "healthpro"],
       "whitelisted_ip_ranges": {
         "ip6": ["::0/0"],
         "ip4": ["0.0.0.0/0"]
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro", "admin"]
+      "roles": ["ptc", "healthpro"]
     }
   },
   "biobank_samples_bucket_name": [
