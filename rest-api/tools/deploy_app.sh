@@ -1,12 +1,12 @@
 # Checks out RDR code from git in the current directory; by default, uses the same version of the
 # app that is currently running in the staging environment.
-# After a Y/N confirmation, deploys the code, upgrades the database, or
-# (by default) upgrades the database and then deploys the code.
+# After a Y/N confirmation, upgrades the database, installs the latest config, deploys the code, or
+# (by default) does all three.
 
 # Run this in the rest-api dir of the git repo with no uncommitted changes. You will need to
 # check out whatever branch you want to work in after it's done.
 
-TARGET="app_and_db"
+TARGET="all"
 
 while true; do
   case "$1" in
@@ -26,15 +26,29 @@ then
   exit 1
 fi
 
+if [ "${PROJECT}" == "all-of-us-rdr-prod" ]
+then
+  CONFIG="config/config_prod.json"
+elif [ "${PROJECT}" == "all-of-us-rdr-stable" ]
+then
+  CONFIG="config/config_stable.json"
+elif [ "${PROJECT}" == "all-of-us-rdr-dryrun" ]
+then
+  CONFIG="config/config_dryrun.json"
+else
+  echo "Unsupported project: ${PROJECT}; exiting."
+  exit 1
+fi
+
 if [ -z "${ACCOUNT}" ]
 then
   echo "Account not specified; exiting."
   exit 1
 fi
 
-if [ "$TARGET" != "app_and_db" ] && [ "$TARGET" != "app" ] && [ $TARGET != "db" ]
+if [ "$TARGET" != "all" ] && [ "$TARGET" != "app" ] && [ $TARGET != "db" ] && [ $TARGET != "config" ]
 then
-  echo "Target must be one of: app_and_db, app, db. Exiting."
+  echo "Target must be one of: all, app, db, config. Exiting."
   exit 1
 fi
 
@@ -72,13 +86,19 @@ set -e
 echo "${BOLD}Checking out code...${NONE}"
 git checkout $VERSION
 
-if [ "$TARGET" == "app_and_db" ] || [ "$TARGET" == "db" ]
+if [ "$TARGET" == "all" ] || [ "$TARGET" == "db" ]
 then
   echo "${BOLD}Upgrading database...${NONE}"
   tools/upgrade_database.sh --project $PROJECT --account $ACCOUNT
 fi
 
-if [ "$TARGET" == "app_and_db" ] || [ "$TARGET" == "app" ]
+if [ "$TARGET" == "all" ] || [ "$TARGET" == "config" ]
+then
+  echo "${BOLD}Updating configuration...${NONE}"
+  tools/install_config.sh --project $PROJECT --account $ACCOUNT --config $CONFIG --update
+fi  
+
+if [ "$TARGET" == "all" ] || [ "$TARGET" == "app" ]
 then
   if [ "${PROJECT}" = "all-of-us-rdr-prod" ]
   then
