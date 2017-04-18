@@ -96,7 +96,7 @@ if [ "$TARGET" == "all" ] || [ "$TARGET" == "config" ]
 then
   echo "${BOLD}Updating configuration...${NONE}"
   tools/install_config.sh --project $PROJECT --account $ACCOUNT --config $CONFIG --update
-fi  
+fi
 
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "app" ]
 then

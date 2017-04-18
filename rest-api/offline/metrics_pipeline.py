@@ -147,7 +147,7 @@ class MetricsPipeline(BasePipeline):
     MetricsVersionDao().set_pipeline_finished(False)
 
 class FinalizeMetrics(pipeline.Pipeline):
-  def run(self, future, bucket_name, input_files):  # pylint: disable=unused-argument    
+  def run(self, future, bucket_name, input_files):  # pylint: disable=unused-argument
     metrics_version_dao = MetricsVersionDao()
     metrics_version_dao.set_pipeline_finished(True)
     # After successfully writing metrics, delete old metrics, and delete the input files used to

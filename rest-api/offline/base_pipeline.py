@@ -7,11 +7,11 @@ from google.appengine.ext import db
 from google.appengine.api import mail
 
 class BasePipeline(pipeline.Pipeline):
-    
+
   def handle_pipeline_failure(self):
-    """Invoked when a pipeline fails. Subclasses can override to implement custom behavior."""    
+    """Invoked when a pipeline fails. Subclasses can override to implement custom behavior."""
     pass
-    
+
   def finalized(self):
     """Finalizes this Pipeline after execution.
 
