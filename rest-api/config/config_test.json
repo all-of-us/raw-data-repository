@@ -9,6 +9,9 @@
       "roles": ["healthpro"],
       "comment": "for HealthPro testing"
     },
+    "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
+      "roles": ["ptc"]
+    },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"],
       "whitelisted_ip_ranges": {
