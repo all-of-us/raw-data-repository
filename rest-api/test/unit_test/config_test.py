@@ -9,7 +9,6 @@ from test.unit_test.unit_test_util import FlaskTestBase
 class TestConfig(FlaskTestBase):
   def test_replace_history(self):
     fake_clock = clock.FakeClock(datetime.datetime.utcnow())
-    self.set_auth_user(self._ADMIN_USER)
     orig_config = self.send_get('Config')
 
     # Replace some data in the current config.
@@ -42,7 +41,6 @@ class TestConfig(FlaskTestBase):
     self.assertEquals(new_config_1, response)
 
   def test_set_other_config(self):
-    self.set_auth_user(self._ADMIN_USER)
     other_config = { 'foo': 'bar'}
     self.send_post('Config/xxx', other_config)
     response = self.send_get('Config/xxx')

@@ -52,6 +52,8 @@ _SAMPLE_SQL = """,
           AND biobank_stored_sample.test = %(sample_param_ref)s)
    """
 
+_PARTICIPANT_ID_FILTER = " WHERE participant_id = :participant_id"
+
 def _get_sample_sql_and_params():
   """Gets SQL and params needed to update status and time fields on the participant summary for
   each biobank sample.
@@ -140,8 +142,9 @@ class ParticipantSummaryDao(UpdatableDao):
       return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', code.codeId)
     return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
 
-  def update_from_biobank_stored_samples(self):
-    """Rewrites sample-related summary data. Call this after reloading BiobankStoredSamples."""
+  def update_from_biobank_stored_samples(self, participant_id=None):
+    """Rewrites sample-related summary data. Call this after updating BiobankStoredSamples.
+    If participant_id is provided, only that participant will have their summary updated."""
     baseline_tests_sql, baseline_tests_params = get_sql_and_params_for_array(
         config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES), 'baseline')
     dna_tests_sql, dna_tests_params = get_sql_and_params_for_array(
@@ -177,9 +180,17 @@ class ParticipantSummaryDao(UpdatableDao):
                                 'full_participant': int(EnrollmentStatus.FULL_PARTICIPANT),
                                 'member': int(EnrollmentStatus.MEMBER),
                                 'interested': int(EnrollmentStatus.INTERESTED)}
+    enrollment_status_sql = _ENROLLMENT_STATUS_SQL
+    # If participant_id is provided, add the participant ID filter to both update statements.
+    if participant_id:
+      sql += _PARTICIPANT_ID_FILTER
+      params['participant_id'] = participant_id
+      enrollment_status_sql += _PARTICIPANT_ID_FILTER
+      enrollment_status_params['participant_id'] = participant_id
+
     with self.session() as session:
       session.execute(sql, params)
-      session.execute(_ENROLLMENT_STATUS_SQL, enrollment_status_params)
+      session.execute(enrollment_status_sql, enrollment_status_params)
 
   def _get_num_baseline_ppi_modules(self):
     return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))

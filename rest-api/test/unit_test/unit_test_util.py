@@ -317,9 +317,8 @@ class FlaskTestBase(NdbTestBase):
     self._mock_get_oauth_id = mock_oauth.start()
     self._patchers.append(mock_oauth)
 
-    config_api.CONFIG_ADMIN_MAP[app_identity.get_application_id()] = self._ADMIN_USER
+    config_api.CONFIG_ADMIN_MAP[app_identity.get_application_id()] = self._AUTH_USER
 
-    self.set_auth_user(self._ADMIN_USER)
     self.set_auth_user(self._AUTH_USER)
     self._consent_questionnaire_id = None
 
