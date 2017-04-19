@@ -52,7 +52,7 @@ class FakeBiobankSamplesGenerator(object):
     with cloudstorage_api.open(file_name, mode='w') as dest:
       writer = csv.writer(dest, delimiter="\t")
       writer.writerow(_HEADERS)
-      biobank_order_dao = BiobankOrderDao()      
+      biobank_order_dao = BiobankOrderDao()
       with biobank_order_dao.session() as session:
         rows = biobank_order_dao.get_ordered_samples_sample(session,
                                                             _PARTICIPANTS_WITH_STORED_SAMPLES,
