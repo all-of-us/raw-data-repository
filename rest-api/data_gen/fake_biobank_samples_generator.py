@@ -11,6 +11,7 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
+from model.utils import get_biobank_id_prefix
 from werkzeug.exceptions import NotFound
 
 # 80% of participants with orders have corresponding stored samples.
@@ -52,6 +53,7 @@ class FakeBiobankSamplesGenerator(object):
       writer = csv.writer(dest, delimiter="\t")
       writer.writerow(_HEADERS)
       biobank_order_dao = BiobankOrderDao()
+      biobank_id_prefix = get_biobank_id_prefix()
       with biobank_order_dao.session() as session:
         rows = biobank_order_dao.get_ordered_samples_sample(session,
                                                             _PARTICIPANTS_WITH_STORED_SAMPLES,
@@ -62,7 +64,8 @@ class FakeBiobankSamplesGenerator(object):
           minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED)
           confirmed_time = collected_time + datetime.timedelta(minutes=minutes_delta)
           writer.writerow([sample_id_start + num_rows, None,
-                           confirmed_time.strftime(_TIME_FORMAT), 'B%d' % biobank_id, test])
+                           confirmed_time.strftime(_TIME_FORMAT),
+                           '%s%d' % (biobank_id_prefix, biobank_id), test])
           num_rows += 1
       participant_dao = ParticipantDao()
       with participant_dao.session() as session:
@@ -75,7 +78,8 @@ class FakeBiobankSamplesGenerator(object):
           tests = random.sample(BIOBANK_TESTS, random.randint(1, len(BIOBANK_TESTS)))
           for test in tests:
             writer.writerow([sample_id_start + num_rows, None,
-                             confirmed_time.strftime(_TIME_FORMAT), 'B%d' % biobank_id, test])
+                             confirmed_time.strftime(_TIME_FORMAT),
+                             '%s%d' % (biobank_id_prefix, biobank_id), test])
             num_rows += 1
     return num_rows, file_name
 
