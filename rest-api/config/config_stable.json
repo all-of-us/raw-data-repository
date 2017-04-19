@@ -18,6 +18,9 @@
     },
     "configurator@all-of-us-rdr-stable.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]
+    },
+    "security-testing@pmi-hpo-test.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"]
     }
   },
   "biobank_samples_bucket_name": [
