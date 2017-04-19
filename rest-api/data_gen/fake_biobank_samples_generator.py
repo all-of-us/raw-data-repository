@@ -7,7 +7,11 @@ import random
 from cloudstorage import cloudstorage_api
 from code_constants import BIOBANK_TESTS
 from dao.biobank_order_dao import BiobankOrderDao
+from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
+from dao.participant_summary_dao import ParticipantSummaryDao
+from model.biobank_stored_sample import BiobankStoredSample
+from werkzeug.exceptions import NotFound
 
 # 80% of participants with orders have corresponding stored samples.
 _PARTICIPANTS_WITH_STORED_SAMPLES = 0.8
@@ -74,3 +78,21 @@ class FakeBiobankSamplesGenerator(object):
                              confirmed_time.strftime(_TIME_FORMAT), 'B%d' % biobank_id, test])
             num_rows += 1
     return num_rows, file_name
+
+  def generate_samples_for_participant(self, participant_id):
+    participant = ParticipantDao().get(participant_id)
+    if not participant:
+      raise NotFound('No participant with ID %d found' % participant_id)
+    ordered_samples = BiobankOrderDao().get_ordered_samples_for_participant(participant_id)
+    if not ordered_samples:
+      raise NotFound('No ordered samples found for participant %d' % participant_id)
+    now = clock.CLOCK.now()
+    stored_samples = [BiobankStoredSample(biobankStoredSampleId='%d-%s' %
+                                          (participant_id, sample.test),
+                                          biobankId=participant.biobankId,
+                                          test=sample.test,
+                                          confirmed=now) for sample in ordered_samples]
+
+    BiobankStoredSampleDao().upsert_all(stored_samples)
+    ParticipantSummaryDao().update_from_biobank_stored_samples(participant_id)
+    return len(stored_samples)

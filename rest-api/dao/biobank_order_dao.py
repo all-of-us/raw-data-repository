@@ -66,6 +66,14 @@ class BiobankOrderDao(BaseDao):
         ParticipantDao().validate_participant_reference(session, result)
       return result
 
+  def get_ordered_samples_for_participant(self, participant_id):
+    """Retrieves all ordered samples for a participant."""
+    with self.session() as session:
+      return (session.query(BiobankOrderedSample)
+                  .join(BiobankOrder)
+                  .filter(BiobankOrder.participantId == participant_id)
+                  .all())
+
   def get_ordered_samples_sample(self, session, percentage, batch_size):
     """Retrieves the biobank ID, collected time, and test for a percentage of ordered samples.
     Used in fake data generation."""

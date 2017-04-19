@@ -22,7 +22,7 @@ def main(args):
     total_participants_created += participants_for_batch
     print "Total participants created: %d" % total_participants_created
   if args.create_biobank_samples:
-    request_body = {'create_biobank_samples': True}
+    request_body = {'create_biobank_samples': 'all'}
     response = client.request_json('DataGen', 'POST', request_body)
     print "%d samples generated at %s." % (response['num_samples'],
                                            response['samples_path'])
