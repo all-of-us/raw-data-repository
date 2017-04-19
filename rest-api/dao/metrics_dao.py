@@ -2,7 +2,7 @@ import clock
 import logging
 
 from model.metrics import MetricsVersion, MetricsBucket
-from dao.base_dao import BaseDao
+from dao.base_dao import BaseDao, UpsertableDao
 from werkzeug.exceptions import PreconditionFailed
 from sqlalchemy.orm import subqueryload
 from datetime import timedelta
@@ -84,7 +84,7 @@ class MetricsVersionDao(BaseDao):
       for version in old_versions:
         session.delete(version)
 
-class MetricsBucketDao(BaseDao):
+class MetricsBucketDao(UpsertableDao):
 
   def __init__(self):
     super(MetricsBucketDao, self).__init__(MetricsBucket)

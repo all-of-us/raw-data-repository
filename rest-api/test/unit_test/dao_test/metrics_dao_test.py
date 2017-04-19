@@ -133,6 +133,11 @@ class MetricsDaoTest(SqlTestBase):
     with self.assertRaises(IntegrityError):
       self.metrics_bucket_dao.insert(metrics_bucket_2)
 
+    # Upsert should work, and replace the bucket.
+    self.metrics_bucket_dao.upsert(metrics_bucket_2)
+    self.assertEquals(metrics_bucket_2.asdict(),
+                      self.metrics_bucket_dao.get([1, datetime.date.today(), PITT]).asdict())
+
   def test_delete_old_metrics(self):
     with FakeClock(TIME):
       self.metrics_version_dao.set_pipeline_in_progress()
