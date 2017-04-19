@@ -190,7 +190,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
     with self.session() as session:
       session.execute(sql, params)
-      session.execute(_ENROLLMENT_STATUS_SQL, enrollment_status_params)
+      session.execute(enrollment_status_sql, enrollment_status_params)
 
   def _get_num_baseline_ppi_modules(self):
     return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
