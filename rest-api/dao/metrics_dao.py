@@ -12,6 +12,9 @@ from datetime import timedelta
 SERVING_METRICS_DATA_VERSION = 1
 
 METRICS_LOCK_TIMEOUT = timedelta(hours=24)
+# Delete old metrics after 3 days. (They generally won't be used after one successful pipeline run,
+# but we'll keep them around in case we need to poke at them for a few days.)
+_METRICS_EXPIRATION = timedelta(days=3)
 
 class MetricsVersionDao(BaseDao):
   def __init__(self):
@@ -71,6 +74,15 @@ class MetricsVersionDao(BaseDao):
   def get_serving_version(self):
     with self.session() as session:
       return self.get_serving_version_with_session(session)
+
+  def delete_old_versions(self):
+    with self.session() as session:
+      old_date = clock.CLOCK.now() - _METRICS_EXPIRATION
+      old_versions = (session.query(MetricsVersion)
+        .filter(MetricsVersion.date < old_date)
+        .all())
+      for version in old_versions:
+        session.delete(version)
 
 class MetricsBucketDao(BaseDao):
 

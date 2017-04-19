@@ -7,6 +7,11 @@ from google.appengine.ext import db
 from google.appengine.api import mail
 
 class BasePipeline(pipeline.Pipeline):
+
+  def handle_pipeline_failure(self):
+    """Invoked when a pipeline fails. Subclasses can override to implement custom behavior."""
+    pass
+
   def finalized(self):
     """Finalizes this Pipeline after execution.
 
@@ -31,6 +36,7 @@ class BasePipeline(pipeline.Pipeline):
         seconds = seconds % 60
         suffix = 'after %d:%02d:%02d' % (hours, minutes, seconds)
       if self.was_aborted:
+        self.handle_pipeline_failure()
         message = "%s failed %s; results are at %s" % (pipeline_name, suffix, status_link)
         logging.error(message)
         try:

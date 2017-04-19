@@ -63,6 +63,7 @@ import csv
 import offline.metrics_config
 import offline.sql_exporter
 
+from cloudstorage import cloudstorage_api
 from datetime import datetime, timedelta
 from mapreduce import base_handler
 from mapreduce import mapreduce_pipeline
@@ -139,14 +140,22 @@ class MetricsPipeline(BasePipeline):
     future = yield SummaryPipeline(bucket_name, now, input_files, version_id, mapper_params)
     # Pass future to FinalizeMetrics to ensure it doesn't start running until SummaryPipeline
     # completes
-    yield FinalizeMetrics(future)
+    yield FinalizeMetrics(future, bucket_name, input_files)
 
-    # TODO(danrodney): figure out how to set the metrics version to finished but not complete on
-    # failure?
+  def handle_pipeline_failure(self):
+    logging.info("Pipeline failed; setting current metrics version to incomplete.")
+    MetricsVersionDao().set_pipeline_finished(False)
 
 class FinalizeMetrics(pipeline.Pipeline):
-  def run(self, *args):  # pylint: disable=unused-argument
-    MetricsVersionDao().set_pipeline_finished(True)
+  def run(self, future, bucket_name, input_files):  # pylint: disable=unused-argument
+    metrics_version_dao = MetricsVersionDao()
+    metrics_version_dao.set_pipeline_finished(True)
+    # After successfully writing metrics, delete old metrics, and delete the input files used to
+    # generate the metrics.
+    metrics_version_dao.delete_old_versions()
+    for input_file in input_files:
+      cloudstorage_api.delete('/' + bucket_name + '/' + input_file)
+
 
 class SummaryPipeline(pipeline.Pipeline):
   def run(self, bucket_name, now, input_files, version_id, parent_params=None):
