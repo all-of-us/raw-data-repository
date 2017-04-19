@@ -64,23 +64,11 @@ class BaseDao(object):
     session.add(obj)
     return obj
 
-  def upsert_with_session(self, session, obj):
-    """Merges the object into the session to be inserted."""
-    self._validate_upsert(session, obj)
-    session.merge(obj)
-    return obj
-
   def insert(self, obj):
     """Inserts an object into the database. The calling object may be mutated
     in the process."""
     with self.session() as session:
       return self.insert_with_session(session, obj)
-
-  def upsert(self, obj):
-    """Inserts or updates an object in the database. Only call this if you're OK with clobbering
-    whatever data may already exist for the object with the key in question."""
-    with self.session() as session:
-      return self.upsert_with_session(session, obj)
 
   def get_id(self, obj):
     """Returns the ID (for single primary key column tables) or a list of IDs (for multiple
