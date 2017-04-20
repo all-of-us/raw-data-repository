@@ -120,11 +120,24 @@ def main(args):
       answer_map = {}
       answer_map[LAST_NAME_QUESTION_CODE] = _string_answer(row['last_name'])
       answer_map[FIRST_NAME_QUESTION_CODE] = _string_answer(row['first_name'])
-      answer_map[EMAIL_QUESTION_CODE] = _string_answer(row['email'])
+      email = row.get('email')
+      if not email:
+        email = 'participant%s_%s@example.com' % (row['first_name'][-1], row['last_name'])
+      hpo_id = row.get('hpo_siteid')
+      participant_resource = {}
+      if hpo_id:
+        participant_resource['providerLink'] = [{
+          "primary": True,
+          "organization": {
+            "display": None,
+            "reference": "Organization/%s" % hpo_id
+          }
+        }]
+      answer_map[EMAIL_QUESTION_CODE] = _string_answer(email)
       answer_map[ZIPCODE_QUESTION_CODE] = _string_answer(row['zip_code'])
       answer_map[DATE_OF_BIRTH_QUESTION_CODE] = _date_answer(row['date_of_birth'])
       answer_map[GENDER_IDENTITY_QUESTION_CODE] = _code_answer(row['gender_identity'])
-      participant_response = client.request_json('Participant', 'POST')
+      participant_response = client.request_json('Participant', 'POST', participant_resource)
       participant_id = participant_response['participantId']
       _submit_questionnaire_response(client, participant_id, consent_questionnaire_id_and_version,
                                      consent_questions, answer_map)
