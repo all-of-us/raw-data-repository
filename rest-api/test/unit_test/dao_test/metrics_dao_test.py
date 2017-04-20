@@ -61,8 +61,7 @@ class MetricsDaoTest(SqlTestBase):
     self.assertEquals(expected_mv2.asdict(), self.metrics_version_dao.get(2).asdict())
 
   def test_set_pipeline_finished_not_in_progress(self):
-    with self.assertRaises(PreconditionFailed):
-      self.metrics_version_dao.set_pipeline_finished(True)
+    self.metrics_version_dao.set_pipeline_finished(True)
 
   def test_set_pipeline_finished_in_progress_no_buckets(self):
     with FakeClock(TIME):
