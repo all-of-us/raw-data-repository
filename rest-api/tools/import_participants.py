@@ -122,7 +122,7 @@ def main(args):
       answer_map[FIRST_NAME_QUESTION_CODE] = _string_answer(row['first_name'])
       email = row.get('email')
       if not email:
-        email = 'participant%s@example.com' % row['first_name'][-1]
+        email = 'participant%s_%s@example.com' % (row['first_name'][-1], row['last_name'])
       hpo_id = row.get('hpo_siteid')
       participant_resource = {}
       if hpo_id:
