@@ -62,7 +62,7 @@ class MetricsVersionDao(BaseDao):
         running_version.complete = complete
         session.merge(running_version)
       else:
-        raise PreconditionFailed('Metrics pipeline is not running')
+        logging.warn('Metrics pipeline is not running; not setting as finished')
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsVersion)
