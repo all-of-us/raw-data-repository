@@ -37,10 +37,15 @@ else
   fi
 fi
 
-#TODO: fetch questionnaires from github; for now, we'll use fake test questionnaires
-QUESTIONNAIRE_FILES=(study_consent.json ehr_consent.json the_basics_questionnaire.json questionnaire4.json)
+QUESTIONNAIRE_FILES=(base_consent.json basics.json ehr_consent.json family_history.json lifestyle.json overall_health.json)
 QUESTIONNAIRE_FILES_STR=$(IFS=, ; echo "${QUESTIONNAIRE_FILES[*]}")
-QUESTIONNAIRE_DIR=test/test-data/
+QUESTIONNAIRE_DIR=/tmp/questionnaires
+PAYLOADS_PATH=https://raw.githubusercontent.com/VibrentHealth/PMI-API-Payloads/master/questionnaire_payloads
 
-(source tools/set_path.sh; python tools/import_questionnaires.py --dir $QUESTIONNAIRE_DIR \
+mkdir -p $QUESTIONNAIRE_DIR
+for q_file in "${QUESTIONNAIRE_FILES[@]}"; do
+  wget $PAYLOADS_PATH/$q_file -O $QUESTIONNAIRE_DIR/$q_file
+done
+
+(source tools/set_path.sh; python tools/import_questionnaires.py --dir $QUESTIONNAIRE_DIR/ \
  --files $QUESTIONNAIRE_FILES_STR)
