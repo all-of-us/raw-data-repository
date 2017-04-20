@@ -319,6 +319,30 @@ class BaseDao(object):
       return session.query(self.model_type).count()
 
 
+class UpsertableDao(BaseDao):
+  """A DAO that allows upserts of its entities (without any checking to see if the
+  entities already exist or have a particular expected version.
+  """
+
+  def _validate_upsert(self, session, obj):
+    """Override to validate a new model before upserting it (not applied to inserts)."""
+    self._validate_model(session, obj)
+
+  def _do_upsert(self, session, obj):
+    """Perform the upsert of the specified object. Subclasses can override to alter things."""
+    session.merge(obj)
+
+  def upsert_with_session(self, session, obj):
+    """Upserts the object in the database with the specified session."""
+    self._validate_upsert(session, obj)
+    self._do_upsert(session, obj)
+
+  def upsert(self, obj):
+    """Upserts the object in the database (creating the object if it does not exist, and replacing
+    it if it does.)"""
+    with self.session() as session:
+      return self.upsert_with_session(session, obj)
+
 class UpdatableDao(BaseDao):
   """A DAO that allows updates to entities.
 
@@ -345,8 +369,8 @@ class UpdatableDao(BaseDao):
     session.merge(obj)
 
   def update_with_session(self, session, obj):
-    """Updates the object in the database with the specified session and (optionally)
-    expected version ID."""
+    """Updates the object in the database with the specified session. Will fail if the object
+    doesn't exist already, or if obj.version does not match the version of the existing object."""
     existing_obj = self.get_with_session(session, self.get_id(obj))
     self._validate_update(session, obj, existing_obj)
     self._do_update(session, obj, existing_obj)
