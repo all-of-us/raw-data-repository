@@ -126,13 +126,13 @@ def main(args):
       hpo_id = row.get('hpo_siteid')
       participant_resource = {}
       if hpo_id:
-         participant_resource['providerLink'] = [{
-           "primary": True,
-           "organization": {
-             "display": None,
-             "reference": "Organization/%s" % hpo_id
-           }
-         }]
+        participant_resource['providerLink'] = [{
+          "primary": True,
+          "organization": {
+            "display": None,
+            "reference": "Organization/%s" % hpo_id
+          }
+        }]
       answer_map[EMAIL_QUESTION_CODE] = _string_answer(email)
       answer_map[ZIPCODE_QUESTION_CODE] = _string_answer(row['zip_code'])
       answer_map[DATE_OF_BIRTH_QUESTION_CODE] = _date_answer(row['date_of_birth'])
