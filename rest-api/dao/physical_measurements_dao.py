@@ -21,8 +21,8 @@ class PhysicalMeasurementsDao(BaseDao):
   def get_id(self, obj):
     return obj.physicalMeasurementsId
 
-  def get_with_session(self, session, obj_id):
-    result = super(PhysicalMeasurementsDao, self).get_with_session(session, obj_id)
+  def get_with_session(self, session, obj_id, **kwargs):
+    result = super(PhysicalMeasurementsDao, self).get_with_session(session, obj_id, **kwargs)
     if result:
       ParticipantDao().validate_participant_reference(session, result)
     return result
@@ -66,8 +66,12 @@ class PhysicalMeasurementsDao(BaseDao):
   def _update_participant_summary(self, session, created, participant_id):
     if participant_id is None:
       raise BadRequest('participantId is required')
-    participant_summary_dao = ParticipantSummaryDao()
-    participant_summary = participant_summary_dao.get_with_session(session, participant_id)
+    participant_summary_dao = ParticipantSummaryDao()    
+    participant = ParticipantDao().get_for_update(session, participant_id)
+    if not participant:
+      raise BadRequest("Can't submit physical measurements for unknown participant %s" 
+                       % participant_id)
+    participant_summary = participant.participantSummary
     if not participant_summary:
       raise BadRequest("Can't submit physical measurements for participant %s without consent" %
                        participant_id)

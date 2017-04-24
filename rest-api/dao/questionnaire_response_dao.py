@@ -33,8 +33,8 @@ class QuestionnaireResponseDao(BaseDao):
   def get_id(self, obj):
     return obj.questionnaireResponseId
 
-  def get_with_session(self, session, obj_id):
-    result = super(QuestionnaireResponseDao, self).get_with_session(session, obj_id)
+  def get_with_session(self, session, obj_id, **kwargs):
+    result = super(QuestionnaireResponseDao, self).get_with_session(session, obj_id, **kwargs)
     if result:
       ParticipantDao().validate_participant_reference(session, result)
     return result
@@ -114,8 +114,9 @@ class QuestionnaireResponseDao(BaseDao):
     If no participant summary exists already, only a response to the study enrollment consent
     questionnaire can be submitted, and it must include first and last name and e-mail address.
     """
-    participant_summary = (ParticipantSummaryDao().
-                           get_with_session(session, questionnaire_response.participantId))
+    # Block on other threads modifying the participant or participant summary.
+    participant = ParticipantDao().get_for_update(session, questionnaire_response.participantId)
+    participant_summary = participant.participantSummary
 
     code_ids.extend([concept.codeId for concept in qh.concepts])
 

@@ -58,7 +58,7 @@ class CacheAllDao(UpdatableDao):
     with self.singleton_cache.lock:
       return self.singleton_cache[SINGLETON_KEY]
 
-  def get_with_session(self, session, obj_id):
+  def get_with_session(self, session, obj_id, **kwargs):
     return self._get_cache().id_to_entity.get(obj_id)
 
   def get(self, obj_id):
