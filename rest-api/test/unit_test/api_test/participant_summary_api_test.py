@@ -39,7 +39,7 @@ class ParticipantSummaryMySqlApiTest(FlaskTestBase):
     }
 
   def testUpdate_raceCondition(self):
-    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    self.create_questionnaire('questionnaire3.json')
     participant = self.send_post('Participant', {})
     participant_id = participant['participantId']
     participant['providerLink'] = [self.provider_link]
