@@ -66,10 +66,10 @@ class PhysicalMeasurementsDao(BaseDao):
   def _update_participant_summary(self, session, created, participant_id):
     if participant_id is None:
       raise BadRequest('participantId is required')
-    participant_summary_dao = ParticipantSummaryDao()    
+    participant_summary_dao = ParticipantSummaryDao()
     participant = ParticipantDao().get_for_update(session, participant_id)
     if not participant:
-      raise BadRequest("Can't submit physical measurements for unknown participant %s" 
+      raise BadRequest("Can't submit physical measurements for unknown participant %s"
                        % participant_id)
     participant_summary = participant.participantSummary
     if not participant_summary:

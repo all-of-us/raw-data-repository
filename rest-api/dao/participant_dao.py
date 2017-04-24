@@ -76,8 +76,8 @@ class ParticipantDao(UpdatableDao):
 
   def get_for_update(self, session, obj_id):
     # Fetch the participant summary at the same time as the participant, as we are potentially
-    # updating both.    
-    return self.get_with_session(session, obj_id, for_update=True,    
+    # updating both.
+    return self.get_with_session(session, obj_id, for_update=True,
                                  options=joinedload(Participant.participantSummary))
 
   def _do_update(self, session, obj, existing_obj):
@@ -94,7 +94,7 @@ class ParticipantDao(UpdatableDao):
       obj.suspensionTime = (obj.lastModified if obj.suspensionStatus == SuspensionStatus.NO_CONTACT
                             else None)
       need_new_summary = True
-    
+
     # If the provider link changes, update the HPO ID on the participant and its summary.
     obj.hpoId = existing_obj.hpoId
     if obj.providerLink != existing_obj.providerLink:
@@ -102,7 +102,7 @@ class ParticipantDao(UpdatableDao):
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id
         need_new_summary = True
-    
+
     if need_new_summary and existing_obj.participantSummary:
       # Copy the existing participant summary, and mutate the fields that
       # come from participant.

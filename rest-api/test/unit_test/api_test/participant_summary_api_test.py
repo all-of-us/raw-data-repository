@@ -37,14 +37,14 @@ class ParticipantSummaryMySqlApiTest(FlaskTestBase):
         "value": "MRN456"
       }]
     }
-    
+
   def testUpdate_raceCondition(self):
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
     participant = self.send_post('Participant', {})
     participant_id = participant['participantId']
-    participant['providerLink'] = [self.provider_link]      
- 
-    t1 = threading.Thread(target=lambda: 
+    participant['providerLink'] = [self.provider_link]
+
+    t1 = threading.Thread(target=lambda:
                           self.send_put('Participant/%s' % participant_id, participant,
                                         headers={'If-Match': participant['meta']['versionId']}))
     t2 = threading.Thread(target=lambda:
@@ -55,10 +55,10 @@ class ParticipantSummaryMySqlApiTest(FlaskTestBase):
     t2.join()
     # The participant summary should exist (consent has been received), and it should have PITT
     # for its HPO ID (the participant update occurred.)
-    # This used to fail a decent percentage of the time, before we started using FOR UPDATE in 
+    # This used to fail a decent percentage of the time, before we started using FOR UPDATE in
     # our update statements; see DA-256.
-    ps = self.send_get('Participant/%s/Summary' % participant_id)      
-    self.assertEquals('PITT', ps.get('hpoId'))      
+    ps = self.send_get('Participant/%s/Summary' % participant_id)
+    self.assertEquals('PITT', ps.get('hpoId'))
 
 class ParticipantSummaryApiTest(FlaskTestBase):
 
@@ -122,7 +122,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.send_get('Participant/%s/Summary' % participant_id, expected_status=httplib.NOT_FOUND)
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
-      
+
   def testQuery_oneParticipant(self):
     # Set up the codes so they are mapped later.
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",

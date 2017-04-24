@@ -47,7 +47,7 @@ class BaseDao(object):
     self._database = dao.database_factory.get_database()
     self.order_by_ending = order_by_ending
 
-  def session(self):    
+  def session(self):
     return self._database.session()
 
   def _validate_model(self, session, obj):
@@ -78,7 +78,7 @@ class BaseDao(object):
   def get_with_session(self, session, obj_id, for_update=False, options=None):
     """Gets an object by ID for this type using the specified session. Returns None if not found."""
     query = session.query(self.model_type)
-    if for_update:      
+    if for_update:
       query = query.with_for_update()
     if options:
       query = query.options(options)
@@ -375,11 +375,11 @@ class UpdatableDao(BaseDao):
 
   def get_for_update(self, session, obj_id):
     return self.get_with_session(session, obj_id, for_update=True)
-    
+
   def update_with_session(self, session, obj):
     """Updates the object in the database with the specified session. Will fail if the object
-    doesn't exist already, or if obj.version does not match the version of the existing object."""    
-    existing_obj = self.get_for_update(session, self.get_id(obj))    
+    doesn't exist already, or if obj.version does not match the version of the existing object."""
+    existing_obj = self.get_for_update(session, self.get_id(obj))
     self._validate_update(session, obj, existing_obj)
     self._do_update(session, obj, existing_obj)
 
