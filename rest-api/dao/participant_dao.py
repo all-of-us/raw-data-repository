@@ -6,6 +6,7 @@ from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
 from sqlalchemy.orm.session import make_transient
+from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest, Forbidden
 
 class ParticipantHistoryDao(BaseDao):
@@ -72,6 +73,12 @@ class ParticipantDao(UpdatableDao):
     super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
     # Once a participant marks their withdrawal status as NO_USE, the participant can't be modified.
     raise_if_withdrawn(existing_obj)
+
+  def get_for_update(self, session, obj_id):
+    # Fetch the participant summary at the same time as the participant, as we are potentially
+    # updating both.
+    return self.get_with_session(session, obj_id, for_update=True,
+                                 options=joinedload(Participant.participantSummary))
 
   def _do_update(self, session, obj, existing_obj):
     """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link."""

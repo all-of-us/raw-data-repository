@@ -1,6 +1,7 @@
 import datetime
 import httplib
 import main
+import threading
 
 from clock import FakeClock
 from code_constants import PPI_SYSTEM, RACE_WHITE_CODE
@@ -17,6 +18,47 @@ TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
 TIME_4 = datetime.datetime(2016, 1, 4)
 TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
+
+class ParticipantSummaryMySqlApiTest(FlaskTestBase):
+  def setUp(self):
+    super(ParticipantSummaryMySqlApiTest, self).setUp(use_mysql=True)
+    self.provider_link = {
+      "primary": True,
+      "organization": {
+        "display": None,
+        "reference": "Organization/PITT",
+      },
+      "site": [{
+        "display": None,
+        "reference": "mayo-clinic",
+      }],
+      "identifier": [{
+        "system": "http://any-columbia-mrn-system",
+        "value": "MRN456"
+      }]
+    }
+
+  def testUpdate_raceCondition(self):
+    self.create_questionnaire('questionnaire3.json')
+    participant = self.send_post('Participant', {})
+    participant_id = participant['participantId']
+    participant['providerLink'] = [self.provider_link]
+
+    t1 = threading.Thread(target=lambda:
+                          self.send_put('Participant/%s' % participant_id, participant,
+                                        headers={'If-Match': participant['meta']['versionId']}))
+    t2 = threading.Thread(target=lambda:
+                          self.send_consent(participant_id))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+    # The participant summary should exist (consent has been received), and it should have PITT
+    # for its HPO ID (the participant update occurred.)
+    # This used to fail a decent percentage of the time, before we started using FOR UPDATE in
+    # our update statements; see DA-256.
+    ps = self.send_get('Participant/%s/Summary' % participant_id)
+    self.assertEquals('PITT', ps.get('hpoId'))
 
 class ParticipantSummaryApiTest(FlaskTestBase):
 
@@ -99,7 +141,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
                                        datetime.date(1978, 10, 9))
-
     with FakeClock(TIME_2):
       ps = self.send_get('Participant/%s/Summary' % participant_id)
     expected_ps = {'questionnaireOnHealthcareAccess': 'UNSET',

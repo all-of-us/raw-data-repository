@@ -51,8 +51,8 @@ class BiobankOrderDao(BaseDao):
     if sample.test not in BIOBANK_TESTS_SET:
       raise BadRequest('Invalid test value %r not in %s.' % (sample.test, BIOBANK_TESTS_SET))
 
-  def get_with_session(self, session, obj_id):
-    result = super(BiobankOrderDao, self).get_with_session(session, obj_id)
+  def get_with_session(self, session, obj_id, **kwargs):
+    result = super(BiobankOrderDao, self).get_with_session(session, obj_id, **kwargs)
     if result:
       ParticipantDao().validate_participant_reference(session, result)
     return result
