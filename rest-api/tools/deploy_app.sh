@@ -115,3 +115,7 @@ then
 fi
 
 echo "${BOLD}Done!${NONE}"
+# NOTE(DA-252) We could auto-update the JIRA issue if we do the oauth dance.
+echo "Please update the release tracker JIRA issue to say:"
+echo "Version ${VERSION} is now deployed to environment ${PROJECT}."
+echo "Find the JIRA issue: https://precisionmedicineinitiative.atlassian.net/issues/?jql=project%20%3D%20DA%20AND%20text%20~%20%22${VERSION}%22"
