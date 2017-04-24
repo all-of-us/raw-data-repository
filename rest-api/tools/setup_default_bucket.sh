@@ -1,3 +1,6 @@
+#!/bin/bash
+# Sets ttl=7d for the application-default bucket. This is the bucket used by,
+# for example, the metrics pipeline temporary files.
 CREATE_INSTANCE=
 USAGE="tools/setup_bucket.sh --account <ACCOUNT> --project <PROJECT>"
 while true; do
