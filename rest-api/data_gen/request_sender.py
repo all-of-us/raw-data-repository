@@ -3,6 +3,7 @@ import json
 import main
 
 from clock import FakeClock
+from client.client import Client
 
 
 class InProcessRequestSender(object):
@@ -11,18 +12,18 @@ class InProcessRequestSender(object):
   Used for creating fake data.
   """
 
-  def send_request(self, request_time, method, local_path, request_data=None, headers=None):
+  def send_request(self, method, local_path, request_data=None, headers=None, pretend_date=None):
     """Makes a JSON API call against the server and returns its response data.
 
     Args:
-      request_time: the time at which the request should appear to occur
       method: HTTP method, as a string.
       local_path: The API endpoint's URL (excluding main.PREFIX).
       request_data: Parsed JSON payload for the request.
       headers: the headers for the request.
+      pretend_date: the time at which the request should appear to occur
     """
     app = main.app
-    with FakeClock(request_time):
+    with FakeClock(pretend_date):
       with app.app_context():
         with app.test_request_context(main.PREFIX + local_path,
                                       method=method,
