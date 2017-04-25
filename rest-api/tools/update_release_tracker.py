@@ -11,6 +11,7 @@ import argparse
 import logging
 import os
 import jira
+import sys
 
 _JIRA_INSTANCE_URL = 'https://precisionmedicineinitiative.atlassian.net/'
 _JIRA_PROJECT_ID = 'DA'
@@ -24,7 +25,7 @@ def main(args):
   jira_password = os.getenv('JIRA_API_USER_PASSWORD')
   if not jira_username or not jira_password:
     logging.error('JIRA_API_USER_NAME and JIRA_API_USER_PASSWORD variables must be set. Exiting.')
-    return -1
+    sys.exit(-1)
   jira_connection = _connect_to_jira(jira_username, jira_password)
   summary = 'Release tracker for %s' % args.version
   issues = jira_connection.search_issues(
@@ -37,10 +38,10 @@ def main(args):
     issue = issues[0]
     jira_connection.add_comment(issue, args.comment)
     logging.info("Updated issue %s" % issue.key)
-    return 0
+    sys.exit(0)
   else:
     logging.error('No issue found with summary "%s"; exiting.' % summary)
-    return -1
+    sys.exit(-1)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
@@ -53,4 +54,4 @@ if __name__ == '__main__':
                       type=str,
                       help='The comment to add to the issue',
                       required=True)
-  return main(parser.parse_args())
+  main(parser.parse_args())
