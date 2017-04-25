@@ -8,15 +8,8 @@ environment variables to be set, and flags for version and instance to be provid
 """
 
 import argparse
-import httplib
-import json
 import logging
 import os
-import re
-import subprocess
-import sys
-import urllib2
-
 import jira
 
 _JIRA_INSTANCE_URL = 'https://precisionmedicineinitiative.atlassian.net/'

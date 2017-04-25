@@ -132,7 +132,7 @@ def _get_watchers():
   return watchers
 
 
-def _update_or_create_release_tracker(jira_connection, project_id, full_version_id, release_notes):
+def _update_or_create_release_tracker(jira_connection, full_version_id, release_notes):
   """Adds release notes to a new or existing JIRA issue."""
   version_id, is_cherry_pick = _strip_cherry_pick(full_version_id)
   summary = 'Release tracker for %s' % version_id  
@@ -184,7 +184,7 @@ def main():
   jira_connection = _connect_to_jira()
   release_notes = _get_release_notes_since_tag(deployed_version, project_id, current_version)
   logging.info(release_notes)
-  _update_or_create_release_tracker(jira_connection, project_id, current_version, release_notes)
+  _update_or_create_release_tracker(jira_connection, current_version, release_notes)
 
 
 if __name__ == '__main__':
