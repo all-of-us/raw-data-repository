@@ -27,7 +27,7 @@ class InProcessClient(object):
         with app.test_request_context(main.PREFIX + local_path,
                                       method=method,
                                       headers=headers,
-                                      data=json.dumps(request_data)):
+                                      data=json.dumps(body)):
           try:
             rv = app.preprocess_request()
             if rv is None:
@@ -40,6 +40,6 @@ class InProcessClient(object):
           response = app.make_response(rv)
           response = app.process_response(response)
     if response.status_code != httplib.OK:
-      raise RuntimeError("Request failed: %s, %s, response = %s" % (local_path, request_data,
+      raise RuntimeError("Request failed: %s, %s, response = %s" % (local_path, body,
                                                                     response))
     return json.loads(response.data)
