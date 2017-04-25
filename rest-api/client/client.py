@@ -70,13 +70,13 @@ class Client(object):
               check_status=True,
               authenticated=True,
               pretend_date=None):
-  """Sends an API request and returns a (response object, response content) tuple.
+    """Sends an API request and returns a (response object, response content) tuple.
 
-  Args:
-    path: Relative URL path (such as "Participant/123"), unless absolute_path=True.
-    pretend_date: A datetime, used by the server (if nonprod requests are allowed) for creation
-        timestamps etc.
-  """
+    Args:
+      path: Relative URL path (such as "Participant/123"), unless absolute_path=True.
+      pretend_date: A datetime, used by the server (if nonprod requests are allowed) for creation
+          timestamps etc.
+    """
     if absolute_path:
       url = path
     else:
