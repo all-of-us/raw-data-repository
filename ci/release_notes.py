@@ -135,7 +135,7 @@ def _get_watchers():
 def _update_or_create_release_tracker(jira_connection, full_version_id, release_notes):
   """Adds release notes to a new or existing JIRA issue."""
   version_id, is_cherry_pick = _strip_cherry_pick(full_version_id)
-  summary = 'Release tracker for %s' % version_id  
+  summary = 'Release tracker for %s' % version_id
   issues = jira_connection.search_issues(
       'project = "%s" AND summary ~ "%s" ORDER BY created DESC' % (_JIRA_PROJECT_ID, summary))
   if issues:
