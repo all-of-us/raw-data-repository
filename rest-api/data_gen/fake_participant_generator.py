@@ -1,5 +1,4 @@
-"""Creates a participant, physical measurements, questionnaire responses, and biobank
-orders."""
+"""Creates a participant, physical measurements, questionnaire responses, and biobank orders."""
 import clock
 import collections
 import csv
@@ -99,8 +98,8 @@ _CONSTANT_CODES = [PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE]
 
 class FakeParticipantGenerator(object):
 
-  def __init__(self, request_sender):
-    self._request_sender = request_sender
+  def __init__(self, client):
+    self._client = client
     self._hpos = HPODao().get_all()
     self._now = clock.CLOCK.now()
     self._consent_questionnaire_id_and_version = None
@@ -259,7 +258,7 @@ class FakeParticipantGenerator(object):
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_BIOBANK_ORDER)
     measurements_time = consent_time + datetime.timedelta(days=days_delta)
     request_json = self._make_physical_measurements(participant_id, measurements_time)
-    self._request_sender.request_json(
+    self._client.request_json(
         _physical_measurements_url(participant_id), method='POST', body=request_json,
         pretend_date=measurements_time)
     return measurements_time
@@ -305,7 +304,7 @@ class FakeParticipantGenerator(object):
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_BIOBANK_ORDER)
     created_time = start_time + datetime.timedelta(days=days_delta)
     order_json = self._make_biobank_order_request(participant_id, order_tests, created_time)
-    self._request_sender.request_json(
+    self._client.request_json(
         _biobank_order_url(participant_id),
         method='POST',
         body=order_json,
@@ -321,12 +320,13 @@ class FakeParticipantGenerator(object):
     return last_request_time
 
   def _update_participant(self, change_time, participant_response, participant_id):
-    return self._request_sender.request_json(_participant_url(participant_id),
-                                             method='PUT',
-                                             body=participant_response,
-                                             headers={'If-Match':
-                                                      participant_response['meta']['versionId']},
-                                            pretend_date=change_time)
+    return self._client.request_json(
+        _participant_url(participant_id),
+        method='PUT',
+        body=participant_response,
+        headers={'If-Match':
+                 participant_response['meta']['versionId']},
+        pretend_date=change_time)
 
   def _submit_hpo_changes(self, participant_response, participant_id, consent_time):
     if random.random() <= _NO_HPO_CHANGE:
@@ -382,7 +382,7 @@ class FakeParticipantGenerator(object):
       if hpo.hpoId != UNSET_HPO_ID:
         participant_json['providerLink'] = [_make_primary_provider_link(hpo)]
     creation_time = self._days_ago(random.randint(0, _MAX_DAYS_HISTORY))
-    participant_response = self._request_sender.request_json(
+    participant_response = self._client.request_json(
         'Participant', method='POST', body=participant_json, pretend_date=creation_time)
     return (participant_response, creation_time)
 
@@ -502,7 +502,7 @@ class FakeParticipantGenerator(object):
         questions_with_answers.append(self._create_question_answer(link_id, answer))
     qr_json = self._create_questionnaire_response(participant_id, q_id_and_version,
                                                   questions_with_answers)
-    self._request_sender.request_json(
+    self._client.request_json(
         _questionnaire_response_url(participant_id),
         method='POST',
         body=qr_json,

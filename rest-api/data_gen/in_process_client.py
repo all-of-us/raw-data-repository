@@ -5,7 +5,7 @@ import main
 from clock import FakeClock
 
 
-class InProcessRequestSender(object):
+class InProcessClient(object):
   """A request sender that invokes API endpoints on the server running in the same process.
 
   Used for creating fake data.

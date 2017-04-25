@@ -5,7 +5,7 @@ from api_util import nonprod
 from config_api import auth_required_config_admin
 from data_gen.fake_participant_generator import FakeParticipantGenerator
 from data_gen.fake_biobank_samples_generator import FakeBiobankSamplesGenerator
-from data_gen.request_sender import InProcessRequestSender
+from data_gen.in_process_client import InProcessClient
 from flask import request
 from flask.ext.restful import Resource
 from model.utils import from_client_participant_id
@@ -26,7 +26,7 @@ class DataGenApi(Resource):
     include_physical_measurements = bool(resource_json.get('include_physical_measurements', False))
     include_biobank_orders = bool(resource_json.get('include_biobank_orders', False))
     if num_participants > 0:
-      participant_generator = FakeParticipantGenerator(InProcessRequestSender())
+      participant_generator = FakeParticipantGenerator(InProcessClient())
       for _ in range(0, num_participants):
         participant_generator.generate_participant(include_physical_measurements,
                                                    include_biobank_orders)
