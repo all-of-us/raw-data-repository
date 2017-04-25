@@ -89,13 +89,17 @@ git checkout $VERSION
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "db" ]
 then
   echo "${BOLD}Upgrading database...${NONE}"
+  python tools/update_release_tracker.py --version $VERSION --comment "Upgrading database for ${PROJECT}."
   tools/upgrade_database.sh --project $PROJECT --account $ACCOUNT
+  python tools/update_release_tracker.py --version $VERSION --comment "Database for ${PROJECT} upgraded."
 fi
 
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "config" ]
 then
   echo "${BOLD}Updating configuration...${NONE}"
+  python tools/update_release_tracker.py --version $VERSION --comment "Updating config for ${PROJECT}."
   tools/install_config.sh --project $PROJECT --account $ACCOUNT --config $CONFIG --update
+  python tools/update_release_tracker.py --version $VERSION --comment "Config for ${PROJECT} updated."
 fi
 
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "app" ]
@@ -109,8 +113,10 @@ then
   fi
   echo "${BOLD}Deploying application...${NONE}"
   cat app_base.yaml $APP_YAML > app.yaml
+  python tools/update_release_tracker.py --version $VERSION --comment "Deploying app to ${PROJECT}."
   gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml offline.yaml \
       --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
+  python tools/update_release_tracker.py --version $VERSION --comment "App deployed to ${PROJECT}."
   rm app.yaml
 fi
 

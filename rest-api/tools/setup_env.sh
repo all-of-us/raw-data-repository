@@ -18,7 +18,10 @@ pip install -r requirements.txt -t lib/
 sudo pip install MySQL-python
 
 echo "Installing Alembic..."
-sudo pip install alembic
+pip install --user alembic
+echo "Installing JIRA..."
+pip install --user jira
+pip install --user requests[security]
 
 git submodule update --init
 
