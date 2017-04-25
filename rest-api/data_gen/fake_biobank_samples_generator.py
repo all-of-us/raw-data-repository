@@ -40,10 +40,12 @@ _BATCH_SIZE = 1000
 _HEADERS = ['Sample Id', 'Parent Sample Id', 'Sample Confirmed Date', 'External Participant Id',
             'Test Code']
 
+
 class FakeBiobankSamplesGenerator(object):
   """Generates fake biobank samples for the participants in the database."""
 
   def generate_samples(self):
+    """Creates fake sample CSV data in GCS."""
     bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     now = clock.CLOCK.now()
     file_name = '/%s/fake_%s.csv' % (bucket_name, now.isoformat())

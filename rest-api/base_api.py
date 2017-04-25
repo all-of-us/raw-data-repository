@@ -99,7 +99,7 @@ class BaseApi(Resource):
     resource = request.get_json(force=True)
     m = self.dao.from_json(resource, a_id, self.dao.allocate_id())
     self.validate_object(m, a_id)
-    self.dao.insert(m, date=consider_fake_date(),
+    self.dao.insert(m, date=_consider_fake_date(),
                     client_id=api_util.get_oauth_id())
     return self.make_response_for_resource(self.dao.to_json(m))
 
@@ -112,7 +112,7 @@ class BaseApi(Resource):
     """
     m = self.dao.from_json(request.get_json(force=True), a_id, id_)
     self.validate_object(m, a_id)
-    self.dao.replace(m, date=consider_fake_date(), client_id=api_util.get_oauth_id())
+    self.dao.replace(m, date=_consider_fake_date(), client_id=api_util.get_oauth_id())
     return self.make_response_for_resource(self.dao.to_json(m))
 
   def make_response_for_resource(self, result):
@@ -169,6 +169,7 @@ class BaseApi(Resource):
     bundle_dict['entry'] = entries
     return bundle_dict
 
+
 def sync(channel_index, max_results):
   token = request.args.get('_token')
   count_str = request.args.get('_count')
@@ -187,7 +188,8 @@ def sync(channel_index, max_results):
   bundle_dict['entry'] = entries
   return jsonify(bundle_dict)
 
-def consider_fake_date():
+
+def _consider_fake_date():
   if config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False):
     date = request.headers.get('x-pretend-date', None)
     if date:

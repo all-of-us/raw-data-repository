@@ -4,29 +4,30 @@ import main
 
 from clock import FakeClock
 
-class ServerRequestSender(object):
-  """A request sender that invokes API endpoints directly on the server.
-  Used for creating fake data."""
 
+class InProcessClient(object):
+  """A request sender that invokes API endpoints on the server running in the same process.
 
-  def send_request(self, request_time, method, local_path, request_data=None,
-                   headers=None):
+  Used for creating fake data.
+  """
+
+  def request_json(self, local_path, method='GET', body=None, headers=None, pretend_date=None):
     """Makes a JSON API call against the server and returns its response data.
 
     Args:
-      request_time: the time at which the request should appear to occur
-      method: HTTP method, as a string.
       local_path: The API endpoint's URL (excluding main.PREFIX).
-      request_data: Parsed JSON payload for the request.
+      method: HTTP method, as a string.
+      body: Parsed JSON payload for the request.
       headers: the headers for the request.
+      pretend_date: the time at which the request should appear to occur
     """
     app = main.app
-    with FakeClock(request_time):
+    with FakeClock(pretend_date):
       with app.app_context():
         with app.test_request_context(main.PREFIX + local_path,
                                       method=method,
                                       headers=headers,
-                                      data=json.dumps(request_data)):
+                                      data=json.dumps(body)):
           try:
             rv = app.preprocess_request()
             if rv is None:
@@ -39,6 +40,6 @@ class ServerRequestSender(object):
           response = app.make_response(rv)
           response = app.process_response(response)
     if response.status_code != httplib.OK:
-      raise RuntimeError("Request failed: %s, %s, response = %s" % (local_path, request_data,
+      raise RuntimeError("Request failed: %s, %s, response = %s" % (local_path, body,
                                                                     response))
     return json.loads(response.data)

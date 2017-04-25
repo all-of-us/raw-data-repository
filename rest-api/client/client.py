@@ -25,7 +25,7 @@ class Client(object):
   def __init__(self, base_path, parse_cli=True, creds_file=None, default_instance=None):
     default_instance = default_instance or DEFAULT_INSTANCE
     if parse_cli:
-      args = self.parse_args(default_instance)
+      args = self._parse_args(default_instance)
       self.instance = args.instance
       if args.creds_file:
         creds_file = args.creds_file
@@ -38,7 +38,7 @@ class Client(object):
     self._http = self._get_authorized_http()
     self.last_etag = None
 
-  def parse_args(self, default_instance):
+  def _parse_args(self, default_instance):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--instance',
@@ -68,7 +68,15 @@ class Client(object):
               cron=False,
               absolute_path=False,
               check_status=True,
-              authenticated=True):
+              authenticated=True,
+              pretend_date=None):
+    """Sends an API request and returns a (response object, response content) tuple.
+
+    Args:
+      path: Relative URL path (such as "Participant/123"), unless absolute_path=True.
+      pretend_date: A datetime, used by the server (if nonprod requests are allowed) for creation
+          timestamps etc.
+    """
     if absolute_path:
       url = path
     else:
@@ -82,10 +90,11 @@ class Client(object):
 
     if method == 'POST':
       headers.update(POST_HEADERS)
-
     if cron:
       # Provide the header the dev_appserver uses for cron calls.
       headers['X-Appengine-Cron'] = 'true'
+    if pretend_date is not None:
+      headers['x-pretend-date'] = pretend_date.isoformat()
 
     print '{} to {}'.format(method, url)
     if authenticated:
@@ -116,7 +125,8 @@ class Client(object):
                    query_args=None,
                    headers=None,
                    cron=False,
-                   absolute_path=False):
+                   absolute_path=False,
+                   pretend_date=None):
     json_body = None
     if body:
       json_body = json.dumps(body)
@@ -129,5 +139,6 @@ class Client(object):
         query_args=query_args,
         headers=headers,
         cron=cron,
-        absolute_path=absolute_path)
+        absolute_path=absolute_path,
+        pretend_date=pretend_date)
     return json.loads(content)
