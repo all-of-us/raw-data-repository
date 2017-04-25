@@ -22,13 +22,13 @@ import jira
 _JIRA_INSTANCE_URL = 'https://precisionmedicineinitiative.atlassian.net/'
 _JIRA_PROJECT_ID = 'DA'
 
-def _connect_to_jira(jira_username, jira_password):  
+def _connect_to_jira(jira_username, jira_password):
   return jira.JIRA(_JIRA_INSTANCE_URL, basic_auth=(jira_username, jira_password))
 
 def main(args):
   logging.getLogger().setLevel(logging.INFO)
   jira_username = os.getenv('JIRA_API_USER_NAME')
-  jira_password = os.getenv('JIRA_API_USER_PASSWORD')  
+  jira_password = os.getenv('JIRA_API_USER_PASSWORD')
   if not jira_username or not jira_password:
     logging.error('JIRA_API_USER_NAME and JIRA_API_USER_PASSWORD variables must be set. Exiting.')
     return -1
