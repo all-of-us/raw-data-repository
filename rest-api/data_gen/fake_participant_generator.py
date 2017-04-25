@@ -96,6 +96,7 @@ _QUESTION_CODES = QUESTION_CODE_TO_FIELD.keys() + [RACE_QUESTION_CODE]
 
 _CONSTANT_CODES = [PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE]
 
+
 class FakeParticipantGenerator(object):
 
   def __init__(self, request_sender):
@@ -120,7 +121,7 @@ class FakeParticipantGenerator(object):
     return result
 
   def _setup_questionnaires(self):
-    '''Locates questionnaires and verifies that they have the appropriate questions in them.'''
+    """Locates questionnaires and verifies that they have the appropriate questions in them."""
     questionnaire_dao = QuestionnaireDao()
     code_dao = CodeDao()
     question_code_to_questionnaire_id = {}

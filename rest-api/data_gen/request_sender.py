@@ -4,13 +4,14 @@ import main
 
 from clock import FakeClock
 
+
 class ServerRequestSender(object):
-  """A request sender that invokes API endpoints directly on the server.
-  Used for creating fake data."""
+  """A request sender that invokes API endpoints on the server running in the same process.
 
+  Used for creating fake data.
+  """
 
-  def send_request(self, request_time, method, local_path, request_data=None,
-                   headers=None):
+  def send_request(self, request_time, method, local_path, request_data=None, headers=None):
     """Makes a JSON API call against the server and returns its response data.
 
     Args:

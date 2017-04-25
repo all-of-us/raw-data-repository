@@ -40,6 +40,7 @@ _BATCH_SIZE = 1000
 _HEADERS = ['Sample Id', 'Parent Sample Id', 'Sample Confirmed Date', 'External Participant Id',
             'Test Code']
 
+
 class FakeBiobankSamplesGenerator(object):
   """Generates fake biobank samples for the participants in the database."""
 

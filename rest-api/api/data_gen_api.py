@@ -12,6 +12,7 @@ from model.utils import from_client_participant_id
 
 DATE_FORMAT = '%Y-%m-%d'
 
+
 class DataGenApi(Resource):
 
   method_decorators = [auth_required_config_admin]
