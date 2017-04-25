@@ -53,4 +53,4 @@ if __name__ == '__main__':
                       type=str,
                       help='The comment to add to the issue',
                       required=True)
-  main(parser.parse_args())
+  return main(parser.parse_args())
