@@ -1,9 +1,10 @@
 import config
+import os
 import singletons
 
 from model.database import Database
 
-DB_CONNECTION_STRING = None
+DB_CONNECTION_STRING = os.getenv('DB_CONNECTION_STRING')
 
 class _SqlDatabase(Database):
   def __init__(self):
