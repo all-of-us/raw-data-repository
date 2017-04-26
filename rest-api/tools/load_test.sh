@@ -1,0 +1,28 @@
+#!/bin/bash -e
+# Runs a load test against a deployed RDR.
+#
+# Starts a locust server. Once started, use the local web UI to configure & run,
+# setting the number of users and users/sec to simulate. For example, if users
+# have min_wait = max_wait = 1000 (ms), setting number of users to 100 and hatch
+# rate to 20 will ramp up to 100qps over 5s, and then sustain 100qps until you
+# click "stop".
+#
+# Locust docs: http://docs.locust.io/en/latest/quickstart.html
+# Install: sudo pip install locustio
+ACCOUNT=$USER@google.com
+CREDS_ACCOUNT=$ACCOUNT
+PROJECT=all-of-us-rdr-dev
+
+. tools/auth_setup.sh
+# Some dependency data is loaded via DAOs before load testing via API.
+run_cloud_sql_proxy
+set_db_connection_string
+
+OLDPATH=$PYTHONPATH
+. tools/set_path.sh;
+# Prefer system-wide installs of some packages (specifically "requests").
+export PYTHONPATH=/usr/local/lib/python2.7/dist-packages:$OLDPATH:$PYTHONPATH
+cd "$BASE_DIR";
+LOCUST_CREDS_FILE="$CREDS_FILE" \
+LOCUST_TARGET_INSTANCE="https://$PROJECT.appspot.com" \
+locust -f "$BASE_DIR"/tools/load_test_locustfile.py
