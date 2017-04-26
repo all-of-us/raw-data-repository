@@ -9,7 +9,6 @@ from client.client import Client
 # set environment variable PMI_DRC_RDR_INSTANCE.
 _DEFAULT_INSTANCE = 'http://localhost:8080'
 
-_BASE_PATH = 'rdr/v1'
 _OFFLINE_BASE_PATH = 'offline'
 
 
@@ -19,9 +18,12 @@ class BaseClientTest(unittest.TestCase):
     self.maxDiff = None
     instance = os.environ.get('PMI_DRC_RDR_INSTANCE') or _DEFAULT_INSTANCE
     creds_file = os.environ.get('TESTING_CREDS_FILE')
-    self.client = Client(_BASE_PATH, False, default_instance=instance, creds_file=creds_file)
+    self.client = Client(parse_cli=False, default_instance=instance, creds_file=creds_file)
     self.offline_client = Client(
-        _OFFLINE_BASE_PATH, False, default_instance=instance, creds_file=creds_file)
+        base_path=_OFFLINE_BASE_PATH,
+        parse_cli=False,
+        default_instance=instance,
+        creds_file=creds_file)
 
   def assertJsonEquals(self, obj_a, obj_b):
     obj_b = copy.deepcopy(obj_b)

@@ -8,6 +8,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 DEFAULT_INSTANCE = 'https://pmi-drc-api-test.appspot.com'
+_DEFAULT_BASE_PATH = 'rdr/v1'
 POST_HEADERS = {
     'Content-Type': 'application/json; charset=utf-8',
 }
@@ -22,7 +23,12 @@ class HttpException(BaseException):
 
 
 class Client(object):
-  def __init__(self, base_path, parse_cli=True, creds_file=None, default_instance=None):
+  def __init__(
+      self,
+      base_path=_DEFAULT_BASE_PATH,
+      parse_cli=True,
+      creds_file=None,
+      default_instance=None):
     default_instance = default_instance or DEFAULT_INSTANCE
     if parse_cli:
       args = self._parse_args(default_instance)
