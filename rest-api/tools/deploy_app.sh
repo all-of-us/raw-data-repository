@@ -20,10 +20,15 @@ while true; do
   esac
 done
 
+function usage {
+  echo "Usage: deploy_app.sh --project all-of-us-rdr-stable --account $USER@pmi-ops.org \\"
+  echo "    [--target app|db|config|all] [--version GIT_REF] [--deploy_as_version APPENGINE_VERSION]"
+  exit 1
+}
+
 if [ -z "${PROJECT}" ]
 then
-  echo "Project not specified; exiting."
-  exit 1
+  usage
 fi
 
 if [ "${PROJECT}" == "all-of-us-rdr-prod" ]
@@ -37,19 +42,18 @@ then
   CONFIG="config/config_dryrun.json"
 else
   echo "Unsupported project: ${PROJECT}; exiting."
-  exit 1
+  usage
 fi
 
 if [ -z "${ACCOUNT}" ]
 then
-  echo "Account not specified; exiting."
-  exit 1
+  usage
 fi
 
 if [ "$TARGET" != "all" ] && [ "$TARGET" != "app" ] && [ $TARGET != "db" ] && [ $TARGET != "config" ]
 then
   echo "Target must be one of: all, app, db, config. Exiting."
-  exit 1
+  usage
 fi
 
 gcloud auth login $ACCOUNT
@@ -59,7 +63,7 @@ then
   if [ -z "${VERSION}" ]
   then
     echo "App version for $PROJECT could not be determined; exiting."
-    exit 1
+    usage
   fi
 fi
 if [ -z ${DEPLOY_AS_VERSION} ]
