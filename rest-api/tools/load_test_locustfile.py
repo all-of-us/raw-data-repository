@@ -14,7 +14,7 @@ from data_gen.fake_participant_generator import FakeParticipantGenerator
 class _ReportingClient(Client):
   """Wrapper around the API Client which reports request stats to Locust."""
   def request_json(self, path, **kwargs):
-    event_data = {'request_type': 'REST JSON', 'name': self._clean_up_url(path)}
+    event_data = {'request_type': 'REST', 'name': self._clean_up_url(path)}
     event = events.request_failure
     try:
       start_seconds = time.time()
@@ -42,6 +42,7 @@ class _ReportingClient(Client):
 
 
 class _AuthenticatedLocust(Locust):
+  """Base for authenticated RDR REST API callers."""
   def __init__(self, *args, **kwargs):
     super(_AuthenticatedLocust, self).__init__(*args, **kwargs)
     creds_file = os.environ['LOCUST_CREDS_FILE']
@@ -57,7 +58,7 @@ class VersionCheckUser(_AuthenticatedLocust):
   weight = 1
   # Hit the root/version endpoint once per minute.
   min_wait = 1000 * 60
-  max_wait = 1000 * 60
+  max_wait = min_wait
   class task_set(TaskSet):  # The "task_set" field name is what's used by the Locust superclass.
     @task(1)  # task weight: larger number == pick this task more often
     def index(self):
@@ -68,7 +69,7 @@ class SyncPhysicalMeasurementsUser(_AuthenticatedLocust):
   weight = 1
   # We expect 1 sync request/minute.
   min_wait = 1000 * 60
-  max_wait = 1000 * 60
+  max_wait = min_wait
   class task_set(TaskSet):
     @task(1)
     def get_sync(self):
@@ -88,7 +89,7 @@ class SignupUser(_AuthenticatedLocust):
   weight = 98
   # We estimate 100-1000 signups/day or 80-800s between signups (across all users).
   min_wait = weight * 1000 * 80
-  max_wait = weight * 1000 * 800
+  max_wait = min_wait
   class task_set(TaskSet):
     @task(1)
     def register_participant(self):
