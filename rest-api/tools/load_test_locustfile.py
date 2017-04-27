@@ -1,3 +1,5 @@
+"""User behavior definition for load-testing via Locust. Run using tools/load_test.sh."""
+
 import json
 import os
 import re
@@ -10,14 +12,14 @@ from data_gen.fake_participant_generator import FakeParticipantGenerator
 
 
 class _RdrUserBehavior(TaskSet):
-  @task(1)
+  @task(1)  # task weight: larger number == pick this task more often
   def index(self):
     self.client.request_json('')
 
   @task(50)
   def participant(self):
     self.locust.participant_generator.generate_participant(
-        True, # include_physical_measurements
+        True,  # include_physical_measurements
         False)  # include_biobank_orders
 
 
