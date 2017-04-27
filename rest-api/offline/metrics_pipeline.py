@@ -399,7 +399,7 @@ def _process_metric(metrics_fields, summary_fields, metric, new_state):
     if new_state[metric_name] != value:
       new_state[metric_name] = value
       something_changed = True
-  
+
   if something_changed:
     _update_summary_fields(summary_fields, new_state)
   return something_changed

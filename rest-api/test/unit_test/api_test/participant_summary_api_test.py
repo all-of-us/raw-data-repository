@@ -212,15 +212,15 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       else:
         break
 
-  def _submit_consent_questionnaire_response(self, participant_id, questionnaire_id, 
+  def _submit_consent_questionnaire_response(self, participant_id, questionnaire_id,
                                              ehr_consent_answer, time=TIME_1):
     code_answers = []
     _add_code_answer(code_answers, "ehrConsent", ehr_consent_answer)
-    qr = make_questionnaire_response_json(participant_id, questionnaire_id, 
+    qr = make_questionnaire_response_json(participant_id, questionnaire_id,
                                           code_answers=code_answers)
     with FakeClock(time):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
-  
+
   def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id):
     qr = make_questionnaire_response_json(participant_id, questionnaire_id)
     with FakeClock(TIME_1):
@@ -240,12 +240,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.send_consent(participant_id_1)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals("UNSET", ps_1["consentForElectronicHealthRecords"])
-    
+
     self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id, "NOPE")
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals("SUBMITTED_NO_CONSENT", ps_1["consentForElectronicHealthRecords"])
-    
-    self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id, 
+
+    self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id,
                                                 CONSENT_PERMISSION_YES_CODE)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals("SUBMITTED", ps_1["consentForElectronicHealthRecords"])
@@ -283,7 +283,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10))
     # Send a questionnaire response for the consent questionnaire for participants 2 and 3
-    self._submit_consent_questionnaire_response(participant_id_2, questionnaire_id_3, 
+    self._submit_consent_questionnaire_response(participant_id_2, questionnaire_id_3,
                                                 CONSENT_PERMISSION_YES_CODE)
     self._submit_consent_questionnaire_response(participant_id_3, questionnaire_id_3,
                                                 CONSENT_PERMISSION_YES_CODE)

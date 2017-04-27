@@ -64,10 +64,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                                           date_answers = date_answers)
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
-  def _submit_consent_questionnaire_response(self, participant_id, questionnaire_id, 
+  def _submit_consent_questionnaire_response(self, participant_id, questionnaire_id,
                                              ehr_consent_answer):
     code_answers = [('ehrConsent', Concept(PPI_SYSTEM, ehr_consent_answer))]
-    qr = make_questionnaire_response_json(participant_id, questionnaire_id, 
+    qr = make_questionnaire_response_json(participant_id, questionnaire_id,
                                           code_answers=code_answers)
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
@@ -75,14 +75,14 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     qr = make_questionnaire_response_json(participant_id, questionnaire_id)
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
-  def _create_data(self):    
+  def _create_data(self):
     SqlTestBase.setup_codes(ANSWER_FIELD_TO_QUESTION_CODE.values() + [EHR_CONSENT_QUESTION_CODE],
-                            code_type=CodeType.QUESTION)   
+                            code_type=CodeType.QUESTION)
     SqlTestBase.setup_codes(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(),
                             code_type=CodeType.MODULE)
     # Import codes for white and female, but not male or black.
-    SqlTestBase.setup_codes([RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE, 
-                             CONSENT_PERMISSION_NO_CODE, "female", "PIIState_VA"], 
+    SqlTestBase.setup_codes([RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
+                             CONSENT_PERMISSION_NO_CODE, "female", "PIIState_VA"],
                              code_type=CodeType.ANSWER)
     participant_dao = ParticipantDao()
 
@@ -117,7 +117,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       self.submit_questionnaire_response('P1', questionnaire_id, "black", "female",
                                          None, datetime.date(1980, 1, 3))
       self.submit_questionnaire_response('P2', questionnaire_id_2, None, None, 'PIIState_VA', None)
-      self._submit_consent_questionnaire_response('P1', questionnaire_id_3, 
+      self._submit_consent_questionnaire_response('P1', questionnaire_id_3,
                                                   CONSENT_PERMISSION_NO_CODE)
       self._submit_consent_questionnaire_response('P2', questionnaire_id_3,
                                                   CONSENT_PERMISSION_YES_CODE)
@@ -132,7 +132,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         biobankId=3,
         test='1SAL',
         confirmed=TIME_2))
-    
+
   def test_metric_export(self):
     self._create_data()
 
@@ -382,7 +382,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.genderIdentity.UNSET': 1,
                         'Participant.race.UNMAPPED': 1,
                         'Participant.race.UNSET': 1,
-                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,                        
+                        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
                         'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
                         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
                         'Participant.numCompletedBaselinePPIModules.1' : 1,
