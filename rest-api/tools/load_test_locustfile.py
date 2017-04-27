@@ -86,9 +86,9 @@ class SyncPhysicalMeasurementsUser(_AuthenticatedLocust):
 
 class SignupUser(_AuthenticatedLocust):
   weight = 98
-  # We estimate 100-1000 signups/day or 80-800s between signups.
-  min_wait = 1000 * 80
-  max_wait = 1000 * 800
+  # We estimate 100-1000 signups/day or 80-800s between signups (across all users).
+  min_wait = weight * 1000 * 80
+  max_wait = weight * 1000 * 800
   class task_set(TaskSet):
     @task(1)
     def register_participant(self):
