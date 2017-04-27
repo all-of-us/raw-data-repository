@@ -3,6 +3,8 @@ import config
 import json
 
 from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+from code_constants import EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE
+from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -143,6 +145,7 @@ class QuestionnaireResponseDao(BaseDao):
     code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
     question_map = {question.questionnaireQuestionId: question for question in questions}
     race_code_ids = []
+    ehr_consent = False
     # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
     for answer in questionnaire_response.answers:
       question = question_map.get(answer.questionId)
@@ -155,6 +158,10 @@ class QuestionnaireResponseDao(BaseDao):
                                                    summary_field[1], answer)
           elif code.value == RACE_QUESTION_CODE:
             race_code_ids.append(answer.valueCodeId)
+          elif code.value == EHR_CONSENT_QUESTION_CODE:
+            code = code_dao.get(answer.valueCodeId)
+            if code and code.value == CONSENT_PERMISSION_YES_CODE:
+              ehr_consent = True
 
     # If race was provided in the response in one or more answers, set the new value.
     if race_code_ids:
@@ -172,8 +179,11 @@ class QuestionnaireResponseDao(BaseDao):
       if code:
         summary_field = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(code.value)
         if summary_field:
-          if getattr(participant_summary, summary_field) != QuestionnaireStatus.SUBMITTED:
-            setattr(participant_summary, summary_field, QuestionnaireStatus.SUBMITTED)
+          new_status = QuestionnaireStatus.SUBMITTED
+          if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE and not ehr_consent:
+            new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+          if getattr(participant_summary, summary_field) != new_status:
+            setattr(participant_summary, summary_field, new_status)
             setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)
             something_changed = True
             module_changed = True

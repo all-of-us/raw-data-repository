@@ -72,9 +72,11 @@ from mapreduce import context
 from dao.database_utils import parse_datetime
 from dateutil.relativedelta import relativedelta
 from census_regions import census_regions
-from code_constants import UNSET, RACE_QUESTION_CODE, PPI_SYSTEM
+from code_constants import UNSET, RACE_QUESTION_CODE, PPI_SYSTEM, EHR_CONSENT_QUESTION_CODE
+from code_constants import CONSENT_PERMISSION_YES_CODE
 from dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
 from field_mappings import QUESTION_CODE_TO_FIELD, FieldType, QUESTIONNAIRE_MODULE_FIELD_NAMES
+from field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
 from model.metrics import MetricsBucket
 from mapreduce.lib.input_reader._gcs import GCSInputReader
 from offline.base_pipeline import BasePipeline
@@ -84,9 +86,9 @@ from metrics_config import SPECIMEN_COLLECTED_VALUE, RACE_METRIC, ENROLLMENT_STA
 from metrics_config import SAMPLES_ARRIVED_VALUE, SUBMITTED_VALUE, PARTICIPANT_KIND
 from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields, get_fieldnames
 from metrics_config import transform_participant_summary_field, SAMPLES_TO_ISOLATE_DNA_METRIC
-from metrics_config import FULL_PARTICIPANT_KIND
+from metrics_config import FULL_PARTICIPANT_KIND, EHR_CONSENT_ANSWER_METRIC
 from participant_enums import get_bucketed_age, get_race, PhysicalMeasurementsStatus, SampleStatus
-from participant_enums import EnrollmentStatus
+from participant_enums import EnrollmentStatus, QuestionnaireStatus
 from dao.code_dao import CodeDao
 
 class PipelineNotRunningException(BaseException):
@@ -277,19 +279,23 @@ def map_answers(reader):
     if question_code == RACE_QUESTION_CODE:
       race_code_values.append(answer_code)
       continue
-    question_field = QUESTION_CODE_TO_FIELD[question_code]
-    metric = transform_participant_summary_field(question_field[0])
-    if question_field[1] == FieldType.CODE:
+    if question_code == EHR_CONSENT_QUESTION_CODE:
+      metric = EHR_CONSENT_ANSWER_METRIC
       answer_value = answer_code
-      if metric == 'state':
-        state_val = answer_code[len(answer_code) - 2:]
-        census_region = census_regions.get(state_val) or UNSET
-        yield(participant_id, make_tuple(start_time, make_metric(CENSUS_REGION_METRIC,
-                                                                    census_region)))
-    elif question_field[1] == FieldType.STRING:
-      answer_value = answer_string
     else:
-      raise AssertionError("Invalid field type: %s" % question_field[1])
+      question_field = QUESTION_CODE_TO_FIELD[question_code]
+      metric = transform_participant_summary_field(question_field[0])
+      if question_field[1] == FieldType.CODE:
+        answer_value = answer_code
+        if metric == 'state':
+          state_val = answer_code[len(answer_code) - 2:]
+          census_region = census_regions.get(state_val) or UNSET
+          yield(participant_id, make_tuple(start_time, make_metric(CENSUS_REGION_METRIC,
+                                                                   census_region)))
+        elif question_field[1] == FieldType.STRING:
+          answer_value = answer_string
+      else:
+        raise AssertionError("Invalid field type: %s" % question_field[1])
     yield(participant_id, make_tuple(start_time, make_metric(metric, answer_value)))
 
   # Emit race for the last participant if we saved some values for it.
@@ -383,11 +389,17 @@ def _update_summary_fields(summary_fields, new_state):
 def _process_metric(metrics_fields, summary_fields, metric, new_state):
   metric_name, value = parse_metric(metric)
   something_changed = False
+  if metric_name == EHR_CONSENT_ANSWER_METRIC:
+    metric_name = CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
+    if value == CONSENT_PERMISSION_YES_CODE:
+      value = str(QuestionnaireStatus.SUBMITTED)
+    else:
+      value = str(QuestionnaireStatus.SUBMITTED_NO_CONSENT)
   if metric_name in metrics_fields:
     if new_state[metric_name] != value:
       new_state[metric_name] = value
       something_changed = True
-
+  
   if something_changed:
     _update_summary_fields(summary_fields, new_state)
   return something_changed
