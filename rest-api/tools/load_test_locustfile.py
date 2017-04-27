@@ -94,4 +94,4 @@ class SignupUser(_AuthenticatedLocust):
     def register_participant(self):
       self.locust.participant_generator.generate_participant(
           True,  # include_physical_measurements
-          False)  # include_biobank_orders
+          True)  # include_biobank_orders
