@@ -4,7 +4,7 @@ import main
 import threading
 
 from clock import FakeClock
-from code_constants import PPI_SYSTEM, RACE_WHITE_CODE
+from code_constants import PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -212,6 +212,15 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       else:
         break
 
+  def _submit_consent_questionnaire_response(self, participant_id, questionnaire_id,
+                                             ehr_consent_answer, time=TIME_1):
+    code_answers = []
+    _add_code_answer(code_answers, "ehrConsent", ehr_consent_answer)
+    qr = make_questionnaire_response_json(participant_id, questionnaire_id,
+                                          code_answers=code_answers)
+    with FakeClock(time):
+      self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+
   def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id):
     qr = make_questionnaire_response_json(participant_id, questionnaire_id)
     with FakeClock(TIME_1):
@@ -223,6 +232,23 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         biobankId=participant['biobankId'][1:],
         test=test_code,
         confirmed=TIME_1))
+
+  def testQuery_ehrConsent(self):
+    questionnaire_id = self.create_questionnaire('all_consents_questionnaire.json')
+    participant_1 = self.send_post('Participant', {})
+    participant_id_1 = participant_1['participantId']
+    self.send_consent(participant_id_1)
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('UNSET', ps_1['consentForElectronicHealthRecords'])
+
+    self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id, 'NOPE')
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('SUBMITTED_NO_CONSENT', ps_1['consentForElectronicHealthRecords'])
+
+    self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id,
+                                                CONSENT_PERMISSION_YES_CODE)
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('SUBMITTED', ps_1['consentForElectronicHealthRecords'])
 
   def testQuery_manyParticipants(self):
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
@@ -256,9 +282,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "Fred", "T", "Smith", "78752", None,
                                        None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10))
-    # Send an empty questionnaire response for the consent questionnaire for participants 2 and 3
-    self._submit_empty_questionnaire_response(participant_id_2, questionnaire_id_3)
-    self._submit_empty_questionnaire_response(participant_id_3, questionnaire_id_3)
+    # Send a questionnaire response for the consent questionnaire for participants 2 and 3
+    self._submit_consent_questionnaire_response(participant_id_2, questionnaire_id_3,
+                                                CONSENT_PERMISSION_YES_CODE)
+    self._submit_consent_questionnaire_response(participant_id_3, questionnaire_id_3,
+                                                CONSENT_PERMISSION_YES_CODE)
 
     # Send an empty questionnaire response for another questionnaire for participant 3,
     # completing the baseline PPI modules.

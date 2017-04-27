@@ -3,8 +3,8 @@ import json
 import offline.metrics_export
 
 from clock import FakeClock
-from code_constants import PPI_SYSTEM
-from code_constants import GENDER_IDENTITY_QUESTION_CODE
+from code_constants import PPI_SYSTEM, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
+from code_constants import GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
 from code_constants import RACE_QUESTION_CODE, STATE_QUESTION_CODE, RACE_WHITE_CODE
 from concepts import Concept
 from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
@@ -64,17 +64,26 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                                           date_answers = date_answers)
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
+  def _submit_consent_questionnaire_response(self, participant_id, questionnaire_id,
+                                             ehr_consent_answer):
+    code_answers = [('ehrConsent', Concept(PPI_SYSTEM, ehr_consent_answer))]
+    qr = make_questionnaire_response_json(participant_id, questionnaire_id,
+                                          code_answers=code_answers)
+    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+
   def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id):
     qr = make_questionnaire_response_json(participant_id, questionnaire_id)
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
   def _create_data(self):
-    SqlTestBase.setup_codes(ANSWER_FIELD_TO_QUESTION_CODE.values(),
+    SqlTestBase.setup_codes(ANSWER_FIELD_TO_QUESTION_CODE.values() + [EHR_CONSENT_QUESTION_CODE],
                             code_type=CodeType.QUESTION)
     SqlTestBase.setup_codes(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.values(),
                             code_type=CodeType.MODULE)
     # Import codes for white and female, but not male or black.
-    SqlTestBase.setup_codes([RACE_WHITE_CODE, "female", "PIIState_VA"], code_type=CodeType.ANSWER)
+    SqlTestBase.setup_codes([RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
+                             CONSENT_PERMISSION_NO_CODE, "female", "PIIState_VA"],
+                             code_type=CodeType.ANSWER)
     participant_dao = ParticipantDao()
 
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
@@ -108,8 +117,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       self.submit_questionnaire_response('P1', questionnaire_id, "black", "female",
                                          None, datetime.date(1980, 1, 3))
       self.submit_questionnaire_response('P2', questionnaire_id_2, None, None, 'PIIState_VA', None)
-      self._submit_empty_questionnaire_response('P1', questionnaire_id_3)
-      self._submit_empty_questionnaire_response('P2', questionnaire_id_3)
+      self._submit_consent_questionnaire_response('P1', questionnaire_id_3,
+                                                  CONSENT_PERMISSION_NO_CODE)
+      self._submit_consent_questionnaire_response('P2', questionnaire_id_3,
+                                                  CONSENT_PERMISSION_YES_CODE)
       sample_dao = BiobankStoredSampleDao()
       sample_dao.insert(BiobankStoredSample(
         biobankStoredSampleId='abc',
@@ -153,13 +164,15 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                        ['1', '1980-01-03', '', t2, '', '', t3, t1, '', '', '', '', '', '', t2]])
     assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 0,
                       [ANSWER_FIELDS,
-                      ['2', t3, STATE_QUESTION_CODE, 'PIIState_VA', '']])
+                      ['2', t3, STATE_QUESTION_CODE, 'PIIState_VA', ''],
+                      ['2', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE, '']])
     assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 1,
                       [ANSWER_FIELDS,
                        ['1', t2, GENDER_IDENTITY_QUESTION_CODE, 'UNMAPPED', ''],
                        ['1', t2, RACE_QUESTION_CODE, RACE_WHITE_CODE, ''],
                        ['1', t3, GENDER_IDENTITY_QUESTION_CODE, 'female', ''],
-                       ['1', t3, RACE_QUESTION_CODE, 'UNMAPPED', '']])
+                       ['1', t3, RACE_QUESTION_CODE, 'UNMAPPED', ''],
+                       ['1', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_NO_CODE, '']])
 
     # Wait for the metrics pipeline to run, processing the CSV output.
     with FakeClock(TIME_4):
@@ -336,7 +349,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     # At TIME_3, P1 is UNMAPPED race, female gender, and now in PITT HPO;
     # physical measurements and a questionnaire for personal
     # habits and overall health are submitted for P2, both participants submit consent
-    # questionnaires, and P2 is in SOUTH census region
+    # questionnaires, with P1 not consenting to EHR; and P2 is in SOUTH census region
     # and in a new age bucket (since it was their birthday.)
     # P2 now has an enrollment status of FULL_MEMBER, and P1 has MEMBER
     self.assertBucket(bucket_map, TIME_3, 'UNSET')
@@ -353,7 +366,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.biospecimen.UNSET': 2,
                         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
                         'Participant.hpoId.PITT': 2,
-                        'Participant.consentForElectronicHealthRecords.SUBMITTED': 2,
+                        'Participant.consentForElectronicHealthRecords.SUBMITTED': 1,
+                        'Participant.consentForElectronicHealthRecords.SUBMITTED_NO_CONSENT': 1,
                         'Participant.consentForStudyEnrollment.SUBMITTED': 2,
                         'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
                         'Participant.questionnaireOnOverallHealth.UNSET': 1,
@@ -369,12 +383,13 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.race.UNMAPPED': 1,
                         'Participant.race.UNSET': 1,
                         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
-                        'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 2,
+                        'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
                         'Participant.numCompletedBaselinePPIModules.1' : 1,
                         'Participant.numCompletedBaselinePPIModules.3' : 1,
                         'Participant.samplesToIsolateDNA.UNSET' : 1,
                         'Participant.samplesToIsolateDNA.RECEIVED' : 1,
-                        'Participant.enrollmentStatus.MEMBER' : 1,
+                        'Participant.enrollmentStatus.INTERESTED' : 1,
                         'Participant.enrollmentStatus.FULL_PARTICIPANT' : 1,
                         'FullParticipant.ageRange.UNSET': 1,
                         'FullParticipant.state.PIIState_VA': 1,
@@ -412,7 +427,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.biospecimen.UNSET': 2,
                         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
                         'Participant.hpoId.PITT': 2,
-                        'Participant.consentForElectronicHealthRecords.SUBMITTED': 2,
+                        'Participant.consentForElectronicHealthRecords.SUBMITTED': 1,
+                        'Participant.consentForElectronicHealthRecords.SUBMITTED_NO_CONSENT': 1,
                         'Participant.consentForStudyEnrollment.SUBMITTED': 2,
                         'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
                         'Participant.questionnaireOnOverallHealth.UNSET': 1,
@@ -428,12 +444,13 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         'Participant.race.UNMAPPED': 1,
                         'Participant.race.UNSET': 1,
                         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
-                        'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 2,
+                        'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
+                        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
                         'Participant.numCompletedBaselinePPIModules.1' : 1,
                         'Participant.numCompletedBaselinePPIModules.3' : 1,
                         'Participant.samplesToIsolateDNA.UNSET' : 1,
                         'Participant.samplesToIsolateDNA.RECEIVED' : 1,
-                        'Participant.enrollmentStatus.MEMBER' : 1,
+                        'Participant.enrollmentStatus.INTERESTED' : 1,
                         'Participant.enrollmentStatus.FULL_PARTICIPANT' : 1,
                         'FullParticipant.ageRange.UNSET': 1,
                         'FullParticipant.state.PIIState_VA': 1,

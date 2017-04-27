@@ -36,6 +36,10 @@ NUM_COMPLETED_BASELINE_PPI_MODULES_METRIC = 'numCompletedBaselinePPIModules'
 CONSENT_FOR_STUDY_ENROLLMENT_AND_EHR_METRIC = 'consentForStudyEnrollmentAndEHR'
 ENROLLMENT_STATUS_METRIC = 'enrollmentStatus'
 
+# This isn't reported as its own metric, but feeds into the  consentForElectronicHealthRecords
+# metric.
+EHR_CONSENT_ANSWER_METRIC = 'ehrConsent'
+
 SPECIMEN_COLLECTED_VALUE = 'SPECIMEN_COLLECTED'
 SAMPLES_ARRIVED_VALUE = 'SAMPLES_ARRIVED'
 SUBMITTED_VALUE = str(QuestionnaireStatus.SUBMITTED)

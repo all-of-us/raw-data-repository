@@ -18,6 +18,7 @@ class QuestionnaireStatus(messages.Enum):
   """The status of a given questionnaire for this participant"""
   UNSET = 0
   SUBMITTED = 1
+  SUBMITTED_NO_CONSENT = 2
 
 class EnrollmentStatus(messages.Enum):
   """A status reflecting how fully enrolled a participant is"""

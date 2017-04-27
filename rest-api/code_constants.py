@@ -23,6 +23,7 @@ SEX_QUESTION_CODE = "BiologicalSex_SexAtBirth"
 SEXUAL_ORIENTATION_QUESTION_CODE = "TheBasics_SexualOrientation"
 EDUCATION_QUESTION_CODE = "EducationLevel_HighestGrade"
 INCOME_QUESTION_CODE = "Income_AnnualIncome"
+EHR_CONSENT_QUESTION_CODE = "EHRConsentPII_ConsentPermission"
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 
@@ -45,6 +46,10 @@ RACE_NHDPI_CODE = 'WhatRaceEthnicity_NHPI'
 RACE_WHITE_CODE = 'WhatRaceEthnicity_White'
 RACE_HISPANIC_CODE = 'WhatRaceEthnicity_Hispanic'
 RACE_FREETEXT_CODE = 'WhatRaceEthnicity_FreeText'
+
+# Consent answer codes
+CONSENT_PERMISSION_YES_CODE = 'ConsentPermission_Yes'
+CONSENT_PERMISSION_NO_CODE = 'ConsentPermission_No'
 
 # Module names for questionnaires / consent forms
 CONSENT_FOR_STUDY_ENROLLMENT_MODULE = "ConsentPII"

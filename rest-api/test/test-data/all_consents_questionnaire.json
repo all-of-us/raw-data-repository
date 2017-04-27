@@ -12,6 +12,32 @@
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
         "code": "EHRConsentPII"
+      }],
+    "question": [
+      {
+        "linkId": "ehrConsent",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "EHRConsentPII_ConsentPermission"
+          }
+        ],
+        "text": "EHRConsentPII_ConsentPermission",
+        "type": "choice",
+        "required": false,
+        "repeats": false,
+        "option": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "ConsentPermission_Yes",
+            "display": "I have read this consent form. I understand the information in this form. All of my questions have been answered. I freely and willingly choose to take part."
+          },
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "ConsentPermission_No",
+            "display": "I have read this consent form. I understand the information in this form. All of my questions have been answered. I freely and willingly choose to not to take part."
+          }
+        ]
       }]
   }
 }

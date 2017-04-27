@@ -8,7 +8,7 @@ from dao.code_dao import CodeDao
 from dao.database_utils import replace_isodate, get_sql_and_params_for_array
 from model.base import get_column_name
 from model.participant_summary import ParticipantSummary
-from code_constants import PPI_SYSTEM, UNMAPPED, RACE_QUESTION_CODE
+from code_constants import PPI_SYSTEM, UNMAPPED, RACE_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
 from field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from offline.metrics_pipeline import MetricsPipeline
@@ -84,6 +84,7 @@ def _get_answer_sql(num_shards, shard_number):
   code_ids = []
   question_codes = list(ANSWER_FIELD_TO_QUESTION_CODE.values())
   question_codes.append(RACE_QUESTION_CODE)
+  question_codes.append(EHR_CONSENT_QUESTION_CODE)
   for code_value in question_codes:
     code = code_dao.get_code(PPI_SYSTEM, code_value)
     code_ids.append(str(code.codeId))
