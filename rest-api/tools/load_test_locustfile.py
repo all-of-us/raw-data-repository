@@ -156,7 +156,7 @@ class HealthProUser(_AuthenticatedLocust):
 
     @task(1)
     def look_up_participant_by_name_dob(self):
-      first_name, last_name, dob = random.choice(self.locust.participant_name_dobs)
+      _, last_name, dob = random.choice(self.locust.participant_name_dobs)
       self.client.request_json('ParticipantSummary?dateOfBirth=%s&lastName=%s' % (dob, last_name))
 
     @task(1)
