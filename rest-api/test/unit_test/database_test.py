@@ -1,7 +1,7 @@
 import datetime
 import isodate
 
-from participant_enums import QuestionnaireStatus
+from participant_enums import QuestionnaireStatus, OrganizationType
 
 from dateutil.tz import tzutc
 from model.biobank_stored_sample import BiobankStoredSample
@@ -24,7 +24,8 @@ class DatabaseTest(SqlTestBase):
   def test_schema(self):
     session = self.database.make_session()
 
-    hpo = HPO(hpoId=1, name='UNSET')
+    hpo = HPO(hpoId=1, name='UNSET', displayName='No organization set',
+              organizationType=OrganizationType.UNSET)
     code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True, name="pmi",
                          system="http://foo/bar", version="v0.1.1")
     session.add(hpo)

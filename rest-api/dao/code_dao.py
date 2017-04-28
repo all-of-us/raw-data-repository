@@ -117,6 +117,7 @@ class CodeDao(CacheAllDao):
     return obj
 
   def _validate_update(self, session, obj, existing_obj):
+    #pylint: disable=unused-argument
     if obj.codeBookId is None or existing_obj.codeBookId == obj.codeBookId:
       raise BadRequest("codeBookId must be set to a new value when updating a code")
 

@@ -52,6 +52,18 @@ class Race(messages.Enum):
   OTHER_RACE = 15
   PREFER_NOT_TO_SAY = 16
 
+# A type of organization responsible for signing up participants.
+class OrganizationType(messages.Enum):
+  UNSET = 0
+  # Healthcare Provider Organization
+  HPO = 1
+  # Federally Qualified Health Center
+  FQHC = 2
+  # Direct Volunteer Recruitment Center
+  DV = 3
+  # Veterans Administration
+  VA = 4
+
 ANSWER_CODE_TO_RACE = {
   RACE_AIAN_CODE: Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE,
   RACE_ASIAN_CODE: Race.ASIAN,
