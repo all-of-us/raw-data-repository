@@ -197,21 +197,22 @@ def _parse_etag(etag):
       raise BadRequest("Invalid version: %s" % version_str)
   raise BadRequest("Invalid ETag: %s" % etag)
 
-def _sync(dao, max_results):
+
+def get_sync_results_for_request(dao, max_results):
   token = request.args.get('_token')
   count_str = request.args.get('_count')
   count = int(count_str) if count_str else max_results
   results = dao.query(Query([], OrderBy('logPositionId', True),
                             count, token, always_return_token=True))
-  bundle_dict = {"resourceType": "Bundle", "type": "history"}
+  bundle_dict = {'resourceType': 'Bundle', 'type': 'history'}
   if results.pagination_token:
     query_params = request.args.copy()
     query_params['_token'] = results.pagination_token
-    link_type = "next" if results.more_available else "sync"
+    link_type = 'next' if results.more_available else 'sync'
     next_url = url_for(request.url_rule.endpoint, _external=True, **query_params)
-    bundle_dict['link'] = [{"relation": link_type, "url": next_url}]
+    bundle_dict['link'] = [{'relation': link_type, 'url': next_url}]
   entries = []
   for item in results.items:
-    entries.append({"resource": item.to_client_json()})
+    entries.append({'resource': item.to_client_json()})
   bundle_dict['entry'] = entries
   return jsonify(bundle_dict)

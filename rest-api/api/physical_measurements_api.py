@@ -1,7 +1,7 @@
 import api_util
 import config
 
-from api.base_api import BaseApi, DEFAULT_MAX_RESULTS, _sync
+from api.base_api import BaseApi, DEFAULT_MAX_RESULTS, get_sync_results_for_request
 from api_util import HEALTHPRO, PTC_AND_HEALTHPRO, PTC
 from flask import request
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
@@ -28,4 +28,4 @@ class PhysicalMeasurementsApi(BaseApi):
 @api_util.auth_required(PTC)
 def sync_physical_measurements():
   max_results = config.getSetting(config.MEASUREMENTS_ENTITIES_PER_SYNC, 100)
-  return _sync(PhysicalMeasurementsDao(), max_results)
+  return get_sync_results_for_request(PhysicalMeasurementsDao(), max_results)
