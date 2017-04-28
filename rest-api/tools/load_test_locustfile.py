@@ -6,8 +6,11 @@ traffic (around 10qps) to stress test the system / simulate traffic spikes.
 
 import json
 import os
+import random
 import re
 import time
+from urllib import urlencode
+import urlparse
 
 from locust import Locust, TaskSet, events, task
 
@@ -19,7 +22,7 @@ class _ReportingClient(Client):
   """Wrapper around the API Client which reports request stats to Locust."""
   def request_json(self, path, **kwargs):
     event_data = {'request_type': 'REST', 'name': self._clean_up_url(path)}
-    event = events.request_failure
+    event = None
     try:
       start_seconds = time.time()
       resp = super(_ReportingClient, self).request_json(path, **kwargs)
@@ -27,14 +30,17 @@ class _ReportingClient(Client):
       event_data['response_length'] = len(json.dumps(resp))
       return resp
     except HttpException as e:
+      event = events.request_failure
       event_data['exception'] = e
     finally:
-      event_data['response_time'] = int(1000 * (time.time() - start_seconds))
-      event.fire(**event_data)
+      if event is not None:
+        event_data['response_time'] = int(1000 * (time.time() - start_seconds))
+        event.fire(**event_data)
 
   def _clean_up_url(self, path):
     # Replace varying IDs with a placeholder so counts get aggregated.
     name = re.sub('P[0-9]+', ':participant_id', path)
+
     # Convert absolute URLs to relative.
     strip_prefix = '%s/%s/' % (self.instance, self.base_path)
     if name.startswith(strip_prefix):
@@ -42,6 +48,14 @@ class _ReportingClient(Client):
     # Prefix relative URLs with the root path for readability.
     if not name.startswith('http'):
       name = '/' + name
+
+    # Replace query parameters with non-varying placeholders.
+    parsed = urlparse.urlparse(name)
+    query = urlparse.parse_qs(parsed.query)
+    for k in query.keys():
+      query[k] = 'X'
+    name = parsed._replace(query=urlencode(query)).geturl()
+
     return name
 
 
@@ -88,7 +102,7 @@ class SyncPhysicalMeasurementsUser(_AuthenticatedLocust):
 
 
 class SignupUser(_AuthenticatedLocust):
-  weight = 98
+  weight = 88
   # We estimate 100-1000 signups/day or 80-800s between signups (across all users).
   # Simulate 2 signups/s across a number of users for the load test.
   min_wait = weight * 500
@@ -99,3 +113,62 @@ class SignupUser(_AuthenticatedLocust):
       self.locust.participant_generator.generate_participant(
           True,  # include_physical_measurements
           True)  # include_biobank_orders
+
+
+class HealthProUser(_AuthenticatedLocust):
+  """Queries run by HealthPro: look up user by name + dob or ID, and get summaries."""
+  weight = 10
+  # We (probably over)estimate 100-1000 summary or participant queries/day (per task below).
+  min_wait = weight * 1000 * 40
+  max_wait = min_wait
+
+  def __init__(self, *args, **kwargs):
+    super(HealthProUser, self).__init__(*args, **kwargs)
+    self.participant_ids = []
+    self.participant_name_dobs = []
+    absolute_path = False
+    summary_url = 'ParticipantSummary?hpoId=PITT'
+    for _ in xrange(3):  # Fetch a few pages of participants.
+      resp = self.client.request_json(summary_url, absolute_path=absolute_path)
+      for summary in resp['entry']:
+        resource = summary['resource']
+        self.participant_ids.append(resource['participantId'])
+        try:
+          self.participant_name_dobs.append(
+              [resource[k] for k in ('firstName', 'lastName', 'dateOfBirth')])
+        except KeyError:
+          pass  # Ignore some participants, missing DOB.
+      if 'link' in resp and resp['link'][0]['relation'] == 'next':
+        summary_url = resp['link'][0]['url']
+        absolute_path = True
+      else:
+        break
+
+  class task_set(TaskSet):
+    @task(1)
+    def get_participant_by_id(self):
+      self.client.request_json('Participant/%s' % random.choice(self.locust.participant_ids))
+
+    @task(1)
+    def get_participant_summary_by_id(self):
+      self.client.request_json(
+          'Participant/%s/Summary' % random.choice(self.locust.participant_ids))
+
+    @task(1)
+    def look_up_participant_by_name_dob(self):
+      first_name, last_name, dob = random.choice(self.locust.participant_name_dobs)
+      self.client.request_json('ParticipantSummary?dateOfBirth=%s&lastName=%s' % (dob, last_name))
+
+    @task(1)
+    def query_summary(self):
+      available_params = (
+        ('hpoId', random.choice(('PITT', 'UNSET', 'COLUMBIA'))),
+        ('ageRange', random.choice(('0-17', '18-25', '66-75'))),
+        ('physicalMeasurementsStatus', 'COMPLETED'),
+        ('race', random.choice(('UNSET', 'ASIAN', 'WHITE', 'HISPANIC_LATINO_OR_SPANISH'))),
+        ('state', random.choice(('PIIState_MA', 'PIIState_CA', 'PIIState_TX'))),
+      )
+      search_params = dict(random.sample(
+          available_params,
+          random.randint(1, len(available_params))))
+      self.client.request_json('ParticipantSummary?%s' % urlencode(search_params))
