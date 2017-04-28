@@ -3,9 +3,7 @@
 
 import argparse
 import csv
-import dao.database_factory
 import logging
-import os
 import sys
 
 from dao.hpo_dao import HPODao
