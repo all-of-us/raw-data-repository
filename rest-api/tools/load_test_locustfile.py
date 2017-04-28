@@ -162,7 +162,6 @@ class HealthProUser(_AuthenticatedLocust):
     @task(1)
     def query_summary(self):
       available_params = (
-        ('hpoId', random.choice(('PITT', 'UNSET', 'COLUMBIA'))),
         ('ageRange', random.choice(('0-17', '18-25', '66-75'))),
         ('physicalMeasurementsStatus', 'COMPLETED'),
         ('race', random.choice(('UNSET', 'ASIAN', 'WHITE', 'HISPANIC_LATINO_OR_SPANISH'))),
@@ -171,4 +170,5 @@ class HealthProUser(_AuthenticatedLocust):
       search_params = dict(random.sample(
           available_params,
           random.randint(1, len(available_params))))
+      search_params['hpoId'] = random.choice(('PITT', 'UNSET', 'COLUMBIA'))
       self.client.request_json('ParticipantSummary?%s' % urlencode(search_params))
