@@ -10,7 +10,7 @@ def main(args):
   if args.num_participants == 0 and not args.create_biobank_samples:
     print "Usage: tools/generate_fake_data.py [--num_participants #] [--create_biobank_samples]"
     return
-  client = Client('rdr/v1', False, args.creds_file, args.instance)
+  client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
   total_participants_created = 0
   while total_participants_created < args.num_participants:
     participants_for_batch = min(MAX_PARTICIPANTS_PER_REQUEST,
@@ -28,7 +28,11 @@ def main(args):
                                            response['samples_path'])
     if 'localhost' in args.instance:
       print "Starting pipeline..."
-      offline_client = Client('offline', False, args.creds_file, args.instance)
+      offline_client = Client(
+          base_path='offline',
+          parse_cli=False,
+          creds_file=args.creds_file,
+          default_instance=args.instance)
       response = offline_client.request_json('BiobankSamplesImport', 'GET', cron=True)
       print "%d samples imported." % response['written']
     else:

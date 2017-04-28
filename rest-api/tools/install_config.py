@@ -14,7 +14,7 @@ from client.client import Client, HttpException
 BASE_CONFIG_FILE = 'config/base_config.json'
 
 def main(args):
-  client = Client('rdr/v1', False, args.creds_file, args.instance)
+  client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
   config_path = 'Config/%s' % args.key if args.key else 'Config'
   try:
     config_server = client.request_json(config_path, 'GET')
