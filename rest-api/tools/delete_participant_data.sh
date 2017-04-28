@@ -9,7 +9,3 @@ then
 else
   mysql -u root -proot < tools/delete_participant_data.sql
 fi
-
-
-
-
