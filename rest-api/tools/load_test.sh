@@ -39,6 +39,11 @@ if [ -z "$PROJECT" ]
 then
   usage
 fi
+if [[ "$PROJECT" =~ "prod" ]]
+then
+  echo "Forbidden to load test against production instance $PROJECT."
+  exit 1
+fi
 
 ACCOUNT=$USER@google.com
 CREDS_ACCOUNT=$ACCOUNT
