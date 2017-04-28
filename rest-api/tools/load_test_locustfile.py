@@ -1,4 +1,8 @@
-"""User behavior definition for load-testing via Locust. Run using tools/load_test.sh."""
+"""User behavior definition for load-testing via Locust. Run using tools/load_test.sh.
+
+We expect very low traffic (100-1K qpd for most endpoints). These load tests generate much more
+traffic (around 10qps) to stress test the system / simulate traffic spikes.
+"""
 
 import json
 import os
@@ -56,8 +60,8 @@ class _AuthenticatedLocust(Locust):
 class VersionCheckUser(_AuthenticatedLocust):
   # 1 out of 100 users (Locust count of 100 recommended in load_test.sh).
   weight = 1
-  # Hit the root/version endpoint once per minute.
-  min_wait = 1000 * 60
+  # Hit the root/version endpoint every 10s.
+  min_wait = 1000 * 10
   max_wait = min_wait
   class task_set(TaskSet):  # The "task_set" field name is what's used by the Locust superclass.
     @task(1)  # task weight: larger number == pick this task more often
@@ -67,9 +71,7 @@ class VersionCheckUser(_AuthenticatedLocust):
 
 class SyncPhysicalMeasurementsUser(_AuthenticatedLocust):
   weight = 1
-  # We expect 1 sync request/minute.
-  min_wait = 1000 * 60
-  max_wait = min_wait
+  # In practice we expect 1 sync request/minute. Use the default 1s wait time here.
   class task_set(TaskSet):
     @task(1)
     def get_sync(self):
@@ -88,7 +90,8 @@ class SyncPhysicalMeasurementsUser(_AuthenticatedLocust):
 class SignupUser(_AuthenticatedLocust):
   weight = 98
   # We estimate 100-1000 signups/day or 80-800s between signups (across all users).
-  min_wait = weight * 1000 * 80
+  # Simulate 2 signups/s across a number of users for the load test.
+  min_wait = weight * 500
   max_wait = min_wait
   class task_set(TaskSet):
     @task(1)
