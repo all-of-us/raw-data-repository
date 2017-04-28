@@ -27,11 +27,12 @@ def main(args):
         organization_type = OrganizationType(row['Type'])
         existing_hpo = existing_hpo_map.get(name)
         if existing_hpo:
+          existing_type = existing_hpo.organizationType or OrganizationType.UNSET
           if (existing_hpo.displayName != display_name or
-              existing_hpo.organizationType != organization_type):
+              existing_type != organization_type):
             existing_hpo.displayName = display_name
             existing_hpo.organizationType = organization_type
-            hpo_dao.upsert_with_session(session, existing_hpo)
+            hpo_dao.update_with_session(session, existing_hpo)
             logging.info("Updating HPO: %s" % name)
         else:
           hpo = HPO(hpoId=hpo_id, name=name, displayName=display_name,
