@@ -1,4 +1,4 @@
-from base_dao import UpdatableDao
+from base_dao import UpsertableDao
 from singletons import get_cache
 from sqlalchemy.orm.session import make_transient
 
@@ -25,7 +25,7 @@ class EntityCache(object):
 
 SINGLETON_KEY = '0'
 
-class CacheAllDao(UpdatableDao):
+class CacheAllDao(UpsertableDao):
   """A DAO that loads all values from the database and caches them in memory for some period of time
   when the cache is empty and is being used.
   Used for tables that have relatively few rows and updates and high read usage.
