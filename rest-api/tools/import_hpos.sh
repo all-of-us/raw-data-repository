@@ -37,4 +37,5 @@ else
   fi
 fi
 
-(source tools/set_path.sh; python tools/import_hpos.py --file $FILE)
+source tools/set_path.sh
+python tools/import_hpos.py --file $FILE

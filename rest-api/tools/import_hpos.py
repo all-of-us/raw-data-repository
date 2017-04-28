@@ -14,9 +14,8 @@ from participant_enums import OrganizationType
 
 def main(args):
   logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(levelname)s: %(message)s')
-  dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
   with open(args.file, 'r') as csv_file:
-    reader = csv.DictReader(csv_file, delimiter=',')
+    reader = csv.DictReader(csv_file)
     hpo_dao = HPODao()
     existing_hpo_map = {hpo.name: hpo for hpo in hpo_dao.get_all()}
     hpo_id = len(existing_hpo_map)
@@ -30,17 +29,19 @@ def main(args):
           existing_type = existing_hpo.organizationType or OrganizationType.UNSET
           if (existing_hpo.displayName != display_name or
               existing_type != organization_type):
+            existing_hpo_dict = existing_hpo.asdict()
             existing_hpo.displayName = display_name
             existing_hpo.organizationType = organization_type
             hpo_dao.update_with_session(session, existing_hpo)
-            logging.info("Updating HPO: %s" % name)
+            logging.info('Updating HPO: old = %s, new = %s', existing_hpo_dict,
+                         existing_hpo.asdict())
         else:
           hpo = HPO(hpoId=hpo_id, name=name, displayName=display_name,
                     organizationType=organization_type)
           hpo_dao.insert_with_session(session, hpo)
-          logging.info("Inserting HPO: %s" % name)
+          logging.info('Inserting HPO: %s', hpo.asdict())
           hpo_id += 1
-  logging.info("Done.")
+  logging.info('Done.')
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
