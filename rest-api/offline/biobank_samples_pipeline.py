@@ -157,18 +157,18 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing):
   """
   with database_factory.get_database().session() as session:
     session.execute(_CREATE_ORDERS_BY_BIOBANK_ID_MYSQL)
-    session.execute(replace_isodate(_CREATE_RECONCILIATION_VIEW_MYSQL),
+    session.execute(replace_isodate(_CREATE_RECONCILIATION_MYSQL),
                     {"biobank_id_prefix": get_biobank_id_prefix()})
     for sql, file_name in (
-        (_SELECT_FROM_VIEW_MYSQL_RECEIVED, path_received),
-        (_SELECT_FROM_VIEW_MYSQL_LATE, path_late),
-        (_SELECT_FROM_VIEW_MYSQL_MISSING, path_missing)):
+        (_SELECT_MYSQL_RECEIVED, path_received),
+        (_SELECT_MYSQL_LATE, path_late),
+        (_SELECT_MYSQL_MISSING, path_missing)):
       exporter.run_export_with_session(file_name, session, sql)
 
 
 # Gets orders with ordered samples (child rows), and keys by biobank_id to match the desired output.
 _CREATE_ORDERS_BY_BIOBANK_ID_MYSQL = """
-CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW orders_by_biobank_id AS
+CREATE TEMPORARY TABLE orders_by_biobank_id AS
   SELECT
     biobank_id biobank_id_from_order,
     biobank_order_id,
@@ -199,8 +199,8 @@ CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW orders_by_biobank_id AS
 # MySQL does not support FULL OUTER JOIN, so instead we UNION a RIGHT and LEFT OUTER JOIN.
 # Index of 'biobank_id' must match index 0 above.
 # Biobank ID formatting must match to_client_biobank_id.
-_CREATE_RECONCILIATION_VIEW_MYSQL = """
-CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
+_CREATE_RECONCILIATION_MYSQL = """
+CREATE TEMPORARY TABLE reconciliation_data AS
   SELECT
     CONCAT(
         :biobank_id_prefix,
@@ -250,7 +250,7 @@ ORDER BY
 
 
 # Gets all sample/order pairs where everything arrived, regardless of timing.
-_SELECT_FROM_VIEW_MYSQL_RECEIVED = """
+_SELECT_MYSQL_RECEIVED = """
 SELECT * FROM reconciliation_data
 WHERE
   received_test IS NOT NULL
@@ -258,13 +258,13 @@ WHERE
 """ + _ORDER_BY
 
 # Gets orders for which the samples arrived, but they arrived late.
-_SELECT_FROM_VIEW_MYSQL_LATE = """
+_SELECT_MYSQL_LATE = """
 SELECT * FROM reconciliation_data WHERE elapsed_hours > 24
 """ + _ORDER_BY
 
 
 # Gets samples or orders where something has gone missing.
-_SELECT_FROM_VIEW_MYSQL_MISSING = """
+_SELECT_MYSQL_MISSING = """
 SELECT * FROM reconciliation_data
 WHERE
   (sent_count != received_count)
