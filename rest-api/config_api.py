@@ -32,11 +32,8 @@ def auth_required_config_admin(func):
     return func(*args, **kwargs)
   return wrapped
 
-
-def check_config_admin():
-  """Raises Unauthorized unless the caller is a config admin."""
-  app_id = app_identity.get_application_id()
-  user_email = api_util.get_oauth_id()
+def is_config_admin(user_email):
+  app_id = app_identity.get_application_id()  
 
   # Allow clients to simulate an unauthentiated request (for testing)
   # becaues we haven't found another way to create an unauthenticated request
@@ -50,12 +47,18 @@ def check_config_admin():
     config_admin = CONFIG_ADMIN_MAP.get(
         app_id,
         'configurator@{}.iam.gserviceaccount.com'.format(app_id))
-    if user_email == config_admin:
-      logging.info('User %r ALLOWED for config endpoint on %r' % (user_email, app_id))
-      return
-  logging.info('User %r NOT ALLOWED for config endpoint on %r.' % (user_email, app_id))
-  raise Unauthorized('Forbidden.')
+    if user_email == config_admin:      
+      return True
+  return False 
 
+def check_config_admin():
+  """Raises Unauthorized unless the caller is a config admin."""
+  user_email = api_util.get_oauth_id()
+  if is_config_admin(user_email):
+    logging.info('User %r ALLOWED for config endpoint' % user_email)
+    return
+  logging.info('User %r NOT ALLOWED for config endpoint' % user_email)
+  raise Unauthorized('Forbidden.')
 
 class ConfigApi(base_api.BaseApi):
   """Api handlers for retrieving and setting config values."""
