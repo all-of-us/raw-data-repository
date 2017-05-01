@@ -171,7 +171,7 @@ class CodeDao(CacheAllDao):
           if existing_code:
             result_map[(system, value)] = code.codeId
             continue
-          
+
           if not add_codes_if_missing:
             raise BadRequest("Couldn't find code: system = %s, value = %s" % (system, value))
           # If it's not in the database, add it.

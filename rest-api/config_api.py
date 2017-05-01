@@ -33,7 +33,7 @@ def auth_required_config_admin(func):
   return wrapped
 
 def is_config_admin(user_email):
-  app_id = app_identity.get_application_id()  
+  app_id = app_identity.get_application_id()
 
   # Allow clients to simulate an unauthentiated request (for testing)
   # becaues we haven't found another way to create an unauthenticated request
@@ -47,9 +47,9 @@ def is_config_admin(user_email):
     config_admin = CONFIG_ADMIN_MAP.get(
         app_id,
         'configurator@{}.iam.gserviceaccount.com'.format(app_id))
-    if user_email == config_admin:      
+    if user_email == config_admin:
       return True
-  return False 
+  return False
 
 def check_config_admin():
   """Raises Unauthorized unless the caller is a config admin."""

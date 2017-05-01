@@ -54,10 +54,10 @@ class QuestionnaireResponse(Base):
 
     # Extract a code map and answers from the questionnaire response.
     code_map, answers = QuestionnaireResponse._extract_codes_and_answers(fhir_qr.group,
-                                                                         questionnaire)          
+                                                                         questionnaire)
     from dao.code_dao import CodeDao
     # Get or insert codes, and retrieve their database IDs.
-    code_id_map = CodeDao().get_or_add_codes(code_map, 
+    code_id_map = CodeDao().get_or_add_codes(code_map,
                                              add_codes_if_missing=add_codes_if_missing(client_id))
 
      # Now add the child answers, using the IDs in code_id_map
