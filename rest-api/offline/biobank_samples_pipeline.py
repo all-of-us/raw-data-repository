@@ -156,14 +156,22 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing):
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
   """
   with database_factory.get_database().session() as session:
-    session.execute(_CREATE_ORDERS_BY_BIOBANK_ID_MYSQL)
-    session.execute(replace_isodate(_CREATE_RECONCILIATION_MYSQL),
-                    {"biobank_id_prefix": get_biobank_id_prefix()})
-    for sql, file_name in (
-        (_SELECT_MYSQL_RECEIVED, path_received),
-        (_SELECT_MYSQL_LATE, path_late),
-        (_SELECT_MYSQL_MISSING, path_missing)):
-      exporter.run_export_with_session(file_name, session, sql)
+    # Without begin_nested, there's an error: "CREATE TEMPORARY TABLE can only be executed
+    # outside transactional context".
+    session.begin_nested()
+    try:
+      session.execute(_CREATE_ORDERS_BY_BIOBANK_ID_MYSQL)
+      session.execute(replace_isodate(_CREATE_RECONCILIATION_MYSQL),
+                      {"biobank_id_prefix": get_biobank_id_prefix()})
+      for sql, file_name in (
+          (_SELECT_MYSQL_RECEIVED, path_received),
+          (_SELECT_MYSQL_LATE, path_late),
+          (_SELECT_MYSQL_MISSING, path_missing)):
+        exporter.run_export_with_session(file_name, session, sql)
+      session.commit()
+    except:
+      session.rollback()
+      raise
 
 
 # Gets orders with ordered samples (child rows), and keys by biobank_id to match the desired output.
