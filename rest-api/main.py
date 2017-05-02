@@ -34,7 +34,10 @@ def _log_request_exception(sender, exception, **extra):  # pylint: disable=unuse
   for HTTPExceptions.
   """
   if isinstance(exception, HTTPException):
-    logging.info('%s: %s', exception, exception.description)
+    # Log everything at error. This handles 400s which, since we have few/predefined clients,
+    # we want to notice (and we don't see client-side logs); Stackdriver error reporting only
+    # reports error logs with stack traces. (500s are logged with stacks by Flask automatically.)
+    logging.error('%s: %s', exception, exception.description, exc_info=True)
 
 got_request_exception.connect(_log_request_exception, app)
 
