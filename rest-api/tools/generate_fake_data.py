@@ -24,19 +24,8 @@ def main(args):
   if args.create_biobank_samples:
     request_body = {'create_biobank_samples': 'all'}
     response = client.request_json('DataGen', 'POST', request_body)
-    print "%d samples generated at %s." % (response['num_samples'],
-                                           response['samples_path'])
-    if 'localhost' in args.instance:
-      print "Starting pipeline..."
-      offline_client = Client(
-          base_path='offline',
-          parse_cli=False,
-          creds_file=args.creds_file,
-          default_instance=args.instance)
-      response = offline_client.request_json('BiobankSamplesImport', 'GET', cron=True)
-      print "%d samples imported." % response['written']
-    else:
-      print "Use the cron tab in AppEngine to start the biobank samples pipeline."
+    print "Biobank samples are being generated asynchronously."
+    print "Wait until done, then use the cron tab in AppEngine to start the samples pipeline." 
   print "Done."
 
 if __name__ == '__main__':
