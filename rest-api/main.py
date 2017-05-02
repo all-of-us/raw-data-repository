@@ -27,7 +27,7 @@ app = Flask(__name__)
 app.url_map.converters['participant_id'] = ParticipantIdConverter
 
 
-def _log_request_exception(sender, exception, **extra):
+def _log_request_exception(sender, exception, **extra):  # pylint: disable=unused-argument
   """Logs HTTPExceptions.
 
   flask_restful automatically returns exception messages for JSON endpoints, but forgoes logs
