@@ -18,8 +18,7 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import from_client_biobank_id, get_biobank_id_prefix
-from offline.sql_exporter import SqlExporter
-
+from offline.sql_exporter import SqlExporter, CompositeSqlExportWriter
 
 # Format for dates in output filenames for the reconciliation report.
 _FILENAME_DATE_FORMAT = '%Y-%m-%d'
@@ -158,125 +157,114 @@ def _get_report_paths(report_datetime):
           _REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
       for report_name in ('received', 'over_24h', 'missing')]
 
-
 def _query_and_write_reports(exporter, path_received, path_late, path_missing):
   """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
   """
-  with database_factory.get_database().session() as session:
-    session.execute(_CREATE_ORDERS_BY_BIOBANK_ID_MYSQL)
-    session.execute(replace_isodate(_CREATE_RECONCILIATION_VIEW_MYSQL),
-                    {"biobank_id_prefix": get_biobank_id_prefix()})
-    for sql, file_name in (
-        (_SELECT_FROM_VIEW_MYSQL_RECEIVED, path_received),
-        (_SELECT_FROM_VIEW_MYSQL_LATE, path_late),
-        (_SELECT_FROM_VIEW_MYSQL_MISSING, path_missing)):
-      exporter.run_export_with_session(file_name, session, sql)
+  # Open three files and a database session; run the reconciliation query and pipe the output
+  # to the files, using per-file predicates to filter out results.
+  with exporter.open_writer(path_received, _RECEIVED_PREDICATE) as received_writer, \
+       exporter.open_writer(path_late, _LATE_PREDICATE) as late_writer, \
+       exporter.open_writer(path_missing, _MISSING_PREDICATE) as missing_writer, \
+       database_factory.get_database().session() as session:
+    writer = CompositeSqlExportWriter([received_writer, late_writer, missing_writer])
+    exporter.run_export_with_session(writer, session, replace_isodate(_RECONCILIATION_REPORT_SQL),
+                                     {"biobank_id_prefix": get_biobank_id_prefix()})
 
+# Indexes from the SQL query below; used in predicates.
+_SENT_COUNT_INDEX = 2
+_SENT_FINALIZED_INDEX = 5
+_RECEIVED_TEST_INDEX = 7
+_RECEIVED_COUNT_INDEX = 8
+_ELAPSED_HOURS_INDEX = 11
 
-# Gets orders with ordered samples (child rows), and keys by biobank_id to match the desired output.
-_CREATE_ORDERS_BY_BIOBANK_ID_MYSQL = """
-CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW orders_by_biobank_id AS
-  SELECT
-    biobank_id biobank_id_from_order,
-    biobank_order_id,
-    source_site_value,
-    biobank_ordered_sample.test order_test,
-    biobank_ordered_sample.collected,
-    biobank_ordered_sample.finalized
-  FROM
-   (SELECT
-      participant.biobank_id,
-      biobank_order.biobank_order_id,
-      biobank_order.source_site_value
-    FROM
+_ORDER_JOINS = """
       biobank_order
-    LEFT JOIN
+    INNER JOIN
       participant
     ON
       biobank_order.participant_id = participant.participant_id
-    ) orders_rekeyed_by_biobank_id
-  JOIN
-    biobank_ordered_sample
-  ON
-    biobank_order_id = order_id
+    INNER JOIN
+      biobank_ordered_sample
+    ON
+      biobank_order.biobank_order_id = biobank_ordered_sample.order_id
 """
 
+_STORED_SAMPLE_JOIN_CRITERIA = """
+      biobank_stored_sample.biobank_id = participant.biobank_id
+      AND biobank_stored_sample.test = biobank_ordered_sample.test
+"""
 
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
-# MySQL does not support FULL OUTER JOIN, so instead we UNION a RIGHT and LEFT OUTER JOIN.
-# Index of 'biobank_id' must match index 0 above.
+# MySQL does not support FULL OUTER JOIN, so instead we UNION ALL a LEFT OUTER JOIN
+# with a SELECT... WHERE NOT EXISTS (the latter for cases where we have a sample but no matching
+# ordered sample.)
+# Column order should match _*_INDEX constants above.
 # Biobank ID formatting must match to_client_biobank_id.
-_CREATE_RECONCILIATION_VIEW_MYSQL = """
-CREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW reconciliation_data AS
+_RECONCILIATION_REPORT_SQL = ("""
   SELECT
-    CONCAT(
-        :biobank_id_prefix,
-        CASE WHEN biobank_id_from_order IS NOT NULL THEN biobank_id_from_order
-        ELSE biobank_id END) biobank_id,
-
+    CONCAT(:biobank_id_prefix, raw_biobank_id) biobank_id,
     order_test sent_test,
     COUNT(DISTINCT biobank_order_id) sent_count,
     GROUP_CONCAT(DISTINCT biobank_order_id) sent_order_id,
     ISODATE[MAX(collected)] sent_collection_time,
     ISODATE[MAX(finalized)] sent_finalized_time,
     GROUP_CONCAT(DISTINCT source_site_value) site_id,
-
     test received_test,
     COUNT(DISTINCT biobank_stored_sample_id) received_count,
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id) received_sample_id,
     ISODATE[MAX(confirmed)] received_time,
-
     TIMESTAMPDIFF(HOUR, MAX(collected), MAX(confirmed)) elapsed_hours
   FROM
-   (SELECT * FROM
-      orders_by_biobank_id
+   (SELECT
+      participant.biobank_id raw_biobank_id,
+      biobank_order.biobank_order_id,
+      biobank_order.source_site_value,
+      biobank_ordered_sample.test order_test,
+      biobank_ordered_sample.collected,
+      biobank_ordered_sample.finalized,
+      biobank_stored_sample.biobank_stored_sample_id,
+      biobank_stored_sample.test,
+      biobank_stored_sample.confirmed
+    FROM """ + _ORDER_JOINS + """
     LEFT OUTER JOIN
       biobank_stored_sample
-    ON
-      biobank_stored_sample.biobank_id = biobank_id_from_order
-      AND biobank_stored_sample.test = order_test
-    UNION
-    SELECT * FROM
-      orders_by_biobank_id
-    RIGHT OUTER JOIN
+    ON """ + _STORED_SAMPLE_JOIN_CRITERIA + """
+    UNION ALL
+    SELECT
+      biobank_stored_sample.biobank_id raw_biobank_id,
+      NULL biobank_order_id,
+      NULL source_site_value,
+      NULL order_test,
+      NULL collected,
+      NULL finalized,
+      biobank_stored_sample.biobank_stored_sample_id,
+      biobank_stored_sample.test,
+      biobank_stored_sample.confirmed
+    FROM
       biobank_stored_sample
-    ON
-      biobank_stored_sample.biobank_id = biobank_id_from_order
-      AND biobank_stored_sample.test = order_test
-    ) reconciled
+    WHERE NOT EXISTS (
+      SELECT 0 FROM """ + _ORDER_JOINS + " WHERE " + _STORED_SAMPLE_JOIN_CRITERIA + """
+    )
+  ) reconciled
   GROUP BY
-    reconciled.biobank_id_from_order,
-    reconciled.biobank_id,
-    reconciled.order_test,
-    reconciled.test
-"""
-_ORDER_BY = """
-ORDER BY
-  sent_collection_time, received_time, sent_order_id, received_sample_id
-"""
-
+    biobank_id, order_test, test
+  ORDER BY
+    ISODATE[MAX(collected)], ISODATE[MAX(confirmed)], GROUP_CONCAT(DISTINCT biobank_order_id),
+    GROUP_CONCAT(DISTINCT biobank_stored_sample_id)
+""")
 
 # Gets all sample/order pairs where everything arrived, regardless of timing.
-_SELECT_FROM_VIEW_MYSQL_RECEIVED = """
-SELECT * FROM reconciliation_data
-WHERE
-  received_test IS NOT NULL
-  AND sent_count = received_count
-""" + _ORDER_BY
+_RECEIVED_PREDICATE = lambda result: (result[_RECEIVED_TEST_INDEX] and
+                                      result[_SENT_COUNT_INDEX] == result[_RECEIVED_COUNT_INDEX])
 
 # Gets orders for which the samples arrived, but they arrived late.
-_SELECT_FROM_VIEW_MYSQL_LATE = """
-SELECT * FROM reconciliation_data WHERE elapsed_hours > 24
-""" + _ORDER_BY
+_LATE_PREDICATE = lambda result: (result[_ELAPSED_HOURS_INDEX] and
+                                  int(result[_ELAPSED_HOURS_INDEX]) > 24)
 
 
 # Gets samples or orders where something has gone missing.
-_SELECT_FROM_VIEW_MYSQL_MISSING = """
-SELECT * FROM reconciliation_data
-WHERE
-  (sent_count != received_count)
-  OR
-  (sent_finalized_time IS NOT NULL AND received_test IS NULL)
-""" + _ORDER_BY
+_MISSING_PREDICATE = lambda result: (result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
+                                     (result[_SENT_FINALIZED_INDEX] and
+                                      not result[_RECEIVED_TEST_INDEX]))

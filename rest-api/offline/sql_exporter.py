@@ -10,6 +10,33 @@ from sqlalchemy import text
 DELIMITER = ','
 _BATCH_SIZE = 1000
 
+class SqlExportFileWriter(object):
+  """Writes rows to a CSV file, optionally filtering on a predicate."""
+  def __init__(self, dest, predicate=None):
+    self._writer = csv.writer(dest, delimiter=DELIMITER)
+    self._predicate = predicate
+
+  def write_header(self, keys):
+    self._writer.writerow(keys)
+
+  def write_rows(self, results):
+    if self._predicate:
+      results = [result for result in results if self._predicate(result)]
+    if results:
+      self._writer.writerows(results)
+
+class CompositeSqlExportWriter(object):
+
+  def __init__(self, writers):
+    self._writers = writers
+
+  def write_header(self, keys):
+    for writer in self._writers:
+      writer.write_header(keys)
+
+  def write_rows(self, results):
+    for writer in self._writers:
+      writer.write_rows(results)
 
 class SqlExporter(object):
   """Executes a SQL query, fetches results in batches, and writes output to a CSV in GCS."""
@@ -17,29 +44,32 @@ class SqlExporter(object):
     self._bucket_name = bucket_name
 
   def run_export(self, file_name, sql, query_params=None):
-    with database_factory.get_database().session() as session:
-      self.run_export_with_session(file_name, session, sql, query_params=query_params)
+    with self.open_writer(file_name) as writer:
+      self.run_export_with_writer(writer, sql, query_params)
 
-  def run_export_with_session(self, file_name, session, sql, query_params=None):
+  def run_export_with_writer(self, writer, sql, query_params):
+    with database_factory.get_database().session() as session:
+      self.run_export_with_session(writer, session, sql, query_params=query_params)
+
+  def run_export_with_session(self, writer, session, sql, query_params=None):
     # Each query from AppEngine standard environment must finish in 60 seconds.
     # If we start running into trouble with that, we'll either
     # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.
     cursor = session.execute(text(sql), params=query_params)
     try:
-      with self._open_writer(file_name) as writer:
-        writer.writerow(cursor.keys())
+      writer.write_header(cursor.keys())
+      results = cursor.fetchmany(_BATCH_SIZE)
+      while results:
+        writer.write_rows(results)
         results = cursor.fetchmany(_BATCH_SIZE)
-        while results:
-          writer.writerows(results)
-          results = cursor.fetchmany(_BATCH_SIZE)
     finally:
       cursor.close()
 
   @contextlib.contextmanager
-  def _open_writer(self, file_name):
+  def open_writer(self, file_name, predicate=None):
     gcs_path = '/%s/%s' % (self._bucket_name, file_name)
     logging.info('Exporting data to %s...', gcs_path)
     with cloudstorage_api.open(gcs_path, mode='w') as dest:
-      writer = csv.writer(dest, delimiter=DELIMITER)
+      writer = SqlExportFileWriter(dest, predicate)
       yield writer
     logging.info('Export to %s complete.', gcs_path)
