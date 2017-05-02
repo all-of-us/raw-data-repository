@@ -34,7 +34,9 @@ def _log_request_exception(sender, exception, **extra):  # pylint: disable=unuse
   for HTTPExceptions.
   """
   if isinstance(exception, HTTPException):
-    logging.info('%s: %s', exception, exception.description)
+    # Log everything at warning. This handles 400s which, since we have few/predefined clients,
+    # we want to notice (and we don't see client-side logs). (500s are logged with stacks by Flask.)
+    logging.warning('%s: %s', exception, exception.description)
 
 got_request_exception.connect(_log_request_exception, app)
 
