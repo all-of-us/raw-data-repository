@@ -11,30 +11,31 @@ DELIMITER = ','
 _BATCH_SIZE = 1000
 
 class SqlExportFileWriter(object):
+  """Writes rows to a CSV file, optionally filtering on a predicate."""
   def __init__(self, dest, predicate=None):
-    self.writer = csv.writer(dest, delimiter=DELIMITER)
-    self.predicate = predicate
+    self._writer = csv.writer(dest, delimiter=DELIMITER)
+    self._predicate = predicate
 
   def write_header(self, keys):
-    self.writer.writerow(keys)
+    self._writer.writerow(keys)
 
   def write_rows(self, results):
-    if self.predicate:
-      results = [result for result in results if self.predicate(result)]
+    if self._predicate:
+      results = [result for result in results if self._predicate(result)]
     if results:
-      self.writer.writerows(results)
+      self._writer.writerows(results)
 
 class CompositeSqlExportWriter(object):
 
   def __init__(self, writers):
-    self.writers = writers
+    self._writers = writers
 
   def write_header(self, keys):
-    for writer in self.writers:
+    for writer in self._writers:
       writer.write_header(keys)
 
   def write_rows(self, results):
-    for writer in self.writers:
+    for writer in self._writers:
       writer.write_rows(results)
 
 class SqlExporter(object):
