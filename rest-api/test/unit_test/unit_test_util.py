@@ -24,6 +24,7 @@ import config
 import config_api
 import executors
 import main
+import model
 import dao.base_dao
 import singletons
 
@@ -48,6 +49,8 @@ class TestBase(unittest.TestCase):
     # Allow printing the full diff report on errors.
     self.maxDiff = None
     self.setup_fake()
+    # Always add codes if missing when handling questionnaire responses.
+    model.questionnaire_response.add_codes_if_missing = lambda email:True
 
   def setup_fake(self):
     # Make a faker which produces unicode text available.

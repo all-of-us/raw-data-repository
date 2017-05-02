@@ -1,5 +1,6 @@
 import json
 
+from config_api import is_config_admin
 from model.code import CodeType
 from model.base import Base
 from model.utils import UTCDateTime
@@ -56,7 +57,8 @@ class QuestionnaireResponse(Base):
                                                                          questionnaire)
     from dao.code_dao import CodeDao
     # Get or insert codes, and retrieve their database IDs.
-    code_id_map = CodeDao().get_or_add_codes(code_map)
+    code_id_map = CodeDao().get_or_add_codes(code_map,
+                                             add_codes_if_missing=add_codes_if_missing(client_id))
 
      # Now add the child answers, using the IDs in code_id_map
     QuestionnaireResponse._add_answers(qr, code_id_map, answers)
@@ -198,3 +200,8 @@ class QuestionnaireResponseAnswer(Base):
   valueString = Column('value_string', String(1024))
   valueDate = Column('value_date', Date)
   valueDateTime = Column('value_datetime', UTCDateTime)
+
+def add_codes_if_missing(client_id):
+  # Don't add missing codes for questionnaire responses submitted by the config admin
+  # (our command line tools.) Tests override this to return true.
+  return not is_config_admin(client_id)

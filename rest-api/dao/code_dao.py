@@ -146,7 +146,7 @@ class CodeDao(CacheAllDao):
       return self.find_ancestor_of_type(code.parent, code_type)
     return None
 
-  def get_or_add_codes(self, code_map):
+  def get_or_add_codes(self, code_map, add_codes_if_missing=True):
     """Accepts a map of (system, value) -> (display, code_type, parent_id) for codes found in a
     questionnaire or questionnaire response.
 
@@ -172,6 +172,8 @@ class CodeDao(CacheAllDao):
             result_map[(system, value)] = code.codeId
             continue
 
+          if not add_codes_if_missing:
+            raise BadRequest("Couldn't find code: system = %s, value = %s" % (system, value))
           # If it's not in the database, add it.
           display, code_type, parent_id = code_map[(system, value)]
           code = Code(system=system, value=value, display=display,
