@@ -122,41 +122,44 @@ class HealthProUser(_AuthenticatedLocust):
   min_wait = weight * 1000 * 40
   max_wait = min_wait
 
-  def __init__(self, *args, **kwargs):
-    super(HealthProUser, self).__init__(*args, **kwargs)
-    self.participant_ids = []
-    self.participant_name_dobs = []
-    absolute_path = False
-    summary_url = 'ParticipantSummary?hpoId=PITT'
-    for _ in xrange(3):  # Fetch a few pages of participants.
-      resp = self.client.request_json(summary_url, absolute_path=absolute_path)
-      for summary in resp['entry']:
-        resource = summary['resource']
-        self.participant_ids.append(resource['participantId'])
-        try:
-          self.participant_name_dobs.append(
-              [resource[k] for k in ('firstName', 'lastName', 'dateOfBirth')])
-        except KeyError:
-          pass  # Ignore some participants, missing DOB.
-      if 'link' in resp and resp['link'][0]['relation'] == 'next':
-        summary_url = resp['link'][0]['url']
-        absolute_path = True
-      else:
-        break
-
   class task_set(TaskSet):
+    def __init__(self, *args, **kwargs):
+      super(HealthProUser.task_set, self).__init__(*args, **kwargs)
+      self.participant_ids = []
+      self.participant_name_dobs = []
+
+    def on_start(self):
+      """Fetches some participant data from the work queue API for subsequent tasks."""
+      absolute_path = False
+      summary_url = 'ParticipantSummary?hpoId=PITT'
+      for _ in xrange(3):  # Fetch a few pages of participants.
+        resp = self.client.request_json(summary_url, absolute_path=absolute_path)
+        for summary in resp['entry']:
+          resource = summary['resource']
+          self.participant_ids.append(resource['participantId'])
+          try:
+            self.participant_name_dobs.append(
+                [resource[k] for k in ('firstName', 'lastName', 'dateOfBirth')])
+          except KeyError:
+            pass  # Ignore some participants, missing DOB.
+        if 'link' in resp and resp['link'][0]['relation'] == 'next':
+          summary_url = resp['link'][0]['url']
+          absolute_path = True
+        else:
+          break
+
     @task(1)
     def get_participant_by_id(self):
-      self.client.request_json('Participant/%s' % random.choice(self.locust.participant_ids))
+      self.client.request_json('Participant/%s' % random.choice(self.participant_ids))
 
     @task(1)
     def get_participant_summary_by_id(self):
       self.client.request_json(
-          'Participant/%s/Summary' % random.choice(self.locust.participant_ids))
+          'Participant/%s/Summary' % random.choice(self.participant_ids))
 
     @task(1)
     def look_up_participant_by_name_dob(self):
-      _, last_name, dob = random.choice(self.locust.participant_name_dobs)
+      _, last_name, dob = random.choice(self.participant_name_dobs)
       self.client.request_json('ParticipantSummary?dateOfBirth=%s&lastName=%s' % (dob, last_name))
 
     @task(1)
