@@ -25,7 +25,7 @@ from offline.sql_exporter import SqlExporter
 _FILENAME_DATE_FORMAT = '%Y-%m-%d'
 # The output of the reconciliation report goes into this subdirectory within the upload bucket.
 _REPORT_SUBDIR = 'reconciliation'
-
+_BATCH_SIZE = 1000
 
 class DataError(RuntimeError):
   """Bad sample data during import."""
@@ -87,10 +87,19 @@ def _upsert_samples_from_csv(csv_reader):
         'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
   samples_dao = BiobankStoredSampleDao()
   biobank_id_prefix = get_biobank_id_prefix()
+  written = 0
   try:
-    return samples_dao.upsert_all(
-        (s for s in (_create_sample_from_row(row, biobank_id_prefix) for row in csv_reader)
-         if s is not None))
+    samples = []
+    for row in csv_reader:
+      sample = _create_sample_from_row(row, biobank_id_prefix)
+      if sample:
+        samples.append(sample)
+        if len(samples) >= _BATCH_SIZE:
+          written += samples_dao.upsert_all(samples)
+          samples = []
+    if samples:
+      written += samples_dao.upsert_all(samples)
+    return written
   except ValueError, e:
     raise DataError(e)
 
