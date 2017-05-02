@@ -105,8 +105,9 @@ def _is_self_request():
       and config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False)
       and not request.headers.get('unauthenticated'))
 
+
 def get_validated_user_info():
-  """Returns a valid (user email, user info), or raises Unauthorized."""
+  """Returns a valid (user email, user info), or raises Unauthorized or Forbidden."""
   user_email = get_oauth_id()
 
   # Allow clients to simulate an unauthentiated request (for testing)
@@ -114,20 +115,22 @@ def get_validated_user_info():
   # when using dev_appserver. When client tests are checking to ensure that an
   # unauthenticated requests gets rejected, they helpfully add this header.
   # The `application_id` check ensures this feature only works in dev_appserver.
-  if request.headers.get('unauthenticated') and app_identity.get_application_id() == "None":
+  if request.headers.get('unauthenticated') and app_identity.get_application_id() == 'None':
     user_email = None
+  if user_email is None:
+    raise Unauthorized('No OAuth user found.')
 
-  if user_email:
-    user_info = lookup_user_info(user_email)
-    if user_info:
-      enforce_ip_whitelisted(request.remote_addr, get_whitelisted_ips(user_info))
-      enforce_appid_whitelisted(request.headers.get('X-Appengine-Inbound-Appid'),
-                                get_whitelisted_appids(user_info))
-      logging.info('User {} ALLOWED'.format(user_email))
-      return (user_email, user_info)
+  user_info = lookup_user_info(user_email)
+  if user_info:
+    enforce_ip_whitelisted(request.remote_addr, get_whitelisted_ips(user_info))
+    enforce_appid_whitelisted(request.headers.get('X-Appengine-Inbound-Appid'),
+                              get_whitelisted_appids(user_info))
+    logging.info('User %r ALLOWED', user_email)
+    return (user_email, user_info)
 
-  logging.info('User {} NOT ALLOWED'.format(user_email))
+  logging.info('User %r NOT ALLOWED' % user_email)
   raise Forbidden()
+
 
 def get_whitelisted_ips(user_info):
   if not user_info.get('whitelisted_ip_ranges'):
