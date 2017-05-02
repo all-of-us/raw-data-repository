@@ -87,6 +87,7 @@ def _upsert_samples_from_csv(csv_reader):
         'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
   samples_dao = BiobankStoredSampleDao()
   biobank_id_prefix = get_biobank_id_prefix()
+  written = 0
   try:
     samples = []
     for row in csv_reader:
@@ -94,10 +95,11 @@ def _upsert_samples_from_csv(csv_reader):
       if sample:
         samples.append(sample)
         if len(samples) >= _BATCH_SIZE:
-          samples_dao.upsert_all(samples)
+          written += samples_dao.upsert_all(samples)
           samples = []
     if samples:
-      samples_dao.upsert_all(samples)
+      written += samples_dao.upsert_all(samples)
+    return written
   except ValueError, e:
     raise DataError(e)
 
