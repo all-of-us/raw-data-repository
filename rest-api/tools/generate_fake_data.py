@@ -25,7 +25,7 @@ def main(args):
     request_body = {'create_biobank_samples': 'all'}
     client.request_json('DataGen', 'POST', request_body)
     print "Biobank samples are being generated asynchronously."
-    print "Wait until done, then use the cron tab in AppEngine to start the samples pipeline." 
+    print "Wait until done, then use the cron tab in AppEngine to start the samples pipeline."
   print "Done."
 
 if __name__ == '__main__':

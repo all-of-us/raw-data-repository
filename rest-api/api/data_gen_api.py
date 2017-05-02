@@ -32,7 +32,7 @@ class DataGenApi(Resource):
                                                    include_biobank_orders)
     biobank_samples_target = resource_json.get('create_biobank_samples', None)
     if biobank_samples_target:
-      if biobank_samples_target == 'all':        
+      if biobank_samples_target == 'all':
         executors.defer(generate_samples)
       else:
         participant_id = from_client_participant_id(biobank_samples_target)
