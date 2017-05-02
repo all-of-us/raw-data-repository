@@ -11,7 +11,7 @@ from flask import request
 
 from google.appengine.api import app_identity
 
-from werkzeug.exceptions import Unauthorized, BadRequest
+from werkzeug.exceptions import BadRequest, Forbidden
 
 # Read bootstrap config admin service account configuration
 CONFIG_ADMIN_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -32,6 +32,7 @@ def auth_required_config_admin(func):
     return func(*args, **kwargs)
   return wrapped
 
+
 def is_config_admin(user_email):
   app_id = app_identity.get_application_id()
 
@@ -51,6 +52,7 @@ def is_config_admin(user_email):
       return True
   return False
 
+
 def check_config_admin():
   """Raises Unauthorized unless the caller is a config admin."""
   user_email = api_util.get_oauth_id()
@@ -58,7 +60,8 @@ def check_config_admin():
     logging.info('User %r ALLOWED for config endpoint' % user_email)
     return
   logging.info('User %r NOT ALLOWED for config endpoint' % user_email)
-  raise Unauthorized('Forbidden.')
+  raise Forbidden()
+
 
 class ConfigApi(base_api.BaseApi):
   """Api handlers for retrieving and setting config values."""

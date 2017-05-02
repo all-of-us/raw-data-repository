@@ -14,7 +14,7 @@ from flask import request
 from protorpc import message_types
 from protorpc import messages
 from dateutil.parser import parse
-from werkzeug.exceptions import Unauthorized, BadRequest
+from werkzeug.exceptions import BadRequest, Forbidden, Unauthorized
 
 import config
 
@@ -62,12 +62,12 @@ def nonprod(func):
   """The decorated function may never run in environments without config.ALLOW_NONPROD_REQUESTS."""
   def wrapped(*args, **kwargs):
     if not config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False):
-      raise Unauthorized('Request not allowed in production environment (according to config).')
+      raise Forbidden('Request not allowed in production environment (according to config).')
     return func(*args, **kwargs)
   return wrapped
 
 def check_auth(role_whitelist):
-  """Raises Unauthorized if the current user is not authorized."""
+  """Raises Unauthorized or Forbidden if the current user is not allowed."""
   user_email, user_info = get_validated_user_info()
 
   if set(user_info.get('roles', [])) & set(role_whitelist):
@@ -77,7 +77,7 @@ def check_auth(role_whitelist):
      user_email,
      user_info.get('roles'),
      role_whitelist))
-  raise Unauthorized('Forbidden.')
+  raise Forbidden()
 
 def get_oauth_id():
   """Returns user email ID if OAUTH token present, or None."""
@@ -89,13 +89,13 @@ def get_oauth_id():
   return user_email
 
 def check_cron():
-  """Raises Unauthorized if the current user is not a cron job."""
+  """Raises Forbidden if the current user is not a cron job."""
   if request.headers.get('X-Appengine-Cron'):
     logging.info('Appengine-Cron ALLOWED for cron endpoint.')
     return
   logging.info('User {} NOT ALLOWED for cron endpoint'.format(
       get_oauth_id()))
-  raise Unauthorized('Forbidden.')
+  raise Forbidden()
 
 def lookup_user_info(user_email):
   return config.getSettingJson(config.USER_INFO, {}).get(user_email)
@@ -105,8 +105,9 @@ def _is_self_request():
       and config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False)
       and not request.headers.get('unauthenticated'))
 
+
 def get_validated_user_info():
-  """Returns a valid (user email, user info), or raises Unauthorized."""
+  """Returns a valid (user email, user info), or raises Unauthorized or Forbidden."""
   user_email = get_oauth_id()
 
   # Allow clients to simulate an unauthentiated request (for testing)
@@ -114,20 +115,22 @@ def get_validated_user_info():
   # when using dev_appserver. When client tests are checking to ensure that an
   # unauthenticated requests gets rejected, they helpfully add this header.
   # The `application_id` check ensures this feature only works in dev_appserver.
-  if request.headers.get('unauthenticated') and app_identity.get_application_id() == "None":
+  if request.headers.get('unauthenticated') and app_identity.get_application_id() == 'None':
     user_email = None
+  if user_email is None:
+    raise Unauthorized('No OAuth user found.')
 
-  if user_email:
-    user_info = lookup_user_info(user_email)
-    if user_info:
-      enforce_ip_whitelisted(request.remote_addr, get_whitelisted_ips(user_info))
-      enforce_appid_whitelisted(request.headers.get('X-Appengine-Inbound-Appid'),
-                                get_whitelisted_appids(user_info))
-      logging.info('User {} ALLOWED'.format(user_email))
-      return (user_email, user_info)
+  user_info = lookup_user_info(user_email)
+  if user_info:
+    enforce_ip_whitelisted(request.remote_addr, get_whitelisted_ips(user_info))
+    enforce_appid_whitelisted(request.headers.get('X-Appengine-Inbound-Appid'),
+                              get_whitelisted_appids(user_info))
+    logging.info('User %r ALLOWED', user_email)
+    return (user_email, user_info)
 
-  logging.info('User {} NOT ALLOWED'.format(user_email))
-  raise Unauthorized('Forbidden.')
+  logging.info('User %r NOT ALLOWED' % user_email)
+  raise Forbidden()
+
 
 def get_whitelisted_ips(user_info):
   if not user_info.get('whitelisted_ip_ranges'):
@@ -143,7 +146,7 @@ def enforce_ip_whitelisted(request_ip, whitelisted_ips):
   ip = netaddr.IPAddress(request_ip)
   if not bool([True for rng in whitelisted_ips if ip in rng]):
     logging.info('IP {} NOT ALLOWED'.format(ip))
-    raise Unauthorized('Client IP not whitelisted: {}'.format(ip))
+    raise Forbidden('Client IP not whitelisted: {}'.format(ip))
   logging.info('IP {} ALLOWED'.format(ip))
 
 def get_whitelisted_appids(user_info):
@@ -160,7 +163,7 @@ def enforce_appid_whitelisted(request_app_id, whitelisted_appids):
       logging.info('APP ID {} NOT FOUND IN {}'.format(request_app_id, whitelisted_appids))
   else:
     logging.info('NO APP ID FOUND WHEN REQUIRED TO BE ONE OF: {}'.format(whitelisted_appids))
-  raise Unauthorized('Forbidden.')
+  raise Forbidden()
 
 def update_model(old_model, new_model):
   """Updates a model.

@@ -5,7 +5,7 @@ import config
 
 from mock import patch
 from test.unit_test.unit_test_util import NdbTestBase
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 
 @api_util.auth_required('foo')
@@ -54,10 +54,10 @@ class ApiUtilNdbTest(NdbTestBase):
 
   def test_invalid_ip(self):
     allowed_ips = api_util.get_whitelisted_ips(self.user_info["example@example.com"])
-    with self.assertRaises(Unauthorized):
+    with self.assertRaises(Forbidden):
       api_util.enforce_ip_whitelisted('100.100.0.1', allowed_ips)
 
-    with self.assertRaises(Unauthorized):
+    with self.assertRaises(Forbidden):
       api_util.enforce_ip_whitelisted('5555::', allowed_ips)
 
   @patch('api_util.request')
@@ -82,7 +82,7 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_request.headers = {}
     mock_get_oauth_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'place':'holder'}
-    with self.assertRaises(Unauthorized):
+    with self.assertRaises(Forbidden):
       foo_role(1)
     mock_get_oauth_id.assert_called_with()
     mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
@@ -101,7 +101,7 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_request.headers = {}
     mock_get_oauth_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'roles': ['bar']}
-    with self.assertRaises(Unauthorized):
+    with self.assertRaises(Forbidden):
       foo_role(1)
     mock_get_oauth_id.assert_called_with()
 
@@ -119,7 +119,7 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_get_oauth_id.return_value = 'bob@example.com'
     mock_lookup_user_info.return_value = {'place':'holder'}
 
-    with self.assertRaises(Unauthorized):
+    with self.assertRaises(Forbidden):
       foo_bar_role(1)
 
     mock_lookup_user_info.return_value = {'roles': ['foo']}
@@ -141,7 +141,7 @@ class ApiUtilNdbTest(NdbTestBase):
     mock_lookup_user_info.return_value = {'roles': ['baz']}
 
     mock_request.headers = {}
-    with self.assertRaises(Unauthorized):
+    with self.assertRaises(Forbidden):
       foo_bar_role(1)
     mock_get_oauth_id.assert_called_with()
     mock_lookup_user_info.assert_called_with(mock_get_oauth_id())
@@ -179,7 +179,7 @@ class ApiUtilNdbTest(NdbTestBase):
             'roles': ['bar'],
             'whitelisted_ip_ranges': {'ip4': ['10.0.0.2/32'], 'ip6': []}}
 
-    with self.assertRaises(Unauthorized):
+    with self.assertRaises(Forbidden):
       foo_bar_role(1)
 
     mock_request.remote_addr = '10.0.0.2'
@@ -203,7 +203,7 @@ class ApiUtilNdbTest(NdbTestBase):
             'whitelisted_appids': ['must-be-this-id'],
             }
 
-    with self.assertRaises(Unauthorized):
+    with self.assertRaises(Forbidden):
       foo_bar_role(1)
 
     mock_request.headers = {
@@ -228,13 +228,13 @@ class ApiUtilNdbTest(NdbTestBase):
     self.assertEquals(2, cron_required(1))
 
     mock_request.headers = {}
-    with self.assertRaises(Unauthorized):
+    with self.assertRaises(Forbidden):
       cron_required(1)
 
   def test_nonprod(self):
     # The dev config is isntalled by default for tests, reset.
     config.override_setting(config.ALLOW_NONPROD_REQUESTS, False)
-    with self.assertRaises(Unauthorized):
+    with self.assertRaises(Forbidden):
       not_in_prod()
 
     config.override_setting(config.ALLOW_NONPROD_REQUESTS, True)
