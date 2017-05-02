@@ -49,13 +49,14 @@ class TestBase(unittest.TestCase):
     # Allow printing the full diff report on errors.
     self.maxDiff = None
     self.setup_fake()
-    # Always add codes if missing when handling questionnaire responses.
-    model.questionnaire_response.add_codes_if_missing = lambda email:True
 
   def setup_fake(self):
     # Make a faker which produces unicode text available.
     self.fake = faker.Faker('ru_RU')
     self.fake.seed(1)
+
+    # Always add codes if missing when handling questionnaire responses.
+    model.questionnaire_response.add_codes_if_missing = lambda email:True
 
   @staticmethod
   def _participant_with_defaults(**kwargs):
@@ -215,8 +216,8 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
     self._path_to_buffer = collections.defaultdict(StringIO.StringIO)
 
   @contextlib.contextmanager
-  def _open_writer(self, file_name):
-    yield csv.writer(self._path_to_buffer[file_name])
+  def open_writer(self, file_name, predicate=None):
+    yield sql_exporter.SqlExportFileWriter(self._path_to_buffer[file_name], predicate)
 
   def assertFilesEqual(self, paths):
     self._test.assertItemsEqual(paths, self._path_to_buffer.keys())

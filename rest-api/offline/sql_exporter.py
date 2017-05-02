@@ -11,12 +11,31 @@ DELIMITER = ','
 _BATCH_SIZE = 1000
 
 class SqlExportFileWriter(object):
-  def __init__(self, dest):
+  def __init__(self, dest, predicate=None):
     self.writer = csv.writer(dest, delimiter=DELIMITER)
+    self.predicate = predicate
 
-  def writerows(self, results):
-    writer.writerows(results)
+  def write_header(self, keys):
+    self.writer.writerow(keys)
 
+  def write_rows(self, results):
+    if self.predicate:
+      results = [result for result in results if self.predicate(result)]
+    if results:
+      self.writer.writerows(results)
+
+class CompositeSqlExportWriter(object):
+
+  def __init__(self, writers):
+    self.writers = writers
+
+  def write_header(self, keys):
+    for writer in self.writers:
+      writer.write_header(keys)
+
+  def write_rows(self, results):
+    for writer in self.writers:
+      writer.write_rows(results)
 
 class SqlExporter(object):
   """Executes a SQL query, fetches results in batches, and writes output to a CSV in GCS."""
@@ -24,8 +43,8 @@ class SqlExporter(object):
     self._bucket_name = bucket_name
 
   def run_export(self, file_name, sql, query_params=None):
-    with self._open_writer(file_name) as writer:
-      self.run_export_with_writer(writer)
+    with self.open_writer(file_name) as writer:
+      self.run_export_with_writer(writer, sql, query_params)
 
   def run_export_with_writer(self, writer, sql, query_params):
     with database_factory.get_database().session() as session:
@@ -37,19 +56,19 @@ class SqlExporter(object):
     # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.
     cursor = session.execute(text(sql), params=query_params)
     try:
-      writer.writerow(cursor.keys())
+      writer.write_header(cursor.keys())
       results = cursor.fetchmany(_BATCH_SIZE)
       while results:
-        writer.writerows(results)
+        writer.write_rows(results)
         results = cursor.fetchmany(_BATCH_SIZE)
     finally:
       cursor.close()
 
   @contextlib.contextmanager
-  def _open_writer(self, file_name):
+  def open_writer(self, file_name, predicate=None):
     gcs_path = '/%s/%s' % (self._bucket_name, file_name)
     logging.info('Exporting data to %s...', gcs_path)
     with cloudstorage_api.open(gcs_path, mode='w') as dest:
-      writer = SqlExportFileWriter(dest)
+      writer = SqlExportFileWriter(dest, predicate)
       yield writer
     logging.info('Export to %s complete.', gcs_path)
