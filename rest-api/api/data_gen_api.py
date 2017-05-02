@@ -1,11 +1,10 @@
 import executors
-import logging
 import json
 
 from api_util import nonprod
 from config_api import auth_required_config_admin
 from data_gen.fake_participant_generator import FakeParticipantGenerator
-from data_gen.fake_biobank_samples_generator import generate_samples
+from data_gen.fake_biobank_samples_generator import generate_samples, FakeBiobankSamplesGenerator
 from data_gen.in_process_client import InProcessClient
 from flask import request
 from flask.ext.restful import Resource

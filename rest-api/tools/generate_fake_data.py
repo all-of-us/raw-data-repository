@@ -23,7 +23,7 @@ def main(args):
     print "Total participants created: %d" % total_participants_created
   if args.create_biobank_samples:
     request_body = {'create_biobank_samples': 'all'}
-    response = client.request_json('DataGen', 'POST', request_body)
+    client.request_json('DataGen', 'POST', request_body)
     print "Biobank samples are being generated asynchronously."
     print "Wait until done, then use the cron tab in AppEngine to start the samples pipeline." 
   print "Done."
