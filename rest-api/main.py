@@ -4,6 +4,7 @@ This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import app_util
 import config_api
+import logging
 import version_api
 
 from api.biobank_order_api import BiobankOrderApi
@@ -15,14 +16,28 @@ from api.participant_summary_api import ParticipantSummaryApi
 from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
-from flask import Flask
+from flask import Flask, got_request_exception
 from flask_restful import Api
 from model.utils import ParticipantIdConverter
+from werkzeug.exceptions import HTTPException
 
 PREFIX = '/rdr/v1/'
 
 app = Flask(__name__)
 app.url_map.converters['participant_id'] = ParticipantIdConverter
+
+
+def _log_request_exception(sender, exception, **extra):
+  """Logs HTTPExceptions.
+
+  flask_restful automatically returns exception messages for JSON endpoints, but forgoes logs
+  for HTTPExceptions.
+  """
+  if isinstance(exception, HTTPException):
+    logging.info('%s: %s', exception, exception.description)
+
+got_request_exception.connect(_log_request_exception, app)
+
 
 #
 # The REST-ful resources that are the bulk of the API.
@@ -96,6 +111,7 @@ api.add_resource(DataGenApi,
                  PREFIX + 'DataGen',
                  endpoint='datagen',
                  methods=['POST'])
+
 #
 # Non-resource endpoints
 #
