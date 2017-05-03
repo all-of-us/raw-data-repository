@@ -1,6 +1,8 @@
 import httplib
 import json
 
+from code_constants import PPI_EXTRA_SYSTEM
+from dao.code_dao import CodeDao
 from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import data_path
 
@@ -25,7 +27,10 @@ class QuestionnaireApiTest(FlaskTestBase):
       response = self.send_get('Questionnaire/%s' % questionnaire_id)
       del response['id']
       self.assertJsonResponseMatches(questionnaire, response)
-
+  
+    # Ensure we didn't create codes in the extra system
+    self.assertIsNone(CodeDao().get_code(PPI_EXTRA_SYSTEM, 'IgnoreThis'))
+    
   def insert_questionnaire(self):
     with open(data_path('questionnaire1.json')) as f:
       questionnaire = json.load(f)

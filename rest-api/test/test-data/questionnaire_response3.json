@@ -149,6 +149,18 @@
                     "valueString": "Already able to speak Chinese"
                   }
                 ]
+              },
+              {
+                "linkId": "ignoreThis",
+                "text": "This answer should be ignored since it has ppi-extra system",
+                "answer": [
+                  {
+                    "valueCoding": {
+                      "code": "IgnoreThis",
+                      "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-extra"
+                    }
+                  }
+                ]
               }
             ]
           }
