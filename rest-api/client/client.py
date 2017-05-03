@@ -3,6 +3,8 @@ import copy
 import httplib
 import httplib2
 import json
+import logging
+import pprint
 
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -12,14 +14,17 @@ _DEFAULT_BASE_PATH = 'rdr/v1'
 POST_HEADERS = {
     'Content-Type': 'application/json; charset=utf-8',
 }
+client_log = logging.getLogger(__name__)
 
 
 class HttpException(BaseException):
-  """Indicates an http error occurred."""
-  def __init__(self, message, code):
+  def __init__(self, url, method, response, content):
+    message = '%s:%s - %s\n---%s' % (url, method, response.status, content)
     super(HttpException, self).__init__(self, message)
     self.message = message
-    self.code = code
+    self.code = response.status
+    self.response = response
+    self.content = content
 
 
 class Client(object):
@@ -102,7 +107,6 @@ class Client(object):
     if pretend_date is not None:
       headers['x-pretend-date'] = pretend_date.isoformat()
 
-    print '{} to {}'.format(method, url)
     if authenticated:
       resp, content = self._http.request(url, method, headers=headers, body=body)
     else:
@@ -111,14 +115,26 @@ class Client(object):
       # is really testing is that the auth_required annotation is in all the right places.
       headers['unauthenticated'] = 'Yes'
       resp, content = httplib2.Http().request(url, method, headers=headers, body=body)
-    print resp
+
+    client_log.info('%s for %s to %s', resp.status, method, url)
+    details_level = (
+        logging.WARNING if (check_status and resp.status != httplib.OK)
+        else logging.DEBUG)
+    if client_log.isEnabledFor(details_level):
+      try:
+        formatted_content = pprint.pformat(json.loads(content))
+      except ValueError:
+        formatted_content = content
+      client_log.log(
+          details_level,
+          'Response headers: %s\nResponse content: %s', pprint.pformat(resp), formatted_content)
 
     if resp.status == httplib.UNAUTHORIZED:
-      print 'If you expect this request to be allowed, try'
-      print 'tools/install_config.sh --config config/config_dev.json --update'
+      client_log.warn(
+          'Unauthorized. If you expect this request to be allowed, try'
+          'tools/install_config.sh --config config/config_dev.json --update')
     if check_status and resp.status != httplib.OK:
-      raise HttpException(
-          '{}:{} - {}\n---{}'.format(url, method, resp.status, content), resp.status)
+      raise HttpException(url, method, resp, content)
     if resp.get('etag'):
       self.last_etag = resp['etag']
 

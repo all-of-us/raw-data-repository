@@ -1,14 +1,17 @@
 """Generates fake data on a RDR server."""
 
-import argparse
+import logging
 
 from client.client import Client
+from tools.main_util import get_parser, configure_logging
 
 MAX_PARTICIPANTS_PER_REQUEST = 50
 
+
 def main(args):
   if args.num_participants == 0 and not args.create_biobank_samples:
-    print "Usage: tools/generate_fake_data.py [--num_participants #] [--create_biobank_samples]"
+    logging.fatal(
+        'Usage: tools/generate_fake_data.py [--num_participants #] [--create_biobank_samples]')
     return
   client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
   total_participants_created = 0
@@ -20,18 +23,19 @@ def main(args):
                     'include_biobank_orders': bool(args.include_biobank_orders)}
     client.request_json('DataGen', 'POST', request_body)
     total_participants_created += participants_for_batch
-    print "Total participants created: %d" % total_participants_created
+    logging.info('Total participants created: %d', total_participants_created)
   if args.create_biobank_samples:
     request_body = {'create_biobank_samples': 'all'}
     client.request_json('DataGen', 'POST', request_body)
-    print "Biobank samples are being generated asynchronously."
-    print "Wait until done, then use the cron tab in AppEngine to start the samples pipeline."
-  print "Done."
+    logging.info(
+        'Biobank samples are being generated asynchronously.'
+        ' Wait until done, then use the cron tab in AppEngine to start the samples pipeline.')
+  logging.info('Done.')
+
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(
-      description=__doc__,
-      formatter_class=argparse.RawDescriptionHelpFormatter)
+  configure_logging()
+  parser = get_parser()
   parser.add_argument('--instance',
                       type=str,
                       help='The instance to hit, defaults to http://localhost:8080',

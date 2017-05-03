@@ -3,13 +3,13 @@
 See "Config Updates" in the README for usage and permissions details.
 """
 
-import argparse
 import difflib
 import copy
 import json
 import httplib
 
 from client.client import Client, HttpException
+from tools.main_util import get_parser, configure_logging
 
 BASE_CONFIG_FILE = 'config/base_config.json'
 
@@ -67,9 +67,8 @@ def _comparable_string(config):
   return json.dumps(config, sort_keys=True, indent=2)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(
-      description=__doc__,
-      formatter_class=argparse.RawDescriptionHelpFormatter)
+  configure_logging()
+  parser = get_parser()
   parser.add_argument('--config',
                       help='Path to the config.  If omitted, the server config will be printed.')
   parser.add_argument('--instance',
