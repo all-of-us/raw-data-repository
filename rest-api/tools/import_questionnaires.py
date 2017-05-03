@@ -8,8 +8,8 @@ import logging
 import os
 
 from dao.questionnaire_dao import QuestionnaireDao
-from main_util import get_parser, configure_logging
 from model.questionnaire import Questionnaire
+from tools.main_util import get_parser, configure_logging
 
 def main(args):
   dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']

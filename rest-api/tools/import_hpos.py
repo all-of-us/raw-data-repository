@@ -5,9 +5,9 @@ import csv
 import logging
 
 from dao.hpo_dao import HPODao
-from main_util import get_parser, configure_logging
 from model.hpo import HPO
 from participant_enums import OrganizationType
+from tools.main_util import get_parser, configure_logging
 
 def main(args):
   with open(args.file, 'r') as csv_file:

@@ -3,7 +3,7 @@
 import logging
 
 from client.client import Client
-from main_util import get_parser, configure_logging
+from tools.main_util import get_parser, configure_logging
 
 MAX_PARTICIPANTS_PER_REQUEST = 50
 

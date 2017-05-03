@@ -15,7 +15,7 @@ from code_constants import GENDER_IDENTITY_QUESTION_CODE, CONSENT_FOR_STUDY_ENRO
 from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
 from code_constants import OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
 from code_constants import PPI_SYSTEM
-from main_util import get_parser, configure_logging
+from tools.main_util import get_parser, configure_logging
 
 HEALTHPRO_PARTICIPANTS_FILE = 'test/test-data/healthpro_test_participants.csv'
 

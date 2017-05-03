@@ -6,7 +6,7 @@ import json
 import os
 
 from dao.code_dao import CodeBookDao
-from main_util import get_parser, configure_logging
+from tools.main_util import get_parser, configure_logging
 
 def main(args):
   dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
