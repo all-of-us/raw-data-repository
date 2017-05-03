@@ -27,10 +27,10 @@ class QuestionnaireApiTest(FlaskTestBase):
       response = self.send_get('Questionnaire/%s' % questionnaire_id)
       del response['id']
       self.assertJsonResponseMatches(questionnaire, response)
-  
+
     # Ensure we didn't create codes in the extra system
     self.assertIsNone(CodeDao().get_code(PPI_EXTRA_SYSTEM, 'IgnoreThis'))
-    
+
   def insert_questionnaire(self):
     with open(data_path('questionnaire1.json')) as f:
       questionnaire = json.load(f)

@@ -130,7 +130,7 @@ class QuestionnaireResponse(Base):
               qr_answer = QuestionnaireResponseAnswer(questionId=qq.questionnaireQuestionId)
               system_and_code = None
               ignore_answer = False
-              if answer.valueCoding:              
+              if answer.valueCoding:
                 if not answer.valueCoding.system:
                   raise BadRequest("No system provided for valueCoding: %s" % question.linkId)
                 if not answer.valueCoding.code:
