@@ -4,6 +4,7 @@ import os
 import unittest
 
 from client.client import Client
+from tools.main_util import configure_logging
 
 # To run the tests against the test instance instead,
 # set environment variable PMI_DRC_RDR_INSTANCE.
@@ -15,6 +16,7 @@ _OFFLINE_BASE_PATH = 'offline'
 class BaseClientTest(unittest.TestCase):
   def setUp(self):
     super(BaseClientTest, self).setUp()
+    configure_logging()
     self.maxDiff = None
     instance = os.environ.get('PMI_DRC_RDR_INSTANCE') or _DEFAULT_INSTANCE
     creds_file = os.environ.get('TESTING_CREDS_FILE')
