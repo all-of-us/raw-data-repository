@@ -7,11 +7,11 @@ import logging
 import sys
 
 from dao.hpo_dao import HPODao
+from main_util import get_parser, configure_logging
 from model.hpo import HPO
 from participant_enums import OrganizationType
 
 def main(args):
-  logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(levelname)s: %(message)s')
   with open(args.file, 'r') as csv_file:
     reader = csv.DictReader(csv_file)
     hpo_dao = HPODao()
@@ -42,9 +42,8 @@ def main(args):
   logging.info('Done.')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(
-      description=__doc__,
-      formatter_class=argparse.RawDescriptionHelpFormatter)
+  configure_logging()
+  parser = get_parser()
   parser.add_argument('--file', help='Filename containing CSV to import',
                       required=True)
   main(parser.parse_args())

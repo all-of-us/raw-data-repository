@@ -9,6 +9,7 @@ import os
 import sys
 
 from dao.code_dao import CodeBookDao
+from main_util import get_parser, configure_logging
 
 def main(args):
   logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -18,9 +19,8 @@ def main(args):
     CodeBookDao().import_codebook(codebook_json)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(
-      description=__doc__,
-      formatter_class=argparse.RawDescriptionHelpFormatter)
+  configure_logging()
+  parser = get_parser()
   parser.add_argument('--file', help='Path to the JSON representation of the codebook.',
                       required=True)
 

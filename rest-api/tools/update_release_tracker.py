@@ -13,6 +13,8 @@ import os
 import jira
 import sys
 
+from main_util import get_parser, configure_logging
+
 _JIRA_INSTANCE_URL = 'https://precisionmedicineinitiative.atlassian.net/'
 _JIRA_PROJECT_ID = 'DA'
 
@@ -20,7 +22,6 @@ def _connect_to_jira(jira_username, jira_password):
   return jira.JIRA(_JIRA_INSTANCE_URL, basic_auth=(jira_username, jira_password))
 
 def main(args):
-  logging.getLogger().setLevel(logging.INFO)
   jira_username = os.getenv('JIRA_API_USER_NAME')
   jira_password = os.getenv('JIRA_API_USER_PASSWORD')
   if not jira_username or not jira_password:
@@ -44,9 +45,8 @@ def main(args):
     sys.exit(-1)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(
-      description=__doc__,
-      formatter_class=argparse.RawDescriptionHelpFormatter)
+  configure_logging()
+  parser = get_parser()
   parser.add_argument('--version',
                       help='The version of the app being deployed (e.g. v0-1-rc21',
                       required=True)

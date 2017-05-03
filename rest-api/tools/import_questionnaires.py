@@ -10,10 +10,10 @@ import os
 import sys
 
 from dao.questionnaire_dao import QuestionnaireDao
+from main_util import get_parser, configure_logging
 from model.questionnaire import Questionnaire
 
 def main(args):
-  logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(levelname)s: %(message)s')
   dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
   files = args.files.split(',')
   questionnaire_dao = QuestionnaireDao()
@@ -25,9 +25,8 @@ def main(args):
   logging.info("%d questionnaires imported." % len(files))
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(
-      description=__doc__,
-      formatter_class=argparse.RawDescriptionHelpFormatter)
+  configure_logging()
+  parser = get_parser()
   parser.add_argument('--dir', help='Directory name containing questionnaires to import',
                       required=True)
   parser.add_argument('--files', help='File names of questionnaires to import',

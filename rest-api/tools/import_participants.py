@@ -17,6 +17,7 @@ from code_constants import GENDER_IDENTITY_QUESTION_CODE, CONSENT_FOR_STUDY_ENRO
 from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
 from code_constants import OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
 from code_constants import PPI_SYSTEM
+from main_util import get_parser, configure_logging
 
 HEALTHPRO_PARTICIPANTS_FILE = 'test/test-data/healthpro_test_participants.csv'
 
@@ -109,7 +110,6 @@ def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_
   client.request_json('Participant/%s/QuestionnaireResponse' % participant_id, 'POST', qr_json)
 
 def main(args):
-  logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(levelname)s: %(message)s')
   client = Client('rdr/v1', False, args.creds_file, args.instance)
   num_participants = 0
   questionnaire_to_questions, consent_questionnaire_id_and_version = _setup_questionnaires(client)
@@ -149,9 +149,8 @@ def main(args):
   logging.info("%d participants imported." % num_participants)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(
-      description=__doc__,
-      formatter_class=argparse.RawDescriptionHelpFormatter)
+  configure_logging()
+  parser = get_parser()
   parser.add_argument('--file', help='Path to the CSV file containing the participant data.',
                       default=HEALTHPRO_PARTICIPANTS_FILE)
   parser.add_argument('--instance',
