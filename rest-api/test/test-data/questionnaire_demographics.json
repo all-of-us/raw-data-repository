@@ -19,6 +19,10 @@
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
         "code": "TheBasics"
+      },
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-extra",
+        "code": "IgnoreThis"
       }],
       "group":[
          {
@@ -142,6 +146,11 @@
                },
                {
                   "linkId":"1.3",
+                  "concept": [{
+                    "system": "http://terminology.pmi-ops.org/CodeSystem/ppi-extra",
+                    "code": "IgnoreThis",
+                    "display": "IgnoreThis"
+                  }],
                   "question":[
                      {
                         "extension":[

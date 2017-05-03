@@ -2,6 +2,7 @@ import datetime
 import httplib
 import json
 
+from code_constants import PPI_EXTRA_SYSTEM
 from clock import FakeClock
 from dao.code_dao import CodeDao
 from dao.questionnaire_dao import QuestionnaireDao
@@ -53,6 +54,10 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     self.assertJsonResponseMatches(resource, get_response)
 
     code_dao = CodeDao()
+
+    # Ensure we didn't create codes in the extra system
+    self.assertIsNone(code_dao.get_code(PPI_EXTRA_SYSTEM, 'IgnoreThis'))
+
     name_of_child = code_dao.get_code("sys", "nameOfChild")
     birth_weight = code_dao.get_code("sys", "birthWeight")
     birth_length = code_dao.get_code("sys", "birthLength")
