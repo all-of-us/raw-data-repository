@@ -14,6 +14,7 @@
 # Example usage:
 # tools/setup_database.sh --account dan.rodney@pmi-ops.org --project all-of-us-rdr-staging
 
+set -a
 CREATE_INSTANCE=
 USAGE="tools/setup_database.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>] [--create_instance]"
 while true; do
@@ -45,21 +46,38 @@ then
 fi
 
 
-read -s -p "root password for database: " PASSWORD
+read -s -p "root password for database: " ROOT_PASSWORD
 echo
-if [ -z "${PASSWORD}" ]
+if [ -z "${ROOT_PASSWORD}" ]
 then
   echo "Password required; exiting."
   exit 1
 fi
 
-read -s -p "Repeat password: " REPEAT_PASSWORD
+read -s -p "Repeat root password: " REPEAT_ROOT_PASSWORD
 echo
-if [ "${REPEAT_PASSWORD}" != "${PASSWORD}" ]
+if [ "${REPEAT_ROOT_PASSWORD}" != "${ROOT_PASSWORD}" ]
 then
   echo "Password mismatch; exiting."
   exit 1
 fi
+
+read -s -p "RDR password for database: " RDR_PASSWORD
+echo
+if [ -z "${RDR_PASSWORD}" ]
+then
+  echo "Password required; exiting."
+  exit 1
+fi
+
+read -s -p "Repeat RDR password: " REPEAT_RDR_PASSWORD
+echo
+if [ "${REPEAT_RDR_PASSWORD}" != "${RDR_PASSWORD}" ]
+then
+  echo "Password mismatch; exiting."
+  exit 1
+fi
+
 
 source tools/setup_vars.sh
 INSTANCE_NAME=rdrmaindb
@@ -77,10 +95,10 @@ then
       --database-version MYSQL_5_7 --project $PROJECT --storage-auto-increase
   sleep 3
 fi
-gcloud sql instances set-root-password $INSTANCE_NAME --password $PASSWORD
+gcloud sql instances set-root-password $INSTANCE_NAME --password $ROOT_PASSWORD
 
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
-CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$INSTANCE_CONNECTION_NAME&charset=utf8"
+CONNECTION_STRING="mysql+mysqldb://${RDR_DB_USER}:${RDR_PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$INSTANCE_CONNECTION_NAME&charset=utf8"
 
 CREATE_DB_FILE=/tmp/create_db.sql
 
@@ -91,17 +109,17 @@ function finish {
 trap finish EXIT
 
 echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
-     ' "db_password": "'$PASSWORD'", ' \
+     ' "db_password": "'$RDR_PASSWORD'", ' \
      ' "db_connection_name": "'$INSTANCE_CONNECTION_NAME'", '\
-     ' "db_user": "'$DB_USER'", '\
+     ' "db_user": "'$RDR_DB_USER'", '\
      ' "db_name": "'$DB_NAME'" }' > $TMP_DB_INFO_FILE
 
-echo 'CREATE DATABASE IF NOT EXISTS '$DB_NAME > $CREATE_DB_FILE
+cat tools/create_db.sql | envsubst > $CREATE_DB_FILE
 
 run_cloud_sql_proxy
 
 echo "Creating empty database..."
-mysql -u "$DB_USER" -p"$PASSWORD" --host 127.0.0.1 --port ${PORT} < ${CREATE_DB_FILE}
+mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${CREATE_DB_FILE}
 
 echo "Setting database configuration"
 tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}

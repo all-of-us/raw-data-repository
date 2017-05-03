@@ -16,7 +16,7 @@ fi
 if [ -z "${DB_CONNECTION_STRING}" ]
 then
   source tools/setup_local_vars.sh
-  set_local_db_connection_string
+  set_local_db_connection_string alembic
 fi
 
 (source tools/set_path.sh; cd ${BASE_DIR};

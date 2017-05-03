@@ -98,6 +98,12 @@ function run_cloud_sql_proxy {
 
 function set_db_connection_string {
   PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
+  DB_USER=$RDR_DB_USER
+  if [ $1 ]
+  then
+    DB_USER=$1
+  fi
+    
   function finish {
     cleanup
     export DB_CONNECTION_STRING=

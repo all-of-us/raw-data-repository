@@ -1,12 +1,12 @@
 source tools/setup_vars.sh
-PASSWORD=root
+ROOT_PASSWORD=root
+RDR_PASSWORD=rdr!pwd
 
 function set_local_db_connection_string {
-  if [ $PASSWORD ]
+  DB_USER=$RDR_DB_USER  
+  if [ "$1" ]
   then
-    PASSWORD_STRING=":${PASSWORD}"
-  else
-    PASSWORD_STRING=""
+    DB_USER=$1
   fi
-  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}${PASSWORD_STRING}@localhost/${DB_NAME}?charset=utf8"
+  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${RDR_PASSWORD}@localhost/${DB_NAME}?charset=utf8"
 }
