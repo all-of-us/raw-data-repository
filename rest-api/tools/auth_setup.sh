@@ -96,8 +96,18 @@ function run_cloud_sql_proxy {
   CLOUD_PROXY_PID=%1
 }
 
+# Sets DB_CONNECTION_STRING to a connection string used to connect to the database.
+# By default, uses the rdr DB user; can be overridden with an argument to this function, e.g.
+# set_db_connection_string alembic
+# (This works because alembic and rdr users share the same password)
 function set_db_connection_string {
   PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
+  DB_USER=$RDR_DB_USER
+  if [ $1 ]
+  then
+    DB_USER=$1
+  fi
+    
   function finish {
     cleanup
     export DB_CONNECTION_STRING=

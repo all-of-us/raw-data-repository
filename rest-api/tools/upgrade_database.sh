@@ -58,12 +58,12 @@ if [ "${PROJECT}" -o "${INSTANCE}" ]
 then
   source tools/auth_setup.sh
   run_cloud_sql_proxy
-  set_db_connection_string
+  set_db_connection_string alembic
 else
   if [ -z ${DB_CONNECTION_STRING} ]
   then
     source tools/setup_local_vars.sh
-    set_local_db_connection_string
+    set_local_db_connection_string alembic
   fi
 fi
 

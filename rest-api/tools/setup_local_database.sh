@@ -12,16 +12,17 @@
 # For a fresh database/schema, run this once to set up a blank db, then run
 # generate_schema.sh, and then run this again to create that initial schema.
 
+set -a
 source tools/setup_local_vars.sh
 DB_CONNECTION_NAME=
 DB_INFO_FILE=/tmp/db_info.json
 CREATE_DB_FILE=/tmp/create_db.sql
 
-PASSWORD_ARGS="-p${PASSWORD}"
+ROOT_PASSWORD_ARGS="-p${ROOT_PASSWORD}"
 while true; do
   case "$1" in
-    --nopassword) PASSWORD=; PASSWORD_ARGS=; PASSWORD_STRING=; shift 1;;
-    --db_user) DB_USER=$2; shift 2;;
+    --nopassword) ROOT_PASSWORD=; ROOT_PASSWORD_ARGS=; shift 1;;
+    --db_user) ROOT_DB_USER=$2; shift 2;;
     --db_name) DB_NAME=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
@@ -30,13 +31,13 @@ done
 
 if [ "${MYSQL_ROOT_PASSWORD}" ]
 then
-  PASSWORD="${MYSQL_ROOT_PASSWORD}"
-  PASSWORD_ARGS='-p"${PASSWORD}"'
+  ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD}"
+  ROOT_PASSWORD_ARGS='-p"${ROOT_PASSWORD}"'
 else
   echo "Using a default root mysql password. Set MYSQL_ROOT_PASSWORD to override."
 fi
 
-# Export this so Alembic can find it.
+# Set the local db connection string with the RDR user.
 set_local_db_connection_string
 
 function finish {
@@ -46,24 +47,24 @@ function finish {
 trap finish EXIT
 
 echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
-     ' "db_password": "'$PASSWORD'", ' \
+     ' "db_password": "'$RDR_PASSWORD'", ' \
      ' "db_connection_name": "", '\
-     ' "db_user": "'$DB_USER'", '\
+     ' "db_user": "'$RDR_DB_USER'", '\
      ' "db_name": "'$DB_NAME'" }' > $DB_INFO_FILE
 # Include charset here since mysqld defaults to Latin1 (even though CloudSQL
 # is configured with UTF8 as the default). Keep in sync with unit_test_util.py.
-cat <<EOSQL > $CREATE_DB_FILE
-DROP DATABASE IF EXISTS $DB_NAME;
-CREATE DATABASE $DB_NAME CHARACTER SET utf8 COLLATE utf8_general_ci;
-EOSQL
+cat tools/drop_db.sql tools/create_db.sql | envsubst > $CREATE_DB_FILE
 
 echo "Creating empty database..."
-mysql -u "$DB_USER" $PASSWORD_ARGS < ${CREATE_DB_FILE}
+mysql -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < ${CREATE_DB_FILE}
 if [ $? != '0' ]
 then
   echo "Error creating database. Exiting."
   exit 1
 fi
+
+# Set it again with the Alembic user for upgrading the database.
+set_local_db_connection_string alembic
 
 echo "Updating schema to latest..."
 tools/upgrade_database.sh
