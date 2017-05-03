@@ -1,5 +1,6 @@
 import json
 
+from code_constants import PPI_EXTRA_SYSTEM
 from config_api import is_config_admin
 from model.code import CodeType
 from model.base import Base
@@ -128,28 +129,34 @@ class QuestionnaireResponse(Base):
             for answer in question.answer:
               qr_answer = QuestionnaireResponseAnswer(questionId=qq.questionnaireQuestionId)
               system_and_code = None
-              if answer.valueCoding:
+              ignore_answer = False
+              if answer.valueCoding:              
                 if not answer.valueCoding.system:
                   raise BadRequest("No system provided for valueCoding: %s" % question.linkId)
                 if not answer.valueCoding.code:
                   raise BadRequest("No code provided for valueCoding: %s" % question.linkId)
-                system_and_code = (answer.valueCoding.system, answer.valueCoding.code)
-                if not system_and_code in code_map:
-                  code_map[system_and_code] = (answer.valueCoding.display, CodeType.ANSWER,
-                                               qq.codeId)
-              if answer.valueDecimal:
-                qr_answer.valueDecimal = answer.valueDecimal
-              if answer.valueInteger:
-                qr_answer.valueInteger = answer.valueInteger
-              if answer.valueString:
-                qr_answer.valueString = answer.valueString
-              if answer.valueDate:
-                qr_answer.valueDate = answer.valueDate.date
-              if answer.valueDateTime:
-                qr_answer.valueDateTime = answer.valueDateTime.date
-              if answer.valueBoolean:
-                qr_answer.valueBoolean = answer.valueBoolean
-              answers.append((qr_answer, system_and_code))
+                if answer.valueCoding.system == PPI_EXTRA_SYSTEM:
+                  # Ignore answers from the ppi-extra system, as they aren't used for analysis.
+                  ignore_answer = True
+                else:
+                  system_and_code = (answer.valueCoding.system, answer.valueCoding.code)
+                  if not system_and_code in code_map:
+                    code_map[system_and_code] = (answer.valueCoding.display, CodeType.ANSWER,
+                                                 qq.codeId)
+              if not ignore_answer:
+                if answer.valueDecimal:
+                  qr_answer.valueDecimal = answer.valueDecimal
+                if answer.valueInteger:
+                  qr_answer.valueInteger = answer.valueInteger
+                if answer.valueString:
+                  qr_answer.valueString = answer.valueString
+                if answer.valueDate:
+                  qr_answer.valueDate = answer.valueDate.date
+                if answer.valueDateTime:
+                  qr_answer.valueDateTime = answer.valueDateTime.date
+                if answer.valueBoolean:
+                  qr_answer.valueBoolean = answer.valueBoolean
+                answers.append((qr_answer, system_and_code))
               if answer.group:
                 for sub_group in answer.group:
                   QuestionnaireResponse._populate_codes_and_answers(sub_group, code_map, answers,

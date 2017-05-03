@@ -7,6 +7,9 @@ UNMAPPED = 'UNMAPPED'
 BASE_VALUES = [UNSET, SKIPPED, UNMAPPED]
 
 PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
+# System for codes that are used in questionnaires but we don't need for analysis purposes;
+# these codes are ignored by RDR.
+PPI_EXTRA_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi-extra"
 
 FIRST_NAME_QUESTION_CODE = "PIIName_First"
 LAST_NAME_QUESTION_CODE = "PIIName_Last"
