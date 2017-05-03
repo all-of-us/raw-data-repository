@@ -2,10 +2,15 @@ import argparse
 import inspect
 import logging
 import sys
+import time
 
 
 def configure_logging():
-  logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(levelname)s: %(message)s')
+  logging.Formatter.converter = time.gmtime  # Log in UTC.
+  logging.basicConfig(
+      stream=sys.stdout,
+      level=logging.INFO,
+      format='%(asctime)s %(levelname)s: %(message)s')
 
 
 def get_parser(description=None):
