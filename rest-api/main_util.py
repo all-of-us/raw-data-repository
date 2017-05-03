@@ -5,7 +5,7 @@ import sys
 
 
 def configure_logging():
-   logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(levelname)s: %(message)s')
+  logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(levelname)s: %(message)s')
 
 
 def get_parser(description=None):

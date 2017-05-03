@@ -7,7 +7,6 @@ This requires the
 environment variables to be set, and flags for version and instance to be provided.
 """
 
-import argparse
 import logging
 import os
 import jira

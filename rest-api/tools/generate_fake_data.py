@@ -1,6 +1,5 @@
 """Generates fake data on a RDR server."""
 
-import argparse
 import logging
 
 from client.client import Client

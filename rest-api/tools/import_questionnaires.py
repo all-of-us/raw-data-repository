@@ -2,12 +2,10 @@
 in a specified directory.
 """
 
-import argparse
 import dao.database_factory
 import json
 import logging
 import os
-import sys
 
 from dao.questionnaire_dao import QuestionnaireDao
 from main_util import get_parser, configure_logging

@@ -1,10 +1,8 @@
 """Imports HPOs into the database, using CSV as input.
 """
 
-import argparse
 import csv
 import logging
-import sys
 
 from dao.hpo_dao import HPODao
 from main_util import get_parser, configure_logging

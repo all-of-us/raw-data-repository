@@ -3,7 +3,6 @@
 See "Config Updates" in the README for usage and permissions details.
 """
 
-import argparse
 import difflib
 import copy
 import json

@@ -5,10 +5,8 @@ environments that are expected to be there for testing and training purposes.
 
 from client.client import Client
 
-import argparse
 import csv
 import logging
-import sys
 import fhirclient.models.questionnaire
 
 from code_constants import LAST_NAME_QUESTION_CODE, FIRST_NAME_QUESTION_CODE, EMAIL_QUESTION_CODE
