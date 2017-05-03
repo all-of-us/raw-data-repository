@@ -46,7 +46,7 @@ then
 fi
 
 
-read -s -p "root password for database: " ROOT_PASSWORD
+read -s -p "root password for database (remember to store this in Valentine!): " ROOT_PASSWORD
 echo
 if [ -z "${ROOT_PASSWORD}" ]
 then
@@ -62,7 +62,7 @@ then
   exit 1
 fi
 
-read -s -p "RDR password for database: " RDR_PASSWORD
+read -s -p "rdr/alembic password for database (remember to store this in Valentine!): " RDR_PASSWORD
 echo
 if [ -z "${RDR_PASSWORD}" ]
 then
@@ -70,7 +70,7 @@ then
   exit 1
 fi
 
-read -s -p "Repeat RDR password: " REPEAT_RDR_PASSWORD
+read -s -p "Repeat rdr/alembic password: " REPEAT_RDR_PASSWORD
 echo
 if [ "${REPEAT_RDR_PASSWORD}" != "${RDR_PASSWORD}" ]
 then
@@ -123,4 +123,3 @@ mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${
 
 echo "Setting database configuration"
 tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
-
