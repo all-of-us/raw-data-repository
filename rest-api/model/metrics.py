@@ -26,7 +26,7 @@ class MetricsBucket(Base):
   """
   __tablename__ = 'metrics_bucket'
   metricsVersionId = Column('metrics_version_id', Integer,
-                            ForeignKey('metrics_version.metrics_version_id', ondelete='CASCADE'), 
+                            ForeignKey('metrics_version.metrics_version_id', ondelete='CASCADE'),
                             primary_key=True)
   date = Column('date', Date, primary_key=True)
   hpoId = Column('hpo_id', String(20), primary_key=True) # Set to '' for cross-HPO metrics

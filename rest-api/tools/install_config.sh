@@ -5,7 +5,7 @@
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
 export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
 
-while true; do  
+while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
     --creds_account) CREDS_ACCOUNT=$2; shift 2;;
@@ -30,8 +30,8 @@ then
   echo "Getting credentials for ${PROJECT}..."
   source tools/auth_setup.sh
   EXTRA_ARGS="--creds_file ${CREDS_FILE} --instance ${INSTANCE}"
-elif [ "${INSTANCE}" ] 
-then 
+elif [ "${INSTANCE}" ]
+then
   EXTRA_ARGS+=" --instance $INSTANCE"
 fi
 if [ "${CONFIG}" ]
