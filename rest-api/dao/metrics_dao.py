@@ -1,4 +1,5 @@
 import clock
+import json
 import logging
 
 from model.metrics import MetricsVersion, MetricsBucket
@@ -104,3 +105,10 @@ class MetricsBucketDao(UpsertableDao):
       if end_date:
         query = query.filter(MetricsBucket.date <= end_date)
       return query.order_by(MetricsBucket.date).order_by(MetricsBucket.hpoId).all()
+
+  @staticmethod
+  def to_client_json(model):
+    facets = {'date': model.date.isoformat()}
+    if model.hpoId:
+      facets['hpoId'] = model.hpoId
+    return {'facets': facets, 'entries': json.loads(model.metrics)}

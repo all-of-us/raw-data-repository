@@ -1,16 +1,11 @@
-import clock
 import datetime
-import threading
 
-from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
-from code_constants import UNSET
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import EnrollmentStatus, Race, get_bucketed_age, SampleStatus
+from participant_enums import EnrollmentStatus, Race, SampleStatus
 from participant_enums import WithdrawalStatus, SuspensionStatus
 from model.base import Base
-from model.utils import Enum, to_client_participant_id, to_client_biobank_id, get_property_type
+from model.utils import Enum
 from model.utils import UTCDateTime
-from query import PropertyType
 from sqlalchemy import Column, Integer, String, Date
 from sqlalchemy import ForeignKey, Index, SmallInteger
 from sqlalchemy.orm import relationship
@@ -21,11 +16,6 @@ WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime', 'participa
 # The period of time for which withdrawn participants will still be returned in results for
 # queries that don't ask for withdrawn participants.
 WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days=2)
-
-_DATE_FIELDS = set()
-_ENUM_FIELDS = set()
-_CODE_FIELDS = set()
-fields_lock = threading.RLock()
 
 class ParticipantSummary(Base):
   __tablename__ = 'participant_summary'
@@ -136,38 +126,6 @@ class ParticipantSummary(Base):
 
   participant = relationship("Participant", back_populates="participantSummary")
 
-  def to_client_json(self):
-    result = self.asdict()
-    # Participants that withdrew more than 48 hours ago should have fields other than
-    # WITHDRAWN_PARTICIPANT_FIELDS cleared.
-    if (self.withdrawalStatus == WithdrawalStatus.NO_USE and
-        self.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME):
-      result = {k: result.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
-
-    result['participantId'] = to_client_participant_id(self.participantId)
-    biobank_id = result.get('biobankId')
-    if biobank_id:
-      result['biobankId'] = to_client_biobank_id(biobank_id)
-    date_of_birth = result.get('dateOfBirth')
-    if date_of_birth:
-      result['ageRange'] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
-    else:
-      result['ageRange'] = UNSET
-    format_json_hpo(result, 'hpoId')
-    _initialize_field_type_sets()
-    for fieldname in _DATE_FIELDS:
-      format_json_date(result, fieldname)
-    for fieldname in _CODE_FIELDS:
-      format_json_code(result, fieldname)
-    for fieldname in _ENUM_FIELDS:
-      format_json_enum(result, fieldname)
-    if (self.withdrawalStatus == WithdrawalStatus.NO_USE or
-        self.suspensionStatus == SuspensionStatus.NO_CONTACT):
-      result['recontactMethod'] = 'NO_CONTACT'
-    # Strip None values.
-    result = {k: v for k, v in result.iteritems() if v is not None}
-
-    return result
 
 # TODO(DA-234) Add an index for withdrawal status when querying summaries & filtering by withdrawal.
 Index('participant_summary_biobank_id', ParticipantSummary.biobankId)
@@ -193,34 +151,3 @@ Index('participant_summary_hpo_num_baseline_samples', ParticipantSummary.hpoId,
       ParticipantSummary.numBaselineSamplesArrived)
 Index('participant_summary_hpo_withdrawal_status_time', ParticipantSummary.hpoId,
       ParticipantSummary.withdrawalStatus, ParticipantSummary.withdrawalTime)
-
-def _initialize_field_type_sets():
-  """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are
-  used when formatting JSON from participant summaries.
-
-  We call this lazily to avoid having issues with the code getting executed while SQLAlchemy
-  is still initializing itself. Locking ensures we only run throught the code once.
-  """
-  with fields_lock:
-    # Return if this is already initialized.
-    if _DATE_FIELDS:
-      return
-    for prop_name in dir(ParticipantSummary):
-      if prop_name.startswith("_"):
-        continue
-      prop = getattr(ParticipantSummary, prop_name)
-      if callable(prop):
-        continue
-      property_type = get_property_type(prop)
-      if property_type:
-        if property_type == PropertyType.DATE or property_type == PropertyType.DATETIME:
-          _DATE_FIELDS.add(prop_name)
-        elif property_type == PropertyType.ENUM:
-          _ENUM_FIELDS.add(prop_name)
-        elif property_type == PropertyType.INTEGER:
-          fks = prop.property.columns[0].foreign_keys
-          if fks:
-            for fk in fks:
-              if fk._get_colspec() == 'code.code_id':
-                _CODE_FIELDS.add(prop_name)
-                break

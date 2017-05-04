@@ -1,17 +1,21 @@
+from base64 import urlsafe_b64decode, urlsafe_b64encode
+import collections
+import json
 import logging
 import datetime
 import random
 
+from fhirclient.models.domainresource import DomainResource
+from fhirclient.models.fhirabstractbase import FHIRValidationError
+from protorpc import messages
+from query import Operator, PropertyType, FieldFilter, Results
+from sqlalchemy import or_, and_
+from sqlalchemy.exc import IntegrityError
+from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
+
 import api_util
 import dao.database_factory
-import json
-from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
-from sqlalchemy.exc import IntegrityError
 from model.utils import get_property_type
-from query import Operator, PropertyType, FieldFilter, Results
-from base64 import urlsafe_b64decode, urlsafe_b64encode
-from sqlalchemy import or_, and_
-from protorpc import messages
 
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
@@ -323,6 +327,28 @@ class BaseDao(object):
     with self.session() as session:
       return session.query(self.model_type).count()
 
+  def to_client_json(self, model):
+    """Converts the given model to a JSON object to be returned to API clients.
+
+    Subclasses must implement this unless their model store a model.resource attribute.
+    """
+    try:
+      return json.loads(model.resource)
+    except AttributeError:
+      raise NotImplementedError()
+
+  def from_client_json(self):
+    """Subclasses must implement this to parse API request bodies into model objects.
+
+    Subclass args:
+      resource: JSON object.
+      participant_id: For subclasses which are children of participants only, the numeric ID.
+      client_id: An informative string ID of the caller (who is creating/modifying the resource).
+      id_: For updates, ID of the model to modify.
+      expected_version: For updates, require this to match the existing model's version.
+    """
+    raise NotImplementedError()
+
 
 class UpsertableDao(BaseDao):
   """A DAO that allows upserts of its entities (without any checking to see if the
@@ -397,3 +423,56 @@ def json_serial(obj):
   if isinstance(obj, messages.Enum):
     return str(obj)
   raise TypeError("Type not serializable")
+
+
+_FhirProperty = collections.namedtuple(
+    'FhirProperty',
+    ('name', 'json_name', 'fhir_type', 'is_list', 'of_many', 'not_optional'))
+
+
+def FhirProperty(name, fhir_type, json_name=None, is_list=False, required=False):
+  """Helper for declaring FHIR propertly tuples which fills in common default values.
+
+  By default, JSON name is the camelCase version of the Python snake_case name.
+
+  The tuples are documented in FHIRAbstractBase as:
+  ("name", "json_name", type, is_list, "of_many", not_optional)
+  """
+  if json_name is None:
+    components = name.split('_')
+    json_name = components[0] + ''.join(c.capitalize() for c in components[1:])
+  of_many = None  # never used?
+  return _FhirProperty(name, json_name, fhir_type, is_list, of_many, required)
+
+
+class FhirMixin(object):
+  """Derive from this to simplify declaring custom FHIR resource or element classes.
+
+  This aids in (de)serialization of JSON, including validation of field presence and types.
+
+  Subclasses should derive from DomainResource or (for nested fields) BackboneElement, and fill in
+  two class-level fields: resource_name (an arbitrary string) and _PROPERTIES.
+  """
+  _PROPERTIES = None  # Subclasses declar a list of calls to FP (producing tuples).
+
+  def __init__(self, jsondict=None):
+    for proplist in self._PROPERTIES:
+      setattr(self, proplist[0], None)
+    try:
+      super(FhirMixin, self).__init__(jsondict=jsondict, strict=True)
+    except FHIRValidationError, e:
+      if isinstance(self, DomainResource):
+        # Only convert FHIR exceptions to BadError at the top level. For nested objects, FHIR
+        # repackages exceptions itself.
+        raise BadRequest(e.message)
+      else:
+        raise
+
+  def __str__(self):
+    """Returns an object description to be used in validation error messages."""
+    return self.resource_name
+
+  def elementProperties(self):
+    js = super(FhirMixin, self).elementProperties()
+    js.extend(self._PROPERTIES)
+    return js

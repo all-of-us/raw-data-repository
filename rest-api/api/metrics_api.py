@@ -34,4 +34,4 @@ class MetricsApi(Resource):
     buckets = MetricsBucketDao().get_active_buckets(start_date, end_date)
     if buckets is None:
       return []
-    return [bucket.to_client_json() for bucket in buckets]
+    return [self.dao.to_client_json(bucket) for bucket in buckets]
