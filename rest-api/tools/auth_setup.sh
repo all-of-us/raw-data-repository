@@ -107,7 +107,7 @@ function set_db_connection_string {
   then
     DB_USER=$1
   fi
-    
+
   function finish {
     cleanup
     export DB_CONNECTION_STRING=

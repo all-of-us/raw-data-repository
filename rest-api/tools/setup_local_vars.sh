@@ -7,7 +7,7 @@ RDR_PASSWORD=rdr!pwd
 # set_db_connection_string alembic
 # (This works because alembic and rdr users share the same password)
 function set_local_db_connection_string {
-  DB_USER=$RDR_DB_USER  
+  DB_USER=$RDR_DB_USER
   if [ "$1" ]
   then
     DB_USER=$1
