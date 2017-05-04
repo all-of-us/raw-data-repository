@@ -131,7 +131,7 @@ class ParticipantDao(UpdatableDao):
 
   @staticmethod
   def _get_hpo_id(obj):
-    hpo_name = get_HPO_name_from_participant(obj)
+    hpo_name = _get_hpo_name_from_participant(obj)
     if hpo_name:
       hpo = HPODao().get_by_name(hpo_name)
       if not hpo:
@@ -165,8 +165,7 @@ class ParticipantDao(UpdatableDao):
               .yield_per(batch_size))
 
 
-# TODO(danrodney): remove this logic from old participant code when done
-def get_primary_provider_link(participant):
+def _get_primary_provider_link(participant):
   if participant.providerLink:
     provider_links = json.loads(participant.providerLink)
     if provider_links:
@@ -175,14 +174,16 @@ def get_primary_provider_link(participant):
           return provider
   return None
 
-def get_HPO_name_from_participant(participant):
+
+def _get_hpo_name_from_participant(participant):
   """Returns ExtractionResult with the string representing the HPO."""
-  primary_provider_link = get_primary_provider_link(participant)
+  primary_provider_link = _get_primary_provider_link(participant)
   if primary_provider_link and primary_provider_link.get('organization'):
     reference = primary_provider_link.get('organization').get('reference')
     if reference and reference.lower().startswith('organization/'):
       return reference[13:]
   return None
+
 
 def raise_if_withdrawn(obj):
   if obj.withdrawalStatus == WithdrawalStatus.NO_USE:
