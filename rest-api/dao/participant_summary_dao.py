@@ -20,10 +20,16 @@ from participant_enums import EnrollmentStatus, SuspensionStatus, WithdrawalStat
 from participant_enums import get_bucketed_age
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
-_ORDER_BY_ENDING = ['lastName', 'firstName', 'dateOfBirth', 'participantId']
+_ORDER_BY_ENDING = ('lastName', 'firstName', 'dateOfBirth', 'participantId')
 # The default ordering of results for queries for withdrawn participants.
-_WITHDRAWN_ORDER_BY_ENDING = ['withdrawalTime', 'participantId']
-_CODE_FIELDS = ['genderIdentity']
+_WITHDRAWN_ORDER_BY_ENDING = ('withdrawalTime', 'participantId')
+_CODE_FILTER_FIELDS = ('genderIdentity',)
+
+# Lazy caches of property names for client JSON conversion.
+_DATE_FIELDS = set()
+_ENUM_FIELDS = set()
+_CODE_FIELDS = set()
+_fields_lock = threading.RLock()
 
 # Query used to update the enrollment status for all participant summaries after
 # a Biobank samples import.
@@ -72,13 +78,6 @@ def _get_sample_sql_and_params():
     sql += _SAMPLE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
     params[sample_param] = BIOBANK_TESTS[i]
   return sql, params
-
-
-_DATE_FIELDS = set()
-_ENUM_FIELDS = set()
-_CODE_FIELDS = set()
-_fields_lock = threading.RLock()
-
 
 
 class ParticipantSummaryDao(UpdatableDao):
@@ -130,7 +129,7 @@ class ParticipantSummaryDao(UpdatableDao):
     return self.order_by_ending
 
   def _add_order_by(self, query, order_by, field_names, fields):
-    if order_by.field_name in _CODE_FIELDS:
+    if order_by.field_name in _CODE_FILTER_FIELDS:
       return super(ParticipantSummaryDao, self)._add_order_by(query,
                                                               OrderBy(order_by.field_name + 'Id',
                                                                       order_by.ascending),
@@ -139,13 +138,13 @@ class ParticipantSummaryDao(UpdatableDao):
     return super(ParticipantSummaryDao, self)._add_order_by(query, order_by, field_names, fields)
 
   def make_query_filter(self, field_name, value):
-    # Handle HPO and code values when parsing filter values.
+    """Handle HPO and code values when parsing filter values."""
     if field_name == 'hpoId':
       hpo = HPODao().get_by_name(value)
       if not hpo:
         raise BadRequest('No HPO found with name %s' % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
-    if field_name in _CODE_FIELDS:
+    if field_name in _CODE_FILTER_FIELDS:
       if value == UNSET:
         return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
       # Note: we do not at present support querying for UNMAPPED code values.
