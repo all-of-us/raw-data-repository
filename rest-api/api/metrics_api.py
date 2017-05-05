@@ -14,6 +14,7 @@ class MetricsApi(Resource):
 
   @api_util.auth_required(HEALTHPRO)
   def post(self):
+    dao = MetricsBucketDao()
     resource = request.get_data()
     start_date = None
     end_date = None
@@ -31,7 +32,7 @@ class MetricsApi(Resource):
           end_date = datetime.datetime.strptime(end_date_str, DATE_FORMAT).date()
         except ValueError:
           raise BadRequest("Invalid start date: %s" % end_date_str)
-    buckets = MetricsBucketDao().get_active_buckets(start_date, end_date)
+    buckets = dao.get_active_buckets(start_date, end_date)
     if buckets is None:
       return []
-    return [self.dao.to_client_json(bucket) for bucket in buckets]
+    return [dao.to_client_json(bucket) for bucket in buckets]

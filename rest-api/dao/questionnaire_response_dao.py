@@ -215,11 +215,7 @@ class QuestionnaireResponseDao(BaseDao):
       return super(QuestionnaireResponseDao, self).insert(obj)
     return self._insert_with_random_id(obj, ['questionnaireResponseId'])
 
-  def to_client_json(self):
-    return json.loads(self.resource)
-
-  @classmethod
-  def from_client_json(cls, resource_json, participant_id=None, client_id=None):
+  def from_client_json(self, resource_json, participant_id=None, client_id=None):
     #pylint: disable=unused-argument
     # Parse the questionnaire response, but preserve the original response when persisting
     fhir_qr = fhirclient.models.questionnaireresponse.QuestionnaireResponse(resource_json)
@@ -227,21 +223,21 @@ class QuestionnaireResponseDao(BaseDao):
     if patient_id != 'Patient/P{}'.format(participant_id):
       raise BadRequest("Questionnaire response subject reference does not match participant_id %d"
                        % participant_id)
-    questionnaire = cls._get_questionnaire(fhir_qr.questionnaire, resource_json)
+    questionnaire = self._get_questionnaire(fhir_qr.questionnaire, resource_json)
     qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
                                questionnaireVersion=questionnaire.version,
                                participantId=participant_id,
                                resource=json.dumps(resource_json))
 
     # Extract a code map and answers from the questionnaire response.
-    code_map, answers = cls._extract_codes_and_answers(fhir_qr.group,
+    code_map, answers = self._extract_codes_and_answers(fhir_qr.group,
                                                                          questionnaire)
     # Get or insert codes, and retrieve their database IDs.
     code_id_map = CodeDao().get_or_add_codes(code_map,
-                                             _add_codes_if_missing=_add_codes_if_missing(client_id))
+                                             add_codes_if_missing=_add_codes_if_missing(client_id))
 
      # Now add the child answers, using the IDs in code_id_map
-    cls._add_answers(qr, code_id_map, answers)
+    self._add_answers(qr, code_id_map, answers)
 
     return qr
 

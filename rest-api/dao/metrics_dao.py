@@ -106,8 +106,7 @@ class MetricsBucketDao(UpsertableDao):
         query = query.filter(MetricsBucket.date <= end_date)
       return query.order_by(MetricsBucket.date).order_by(MetricsBucket.hpoId).all()
 
-  @staticmethod
-  def to_client_json(model):
+  def to_client_json(self, model):
     facets = {'date': model.date.isoformat()}
     if model.hpoId:
       facets['hpoId'] = model.hpoId

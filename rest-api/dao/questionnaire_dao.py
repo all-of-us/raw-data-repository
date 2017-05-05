@@ -120,7 +120,7 @@ class QuestionnaireDao(UpdatableDao):
     # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
     # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,
     # which we'll use later when assembling the child objects.
-    code_map, concepts, questions = Questionnaire._extract_codes(fhir_q.group)
+    code_map, concepts, questions = cls._extract_codes(fhir_q.group)
 
     from dao.code_dao import CodeDao
     # Get or insert codes, and retrieve their database IDs.

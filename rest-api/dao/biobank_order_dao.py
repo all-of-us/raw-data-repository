@@ -133,9 +133,8 @@ class BiobankOrderDao(BaseDao):
                 .filter(Participant.biobankId % 100 < percentage * 100)
                 .yield_per(batch_size))
 
-  @classmethod
   # pylint: disable=unused-argument
-  def from_client_json(cls, resource_json, participant_id=None, client_id=None):
+  def from_client_json(self, resource_json, participant_id=None, client_id=None):
     resource = _FhirBiobankOrder(resource_json)
     if not resource.created.date:  # FHIR warns but does not error on bad date values.
       raise BadRequest('Invalid created date %r.' % resource.created.origval)
@@ -148,12 +147,12 @@ class BiobankOrderDao(BaseDao):
       order.collectedNote = resource.notes.collected
       order.processedNote = resource.notes.processed
       order.finalizedNote = resource.notes.finalized
-    if resource.subject != order._participant_id_to_subject():
+    if resource.subject != self._participant_id_to_subject(participant_id):
       raise BadRequest(
           'Participant ID %d from path and %r in request do not match, should be %r.'
-          % (participant_id, resource.subject, order._participant_id_to_subject()))
-    cls._add_identifiers_and_main_id(order, resource)
-    cls._add_samples(order, resource)
+          % (participant_id, resource.subject, self._participant_id_to_subject(participant_id)))
+    self._add_identifiers_and_main_id(order, resource)
+    self._add_samples(order, resource)
     return order
 
   @classmethod
@@ -209,10 +208,9 @@ class BiobankOrderDao(BaseDao):
       fhir_id.value = identifier.value
       resource.identifier.append(fhir_id)
 
-  @classmethod
-  def to_client_json(cls, model):
+  def to_client_json(self, model):
     resource = _FhirBiobankOrder()
-    resource.subject = cls._participant_id_to_subject(model.participantId)
+    resource.subject = self._participant_id_to_subject(model.participantId)
     resource.created = _ToFhirDate(model.created)
     resource.notes = _FhirBiobankOrderNotes()
     resource.notes.collected = model.collectedNote
@@ -221,8 +219,8 @@ class BiobankOrderDao(BaseDao):
     resource.source_site = Identifier()
     resource.source_site.system = model.sourceSiteSystem
     resource.source_site.value = model.sourceSiteValue
-    cls._add_identifiers_to_resource(resource, model)
-    cls._add_samples_to_resource(resource, model)
+    self._add_identifiers_to_resource(resource, model)
+    self._add_samples_to_resource(resource, model)
     client_json = resource.as_json()  # also validates required fields
     client_json['id'] = model.biobankOrderId
     del client_json['resourceType']

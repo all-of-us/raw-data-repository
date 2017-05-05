@@ -169,8 +169,7 @@ class ParticipantDao(UpdatableDao):
               .filter(Participant.biobankId % 100 <= percentage * 100)
               .yield_per(batch_size))
 
-  @staticmethod
-  def to_client_json(model):
+  def to_client_json(self, model):
     client_json = {
         'participantId': to_client_participant_id(model.participantId),
         'biobankId': to_client_biobank_id(model.biobankId),
@@ -188,8 +187,7 @@ class ParticipantDao(UpdatableDao):
     format_json_date(client_json, 'suspensionTime')
     return client_json
 
-  @staticmethod
-  def from_client_json(resource_json, id_=None, expected_version=None, client_id=None):
+  def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):
     parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus)
     parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus)
     # biobankId, lastModified, signUpTime are set by DAO.
