@@ -142,7 +142,7 @@ class BaseDao(object):
       else:
         return value
     except ValueError:
-      raise BadRequest("Invalid value for property of type %s: %s" % (property_type, value))
+      raise BadRequest('Invalid value for property of type %s: %r.' % (property_type, value))
 
   def _from_json_value(self, prop, value):
     property_type = get_property_type(prop)
@@ -193,8 +193,8 @@ class BaseDao(object):
       try:
         f = getattr(self.model_type, field_filter.field_name)
       except AttributeError:
-        raise BadRequest("No field named %s found on %s", (field_filter.field_name,
-                                                           self.model_type))
+        raise BadRequest(
+            'No field named %r found on %r.' % (field_filter.field_name, self.model_type))
       query = self._add_filter(query, field_filter, f)
     order_by_field_names = []
     order_by_fields = []
@@ -222,7 +222,7 @@ class BaseDao(object):
              Operator.GREATER_THAN_OR_EQUALS: query.filter(f >= field_filter.value),
              Operator.NOT_EQUALS: query.filter(f != field_filter.value)}.get(field_filter.operator)
     if not query:
-      raise BadRequest("Invalid operator: %s" % field_filter.operator)
+      raise BadRequest('Invalid operator: %r.' % field_filter.operator)
     return query
 
   def _add_pagination_filter(self, query, pagination_token, fields, first_descending):
@@ -256,9 +256,9 @@ class BaseDao(object):
     try:
       decoded_vals = json.loads(urlsafe_b64decode(pagination_token.encode("ascii")))
     except:
-      raise BadRequest("Invalid pagination token: %s", pagination_token)
+      raise BadRequest('Invalid pagination token: %r.' % pagination_token)
     if not type(decoded_vals) is list or len(decoded_vals) != len(fields):
-      raise BadRequest("Invalid pagination token: %s" % pagination_token)
+      raise BadRequest('Invalid pagination token: %r.' % pagination_token)
     for i in range(0, len(fields)):
       decoded_vals[i] = self._from_json_value(fields[i], decoded_vals[i])
     return decoded_vals
@@ -268,7 +268,7 @@ class BaseDao(object):
     try:
       f = getattr(self.model_type, order_by.field_name)
     except AttributeError:
-      raise BadRequest("No field named %s found on %s", (order_by.field_name, self.model_type))
+      raise BadRequest('No field named %r found on %r.' % (order_by.field_name, self.model_type))
     field_names.append(order_by.field_name)
     fields.append(f)
     if order_by.ascending:
@@ -288,8 +288,7 @@ class BaseDao(object):
       try:
         f = getattr(self.model_type, order_by_field)
       except AttributeError:
-        raise BadRequest("No field named %s found on %s", (order_by_field,
-                                                           self.model_type))
+        raise BadRequest('No field named %r found on %r.' % (order_by_field, self.model_type))
       field_names.append(order_by_field)
       fields.append(f)
       query = query.order_by(f)
