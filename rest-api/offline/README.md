@@ -33,18 +33,20 @@ When the pipeline finishes, new metrics will be served to clients based on the n
 
 Match up orders received via API (BiobankOrder) and orders received at the
 Biobank with records uploaded in CSVs (BiobankStoredSample); then generate a
-report of how long it took any sample to get stored and if any are missing.
+report of how long it took any sample to get stored and whether any are missing.
 
 This pipeline is necessary because samples have separate IDs on the
 order/creation side and the storage side. Both are linked to test codes and
 participants, which is how we correlate the two views of each sample.
 
-## Input: Orders
+## Input 1: Orders
 
 Orders (generated when samples are taken) are sent to the
-`/Participant/:participant_id:/BiobankOrder` API endpoint from HealthPro.
+`/Participant/:participant_id:/BiobankOrder` API endpoint from HealthPro. One
+order for a participant lists multiple samples included in that order, where
+each sample is for a different test, identified by test code.
 
-## Input: Sample CSVs
+## Input 2: Sample CSVs
 
 Received samples are listed in CSVs uploaded (by Biobank) to Google Cloud
 Storage, in an environment-specific storage bucket like
@@ -56,18 +58,19 @@ The reconciliation pipeline writes three CSVs to a `reconciliation`
 subdirectory of the input bucket. The CSVs all have the same columns, but are
 different subsets of the rows:
 
-1.  `report_$DATE_received.csv` Everything where sent and received match up.
-    This is typically cases where one sample was ordered and one sample was
-    received, for the same participant and test. However it could be a case
-    where the same test was ordered twice and received twice for a participant.
+1.  `report_$DATE_received.csv` All rows where sent orders and received samples
+    match up. This is typically cases where one sample was ordered and one
+    sample was received, for the same participant and test. However it could be
+    a case where the same test was ordered twice and received twice for a
+    participant.
 1.  `report_$DATE_over_24h.csv` Rows where sent and received match up, but the
-    elapsed time between ordered sample collection and sample confirmation is
-    more than 24 hours.
+    elapsed time between ordered sample collection and sample receipt
+    confirmation is more than 24 hours.
 1.  `report_$DATE_missing.csv` Any case of order and receipt mismatch. This may
     be an order where no sample arrived, a received sample with no order, or
     more generally a case where a different number of orders and samples appear
-    for the same participant/test pair (that is, rows where
-    `sent_count` != `received_count`).
+    for the same participant/test pair: that is, rows where
+    `sent_count` != `received_count`.
 
 Colums in the CSVs are:
 
