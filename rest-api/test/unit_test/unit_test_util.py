@@ -24,7 +24,6 @@ import config
 import config_api
 import executors
 import main
-import model
 import dao.base_dao
 import singletons
 
