@@ -2,6 +2,7 @@ from code_constants import UNSET, RACE_AIAN_CODE, RACE_ASIAN_CODE, RACE_BLACK_CO
 from code_constants import RACE_NHDPI_CODE, RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_FREETEXT_CODE
 from code_constants import PMI_SKIP_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE
 from code_constants import PMI_FREE_TEXT_CODE, PMI_UNANSWERED_CODE
+import extraction
 from protorpc import messages
 from dateutil.relativedelta import relativedelta
 
@@ -98,7 +99,6 @@ _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
 AGE_BUCKETS = ['{}-{}'.format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
 
 def extract_bucketed_age(participant_hist_obj):
-  import extraction
   if participant_hist_obj.date_of_birth:
     bucketed_age = get_bucketed_age(participant_hist_obj.date_of_birth, participant_hist_obj.date)
     if bucketed_age:
