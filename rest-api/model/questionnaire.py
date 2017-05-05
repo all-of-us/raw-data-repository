@@ -1,14 +1,8 @@
-import fhirclient.models.questionnaire
-import json
-
-from code_constants import PPI_EXTRA_SYSTEM
-from model.code import CodeType
 from model.base import Base
 from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, BLOB, String, ForeignKeyConstraint, Boolean
 from sqlalchemy import UniqueConstraint, ForeignKey
-from werkzeug.exceptions import BadRequest
 
 
 class QuestionnaireBase(object):
@@ -25,9 +19,6 @@ class QuestionnaireBase(object):
   def asdict_with_children(self):
     return self.asdict(follow={'concepts': {}, 'questions': {}})
 
-  def to_client_json(self):
-    return json.loads(self.resource)
-
 
 class Questionnaire(QuestionnaireBase, Base):
   """A questionnaire containing questions to pose to participants."""
@@ -38,91 +29,6 @@ class Questionnaire(QuestionnaireBase, Base):
   questions = relationship('QuestionnaireQuestion', cascade='expunge', cascade_backrefs=False,
                            primaryjoin='Questionnaire.questionnaireId==' + \
                             'foreign(QuestionnaireQuestion.questionnaireId)')
-
-  @staticmethod
-  def from_client_json(resource_json,
-                       id_=None,
-                       expected_version=None,
-                       client_id=None):
-    #pylint: disable=unused-argument
-    # Parse the questionnaire to make sure it's valid, but preserve the original JSON
-    # when saving.
-    fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
-    if not fhir_q.group:
-      raise BadRequest('No top-level group found in questionnaire')
-
-    q = Questionnaire(
-        resource=json.dumps(resource_json),
-        questionnaireId=id_,
-        version=expected_version)
-    # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
-    # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,
-    # which we'll use later when assembling the child objects.
-    code_map, concepts, questions = Questionnaire._extract_codes(fhir_q.group)
-
-    from dao.code_dao import CodeDao
-    # Get or insert codes, and retrieve their database IDs.
-    code_id_map = CodeDao().get_or_add_codes(code_map)
-
-    # Now add the child objects, using the IDs in code_id_map
-    Questionnaire._add_concepts(q, code_id_map, concepts)
-    Questionnaire._add_questions(q, code_id_map, questions)
-
-    return q
-
-  @staticmethod
-  def _add_concepts(q, code_id_map, concepts):
-    for system, code in concepts:
-      q.concepts.append(
-          QuestionnaireConcept(
-              questionnaireId=q.questionnaireId,
-              questionnaireVersion=q.version,
-              codeId=code_id_map.get((system, code))))
-
-  @staticmethod
-  def _add_questions(q, code_id_map, questions):
-    for system, code, linkId, repeats in questions:
-      q.questions.append(
-          QuestionnaireQuestion(
-              questionnaireId=q.questionnaireId,
-              questionnaireVersion=q.version,
-              linkId=linkId,
-              codeId=code_id_map.get((system, code)),
-              repeats=repeats if repeats else False))
-
-  @staticmethod
-  def _extract_codes(group):
-    code_map = {}
-    concepts = []
-    questions = []
-    if group.concept:
-      for concept in group.concept:
-        if concept.system and concept.code and concept.system != PPI_EXTRA_SYSTEM:
-          code_map[(concept.system, concept.code)] = (concept.display,
-                                                      CodeType.MODULE, None)
-          concepts.append((concept.system, concept.code))
-    Questionnaire._populate_questions(group, code_map, questions)
-    return (code_map, concepts, questions)
-
-  @staticmethod
-  def _populate_questions(group, code_map, questions):
-    """Recursively populate questions under this group."""
-    if group.question:
-      for question in group.question:
-        # Capture any questions that have a link ID and single concept with a system and code
-        if question.linkId and question.concept and len(question.concept) == 1:
-          concept = question.concept[0]
-          if concept.system and concept.code and concept.system != PPI_EXTRA_SYSTEM:
-            code_map[(concept.system, concept.code)] = (concept.display,
-                                                        CodeType.QUESTION, None)
-            questions.append((concept.system, concept.code, question.linkId,
-                              question.repeats))
-        if question.group:
-          for sub_group in question.group:
-            Questionnaire._populate_questions(sub_group, code_map, questions)
-    if group.group:
-      for sub_group in group.group:
-        Questionnaire._populate_questions(sub_group, code_map, questions)
 
 
 class QuestionnaireHistory(QuestionnaireBase, Base):

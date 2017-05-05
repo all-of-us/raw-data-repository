@@ -118,3 +118,9 @@ class PhysicalMeasurementsDao(BaseDao):
     amended_measurement.resource = json.dumps(amended_resource_json)
     session.merge(amended_measurement)
     obj.amendedMeasurementsId = amended_measurement_id
+
+  @staticmethod
+  def from_client_json(resource_json, participant_id=None, **unused_kwargs):
+    #pylint: disable=unused-argument
+    return PhysicalMeasurements(participantId=participant_id, resource=json.dumps(resource_json))
+

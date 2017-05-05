@@ -1,8 +1,5 @@
-import json
-
-from api_util import format_json_enum, parse_json_enum, format_json_date
 from model.base import Base
-from model.utils import Enum, to_client_participant_id, to_client_biobank_id, UTCDateTime
+from model.utils import Enum, UTCDateTime
 from participant_enums import WithdrawalStatus, SuspensionStatus
 from sqlalchemy import Column, Integer, BLOB, ForeignKey, Index, String
 from sqlalchemy.ext.declarative import declared_attr
@@ -50,42 +47,11 @@ class ParticipantBase(object):
   def hpoId(cls):
     return Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
 
-  def to_client_json(self):
-    client_json = {
-        'participantId': to_client_participant_id(self.participantId),
-        'biobankId': to_client_biobank_id(self.biobankId),
-        'lastModified': self.lastModified.isoformat(),
-        'signUpTime': self.signUpTime.isoformat(),
-        'providerLink': json.loads(self.providerLink),
-        'withdrawalStatus': self.withdrawalStatus,
-        'withdrawalTime': self.withdrawalTime,
-        'suspensionStatus': self.suspensionStatus,
-        'suspensionTime': self.suspensionTime
-    }
-    format_json_enum(client_json, 'withdrawalStatus')
-    format_json_enum(client_json, 'suspensionStatus')
-    format_json_date(client_json, 'withdrawalTime')
-    format_json_date(client_json, 'suspensionTime')
-    return client_json
-
 
 class Participant(ParticipantBase, Base):
   __tablename__ = 'participant'
   participantSummary = relationship('ParticipantSummary', uselist=False,
                                     back_populates='participant', cascade='all, delete-orphan')
-
-  @staticmethod
-  def from_client_json(resource_json, id_=None, expected_version=None, client_id=None):
-    parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus)
-    parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus)
-    # biobankId, lastModified, signUpTime are set by DAO.
-    return Participant(
-        participantId=id_,
-        version=expected_version,
-        providerLink=json.dumps(resource_json.get('providerLink')),
-        clientId=client_id,
-        withdrawalStatus=resource_json.get('withdrawalStatus'),
-        suspensionStatus=resource_json.get('suspensionStatus'))
 
 
 Index('participant_biobank_id', Participant.biobankId, unique=True)

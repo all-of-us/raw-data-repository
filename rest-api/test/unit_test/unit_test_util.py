@@ -24,7 +24,6 @@ import config
 import config_api
 import executors
 import main
-import model
 import dao.base_dao
 import singletons
 
@@ -56,7 +55,7 @@ class TestBase(unittest.TestCase):
     self.fake.seed(1)
 
     # Always add codes if missing when handling questionnaire responses.
-    model.questionnaire_response.add_codes_if_missing = lambda email:True
+    dao.questionnaire_response_dao._add_codes_if_missing = lambda email:True
 
   @staticmethod
   def _participant_with_defaults(**kwargs):

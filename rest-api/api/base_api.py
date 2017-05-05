@@ -46,15 +46,15 @@ class BaseApi(Resource):
     return self._make_response(obj)
 
   def _make_response(self, obj):
-    return obj.to_client_json()
+    return self.dao.to_client_json(obj)
 
   def _get_model_to_insert(self, resource, participant_id=None):
     # Children of participants accept a participant_id parameter to from_client_json; others don't.
     if participant_id is not None:
-      return self.dao.model_type.from_client_json(resource, participant_id=participant_id,
-                                                  client_id=api_util.get_oauth_id())
+      return self.dao.from_client_json(
+          resource, participant_id=participant_id, client_id=api_util.get_oauth_id())
     else:
-      return self.dao.model_type.from_client_json(resource, client_id=api_util.get_oauth_id())
+      return self.dao.from_client_json(resource, client_id=api_util.get_oauth_id())
 
   def _do_insert(self, m):
     self.dao.insert(m)
@@ -127,7 +127,7 @@ class BaseApi(Resource):
       bundle_dict['link'] = [{"relation": "next", "url": next_url}]
     entries = []
     for item in results.items:
-      json = item.to_client_json()
+      json = self.dao.to_client_json(item)
       if participant_id:
         full_url = main.api.url_for(self.__class__,
                                     id_=json[id_field],
@@ -142,6 +142,7 @@ class BaseApi(Resource):
     bundle_dict['entry'] = entries
     return bundle_dict
 
+
 class UpdatableApi(BaseApi):
   """Base class for API handlers that support PUT requests.
 
@@ -150,13 +151,12 @@ class UpdatableApi(BaseApi):
   def _get_model_to_update(self, resource, id_, expected_version, participant_id=None):
     # Children of participants accept a participant_id parameter to from_client_json; others don't.
     if participant_id is not None:
-      return self.dao.model_type.from_client_json(resource, participant_id=participant_id, id_=id_,
-                                                  expected_version=expected_version,
-                                                  client_id=api_util.get_oauth_id())
+      return self.dao.from_client_json(
+          resource, participant_id=participant_id, id_=id_, expected_version=expected_version,
+          client_id=api_util.get_oauth_id())
     else:
-      return self.dao.model_type.from_client_json(resource, id_=id_,
-                                                  expected_version=expected_version,
-                                                  client_id=api_util.get_oauth_id())
+      return self.dao.from_client_json(
+          resource, id_=id_, expected_version=expected_version, client_id=api_util.get_oauth_id())
 
   def _make_response(self, obj):
     result = super(UpdatableApi, self)._make_response(obj)
@@ -213,6 +213,6 @@ def get_sync_results_for_request(dao, max_results):
     bundle_dict['link'] = [{'relation': link_type, 'url': next_url}]
   entries = []
   for item in results.items:
-    entries.append({'resource': item.to_client_json()})
+    entries.append({'resource': dao.to_client_json(item)})
   bundle_dict['entry'] = entries
   return jsonify(bundle_dict)

@@ -1,13 +1,18 @@
-import clock
 import json
+
+from sqlalchemy.orm.session import make_transient
+from sqlalchemy.orm import joinedload
+from werkzeug.exceptions import BadRequest, Forbidden
+
+from api_util import format_json_enum, parse_json_enum, format_json_date
+import clock
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
+from model.utils import to_client_participant_id, to_client_biobank_id
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
-from sqlalchemy.orm.session import make_transient
-from sqlalchemy.orm import joinedload
-from werkzeug.exceptions import BadRequest, Forbidden
+
 
 class ParticipantHistoryDao(BaseDao):
   """Maintains version history for participants.
@@ -163,6 +168,36 @@ class ParticipantDao(UpdatableDao):
     return (session.query(Participant.biobankId, Participant.signUpTime)
               .filter(Participant.biobankId % 100 <= percentage * 100)
               .yield_per(batch_size))
+
+  def to_client_json(self, model):
+    client_json = {
+        'participantId': to_client_participant_id(model.participantId),
+        'biobankId': to_client_biobank_id(model.biobankId),
+        'lastModified': model.lastModified.isoformat(),
+        'signUpTime': model.signUpTime.isoformat(),
+        'providerLink': json.loads(model.providerLink),
+        'withdrawalStatus': model.withdrawalStatus,
+        'withdrawalTime': model.withdrawalTime,
+        'suspensionStatus': model.suspensionStatus,
+        'suspensionTime': model.suspensionTime
+    }
+    format_json_enum(client_json, 'withdrawalStatus')
+    format_json_enum(client_json, 'suspensionStatus')
+    format_json_date(client_json, 'withdrawalTime')
+    format_json_date(client_json, 'suspensionTime')
+    return client_json
+
+  def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):
+    parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus)
+    parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus)
+    # biobankId, lastModified, signUpTime are set by DAO.
+    return Participant(
+        participantId=id_,
+        version=expected_version,
+        providerLink=json.dumps(resource_json.get('providerLink')),
+        clientId=client_id,
+        withdrawalStatus=resource_json.get('withdrawalStatus'),
+        suspensionStatus=resource_json.get('suspensionStatus'))
 
 
 def _get_primary_provider_link(participant):

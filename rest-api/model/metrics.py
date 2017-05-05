@@ -1,5 +1,4 @@
 import clock
-import json
 
 from model.base import Base
 from model.utils import UTCDateTime
@@ -21,6 +20,7 @@ class MetricsVersion(Base):
   dataVersion = Column('data_version', Integer, nullable=False)
   buckets = relationship('MetricsBucket', cascade='all, delete-orphan', passive_deletes=True)
 
+
 class MetricsBucket(Base):
   """A bucket belonging to a MetricsVersion, containing metrics for a particular HPO ID and date.
   """
@@ -31,9 +31,3 @@ class MetricsBucket(Base):
   date = Column('date', Date, primary_key=True)
   hpoId = Column('hpo_id', String(20), primary_key=True) # Set to '' for cross-HPO metrics
   metrics = Column('metrics', BLOB, nullable=False)
-
-  def to_client_json(self):
-    facets = {'date': self.date.isoformat()}
-    if self.hpoId:
-      facets['hpoId'] = self.hpoId
-    return {'facets': facets, 'entries': json.loads(self.metrics)}

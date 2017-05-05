@@ -2,20 +2,29 @@ import clock
 import config
 import json
 
+import fhirclient.models.questionnaireresponse
+from sqlalchemy.orm import subqueryload
+from werkzeug.exceptions import BadRequest
+
 from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from code_constants import EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE
-from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
+from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PPI_EXTRA_SYSTEM
+from config_api import is_config_admin
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from field_mappings import FieldType, QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
+from model.code import CodeType
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from participant_enums import QuestionnaireStatus, get_race
-from sqlalchemy.orm import subqueryload
-from werkzeug.exceptions import BadRequest
+
+_QUESTIONNAIRE_PREFIX = 'Questionnaire/'
+_QUESTIONNAIRE_HISTORY_SEGMENT = '/_history/'
+_QUESTIONNAIRE_REFERENCE_FORMAT = (_QUESTIONNAIRE_PREFIX + "%d" +
+                                   _QUESTIONNAIRE_HISTORY_SEGMENT + "%d")
 
 def count_completed_baseline_ppi_modules(participant_summary):
   baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
@@ -205,6 +214,149 @@ class QuestionnaireResponseDao(BaseDao):
     if obj.questionnaireResponseId:
       return super(QuestionnaireResponseDao, self).insert(obj)
     return self._insert_with_random_id(obj, ['questionnaireResponseId'])
+
+  def from_client_json(self, resource_json, participant_id=None, client_id=None):
+    #pylint: disable=unused-argument
+    # Parse the questionnaire response, but preserve the original response when persisting
+    fhir_qr = fhirclient.models.questionnaireresponse.QuestionnaireResponse(resource_json)
+    patient_id = fhir_qr.subject.reference
+    if patient_id != 'Patient/P{}'.format(participant_id):
+      raise BadRequest("Questionnaire response subject reference does not match participant_id %d"
+                       % participant_id)
+    questionnaire = self._get_questionnaire(fhir_qr.questionnaire, resource_json)
+    qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
+                               questionnaireVersion=questionnaire.version,
+                               participantId=participant_id,
+                               resource=json.dumps(resource_json))
+
+    # Extract a code map and answers from the questionnaire response.
+    code_map, answers = self._extract_codes_and_answers(fhir_qr.group,
+                                                                         questionnaire)
+    # Get or insert codes, and retrieve their database IDs.
+    code_id_map = CodeDao().get_or_add_codes(code_map,
+                                             add_codes_if_missing=_add_codes_if_missing(client_id))
+
+     # Now add the child answers, using the IDs in code_id_map
+    self._add_answers(qr, code_id_map, answers)
+
+    return qr
+
+  @staticmethod
+  def _get_questionnaire(questionnaire, resource_json):
+    """Retrieves the questionnaire referenced by this response; mutates the resource JSON to include
+    the version if it doesn't already."""
+    if not questionnaire.reference.startswith(_QUESTIONNAIRE_PREFIX):
+      raise BadRequest('Questionnaire reference %s is invalid' % questionnaire.reference)
+    questionnaire_reference = questionnaire.reference[len(_QUESTIONNAIRE_PREFIX):]
+    # If the questionnaire response specifies the version of the questionnaire it's for, use it.
+    if _QUESTIONNAIRE_HISTORY_SEGMENT in questionnaire_reference:
+      questionnaire_ref_parts = questionnaire_reference.split(_QUESTIONNAIRE_HISTORY_SEGMENT)
+      if len(questionnaire_ref_parts) != 2:
+        raise BadRequest('Questionnaire id %s is invalid' % questionnaire_reference)
+      try:
+        questionnaire_id = int(questionnaire_ref_parts[0])
+        version = int(questionnaire_ref_parts[1])
+        q = QuestionnaireHistoryDao().get_with_children((questionnaire_id, version))
+        if not q:
+          raise BadRequest('Questionnaire with id %d, version %d is not found' %
+                           (questionnaire_id, version))
+        return q
+      except ValueError:
+        raise BadRequest('Questionnaire id %s is invalid' % questionnaire_reference)
+    else:
+      try:
+        questionnaire_id = int(questionnaire_reference)
+        from dao.questionnaire_dao import QuestionnaireDao
+        q = QuestionnaireDao().get_with_children(questionnaire_id)
+        if not q:
+          raise BadRequest('Questionnaire with id %d is not found' % questionnaire_id)
+        # Mutate the questionnaire reference to include the version.
+        questionnaire_reference = _QUESTIONNAIRE_REFERENCE_FORMAT % (questionnaire_id, q.version)
+        resource_json["questionnaire"]["reference"] = questionnaire_reference
+        return q
+      except ValueError:
+        raise BadRequest('Questionnaire id %s is invalid' % questionnaire_reference)
+
+  @classmethod
+  def _extract_codes_and_answers(cls, group, q):
+    """Returns (system, code) -> (display, code type, question code id) code map
+    and (QuestionnaireResponseAnswer, (system, code)) answer pairs."""
+    code_map = {}
+    answers = []
+    link_id_to_question = {}
+    if q.questions:
+      link_id_to_question = {question.linkId: question for question in q.questions}
+    cls._populate_codes_and_answers(group, code_map, answers, link_id_to_question,
+                                                      q.questionnaireId)
+    return (code_map, answers)
+
+  @classmethod
+  def _populate_codes_and_answers(cls, group, code_map, answers, link_id_to_question,
+                                  questionnaire_id):
+    """Populates code_map with (system, code) -> (display, code type, question code id)
+    and answers with (QuestionnaireResponseAnswer, (system, code)) pairs."""
+    if group.question:
+      for question in group.question:
+        if question.linkId and question.answer:
+          qq = link_id_to_question.get(question.linkId)
+          if qq:
+            for answer in question.answer:
+              qr_answer = QuestionnaireResponseAnswer(questionId=qq.questionnaireQuestionId)
+              system_and_code = None
+              ignore_answer = False
+              if answer.valueCoding:
+                if not answer.valueCoding.system:
+                  raise BadRequest("No system provided for valueCoding: %s" % question.linkId)
+                if not answer.valueCoding.code:
+                  raise BadRequest("No code provided for valueCoding: %s" % question.linkId)
+                if answer.valueCoding.system == PPI_EXTRA_SYSTEM:
+                  # Ignore answers from the ppi-extra system, as they aren't used for analysis.
+                  ignore_answer = True
+                else:
+                  system_and_code = (answer.valueCoding.system, answer.valueCoding.code)
+                  if not system_and_code in code_map:
+                    code_map[system_and_code] = (answer.valueCoding.display, CodeType.ANSWER,
+                                                 qq.codeId)
+              if not ignore_answer:
+                if answer.valueDecimal:
+                  qr_answer.valueDecimal = answer.valueDecimal
+                if answer.valueInteger:
+                  qr_answer.valueInteger = answer.valueInteger
+                if answer.valueString:
+                  qr_answer.valueString = answer.valueString
+                if answer.valueDate:
+                  qr_answer.valueDate = answer.valueDate.date
+                if answer.valueDateTime:
+                  qr_answer.valueDateTime = answer.valueDateTime.date
+                if answer.valueBoolean:
+                  qr_answer.valueBoolean = answer.valueBoolean
+                answers.append((qr_answer, system_and_code))
+              if answer.group:
+                for sub_group in answer.group:
+                  cls._populate_codes_and_answers(sub_group, code_map, answers,
+                                                                    link_id_to_question,
+                                                                    questionnaire_id)
+
+    if group.group:
+      for sub_group in group.group:
+        cls._populate_codes_and_answers(sub_group, code_map, answers,
+                                                          link_id_to_question, questionnaire_id)
+  @staticmethod
+  def _add_answers(qr, code_id_map, answers):
+    for answer, system_and_code in answers:
+      if system_and_code:
+        answer.valueCodeId = code_id_map[system_and_code]
+      qr.answers.append(answer)
+
+
+def _add_codes_if_missing(client_id):
+  """Don't add missing codes for questionnaire responses submitted by the config admin
+  (our command line tools.)
+
+  Tests override this to return true.
+  """
+  return not is_config_admin(client_id)
+
 
 class QuestionnaireResponseAnswerDao(BaseDao):
 

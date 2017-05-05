@@ -2,14 +2,14 @@
 in a specified directory.
 """
 
-import dao.database_factory
 import json
 import logging
 import os
 
+import dao.database_factory
 from dao.questionnaire_dao import QuestionnaireDao
-from model.questionnaire import Questionnaire
 from tools.main_util import get_parser, configure_logging
+
 
 def main(args):
   dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
@@ -18,7 +18,7 @@ def main(args):
   for filename in files:
     with open(args.dir + filename) as f:
       questionnaire_json = json.load(f)
-      questionnaire = Questionnaire.from_client_json(questionnaire_json)
+      questionnaire = QuestionnaireDao.from_client_json(questionnaire_json)
       questionnaire_dao.insert(questionnaire)
   logging.info("%d questionnaires imported." % len(files))
 

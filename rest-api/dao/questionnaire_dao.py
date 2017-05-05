@@ -1,9 +1,16 @@
 import clock
 import json
 
-from dao.base_dao import BaseDao, UpdatableDao
-from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireConcept, QuestionnaireQuestion  # pylint: disable=line-too-long
+import fhirclient.models.questionnaire
 from sqlalchemy.orm import subqueryload
+from werkzeug.exceptions import BadRequest
+
+from dao.base_dao import BaseDao, UpdatableDao
+from code_constants import PPI_EXTRA_SYSTEM
+from model.code import CodeType
+from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireConcept
+from model.questionnaire import QuestionnaireQuestion
+
 
 class QuestionnaireDao(UpdatableDao):
 
@@ -93,8 +100,95 @@ class QuestionnaireDao(UpdatableDao):
                                                                      questionnaire.concepts,
                                                                      questionnaire.questions))
 
+  @classmethod
+  def from_client_json(cls,
+                       resource_json,
+                       id_=None,
+                       expected_version=None,
+                       client_id=None):
+    #pylint: disable=unused-argument
+    # Parse the questionnaire to make sure it's valid, but preserve the original JSON
+    # when saving.
+    fhir_q = fhirclient.models.questionnaire.Questionnaire(resource_json)
+    if not fhir_q.group:
+      raise BadRequest('No top-level group found in questionnaire')
+
+    q = Questionnaire(
+        resource=json.dumps(resource_json),
+        questionnaireId=id_,
+        version=expected_version)
+    # Assemble a map of (system, value) -> (display, code_type, parent_id) for passing into CodeDao.
+    # Also assemble a list of (system, code) for concepts and (system, code, linkId) for questions,
+    # which we'll use later when assembling the child objects.
+    code_map, concepts, questions = cls._extract_codes(fhir_q.group)
+
+    from dao.code_dao import CodeDao
+    # Get or insert codes, and retrieve their database IDs.
+    code_id_map = CodeDao().get_or_add_codes(code_map)
+
+    # Now add the child objects, using the IDs in code_id_map
+    cls._add_concepts(q, code_id_map, concepts)
+    cls._add_questions(q, code_id_map, questions)
+
+    return q
+
+  @classmethod
+  def _add_concepts(cls, q, code_id_map, concepts):
+    for system, code in concepts:
+      q.concepts.append(
+          QuestionnaireConcept(
+              questionnaireId=q.questionnaireId,
+              questionnaireVersion=q.version,
+              codeId=code_id_map.get((system, code))))
+
+  @classmethod
+  def _add_questions(cls, q, code_id_map, questions):
+    for system, code, linkId, repeats in questions:
+      q.questions.append(
+          QuestionnaireQuestion(
+              questionnaireId=q.questionnaireId,
+              questionnaireVersion=q.version,
+              linkId=linkId,
+              codeId=code_id_map.get((system, code)),
+              repeats=repeats if repeats else False))
+
+  @classmethod
+  def _extract_codes(cls, group):
+    code_map = {}
+    concepts = []
+    questions = []
+    if group.concept:
+      for concept in group.concept:
+        if concept.system and concept.code and concept.system != PPI_EXTRA_SYSTEM:
+          code_map[(concept.system, concept.code)] = (concept.display,
+                                                      CodeType.MODULE, None)
+          concepts.append((concept.system, concept.code))
+    cls._populate_questions(group, code_map, questions)
+    return (code_map, concepts, questions)
+
+  @classmethod
+  def _populate_questions(cls, group, code_map, questions):
+    """Recursively populate questions under this group."""
+    if group.question:
+      for question in group.question:
+        # Capture any questions that have a link ID and single concept with a system and code
+        if question.linkId and question.concept and len(question.concept) == 1:
+          concept = question.concept[0]
+          if concept.system and concept.code and concept.system != PPI_EXTRA_SYSTEM:
+            code_map[(concept.system, concept.code)] = (concept.display,
+                                                        CodeType.QUESTION, None)
+            questions.append((concept.system, concept.code, question.linkId,
+                              question.repeats))
+        if question.group:
+          for sub_group in question.group:
+            cls._populate_questions(sub_group, code_map, questions)
+    if group.group:
+      for sub_group in group.group:
+        cls._populate_questions(sub_group, code_map, questions)
+
+
 class QuestionnaireHistoryDao(BaseDao):
-  '''Maintains version history for questionnaires.
+  """Maintains version history for questionnaires.
 
   All previous versions of a questionnaire are maintained (with the same questionnaireId value and
   a new version value for each update.)
@@ -107,7 +201,7 @@ class QuestionnaireHistoryDao(BaseDao):
   gets updated new concepts and questions are created and existing ones are left as they were.
 
   Do not use this DAO for write operations directly; instead use QuestionnaireDao.
-  '''
+  """
   def __init__(self):
     super(QuestionnaireHistoryDao, self).__init__(QuestionnaireHistory)
 
@@ -124,6 +218,7 @@ class QuestionnaireHistoryDao(BaseDao):
     with self.session() as session:
       return self.get_with_children_with_session(session, questionnaireIdAndVersion)
 
+
 class QuestionnaireConceptDao(BaseDao):
 
   def __init__(self):
@@ -131,6 +226,7 @@ class QuestionnaireConceptDao(BaseDao):
 
   def get_id(self, obj):
     return obj.questionnaireConceptId
+
 
 class QuestionnaireQuestionDao(BaseDao):
 

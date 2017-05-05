@@ -1,13 +1,62 @@
 from code_constants import BIOBANK_TESTS_SET
-from dao.base_dao import BaseDao
+from dao.base_dao import BaseDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from model.log_position import LogPosition
 from model.participant import Participant
+from model.utils import to_client_participant_id
 
+from fhirclient.models.backboneelement import BackboneElement
+from fhirclient.models.domainresource import DomainResource
+from fhirclient.models.fhirdate import FHIRDate
+from fhirclient.models.identifier import Identifier
+from fhirclient.models import fhirdate
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
+
+
+def _ToFhirDate(dt):
+  if not dt:
+    return None
+  return FHIRDate.with_json(dt.isoformat())
+
+
+class _FhirBiobankOrderNotes(FhirMixin, BackboneElement):
+  """Notes sub-element."""
+  resource_name = "BiobankOrderNotes"
+  _PROPERTIES = [
+    FhirProperty('collected', str),
+    FhirProperty('processed', str),
+    FhirProperty('finalized', str),
+  ]
+
+
+class _FhirBiobankOrderedSample(FhirMixin, BackboneElement):
+  """Sample sub-element."""
+  resource_name = "BiobankOrderedSample"
+  _PROPERTIES = [
+    FhirProperty('test', str, required=True),
+    FhirProperty('description', str, required=True),
+    FhirProperty('processing_required', bool, required=True),
+    FhirProperty('collected', fhirdate.FHIRDate),
+    FhirProperty('processed', fhirdate.FHIRDate),
+    FhirProperty('finalized', fhirdate.FHIRDate),
+  ]
+
+
+class _FhirBiobankOrder(FhirMixin, DomainResource):
+  """FHIR client definition of the expected JSON structure for a BiobankOrder resource."""
+  resource_name = 'BiobankOrder'
+  _PROPERTIES = [
+    FhirProperty('subject', str, required=True),
+    FhirProperty('identifier', Identifier, is_list=True, required=True),
+    FhirProperty('created', fhirdate.FHIRDate, required=True),
+    FhirProperty('samples', _FhirBiobankOrderedSample, is_list=True, required=True),
+    FhirProperty('notes', _FhirBiobankOrderNotes),
+    FhirProperty('source_site', Identifier, required=True),
+  ]
+
 
 class BiobankOrderDao(BaseDao):
   def __init__(self):
@@ -83,3 +132,96 @@ class BiobankOrderDao(BaseDao):
                 .join(BiobankOrderedSample)
                 .filter(Participant.biobankId % 100 < percentage * 100)
                 .yield_per(batch_size))
+
+  # pylint: disable=unused-argument
+  def from_client_json(self, resource_json, participant_id=None, client_id=None):
+    resource = _FhirBiobankOrder(resource_json)
+    if not resource.created.date:  # FHIR warns but does not error on bad date values.
+      raise BadRequest('Invalid created date %r.' % resource.created.origval)
+    order = BiobankOrder(
+        participantId=participant_id,
+        sourceSiteSystem=resource.source_site.system,
+        sourceSiteValue=resource.source_site.value,
+        created=resource.created.date)
+    if resource.notes:
+      order.collectedNote = resource.notes.collected
+      order.processedNote = resource.notes.processed
+      order.finalizedNote = resource.notes.finalized
+    if resource.subject != self._participant_id_to_subject(participant_id):
+      raise BadRequest(
+          'Participant ID %d from path and %r in request do not match, should be %r.'
+          % (participant_id, resource.subject, self._participant_id_to_subject(participant_id)))
+    self._add_identifiers_and_main_id(order, resource)
+    self._add_samples(order, resource)
+    return order
+
+  @classmethod
+  def _add_identifiers_and_main_id(cls, order, resource):
+    found_main_id = False
+    for i in resource.identifier:
+      order.identifiers.append(BiobankOrderIdentifier(system=i.system, value=i.value))
+      if i.system == BiobankOrder._MAIN_ID_SYSTEM:
+        order.biobankOrderId = i.value
+        found_main_id = True
+    if not found_main_id:
+      raise BadRequest(
+          'No identifier for system %r, required for primary key.' % BiobankOrder._MAIN_ID_SYSTEM)
+
+  @classmethod
+  def _add_samples(cls, order, resource):
+    all_tests = sorted([s.test for s in resource.samples])
+    if len(set(all_tests)) != len(all_tests):
+      raise BadRequest('Duplicate test in sample list for order: %s.' % (all_tests,))
+    for s in resource.samples:
+      order.samples.append(BiobankOrderedSample(
+          biobankOrderId=order.biobankOrderId,
+          test=s.test,
+          description=s.description,
+          processingRequired=s.processing_required,
+          collected=s.collected and s.collected.date,
+          processed=s.processed and s.processed.date,
+          finalized=s.finalized and s.finalized.date))
+
+  @classmethod
+  def _participant_id_to_subject(cls, participant_id):
+    return 'Patient/%s' % to_client_participant_id(participant_id)
+
+  @classmethod
+  def _add_samples_to_resource(cls, resource, model):
+    resource.samples = []
+    for sample in model.samples:
+      client_sample = _FhirBiobankOrderedSample()
+      client_sample.test = sample.test
+      client_sample.description = sample.description
+      client_sample.processing_required = sample.processingRequired
+      client_sample.collected = _ToFhirDate(sample.collected)
+      client_sample.processed = _ToFhirDate(sample.processed)
+      client_sample.finalized = _ToFhirDate(sample.finalized)
+      resource.samples.append(client_sample)
+
+  @classmethod
+  def _add_identifiers_to_resource(cls, resource, model):
+    resource.identifier = []
+    for identifier in model.identifiers:
+      fhir_id = Identifier()
+      fhir_id.system = identifier.system
+      fhir_id.value = identifier.value
+      resource.identifier.append(fhir_id)
+
+  def to_client_json(self, model):
+    resource = _FhirBiobankOrder()
+    resource.subject = self._participant_id_to_subject(model.participantId)
+    resource.created = _ToFhirDate(model.created)
+    resource.notes = _FhirBiobankOrderNotes()
+    resource.notes.collected = model.collectedNote
+    resource.notes.processed = model.processedNote
+    resource.notes.finalized = model.finalizedNote
+    resource.source_site = Identifier()
+    resource.source_site.system = model.sourceSiteSystem
+    resource.source_site.value = model.sourceSiteValue
+    self._add_identifiers_to_resource(resource, model)
+    self._add_samples_to_resource(resource, model)
+    client_json = resource.as_json()  # also validates required fields
+    client_json['id'] = model.biobankOrderId
+    del client_json['resourceType']
+    return client_json
