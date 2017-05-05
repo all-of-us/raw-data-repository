@@ -350,8 +350,11 @@ class QuestionnaireResponseDao(BaseDao):
 
 
 def _add_codes_if_missing(client_id):
-  # Don't add missing codes for questionnaire responses submitted by the config admin
-  # (our command line tools.) Tests override this to return true.
+  """Don't add missing codes for questionnaire responses submitted by the config admin
+  (our command line tools.)
+
+  Tests override this to return true.
+  """
   return not is_config_admin(client_id)
 
 
