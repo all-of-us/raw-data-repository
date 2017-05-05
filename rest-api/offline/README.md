@@ -31,8 +31,8 @@ When the pipeline finishes, new metrics will be served to clients based on the n
 
 # Biobank Reconciliation Pipeline
 
-Match up orders received via API (BiobankOrder) and orders received at the
-Biobank with records uploaded in CSVs (BiobankStoredSample); then generate a
+Match up orders received via API (BiobankOrder), and samples received at the
+Biobank in records uploaded in CSVs (BiobankStoredSample); then generate a
 report of how long it took any sample to get stored and whether any are missing.
 
 This pipeline is necessary because samples have separate IDs on the
@@ -63,9 +63,10 @@ different subsets of the rows:
     sample was received, for the same participant and test. However it could be
     a case where the same test was ordered twice and received twice for a
     participant.
-1.  `report_$DATE_over_24h.csv` Rows where sent and received match up, but the
-    elapsed time between ordered sample collection and sample receipt
-    confirmation is more than 24 hours.
+1.  `report_$DATE_over_24h.csv` Rows where the elapsed time between ordered
+    sample collection and sample receipt confirmation is more than 24 hours.
+    This may include cases where there is a mismatch in samples ordered/sent
+    and samples received.
 1.  `report_$DATE_missing.csv` Any case of order and receipt mismatch. This may
     be an order where no sample arrived, a received sample with no order, or
     more generally a case where a different number of orders and samples appear
