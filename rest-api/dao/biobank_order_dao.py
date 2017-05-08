@@ -13,8 +13,7 @@ from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models.identifier import Identifier
 from fhirclient.models import fhirdate
 from sqlalchemy.orm import subqueryload
-from werkzeug.exceptions import BadRequest
-
+from werkzeug.exceptions import BadRequest, Conflict
 
 def _ToFhirDate(dt):
   if not dt:
@@ -65,15 +64,35 @@ class BiobankOrderDao(BaseDao):
   def get_id(self, obj):
     return obj.biobankOrderId
 
-  def _validate_insert(self, session, obj):
-    if obj.biobankOrderId is None:
-      raise BadRequest('Client must supply biobankOrderId.')
-    super(BiobankOrderDao, self)._validate_insert(session, obj)
+  def _order_as_dict(self, order):
+    result = order.asdict(follow={'identifiers': {}, 'samples': {}})
+    del result['created']
+    del result['logPositionId']
+    identifiers = result.get('identifiers')
+    if identifiers:
+      for identifier in identifiers:
+        del identifier['biobankOrderId']
+    samples = result.get('samples')
+    if samples:
+      for sample in samples:
+        del sample['biobankOrderId'] 
+    return result  
 
   def insert_with_session(self, session, obj):
     if obj.logPosition is not None:
       raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
     obj.logPosition = LogPosition()
+    if obj.biobankOrderId is None:
+      raise BadRequest('Client must supply biobankOrderId.')    
+    existing_order = self.get_with_children_in_session(session, obj.biobankOrderId)
+    if existing_order:
+      existing_order_dict = self._order_as_dict(existing_order)
+      new_dict = self._order_as_dict(obj)
+      if existing_order_dict == new_dict:
+        # If an existing matching order exists, just return it without trying to create it again.
+        return existing_order
+      else:
+        raise Conflict("Order with ID %s already exists" % obj.biobankOrderId)
     return super(BiobankOrderDao, self).insert_with_session(session, obj)
 
   def _validate_model(self, session, obj):
@@ -106,14 +125,14 @@ class BiobankOrderDao(BaseDao):
       ParticipantDao().validate_participant_reference(session, result)
     return result
 
+  def get_with_children_in_session(self, session, obj_id):
+    return (session.query(BiobankOrder)
+        .options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples))
+        .get(obj_id))
+
   def get_with_children(self, obj_id):
     with self.session() as session:
-      result = (session.query(BiobankOrder)
-          .options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples))
-          .get(obj_id))
-      if result:
-        ParticipantDao().validate_participant_reference(session, result)
-      return result
+      return self.get_with_children_in_session(session, obj_id)
 
   def get_ordered_samples_for_participant(self, participant_id):
     """Retrieves all ordered samples for a participant."""
