@@ -33,6 +33,11 @@ else
   fi
   CREDS_FILE=/tmp/creds.json
   TMP_CREDS_FILE=$CREDS_FILE
+  EXISTING_KEYS_COUNT=`gcloud iam service-accounts keys list \
+      --iam-account $SERVICE_ACCOUNT --account $CREDS_ACCOUNT | wc -l`
+  EXISTING_KEYS_COUNT=`expr $EXISTING_KEYS_COUNT - 1`  # exclude the header.
+  echo "Using $CREDS_ACCOUNT to create temporary key for $SERVICE_ACCOUNT in $CREDS_FILE."
+  echo "$EXISTING_KEYS_COUNT existing keys for $SERVICE_ACCOUNT."
   gcloud iam service-accounts keys create $CREDS_FILE \
       --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
   TMP_PRIVATE_KEY=`grep private_key_id $CREDS_FILE | cut -d\" -f4`
