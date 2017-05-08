@@ -2,6 +2,7 @@ import clock
 import config
 import json
 
+from cloudstorage import cloudstorage_api
 import fhirclient.models.questionnaireresponse
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
@@ -355,6 +356,16 @@ def _add_codes_if_missing(client_id):
   Tests override this to return true.
   """
   return not is_config_admin(client_id)
+
+
+def _raise_if_gcloud_file_missing(path):
+  """Checks that a GCS file exists. Raises BadRequest on error."""
+  try:
+    gcs_stat = cloudstorage_api.stat(path)
+  except cloudstorage_api.NotFoundError as e:
+    raise BadRequest('Google Cloud Storage file %r not found. %s.' % e)
+  if gcs_stat.is_dir:
+    raise BadRequest('Google Cloud Storage path %r references a directory, expected a file.' % path)
 
 
 class QuestionnaireResponseAnswerDao(BaseDao):
