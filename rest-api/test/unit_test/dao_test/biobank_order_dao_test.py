@@ -36,7 +36,7 @@ class BiobankOrderDaoTest(SqlTestBase):
         participantId=self.participant.participantId,
         identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
     self.assertEquals(order_1.asdict(), order_2.asdict())
-    
+
   def test_same_id_different_identifier_not_ok(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     self.dao.insert(BiobankOrder(

@@ -107,12 +107,12 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
                                                   resource=self.measurement_json)
     with FakeClock(TIME_2):
       measurements = self.dao.insert(measurements_to_insert)
-  
+
     with FakeClock(TIME_3):
       measurements_2 = self.dao.insert(PhysicalMeasurements(
                                        participantId=self.participant.participantId,
                                        resource=self.measurement_json))
-      
+
     self.assertEquals(measurements.asdict(), measurements_2.asdict())
 
   def testInsert_amend(self):

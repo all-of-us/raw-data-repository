@@ -72,10 +72,10 @@ class PhysicalMeasurementsDao(BaseDao):
       new_dict = self._measurements_as_dict(obj)
       for measurements in existing_measurements:
         if self._measurements_as_dict(measurements) == new_dict:
-          # If there are already measurements that look exactly like this, return them 
+          # If there are already measurements that look exactly like this, return them
           # without inserting new measurements.
-          return measurements    
-        
+          return measurements
+
     super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
     session.flush()

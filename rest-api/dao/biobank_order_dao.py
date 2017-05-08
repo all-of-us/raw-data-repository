@@ -75,15 +75,15 @@ class BiobankOrderDao(BaseDao):
     samples = result.get('samples')
     if samples:
       for sample in samples:
-        del sample['biobankOrderId'] 
-    return result  
+        del sample['biobankOrderId']
+    return result
 
   def insert_with_session(self, session, obj):
     if obj.logPosition is not None:
       raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
     obj.logPosition = LogPosition()
     if obj.biobankOrderId is None:
-      raise BadRequest('Client must supply biobankOrderId.')    
+      raise BadRequest('Client must supply biobankOrderId.')
     existing_order = self.get_with_children_in_session(session, obj.biobankOrderId)
     if existing_order:
       existing_order_dict = self._order_as_dict(existing_order)
