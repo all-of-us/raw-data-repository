@@ -1,6 +1,7 @@
 import clock
 import config
 import json
+import os
 
 from cloudstorage import cloudstorage_api
 import fhirclient.models.questionnaireresponse
@@ -26,6 +27,10 @@ _QUESTIONNAIRE_PREFIX = 'Questionnaire/'
 _QUESTIONNAIRE_HISTORY_SEGMENT = '/_history/'
 _QUESTIONNAIRE_REFERENCE_FORMAT = (_QUESTIONNAIRE_PREFIX + "%d" +
                                    _QUESTIONNAIRE_HISTORY_SEGMENT + "%d")
+
+_SIGNED_CONSENT_EXTENSION = (
+    'http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf')
+
 
 def count_completed_baseline_ppi_modules(participant_summary):
   baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
@@ -61,6 +66,11 @@ class QuestionnaireResponseDao(BaseDao):
       return result
 
   def _validate_model(self, session, obj):
+    try:
+      _validate_consent_pdfs(json.loads(obj.resource))
+    except BadRequest as e:
+      # TODO(DA-45) Stop catching the BadRequest once we test against PTC.
+      logging.error('Invalid consent PDF.', exc_info=True)
     if not obj.questionnaireId:
       raise BadRequest('QuestionnaireResponse.questionnaireId is required.')
     if not obj.questionnaireVersion:
@@ -356,6 +366,24 @@ def _add_codes_if_missing(client_id):
   Tests override this to return true.
   """
   return not is_config_admin(client_id)
+
+
+def _validate_consent_pdfs(resource):
+  """Checks for any consent-form-signed-pdf extensions and validates their PDFs in GCS."""
+  assert resource['resourceType'] == 'QuestionnaireResponse'
+  consent_bucket = config.getSetting(config.CONSENT_PDF_BUCKET)
+  for extension in resource.get('extension', []):
+    if extension['url'] != _SIGNED_CONSENT_EXTENSION:
+      continue
+    local_pdf_path = extension['valueString']
+    _, ext = os.path.splitext(local_pdf_path)
+    if ext.lower() != '.pdf':
+      raise BadRequest('Signed PDF must end in .pdf, found %r (from %r).' % (ext, local_pdf_path))
+    if not local_pdf_path.startswith('/'):
+      raise BadRequest(
+          'PDF path must be absolute below the bucket, starting with a slash, but got %r.'
+          % local_pdf_path)
+    _raise_if_gcloud_file_missing('gs://%s%s' % (consent_bucket, local_pdf_path))
 
 
 def _raise_if_gcloud_file_missing(path):
