@@ -20,4 +20,5 @@ sqlalchemy>=1.1
 alembic>=0.8.10
 dictalchemy>=0.1.2.7
 MySQL-python>=1.2.5
-setuptools>=35.0.2
+pip>=9.0.1
+
