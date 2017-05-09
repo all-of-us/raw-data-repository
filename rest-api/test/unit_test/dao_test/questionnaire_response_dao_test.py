@@ -1,6 +1,8 @@
 import datetime
 import json
 
+from cloudstorage import cloudstorage_api  # stubbed by testbed
+
 from code_constants import PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, THE_BASICS_PPI_MODULE
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
@@ -12,6 +14,7 @@ from model.participant import Participant
 from model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from participant_enums import QuestionnaireStatus, WithdrawalStatus
+import test_data
 from test_data import consent_code, first_name_code, last_name_code, email_code
 from unit_test_util import FlaskTestBase
 from clock import FakeClock
@@ -29,6 +32,8 @@ QUESTIONNAIRE_RESOURCE_2 = '{"x": "z"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE = '{"a": "b"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE_2 = '{"a": "c"}'
 QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"a": "d"}'
+
+_FAKE_BUCKET = 'ptc-uploads-unit-testing'
 
 def with_id(resource, id_):
   resource_json = json.loads(resource)
@@ -259,7 +264,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     q.questions.append(self.FN_QUESTION)
     q.questions.append(self.LN_QUESTION)
     q.questions.append(self.EMAIL_QUESTION)
-    self.questionnaire_dao.insert(q)
+    return self.questionnaire_dao.insert(q)
 
   def test_insert_with_answers(self):
     self.insert_codes()
@@ -436,3 +441,51 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())
+
+  def _write_fake_cloud_pdf(self, local_pdf_path):
+    consent_pdf_path = '/%s%s' % (_FAKE_BUCKET, local_pdf_path)
+    with cloudstorage_api.open(consent_pdf_path, mode='w') as cloud_file:
+      cloud_file.write('I am a fake PDF in a fake Cloud.')
+
+  def _get_questionnaire_response_with_consents(self, *consent_paths):
+    questionnaire = self._setup_questionnaire()
+    participant = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(p)
+    resource = test_data.load_questionnaire_response_with_consents(
+        questionnaire.questionnaireId, participant.participantId, consent_paths)
+    questionnaire_response = QuestionnaireResponse(
+        questionnaireResponseId=1,
+        questionnaireId=questionnaire.questionnaireId,
+        questionnaireVersion=1,
+        participantId=participant.participantId,
+        resource=resource,
+        created=TIME)
+    return questionnaire_response
+
+  def test_consent_pdf_valid(self):
+    consent_pdf_path = '/Participant/xyz/consent.pdf'
+    self._write_fake_cloud_pdf(consent_pdf_path)
+    questionnaire_response = self._get_questionnaire_response_with_consents(consent_pdf_path)
+    # This should pass validation (not raise exceptions).
+    self.questionnaire_response_dao.insert(questionnaire_response)
+
+  def test_consent_pdf_file_invalid(self):
+    qr = self._get_questionnaire_response_with_consents('/nobucket/no/file.pdf')
+    with self.assertRaises(BadRequest):
+      self.questionnaire_response_dao.insert(qr)
+
+  def test_consent_pdf_multi_valid(self):
+    consent_paths = ('/Participant/one.pdf', '/Participant/two.pdf')
+    for pdf_name in consent_paths:
+      self._write_fake_cloud_pdf(pdf_name)
+    qr = self._get_questionnaire_response_with_consents(*consent_paths)
+    # should be OK
+    self.questionnaire_response_dao.insert(qr)
+
+  def test_consent_pdf_multi_one_invalid(self):
+    consent_pdf_path = '/Participant/xyz/consent.pdf'
+    self._write_fake_cloud_pdf(consent_pdf_path)
+    questionnaire_response = self._get_questionnaire_response_with_consents(
+        consent_pdf_path, '/Participant/xyz/missing_consent.pdf')
+    with self.assertRaises(BadRequest):
+      self.questionnaire_response_dao.insert(questionnaire_response)

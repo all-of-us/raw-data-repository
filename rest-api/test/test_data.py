@@ -83,10 +83,18 @@ def open_biobank_samples(
   return StringIO.StringIO(csv_str)
 
 
-def load_questionnaire_response_with_consent(questionnaire_id, participant_id, consent_pdf_path):
-  with open(data_path('questionnaire_response_with_pdf.json') as f:
-    return json.loads(f.read() % {
+def load_questionnaire_response_with_consents(questionnaire_id, participant_id, consent_pdf_paths):
+  """Loads a consent QuestionnaireResponse and adds >= 1 consent PDF extensions."""
+  # PDF paths are expected to be something like "/Participant/P550613540/ConsentPII__8270.pdf".
+  assert len(consent_pdf_paths) >= 1
+  with open(data_path('questionnaire_response_consent.json') as f:
+    resource = json.loads(f.read() % {
       'questionnaire_id': questionnaire_id,
       'participant_id': participant_id,
-      'consent_pdf_path': consent_pdf_path,
     })
+  for path in consent_pdf_paths:
+    resource['extension'].append({
+      'url': 'http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf',
+      'valueString': path,
+    })
+  return resource

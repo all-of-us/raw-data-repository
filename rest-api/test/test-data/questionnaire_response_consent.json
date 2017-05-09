@@ -4,10 +4,6 @@
     {
       "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
       "valueCode": "en"
-    },
-    {
-      "url": "http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf",
-      "valueString": "%(consent_pdf_path)s"
     }
   ],
   "identifier": {
