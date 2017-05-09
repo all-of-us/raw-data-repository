@@ -4,6 +4,9 @@ dependencies:
     # and wants to make a .staging directory (as a sibling!)
     # when upgrading or installing new components.
     - sudo chmod o+w /opt
+    # CircleCI's version of pip can be out of date; make sure it's up-to-date first.
+    - pip install --upgrade pip
+    # Then install requirements needed to run our tools.
     - pip install --upgrade alembic httplib2 jira oauth2client parallel pylint
 
 machine:

@@ -15,6 +15,7 @@ from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from model.site import Site
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

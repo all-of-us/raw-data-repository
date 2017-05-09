@@ -4,6 +4,8 @@
 
 echo "Importing HPOs..."
 tools/import_hpos.sh $@
+echo "Importing sites..."
+tools/import_sites.sh $@
 echo "Importing codebook..."
 tools/import_codebook.sh $@
 echo "Importing questionnaires..."
