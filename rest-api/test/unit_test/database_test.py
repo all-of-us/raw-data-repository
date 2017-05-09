@@ -14,6 +14,7 @@ from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from model.site import Site
 from unit_test_util import SqlTestBase
 
 
@@ -28,15 +29,18 @@ class DatabaseTest(SqlTestBase):
               organizationType=OrganizationType.UNSET)
     code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True, name="pmi",
                          system="http://foo/bar", version="v0.1.1")
-    session.add(hpo)
+    session.add(hpo)  
     session.add(code_book)
     session.commit()
 
+    site = Site(siteId=1, siteName='site', googleGroup='site@googlegroups.com',
+                consortiumName='consortium', mayolinkClientNumber=12345, hpoId=1)  
     code1 = Code(codeId=1, codeBookId=1, system="a", value="b", display=u"c", topic=u"d",
                  codeType=CodeType.MODULE, mapped=True, created=datetime.datetime.now())
     codeHistory1 = CodeHistory(codeId=1, codeBookId=1, system="a", value="b", display=u"c",
                                topic=u"d", codeType=CodeType.MODULE, mapped=True,
                                created=datetime.datetime.now())
+    session.add(site)
     session.add(code1)
     session.add(codeHistory1)
     session.commit()

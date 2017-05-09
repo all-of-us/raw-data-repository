@@ -1,21 +1,22 @@
 Organization ID,Name,Type
 UNSET,No organization set,UNSET
-PITT,,HPO
-COLUMBIA,,HPO
-ILLINOIS,,HPO
-AZ_TUCSON,,HPO
-COMM_HEALTH,,HPO
-SAN_YSIDRO,,HPO
-CHEROKEE,,HPO
-EAU_CLAIRE,,HPO
-HRHCARE,,HPO
-JACKSON,,HPO
-GEISINGER,,HPO
-CAL_PMC,,HPO
-NE_PMC,,HPO
-TRANS_AM,,HPO
-VA,,VA
-QTC,,DV
-WALGREENS,,DV
-QUEST,,DV
-EMSI,,DV
+PITT,Pittsburgh,HPO
+COLUMBIA,New York,HPO
+ILLINOIS,Illinois,HPO
+AZ_TUCSON,Arizona,HPO
+COMM_HEALTH,"Community Health Center, Inc",FQHC
+SAN_YSIDRO,San Ysidro Health Center,FQHC
+CHEROKEE,Cherokee Health Systems,FQHC
+EAU_CLAIRE,Eau Claire Cooperative Health Center,FQHC
+HRHCARE,"HRHCare, Inc.",FQHC
+JACKSON,Jackson-Hinds Comprehensive Health Center,FQHC
+GEISINGER,Geisinger,HPO
+CAL_PMC,California ,HPO
+NE_PMC,New England,HPO
+TRANS_AM,Trans-American Consortium (TAC),HPO
+VA,VA,VA
+QTC,QTC,DV
+WALGREENS,Walgreens,DV
+QUEST,Ques Labs,DV
+EMSI,EMSI,DV
+SDBB,San Diego Blood Bank,DV
