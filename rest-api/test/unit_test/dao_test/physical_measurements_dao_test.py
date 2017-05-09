@@ -101,6 +101,20 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
                                         self.participant.participantId)],
                            None, 10, None))
 
+  def testInsert_duplicate(self):
+    self._make_summary()
+    measurements_to_insert = PhysicalMeasurements(participantId=self.participant.participantId,
+                                                  resource=self.measurement_json)
+    with FakeClock(TIME_2):
+      measurements = self.dao.insert(measurements_to_insert)
+
+    with FakeClock(TIME_3):
+      measurements_2 = self.dao.insert(PhysicalMeasurements(
+                                       participantId=self.participant.participantId,
+                                       resource=self.measurement_json))
+
+    self.assertEquals(measurements.asdict(), measurements_2.asdict())
+
   def testInsert_amend(self):
     self._make_summary()
     measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,

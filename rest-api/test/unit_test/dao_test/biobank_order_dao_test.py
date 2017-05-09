@@ -8,7 +8,7 @@ from participant_enums import WithdrawalStatus
 from dao.participant_dao import ParticipantDao
 from unit_test_util import SqlTestBase
 
-from werkzeug.exceptions import BadRequest, Forbidden
+from werkzeug.exceptions import BadRequest, Forbidden, Conflict
 
 class BiobankOrderDaoTest(SqlTestBase):
   _A_TEST = iter(BIOBANK_TESTS).next()
@@ -23,16 +23,44 @@ class BiobankOrderDaoTest(SqlTestBase):
     with self.assertRaises(BadRequest):
       self.dao.insert(BiobankOrder(participantId=999))
 
+  def test_duplicate_insert_ok(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(BiobankOrder(
+        biobankOrderId='1',
+        participantId=self.participant.participantId,
+        created=clock.CLOCK.now(),
+        identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
+    order_2 = self.dao.insert(BiobankOrder(
+        biobankOrderId='1',
+        created=clock.CLOCK.now(),
+        participantId=self.participant.participantId,
+        identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
+    self.assertEquals(order_1.asdict(), order_2.asdict())
+
+  def test_same_id_different_identifier_not_ok(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    self.dao.insert(BiobankOrder(
+        biobankOrderId='1',
+        participantId=self.participant.participantId,
+        created=clock.CLOCK.now(),
+        identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
+    with self.assertRaises(Conflict):
+      self.dao.insert(BiobankOrder(
+          biobankOrderId='1',
+          created=clock.CLOCK.now(),
+          participantId=self.participant.participantId,
+          identifiers=[BiobankOrderIdentifier(system='a', value='c')]))
+
   def test_reject_used_identifier(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     self.dao.insert(BiobankOrder(
-        biobankOrderId=1,
+        biobankOrderId='1',
         participantId=self.participant.participantId,
         created=clock.CLOCK.now(),
         identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
     with self.assertRaises(BadRequest):
       self.dao.insert(BiobankOrder(
-          biobankOrderId=2,
+          biobankOrderId='2',
           created=clock.CLOCK.now(),
           participantId=self.participant.participantId,
           identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
@@ -43,7 +71,7 @@ class BiobankOrderDaoTest(SqlTestBase):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     with self.assertRaises(Forbidden):
       self.dao.insert(BiobankOrder(
-          biobankOrderId=1,
+          biobankOrderId='1',
           participantId=self.participant.participantId,
           created=clock.CLOCK.now(),
           identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
@@ -51,7 +79,7 @@ class BiobankOrderDaoTest(SqlTestBase):
   def test_get_for_withdrawn_participant_fails(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     self.dao.insert(BiobankOrder(
-        biobankOrderId=1,
+        biobankOrderId='1',
         participantId=self.participant.participantId,
         created=clock.CLOCK.now(),
         identifiers=[BiobankOrderIdentifier(system='a', value='b')]))
@@ -63,7 +91,7 @@ class BiobankOrderDaoTest(SqlTestBase):
   def test_store_invalid_test(self):
     with self.assertRaises(BadRequest):
       self.dao.insert(BiobankOrder(
-          biobankOrderId=2,
+          biobankOrderId='2',
           participantId=self.participant.participantId,
           identifiers=[BiobankOrderIdentifier(system='a', value='b')],
           samples=[BiobankOrderedSample(

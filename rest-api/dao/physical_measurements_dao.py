@@ -40,6 +40,16 @@ class PhysicalMeasurementsDao(BaseDao):
       ParticipantDao().validate_participant_id(session, participant_id)
     return super(PhysicalMeasurementsDao, self)._initialize_query(session, query_def)
 
+  def _measurements_as_dict(self, measurements):
+    result = measurements.asdict()
+    del result['physicalMeasurementsId']
+    del result['created']
+    del result['logPositionId']
+    result['resource'] = json.loads(result['resource'])
+    if result['resource'].get('id'):
+      del result['resource']['id']
+    return result
+
   def insert_with_session(self, session, obj):
     if obj.logPosition is not None:
       raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
@@ -55,6 +65,17 @@ class PhysicalMeasurementsDao(BaseDao):
       self._update_amended(obj, extension, url, session)
       break
     self._update_participant_summary(session, obj.created, obj.participantId)
+    existing_measurements = (session.query(PhysicalMeasurements)
+                             .filter(PhysicalMeasurements.participantId == obj.participantId)
+                             .all())
+    if existing_measurements:
+      new_dict = self._measurements_as_dict(obj)
+      for measurements in existing_measurements:
+        if self._measurements_as_dict(measurements) == new_dict:
+          # If there are already measurements that look exactly like this, return them
+          # without inserting new measurements.
+          return measurements
+
     super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
     session.flush()
