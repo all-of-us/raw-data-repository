@@ -8,11 +8,11 @@ class SiteDaoTest(SqlTestBase):
     super(SiteDaoTest, self).setUp()
     self.site_dao = SiteDao()
 
-  def testGetNoSites(self):
+  def test_get_no_sites(self):
     self.assertIsNone(self.site_dao.get(1))
     self.assertIsNone(self.site_dao.get_by_google_group('site@googlegroups.com'))
 
-  def testInsert(self):
+  def test_insert(self):
     site = Site(siteName='site', googleGroup='site@googlegroups.com',
                 consortiumName='consortium', mayolinkClientNumber=12345, hpoId=PITT_HPO_ID)
     self.site_dao.insert(site)
@@ -22,7 +22,7 @@ class SiteDaoTest(SqlTestBase):
     self.assertEquals(site.asdict(),
                       self.site_dao.get_by_google_group('site@googlegroups.com').asdict())
 
-  def testUpdate(self):
+  def test_update(self):
     site = Site(siteName='site', googleGroup='site@googlegroups.com',
                 consortiumName='consortium', mayolinkClientNumber=12345, hpoId=PITT_HPO_ID)
     self.site_dao.insert(site)
