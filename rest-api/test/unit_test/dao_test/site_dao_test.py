@@ -6,12 +6,12 @@ class SiteDaoTest(SqlTestBase):
 
   def setUp(self):
     super(SiteDaoTest, self).setUp()
-    self.site_dao = SiteDao()    
+    self.site_dao = SiteDao()
 
   def testGetNoSites(self):
     self.assertIsNone(self.site_dao.get(1))
     self.assertIsNone(self.site_dao.get_by_google_group('site@googlegroups.com'))
-  
+
   def testInsert(self):
     site = Site(siteName='site', googleGroup='site@googlegroups.com',
                 consortiumName='consortium', mayolinkClientNumber=12345, hpoId=PITT_HPO_ID)
@@ -19,9 +19,9 @@ class SiteDaoTest(SqlTestBase):
     new_site = self.site_dao.get(1)
     site.siteId = 1
     self.assertEquals(site.asdict(), new_site.asdict())
-    self.assertEquals(site.asdict(), 
+    self.assertEquals(site.asdict(),
                       self.site_dao.get_by_google_group('site@googlegroups.com').asdict())
-  
+
   def testUpdate(self):
     site = Site(siteName='site', googleGroup='site@googlegroups.com',
                 consortiumName='consortium', mayolinkClientNumber=12345, hpoId=PITT_HPO_ID)
@@ -31,8 +31,7 @@ class SiteDaoTest(SqlTestBase):
     self.site_dao.update(new_site)
     fetched_site = self.site_dao.get(1)
     self.assertEquals(new_site.asdict(), fetched_site.asdict())
-    self.assertEquals(new_site.asdict(), 
+    self.assertEquals(new_site.asdict(),
                       self.site_dao.get_by_google_group('site2@googlegroups.com').asdict())
     self.assertIsNone(self.site_dao.get_by_google_group('site@googlegroups.com'))
-                
-    
+
