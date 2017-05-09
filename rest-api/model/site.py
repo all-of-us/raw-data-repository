@@ -1,5 +1,5 @@
 from model.base import Base
-from sqlalchemy import Column, Integer, String, UniqueConstraint, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey
 
 class Site(Base):
   __tablename__ = 'site'
