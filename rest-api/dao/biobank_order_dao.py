@@ -67,9 +67,9 @@ class BiobankOrderDao(BaseDao):
   def _order_as_dict(self, order):
     result = order.asdict(follow={'identifiers': {}, 'samples': {}})
     del result['created']
-    del result['logPositionId']    
+    del result['logPositionId']
     for identifier in result.get('identifiers', []):
-      del identifier['biobankOrderId']      
+      del identifier['biobankOrderId']
     samples = result.get('samples')
     if samples:
       for sample in samples:
