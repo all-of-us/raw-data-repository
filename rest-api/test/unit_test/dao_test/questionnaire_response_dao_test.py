@@ -4,6 +4,7 @@ import json
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 
 from code_constants import PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, THE_BASICS_PPI_MODULE
+import config
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -29,9 +30,9 @@ TIME_4 = datetime.datetime(2016, 1, 4)
 ANSWERS = {'answers': {}}
 QUESTIONNAIRE_RESOURCE = '{"x": "y"}'
 QUESTIONNAIRE_RESOURCE_2 = '{"x": "z"}'
-QUESTIONNAIRE_RESPONSE_RESOURCE = '{"a": "b"}'
-QUESTIONNAIRE_RESPONSE_RESOURCE_2 = '{"a": "c"}'
-QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"a": "d"}'
+QUESTIONNAIRE_RESPONSE_RESOURCE = '{"resourceType": "QuestionnaireResponse", "a": "b"}'
+QUESTIONNAIRE_RESPONSE_RESOURCE_2 = '{"resourceType": "QuestionnaireResponse", "a": "c"}'
+QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"resourceType": "QuestionnaireResponse", "a": "d"}'
 
 _FAKE_BUCKET = 'ptc-uploads-unit-testing'
 
@@ -68,6 +69,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2, repeats=True)
     # Same code as question 1
     self.CODE_1_QUESTION_2 = QuestionnaireQuestion(linkId='x', codeId=1, repeats=False)
+    config.override_setting(config.CONSENT_PDF_BUCKET, [_FAKE_BUCKET])
 
   def _names_and_email_answers(self):
     return [self.FN_ANSWER, self.LN_ANSWER, self.EMAIL_ANSWER]
