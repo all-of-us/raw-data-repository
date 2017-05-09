@@ -391,8 +391,8 @@ def _raise_if_gcloud_file_missing(path):
   """Checks that a GCS file exists. Raises BadRequest on error."""
   try:
     gcs_stat = cloudstorage_api.stat(path)
-  except cloudstorage_api.NotFoundError as e:
-    raise BadRequest('Google Cloud Storage file %r not found. %s.' % e)
+  except cloudstorage_api.errors.NotFoundError as e:
+    raise BadRequest('Google Cloud Storage file %r not found. %s.' % (path, e))
   if gcs_stat.is_dir:
     raise BadRequest('Google Cloud Storage path %r references a directory, expected a file.' % path)
 

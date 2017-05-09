@@ -1,6 +1,8 @@
 import datetime
 import json
+import mock
 
+from testlib import testutil
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 
 from code_constants import PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, THE_BASICS_PPI_MODULE
@@ -10,6 +12,7 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
+from dao.questionnaire_response_dao import _raise_if_gcloud_file_missing
 from model.code import Code, CodeType
 from model.participant import Participant
 from model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
@@ -444,11 +447,6 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     # changes.
     self.assertEquals(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())
 
-  def _write_fake_cloud_pdf(self, local_pdf_path):
-    consent_pdf_path = '/%s%s' % (_FAKE_BUCKET, local_pdf_path)
-    with cloudstorage_api.open(consent_pdf_path, mode='w') as cloud_file:
-      cloud_file.write('I am a fake PDF in a fake Cloud.')
-
   def _get_questionnaire_response_with_consents(self, *consent_paths):
     questionnaire = self._setup_questionnaire()
     participant = Participant(participantId=1, biobankId=2)
@@ -464,30 +462,34 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         created=TIME)
     return questionnaire_response
 
-  def test_consent_pdf_valid(self):
+  @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
+  def test_consent_pdf_valid(self, mock_gcloud_check):
     consent_pdf_path = '/Participant/xyz/consent.pdf'
-    self._write_fake_cloud_pdf(consent_pdf_path)
     questionnaire_response = self._get_questionnaire_response_with_consents(consent_pdf_path)
     # This should pass validation (not raise exceptions).
     self.questionnaire_response_dao.insert(questionnaire_response)
+    mock_gcloud_check.assert_called_with(consent_pdf_path)
 
-  def test_consent_pdf_file_invalid(self):
+  @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
+  def test_consent_pdf_file_invalid(self, mock_gcloud_check):
+    mock_gcloud_check.side_effect = BadRequest()
     qr = self._get_questionnaire_response_with_consents('/nobucket/no/file.pdf')
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
 
-  def test_consent_pdf_multi_valid(self):
-    consent_paths = ('/Participant/one.pdf', '/Participant/two.pdf')
-    for pdf_name in consent_paths:
-      self._write_fake_cloud_pdf(pdf_name)
-    qr = self._get_questionnaire_response_with_consents(*consent_paths)
-    # should be OK
+  @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
+  def test_consent_pdf_checks_multiple_extensions(self, mock_gcloud_check):
+    qr = self._get_questionnaire_response_with_consents(
+        '/Participant/one.pdf', '/Participant/two.pdf')
     self.questionnaire_response_dao.insert(qr)
+    self.assertEquals(mock_gcloud_check.call_count, 2)
 
-  def test_consent_pdf_multi_one_invalid(self):
-    consent_pdf_path = '/Participant/xyz/consent.pdf'
-    self._write_fake_cloud_pdf(consent_pdf_path)
-    questionnaire_response = self._get_questionnaire_response_with_consents(
-        consent_pdf_path, '/Participant/xyz/missing_consent.pdf')
+
+class QuestionnaireResponseDaoCloudCheckTest(testutil.CloudStorageTestBase):
+  def test_file_exists(self):
+    consent_pdf_path = '/%s/Participant/somefile.pdf' % _FAKE_BUCKET
     with self.assertRaises(BadRequest):
-      self.questionnaire_response_dao.insert(questionnaire_response)
+      _raise_if_gcloud_file_missing(consent_pdf_path)
+    with cloudstorage_api.open(consent_pdf_path, mode='w') as cloud_file:
+      cloud_file.write('I am a fake PDF in a fake Cloud.')
+    _raise_if_gcloud_file_missing(consent_pdf_path)
