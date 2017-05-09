@@ -20,8 +20,8 @@ def main(args):
         hpo_name = row['HPO Site ID']
         hpo = hpo_dao.get_by_name(hpo_name)
         if not hpo:
-          logging.error("Invalid HPO: %s; skipping.", hpo_name)
-          continue;
+          logging.error('Invalid HPO: %s; skipping.', hpo_name)
+          continue
         mayolink_client_num_str = row['MayoLINK Client #']
         site = Site(consortiumName=row['Group (Consortium)'],
                     siteName=row['Site'],
@@ -40,11 +40,11 @@ def main(args):
             existing_site.mayolinkClientNumber = site.mayolinkClientNumber
             existing_site.hpoId = site.hpoId
             site_dao.update_with_session(session, existing_site)
-            logging.info('Updating HPO: old = %s, new = %s', existing_site_dict,
+            logging.info('Updating site: old = %s, new = %s', existing_site_dict,
                          existing_site.asdict())
         else:
           site_dao.insert_with_session(session, site)
-          logging.info('Inserting HPO: %s', site_dict)
+          logging.info('Inserting site: %s', site_dict)
   logging.info('Done.')
 
 if __name__ == '__main__':
