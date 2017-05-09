@@ -67,11 +67,9 @@ class BiobankOrderDao(BaseDao):
   def _order_as_dict(self, order):
     result = order.asdict(follow={'identifiers': {}, 'samples': {}})
     del result['created']
-    del result['logPositionId']
-    identifiers = result.get('identifiers')
-    if identifiers:
-      for identifier in identifiers:
-        del identifier['biobankOrderId']
+    del result['logPositionId']    
+    for identifier in result.get('identifiers', []):
+      del identifier['biobankOrderId']      
     samples = result.get('samples')
     if samples:
       for sample in samples:
@@ -92,7 +90,7 @@ class BiobankOrderDao(BaseDao):
         # If an existing matching order exists, just return it without trying to create it again.
         return existing_order
       else:
-        raise Conflict("Order with ID %s already exists" % obj.biobankOrderId)
+        raise Conflict('Order with ID %s already exists' % obj.biobankOrderId)
     return super(BiobankOrderDao, self).insert_with_session(session, obj)
 
   def _validate_model(self, session, obj):
