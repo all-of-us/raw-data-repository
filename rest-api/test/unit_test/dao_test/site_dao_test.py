@@ -1,9 +1,5 @@
-import datetime
-
 from unit_test_util import SqlTestBase, PITT_HPO_ID, UNSET_HPO_ID
-from dao.hpo_dao import HPODao
 from dao.site_dao import SiteDao
-from model.hpo import HPO
 from model.site import Site
 
 class SiteDaoTest(SqlTestBase):
