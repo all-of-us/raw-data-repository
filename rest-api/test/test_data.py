@@ -81,3 +81,12 @@ def open_biobank_samples(
       'test3': test3 or random.choice(BIOBANK_TESTS),
     }
   return StringIO.StringIO(csv_str)
+
+
+def load_questionnaire_response_with_consent(questionnaire_id, participant_id, consent_pdf_path):
+  with open(data_path('questionnaire_response_with_pdf.json') as f:
+    return json.loads(f.read() % {
+      'questionnaire_id': questionnaire_id,
+      'participant_id': participant_id,
+      'consent_pdf_path': consent_pdf_path,
+    })

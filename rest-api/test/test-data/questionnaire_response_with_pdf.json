@@ -1,0 +1,339 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+      "valueCode": "en"
+    },
+    {
+      "url": "http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf",
+      "valueString": "%(consent_pdf_path)s"
+    }
+  ],
+  "identifier": {
+    "value": "9287"
+  },
+  "questionnaire": {
+    "reference": "Questionnaire/%(questionnaire_id)s"
+  },
+  "status": "completed",
+  "subject": {
+    "reference": "Patient/%(participant_id)s"
+  },
+  "authored": "2017-05-08T19:09:19+00:00",
+  "group": {
+    "linkId": "root_group",
+    "title": "consent",
+    "question": [
+      {
+        "linkId": "9841",
+        "text": "Are you 18 years of age or older?",
+        "answer": [
+          {
+            "valueString": "yes"
+          }
+        ]
+      },
+      {
+        "linkId": "9503",
+        "text": "What is your state of residence?",
+        "answer": [
+          {
+            "valueString": "PIIState_AK"
+          }
+        ]
+      },
+      {
+        "linkId": "6707",
+        "text": "If I join, can I withdraw ("quit")?\n",
+        "answer": [
+          {
+            "valueDecimal": 1
+          }
+        ]
+      },
+      {
+        "linkId": "6773",
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "answer": [
+          {
+            "valueBoolean": true
+          }
+        ]
+      },
+      {
+        "linkId": "6779",
+        "text": "Please sign below "
+      },
+      {
+        "linkId": "6780",
+        "text": "Select today's date",
+        "answer": [
+          {
+            "valueDate": "2017-05-08"
+          }
+        ]
+      },
+      {
+        "linkId": "9459",
+        "text": "first name",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "estado"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueString": "newman"
+          }
+        ]
+      },
+      {
+        "linkId": "9460",
+        "text": "middle initial",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "estado"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueString": "n"
+          }
+        ]
+      },
+      {
+        "linkId": "9461",
+        "text": "last name",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "estado"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueString": "lewman"
+          }
+        ]
+      },
+      {
+        "linkId": "9462",
+        "text": "address 1",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "estado"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueString": "qweqweqw"
+          }
+        ]
+      },
+      {
+        "linkId": "9463",
+        "text": "address 2",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "estado"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueString": "addsasd"
+          }
+        ]
+      },
+      {
+        "linkId": "9464",
+        "text": "city",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "número de teléfono"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueString": "ashburn"
+          }
+        ]
+      },
+      {
+        "linkId": "9837",
+        "text": "zip code",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "dirección de correo electrónico"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueString": "20149"
+          }
+        ]
+      },
+      {
+        "linkId": "9862",
+        "text": "email address",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "dirección de correo electrónico"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueString": "dsa@dasda,com"
+          }
+        ]
+      },
+      {
+        "linkId": "9838",
+        "text": "phone number",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "número de teléfono"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueString": "0118293338"
+          }
+        ]
+      },
+      {
+        "linkId": "9469",
+        "text": "please enter your birthdate",
+        "_text": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/translation",
+              "extension": [
+                {
+                  "url": "lang",
+                  "valueCode": "es"
+                },
+                {
+                  "url": "content",
+                  "valueString": "favor ingrese su fecha de nacimiento"
+                }
+              ]
+            }
+          ]
+        },
+        "answer": [
+          {
+            "valueDate": "1999-05-08"
+          }
+        ]
+      }
+    ]
+  }
+}
