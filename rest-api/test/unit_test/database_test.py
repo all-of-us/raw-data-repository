@@ -29,12 +29,12 @@ class DatabaseTest(SqlTestBase):
               organizationType=OrganizationType.UNSET)
     code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True, name="pmi",
                          system="http://foo/bar", version="v0.1.1")
-    session.add(hpo)  
+    session.add(hpo)
     session.add(code_book)
     session.commit()
 
     site = Site(siteId=1, siteName='site', googleGroup='site@googlegroups.com',
-                consortiumName='consortium', mayolinkClientNumber=12345, hpoId=1)  
+                consortiumName='consortium', mayolinkClientNumber=12345, hpoId=1)
     code1 = Code(codeId=1, codeBookId=1, system="a", value="b", display=u"c", topic=u"d",
                  codeType=CodeType.MODULE, mapped=True, created=datetime.datetime.now())
     codeHistory1 = CodeHistory(codeId=1, codeBookId=1, system="a", value="b", display=u"c",

@@ -3,8 +3,8 @@ from sqlalchemy import Column, Integer, String, UniqueConstraint, ForeignKey
 
 class Site(Base):
   __tablename__ = 'site'
-  siteId = Column('site_id', Integer, primary_key=True)  
-  siteName = Column('site_name', String(255), nullable=False)  
+  siteId = Column('site_id', Integer, primary_key=True)
+  siteName = Column('site_name', String(255), nullable=False)
   # The e-mail address of the Google group for the site; this is a unique key used externally.
   googleGroup = Column('google_group', String(255), nullable=False)
   consortiumName = Column('consortium_name', String(255), nullable=False)
