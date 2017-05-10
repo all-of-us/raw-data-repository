@@ -207,6 +207,12 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.questionnaire_response_dao.insert(qr)
     qr2 = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                 participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
+    qr2.answers.append(QuestionnaireResponseAnswer(
+        questionnaireResponseAnswerId=2,
+        questionnaireResponseId=1,
+        questionId=2,
+        valueSystem='c',
+        valueCodeId=4))
     with self.assertRaises(IntegrityError):
       self.questionnaire_response_dao.insert(qr2)
 
@@ -453,14 +459,14 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     participant = Participant(participantId=1, biobankId=2)
     self.participant_dao.insert(participant)
     resource = test_data.load_questionnaire_response_with_consents(
-        questionnaire.questionnaireId, participant.participantId, consent_paths)
-    questionnaire_response = QuestionnaireResponse(
-        questionnaireResponseId=1,
-        questionnaireId=questionnaire.questionnaireId,
-        questionnaireVersion=1,
-        participantId=participant.participantId,
-        resource=json.dumps(resource),
-        created=TIME)
+        questionnaire.questionnaireId,
+        participant.participantId,
+        self.FN_QUESTION.linkId,
+        self.LN_QUESTION.linkId,
+        self.EMAIL_QUESTION.linkId,
+        consent_paths)
+    questionnaire_response = self.questionnaire_response_dao.from_client_json(
+        resource, participant.participantId)
     return questionnaire_response
 
   @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
@@ -469,14 +475,15 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     questionnaire_response = self._get_questionnaire_response_with_consents(consent_pdf_path)
     # This should pass validation (not raise exceptions).
     self.questionnaire_response_dao.insert(questionnaire_response)
-    mock_gcloud_check.assert_called_with(consent_pdf_path)
+    mock_gcloud_check.assert_called_with('/%s%s' % (_FAKE_BUCKET, consent_pdf_path))
 
   @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
   def test_consent_pdf_file_invalid(self, mock_gcloud_check):
     mock_gcloud_check.side_effect = BadRequest('Test should raise this.')
     qr = self._get_questionnaire_response_with_consents('/nobucket/no/file.pdf')
-    with self.assertRaises(BadRequest):
-      self.questionnaire_response_dao.insert(qr)
+    # TODO(DA-45) Except exception here when we switch from logging to raising BadError.
+    #with self.assertRaises(BadRequest):
+    self.questionnaire_response_dao.insert(qr)
 
   @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
   def test_consent_pdf_checks_multiple_extensions(self, mock_gcloud_check):
