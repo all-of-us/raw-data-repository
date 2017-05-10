@@ -69,7 +69,7 @@ class QuestionnaireResponseDao(BaseDao):
   def _validate_model(self, session, obj):
     try:
       _validate_consent_pdfs(json.loads(obj.resource))
-    except BadRequest as e:
+    except BadRequest:
       # TODO(DA-45) Stop catching the BadRequest once we test against PTC.
       logging.error('Invalid consent PDF.', exc_info=True)
     if not obj.questionnaireId:
