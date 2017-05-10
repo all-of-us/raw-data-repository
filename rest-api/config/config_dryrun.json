@@ -16,6 +16,9 @@
   "biobank_samples_bucket_name": [
     "dryrun_biobank_samples_upload_bucket"
   ],
+  "consent_pdf_bucket": [
+    "ptc-uploads-pmi-all-of-us-rdr-dryrun"
+  ],
   "metrics_shards": [
     "10"
   ]
