@@ -14,7 +14,7 @@
   },
   "status": "completed",
   "subject": {
-    "reference": "Patient/%(participant_id)s"
+    "reference": "Patient/%(participant_client_id)s"
   },
   "authored": "2017-05-08T19:09:19+00:00",
   "group": {
@@ -71,7 +71,7 @@
         ]
       },
       {
-        "linkId": "9459",
+        "linkId": "%(first_name_link_id)s",
         "text": "first name",
         "_text": {
           "extension": [
@@ -123,7 +123,7 @@
         ]
       },
       {
-        "linkId": "9461",
+        "linkId": "%(last_name_link_id)s",
         "text": "last name",
         "_text": {
           "extension": [
@@ -253,7 +253,7 @@
         ]
       },
       {
-        "linkId": "9862",
+        "linkId": "%(email_address_link_id)s",
         "text": "email address",
         "_text": {
           "extension": [

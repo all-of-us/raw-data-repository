@@ -83,14 +83,23 @@ def open_biobank_samples(
   return StringIO.StringIO(csv_str)
 
 
-def load_questionnaire_response_with_consents(questionnaire_id, participant_id, consent_pdf_paths):
+def load_questionnaire_response_with_consents(
+      questionnaire_id,
+      participant_id,
+      first_name_link_id,
+      last_name_link_id,
+      email_address_link_id,
+      consent_pdf_paths):
   """Loads a consent QuestionnaireResponse and adds >= 1 consent PDF extensions."""
   # PDF paths are expected to be something like "/Participant/P550613540/ConsentPII__8270.pdf".
   assert len(consent_pdf_paths) >= 1
   with open(data_path('questionnaire_response_consent.json')) as f:
     resource = json.loads(f.read() % {
       'questionnaire_id': questionnaire_id,
-      'participant_id': participant_id,
+      'participant_client_id': to_client_participant_id(participant_id),
+      'first_name_link_id': first_name_link_id,
+      'last_name_link_id': last_name_link_id,
+      'email_address_link_id': email_address_link_id,
     })
   for path in consent_pdf_paths:
     resource['extension'].append({
