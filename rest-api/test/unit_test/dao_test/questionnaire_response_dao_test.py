@@ -448,9 +448,10 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.assertEquals(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())
 
   def _get_questionnaire_response_with_consents(self, *consent_paths):
+    self.insert_codes()
     questionnaire = self._setup_questionnaire()
     participant = Participant(participantId=1, biobankId=2)
-    self.participant_dao.insert(p)
+    self.participant_dao.insert(participant)
     resource = test_data.load_questionnaire_response_with_consents(
         questionnaire.questionnaireId, participant.participantId, consent_paths)
     questionnaire_response = QuestionnaireResponse(
@@ -458,7 +459,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         questionnaireId=questionnaire.questionnaireId,
         questionnaireVersion=1,
         participantId=participant.participantId,
-        resource=resource,
+        resource=json.dumps(resource),
         created=TIME)
     return questionnaire_response
 
@@ -472,7 +473,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
   @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
   def test_consent_pdf_file_invalid(self, mock_gcloud_check):
-    mock_gcloud_check.side_effect = BadRequest()
+    mock_gcloud_check.side_effect = BadRequest('Test should raise this.')
     qr = self._get_questionnaire_response_with_consents('/nobucket/no/file.pdf')
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
