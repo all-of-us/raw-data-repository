@@ -1,6 +1,7 @@
 import clock
 import config
 import json
+import logging
 import os
 
 from cloudstorage import cloudstorage_api
@@ -77,14 +78,16 @@ class QuestionnaireResponseDao(BaseDao):
       raise BadRequest('QuestionnaireResponse.questionnaireVersion is required.')
 
   def insert_with_session(self, session, questionnaire_response):
-    qh = (QuestionnaireHistoryDao().
-          get_with_children_with_session(session, [questionnaire_response.questionnaireId,
-                                                   questionnaire_response.questionnaireVersion]))
-    if not qh:
+    questionnaire_history = (
+        QuestionnaireHistoryDao().
+        get_with_children_with_session(session, [questionnaire_response.questionnaireId,
+                                                 questionnaire_response.questionnaireVersion]))
+    if not questionnaire_history:
       raise BadRequest('Questionnaire with ID %s, version %s is not found' %
                        (questionnaire_response.questionnaireId,
                         questionnaire_response.questionnaireVersion))
-    q_question_ids = set([question.questionnaireQuestionId for question in qh.questions])
+    q_question_ids = set([
+        question.questionnaireQuestionId for question in questionnaire_history.questions])
     for answer in questionnaire_response.answers:
       if answer.questionId not in q_question_ids:
         raise BadRequest('Questionnaire response contains question ID %s not in questionnaire.' %
@@ -109,7 +112,8 @@ class QuestionnaireResponseDao(BaseDao):
       answer.endTime = questionnaire_response.created
       session.merge(answer)
 
-    self._update_participant_summary(session, questionnaire_response, code_ids, questions, qh)
+    self._update_participant_summary(
+        session, questionnaire_response, code_ids, questions, questionnaire_history)
     return questionnaire_response
 
   def _get_field_value(self, field_type, answer):
@@ -129,7 +133,8 @@ class QuestionnaireResponseDao(BaseDao):
       return True
     return False
 
-  def _update_participant_summary(self, session, questionnaire_response, code_ids, questions, qh):
+  def _update_participant_summary(
+      self, session, questionnaire_response, code_ids, questions, questionnaire_history):
     """Updates the participant summary based on questions answered and modules completed
     in the questionnaire response.
 
@@ -140,7 +145,7 @@ class QuestionnaireResponseDao(BaseDao):
     participant = ParticipantDao().get_for_update(session, questionnaire_response.participantId)
     participant_summary = participant.participantSummary
 
-    code_ids.extend([concept.codeId for concept in qh.concepts])
+    code_ids.extend([concept.codeId for concept in questionnaire_history.concepts])
 
     code_dao = CodeDao()
 
@@ -194,7 +199,7 @@ class QuestionnaireResponseDao(BaseDao):
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
     # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
     module_changed = False
-    for concept in qh.concepts:
+    for concept in questionnaire_history.concepts:
       code = code_map.get(concept.codeId)
       if code:
         summary_field = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(code.value)
@@ -214,10 +219,12 @@ class QuestionnaireResponseDao(BaseDao):
           count_completed_ppi_modules(participant_summary)
 
     if something_changed:
-      if (not participant_summary.firstName or not participant_summary.lastName
-          or not participant_summary.email):
-        raise BadRequest('First name, last name, and email address are required for consenting '
-                         'participants')
+      first_last_email = (
+          participant_summary.firstName, participant_summary.lastName, participant_summary.email)
+      if not all(first_last_email):
+        raise BadRequest(
+            'First name (%s), last name (%s), and email address (%s) required for consenting.'
+            % tuple(['present' if part else 'missing' for part in first_last_email]))
       ParticipantSummaryDao().update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 
