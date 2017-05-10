@@ -76,6 +76,8 @@ class QuestionnaireResponseDao(BaseDao):
       raise BadRequest('QuestionnaireResponse.questionnaireId is required.')
     if not obj.questionnaireVersion:
       raise BadRequest('QuestionnaireResponse.questionnaireVersion is required.')
+    if not obj.answers:
+      raise BadRequest('QuestionnaireResponse has no answers.')
 
   def insert_with_session(self, session, questionnaire_response):
     questionnaire_history = (
@@ -249,6 +251,8 @@ class QuestionnaireResponseDao(BaseDao):
 
     # Extract a code map and answers from the questionnaire response.
     code_map, answers = self._extract_codes_and_answers(fhir_qr.group, questionnaire)
+    if not answers:
+      raise BadRequest('QuestionnaireResponse has no answers.')
     # Get or insert codes, and retrieve their database IDs.
     code_id_map = CodeDao().get_or_add_codes(code_map,
                                              add_codes_if_missing=_add_codes_if_missing(client_id))
@@ -391,11 +395,17 @@ def _validate_consent_pdfs(resource):
       raise BadRequest(
           'PDF path must be absolute below the bucket, starting with a slash, but got %r.'
           % local_pdf_path)
-    _raise_if_gcloud_file_missing('gs://%s%s' % (consent_bucket, local_pdf_path))
+    _raise_if_gcloud_file_missing('/%s%s' % (consent_bucket, local_pdf_path))
 
 
 def _raise_if_gcloud_file_missing(path):
-  """Checks that a GCS file exists. Raises BadRequest on error."""
+  """Checks that a GCS file exists.
+
+  Args:
+    path: An absolute Google Cloud Storage path, starting with /$BUCKET.
+  Raises:
+    BadRequest if the path does not reference a file.
+  """
   try:
     gcs_stat = cloudstorage_api.stat(path)
   except cloudstorage_api.errors.NotFoundError as e:
