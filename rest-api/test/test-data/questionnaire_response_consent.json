@@ -41,7 +41,7 @@
       },
       {
         "linkId": "6707",
-        "text": "If I join, can I withdraw ("quit")?\n",
+        "text": "If I join, can I withdraw (\"quit\")?\n",
         "answer": [
           {
             "valueDecimal": 1
