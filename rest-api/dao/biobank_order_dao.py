@@ -52,13 +52,14 @@ class _FhirBiobankOrder(FhirMixin, DomainResource):
   resource_name = 'BiobankOrder'
   _PROPERTIES = [
     FhirProperty('subject', str, required=True),
+    # TODO: make this required once HealthPro is updated (DA-280)
     FhirProperty('author', Identifier),
     FhirProperty('identifier', Identifier, is_list=True, required=True),
     FhirProperty('created', fhirdate.FHIRDate, required=True),
     FhirProperty('samples', _FhirBiobankOrderedSample, is_list=True, required=True),
     FhirProperty('notes', _FhirBiobankOrderNotes),
     FhirProperty('source_site', Identifier, required=True),
-    # TODO: make this required once HealthPro is updated
+    # TODO: make this required once HealthPro is updated (DA-280)
     FhirProperty('finalized_site', Identifier),
   ]
 
@@ -166,7 +167,7 @@ class BiobankOrderDao(BaseDao):
         created=resource.created.date)
 
     site_dao = SiteDao()
-    # TODO: raise BadRequest if source_site has wrong system once HealthPro is updated.
+    # TODO: raise BadRequest if source_site has wrong system once HealthPro is updated (DA-280)
     if resource.source_site.system == SITE_ID_SYSTEM:
       site = site_dao.get_by_google_group(resource.source_site.value)
       if not site:
@@ -183,6 +184,7 @@ class BiobankOrderDao(BaseDao):
         raise BadRequest('Unrecognized finalized site: %s' % resource.finalized_site.value)
       order.finalizedSiteId = site.siteId
 
+    # TODO: raise BadRequest if author is missing once HealthPro is updated (DA-280)
     if resource.author:
       if resource.author.system == HEALTHPRO_USERNAME_SYSTEM:
         order.finalizedUsername = resource.author.value
