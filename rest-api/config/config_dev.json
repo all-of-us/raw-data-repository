@@ -16,6 +16,9 @@
   "biobank_samples_bucket_name": [
     "app_default_bucket"
   ],
+  "consent_pdf_bucket": [
+    "app_default_bucket"
+  ],
   "metrics_shards": [
     "2"
   ]

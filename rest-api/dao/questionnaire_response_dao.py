@@ -1,7 +1,10 @@
 import clock
 import config
 import json
+import logging
+import os
 
+from cloudstorage import cloudstorage_api
 import fhirclient.models.questionnaireresponse
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
@@ -25,6 +28,10 @@ _QUESTIONNAIRE_PREFIX = 'Questionnaire/'
 _QUESTIONNAIRE_HISTORY_SEGMENT = '/_history/'
 _QUESTIONNAIRE_REFERENCE_FORMAT = (_QUESTIONNAIRE_PREFIX + "%d" +
                                    _QUESTIONNAIRE_HISTORY_SEGMENT + "%d")
+
+_SIGNED_CONSENT_EXTENSION = (
+    'http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf')
+
 
 def count_completed_baseline_ppi_modules(participant_summary):
   baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
@@ -60,20 +67,30 @@ class QuestionnaireResponseDao(BaseDao):
       return result
 
   def _validate_model(self, session, obj):
+    try:
+      _validate_consent_pdfs(json.loads(obj.resource))
+    except BadRequest:
+      # TODO(DA-45) Stop catching the BadRequest once we test against PTC.
+      logging.error('Invalid consent PDF.', exc_info=True)
     if not obj.questionnaireId:
       raise BadRequest('QuestionnaireResponse.questionnaireId is required.')
     if not obj.questionnaireVersion:
       raise BadRequest('QuestionnaireResponse.questionnaireVersion is required.')
+    if not obj.answers:
+      logging.error(
+          'QuestionnaireResponse model has no answers. This is harmless but probably an error.')
 
   def insert_with_session(self, session, questionnaire_response):
-    qh = (QuestionnaireHistoryDao().
-          get_with_children_with_session(session, [questionnaire_response.questionnaireId,
-                                                   questionnaire_response.questionnaireVersion]))
-    if not qh:
+    questionnaire_history = (
+        QuestionnaireHistoryDao().
+        get_with_children_with_session(session, [questionnaire_response.questionnaireId,
+                                                 questionnaire_response.questionnaireVersion]))
+    if not questionnaire_history:
       raise BadRequest('Questionnaire with ID %s, version %s is not found' %
                        (questionnaire_response.questionnaireId,
                         questionnaire_response.questionnaireVersion))
-    q_question_ids = set([question.questionnaireQuestionId for question in qh.questions])
+    q_question_ids = set([
+        question.questionnaireQuestionId for question in questionnaire_history.questions])
     for answer in questionnaire_response.answers:
       if answer.questionId not in q_question_ids:
         raise BadRequest('Questionnaire response contains question ID %s not in questionnaire.' %
@@ -98,7 +115,8 @@ class QuestionnaireResponseDao(BaseDao):
       answer.endTime = questionnaire_response.created
       session.merge(answer)
 
-    self._update_participant_summary(session, questionnaire_response, code_ids, questions, qh)
+    self._update_participant_summary(
+        session, questionnaire_response, code_ids, questions, questionnaire_history)
     return questionnaire_response
 
   def _get_field_value(self, field_type, answer):
@@ -118,7 +136,8 @@ class QuestionnaireResponseDao(BaseDao):
       return True
     return False
 
-  def _update_participant_summary(self, session, questionnaire_response, code_ids, questions, qh):
+  def _update_participant_summary(
+      self, session, questionnaire_response, code_ids, questions, questionnaire_history):
     """Updates the participant summary based on questions answered and modules completed
     in the questionnaire response.
 
@@ -129,7 +148,7 @@ class QuestionnaireResponseDao(BaseDao):
     participant = ParticipantDao().get_for_update(session, questionnaire_response.participantId)
     participant_summary = participant.participantSummary
 
-    code_ids.extend([concept.codeId for concept in qh.concepts])
+    code_ids.extend([concept.codeId for concept in questionnaire_history.concepts])
 
     code_dao = CodeDao()
 
@@ -183,7 +202,7 @@ class QuestionnaireResponseDao(BaseDao):
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
     # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
     module_changed = False
-    for concept in qh.concepts:
+    for concept in questionnaire_history.concepts:
       code = code_map.get(concept.codeId)
       if code:
         summary_field = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(code.value)
@@ -203,10 +222,12 @@ class QuestionnaireResponseDao(BaseDao):
           count_completed_ppi_modules(participant_summary)
 
     if something_changed:
-      if (not participant_summary.firstName or not participant_summary.lastName
-          or not participant_summary.email):
-        raise BadRequest('First name, last name, and email address are required for consenting '
-                         'participants')
+      first_last_email = (
+          participant_summary.firstName, participant_summary.lastName, participant_summary.email)
+      if not all(first_last_email):
+        raise BadRequest(
+            'First name (%s), last name (%s), and email address (%s) required for consenting.'
+            % tuple(['present' if part else 'missing' for part in first_last_email]))
       ParticipantSummaryDao().update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 
@@ -230,13 +251,15 @@ class QuestionnaireResponseDao(BaseDao):
                                resource=json.dumps(resource_json))
 
     # Extract a code map and answers from the questionnaire response.
-    code_map, answers = self._extract_codes_and_answers(fhir_qr.group,
-                                                                         questionnaire)
+    code_map, answers = self._extract_codes_and_answers(fhir_qr.group, questionnaire)
+    if not answers:
+      logging.error(
+          'No answers from QuestionnaireResponse JSON. This is harmless but probably an error.')
     # Get or insert codes, and retrieve their database IDs.
     code_id_map = CodeDao().get_or_add_codes(code_map,
                                              add_codes_if_missing=_add_codes_if_missing(client_id))
 
-     # Now add the child answers, using the IDs in code_id_map
+    # Now add the child answers, using the IDs in code_id_map
     self._add_answers(qr, code_id_map, answers)
 
     return qr
@@ -280,7 +303,8 @@ class QuestionnaireResponseDao(BaseDao):
   @classmethod
   def _extract_codes_and_answers(cls, group, q):
     """Returns (system, code) -> (display, code type, question code id) code map
-    and (QuestionnaireResponseAnswer, (system, code)) answer pairs."""
+    and (QuestionnaireResponseAnswer, (system, code)) answer pairs.
+    """
     code_map = {}
     answers = []
     link_id_to_question = {}
@@ -356,6 +380,41 @@ def _add_codes_if_missing(client_id):
   Tests override this to return true.
   """
   return not is_config_admin(client_id)
+
+
+def _validate_consent_pdfs(resource):
+  """Checks for any consent-form-signed-pdf extensions and validates their PDFs in GCS."""
+  if resource.get('resourceType') != 'QuestionnaireResponse':
+    raise ValueError('Expected QuestionnaireResponse for "resourceType" in %r.' % resource)
+  consent_bucket = config.getSetting(config.CONSENT_PDF_BUCKET)
+  for extension in resource.get('extension', []):
+    if extension['url'] != _SIGNED_CONSENT_EXTENSION:
+      continue
+    local_pdf_path = extension['valueString']
+    _, ext = os.path.splitext(local_pdf_path)
+    if ext.lower() != '.pdf':
+      raise BadRequest('Signed PDF must end in .pdf, found %r (from %r).' % (ext, local_pdf_path))
+    if not local_pdf_path.startswith('/'):
+      raise BadRequest(
+          'PDF path must be absolute below the bucket, starting with a slash, but got %r.'
+          % local_pdf_path)
+    _raise_if_gcloud_file_missing('/%s%s' % (consent_bucket, local_pdf_path))
+
+
+def _raise_if_gcloud_file_missing(path):
+  """Checks that a GCS file exists.
+
+  Args:
+    path: An absolute Google Cloud Storage path, starting with /$BUCKET.
+  Raises:
+    BadRequest if the path does not reference a file.
+  """
+  try:
+    gcs_stat = cloudstorage_api.stat(path)
+  except cloudstorage_api.errors.NotFoundError as e:
+    raise BadRequest('Google Cloud Storage file %r not found. %s.' % (path, e))
+  if gcs_stat.is_dir:
+    raise BadRequest('Google Cloud Storage path %r references a directory, expected a file.' % path)
 
 
 class QuestionnaireResponseAnswerDao(BaseDao):

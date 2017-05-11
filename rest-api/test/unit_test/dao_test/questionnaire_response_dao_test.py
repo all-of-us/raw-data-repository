@@ -1,17 +1,24 @@
 import datetime
 import json
+import mock
+
+from testlib import testutil
+from cloudstorage import cloudstorage_api  # stubbed by testbed
 
 from code_constants import PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, THE_BASICS_PPI_MODULE
+import config
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseDao, QuestionnaireResponseAnswerDao
+from dao.questionnaire_response_dao import _raise_if_gcloud_file_missing
 from model.code import Code, CodeType
 from model.participant import Participant
 from model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from participant_enums import QuestionnaireStatus, WithdrawalStatus
+import test_data
 from test_data import consent_code, first_name_code, last_name_code, email_code
 from unit_test_util import FlaskTestBase
 from clock import FakeClock
@@ -26,9 +33,11 @@ TIME_4 = datetime.datetime(2016, 1, 4)
 ANSWERS = {'answers': {}}
 QUESTIONNAIRE_RESOURCE = '{"x": "y"}'
 QUESTIONNAIRE_RESOURCE_2 = '{"x": "z"}'
-QUESTIONNAIRE_RESPONSE_RESOURCE = '{"a": "b"}'
-QUESTIONNAIRE_RESPONSE_RESOURCE_2 = '{"a": "c"}'
-QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"a": "d"}'
+QUESTIONNAIRE_RESPONSE_RESOURCE = '{"resourceType": "QuestionnaireResponse", "a": "b"}'
+QUESTIONNAIRE_RESPONSE_RESOURCE_2 = '{"resourceType": "QuestionnaireResponse", "a": "c"}'
+QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"resourceType": "QuestionnaireResponse", "a": "d"}'
+
+_FAKE_BUCKET = 'ptc-uploads-unit-testing'
 
 def with_id(resource, id_):
   resource_json = json.loads(resource)
@@ -63,6 +72,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2, repeats=True)
     # Same code as question 1
     self.CODE_1_QUESTION_2 = QuestionnaireQuestion(linkId='x', codeId=1, repeats=False)
+    config.override_setting(config.CONSENT_PDF_BUCKET, [_FAKE_BUCKET])
 
   def _names_and_email_answers(self):
     return [self.FN_ANSWER, self.LN_ANSWER, self.EMAIL_ANSWER]
@@ -197,6 +207,12 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.questionnaire_response_dao.insert(qr)
     qr2 = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
                                 participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
+    qr2.answers.append(QuestionnaireResponseAnswer(
+        questionnaireResponseAnswerId=2,
+        questionnaireResponseId=1,
+        questionId=2,
+        valueSystem='c',
+        valueCodeId=4))
     with self.assertRaises(IntegrityError):
       self.questionnaire_response_dao.insert(qr2)
 
@@ -259,7 +275,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     q.questions.append(self.FN_QUESTION)
     q.questions.append(self.LN_QUESTION)
     q.questions.append(self.EMAIL_QUESTION)
-    self.questionnaire_dao.insert(q)
+    return self.questionnaire_dao.insert(q)
 
   def test_insert_with_answers(self):
     self.insert_codes()
@@ -436,3 +452,52 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.
     self.assertEquals(expected_ps3.asdict(), self.participant_summary_dao.get(1).asdict())
+
+  def _get_questionnaire_response_with_consents(self, *consent_paths):
+    self.insert_codes()
+    questionnaire = self._setup_questionnaire()
+    participant = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(participant)
+    resource = test_data.load_questionnaire_response_with_consents(
+        questionnaire.questionnaireId,
+        participant.participantId,
+        self.FN_QUESTION.linkId,
+        self.LN_QUESTION.linkId,
+        self.EMAIL_QUESTION.linkId,
+        consent_paths)
+    questionnaire_response = self.questionnaire_response_dao.from_client_json(
+        resource, participant.participantId)
+    return questionnaire_response
+
+  @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
+  def test_consent_pdf_valid(self, mock_gcloud_check):
+    consent_pdf_path = '/Participant/xyz/consent.pdf'
+    questionnaire_response = self._get_questionnaire_response_with_consents(consent_pdf_path)
+    # This should pass validation (not raise exceptions).
+    self.questionnaire_response_dao.insert(questionnaire_response)
+    mock_gcloud_check.assert_called_with('/%s%s' % (_FAKE_BUCKET, consent_pdf_path))
+
+  @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
+  def test_consent_pdf_file_invalid(self, mock_gcloud_check):
+    mock_gcloud_check.side_effect = BadRequest('Test should raise this.')
+    qr = self._get_questionnaire_response_with_consents('/nobucket/no/file.pdf')
+    # TODO(DA-45) Except exception here when we switch from logging to raising BadError.
+    #with self.assertRaises(BadRequest):
+    self.questionnaire_response_dao.insert(qr)
+
+  @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
+  def test_consent_pdf_checks_multiple_extensions(self, mock_gcloud_check):
+    qr = self._get_questionnaire_response_with_consents(
+        '/Participant/one.pdf', '/Participant/two.pdf')
+    self.questionnaire_response_dao.insert(qr)
+    self.assertEquals(mock_gcloud_check.call_count, 2)
+
+
+class QuestionnaireResponseDaoCloudCheckTest(testutil.CloudStorageTestBase):
+  def test_file_exists(self):
+    consent_pdf_path = '/%s/Participant/somefile.pdf' % _FAKE_BUCKET
+    with self.assertRaises(BadRequest):
+      _raise_if_gcloud_file_missing(consent_pdf_path)
+    with cloudstorage_api.open(consent_pdf_path, mode='w') as cloud_file:
+      cloud_file.write('I am a fake PDF in a fake Cloud.')
+    _raise_if_gcloud_file_missing(consent_pdf_path)
