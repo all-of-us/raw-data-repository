@@ -73,7 +73,7 @@ different subsets of the rows:
     for the same participant/test pair: that is, rows where
     `sent_count` != `received_count`.
 
-Note that multiple values may be concatenated together (with a comma separator) in cells in the 
+Note that multiple values may be concatenated together (with a comma separator) in cells in the
 report, when multiple orders and/or multiple samples for the same participant use the same test.
 
 Columns in the CSVs are:
