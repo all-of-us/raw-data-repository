@@ -31,8 +31,10 @@ from code_constants import PPI_SYSTEM
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from dao.participant_dao import ParticipantDao
+from dao.site_dao import SiteDao
 from model.code import Code
 from model.hpo import HPO
+from model.site import Site
 from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from offline import sql_exporter
@@ -168,7 +170,12 @@ class _TestDb(object):
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT'))
-
+    
+    site_dao = SiteDao()
+    site_dao.insert(Site(siteName='Monroeville Urgent Care Center', 
+                         googleGroup='hpo-site-Monroeville@prod.pmi-ops.org',
+                         consortiumName='Pittsburgh', mayolinkClientNumber=7035769, 
+                         hpoId=PITT_HPO_ID))
 
 class SqlTestBase(TestbedTestBase):
   """Base class for unit tests that use the SQL database."""

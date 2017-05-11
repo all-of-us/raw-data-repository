@@ -1,7 +1,10 @@
-from code_constants import BIOBANK_TESTS_SET
+import logging
+
+from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
 from dao.base_dao import BaseDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
+from dao.site_dao import SiteDao
 from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from model.log_position import LogPosition
 from model.participant import Participant
@@ -10,6 +13,7 @@ from model.utils import to_client_participant_id
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirdate import FHIRDate
+from fhirclient.models.fhirreference import FHIRReference
 from fhirclient.models.identifier import Identifier
 from fhirclient.models import fhirdate
 from sqlalchemy.orm import subqueryload
@@ -47,15 +51,17 @@ class _FhirBiobankOrderedSample(FhirMixin, BackboneElement):
 class _FhirBiobankOrder(FhirMixin, DomainResource):
   """FHIR client definition of the expected JSON structure for a BiobankOrder resource."""
   resource_name = 'BiobankOrder'
-  _PROPERTIES = [
-    FhirProperty('subject', str, required=True),
+  _PROPERTIES = [    
+    FhirProperty('subject', str, required=True),  
+    FhirProperty('author', Identifier),
     FhirProperty('identifier', Identifier, is_list=True, required=True),
     FhirProperty('created', fhirdate.FHIRDate, required=True),
     FhirProperty('samples', _FhirBiobankOrderedSample, is_list=True, required=True),
     FhirProperty('notes', _FhirBiobankOrderNotes),
     FhirProperty('source_site', Identifier, required=True),
+    # TODO: make this required once HealthPro is updated
+    FhirProperty('finalized_site', Identifier),
   ]
-
 
 class BiobankOrderDao(BaseDao):
   def __init__(self):
@@ -155,11 +161,35 @@ class BiobankOrderDao(BaseDao):
     resource = _FhirBiobankOrder(resource_json)
     if not resource.created.date:  # FHIR warns but does not error on bad date values.
       raise BadRequest('Invalid created date %r.' % resource.created.origval)
+    
     order = BiobankOrder(
         participantId=participant_id,
-        sourceSiteSystem=resource.source_site.system,
-        sourceSiteValue=resource.source_site.value,
         created=resource.created.date)
+    
+    site_dao = SiteDao()
+    # TODO: raise BadRequest if source_site has wrong system once HealthPro is updated.
+    if resource.source_site.system == SITE_ID_SYSTEM:
+      site = site_dao.get_by_google_group(resource.source_site.value)
+      if not site:
+        raise BadRequest('Unrecognized source site: %s' % resource.source_site.value)
+      order.sourceSiteId = site.siteId  
+    else:
+      logging.warning('Unrecognized site system: %s', resource.source_site.system)      
+      
+    if resource.finalized_site:
+      if resource.finalized_site.system != SITE_ID_SYSTEM:
+        raise BadRequest('Invalid site system: %s' % resource.finalized_site.system)
+      site = site_dao.get_by_google_group(resource.finalized_site.value)
+      if not site:
+        raise BadRequest('Unrecognized finalized site: %s' % resource.finalized_site.value)
+      order.finalizedSiteId = site.siteId
+      
+    if resource.author:
+      if resource.author.system == HEALTHPRO_USERNAME_SYSTEM:
+        order.finalizedUsername = resource.author.value
+      else:
+        raise BadRequest('Unrecognized author system: %s' % resource.author.system)
+      
     if resource.notes:
       order.collectedNote = resource.notes.collected
       order.processedNote = resource.notes.processed
@@ -234,8 +264,21 @@ class BiobankOrderDao(BaseDao):
     resource.notes.processed = model.processedNote
     resource.notes.finalized = model.finalizedNote
     resource.source_site = Identifier()
-    resource.source_site.system = model.sourceSiteSystem
-    resource.source_site.value = model.sourceSiteValue
+    site_dao = SiteDao()
+    if model.sourceSiteId:
+      site = site_dao.get(model.sourceSiteId)      
+      resource.source_site = Identifier()
+      resource.source_site.system = SITE_ID_SYSTEM
+      resource.source_site.value = site.googleGroup
+    if model.finalizedSiteId:
+      site = site_dao.get(model.finalizedSiteId)      
+      resource.finalized_site = Identifier()
+      resource.finalized_site.system = SITE_ID_SYSTEM
+      resource.finalized_site.value = site.googleGroup
+    if model.finalizedUsername:
+      resource.author = Identifier()
+      resource.author.system = HEALTHPRO_USERNAME_SYSTEM
+      resource.author.value = model.finalizedUsername
     self._add_identifiers_to_resource(resource, model)
     self._add_samples_to_resource(resource, model)
     client_json = resource.as_json()  # also validates required fields

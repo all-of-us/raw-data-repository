@@ -24,7 +24,14 @@ _CSV_COLUMN_NAMES = (
   'sent_order_id',
   'sent_collection_time',
   'sent_finalized_time',
-  'site_id',
+  'source_site_name',
+  'source_site_consortium',
+  'source_site_mayolink_client_number',
+  'source_site_hpo',
+  'finalized_site_name',
+  'finalized_site_consortium',
+  'finalized_site_mayolink_client_number',
+  'finalized_site_hpo',
 
   'received_test',
   'received_count',
@@ -54,7 +61,8 @@ class MySqlReconciliationTest(NdbTestBase):
     order = BiobankOrder(
         biobankOrderId=order_id,
         participantId=participant.participantId,
-        sourceSiteValue='SiteValue-%s' % participant.participantId,
+        sourceSiteId=1,
+        finalizedSiteId=1,
         created=order_time,
         samples=[])
     for test_code in tests:
@@ -122,7 +130,14 @@ class MySqlReconciliationTest(NdbTestBase):
         'sent_test': BIOBANK_TESTS[0],
         'received_test': BIOBANK_TESTS[0]})
     # Also check the values of all remaining fields on one row.
-    self.assertEquals(row['site_id'], 'SiteValue-%d' % p_on_time.participantId)
+    self.assertEquals(row['source_site_name'], 'Monroeville Urgent Care Center')
+    self.assertEquals(row['source_site_consortium'], 'Pittsburgh')
+    self.assertEquals(row['source_site_mayolink_client_number'], '7035769')
+    self.assertEquals(row['source_site_hpo'], 'PITT')
+    self.assertEquals(row['finalized_site_name'], 'Monroeville Urgent Care Center')
+    self.assertEquals(row['finalized_site_consortium'], 'Pittsburgh')
+    self.assertEquals(row['finalized_site_mayolink_client_number'], '7035769')
+    self.assertEquals(row['finalized_site_hpo'], 'PITT')
     self.assertEquals(row['sent_finalized_time'], database_utils.format_datetime(order_time))
     self.assertEquals(row['sent_collection_time'], database_utils.format_datetime(order_time))
     self.assertEquals(row['received_time'], database_utils.format_datetime(within_a_day))

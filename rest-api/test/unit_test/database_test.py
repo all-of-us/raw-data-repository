@@ -170,14 +170,19 @@ class DatabaseTest(SqlTestBase):
     now = isodate.parse_datetime('2016-01-04T10:28:50-04:00')
 
     write_session = self.database.make_session()
+    
     p = self._create_participant(write_session)
+    site = Site(siteId=1, siteName='site', googleGroup='site@googlegroups.com',
+                consortiumName='consortium', mayolinkClientNumber=12345, hpoId=1)
+    write_session.add(site)
+    write_session.commit()    
 
     bo = BiobankOrder(
         biobankOrderId=bo_id,
         participantId=p.participantId,
         created=now,
-        sourceSiteSystem='a',
-        sourceSiteValue='b',
+        sourceSiteId=1,
+        finalizedSiteId=1,
         collectedNote=r'written by ' + self.fake.last_name(),
         processedNote=u'd',
         finalizedNote=u'e',

@@ -11,6 +11,9 @@ PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 # these codes are ignored by RDR.
 PPI_EXTRA_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi-extra"
 
+SITE_ID_SYSTEM = "https://www.pmi-ops.org/site-id"
+HEALTHPRO_USERNAME_SYSTEM = "https://www.pmi-ops.org/healthpro-username"
+
 FIRST_NAME_QUESTION_CODE = "PIIName_First"
 LAST_NAME_QUESTION_CODE = "PIIName_Last"
 MIDDLE_NAME_QUESTION_CODE = "PIIName_Middle"
