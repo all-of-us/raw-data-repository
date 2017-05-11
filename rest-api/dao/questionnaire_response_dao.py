@@ -77,7 +77,7 @@ class QuestionnaireResponseDao(BaseDao):
     if not obj.questionnaireVersion:
       raise BadRequest('QuestionnaireResponse.questionnaireVersion is required.')
     if not obj.answers:
-      raise BadRequest('QuestionnaireResponse has no answers.')
+      raise BadRequest('QuestionnaireResponse model has no answers.')
 
   def insert_with_session(self, session, questionnaire_response):
     questionnaire_history = (
@@ -252,7 +252,7 @@ class QuestionnaireResponseDao(BaseDao):
     # Extract a code map and answers from the questionnaire response.
     code_map, answers = self._extract_codes_and_answers(fhir_qr.group, questionnaire)
     if not answers:
-      raise BadRequest('QuestionnaireResponse has no answers.')
+      raise BadRequest('QuestionnaireResponse JSON has no extractable answers.')
     # Get or insert codes, and retrieve their database IDs.
     code_id_map = CodeDao().get_or_add_codes(code_map,
                                              add_codes_if_missing=_add_codes_if_missing(client_id))
@@ -301,7 +301,8 @@ class QuestionnaireResponseDao(BaseDao):
   @classmethod
   def _extract_codes_and_answers(cls, group, q):
     """Returns (system, code) -> (display, code type, question code id) code map
-    and (QuestionnaireResponseAnswer, (system, code)) answer pairs."""
+    and (QuestionnaireResponseAnswer, (system, code)) answer pairs.
+    """
     code_map = {}
     answers = []
     link_id_to_question = {}
