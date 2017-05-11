@@ -13,7 +13,6 @@ from model.utils import to_client_participant_id
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirdate import FHIRDate
-from fhirclient.models.fhirreference import FHIRReference
 from fhirclient.models.identifier import Identifier
 from fhirclient.models import fhirdate
 from sqlalchemy.orm import subqueryload
