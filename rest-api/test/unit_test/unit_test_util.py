@@ -170,11 +170,11 @@ class _TestDb(object):
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT'))
-    
+
     site_dao = SiteDao()
-    site_dao.insert(Site(siteName='Monroeville Urgent Care Center', 
+    site_dao.insert(Site(siteName='Monroeville Urgent Care Center',
                          googleGroup='hpo-site-Monroeville@prod.pmi-ops.org',
-                         consortiumName='Pittsburgh', mayolinkClientNumber=7035769, 
+                         consortiumName='Pittsburgh', mayolinkClientNumber=7035769,
                          hpoId=PITT_HPO_ID))
 
 class SqlTestBase(TestbedTestBase):

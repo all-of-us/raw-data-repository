@@ -10,7 +10,7 @@
   "author": {
     "system": "https://www.pmi-ops.org/healthpro-username",
     "value": "bob@pmi-ops.org"
-  },  
+  },
   "sourceSite": {
     "system": "https://www.pmi-ops.org/site-id",
     "value": "hpo-site-Monroeville@prod.pmi-ops.org"

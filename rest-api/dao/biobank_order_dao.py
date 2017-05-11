@@ -50,8 +50,8 @@ class _FhirBiobankOrderedSample(FhirMixin, BackboneElement):
 class _FhirBiobankOrder(FhirMixin, DomainResource):
   """FHIR client definition of the expected JSON structure for a BiobankOrder resource."""
   resource_name = 'BiobankOrder'
-  _PROPERTIES = [    
-    FhirProperty('subject', str, required=True),  
+  _PROPERTIES = [
+    FhirProperty('subject', str, required=True),
     FhirProperty('author', Identifier),
     FhirProperty('identifier', Identifier, is_list=True, required=True),
     FhirProperty('created', fhirdate.FHIRDate, required=True),
@@ -160,21 +160,21 @@ class BiobankOrderDao(BaseDao):
     resource = _FhirBiobankOrder(resource_json)
     if not resource.created.date:  # FHIR warns but does not error on bad date values.
       raise BadRequest('Invalid created date %r.' % resource.created.origval)
-    
+
     order = BiobankOrder(
         participantId=participant_id,
         created=resource.created.date)
-    
+
     site_dao = SiteDao()
     # TODO: raise BadRequest if source_site has wrong system once HealthPro is updated.
     if resource.source_site.system == SITE_ID_SYSTEM:
       site = site_dao.get_by_google_group(resource.source_site.value)
       if not site:
         raise BadRequest('Unrecognized source site: %s' % resource.source_site.value)
-      order.sourceSiteId = site.siteId  
+      order.sourceSiteId = site.siteId
     else:
-      logging.warning('Unrecognized site system: %s', resource.source_site.system)      
-      
+      logging.warning('Unrecognized site system: %s', resource.source_site.system)
+
     if resource.finalized_site:
       if resource.finalized_site.system != SITE_ID_SYSTEM:
         raise BadRequest('Invalid site system: %s' % resource.finalized_site.system)
@@ -182,13 +182,13 @@ class BiobankOrderDao(BaseDao):
       if not site:
         raise BadRequest('Unrecognized finalized site: %s' % resource.finalized_site.value)
       order.finalizedSiteId = site.siteId
-      
+
     if resource.author:
       if resource.author.system == HEALTHPRO_USERNAME_SYSTEM:
         order.finalizedUsername = resource.author.value
       else:
         raise BadRequest('Unrecognized author system: %s' % resource.author.system)
-      
+
     if resource.notes:
       order.collectedNote = resource.notes.collected
       order.processedNote = resource.notes.processed
@@ -265,12 +265,12 @@ class BiobankOrderDao(BaseDao):
     resource.source_site = Identifier()
     site_dao = SiteDao()
     if model.sourceSiteId:
-      site = site_dao.get(model.sourceSiteId)      
+      site = site_dao.get(model.sourceSiteId)
       resource.source_site = Identifier()
       resource.source_site.system = SITE_ID_SYSTEM
       resource.source_site.value = site.googleGroup
     if model.finalizedSiteId:
-      site = site_dao.get(model.finalizedSiteId)      
+      site = site_dao.get(model.finalizedSiteId)
       resource.finalized_site = Identifier()
       resource.finalized_site.system = SITE_ID_SYSTEM
       resource.finalized_site.value = site.googleGroup

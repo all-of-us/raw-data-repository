@@ -32,7 +32,7 @@ class BiobankOrder(Base):
   finalizedSiteId = Column('finalized_site_id', Integer, ForeignKey('site.site_id'))
   # The username / email of the HealthPro user that finalized the order.
   finalizedUsername = Column('finalized_username', String(255))
-  
+
   # Additional fields stored for future use.
   created = Column('created', UTCDateTime, nullable=False)
   collectedNote = Column('collected_note', UnicodeText)

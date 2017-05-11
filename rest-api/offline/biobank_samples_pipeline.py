@@ -224,11 +224,11 @@ _RECONCILIATION_REPORT_SQL = ("""
     ISODATE[MAX(finalized)] sent_finalized_time,
     GROUP_CONCAT(DISTINCT source_site_name) source_site_name,
     GROUP_CONCAT(DISTINCT source_site_consortium) source_site_consortium,
-    GROUP_CONCAT(DISTINCT source_site_mayolink_client_number) source_site_mayolink_client_number,    
+    GROUP_CONCAT(DISTINCT source_site_mayolink_client_number) source_site_mayolink_client_number,
     GROUP_CONCAT(DISTINCT source_site_hpo) source_site_hpo,
     GROUP_CONCAT(DISTINCT finalized_site_name) finalized_site_name,
     GROUP_CONCAT(DISTINCT finalized_site_consortium) finalized_site_consortium,
-    GROUP_CONCAT(DISTINCT finalized_site_mayolink_client_number) 
+    GROUP_CONCAT(DISTINCT finalized_site_mayolink_client_number)
         finalized_site_mayolink_client_number,
     GROUP_CONCAT(DISTINCT finalized_site_hpo) finalized_site_hpo,
     test received_test,
