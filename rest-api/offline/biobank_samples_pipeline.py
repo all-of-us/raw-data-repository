@@ -175,9 +175,9 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing):
 # Indexes from the SQL query below; used in predicates.
 _SENT_COUNT_INDEX = 2
 _SENT_FINALIZED_INDEX = 5
-_RECEIVED_TEST_INDEX = 7
-_RECEIVED_COUNT_INDEX = 8
-_ELAPSED_HOURS_INDEX = 11
+_RECEIVED_TEST_INDEX = 15
+_RECEIVED_COUNT_INDEX = 16
+_ELAPSED_HOURS_INDEX = 19
 
 _ORDER_JOINS = """
       biobank_order
@@ -189,6 +189,18 @@ _ORDER_JOINS = """
       biobank_ordered_sample
     ON
       biobank_order.biobank_order_id = biobank_ordered_sample.order_id
+    LEFT OUTER JOIN
+      site source_site
+    ON biobank_order.source_site_id = source_site.site_id
+    LEFT OUTER JOIN
+      hpo source_site_hpo
+    ON source_site.hpo_id = source_site_hpo.hpo_id
+    LEFT OUTER JOIN
+      site finalized_site
+    ON biobank_order.finalized_site_id = finalized_site.site_id
+    LEFT OUTER JOIN
+      hpo finalized_site_hpo
+    ON finalized_site.hpo_id = finalized_site_hpo.hpo_id
 """
 
 _STORED_SAMPLE_JOIN_CRITERIA = """
@@ -210,7 +222,16 @@ _RECONCILIATION_REPORT_SQL = ("""
     GROUP_CONCAT(DISTINCT biobank_order_id) sent_order_id,
     ISODATE[MAX(collected)] sent_collection_time,
     ISODATE[MAX(finalized)] sent_finalized_time,
-    GROUP_CONCAT(DISTINCT source_site_value) site_id,
+    GROUP_CONCAT(DISTINCT source_site_name) source_site_name,
+    GROUP_CONCAT(DISTINCT source_site_consortium) source_site_consortium,
+    GROUP_CONCAT(DISTINCT source_site_mayolink_client_number) source_site_mayolink_client_number,
+    GROUP_CONCAT(DISTINCT source_site_hpo) source_site_hpo,
+    GROUP_CONCAT(DISTINCT finalized_site_name) finalized_site_name,
+    GROUP_CONCAT(DISTINCT finalized_site_consortium) finalized_site_consortium,
+    GROUP_CONCAT(DISTINCT finalized_site_mayolink_client_number)
+        finalized_site_mayolink_client_number,
+    GROUP_CONCAT(DISTINCT finalized_site_hpo) finalized_site_hpo,
+    GROUP_CONCAT(DISTINCT finalized_username) finalized_username,
     test received_test,
     COUNT(DISTINCT biobank_stored_sample_id) received_count,
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id) received_sample_id,
@@ -220,7 +241,15 @@ _RECONCILIATION_REPORT_SQL = ("""
    (SELECT
       participant.biobank_id raw_biobank_id,
       biobank_order.biobank_order_id,
-      biobank_order.source_site_value,
+      source_site.site_name source_site_name,
+      source_site.consortium_name source_site_consortium,
+      source_site.mayolink_client_number source_site_mayolink_client_number,
+      source_site_hpo.name source_site_hpo,
+      finalized_site.site_name finalized_site_name,
+      finalized_site.consortium_name finalized_site_consortium,
+      finalized_site.mayolink_client_number finalized_site_mayolink_client_number,
+      finalized_site_hpo.name finalized_site_hpo,
+      biobank_order.finalized_username finalized_username,
       biobank_ordered_sample.test order_test,
       biobank_ordered_sample.collected,
       biobank_ordered_sample.finalized,
@@ -235,7 +264,15 @@ _RECONCILIATION_REPORT_SQL = ("""
     SELECT
       biobank_stored_sample.biobank_id raw_biobank_id,
       NULL biobank_order_id,
-      NULL source_site_value,
+      NULL source_site_name,
+      NULL source_site_consortium,
+      NULL source_site_mayolink_client_number,
+      NULL source_site_hpo,
+      NULL finalized_site_name,
+      NULL finalized_site_consortium,
+      NULL finalized_site_mayolink_client_number,
+      NULL finalized_site_hpo,
+      NULL finalized_username,
       NULL order_test,
       NULL collected,
       NULL finalized,
