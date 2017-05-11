@@ -27,7 +27,7 @@
     "test_biobank_samples_upload_bucket"
   ],
   "consent_pdf_bucket": [
-    "ptc-uploads-pmi-pmi-drc-api-test"
+    "ptc-uploads-pmi-drc-api-test"
   ],
   "metrics_shards": [
     "10"

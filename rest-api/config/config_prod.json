@@ -16,7 +16,7 @@
     "prod_biobank_samples_upload_bucket"
   ],
   "consent_pdf_bucket": [
-    "ptc-uploads-pmi-all-of-us-rdr-prod"
+    "ptc-uploads-all-of-us-rdr-prod"
   ],
   "metrics_shards": [
     "10"

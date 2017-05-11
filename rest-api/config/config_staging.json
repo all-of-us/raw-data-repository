@@ -34,7 +34,7 @@
     "staging_biobank_samples_upload_bucket"
   ],
   "consent_pdf_bucket": [
-    "ptc-uploads-pmi-all-of-us-rdr-stable"
+    "ptc-uploads-all-of-us-rdr-staging"
   ],
   "metrics_shards": [
     "10"
