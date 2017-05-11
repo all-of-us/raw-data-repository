@@ -73,7 +73,10 @@ different subsets of the rows:
     for the same participant/test pair: that is, rows where
     `sent_count` != `received_count`.
 
-Colums in the CSVs are:
+Note that multiple values may be concatenated together (with a comma separator) in cells in the 
+report, when multiple orders and/or multiple samples for the same participant use the same test.
+
+Columns in the CSVs are:
 
 Column | Description | Example
 --- | --- | ---
@@ -83,7 +86,15 @@ Column | Description | Example
 `sent_order_id` | Order ID sent via API. Multi-valued: If multiple orders match this participant/test, this will be a quoted, comma-separated value, listing all the orders for this participant/test. | WEB1YLHVP765215278-16675602 or "WEB1YLHVP987349708-48169257,WEB1YLHVP987349708-54694248"
 `sent_collection_time` | Time sent via API, ISO-8601 format with time zone (UTC). | 2016-12-28T21:12:42+00:00
 `sent_finalized_time` | | 2016-12-30T10:29:42+00:00
-`site_id` | ID of the site creating the order, sent via API. | 789012 or "789012,987210"
+`source_site_name` | Name of the site that created the order. | University of Arizona CATS Research Center or "University of Arizona CATS Research Center,Banner Desert Medical Center"
+`source_site_consortium` | Name of the consortium for the site that created the order. | Arizona or "Arizona,Geisinger"
+`source_site_mayolink_client_number` | MayoLINK client number for the site that created the order. | 7035650 or "7035650,7035651"
+`source_site_hpo` | Name of the HPO for the site that created the order. | AZ_TUCSON or "AZ_TUCSON,GEISINGER"
+`finalized_site_name` | Name of the site that finalized the order. | University of Arizona CATS Research Center or "University of Arizona CATS Research Center,Banner Desert Medical Center"
+`finalized_site_consortium` | Name of the consortium for the site that finalized the order. | Arizona or "Arizona,Geisinger"
+`finalized_site_mayolink_client_number` | MayoLINK client number for the site that finalized the order. | 7035650 or "7035650,7035651"
+`finalized_site_hpo` | Name of the HPO for the site that finalized the order. | AZ_TUCSON or "AZ_TUCSON,GEISINGER"
+`finalized_username` | Username of the HealthPro user that finalized the order | bob@pmi-ops.org or "bob@pmi-ops.org,alice@pmi-ops.org"
 `received_test` | Received sample's test code. Typically the same as `sent_test`, see above. | 1ED04
 `received_count` | | 1
 `received_sample_id` | Received sample's ID, from "Sample Id" column. | 3663123 or "1685731,1809762"

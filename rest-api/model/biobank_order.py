@@ -26,9 +26,12 @@ class BiobankOrder(Base):
                          nullable=False)
   logPosition = relationship('LogPosition')
 
-  # The lab (client site) sending the order.
-  sourceSiteSystem = Column('source_site_system', String(80))
-  sourceSiteValue = Column('source_site_value', String(80))
+  # The site that created the order.
+  sourceSiteId = Column('source_site_id', Integer, ForeignKey('site.site_id'))
+  # The site that finalized the order.
+  finalizedSiteId = Column('finalized_site_id', Integer, ForeignKey('site.site_id'))
+  # The username / email of the HealthPro user that finalized the order.
+  finalizedUsername = Column('finalized_username', String(255))
 
   # Additional fields stored for future use.
   created = Column('created', UTCDateTime, nullable=False)
