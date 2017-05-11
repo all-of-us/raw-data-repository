@@ -1,21 +1,36 @@
+import api_util
 import executors
 import json
+import logging
 
-from api_util import nonprod
-from config_api import auth_required_config_admin
+from api_util import nonprod, get_validated_user_info, HEALTHPRO
+from config_api import is_config_admin
 from data_gen.fake_participant_generator import FakeParticipantGenerator
 from data_gen.fake_biobank_samples_generator import generate_samples, FakeBiobankSamplesGenerator
 from data_gen.in_process_client import InProcessClient
 from flask import request
 from flask.ext.restful import Resource
 from model.utils import from_client_participant_id
+from werkzeug.exceptions import Forbidden
 
 DATE_FORMAT = '%Y-%m-%d'
+
+def auth_required_healthpro_or_config_admin(func):
+  """A decorator that checks that the caller is a config admin for the app."""
+  def wrapped(*args, **kwargs):
+    if not is_config_admin(api_util.get_oauth_id()):
+      user_info = get_validated_user_info()
+      if not HEALTHPRO in user_info.get('roles', []):
+        logging.info('User has roles {}, but HEALTHPRO or admin is required'.format(          
+          user_info.get('roles')))
+        raise Forbidden()
+    return func(*args, **kwargs)
+  return wrapped
 
 
 class DataGenApi(Resource):
 
-  method_decorators = [auth_required_config_admin]
+  method_decorators = [auth_required_healthpro_or_config_admin]
 
   @nonprod
   def post(self):
