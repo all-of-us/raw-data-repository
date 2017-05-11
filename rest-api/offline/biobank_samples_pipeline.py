@@ -175,9 +175,9 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing):
 # Indexes from the SQL query below; used in predicates.
 _SENT_COUNT_INDEX = 2
 _SENT_FINALIZED_INDEX = 5
-_RECEIVED_TEST_INDEX = 14
-_RECEIVED_COUNT_INDEX = 15
-_ELAPSED_HOURS_INDEX = 18
+_RECEIVED_TEST_INDEX = 15
+_RECEIVED_COUNT_INDEX = 16
+_ELAPSED_HOURS_INDEX = 19
 
 _ORDER_JOINS = """
       biobank_order
@@ -231,6 +231,7 @@ _RECONCILIATION_REPORT_SQL = ("""
     GROUP_CONCAT(DISTINCT finalized_site_mayolink_client_number)
         finalized_site_mayolink_client_number,
     GROUP_CONCAT(DISTINCT finalized_site_hpo) finalized_site_hpo,
+    GROUP_CONCAT(DISTINCT finalized_username) finalized_username,
     test received_test,
     COUNT(DISTINCT biobank_stored_sample_id) received_count,
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id) received_sample_id,
@@ -248,6 +249,7 @@ _RECONCILIATION_REPORT_SQL = ("""
       finalized_site.consortium_name finalized_site_consortium,
       finalized_site.mayolink_client_number finalized_site_mayolink_client_number,
       finalized_site_hpo.name finalized_site_hpo,
+      biobank_order.finalized_username finalized_username,
       biobank_ordered_sample.test order_test,
       biobank_ordered_sample.collected,
       biobank_ordered_sample.finalized,
@@ -270,6 +272,7 @@ _RECONCILIATION_REPORT_SQL = ("""
       NULL finalized_site_consortium,
       NULL finalized_site_mayolink_client_number,
       NULL finalized_site_hpo,
+      NULL finalized_username,
       NULL order_test,
       NULL collected,
       NULL finalized,

@@ -32,6 +32,7 @@ _CSV_COLUMN_NAMES = (
   'finalized_site_consortium',
   'finalized_site_mayolink_client_number',
   'finalized_site_hpo',
+  'finalized_username',
 
   'received_test',
   'received_count',
@@ -63,6 +64,7 @@ class MySqlReconciliationTest(NdbTestBase):
         participantId=participant.participantId,
         sourceSiteId=1,
         finalizedSiteId=1,
+        finalizedUsername='bob@pmi-ops.org',
         created=order_time,
         samples=[])
     for test_code in tests:
@@ -138,6 +140,7 @@ class MySqlReconciliationTest(NdbTestBase):
     self.assertEquals(row['finalized_site_consortium'], 'Pittsburgh')
     self.assertEquals(row['finalized_site_mayolink_client_number'], '7035769')
     self.assertEquals(row['finalized_site_hpo'], 'PITT')
+    self.assertEquals(row['finalized_username'], 'bob@pmi-ops.org')
     self.assertEquals(row['sent_finalized_time'], database_utils.format_datetime(order_time))
     self.assertEquals(row['sent_collection_time'], database_utils.format_datetime(order_time))
     self.assertEquals(row['received_time'], database_utils.format_datetime(within_a_day))
