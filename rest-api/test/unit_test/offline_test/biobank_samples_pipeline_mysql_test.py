@@ -88,20 +88,39 @@ class MySqlReconciliationTest(NdbTestBase):
   def test_reconciliation_query(self):
     # MySQL and Python sub-second rounding differs, so trim micros from generated times.
     order_time = clock.CLOCK.now().replace(microsecond=0)
+    old_order_time = order_time - datetime.timedelta(days=10)
     within_a_day = order_time + datetime.timedelta(hours=23)
+    old_within_a_day =  old_order_time + datetime.timedelta(hours=23)
     late_time = order_time + datetime.timedelta(hours=25)
+    old_late_time = old_order_time + datetime.timedelta(hours=25)
 
     p_on_time = self._insert_participant()
     self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:2], order_time)
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], within_a_day)
+
+    p_old_on_time = self._insert_participant()
+    o_old_on_time = self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:2],
+                                       old_order_time)
+    self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
+                         old_within_a_day)
 
     p_late_and_missing = self._insert_participant()
     o_late_and_missing = self._insert_order(
         p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:2], order_time)
     self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], ['LateSample'], late_time)
 
+    p_old_late_and_missing = self._insert_participant()
+    o_old_late_and_missing = self._insert_order(
+        p_old_late_and_missing, 'OldSlowOrder', BIOBANK_TESTS[:2], old_order_time)
+    self._insert_samples(p_old_late_and_missing, [BIOBANK_TESTS[0]], ['OldLateSample'],
+                         old_late_time)
+
     p_extra = self._insert_participant()
     self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], ['NobodyOrderedThisSample'], order_time)
+
+    p_old_extra = self._insert_participant()
+    self._insert_samples(p_old_extra, [BIOBANK_TESTS[-1]], ['OldNobodyOrderedThisSample'],
+                         old_order_time)
 
     # for the same participant/test, 3 orders sent and only 2 samples received.
     p_repeated = self._insert_participant()
@@ -124,8 +143,9 @@ class MySqlReconciliationTest(NdbTestBase):
 
     exporter.assertFilesEqual((received, late, missing))
 
-    # sent-and-received: 2 on-time, 1 late, none of the missing/extra/repeated ones
-    exporter.assertRowCount(received, 3)
+    # sent-and-received: 4 on-time, 2 late, none of the missing/extra/repeated ones;
+    # includes orders/samples from more than 7 days ago
+    exporter.assertRowCount(received, 6)
     exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
     row = exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId),
@@ -154,8 +174,15 @@ class MySqlReconciliationTest(NdbTestBase):
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_test': BIOBANK_TESTS[0]})
+    exporter.assertHasRow(received, {
+        'biobank_id': to_client_biobank_id(p_old_on_time.biobankId), 'sent_test': BIOBANK_TESTS[0]})
+    exporter.assertHasRow(received, {
+        'biobank_id': to_client_biobank_id(p_old_on_time.biobankId), 'sent_test': BIOBANK_TESTS[1]})
+    exporter.assertHasRow(received, {
+        'biobank_id': to_client_biobank_id(p_old_late_and_missing.biobankId),
+        'sent_test': BIOBANK_TESTS[0]})
 
-    # sent-and-received: 1 late
+    # sent-and-received: 1 late; don't include orders/samples from more than 7 days ago
     exporter.assertRowCount(late, 1)
     exporter.assertColumnNamesEqual(late, _CSV_COLUMN_NAMES)
     exporter.assertHasRow(late, {
@@ -163,7 +190,8 @@ class MySqlReconciliationTest(NdbTestBase):
         'sent_order_id': o_late_and_missing.biobankOrderId,
         'elapsed_hours': '25'})
 
-    # orders/samples where something went wrong
+    # orders/samples where something went wrong; don't include orders/samples from more than 7
+    # days ago
     exporter.assertRowCount(missing, 3)
     exporter.assertColumnNamesEqual(missing, _CSV_COLUMN_NAMES)
     # order sent, no sample received

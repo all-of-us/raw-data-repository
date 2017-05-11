@@ -13,7 +13,7 @@ from cloudstorage import cloudstorage_api
 import clock
 import config
 from dao import database_factory
-from dao.database_utils import replace_isodate
+from dao.database_utils import replace_isodate, parse_datetime
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
@@ -174,9 +174,11 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing):
 
 # Indexes from the SQL query below; used in predicates.
 _SENT_COUNT_INDEX = 2
+_SENT_COLLECTION_TIME_INDEX = 4
 _SENT_FINALIZED_INDEX = 5
 _RECEIVED_TEST_INDEX = 15
 _RECEIVED_COUNT_INDEX = 16
+_RECEIVED_TIME_INDEX = 18
 _ELAPSED_HOURS_INDEX = 19
 
 _ORDER_JOINS = """
@@ -292,16 +294,33 @@ _RECONCILIATION_REPORT_SQL = ("""
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id)
 """)
 
+def in_past_week(result):
+  sent_collection_time_str = result[_SENT_COLLECTION_TIME_INDEX]
+  received_time_str = result[_RECEIVED_TIME_INDEX]
+  max_time = None
+  if sent_collection_time_str:
+    max_time = parse_datetime(sent_collection_time_str)
+  if received_time_str:
+    received_time = parse_datetime(received_time_str)
+    if received_time and max_time:
+      max_time = max(received_time, max_time)
+    else:
+      max_time = received_time
+  if max_time:
+    return (clock.CLOCK.now() - max_time).days <= 7
+  return False
+
 # Gets all sample/order pairs where everything arrived, regardless of timing.
 _RECEIVED_PREDICATE = lambda result: (result[_RECEIVED_TEST_INDEX] and
                                       result[_SENT_COUNT_INDEX] == result[_RECEIVED_COUNT_INDEX])
 
-# Gets orders for which the samples arrived, but they arrived late.
+# Gets orders for which the samples arrived, but they arrived late, within the past 7 days.
 _LATE_PREDICATE = lambda result: (result[_ELAPSED_HOURS_INDEX] and
-                                  int(result[_ELAPSED_HOURS_INDEX]) > 24)
+                                  int(result[_ELAPSED_HOURS_INDEX]) > 24 and
+                                  in_past_week(result))
 
-
-# Gets samples or orders where something has gone missing.
-_MISSING_PREDICATE = lambda result: (result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
+# Gets samples or orders where something has gone missing within the past 7 days.
+_MISSING_PREDICATE = lambda result: ((result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
                                      (result[_SENT_FINALIZED_INDEX] and
-                                      not result[_RECEIVED_TEST_INDEX]))
+                                      not result[_RECEIVED_TEST_INDEX])) and
+                                     in_past_week(result))
