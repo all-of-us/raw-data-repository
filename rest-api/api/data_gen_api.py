@@ -1,8 +1,7 @@
 import executors
 import json
 
-from api_util import nonprod
-from config_api import auth_required_config_admin
+from api_util import nonprod, auth_required, HEALTHPRO, ADMIN
 from data_gen.fake_participant_generator import FakeParticipantGenerator
 from data_gen.fake_biobank_samples_generator import generate_samples, FakeBiobankSamplesGenerator
 from data_gen.in_process_client import InProcessClient
@@ -12,12 +11,10 @@ from model.utils import from_client_participant_id
 
 DATE_FORMAT = '%Y-%m-%d'
 
-
 class DataGenApi(Resource):
 
-  method_decorators = [auth_required_config_admin]
-
   @nonprod
+  @auth_required([HEALTHPRO, ADMIN])
   def post(self):
     resource = request.get_data()
     resource_json = json.loads(resource)
