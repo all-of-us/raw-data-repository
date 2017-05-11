@@ -10,7 +10,7 @@
       "whitelisted_appids": ["pmi-hpo-staging"]
     },
     "configurator@all-of-us-rdr-dryrun.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"]
+      "roles": ["ptc", "healthpro", "admin"]
     }
   },
   "biobank_samples_bucket_name": [

@@ -24,9 +24,9 @@ EPOCH = datetime.datetime.utcfromtimestamp(0)
 # Role constants; used with role_whitelist in auth_required below.
 PTC = "ptc"
 HEALTHPRO = "healthpro"
+ADMIN = "admin"
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
-ALL_ROLES = [PTC, HEALTHPRO]
-
+ALL_ROLES = [PTC, HEALTHPRO, ADMIN]
 
 def auth_required(role_whitelist):
   """A decorator that keeps the function from being called without auth.

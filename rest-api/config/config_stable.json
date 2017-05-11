@@ -13,7 +13,7 @@
       "roles": ["ptc"]
     },
     "configurator@all-of-us-rdr-stable.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"]
+      "roles": ["ptc", "healthpro", "admin"]
     },
     "security-testing@pmi-hpo-test.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]

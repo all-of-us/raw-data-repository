@@ -27,7 +27,7 @@
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"]
+      "roles": ["ptc", "healthpro", "admin"]
     }
   },
   "biobank_samples_bucket_name": [

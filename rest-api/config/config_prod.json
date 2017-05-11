@@ -9,7 +9,7 @@
       "roles": ["ptc"]
     },
     "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"]
+      "roles": ["ptc", "healthpro", "admin"]
     }
   },
   "biobank_samples_bucket_name": [
