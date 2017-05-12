@@ -13,11 +13,11 @@
   },
   "sourceSite": {
     "system": "https://www.pmi-ops.org/site-id",
-    "value": "hpo-site-Monroeville@prod.pmi-ops.org"
+    "value": "hpo-site-monroeville"
   },
   "finalizedSite": {
     "system": "https://www.pmi-ops.org/site-id",
-    "value": "hpo-site-Monroeville@prod.pmi-ops.org"
+    "value": "hpo-site-monroeville"
   },
   "created": "2016-01-04T09:40:21Z",
   "samples": [{

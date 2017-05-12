@@ -9,6 +9,8 @@ from dao.site_dao import SiteDao
 from model.site import Site
 from tools.main_util import get_parser, configure_logging
 
+_GOOGLE_GROUP_SUFFIX = '@prod.pmi-ops.org'
+
 def main(args):
   with open(args.file, 'r') as csv_file:
     reader = csv.DictReader(csv_file)
@@ -23,14 +25,19 @@ def main(args):
           logging.error('Invalid HPO: %s; skipping.', hpo_name)
           continue
         mayolink_client_num_str = row['MayoLINK Client #']
+        google_group = row['Google Group Email Address']
+        if not google_group.endswith(_GOOGLE_GROUP_SUFFIX):
+          logging.error('Invalid google group: %s; skipping.', google_group)
+          continue
+        google_group_prefix = google_group[0:len(google_group) - len(_GOOGLE_GROUP_SUFFIX)].lower()
         site = Site(consortiumName=row['Group (Consortium)'],
                     siteName=row['Site'],
                     mayolinkClientNumber=(int(mayolink_client_num_str) if mayolink_client_num_str
                                           else None),
-                    googleGroup=row['Google Group Email Address'],
+                    googleGroup=google_group_prefix,
                     hpoId=hpo.hpoId)
         site_dict = site.asdict()
-        existing_site = existing_site_map.get(site.googleGroup)
+        existing_site = existing_site_map.get(google_group_prefix)
         if existing_site:
           existing_site_dict = existing_site.asdict()
           existing_site_dict['siteId'] = None
