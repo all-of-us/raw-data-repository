@@ -173,7 +173,7 @@ class _TestDb(object):
 
     site_dao = SiteDao()
     site_dao.insert(Site(siteName='Monroeville Urgent Care Center',
-                         googleGroup='hpo-site-Monroeville@prod.pmi-ops.org',
+                         googleGroup='hpo-site-monroeville',
                          consortiumName='Pittsburgh', mayolinkClientNumber=7035769,
                          hpoId=PITT_HPO_ID))
 

@@ -167,12 +167,14 @@ class BiobankOrderDao(BaseDao):
         created=resource.created.date)
 
     site_dao = SiteDao()
-    # TODO: raise BadRequest if source_site has wrong system once HealthPro is updated (DA-280)
+    # TODO: raise BadRequest if source_site has wrong system or invalid value once HealthPro is
+    # updated (DA-280)
     if resource.source_site.system == SITE_ID_SYSTEM:
       site = site_dao.get_by_google_group(resource.source_site.value)
       if not site:
-        raise BadRequest('Unrecognized source site: %s' % resource.source_site.value)
-      order.sourceSiteId = site.siteId
+        logging.warning('Unrecognized source site: %s', resource.source_site.value)
+      else:
+        order.sourceSiteId = site.siteId
     else:
       logging.warning('Unrecognized site system: %s', resource.source_site.system)
 
