@@ -1,10 +1,13 @@
 import datetime
 import logging
 import os
-import pipeline
 
 from google.appengine.ext import db
 from google.appengine.api import mail
+import pipeline
+
+import config
+
 
 class BasePipeline(pipeline.Pipeline):
 
@@ -25,7 +28,7 @@ class BasePipeline(pipeline.Pipeline):
       pipeline_name = self.__class__.__name__
       base_path = '%s.appspot.com%s' % (app_id, self.base_path)
       status_link = 'http://%s/status?root=%s' % (base_path, self.root_pipeline_id)
-      sender = 'noreply@%s.appspotmail.com' % app_id
+
       pipeline_record = db.get(self._root_pipeline_key)
       suffix = ''
       if pipeline_record and pipeline_record.start_time:
@@ -38,13 +41,14 @@ class BasePipeline(pipeline.Pipeline):
       if self.was_aborted:
         self.handle_pipeline_failure()
         message = "%s failed %s; results are at %s" % (pipeline_name, suffix, status_link)
+        sender = config.getSetting(config.INTERNAL_STATUS_MAIL_SENDER)
         logging.error(message)
         try:
-          self._send_mail(sender, "%s failed" % pipeline_name, message)
+          mail.send_mail_to_admins(_MAIL_SENDER, '%s failed' % pipeline_name, message)
         except (mail.InvalidSenderError, mail.InvalidEmailError):
-          logging.warning('Could not send result email for '
-                          'root pipeline ID "%s" from sender "%s"',
-                          self.root_pipeline_id, sender, exc_info=True)
+          logging.error(
+              'Could not send result email for root pipeline ID %r from sender %r.',
+              self.root_pipeline_id, _MAIL_SENDER, exc_info=True)
       else:
         message = "%s succeeded %s; results are at %s" % (pipeline_name, suffix, status_link)
         logging.info(message)

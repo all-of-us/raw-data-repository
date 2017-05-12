@@ -38,6 +38,7 @@ NATIVE_AMERICAN_RACE_CODES = 'native_american_race_codes'
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.
 ALLOW_NONPROD_REQUESTS = 'allow_nonprod_requests'
+INTERNAL_STATUS_MAIL_SENDER = 'internal_status_email_sender'
 
 
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
