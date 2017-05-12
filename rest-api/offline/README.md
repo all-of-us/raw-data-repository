@@ -27,6 +27,8 @@ This data is generated anew on a nightly basis (run by cron), performing the fol
 	* Group by HPO + date and write buckets containing all metrics to the database
 	* Marks the processing metrics version as complete and active
 
+After the MapReduce starts, its status is listed at http://offline.$PROJECT.appspot.com/mapreduce/pipeline/list.
+
 When the pipeline finishes, new metrics will be served to clients based on the new metrics version.
 
 # Biobank Reconciliation Pipeline
