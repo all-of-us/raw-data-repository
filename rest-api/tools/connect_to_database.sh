@@ -38,4 +38,4 @@ then
   CONNECT_PASSWORD="${PASSWORD}"
 fi
 
-mysql -u "$CONNECT_USER" -p"$CONNECT_PASSWORD" --host 127.0.0.1 --port ${PORT} "$DB_NAME"
+mysql -u "root" -p"$CONNECT_PASSWORD" --host 127.0.0.1 --port ${PORT} "$DB_NAME"

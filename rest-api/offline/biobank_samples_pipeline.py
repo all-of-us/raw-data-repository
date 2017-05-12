@@ -12,9 +12,11 @@ from cloudstorage import cloudstorage_api
 
 import clock
 import config
+from code_constants import RACE_QUESTION_CODE, PPI_SYSTEM
 from dao import database_factory
-from dao.database_utils import replace_isodate, parse_datetime
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from dao.code_dao import CodeDao
+from dao.database_utils import replace_isodate, parse_datetime, get_sql_and_params_for_array
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import from_client_biobank_id, get_biobank_id_prefix
@@ -155,9 +157,9 @@ def _get_report_paths(report_datetime):
   return [
       '%s/report_%s_%s.csv' % (
           _REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
-      for report_name in ('received', 'over_24h', 'missing')]
+      for report_name in ('received', 'over_24h', 'missing', 'withdrawals')]
 
-def _query_and_write_reports(exporter, path_received, path_late, path_missing):
+def _query_and_write_reports(exporter, path_received, path_late, path_missing, path_withdrawals):
   """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
@@ -171,6 +173,19 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing):
     writer = CompositeSqlExportWriter([received_writer, late_writer, missing_writer])
     exporter.run_export_with_session(writer, session, replace_isodate(_RECONCILIATION_REPORT_SQL),
                                      {"biobank_id_prefix": get_biobank_id_prefix()})
+
+  # Now generate the withdrawal report.
+  code_dao = CodeDao()
+  race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
+  race_code_ids = []
+  for code_value in config.getSettingList(config.NATIVE_AMERICAN_RACE_CODES):
+    code = code_dao.get_code(PPI_SYSTEM, code_value)
+    race_code_ids.append(str(code.codeId))
+  race_codes_sql, params = get_sql_and_params_for_array(race_code_ids, 'race')
+  withdrawal_sql = _WITHDRAWAL_REPORT_SQL.format(race_codes_sql)
+  params['race_question_code_id'] = race_question_code.codeId
+  params['seven_days_ago'] = clock.CLOCK.now() - datetime.timedelta(days=7)
+  exporter.run_export(path_withdrawals, withdrawal_sql, params)
 
 # Indexes from the SQL query below; used in predicates.
 _SENT_COUNT_INDEX = 2
@@ -293,6 +308,28 @@ _RECONCILIATION_REPORT_SQL = ("""
     ISODATE[MAX(collected)], ISODATE[MAX(confirmed)], GROUP_CONCAT(DISTINCT biobank_order_id),
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id)
 """)
+
+# Generates a report on participants that have withdrawn in the past 7 days,
+# including their biobank ID, withdrawal time, and whether they are Native American
+# (as biobank samples for Native Americans are disposed of differently.)
+_WITHDRAWAL_REPORT_SQL = ("""
+  SELECT
+    participant.biobank_id biobank_id,
+    participant.withdrawal_time withdrawal_time,
+    (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
+       FROM questionnaire_response qr
+       INNER JOIN questionnaire_response_answer qra
+         ON qra.questionnaire_response_id = qr.questionnaire_response_id
+       INNER JOIN questionnaire_question qq
+         ON qra.question_id = qq.questionnaire_question_id
+      WHERE qr.participant_id = participant.participant_id
+        AND qq.code_id = :race_question_code_id
+        AND qra.value_code_id IN {}
+        AND qra.end_time IS NULL) is_native_american
+    FROM participant
+   WHERE participant.withdrawal_time >= :seven_days_ago
+""")
+
 
 def in_past_week(result):
   sent_collection_time_str = result[_SENT_COLLECTION_TIME_INDEX]

@@ -1,19 +1,23 @@
 import datetime
 
 import clock
-from code_constants import BIOBANK_TESTS
+from clock import FakeClock
+from code_constants import BIOBANK_TESTS, RACE_QUESTION_CODE, RACE_WHITE_CODE, RACE_AIAN_CODE
+from code_constants import PPI_SYSTEM
+from concepts import Concept
+from model.code import CodeType
 from dao import database_utils
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import NdbTestBase, InMemorySqlExporter
+from unit_test_util import FlaskTestBase, InMemorySqlExporter, make_questionnaire_response_json
 from model.biobank_order import BiobankOrder, BiobankOrderedSample
 from model.biobank_stored_sample import BiobankStoredSample
-from model.utils import to_client_biobank_id
+from model.utils import to_client_biobank_id, to_client_participant_id
 from model.participant import Participant
-
+from participant_enums import WithdrawalStatus
 
 # Expected names for the reconciliation_data columns in output CSVs.
 _CSV_COLUMN_NAMES = (
@@ -43,7 +47,7 @@ _CSV_COLUMN_NAMES = (
 )
 
 
-class MySqlReconciliationTest(NdbTestBase):
+class MySqlReconciliationTest(FlaskTestBase):
   """Biobank samples pipeline tests requiring slower MySQL (not SQLite)."""
   def setUp(self):
     super(MySqlReconciliationTest, self).setUp(use_mysql=True)
@@ -52,10 +56,20 @@ class MySqlReconciliationTest(NdbTestBase):
     self.order_dao = BiobankOrderDao()
     self.sample_dao = BiobankStoredSampleDao()
 
-  def _insert_participant(self):
+  def _withdraw(self, participant, withdrawal_time):
+    with FakeClock(withdrawal_time):
+      participant.withdrawalStatus = WithdrawalStatus.NO_USE
+      self.participant_dao.update(participant)
+
+
+  def _insert_participant(self, withdrawal_time=None, race_codes=[]):
     participant = self.participant_dao.insert(Participant())
     # satisfies the consent requirement
     self.summary_dao.insert(self.participant_summary(participant))
+
+    if race_codes:
+      self._submit_race_questionnaire_response(to_client_participant_id(participant.participantId),
+                                               race_codes)
     return participant
 
   def _insert_order(self, participant, order_id, tests, order_time):
@@ -85,7 +99,24 @@ class MySqlReconciliationTest(NdbTestBase):
           test=test_code,
           confirmed=received_time))
 
+  def _submit_race_questionnaire_response(self, participant_id,
+                                          race_answers):
+    code_answers = []
+    for answer in race_answers:
+      _add_code_answer(code_answers, "race", answer)
+    qr = make_questionnaire_response_json(participant_id, self._questionnaire_id,
+                                          code_answers=code_answers)
+    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+
+
   def test_reconciliation_query(self):
+    self.setup_codes([RACE_QUESTION_CODE], CodeType.QUESTION)
+    self.setup_codes([RACE_AIAN_CODE, RACE_WHITE_CODE,
+                      "AIAN_AmericanIndian",
+                      "AIAN_AlaskaNative",
+                      "AIAN_CentralSouthAmericanIndian"],
+                     CodeType.ANSWER)
+    self._questionnaire_id = self.create_questionnaire('questionnaire3.json')
     # MySQL and Python sub-second rounding differs, so trim micros from generated times.
     order_time = clock.CLOCK.now().replace(microsecond=0)
     old_order_time = order_time - datetime.timedelta(days=10)
@@ -98,29 +129,34 @@ class MySqlReconciliationTest(NdbTestBase):
     self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:2], order_time)
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], within_a_day)
 
-    p_old_on_time = self._insert_participant()
+    p_old_on_time = self._insert_participant(race_codes=["AIAN_AmericanIndian"])
     o_old_on_time = self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:2],
                                        old_order_time)
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
                          old_within_a_day)
+    self._withdraw(p_old_on_time, within_a_day)
 
     p_late_and_missing = self._insert_participant()
     o_late_and_missing = self._insert_order(
         p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:2], order_time)
     self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], ['LateSample'], late_time)
+    self._withdraw(p_late_and_missing, within_a_day)
 
     p_old_late_and_missing = self._insert_participant()
     o_old_late_and_missing = self._insert_order(
         p_old_late_and_missing, 'OldSlowOrder', BIOBANK_TESTS[:2], old_order_time)
     self._insert_samples(p_old_late_and_missing, [BIOBANK_TESTS[0]], ['OldLateSample'],
                          old_late_time)
+    self._withdraw(p_old_late_and_missing, old_late_time)
 
-    p_extra = self._insert_participant()
+    p_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
     self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], ['NobodyOrderedThisSample'], order_time)
+    self._withdraw(p_extra, within_a_day)
 
-    p_old_extra = self._insert_participant()
+    p_old_extra = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     self._insert_samples(p_old_extra, [BIOBANK_TESTS[-1]], ['OldNobodyOrderedThisSample'],
                          old_order_time)
+    self._withdraw(p_old_extra, within_a_day)
 
     # for the same participant/test, 3 orders sent and only 2 samples received.
     p_repeated = self._insert_participant()
@@ -137,11 +173,12 @@ class MySqlReconciliationTest(NdbTestBase):
             ['RepeatedSample%d' % repetition],
             within_a_day + datetime.timedelta(weeks=repetition))
 
-    received, late, missing = 'rx.csv', 'late.csv', 'missing.csv'
+    received, late, missing, withdrawals = 'rx.csv', 'late.csv', 'missing.csv', 'withdrawals.csv'
     exporter = InMemorySqlExporter(self)
-    biobank_samples_pipeline._query_and_write_reports(exporter, received, late, missing)
+    biobank_samples_pipeline._query_and_write_reports(exporter, received, late, missing,
+                                                      withdrawals)
 
-    exporter.assertFilesEqual((received, late, missing))
+    exporter.assertFilesEqual((received, late, missing, withdrawals))
 
     # sent-and-received: 4 on-time, 2 late, none of the missing/extra/repeated ones;
     # includes orders/samples from more than 7 days ago
@@ -214,3 +251,7 @@ class MySqlReconciliationTest(NdbTestBase):
     self.assertItemsEqual(
         multi_sample_row['received_sample_id'].split(','),
         ['RepeatedSample0', 'RepeatedSample1'])
+
+def _add_code_answer(code_answers, link_id, code):
+  if code:
+    code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
