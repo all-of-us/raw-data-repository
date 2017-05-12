@@ -25,5 +25,11 @@
   "dna_sample_test_codes": [
     "1ED04",
     "1SAL"
+  ],
+  "native_american_race_codes": [
+    "WhatRaceEthnicity_AIAN",
+    "AIAN_AmericanIndian",
+    "AIAN_AlaskaNative",
+    "AIAN_CentralSouthAmericanIndian"
   ]
 }
