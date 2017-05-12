@@ -131,7 +131,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     dt = datetime.datetime(2016, 12, 22, 18, 30, 45)
     expected_prefix = 'reconciliation/report_2016-12-22'
     paths = biobank_samples_pipeline._get_report_paths(dt)
-    self.assertEquals(len(paths), 3)
+    self.assertEquals(len(paths), 4)
     for path in paths:
       self.assertTrue(
           path.startswith(expected_prefix),
