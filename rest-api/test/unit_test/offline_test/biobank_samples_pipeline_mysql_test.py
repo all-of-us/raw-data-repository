@@ -155,6 +155,11 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_old_extra, [BIOBANK_TESTS[-1]], ['OldNobodyOrderedThisSample'],
                          old_order_time)
     self._withdraw(p_old_extra, within_a_day)
+    
+    p_race_change = self._insert_participant(race_codes=[RACE_AIAN_CODE])
+    self._submit_race_questionnaire_response(to_client_participant_id(p_race_change.participantId),
+                                             [RACE_WHITE_CODE])
+    self._withdraw(p_race_change, within_a_day)
 
     # for the same participant/test, 3 orders sent and only 2 samples received.
     p_repeated = self._insert_participant()
@@ -249,6 +254,29 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertItemsEqual(
         multi_sample_row['received_sample_id'].split(','),
         ['RepeatedSample0', 'RepeatedSample1'])
+        
+    # We don't include the old withdrawal.
+    exporter.assertRowCount(withdrawals, 5)
+    exporter.assertHasRow(withdrawals, {
+      'biobank_id': to_client_biobank_id(p_old_on_time.biobankId),
+      'withdrawal_time': database_utils.format_datetime(within_a_day),
+      'is_native_american': 'Y'})
+    exporter.assertHasRow(withdrawals, {
+      'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
+      'withdrawal_time': database_utils.format_datetime(within_a_day),
+      'is_native_american': 'N'})
+    exporter.assertHasRow(withdrawals, {
+      'biobank_id': to_client_biobank_id(p_extra.biobankId),
+      'withdrawal_time': database_utils.format_datetime(within_a_day),
+      'is_native_american': 'N'})
+    exporter.assertHasRow(withdrawals, {
+      'biobank_id': to_client_biobank_id(p_old_extra.biobankId),
+      'withdrawal_time': database_utils.format_datetime(within_a_day),
+      'is_native_american': 'Y'})
+    exporter.assertHasRow(withdrawals, {
+      'biobank_id': to_client_biobank_id(p_race_change.biobankId),
+      'withdrawal_time': database_utils.format_datetime(within_a_day),
+      'is_native_american': 'N'})
 
 def _add_code_answer(code_answers, link_id, code):
   if code:

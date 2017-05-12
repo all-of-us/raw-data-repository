@@ -185,7 +185,8 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing, p
   withdrawal_sql = _WITHDRAWAL_REPORT_SQL.format(race_codes_sql)
   params['race_question_code_id'] = race_question_code.codeId
   params['seven_days_ago'] = clock.CLOCK.now() - datetime.timedelta(days=7)
-  exporter.run_export(path_withdrawals, withdrawal_sql, params)
+  params['biobank_id_prefix'] = get_biobank_id_prefix()
+  exporter.run_export(path_withdrawals, replace_isodate(withdrawal_sql), params)  
 
 # Indexes from the SQL query below; used in predicates.
 _SENT_COUNT_INDEX = 2
@@ -314,8 +315,8 @@ _RECONCILIATION_REPORT_SQL = ("""
 # (as biobank samples for Native Americans are disposed of differently.)
 _WITHDRAWAL_REPORT_SQL = ("""
   SELECT
-    participant.biobank_id biobank_id,
-    participant.withdrawal_time withdrawal_time,
+    CONCAT(:biobank_id_prefix, participant.biobank_id) biobank_id,
+    ISODATE[participant.withdrawal_time] withdrawal_time,
     (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
        FROM questionnaire_response qr
        INNER JOIN questionnaire_response_answer qra
