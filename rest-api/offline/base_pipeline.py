@@ -41,6 +41,8 @@ class BasePipeline(pipeline.Pipeline):
       if self.was_aborted:
         self.handle_pipeline_failure()
         message = "%s failed %s; results are at %s" % (pipeline_name, suffix, status_link)
+        # This sender needs to be authorized per-environment in Email Authorized Senders,
+        # see https://cloud.google.com/appengine/docs/standard/python/mail/.
         sender = config.getSetting(config.INTERNAL_STATUS_MAIL_SENDER)
         logging.error(message)
         try:
