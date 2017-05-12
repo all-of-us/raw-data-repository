@@ -62,7 +62,7 @@ class MySqlReconciliationTest(FlaskTestBase):
       self.participant_dao.update(participant)
 
 
-  def _insert_participant(self, withdrawal_time=None, race_codes=[]):
+  def _insert_participant(self, race_codes=[]):
     participant = self.participant_dao.insert(Participant())
     # satisfies the consent requirement
     self.summary_dao.insert(self.participant_summary(participant))
@@ -130,8 +130,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], within_a_day)
 
     p_old_on_time = self._insert_participant(race_codes=["AIAN_AmericanIndian"])
-    o_old_on_time = self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:2],
-                                       old_order_time)
+    self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:2], old_order_time)
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
                          old_within_a_day)
     self._withdraw(p_old_on_time, within_a_day)
@@ -143,8 +142,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._withdraw(p_late_and_missing, within_a_day)
 
     p_old_late_and_missing = self._insert_participant()
-    o_old_late_and_missing = self._insert_order(
-        p_old_late_and_missing, 'OldSlowOrder', BIOBANK_TESTS[:2], old_order_time)
+    self._insert_order(p_old_late_and_missing, 'OldSlowOrder', BIOBANK_TESTS[:2], old_order_time)
     self._insert_samples(p_old_late_and_missing, [BIOBANK_TESTS[0]], ['OldLateSample'],
                          old_late_time)
     self._withdraw(p_old_late_and_missing, old_late_time)
