@@ -113,8 +113,8 @@ class QuestionnaireResponseDao(BaseDao):
     # row. If you insetad do this after the insert of the questionnaire response, MySQL will get a 
     # shared lock on the participant row due the foreign key, and potentially deadlock later trying
     # to get the exclusive lock if another thread is updating the participant. See DA-269.
-    # (We need to lock both participant and participant summary because the summary row may not exist
-    # yet.)
+    # (We need to lock both participant and participant summary because the summary row may not 
+    # exist yet.)
     self._update_participant_summary(
         session, questionnaire_response, code_ids, questions, questionnaire_history)
 
