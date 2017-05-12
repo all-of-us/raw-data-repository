@@ -108,7 +108,7 @@ class QuestionnaireResponseDao(BaseDao):
     code_ids = [question.codeId for question in questions]
     current_answers = (QuestionnaireResponseAnswerDao().
         get_current_answers_for_concepts(session, questionnaire_response.participantId, code_ids))
-    
+
     # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
     # row. If you do this after the insert, MySQL will get a shared lock on the participant row,
     # and potentially deadlock later trying to get the exclusive lock. See DA-269.
@@ -116,7 +116,7 @@ class QuestionnaireResponseDao(BaseDao):
     # yet.
     self._update_participant_summary(
         session, questionnaire_response, code_ids, questions, questionnaire_history)
-    
+
     super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaire_response)
     # Mark existing answers for the questions in this response given previously by this participant
     # as ended.
