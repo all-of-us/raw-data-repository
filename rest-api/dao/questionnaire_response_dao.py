@@ -393,8 +393,8 @@ def _add_codes_if_missing(client_id):
 def _validate_consent_pdfs(resource):
   """Checks for any consent-form-signed-pdf extensions and validates their PDFs in GCS."""
   if resource.get('resourceType') != 'QuestionnaireResponse':
-    raise ValueError('Expected QuestionnaireResponse for "resourceType" in %r.' % resource)  
-  consent_bucket = config.getSetting(config.CONSENT_PDF_BUCKET, None)  
+    raise ValueError('Expected QuestionnaireResponse for "resourceType" in %r.' % resource)
+  consent_bucket = config.getSetting(config.CONSENT_PDF_BUCKET, None)
   for extension in resource.get('extension', []):
     if extension['url'] != _SIGNED_CONSENT_EXTENSION:
       continue

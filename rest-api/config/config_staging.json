@@ -32,7 +32,7 @@
   },
   "biobank_samples_bucket_name": [
     "staging_biobank_samples_upload_bucket"
-  ],  
+  ],
   "metrics_shards": [
     "10"
   ]
