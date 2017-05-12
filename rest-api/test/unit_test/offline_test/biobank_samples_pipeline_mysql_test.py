@@ -155,7 +155,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_old_extra, [BIOBANK_TESTS[-1]], ['OldNobodyOrderedThisSample'],
                          old_order_time)
     self._withdraw(p_old_extra, within_a_day)
-    
+
     p_race_change = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     self._submit_race_questionnaire_response(to_client_participant_id(p_race_change.participantId),
                                              [RACE_WHITE_CODE])
@@ -254,7 +254,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertItemsEqual(
         multi_sample_row['received_sample_id'].split(','),
         ['RepeatedSample0', 'RepeatedSample1'])
-        
+
     # We don't include the old withdrawal.
     exporter.assertRowCount(withdrawals, 5)
     exporter.assertHasRow(withdrawals, {

@@ -186,7 +186,7 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing, p
   params['race_question_code_id'] = race_question_code.codeId
   params['seven_days_ago'] = clock.CLOCK.now() - datetime.timedelta(days=7)
   params['biobank_id_prefix'] = get_biobank_id_prefix()
-  exporter.run_export(path_withdrawals, replace_isodate(withdrawal_sql), params)  
+  exporter.run_export(path_withdrawals, replace_isodate(withdrawal_sql), params)
 
 # Indexes from the SQL query below; used in predicates.
 _SENT_COUNT_INDEX = 2
