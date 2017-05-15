@@ -6,6 +6,9 @@
 # Run this in the rest-api dir of the git repo with no uncommitted changes. You will need to
 # check out whatever branch you want to work in after it's done.
 
+BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
+export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
+
 TARGET="all"
 
 while true; do
