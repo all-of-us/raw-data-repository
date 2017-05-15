@@ -158,7 +158,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                          old_order_time)
 
     # Withdrawn participants don't show up in any reports except withdrawal report.
-        
+
     p_withdrawn_old_on_time = self._insert_participant(race_codes=["AIAN_AmericanIndian"])
     self._insert_order(p_withdrawn_old_on_time, 'OldWithdrawnGoodOrder', BIOBANK_TESTS[:2],
                        old_order_time)
