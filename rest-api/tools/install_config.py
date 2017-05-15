@@ -62,7 +62,6 @@ def main(args):
       client.request_json(config_path, method, combined_config)
 
 def _compare_configs(comparable_file, comparable_server, diff_output_path):
-  diff_lines = []
   if comparable_file == comparable_server:
     logging.info('Server config matches.')
     return True
@@ -70,7 +69,7 @@ def _compare_configs(comparable_file, comparable_server, diff_output_path):
     _log_and_write_config_lines(
         difflib.context_diff(comparable_server.split('\n'), comparable_file.split('\n')),
         diff_output_path)
-  return False
+    return False
 
 def _json_to_sorted_string(config):
   """Sort the values and pretty print so it will compare nicely."""
