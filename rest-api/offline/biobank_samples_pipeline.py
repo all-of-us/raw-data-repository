@@ -359,7 +359,7 @@ _RECEIVED_PREDICATE = lambda result: (result[_RECEIVED_TEST_INDEX] and
 
 # Gets orders for which the samples arrived, but they arrived late, within the past 7 days.
 _LATE_PREDICATE = lambda result: (result[_ELAPSED_HOURS_INDEX] and
-                                  int(result[_ELAPSED_HOURS_INDEX]) > 24 and
+                                  int(result[_ELAPSED_HOURS_INDEX]) > 36 and
                                   in_past_week(result))
 
 # Gets samples or orders where something has gone missing within the past 7 days.

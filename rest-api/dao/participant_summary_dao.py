@@ -103,6 +103,8 @@ class ParticipantSummaryDao(UpdatableDao):
     return False
 
   def _get_non_withdrawn_field(self, query):
+    """Returns the first field referenced in query filters or ordering which isn't in 
+    WITHDRAWN_PARTICIPANT_FIELDS."""
     for field_filter in query.field_filters:
       if not field_filter.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
         return field_filter.field_name
