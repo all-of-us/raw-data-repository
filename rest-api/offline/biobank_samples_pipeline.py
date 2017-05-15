@@ -278,6 +278,8 @@ _RECONCILIATION_REPORT_SQL = ("""
     LEFT OUTER JOIN
       biobank_stored_sample
     ON """ + _STORED_SAMPLE_JOIN_CRITERIA + """
+    WHERE
+      participant.withdrawal_time IS NULL
     UNION ALL
     SELECT
       biobank_stored_sample.biobank_id raw_biobank_id,
@@ -301,7 +303,10 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample
     WHERE NOT EXISTS (
       SELECT 0 FROM """ + _ORDER_JOINS + " WHERE " + _STORED_SAMPLE_JOIN_CRITERIA + """
-    )
+    ) AND NOT EXISTS (
+      SELECT 0 FROM participant
+       WHERE participant.biobank_id = biobank_stored_sample.biobank_id
+         AND participant.withdrawal_time IS NOT NULL)
   ) reconciled
   GROUP BY
     biobank_id, order_test, test
@@ -354,7 +359,7 @@ _RECEIVED_PREDICATE = lambda result: (result[_RECEIVED_TEST_INDEX] and
 
 # Gets orders for which the samples arrived, but they arrived late, within the past 7 days.
 _LATE_PREDICATE = lambda result: (result[_ELAPSED_HOURS_INDEX] and
-                                  int(result[_ELAPSED_HOURS_INDEX]) > 24 and
+                                  int(result[_ELAPSED_HOURS_INDEX]) > 36 and
                                   in_past_week(result))
 
 # Gets samples or orders where something has gone missing within the past 7 days.
