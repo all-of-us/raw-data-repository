@@ -67,15 +67,16 @@ trap cleanup EXIT
 
 function get_instance_connection_name {
   echo "Getting database info..."
+  echo "for config, CREDS_FILE=$CREDS_FILE"
   tools/install_config.sh --key db_config --instance $INSTANCE \
-      --creds_file ${CREDS_FILE} > $TMP_DB_INFO_FILE
+      --creds_file ${CREDS_FILE} --config_output "$TMP_DB_INFO_FILE"
   INSTANCE_CONNECTION_NAME=`grep db_connection_name $TMP_DB_INFO_FILE | cut -d\" -f4`
 }
 
 function get_db_password {
   echo "Getting database password..."
   tools/install_config.sh --key db_config --instance $INSTANCE \
-      --creds_file ${CREDS_FILE} > $TMP_DB_INFO_FILE
+      --creds_file ${CREDS_FILE} --config_output $TMP_DB_INFO_FILE
   PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
 }
 
