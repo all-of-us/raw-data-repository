@@ -125,32 +125,40 @@ class MySqlReconciliationTest(FlaskTestBase):
     late_time = order_time + datetime.timedelta(hours=37)
     old_late_time = old_order_time + datetime.timedelta(hours=37)
 
+    # On time, recent order and samples; shows up in rx
     p_on_time = self._insert_participant()
     self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:2], order_time)
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], within_36_hours)
 
+    # On time order and samples from 10 days ago; shows up in rx
     p_old_on_time = self._insert_participant(race_codes=["AIAN_AmericanIndian"])
     self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:2], old_order_time)
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
                          old_within_36_hours)
 
+    # Late, recent order and samples; shows up in rx and late.
     p_late_and_missing = self._insert_participant()
     o_late_and_missing = self._insert_order(
         p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:2], order_time)
     self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], ['LateSample'], late_time)
 
+    # Late order and samples from 10 days ago; shows up in rx.
     p_old_late_and_missing = self._insert_participant()
     self._insert_order(p_old_late_and_missing, 'OldSlowOrder', BIOBANK_TESTS[:2], old_order_time)
     self._insert_samples(p_old_late_and_missing, [BIOBANK_TESTS[0]], ['OldLateSample'],
                          old_late_time)
 
+    # Recent samples with no matching order; shows up in rx and missing.
     p_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
     self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], ['NobodyOrderedThisSample'], order_time)
 
+    # Old samples with no matching order; shows up in rx.
     p_old_extra = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     self._insert_samples(p_old_extra, [BIOBANK_TESTS[-1]], ['OldNobodyOrderedThisSample'],
                          old_order_time)
 
+    # Withdrawn participants don't show up in any reports except withdrawal report.
+        
     p_withdrawn_old_on_time = self._insert_participant(race_codes=["AIAN_AmericanIndian"])
     self._insert_order(p_withdrawn_old_on_time, 'OldWithdrawnGoodOrder', BIOBANK_TESTS[:2],
                        old_order_time)
