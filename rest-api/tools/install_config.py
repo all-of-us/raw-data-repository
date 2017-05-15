@@ -14,6 +14,7 @@ from tools.main_util import get_parser, configure_logging
 
 BASE_CONFIG_FILE = 'config/base_config.json'
 
+
 def _log_and_write_config_lines(raw_config_lines, output_path):
   safe_config_lines = []
   for line in raw_config_lines:
@@ -25,7 +26,8 @@ def _log_and_write_config_lines(raw_config_lines, output_path):
   if output_path:
     with open(output_path, 'w') as output_file:
       output_file.write('\n'.join(raw_config_lines))
-    logging.info('Unredacted output written to %r.', output_path)
+    logging.info('Unredacted config output written to %r.', output_path)
+
 
 def main(args):
   client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
