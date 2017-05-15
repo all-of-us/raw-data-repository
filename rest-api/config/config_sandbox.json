@@ -12,6 +12,9 @@
   "biobank_samples_bucket_name": [
     "sandbox_biobank_samples_upload_bucket"
   ],
+  "consent_pdf_bucket": [
+    "ptc-uploads-pmi-drc-api-sandbox"
+  ],
   "metrics_shards": [
     "10"
   ]
