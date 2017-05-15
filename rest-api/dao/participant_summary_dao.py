@@ -101,7 +101,7 @@ class ParticipantSummaryDao(UpdatableDao):
       if field_filter.field_name == 'withdrawalTime' and field_filter.value is not None:
         return True
     return False
-  
+
   def _get_non_withdrawn_field(self, query):
     for field_filter in query.field_filters:
       if not field_filter.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
@@ -110,10 +110,10 @@ class ParticipantSummaryDao(UpdatableDao):
       if not query.order_by.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
         return query.order_by.field_name
     return None
-      
+
   def _initialize_query(self, session, query_def):
     non_withdrawn_field = self._get_non_withdrawn_field(query_def)
-    if self._has_withdrawn_filter(query_def):      
+    if self._has_withdrawn_filter(query_def):
       if non_withdrawn_field:
         raise BadRequest("Can't query on %s for withdrawn participants" % non_withdrawn_field)
       # When querying for withdrawn participants, ensure that the only fields being filtered on or
@@ -122,9 +122,9 @@ class ParticipantSummaryDao(UpdatableDao):
     else:
       query = super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
       if non_withdrawn_field:
-        # When querying on fields that aren't available for withdrawn participants, 
+        # When querying on fields that aren't available for withdrawn participants,
         # ensure that we only return participants
-        # who have not withdrawn or withdrew in the past 48 hours.      
+        # who have not withdrawn or withdrew in the past 48 hours.
         withdrawn_visible_start = clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
         return query.filter(or_(ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE,
                                 ParticipantSummary.withdrawalTime >= withdrawn_visible_start))

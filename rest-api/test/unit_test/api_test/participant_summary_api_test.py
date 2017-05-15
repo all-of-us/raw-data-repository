@@ -489,7 +489,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertIsNotNone(ps_2['withdrawalTime'])
     self.assertIsNone(new_ps_2.get('suspensionTime'))
 
-    # Queries that ask for fields not returned for withdrawn participants no longer return 
+    # Queries that ask for fields not returned for withdrawn participants no longer return
     # participant 2; queries that ask for fields that are returned for withdrawn participants
     # include it; queries that ask for withdrawn participants get back participant 2 only.
     with FakeClock(TIME_5):
