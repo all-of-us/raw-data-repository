@@ -18,6 +18,7 @@ while true; do
     --version) VERSION=$2; shift 2;;
     --deploy_as_version) DEPLOY_AS_VERSION=$2; shift 2;;
     --target) TARGET=$2; shift 2;;
+    --no_tracker) NO_TRACKER="Y"; shift 1;;  # Skip JIRA ticket update.
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -31,6 +32,7 @@ function usage {
 
 if [ -z "${PROJECT}" ]
 then
+  echo "Missing required --project flag."
   usage
 fi
 
@@ -43,6 +45,9 @@ then
 elif [ "${PROJECT}" == "all-of-us-rdr-dryrun" ]
 then
   CONFIG="config/config_dryrun.json"
+elif [ "${PROJECT}" == "all-of-us-rdr-sandbox" ]
+then
+  CONFIG="config/config_sandbox.json"
 else
   echo "Unsupported project: ${PROJECT}; exiting."
   usage
@@ -50,6 +55,7 @@ fi
 
 if [ -z "${ACCOUNT}" ]
 then
+  echo "Missing required --account flag."
   usage
 fi
 
@@ -57,6 +63,14 @@ if [ "$TARGET" != "all" ] && [ "$TARGET" != "app" ] && [ $TARGET != "db" ] && [ 
 then
   echo "Target must be one of: all, app, db, config. Exiting."
   usage
+fi
+
+if [ -z "$NO_TRACKER" ]
+then
+  UPDATE_TRACKER=tools/update_release_tracker.py
+else
+  echo "Skipping JIRA tracker updates."
+  UPDATE_TRACKER=echo
 fi
 
 gcloud auth login $ACCOUNT
@@ -96,17 +110,17 @@ git checkout $VERSION
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "db" ]
 then
   echo "${BOLD}Upgrading database...${NONE}"
-  python tools/update_release_tracker.py --version $VERSION --comment "Upgrading database for ${PROJECT}."
+  $UPDATE_TRACKER --version $VERSION --comment "Upgrading database for ${PROJECT}."
   tools/upgrade_database.sh --project $PROJECT --account $ACCOUNT
-  python tools/update_release_tracker.py --version $VERSION --comment "Database for ${PROJECT} upgraded."
+  $UPDATE_TRACKER --version $VERSION --comment "Database for ${PROJECT} upgraded."
 fi
 
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "config" ]
 then
   echo "${BOLD}Updating configuration...${NONE}"
-  python tools/update_release_tracker.py --version $VERSION --comment "Updating config for ${PROJECT}."
+  $UPDATE_TRACKER --version $VERSION --comment "Updating config for ${PROJECT}."
   tools/install_config.sh --project $PROJECT --account $ACCOUNT --config $CONFIG --update
-  python tools/update_release_tracker.py --version $VERSION --comment "Config for ${PROJECT} updated."
+  $UPDATE_TRACKER --version $VERSION --comment "Config for ${PROJECT} updated."
 fi
 
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "app" ]
@@ -120,10 +134,10 @@ then
   fi
   echo "${BOLD}Deploying application...${NONE}"
   cat app_base.yaml $APP_YAML > app.yaml
-  python tools/update_release_tracker.py --version $VERSION --comment "Deploying app to ${PROJECT}."
+  $UPDATE_TRACKER --version $VERSION --comment "Deploying app to ${PROJECT}."
   gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml offline.yaml \
       --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
-  python tools/update_release_tracker.py --version $VERSION --comment "App deployed to ${PROJECT}."
+  $UPDATE_TRACKER --version $VERSION --comment "App deployed to ${PROJECT}."
   rm app.yaml
 fi
 
