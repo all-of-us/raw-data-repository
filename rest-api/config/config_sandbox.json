@@ -1,0 +1,18 @@
+{
+  "allow_nonprod_requests": true,
+  "biobank_id_prefix": ["S"],
+  "biobank_samples_shards": [
+    "2"
+  ],
+  "user_info": {
+    "configurator@all-of-us-rdr-sandbox.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"]
+    }
+  },
+  "biobank_samples_bucket_name": [
+    "sandbox_biobank_samples_upload_bucket"
+  ],
+  "metrics_shards": [
+    "10"
+  ]
+}
