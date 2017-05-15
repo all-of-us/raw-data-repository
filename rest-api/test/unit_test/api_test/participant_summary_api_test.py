@@ -489,26 +489,27 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertIsNotNone(ps_2['withdrawalTime'])
     self.assertIsNone(new_ps_2.get('suspensionTime'))
 
-    # Queries that ask for fields not returned for withdrawn participants no longer return
-    # participant 2; queries that ask for fields that are returned for withdrawn participants
+    # Queries that filter on fields not returned for withdrawn participants no longer return
+    # participant 2; queries that filter on fields that are returned for withdrawn participants
     # include it; queries that ask for withdrawn participants get back participant 2 only.
+    # Sort order does not affect whether withdrawn participants are included.
     with FakeClock(TIME_5):
       self.assertResponses('ParticipantSummary?_count=2&_sort=firstName',
-                           [[ps_1, ps_3]])
+                           [[ps_1, ps_3], [new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:asc=firstName',
-                           [[ps_1, ps_3]])
+                           [[ps_1, ps_3], [new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=firstName',
-                           [[ps_3, ps_1]])
+                           [[new_ps_2, ps_3], [ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=dateOfBirth',
-                           [[ps_1, ps_3]])
+                           [[new_ps_2, ps_1], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=dateOfBirth',
-                           [[ps_3, ps_1]])
+                           [[ps_3, ps_1], [new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=genderIdentity',
-                           [[ps_1, ps_3]])
+                           [[ps_1, ps_3], [new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=genderIdentity',
-                           [[ps_1, ps_3]])
+                           [[new_ps_2, ps_1], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
-                           [[ps_1, ps_3]])
+                           [[ps_1, new_ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
                            [[ps_3, ps_1], [new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=hpoId',

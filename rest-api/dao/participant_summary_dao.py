@@ -102,19 +102,16 @@ class ParticipantSummaryDao(UpdatableDao):
         return True
     return False
 
-  def _get_non_withdrawn_field(self, query):
-    """Returns the first field referenced in query filters or ordering which isn't in 
+  def _get_non_withdrawn_filter_field(self, query):
+    """Returns the first field referenced in query filters which isn't in
     WITHDRAWN_PARTICIPANT_FIELDS."""
     for field_filter in query.field_filters:
       if not field_filter.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
         return field_filter.field_name
-    if query.order_by:
-      if not query.order_by.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
-        return query.order_by.field_name
     return None
 
   def _initialize_query(self, session, query_def):
-    non_withdrawn_field = self._get_non_withdrawn_field(query_def)
+    non_withdrawn_field = self._get_non_withdrawn_filter_field(query_def)
     if self._has_withdrawn_filter(query_def):
       if non_withdrawn_field:
         raise BadRequest("Can't query on %s for withdrawn participants" % non_withdrawn_field)
