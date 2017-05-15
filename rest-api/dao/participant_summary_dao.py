@@ -101,27 +101,38 @@ class ParticipantSummaryDao(UpdatableDao):
       if field_filter.field_name == 'withdrawalTime' and field_filter.value is not None:
         return True
     return False
-
+  
+  def _get_non_withdrawn_field(self, query):
+    for field_filter in query.field_filters:
+      if not field_filter.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
+        return field_filter.field_name
+    if query.order_by:
+      if not query.order_by.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
+        return query.order_by.field_name
+    return None
+      
   def _initialize_query(self, session, query_def):
-    if self._has_withdrawn_filter(query_def):
-      # When querying for withdrawn particiapnts, ensure that the only fields being filtered on or
+    non_withdrawn_field = self._get_non_withdrawn_field(query_def)
+    if self._has_withdrawn_filter(query_def):      
+      if non_withdrawn_field:
+        raise BadRequest("Can't query on %s for withdrawn participants" % non_withdrawn_field)
+      # When querying for withdrawn participants, ensure that the only fields being filtered on or
       # ordered by are in WITHDRAWN_PARTICIPANT_FIELDS.
-      for field_filter in query_def.field_filters:
-        if not field_filter.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
-          raise BadRequest("Can't filter on %s for withdrawn participants" %
-                           field_filter.field_name)
-      if query_def.order_by:
-        if not query_def.order_by.field_name in WITHDRAWN_PARTICIPANT_FIELDS:
-          raise BadRequest("Can't order by %s for withdrawn participants" %
-                           query_def.order_by.field_name)
       return super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
     else:
-      # When *not* querying for withdrawn participants, ensure that we only return participants
-      # who have not withdrawn or withdrew in the past 48 hours.
       query = super(ParticipantSummaryDao, self)._initialize_query(session, query_def)
-      withdrawn_visible_start = clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
-      return query.filter(or_(ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE,
-                              ParticipantSummary.withdrawalTime >= withdrawn_visible_start))
+      if non_withdrawn_field:
+        # When querying on fields that aren't available for withdrawn participants, 
+        # ensure that we only return participants
+        # who have not withdrawn or withdrew in the past 48 hours.      
+        withdrawn_visible_start = clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
+        return query.filter(or_(ParticipantSummary.withdrawalStatus != WithdrawalStatus.NO_USE,
+                                ParticipantSummary.withdrawalTime >= withdrawn_visible_start))
+      else:
+        # When querying on fields that are available for withdrawn participants, return everybody;
+        # withdrawn participants will have all but WITHDRAWN_PARTICIPANT_FIELDS cleared out 48
+        # hours after withdrawing.
+        return query
 
   def _get_order_by_ending(self, query):
     if self._has_withdrawn_filter(query):

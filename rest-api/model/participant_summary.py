@@ -12,7 +12,8 @@ from sqlalchemy.orm import relationship
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
-WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime', 'participantId', 'hpoId']
+WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime', 'participantId', 'hpoId',
+                                'biobankId']
 # The period of time for which withdrawn participants will still be returned in results for
 # queries that don't ask for withdrawn participants.
 WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days=2)

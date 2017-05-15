@@ -278,6 +278,8 @@ _RECONCILIATION_REPORT_SQL = ("""
     LEFT OUTER JOIN
       biobank_stored_sample
     ON """ + _STORED_SAMPLE_JOIN_CRITERIA + """
+    WHERE
+      participant.withdrawal_time IS NULL
     UNION ALL
     SELECT
       biobank_stored_sample.biobank_id raw_biobank_id,
@@ -301,7 +303,10 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample
     WHERE NOT EXISTS (
       SELECT 0 FROM """ + _ORDER_JOINS + " WHERE " + _STORED_SAMPLE_JOIN_CRITERIA + """
-    )
+    ) AND NOT EXISTS (
+      SELECT 0 FROM participant
+       WHERE participant.biobank_id = biobank_stored_sample.biobank_id
+         AND participant.withdrawal_time IS NOT NULL)
   ) reconciled
   GROUP BY
     biobank_id, order_test, test

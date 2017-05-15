@@ -481,6 +481,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertIsNone(new_ps_2.get('physicalMeasurementsTime'))
     self.assertEquals('UNSET', new_ps_2['genderIdentity'])
     self.assertEquals('NO_USE', new_ps_2['withdrawalStatus'])
+    self.assertEquals(ps_2['biobankId'], new_ps_2['biobankId'])
     self.assertEquals('UNSET', new_ps_2['suspensionStatus'])
     self.assertEquals('NO_CONTACT', new_ps_2['recontactMethod'])
     self.assertEquals('PITT', new_ps_2['hpoId'])
@@ -488,8 +489,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertIsNotNone(ps_2['withdrawalTime'])
     self.assertIsNone(new_ps_2.get('suspensionTime'))
 
-    # Queries that don't ask for withdrawn participants no longer return participant 2;
-    # queries that ask for withdrawn participants get back the participant
+    # Queries that ask for fields not returned for withdrawn participants no longer return 
+    # participant 2; queries that ask for fields that are returned for withdrawn participants
+    # include it; queries that ask for withdrawn participants get back participant 2 only.
     with FakeClock(TIME_5):
       self.assertResponses('ParticipantSummary?_count=2&_sort=firstName',
                            [[ps_1, ps_3]])
@@ -508,9 +510,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
                            [[ps_1, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
-                           [[ps_3, ps_1]])
+                           [[ps_3, ps_1], [new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=hpoId',
-                           [[ps_1, ps_3]])
+                           [[ps_1, new_ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&firstName=Mary',
                            [[]])
       self.assertResponses('ParticipantSummary?_count=2&middleName=Q',
@@ -518,7 +520,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&lastName=Smith',
                            [[ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=PITT',
-                           [[ps_1]])
+                           [[ps_1, new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&withdrawalStatus=NO_USE',
                            [[new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03',

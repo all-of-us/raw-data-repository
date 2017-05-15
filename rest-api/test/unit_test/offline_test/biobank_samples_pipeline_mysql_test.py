@@ -132,34 +132,61 @@ class MySqlReconciliationTest(FlaskTestBase):
     p_old_on_time = self._insert_participant(race_codes=["AIAN_AmericanIndian"])
     self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:2], old_order_time)
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
-                         old_within_a_day)
-    self._withdraw(p_old_on_time, within_a_day)
+                         old_within_a_day)  
 
     p_late_and_missing = self._insert_participant()
     o_late_and_missing = self._insert_order(
         p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:2], order_time)
-    self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], ['LateSample'], late_time)
-    self._withdraw(p_late_and_missing, within_a_day)
+    self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], ['LateSample'], late_time)    
 
     p_old_late_and_missing = self._insert_participant()
     self._insert_order(p_old_late_and_missing, 'OldSlowOrder', BIOBANK_TESTS[:2], old_order_time)
     self._insert_samples(p_old_late_and_missing, [BIOBANK_TESTS[0]], ['OldLateSample'],
-                         old_late_time)
-    self._withdraw(p_old_late_and_missing, old_late_time)
+                         old_late_time)    
 
     p_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
     self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], ['NobodyOrderedThisSample'], order_time)
-    self._withdraw(p_extra, within_a_day)
 
     p_old_extra = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     self._insert_samples(p_old_extra, [BIOBANK_TESTS[-1]], ['OldNobodyOrderedThisSample'],
-                         old_order_time)
-    self._withdraw(p_old_extra, within_a_day)
+                         old_order_time)    
 
-    p_race_change = self._insert_participant(race_codes=[RACE_AIAN_CODE])
-    self._submit_race_questionnaire_response(to_client_participant_id(p_race_change.participantId),
-                                             [RACE_WHITE_CODE])
-    self._withdraw(p_race_change, within_a_day)
+    p_withdrawn_old_on_time = self._insert_participant(race_codes=["AIAN_AmericanIndian"])
+    self._insert_order(p_withdrawn_old_on_time, 'OldWithdrawnGoodOrder', BIOBANK_TESTS[:2], 
+                       old_order_time)
+    self._insert_samples(p_withdrawn_old_on_time, BIOBANK_TESTS[:2], 
+                         ['OldWithdrawnGoodSample1', 'OldWithdrawnGoodSample2'],
+                         old_within_a_day)
+    self._withdraw(p_withdrawn_old_on_time, within_a_day)
+
+    p_withdrawn_late_and_missing = self._insert_participant()
+    self._insert_order(p_withdrawn_late_and_missing, 'WithdrawnSlowOrder', BIOBANK_TESTS[:2], 
+                       order_time)
+    self._insert_samples(p_withdrawn_late_and_missing, [BIOBANK_TESTS[0]], 
+                         ['WithdrawnLateSample'], late_time)
+    self._withdraw(p_withdrawn_late_and_missing, within_a_day)
+
+    p_withdrawn_old_late_and_missing = self._insert_participant()
+    self._insert_order(p_withdrawn_old_late_and_missing, 'WithdrawnOldSlowOrder', BIOBANK_TESTS[:2], 
+                       old_order_time)
+    self._insert_samples(p_withdrawn_old_late_and_missing, [BIOBANK_TESTS[0]], 
+                         ['WithdrawnOldLateSample'], old_late_time)
+    self._withdraw(p_withdrawn_old_late_and_missing, old_late_time)
+
+    p_withdrawn_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
+    self._insert_samples(p_withdrawn_extra, [BIOBANK_TESTS[-1]], 
+                         ['WithdrawnNobodyOrderedThisSample'], order_time)
+    self._withdraw(p_withdrawn_extra, within_a_day)
+
+    p_withdrawn_old_extra = self._insert_participant(race_codes=[RACE_AIAN_CODE])
+    self._insert_samples(p_withdrawn_old_extra, [BIOBANK_TESTS[-1]], 
+                         ['WithdrawnOldNobodyOrderedThisSample'], old_order_time)
+    self._withdraw(p_withdrawn_old_extra, within_a_day)
+
+    p_withdrawn_race_change = self._insert_participant(race_codes=[RACE_AIAN_CODE])
+    p_withdrawn_race_change_id = to_client_participant_id(p_withdrawn_race_change.participantId)
+    self._submit_race_questionnaire_response(p_withdrawn_race_change_id, [RACE_WHITE_CODE])
+    self._withdraw(p_withdrawn_race_change, within_a_day)
 
     # for the same participant/test, 3 orders sent and only 2 samples received.
     p_repeated = self._insert_participant()
@@ -258,23 +285,23 @@ class MySqlReconciliationTest(FlaskTestBase):
     # We don't include the old withdrawal.
     exporter.assertRowCount(withdrawals, 5)
     exporter.assertHasRow(withdrawals, {
-      'biobank_id': to_client_biobank_id(p_old_on_time.biobankId),
+      'biobank_id': to_client_biobank_id(p_withdrawn_old_on_time.biobankId),
       'withdrawal_time': database_utils.format_datetime(within_a_day),
       'is_native_american': 'Y'})
     exporter.assertHasRow(withdrawals, {
-      'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
+      'biobank_id': to_client_biobank_id(p_withdrawn_late_and_missing.biobankId),
       'withdrawal_time': database_utils.format_datetime(within_a_day),
       'is_native_american': 'N'})
     exporter.assertHasRow(withdrawals, {
-      'biobank_id': to_client_biobank_id(p_extra.biobankId),
+      'biobank_id': to_client_biobank_id(p_withdrawn_extra.biobankId),
       'withdrawal_time': database_utils.format_datetime(within_a_day),
       'is_native_american': 'N'})
     exporter.assertHasRow(withdrawals, {
-      'biobank_id': to_client_biobank_id(p_old_extra.biobankId),
+      'biobank_id': to_client_biobank_id(p_withdrawn_old_extra.biobankId),
       'withdrawal_time': database_utils.format_datetime(within_a_day),
       'is_native_american': 'Y'})
     exporter.assertHasRow(withdrawals, {
-      'biobank_id': to_client_biobank_id(p_race_change.biobankId),
+      'biobank_id': to_client_biobank_id(p_withdrawn_race_change.biobankId),
       'withdrawal_time': database_utils.format_datetime(within_a_day),
       'is_native_american': 'N'})
 
