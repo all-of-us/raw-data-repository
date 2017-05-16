@@ -18,7 +18,6 @@ while true; do
     --version) VERSION=$2; shift 2;;
     --deploy_as_version) DEPLOY_AS_VERSION=$2; shift 2;;
     --target) TARGET=$2; shift 2;;
-    --no_tracker) NO_TRACKER="Y"; shift 1;;  # Skip JIRA ticket update.
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -36,6 +35,7 @@ then
   usage
 fi
 
+UPDATE_TRACKER=tools/update_release_tracker.py
 if [ "${PROJECT}" == "all-of-us-rdr-prod" ]
 then
   CONFIG="config/config_prod.json"
@@ -48,6 +48,8 @@ then
 elif [ "${PROJECT}" == "all-of-us-rdr-sandbox" ]
 then
   CONFIG="config/config_sandbox.json"
+  echo "Skipping JIRA tracker updates for Sandbox."
+  UPDATE_TRACKER=echo
 else
   echo "Unsupported project: ${PROJECT}; exiting."
   usage
@@ -63,14 +65,6 @@ if [ "$TARGET" != "all" ] && [ "$TARGET" != "app" ] && [ $TARGET != "db" ] && [ 
 then
   echo "Target must be one of: all, app, db, config. Exiting."
   usage
-fi
-
-if [ -z "$NO_TRACKER" ]
-then
-  UPDATE_TRACKER=tools/update_release_tracker.py
-else
-  echo "Skipping JIRA tracker updates."
-  UPDATE_TRACKER=echo
 fi
 
 gcloud auth login $ACCOUNT
