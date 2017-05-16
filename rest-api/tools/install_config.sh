@@ -14,6 +14,7 @@ while true; do
     --config) CONFIG=$2; shift 2;;
     --key) KEY=$2; shift 2;;
     --instance) INSTANCE=$2; shift 2;;
+    --creds_file) CREDS_FILE=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -25,11 +26,14 @@ then
 fi
 
 EXTRA_ARGS="$@"
-if [ "${PROJECT}" ]
+if [ "$CREDS_FILE" -a "$INSTANCE" ]
+then
+  EXTRA_ARGS+=" --creds_file ${CREDS_FILE} --instance ${INSTANCE}"
+elif [ "${PROJECT}" ]
 then
   echo "Getting credentials for ${PROJECT}..."
   source tools/auth_setup.sh
-  EXTRA_ARGS="--creds_file ${CREDS_FILE} --instance ${INSTANCE}"
+  EXTRA_ARGS+=" --creds_file ${CREDS_FILE} --instance ${INSTANCE}"
 elif [ "${INSTANCE}" ]
 then
   EXTRA_ARGS+=" --instance $INSTANCE"

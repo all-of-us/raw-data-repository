@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ae
 
 # Sets up a Cloud SQL instance, sets the root password, creates an empty database,
 # and sets the database connection info in a database config in Datastore.
@@ -16,7 +16,6 @@
 # Example usage for changing root and rdr/alembic passwords:
 # tools/setup_database.sh --account dan.rodney@pmi-ops.org --project all-of-us-rdr-staging --update_passwords
 
-set -a
 CREATE_INSTANCE=
 UPDATE_PASSWORDS=
 USAGE="tools/setup_database.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>] [--create_instance | --update_passwords]"
