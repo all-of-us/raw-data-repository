@@ -20,19 +20,24 @@ then
   exit 1
 fi
 function usage {
-  echo "Usage: load_test.sh --project all-of-us-rdr-test"
+  echo "Usage: load_test.sh --project all-of-us-rdr-test --account $USER@pmi-ops.org"
   exit 1
 }
 while true
 do
   case "$1" in
     --project) PROJECT=$2; shift 2;;
+    --account) ACCOUNT=$2; shift 2;;
     *) break;;
   esac
 done
 if [ "$@" ]
 then
   echo "Unrecognized arguments: $@"
+  usage
+fi
+if [ -z "$ACCOUNT" ]
+then
   usage
 fi
 if [ -z "$PROJECT" ]
@@ -45,7 +50,6 @@ then
   exit 1
 fi
 
-ACCOUNT=$USER@google.com
 CREDS_ACCOUNT=$ACCOUNT
 . tools/auth_setup.sh
 
