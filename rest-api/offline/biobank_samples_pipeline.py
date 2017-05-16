@@ -173,7 +173,7 @@ def _get_report_paths(report_datetime):
           _REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
       for report_name in ('received', 'over_24h', 'missing', 'withdrawals')]
 
-def _query_and_write_reports(exporter, now, path_received, path_late, path_missing, 
+def _query_and_write_reports(exporter, now, path_received, path_late, path_missing,
                              path_withdrawals):
   """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
@@ -188,12 +188,12 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
                                     int(result[_ELAPSED_HOURS_INDEX]) > 36 and
                                     in_past_week(result, now))
 
-  # Gets samples or orders where something has gone missing within the past 7 days, and if an order 
+  # Gets samples or orders where something has gone missing within the past 7 days, and if an order
   # was placed, it was placed at least 36 hours ago.
   missing_predicate = lambda result: ((result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
                                         (result[_SENT_FINALIZED_INDEX] and
                                          not result[_RECEIVED_TEST_INDEX])) and
-                                       in_past_week(result, now, 
+                                       in_past_week(result, now,
                                                     ordered_before=now - _THIRTY_SIX_HOURS_AGO))
 
   # Open three files and a database session; run the reconciliation query and pipe the output

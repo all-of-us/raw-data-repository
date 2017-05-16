@@ -145,19 +145,19 @@ class MySqlReconciliationTest(FlaskTestBase):
         p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:2], order_time)
     self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], ['LateSample'], late_time)
 
-    # Late order and samples from 10 days ago; shows up in rx (but not missing, as it was too 
+    # Late order and samples from 10 days ago; shows up in rx (but not missing, as it was too
     # long ago.
     p_old_late_and_missing = self._insert_participant()
     self._insert_order(p_old_late_and_missing, 'OldSlowOrder', BIOBANK_TESTS[:2], old_order_time)
     self._insert_samples(p_old_late_and_missing, [BIOBANK_TESTS[0]], ['OldLateSample'],
                          old_late_time)
 
-    
+
     # Order with missing sample from 2 days ago; shows up in rx and missing.
     p_two_days_missing = self._insert_participant()
-    self._insert_order(p_two_days_missing, 'TwoDaysMissingOrder', BIOBANK_TESTS[:2], 
+    self._insert_order(p_two_days_missing, 'TwoDaysMissingOrder', BIOBANK_TESTS[:2],
                        two_days_ago)
-    
+
     # Recent samples with no matching order; shows up in missing.
     p_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
     self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], ['NobodyOrderedThisSample'], order_time)
@@ -208,7 +208,7 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # for the same participant/test, 3 orders sent and only 2 samples received. Shows up in both
     # missing (we are missing one sample) and late (the two samples that were received were after
-    # 36 hours.)    
+    # 36 hours.)
     p_repeated = self._insert_participant()
     for repetition in xrange(3):
       self._insert_order(
@@ -225,7 +225,7 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     received, late, missing, withdrawals = 'rx.csv', 'late.csv', 'missing.csv', 'withdrawals.csv'
     exporter = InMemorySqlExporter(self)
-    biobank_samples_pipeline._query_and_write_reports(exporter, file_time, 
+    biobank_samples_pipeline._query_and_write_reports(exporter, file_time,
                                                       received, late, missing, withdrawals)
 
     exporter.assertFilesEqual((received, late, missing, withdrawals))
@@ -277,7 +277,7 @@ class MySqlReconciliationTest(FlaskTestBase):
         'sent_order_id': o_late_and_missing.biobankOrderId,
         'elapsed_hours': '37'})
     exporter.assertHasRow(late, {
-        'biobank_id': to_client_biobank_id(p_repeated.biobankId),            
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
         'elapsed_hours': '46'})
 
     # orders/samples where something went wrong; don't include orders/samples from more than 7
@@ -289,11 +289,11 @@ class MySqlReconciliationTest(FlaskTestBase):
         'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id': ''})
     # order received, no sample
     exporter.assertHasRow(missing, {
-        'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId), 
+        'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId),
         'sent_order_id': 'TwoDaysMissingOrder',
         'sent_test': BIOBANK_TESTS[0]})
     exporter.assertHasRow(missing, {
-        'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId), 
+        'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId),
         'sent_order_id': 'TwoDaysMissingOrder',
         'sent_test': BIOBANK_TESTS[1]})
 
