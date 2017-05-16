@@ -44,13 +44,14 @@ class BasePipeline(pipeline.Pipeline):
         # This sender needs to be authorized per-environment in Email Authorized Senders,
         # see https://cloud.google.com/appengine/docs/standard/python/mail/.
         sender = config.getSetting(config.INTERNAL_STATUS_MAIL_SENDER)
-        logging.error(message)
+        to_list = config.getSettingList(config.INTERNAL_STATUS_MAIL_RECIPIENTS)
+        logging.error('%s (notification will be sent from %r to %r)', message, sender, to_list)
         try:
-          mail.send_mail_to_admins(_MAIL_SENDER, '%s failed' % pipeline_name, message)
+          mail.send_mail(sender, to_list, '%s failed' % pipeline_name, message)
         except (mail.InvalidSenderError, mail.InvalidEmailError):
           logging.error(
               'Could not send result email for root pipeline ID %r from sender %r.',
-              self.root_pipeline_id, _MAIL_SENDER, exc_info=True)
+              self.root_pipeline_id, sender, exc_info=True)
       else:
         message = "%s succeeded %s; results are at %s" % (pipeline_name, suffix, status_link)
         logging.info(message)

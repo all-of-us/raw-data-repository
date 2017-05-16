@@ -31,8 +31,11 @@
     "AIAN_AmericanIndian",
     "AIAN_AlaskaNative",
     "AIAN_CentralSouthAmericanIndian"
-  ]
-  "internal_email_sender": [
+  ],
+  "internal_status_email_sender": [
     "all-of-us-rdr@googlegroups.com"
+  ],
+  "internal_status_email_recipients": [
+    "all-of-us-rdr+pipeline@google.com"
   ]
 }
