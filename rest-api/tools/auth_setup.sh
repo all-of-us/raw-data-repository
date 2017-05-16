@@ -67,7 +67,6 @@ trap cleanup EXIT
 
 function get_instance_connection_name {
   echo "Getting database info..."
-  echo "for config, CREDS_FILE=$CREDS_FILE"
   tools/install_config.sh --key db_config --instance $INSTANCE \
       --creds_file ${CREDS_FILE} --config_output "$TMP_DB_INFO_FILE"
   INSTANCE_CONNECTION_NAME=`grep db_connection_name $TMP_DB_INFO_FILE | cut -d\" -f4`
