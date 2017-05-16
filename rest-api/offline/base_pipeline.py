@@ -2,11 +2,27 @@ import datetime
 import logging
 import os
 
-from google.appengine.ext import db
+from google.appengine.api import app_identity
 from google.appengine.api import mail
+from google.appengine.ext import db
 import pipeline
 
 import config
+
+
+def send_failure_alert(job_name, message, log_exc_info=False, extra_recipients=None):
+  """Sends an alert email for a failed job."""
+  subject = '%s failed in %s' % (job_name, app_identity.get_application_id())
+  # This sender needs to be authorized per-environment in Email Authorized Senders,
+  # see https://cloud.google.com/appengine/docs/standard/python/mail/.
+  sender = config.getSetting(config.INTERNAL_STATUS_MAIL_SENDER)
+  to_list = config.getSettingList(config.INTERNAL_STATUS_MAIL_RECIPIENTS)
+  if extra_recipients is not None:
+    to_list += extra_recipients
+  logging.error(
+      '%s: %s (email will be sent from %r to %r)',
+      subject, message, sender, to_list, exc_info=log_exc_info)
+  mail.send_mail(sender, to_list, subject, message)
 
 
 class BasePipeline(pipeline.Pipeline):
@@ -40,18 +56,8 @@ class BasePipeline(pipeline.Pipeline):
         suffix = 'after %d:%02d:%02d' % (hours, minutes, seconds)
       if self.was_aborted:
         self.handle_pipeline_failure()
-        message = "%s failed %s; results are at %s" % (pipeline_name, suffix, status_link)
-        # This sender needs to be authorized per-environment in Email Authorized Senders,
-        # see https://cloud.google.com/appengine/docs/standard/python/mail/.
-        sender = config.getSetting(config.INTERNAL_STATUS_MAIL_SENDER)
-        to_list = config.getSettingList(config.INTERNAL_STATUS_MAIL_RECIPIENTS)
-        logging.error('%s (notification will be sent from %r to %r)', message, sender, to_list)
-        try:
-          mail.send_mail(sender, to_list, '%s failed' % pipeline_name, message)
-        except (mail.InvalidSenderError, mail.InvalidEmailError):
-          logging.error(
-              'Could not send result email for root pipeline ID %r from sender %r.',
-              self.root_pipeline_id, sender, exc_info=True)
+        send_failure_alert(
+            pipeline_name,
+            '%s failed %s; results are at %s' % (pipeline_name, suffix, status_link))
       else:
-        message = "%s succeeded %s; results are at %s" % (pipeline_name, suffix, status_link)
-        logging.info(message)
+        logging.info('%s succeeded %s; results are at %s', pipeline_name, suffix, status_link)
