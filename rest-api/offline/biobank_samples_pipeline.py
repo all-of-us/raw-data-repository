@@ -41,15 +41,16 @@ class DataError(RuntimeError):
 def upsert_from_latest_csv():
   """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
-  csv_file = _open_latest_samples_file(bucket_name)
-  if len(csv_file) < _INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH:
-    raise DataError("Can't parse time from CSV filename: %s" % csv_file)
-  time_suffix = csv_file[len(csv_file) - (_INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH),
-                    len(csv_file) - _CSV_SUFFIX_LENGTH]
+  csv_file, csv_filename = _open_latest_samples_file(bucket_name)
+  if len(csv_filename) < _INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH:
+    raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
+  time_suffix = csv_filename[len(csv_filename) - (_INPUT_CSV_TIME_FORMAT_LENGTH + 
+                                                  _CSV_SUFFIX_LENGTH) - 1:
+                    len(csv_filename) - _CSV_SUFFIX_LENGTH]
   try:
     timestamp = datetime.datetime.strptime(time_suffix, _INPUT_CSV_TIME_FORMAT)
   except ValueError:
-    raise DataError("Can't parse time from CSV filename: %s" % csv_file)
+    raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
 
   csv_reader = csv.DictReader(csv_file, delimiter='\t')
   written = _upsert_samples_from_csv(csv_reader)
@@ -61,7 +62,7 @@ def _open_latest_samples_file(cloud_bucket_name):
   """Returns an open stream for the most recently created CSV in the given bucket."""
   path = _find_latest_samples_csv(cloud_bucket_name)
   logging.info('Opening latest samples CSV in %r: %r.', cloud_bucket_name, path)
-  return cloudstorage_api.open(path)
+  return cloudstorage_api.open(path), path
 
 
 def _find_latest_samples_csv(cloud_bucket_name):
