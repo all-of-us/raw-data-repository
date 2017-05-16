@@ -10,7 +10,6 @@ import pytz
 
 from cloudstorage import cloudstorage_api
 
-import clock
 import config
 from code_constants import RACE_QUESTION_CODE, PPI_SYSTEM
 from dao import database_factory
@@ -28,6 +27,12 @@ _FILENAME_DATE_FORMAT = '%Y-%m-%d'
 _REPORT_SUBDIR = 'reconciliation'
 _BATCH_SIZE = 1000
 
+# The timestamp found at the end of input CSV files.
+_INPUT_CSV_TIME_FORMAT = '%Y-%m-%d-%H-%M-%S'
+_INPUT_CSV_TIME_FORMAT_LENGTH = 18
+_CSV_SUFFIX_LENGTH = 4
+_THIRTY_SIX_HOURS_AGO = datetime.timedelta(hours=36)
+
 class DataError(RuntimeError):
   """Bad sample data during import."""
 
@@ -35,18 +40,28 @@ class DataError(RuntimeError):
 def upsert_from_latest_csv():
   """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
-  csv_file = _open_latest_samples_file(bucket_name)
+  csv_file, csv_filename = _open_latest_samples_file(bucket_name)
+  if len(csv_filename) < _INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH:
+    raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
+  time_suffix = csv_filename[len(csv_filename) - (_INPUT_CSV_TIME_FORMAT_LENGTH +
+                                                  _CSV_SUFFIX_LENGTH) - 1:
+                    len(csv_filename) - _CSV_SUFFIX_LENGTH]
+  try:
+    timestamp = datetime.datetime.strptime(time_suffix, _INPUT_CSV_TIME_FORMAT)
+  except ValueError:
+    raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
+
   csv_reader = csv.DictReader(csv_file, delimiter='\t')
   written = _upsert_samples_from_csv(csv_reader)
   ParticipantSummaryDao().update_from_biobank_stored_samples()
-  return written
+  return written, timestamp
 
 
 def _open_latest_samples_file(cloud_bucket_name):
   """Returns an open stream for the most recently created CSV in the given bucket."""
   path = _find_latest_samples_csv(cloud_bucket_name)
   logging.info('Opening latest samples CSV in %r: %r.', cloud_bucket_name, path)
-  return cloudstorage_api.open(path)
+  return cloudstorage_api.open(path), path
 
 
 def _find_latest_samples_csv(cloud_bucket_name):
@@ -145,11 +160,10 @@ def _create_sample_from_row(row, biobank_id_prefix):
   return sample
 
 
-def write_reconciliation_report():
+def write_reconciliation_report(now):
   """Writes order/sample reconciliation reports to GCS."""
-  now = clock.CLOCK.now()
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
-  _query_and_write_reports(SqlExporter(bucket_name), *_get_report_paths(now))
+  _query_and_write_reports(SqlExporter(bucket_name), now, *_get_report_paths(now))
 
 
 def _get_report_paths(report_datetime):
@@ -159,16 +173,34 @@ def _get_report_paths(report_datetime):
           _REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
       for report_name in ('received', 'over_24h', 'missing', 'withdrawals')]
 
-def _query_and_write_reports(exporter, path_received, path_late, path_missing, path_withdrawals):
+def _query_and_write_reports(exporter, now, path_received, path_late, path_missing,
+                             path_withdrawals):
   """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
   """
+  # Gets all sample/order pairs where everything arrived, regardless of timing.
+  received_predicate = lambda result: (result[_RECEIVED_TEST_INDEX] and
+                                        result[_SENT_COUNT_INDEX] == result[_RECEIVED_COUNT_INDEX])
+
+  # Gets orders for which the samples arrived, but they arrived late, within the past 7 days.
+  late_predicate = lambda result: (result[_ELAPSED_HOURS_INDEX] and
+                                    int(result[_ELAPSED_HOURS_INDEX]) > 36 and
+                                    in_past_week(result, now))
+
+  # Gets samples or orders where something has gone missing within the past 7 days, and if an order
+  # was placed, it was placed at least 36 hours ago.
+  missing_predicate = lambda result: ((result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
+                                        (result[_SENT_FINALIZED_INDEX] and
+                                         not result[_RECEIVED_TEST_INDEX])) and
+                                       in_past_week(result, now,
+                                                    ordered_before=now - _THIRTY_SIX_HOURS_AGO))
+
   # Open three files and a database session; run the reconciliation query and pipe the output
   # to the files, using per-file predicates to filter out results.
-  with exporter.open_writer(path_received, _RECEIVED_PREDICATE) as received_writer, \
-       exporter.open_writer(path_late, _LATE_PREDICATE) as late_writer, \
-       exporter.open_writer(path_missing, _MISSING_PREDICATE) as missing_writer, \
+  with exporter.open_writer(path_received, received_predicate) as received_writer, \
+       exporter.open_writer(path_late, late_predicate) as late_writer, \
+       exporter.open_writer(path_missing, missing_predicate) as missing_writer, \
        database_factory.get_database().session() as session:
     writer = CompositeSqlExportWriter([received_writer, late_writer, missing_writer])
     exporter.run_export_with_session(writer, session, replace_isodate(_RECONCILIATION_REPORT_SQL),
@@ -184,7 +216,7 @@ def _query_and_write_reports(exporter, path_received, path_late, path_missing, p
   race_codes_sql, params = get_sql_and_params_for_array(race_code_ids, 'race')
   withdrawal_sql = _WITHDRAWAL_REPORT_SQL.format(race_codes_sql)
   params['race_question_code_id'] = race_question_code.codeId
-  params['seven_days_ago'] = clock.CLOCK.now() - datetime.timedelta(days=7)
+  params['seven_days_ago'] = now - datetime.timedelta(days=7)
   params['biobank_id_prefix'] = get_biobank_id_prefix()
   exporter.run_export(path_withdrawals, replace_isodate(withdrawal_sql), params)
 
@@ -337,12 +369,14 @@ _WITHDRAWAL_REPORT_SQL = ("""
 """)
 
 
-def in_past_week(result):
+def in_past_week(result, now, ordered_before=None):
   sent_collection_time_str = result[_SENT_COLLECTION_TIME_INDEX]
   received_time_str = result[_RECEIVED_TIME_INDEX]
   max_time = None
   if sent_collection_time_str:
     max_time = parse_datetime(sent_collection_time_str)
+    if ordered_before and max_time > ordered_before:
+      return False
   if received_time_str:
     received_time = parse_datetime(received_time_str)
     if received_time and max_time:
@@ -350,20 +384,7 @@ def in_past_week(result):
     else:
       max_time = received_time
   if max_time:
-    return (clock.CLOCK.now() - max_time).days <= 7
+    return (now - max_time).days <= 7
   return False
 
-# Gets all sample/order pairs where everything arrived, regardless of timing.
-_RECEIVED_PREDICATE = lambda result: (result[_RECEIVED_TEST_INDEX] and
-                                      result[_SENT_COUNT_INDEX] == result[_RECEIVED_COUNT_INDEX])
 
-# Gets orders for which the samples arrived, but they arrived late, within the past 7 days.
-_LATE_PREDICATE = lambda result: (result[_ELAPSED_HOURS_INDEX] and
-                                  int(result[_ELAPSED_HOURS_INDEX]) > 36 and
-                                  in_past_week(result))
-
-# Gets samples or orders where something has gone missing within the past 7 days.
-_MISSING_PREDICATE = lambda result: ((result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
-                                     (result[_SENT_FINALIZED_INDEX] and
-                                      not result[_RECEIVED_TEST_INDEX])) and
-                                     in_past_week(result))

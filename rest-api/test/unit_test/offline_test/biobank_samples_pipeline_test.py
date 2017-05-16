@@ -53,7 +53,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     test1, test2, test3 = random.sample(_BASELINE_TESTS, 3)
     samples_file = test_data.open_biobank_samples(*biobank_ids, test1=test1, test2=test2,
                                                   test3=test3)
-    self._write_cloud_csv('cloud.csv', samples_file.read())
+    self._write_cloud_csv('cloud2016-11-29-00-00-00.csv', samples_file.read())
 
     biobank_samples_pipeline.upsert_from_latest_csv()
 
