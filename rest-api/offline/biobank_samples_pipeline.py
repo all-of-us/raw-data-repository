@@ -188,8 +188,8 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
                                     int(result[_ELAPSED_HOURS_INDEX]) > 36 and
                                     in_past_week(result, now))
 
-  # Gets samples or orders where something has gone missing within the past 7 days, and if an order was
-  # placed, it was placed at least 36 hours ago.
+  # Gets samples or orders where something has gone missing within the past 7 days, and if an order 
+  # was placed, it was placed at least 36 hours ago.
   missing_predicate = lambda result: ((result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
                                         (result[_SENT_FINALIZED_INDEX] and
                                          not result[_RECEIVED_TEST_INDEX])) and
