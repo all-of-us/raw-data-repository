@@ -10,7 +10,6 @@ import pytz
 
 from cloudstorage import cloudstorage_api
 
-import clock
 import config
 from code_constants import RACE_QUESTION_CODE, PPI_SYSTEM
 from dao import database_factory
@@ -29,10 +28,10 @@ _REPORT_SUBDIR = 'reconciliation'
 _BATCH_SIZE = 1000
 
 # The timestamp found at the end of input CSV files.
-_INPUT_CSV_TIME_FORMAT='%Y-%m-%d-%H-%M-%S'
-_INPUT_CSV_TIME_FORMAT_LENGTH=18
-_CSV_SUFFIX_LENGTH=4
-_THIRTY_SIX_HOURS_AGO=datetime.timedelta(hours=36)
+_INPUT_CSV_TIME_FORMAT = '%Y-%m-%d-%H-%M-%S'
+_INPUT_CSV_TIME_FORMAT_LENGTH = 18
+_CSV_SUFFIX_LENGTH = 4
+_THIRTY_SIX_HOURS_AGO = datetime.timedelta(hours=36)
 
 class DataError(RuntimeError):
   """Bad sample data during import."""
@@ -44,7 +43,7 @@ def upsert_from_latest_csv():
   csv_file, csv_filename = _open_latest_samples_file(bucket_name)
   if len(csv_filename) < _INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH:
     raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
-  time_suffix = csv_filename[len(csv_filename) - (_INPUT_CSV_TIME_FORMAT_LENGTH + 
+  time_suffix = csv_filename[len(csv_filename) - (_INPUT_CSV_TIME_FORMAT_LENGTH +
                                                   _CSV_SUFFIX_LENGTH) - 1:
                     len(csv_filename) - _CSV_SUFFIX_LENGTH]
   try:
@@ -174,7 +173,8 @@ def _get_report_paths(report_datetime):
           _REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
       for report_name in ('received', 'over_24h', 'missing', 'withdrawals')]
 
-def _query_and_write_reports(exporter, now, path_received, path_late, path_missing, path_withdrawals):
+def _query_and_write_reports(exporter, now, path_received, path_late, path_missing, 
+                             path_withdrawals):
   """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
@@ -193,7 +193,8 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
   missing_predicate = lambda result: ((result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
                                         (result[_SENT_FINALIZED_INDEX] and
                                          not result[_RECEIVED_TEST_INDEX])) and
-                                       in_past_week(result, now, ordered_before=now - _THIRTY_SIX_HOURS_AGO))
+                                       in_past_week(result, now, 
+                                                    ordered_before=now - _THIRTY_SIX_HOURS_AGO))
 
   # Open three files and a database session; run the reconciliation query and pipe the output
   # to the files, using per-file predicates to filter out results.
