@@ -124,6 +124,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     old_within_36_hours =  old_order_time + datetime.timedelta(hours=35)
     late_time = order_time + datetime.timedelta(hours=37)
     old_late_time = old_order_time + datetime.timedelta(hours=37)
+    file_time = order_time + datetime.timedelta(hours=35) + datetime.timedelta(minutes=59)
+    two_days_ago = file_time - datetime.timedelta(days=2)
 
     # On time, recent order and samples; shows up in rx
     p_on_time = self._insert_participant()
@@ -136,19 +138,27 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
                          old_within_36_hours)
 
-    # Late, recent order and samples; shows up in rx and late.
+    # Late, recent order and samples; shows up in rx and late. (But not missing, as it hasn't been
+    # 36 hours since the order.)
     p_late_and_missing = self._insert_participant()
     o_late_and_missing = self._insert_order(
         p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:2], order_time)
     self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], ['LateSample'], late_time)
 
-    # Late order and samples from 10 days ago; shows up in rx.
+    # Late order and samples from 10 days ago; shows up in rx (but not missing, as it was too
+    # long ago.
     p_old_late_and_missing = self._insert_participant()
     self._insert_order(p_old_late_and_missing, 'OldSlowOrder', BIOBANK_TESTS[:2], old_order_time)
     self._insert_samples(p_old_late_and_missing, [BIOBANK_TESTS[0]], ['OldLateSample'],
                          old_late_time)
 
-    # Recent samples with no matching order; shows up in rx and missing.
+
+    # Order with missing sample from 2 days ago; shows up in rx and missing.
+    p_two_days_missing = self._insert_participant()
+    self._insert_order(p_two_days_missing, 'TwoDaysMissingOrder', BIOBANK_TESTS[:2],
+                       two_days_ago)
+
+    # Recent samples with no matching order; shows up in missing.
     p_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
     self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], ['NobodyOrderedThisSample'], order_time)
 
@@ -196,25 +206,27 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._submit_race_questionnaire_response(p_withdrawn_race_change_id, [RACE_WHITE_CODE])
     self._withdraw(p_withdrawn_race_change, within_36_hours)
 
-    # for the same participant/test, 3 orders sent and only 2 samples received.
+    # for the same participant/test, 3 orders sent and only 2 samples received. Shows up in both
+    # missing (we are missing one sample) and late (the two samples that were received were after
+    # 36 hours.)
     p_repeated = self._insert_participant()
     for repetition in xrange(3):
       self._insert_order(
           p_repeated,
           'RepeatedOrder%d' % repetition,
           [BIOBANK_TESTS[0]],
-          order_time + datetime.timedelta(weeks=repetition))
+          two_days_ago + datetime.timedelta(hours=repetition))
       if repetition != 2:
         self._insert_samples(
             p_repeated,
             [BIOBANK_TESTS[0]],
             ['RepeatedSample%d' % repetition],
-            within_36_hours + datetime.timedelta(weeks=repetition))
+            within_36_hours + datetime.timedelta(hours=repetition))
 
     received, late, missing, withdrawals = 'rx.csv', 'late.csv', 'missing.csv', 'withdrawals.csv'
     exporter = InMemorySqlExporter(self)
-    biobank_samples_pipeline._query_and_write_reports(exporter, received, late, missing,
-                                                      withdrawals)
+    biobank_samples_pipeline._query_and_write_reports(exporter, file_time,
+                                                      received, late, missing, withdrawals)
 
     exporter.assertFilesEqual((received, late, missing, withdrawals))
 
@@ -257,31 +269,40 @@ class MySqlReconciliationTest(FlaskTestBase):
         'biobank_id': to_client_biobank_id(p_old_late_and_missing.biobankId),
         'sent_test': BIOBANK_TESTS[0]})
 
-    # sent-and-received: 1 late; don't include orders/samples from more than 7 days ago
-    exporter.assertRowCount(late, 1)
+    # sent-and-received: 2 late; don't include orders/samples from more than 7 days ago
+    exporter.assertRowCount(late, 2)
     exporter.assertColumnNamesEqual(late, _CSV_COLUMN_NAMES)
     exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_order_id': o_late_and_missing.biobankOrderId,
         'elapsed_hours': '37'})
+    exporter.assertHasRow(late, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'elapsed_hours': '46'})
 
     # orders/samples where something went wrong; don't include orders/samples from more than 7
-    # days ago
-    exporter.assertRowCount(missing, 3)
+    # days ago, or where 36 hours hasn't elapsed yet.
+    exporter.assertRowCount(missing, 4)
     exporter.assertColumnNamesEqual(missing, _CSV_COLUMN_NAMES)
-    # order sent, no sample received
-    exporter.assertHasRow(missing, {
-        'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
-        'sent_order_id': o_late_and_missing.biobankOrderId,
-        'elapsed_hours': ''})
     # sample received, nothing ordered
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id': ''})
+    # order received, no sample
+    exporter.assertHasRow(missing, {
+        'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId),
+        'sent_order_id': 'TwoDaysMissingOrder',
+        'sent_test': BIOBANK_TESTS[0]})
+    exporter.assertHasRow(missing, {
+        'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId),
+        'sent_order_id': 'TwoDaysMissingOrder',
+        'sent_test': BIOBANK_TESTS[1]})
+
     # 3 orders sent, only 2 received
     multi_sample_row = exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_repeated.biobankId),
         'sent_count': '3',
         'received_count': '2'})
+
     # Also verify the comma-joined fields of the row with multiple orders/samples.
     self.assertItemsEqual(
         multi_sample_row['sent_order_id'].split(','),

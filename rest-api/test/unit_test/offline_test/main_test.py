@@ -1,3 +1,4 @@
+import clock
 import json
 import mock
 
@@ -12,7 +13,7 @@ class MainTest(TestBase):
   @mock.patch('api_util.check_cron')
   # pylint: disable=unused-argument
   def test_no_server_error_for_samples_data_error(self, mock_check_cron, mock_report, mock_upsert):
-    mock_upsert.return_value = 25  # should be unused, clarifies errors to have a realistic value
+    mock_upsert.return_value = 25, clock.CLOCK.now()  # should be unused, clarifies errors to have a realistic value
     mock_upsert.side_effect = biobank_samples_pipeline.DataError('should be thrown/logged for test')
     response = json.loads(main.import_biobank_samples())
     self.assertIn('written', response)
