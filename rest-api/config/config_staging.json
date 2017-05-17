@@ -6,11 +6,7 @@
   ],
   "user_info": {
     "healthpro-staging@appspot.gserviceaccount.com": {
-      "roles": ["healthpro"],
-      "whitelisted_ip_ranges": {
-        "ip6": [],
-        "ip4": ["0.1.0.40"]
-      }
+      "roles": ["healthpro"]
     },
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
       "roles": ["healthpro"],
