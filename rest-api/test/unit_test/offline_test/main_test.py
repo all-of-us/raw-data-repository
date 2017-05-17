@@ -1,20 +1,29 @@
 import clock
-import json
 import mock
 
+import config
 from offline import main
 from offline import biobank_samples_pipeline
 from test.unit_test.unit_test_util import TestBase
 
 
 class MainTest(TestBase):
+  def setUp(self):
+    super(MainTest, self).setUp()
+    config.override_setting(config.INTERNAL_STATUS_MAIL_SENDER, ['sender@googlegroups.com'])
+    config.override_setting(config.INTERNAL_STATUS_MAIL_RECIPIENTS, ['to@googlegroups.com'])
+
   @mock.patch('offline.biobank_samples_pipeline.upsert_from_latest_csv')
-  @mock.patch('offline.biobank_samples_pipeline.write_reconciliation_report')
   @mock.patch('api_util.check_cron')
+  @mock.patch('google.appengine.api.app_identity.get_application_id')
+  @mock.patch('google.appengine.api.mail.send_mail')
   # pylint: disable=unused-argument
-  def test_no_server_error_for_samples_data_error(self, mock_check_cron, mock_report, mock_upsert):
-    mock_upsert.return_value = 25, clock.CLOCK.now()  # should be unused, clarifies errors to have a realistic value
-    mock_upsert.side_effect = biobank_samples_pipeline.DataError('should be thrown/logged for test')
-    response = json.loads(main.import_biobank_samples())
-    self.assertIn('written', response)
-    self.assertEquals(response['written'], None)
+  def test_samples_data_error_sends_alert(
+      self, mock_send_mail, mock_get_app_id, mock_check_cron, mock_upsert):
+    mock_get_app_id.return_value = 'all-of-us-rdr-unittests'
+    # The return value should be unused, but it clarifies errors to have a realistic value.
+    mock_upsert.return_value = 25, clock.CLOCK.now()
+    mock_upsert.side_effect = biobank_samples_pipeline.DataError('should be thrown for test')
+    with self.assertRaises(biobank_samples_pipeline.DataError):
+      main.import_biobank_samples()
+    self.assertEquals(mock_send_mail.call_count, 1)
