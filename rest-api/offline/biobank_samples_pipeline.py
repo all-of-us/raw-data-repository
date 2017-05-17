@@ -28,7 +28,7 @@ _REPORT_SUBDIR = 'reconciliation'
 _BATCH_SIZE = 1000
 
 # The timestamp found at the end of input CSV files.
-_INPUT_CSV_TIME_FORMAT = '%Y-%m-%d-%H-%M-%S'
+INPUT_CSV_TIME_FORMAT = '%Y-%m-%d-%H-%M-%S'
 _INPUT_CSV_TIME_FORMAT_LENGTH = 18
 _CSV_SUFFIX_LENGTH = 4
 _THIRTY_SIX_HOURS_AGO = datetime.timedelta(hours=36)
@@ -47,7 +47,7 @@ def upsert_from_latest_csv():
                                                   _CSV_SUFFIX_LENGTH) - 1:
                     len(csv_filename) - _CSV_SUFFIX_LENGTH]
   try:
-    timestamp = datetime.datetime.strptime(time_suffix, _INPUT_CSV_TIME_FORMAT)
+    timestamp = datetime.datetime.strptime(time_suffix, INPUT_CSV_TIME_FORMAT)
   except ValueError:
     raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
 
