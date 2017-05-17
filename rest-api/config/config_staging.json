@@ -6,8 +6,7 @@
   ],
   "user_info": {
     "healthpro-staging@appspot.gserviceaccount.com": {
-      "roles": ["healthpro"],
-      "whitelisted_appids": ["healthpro-staging"]
+      "roles": ["healthpro"]
     },
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
       "roles": ["healthpro"],

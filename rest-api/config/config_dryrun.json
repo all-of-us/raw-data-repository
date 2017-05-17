@@ -6,8 +6,7 @@
   ],
   "user_info": {
     "pmi-hpo-staging@appspot.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"],
-      "whitelisted_appids": ["pmi-hpo-staging"]
+      "roles": ["ptc", "healthpro"]
     },
     "configurator@all-of-us-rdr-dryrun.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]

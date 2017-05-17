@@ -6,8 +6,7 @@
   ],
   "user_info": {
     "pmi-hpo-test@appspot.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"],
-      "whitelisted_appids": ["pmi-hpo-test"]
+      "roles": ["ptc", "healthpro"]
     },
     "vibrent-drc-stable@vibrent-drc-stable-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"]
