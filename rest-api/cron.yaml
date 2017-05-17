@@ -5,6 +5,6 @@ cron:
   target: offline
 - description: Daily Biobank sample import and order reconciliation
   url: /offline/BiobankSamplesImport
-  schedule: every day 08:00
+  schedule: every day 03:00
   timezone: America/New_York
   target: offline

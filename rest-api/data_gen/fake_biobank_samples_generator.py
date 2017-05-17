@@ -13,6 +13,7 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import to_client_biobank_id
+from offline.biobank_samples_pipeline import INPUT_CSV_TIME_FORMAT
 from werkzeug.exceptions import NotFound
 
 # 80% of participants with orders have corresponding stored samples.
@@ -45,7 +46,7 @@ def generate_samples():
   """Creates fake sample CSV data in GCS."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
   now = clock.CLOCK.now()
-  file_name = '/%s/fake_%s.csv' % (bucket_name, now.isoformat())
+  file_name = '/%s/fake_%s.csv' % (bucket_name, now.strftime(INPUT_CSV_TIME_FORMAT))
   num_rows = 0
   sample_id_start = random.randint(1000000, 10000000)
   with cloudstorage_api.open(file_name, mode='w') as dest:
