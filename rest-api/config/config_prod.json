@@ -19,5 +19,8 @@
   ],
   "metrics_shards": [
     "10"
+  ],
+  "biobank_status_mail_recipients" : [
+    "all-of-us-biobank-alerts@googlegroups.com"
   ]
 }

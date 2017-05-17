@@ -20,11 +20,24 @@ PREFIX = '/offline/'
 def _alert_on_exceptions(func):
   """Sends e-mail alerts for any failure of the decorated function.
 
+  This handles Biobank DataErrors specially.
+
   This must be the innermost (bottom) decorator in order to discover the wrapped function's name.
   """
   def alert_on_exceptions_wrapper(*args, **kwargs):
     try:
       return func(*args, **kwargs)
+    except biobank_samples_pipeline.DataError as e:
+      biobank_recipients = config.getSettingList(config.BIOBANK_STATUS_MAIL_RECIPIENTS, default=[])
+      if not e.external or (e.external and biobank_recipients):
+        send_failure_alert(
+            func.__name__,
+            'Data error in Biobank samples pipeline: %s' % e,
+            log_exc_info=True,
+            extra_recipients=biobank_recipients)
+      else:
+        logging.info('Not alerting on external-only DataError (%s).', e)
+      return json.dumps({'data_error': str(e)})
     except:
       send_failure_alert(func.__name__, 'Exception in cron: %s' % traceback.format_exc())
       raise
