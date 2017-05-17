@@ -5,17 +5,34 @@ import app_util
 import config
 import json
 import logging
+import traceback
 
 from dao.metrics_dao import MetricsVersionDao
 from flask import Flask
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
+from offline.base_pipeline import send_failure_alert
 from offline.metrics_export import MetricsExport
 
 PREFIX = '/offline/'
 
 
+def _alert_on_exceptions(func):
+  """Sends e-mail alerts for any failure of the decorated function.
+
+  This must be the innermost (bottom) decorator in order to discover the wrapped function's name.
+  """
+  def alert_on_exceptions_wrapper(*args, **kwargs):
+    try:
+      return func(*args, **kwargs)
+    except:
+      send_failure_alert(func.__name__, 'Exception in cron: %s' % traceback.format_exc())
+      raise
+  return alert_on_exceptions_wrapper
+
+
 @api_util.auth_required_cron
+@_alert_on_exceptions
 def recalculate_metrics():
   in_progress = MetricsVersionDao().get_version_in_progress()
   if in_progress:
@@ -30,17 +47,14 @@ def recalculate_metrics():
 
 
 @api_util.auth_required_cron
+@_alert_on_exceptions
 def import_biobank_samples():
-  # Note that crons have a 10 minute deadline instead of the normal 60s.
+  # Note that crons always have a 10 minute deadline instead of the normal 60s; additionally our
+  # offline service uses basic scaling with has no deadline.
   logging.info('Starting samples import.')
-  timestamp = None
-  try:
-    written, timestamp = biobank_samples_pipeline.upsert_from_latest_csv()
-    logging.info(
-        'Import complete (%d written), generating report.', written)
-  except biobank_samples_pipeline.DataError:
-    written = None
-    logging.error('Import failed: bad data in CSV.', exc_info=True)
+  written, timestamp = biobank_samples_pipeline.upsert_from_latest_csv()
+  logging.info(
+      'Import complete (%d written), generating report.', written)
 
   logging.info('Generating reconciliation report.')
   biobank_samples_pipeline.write_reconciliation_report(timestamp)
