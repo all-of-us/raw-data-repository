@@ -83,7 +83,7 @@ def _timestamp_from_filename(csv_filename):
   except ValueError:
     raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
   # Assume file times are in Central time (CST or CDT); convert to UTC.
-  return _US_CENTRAL.localize(timestamp).astimezone(pytz.utc)
+  return _US_CENTRAL.localize(timestamp).astimezone(pytz.utc).replace(tzinfo=None)
 
 
 def _open_latest_samples_file(cloud_bucket_name):
