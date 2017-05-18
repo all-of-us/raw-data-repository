@@ -62,7 +62,7 @@ def upsert_from_latest_csv():
   now = clock.CLOCK.now()
   if now - timestamp > _MAX_INPUT_AGE:
     raise DataError(
-        'Input %r (timestamp %s) is > 24h old (relative to %s), not importing.'
+        'Input %r (timestamp %s UTC) is > 24h old (relative to %s UTC), not importing.'
         % (csv_filename, timestamp, now),
         external=True)
 
