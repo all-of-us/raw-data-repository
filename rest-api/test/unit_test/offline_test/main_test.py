@@ -3,7 +3,6 @@ import mock
 
 import config
 from offline import main
-from offline import biobank_samples_pipeline
 from test.unit_test.unit_test_util import TestBase
 
 
