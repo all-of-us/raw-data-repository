@@ -1,3 +1,4 @@
+#!/bin/bash -e
 # Checks out RDR code from git in the current directory; by default, uses the same version of the
 # app that is currently running in the staging environment.
 # After a Y/N confirmation, upgrades the database, installs the latest config, deploys the code, or
@@ -97,7 +98,6 @@ then
   exit 1
 fi
 
-set -e
 echo "${BOLD}Checking out code...${NONE}"
 git checkout $VERSION
 
