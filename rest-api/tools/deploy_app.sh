@@ -130,7 +130,7 @@ then
   cat app_base.yaml $APP_YAML > app.yaml
   $UPDATE_TRACKER --version $VERSION --comment "Deploying app to ${PROJECT}."
   gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml offline.yaml \
-      --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
+      --quiet --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
   $UPDATE_TRACKER --version $VERSION --comment "App deployed to ${PROJECT}."
   rm app.yaml
 fi
