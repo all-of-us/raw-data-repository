@@ -1,5 +1,6 @@
 import clock
 import logging
+import traceback
 
 from dao.base_dao import BaseDao
 from dao.cache_all_dao import CacheAllDao
@@ -178,7 +179,9 @@ class CodeDao(CacheAllDao):
           display, code_type, parent_id = code_map[(system, value)]
           code = Code(system=system, value=value, display=display,
                       codeType=code_type, mapped=False, parentId=parent_id)
-          logging.warn("Adding unmapped code: system = %s, value = %s" % (code.system, code.value))
+          # Log the traceback so that stackdriver error reporting reports on it.
+          logging.error("Adding unmapped code: system = %s, value = %s: %s",
+                        code.system, code.value, traceback.format_exc())
           self.insert_with_session(session, code)
           session.flush()
           result_map[(system, value)] = code.codeId
