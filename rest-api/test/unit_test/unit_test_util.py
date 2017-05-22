@@ -57,6 +57,7 @@ class TestBase(unittest.TestCase):
     self.fake.seed(1)
 
     # Always add codes if missing when handling questionnaire responses.
+    dao.questionnaire_dao._add_codes_if_missing = lambda: True
     dao.questionnaire_response_dao._add_codes_if_missing = lambda email:True
 
   @staticmethod

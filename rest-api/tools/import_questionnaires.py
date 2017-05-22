@@ -1,7 +1,6 @@
 """Imports questionnaires into the database, using JSON found in specified files
 in a specified directory.
 """
-
 import json
 import logging
 import os
@@ -12,6 +11,9 @@ from tools.main_util import get_parser, configure_logging
 
 
 def main(args):
+  # We should never add codes when importing questionnaires; the codebook should already have
+  # been imported with all the codes questionnaires reference.
+  dao.questionnaire_dao._add_codes_if_missing = lambda: False
   dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
   files = args.files.split(',')
   questionnaire_dao = QuestionnaireDao()
