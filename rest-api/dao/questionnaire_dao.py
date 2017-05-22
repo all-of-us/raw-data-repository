@@ -124,7 +124,7 @@ class QuestionnaireDao(UpdatableDao):
     code_map, concepts, questions = cls._extract_codes(fhir_q.group)
 
     from dao.code_dao import CodeDao
-    # Get or insert codes, and retrieve their database IDs.    
+    # Get or insert codes, and retrieve their database IDs.
     add_codes_if_missing = config.get_add_codes_if_missing()
     code_id_map = CodeDao().get_or_add_codes(code_map, add_codes_if_missing=add_codes_if_missing)
 
