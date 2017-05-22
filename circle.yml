@@ -7,7 +7,7 @@ dependencies:
     # CircleCI's version of pip can be out of date; make sure it's up-to-date first.
     - pip install --upgrade pip
     # Then install requirements needed to run our tools.
-    - pip install --upgrade alembic httplib2 jira oauth2client parallel pylint
+    - pip install --upgrade python-dateutil alembic httplib2 jira oauth2client parallel pylint
 
 machine:
   services:
