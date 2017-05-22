@@ -387,7 +387,7 @@ def _add_codes_if_missing(client_id):
 
   Tests override this to return true.
   """
-  return config.get_add_codes_if_missing() and not is_config_admin(client_id)
+  return not is_config_admin(client_id)
 
 
 def _validate_consent_pdfs(resource):
