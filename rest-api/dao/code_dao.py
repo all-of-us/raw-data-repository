@@ -180,7 +180,7 @@ class CodeDao(CacheAllDao):
           code = Code(system=system, value=value, display=display,
                       codeType=code_type, mapped=False, parentId=parent_id)
           # Log the traceback so that stackdriver error reporting reports on it.
-          logging.error("Adding unmapped code: system = %s, value = %s: %s", 
+          logging.error("Adding unmapped code: system = %s, value = %s: %s",
                         code.system, code.value, traceback.format_exc())
           self.insert_with_session(session, code)
           session.flush()
