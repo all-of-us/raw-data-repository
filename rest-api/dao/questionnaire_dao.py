@@ -246,4 +246,4 @@ class QuestionnaireQuestionDao(BaseDao):
             .filter(QuestionnaireQuestion.questionnaireQuestionId.in_(ids)).all())
 
 def _add_codes_if_missing():
-  return getSetting(ADD_QUESTIONNAIRE_CODES_IF_MISSING, False)
+  return config.getSetting(ADD_QUESTIONNAIRE_CODES_IF_MISSING, False)
