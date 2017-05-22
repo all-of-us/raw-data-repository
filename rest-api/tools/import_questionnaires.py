@@ -1,7 +1,6 @@
 """Imports questionnaires into the database, using JSON found in specified files
 in a specified directory.
 """
-import config
 import json
 import logging
 import os
