@@ -12,7 +12,7 @@ from tools.main_util import get_parser, configure_logging
 
 
 def main(args):
-  # We should never add codes when importing questionnaires; the codebook should already have 
+  # We should never add codes when importing questionnaires; the codebook should already have
   # been imported with all the codes questionnaires reference.
   config.get_add_codes_if_missing = lambda: False
   dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
