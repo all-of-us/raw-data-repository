@@ -1,4 +1,5 @@
 import clock
+import config
 import json
 
 import fhirclient.models.questionnaire
@@ -123,8 +124,9 @@ class QuestionnaireDao(UpdatableDao):
     code_map, concepts, questions = cls._extract_codes(fhir_q.group)
 
     from dao.code_dao import CodeDao
-    # Get or insert codes, and retrieve their database IDs.
-    code_id_map = CodeDao().get_or_add_codes(code_map)
+    # Get or insert codes, and retrieve their database IDs.    
+    add_codes_if_missing = config.get_add_codes_if_missing()
+    code_id_map = CodeDao().get_or_add_codes(code_map, add_codes_if_missing=add_codes_if_missing)
 
     # Now add the child objects, using the IDs in code_id_map
     cls._add_concepts(q, code_id_map, concepts)

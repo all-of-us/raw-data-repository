@@ -40,7 +40,9 @@ NATIVE_AMERICAN_RACE_CODES = 'native_american_race_codes'
 ALLOW_NONPROD_REQUESTS = 'allow_nonprod_requests'
 INTERNAL_STATUS_MAIL_SENDER = 'internal_status_email_sender'
 INTERNAL_STATUS_MAIL_RECIPIENTS = 'internal_status_email_recipients'
-
+# True if we should add codes referenced in questionnaires or questionnaire responses that
+# aren't in the code book.
+ADD_QUESTIONNAIRE_CODES_IF_MISSING = 'add_questionnaire_codes_if_missing'
 
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 
@@ -208,3 +210,6 @@ def get_config_that_was_active_at(key, date):
 
 def get_db_config():
   return CONFIG_CACHE[DB_CONFIG_KEY]
+
+def get_add_codes_if_missing():  
+  return getSetting(ADD_QUESTIONNAIRE_CODES_IF_MISSING, False)
