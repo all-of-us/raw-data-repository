@@ -210,6 +210,3 @@ def get_config_that_was_active_at(key, date):
 
 def get_db_config():
   return CONFIG_CACHE[DB_CONFIG_KEY]
-
-def get_add_codes_if_missing():
-  return getSetting(ADD_QUESTIONNAIRE_CODES_IF_MISSING, False)

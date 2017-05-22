@@ -8,6 +8,7 @@ from werkzeug.exceptions import BadRequest
 
 from dao.base_dao import BaseDao, UpdatableDao
 from code_constants import PPI_EXTRA_SYSTEM
+from config import ADD_QUESTIONNAIRE_CODES_IF_MISSING
 from model.code import CodeType
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireConcept
 from model.questionnaire import QuestionnaireQuestion
@@ -125,7 +126,7 @@ class QuestionnaireDao(UpdatableDao):
 
     from dao.code_dao import CodeDao
     # Get or insert codes, and retrieve their database IDs.
-    add_codes_if_missing = config.get_add_codes_if_missing()
+    add_codes_if_missing = _add_codes_if_missing()
     code_id_map = CodeDao().get_or_add_codes(code_map, add_codes_if_missing=add_codes_if_missing)
 
     # Now add the child objects, using the IDs in code_id_map
@@ -243,3 +244,6 @@ class QuestionnaireQuestionDao(BaseDao):
       return []
     return (session.query(QuestionnaireQuestion)
             .filter(QuestionnaireQuestion.questionnaireQuestionId.in_(ids)).all())
+
+def _add_codes_if_missing():
+  return getSetting(ADD_QUESTIONNAIRE_CODES_IF_MISSING, False)
