@@ -38,8 +38,12 @@ NATIVE_AMERICAN_RACE_CODES = 'native_american_race_codes'
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.
 ALLOW_NONPROD_REQUESTS = 'allow_nonprod_requests'
+
+# Settings for e-mail alerts for failed jobs.
 INTERNAL_STATUS_MAIL_SENDER = 'internal_status_email_sender'
 INTERNAL_STATUS_MAIL_RECIPIENTS = 'internal_status_email_recipients'
+BIOBANK_STATUS_MAIL_RECIPIENTS = 'biobank_status_mail_recipients'
+
 # True if we should add codes referenced in questionnaires that
 # aren't in the code book; false if we should reject the questionnaires.
 ADD_QUESTIONNAIRE_CODES_IF_MISSING = 'add_questionnaire_codes_if_missing'

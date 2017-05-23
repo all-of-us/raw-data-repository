@@ -10,6 +10,7 @@ import pytz
 
 from cloudstorage import cloudstorage_api
 
+import clock
 import config
 from code_constants import RACE_QUESTION_CODE, PPI_SYSTEM
 from dao import database_factory
@@ -27,20 +28,51 @@ _FILENAME_DATE_FORMAT = '%Y-%m-%d'
 _REPORT_SUBDIR = 'reconciliation'
 _BATCH_SIZE = 1000
 
+# Biobank provides timestamps without time zone info, which should be in central time (see DA-235).
+_INPUT_TIMESTAMP_FORMAT = '%Y/%m/%d %H:%M:%S'  # like 2016/11/30 14:32:18
+_US_CENTRAL = pytz.timezone('US/Central')
+
 # The timestamp found at the end of input CSV files.
 INPUT_CSV_TIME_FORMAT = '%Y-%m-%d-%H-%M-%S'
 _INPUT_CSV_TIME_FORMAT_LENGTH = 18
 _CSV_SUFFIX_LENGTH = 4
 _THIRTY_SIX_HOURS_AGO = datetime.timedelta(hours=36)
+_MAX_INPUT_AGE = datetime.timedelta(hours=24)
+
 
 class DataError(RuntimeError):
-  """Bad sample data during import."""
+  """Bad sample data during import.
+
+  Args:
+    msg: Passed through to superclass.
+    external: If True, this error should be reported to external partners (Biobank). Externally
+        reported DataErrors are only reported if biobank recipients are in the config.
+  """
+  def __init__(self, msg, external=False):
+    super(DataError, self).__init__(msg)
+    self.external = external
 
 
 def upsert_from_latest_csv():
   """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
   csv_file, csv_filename = _open_latest_samples_file(bucket_name)
+  timestamp = _timestamp_from_filename(csv_filename)
+
+  now = clock.CLOCK.now()
+  if now - timestamp > _MAX_INPUT_AGE:
+    raise DataError(
+        'Input %r (timestamp %s UTC) is > 24h old (relative to %s UTC), not importing.'
+        % (csv_filename, timestamp, now),
+        external=True)
+
+  csv_reader = csv.DictReader(csv_file, delimiter='\t')
+  written = _upsert_samples_from_csv(csv_reader)
+  ParticipantSummaryDao().update_from_biobank_stored_samples()
+  return written, timestamp
+
+
+def _timestamp_from_filename(csv_filename):
   if len(csv_filename) < _INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH:
     raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
   time_suffix = csv_filename[len(csv_filename) - (_INPUT_CSV_TIME_FORMAT_LENGTH +
@@ -50,11 +82,8 @@ def upsert_from_latest_csv():
     timestamp = datetime.datetime.strptime(time_suffix, INPUT_CSV_TIME_FORMAT)
   except ValueError:
     raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
-
-  csv_reader = csv.DictReader(csv_file, delimiter='\t')
-  written = _upsert_samples_from_csv(csv_reader)
-  ParticipantSummaryDao().update_from_biobank_stored_samples()
-  return written, timestamp
+  # Assume file times are in Central time (CST or CDT); convert to UTC.
+  return _US_CENTRAL.localize(timestamp).astimezone(pytz.utc).replace(tzinfo=None)
 
 
 def _open_latest_samples_file(cloud_bucket_name):
@@ -118,11 +147,6 @@ def _upsert_samples_from_csv(csv_reader):
     return written
   except ValueError, e:
     raise DataError(e)
-
-
-# Biobank provides timestamps without time zone info, which should be in central time (see DA-235).
-_INPUT_TIMESTAMP_FORMAT = '%Y/%m/%d %H:%M:%S'  # like 2016/11/30 14:32:18
-_US_CENTRAL = pytz.timezone('US/Central')
 
 
 def _create_sample_from_row(row, biobank_id_prefix):
