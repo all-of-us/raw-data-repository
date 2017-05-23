@@ -28,6 +28,9 @@ def _alert_on_exceptions(func):
     try:
       return func(*args, **kwargs)
     except biobank_samples_pipeline.DataError as e:
+      # This is for CSVs older than 24h; we only want to send alerts in prod, where we expect
+      # regular CSV uploads. In other environments, it's OK to just abort the CSV import if there's
+      # no new data.
       biobank_recipients = config.getSettingList(config.BIOBANK_STATUS_MAIL_RECIPIENTS, default=[])
       if not e.external or (e.external and biobank_recipients):
         send_failure_alert(
@@ -36,6 +39,7 @@ def _alert_on_exceptions(func):
             log_exc_info=True,
             extra_recipients=biobank_recipients)
       else:
+        # Don't alert for stale CSVs except in prod (where external recipients are configured).
         logging.info('Not alerting on external-only DataError (%s).', e)
       return json.dumps({'data_error': str(e)})
     except:
