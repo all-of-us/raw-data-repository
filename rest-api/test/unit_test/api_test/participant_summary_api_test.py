@@ -471,6 +471,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.assertEquals(ps_1, new_ps_1)
     self.assertEquals(ps_3, new_ps_3)
+    self.assertEquals('Mary', new_ps_2['firstName'])
+    self.assertEquals('Q', new_ps_2['middleName'])
+    self.assertEquals('Jones', new_ps_2['lastName'])
     self.assertIsNone(new_ps_2.get('numCompletedBaselinePPIModules'))
     self.assertIsNone(new_ps_2.get('numBaselineSamplesArrived'))
     self.assertEquals('UNSET', new_ps_2['sampleStatus1ED10'])
@@ -478,6 +481,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('UNSET', new_ps_2['samplesToIsolateDNA'])
     self.assertEquals('UNSET', new_ps_2['enrollmentStatus'])
     self.assertEquals('UNSET', new_ps_2['physicalMeasurementsStatus'])
+    self.assertEquals('SUBMITTED', new_ps_2['consentForStudyEnrollment'])
+    self.assertIsNotNone(new_ps_2['consentForStudyEnrollmentTime'])
+    self.assertEquals('SUBMITTED', new_ps_2['consentForElectronicHealthRecords'])
+    self.assertIsNotNone(new_ps_2['consentForElectronicHealthRecordsTime'])
     self.assertIsNone(new_ps_2.get('physicalMeasurementsTime'))
     self.assertEquals('UNSET', new_ps_2['genderIdentity'])
     self.assertEquals('NO_USE', new_ps_2['withdrawalStatus'])
@@ -515,9 +522,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=hpoId',
                            [[ps_1, new_ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&firstName=Mary',
-                           [[]])
+                           [[new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&middleName=Q',
-                           [[ps_1]])
+                           [[ps_1, new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&lastName=Smith',
                            [[ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=PITT',
