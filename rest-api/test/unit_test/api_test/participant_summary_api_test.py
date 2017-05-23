@@ -473,7 +473,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals(ps_3, new_ps_3)
     self.assertEquals('Mary', new_ps_2['firstName'])
     self.assertEquals('Q', new_ps_2['middleName'])
-    self.assertEquals('Jones', new_ps_2['lastName'])    
+    self.assertEquals('Jones', new_ps_2['lastName'])
     self.assertIsNone(new_ps_2.get('numCompletedBaselinePPIModules'))
     self.assertIsNone(new_ps_2.get('numBaselineSamplesArrived'))
     self.assertEquals('UNSET', new_ps_2['sampleStatus1ED10'])
