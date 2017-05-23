@@ -2,9 +2,8 @@
 participant summaries and metrics.'''
 
 UNSET = 'UNSET'
-SKIPPED = 'SKIPPED'
 UNMAPPED = 'UNMAPPED'
-BASE_VALUES = [UNSET, SKIPPED, UNMAPPED]
+BASE_VALUES = [UNSET, UNMAPPED]
 
 PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 # System for codes that are used in questionnaires but we don't need for analysis purposes;
