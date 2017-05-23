@@ -6,6 +6,7 @@ import time
 
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 
+import clock
 import config
 from code_constants import BIOBANK_TESTS
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
@@ -53,7 +54,9 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     test1, test2, test3 = random.sample(_BASELINE_TESTS, 3)
     samples_file = test_data.open_biobank_samples(*biobank_ids, test1=test1, test2=test2,
                                                   test3=test3)
-    self._write_cloud_csv('cloud2016-11-29-00-00-00.csv', samples_file.read())
+    input_filename = 'cloud%s.csv' % self._naive_utc_to_naive_central(clock.CLOCK.now()).strftime(
+        biobank_samples_pipeline.INPUT_CSV_TIME_FORMAT)
+    self._write_cloud_csv(input_filename, samples_file.read())
 
     biobank_samples_pipeline.upsert_from_latest_csv()
 
@@ -61,6 +64,15 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self._check_summary(participant_ids[0], test1, '2016-11-29T12:19:32')
     self._check_summary(participant_ids[1], test2, '2016-11-29T12:38:58')
     self._check_summary(participant_ids[2], test3, '2016-11-29T12:41:26')
+
+  def test_old_csv_not_imported(self):
+    now = clock.CLOCK.now()
+    too_old_time = now - datetime.timedelta(hours=25)
+    input_filename = 'cloud%s.csv' % self._naive_utc_to_naive_central(too_old_time).strftime(
+        biobank_samples_pipeline.INPUT_CSV_TIME_FORMAT)
+    self._write_cloud_csv(input_filename, '')
+    with self.assertRaises(biobank_samples_pipeline.DataError):
+      biobank_samples_pipeline.upsert_from_latest_csv()
 
   def _naive_utc_to_naive_central(self, naive_utc_date):
     utc_date = pytz.utc.localize(naive_utc_date)
