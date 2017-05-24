@@ -40,9 +40,9 @@ class PPIChecker(object):
         row_number += 1
         if row_number == 1:
           if len(row) == 0 or row[0] != EMAIL_QUESTION_CODE:
-            raise ValueError('First row should have question code %s.' 
+            raise ValueError('First row should have question code %s.'
                              % EMAIL_QUESTION_CODE)
-          # Allocate an empty dict to store each test participant's data, 
+          # Allocate an empty dict to store each test participant's data,
           # which is stored in one column of the CSV.
           for i in range(1, len(row)):
             person_dicts.append({})
@@ -55,7 +55,7 @@ class PPIChecker(object):
         question_code = code_dao.get_code(PPI_SYSTEM, question_code_value)
         if not question_code:
           if row_number == 1:
-            raise ValueError('No question code found for ConsentPII_EmailAddress; import codebook.')            
+            raise ValueError('No question code found for ConsentPII_EmailAddress; import codebook.')
           self.log_error('Could not find question code %s on row %d; skipping.',
                          question_code_value, row_number)
           continue
@@ -72,7 +72,7 @@ class PPIChecker(object):
             # TODO: validate values based on answer type here
             person_dicts[i - 1][question_code.codeId] = value
           elif row_number == 1:
-            raise ValueError('No email address found for column %d! Aborting.' % (i + 1))            
+            raise ValueError('No email address found for column %d! Aborting.' % (i + 1))
       return person_dicts, question_code_ids
 
   def check_ppi(self, person_dicts, question_code_ids):
@@ -115,7 +115,7 @@ class PPIChecker(object):
     return None
 
   def check_person_dict(self, email, participant_id, person_dict, question_code_ids):
-    """Verifies that answers in the database for this participant match answers from the 
+    """Verifies that answers in the database for this participant match answers from the
     spreadsheet. Logs an error / increments the error count if not.
     """
     code_dao = CodeDao()
@@ -149,7 +149,7 @@ class PPIChecker(object):
     if self.num_errors > 0:
       sys.exit(-1)
 
-def main(args):  
+def main(args):
   ppi_checker = PPIChecker()
   ppi_checker.run(args.file)
 
