@@ -8,7 +8,6 @@ import sys
 
 import dao.database_factory
 from code_constants import PPI_SYSTEM, EMAIL_QUESTION_CODE
-from collections import defaultdict
 from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
