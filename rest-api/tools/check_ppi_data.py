@@ -4,7 +4,6 @@ into questionnaires make their way into the RDR with the appropriate representat
 """
 import csv
 import logging
-import os
 import sys
 
 import dao.database_factory
@@ -41,9 +40,10 @@ class PPIChecker(object):
         row_number += 1
         if row_number == 1:
           if len(row) == 0 or row[0] != EMAIL_QUESTION_CODE:
-            self.log_error('First row should have question code %s; exiting.', EMAIL_QUESTION_CODE)
-            sys.exit(-1)
-          # Allocate person_dicts.
+            raise ValueError('First row should have question code %s.' 
+                             % EMAIL_QUESTION_CODE)
+          # Allocate an empty dict to store each test participant's data, 
+          # which is stored in one column of the CSV.
           for i in range(1, len(row)):
             person_dicts.append({})
         elif len(row) == 0:
@@ -55,8 +55,7 @@ class PPIChecker(object):
         question_code = code_dao.get_code(PPI_SYSTEM, question_code_value)
         if not question_code:
           if row_number == 1:
-            self.log_error('No question code found for ConsentPII_EmailAddress; import codebook.')
-            sys.exit(-1)
+            raise ValueError('No question code found for ConsentPII_EmailAddress; import codebook.')            
           self.log_error('Could not find question code %s on row %d; skipping.',
                          question_code_value, row_number)
           continue
@@ -73,8 +72,7 @@ class PPIChecker(object):
             # TODO: validate values based on answer type here
             person_dicts[i - 1][question_code.codeId] = value
           elif row_number == 1:
-            self.log_error('No email address found for column %d! Aborting.', (i + 1))
-            sys.exit(-1)
+            raise ValueError('No email address found for column %d! Aborting.' % (i + 1))            
       return person_dicts, question_code_ids
 
   def check_ppi(self, person_dicts, question_code_ids):
@@ -117,6 +115,9 @@ class PPIChecker(object):
     return None
 
   def check_person_dict(self, email, participant_id, person_dict, question_code_ids):
+    """Verifies that answers in the database for this participant match answers from the 
+    spreadsheet. Logs an error / increments the error count if not.
+    """
     code_dao = CodeDao()
     qra_dao = QuestionnaireResponseAnswerDao()
     with qra_dao.session() as session:
@@ -145,9 +146,10 @@ class PPIChecker(object):
     person_dicts, question_code_ids = self.get_person_dicts(input_file)
     self.check_ppi(person_dicts, question_code_ids)
     logging.info('Finished with %d errors.' % self.num_errors)
+    if self.num_errors > 0:
+      sys.exit(-1)
 
-def main(args):
-  dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
+def main(args):  
   ppi_checker = PPIChecker()
   ppi_checker.run(args.file)
 
