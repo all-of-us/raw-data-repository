@@ -55,14 +55,14 @@ class PPIChecker(object):
         question_code = code_dao.get_code(PPI_SYSTEM, question_code_value)
         if not question_code:
           if row_number == 1:
-            self.log_error('No question code found for ConsentPII_EmailAddress; import the codebook.')
+            self.log_error('No question code found for ConsentPII_EmailAddress; import codebook.')
             sys.exit(-1)
-          self.log_error('Could not find question code %s on row %d; skipping.', question_code_value,
-                    row_number)
+          self.log_error('Could not find question code %s on row %d; skipping.', 
+                         question_code_value, row_number)
           continue
         if question_code.codeType != CodeType.QUESTION:
-          self.log_error('Code %s on row %d is of type %s, not QUESTION; skipping.', question_code_value,
-                    row_number, question_code.codeType)
+          self.log_error('Code %s on row %d is of type %s, not QUESTION; skipping.', 
+                         question_code_value, row_number, question_code.codeType)
           continue
         if row_number != 1:
           # Add all the non-email question codes to question_code_ids
@@ -96,11 +96,11 @@ class PPIChecker(object):
     if qra.valueString:
       return qra.valueString
     if qra.valueInteger:
-      return string(qra.valueInteger)
+      return str(qra.valueInteger)
     if qra.valueDecimal:
-      return string(qra.valueDecimal)
+      return str(qra.valueDecimal)
     if qra.valueBoolean:
-      return string(qra.valueBoolean)
+      return str(qra.valueBoolean)
     if qra.valueDate:
       return qra.valueDate.isoformat()
     if qra.valueDateTime:
@@ -108,11 +108,11 @@ class PPIChecker(object):
     if qra.valueCodeId:
       code = code_dao.get(qra.valueCodeId)
       if code.system != PPI_SYSTEM:
-        self.log_error("Unexpected value %s with non-PPI system %s for question %s for participant %s",
-                       code.value, code.system, question_code, email)
+        self.log_error('Unexpected value %s with non-PPI system %s for question %s for '
+                       + 'participant %s', code.value, code.system, question_code, email)
         return None
       return code.value
-    self.log_error("Answer for question %s for participant %s has no value set", question_code,
+    self.log_error('Answer for question %s for participant %s has no value set', question_code,
                    email)
     return None
 
@@ -133,18 +133,18 @@ class PPIChecker(object):
               self.log_error('Expected answers %s for question %s for participant %s, found: %s',
                             values, question_code.value, email, qra_values)
           else:
-            self.log_error("Expected no answer for question %s for participant %s, found answers: %s",
+            self.log_error('Expected no answer for question %s for participant %s, found: %s',
                           question_code.value, email, qra_values)
         else:
           if answer_string:
             values = set(answer_string.split('|'))
-            self.log_error("Expected answers %s for question %s for participant %s, found no answer",
+            self.log_error('Expected answers %s for question %s for participant %s, found none',
                       values, question_code.value, email)
 
   def run(self, input_file):
     person_dicts, question_code_ids = self.get_person_dicts(input_file)
     self.check_ppi(person_dicts, question_code_ids)
-    logging.info("Finished with %d errors." % self.num_errors)
+    logging.info('Finished with %d errors.' % self.num_errors)
 
 def main(args):
   dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
