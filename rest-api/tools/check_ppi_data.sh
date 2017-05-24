@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# Checks that questionnaire response answers in the database match those in a specified CSV 
+# Checks that questionnaire response answers in the database match those in a specified CSV
 # file.
 
 USAGE="tools/check_ppi_data.sh --file <FILE> [--account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]]"

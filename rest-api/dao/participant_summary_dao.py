@@ -87,7 +87,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def get_id(self, obj):
     return obj.participantId
-    
+
   def get_by_email(self, email):
     with self.session() as session:
       return session.query(ParticipantSummary).filter(ParticipantSummary.email == email).all()

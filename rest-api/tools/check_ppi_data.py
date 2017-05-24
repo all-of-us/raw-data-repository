@@ -1,4 +1,4 @@
-"""Asserts that questionnaire response answers in the database match values specified in a 
+"""Asserts that questionnaire response answers in the database match values specified in a
 CSV input file.
 """
 import csv
@@ -18,7 +18,7 @@ from tools.main_util import get_parser, configure_logging
 class PPIChecker(object):
 
   def __init__(self):
-    self.num_errors = 0  
+    self.num_errors = 0
 
   def log_error(self, message, *args):
     logging.error(message, *args)
@@ -26,23 +26,23 @@ class PPIChecker(object):
 
   def get_person_dicts(self, input_file):
     """Constructs dicts for each person found in the spreadsheet.
-  
-    The first column contains question codes. Each other column is for a participant, with the 
+
+    The first column contains question codes. Each other column is for a participant, with the
     cell values containing values for answers to the questions indicated in the first column
     (which could be code values, strings, dates, or numbers.)
-    """  
+    """
     person_dicts = []
     question_code_ids = set()
     code_dao = CodeDao()
     with open(input_file) as fp:
       csv_file = csv.reader(fp)
       row_number = 0
-      for row in csv_file:      
+      for row in csv_file:
         row_number += 1
         if row_number == 1:
           if len(row) == 0 or row[0] != EMAIL_QUESTION_CODE:
             self.log_error('First row should have question code %s; exiting.', EMAIL_QUESTION_CODE)
-            sys.exit(-1)          
+            sys.exit(-1)
           # Allocate person_dicts.
           for i in range(1, len(row)):
             person_dicts.append({})
@@ -50,19 +50,19 @@ class PPIChecker(object):
           continue
         question_code_value = row[0].strip()
         if not question_code_value:
-          self.log_error('No question code found for row %d; skipping.' % row_number)          
-          continue        
+          self.log_error('No question code found for row %d; skipping.' % row_number)
+          continue
         question_code = code_dao.get_code(PPI_SYSTEM, question_code_value)
         if not question_code:
           if row_number == 1:
             self.log_error('No question code found for ConsentPII_EmailAddress; import the codebook.')
             sys.exit(-1)
-          self.log_error('Could not find question code %s on row %d; skipping.', question_code_value, 
-                    row_number)          
+          self.log_error('Could not find question code %s on row %d; skipping.', question_code_value,
+                    row_number)
           continue
         if question_code.codeType != CodeType.QUESTION:
           self.log_error('Code %s on row %d is of type %s, not QUESTION; skipping.', question_code_value,
-                    row_number, question_code.codeType)          
+                    row_number, question_code.codeType)
           continue
         if row_number != 1:
           # Add all the non-email question codes to question_code_ids
@@ -75,22 +75,22 @@ class PPIChecker(object):
           elif row_number == 1:
             self.log_error('No email address found for column %d! Aborting.', (i + 1))
             sys.exit(-1)
-      return person_dicts, question_code_ids 
+      return person_dicts, question_code_ids
 
   def check_ppi(self, person_dicts, question_code_ids):
     code_dao = CodeDao()
     participant_summary_dao = ParticipantSummaryDao()
-    email_code_id = code_dao.get_code(PPI_SYSTEM, EMAIL_QUESTION_CODE).codeId  
+    email_code_id = code_dao.get_code(PPI_SYSTEM, EMAIL_QUESTION_CODE).codeId
     for person_dict in person_dicts:
-      email = person_dict[email_code_id]  
+      email = person_dict[email_code_id]
       summaries = participant_summary_dao.get_by_email(email)
       if not summaries:
-        self.log_error('No participant found with email %s.', email)      
+        self.log_error('No participant found with email %s.', email)
       elif len(summaries) > 1:
-        self.log_error('Multiple participants found with email %s', email)      
+        self.log_error('Multiple participants found with email %s', email)
       else:
-        self.check_person_dict(email, summaries[0].participantId, person_dict, 
-                               question_code_ids)  
+        self.check_person_dict(email, summaries[0].participantId, person_dict,
+                               question_code_ids)
 
   def get_value_for_qra(self, qra, email, question_code, code_dao):
     if qra.valueString:
@@ -114,40 +114,40 @@ class PPIChecker(object):
       return code.value
     self.log_error("Answer for question %s for participant %s has no value set", question_code,
                    email)
-    return None  
+    return None
 
   def check_person_dict(self, email, participant_id, person_dict, question_code_ids):
     code_dao = CodeDao()
-    qra_dao = QuestionnaireResponseAnswerDao()  
+    qra_dao = QuestionnaireResponseAnswerDao()
     with qra_dao.session() as session:
-      for question_code_id in question_code_ids:  
+      for question_code_id in question_code_ids:
         question_code = code_dao.get(question_code_id)
-        qras = qra_dao.get_current_answers_for_concepts(session, participant_id, [question_code_id]) 
+        qras = qra_dao.get_current_answers_for_concepts(session, participant_id, [question_code_id])
         answer_string = person_dict.get(question_code_id)
         if qras:
-          qra_values = set([self.get_value_for_qra(qra, participant_id, question_code.value, 
+          qra_values = set([self.get_value_for_qra(qra, participant_id, question_code.value,
                                                    code_dao) for qra in qras])
           if answer_string:
             values = set(value.strip() for value in answer_string.split('|'))
             if values != qra_values:
-              self.log_error('Expected answers %s for question %s for participant %s, found: %s', 
-                            values, question_code.value, email, qra_values)                        
+              self.log_error('Expected answers %s for question %s for participant %s, found: %s',
+                            values, question_code.value, email, qra_values)
           else:
-            self.log_error("Expected no answer for question %s for participant %s, found answers: %s", 
-                          question_code.value, email, qra_values)          
+            self.log_error("Expected no answer for question %s for participant %s, found answers: %s",
+                          question_code.value, email, qra_values)
         else:
           if answer_string:
             values = set(answer_string.split('|'))
-            self.log_error("Expected answers %s for question %s for participant %s, found no answer", 
+            self.log_error("Expected answers %s for question %s for participant %s, found no answer",
                       values, question_code.value, email)
-  
-  def run(self, input_file):                
+
+  def run(self, input_file):
     person_dicts, question_code_ids = self.get_person_dicts(input_file)
     self.check_ppi(person_dicts, question_code_ids)
     logging.info("Finished with %d errors." % self.num_errors)
-          
+
 def main(args):
-  dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']  
+  dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
   ppi_checker = PPIChecker()
   ppi_checker.run(args.file)
 
