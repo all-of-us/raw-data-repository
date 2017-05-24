@@ -1,5 +1,6 @@
 """Asserts that questionnaire response answers in the database match values specified in a
-CSV input file.
+CSV input file. Used in conjunction with Selenium tests in PTC to ensure that values entered
+into questionnaires make their way into the RDR with the appropriate representation.
 """
 import csv
 import logging
