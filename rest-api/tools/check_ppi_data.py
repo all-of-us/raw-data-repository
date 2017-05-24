@@ -6,7 +6,6 @@ import csv
 import logging
 import sys
 
-import dao.database_factory
 from code_constants import PPI_SYSTEM, EMAIL_QUESTION_CODE
 from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
