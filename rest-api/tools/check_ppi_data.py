@@ -56,11 +56,11 @@ class PPIChecker(object):
           if row_number == 1:
             self.log_error('No question code found for ConsentPII_EmailAddress; import codebook.')
             sys.exit(-1)
-          self.log_error('Could not find question code %s on row %d; skipping.', 
+          self.log_error('Could not find question code %s on row %d; skipping.',
                          question_code_value, row_number)
           continue
         if question_code.codeType != CodeType.QUESTION:
-          self.log_error('Code %s on row %d is of type %s, not QUESTION; skipping.', 
+          self.log_error('Code %s on row %d is of type %s, not QUESTION; skipping.',
                          question_code_value, row_number, question_code.codeType)
           continue
         if row_number != 1:
