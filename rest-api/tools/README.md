@@ -104,5 +104,38 @@ Creates credentials in a temp file, exports run_cloud_sql_proxy function used to
 Sets PYTHONPATH to include everything in libs and the AppEngine SDK. For use when running python
 scripts that rely on these libraries.
 
+### check_ppi_data.sh
+
+Validates that participants in the database have answers to PPI questions 
+matching a CSV file provided as input.
+
+Usage:
+
+tools/check_ppi_data.sh [--project <project> --account <account>] --file <csv filee>
+
+The first column of the CSV file should contain question codes, with the first
+cell of the first column containing specifically ConsentPII_EmailAddress.
+
+The remaining columns should be filled with PPI answer values, with each
+column representing a different participant (identified by the e-mail address
+in the first row.) 
+
+Multiple values can be entered into a single cell, delimited by '|' characters, e.g. GenderIdentity_Woman|GenderIdentity_Man, for cases where one question can have multiple answers.
+
+This example file:
+
+[[https://github.com/vanderbilt/pmi-data/blob/master/rest-api/test/test-data/healthpro_test_participant_ppi.csv]]
+
+matches some of the answers for some of the participants found in this
+file:
+
+[[https://github.com/vanderbilt/pmi-data/blob/master/rest-api/test/test-data/healthpro_test_participants.csv]]
+
+that we import into our local environments and some other environments
+using import_participants.sh.
+
+The tool will generate error messages for any cases where answers don't match
+the expected values.
+
 
 
