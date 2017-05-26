@@ -111,15 +111,15 @@ matching a CSV file provided as input.
 
 Usage:
 
-'''
+```
 tools/check_ppi_data.sh [--project <project> --account <account>] --file <csv filee>
-'''
+```
 
 Example:
 
-'''
+```
 tools/check_ppi_data.sh --project all-of-us-rdr-prod --account dan.rodney@pmi-ops.org --file personas.csv
-'''
+```
 
 The first column of the CSV file should contain question codes, with the first
 cell of the first column containing specifically ConsentPII_EmailAddress.
