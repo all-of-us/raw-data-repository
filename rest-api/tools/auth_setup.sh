@@ -4,6 +4,8 @@
 # run the Cloud SQL proxy
 # Expected environment variables: $ACCOUNT, $PROJECT, $CREDS_ACCOUNT
 
+TMP_DIR=$(mktemp  -d)
+
 if [ "${CREDS_FILE}" ]
 then
   if [ -z "${INSTANCE}" ]
@@ -31,7 +33,7 @@ else
   then
     SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
   fi
-  CREDS_FILE=/tmp/creds.json
+  CREDS_FILE=${TMP_DIR}/creds.json
   TMP_CREDS_FILE=$CREDS_FILE
   EXISTING_KEYS_COUNT=`gcloud iam service-accounts keys list \
       --iam-account $SERVICE_ACCOUNT --account $CREDS_ACCOUNT | wc -l`
@@ -44,7 +46,7 @@ else
 fi
 
 source tools/setup_vars.sh
-TMP_DB_INFO_FILE=/tmp/db_info.json
+TMP_DB_INFO_FILE=${TMP_DIR}/db_info.json
 PORT=3308
 CLOUD_PROXY_PID=
 
@@ -61,6 +63,7 @@ function cleanup {
   fi
   rm -f ${TMP_CREDS_FILE}
   rm -f ${TMP_DB_INFO_FILE}
+  rm -rf ${TMP_DIR}
 }
 
 trap cleanup EXIT
