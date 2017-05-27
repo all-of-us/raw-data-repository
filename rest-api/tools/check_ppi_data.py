@@ -47,8 +47,8 @@ class PPIChecker(object):
           # which is stored in one column of the CSV.
           for i in range(1, len(row)):
             if row[i].strip():
-                person_dicts.append({})
-                number_of_participants += 1
+              person_dicts.append({})
+              number_of_participants += 1
         elif len(row) == 0:
           continue
         question_code_value = row[0].strip()
