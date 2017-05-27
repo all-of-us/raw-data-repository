@@ -350,17 +350,17 @@ class QuestionnaireResponseDao(BaseDao):
                     code_map[system_and_code] = (answer.valueCoding.display, CodeType.ANSWER,
                                                  qq.codeId)
               if not ignore_answer:
-                if answer.valueDecimal:
+                if answer.valueDecimal is not None:
                   qr_answer.valueDecimal = answer.valueDecimal
-                if answer.valueInteger:
+                if answer.valueInteger is not None:
                   qr_answer.valueInteger = answer.valueInteger
                 if answer.valueString:
                   qr_answer.valueString = answer.valueString
-                if answer.valueDate:
+                if answer.valueDate is not None:
                   qr_answer.valueDate = answer.valueDate.date
-                if answer.valueDateTime:
+                if answer.valueDateTime is not None:
                   qr_answer.valueDateTime = answer.valueDateTime.date
-                if answer.valueBoolean:
+                if answer.valueBoolean is not None:
                   qr_answer.valueBoolean = answer.valueBoolean
                 answers.append((qr_answer, system_and_code))
               if answer.group:

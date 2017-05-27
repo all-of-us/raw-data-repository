@@ -92,17 +92,17 @@ class PPIChecker(object):
   def get_value_for_qra(self, qra, email, question_code, code_dao):
     if qra.valueString:
       return qra.valueString
-    if qra.valueInteger:
+    if qra.valueInteger is not None:
       return str(qra.valueInteger)
-    if qra.valueDecimal:
+    if qra.valueDecimal is not None:
       return str(qra.valueDecimal)
-    if qra.valueBoolean:
-      return str(qra.valueBoolean)
-    if qra.valueDate:
+    if qra.valueBoolean is not None:
+      return str(qra.valueBoolean).lower()
+    if qra.valueDate is not None:
       return qra.valueDate.isoformat()
-    if qra.valueDateTime:
+    if qra.valueDateTime is not None:
       return qra.valueDateTime.isoformat()
-    if qra.valueCodeId:
+    if qra.valueCodeId is not None:
       code = code_dao.get(qra.valueCodeId)
       if code.system != PPI_SYSTEM:
         self.log_error('Unexpected value %s with non-PPI system %s for question %s for '
@@ -112,6 +112,11 @@ class PPIChecker(object):
     self.log_error('Answer for question %s for participant %s has no value set', question_code,
                    email)
     return None
+
+  def boolean_to_lower(self, value):
+    if value.lower() == 'true' or value.lower() == 'false':
+      return value.lower()
+    return value
 
   def check_person_dict(self, email, participant_id, person_dict, question_code_ids):
     """Verifies that answers in the database for this participant match answers from the
@@ -128,7 +133,7 @@ class PPIChecker(object):
           qra_values = set([self.get_value_for_qra(qra, participant_id, question_code.value,
                                                    code_dao) for qra in qras])
           if answer_string:
-            values = set(value.strip() for value in answer_string.split('|'))
+            values = set(self.boolean_to_lower(value.strip()) for value in answer_string.split('|'))
             if values != qra_values:
               self.log_error('Expected answers %s for question %s for participant %s, found: %s',
                             values, question_code.value, email, qra_values)

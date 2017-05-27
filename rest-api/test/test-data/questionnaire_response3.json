@@ -146,7 +146,7 @@
                 "text": "Abnormalities noted at birth",
                 "answer": [
                   {
-                    "valueString": "Already able to speak Chinese"
+                    "valueInteger": 0
                   }
                 ]
               },
