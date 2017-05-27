@@ -15,7 +15,7 @@ then
 fi
 
 function activate_local_venv {
-  pip install virtualenv safety
+  pip install virtualenv safety==1.3.0
   virtualenv venv
   source venv/bin/activate
   pip install -r requirements.txt
