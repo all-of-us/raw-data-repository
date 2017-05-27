@@ -90,7 +90,7 @@ class PPIChecker(object):
                                question_code_ids)
 
   def get_value_for_qra(self, qra, email, question_code, code_dao):
-    if qra.valueString is not None:
+    if qra.valueString:
       return qra.valueString
     if qra.valueInteger is not None:
       return str(qra.valueInteger)
