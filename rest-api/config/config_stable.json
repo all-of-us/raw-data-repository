@@ -21,9 +21,6 @@
   "biobank_samples_bucket_name": [
     "stable_biobank_samples_upload_bucket"
   ],
-  "consent_pdf_bucket": [
-    "ptc-uploads-all-of-us-rdr-stable"
-  ],
   "metrics_shards": [
     "10"
   ]

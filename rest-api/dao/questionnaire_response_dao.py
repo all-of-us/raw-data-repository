@@ -394,7 +394,7 @@ def _validate_consent_pdfs(resource):
   """Checks for any consent-form-signed-pdf extensions and validates their PDFs in GCS."""
   if resource.get('resourceType') != 'QuestionnaireResponse':
     raise ValueError('Expected QuestionnaireResponse for "resourceType" in %r.' % resource)
-  consent_bucket = config.getSetting(config.CONSENT_PDF_BUCKET)
+  consent_bucket = config.getSetting(config.CONSENT_PDF_BUCKET, None)
   for extension in resource.get('extension', []):
     if extension['url'] != _SIGNED_CONSENT_EXTENSION:
       continue
@@ -406,7 +406,8 @@ def _validate_consent_pdfs(resource):
       raise BadRequest(
           'PDF path must be absolute below the bucket, starting with a slash, but got %r.'
           % local_pdf_path)
-    _raise_if_gcloud_file_missing('/%s%s' % (consent_bucket, local_pdf_path))
+    if consent_bucket:
+      _raise_if_gcloud_file_missing('/%s%s' % (consent_bucket, local_pdf_path))
 
 
 def _raise_if_gcloud_file_missing(path):
