@@ -1,4 +1,4 @@
-"""Asserts that questionnaire response answers in the database match values specified in a
+"""asserts that questionnaire response answers in the database match values specified in a
 CSV input file. Used in conjunction with Selenium tests in PTC to ensure that values entered
 into questionnaires make their way into the RDR with the appropriate representation.
 """
@@ -17,6 +17,7 @@ class PPIChecker(object):
 
   def __init__(self):
     self.num_errors = 0
+    self.total_checks = 0
 
   def log_error(self, message, *args):
     logging.error(message, *args)
@@ -35,6 +36,7 @@ class PPIChecker(object):
     with open(input_file) as fp:
       csv_file = csv.reader(fp)
       row_number = 0
+      number_of_participants = 0
       for row in csv_file:
         row_number += 1
         if row_number == 1:
@@ -44,7 +46,9 @@ class PPIChecker(object):
           # Allocate an empty dict to store each test participant's data,
           # which is stored in one column of the CSV.
           for i in range(1, len(row)):
-            person_dicts.append({})
+            if row[i].strip():
+                person_dicts.append({})
+                number_of_participants += 1
         elif len(row) == 0:
           continue
         question_code_value = row[0].strip()
@@ -65,7 +69,7 @@ class PPIChecker(object):
         if row_number != 1:
           # Add all the non-email question codes to question_code_ids
           question_code_ids.add(question_code.codeId)
-        for i in range(1, len(row)):
+        for i in range(1, number_of_participants+1):
           value = row[i].strip()
           if value:
             # TODO: validate values based on answer type here
@@ -118,6 +122,7 @@ class PPIChecker(object):
       return value.lower()
     return value
 
+
   def check_person_dict(self, email, participant_id, person_dict, question_code_ids):
     """Verifies that answers in the database for this participant match answers from the
     spreadsheet. Logs an error / increments the error count if not.
@@ -126,6 +131,7 @@ class PPIChecker(object):
     qra_dao = QuestionnaireResponseAnswerDao()
     with qra_dao.session() as session:
       for question_code_id in question_code_ids:
+        self.total_checks += 1
         question_code = code_dao.get(question_code_id)
         qras = qra_dao.get_current_answers_for_concepts(session, participant_id, [question_code_id])
         answer_string = person_dict.get(question_code_id)
@@ -149,7 +155,7 @@ class PPIChecker(object):
   def run(self, input_file):
     person_dicts, question_code_ids = self.get_person_dicts(input_file)
     self.check_ppi(person_dicts, question_code_ids)
-    logging.info('Finished with %d errors.' % self.num_errors)
+    logging.info('Finished %s checks with %d errors.' % (self.total_checks, self.num_errors))
     if self.num_errors > 0:
       sys.exit(-1)
 
@@ -160,6 +166,5 @@ def main(args):
 if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
-  parser.add_argument('--file', help='File name containing the input CSV',
-                      required=True)
+  parser.add_argument('--file', help='File name containing the input CSV', required=True)
   main(parser.parse_args())
