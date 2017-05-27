@@ -7,3 +7,6 @@ dnspython
 # MySQLDB is not actually linked against. We use it indirectly, but it's not a compile-time
 # dependency.
 MySQL-python
+
+# chardet is used in circle by safety, but not as a compile-time dependency.
+chardet
