@@ -104,7 +104,7 @@
         "text":"What is your sex?",
         "concept": [{
           "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
-          "code": "BiologicalSex_SexAtBirth",
+          "code": "BiologicalSexAtBirth_SexAtBirth",
           "display": "Sex"
         }]
       }, {
