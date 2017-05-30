@@ -470,12 +470,20 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     return questionnaire_response
 
   @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
-  def test_consent_pdf_valid(self, mock_gcloud_check):
+  def test_consent_pdf_valid_leading_slash(self, mock_gcloud_check):
     consent_pdf_path = '/Participant/xyz/consent.pdf'
     questionnaire_response = self._get_questionnaire_response_with_consents(consent_pdf_path)
     # This should pass validation (not raise exceptions).
     self.questionnaire_response_dao.insert(questionnaire_response)
     mock_gcloud_check.assert_called_with('/%s%s' % (_FAKE_BUCKET, consent_pdf_path))
+
+  @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
+  def test_consent_pdf_valid_no_leading_slash(self, mock_gcloud_check):
+    consent_pdf_path = 'Participant/xyz/consent.pdf'
+    questionnaire_response = self._get_questionnaire_response_with_consents(consent_pdf_path)
+    # This should pass validation (not raise exceptions).
+    self.questionnaire_response_dao.insert(questionnaire_response)
+    mock_gcloud_check.assert_called_with('/%s/%s' % (_FAKE_BUCKET, consent_pdf_path))
 
   @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
   def test_consent_pdf_file_invalid(self, mock_gcloud_check):
