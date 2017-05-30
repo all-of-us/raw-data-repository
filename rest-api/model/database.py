@@ -24,9 +24,9 @@ class Database(object):
   """Maintains state for accessing the database."""
   def __init__(self, database_uri, **kwargs):
     # Add echo=True here to spit out SQL statements.
-    # Set pool_recycle to 3600 -- one hour in seconds -- which is lower than the MySQL wait_timeout 
-    # parameter (which defaults to 8 hours) to ensure that we don't attempt to use idle database 
-    # connections after this period. (See DA-237.) 
+    # Set pool_recycle to 3600 -- one hour in seconds -- which is lower than the MySQL wait_timeout
+    # parameter (which defaults to 8 hours) to ensure that we don't attempt to use idle database
+    # connections after this period. (See DA-237.)
     self._engine = create_engine(database_uri, pool_recycle=3600, **kwargs)
     self.db_type = database_uri.split(':')[0]
     if self.db_type == 'sqlite':
