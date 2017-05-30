@@ -111,10 +111,7 @@ class MySqlReconciliationTest(FlaskTestBase):
 
   def test_reconciliation_query(self):
     self.setup_codes([RACE_QUESTION_CODE], CodeType.QUESTION)
-    self.setup_codes([RACE_AIAN_CODE, RACE_WHITE_CODE,
-                      "AIAN_AmericanIndian",
-                      "AIAN_AlaskaNative",
-                      "AIAN_CentralSouthAmericanIndian"],
+    self.setup_codes([RACE_AIAN_CODE, RACE_WHITE_CODE],
                      CodeType.ANSWER)
     self._questionnaire_id = self.create_questionnaire('questionnaire3.json')
     # MySQL and Python sub-second rounding differs, so trim micros from generated times.
@@ -133,7 +130,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], within_36_hours)
 
     # On time order and samples from 10 days ago; shows up in rx
-    p_old_on_time = self._insert_participant(race_codes=["AIAN_AmericanIndian"])
+    p_old_on_time = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:2], old_order_time)
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
                          old_within_36_hours)
@@ -169,7 +166,7 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # Withdrawn participants don't show up in any reports except withdrawal report.
 
-    p_withdrawn_old_on_time = self._insert_participant(race_codes=["AIAN_AmericanIndian"])
+    p_withdrawn_old_on_time = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     self._insert_order(p_withdrawn_old_on_time, 'OldWithdrawnGoodOrder', BIOBANK_TESTS[:2],
                        old_order_time)
     self._insert_samples(p_withdrawn_old_on_time, BIOBANK_TESTS[:2],
