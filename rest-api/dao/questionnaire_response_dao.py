@@ -402,10 +402,9 @@ def _validate_consent_pdfs(resource):
     _, ext = os.path.splitext(local_pdf_path)
     if ext.lower() != '.pdf':
       raise BadRequest('Signed PDF must end in .pdf, found %r (from %r).' % (ext, local_pdf_path))
+    # Treat the value as a bucket-relative path, allowing a leading slash or not.
     if not local_pdf_path.startswith('/'):
-      raise BadRequest(
-          'PDF path must be absolute below the bucket, starting with a slash, but got %r.'
-          % local_pdf_path)
+      local_pdf_path = '/' + local_pdf_path
     _raise_if_gcloud_file_missing('/%s%s' % (consent_bucket, local_pdf_path))
 
 
@@ -413,7 +412,7 @@ def _raise_if_gcloud_file_missing(path):
   """Checks that a GCS file exists.
 
   Args:
-    path: An absolute Google Cloud Storage path, starting with /$BUCKET.
+    path: An absolute Google Cloud Storage path, starting with /$BUCKET/.
   Raises:
     BadRequest if the path does not reference a file.
   """
