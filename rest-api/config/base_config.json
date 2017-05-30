@@ -28,9 +28,10 @@
   ],
   "native_american_race_codes": [
     "WhatRaceEthnicity_AIAN",
-    "AIAN_AmericanIndian",
-    "AIAN_AlaskaNative",
-    "AIAN_CentralSouthAmericanIndian"
+    "AIANSpecific_AmericanIndian",
+    "AIANSpecific_AlaskaNative",
+    "AIANSpecific_CentralSouthAmericanIndian",
+    "AIANSpecific_AIANNoneOfTheseDescribeMe"
   ],
   "internal_status_email_sender": [
     "all-of-us-rdr@googlegroups.com"
