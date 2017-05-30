@@ -24,7 +24,7 @@ class Database(object):
   """Maintains state for accessing the database."""
   def __init__(self, database_uri, **kwargs):
     # Add echo=True here to spit out SQL statements.
-    self._engine = create_engine(database_uri, **kwargs)
+    self._engine = create_engine(database_uri, pool_recycle=3600, **kwargs)
     self.db_type = database_uri.split(':')[0]
     if self.db_type == 'sqlite':
       self._engine.execute('PRAGMA foreign_keys = ON;')
