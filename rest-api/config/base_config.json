@@ -27,11 +27,7 @@
     "1SAL"
   ],
   "native_american_race_codes": [
-    "WhatRaceEthnicity_AIAN",
-    "AIANSpecific_AmericanIndian",
-    "AIANSpecific_AlaskaNative",
-    "AIANSpecific_CentralSouthAmericanIndian",
-    "AIANSpecific_AIANNoneOfTheseDescribeMe"
+    "WhatRaceEthnicity_AIAN"
   ],
   "internal_status_email_sender": [
     "all-of-us-rdr@googlegroups.com"
