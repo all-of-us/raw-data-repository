@@ -13,7 +13,7 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
 from unit_test_util import FlaskTestBase, InMemorySqlExporter, make_questionnaire_response_json
-from model.biobank_order import BiobankOrder, BiobankOrderedSample
+from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import to_client_biobank_id, to_client_participant_id
 from model.participant import Participant
@@ -81,6 +81,11 @@ class MySqlReconciliationTest(FlaskTestBase):
         finalizedUsername='bob@pmi-ops.org',
         created=order_time,
         samples=[])
+    id_1 = BiobankOrderIdentifier(system="https://orders.mayomedicallaboratories.com",
+                                  value=order_id)
+    id_2 = BiobankOrderIdentifier(system="https://www.pmi-ops.org", value='O%s' % order_id)
+    order.identifiers.append(id_1)
+    order.identifiers.append(id_2)
     for test_code in tests:
       order.samples.append(BiobankOrderedSample(
           biobankOrderId=order.biobankOrderId,
@@ -250,7 +255,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertEquals(row['received_time'], database_utils.format_datetime(within_36_hours))
     self.assertEquals(row['sent_count'], '1')
     self.assertEquals(row['received_count'], '1')
-    self.assertEquals(row['sent_order_id'], 'GoodOrder')
+    self.assertEquals(row['sent_order_id'], 'OGoodOrder')
     self.assertEquals(row['received_sample_id'], 'GoodSample1')
     # the other sent-and-received rows
     exporter.assertHasRow(received, {
@@ -271,7 +276,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     exporter.assertColumnNamesEqual(late, _CSV_COLUMN_NAMES)
     exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
-        'sent_order_id': o_late_and_missing.biobankOrderId,
+        'sent_order_id': 'O%s' % o_late_and_missing.biobankOrderId,
         'elapsed_hours': '37'})
     exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_repeated.biobankId),
@@ -287,11 +292,11 @@ class MySqlReconciliationTest(FlaskTestBase):
     # order received, no sample
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId),
-        'sent_order_id': 'TwoDaysMissingOrder',
+        'sent_order_id': 'OTwoDaysMissingOrder',
         'sent_test': BIOBANK_TESTS[0]})
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId),
-        'sent_order_id': 'TwoDaysMissingOrder',
+        'sent_order_id': 'OTwoDaysMissingOrder',
         'sent_test': BIOBANK_TESTS[1]})
 
     # 3 orders sent, only 2 received
@@ -303,7 +308,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     # Also verify the comma-joined fields of the row with multiple orders/samples.
     self.assertItemsEqual(
         multi_sample_row['sent_order_id'].split(','),
-        ['RepeatedOrder1', 'RepeatedOrder0', 'RepeatedOrder2'])
+        ['ORepeatedOrder1', 'ORepeatedOrder0', 'ORepeatedOrder2'])
     self.assertItemsEqual(
         multi_sample_row['received_sample_id'].split(','),
         ['RepeatedSample0', 'RepeatedSample1'])
