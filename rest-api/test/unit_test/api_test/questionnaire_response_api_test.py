@@ -130,6 +130,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'consentForElectronicHealthRecords': 'UNSET',
                 'consentForStudyEnrollment': 'SUBMITTED',
                 'consentForStudyEnrollmentTime': TIME_1.isoformat(),
+                'consentForCABoR': 'UNSET',
                 'questionnaireOnFamilyHealth': 'UNSET',
                 'questionnaireOnHealthcareAccess': 'UNSET',
                 'questionnaireOnMedicalHistory' : 'UNSET',

@@ -147,6 +147,14 @@
           "code": "StreetAddress_PIIState",
           "display": "State"
         }]
+      }, {
+        "linkId": "CABoRSignature",
+        "text": "CABoR Signature",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "ExtraConsent_CABoRSignature",
+          "display": "CABoR Signature"
+        }]
       }]
   }
 }
