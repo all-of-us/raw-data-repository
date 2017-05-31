@@ -38,7 +38,7 @@ _INPUT_CSV_TIME_FORMAT_LENGTH = 18
 _CSV_SUFFIX_LENGTH = 4
 _THIRTY_SIX_HOURS_AGO = datetime.timedelta(hours=36)
 _MAX_INPUT_AGE = datetime.timedelta(hours=24)
-
+_PMI_OPS_SYSTEM = 'https://www.pmi-ops.org'
 
 class DataError(RuntimeError):
   """Bad sample data during import.
@@ -228,7 +228,8 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
        database_factory.get_database().session() as session:
     writer = CompositeSqlExportWriter([received_writer, late_writer, missing_writer])
     exporter.run_export_with_session(writer, session, replace_isodate(_RECONCILIATION_REPORT_SQL),
-                                     {"biobank_id_prefix": get_biobank_id_prefix()})
+                                     {"biobank_id_prefix": get_biobank_id_prefix(),
+                                      "pmi_ops_system": _PMI_OPS_SYSTEM})
 
   # Now generate the withdrawal report.
   code_dao = CodeDao()
@@ -259,6 +260,10 @@ _ORDER_JOINS = """
       participant
     ON
       biobank_order.participant_id = participant.participant_id
+    INNER JOIN
+      biobank_order_identifier
+    ON biobank_order.biobank_order_id = biobank_order_identifier.biobank_order_id
+       AND biobank_order_identifier.system = :pmi_ops_system
     INNER JOIN
       biobank_ordered_sample
     ON
@@ -314,7 +319,7 @@ _RECONCILIATION_REPORT_SQL = ("""
   FROM
    (SELECT
       participant.biobank_id raw_biobank_id,
-      biobank_order.biobank_order_id,
+      biobank_order_identifier.value biobank_order_id,
       source_site.site_name source_site_name,
       source_site.consortium_name source_site_consortium,
       source_site.mayolink_client_number source_site_mayolink_client_number,
