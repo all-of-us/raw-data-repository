@@ -29,6 +29,7 @@ SEXUAL_ORIENTATION_QUESTION_CODE = "TheBasics_SexualOrientation"
 EDUCATION_QUESTION_CODE = "EducationLevel_HighestGrade"
 INCOME_QUESTION_CODE = "Income_AnnualIncome"
 EHR_CONSENT_QUESTION_CODE = "EHRConsentPII_ConsentPermission"
+CABOR_SIGNATURE_QUESTION_CODE = "ExtraConsent_CABoRSignature"
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 

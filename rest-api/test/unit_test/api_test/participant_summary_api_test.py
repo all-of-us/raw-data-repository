@@ -90,7 +90,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                     first_name, middle_name, last_name, zip_code,
                                     state_code, street_address, city, sex_code,
                                     sexual_orientation_code, phone_number, recontact_method_code,
-                                    language_code, education_code, income_code, date_of_birth):
+                                    language_code, education_code, income_code, date_of_birth,
+                                    cabor_signature):
     code_answers = []
     _add_code_answer(code_answers, "race", race_code)
     _add_code_answer(code_answers, "genderIdentity", gender_code)
@@ -111,7 +112,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                             ("streetAddress", street_address),
                                                             ("city", city),
                                                             ("phoneNumber", phone_number),
-                                                            ("zipCode", zip_code)],
+                                                            ("zipCode", zip_code),
+                                                            ("CABoRSignature", cabor_signature)],
                                           date_answers = [("dateOfBirth", date_of_birth)])
     with FakeClock(TIME_1):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
@@ -140,7 +142,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "1234 Main Street", "Austin", "male_sex",
                                        "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
-                                       datetime.date(1978, 10, 9))
+                                       datetime.date(1978, 10, 9), "signature")
     with FakeClock(TIME_2):
       ps = self.send_get('Participant/%s/Summary' % participant_id)
     expected_ps = {'questionnaireOnHealthcareAccess': 'UNSET',
@@ -176,6 +178,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'sampleStatus2ED10': 'UNSET',
                    'genderIdentity': 'male',
                    'consentForElectronicHealthRecords': 'UNSET',
+                   'consentForCABoR': 'SUBMITTED',
+                   'consentForCABoRTime': TIME_1.isoformat(),
                    'questionnaireOnMedicalHistory': u'UNSET',
                    'participantId': participant_id,
                    'hpoId': 'PITT',
@@ -273,15 +277,15 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "1234 Main Street", "Austin", "male_sex",
                                        "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
-                                       datetime.date(1978, 10, 9))
+                                       datetime.date(1978, 10, 9), "signature")
     self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "female",
                                        "Mary", "Q", "Jones", "78751", None,
                                        None, None, None, None, None, None, None, None, None,
-                                       datetime.date(1978, 10, 8))
+                                       datetime.date(1978, 10, 8), None)
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_WHITE_CODE, "male",
                                        "Fred", "T", "Smith", "78752", None,
                                        None, None, None, None, None, None, None, None, None,
-                                       datetime.date(1978, 10, 10))
+                                       datetime.date(1978, 10, 10), None)
     # Send a questionnaire response for the consent questionnaire for participants 2 and 3
     self._submit_consent_questionnaire_response(participant_id_2, questionnaire_id_3,
                                                 CONSENT_PERMISSION_YES_CODE)
@@ -420,6 +424,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&consentForStudyEnrollment=SUBMITTED',
                            [[ps_1, ps_2], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&consentForCABoR=SUBMITTED',
+                           [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=UNSET',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=COMPLETED',

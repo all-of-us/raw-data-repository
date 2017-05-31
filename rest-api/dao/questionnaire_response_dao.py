@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest
 from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from code_constants import EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE
 from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PPI_EXTRA_SYSTEM
+from code_constants import CABOR_SIGNATURE_QUESTION_CODE
 from config_api import is_config_admin
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
@@ -198,6 +199,12 @@ class QuestionnaireResponseDao(BaseDao):
             code = code_dao.get(answer.valueCodeId)
             if code and code.value == CONSENT_PERMISSION_YES_CODE:
               ehr_consent = True
+          elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
+            if answer.valueString:
+              if not participant_summary.consentForCABoR:
+                participant_summary.consentForCABoR = True
+                participant_summary.consentForCABoRTime = questionnaire_response.created
+                something_changed = True
 
     # If race was provided in the response in one or more answers, set the new value.
     if race_code_ids:
