@@ -86,7 +86,7 @@ def _get_params(num_shards, shard_number):
   return {'num_shards': num_shards,
           'shard_number': shard_number,
           'unset_hpo_id': UNSET_HPO_ID,
-          'test_email_pattern': TEST_EMAIL_PATTERN }
+          'test_email_pattern': TEST_EMAIL_PATTERN}
 
 def _get_participant_sql(num_shards, shard_number):
   module_time_fields = ['ISODATE[ps.{0}] {0}'.format(get_column_name(ParticipantSummary,
