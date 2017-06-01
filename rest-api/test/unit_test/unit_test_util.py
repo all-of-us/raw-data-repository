@@ -383,16 +383,18 @@ class FlaskTestBase(NdbTestBase):
     response = self.send_post('Participant', {})
     return response['participantId']
 
-  def send_consent(self, participant_id):
+  def send_consent(self, participant_id, email=None):
     if not self._consent_questionnaire_id:
       self._consent_questionnaire_id = self.create_questionnaire('study_consent.json')
     self.first_name = self.fake.first_name()
     self.last_name = self.fake.last_name()
-    self.email = self.fake.email()
+    if not email:
+      self.email = self.fake.email()
+      email = self.email
     qr_json = make_questionnaire_response_json(participant_id, self._consent_questionnaire_id,
                                                string_answers=[("firstName", self.first_name),
                                                                ("lastName", self.last_name),
-                                                               ("email", self.email)])
+                                                               ("email", email)])
     self.send_post(questionnaire_response_url(participant_id), qr_json)
 
   def create_questionnaire(self, filename):
