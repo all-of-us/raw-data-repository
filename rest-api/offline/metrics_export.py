@@ -25,7 +25,7 @@ _QUEUE_NAME = 'metrics-pipeline'
 
 _PARTICIPANT_SQL_TEMPLATE = """
 SELECT p.participant_id, ps.date_of_birth date_of_birth,
-  (SELECT ISODATE[MIN(bo.created)] FROM biobank_order bo 
+  (SELECT ISODATE[MIN(bo.created)] FROM biobank_order bo
     WHERE bo.participant_id = p.participant_id) first_order_date,
   (SELECT ISODATE[MIN(bs.confirmed)] FROM biobank_stored_sample bs
     WHERE bs.biobank_id = p.biobank_id) first_samples_arrived_date,
@@ -37,7 +37,7 @@ SELECT p.participant_id, ps.date_of_birth date_of_birth,
   FROM participant p, participant_summary ps
  WHERE p.participant_id = ps.participant_id
    AND p.participant_id % :num_shards = :shard_number
-   AND p.hpo_id != :unset_hpo_id 
+   AND p.hpo_id != :unset_hpo_id
    AND NOT ps.email LIKE :test_email_pattern
 """
 
@@ -49,13 +49,13 @@ SELECT ph.participant_id participant_id, hpo.name hpo,
  WHERE ph.participant_id % :num_shards = :shard_number
    AND ph.hpo_id = hpo.hpo_id
    AND NOT ph.hpo_id = :unset_hpo_id
-   AND NOT EXISTS 
-    (SELECT * FROM participant_history ph_prev 
-      WHERE ph_prev.participant_id = ph.participant_id 
+   AND NOT EXISTS
+    (SELECT * FROM participant_history ph_prev
+      WHERE ph_prev.participant_id = ph.participant_id
         AND ph_prev.version = ph.version - 1
         AND ph_prev.hpo_id = ph.hpo_id)
    AND NOT EXISTS
-    (SELECT * FROM participant_summary ps    
+    (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = ph.participant_id
         AND ps.email LIKE :test_email_pattern)
 """
@@ -76,7 +76,7 @@ SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time,
    AND qr.participant_id = p.participant_id
    AND p.hpo_id != :unset_hpo_id
    AND NOT EXISTS
-    (SELECT * FROM participant_summary ps    
+    (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = p.participant_id
         AND ps.email LIKE :test_email_pattern)
  ORDER BY qr.participant_id, qr.created, qc.value
@@ -99,8 +99,8 @@ def _get_participant_sql(num_shards, shard_number):
   return replace_isodate(_PARTICIPANT_SQL_TEMPLATE.format(dna_tests_sql, modules_sql)), params
 
 def _get_hpo_id_sql(num_shards, shard_number):
-  
-  return replace_isodate(_HPO_ID_QUERY), _get_params(num_shards, shard_number)          
+
+  return replace_isodate(_HPO_ID_QUERY), _get_params(num_shards, shard_number)
 
 def _get_answer_sql(num_shards, shard_number):
   code_dao = CodeDao()
@@ -113,7 +113,7 @@ def _get_answer_sql(num_shards, shard_number):
     code_ids.append(str(code.codeId))
   params = _get_params(num_shards, shard_number)
   params['unmapped'] = UNMAPPED
-  return replace_isodate(_ANSWER_QUERY.format((','.join(code_ids)))), params          
+  return replace_isodate(_ANSWER_QUERY.format((','.join(code_ids)))), params
 
 class MetricsExport(object):
   """Exports data from the database needed to generate metrics.

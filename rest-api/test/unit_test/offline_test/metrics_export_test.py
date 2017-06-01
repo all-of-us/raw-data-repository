@@ -126,7 +126,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant3 = Participant(participantId=3, biobankId=4)
       participant_dao.insert(participant3)
       self.send_consent('P3', email='fred@gmail.com')
-          
+
       # example.com e-mail; this test participant is ignored, too.
       participant4 = Participant(participantId=4, biobankId=5,
                                  providerLink=primary_provider_link('PITT'))
