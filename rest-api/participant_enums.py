@@ -10,6 +10,9 @@ from dateutil.relativedelta import relativedelta
 # dynamically.
 UNSET_HPO_ID = 0
 
+# A pattern for test participant email addresses.
+TEST_EMAIL_PATTERN = '%@example.com'
+
 class PhysicalMeasurementsStatus(messages.Enum):
   """The state of the participant's physical measurements"""
   UNSET = 0
