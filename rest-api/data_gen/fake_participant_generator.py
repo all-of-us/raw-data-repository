@@ -3,6 +3,7 @@ import clock
 import collections
 import csv
 import datetime
+import logging
 import random
 
 from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
@@ -16,7 +17,7 @@ from code_constants import STREET_ADDRESS_QUESTION_CODE, CITY_QUESTION_CODE
 from code_constants import PHONE_NUMBER_QUESTION_CODE, RECONTACT_METHOD_QUESTION_CODE
 from code_constants import LANGUAGE_QUESTION_CODE, SEX_QUESTION_CODE
 from code_constants import SEXUAL_ORIENTATION_QUESTION_CODE, EDUCATION_QUESTION_CODE
-from code_constants import INCOME_QUESTION_CODE
+from code_constants import INCOME_QUESTION_CODE, CABOR_SIGNATURE_QUESTION_CODE
 from code_constants import PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE, BIOBANK_TESTS
 from field_mappings import QUESTION_CODE_TO_FIELD
 
@@ -90,8 +91,10 @@ _QUESTIONNAIRE_CONCEPTS = [CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
                           OVERALL_HEALTH_PPI_MODULE,
                           LIFESTYLE_PPI_MODULE,
                           THE_BASICS_PPI_MODULE]
+_CALIFORNIA_HPOS = ['CAL_PMC', 'SAN_YSIDRO']
 
-_QUESTION_CODES = QUESTION_CODE_TO_FIELD.keys() + [RACE_QUESTION_CODE]
+_QUESTION_CODES = QUESTION_CODE_TO_FIELD.keys() + [RACE_QUESTION_CODE,
+                                                   CABOR_SIGNATURE_QUESTION_CODE]
 
 _CONSTANT_CODES = [PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE]
 
@@ -153,11 +156,11 @@ class FakeParticipantGenerator(object):
           answer_codes = self._get_answer_codes(question_code)
           all_codes = (answer_codes + _CONSTANT_CODES) if answer_codes else _CONSTANT_CODES
           self._question_code_to_answer_codes[question_code.value] = all_codes
-    # Make sure that all the questions are in the questionnaires.
+    # Log warnings for any question codes not found in the questionnaires.
     for code_value in _QUESTION_CODES:
       questionnaire_id = question_code_to_questionnaire_id.get(code_value)
       if not questionnaire_id:
-        raise BadRequest("Question for code %s missing; import questionnaires" % code_value)
+        logging.warning('Question for code %s missing; import questionnaires', code_value)
 
   def _read_all_lines(self, filename):
     with open('app_data/%s' % filename) as f:
@@ -353,10 +356,11 @@ class FakeParticipantGenerator(object):
       self._update_participant(change_time, participant_response, participant_id)
 
   def generate_participant(self, include_physical_measurements, include_biobank_orders):
-    participant_response, creation_time = self._create_participant()
+    participant_response, creation_time, hpo = self._create_participant()
     participant_id = participant_response['participantId']
+    california_hpo = hpo is not None and hpo.name in _CALIFORNIA_HPOS
     consent_time, last_qr_time, the_basics_submission_time = (self._submit_questionnaire_responses(
-      participant_id, creation_time))
+      participant_id, california_hpo, creation_time))
     if consent_time:
       last_request_time = last_qr_time
       # Potentially include physical measurements and biobank orders if the client requested it
@@ -377,6 +381,7 @@ class FakeParticipantGenerator(object):
 
   def _create_participant(self):
     participant_json = {}
+    hpo = None
     if random.random() > _NO_HPO_PERCENT:
       hpo = random.choice(self._hpos)
       if hpo.hpoId != UNSET_HPO_ID:
@@ -384,7 +389,7 @@ class FakeParticipantGenerator(object):
     creation_time = self._days_ago(random.randint(0, _MAX_DAYS_HISTORY))
     participant_response = self._client.request_json(
         'Participant', method='POST', body=participant_json, pretend_date=creation_time)
-    return (participant_response, creation_time)
+    return (participant_response, creation_time, hpo)
 
   def _random_code_answer(self, question_code):
     code = random.choice(self._question_code_to_answer_codes[question_code])
@@ -445,7 +450,7 @@ class FakeParticipantGenerator(object):
     date_of_birth = (self._min_birth_date + delta).date()
     answer_map[DATE_OF_BIRTH_QUESTION_CODE] = [{"valueDate": date_of_birth.isoformat()}]
 
-  def _make_answer_map(self):
+  def _make_answer_map(self, california_hpo):
     answer_map = {}
     answer_map[RACE_QUESTION_CODE] = self._choose_answer_codes(RACE_QUESTION_CODE,
                                                                _MULTIPLE_RACE_ANSWERS,
@@ -461,14 +466,16 @@ class FakeParticipantGenerator(object):
 
     self._choose_state_and_zip(answer_map)
     self._choose_name(answer_map)
+    if california_hpo:
+      answer_map[CABOR_SIGNATURE_QUESTION_CODE] = _string_answer('signature')
     self._choose_date_of_birth(answer_map)
     return answer_map
 
-  def _submit_questionnaire_responses(self, participant_id, start_time):
+  def _submit_questionnaire_responses(self, participant_id, california_hpo, start_time):
     if random.random() <= _NO_QUESTIONNAIRES_SUBMITTED:
       return None, None, None
     submission_time = start_time
-    answer_map = self._make_answer_map()
+    answer_map = self._make_answer_map(california_hpo)
 
     delta = datetime.timedelta(days=random.randint(0, _MAX_DAYS_BETWEEN_SUBMISSIONS))
     submission_time = submission_time + delta
