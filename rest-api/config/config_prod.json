@@ -22,5 +22,8 @@
   ],
   "biobank_status_mail_recipients" : [
     "all-of-us-sample-alerts@googlegroups.com"
+  ],
+  "internal_status_email_recipients": [
+    "pmi-drc-alerts+prod@googlegroups.com"
   ]
 }

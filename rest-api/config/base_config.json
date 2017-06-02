@@ -33,6 +33,6 @@
     "all-of-us-rdr@googlegroups.com"
   ],
   "internal_status_email_recipients": [
-    "pmi-drc-alerts@googlegroups.com"
+    "pmi-drc-alerts+nonprod@googlegroups.com"
   ]
 }
