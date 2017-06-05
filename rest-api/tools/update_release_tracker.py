@@ -15,7 +15,9 @@ import sys
 from tools.main_util import get_parser, configure_logging
 
 _JIRA_INSTANCE_URL = 'https://precisionmedicineinitiative.atlassian.net/'
-_JIRA_PROJECT_ID = 'DA'
+# Release tickets are moved from our usual project, DA, to the PD project
+# for change approval, so for stable/prod releases look for tickets there.
+_JIRA_PROJECT_ID = 'PD'
 
 def _connect_to_jira(jira_username, jira_password):
   return jira.JIRA(_JIRA_INSTANCE_URL, basic_auth=(jira_username, jira_password))
@@ -37,10 +39,11 @@ def main(args):
           ', '.join('[%s] %s' % (issue.key, issue.fields().summary) for issue in issues))
     issue = issues[0]
     jira_connection.add_comment(issue, args.comment)
-    logging.info("Updated issue %s" % issue.key)
+    logging.info('Updated issue %s', issue.key)
     sys.exit(0)
   else:
-    logging.error('No issue found with summary "%s"; exiting.' % summary)
+    logging.error(
+        'No issue found with summary %r in project %r; exiting.', summary, _JIRA_PROJECT_ID)
     sys.exit(-1)
 
 if __name__ == '__main__':
