@@ -53,7 +53,9 @@ source tools/setup_vars.sh
 # Prompts the user for a database user password.
 function get_required_password {
   db_user_name=$1
-  read -s -p "$db_user_name password for database (remember to store this in Valentine!): " new_password
+  echo -n "Store this password in Valentine with"
+  echo " name=\"$db_user_name\" and description=\"$PROJECT database\"."
+  read -s -p "$db_user_name password for database: " new_password
   echo
   if [ -z "${new_password}" ]
   then
