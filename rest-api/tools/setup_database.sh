@@ -13,7 +13,7 @@
 
 # Example usage for setting up a database initially:
 # tools/setup_database.sh --account dan.rodney@pmi-ops.org --project all-of-us-rdr-staging --create_instance
-# Example usage for changing root and rdr/alembic passwords:
+# Example usage for changing root and rdr/alembic/readonly passwords:
 # tools/setup_database.sh --account dan.rodney@pmi-ops.org --project all-of-us-rdr-staging --update_passwords
 
 CREATE_INSTANCE=
@@ -124,7 +124,7 @@ run_cloud_sql_proxy
 
 if [ "${UPDATE_PASSWORDS}" = "Y" ]
 then
-  echo "Updating rdr and alembic user passwords..."
+  echo "Updating database user passwords..."
 else
   echo "Creating empty database..."
 fi
