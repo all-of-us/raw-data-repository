@@ -48,41 +48,35 @@ then
   CREDS_ACCOUNT="${ACCOUNT}"
 fi
 
-
-read -s -p "root password for database (remember to store this in Valentine!): " ROOT_PASSWORD
-echo
-if [ -z "${ROOT_PASSWORD}" ]
-then
-  echo "Password required; exiting."
-  exit 1
-fi
-
-read -s -p "Repeat root password: " REPEAT_ROOT_PASSWORD
-echo
-if [ "${REPEAT_ROOT_PASSWORD}" != "${ROOT_PASSWORD}" ]
-then
-  echo "Password mismatch; exiting."
-  exit 1
-fi
-
-read -s -p "rdr/alembic password for database (remember to store this in Valentine!): " RDR_PASSWORD
-echo
-if [ -z "${RDR_PASSWORD}" ]
-then
-  echo "Password required; exiting."
-  exit 1
-fi
-
-read -s -p "Repeat rdr/alembic password: " REPEAT_RDR_PASSWORD
-echo
-if [ "${REPEAT_RDR_PASSWORD}" != "${RDR_PASSWORD}" ]
-then
-  echo "Password mismatch; exiting."
-  exit 1
-fi
-
-
 source tools/setup_vars.sh
+
+# Prompts the user for a database user password.
+function get_required_password {
+  db_user_name=$1
+  read -s -p "$db_user_name password for database (remember to store this in Valentine!): " new_password
+  echo
+  if [ -z "${new_password}" ]
+  then
+    echo "Password required; exiting."
+    exit 1
+  fi
+
+  read -s -p "Repeat $db_user_name password: " repeat_new_password
+  echo
+  if [ "${repeat_new_password}" != "${new_password}" ]
+  then
+    echo "Password mismatch; exiting."
+    exit 1
+  fi
+}
+
+get_required_password $ROOT_DB_USER
+ROOT_PASSWORD=$new_password
+get_required_password $RDR_DB_USER/$ALEMBIC_DB_USER
+RDR_PASSWORD=$new_password
+get_required_password $READONLY_DB_USER
+READONLY_PASSWORD=$new_password
+
 INSTANCE_NAME=rdrmaindb
 FAILOVER_INSTANCE_NAME=rdrbackupdb
 # Default to a lightweight config; uses a non-shared CPU, with 1 core and 3.75 GB of memory
