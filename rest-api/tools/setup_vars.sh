@@ -1,3 +1,4 @@
+READONLY_DB_USER=readonly
 RDR_DB_USER=rdr
 ALEMBIC_DB_USER=alembic
 ROOT_DB_USER=root
