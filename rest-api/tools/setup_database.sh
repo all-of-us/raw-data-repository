@@ -53,7 +53,7 @@ source tools/setup_vars.sh
 # Prompts the user for a database user password.
 function get_required_password {
   db_user_name=$1
-  echo -n "Store this password in Valentine with"
+  echo -n "Store and share this password in Valentine with"
   echo " name=\"$db_user_name\" and description=\"$PROJECT database\"."
   read -s -p "$db_user_name password for database: " new_password
   echo
