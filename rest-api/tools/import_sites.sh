@@ -1,6 +1,8 @@
 #!/bin/bash -e
 
-# Inserts sites into the database from a CSV input file.
+# Upserts HPO sites from a CSV input file.
+# The CSV is from the site information spreadsheet, "Sites" tab:
+# https://docs.google.com/spreadsheets/d/1AbumEBdalefpxNJaWOu4bMHdzUiVpezurGH5-w9Bv4k
 
 USAGE="tools/import_sites.sh [--file <FILE>] [--account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]]"
 FILE=test/test-data/sites.csv
@@ -10,6 +12,7 @@ while true; do
     --creds_account) CREDS_ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
     --file) FILE=$2; shift 2;;
+    --dry_run) DRY_RUN=--dry_run; shift 1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -38,4 +41,4 @@ else
 fi
 
 source tools/set_path.sh
-python tools/import_sites.py --file $FILE
+python tools/import_sites.py --file $FILE $DRY_RUN
