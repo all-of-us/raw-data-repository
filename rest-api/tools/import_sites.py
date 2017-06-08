@@ -52,7 +52,7 @@ def _site_from_row(row, hpo_dao):
         'Invalid google group: %r does not end with %r; skipping %s.',
         google_group, _GOOGLE_GROUP_SUFFIX, row)
     return None
-  google_group_prefix = google_group[0:len(google_group) - len(_GOOGLE_GROUP_SUFFIX)].lower()
+  google_group_prefix = google_group[:-len(_GOOGLE_GROUP_SUFFIX)].lower()
   consortium = row['Group (Consortium)']
   if consortium == _SKIP_CONSORTIUM:
     logging.info('Skipping %r site %s.', _SKIP_CONSORTIUM, row['Site'])
