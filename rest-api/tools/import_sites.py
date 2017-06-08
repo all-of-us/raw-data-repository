@@ -67,7 +67,7 @@ def _upsert_site(site, existing_site, site_dao, session, dry_run):
     existing_site_dict = existing_site.asdict()
     existing_site_dict['siteId'] = None
     if existing_site_dict == site_dict:
-      logging.info('Not updating existing matching site %s.', site_dict['siteName'])
+      logging.info('Not updating %s.', site_dict['siteName'])
       return False
     else:
       existing_site.consortiumName = site.consortiumName
