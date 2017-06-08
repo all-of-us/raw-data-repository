@@ -7,10 +7,12 @@ from model.site import Site
 from tools.main_util import get_parser, configure_logging
 
 _GOOGLE_GROUP_SUFFIX = '@prod.pmi-ops.org'
+_SKIP_CONSORTIUM = 'Direct Volunteer'  # not including these sites yet as of 2017 June
+
 
 
 def main(args):
-  error_count = 0
+  skip_count = 0
   new_or_updated_count = 0
   matched_count = 0
   with open(args.file, 'r') as csv_file:
@@ -23,7 +25,7 @@ def main(args):
       for row in sites_reader:
         site = _site_from_row(row, hpo_dao)
         if site is None:
-          error_count += 1
+          skip_count += 1
           continue
         changed = _upsert_site(
             site, existing_site_map.get(site.googleGroup), site_dao, session, args.dry_run)
@@ -33,8 +35,8 @@ def main(args):
           matched_count += 1
 
   logging.info(
-      'Done%s. %d errors, %d sites new/updated, %d sites not changed.',
-      ' (dry run)' if args.dry_run else '', error_count, new_or_updated_count, matched_count)
+      'Done%s. %d skipped, %d sites new/updated, %d sites not changed.',
+      ' (dry run)' if args.dry_run else '', skip_count, new_or_updated_count, matched_count)
 
 
 def _site_from_row(row, hpo_dao):
@@ -51,8 +53,12 @@ def _site_from_row(row, hpo_dao):
         google_group, _GOOGLE_GROUP_SUFFIX, row)
     return None
   google_group_prefix = google_group[0:len(google_group) - len(_GOOGLE_GROUP_SUFFIX)].lower()
+  consortium = row['Group (Consortium)']
+  if consortium == _SKIP_CONSORTIUM:
+    logging.info('Skipping %r site %s.', _SKIP_CONSORTIUM, row['Site'])
+    return None
 
-  return Site(consortiumName=row['Group (Consortium)'],
+  return Site(consortiumName=consortium,
               siteName=row['Site'],
               mayolinkClientNumber=(int(mayolink_client_num_str) if mayolink_client_num_str
                                     else None),
