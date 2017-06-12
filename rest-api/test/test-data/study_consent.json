@@ -106,6 +106,15 @@
           "code": "Language_SpokenWrittenLanguage",
           "display": "Language"
         }]
+      },
+      {
+        "linkId": "consentForCABoR",
+        "text": "Consent For CABoR",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "ExtraConsent_CABoRSignature",
+          "display": "Signature"
+        }]
       }]
   }
 }
