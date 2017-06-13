@@ -12,7 +12,6 @@ def configure_logging():
       level=logging.INFO,
       format='%(asctime)s %(levelname)s: %(message)s')
 
-
 def get_parser(description=None):
   """Gets an ArgumentParser, defaulting to the caller's __doc__ as the description."""
   if description is None:
