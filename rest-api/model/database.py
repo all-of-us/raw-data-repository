@@ -68,7 +68,7 @@ def _ping_connection(connection, branch):
 
   Copied from SQLAlchemy 1.1 docs:
   http://docs.sqlalchemy.org/en/rel_1_1/core/pooling.html#disconnect-handling-pessimistic
-  Once SQLAlchemy v1.2 is out of development and released, switch to
+  TODO(DA-321) Once SQLAlchemy v1.2 is out of development and released, switch to
   create_engine(pool_pre_ping=True).
   """
   if branch:
