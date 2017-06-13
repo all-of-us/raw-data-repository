@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import logging
 
 from model.base import Base
 # All tables in the schema should be imported below here.
@@ -17,8 +18,10 @@ from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from model.site import Site
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, select
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
+
 
 class Database(object):
   """Maintains state for accessing the database."""
@@ -26,8 +29,10 @@ class Database(object):
     # Add echo=True here to spit out SQL statements.
     # Set pool_recycle to 3600 -- one hour in seconds -- which is lower than the MySQL wait_timeout
     # parameter (which defaults to 8 hours) to ensure that we don't attempt to use idle database
-    # connections after this period. (See DA-237.)
+    # connections after this period. (See DA-237.) To change the db wait_timeout (seconds), run:
+    # gcloud --project <proj> sql instances patch rdrmaindb --database-flags wait_timeout=28800
     self._engine = create_engine(database_uri, pool_recycle=3600, **kwargs)
+    event.listen(self._engine, 'engine_connect', _ping_connection)
     self.db_type = database_uri.split(':')[0]
     if self.db_type == 'sqlite':
       self._engine.execute('PRAGMA foreign_keys = ON;')
@@ -56,3 +61,47 @@ class Database(object):
       raise
     finally:
       sess.close()
+
+
+def _ping_connection(connection, branch):
+  """Makes sure connections are alive before trying to use them.
+
+  Copied from SQLAlchemy 1.1 docs:
+  http://docs.sqlalchemy.org/en/rel_1_1/core/pooling.html#disconnect-handling-pessimistic
+  TODO(DA-321) Once SQLAlchemy v1.2 is out of development and released, switch to
+  create_engine(pool_pre_ping=True).
+  """
+  if branch:
+    # "branch" refers to a sub-connection of a connection,
+    # we don't want to bother pinging on these.
+    return
+
+  # turn off "close with result".  This flag is only used with
+  # "connectionless" execution, otherwise will be False in any case
+  save_should_close_with_result = connection.should_close_with_result
+  connection.should_close_with_result = False
+
+  try:
+    # run a SELECT 1.   use a core select() so that
+    # the SELECT of a scalar value without a table is
+    # appropriately formatted for the backend
+    connection.scalar(select([1]))
+  except DBAPIError as err:
+    # catch SQLAlchemy's DBAPIError, which is a wrapper
+    # for the DBAPI's exception.  It includes a .connection_invalidated
+    # attribute which specifies if this connection is a "disconnect"
+    # condition, which is based on inspection of the original exception
+    # by the dialect in use.
+    logging.warning('Database connection ping failed.', exc_info=True)
+    if err.connection_invalidated:
+      # run the same SELECT again - the connection will re-validate
+      # itself and establish a new connection.  The disconnect detection
+      # here also causes the whole connection pool to be invalidated
+      # so that all stale connections are discarded.
+      logging.warning('Database connection invalidated, reconnecting.')
+      connection.scalar(select([1]))
+    else:
+      raise
+  finally:
+    # restore "close with result"
+    connection.should_close_with_result = save_should_close_with_result
