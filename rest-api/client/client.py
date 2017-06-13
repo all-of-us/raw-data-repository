@@ -56,7 +56,7 @@ class Client(object):
     self._http = self._get_authorized_http()
     self.last_etag = None
 
-  def _parse_args(self, default_instance, parser):    
+  def _parse_args(self, default_instance, parser):
     parser.add_argument(
         '--instance',
         type=str,
