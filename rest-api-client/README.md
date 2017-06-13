@@ -19,4 +19,14 @@ pip install -r requirements.txt
 
 ## Example of assigning participants to a test HPO:
 
+```
 ./run_client.sh --project <PROJECT> --account <ACCOUNT> test_participant_assigner.py participant_ids.csv
+```
+
+where participant_ids.csv is a file containing a list of participant IDs without the leading 'P', e.g.:
+
+```
+123456789
+234567890
+```
+
