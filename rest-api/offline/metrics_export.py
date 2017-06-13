@@ -5,6 +5,7 @@ import executors
 
 from offline.sql_exporter import SqlExporter
 from dao.code_dao import CodeDao
+from dao.hpo_dao import HPODao
 from dao.database_utils import replace_isodate, get_sql_and_params_for_array
 from model.base import get_column_name
 from model.participant_summary import ParticipantSummary
@@ -12,7 +13,7 @@ from code_constants import PPI_SYSTEM, UNMAPPED, RACE_QUESTION_CODE, EHR_CONSENT
 from field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from offline.metrics_pipeline import MetricsPipeline
-from participant_enums import UNSET_HPO_ID, TEST_EMAIL_PATTERN
+from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN
 
 # TODO: filter out participants that have withdrawn in here
 
@@ -37,7 +38,7 @@ SELECT p.participant_id, ps.date_of_birth date_of_birth,
   FROM participant p, participant_summary ps
  WHERE p.participant_id = ps.participant_id
    AND p.participant_id % :num_shards = :shard_number
-   AND p.hpo_id != :unset_hpo_id
+   AND p.hpo_id != :test_hpo_id
    AND NOT ps.email LIKE :test_email_pattern
 """
 
@@ -48,7 +49,7 @@ SELECT ph.participant_id participant_id, hpo.name hpo,
   FROM participant_history ph, hpo
  WHERE ph.participant_id % :num_shards = :shard_number
    AND ph.hpo_id = hpo.hpo_id
-   AND NOT ph.hpo_id = :unset_hpo_id
+   AND NOT ph.hpo_id = :test_hpo_id
    AND NOT EXISTS
     (SELECT * FROM participant_history ph_prev
       WHERE ph_prev.participant_id = ph.participant_id
@@ -74,7 +75,7 @@ SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time,
    AND qq.code_id in ({})
    AND qr.participant_id % :num_shards = :shard_number
    AND qr.participant_id = p.participant_id
-   AND p.hpo_id != :unset_hpo_id
+   AND p.hpo_id != :test_hpo_id
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = p.participant_id
@@ -83,9 +84,10 @@ SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time,
 """
 
 def _get_params(num_shards, shard_number):
+  test_hpo = HPODao().get_by_name(TEST_HPO_NAME)
   return {'num_shards': num_shards,
           'shard_number': shard_number,
-          'unset_hpo_id': UNSET_HPO_ID,
+          'test_hpo_id': test_hpo.hpoId,
           'test_email_pattern': TEST_EMAIL_PATTERN}
 
 def _get_participant_sql(num_shards, shard_number):
@@ -99,7 +101,6 @@ def _get_participant_sql(num_shards, shard_number):
   return replace_isodate(_PARTICIPANT_SQL_TEMPLATE.format(dna_tests_sql, modules_sql)), params
 
 def _get_hpo_id_sql(num_shards, shard_number):
-
   return replace_isodate(_HPO_ID_QUERY), _get_params(num_shards, shard_number)
 
 def _get_answer_sql(num_shards, shard_number):

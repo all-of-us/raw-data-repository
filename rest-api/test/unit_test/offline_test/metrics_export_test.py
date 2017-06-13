@@ -87,6 +87,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
   def _create_data(self):
     HPODao().insert(HPO(hpoId=PITT_HPO_ID + 1, name='AZ_TUCSON'))
+    HPODao().insert(HPO(hpoId=PITT_HPO_ID + 2, name='TEST'))
     SqlTestBase.setup_codes(
         ANSWER_FIELD_TO_QUESTION_CODE.values() + [EHR_CONSENT_QUESTION_CODE],
         code_type=CodeType.QUESTION)
@@ -122,8 +123,9 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       self.send_consent('P2', email='bob@fexample.com')
 
     with FakeClock(TIME):
-      # No HPO affiliation; this test participant is ignored.
-      participant3 = Participant(participantId=3, biobankId=4)
+      # Test HPO affiliation; this test participant is ignored.
+      participant3 = Participant(participantId=3, biobankId=4,
+                                 providerLink=primary_provider_link('TEST'))
       participant_dao.insert(participant3)
       self.send_consent('P3', email='fred@gmail.com')
 
@@ -136,7 +138,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     with FakeClock(TIME_2):
       # This update to participant has no effect, as the HPO ID didn't change.
       participant = self._participant_with_defaults(
-          participantId=1, version=1, biobankId=2)
+          participantId=1, version=1, biobankId=2,
+          providerLink=primary_provider_link('AZ_TUCSON'))
       participant_dao.update(participant)
       self.submit_questionnaire_response('P1', questionnaire_id,
                                          RACE_WHITE_CODE, 'male', None,
@@ -236,7 +239,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         metrics_version.metricsVersionId).buckets
     bucket_map = {(bucket.date, bucket.hpoId): bucket for bucket in buckets}
     # At TIME, P1 is affiliated with AZ_TUCSON and P2 has PITT.
-    self.assertBucket(bucket_map, TIME, 'UNSET')
+    self.assertBucket(bucket_map, TIME, 'TEST')
     self.assertBucket(bucket_map, TIME, 'AZ_TUCSON', {
         'Participant': 1,
         'Participant.ageRange.26-35': 1,

@@ -5,6 +5,8 @@ import httplib2
 import json
 import logging
 import pprint
+import sys
+import time
 
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -14,6 +16,9 @@ _DEFAULT_BASE_PATH = 'rdr/v1'
 POST_HEADERS = {
     'Content-Type': 'application/json; charset=utf-8',
 }
+logging.Formatter.converter = time.gmtime  # Log in UTC.
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
+                    format='%(asctime)s %(levelname)s: %(message)s')
 client_log = logging.getLogger(__name__)
 
 
@@ -33,13 +38,15 @@ class Client(object):
       base_path=_DEFAULT_BASE_PATH,
       parse_cli=True,
       creds_file=None,
-      default_instance=None):
+      default_instance=None,
+      parser=None):
     default_instance = default_instance or DEFAULT_INSTANCE
+    parser = parser or argparse.ArgumentParser()
     if parse_cli:
-      args = self._parse_args(default_instance)
-      self.instance = args.instance
-      if args.creds_file:
-        creds_file = args.creds_file
+      self.args = self._parse_args(default_instance, parser)
+      self.instance = self.args.instance
+      if self.args.creds_file:
+        creds_file = self.args.creds_file
     else:
       self.instance = default_instance
     self.base_path = base_path
@@ -49,8 +56,7 @@ class Client(object):
     self._http = self._get_authorized_http()
     self.last_etag = None
 
-  def _parse_args(self, default_instance):
-    parser = argparse.ArgumentParser()
+  def _parse_args(self, default_instance, parser):
     parser.add_argument(
         '--instance',
         type=str,
@@ -60,7 +66,8 @@ class Client(object):
     parser.add_argument(
         '--creds_file',
         type=str,
-        help='Path to a credentials file to use when talking to the server.')
+        help='Path to a credentials file to use when talking to the server.',
+        required=False)
     return parser.parse_args()
 
   def _get_authorized_http(self):

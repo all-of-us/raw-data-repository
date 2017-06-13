@@ -12,6 +12,8 @@ UNSET_HPO_ID = 0
 
 # A pattern for test participant email addresses.
 TEST_EMAIL_PATTERN = '%@example.com'
+# The name of the 'test' HPO that test participants are normally affiliated with.
+TEST_HPO_NAME = 'TEST'
 
 class PhysicalMeasurementsStatus(messages.Enum):
   """The state of the participant's physical measurements"""

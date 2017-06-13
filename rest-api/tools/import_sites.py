@@ -7,9 +7,6 @@ from model.site import Site
 from tools.main_util import get_parser, configure_logging
 
 _GOOGLE_GROUP_SUFFIX = '@prod.pmi-ops.org'
-_SKIP_CONSORTIUM = 'Direct Volunteer'  # not including these sites yet as of 2017 June
-
-
 
 def main(args):
   skip_count = 0
@@ -54,9 +51,6 @@ def _site_from_row(row, hpo_dao):
     return None
   google_group_prefix = google_group[:-len(_GOOGLE_GROUP_SUFFIX)].lower()
   consortium = row['Group (Consortium)']
-  if consortium == _SKIP_CONSORTIUM:
-    logging.info('Skipping %r site %s.', _SKIP_CONSORTIUM, row['Site'])
-    return None
 
   return Site(consortiumName=consortium,
               siteName=row['Site'],
