@@ -13,15 +13,15 @@ def main(parser):
       participant_id = line[0].strip()
       if participant_id:
         client_participant_id = 'P{}'.format(participant_id)
-        participant = client.request_json('Participant/{}'.format(client_participant_id))    
+        participant = client.request_json('Participant/{}'.format(client_participant_id))
         participant['providerLink'] = [{'primary': True,
-                                        'organization': {'reference': 'Organization/TEST'}}]      
+                                        'organization': {'reference': 'Organization/TEST'}}]
         client.request_json('Participant/{}'.format(client_participant_id), 'PUT', participant,
                             headers={'If-Match': client.last_etag})
         num_updates += 1
   client_log.info('Updated %d participants.', num_updates)
 
-if __name__ == '__main__':  
+if __name__ == '__main__':
   arg_parser = argparse.ArgumentParser()
   arg_parser.add_argument('--file', help='File containing the list of participant IDs',
                           required=True)
