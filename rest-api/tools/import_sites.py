@@ -51,7 +51,7 @@ def _site_from_row(row, hpo_dao):
     return None
   google_group_prefix = google_group[:-len(_GOOGLE_GROUP_SUFFIX)].lower()
   consortium = row['Group (Consortium)']
-  
+
   return Site(consortiumName=consortium,
               siteName=row['Site'],
               mayolinkClientNumber=(int(mayolink_client_num_str) if mayolink_client_num_str
