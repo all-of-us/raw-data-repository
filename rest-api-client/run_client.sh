@@ -18,9 +18,6 @@ done
 SCRIPT=$1
 shift 1
 
-export ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-export PYTHONPATH=$PYTHONPATH:${ROOT_DIR}/rest-api-client:${ROOT_DIR}/rest-api:${ROOT_DIR}/rest-api/lib
-
 if [ "${PROJECT}" ]
 then
   if [ -z "${ACCOUNT}" ]
