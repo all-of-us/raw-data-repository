@@ -18,25 +18,29 @@ done
 SCRIPT=$1
 shift 1
 
-if [ -z "${PROJECT}" ]
+export ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
+export PYTHONPATH=$PYTHONPATH:${ROOT_DIR}/rest-api-client:${ROOT_DIR}/rest-api:${ROOT_DIR}/rest-api/lib
+
+if [ "${PROJECT}" ]
 then
- echo "$USAGE"
- exit 1
+  if [ -z "${ACCOUNT}" ]
+  then
+   echo "$USAGE"
+   exit 1
+  fi
+
+  if [ -z "${CREDS_ACCOUNT}" ]
+  then
+    CREDS_ACCOUNT="${ACCOUNT}"
+  fi
+  echo "Getting credentials for ${PROJECT}..."
+  source ../rest-api/tools/auth_setup.sh
+  echo "Running script..."
+  python $SCRIPT --creds_file ${CREDS_FILE} --instance ${INSTANCE} $@
+else
+  python $SCRIPT --instance http://localhost:8080 $@
 fi
 
-if [ -z "${ACCOUNT}" ]
-then
- echo "$USAGE"
- exit 1
-fi
 
-if [ -z "${CREDS_ACCOUNT}" ]
-then
-  CREDS_ACCOUNT="${ACCOUNT}"
-fi
 
-echo "Getting credentials for ${PROJECT}..."
-source ../rest-api/tools/auth_setup.sh
-echo "Running script..."
-python $SCRIPT --creds_file ${CREDS_FILE} --instance ${INSTANCE} $@
 

@@ -1,50 +1,52 @@
-Group (Consortium),Site,MayoLINK Client #,Google Group Name,Google Group Email Address,HPO Site ID
-Arizona,University of Arizona CATS Research Center,7035650,HPO-UofACATS,hpo-site-uofacat@prod.pmi-ops.org,AZ_TUCSON
-Arizona,Banner University Medical Center - South Campus,7035651,HPO-BannerSCampus,hpo-site-bannerscampus@prod.pmi-ops.org,AZ_TUCSON
-Arizona,Banner University Medical Center - Phoenix,7035652,HPO-BannerPhoenix,hpo-site-bannerphoenix@prod.pmi-ops.org,AZ_TUCSON
-Arizona,Banner Estrella Medical Center,7035653,HPO-BannerEstrella,hpo-site-bannerestrella@prod.pmi-ops.org,AZ_TUCSON
-Arizona,Banner Desert Medical Center ,7035654,HPO-BannerDesert,hpo-site-bannerdesert@prod.pmi-ops.org,AZ_TUCSON
-Geisinger,Geisinger Health System,7035915,HPO-Geisinger,hpo-site-geisinger@prod.pmi-ops.org,GEISINGER
-Illinois (UI),UI Health,,,hpo-site-UIHealth@prod.pmi-ops.org,ILLINOIS
-Illinois (UI),UIC Research Clinic,7035707,HPO-UICResearch,hpo-site-UICResearch@prod.pmi-ops.org,ILLINOIS
-Illinois (UI),Mile Square,,,hpo-site-UIMilesSquare@prod.pmi-ops.org,ILLINOIS
-Illinois (Northwestern),Northwestern Memorial Hospital (Feinberg and Galter),7035702,HPO-NWFeinbergGalter,hpo-site-NWFeinbergGalter@prod.pmi-ops.org,ILLINOIS
-Illinois (UC),University of Chicago Medical Center,7035703,HPO-UofChicago,hpo-site-UofChicago@prod.pmi-ops.org,ILLINOIS
-Illinois (UC),Rush University Medical Center,7035704,HPO-RushUniv,hpo-site-RushUniv@prod.pmi-ops.org,ILLINOIS
-Illinois (UC),Northshore Evanston Hospital ,7035705,HPO-NorthshoreE,hpo-site-NorthshoreE@prod.pmi-ops.org,ILLINOIS
-New York,"Irving Institute for Clinical and Translational Research, Columbia University Medical Center",7035709,HPO-IrvingColumbia,hpo-site-IrvingColumbia@prod.pmi-ops.org,COLUMBIA
-New York,Harlem Hosptial,7035710,HPO-Harlem,hpo-site-Harlem@prod.pmi-ops.org,COLUMBIA
-New York,Weill Cornell Medicine,7035711,HPO-WeillCornell,hpo-site-WeillCornell@prod.pmi-ops.org,COLUMBIA
-Northeast,VA Boston Healthcare System,7035759,HPO-VABostonHC,hpo-site-VABostonHC@prod.pmi-ops.org,VA
-West,VA Palo Alto Health Care System,7035758,HPO-VAPaloAlto,hpo-site-VAPaloAlto@prod.pmi-ops.org,VA
-"Community Health Center, Inc",Middletown Medical,7035913,FQHC-MiddletownMed,hpo-site-MiddletownMed@prod.pmi-ops.org,COMM_HEALTH
-"Community Health Center, Inc",Meriden Medical,7035914,FQHC-MeridenMed,hpo-site-MeridianMed@prod.pmi-ops.org,COMM_HEALTH
-Eau Claire Cooperative Health Center,Pelion Family Practice,7035779,FQHC-PelionFP,hpo-site-PelionFP@prod.pmi-ops.org,EAU_CLAIRE
-Eau Claire Cooperative Health Center,Waverly Family Practice,7035780,FQHC-WaverlyFP,hpo-site-WaverlyFP@prod.pmi-ops.org,EAU_CLAIRE
-Eau Claire Cooperative Health Center,Eau Claire Walk In,7035781,FQHC-EauClaireWI,hpo-site-EauClaireWI@prod.pmi-ops.org,EAU_CLAIRE
-"HRHCare, Inc.",The HRHCare Jeannette J. Phillips Health Center,7035760,HPO-JeanettePhillips,hpo-site-JeanettePhillips@prod.pmi-ops.org,HRHCARE
-Pittsburgh,Monroeville Urgent Care Center,7035769,HPO-Monroeville,hpo-site-Monroeville@prod.pmi-ops.org,PITT
-Pittsburgh,Aiken Medical Building,7035770,HPO-AikenMed,hpo-site-AikenMed@prod.pmi-ops.org,PITT
-Pittsburgh,UPMC University Center,7035771,HPO-UPMC,hpo-site-UPMC@prod.pmi-ops.org,PITT
-Pittsburgh,"Montefiore Hospital, Clinical Translational Research Center (CTRC)",7035772,HPO-MontefioreCTRC,hpo-site-MontefioreCTRC@prod.pmi-ops.org,PITT
-Cherokee Health Systems,Morrisontown,7035777,HPO-Morristown,hpo-site-Morristown@prod.pmi-ops.org,CHEROKEE
-Cherokee Health Systems,Knoxville,7035778,HPO-Knoxville,hpo-site-Knoxville@prod.pmi-ops.org,CHEROKEE
-Jackson-Hinds Comprehensive Health Center,Dr. James Anderson Health Facility,7035782,HPO-JamesAnderson,hpo-site-JamesAnderson@prod.pmi-ops.org,JACKSON
-Jackson-Hinds Comprehensive Health Center,Copiah Comprehensive Health Complex,7035783,HPO-Copiah,hpo-site-Copiah@prod.pmi-ops.org,JACKSON
-San Ysidro Health Center,Otay Family Health Center,7035784,HPO-Otay,hpo-site-Otay@prod.pmi-ops.org,SAN_YSIDRO
-San Ysidro Health Center,CHC Ocean View,7035785,HPO-CHCOceanView,hpo-site-CHCOceanView@prod.pmi-ops.org,SAN_YSIDRO
-Direct Volunteer,San Diego Blood Bank,7035735,DV-SDBB,dv-site-SDBB@prod.pmi-ops.org,SDBB
-Direct Volunteer,Walgreens,7035735,DV-Walgreens,dv-site-walgreens@prod.pmi-ops.org,WALGREENS
-Trans-American Consortium (TAC),Henry Ford Health System,7035894,HPO-HenryFord,hpo-site-HenryFord@prod.pmi-ops.org,TRANS_AM
-Direct Volunteer,Quest Labs,7035735,DV-Quest,dv-site-QuestLabs@prod.pmi-ops.org,QUEST
-Direct Volunteer,EMSI,7035735,DV-EMSI,dv-site-EMSI@prod.pmi-ops.org,EMSI
-Direct Volunteer,QTC,7035735,DV-QTC,dv-site-QTC@prod.pmi-ops.org,QTC
-California,San Diego Blood Bank,7035957,HPO-SDBB,hpo-site-SDBB@prod.pmi-ops.org,CAL_PMC
-New England,Massachusetts General Hospital,7035989,HPO-MassGen,hpo-site-MassGen@prod.pmi-ops.org,NE_PMC
-New England,Brigham and Women's Hospital - Fenwood street,7035991,HPO-BWFenwood,hpo-site-BWFenwood@prod.pmi-ops.org,NE_PMC
-New England,Brigham and Women's Hospital - Francis street,7035993,HPO-BWFrancis,hpo-site-BWFrancis@prod.pmi-ops.org,NE_PMC
-New England,Brigham and Women's Hospital - Longwood,7035992,HPO-BWLongwood,hpo-site-BWLongwood@prod.pmi-ops.org,NE_PMC
-New England,Boston Medical Center,7035998,HPO-BostonMed,hpo-site-BostonMed@prod.pmi-ops.org,NE_PMC
-New England,"Massachusetts General Hospital, Clinical Research Center",7035990,HPO-MassGenCRC,hpo-site-MassGenCRC@prod.pmi-ops.org,NE_PMC
-California ,University of California Irvine School of Medicine,7035987,HPO-UofCIrvine,hpo-site-UofCIrvine@prod.pmi-ops.org,CAL_PMC
-California ,University of Southern California,7035988,HPO-USC,hpo-site-USC@prod.pmi-ops.org,CAL_PMC
+Group (Consortium),Site,MayoLINK Client #,Google Group Name,Google Group Email Address,HPO Site ID,Notes
+Arizona,Banner University Medical Center - Tucson,7035650,HPO-BannerTucson,hpo-site-bannertucson@prod.pmi-ops.org,AZ_TUCSON,Formerly University of Arizona CATS Research  
+Arizona,Banner University Medical Center - South Campus,7035651,HPO-BannerSCampus,hpo-site-bannerscampus@prod.pmi-ops.org,AZ_TUCSON,
+Arizona,Banner University Medical Center - Phoenix,7035652,HPO-BannerPhoenix,hpo-site-bannerphoenix@prod.pmi-ops.org,AZ_TUCSON,
+Arizona,Banner Estrella Medical Center,7035653,HPO-BannerEstrella,hpo-site-bannerestrella@prod.pmi-ops.org,AZ_TUCSON,
+Arizona,Banner Desert Medical Center ,7035654,HPO-BannerDesert,hpo-site-bannerdesert@prod.pmi-ops.org,AZ_TUCSON,
+Illinois (UI),UI Health,,,hpo-site-UIHealth@prod.pmi-ops.org,ILLINOIS,
+Illinois (UI),UIC Research Clinic,7035707,HPO-UICResearch,hpo-site-UICResearch@prod.pmi-ops.org,ILLINOIS,
+Illinois (UI),Mile Square,,,hpo-site-UIMilesSquare@prod.pmi-ops.org,ILLINOIS,
+Illinois (Northwestern),Northwestern Memorial Hospital (Feinberg and Galter),7035702,HPO-NWFeinbergGalter,hpo-site-NWFeinbergGalter@prod.pmi-ops.org,ILLINOIS,
+Illinois (UC),University of Chicago Medical Center,7035703,HPO-UofChicago,hpo-site-UofChicago@prod.pmi-ops.org,ILLINOIS,
+Illinois (UC),Rush University Medical Center,7035704,HPO-RushUniv,hpo-site-RushUniv@prod.pmi-ops.org,ILLINOIS,
+Illinois (UC),Northshore Evanston Hospital ,7035705,HPO-NorthshoreE,hpo-site-NorthshoreE@prod.pmi-ops.org,ILLINOIS,
+New York,"Irving Institute for Clinical and Translational Research, Columbia University Medical Center",7035709,HPO-IrvingColumbia,hpo-site-IrvingColumbia@prod.pmi-ops.org,COLUMBIA,
+New York,Harlem Hosptial,7035710,HPO-Harlem,hpo-site-Harlem@prod.pmi-ops.org,COLUMBIA,
+New York,Weill Cornell Medicine,7035711,HPO-WeillCornell,hpo-site-WeillCornell@prod.pmi-ops.org,COLUMBIA,
+Northeast,VA Boston Healthcare System,7035759,HPO-VABostonHC,hpo-site-VABostonHC@prod.pmi-ops.org,VA,
+West,VA Palo Alto Health Care System,7035758,HPO-VAPaloAlto,hpo-site-VAPaloAlto@prod.pmi-ops.org,VA,
+"Community Health Center, Inc",Middletown Medical,7035913,FQHC-MiddletownMed,hpo-site-MiddletownMed@prod.pmi-ops.org,COMM_HEALTH,
+"Community Health Center, Inc",Meriden Medical,7035914,FQHC-MeridenMed,hpo-site-MeridianMed@prod.pmi-ops.org,COMM_HEALTH,
+Eau Claire Cooperative Health Center,Pelion Family Practice,7035779,FQHC-PelionFP,hpo-site-PelionFP@prod.pmi-ops.org,EAU_CLAIRE,
+Eau Claire Cooperative Health Center,Waverly Family Practice,7035780,FQHC-WaverlyFP,hpo-site-WaverlyFP@prod.pmi-ops.org,EAU_CLAIRE,
+Eau Claire Cooperative Health Center,Eau Claire Walk In,7035781,FQHC-EauClaireWI,hpo-site-EauClaireWI@prod.pmi-ops.org,EAU_CLAIRE,
+"HRHCare, Inc.",The HRHCare Jeannette J. Phillips Health Center,7035760,HPO-JeanettePhillips,hpo-site-JeanettePhillips@prod.pmi-ops.org,HRHCARE,
+Pittsburgh,Monroeville Urgent Care Center,7035769,HPO-Monroeville,hpo-site-Monroeville@prod.pmi-ops.org,PITT,
+Pittsburgh,Aiken Medical Building,7035770,HPO-AikenMed,hpo-site-AikenMed@prod.pmi-ops.org,PITT,
+Pittsburgh,UPMC University Center,7035771,HPO-UPMC,hpo-site-UPMC@prod.pmi-ops.org,PITT,
+Pittsburgh,"Montefiore Hospital, Clinical Translational Research Center (CTRC)",7035772,HPO-MontefioreCTRC,hpo-site-MontefioreCTRC@prod.pmi-ops.org,PITT,
+Pittsburgh,University of Pittsburgh - Bethel Park,7036204,HPO Bethel Park,hpo-site-bethelpark@prod.pmi-ops.org,PITT,
+Cherokee Health Systems,Morrisontown,7035777,HPO-Morristown,hpo-site-Morristown@prod.pmi-ops.org,CHEROKEE,
+Cherokee Health Systems,Knoxville,7035778,HPO-Knoxville,hpo-site-Knoxville@prod.pmi-ops.org,CHEROKEE,
+Jackson-Hinds Comprehensive Health Center,Dr. James Anderson Health Facility,7035782,HPO-JamesAnderson,hpo-site-JamesAnderson@prod.pmi-ops.org,JACKSON,
+Jackson-Hinds Comprehensive Health Center,Copiah Comprehensive Health Complex,7035783,HPO-Copiah,hpo-site-Copiah@prod.pmi-ops.org,JACKSON,
+San Ysidro Health Center,Otay Family Health Center,7035784,HPO-Otay,hpo-site-Otay@prod.pmi-ops.org,SAN_YSIDRO,
+San Ysidro Health Center,CHC Ocean View,7035785,HPO-CHCOceanView,hpo-site-CHCOceanView@prod.pmi-ops.org,SAN_YSIDRO,
+Direct Volunteer,San Diego Blood Bank,7035735,DV-SDBB,hpo-site-dv-site-SDBB@prod.pmi-ops.org,SDBB,
+Direct Volunteer,Walgreens,7035735,DV-Walgreens,hpo-site-dv-site-walgreens@prod.pmi-ops.org,WALGREENS,
+Trans-American Consortium (TACH),Henry Ford Health System,7035894,HPO-HenryFord,hpo-site-HenryFord@prod.pmi-ops.org,TRANS_AM,
+Trans-American Consortium (TACH),Baylor Heart and Vascular Hospital,7036203,HPO Baylor Heart,hpo-site-baylorheart@prod.pmi-ops.org,TRANS_AM,
+Direct Volunteer,Quest Labs,7035735,DV-Quest,hpo-site-dv-site-QuestLabs@prod.pmi-ops.org,QUEST,
+Direct Volunteer,EMSI,7035735,DV-EMSI,hpo-site-dv-site-EMSI@prod.pmi-ops.org,EMSI,
+Direct Volunteer,QTC,7035735,DV-QTC,hpo-site-dv-site-QTC@prod.pmi-ops.org,QTC,
+California,San Diego Blood Bank,7035957,HPO-SDBB,hpo-site-sandiegobb@prod.pmi-ops.org,CAL_PMC,
+New England,Massachusetts General Hospital,7035989,HPO-MassGen,hpo-site-MassGen@prod.pmi-ops.org,NE_PMC,
+New England,Brigham and Women's Hospital - Fenwood street,7035991,HPO-BWFenwood,hpo-site-BWFenwood@prod.pmi-ops.org,NE_PMC,
+New England,Brigham and Women's Hospital - Francis street,7035993,HPO-BWFrancis,hpo-site-BWFrancis@prod.pmi-ops.org,NE_PMC,
+New England,Brigham and Women's Hospital - Longwood,7035992,HPO-BWLongwood,hpo-site-BWLongwood@prod.pmi-ops.org,NE_PMC,
+New England,Boston Medical Center,7035998,HPO-BostonMed,hpo-site-BostonMed@prod.pmi-ops.org,NE_PMC,
+New England,"Massachusetts General Hospital, Clinical Research Center",7035990,HPO-MassGenCRC,hpo-site-MassGenCRC@prod.pmi-ops.org,NE_PMC,
+California ,University of California Irvine School of Medicine,7035987,HPO-UofCIrvine,hpo-site-UofCIrvine@prod.pmi-ops.org,CAL_PMC,
+California ,University of Southern California,7035988,HPO-USC,hpo-site-USC@prod.pmi-ops.org,CAL_PMC,
+Test Organization,Prod HPO Site A,,Prod HPO Site A,hpo-site-a@prod.pmi-ops.org,TEST,
