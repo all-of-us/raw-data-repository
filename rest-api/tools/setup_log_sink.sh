@@ -30,6 +30,19 @@ fi
 PROJECT=all-of-us-rdr-${ENV}
 BUCKET=${ENV}_logs_archive
 
+LIFECYCLEFILE=$(mktemp --tmpdir lifecycle.json.XXXX)
+cat <<EOF > $LIFECYCLEFILE
+{
+  "rule":
+  [
+    {
+      "action": {"type": "Delete"},
+      "condition": {"age": 180}
+    }
+  ]
+}
+EOF
+
 gcloud auth login "${ACCOUNT}"
 gcloud config set project "${PROJECT}"
 
@@ -45,5 +58,7 @@ echo End full status output
 SERVICEACCOUNT=$(echo "${STATUS}" | grep serviceAccount | sed -e 's/.*serviceAccount:\(.*\)`.*/\1/g')
 gsutil acl ch -u "${SERVICEACCOUNT}:O" "gs://${BUCKET}/"
 gsutil acl ch -u "${SERVICEACCOUNT}:W" "gs://${BUCKET}/"
+gsutil lifecycle set $LIFECYCLEFILE "gs://${BUCKET}/"
+rm $LIFECYCLEFILE
 
 echo Sink created, sink account $SERVICEACCOUNT granted access to bucket.
