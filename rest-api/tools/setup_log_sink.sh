@@ -57,7 +57,6 @@ echo $STATUS
 echo End full status output
 SERVICEACCOUNT=$(echo "${STATUS}" | grep serviceAccount | sed -e 's/.*serviceAccount:\(.*\)`.*/\1/g')
 gsutil acl ch -u "${SERVICEACCOUNT}:O" "gs://${BUCKET}/"
-gsutil acl ch -u "${SERVICEACCOUNT}:W" "gs://${BUCKET}/"
 gsutil lifecycle set $LIFECYCLEFILE "gs://${BUCKET}/"
 rm $LIFECYCLEFILE
 
