@@ -191,7 +191,7 @@ class ParticipantDaoTest(SqlTestBase):
       with self.assertRaises(PreconditionFailed):
         self.dao.update(p)
 
-  def test_update_withdrawn_fails(self):
+  def test_update_withdrawn_hpo_succeeds(self):
     p = Participant(withdrawalStatus=WithdrawalStatus.NO_USE)
     time = datetime.datetime(2016, 1, 1)
     with random_ids([1, 2]):
@@ -208,6 +208,25 @@ class ParticipantDaoTest(SqlTestBase):
 
     p.version = 1
     p.providerLink = test_data.primary_provider_link('PITT')
+    self.dao.update(p)      
+
+  def test_update_withdrawn_status_fails(self):
+    p = Participant(withdrawalStatus=WithdrawalStatus.NO_USE)
+    time = datetime.datetime(2016, 1, 1)
+    with random_ids([1, 2]):
+      with FakeClock(time):
+        self.dao.insert(p)
+
+    expected_participant = self._participant_with_defaults(
+        participantId=1, version=1, biobankId=2, lastModified=time, signUpTime=time,
+        withdrawalStatus=WithdrawalStatus.NO_USE)
+    self.assertEquals(expected_participant.asdict(), p.asdict())
+
+    p2 = self.dao.get(1)
+    self.assertEquals(p.asdict(), p2.asdict())
+
+    p.version = 1
+    p.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
     with self.assertRaises(Forbidden):
       self.dao.update(p)
 
