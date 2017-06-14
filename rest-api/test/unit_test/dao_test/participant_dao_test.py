@@ -208,7 +208,7 @@ class ParticipantDaoTest(SqlTestBase):
 
     p.version = 1
     p.providerLink = test_data.primary_provider_link('PITT')
-    self.dao.update(p)      
+    self.dao.update(p)
 
   def test_update_withdrawn_status_fails(self):
     p = Participant(withdrawalStatus=WithdrawalStatus.NO_USE)

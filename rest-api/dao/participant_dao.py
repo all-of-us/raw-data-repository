@@ -77,9 +77,9 @@ class ParticipantDao(UpdatableDao):
       raise BadRequest('missing suspension status in update')
     super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
     # Once a participant marks their withdrawal status as NO_USE, it can't be changed back.
-    if (existing_obj.withdrawalStatus == WithdrawalStatus.NO_USE 
+    if (existing_obj.withdrawalStatus == WithdrawalStatus.NO_USE
         and obj.withdrawalStatus != WithdrawalStatus.NO_USE):
-      raise Forbidden('Participant %d has withdrawn, cannot unwithdraw' % obj.participantId)  
+      raise Forbidden('Participant %d has withdrawn, cannot unwithdraw' % obj.participantId)
 
   def get_for_update(self, session, obj_id):
     # Fetch the participant summary at the same time as the participant, as we are potentially
