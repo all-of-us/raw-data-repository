@@ -14,7 +14,7 @@ def main(parser):
       participant_id = line[0].strip()
       if participant_id:
         client_participant_id = 'P{}'.format(participant_id)
-        participant = client.request_json('Participant/{}'.format(client_participant_id))        
+        participant = client.request_json('Participant/{}'.format(client_participant_id))
         participant['providerLink'] = [{'primary': True,
                                         'organization': {'reference': 'Organization/%s' % hpo}}]
         client.request_json('Participant/{}'.format(client_participant_id), 'PUT', participant,
