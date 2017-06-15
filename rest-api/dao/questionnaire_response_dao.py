@@ -200,7 +200,8 @@ class QuestionnaireResponseDao(BaseDao):
             if code and code.value == CONSENT_PERMISSION_YES_CODE:
               ehr_consent = True
           elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
-            if answer.valueString:
+            if answer.valueUri:
+              # TODO: validate the URI? [DA-326]
               if not participant_summary.consentForCABoR:
                 participant_summary.consentForCABoR = True
                 participant_summary.consentForCABoRTime = questionnaire_response.created
@@ -369,6 +370,8 @@ class QuestionnaireResponseDao(BaseDao):
                   qr_answer.valueDateTime = answer.valueDateTime.date
                 if answer.valueBoolean is not None:
                   qr_answer.valueBoolean = answer.valueBoolean
+                if answer.valueUri is not None:
+                  qr_answer.valueUri = answer.valueUri
                 answers.append((qr_answer, system_and_code))
               if answer.group:
                 for sub_group in answer.group:
