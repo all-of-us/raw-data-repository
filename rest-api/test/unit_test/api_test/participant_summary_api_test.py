@@ -91,7 +91,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                     state_code, street_address, city, sex_code,
                                     sexual_orientation_code, phone_number, recontact_method_code,
                                     language_code, education_code, income_code, date_of_birth,
-                                    cabor_signature):
+                                    cabor_signature_uri):
     code_answers = []
     _add_code_answer(code_answers, "race", race_code)
     _add_code_answer(code_answers, "genderIdentity", gender_code)
@@ -112,9 +112,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                             ("streetAddress", street_address),
                                                             ("city", city),
                                                             ("phoneNumber", phone_number),
-                                                            ("zipCode", zip_code),
-                                                            ("CABoRSignature", cabor_signature)],
-                                          date_answers = [("dateOfBirth", date_of_birth)])
+                                                            ("zipCode", zip_code)],                                                            
+                                          date_answers = [("dateOfBirth", date_of_birth)],
+                                          uri_answers = [("CABoRSignature", cabor_signature_uri)])
     with FakeClock(TIME_1):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
@@ -142,7 +142,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "1234 Main Street", "Austin", "male_sex",
                                        "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
-                                       datetime.date(1978, 10, 9), "signature")
+                                       datetime.date(1978, 10, 9), "signature.pdf")
     with FakeClock(TIME_2):
       ps = self.send_get('Participant/%s/Summary' % participant_id)
     expected_ps = {'questionnaireOnHealthcareAccess': 'UNSET',
@@ -277,7 +277,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "1234 Main Street", "Austin", "male_sex",
                                        "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
-                                       datetime.date(1978, 10, 9), "signature")
+                                       datetime.date(1978, 10, 9), "signature.pdf")
     self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "female",
                                        "Mary", "Q", "Jones", "78751", None,
                                        None, None, None, None, None, None, None, None, None,

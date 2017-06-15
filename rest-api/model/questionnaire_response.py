@@ -56,3 +56,4 @@ class QuestionnaireResponseAnswer(Base):
   valueString = Column('value_string', String(1024))
   valueDate = Column('value_date', Date)
   valueDateTime = Column('value_datetime', UTCDateTime)
+  valueUri = Column('value_uri', String(1024))

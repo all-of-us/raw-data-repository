@@ -468,7 +468,7 @@ def make_deferred_not_run():
 
 
 def make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=None,
-                                string_answers=None, date_answers=None):
+                                string_answers=None, date_answers=None, uri_answers=None):
   results = []
   if code_answers:
     for answer in code_answers:
@@ -494,6 +494,13 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
                          { "valueDate": "%s" % answer[1].isoformat() }
                         ]
                     })
+  if uri_answers:
+    for answer in uri_answers:
+      results.append({"linkId": answer[0],
+                      "answer": [
+                         { "valueUri": answer[1] }
+                        ]
+                    })  
   return {"resourceType": "QuestionnaireResponse",
           "status": "completed",
           "subject": { "reference": "Patient/{}".format(participant_id) },
