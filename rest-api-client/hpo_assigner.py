@@ -7,6 +7,7 @@ from client.client import Client, client_log
 def main(parser):
   client = Client('rdr/v1', parser=parser)
   num_updates = 0
+  hpo = client.args.hpo
   with open(client.args.file) as csvfile:
     reader = csv.reader(csvfile)
     for line in reader:
@@ -14,8 +15,11 @@ def main(parser):
       if participant_id:
         client_participant_id = 'P{}'.format(participant_id)
         participant = client.request_json('Participant/{}'.format(client_participant_id))
-        participant['providerLink'] = [{'primary': True,
-                                        'organization': {'reference': 'Organization/TEST'}}]
+        if hpo == 'UNSET':
+          participant['providerLink'] = []
+        else:
+          participant['providerLink'] = [{'primary': True,
+                                          'organization': {'reference': 'Organization/%s' % hpo}}]
         client.request_json('Participant/{}'.format(client_participant_id), 'PUT', participant,
                             headers={'If-Match': client.last_etag})
         num_updates += 1
@@ -25,5 +29,7 @@ if __name__ == '__main__':
   arg_parser = argparse.ArgumentParser()
   arg_parser.add_argument('--file', help='File containing the list of participant IDs',
                           required=True)
+  arg_parser.add_argument('--hpo', help='HPO to assign the participants to; defaults to TEST.',
+                          default='TEST')
   main(arg_parser)
 
