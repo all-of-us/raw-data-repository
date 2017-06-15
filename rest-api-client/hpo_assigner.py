@@ -15,8 +15,11 @@ def main(parser):
       if participant_id:
         client_participant_id = 'P{}'.format(participant_id)
         participant = client.request_json('Participant/{}'.format(client_participant_id))
-        participant['providerLink'] = [{'primary': True,
-                                        'organization': {'reference': 'Organization/%s' % hpo}}]
+        if hpo == 'UNSET':
+          participant['providerLink'] = []
+        else:
+          participant['providerLink'] = [{'primary': True,
+                                          'organization': {'reference': 'Organization/%s' % hpo}}]
         client.request_json('Participant/{}'.format(client_participant_id), 'PUT', participant,
                             headers={'If-Match': client.last_etag})
         num_updates += 1
