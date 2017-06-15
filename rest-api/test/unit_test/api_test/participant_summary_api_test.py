@@ -112,7 +112,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                             ("streetAddress", street_address),
                                                             ("city", city),
                                                             ("phoneNumber", phone_number),
-                                                            ("zipCode", zip_code)],                                                            
+                                                            ("zipCode", zip_code)],
                                           date_answers = [("dateOfBirth", date_of_birth)],
                                           uri_answers = [("CABoRSignature", cabor_signature_uri)])
     with FakeClock(TIME_1):

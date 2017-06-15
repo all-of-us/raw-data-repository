@@ -500,7 +500,7 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
                       "answer": [
                          { "valueUri": answer[1] }
                         ]
-                    })  
+                    })
   return {"resourceType": "QuestionnaireResponse",
           "status": "completed",
           "subject": { "reference": "Patient/{}".format(participant_id) },
