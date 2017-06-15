@@ -28,8 +28,8 @@ def main(parser):
 if __name__ == '__main__':
   arg_parser = argparse.ArgumentParser()
   arg_parser.add_argument('--file', help='File containing the list of participant IDs',
-                          type=str, required=True)
+                          required=True)
   arg_parser.add_argument('--hpo', help='HPO to assign the participants to; defaults to TEST.',
-                          type=str, default='TEST')
+                          default='TEST')
   main(arg_parser)
 
