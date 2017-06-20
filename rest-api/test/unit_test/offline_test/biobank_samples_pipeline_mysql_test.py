@@ -56,7 +56,7 @@ class MySqlReconciliationTest(FlaskTestBase):
           to_client_participant_id(participant.participantId), race_codes)
     return participant
 
-  def _insert_order(self, participant, order_id, tests, order_time, finalized_tests=None):    
+  def _insert_order(self, participant, order_id, tests, order_time, finalized_tests=None):
     order = BiobankOrder(
         biobankOrderId=order_id,
         participantId=participant.participantId,
@@ -74,7 +74,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     for test_code in tests:
       finalized_time = order_time
       if finalized_tests and not test_code in finalized_tests:
-        finalized_time = None      
+        finalized_time = None
       order.samples.append(
           BiobankOrderedSample(
               biobankOrderId=order.biobankOrderId,
@@ -120,7 +120,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     # On time, recent order and samples; shows up in rx
     p_on_time = self._insert_participant()
     # Extra samples ordered now aren't considered missing or late.
-    self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time, 
+    self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time,
                        finalized_tests=BIOBANK_TESTS[:3])
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2],
                          ['GoodSample1', 'GoodSample2'], within_24_hours)
@@ -153,9 +153,9 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # Order with missing sample from 2 days ago; shows up in rx and missing.
     p_two_days_missing = self._insert_participant()
-    # The third test doesn't wind up in missing, as it was never finalized.  
+    # The third test doesn't wind up in missing, as it was never finalized.
     self._insert_order(p_two_days_missing, 'TwoDaysMissingOrder',
-                       BIOBANK_TESTS[:3], two_days_ago, 
+                       BIOBANK_TESTS[:3], two_days_ago,
                        finalized_tests=BIOBANK_TESTS[:2])
 
     # Recent samples with no matching order; shows up in missing.
