@@ -355,8 +355,9 @@ class FakeParticipantGenerator(object):
       change_time = last_request_time + datetime.timedelta(days=days_delta)
       self._update_participant(change_time, participant_response, participant_id)
 
-  def generate_participant(self, include_physical_measurements, include_biobank_orders):
-    participant_response, creation_time, hpo = self._create_participant()
+  def generate_participant(self, include_physical_measurements, include_biobank_orders,
+                           requested_hpo=None):
+    participant_response, creation_time, hpo = self._create_participant(requested_hpo)
     participant_id = participant_response['participantId']
     california_hpo = hpo is not None and hpo.name in _CALIFORNIA_HPOS
     consent_time, last_qr_time, the_basics_submission_time = (self._submit_questionnaire_responses(
@@ -373,17 +374,22 @@ class FakeParticipantGenerator(object):
         last_biobank_time = self._submit_biobank_data(participant_id,
                                                       the_basics_submission_time)
         last_request_time = max(last_request_time, last_biobank_time)
-      last_hpo_change_time, participant_response = self._submit_hpo_changes(participant_response,
-                                                                            participant_id,
-                                                                            consent_time)
-      last_request_time = max(last_request_time, last_hpo_change_time)
+      if not requested_hpo:
+        last_hpo_change_time, participant_response = self._submit_hpo_changes(participant_response,
+                                                                              participant_id,
+                                                                              consent_time)
+        last_request_time = max(last_request_time, last_hpo_change_time)
       self._submit_status_changes(participant_response, participant_id, last_request_time)
 
-  def _create_participant(self):
+  def _create_participant(self, hpo_name):
     participant_json = {}
     hpo = None
-    if random.random() > _NO_HPO_PERCENT:
-      hpo = random.choice(self._hpos)
+    if hpo_name:
+      hpo = HPODao().get_by_name(hpo_name)
+    else:
+      if random.random() > _NO_HPO_PERCENT:
+        hpo = random.choice(self._hpos)
+    if hpo:
       if hpo.hpoId != UNSET_HPO_ID:
         participant_json['providerLink'] = [_make_primary_provider_link(hpo)]
     creation_time = self._days_ago(random.randint(0, _MAX_DAYS_HISTORY))
@@ -401,6 +407,10 @@ class FakeParticipantGenerator(object):
     return self._random_code_answer(question_code)
 
   def _choose_answer_codes(self, question_code, percent_with_multiple, max_answers):
+    answer_codes = self._question_code_to_answer_codes.get(question_code)
+    if not answer_codes:
+      # There is no question in questionnaires for this code; skip.
+      return None
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return None
     if random.random() > percent_with_multiple:
