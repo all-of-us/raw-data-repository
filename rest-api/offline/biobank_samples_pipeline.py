@@ -36,7 +36,7 @@ _US_CENTRAL = pytz.timezone('US/Central')
 INPUT_CSV_TIME_FORMAT = '%Y-%m-%d-%H-%M-%S'
 _INPUT_CSV_TIME_FORMAT_LENGTH = 18
 _CSV_SUFFIX_LENGTH = 4
-_THIRTY_SIX_HOURS_AGO = datetime.timedelta(hours=36)
+_TWENTY_FOUR_HOURS_AGO = datetime.timedelta(hours=24)
 _MAX_INPUT_AGE = datetime.timedelta(hours=24)
 _PMI_OPS_SYSTEM = 'https://www.pmi-ops.org'
 
@@ -209,16 +209,16 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
 
   # Gets orders for which the samples arrived, but they arrived late, within the past 7 days.
   late_predicate = lambda result: (result[_ELAPSED_HOURS_INDEX] and
-                                    int(result[_ELAPSED_HOURS_INDEX]) > 36 and
+                                    int(result[_ELAPSED_HOURS_INDEX]) > 24 and
                                     in_past_week(result, now))
 
   # Gets samples or orders where something has gone missing within the past 7 days, and if an order
-  # was placed, it was placed at least 36 hours ago.
+  # was placed, it was placed at least 24 hours ago.
   missing_predicate = lambda result: ((result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
                                         (result[_SENT_FINALIZED_INDEX] and
                                          not result[_RECEIVED_TEST_INDEX])) and
                                        in_past_week(result, now,
-                                                    ordered_before=now - _THIRTY_SIX_HOURS_AGO))
+                                                    ordered_before=now - _TWENTY_FOUR_HOURS_AGO))
 
   # Open three files and a database session; run the reconciliation query and pipe the output
   # to the files, using per-file predicates to filter out results.
