@@ -40,11 +40,13 @@ class DataGenApi(Resource):
     response = {}
     include_physical_measurements = bool(resource_json.get('include_physical_measurements', False))
     include_biobank_orders = bool(resource_json.get('include_biobank_orders', False))
+    requested_hpo = resource_json.get('hpo', None)
     if num_participants > 0:
       participant_generator = FakeParticipantGenerator(InProcessClient())
       for _ in range(0, num_participants):
         participant_generator.generate_participant(include_physical_measurements,
-                                                   include_biobank_orders)
+                                                   include_biobank_orders,
+                                                   requested_hpo)
     biobank_samples_target = resource_json.get('create_biobank_samples', None)
     if biobank_samples_target:
       if biobank_samples_target == 'all':

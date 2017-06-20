@@ -21,6 +21,8 @@ def main(args):
     request_body = {'num_participants': participants_for_batch,
                     'include_physical_measurements': bool(args.include_physical_measurements),
                     'include_biobank_orders': bool(args.include_biobank_orders)}
+    if args.hpo:
+      request_body['hpo'] = args.hpo
     client.request_json('DataGen', 'POST', request_body)
     total_participants_created += participants_for_batch
     logging.info('Total participants created: %d', total_participants_created)
@@ -55,6 +57,9 @@ if __name__ == '__main__':
                       dest='include_biobank_orders',
                       action='store_true',
                       help='True if biobank orders should be created')
+  parser.add_argument('--hpo',
+                      dest='hpo',
+                      help='The HPO to assign participants to; defaults to random choice.')
   parser.add_argument('--create_biobank_samples',
                       dest="create_biobank_samples",
                       action='store_true',
