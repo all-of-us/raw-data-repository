@@ -401,6 +401,10 @@ class FakeParticipantGenerator(object):
     return self._random_code_answer(question_code)
 
   def _choose_answer_codes(self, question_code, percent_with_multiple, max_answers):
+    answer_codes = self._question_code_to_answer_codes.get(question_code)
+    if not answer_codes:
+      # There is no question in questionnaires for this code; skip.
+      return None
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return None
     if random.random() > percent_with_multiple:
