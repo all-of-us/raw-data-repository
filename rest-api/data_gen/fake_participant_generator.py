@@ -397,11 +397,15 @@ class FakeParticipantGenerator(object):
         'Participant', method='POST', body=participant_json, pretend_date=creation_time)
     return (participant_response, creation_time, hpo)
 
-  def _random_code_answer(self, question_code):
+  def _random_code_answer(self, question_code):    
     code = random.choice(self._question_code_to_answer_codes[question_code])
     return [_code_answer(code)]
 
   def _choose_answer_code(self, question_code):
+    answer_codes = self._question_code_to_answer_codes.get(question_code)
+    if not answer_codes:
+      # There is no question in questionnaires for this code; skip.
+      return None
     if random.random() <= _QUESTION_NOT_ANSWERED:
       return None
     return self._random_code_answer(question_code)
