@@ -397,7 +397,7 @@ class FakeParticipantGenerator(object):
         'Participant', method='POST', body=participant_json, pretend_date=creation_time)
     return (participant_response, creation_time, hpo)
 
-  def _random_code_answer(self, question_code):    
+  def _random_code_answer(self, question_code):
     code = random.choice(self._question_code_to_answer_codes[question_code])
     return [_code_answer(code)]
 
