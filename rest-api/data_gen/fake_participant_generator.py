@@ -355,7 +355,7 @@ class FakeParticipantGenerator(object):
       change_time = last_request_time + datetime.timedelta(days=days_delta)
       self._update_participant(change_time, participant_response, participant_id)
 
-  def generate_participant(self, include_physical_measurements, include_biobank_orders, 
+  def generate_participant(self, include_physical_measurements, include_biobank_orders,
                            requested_hpo=None):
     participant_response, creation_time, hpo = self._create_participant(requested_hpo)
     participant_id = participant_response['participantId']
@@ -373,7 +373,7 @@ class FakeParticipantGenerator(object):
       if include_biobank_orders and the_basics_submission_time:
         last_biobank_time = self._submit_biobank_data(participant_id,
                                                       the_basics_submission_time)
-        last_request_time = max(last_request_time, last_biobank_time)      
+        last_request_time = max(last_request_time, last_biobank_time)
       if not requested_hpo:
         last_hpo_change_time, participant_response = self._submit_hpo_changes(participant_response,
                                                                               participant_id,
@@ -386,7 +386,7 @@ class FakeParticipantGenerator(object):
     hpo = None
     if hpo_name:
       hpo = HPODao().get_by_name(hpo_name)
-    else:      
+    else:
       if random.random() > _NO_HPO_PERCENT:
         hpo = random.choice(self._hpos)
     if hpo:
