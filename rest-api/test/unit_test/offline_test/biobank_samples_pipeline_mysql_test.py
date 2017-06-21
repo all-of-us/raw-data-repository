@@ -72,7 +72,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                                                race_codes)
     return participant
 
-  def _insert_order(self, participant, order_id, tests, order_time):
+  def _insert_order(self, participant, order_id, tests, order_time, finalized_tests=None):
     order = BiobankOrder(
         biobankOrderId=order_id,
         participantId=participant.participantId,
@@ -87,13 +87,16 @@ class MySqlReconciliationTest(FlaskTestBase):
     order.identifiers.append(id_1)
     order.identifiers.append(id_2)
     for test_code in tests:
+      finalized_time = order_time
+      if finalized_tests and not test_code in finalized_tests:
+        finalized_time = None
       order.samples.append(BiobankOrderedSample(
           biobankOrderId=order.biobankOrderId,
           test=test_code,
           description=u'test',
           processingRequired=False,
           collected=order_time,
-          finalized=order_time))
+          finalized=finalized_time))
     return self.order_dao.insert(order)
 
   def _insert_samples(self, participant, tests, sample_ids, received_time):
@@ -122,29 +125,34 @@ class MySqlReconciliationTest(FlaskTestBase):
     # MySQL and Python sub-second rounding differs, so trim micros from generated times.
     order_time = clock.CLOCK.now().replace(microsecond=0)
     old_order_time = order_time - datetime.timedelta(days=10)
-    within_36_hours = order_time + datetime.timedelta(hours=35)
-    old_within_36_hours =  old_order_time + datetime.timedelta(hours=35)
-    late_time = order_time + datetime.timedelta(hours=37)
-    old_late_time = old_order_time + datetime.timedelta(hours=37)
-    file_time = order_time + datetime.timedelta(hours=35) + datetime.timedelta(minutes=59)
+    within_24_hours = order_time + datetime.timedelta(hours=23)
+    old_within_24_hours = old_order_time + datetime.timedelta(hours=23)
+    late_time = order_time + datetime.timedelta(hours=25)
+    old_late_time = old_order_time + datetime.timedelta(hours=25)
+    file_time = order_time + datetime.timedelta(hours=23) + datetime.timedelta(minutes=59)
     two_days_ago = file_time - datetime.timedelta(days=2)
 
     # On time, recent order and samples; shows up in rx
     p_on_time = self._insert_participant()
-    self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:2], order_time)
-    self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], within_36_hours)
+    # Extra samples ordered now aren't considered missing or late.
+    self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time,
+                       finalized_tests=BIOBANK_TESTS[:3])
+    self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], within_24_hours)
 
     # On time order and samples from 10 days ago; shows up in rx
     p_old_on_time = self._insert_participant(race_codes=[RACE_AIAN_CODE])
-    self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:2], old_order_time)
+   # Old missing samples from 10 days ago don't show up in missing or late.
+    self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:3],
+                       old_order_time)
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
-                         old_within_36_hours)
+                         old_within_24_hours)
 
     # Late, recent order and samples; shows up in rx and late. (But not missing, as it hasn't been
-    # 36 hours since the order.)
+    # 24 hours since the order.)
     p_late_and_missing = self._insert_participant()
+    # Extra missing sample doesn't show up as missing as it hasn't been 24 hours yet.
     o_late_and_missing = self._insert_order(
-        p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:2], order_time)
+        p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:3], order_time)
     self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], ['LateSample'], late_time)
 
     # Late order and samples from 10 days ago; shows up in rx (but not missing, as it was too
@@ -157,8 +165,9 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # Order with missing sample from 2 days ago; shows up in rx and missing.
     p_two_days_missing = self._insert_participant()
-    self._insert_order(p_two_days_missing, 'TwoDaysMissingOrder', BIOBANK_TESTS[:2],
-                       two_days_ago)
+    # The third test doesn't wind up in missing, as it was never finalized.
+    self._insert_order(p_two_days_missing, 'TwoDaysMissingOrder', BIOBANK_TESTS[:3],
+                       two_days_ago, finalized_tests=BIOBANK_TESTS[:2])
 
     # Recent samples with no matching order; shows up in missing.
     p_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
@@ -176,15 +185,15 @@ class MySqlReconciliationTest(FlaskTestBase):
                        old_order_time)
     self._insert_samples(p_withdrawn_old_on_time, BIOBANK_TESTS[:2],
                          ['OldWithdrawnGoodSample1', 'OldWithdrawnGoodSample2'],
-                         old_within_36_hours)
-    self._withdraw(p_withdrawn_old_on_time, within_36_hours)
+                         old_within_24_hours)
+    self._withdraw(p_withdrawn_old_on_time, within_24_hours)
 
     p_withdrawn_late_and_missing = self._insert_participant()
     self._insert_order(p_withdrawn_late_and_missing, 'WithdrawnSlowOrder', BIOBANK_TESTS[:2],
                        order_time)
     self._insert_samples(p_withdrawn_late_and_missing, [BIOBANK_TESTS[0]],
                          ['WithdrawnLateSample'], late_time)
-    self._withdraw(p_withdrawn_late_and_missing, within_36_hours)
+    self._withdraw(p_withdrawn_late_and_missing, within_24_hours)
 
     p_withdrawn_old_late_and_missing = self._insert_participant()
     self._insert_order(p_withdrawn_old_late_and_missing, 'WithdrawnOldSlowOrder', BIOBANK_TESTS[:2],
@@ -196,21 +205,21 @@ class MySqlReconciliationTest(FlaskTestBase):
     p_withdrawn_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
     self._insert_samples(p_withdrawn_extra, [BIOBANK_TESTS[-1]],
                          ['WithdrawnNobodyOrderedThisSample'], order_time)
-    self._withdraw(p_withdrawn_extra, within_36_hours)
+    self._withdraw(p_withdrawn_extra, within_24_hours)
 
     p_withdrawn_old_extra = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     self._insert_samples(p_withdrawn_old_extra, [BIOBANK_TESTS[-1]],
                          ['WithdrawnOldNobodyOrderedThisSample'], old_order_time)
-    self._withdraw(p_withdrawn_old_extra, within_36_hours)
+    self._withdraw(p_withdrawn_old_extra, within_24_hours)
 
     p_withdrawn_race_change = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     p_withdrawn_race_change_id = to_client_participant_id(p_withdrawn_race_change.participantId)
     self._submit_race_questionnaire_response(p_withdrawn_race_change_id, [RACE_WHITE_CODE])
-    self._withdraw(p_withdrawn_race_change, within_36_hours)
+    self._withdraw(p_withdrawn_race_change, within_24_hours)
 
     # for the same participant/test, 3 orders sent and only 2 samples received. Shows up in both
     # missing (we are missing one sample) and late (the two samples that were received were after
-    # 36 hours.)
+    # 24 hours.)
     p_repeated = self._insert_participant()
     for repetition in xrange(3):
       self._insert_order(
@@ -223,7 +232,7 @@ class MySqlReconciliationTest(FlaskTestBase):
             p_repeated,
             [BIOBANK_TESTS[0]],
             ['RepeatedSample%d' % repetition],
-            within_36_hours + datetime.timedelta(hours=repetition))
+            within_24_hours + datetime.timedelta(hours=repetition))
 
     received, late, missing, withdrawals = 'rx.csv', 'late.csv', 'missing.csv', 'withdrawals.csv'
     exporter = InMemorySqlExporter(self)
@@ -252,7 +261,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertEquals(row['finalized_username'], 'bob@pmi-ops.org')
     self.assertEquals(row['sent_finalized_time'], database_utils.format_datetime(order_time))
     self.assertEquals(row['sent_collection_time'], database_utils.format_datetime(order_time))
-    self.assertEquals(row['received_time'], database_utils.format_datetime(within_36_hours))
+    self.assertEquals(row['received_time'], database_utils.format_datetime(within_24_hours))
     self.assertEquals(row['sent_count'], '1')
     self.assertEquals(row['received_count'], '1')
     self.assertEquals(row['sent_order_id'], 'OGoodOrder')
@@ -277,13 +286,13 @@ class MySqlReconciliationTest(FlaskTestBase):
     exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_order_id': 'O%s' % o_late_and_missing.biobankOrderId,
-        'elapsed_hours': '37'})
+        'elapsed_hours': '25'})
     exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_repeated.biobankId),
         'elapsed_hours': '46'})
 
     # orders/samples where something went wrong; don't include orders/samples from more than 7
-    # days ago, or where 36 hours hasn't elapsed yet.
+    # days ago, or where 24 hours hasn't elapsed yet.
     exporter.assertRowCount(missing, 4)
     exporter.assertColumnNamesEqual(missing, _CSV_COLUMN_NAMES)
     # sample received, nothing ordered
@@ -317,23 +326,23 @@ class MySqlReconciliationTest(FlaskTestBase):
     exporter.assertRowCount(withdrawals, 5)
     exporter.assertHasRow(withdrawals, {
       'biobank_id': to_client_biobank_id(p_withdrawn_old_on_time.biobankId),
-      'withdrawal_time': database_utils.format_datetime(within_36_hours),
+      'withdrawal_time': database_utils.format_datetime(within_24_hours),
       'is_native_american': 'Y'})
     exporter.assertHasRow(withdrawals, {
       'biobank_id': to_client_biobank_id(p_withdrawn_late_and_missing.biobankId),
-      'withdrawal_time': database_utils.format_datetime(within_36_hours),
+      'withdrawal_time': database_utils.format_datetime(within_24_hours),
       'is_native_american': 'N'})
     exporter.assertHasRow(withdrawals, {
       'biobank_id': to_client_biobank_id(p_withdrawn_extra.biobankId),
-      'withdrawal_time': database_utils.format_datetime(within_36_hours),
+      'withdrawal_time': database_utils.format_datetime(within_24_hours),
       'is_native_american': 'N'})
     exporter.assertHasRow(withdrawals, {
       'biobank_id': to_client_biobank_id(p_withdrawn_old_extra.biobankId),
-      'withdrawal_time': database_utils.format_datetime(within_36_hours),
+      'withdrawal_time': database_utils.format_datetime(within_24_hours),
       'is_native_american': 'Y'})
     exporter.assertHasRow(withdrawals, {
       'biobank_id': to_client_biobank_id(p_withdrawn_race_change.biobankId),
-      'withdrawal_time': database_utils.format_datetime(within_36_hours),
+      'withdrawal_time': database_utils.format_datetime(within_24_hours),
       'is_native_american': 'N'})
 
 def _add_code_answer(code_answers, link_id, code):
