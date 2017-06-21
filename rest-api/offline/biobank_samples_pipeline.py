@@ -209,7 +209,7 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
 
   # Gets orders for which the samples arrived, but they arrived late, within the past 7 days.
   late_predicate = lambda result: (result[_ELAPSED_HOURS_INDEX] and
-                                    int(result[_ELAPSED_HOURS_INDEX]) > 36 and
+                                    int(result[_ELAPSED_HOURS_INDEX]) > 24 and
                                     in_past_week(result, now))
 
   # Gets samples or orders where something has gone missing within the past 7 days, and if an order
@@ -341,6 +341,7 @@ _RECONCILIATION_REPORT_SQL = ("""
     ON """ + _STORED_SAMPLE_JOIN_CRITERIA + """
     WHERE
       participant.withdrawal_time IS NULL
+      AND biobank_ordered_sample.finalized IS NOT NULL
     UNION ALL
     SELECT
       biobank_stored_sample.biobank_id raw_biobank_id,
