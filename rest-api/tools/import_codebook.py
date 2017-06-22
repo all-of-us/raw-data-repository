@@ -1,10 +1,7 @@
-"""Imports a codebook into the database, using JSON found at a specified path.
-"""
+"""Imports a codebook into the database, using JSON found at a specified path."""
 
-import dao.database_factory
 import json
 import logging
-import os
 
 from dao.code_dao import CodeBookDao
 from tools.main_util import get_parser, configure_logging
