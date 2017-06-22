@@ -326,7 +326,6 @@ class BiobankOrderDao(BaseDao):
     resource.notes.processed = model.processedNote
     resource.notes.finalized = model.finalizedNote
     resource.source_site = Identifier()
-    site_dao = SiteDao()    
     resource.created_info = self._to_info(model.sourceUsername, model.sourceSiteId)
     resource.collected_info = self._to_info(model.collectedUsername, model.collectedSiteId)
     resource.processed_info = self._to_info(model.processedUsername, model.processedSiteId)
