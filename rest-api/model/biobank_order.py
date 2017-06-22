@@ -31,19 +31,19 @@ class BiobankOrder(Base):
   # The username / email of the HealthPro user that created the order -- createdInfo['author']
   # in the resulting JSON.
   sourceUsername = Column('source_username', String(255))
-  
+
   # The site that collected the order -- collectedInfo['site'] in the resulting JSON
   collectedSiteId = Column('collected_site_id', Integer, ForeignKey('site.site_id'))
   # The username / email of the HealthPro user that collected the order -- collectedInfo['author']
   # in the resulting JSON.
   collectedUsername = Column('collected_username', String(255))
-  
+
   # The site that processed the order -- processedInfo['site'] in the resulting JSON
   processedSiteId = Column('processed_site_id', Integer, ForeignKey('site.site_id'))
   # The username / email of the HealthPro user that processed the order -- processedInfo['author']
   # in the resulting JSON.
   processedUsername = Column('processed_username', String(255))
-  
+
   # The site that finalized the order -- finalizedInfo['site'] in the resulting JSON
   finalizedSiteId = Column('finalized_site_id', Integer, ForeignKey('site.site_id'))
   # The username / email of the HealthPro user that finalized the order -- finalizedInfo['author']

@@ -180,7 +180,7 @@ class DatabaseTest(SqlTestBase):
     bo = BiobankOrder(
         biobankOrderId=bo_id,
         participantId=p.participantId,
-        created=now,        
+        created=now,
         sourceSiteId=1,
         sourceUsername='bob@pmi-ops.org',
         collectedSiteId=1,
