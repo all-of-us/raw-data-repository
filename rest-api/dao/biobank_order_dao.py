@@ -169,7 +169,7 @@ class BiobankOrderDao(BaseDao):
                 .filter(Participant.biobankId % 100 < percentage * 100)
                 .yield_per(batch_size))
 
-  def _parse_info(self, handling_info):
+  def _parse_handling_info(self, handling_info):
     site_id = None
     username = None
     if handling_info.site:
@@ -185,7 +185,7 @@ class BiobankOrderDao(BaseDao):
       username = handling_info.author.value
     return username, site_id
 
-  def _to_info(self, username, site_id):
+  def _to_handling_info(self, username, site_id):
     if not username and not site_id:
       return None
     info = _FhirBiobankOrderHandlingInfo()
@@ -214,14 +214,17 @@ class BiobankOrderDao(BaseDao):
 
     # TODO: require this once HealthPro switches over (DA-280)
     if resource.created_info:
-      order.sourceUsername, order.sourceSiteId = self._parse_info(resource.created_info)
+      order.sourceUsername, order.sourceSiteId = self._parse_handling_info(resource.created_info)
 
     if resource.collected_info:
-      order.collectedUsername, order.collectedSiteId = self._parse_info(resource.collected_info)
+      order.collectedUsername, order.collectedSiteId = \
+        self._parse_handling_info(resource.collected_info)
     if resource.processed_info:
-      order.processedUsername, order.processedSiteId = self._parse_info(resource.processed_info)
+      order.processedUsername, order.processedSiteId = \
+        self._parse_handling_info(resource.processed_info)
     if resource.finalized_info:
-      order.finalizedUsername, order.finalizedSiteId = self._parse_info(resource.finalized_info)
+      order.finalizedUsername, order.finalizedSiteId = \
+        self._parse_handling_info(resource.finalized_info)
 
     # TODO: get rid of this once HealthPro switches over (DA-280)
     if resource.source_site:
@@ -326,10 +329,10 @@ class BiobankOrderDao(BaseDao):
     resource.notes.processed = model.processedNote
     resource.notes.finalized = model.finalizedNote
     resource.source_site = Identifier()
-    resource.created_info = self._to_info(model.sourceUsername, model.sourceSiteId)
-    resource.collected_info = self._to_info(model.collectedUsername, model.collectedSiteId)
-    resource.processed_info = self._to_info(model.processedUsername, model.processedSiteId)
-    resource.finalized_info = self._to_info(model.finalizedUsername, model.finalizedSiteId)
+    resource.created_info = self._to_handling_info(model.sourceUsername, model.sourceSiteId)
+    resource.collected_info = self._to_handling_info(model.collectedUsername, model.collectedSiteId)
+    resource.processed_info = self._to_handling_info(model.processedUsername, model.processedSiteId)
+    resource.finalized_info = self._to_handling_info(model.finalizedUsername, model.finalizedSiteId)
 
     # TODO: remove this once HealthPro switches over (DA-280)
     if resource.created_info and resource.created_info.site:
