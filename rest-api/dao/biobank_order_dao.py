@@ -46,21 +46,34 @@ class _FhirBiobankOrderedSample(FhirMixin, BackboneElement):
     FhirProperty('finalized', fhirdate.FHIRDate),
   ]
 
+class _FhirBiobankOrderHandlingInfo(FhirMixin, BackboneElement):
+  """Information about what user and site handled an order."""
+  resource_name = "BiobankOrderHandlingInfo"
+  _PROPERTIES = [
+    FhirProperty('author', Identifier),
+    FhirProperty('site', Identifier),    
+  ]
 
 class _FhirBiobankOrder(FhirMixin, DomainResource):
   """FHIR client definition of the expected JSON structure for a BiobankOrder resource."""
   resource_name = 'BiobankOrder'
   _PROPERTIES = [
     FhirProperty('subject', str, required=True),
-    # TODO: make this required once HealthPro is updated (DA-280)
+    # TODO: get rid of this once HealthPro switches over (DA-280)
     FhirProperty('author', Identifier),
     FhirProperty('identifier', Identifier, is_list=True, required=True),
     FhirProperty('created', fhirdate.FHIRDate, required=True),
     FhirProperty('samples', _FhirBiobankOrderedSample, is_list=True, required=True),
     FhirProperty('notes', _FhirBiobankOrderNotes),
-    FhirProperty('source_site', Identifier, required=True),
-    # TODO: make this required once HealthPro is updated (DA-280)
+    # TODO: get rid of this once HealthPro switches over (DA-280)
+    FhirProperty('source_site', Identifier),
+    # TODO: get rid of this once HealthPro switches over (DA-280)
     FhirProperty('finalized_site', Identifier),
+        
+    FhirProperty('created_info', _FhirBiobankOrderHandlingInfo),    
+    FhirProperty('collected_info', _FhirBiobankOrderHandlingInfo),    
+    FhirProperty('processed_info', _FhirBiobankOrderHandlingInfo),   
+    FhirProperty('finalized_info', _FhirBiobankOrderHandlingInfo)    
   ]
 
 class BiobankOrderDao(BaseDao):
@@ -156,6 +169,37 @@ class BiobankOrderDao(BaseDao):
                 .filter(Participant.biobankId % 100 < percentage * 100)
                 .yield_per(batch_size))
 
+  def _parse_info(self, handling_info):
+    site_id = None
+    username = None
+    if handling_info.site:
+      if handling_info.site.system != SITE_ID_SYSTEM:
+        raise BadRequest('Invalid site system: %s' % handling_info.site.system)
+      site = SiteDao().get_by_google_group(handling_info.site.value)
+      if not site:
+        raise BadRequest('Unrecognized site: %s' % handling_info.site.value)
+      site_id = site.siteId
+    if handling_info.author:
+      if handling_info.author.system != HEALTHPRO_USERNAME_SYSTEM:
+        raise BadRequest('Invalid author system: %s' % handling_info.author.system)
+      username = handling_info.author.value
+    return username, site_id
+
+  def _to_info(self, username, site_id):
+    if not username and not site_id:
+      return None
+    info = _FhirBiobankOrderHandlingInfo()
+    if site_id:
+      site = SiteDao().get(site_id)        
+      info.site = Identifier()
+      info.site.system = SITE_ID_SYSTEM
+      info.site.value = site.googleGroup      
+    if username:
+      info.author = Identifier()
+      info.author.system = HEALTHPRO_USERNAME_SYSTEM
+      info.author.value = username
+    return info
+
   # pylint: disable=unused-argument
   def from_client_json(self, resource_json, participant_id=None, client_id=None):
     resource = _FhirBiobankOrder(resource_json)
@@ -167,17 +211,32 @@ class BiobankOrderDao(BaseDao):
         created=resource.created.date)
 
     site_dao = SiteDao()
-    # TODO: raise BadRequest if source_site has wrong system or invalid value once HealthPro is
-    # updated (DA-280)
-    if resource.source_site.system == SITE_ID_SYSTEM:
-      site = site_dao.get_by_google_group(resource.source_site.value)
-      if not site:
-        logging.warning('Unrecognized source site: %s', resource.source_site.value)
+    
+    # TODO: require this once HealthPro switches over (DA-280)
+    if resource.created_info:
+      order.sourceUsername, order.sourceSiteId = self._parse_info(resource.created_info)
+      
+    if resource.collected_info:
+      order.collectedUsername, order.collectedSiteId = self._parse_info(resource.collected_info)
+    if resource.processed_info:
+      order.processedUsername, order.processedSiteId = self._parse_info(resource.processed_info)
+    if resource.finalized_info:
+      order.finalizedUsername, order.finalizedSiteId = self._parse_info(resource.finalized_info)
+            
+    # TODO: get rid of this once HealthPro switches over (DA-280)
+    if resource.source_site:      
+      if resource.source_site.system == SITE_ID_SYSTEM:
+        site = site_dao.get_by_google_group(resource.source_site.value)
+        if not site:
+          logging.warning('Unrecognized source site: %s', resource.source_site.value)
+        else:
+          order.sourceSiteId = site.siteId
       else:
-        order.sourceSiteId = site.siteId
+        logging.warning('Unrecognized site system: %s', resource.source_site.system)
     else:
-      logging.warning('Unrecognized site system: %s', resource.source_site.system)
-
+      raise BadRequest('Either source_info or source_site must be provided.')
+      
+    # TODO: get rid of this once HealthPro switches over (DA-280)
     if resource.finalized_site:
       if resource.finalized_site.system != SITE_ID_SYSTEM:
         raise BadRequest('Invalid site system: %s' % resource.finalized_site.system)
@@ -186,7 +245,7 @@ class BiobankOrderDao(BaseDao):
         raise BadRequest('Unrecognized finalized site: %s' % resource.finalized_site.value)
       order.finalizedSiteId = site.siteId
 
-    # TODO: raise BadRequest if author is missing once HealthPro is updated (DA-280)
+    # TODO: get rid of this once HealthPro switches over (DA-280)
     if resource.author:
       if resource.author.system == HEALTHPRO_USERNAME_SYSTEM:
         order.finalizedUsername = resource.author.value
@@ -202,7 +261,7 @@ class BiobankOrderDao(BaseDao):
           'Participant ID %d from path and %r in request do not match, should be %r.'
           % (participant_id, resource.subject, self._participant_id_to_subject(participant_id)))
     self._add_identifiers_and_main_id(order, resource)
-    self._add_samples(order, resource)
+    self._add_samples(order, resource)    
     return order
 
   @classmethod
@@ -258,7 +317,7 @@ class BiobankOrderDao(BaseDao):
       fhir_id.value = identifier.value
       resource.identifier.append(fhir_id)
 
-  def to_client_json(self, model):
+  def to_client_json(self, model):    
     resource = _FhirBiobankOrder()
     resource.subject = self._participant_id_to_subject(model.participantId)
     resource.created = _ToFhirDate(model.created)
@@ -267,21 +326,29 @@ class BiobankOrderDao(BaseDao):
     resource.notes.processed = model.processedNote
     resource.notes.finalized = model.finalizedNote
     resource.source_site = Identifier()
-    site_dao = SiteDao()
-    if model.sourceSiteId:
-      site = site_dao.get(model.sourceSiteId)
+    site_dao = SiteDao()    
+    resource.created_info = self._to_info(model.sourceUsername, model.sourceSiteId)
+    resource.collected_info = self._to_info(model.collectedUsername, model.collectedSiteId)
+    resource.processed_info = self._to_info(model.processedUsername, model.processedSiteId)
+    resource.finalized_info = self._to_info(model.finalizedUsername, model.finalizedSiteId)
+
+    # TODO: remove this once HealthPro switches over (DA-280)
+    if resource.created_info and resource.created_info.site:      
       resource.source_site = Identifier()
-      resource.source_site.system = SITE_ID_SYSTEM
-      resource.source_site.value = site.googleGroup
-    if model.finalizedSiteId:
-      site = site_dao.get(model.finalizedSiteId)
-      resource.finalized_site = Identifier()
-      resource.finalized_site.system = SITE_ID_SYSTEM
-      resource.finalized_site.value = site.googleGroup
-    if model.finalizedUsername:
-      resource.author = Identifier()
-      resource.author.system = HEALTHPRO_USERNAME_SYSTEM
-      resource.author.value = model.finalizedUsername
+      resource.source_site.system = resource.created_info.site.system
+      resource.source_site.value = resource.created_info.site.value        
+        
+    # TODO: remove this once HealthPro switches over (DA-280)    
+    if resource.finalized_info:
+      if resource.finalized_info.site:             
+        resource.finalized_site = Identifier()
+        resource.finalized_site.system = resource.finalized_info.site.system
+        resource.finalized_site.value = resource.finalized_info.site.value
+      if resource.finalized_info.author:        
+        resource.author = Identifier()
+        resource.author.system = resource.finalized_info.author.system
+        resource.author.value = resource.finalized_info.author.value
+                
     self._add_identifiers_to_resource(resource, model)
     self._add_samples_to_resource(resource, model)
     client_json = resource.as_json()  # also validates required fields
