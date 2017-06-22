@@ -18,7 +18,7 @@ class BiobankOrderDaoTest(SqlTestBase):
     super(BiobankOrderDaoTest, self).setUp()
     self.participant = Participant(participantId=123, biobankId=555)
     ParticipantDao().insert(self.participant)
-    self.dao = BiobankOrderDao()  
+    self.dao = BiobankOrderDao()
 
   def test_bad_participant(self):
     with self.assertRaises(BadRequest):
@@ -35,8 +35,8 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.assertEquals(1, order.processedSiteId)
     self.assertEquals('sue@pmi-ops.org', order.processedUsername)
     self.assertEquals(1, order.finalizedSiteId)
-    self.assertEquals('bob@pmi-ops.org', order.finalizedUsername)   
-  
+    self.assertEquals('bob@pmi-ops.org', order.finalizedUsername)
+
   def test_to_json(self):
     order = BiobankOrder(
         biobankOrderId='1',
@@ -58,7 +58,7 @@ class BiobankOrderDaoTest(SqlTestBase):
     for key in ['createdInfo', 'collectedInfo', 'processedInfo', 'finalizedInfo',
                 'sourceSite', 'finalizedSite', 'author']:
       self.assertEquals(expected_order_json[key], order_json.get(key))
-  
+
   def test_duplicate_insert_ok(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     order_1 = self.dao.insert(BiobankOrder(
