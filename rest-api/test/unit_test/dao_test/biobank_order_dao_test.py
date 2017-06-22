@@ -6,6 +6,7 @@ from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrd
 from model.participant import Participant
 from participant_enums import WithdrawalStatus
 from dao.participant_dao import ParticipantDao
+from test.test_data import load_biobank_order_json
 from unit_test_util import SqlTestBase
 
 from werkzeug.exceptions import BadRequest, Forbidden, Conflict
@@ -22,6 +23,41 @@ class BiobankOrderDaoTest(SqlTestBase):
   def test_bad_participant(self):
     with self.assertRaises(BadRequest):
       self.dao.insert(BiobankOrder(participantId=999))
+
+  def test_from_json(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_json = load_biobank_order_json(self.participant.participantId)
+    order = BiobankOrderDao().from_client_json(order_json, self.participant.participantId)
+    self.assertEquals(1, order.sourceSiteId)
+    self.assertEquals('fred@pmi-ops.org', order.sourceUsername)
+    self.assertEquals(1, order.collectedSiteId)
+    self.assertEquals('joe@pmi-ops.org', order.collectedUsername)
+    self.assertEquals(1, order.processedSiteId)
+    self.assertEquals('sue@pmi-ops.org', order.processedUsername)
+    self.assertEquals(1, order.finalizedSiteId)
+    self.assertEquals('bob@pmi-ops.org', order.finalizedUsername)
+
+  def test_to_json(self):
+    order = BiobankOrder(
+        biobankOrderId='1',
+        created=clock.CLOCK.now(),
+        participantId=self.participant.participantId,
+        sourceSiteId=1,
+        sourceUsername='fred@pmi-ops.org',
+        collectedSiteId=1,
+        collectedUsername ='joe@pmi-ops.org',
+        processedSiteId=1,
+        processedUsername='sue@pmi-ops.org',
+        finalizedSiteId=1,
+        finalizedUsername='bob@pmi-ops.org',
+        identifiers=[BiobankOrderIdentifier(system='a', value='c')],
+        samples=[BiobankOrderedSample(biobankOrderId='1', test='blah', description='description',
+                                      processingRequired=True)])
+    order_json = BiobankOrderDao().to_client_json(order)
+    expected_order_json = load_biobank_order_json(self.participant.participantId)
+    for key in ['createdInfo', 'collectedInfo', 'processedInfo', 'finalizedInfo',
+                'sourceSite', 'finalizedSite', 'author']:
+      self.assertEquals(expected_order_json[key], order_json.get(key))
 
   def test_duplicate_insert_ok(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
