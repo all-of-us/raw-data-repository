@@ -75,19 +75,24 @@ class CodeBookDao(BaseDao):
 
   def import_codebook(self, codebook_json):
     """Imports a codebook and all codes inside it."""
-    logging.info("Importing codes...")
+    version = codebook_json['version']
+    num_concepts = len(codebook_json['concept'])
+    logging.info('Importing %d concepts into new CodeBook version %r...', num_concepts, version)
     system = codebook_json['url']
-    codebook = CodeBook(name=codebook_json['name'], version=codebook_json['version'],
-                        system=system)
+    codebook = CodeBook(name=codebook_json['name'], version=version, system=system)
     code_count = 0
     with self.session() as session:
       self.insert_with_session(session, codebook)
       session.flush()
-      for concept in codebook_json['concept']:
+      for i, concept in enumerate(codebook_json['concept'], start=1):
+        logging.info(
+            'Importing root concept %d of %d (%s).', i, num_concepts, concept.get('display'))
         code_count += self._import_concept(session, concept, system, codebook.codeBookId, None)
-    logging.info("%d codes imported.", code_count)
+    logging.info('Finished, %d codes imported.', code_count)
+
 
 SYSTEM_AND_VALUE = ('system', 'value')
+
 
 class CodeDao(CacheAllDao):
   def __init__(self):
