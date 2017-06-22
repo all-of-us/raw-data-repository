@@ -3,15 +3,16 @@
 
 import dao.database_factory
 import json
+import logging
 import os
 
 from dao.code_dao import CodeBookDao
 from tools.main_util import get_parser, configure_logging
 
 def main(args):
-  dao.database_factory.DB_CONNECTION_STRING = os.environ['DB_CONNECTION_STRING']
   with open(args.file) as f:
     codebook_json = json.load(f)
+    logging.info('Loaded codebook JSON from %r.', args.file)
     CodeBookDao().import_codebook(codebook_json)
 
 if __name__ == '__main__':
