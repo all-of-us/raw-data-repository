@@ -236,8 +236,9 @@ class BiobankOrderDao(BaseDao):
           order.sourceSiteId = site.siteId
       else:
         logging.warning('Unrecognized site system: %s', resource.source_site.system)
-    else:
-      raise BadRequest('Either source_info or source_site must be provided.')
+
+    if not order.sourceSiteId:
+      raise BadRequest('Either createdInfo or sourceSite must be provided.')
 
     # TODO: get rid of this once HealthPro switches over (DA-280)
     if resource.finalized_site:

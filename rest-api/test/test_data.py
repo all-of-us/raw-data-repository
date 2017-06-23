@@ -59,8 +59,8 @@ def load_measurement_json_amendment(participant_id, amended_id, now=None):
   return measurement
 
 
-def load_biobank_order_json(participant_id):
-  with open(data_path('biobank_order_1.json')) as f:
+def load_biobank_order_json(participant_id, filename='biobank_order_1.json'):
+  with open(data_path(filename)) as f:
     return json.loads(f.read() % {
       'participant_id': participant_id,
       'client_participant_id': to_client_participant_id(participant_id),
