@@ -236,7 +236,7 @@ class BiobankOrderDao(BaseDao):
           order.sourceSiteId = site.siteId
       else:
         logging.warning('Unrecognized site system: %s', resource.source_site.system)
-    
+
     if not order.sourceSiteId:
       raise BadRequest('Either createdInfo or sourceSite must be provided.')
 
