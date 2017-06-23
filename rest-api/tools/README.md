@@ -70,6 +70,15 @@ Launches a local Jupyter notebook environment that's connected to an RDR instanc
 
 #### Initial setup
 
+If your system `pip -V` is earlier than `9.0.1`, you can upgrade it, or use the newer version from a virtualenv by running:
+
+```
+virtualenv newpip
+. newpip/bin/activate
+```
+
+and then continuing as below.
+
 You can install Jupyter locally via:
 
 ```
@@ -80,7 +89,7 @@ pip install --upgrade jupyter
 #### Running a notebook environment
 
 ```
-tools/jupyter.sh --project all-of-us-rdr-test --account $USER@pmi-ops.org
+tools/jupyter.sh --project all-of-us-rdr-staging --account $USER@pmi-ops.org
 ```
 
 Within the notebook web UI, navigate to
