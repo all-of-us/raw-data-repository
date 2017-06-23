@@ -20,6 +20,17 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.create_and_verify_created_obj(
         self.path, load_biobank_order_json(self.participant.participantId))
 
+  def test_insert_new_order(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_json = load_biobank_order_json(self.participant.participantId,
+                                         filename='biobank_order_2.json')
+    result = self.send_post(self.path, order_json)
+    full_order_json = load_biobank_order_json(self.participant.participantId,
+                                              filename='biobank_order_1.json')
+    _strip_fields(result)
+    _strip_fields(full_order_json)
+    self.assertEquals(full_order_json, result)
+
   def test_error_no_summary(self):
     order_json = load_biobank_order_json(self.participant.participantId)
     self.send_post(self.path, order_json, expected_status=httplib.BAD_REQUEST)
@@ -33,3 +44,16 @@ class BiobankOrderApiTest(FlaskTestBase):
     order_json = load_biobank_order_json(self.participant.participantId)
     order_json['samples'].extend(list(order_json['samples']))
     self.send_post(self.path, order_json, expected_status=httplib.BAD_REQUEST)
+
+def _strip_fields(order_json):
+  if order_json.get('created'):
+    del order_json['created']
+  if order_json.get('id'):
+    del order_json['id']
+  for sample in order_json['samples']:
+    if sample.get('collected'):
+      del sample['collected']
+    if sample.get('processed'):
+      del sample['processed']
+    if sample.get('finalized'):
+      del sample['finalized']
