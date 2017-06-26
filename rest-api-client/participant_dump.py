@@ -13,16 +13,12 @@ from client.client import Client
 from tools.main_util import configure_logging, get_parser
 
 
-_FIXME_PROJECT = 'all-of-us-rdr-sandbox'
 _SERVER_LOG_FRESHNESS = '90d'
 
 
 def log_debug_info(client, participant_id, project):
   # basic info: signup time, withdrawal
-  logging.info(
-      '%s response from GET\n%s',
-      participant_id,
-      pprint.pformat(client.request_json('Participant/%s' % participant_id)))
+  logging.info(pprint.pformat(client.request_json('Participant/%s' % participant_id)))
   # QuestionnaireResponses available
   # QuestionnaireResponses for this participant
 
@@ -64,4 +60,4 @@ if __name__ == '__main__':
   parser = get_parser()
   parser.add_argument('participant_id', help='P12345 format participant ID to look up.')
   client = Client(parser=parser)
-  log_debug_info(client, client.args.participant_id, _FIXME_PROJECT)
+  log_debug_info(client, client.args.participant_id, client.args.project)

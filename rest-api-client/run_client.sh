@@ -36,7 +36,7 @@ then
   echo "Getting credentials for ${PROJECT}..."
   source ${BASE_DIR}/tools/auth_setup.sh
   echo "Running script..."
-  python $SCRIPT --creds_file ${CREDS_FILE} --instance ${INSTANCE} $@
+  python $SCRIPT --creds_file ${CREDS_FILE} --instance ${INSTANCE} --project ${PROJECT} $@
 else
   python $SCRIPT --instance http://localhost:8080 $@
 fi
