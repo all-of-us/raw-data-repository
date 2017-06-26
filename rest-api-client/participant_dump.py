@@ -60,5 +60,5 @@ if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
   parser.add_argument('participant_id', help='P12345 format participant ID to look up.')
-  client = Client(parser=parser)
-  log_debug_info(client, client.args.participant_id, client.args.project)
+  rdr_client = Client(parser=parser)
+  log_debug_info(rdr_client, rdr_client.args.participant_id, rdr_client.args.project)
