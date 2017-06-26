@@ -6,7 +6,7 @@ import json
 from client.client import Client
 
 def main():
-  client = Client('rdr/v1')
+  client = Client()
 
   request = {
       'facets':['HPO_ID'],
