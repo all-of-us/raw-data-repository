@@ -5,6 +5,9 @@ USAGE="Usage: run_client.sh --project <PROJECT> --account <ACCOUNT> <SCRIPT> [..
 Example: run_client.sh --project pmi-drc-api-test --account dan.rodney@pmi-ops.org participant_test.py
 "
 
+API_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd ../rest-api && pwd )"
+source ${API_DIR}/tools/set_path.sh
+
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
@@ -31,7 +34,7 @@ then
     CREDS_ACCOUNT="${ACCOUNT}"
   fi
   echo "Getting credentials for ${PROJECT}..."
-  source ../rest-api/tools/auth_setup.sh
+  source ${BASE_DIR}/tools/auth_setup.sh
   echo "Running script..."
   python $SCRIPT --creds_file ${CREDS_FILE} --instance ${INSTANCE} $@
 else
