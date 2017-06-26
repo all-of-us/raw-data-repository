@@ -19,8 +19,9 @@ _SERVER_LOG_FRESHNESS = '90d'
 def log_debug_info(client, participant_id, project):
   # basic info: signup time, withdrawal
   logging.info(pprint.pformat(client.request_json('Participant/%s' % participant_id)))
-  # QuestionnaireResponses available
-  # QuestionnaireResponses for this participant
+
+  # Questionnaires available: TODO implement list for Questionnaire
+  # QuestionnaireResponses: TODO implement list for QRs on a participant
 
   logging.info(
       'Server logs for %s from the last %s (oldest first)\n%s',
