@@ -8,7 +8,7 @@ APPENGINE_HOME="${CLOUDSDK_ROOT_DIR}/platform/appengine-java-sdk"
 GAE_SDK_ROOT="${CLOUDSDK_ROOT_DIR}/platform/google_appengine"
 
 # The next line enables Python libraries for Google Cloud SDK
-PYTHONPATH=${GAE_SDK_ROOT}
+GAEPATH=${GAE_SDK_ROOT}
 
 # * OPTIONAL STEP *
 # If you wish to import all Python modules, you may iterate in the directory
@@ -20,11 +20,13 @@ PYTHONPATH=${GAE_SDK_ROOT}
 for module in ${GAE_SDK_ROOT}/lib/*; do
   if [ -r ${module} ];
   then
-    PYTHONPATH=${module}:${PYTHONPATH}
+    GAEPATH=${module}:${GAEPATH}
   fi
 done
 unset module
 
 export BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
+# RDR libs should appear first in PYTHONPATH so we can override versions from
+# the GAE SDK. (Specifically, we need oauth2client >= 4.0.0 and GAE uses 1.x.)
+export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib:${GAEPATH}
 

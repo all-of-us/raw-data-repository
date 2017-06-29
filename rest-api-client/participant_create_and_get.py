@@ -6,7 +6,7 @@ from client.client import Client
 
 
 def main():
-  client = Client('rdr/v1')
+  client = Client()
 
   response = client.request_json('Participant', 'POST')
   pprint.pprint(response)

@@ -59,13 +59,14 @@ class Client(object):
   def _parse_args(self, default_instance, parser):
     parser.add_argument(
         '--instance',
-        type=str,
         help='The instance to hit, either https://xxx.appspot.com, '
         'or http://localhost:8080',
         default=default_instance)
     parser.add_argument(
+        '--project',
+        help='GCP project name associated with --instance.')
+    parser.add_argument(
         '--creds_file',
-        type=str,
         help='Path to a credentials file to use when talking to the server.',
         required=False)
     return parser.parse_args()

@@ -5,7 +5,7 @@ import csv
 from client.client import Client, client_log
 
 def main(parser):
-  client = Client('rdr/v1', parser=parser)
+  client = Client(parser=parser)
   num_updates = 0
   hpo = client.args.hpo
   with open(client.args.file) as csvfile:
