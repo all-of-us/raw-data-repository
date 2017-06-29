@@ -16,6 +16,10 @@
     },
     "security-testing@pmi-hpo-test.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]
+    },
+    "pentest@all-of-us-rdr-stable.iam.gserviceaccount.com": {
+      "comment": "Penetration testing for Coalfire, PD-334.",
+      "roles": ["ptc", "healthpro"]
     }
   },
   "biobank_samples_bucket_name": [
