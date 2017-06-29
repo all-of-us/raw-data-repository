@@ -15,7 +15,7 @@ depends_on = None
 
 _PARTICIPANT_VIEW_SQL = """
 CREATE VIEW participant_view AS
- SELECT 
+ SELECT
    p.sign_up_time,
    p.withdrawal_status,
    p.withdrawal_time,
@@ -23,9 +23,9 @@ CREATE VIEW participant_view AS
    p.suspension_time,
    hpo.name hpo,
    ps.zip_code,
-   state_code.value state, 
-   ps.city, 
-   recontact_method_code.value recontact_method, 
+   state_code.value state,
+   ps.city,
+   recontact_method_code.value recontact_method,
    language_code.value language,
    ps.date_of_birth,
    gender_code.value gender,
@@ -36,7 +36,7 @@ CREATE VIEW participant_view AS
    ps.enrollment_status,
    ps.race,
    ps.physical_measurements_status,
-   ps.physical_measurements_time,      
+   ps.physical_measurements_time,
    ps.consent_for_study_enrollment,
    ps.consent_for_study_enrollment_time,
    ps.consent_for_electronic_health_records,
@@ -50,7 +50,7 @@ CREATE VIEW participant_view AS
    ps.questionnaire_on_healthcare_access,
    ps.questionnaire_on_healthcare_access_time,
    ps.questionnaire_on_medical_history,
-   ps.questionnaire_on_medical_history_time,   
+   ps.questionnaire_on_medical_history_time,
    ps.questionnaire_on_medications,
    ps.questionnaire_on_medications_time,
    ps.questionnaire_on_family_health,
@@ -60,7 +60,7 @@ CREATE VIEW participant_view AS
    ps.sample_status_1pst8,
    ps.sample_status_1pst8_time,
    ps.sample_status_1hep4,
-   ps.sample_status_1hep4_time,    
+   ps.sample_status_1hep4_time,
    ps.sample_status_1ed04,
    ps.sample_status_1ed04_time,
    ps.sample_status_1ed10,
@@ -89,7 +89,7 @@ CREATE VIEW participant_view AS
      LEFT OUTER JOIN code sexual_orientation_code ON ps.sexual_orientation_id = sexual_orientation_code.code_id
      LEFT OUTER JOIN code education_code ON ps.education_id = education_code.code_id
      LEFT OUTER JOIN code income_code ON ps.income_id = income_code.code_id
-"""   
+"""
 def upgrade():
   op.execute(_PARTICIPANT_VIEW_SQL)
 
