@@ -282,7 +282,7 @@ class FakeParticipantGenerator(object):
                        "system": "https://www.pmi-ops.org/site-id",
                        "value": site.googleGroup
                      }
-                    } 
+                    }
     request = {"subject": "Patient/%s" % participant_id,
                "identifier": [{"system": "http://health-pro.org",
                                 "value": "healthpro-order-id-123%s" % order_id_suffix},
