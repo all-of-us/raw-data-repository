@@ -23,6 +23,7 @@ from field_mappings import QUESTION_CODE_TO_FIELD
 
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
+from dao.site_dao import SiteDao
 from dao.questionnaire_dao import QuestionnaireDao
 from model.code import CodeType
 from participant_enums import UNSET_HPO_ID
@@ -104,6 +105,9 @@ class FakeParticipantGenerator(object):
   def __init__(self, client):
     self._client = client
     self._hpos = HPODao().get_all()
+    self._sites = SiteDao().get_all()
+    if not self._sites:
+      raise BadRequest('No sites found; import sites before running generator.')
     self._now = clock.CLOCK.now()
     self._consent_questionnaire_id_and_version = None
     self._setup_questionnaires()
@@ -269,14 +273,25 @@ class FakeParticipantGenerator(object):
   def _make_biobank_order_request(self, participant_id, sample_tests, created_time):
     samples = []
     order_id_suffix = '%s-%d' % (participant_id, random.randint(0, 100000000))
+    site = random.choice(self._sites)
+    handling_info = { "author": {
+                       "system": "https://www.pmi-ops.org/healthpro-username",
+                       "value": "nobody@pmi-ops.org"
+                      },
+                      "site": {
+                        "system": "https://www.pmi-ops.org/site-id",
+                        "value": site.googleGroup
+                      }
+                    } 
     request = {"subject": "Patient/%s" % participant_id,
                "identifier": [{"system": "http://health-pro.org",
                                 "value": "healthpro-order-id-123%s" % order_id_suffix},
                               {"system": "https://orders.mayomedicallaboratories.com",
                                 "value": "WEB1YLHV%s" % order_id_suffix}],
-               # TODO: randomize this?
-               "sourceSite": {"system": "http://health-pro.org",
-                              "value": "789012"},
+               "createdInfo": handling_info,
+               "processedInfo": handling_info,
+               "collectedInfo": handling_info,
+               "finalizedInfo": handling_info,
                "created": created_time.strftime(_TIME_FORMAT),
                "samples": samples,
                "notes": {
