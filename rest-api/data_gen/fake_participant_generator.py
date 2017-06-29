@@ -274,14 +274,14 @@ class FakeParticipantGenerator(object):
     samples = []
     order_id_suffix = '%s-%d' % (participant_id, random.randint(0, 100000000))
     site = random.choice(self._sites)
-    handling_info = { "author": {
+    handling_info = {"author": {
                        "system": "https://www.pmi-ops.org/healthpro-username",
                        "value": "nobody@pmi-ops.org"
-                      },
-                      "site": {
-                        "system": "https://www.pmi-ops.org/site-id",
-                        "value": site.googleGroup
-                      }
+                     },
+                     "site": {
+                       "system": "https://www.pmi-ops.org/site-id",
+                       "value": site.googleGroup
+                     }
                     }
     request = {"subject": "Patient/%s" % participant_id,
                "identifier": [{"system": "http://health-pro.org",
