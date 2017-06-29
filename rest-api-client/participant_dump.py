@@ -49,6 +49,7 @@ def _get_app_log_lines(participant_id, project):
   for msg in reversed(log_data):
     payload = msg['protoPayload']
     formatted_lines.append('%(startTime)s %(method)s %(status)d %(resource)s' % payload)
+    # Only print messages logged on the server for errors (status != 200 or log severity != INFO).
     if (payload['status'] != httplib.OK or
         any([line['severity'] != 'INFO' for line in payload['line']])):
       for line in payload['line']:
