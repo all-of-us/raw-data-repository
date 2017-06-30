@@ -33,6 +33,11 @@ class HttpException(BaseException):
 
 
 class Client(object):
+  """Encapsulation for making authenticated API JSON requests.
+
+  Command-line arg parsing for --instance and --creds_file, and implementation for making a JSON
+  request.
+  """
   def __init__(
       self,
       base_path=_DEFAULT_BASE_PATH,
