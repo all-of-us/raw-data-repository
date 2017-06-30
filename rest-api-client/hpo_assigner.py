@@ -1,8 +1,12 @@
 """Assigns participants with the specified IDs to the test HPO."""
 
-import argparse
 import csv
-from client import Client, client_log
+import logging
+
+from main_util import get_parser, configure_logging
+
+from client import Client
+
 
 def main(parser):
   client = Client(parser=parser)
@@ -23,13 +27,14 @@ def main(parser):
         client.request_json('Participant/{}'.format(client_participant_id), 'PUT', participant,
                             headers={'If-Match': client.last_etag})
         num_updates += 1
-  client_log.info('Updated %d participants.', num_updates)
+  logging.info('Updated %d participants.', num_updates)
+
 
 if __name__ == '__main__':
-  arg_parser = argparse.ArgumentParser()
+  configure_logging()
+  arg_parser = get_parser()
   arg_parser.add_argument('--file', help='File containing the list of participant IDs',
                           required=True)
   arg_parser.add_argument('--hpo', help='HPO to assign the participants to; defaults to TEST.',
                           default='TEST')
   main(arg_parser)
-
