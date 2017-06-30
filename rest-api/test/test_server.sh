@@ -48,7 +48,7 @@ then
 fi
 
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
+. ${BASE_DIR}/tools/set_path.sh
 
 function run_client_test {
   # Use | instead of / for sed delimiter since we're editing file paths.

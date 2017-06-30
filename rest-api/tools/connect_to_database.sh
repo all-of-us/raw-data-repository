@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Starts Cloud SQL proxy, connected to the Cloud SQL instance for a particular environment,
 # and runs mysql to connect to it.
-#
 
 USAGE="tools/connect_to_database.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>] [--user <USER> --password <PASSWORD>]"
 while true; do

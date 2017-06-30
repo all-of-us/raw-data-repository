@@ -1,9 +1,5 @@
 #!/bin/bash -e
-
-# Set up PYTHONPATH for and call import_participants.py
-
-BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
+. tools/set_path.sh
 
 while true; do
   case "$1" in

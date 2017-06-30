@@ -2,7 +2,7 @@
 
 import pprint
 
-from client.client import Client
+from client import Client
 
 
 def main():

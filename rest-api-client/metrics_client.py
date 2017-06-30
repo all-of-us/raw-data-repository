@@ -3,7 +3,8 @@
 
 import json
 
-from client.client import Client
+from client import Client
+
 
 def main():
   client = Client()

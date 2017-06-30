@@ -2,7 +2,7 @@
 
 import argparse
 import csv
-from client.client import Client, client_log
+from client import Client, client_log
 
 def main(parser):
   client = Client(parser=parser)

@@ -7,7 +7,7 @@ import os
 
 import dao.database_factory
 from dao.questionnaire_dao import QuestionnaireDao
-from tools.main_util import get_parser, configure_logging
+from main_util import get_parser, configure_logging
 
 
 def main(args):

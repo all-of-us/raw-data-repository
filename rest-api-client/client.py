@@ -10,15 +10,13 @@ import time
 
 from oauth2client.service_account import ServiceAccountCredentials
 
+
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 DEFAULT_INSTANCE = 'https://pmi-drc-api-test.appspot.com'
 _DEFAULT_BASE_PATH = 'rdr/v1'
 POST_HEADERS = {
     'Content-Type': 'application/json; charset=utf-8',
 }
-logging.Formatter.converter = time.gmtime  # Log in UTC.
-logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s')
 client_log = logging.getLogger(__name__)
 
 

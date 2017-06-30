@@ -4,7 +4,8 @@ import json
 import logging
 
 from dao.code_dao import CodeBookDao
-from tools.main_util import get_parser, configure_logging
+from main_util import get_parser, configure_logging
+
 
 def main(args):
   with open(args.file) as f:
