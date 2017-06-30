@@ -5,8 +5,6 @@ import httplib2
 import json
 import logging
 import pprint
-import sys
-import time
 
 from oauth2client.service_account import ServiceAccountCredentials
 
