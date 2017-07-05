@@ -3,7 +3,9 @@ participants. This is used by HealthPro to insert some participants in the datab
 environments that are expected to be there for testing and training purposes.
 """
 
-from client.client import Client
+# fhirclient makes sys.path edits on import which mask our client module, so make sure to import
+# our client before importing fhirclient.
+from client import Client
 
 import csv
 import logging
@@ -15,7 +17,7 @@ from code_constants import GENDER_IDENTITY_QUESTION_CODE, CONSENT_FOR_STUDY_ENRO
 from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE
 from code_constants import OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
 from code_constants import PPI_SYSTEM
-from tools.main_util import get_parser, configure_logging
+from main_util import get_parser, configure_logging
 
 HEALTHPRO_PARTICIPANTS_FILE = 'test/test-data/healthpro_test_participants.csv'
 

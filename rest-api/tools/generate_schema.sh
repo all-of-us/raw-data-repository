@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Generates a schema migration script in the "alembic/versions" directory to
 # upgrade the current state of the local MySQL database to the schema declared

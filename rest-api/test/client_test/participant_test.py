@@ -1,7 +1,8 @@
 import unittest
-from base import BaseClientTest
 
-from client.client import HttpException
+from base import BaseClientTest
+from client import HttpException
+
 
 class ParticipantTest(BaseClientTest):
   def test_create_and_modify_participant(self):

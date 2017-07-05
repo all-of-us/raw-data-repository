@@ -1,3 +1,4 @@
+#!/bin/bash -e
 source tools/setup_vars.sh
 ROOT_PASSWORD=root
 RDR_PASSWORD=rdr!pwd

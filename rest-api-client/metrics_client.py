@@ -2,8 +2,12 @@
 """
 
 import json
+import logging
 
-from client.client import Client
+from main_util import configure_logging
+
+from client import Client
+
 
 def main():
   client = Client()
@@ -15,8 +19,9 @@ def main():
   }
 
   response = client.request_json('Metrics', 'POST', request)
-  print json.dumps(response, indent=2, sort_keys=True)
+  logging.info(json.dumps(response, indent=2, sort_keys=True))
 
 
 if __name__ == '__main__':
+  configure_logging()
   main()

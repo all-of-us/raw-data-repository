@@ -9,8 +9,8 @@ import logging
 import pprint
 import subprocess
 
-from client.client import Client
-from tools.main_util import configure_logging, get_parser
+from client import Client
+from main_util import configure_logging, get_parser
 
 
 _SERVER_LOG_FRESHNESS = '90d'

@@ -8,9 +8,10 @@ that metrics come back and that it doen't crash.
 import httplib
 import unittest
 import pprint
-import client
 
+from client import HttpException
 from base import BaseClientTest
+
 
 class MetricsTest(BaseClientTest):
   def test_metrics(self):
@@ -21,7 +22,7 @@ class MetricsTest(BaseClientTest):
     try:
       response = self.client.request_json('Metrics', 'POST', request)
       pprint.pprint(response)
-    except client.client.HttpException as ex:
+    except HttpException as ex:
       if ex.code == httplib.NOT_FOUND:
         print "No metrics loaded"
       else:
