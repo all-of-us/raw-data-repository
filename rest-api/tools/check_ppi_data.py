@@ -11,7 +11,8 @@ from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from model.code import CodeType
-from tools.main_util import get_parser, configure_logging
+from main_util import get_parser, configure_logging
+
 
 class PPIChecker(object):
 

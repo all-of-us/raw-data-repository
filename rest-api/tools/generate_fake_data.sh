@@ -1,9 +1,5 @@
-#!/bin/bash
-
-# Set up PYTHONPATH for and call generate_fake_data.py.
-
-BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-export PYTHONPATH=$PYTHONPATH:${BASE_DIR}:${BASE_DIR}/lib
+#!/bin/bash -e
+. tools/set_path.sh
 
 while true; do
   case "$1" in

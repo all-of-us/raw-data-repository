@@ -9,8 +9,8 @@ import httplib
 import json
 import logging
 
-from client.client import Client, HttpException
-from tools.main_util import get_parser, configure_logging
+from client import Client, HttpException
+from main_util import get_parser, configure_logging
 
 BASE_CONFIG_FILE = 'config/base_config.json'
 

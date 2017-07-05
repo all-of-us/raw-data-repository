@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -ae
 
 # Sets up a MySQL database named "rdr" locally (dropping the database if it
 # already exists), and sets the database config information in the local
@@ -12,7 +12,6 @@
 # For a fresh database/schema, run this once to set up a blank db, then run
 # generate_schema.sh, and then run this again to create that initial schema.
 
-set -a
 source tools/setup_local_vars.sh
 DB_CONNECTION_NAME=
 DB_INFO_FILE=/tmp/db_info.json

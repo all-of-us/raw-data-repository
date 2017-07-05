@@ -12,12 +12,14 @@ import os
 import jira
 import sys
 
-from tools.main_util import get_parser, configure_logging
+from main_util import get_parser, configure_logging
+
 
 _JIRA_INSTANCE_URL = 'https://precisionmedicineinitiative.atlassian.net/'
 # Release tickets are moved from our usual project, DA, to the PD project
 # for change approval, so for stable/prod releases look for tickets there.
 _JIRA_PROJECT_ID = 'PD'
+
 
 def _connect_to_jira(jira_username, jira_password):
   return jira.JIRA(_JIRA_INSTANCE_URL, basic_auth=(jira_username, jira_password))

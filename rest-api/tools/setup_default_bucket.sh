@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 # Sets ttl=7d for the application-default bucket. This is the bucket used by,
 # for example, the metrics pipeline temporary files.
 CREATE_INSTANCE=

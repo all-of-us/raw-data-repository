@@ -14,7 +14,7 @@ import urlparse
 
 from locust import Locust, TaskSet, events, task
 
-from client.client import Client, HttpException
+from client import Client, HttpException
 from data_gen.fake_participant_generator import FakeParticipantGenerator
 
 

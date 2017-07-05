@@ -4,7 +4,7 @@ import logging
 from dao.hpo_dao import HPODao
 from dao.site_dao import SiteDao
 from model.site import Site
-from tools.main_util import get_parser, configure_logging
+from main_util import get_parser, configure_logging
 
 _GOOGLE_GROUP_SUFFIX = '@prod.pmi-ops.org'
 
