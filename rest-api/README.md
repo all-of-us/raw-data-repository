@@ -164,10 +164,29 @@ by `circle.yml`. To manually update configs, download the appropriate service
 account's private key in JSON format (or generate a new key which you can revoke
 after use), and pass it to `install_config.sh`.
 
-### Importing codebooks
+### Accessing the API
+
+See `rest-api-client/client.py` for a Python example of authenticated API access.
+
+To construct authorized request headers on the command line:
+
+```Shell
+gcloud auth activate-service-account --key-file=your-key-file.json
+gcloud auth print-access-token
+--> ya...<rest of token>
+```
+
+Then issue a request supplying this token as a bearer token in an authorization header, like
+
+```
+GET /rdr/v1/Participant
+Authorization: Bearer ya...<reset of token>
+```
+
+## Importing codebooks
 
 Codebooks are managed in Google Sheets; the PMI questionnaire codebook is
-[here] (https://docs.google.com/spreadsheets/d/1b1lmf2KywIVx3-WJBnsR21ImF6Bl345n5VMSdUNBwQI/edit).
+[here](https://docs.google.com/spreadsheets/d/1b1lmf2KywIVx3-WJBnsR21ImF6Bl345n5VMSdUNBwQI/edit).
 
 Codebooks are published to github as JSON. When you run tools/import_codebook.sh, this JSON
 is fetched and imported into the SQL database for use in RDR. Existing codes in the codebook are
