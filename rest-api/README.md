@@ -180,7 +180,7 @@ Then issue a request supplying this token as a bearer token in an authorization 
 
 ```
 GET /rdr/v1/Participant
-Authorization: Bearer ya...<reset of token>
+Authorization: Bearer ya...<rest of token>
 ```
 
 ## Importing codebooks
