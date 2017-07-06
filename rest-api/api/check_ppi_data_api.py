@@ -2,16 +2,23 @@
 CSV input file. Used in conjunction with Selenium tests in PTC to ensure that values entered
 into questionnaires make their way into the RDR with the appropriate representation.
 """
-import csv
 import logging
-import sys
 
+from flask import request
+
+from api.base_api import BaseApi
+from api_util import auth_required, PTC_AND_HEALTHPRO
 from code_constants import PPI_SYSTEM, EMAIL_QUESTION_CODE
 from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from model.code import CodeType
-from main_util import get_parser, configure_logging
+
+
+@auth_required(PTC_AND_HEALTHPRO)
+def check_ppi_data():
+  data = request.get_json(force=True)
+  return 'hello %d' % len(data)
 
 
 class PPIChecker(object):
@@ -159,13 +166,3 @@ class PPIChecker(object):
     logging.info('Finished %s checks with %d errors.' % (self.total_checks, self.num_errors))
     if self.num_errors > 0:
       sys.exit(-1)
-
-def main(args):
-  ppi_checker = PPIChecker()
-  ppi_checker.run(args.file)
-
-if __name__ == '__main__':
-  configure_logging()
-  parser = get_parser()
-  parser.add_argument('--file', help='File name containing the input CSV', required=True)
-  main(parser.parse_args())

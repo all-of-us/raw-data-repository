@@ -8,6 +8,7 @@ import logging
 import version_api
 
 from api.biobank_order_api import BiobankOrderApi
+from api.check_ppi_data_api import check_ppi_data
 from api.data_gen_api import DataGenApi
 from api.metrics_api import MetricsApi
 from api.metrics_fields_api import MetricsFieldsApi
@@ -123,6 +124,11 @@ app.add_url_rule(PREFIX + 'PhysicalMeasurements/_history',
                  endpoint='physicalMeasurementsSync',
                  view_func=sync_physical_measurements,
                  methods=['GET'])
+
+app.add_url_rule(PREFIX + 'CheckPpiData',
+                 endpoint='check_ppi_data',
+                 view_func=check_ppi_data,
+                 methods=['POST'])
 
 app.after_request(app_util.add_headers)
 app.before_request(app_util.request_logging)
