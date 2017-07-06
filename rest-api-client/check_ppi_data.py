@@ -86,6 +86,7 @@ def _convert_to_person_dicts(csv_input, raw_include_emails):
         include_emails = set(emails)
       continue
 
+    # Process remaining rows assuming emails have been read in.
     if len(answer_values) > len(emails):
       raise ValueError(
           'More answers on row %d than emails: %r (emails are %r).'
