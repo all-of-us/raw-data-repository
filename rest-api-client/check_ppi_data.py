@@ -55,7 +55,7 @@ def _convert_to_person_dicts(csv_input, raw_include_emails):
     raw_include_emails: If non-empty, only include the participants ID'd by these e-mails in the
         returned dict.
   Returns: A nested dictionary of {email: {code: value, code: value, ...}, email: ...}.
-      See CheckPpiDataApi for request format details details.
+      See CheckPpiDataApi for request format details.
   """
   csv_reader = csv.reader(csv_input)
   row_number = 0
