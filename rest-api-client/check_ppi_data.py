@@ -29,11 +29,11 @@ from main_util import get_parser, configure_logging
 def check_ppi_data(client, spreadsheet_id, spreadsheet_gid, emails):
   csv_text = _fetch_csv_data(spreadsheet_id, spreadsheet_gid)
   json_data = _convert_to_person_dicts(StringIO.StringIO(csv_text), emails)
-  _, content = client.request(
+  response_json = client.request_json(
       'CheckPpiData',
       method='POST',
-      body=json.dumps(json_data))
-  logging.info(content)
+      body=json_data)
+  _log_response(response_json)
 
 
 def _fetch_csv_data(spreadsheet_id, spreadsheet_gid):
@@ -87,6 +87,21 @@ def _convert_to_person_dicts(csv_input, raw_include_emails):
       if answer_value and (email in include_emails):
         emails_to_codes_and_answers[email][answer_code] = answer_value
   return dict(emails_to_codes_and_answers)
+
+
+def _log_response(response_json):
+  all_results = response_json['ppi_results']
+  for email, results in all_results.iteritems():
+    errors_count = results['errors_count']
+    log_lines = [
+        'Results for %s: %d tests, %d error%s'
+        % (email, results['tests_count'], errors_count, '' if errors_count == 1 else 's')]
+    log_lines += ['\t' + message for message in results['messages']]
+    logging.info('\n'.join(log_lines))
+  tests_total, errors_total = response_json['tests_total'], response_json['errors_total']
+  logging.info(
+      'Completed %d tests each on %d participants with %d error%s.',
+      tests_total, len(all_results), errors_total, '' if errors_total == 1 else 's')
 
 
 if __name__ == '__main__':
