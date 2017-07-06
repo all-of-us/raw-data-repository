@@ -1,7 +1,4 @@
-"""Asserts that questionnaire response answers in the database match values specified in a
-CSV input file. Used in conjunction with Selenium tests in PTC to ensure that values entered
-into questionnaires make their way into the RDR with the appropriate representation.
-"""
+import json
 import logging
 
 from flask import request
@@ -17,152 +14,151 @@ from model.code import CodeType
 
 @auth_required(PTC_AND_HEALTHPRO)
 def check_ppi_data():
-  data = request.get_json(force=True)
-  return 'hello %d' % len(data)
+  """Validates the questions/responses for test participants.
+
+  Typically called from rest-api-client/check_ppi_data.py.
+
+  The request contains a ppi_data dict which maps test participant e-mail addresses to their
+  responses. All code and answer values are unparsed strings; values may be empty.
+  {
+    'ppi_data': {
+      'email@address.com': {
+        'PIIName_First': 'Alex',
+        'Insurance_HealthInsurance': 'HealthInsurance_Yes',
+        'EmplymentWorkAddress_AddressLineOne': '',
+        ...
+      },
+      'email2@address.com': { ... }
+    }
+  }
+
+  The response contains a ppi_results dict which maps test participant e-mail addresses to their
+  individual results. Each participant's results has test/error counts and a list of human-readable
+  error messages.
+  {
+    'ppi_results': {
+      'email@address.com': {
+        'tests_count': number,
+        'errors_count': number,
+        'messages' : [
+          'formatted error message detailing an error',
+        ]
+      },
+      'email@b.com': { ... }
+    }
+  }
+  """
+  _sanity_check_codebook()
+  ppi_results = {}
+  ppi_data = request.get_json(force=True)['ppi_data']
+  for email, codes_to_answers in ppi_data.iteritems():
+    ppi_results[email] = _get_validation_result(email, codes_to_answers).to_json()
+  return json.dumps({'ppi_results': ppi_results})
 
 
-class PPIChecker(object):
+def _sanity_check_codebook():
+  if not CodeDao().get_code(PPI_SYSTEM, EMAIL_QUESTION_CODE):
+    raise RuntimeError('No question code found for %s; import codebook.' % EMAIL_QUESTION_CODE)
 
+
+class _ValidationResult(object):
+  """Container for an individual's PPI validation result."""
   def __init__(self):
-    self.num_errors = 0
-    self.total_checks = 0
+    self.tests_count = 0
+    self.errors_count = 0
+    self.messages = []
 
-  def log_error(self, message, *args):
-    logging.error(message, *args)
-    self.num_errors += 1
+  def add_error(self, message):
+    self.errors_count += 1
+    self.messages.append(message)
 
-  def get_person_dicts(self, input_file):
-    """Constructs dicts for each person found in the spreadsheet.
+  def to_json(self):
+    return {
+        'tests_count': self.tests_count,
+        'errors_count': self.errors_count,
+        'messages': self.messages,
+    }
 
-    The first column contains question codes. Each other column is for a participant, with the
-    cell values containing values for answers to the questions indicated in the first column
-    (which could be code values, strings, dates, or numbers.)
-    """
-    person_dicts = []
-    question_code_ids = set()
-    code_dao = CodeDao()
-    with open(input_file) as fp:
-      csv_file = csv.reader(fp)
-      row_number = 0
-      number_of_participants = 0
-      for row in csv_file:
-        row_number += 1
-        if row_number == 1:
-          if len(row) == 0 or row[0] != EMAIL_QUESTION_CODE:
-            raise ValueError('First row should have question code %s.'
-                             % EMAIL_QUESTION_CODE)
-          # Allocate an empty dict to store each test participant's data,
-          # which is stored in one column of the CSV.
-          for i in range(1, len(row)):
-            if row[i].strip():
-              person_dicts.append({})
-              number_of_participants += 1
-        elif len(row) == 0:
-          continue
-        question_code_value = row[0].strip()
-        if not question_code_value:
-          self.log_error('No question code found for row %d; skipping.' % row_number)
-          continue
-        question_code = code_dao.get_code(PPI_SYSTEM, question_code_value)
-        if not question_code:
-          if row_number == 1:
-            raise ValueError('No question code found for ConsentPII_EmailAddress; import codebook.')
-          self.log_error('Could not find question code %s on row %d; skipping.',
-                         question_code_value, row_number)
-          continue
-        if question_code.codeType != CodeType.QUESTION:
-          self.log_error('Code %s on row %d is of type %s, not QUESTION; skipping.',
-                         question_code_value, row_number, question_code.codeType)
-          continue
-        if row_number != 1:
-          # Add all the non-email question codes to question_code_ids
-          question_code_ids.add(question_code.codeId)
-        for i in range(1, number_of_participants+1):
-          value = row[i].strip()
-          if value:
-            # TODO: validate values based on answer type here
-            person_dicts[i - 1][question_code.codeId] = value
-          elif row_number == 1:
-            raise ValueError('No email address found for column %d! Aborting.' % (i + 1))
-      return person_dicts, question_code_ids
 
-  def check_ppi(self, person_dicts, question_code_ids):
-    code_dao = CodeDao()
-    participant_summary_dao = ParticipantSummaryDao()
-    email_code_id = code_dao.get_code(PPI_SYSTEM, EMAIL_QUESTION_CODE).codeId
-    for person_dict in person_dicts:
-      email = person_dict[email_code_id]
-      summaries = participant_summary_dao.get_by_email(email)
-      if not summaries:
-        self.log_error('No participant found with email %s.', email)
-      elif len(summaries) > 1:
-        self.log_error('Multiple participants found with email %s', email)
+def _get_validation_result(email, codes_to_answers):
+  result = _ValidationResult()
+
+  summaries = ParticipantSummaryDao().get_by_email(email)
+  if not summaries:
+    result.add_error('No ParticipantSummary found for %r.' % email)
+    return result
+  if len(summaries) > 1:
+    result.add_error('%d ParticipantSummary values found for %r.' % (len(summaries), email))
+    return result
+  summary = summaries[0]
+
+  code_dao = CodeDao()
+  qra_dao = QuestionnaireResponseAnswerDao()
+  with qra_dao.session() as session:
+    for code_string, answer_string in codes_to_answers.iteritems():
+      result.tests_count += 1
+
+      question_code = code_dao.get_code(PPI_SYSTEM, code_string)
+      if not question_code:
+        result.add_error(
+            'Could not find question code %r, skipping answer %r.' % (code_string, answer_string))
+        continue
+      if question_code.codeType != CodeType.QUESTION:
+        result.add_error(
+            'Code %r type is %s, not QUESTION; skipping.' % (code_string, question_code.codeType))
+        continue
+
+      qras = qra_dao.get_current_answers_for_concepts(
+          session, summary.participantId, [question_code.codeId])
+      qra_values = set()
+      for qra in qras:
+        try:
+          qra_value = _get_value_for_qra(qra, question_code, code_dao, session)
+        except ValueError as e:
+          result.add_error(e.message)
+          continue
+
+      if answer_string:
+        expected_values = set(_boolean_to_lower(v.strip()) for v in answer_string.split('|'))
       else:
-        self.check_person_dict(email, summaries[0].participantId, person_dict,
-                               question_code_ids)
-
-  def get_value_for_qra(self, qra, email, question_code, code_dao):
-    if qra.valueString:
-      return qra.valueString
-    if qra.valueInteger is not None:
-      return str(qra.valueInteger)
-    if qra.valueDecimal is not None:
-      return str(qra.valueDecimal)
-    if qra.valueBoolean is not None:
-      return str(qra.valueBoolean).lower()
-    if qra.valueDate is not None:
-      return qra.valueDate.isoformat()
-    if qra.valueDateTime is not None:
-      return qra.valueDateTime.isoformat()
-    if qra.valueCodeId is not None:
-      code = code_dao.get(qra.valueCodeId)
-      if code.system != PPI_SYSTEM:
-        self.log_error('Unexpected value %s with non-PPI system %s for question %s for '
-                       + 'participant %s', code.value, code.system, question_code, email)
-        return None
-      return code.value
-    self.log_error('Answer for question %s for participant %s has no value set', question_code,
-                   email)
-    return None
-
-  def boolean_to_lower(self, value):
-    if value.lower() == 'true' or value.lower() == 'false':
-      return value.lower()
-    return value
+        expected_values = set()
+      if expected_values != qra_values:
+        result.add_error(
+            '%s: Expected %s, found %s.'
+            % (question_code.value, _format_values(expected_values), _format_values(qra_values)))
+  return result
 
 
-  def check_person_dict(self, email, participant_id, person_dict, question_code_ids):
-    """Verifies that answers in the database for this participant match answers from the
-    spreadsheet. Logs an error / increments the error count if not.
-    """
-    code_dao = CodeDao()
-    qra_dao = QuestionnaireResponseAnswerDao()
-    with qra_dao.session() as session:
-      for question_code_id in question_code_ids:
-        self.total_checks += 1
-        question_code = code_dao.get(question_code_id)
-        qras = qra_dao.get_current_answers_for_concepts(session, participant_id, [question_code_id])
-        answer_string = person_dict.get(question_code_id)
-        if qras:
-          qra_values = set([self.get_value_for_qra(qra, participant_id, question_code.value,
-                                                   code_dao) for qra in qras])
-          if answer_string:
-            values = set(self.boolean_to_lower(value.strip()) for value in answer_string.split('|'))
-            if values != qra_values:
-              self.log_error('Expected answers %s for question %s for participant %s, found: %s',
-                            values, question_code.value, email, qra_values)
-          else:
-            self.log_error('Expected no answer for question %s for participant %s, found: %s',
-                          question_code.value, email, qra_values)
-        else:
-          if answer_string:
-            values = set(answer_string.split('|'))
-            self.log_error('Expected answers %s for question %s for participant %s, found none',
-                      values, question_code.value, email)
+def _format_values(values):
+  if not values:
+    return 'no answer'
+  return repr(sorted(list(values)))
 
-  def run(self, input_file):
-    person_dicts, question_code_ids = self.get_person_dicts(input_file)
-    self.check_ppi(person_dicts, question_code_ids)
-    logging.info('Finished %s checks with %d errors.' % (self.total_checks, self.num_errors))
-    if self.num_errors > 0:
-      sys.exit(-1)
+
+def _get_value_for_qra(qra, question_code, code_dao, session):
+  if qra.valueString:
+    return qra.valueString
+  if qra.valueInteger is not None:
+    return str(qra.valueInteger)
+  if qra.valueDecimal is not None:
+    return str(qra.valueDecimal)
+  if qra.valueBoolean is not None:
+    return str(qra.valueBoolean).lower()
+  if qra.valueDate is not None:
+    return qra.valueDate.isoformat()
+  if qra.valueDateTime is not None:
+    return qra.valueDateTime.isoformat()
+  if qra.valueCodeId is not None:
+    code = code_dao.get_with_session(session, qra.valueCodeId)
+    if code.system != PPI_SYSTEM:
+      raise ValueError(
+          'Unexpected value %r with non-PPI system %r for question %s.'
+          % (code.value, code.system, question_code))
+    return code.value
+  raise ValueError('Answer for question %s has no value set' % (question_code, email))
+
+
+def _boolean_to_lower(value):
+  if value.lower() == 'true' or value.lower() == 'false':
+    return value.lower()
+  return value
