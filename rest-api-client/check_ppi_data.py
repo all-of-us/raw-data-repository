@@ -74,6 +74,8 @@ def _convert_to_person_dicts(csv_input, raw_include_emails):
         raise ValueError('First row %r does must have values for %r.' % (row, EMAIL_QUESTION_CODE))
       emails = answer_values
       if raw_include_emails:
+        logging.info(
+            'Only validating %d emails (of %d found in CSV).', len(raw_include_emails), len(emails))
         not_found_emails = set(raw_include_emails) - set(emails)
         if not_found_emails:
           raise ValueError(
@@ -126,7 +128,7 @@ if __name__ == '__main__':
       '--email',
       help=('Only validate the given e-mail(s). Validate all by default.'
             ' This flag may be repeated to specify multiple e-mails.'),
-      nargs='+')
+      action='append')
   rdr_client = Client(parser=parser)
   args = rdr_client.args
   check_ppi_data(rdr_client, args.spreadsheet_id, args.spreadsheet_gid, args.email)
