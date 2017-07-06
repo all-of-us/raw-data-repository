@@ -28,12 +28,12 @@ from main_util import get_parser, configure_logging
 
 def check_ppi_data(client, spreadsheet_id, spreadsheet_gid, emails):
   csv_text = _fetch_csv_data(spreadsheet_id, spreadsheet_gid)
-  json_data = _convert_to_person_dicts(StringIO.StringIO(csv_text), emails)
+  json_ppi_data = _convert_to_person_dicts(StringIO.StringIO(csv_text), emails)
   response_json = client.request_json(
       'CheckPpiData',
       method='POST',
-      body=json_data)
-  _log_response(response_json)
+      body={'ppi_data': json_ppi_data})
+  _log_ppi_results(response_json['ppi_results'])
 
 
 def _fetch_csv_data(spreadsheet_id, spreadsheet_gid):
@@ -55,6 +55,7 @@ def _convert_to_person_dicts(csv_input, raw_include_emails):
     raw_include_emails: If non-empty, only include the participants ID'd by these e-mails in the
         returned dict.
   Returns: A nested dictionary of {email: {code: value, code: value, ...}, email: ...}.
+      See CheckPpiDataApi for request format details details.
   """
   csv_reader = csv.reader(csv_input)
   row_number = 0
@@ -83,25 +84,33 @@ def _convert_to_person_dicts(csv_input, raw_include_emails):
         include_emails = set(emails)
       continue
 
-    for email, answer_value in itertools.izip_longest(emails, answer_values):
-      if answer_value and (email in include_emails):
+    if len(answer_values) > len(emails):
+      raise ValueError(
+          'More answers on row %d than emails: %r (emails are %r).'
+          % (row_number, answer_values, emails))
+    for email, raw_answer_value in itertools.izip_longest(emails, answer_values):
+      answer_value = raw_answer_value.strip() if raw_answer_value else ''
+      if email in include_emails:
         emails_to_codes_and_answers[email][answer_code] = answer_value
   return dict(emails_to_codes_and_answers)
 
 
-def _log_response(response_json):
-  all_results = response_json['ppi_results']
-  for email, results in all_results.iteritems():
-    errors_count = results['errors_count']
+def _log_ppi_results(results_json):
+  """Formats and logs the validation results. See CheckPpiDataApi for response format details."""
+  tests_total = 0
+  errors_total = 0
+  for email, results in results_json.iteritems():
+    tests_count, errors_count = results['tests_count'], results['errors_count']
+    errors_total += errors_count
+    tests_total += tests_count
     log_lines = [
         'Results for %s: %d tests, %d error%s'
-        % (email, results['tests_count'], errors_count, '' if errors_count == 1 else 's')]
+        % (email, tests_count, errors_count, '' if errors_count == 1 else 's')]
     log_lines += ['\t' + message for message in results['messages']]
     logging.info('\n'.join(log_lines))
-  tests_total, errors_total = response_json['tests_total'], response_json['errors_total']
   logging.info(
-      'Completed %d tests each on %d participants with %d error%s.',
-      tests_total, len(all_results), errors_total, '' if errors_total == 1 else 's')
+      'Completed %d tests across %d participants with %d error%s.',
+      tests_total, len(results_json), errors_total, '' if errors_total == 1 else 's')
 
 
 if __name__ == '__main__':
