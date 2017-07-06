@@ -90,7 +90,7 @@ def _get_validation_result(email, codes_to_answers):
   if len(summaries) > 1:
     result.add_error('%d ParticipantSummary values found for %r.' % (len(summaries), email))
     return result
-  summary = summaries[0]
+  participant_id = summaries[0].participantId
 
   code_dao = CodeDao()
   qra_dao = QuestionnaireResponseAnswerDao()
@@ -109,11 +109,11 @@ def _get_validation_result(email, codes_to_answers):
         continue
 
       qras = qra_dao.get_current_answers_for_concepts(
-          session, summary.participantId, [question_code.codeId])
+          session, participant_id, [question_code.codeId])
       qra_values = set()
       for qra in qras:
         try:
-          qra_value = _get_value_for_qra(qra, question_code, code_dao, session)
+          qra_values.add(_get_value_for_qra(qra, question_code, code_dao, session))
         except ValueError as e:
           result.add_error(e.message)
           continue
@@ -155,7 +155,7 @@ def _get_value_for_qra(qra, question_code, code_dao, session):
           'Unexpected value %r with non-PPI system %r for question %s.'
           % (code.value, code.system, question_code))
     return code.value
-  raise ValueError('Answer for question %s has no value set' % (question_code, email))
+  raise ValueError('Answer for question %s has no value set.' % question_code)
 
 
 def _boolean_to_lower(value):
