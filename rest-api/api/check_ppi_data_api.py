@@ -1,9 +1,7 @@
 import json
-import logging
 
 from flask import request
 
-from api.base_api import BaseApi
 from api_util import auth_required, PTC_AND_HEALTHPRO
 from code_constants import PPI_SYSTEM, EMAIL_QUESTION_CODE
 from dao.code_dao import CodeDao

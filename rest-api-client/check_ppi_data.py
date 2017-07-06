@@ -17,7 +17,6 @@ import collections
 import csv
 import httplib
 import itertools
-import json
 import logging
 import urllib2
 

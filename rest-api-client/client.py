@@ -174,6 +174,6 @@ class Client(object):
         pretend_date=pretend_date)
     try:
       return json.loads(content)
-    except ValueError as e:
+    except ValueError:
       logging.error('Error decoding response content:\n%r', content)
       raise
