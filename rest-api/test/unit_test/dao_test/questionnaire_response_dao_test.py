@@ -489,9 +489,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
   def test_consent_pdf_file_invalid(self, mock_gcloud_check):
     mock_gcloud_check.side_effect = BadRequest('Test should raise this.')
     qr = self._get_questionnaire_response_with_consents('/nobucket/no/file.pdf')
-    # TODO(DA-45) Except exception here when we switch from logging to raising BadError.
-    #with self.assertRaises(BadRequest):
-    self.questionnaire_response_dao.insert(qr)
+    with self.assertRaises(BadRequest):
+      self.questionnaire_response_dao.insert(qr)
 
   @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
   def test_consent_pdf_checks_multiple_extensions(self, mock_gcloud_check):
