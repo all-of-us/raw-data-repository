@@ -9,7 +9,8 @@ where the first column is question codes, and each subsequent column is one test
 answers.
 
 Usage: run_client.sh --account $USER@pmi-ops.org --project all-of-us-rdr-staging %(prog)s \
-    [--email cabor@example.com --email columbiany@example.com] [--spreadsheet_gid 1955994867]
+    [--email cabor@example.com --email columbiany@example.com]
+    [--spreadsheet_id "1HTBugtC0Hm4nIE5b..."] [--spreadsheet_gid 1955994867]
 """
 
 import StringIO
