@@ -40,7 +40,7 @@ def check_ppi_data():
       'email@address.com': {
         'tests_count': number,
         'errors_count': number,
-        'messages' : [
+        'error_messages' : [
           'formatted error message detailing an error',
         ]
       },
@@ -76,7 +76,7 @@ class _ValidationResult(object):
     return {
         'tests_count': self.tests_count,
         'errors_count': self.errors_count,
-        'messages': self.messages,
+        'error_messages': self.messages,
     }
 
 

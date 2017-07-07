@@ -110,7 +110,7 @@ def _log_ppi_results(results_json):
     log_lines = [
         'Results for %s: %d tests, %d error%s'
         % (email, tests_count, errors_count, '' if errors_count == 1 else 's')]
-    log_lines += ['\t' + message for message in results['messages']]
+    log_lines += ['\t' + message for message in results['error_messages']]
     logging.info('\n'.join(log_lines))
   logging.info(
       'Completed %d tests across %d participants with %d error%s.',
