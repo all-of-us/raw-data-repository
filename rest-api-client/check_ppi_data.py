@@ -8,9 +8,9 @@ The spreadsheet should have data like:
 where the first column is question codes, and each subsequent column is one test participant's
 answers.
 
-Usage: run_client.sh --account $USER@pmi-ops.org --project all-of-us-rdr-staging %(prog)s \
+Usage: run_client.sh --account $USER@pmi-ops.org --project all-of-us-rdr-staging check_ppi_data.py \
+    <spreadsheet doc ID> <spreadsheet sheet ID (GID)>
     [--email cabor@example.com --email columbiany@example.com]
-    [--spreadsheet_id "1HTBugtC0Hm4nIE5b..."] [--spreadsheet_gid 1955994867]
 """
 
 import StringIO
@@ -120,11 +120,11 @@ if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
   parser.add_argument(
-      '--spreadsheet_id', help='Google spreadsheet ID, after the "/d/" in the URL.',
-      default='1HTBugtC0Hm4nIE5beotAD-PUs-BzTBWsRdixnzqTrtc')
+      'spreadsheet_id',
+      help='Google spreadsheet doc ID, after the "/d/" in the URL. The doc must be public.')
   parser.add_argument(
-      '--spreadsheet_gid', help='Google spreadsheet sheet ID, after "gid=" in the URL.',
-      default='1955994867')
+      'spreadsheet_gid',
+      help='Google spreadsheet sheet ID, after "gid=" in the URL.')
   parser.add_argument(
       '--email',
       help=('Only validate the given e-mail(s). Validate all by default.'
