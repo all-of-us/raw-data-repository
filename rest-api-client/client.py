@@ -172,4 +172,8 @@ class Client(object):
         cron=cron,
         absolute_path=absolute_path,
         pretend_date=pretend_date)
-    return json.loads(content)
+    try:
+      return json.loads(content)
+    except ValueError:
+      logging.error('Error decoding response content:\n%r', content)
+      raise
