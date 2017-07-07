@@ -5,8 +5,9 @@ Downloads PPI test data from a Google spreadsheet, sends it to the API, and logs
 The spreadsheet should have data like:
   ConsentPII_EmailAddress, cabor@example.com, columbiany@example.com, ...
   PIIName_First, Jiwon, Riley, ...
+  Race_WhatRaceEthnicity, WhatRaceEthnicity_Hispanic|WhatRaceEthnicity_Black, ...
 where the first column is question codes, and each subsequent column is one test participant's
-answers.
+answers. (Multiple values for one answer may be separated by | characters.)
 
 Usage: run_client.sh --account $USER@pmi-ops.org --project all-of-us-rdr-staging check_ppi_data.py \
     <spreadsheet doc ID> <spreadsheet sheet ID (GID)>

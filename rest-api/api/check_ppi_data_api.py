@@ -17,13 +17,15 @@ def check_ppi_data():
   Typically called from rest-api-client/check_ppi_data.py.
 
   The request contains a ppi_data dict which maps test participant e-mail addresses to their
-  responses. All code and answer values are unparsed strings; values may be empty.
+  responses. All code and answer values are unparsed strings. Values may be empty, and multiple
+  values for one answer may be separated by | characters.
   {
     'ppi_data': {
       'email@address.com': {
         'PIIName_First': 'Alex',
         'Insurance_HealthInsurance': 'HealthInsurance_Yes',
         'EmplymentWorkAddress_AddressLineOne': '',
+        'Race_WhatRaceEthnicity': 'WhatRaceEthnicity_Hispanic|WhatRaceEthnicity_Black',
         ...
       },
       'email2@address.com': { ... }
