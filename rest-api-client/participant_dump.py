@@ -13,7 +13,8 @@ from client import Client
 from main_util import configure_logging, get_parser
 
 
-_SERVER_LOG_FRESHNESS = '90d'
+# Server logs are searchable for at most 30 days (see DA-247).
+_SERVER_LOG_FRESHNESS = '30d'
 
 
 def log_debug_info(client, participant_id, project):
