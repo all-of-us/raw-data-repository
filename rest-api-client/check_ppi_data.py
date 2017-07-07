@@ -49,7 +49,7 @@ def _fetch_csv_data(spreadsheet_id, spreadsheet_gid):
 
 
 def _convert_to_person_dicts(csv_input, raw_include_emails):
-  """Converts CSV text to dicts of QuestionnaireResponseAnswer values per person.
+  """Converts CSV text to dicts of question/answer values per person.
 
   Args
     csv_input: File-like CSV text downloaded from Google spreadsheets. (See main doc.)
