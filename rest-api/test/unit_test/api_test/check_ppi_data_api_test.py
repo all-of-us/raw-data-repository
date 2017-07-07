@@ -25,7 +25,7 @@ class CheckPpiDataApiTest(FlaskTestBase):
     result.add_error('ea')
     result.tests_count += 11
     self.assertEquals(
-        {'tests_count': 11, 'errors_count': 2, 'messages': ['ez', 'ea']},
+        {'tests_count': 11, 'errors_count': 2, 'error_messages': ['ez', 'ea']},
         result.to_json())
 
   def test_validation_no_answer(self):
