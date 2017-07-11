@@ -257,7 +257,7 @@ class FakeParticipantGenerator(object):
           "reference": "Patient/%s" % participant_id
         }
       }
-    },
+    }
     return {"entry": [entry_1, entry_2]}
 
   def _submit_physical_measurements(self, participant_id, consent_time):
