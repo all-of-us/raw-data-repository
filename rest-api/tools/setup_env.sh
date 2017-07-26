@@ -5,9 +5,9 @@
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
 cd ${BASE_DIR};
 
-echo "Removing old libs..."
-rm -rf lib
-find . | grep \.pyc | xargs rm -if $*
+#echo "Removing old libs..."
+#rm -rf lib
+#find . | grep \.pyc | xargs rm -if $*
 
 echo "Installing libs..."
 # If this fails due to missing mysql_config, try `sudo apt-get install libmysqlclient-dev`.

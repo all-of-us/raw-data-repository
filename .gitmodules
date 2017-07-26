@@ -1,3 +1,6 @@
 [submodule "rest-api/appengine-mapreduce"]
 	path = rest-api/appengine-mapreduce
 	url = https://github.com/GoogleCloudPlatform/appengine-mapreduce
+[submodule "common/pyprofiling"]
+	path = common/pyprofiling
+	url = https://github.com/markfickett/pyprofiling.git

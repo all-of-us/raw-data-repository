@@ -2,6 +2,7 @@ import clock
 import logging
 import traceback
 
+from pyprofiling import Profiled
 from dao.base_dao import BaseDao
 from dao.cache_all_dao import CacheAllDao
 from model.code import CodeBook, Code, CodeHistory, CodeType
@@ -47,27 +48,34 @@ class CodeBookDao(BaseDao):
     Existing codes will be updated; codes that weren't there before will be inserted. Codes that
     are in the database but not in the codebook will be left untouched.
     """
-    property_dict = {p['code']: p['valueCode'] for p in concept['property']}
-    topic = property_dict['concept-topic']
-    value = concept['code']
-    display = concept['display']
-    code_type = _CODE_TYPE_MAP.get(property_dict['concept-type'])
-    if code_type is None:
-      logging.warning("Unrecognized concept type: %s, value: %s; ignoring." %
-                      (property_dict['concept-type'], value))
-      return 0
-    code = Code(system=system, codeBookId=code_book_id, value=value, display=display, topic=topic,
-                codeType=code_type, mapped=True, parentId=parent_id)
-    existing_code = self.code_dao._get_code_with_session(session, system, value)
+    with Profiled('extract concept JSON details'):
+      property_dict = {p['code']: p['valueCode'] for p in concept['property']}
+      topic = property_dict['concept-topic']
+      value = concept['code']
+      display = concept['display']
+    with Profiled('get concept type'):
+      code_type = _CODE_TYPE_MAP.get(property_dict['concept-type'])
+      if code_type is None:
+        logging.warning("Unrecognized concept type: %s, value: %s; ignoring." %
+                        (property_dict['concept-type'], value))
+        return 0
+    with Profiled('create Code model for concept'):
+      code = Code(system=system, codeBookId=code_book_id, value=value, display=display, topic=topic,
+                  codeType=code_type, mapped=True, parentId=parent_id)
+    with Profiled('look up existing Code'):
+      existing_code = self.code_dao._get_code_with_session(session, system, value)
     if existing_code:
-      code.codeId = existing_code.codeId
-      self.code_dao._do_update(session, code, existing_code)
+      with Profiled('update Code'):
+        code.codeId = existing_code.codeId
+        self.code_dao._do_update(session, code, existing_code)
     else:
-      self.code_dao.insert_with_session(session, code)
+      with Profiled('insert new Code'):
+        self.code_dao.insert_with_session(session, code)
     child_concepts = concept.get('concept')
     code_count = 1
     if child_concepts:
-      session.flush()
+      with Profiled('flush for child Concepts'):
+        session.flush()
       for child_concept in child_concepts:
         code_count += self._import_concept(session, child_concept, system, code_book_id,
                                            code.codeId)
@@ -75,19 +83,25 @@ class CodeBookDao(BaseDao):
 
   def import_codebook(self, codebook_json):
     """Imports a codebook and all codes inside it."""
-    version = codebook_json['version']
-    num_concepts = len(codebook_json['concept'])
-    logging.info('Importing %d concepts into new CodeBook version %r...', num_concepts, version)
-    system = codebook_json['url']
-    codebook = CodeBook(name=codebook_json['name'], version=version, system=system)
+    with Profiled('extract JSON details'):
+      version = codebook_json['version']
+      num_concepts = len(codebook_json['concept'])
+      logging.info('Importing %d concepts into new CodeBook version %r...', num_concepts, version)
+      system = codebook_json['url']
+    with Profiled('create CodeBook model'):
+      codebook = CodeBook(name=codebook_json['name'], version=version, system=system)
     code_count = 0
-    with self.session() as session:
-      self.insert_with_session(session, codebook)
-      session.flush()
-      for i, concept in enumerate(codebook_json['concept'], start=1):
-        logging.info(
-            'Importing root concept %d of %d (%s).', i, num_concepts, concept.get('display'))
-        code_count += self._import_concept(session, concept, system, codebook.codeBookId, None)
+    with Profiled('open session and insert'):
+      with self.session() as session:
+        with Profiled('insert codebook model'):
+          self.insert_with_session(session, codebook)
+        with Profiled('flush session (codebook model)'):
+          session.flush()
+        with Profiled('import one root concept'):
+          for i, concept in enumerate(codebook_json['concept'], start=1):
+            logging.info(
+                'Importing root concept %d of %d (%s).', i, num_concepts, concept.get('display'))
+            code_count += self._import_concept(session, concept, system, codebook.codeBookId, None)
     logging.info('Finished, %d codes imported.', code_count)
 
 
