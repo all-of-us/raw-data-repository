@@ -65,7 +65,7 @@ class CacheAllDao(UpdatableDao):
   def get(self, obj_id):
     return self._get_cache().id_to_entity.get(obj_id)
 
-  def _invalidate_cache(self):
+  def invalidate_cache(self):
     with self.singleton_cache.lock:
       try:
         del self.singleton_cache[SINGLETON_KEY]
@@ -75,11 +75,11 @@ class CacheAllDao(UpdatableDao):
 
   def insert_with_session(self, session, obj):
     super(CacheAllDao, self).insert_with_session(session, obj)
-    self._invalidate_cache()
+    self.invalidate_cache()
 
   def update_with_session(self, session, obj):
     super(CacheAllDao, self).update_with_session(session, obj)
-    self._invalidate_cache()
+    self.invalidate_cache()
 
   def get_with_ids(self, ids):
     if ids is None:
