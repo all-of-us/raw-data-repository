@@ -135,6 +135,7 @@ class CodeDao(CacheAllDao):
       raise BadRequest("codeBookId must be set to a new value when updating a code")
 
   def _do_update(self, session, obj, existing_obj):
+    obj.created = existing_obj.created
     super(CodeDao, self)._do_update(session, obj, existing_obj)
     self._add_history(session, obj)
 
