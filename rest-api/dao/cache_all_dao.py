@@ -88,4 +88,3 @@ class CacheAllDao(UpdatableDao):
 
   def get_all(self):
     return self._get_cache().id_to_entity.values()
-

@@ -93,19 +93,19 @@ class CodeBookDao(BaseDao):
     code_count = 0
     with Profiled('open session and insert'):
       with self.session() as session:
-        with Profiled('flush cache'):
-          # Invalidate the cache to ensure fresh, cached results during the update.
-          self.code_dao.invalidate_cache()
         with Profiled('fetch all Codes'):
           # Pre-fetch all Codes. This avoids any potential race conditions, and keeps a persistent
           # cache even though updates below invalidate the cache repeatedly.
-          existing_codes = {(code.system, code.value): code for code in self.code_dao.get_all()}
+          # Fetch within the session so later merges are faster.
+          existing_codes = {
+              (code.system, code.value): code
+              for code in session.query(self.code_dao.model_type).all()}
         with Profiled('insert codebook model'):
           self.insert_with_session(session, codebook)
         with Profiled('flush session (codebook model)'):
           session.flush()
-        with Profiled('import one root concept'):
-          for i, concept in enumerate(codebook_json['concept'], start=1):
+        for i, concept in enumerate(codebook_json['concept'], start=1):
+          with Profiled('import one root concept'):
             logging.info(
                 'Importing root concept %d of %d (%s).', i, num_concepts, concept.get('display'))
             code_count += self._import_concept(
@@ -150,9 +150,10 @@ class CodeDao(CacheAllDao):
       raise BadRequest("codeBookId must be set to a new value when updating a code")
 
   def _do_update(self, session, obj, existing_obj):
-    obj.created = existing_obj.created
-    super(CodeDao, self)._do_update(session, obj, existing_obj)
-    self._add_history(session, obj)
+    with Profiled('do update: merge into session'):
+      super(CodeDao, self)._do_update(session, obj, existing_obj)
+    with Profiled('add history'):
+      self._add_history(session, obj)
 
   def get_id(self, obj):
     return obj.codeId
