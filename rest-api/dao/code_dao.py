@@ -41,7 +41,7 @@ class CodeBookDao(BaseDao):
   def get_id(self, obj):
     return obj.codeBookId
 
-  def _import_concept(self, session, concept, system, code_book_id, parent_id):
+  def _import_concept(self, session, existing_codes, concept, system, code_book_id, parent_id):
     """Recursively imports a concept and its descendants as codes.
 
     Existing codes will be updated; codes that weren't there before will be inserted. Codes that
@@ -58,7 +58,7 @@ class CodeBookDao(BaseDao):
       return 0
     code = Code(system=system, codeBookId=code_book_id, value=value, display=display, topic=topic,
                 codeType=code_type, mapped=True, parentId=parent_id)
-    existing_code = self.code_dao._get_code_with_session(session, system, value)
+    existing_code = existing_codes.get((system, value))
     if existing_code:
       code.codeId = existing_code.codeId
       self.code_dao._do_update(session, code, existing_code)
@@ -69,8 +69,8 @@ class CodeBookDao(BaseDao):
     if child_concepts:
       session.flush()
       for child_concept in child_concepts:
-        code_count += self._import_concept(session, child_concept, system, code_book_id,
-                                           code.codeId)
+        code_count += self._import_concept(
+            session, existing_codes, child_concept, system, code_book_id, code.codeId)
     return code_count
 
   def import_codebook(self, codebook_json):
@@ -82,12 +82,19 @@ class CodeBookDao(BaseDao):
     codebook = CodeBook(name=codebook_json['name'], version=version, system=system)
     code_count = 0
     with self.session() as session:
+      # Pre-fetch all Codes. This avoids any potential race conditions, and keeps a persistent
+      # cache even though updates below invalidate the cache repeatedly.
+      # Fetch within the session so later merges are faster.
+      existing_codes = {
+          (code.system, code.value): code
+          for code in session.query(self.code_dao.model_type).all()}
       self.insert_with_session(session, codebook)
       session.flush()
       for i, concept in enumerate(codebook_json['concept'], start=1):
         logging.info(
             'Importing root concept %d of %d (%s).', i, num_concepts, concept.get('display'))
-        code_count += self._import_concept(session, concept, system, codebook.codeBookId, None)
+        code_count += self._import_concept(
+            session, existing_codes, concept, system, codebook.codeBookId, None)
     logging.info('Finished, %d codes imported.', code_count)
 
 
