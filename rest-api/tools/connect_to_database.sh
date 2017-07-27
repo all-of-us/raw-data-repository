@@ -49,6 +49,7 @@ fi
 SUFFIX2=
 if [ "${OUTPUT}" ]
 then
+  # Convert the output of MySQL tables to CSV format.
   SUFFIX2=" | sed 's/\t/\",\"/g;s/^/\"/;s/$/\"/;s/\n//g' > ${OUTPUT}"
 fi
 
