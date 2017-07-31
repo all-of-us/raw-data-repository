@@ -18,7 +18,7 @@ while true; do
   esac
 done
 
-SCRIPT=$1
+SCRIPT=${REPO_ROOT_DIR}/rest-api-client/$1
 shift 1
 
 if [ "${PROJECT}" ]
