@@ -11,7 +11,7 @@ _CODEBOOK_ERRORS_URL = _CODEBOOK_URL_BASE + 'gh-pages/CodeSystem/ppi.issues.json
 _CODEBOOK_URL = _CODEBOOK_URL_BASE + 'gh-pages/CodeSystem/ppi.json'
 
 
-#@auth_required(PTC_AND_HEALTHPRO)
+@auth_required(PTC_AND_HEALTHPRO)
 def import_codebook():
   """Imports the latest published codebook, so long as the published version has no errors.
 
