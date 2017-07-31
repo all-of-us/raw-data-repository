@@ -188,7 +188,7 @@ Authorization: Bearer ya...<rest of token>
 Codebooks are managed in Google Sheets; the PMI questionnaire codebook is
 [here](https://docs.google.com/spreadsheets/d/1b1lmf2KywIVx3-WJBnsR21ImF6Bl345n5VMSdUNBwQI/edit).
 
-Codebooks are published to github as JSON. When you run tools/import_codebook.sh, this JSON
+Codebooks are published to github as JSON. When you run rest-api-client/import_codebook.py, this JSON
 is fetched and imported into the SQL database for use in RDR. Existing codes in the codebook are
 updated, new codes not in the database are inserted, and codes in the database but not in the
 code book are left untouched.
