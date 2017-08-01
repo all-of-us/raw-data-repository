@@ -553,3 +553,9 @@ resources. Once these are created, a client can query for available samples:
 
 #### TODO `GET /Participant/:pid/BiobankSamples
 
+## Configuration APIs
+
+`POST /CheckPpiData` Non-prod. Verifies data created during tests.
+
+`POST /ImportCodebook` Imports the latest published Codebook (metadata about
+Questionnaire contents).
