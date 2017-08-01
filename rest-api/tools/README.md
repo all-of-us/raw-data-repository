@@ -32,16 +32,6 @@ dev_appserver.py test.yaml --require_indexes &
 tools/setup_local_database.sh
 ```
 
-### import_codebook.sh
-
-Imports a codebook into the database.
-
-Example usage:
-
-```
-tools/import_codebook.sh --project all-of-us-rdr-prod --account dan.rodney@pmi-ops.org
-```
-
 ### import_participants.sh
 
 Imports a set of fake participants into the database.

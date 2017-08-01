@@ -74,7 +74,7 @@ class CodeBookDao(BaseDao):
     return code_count
 
   def import_codebook(self, codebook_json):
-    """Imports a codebook and all codes inside it."""
+    """Imports a codebook and all codes inside it. Returns (new_codebook, imported_code_count)."""
     version = codebook_json['version']
     num_concepts = len(codebook_json['concept'])
     logging.info('Importing %d concepts into new CodeBook version %r...', num_concepts, version)
@@ -96,6 +96,7 @@ class CodeBookDao(BaseDao):
         code_count += self._import_concept(
             session, existing_codes, concept, system, codebook.codeBookId, None)
     logging.info('Finished, %d codes imported.', code_count)
+    return codebook, code_count
 
 
 SYSTEM_AND_VALUE = ('system', 'value')
