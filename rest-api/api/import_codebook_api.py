@@ -1,4 +1,5 @@
 import json
+import logging
 import pprint
 import urllib2
 
@@ -50,21 +51,21 @@ def import_codebook():
   if new_codebook_version is None:
     response['error_messages'] = [
         'Published codebook is missing "version", import aborted.']
-    return json.dumps(response)
+    return _log_and_return_json(response)
   if codebook_issues_json != []:
     response['error_messages'] = [
         'Published codebook has issues, import aborted.\n' + pprint.pformat(codebook_issues_json)]
-    return json.dumps(response)
+    return _log_and_return_json(response)
 
   if new_codebook_version == response['active_version']:
     response['status_messages'] = [
         'Version %s already active, not importing.' % response['active_version']]
-    return json.dumps(response)
+    return _log_and_return_json(response)
 
   new_codebook, code_count = CodeBookDao().import_codebook(codebook_json)
   response['active_version'] = new_codebook.version
   response['status_messages'] = ['Imported %d codes.' % code_count]
-  return json.dumps(response)
+  return _log_and_return_json(response)
 
 
 def _fetch_codebook_json():
@@ -74,3 +75,11 @@ def _fetch_codebook_json():
   issues_response = urllib2.urlopen(_CODEBOOK_ERRORS_URL)
   issues = json.loads(issues_response.read())
   return codebook, issues
+
+
+def _log_and_return_json(response):
+  for status in response.get('status_messages', []):
+    logging.info(status)
+  for error in response.get('error_messages', []):
+    logging.error(error)
+  return json.dumps(response)
