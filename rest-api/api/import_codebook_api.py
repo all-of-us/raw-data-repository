@@ -26,7 +26,7 @@ def import_codebook():
     'published_version': '0.2.53',  # What version did we find as the latest published?
     'error_messages': [
       # Human readable explanation if the active version was not updated.
-      'Published codebook has errors, not imported.'
+      'Published codebook has issues, not imported.'
     ]
   }
   or:
@@ -81,5 +81,5 @@ def _log_and_return_json(response):
   for status in response.get('status_messages', []):
     logging.info(status)
   for error in response.get('error_messages', []):
-    logging.error(error)
+    logging.info('Codebook data error: ' + error)
   return json.dumps(response)
