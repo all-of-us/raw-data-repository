@@ -40,16 +40,20 @@ def import_codebook():
   """
   response = {}
   codebook_json, codebook_issues_json = _fetch_codebook_json()
-  new_codebook_version = codebook_json.get('version', 'not found')
+  new_codebook_version = codebook_json.get('version')
   response['published_version'] = new_codebook_version
   dao = CodeBookDao()
   with dao.session() as session:
     previous_codebook = dao.get_latest_with_session(session, codebook_json['url'])
-    response['active_version'] = previous_codebook.version if previous_codebook else 'none'
+    response['active_version'] = previous_codebook.version if previous_codebook else None
 
+  if new_codebook_version is None:
+    response['error_messages'] = [
+        'Published codebook is missing "version", import aborted.']
+    return json.dumps(response)
   if codebook_issues_json != []:
     response['error_messages'] = [
-        'Published codebook has issues, publish aborted.\n' + pprint.pformat(codebook_issues_json)]
+        'Published codebook has issues, import aborted.\n' + pprint.pformat(codebook_issues_json)]
     return json.dumps(response)
 
   if new_codebook_version == response['active_version']:
