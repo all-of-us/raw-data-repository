@@ -13,5 +13,5 @@ function set_local_db_connection_string {
   then
     DB_USER=$1
   fi
-  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${RDR_PASSWORD}@localhost/${DB_NAME}?charset=utf8"
+  export DB_CONNECTION_STRING="mysql+mysqldb://${DB_USER}:${RDR_PASSWORD}@127.0.0.1/${DB_NAME}?charset=utf8"
 }

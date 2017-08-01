@@ -10,8 +10,8 @@ The GCS bucket for biobank manifest testing is pmi-drc-biobank-test.
 
 ## Configuring a Ubuntu workstation for API development:
 
-Follow the instructions in the client directory first to set up a
-virtual Python environment, then follow the instructions here.
+Follow the instructions in the client directory first to set up a virtual
+Python environment, then using the client venv, follow the instructions here.
 
 ### Installing dependencies
 
@@ -20,11 +20,25 @@ Make sure that you have google
 
 From the rest-api directory, run:
 
-* tools/setup_env.sh (get libs, set up git hooks)
-* sudo apt-get install mysql-server libmysqlclient-dev (to install MySQL server and client)
-* dev_appserver.py test.yaml --require_indexes (to run your local server)
-* tools/setup_local_database.sh (to create a database in MySQL, upgrade its schema,
+* `tools/setup_env.shi` (get libs, set up git hooks)
+* `sudo apt-get install mysql-server libmysqlclient-dev` (to install MySQL server and client — if you prefer to use docker, see note below)
+* `mysql -V` to ensure that you have mysql >= 5.7
+* `dev_appserver.py test.yaml --require_indexes` (to run your local server)
+* `tools/setup_local_database.sh` (to create a database in MySQL, upgrade its schema,
   import the latest codebook into it, and put the config for the database in Datastore)
+
+
+#### If you prefer to run mysql via docker
+
+```
+docker volume create rdr-mysql
+docker run --name mysql -d \
+  -p 3306:3306 \
+  --volume rdr-mysql:/var/lib/mysql \
+  -e MYSQL_ROOT_PASSWORD=root \
+  mysql:5.7
+```
+
 
 ### Running the development app server
 
