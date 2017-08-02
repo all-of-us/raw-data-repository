@@ -72,6 +72,8 @@ POST_PATHS=(
   '/Participant/P123/PhysicalMeasurements'
   '/Participant/P123/BiobankOrder'
   '/Metrics'
+  '/CheckPpiData'
+  '/ImportCodebook'
 )
 for path in ${POST_PATHS[*]}
 do
