@@ -55,7 +55,7 @@ echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
 cat tools/drop_db.sql tools/create_db.sql | envsubst > $CREATE_DB_FILE
 
 echo "Creating empty database..."
-mysql -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < ${CREATE_DB_FILE}
+mysql -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < ${CREATE_DB_FILE}
 if [ $? != '0' ]
 then
   echo "Error creating database. Exiting."
