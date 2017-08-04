@@ -1,4 +1,5 @@
-"""Base class for API handlers."""
+import logging
+
 import api_util
 
 from query import OrderBy, Query
@@ -9,6 +10,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
+
 
 class BaseApi(Resource):
   """Base class for API handlers.
@@ -89,9 +91,13 @@ class BaseApi(Resource):
       id_field: name of the field containing the ID used when constructing resource URLs for results
       participant_id: the participant ID under which to perform this query, if appropriate
     """
+    logging.info('Preparing query for %s.', self.dao.model_type)
     query = self._make_query()
     results = self.dao.query(query)
-    return self._make_bundle(results, id_field, participant_id)
+    logging.info('Query complete, bundling results.')
+    response = self._make_bundle(results, id_field, participant_id)
+    logging.info('Returning response.')
+    return response
 
   def _make_query(self):
     field_filters = []
