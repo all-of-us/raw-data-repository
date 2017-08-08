@@ -1,11 +1,19 @@
-"""Imports participants into the database, using fake CSV data specifying attributes of the
-participants. This is used by HealthPro to insert some participants in the database in non-prod
-environments that are expected to be there for testing and training purposes.
+"""Imports fake participants into the database
+
+Reads fake CSV data specifying attributes of the participants. This is used by HealthPro to insert
+some participants in the database in non-prod environments that are expected to be there for testing
+and training purposes.
+
+This may create duplicate participants (it does not check for existing ones before importing).
+
+Usage:
+  tools/import_participants.sh --account $USER@pmi-ops.org --project all-of-us-rdr-stable \
+      --file /tmp/testparticipants.csv
 """
 
 # fhirclient makes sys.path edits on import which mask our client module, so make sure to import
 # our client before importing fhirclient.
-from client import Client
+from client import Client, client_log
 
 import csv
 import logging
@@ -122,9 +130,11 @@ def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_
 
 def main(args):
   client = Client('rdr/v1', False, args.creds_file, args.instance)
+  client_log.setLevel(logging.WARN)
   num_participants = 0
   questionnaire_to_questions, consent_questionnaire_id_and_version = _setup_questionnaires(client)
   consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
+  logging.info('Importing participants from %r.', args.file)
   with open(args.file, 'r') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
@@ -156,6 +166,9 @@ def main(args):
         if questionnaire_id_and_version != consent_questionnaire_id_and_version:
           _submit_questionnaire_response(client, participant_id, questionnaire_id_and_version,
                                          questions, answer_map)
+      logging.info(
+          '%s created from row %d (%r %r).',
+          participant_id, reader.line_num, row['first_name'], row['last_name'])
       num_participants += 1
   logging.info('%d participants imported.' % num_participants)
 
