@@ -1,11 +1,19 @@
-"""Imports participants into the database, using fake CSV data specifying attributes of the
-participants. This is used by HealthPro to insert some participants in the database in non-prod
-environments that are expected to be there for testing and training purposes.
+"""Imports fake participants into the database
+
+Reads fake CSV data specifying attributes of the participants. This is used by HealthPro to insert
+some participants in the database in non-prod environments that are expected to be there for testing
+and training purposes.
+
+This may create duplicate participants (it does not check for existing ones before importing).
+
+Usage:
+  tools/import_participants.sh --account $USER@pmi-ops.org --project all-of-us-rdr-stable \
+      --file /tmp/testparticipants.csv
 """
 
 # fhirclient makes sys.path edits on import which mask our client module, so make sure to import
 # our client before importing fhirclient.
-from client import Client
+from client import Client, client_log
 
 import csv
 import logging
@@ -31,6 +39,7 @@ ALL_QUESTION_CODES = [LAST_NAME_QUESTION_CODE, FIRST_NAME_QUESTION_CODE, EMAIL_Q
                       ZIPCODE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE,
                       GENDER_IDENTITY_QUESTION_CODE]
 
+
 def _get_questions(group):
   """Recursively find questions in ALL_QUESTION_CODES and populate a dict of question code to
   linkId."""
@@ -46,10 +55,13 @@ def _get_questions(group):
           result.update(_get_questions(sub_group))
   return result
 
+
 def _setup_questionnaires(client):
   """Verify that questionnaires exist for all the modules in ALL_MODULE_CODES, and construct
   a map from questionnaire ID and version to { question_code: linkId } for all question codes
-  found in the questionnaire in ALL_QUESTION_CODES."""
+  found in the questionnaire in ALL_QUESTION_CODES.
+  """
+  logging.info('Verifying that questionnaires exist.')
   questionnaire_to_questions = {}
   consent_questionnaire_id_and_version = None
   for module_code in ALL_MODULE_CODES:
@@ -64,8 +76,10 @@ def _setup_questionnaires(client):
     questionnaire_to_questions[(questionnaire_id, version)] = _get_questions(fhir_q.group)
   return questionnaire_to_questions, consent_questionnaire_id_and_version
 
+
 def _create_question_answer(link_id, answers):
   return {'linkId': link_id, 'answer': answers}
+
 
 def _create_questionnaire_response(participant_id, q_id_and_version,
                                    questions_with_answers):
@@ -80,20 +94,24 @@ def _create_questionnaire_response(participant_id, q_id_and_version,
     qr_json['group']['question'] = questions_with_answers
   return qr_json
 
+
 def _string_answer(value):
   if not value:
     return None
   return [{"valueString": value}]
+
 
 def _date_answer(value):
   if not value:
     return None
   return [{"valueDate": value}]
 
+
 def _code_answer(code):
   if not code:
     return None
   return [{"valueCoding": {"system": PPI_SYSTEM, "code": code}}]
+
 
 def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_version,
                                    questions, answer_map):
@@ -109,11 +127,14 @@ def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_
                                            questions_with_answers)
   client.request_json('Participant/%s/QuestionnaireResponse' % participant_id, 'POST', qr_json)
 
+
 def main(args):
   client = Client('rdr/v1', False, args.creds_file, args.instance)
+  client_log.setLevel(logging.WARN)
   num_participants = 0
   questionnaire_to_questions, consent_questionnaire_id_and_version = _setup_questionnaires(client)
   consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
+  logging.info('Importing participants from %r.', args.file)
   with open(args.file, 'r') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
@@ -145,8 +166,12 @@ def main(args):
         if questionnaire_id_and_version != consent_questionnaire_id_and_version:
           _submit_questionnaire_response(client, participant_id, questionnaire_id_and_version,
                                          questions, answer_map)
+      logging.info(
+          '%s created from row %d (%r %r).',
+          participant_id, reader.line_num, row['first_name'], row['last_name'])
       num_participants += 1
-  logging.info("%d participants imported." % num_participants)
+  logging.info('%d participants imported.' % num_participants)
+
 
 if __name__ == '__main__':
   configure_logging()
