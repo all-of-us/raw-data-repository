@@ -31,6 +31,7 @@ ALL_QUESTION_CODES = [LAST_NAME_QUESTION_CODE, FIRST_NAME_QUESTION_CODE, EMAIL_Q
                       ZIPCODE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE,
                       GENDER_IDENTITY_QUESTION_CODE]
 
+
 def _get_questions(group):
   """Recursively find questions in ALL_QUESTION_CODES and populate a dict of question code to
   linkId."""
@@ -46,10 +47,13 @@ def _get_questions(group):
           result.update(_get_questions(sub_group))
   return result
 
+
 def _setup_questionnaires(client):
   """Verify that questionnaires exist for all the modules in ALL_MODULE_CODES, and construct
   a map from questionnaire ID and version to { question_code: linkId } for all question codes
-  found in the questionnaire in ALL_QUESTION_CODES."""
+  found in the questionnaire in ALL_QUESTION_CODES.
+  """
+  logging.info('Verifying that questionnaires exist.')
   questionnaire_to_questions = {}
   consent_questionnaire_id_and_version = None
   for module_code in ALL_MODULE_CODES:
@@ -64,8 +68,10 @@ def _setup_questionnaires(client):
     questionnaire_to_questions[(questionnaire_id, version)] = _get_questions(fhir_q.group)
   return questionnaire_to_questions, consent_questionnaire_id_and_version
 
+
 def _create_question_answer(link_id, answers):
   return {'linkId': link_id, 'answer': answers}
+
 
 def _create_questionnaire_response(participant_id, q_id_and_version,
                                    questions_with_answers):
@@ -80,20 +86,24 @@ def _create_questionnaire_response(participant_id, q_id_and_version,
     qr_json['group']['question'] = questions_with_answers
   return qr_json
 
+
 def _string_answer(value):
   if not value:
     return None
   return [{"valueString": value}]
+
 
 def _date_answer(value):
   if not value:
     return None
   return [{"valueDate": value}]
 
+
 def _code_answer(code):
   if not code:
     return None
   return [{"valueCoding": {"system": PPI_SYSTEM, "code": code}}]
+
 
 def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_version,
                                    questions, answer_map):
@@ -108,6 +118,7 @@ def _submit_questionnaire_response(client, participant_id, questionnaire_id_and_
   qr_json = _create_questionnaire_response(participant_id, questionnaire_id_and_version,
                                            questions_with_answers)
   client.request_json('Participant/%s/QuestionnaireResponse' % participant_id, 'POST', qr_json)
+
 
 def main(args):
   client = Client('rdr/v1', False, args.creds_file, args.instance)
@@ -146,7 +157,8 @@ def main(args):
           _submit_questionnaire_response(client, participant_id, questionnaire_id_and_version,
                                          questions, answer_map)
       num_participants += 1
-  logging.info("%d participants imported." % num_participants)
+  logging.info('%d participants imported.' % num_participants)
+
 
 if __name__ == '__main__':
   configure_logging()
