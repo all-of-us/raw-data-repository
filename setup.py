@@ -2,18 +2,18 @@
 # Docs/example setup.py: https://github.com/pypa/sampleproject/blob/master/setup.py
 
 import os
-from setuptools import find_packages, setup
+from setuptools import setup
 
 
-with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'README.md')) as readme:
+with open(os.path.join(
+    os.path.abspath(os.path.dirname(__file__)), 'common', 'README.md')) as readme:
   readme_contents = readme.read()
 
 
 setup(
     version='0.1',
-    name='rdr_common',
+    name='rdr-common',  # This is what people 'pip install'.
     long_description=readme_contents,
     url='https://github.com/vanderbilt/pmi-data',
-    #py_modules=['code_constants', 'main_util'],
-    packages=find_packages(),
+    packages=['common'],
 )
