@@ -14,5 +14,5 @@ setup(
     name='All of Us RDR common',
     long_description=readme_contents,
     url='https://github.com/vanderbilt/pmi-data',
-    py_modules=['code_constants.py', 'main_util.py'],
+    py_modules=['code_constants', 'main_util'],
 )
