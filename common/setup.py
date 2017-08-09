@@ -11,7 +11,7 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'README.md'))
 
 setup(
     version='0.1',
-    name='All of Us RDR common',
+    name='rdr_common',
     long_description=readme_contents,
     url='https://github.com/vanderbilt/pmi-data',
     py_modules=['code_constants', 'main_util'],
