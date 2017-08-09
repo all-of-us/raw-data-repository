@@ -27,6 +27,21 @@ CircleCI Build Status ![Build Status of master](https://circleci.com/gh/vanderbi
 *   `ci` CircleCI (continuous integration testing and deployment) scripts.
 *   `git-hooks` Suggested script to run for automated checks during development.
 
+## Modules Shared via PIP
+
+The `rdr_client` and `rdr_common` Python modules may be installed with:
+
+```Shell
+pip install -e 'git+git@github.com:vanderbilt/pmi-data.git#egg=all-of-us-rdr'
+```
+
+and then used like
+
+```Python
+from rdr_client.client import Client
+from rdr_common.main_util import configure_logging
+```
+
 ## API Overview
 
 These are the APIs that the RDR will support for the initial launch:
