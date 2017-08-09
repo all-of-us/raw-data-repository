@@ -2,7 +2,7 @@
 # Docs/example setup.py: https://github.com/pypa/sampleproject/blob/master/setup.py
 
 import os
-from setuptools import setup
+from setuptools import find_packages, setup
 
 
 with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'README.md')) as readme:
@@ -14,5 +14,6 @@ setup(
     name='rdr_common',
     long_description=readme_contents,
     url='https://github.com/vanderbilt/pmi-data',
-    py_modules=['code_constants', 'main_util'],
+    #py_modules=['code_constants', 'main_util'],
+    packages=find_packages(),
 )
