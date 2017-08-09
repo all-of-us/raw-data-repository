@@ -6,7 +6,7 @@ Example: run_client.sh --project pmi-drc-api-test --account dan.rodney@pmi-ops.o
 "
 
 REPO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
-export PYTHONPATH=${PYTHONPATH}:${REPO_ROOT_DIR}/common
+export PYTHONPATH=${PYTHONPATH}:${REPO_ROOT_DIR}/rdr_common
 
 while true; do
   case "$1" in
@@ -18,7 +18,7 @@ while true; do
   esac
 done
 
-SCRIPT=${REPO_ROOT_DIR}/rest-api-client/$1
+SCRIPT=${REPO_ROOT_DIR}/rdr_client/$1
 shift 1
 
 if [ "${PROJECT}" ]

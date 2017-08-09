@@ -49,7 +49,7 @@ done
 ./tools/install_config.sh --config=config/config_dev.json --update
 ./tools/setup_local_database.sh --nopassword --db_user ubuntu --db_name circle_test
 
-cd ../rest-api-client
+cd ../rdr_client
 activate_local_venv
 
 safety check  # checks current (client) venv
@@ -65,7 +65,7 @@ SDK_PATH=${GCLOUD_PATH%/bin/gcloud}
 ./run_tests.sh -g $SDK_PATH
 
 # Verify that client scripts work.
-cd ../../rest-api-client
+cd ../../rdr_client
 ./run_client.sh participant_create_and_get.py
 
 

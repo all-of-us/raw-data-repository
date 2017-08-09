@@ -16,7 +16,7 @@ _CODEBOOK_URL = _CODEBOOK_URL_BASE + 'gh-pages/CodeSystem/ppi.json'
 def import_codebook():
   """Imports the latest published codebook, so long as the published version has no errors.
 
-  May be called with rest-api-client/import_codebook.py.
+  May be called with rdr_client/import_codebook.py.
 
   Expects an empty request body. The API is idempotent.
 
