@@ -98,7 +98,7 @@ until ack-grep -f --python | entr -r test/run_tests.sh -g $sdk_dir unit;do sleep
 
 ### Adding fake participants to local appserver
 
-See `rest-api-client/README.md` for instructions.
+See `rdr_client/README.md` for instructions.
 
 Your `config_dev.json` loaded earlier should include a Config entity with
 `config_key=allow_nonprod_requests` and `value=True`. You can check the
@@ -180,7 +180,7 @@ after use), and pass it to `install_config.sh`.
 
 ### Accessing the API
 
-See `rest-api-client/client.py` for a Python example of authenticated API access.
+See `rdr_client/client.py` for a Python example of authenticated API access.
 
 To construct authorized request headers on the command line:
 
@@ -202,7 +202,7 @@ Authorization: Bearer ya...<rest of token>
 Codebooks are managed in Google Sheets; the PMI questionnaire codebook is
 [here](https://docs.google.com/spreadsheets/d/1b1lmf2KywIVx3-WJBnsR21ImF6Bl345n5VMSdUNBwQI/edit).
 
-Codebooks are published to github as JSON. When you run rest-api-client/import_codebook.py, this JSON
+Codebooks are published to github as JSON. When you run rdr_client/import_codebook.py, this JSON
 is fetched and imported into the SQL database for use in RDR. Existing codes in the codebook are
 updated, new codes not in the database are inserted, and codes in the database but not in the
 code book are left untouched.

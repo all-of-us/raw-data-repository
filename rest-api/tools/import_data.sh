@@ -8,7 +8,7 @@ tools/import_hpos.sh $@
 echo "Importing sites..."
 tools/import_sites.sh $@
 echo "Importing codebook..."
-../rest-api-client/run_client.sh $@ import_codebook.py
+../rdr_client/run_client.sh $@ import_codebook.py
 echo "Importing questionnaires..."
 tools/import_questionnaires.sh $@
 echo "Importing participants..."
