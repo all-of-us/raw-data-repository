@@ -15,8 +15,6 @@ with open(os.path.join(rdr_client_dir, 'requirements.txt')) as requirements:
 
 
 setup(
-    version='0.1',
-
     # This is what people 'pip install'.
     name='all-of-us-rdr',
 
