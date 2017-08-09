@@ -20,9 +20,10 @@ CircleCI Build Status ![Build Status of master](https://circleci.com/gh/vanderbi
         [README](rest-api/tools/README.md) summarizes each tool's purpose.
     *   `test` Unit and client/integration tests (CircleCI runs these).
         [README](rest-api/test/README.md) had instructions for running tests.
-*   `rest-api-client` API client for communicating with the API. Used in
+*   `rdr_client` API client for communicating with the API. Used in
     integration tests, and includes basic examples for a few APIs.
-    [README](rest-api-client/README.md) describes library setup.
+    [README](rdr_client/README.md) describes library setup.
+*   `rdr_common` Python modules shared between API and client
 *   `ci` CircleCI (continuous integration testing and deployment) scripts.
 *   `git-hooks` Suggested script to run for automated checks during development.
 

@@ -14,7 +14,7 @@ from model.code import CodeType
 def check_ppi_data():
   """Validates the questions/responses for test participants.
 
-  Typically called from rest-api-client/check_ppi_data.py.
+  Typically called from rdr_client/check_ppi_data.py.
 
   The request contains a ppi_data dict which maps test participant e-mail addresses to their
   responses. All code and answer values are unparsed strings. Values may be empty, and multiple
