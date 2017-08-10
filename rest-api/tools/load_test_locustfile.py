@@ -72,10 +72,10 @@ class _AuthenticatedLocust(Locust):
 
 
 class VersionCheckUser(_AuthenticatedLocust):
-  # 1 out of 100 users (Locust count of 100 recommended in load_test.sh).
-  weight = 1
+  # 2 out of 100 users (Locust count of 100 recommended in load_test.sh).
+  weight = 2
   # Hit the root/version endpoint every 10s.
-  min_wait = 1000 * 10
+  min_wait = 1000 * 10 * weight
   max_wait = min_wait
   class task_set(TaskSet):  # The "task_set" field name is what's used by the Locust superclass.
     @task(1)  # task weight: larger number == pick this task more often
@@ -84,7 +84,7 @@ class VersionCheckUser(_AuthenticatedLocust):
 
 
 class SyncPhysicalMeasurementsUser(_AuthenticatedLocust):
-  weight = 1
+  weight = 2
   # In practice we expect 1 sync request/minute. Use the default 1s wait time here.
   class task_set(TaskSet):
     @task(1)
@@ -102,7 +102,7 @@ class SyncPhysicalMeasurementsUser(_AuthenticatedLocust):
 
 
 class SignupUser(_AuthenticatedLocust):
-  weight = 88
+  weight = 2
   # We estimate 100-1000 signups/day or 80-800s between signups (across all users).
   # Simulate 2 signups/s across a number of users for the load test.
   min_wait = weight * 500
@@ -117,10 +117,11 @@ class SignupUser(_AuthenticatedLocust):
 
 class HealthProUser(_AuthenticatedLocust):
   """Queries run by HealthPro: look up user by name + dob or ID, and get summaries."""
-  weight = 10
-  # We (probably over)estimate 100-1000 summary or participant queries/day (per task below).
-  min_wait = weight * 1000 * 40
-  max_wait = min_wait
+  weight = 94
+  # As of 2017 August, in 24h we see about 1000 ParticipantSummary and a similar number of
+  # individual summary requests. Simulate more load than that.
+  min_wait = 1000
+  max_wait = 10000
 
   class task_set(TaskSet):
     def __init__(self, *args, **kwargs):
@@ -148,6 +149,16 @@ class HealthProUser(_AuthenticatedLocust):
         else:
           break
 
+    @task(10)  # ParticipantSummary is the most popular API endpoint.
+    def query_summary(self):
+      search_params = {
+          # HealthPro always requests 1000 for the work queue.
+          '_sort%3Adesc': 'consentForStudyEnrollmentTime',
+          '_count': '1000',
+          'hpoId': random.choice(('PITT', 'UNSET', 'COLUMBIA')),
+      }
+      self.client.request_json('ParticipantSummary?%s' % urlencode(search_params))
+
     @task(1)
     def get_participant_by_id(self):
       self.client.request_json('Participant/%s' % random.choice(self.participant_ids))
@@ -161,17 +172,3 @@ class HealthProUser(_AuthenticatedLocust):
     def look_up_participant_by_name_dob(self):
       _, last_name, dob = random.choice(self.participant_name_dobs)
       self.client.request_json('ParticipantSummary?dateOfBirth=%s&lastName=%s' % (dob, last_name))
-
-    @task(1)
-    def query_summary(self):
-      available_params = (
-        ('ageRange', random.choice(('0-17', '18-25', '66-75'))),
-        ('physicalMeasurementsStatus', 'COMPLETED'),
-        ('race', random.choice(('UNSET', 'ASIAN', 'WHITE', 'HISPANIC_LATINO_OR_SPANISH'))),
-        ('state', random.choice(('PIIState_MA', 'PIIState_CA', 'PIIState_TX'))),
-      )
-      search_params = dict(random.sample(
-          available_params,
-          random.randint(1, len(available_params))))
-      search_params['hpoId'] = random.choice(('PITT', 'UNSET', 'COLUMBIA'))
-      self.client.request_json('ParticipantSummary?%s' % urlencode(search_params))
