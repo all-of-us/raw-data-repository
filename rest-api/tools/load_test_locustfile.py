@@ -1,7 +1,20 @@
 """User behavior definition for load-testing via Locust. Run using tools/load_test.sh.
 
+Locust docs: http://docs.locust.io/en/latest/writing-a-locustfile.html
+
+Instructions:
+*   Run load_test.sh, which wraps this and starts a locust server.
+*   Once started, locust prints "Starting web monitor at *:8089". Open
+    http://localhost:8089 to view the control/status page.
+*   Set the number of users to 100 (and hatch/sec to an arbitrary number, using 100 will start all
+    workers immediately). With 100 locusts, weights can be thought of as "number of workers."
+    *   Each worker will run a task and then pause (somewhere from `min_wait` to `max_wait`
+        milliseconds). It picks one of its class methods to run, which in turn are weighted by
+        the argument to `@task`.
+*   Click run, locusts hatch and run, gather stats, click stop.
+
 We expect very low traffic (100-1K qpd for most endpoints). These load tests generate much more
-traffic (around 10qps) to stress test the system / simulate traffic spikes.
+traffic to stress test the system / simulate traffic spikes.
 """
 
 import json
@@ -119,7 +132,8 @@ class HealthProUser(_AuthenticatedLocust):
   """Queries run by HealthPro: look up user by name + dob or ID, and get summaries."""
   weight = 94
   # As of 2017 August, in 24h we see about 1000 ParticipantSummary and a similar number of
-  # individual summary requests. Simulate more load than that.
+  # individual summary requests. Simulate more load than that (about 1M/day) to force resource
+  # contention.
   min_wait = 1000
   max_wait = 10000
 
