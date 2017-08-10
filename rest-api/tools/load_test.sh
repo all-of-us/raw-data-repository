@@ -1,18 +1,5 @@
 #!/bin/bash -e
-# Runs a load test against a deployed RDR.
-#
-# Instructions:
-# *   Run this script, which starts a locust server.
-# *   Once started, locust prints "Starting web monitor at *:8089". Open
-#     http://localhost:8089 to view the control/status page.
-# *   Set the number of users to 100 and hatch/sec to 5. (This is to match
-#     weights/times in the locust file. For example, if users have the default
-#     min_wait = max_wait = 1000 (ms), setting the number of users to 100
-#     and hatch rate to 5 will ramp up to 100qps over 20s, and then sustain
-#     100qps until you click "stop".)
-# *   Click run, gather stats, click stop.
-#
-# Locust docs: http://docs.locust.io/en/latest/quickstart.html
+# Runs a load test against a deployed RDR. See load_test_locustfile for instructions.
 
 if ! which locust
 then
