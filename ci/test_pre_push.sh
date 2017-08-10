@@ -3,6 +3,17 @@
 
 set -e
 
+echo "Grepping for checked-in credentials..."
+set +e  # OK if grep does not find any matches.
+KEY_FILES=`git grep -il "BEGIN PRIVATE KEY" . | grep -v $0 | grep -v oauth2client`
+set -e
+if [ "${KEY_FILES}" ]
+then
+  echo "No keys may be checked in, but found: $KEY_FILES"
+  exit 1
+fi
+echo "No keys found!"
+
 # Pylint checks. Use pylint --list-msgs to see more available messages.
 # More options are set in rest-api/pylintrc.
 echo "Linting..."
