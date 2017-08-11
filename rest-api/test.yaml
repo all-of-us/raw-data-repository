@@ -2,7 +2,7 @@
 # to support running dev_appserver locally for tests in a way that can
 # run pipelines and our endpoints on one port.
 # This file should be kept in sync with app.yaml and offline.yaml.
-threadsafe: true
+threadsafe: false
 runtime: python27
 api_version: 1
 
