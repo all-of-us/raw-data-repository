@@ -2,7 +2,8 @@
 # This file is concatenated at the beginning of app_(non)?prod.yaml (instead of
 # using an "includes" since "includes" only imports some directives).
 
-threadsafe: true
+# Disable multi-threading to avoid cache lock contention in ParticipantSummary. DA-342
+threadsafe: false
 runtime: python27
 api_version: 1
 
