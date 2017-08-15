@@ -39,6 +39,8 @@ class CacheAllDao(UpdatableDao):
 
   index_field_keys is an optional list for secondary indexes; elements in it can either by
   individual field names or tuples of field names. Cached objects will be keyed by those fields.
+  
+  See BaseDao for documentation on order_by_ending.
   """
 
   def __init__(self, model_type, cache_index, cache_ttl_seconds, index_field_keys=None,
