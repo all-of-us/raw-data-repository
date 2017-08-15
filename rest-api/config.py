@@ -4,7 +4,6 @@ Contains things such as the accounts allowed access to the system.
 """
 import cachetools
 import logging
-import singletons
 import time
 
 import data_access_object
@@ -109,7 +108,7 @@ class ConfigurationDAO(data_access_object.DataAccessObject):
     return ret
 
 def DAO():
-  return singletons.get(ConfigurationDAO)
+  return ConfigurationDAO()
 
 _NO_DEFAULT = '_NO_DEFAULT'
 

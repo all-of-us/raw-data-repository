@@ -81,9 +81,12 @@ def _get_sample_sql_and_params():
 
 
 class ParticipantSummaryDao(UpdatableDao):
+
   def __init__(self):
     super(ParticipantSummaryDao, self).__init__(ParticipantSummary,
                                                 order_by_ending=_ORDER_BY_ENDING)
+    self.hpo_dao = HPODao()
+    self.code_dao = CodeDao()
 
   def get_id(self, obj):
     return obj.participantId
@@ -154,7 +157,7 @@ class ParticipantSummaryDao(UpdatableDao):
   def make_query_filter(self, field_name, value):
     """Handle HPO and code values when parsing filter values."""
     if field_name == 'hpoId':
-      hpo = HPODao().get_by_name(value)
+      hpo = self.hpo_dao.get_by_name(value)
       if not hpo:
         raise BadRequest('No HPO found with name %s' % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
@@ -162,7 +165,7 @@ class ParticipantSummaryDao(UpdatableDao):
       if value == UNSET:
         return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
       # Note: we do not at present support querying for UNMAPPED code values.
-      code = CodeDao().get_code(PPI_SYSTEM, value)
+      code = self.code_dao.get_code(PPI_SYSTEM, value)
       if not code:
         raise BadRequest('No code found: %s' % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', code.codeId)
@@ -262,12 +265,12 @@ class ParticipantSummaryDao(UpdatableDao):
       result['ageRange'] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
     else:
       result['ageRange'] = UNSET
-    format_json_hpo(result, 'hpoId')
+    format_json_hpo(result, self.hpo_dao, 'hpoId')
     _initialize_field_type_sets()
     for fieldname in _DATE_FIELDS:
       format_json_date(result, fieldname)
     for fieldname in _CODE_FIELDS:
-      format_json_code(result, fieldname)
+      format_json_code(result, self.code_dao, fieldname)
     for fieldname in _ENUM_FIELDS:
       format_json_enum(result, fieldname)
     if (model.withdrawalStatus == WithdrawalStatus.NO_USE or

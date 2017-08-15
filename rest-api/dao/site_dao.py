@@ -1,9 +1,11 @@
 from dao.cache_all_dao import CacheAllDao
 from model.site import Site
+from singletons import SITE_CACHE_INDEX
 
 class SiteDao(CacheAllDao):
   def __init__(self):
-    super(SiteDao, self).__init__(Site, cache_ttl_seconds=600, index_field_keys=['googleGroup'])
+    super(SiteDao, self).__init__(Site, cache_index=SITE_CACHE_INDEX,
+                                  cache_ttl_seconds=600, index_field_keys=['googleGroup'])
 
   def _validate_update(self, session, obj, existing_obj):
     # Sites aren't versioned; suppress the normal check here.
