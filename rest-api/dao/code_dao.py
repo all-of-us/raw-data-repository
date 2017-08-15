@@ -110,9 +110,9 @@ class CodeDao(CacheAllDao):
 
   def _load_cache(self):
     result = super(CodeDao, self)._load_cache()
-    for code in result.entity_list:
-      if code is not None and code.parentId is not None:
-        parent = result.entity_list[code.parentId]
+    for code in result.id_to_entity.values():
+      if code.parentId is not None:
+        parent = result.id_to_entity.get(code.parentId)
         if parent:
           parent.children.append(code)
           code.parent = parent

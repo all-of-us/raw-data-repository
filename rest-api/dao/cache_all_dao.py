@@ -5,18 +5,18 @@ from sqlalchemy.orm.session import make_transient
 import singletons
 
 class EntityCache(object):
-  """A cache of entities of a particular type, indexed by ID (in a list for fast lookups without
-  hashing) and optionally other fields (in index_maps).
+  """A cache of entities of a particular type, indexed by ID (in id_to_entity) and optionally other
+   fields (in index_maps).
    """
   def __init__(self, dao, entities, index_field_keys):
     """Constructor taking the DAO, all the entities in the database for this type, and a list of
     field names or tuples of field names to index the entities by."""
-    self.entity_list = ResizingList()
+    self.id_to_entity = {}
     if index_field_keys:
       self.index_maps = {index_field_key: {} for index_field_key in index_field_keys}
     for entity in entities:
       make_transient(entity)
-      self.entity_list[dao.get_id(entity)] = entity
+      self.id_to_entity[dao.get_id(entity)] = entity
       if index_field_keys:
         for index_field_key in index_field_keys:
           if type(index_field_key) is tuple:
@@ -56,10 +56,10 @@ class CacheAllDao(UpdatableDao):
 
   def get_with_session(self, session, obj_id, **kwargs):
     #pylint: disable=unused-argument
-    return self._get_cache().entity_list[obj_id]
+    return self._get_cache().id_to_entity.get(obj_id)
 
   def get(self, obj_id):
-    return self._get_cache().entity_list[obj_id]
+    return self._get_cache().id_to_entity.get(obj_id)
 
   def _invalidate_cache(self):
     singletons.invalidate(self.cache_index)
@@ -78,4 +78,4 @@ class CacheAllDao(UpdatableDao):
     return [self.get(id_) for id_ in ids]
 
   def get_all(self):
-    return [entity for entity in self._get_cache().entity_list if entity is not None]
+    return self._get_cache().id_to_entity.values()
