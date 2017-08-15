@@ -34,7 +34,7 @@ class CacheAllDao(UpdatableDao):
 
   cache_index is an index from singletons (e.g. CODE_CACHE_INDEX) provided by subclasses
   to specify a key for the cache. (This is faster than hashing the type name.)
-  
+
   cache_ttl_seconds is the TTL for entries in the cache in seconds.
 
   index_field_keys is an optional list for secondary indexes; elements in it can either by
