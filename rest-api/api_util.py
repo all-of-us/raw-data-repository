@@ -222,12 +222,11 @@ def format_json_date(obj, field_name, date_format=None):
         obj[field_name] = obj[field_name].isoformat()
 
 
-def format_json_code(obj, field_name):
+def format_json_code(obj, code_dao, field_name):
   field_without_id = field_name[0:len(field_name) - 2]
   value = obj.get(field_name)
-  if value:
-    from dao.code_dao import CodeDao
-    code = CodeDao().get(value)
+  if value:    
+    code = code_dao.get(value)
     if code.mapped:
       obj[field_without_id] = code.value
     else:
@@ -236,10 +235,9 @@ def format_json_code(obj, field_name):
   else:
     obj[field_without_id] = UNSET
 
-def format_json_hpo(obj, field_name):
-  if obj[field_name]:
-    from dao.hpo_dao import HPODao
-    obj[field_name] = HPODao().get(obj[field_name]).name
+def format_json_hpo(obj, hpo_dao, field_name):
+  if obj[field_name]:    
+    obj[field_name] = hpo_dao.get(obj[field_name]).name
   else:
     obj[field_name] = UNSET
 
