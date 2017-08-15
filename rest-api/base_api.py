@@ -1,12 +1,10 @@
 """Base class for API handlers."""
 
 import api_util
-import base64
 import config
-import flask
 
 from query import Query
-from flask import jsonify, request
+from flask import request
 from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest
 
