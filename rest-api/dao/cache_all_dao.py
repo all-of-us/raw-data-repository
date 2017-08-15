@@ -1,5 +1,4 @@
 from base_dao import UpdatableDao
-from resizing_list import ResizingList
 from sqlalchemy.orm.session import make_transient
 
 import singletons
