@@ -81,7 +81,7 @@ def _get_sample_sql_and_params():
 
 
 class ParticipantSummaryDao(UpdatableDao):
-  
+
   def __init__(self):
     super(ParticipantSummaryDao, self).__init__(ParticipantSummary,
                                                 order_by_ending=_ORDER_BY_ENDING)
