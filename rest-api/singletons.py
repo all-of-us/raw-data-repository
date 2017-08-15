@@ -1,39 +1,52 @@
-import cachetools
 import threading
-
-cache_lock = threading.RLock()
-cache_map = {}
+from clock import CLOCK
+from datetime import timedelta
+from resizing_list import ResizingList
 
 singletons_lock = threading.RLock()
-singletons_map = {}
+# We use a list with indexes, rather than a dict, to eliminate the performance hit of hashing.
+singletons_list = ResizingList()
+
+CODE_CACHE_INDEX = 0
+HPO_CACHE_INDEX = 1
+SITE_CACHE_INDEX = 2
+SQL_DATABASE_INDEX = 3
 
 def reset_for_tests():
   with singletons_lock:
-    singletons_map.clear()
-  with cache_lock:
-    cache_map.clear()
+    del singletons_list[:]
 
-def get(constructor):
-  # First try without a lock (usually should return something)
-  existing_instance = singletons_map.get(constructor.__name__)
-  if existing_instance:
-    return existing_instance
+def _get(cache_index):
+  existing_pair = singletons_list[cache_index]
+  if existing_pair and (existing_pair[1] is None or existing_pair[1] >= CLOCK.now()):
+    return existing_pair[0]  
+  return None
+
+def get(cache_index, constructor, cache_ttl_seconds=None):
+  """Get a cache with a specified index from the list above. If not initialized, use
+  constructor to initialize it; if cache_ttl_seconds is set, reload it after that period."""
+  # First try without a lock
+  #print "cache_index = %s, constructor = %s, cache_ttl_seconds = %s" % (cache_index, constructor, cache_ttl_seconds)
+  result = _get(cache_index)  
+  if result:
+    #print "A"
+    return result
+      
   # Then grab the lock and try again
   with singletons_lock:
-    existing_instance = singletons_map.get(constructor.__name__)
-    if existing_instance:
-      return existing_instance
+    result = _get(cache_index)
+    if result:
+      #print "B"
+      return result
     else:
       new_instance = constructor()
-      singletons_map[constructor.__name__] = new_instance
+      expiration_time = None 
+      if cache_ttl_seconds is not None:
+        expiration_time = CLOCK.now() + timedelta(seconds=cache_ttl_seconds)
+      singletons_list[cache_index] = (new_instance, expiration_time)
+      #print "C"
       return new_instance
 
-def get_cache(cache_type, ttl_seconds, get_method=None):
-  existing_cache = cache_map.get(cache_type.__name__)
-  if existing_cache:
-    return existing_cache
-  with cache_lock:
-    new_cache = cachetools.TTLCache(1, ttl=ttl_seconds, missing=get_method)
-    new_cache.lock = threading.RLock()
-    cache_map[cache_type.__name__] = new_cache
-    return new_cache
+def invalidate(cache_index):
+  with singletons_lock:
+    singletons_list[cache_index] = None

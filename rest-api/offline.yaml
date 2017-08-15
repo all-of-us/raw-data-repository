@@ -1,6 +1,6 @@
 # Configuration for offline pipeline service. Should be kept in sync with test.yaml.
 
-threadsafe: false
+threadsafe: true
 runtime: python27
 api_version: 1
 service: offline
