@@ -6,6 +6,7 @@ from dao.base_dao import BaseDao
 from dao.cache_all_dao import CacheAllDao
 from model.code import CodeBook, Code, CodeHistory, CodeType
 from werkzeug.exceptions import BadRequest
+from singletons import CODE_CACHE_INDEX
 
 _CODE_TYPE_MAP = {
   "Module Name": CodeType.MODULE,
@@ -104,11 +105,11 @@ SYSTEM_AND_VALUE = ('system', 'value')
 
 class CodeDao(CacheAllDao):
   def __init__(self):
-    super(CodeDao, self).__init__(Code, cache_ttl_seconds=600,
+    super(CodeDao, self).__init__(Code, cache_index=CODE_CACHE_INDEX, cache_ttl_seconds=600,
                                   index_field_keys=[SYSTEM_AND_VALUE])
 
-  def _load_cache(self, key):
-    result = super(CodeDao, self)._load_cache(key)
+  def _load_cache(self):
+    result = super(CodeDao, self)._load_cache()
     for code in result.id_to_entity.values():
       if code.parentId is not None:
         parent = result.id_to_entity.get(code.parentId)

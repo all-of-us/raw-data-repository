@@ -2,10 +2,7 @@
 # This file is concatenated at the beginning of app_(non)?prod.yaml (instead of
 # using an "includes" since "includes" only imports some directives).
 
-# Disable multi-threading to avoid cache lock contention in ParticipantSummary.
-# For DA-342. AppEngine will run more instances to handle concurrent requests,
-# instead of routing multiple concurrent requests to the same instance.
-threadsafe: false
+threadsafe: true
 runtime: python27
 api_version: 1
 
