@@ -19,7 +19,7 @@ def reset_for_tests():
 def _get(cache_index):
   existing_pair = singletons_list[cache_index]
   if existing_pair and (existing_pair[1] is None or existing_pair[1] >= CLOCK.now()):
-    return existing_pair[0]  
+    return existing_pair[0]
   return None
 
 def get(cache_index, constructor, cache_ttl_seconds=None):
@@ -27,11 +27,11 @@ def get(cache_index, constructor, cache_ttl_seconds=None):
   constructor to initialize it; if cache_ttl_seconds is set, reload it after that period."""
   # First try without a lock
   #print "cache_index = %s, constructor = %s, cache_ttl_seconds = %s" % (cache_index, constructor, cache_ttl_seconds)
-  result = _get(cache_index)  
+  result = _get(cache_index)
   if result:
     #print "A"
     return result
-      
+
   # Then grab the lock and try again
   with singletons_lock:
     result = _get(cache_index)
@@ -40,7 +40,7 @@ def get(cache_index, constructor, cache_ttl_seconds=None):
       return result
     else:
       new_instance = constructor()
-      expiration_time = None 
+      expiration_time = None
       if cache_ttl_seconds is not None:
         expiration_time = CLOCK.now() + timedelta(seconds=cache_ttl_seconds)
       singletons_list[cache_index] = (new_instance, expiration_time)

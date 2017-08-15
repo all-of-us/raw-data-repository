@@ -40,7 +40,7 @@ class CacheAllDao(UpdatableDao):
   individual field names or tuples of field names. Cached objects will be keyed by those fields.
   """
 
-  def __init__(self, model_type, cache_index, cache_ttl_seconds, index_field_keys=None, 
+  def __init__(self, model_type, cache_index, cache_ttl_seconds, index_field_keys=None,
                order_by_ending=None):
     super(CacheAllDao, self).__init__(model_type, order_by_ending)
     self.index_field_keys = index_field_keys
@@ -64,7 +64,7 @@ class CacheAllDao(UpdatableDao):
 
   def _invalidate_cache(self):
     singletons.invalidate(self.cache_index)
-     
+
   def insert_with_session(self, session, obj):
     super(CacheAllDao, self).insert_with_session(session, obj)
     self._invalidate_cache()
