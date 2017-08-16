@@ -18,6 +18,7 @@ from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import to_client_biobank_id, to_client_participant_id
 from model.participant import Participant
 from participant_enums import WithdrawalStatus
+from offline.biobank_samples_pipeline import _KIT_ID_SYSTEM, _TRACKING_NUMBER_SYSTEM
 
 # Expected names for the reconciliation_data columns in output CSVs.
 _CSV_COLUMN_NAMES = (
@@ -44,6 +45,9 @@ _CSV_COLUMN_NAMES = (
   'received_time',
 
   'elapsed_hours',
+  
+  'biospecimen_kit_id',
+  'fedex_tracking_number'
 )
 
 
@@ -72,7 +76,8 @@ class MySqlReconciliationTest(FlaskTestBase):
                                                race_codes)
     return participant
 
-  def _insert_order(self, participant, order_id, tests, order_time, finalized_tests=None):
+  def _insert_order(self, participant, order_id, tests, order_time, finalized_tests=None,
+                    kit_id=None, tracking_number=None):
     order = BiobankOrder(
         biobankOrderId=order_id,
         participantId=participant.participantId,
@@ -86,6 +91,11 @@ class MySqlReconciliationTest(FlaskTestBase):
     id_2 = BiobankOrderIdentifier(system="https://www.pmi-ops.org", value='O%s' % order_id)
     order.identifiers.append(id_1)
     order.identifiers.append(id_2)
+    if kit_id:
+      order.identifiers.append(BiobankOrderIdentifier(system=_KIT_ID_SYSTEM, value=kit_id))
+    if tracking_number:
+      order.identifiers.append(BiobankOrderIdentifier(system=_TRACKING_NUMBER_SYSTEM, 
+                                                      value=tracking_number))
     for test_code in tests:
       finalized_time = order_time
       if finalized_tests and not test_code in finalized_tests:
@@ -136,14 +146,14 @@ class MySqlReconciliationTest(FlaskTestBase):
     p_on_time = self._insert_participant()
     # Extra samples ordered now aren't considered missing or late.
     self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time,
-                       finalized_tests=BIOBANK_TESTS[:3])
+                       finalized_tests=BIOBANK_TESTS[:3], kit_id='kit1', tracking_number='t1')
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], within_24_hours)
 
     # On time order and samples from 10 days ago; shows up in rx
     p_old_on_time = self._insert_participant(race_codes=[RACE_AIAN_CODE])
    # Old missing samples from 10 days ago don't show up in missing or late.
     self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:3],
-                       old_order_time)
+                       old_order_time, kit_id='kit2')
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
                          old_within_24_hours)
 
@@ -266,6 +276,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertEquals(row['received_count'], '1')
     self.assertEquals(row['sent_order_id'], 'OGoodOrder')
     self.assertEquals(row['received_sample_id'], 'GoodSample1')
+    self.assertEquals(row['biospecimen_kit_id'], 'kit1')
+    self.assertEquals(row['fedex_tracking_number'], 't1')
     # the other sent-and-received rows
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': BIOBANK_TESTS[1]})
