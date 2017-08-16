@@ -46,7 +46,7 @@ _CSV_COLUMN_NAMES = (
   'received_time',
 
   'elapsed_hours',
-  
+
   'biospecimen_kit_id',
   'fedex_tracking_number'
 )
@@ -95,7 +95,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     if kit_id:
       order.identifiers.append(BiobankOrderIdentifier(system=_KIT_ID_SYSTEM, value=kit_id))
     if tracking_number:
-      order.identifiers.append(BiobankOrderIdentifier(system=_TRACKING_NUMBER_SYSTEM, 
+      order.identifiers.append(BiobankOrderIdentifier(system=_TRACKING_NUMBER_SYSTEM,
                                                       value=tracking_number))
     for test_code in tests:
       finalized_time = order_time

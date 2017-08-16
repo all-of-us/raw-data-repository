@@ -356,7 +356,7 @@ _RECONCILIATION_REPORT_SQL = ("""
     LEFT OUTER JOIN
       biobank_order_identifier tracking_number_identifier
     ON biobank_order.biobank_order_id = tracking_number_identifier.biobank_order_id
-       AND tracking_number_identifier.system = :tracking_number_system  
+       AND tracking_number_identifier.system = :tracking_number_system
     WHERE
       participant.withdrawal_time IS NULL
       AND biobank_ordered_sample.finalized IS NOT NULL
