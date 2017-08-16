@@ -28,6 +28,7 @@ _CSV_COLUMN_NAMES = (
   'sent_count',
   'sent_order_id',
   'sent_collection_time',
+  'sent_processed_time',
   'sent_finalized_time',
   'source_site_name',
   'source_site_consortium',
@@ -106,6 +107,7 @@ class MySqlReconciliationTest(FlaskTestBase):
           description=u'test',
           processingRequired=False,
           collected=order_time,
+          processed=order_time,
           finalized=finalized_time))
     return self.order_dao.insert(order)
 
@@ -271,6 +273,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertEquals(row['finalized_username'], 'bob@pmi-ops.org')
     self.assertEquals(row['sent_finalized_time'], database_utils.format_datetime(order_time))
     self.assertEquals(row['sent_collection_time'], database_utils.format_datetime(order_time))
+    self.assertEquals(row['sent_processed_time'], database_utils.format_datetime(order_time))
     self.assertEquals(row['received_time'], database_utils.format_datetime(within_24_hours))
     self.assertEquals(row['sent_count'], '1')
     self.assertEquals(row['received_count'], '1')
