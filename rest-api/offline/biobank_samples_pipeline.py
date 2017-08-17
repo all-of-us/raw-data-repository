@@ -39,6 +39,8 @@ _CSV_SUFFIX_LENGTH = 4
 _THIRTY_SIX_HOURS_AGO = datetime.timedelta(hours=36)
 _MAX_INPUT_AGE = datetime.timedelta(hours=24)
 _PMI_OPS_SYSTEM = 'https://www.pmi-ops.org'
+_KIT_ID_SYSTEM = 'https://orders.mayomedicallaboratories.com/kit-id'
+_TRACKING_NUMBER_SYSTEM = 'https://orders.mayomedicallaboratories.com/tracking-number'
 
 class DataError(RuntimeError):
   """Bad sample data during import.
@@ -229,7 +231,9 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
     writer = CompositeSqlExportWriter([received_writer, late_writer, missing_writer])
     exporter.run_export_with_session(writer, session, replace_isodate(_RECONCILIATION_REPORT_SQL),
                                      {"biobank_id_prefix": get_biobank_id_prefix(),
-                                      "pmi_ops_system": _PMI_OPS_SYSTEM})
+                                      "pmi_ops_system": _PMI_OPS_SYSTEM,
+                                      "kit_id_system": _KIT_ID_SYSTEM,
+                                      "tracking_number_system": _TRACKING_NUMBER_SYSTEM})
 
   # Now generate the withdrawal report.
   code_dao = CodeDao()
@@ -248,11 +252,11 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
 # Indexes from the SQL query below; used in predicates.
 _SENT_COUNT_INDEX = 2
 _SENT_COLLECTION_TIME_INDEX = 4
-_SENT_FINALIZED_INDEX = 5
-_RECEIVED_TEST_INDEX = 15
-_RECEIVED_COUNT_INDEX = 16
-_RECEIVED_TIME_INDEX = 18
-_ELAPSED_HOURS_INDEX = 19
+_SENT_FINALIZED_INDEX = 6
+_RECEIVED_TEST_INDEX = 16
+_RECEIVED_COUNT_INDEX = 17
+_RECEIVED_TIME_INDEX = 19
+_ELAPSED_HOURS_INDEX = 20
 
 _ORDER_JOINS = """
       biobank_order
@@ -300,6 +304,7 @@ _RECONCILIATION_REPORT_SQL = ("""
     COUNT(DISTINCT biobank_order_id) sent_count,
     GROUP_CONCAT(DISTINCT biobank_order_id) sent_order_id,
     ISODATE[MAX(collected)] sent_collection_time,
+    ISODATE[MAX(processed)] sent_processed_time,
     ISODATE[MAX(finalized)] sent_finalized_time,
     GROUP_CONCAT(DISTINCT source_site_name) source_site_name,
     GROUP_CONCAT(DISTINCT source_site_consortium) source_site_consortium,
@@ -315,7 +320,9 @@ _RECONCILIATION_REPORT_SQL = ("""
     COUNT(DISTINCT biobank_stored_sample_id) received_count,
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id) received_sample_id,
     ISODATE[MAX(confirmed)] received_time,
-    TIMESTAMPDIFF(HOUR, MAX(collected), MAX(confirmed)) elapsed_hours
+    TIMESTAMPDIFF(HOUR, MAX(collected), MAX(confirmed)) elapsed_hours,
+    GROUP_CONCAT(DISTINCT biospecimen_kit_id) biospecimen_kit_id,
+    GROUP_CONCAT(DISTINCT fedex_tracking_number) fedex_tracking_number
   FROM
    (SELECT
       participant.biobank_id raw_biobank_id,
@@ -331,14 +338,25 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_order.finalized_username finalized_username,
       biobank_ordered_sample.test order_test,
       biobank_ordered_sample.collected,
+      biobank_ordered_sample.processed,
       biobank_ordered_sample.finalized,
       biobank_stored_sample.biobank_stored_sample_id,
       biobank_stored_sample.test,
-      biobank_stored_sample.confirmed
+      biobank_stored_sample.confirmed,
+      kit_id_identifier.value biospecimen_kit_id,
+      tracking_number_identifier.value fedex_tracking_number
     FROM """ + _ORDER_JOINS + """
     LEFT OUTER JOIN
       biobank_stored_sample
     ON """ + _STORED_SAMPLE_JOIN_CRITERIA + """
+    LEFT OUTER JOIN
+      biobank_order_identifier kit_id_identifier
+    ON biobank_order.biobank_order_id = kit_id_identifier.biobank_order_id
+       AND kit_id_identifier.system = :kit_id_system
+    LEFT OUTER JOIN
+      biobank_order_identifier tracking_number_identifier
+    ON biobank_order.biobank_order_id = tracking_number_identifier.biobank_order_id
+       AND tracking_number_identifier.system = :tracking_number_system
     WHERE
       participant.withdrawal_time IS NULL
       AND biobank_ordered_sample.finalized IS NOT NULL
@@ -357,10 +375,13 @@ _RECONCILIATION_REPORT_SQL = ("""
       NULL finalized_username,
       NULL order_test,
       NULL collected,
+      NULL processed,
       NULL finalized,
       biobank_stored_sample.biobank_stored_sample_id,
       biobank_stored_sample.test,
-      biobank_stored_sample.confirmed
+      biobank_stored_sample.confirmed,
+      NULL biospecimen_kit_id,
+      NULL fedex_tracking_number
     FROM
       biobank_stored_sample
     WHERE NOT EXISTS (
