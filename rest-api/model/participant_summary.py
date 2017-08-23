@@ -22,7 +22,7 @@ WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime', 'participa
 WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days=2)
 
 class ParticipantSummary(Base):
-  """Summary fields extracted from participants and questionnaire responses. Consented participants only."""
+  """Summary fields extracted from participant data (combined from multiple tables). Consented participants only."""
   __tablename__ = 'participant_summary'
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          primary_key=True, autoincrement=False)
