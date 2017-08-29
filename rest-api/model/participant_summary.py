@@ -23,7 +23,7 @@ WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days=2)
 
 class ParticipantSummary(Base):
   """Summary fields extracted from participant data (combined from multiple tables).
-  
+
   Consented participants only.
   """
   __tablename__ = 'participant_summary'
