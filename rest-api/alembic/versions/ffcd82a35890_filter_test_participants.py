@@ -97,7 +97,7 @@ CREATE OR REPLACE VIEW participant_view AS
      LEFT OUTER JOIN code education_code ON ps.education_id = education_code.code_id
      LEFT OUTER JOIN code income_code ON ps.income_id = income_code.code_id
      WHERE (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
-           (hpo.name IS NULL OR hpo.name != 'TEST')        
+           (hpo.name IS NULL OR hpo.name != 'TEST')
 """
 def upgrade():
   op.execute(_PARTICIPANT_VIEW_SQL)
