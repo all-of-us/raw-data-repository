@@ -49,5 +49,5 @@ class Measurement(Base):
   qualifierId = Column('qualifier_id', Integer, ForeignKey('measurement.measurement_id'))
   measurements = relationship('Measurement', cascade='all, delete-orphan', foreign_keys=[parentId])
   qualifiers = relationship('Measurement', secondary=measurement_to_qualifier,
-                        primaryjoin=measurementId==measurement_to_qualifier.c.measurement_id,
-                        secondaryjoin=measurementId==measurement_to_qualifier.c.qualifier_id)
+                        primaryjoin=measurementId == measurement_to_qualifier.c.measurement_id,
+                        secondaryjoin=measurementId == measurement_to_qualifier.c.qualifier_id)

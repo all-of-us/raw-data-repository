@@ -11,7 +11,6 @@ from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements, Measurement
 from participant_enums import PhysicalMeasurementsStatus
 from werkzeug.exceptions import BadRequest
-from _mysql import result
 
 _AMENDMENT_URL = 'http://terminology.pmi-ops.org/StructureDefinition/amends'
 _OBSERVATION_RESOURCE_TYPE = 'Observation'
@@ -202,7 +201,7 @@ class PhysicalMeasurementsDao(BaseDao):
                        valueCodeValue=value_code_value,
                        valueDateTime=value_date_time)
   @staticmethod
-  def from_observation(observation, full_url, participant_id, qualifier_map, first_pass):
+  def from_observation(observation, full_url, qualifier_map, first_pass):
     if first_pass:
       if observation.related:
         # Skip anything with a related observation on the first pass.
@@ -290,7 +289,6 @@ class PhysicalMeasurementsDao(BaseDao):
       for fullUrl, observation in observations:
         measurement = PhysicalMeasurementsDao.from_observation(observation,
                                                                fullUrl,
-                                                               participant_id,
                                                                qualifier_map, first_pass)
         if measurement:
           measurements.append(measurement)
