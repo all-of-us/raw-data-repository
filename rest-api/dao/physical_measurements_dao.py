@@ -49,7 +49,7 @@ class PhysicalMeasurementsDao(BaseDao):
                           'codes': set(), 'submeasurements': set()}
       measurement_map[code_pair] = measurement_data
     if measurement.bodySiteCodeSystem:
-      measurement_data['bodySites'].add((measurement.bodySiteCodeSystem, 
+      measurement_data['bodySites'].add((measurement.bodySiteCodeSystem,
                                          measurement.bodySiteCodeValue))
     if measurement.valueString:
       measurement_data['types'].add('string')
@@ -60,32 +60,32 @@ class PhysicalMeasurementsDao(BaseDao):
       if min_decimal is None or min_decimal > measurement.valueDecimal:
         measurement_data['min'] = measurement.valueDecimal
       if max_decimal is None or max_decimal < measurement.valueDecimal:
-        measurement_data['max'] = measurement.valueDecimal                 
+        measurement_data['max'] = measurement.valueDecimal
     if measurement.valueUnit:
       measurement_data['units'].add(measurement.valueUnit)
     if measurement.valueCodeSystem:
-      measurement_data['codes'].add((measurement.valueCodeSystem, 
+      measurement_data['codes'].add((measurement.valueCodeSystem,
                                      measurement.valueCodeValue))
     if measurement.valueDateTime:
-      measurement_data['types'].add('date')      
-    for sub_measurement in measurement.measurements:        
+      measurement_data['types'].add('date')
+    for sub_measurement in measurement.measurements:
       measurement_data['submeasurements'].add((sub_measurement.codeSystem,
                                                sub_measurement.codeValue))
       self.handle_measurement(measurement_map, sub_measurement)
-        
+
   def get_distinct_measurements(self):
     with self.session() as session:
-      measurement_map = {}      
+      measurement_map = {}
       for pms in session.query(PhysicalMeasurements).yield_per(100):
         try:
           parsed_pms = PhysicalMeasurementsDao.from_client_json(json.loads(pms.resource),
                                                                 pms.participantId)
           for measurement in parsed_pms.measurements:
-            self.handle_measurement(measurement_map, measurement)              
+            self.handle_measurement(measurement_map, measurement)
         except FHIRValidationError as e:
           logging.error("Could not parse measurements as FHIR: %s; exception = %s" % (pms.resource,
                                                                                       e))
-      return measurement_map                                
+      return measurement_map
 
   def _initialize_query(self, session, query_def):
     participant_id = None
