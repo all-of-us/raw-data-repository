@@ -76,8 +76,8 @@ different subsets of the rows:
     `sent_count` != `received_count`. Limited to the last 7 days, and orders
     which are at least 36 hours hold.
 1.  `report_$DATE_withdrawals.csv` Withdrawn participants from the last 7 days. Fewer
-    columns than the other reports. This report is intended to identify Native American
-    participants, for special sample handling.
+    columns than the other reports; identifies Native American participants, for
+    special sample handling.
 
 Note that multiple values may be concatenated together (with a comma separator) in cells in the
 report, when multiple orders and/or multiple samples for the same participant use the same test.
