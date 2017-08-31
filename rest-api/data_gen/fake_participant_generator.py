@@ -284,23 +284,29 @@ class FakeParticipantGenerator(object):
                        "value": site.googleGroup
                      }
                     }
-    request = {"subject": "Patient/%s" % participant_id,
-               "identifier": [{"system": "http://health-pro.org",
-                                "value": "healthpro-order-id-123%s" % order_id_suffix},
-                              {"system": "https://orders.mayomedicallaboratories.com",
-                                "value": "WEB1YLHV%s" % order_id_suffix}],
-               "createdInfo": handling_info,
-               "processedInfo": handling_info,
-               "collectedInfo": handling_info,
-               "finalizedInfo": handling_info,
-               "created": created_time.strftime(_TIME_FORMAT),
-               "samples": samples,
-               "notes": {
-                 "collected": "Collected notes",
-                 "processed": "Processed notes",
-                 "finalized": "Finalized notes"
-               }
-              }
+    request = {
+        "subject": "Patient/%s" % participant_id,
+        "identifier": [
+            {"system": "http://health-pro.org",
+             "value": "healthpro-order-id-123%s" % order_id_suffix},
+            {"system": "https://orders.mayomedicallaboratories.com",
+             "value": "WEB1YLHV%s" % order_id_suffix},
+            {"system": "https://orders.mayomedicallaboratories.com/kit-id",
+             "value": "KIT-%s" % order_id_suffix},
+            {"system": "https://orders.mayomedicallaboratories.com/tracking-number",
+             "value": "177%s" % order_id_suffix}],
+        "createdInfo": handling_info,
+        "processedInfo": handling_info,
+        "collectedInfo": handling_info,
+        "finalizedInfo": handling_info,
+        "created": created_time.strftime(_TIME_FORMAT),
+        "samples": samples,
+        "notes": {
+          "collected": "Collected notes",
+          "processed": "Processed notes",
+          "finalized": "Finalized notes"
+        }
+       }
     for sample_test in sample_tests:
       minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_ORDER_CREATED_AND_SAMPLE_COLLECTED)
       collected_time = created_time + datetime.timedelta(minutes=minutes_delta)
