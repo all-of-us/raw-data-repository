@@ -167,6 +167,14 @@ class PhysicalMeasurementsDao(BaseDao):
 
   @staticmethod
   def make_measurement_id(physical_measurements_id, measurement_count):
+    # To generate unique IDs for measurements that are randomly distributed for different
+    # participants (without having to randomly insert and check for the existence of IDs for each
+    # measurement row), we multiply the parent physical measurements ID (nine digits) by 100 and
+    # add the measurement count within physical_measurements. This must not reach 100 to avoid
+    # collisions; log an error if we start getting anywhere close. (We don't expect to.)
+    assert measurement_count < 100
+    if measurement_count == 76:
+      logging.error("measurement_count > 75; nearing limit of 100.")
     return (physical_measurements_id * 100) + measurement_count
 
   @staticmethod
