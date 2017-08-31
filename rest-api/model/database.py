@@ -11,7 +11,7 @@ from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrd
 from model.code import CodeBook, Code, CodeHistory
 from model.hpo import HPO
 from model.log_position import LogPosition
-from model.measurements import PhysicalMeasurements
+from model.measurements import PhysicalMeasurements, Measurement
 from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept

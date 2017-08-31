@@ -1,0 +1,519 @@
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "entry": [
+    {
+      "fullUrl": "urn:example:report",
+      "resource": {
+        "author": [
+          {
+            "display": "N/A"
+          }
+        ],
+        "date": "2016-09-02T20:59:41Z",
+        "resourceType": "Composition",
+        "section": [{
+          "entry": ["TODO: Add references to each Bundle entry here" ]
+        }],
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "title": "PMI Intake Evaluation",
+        "type": {
+          "coding": [
+            {
+              "code": "intake-exam-v2.0.0",
+              "display": "PMI Intake Evaluation v2.0.0",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/document-type"
+            }
+          ],
+          "text": "PMI Intake Evaluation v0.0.1"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:blood-pressure-1",
+      "resource": {
+        "bodySite": {
+          "coding": [
+            {
+              "code": "368209003",
+              "display": "Right arm",
+              "system": "http://snomed.info/sct"
+            }
+          ],
+          "text": "Right arm"
+        },
+        "code": {
+          "coding": [
+            {
+              "code": "55284-4",
+              "display": "Blood pressure systolic and diastolic",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Blood pressure systolic and diastolic"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Systolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 109
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure",
+                  "system": "http://loinc.org"
+                }
+              ],
+              "text": "Diastolic blood pressure"
+            },
+            "valueQuantity": {
+              "code": "mm[Hg]",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mmHg",
+              "value": 44
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+                  "code": "arm-circumference",
+                  "display": "Arm circumference"
+                }
+              ],
+              "text": "Arm circumference"
+            },
+            "valueQuantity": {
+              "code": "cm",
+              "system": "http://unitsofmeasure.org",
+              "unit": "cm",
+              "value": 32
+            }
+          }
+        ],
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:height-qualifiers",
+      "resource": {
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "code": {
+            "coding": [
+              {
+                "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+                "code": "protocol-modifications-height",
+                "display": "Protocol modifications: Height"
+              }
+            ],
+            "text": "Protocol modifications: Height"
+          },
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "http://terminology.pmi-ops.org/CodeSystem/protocol-modifications-height",
+                "code": "hair-style",
+                "display": "Hair style"
+              }
+            ],
+            "text": "Hair style"
+          }
+      }
+    },
+    {
+      "fullUrl": "urn:example:height",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "8302-2",
+              "display": "Body height",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Body height"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 111.5
+        },
+        "related": [{
+          "type": "qualified-by",
+          "target": {
+            "reference": "urn:example:height-qualifiers"
+          }
+        }]
+      }
+    },
+    {
+      "fullUrl": "urn:example:pre-pregnancy-weight",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+              "code": "pre-pregnancy-weight",
+              "display": "Approximate pre-pregnancy weight"
+            }
+          ],
+          "text": "Approximate pre-pregnancy weight"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "valueQuantity": {
+          "code": "kg",
+          "system": "http://unitsofmeasure.org",
+          "unit": "kg",
+          "value": 28
+        }
+      }
+    }, {
+      "fullUrl": "urn:example:weight",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "29463-7",
+              "display": "Body weight",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Body weight"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "valueQuantity": {
+          "code": "kg",
+          "system": "http://unitsofmeasure.org",
+          "unit": "kg",
+          "value": 30.1
+        },
+        "related": [{
+          "type": "qualified-by",
+          "target": {
+            "reference": "urn:example:weight-qualifiers"
+          }
+        }]
+      }
+    },
+    {
+      "fullUrl": "urn:example:weight-qualifiers",
+      "resource": {
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "code": {
+            "coding": [
+              {
+                "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+                "code": "protocol-modifications-weight",
+                "display": "Protocol modifications: Weight"
+              }
+            ],
+            "text": "Protocol modifications: Weight"
+          },
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "http://terminology.pmi-ops.org/CodeSystem/protocol-modifications-weight",
+                "code": "other",
+                "display": "Other"
+              }
+            ],
+            "text": "Participant could not remove boots weight 20 pounds"
+          }
+      }
+    },
+    {
+      "fullUrl": "urn:example:bmi",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "39156-5",
+              "display": "Body mass index",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Body mass index"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "valueQuantity": {
+          "code": "kg/m2",
+          "system": "http://unitsofmeasure.org",
+          "unit": "kg/m2",
+          "value": 24.2
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:heart-rate",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "8867-4",
+              "display": "Heart rate",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Heart rate"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "valueQuantity": {
+          "code": "/min",
+          "system": "http://unitsofmeasure.org",
+          "unit": "/min",
+          "value": 74
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+                  "code": "heart-rhythm-status",
+                  "display": "Heart rhythm status"
+                }
+              ],
+              "text": "Heart rhythm status"
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://terminology.pmi-ops.org/CodeSystem/heart-rhythm-status",
+                  "code": "no-irregularity-detected",
+                  "display": "No irregularity detected"
+                }
+              ],
+              "text": "No irregularity detected"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:example:hip-circumference-1",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "62409-8",
+              "display": "Hip circumference",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Hip circumference"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 99.1
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:waist-circumference-1",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "8280-0",
+              "display": "Waist circumference",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Waist circumference"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "bodySite": {
+          "coding": [
+            {
+              "system": "http://terminology.pmi-ops.org/CodeSystem/waist-circumference-location",
+              "code": "umbilicus",
+              "display": "Umbilicus"
+            }
+          ],
+          "text": "Umbilicus"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 100.3
+        },
+        "related": [{
+          "type": "qualified-by",
+          "target": {
+            "reference": "urn:example:waist-qualifiers"
+          }
+        }]
+      }
+    },
+    {
+      "fullUrl": "urn:example:waist-qualifiers",
+      "resource": {
+        "effectiveDateTime": "%(authored_time)s",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "code": {
+            "coding": [
+              {
+                "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
+                "code": "protocol-modifications-waist-circumference",
+                "display": "Protocol modifications: Waist circumference"
+              }
+            ],
+            "text": "Protocol modifications: Height"
+          },
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "http://terminology.pmi-ops.org/CodeSystem/protocol-modifications-waist-circumference",
+                "code": "colostomy-bag",
+                "display": "Colostomy bag"
+              }
+            ],
+            "text": "Colostomy bag"
+          }
+      }
+    },
+    {
+      "fullUrl": "urn:example:pregnancy-status",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "code": "66174-4",
+              "display": "Are you currently pregnant?",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "Are you currently pregnant?"
+        },
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "LA33-6",
+              "display": "Yes (pregnant)"
+            }
+          ],
+          "text": "Yes (pregnant)"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:example:wheelchair-status",
+      "TODO": "Determine whether we really need this captured here",
+      "resource": {
+        "resourceType": "Observation",
+        "subject": {
+          "reference": "Patient/1000"
+        },
+        "effectiveDateTime": "%(authored_time)s",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "code": "wheelchair-bound-status",
+              "display": "Are you wheelchair-bound?",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation"
+            }
+          ],
+          "text": "Are you wheelchair-bound?"
+        },
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://terminology.pmi-ops.org/CodeSystem/wheelchair-bound-status",
+              "code": "Wheelchair-bound",
+              "display": "Wheelchair bound"
+            }
+          ],
+          "text": "Wheelchair bound"
+        }
+      }
+    }
+  ]
+}

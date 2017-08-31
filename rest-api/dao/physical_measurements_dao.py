@@ -2,15 +2,19 @@ import clock
 import json
 import logging
 
+import fhirclient.models.observation
+from sqlalchemy.orm import subqueryload
 from dao.base_dao import BaseDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.log_position import LogPosition
-from model.measurements import PhysicalMeasurements
+from model.measurements import PhysicalMeasurements, Measurement
 from participant_enums import PhysicalMeasurementsStatus
 from werkzeug.exceptions import BadRequest
 
 _AMENDMENT_URL = 'http://terminology.pmi-ops.org/StructureDefinition/amends'
+_OBSERVATION_RESOURCE_TYPE = 'Observation'
+_QUALIFIED_BY_RELATED_TYPE = 'qualified-by'
 
 class PhysicalMeasurementsDao(BaseDao):
 
@@ -26,6 +30,15 @@ class PhysicalMeasurementsDao(BaseDao):
     if result:
       ParticipantDao().validate_participant_reference(session, result)
     return result
+
+  def get_with_children(self, physical_measurements_id):
+    with self.session() as session:
+      query = session.query(PhysicalMeasurements) \
+          .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
+              Measurement.measurements)) \
+          .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
+              Measurement.qualifiers))
+      return query.get(physical_measurements_id)
 
   def _initialize_query(self, session, query_def):
     participant_id = None
@@ -75,6 +88,18 @@ class PhysicalMeasurementsDao(BaseDao):
           # If there are already measurements that look exactly like this, return them
           # without inserting new measurements.
           return measurements
+
+    measurement_count = 0
+    for measurement in obj.measurements:
+      measurement.physicalMeasurementsId = obj.physicalMeasurementsId
+      measurement.measurementId = PhysicalMeasurementsDao.make_measurement_id(
+          obj.physicalMeasurementsId, measurement_count)
+      measurement_count += 1
+      for sub_measurement in measurement.measurements:
+        sub_measurement.physicalMeasurementsId = obj.physicalMeasurementsId
+        sub_measurement.measurementId = PhysicalMeasurementsDao.make_measurement_id(
+          obj.physicalMeasurementsId, measurement_count)
+        measurement_count += 1
 
     super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
@@ -141,7 +166,140 @@ class PhysicalMeasurementsDao(BaseDao):
     obj.amendedMeasurementsId = amended_measurement_id
 
   @staticmethod
+  def make_measurement_id(physical_measurements_id, measurement_count):
+    # To generate unique IDs for measurements that are randomly distributed for different
+    # participants (without having to randomly insert and check for the existence of IDs for each
+    # measurement row), we multiply the parent physical measurements ID (nine digits) by 100 and
+    # add the measurement count within physical_measurements. This must not reach 100 to avoid
+    # collisions; log an error if we start getting anywhere close. (We don't expect to.)
+    assert measurement_count < 100
+    if measurement_count == 76:
+      logging.error("measurement_count > 75; nearing limit of 100.")
+    return (physical_measurements_id * 100) + measurement_count
+
+  @staticmethod
+  def from_component(observation, component):
+    if not component.code or not component.code.coding:
+      logging.warning('Skipping component without coding: %s' % component.as_json())
+      return None
+    value_string = None
+    value_decimal = None
+    value_unit = None
+    value_code_system = None
+    value_code_value = None
+    value_date_time = None
+    if component.valueQuantity:
+      value_decimal = component.valueQuantity.value
+      value_unit = component.valueQuantity.code
+    if component.valueDateTime:
+      value_date_time = component.valueDateTime.date
+    if component.valueString:
+      value_string = component.valueString
+    if component.valueCodeableConcept and component.valueCodeableConcept.coding:
+      # TODO: use codebook codes for PMI codes?
+      value_code_system = component.valueCodeableConcept.coding[0].system
+      value_code_value = component.valueCodeableConcept.coding[0].code
+    return Measurement(codeSystem=component.code.coding[0].system,
+                       codeValue=component.code.coding[0].code,
+                       measurementTime=observation.effectiveDateTime.date,
+                       valueString=value_string,
+                       valueDecimal=value_decimal,
+                       valueUnit=value_unit,
+                       valueCodeSystem=value_code_system,
+                       valueCodeValue=value_code_value,
+                       valueDateTime=value_date_time)
+  @staticmethod
+  def from_observation(observation, full_url, qualifier_map, first_pass):
+    if first_pass:
+      if observation.related:
+        # Skip anything with a related observation on the first pass.
+        return None
+    else:
+      if not observation.related:
+        # Skip anything *without* a related observation on the second pass.
+        return None
+    if not observation.effectiveDateTime:
+      logging.warning('Skipping observation without effectiveDateTime: %s'
+                      % observation.as_json())
+      return None
+    if not observation.code or not observation.code.coding:
+      logging.warning('Skipping observation without coding: %s' % observation.as_json())
+      return None
+    body_site_code_system = None
+    body_site_code_value = None
+    value_string = None
+    value_decimal = None
+    value_unit = None
+    value_code_system = None
+    value_code_value = None
+    value_date_time = None
+    if observation.bodySite and observation.bodySite.coding:
+      body_site_code_system = observation.bodySite.coding[0].system
+      body_site_code_value = observation.bodySite.coding[0].code
+    if observation.valueQuantity:
+      value_decimal = observation.valueQuantity.value
+      value_unit = observation.valueQuantity.code
+    if observation.valueDateTime:
+      value_date_time = observation.valueDateTime.date
+    if observation.valueString:
+      value_string = observation.valueString
+    if observation.valueCodeableConcept and observation.valueCodeableConcept.coding:
+      # TODO: use codebook codes for PMI codes?
+      value_code_system = observation.valueCodeableConcept.coding[0].system
+      value_code_value = observation.valueCodeableConcept.coding[0].code
+    measurements = []
+    if observation.component:
+      for component in observation.component:
+        child = PhysicalMeasurementsDao.from_component(observation, component)
+        if child:
+          measurements.append(child)
+    qualifiers = []
+    if observation.related:
+      for related in observation.related:
+        if (related.type == _QUALIFIED_BY_RELATED_TYPE and related.target
+            and related.target.reference):
+          qualifier = qualifier_map.get(related.target.reference)
+          if qualifier:
+            qualifiers.append(qualifier)
+          else:
+            logging.warning('Could not find qualifier %s' % related.target.reference)
+    result = Measurement(codeSystem=observation.code.coding[0].system,
+                         codeValue=observation.code.coding[0].code,
+                         measurementTime=observation.effectiveDateTime.date,
+                         bodySiteCodeSystem=body_site_code_system,
+                         bodySiteCodeValue=body_site_code_value,
+                         valueString=value_string,
+                         valueDecimal=value_decimal,
+                         valueUnit=value_unit,
+                         valueCodeSystem=value_code_system,
+                         valueCodeValue=value_code_value,
+                         valueDateTime=value_date_time,
+                         measurements=measurements,
+                         qualifiers=qualifiers)
+    if first_pass:
+      qualifier_map[full_url] = result
+    return result
+
+  @staticmethod
   def from_client_json(resource_json, participant_id=None, **unused_kwargs):
     #pylint: disable=unused-argument
-    return PhysicalMeasurements(participantId=participant_id, resource=json.dumps(resource_json))
+    measurements = []
+    observations = []
+    qualifier_map = {}
+    for entry in resource_json['entry']:
+      resource = entry.get('resource')
+      if resource and resource.get('resourceType') == _OBSERVATION_RESOURCE_TYPE:
+        observations.append((entry['fullUrl'], fhirclient.models.observation.Observation(resource)))
+    # Take two passes over the observations; once to find all the qualifiers and observations
+    # without related qualifiers, and a second time to find all observations with related
+    # qualifiers.
+    for first_pass in [True, False]:
+      for fullUrl, observation in observations:
+        measurement = PhysicalMeasurementsDao.from_observation(observation,
+                                                               fullUrl,
+                                                               qualifier_map, first_pass)
+        if measurement:
+          measurements.append(measurement)
+    return PhysicalMeasurements(participantId=participant_id, resource=json.dumps(resource_json),
+                                measurements=measurements)
 
