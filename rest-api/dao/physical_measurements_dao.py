@@ -3,6 +3,7 @@ import json
 import logging
 
 import fhirclient.models.observation
+from fhirclient.models.fhirabstractbase import FHIRValidationError
 from sqlalchemy.orm import subqueryload
 from dao.base_dao import BaseDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -39,6 +40,52 @@ class PhysicalMeasurementsDao(BaseDao):
           .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
               Measurement.qualifiers))
       return query.get(physical_measurements_id)
+
+  def handle_measurement(self, measurement_map, measurement):
+    code_pair = (measurement.codeSystem, measurement.codeValue)
+    measurement_data = measurement_map.get(code_pair)
+    if not measurement_data:
+      measurement_data = {'bodySites': set(), 'types': set(), 'units': set(),
+                          'codes': set(), 'submeasurements': set()}
+      measurement_map[code_pair] = measurement_data
+    if measurement.bodySiteCodeSystem:
+      measurement_data['bodySites'].add((measurement.bodySiteCodeSystem, 
+                                         measurement.bodySiteCodeValue))
+    if measurement.valueString:
+      measurement_data['types'].add('string')
+    if measurement.valueDecimal:
+      measurement_data['types'].add('decimal')
+      min_decimal = measurement_data.get('min')
+      max_decimal = measurement_data.get('max')
+      if min_decimal is None or min_decimal > measurement.valueDecimal:
+        measurement_data['min'] = measurement.valueDecimal
+      if max_decimal is None or max_decimal < measurement.valueDecimal:
+        measurement_data['max'] = measurement.valueDecimal                 
+    if measurement.valueUnit:
+      measurement_data['units'].add(measurement.valueUnit)
+    if measurement.valueCodeSystem:
+      measurement_data['codes'].add((measurement.valueCodeSystem, 
+                                     measurement.valueCodeValue))
+    if measurement.valueDateTime:
+      measurement_data['types'].add('date')      
+    for sub_measurement in measurement.measurements:        
+      measurement_data['submeasurements'].add((sub_measurement.codeSystem,
+                                               sub_measurement.codeValue))
+      self.handle_measurement(measurement_map, sub_measurement)
+        
+  def get_distinct_measurements(self):
+    with self.session() as session:
+      measurement_map = {}      
+      for pms in session.query(PhysicalMeasurements).yield_per(100):
+        try:
+          parsed_pms = PhysicalMeasurementsDao.from_client_json(json.loads(pms.resource),
+                                                                pms.participantId)
+          for measurement in parsed_pms.measurements:
+            self.handle_measurement(measurement_map, measurement)              
+        except FHIRValidationError as e:
+          logging.error("Could not parse measurements as FHIR: %s; exception = %s" % (pms.resource,
+                                                                                      e))
+      return measurement_map                                
 
   def _initialize_query(self, session, query_def):
     participant_id = None
