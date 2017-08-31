@@ -9,7 +9,7 @@ from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrd
 from model.code import Code, CodeType, CodeBook, CodeHistory
 from model.hpo import HPO
 from model.log_position import LogPosition
-from model.measurements import PhysicalMeasurements
+from model.measurements import PhysicalMeasurements, Measurement
 from model.metrics import MetricsVersion, MetricsBucket
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept
@@ -112,6 +112,32 @@ class DatabaseTest(SqlTestBase):
                                final=True, amendedMeasurementsId=1, logPosition=LogPosition())
     session.add(pm)
     session.add(pm2)
+    session.commit()
+
+    q1 = Measurement(measurementId=3, physicalMeasurementsId=pm.physicalMeasurementsId,
+                     codeSystem='codeSystem', codeValue='codeValue',
+                     measurementTime=datetime.datetime.now(),
+                     valueCodeSystem='valueCodeSystem', valueCodeValue='value3')
+    session.add(q1)
+    session.commit()
+
+    m1 = Measurement(measurementId=1, physicalMeasurementsId=pm.physicalMeasurementsId,
+                     codeSystem='codeSystem', codeValue='codeValue',
+                     measurementTime=datetime.datetime.now(),
+                     bodySiteCodeSystem='bodySiteCodeSystem', bodySiteCodeValue='bodySiteCodeValue',
+                     valueString='a', valueDecimal=1.2, valueUnit='cm',
+                     valueCodeSystem='valueCodeSystem', valueCodeValue='value',
+                     valueDateTime=datetime.datetime.now(), qualifierId=q1.measurementId)
+    session.add(m1)
+    session.commit()
+
+    m2 = Measurement(measurementId=2, physicalMeasurementsId=pm.physicalMeasurementsId,
+                     codeSystem='codeSystem', codeValue='codeValue',
+                     measurementTime=datetime.datetime.now(),
+                     valueCodeSystem='valueCodeSystem', valueCodeValue='value2',
+                     parentId=m1.measurementId, qualifierId=q1.measurementId)
+    session.add(m2)
+    session.commit()
 
     q = Questionnaire(questionnaireId=1, version=1, created=datetime.datetime.now(),
                       lastModified=datetime.datetime.now(), resource='what?')
