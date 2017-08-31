@@ -68,12 +68,16 @@ different subsets of the rows:
 1.  `report_$DATE_over_24h.csv` Rows where the elapsed time between ordered
     sample collection and sample receipt confirmation is more than 24 hours.
     This may include cases where there is a mismatch in samples ordered/sent
-    and samples received.
+    and samples received. Last 7 days only.
 1.  `report_$DATE_missing.csv` Any case of order and receipt mismatch. This may
     be an order where no sample arrived, a received sample with no order, or
     more generally a case where a different number of orders and samples appear
     for the same participant/test pair: that is, rows where
-    `sent_count` != `received_count`.
+    `sent_count` != `received_count`. Limited to the last 7 days, and orders
+    which are at least 36 hours hold.
+1.  `report_$DATE_withdrawals.csv` Withdrawn participants from the last 7 days. Fewer
+    columns than the other reports; identifies Native American participants, for
+    special sample handling.
 
 Note that multiple values may be concatenated together (with a comma separator) in cells in the
 report, when multiple orders and/or multiple samples for the same participant use the same test.
