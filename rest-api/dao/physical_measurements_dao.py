@@ -44,7 +44,7 @@ class PhysicalMeasurementsDao(BaseDao):
 
   @staticmethod
   def handle_measurement(measurement_map, measurement):
-    """Populating measurement_map with information extracted from measurement and its 
+    """Populating measurement_map with information extracted from measurement and its
     descendants."""
     code_concept = Concept(measurement.codeSystem, measurement.codeValue)
     measurement_data = measurement_map.get(code_concept)
