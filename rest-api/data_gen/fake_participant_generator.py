@@ -311,8 +311,8 @@ class FakeParticipantGenerator(object):
     entries = [{
       "fullUrl": "urn:example:report",
       "resource":
-        {"author": [self._make_author("creator@pmi-ops.org", "created"),
-                    self._make_author("finalizer@pmi-ops.org", "finalized")],
+        {"author": [self._make_author("creator@pmi-ops.org", _CREATED_STATUS),
+                    self._make_author("finalizer@pmi-ops.org", _FINALIZED_STATUS)],
          "extension": [{"url": _CREATED_LOC_EXTENSION,
                         "valueReference": "%s%s" % (_LOCATION_PREFIX, site.googleGroup)
                        },
