@@ -2,7 +2,9 @@ import clock
 import json
 import logging
 
+from concepts import Concept
 import fhirclient.models.observation
+from fhirclient.models.fhirabstractbase import FHIRValidationError
 from sqlalchemy.orm import subqueryload
 from dao.base_dao import BaseDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -39,6 +41,55 @@ class PhysicalMeasurementsDao(BaseDao):
           .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
               Measurement.qualifiers))
       return query.get(physical_measurements_id)
+
+  @staticmethod
+  def handle_measurement(measurement_map, measurement):
+    """Populating measurement_map with information extracted from measurement and its
+    descendants."""
+    code_concept = Concept(measurement.codeSystem, measurement.codeValue)
+    measurement_data = measurement_map.get(code_concept)
+    if not measurement_data:
+      measurement_data = {'bodySites': set(), 'types': set(), 'units': set(),
+                          'codes': set(), 'submeasurements': set()}
+      measurement_map[code_concept] = measurement_data
+    if measurement.bodySiteCodeSystem:
+      measurement_data['bodySites'].add(Concept(measurement.bodySiteCodeSystem,
+                                         measurement.bodySiteCodeValue))
+    if measurement.valueString:
+      measurement_data['types'].add('string')
+    if measurement.valueDecimal:
+      measurement_data['types'].add('decimal')
+      min_decimal = measurement_data.get('min')
+      max_decimal = measurement_data.get('max')
+      if min_decimal is None or min_decimal > measurement.valueDecimal:
+        measurement_data['min'] = measurement.valueDecimal
+      if max_decimal is None or max_decimal < measurement.valueDecimal:
+        measurement_data['max'] = measurement.valueDecimal
+    if measurement.valueUnit:
+      measurement_data['units'].add(measurement.valueUnit)
+    if measurement.valueCodeSystem:
+      measurement_data['codes'].add(Concept(measurement.valueCodeSystem,
+                                     measurement.valueCodeValue))
+    if measurement.valueDateTime:
+      measurement_data['types'].add('date')
+    for sub_measurement in measurement.measurements:
+      measurement_data['submeasurements'].add(Concept(sub_measurement.codeSystem,
+                                               sub_measurement.codeValue))
+      PhysicalMeasurementsDao.handle_measurement(measurement_map, sub_measurement)
+
+  def get_distinct_measurements(self):
+    with self.session() as session:
+      measurement_map = {}
+      for pms in session.query(PhysicalMeasurements).yield_per(100):
+        try:
+          parsed_pms = PhysicalMeasurementsDao.from_client_json(json.loads(pms.resource),
+                                                                pms.participantId)
+          for measurement in parsed_pms.measurements:
+            PhysicalMeasurementsDao.handle_measurement(measurement_map, measurement)
+        except FHIRValidationError as e:
+          logging.error("Could not parse measurements as FHIR: %s; exception = %s" % (pms.resource,
+                                                                                      e))
+      return measurement_map
 
   def _initialize_query(self, session, query_def):
     participant_id = None
@@ -169,13 +220,13 @@ class PhysicalMeasurementsDao(BaseDao):
   def make_measurement_id(physical_measurements_id, measurement_count):
     # To generate unique IDs for measurements that are randomly distributed for different
     # participants (without having to randomly insert and check for the existence of IDs for each
-    # measurement row), we multiply the parent physical measurements ID (nine digits) by 100 and
-    # add the measurement count within physical_measurements. This must not reach 100 to avoid
+    # measurement row), we multiply the parent physical measurements ID (nine digits) by 1000 and
+    # add the measurement count within physical_measurements. This must not reach 1000 to avoid
     # collisions; log an error if we start getting anywhere close. (We don't expect to.)
-    assert measurement_count < 100
-    if measurement_count == 76:
-      logging.error("measurement_count > 75; nearing limit of 100.")
-    return (physical_measurements_id * 100) + measurement_count
+    assert measurement_count < 1000
+    if measurement_count == 900:
+      logging.error("measurement_count > 900; nearing limit of 1000.")
+    return (physical_measurements_id * 1000) + measurement_count
 
   @staticmethod
   def from_component(observation, component):

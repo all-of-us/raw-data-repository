@@ -44,14 +44,14 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     physical_measurements_id = response['entry'][0]['resource']['id']
     pm_id = int(physical_measurements_id)
     physical_measurements = PhysicalMeasurementsDao().get_with_children(physical_measurements_id)
-    em1 = Measurement(measurementId=pm_id * 100,
+    em1 = Measurement(measurementId=pm_id * 1000,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://loinc.org",
                       codeValue="55284-4",
                       measurementTime=now,
                       bodySiteCodeSystem="http://snomed.info/sct",
                       bodySiteCodeValue="368209003")
-    bp1 = Measurement(measurementId=pm_id * 100 + 1,
+    bp1 = Measurement(measurementId=pm_id * 1000 + 1,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://loinc.org",
                       codeValue="8480-6",
@@ -59,7 +59,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                       valueDecimal=109.0,
                       valueUnit="mm[Hg]",
                       parentId=em1.measurementId)
-    bp2 = Measurement(measurementId=pm_id * 100 + 2,
+    bp2 = Measurement(measurementId=pm_id * 1000 + 2,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://loinc.org",
                       codeValue="8462-4",
@@ -115,8 +115,8 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     pm_id = int(physical_measurements_id)
     physical_measurements = PhysicalMeasurementsDao().get_with_children(physical_measurements_id)
 
-    em1_id = pm_id * 100
-    bp1 = Measurement(measurementId=pm_id * 100 + 1,
+    em1_id = pm_id * 1000
+    bp1 = Measurement(measurementId=pm_id * 1000 + 1,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://loinc.org",
                       codeValue="8480-6",
@@ -124,7 +124,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                       valueDecimal=109.0,
                       valueUnit="mm[Hg]",
                       parentId=em1_id)
-    bp2 = Measurement(measurementId=pm_id * 100 + 2,
+    bp2 = Measurement(measurementId=pm_id * 1000 + 2,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://loinc.org",
                       codeValue="8462-4",
@@ -132,7 +132,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                       valueDecimal=44.0,
                       valueUnit="mm[Hg]",
                       parentId=em1_id)
-    bp3 = Measurement(measurementId=pm_id * 100 + 3,
+    bp3 = Measurement(measurementId=pm_id * 1000 + 3,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
                       codeValue="arm-circumference",
@@ -140,7 +140,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                       valueDecimal=32.0,
                       valueUnit="cm",
                       parentId=em1_id)
-    em1 = Measurement(measurementId=pm_id * 100,
+    em1 = Measurement(measurementId=pm_id * 1000,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://loinc.org",
                       codeValue="55284-4",
@@ -150,7 +150,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                       measurements = [bp1, bp2, bp3])
 
     pm_height_system = "http://terminology.pmi-ops.org/CodeSystem/protocol-modifications-height"
-    q1 = Measurement(measurementId=pm_id * 100 + 4,
+    q1 = Measurement(measurementId=pm_id * 1000 + 4,
                      physicalMeasurementsId=pm_id,
                      codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
                      codeValue="protocol-modifications-height",
@@ -158,7 +158,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                      valueCodeSystem=pm_height_system,
                      valueCodeValue="hair-style")
 
-    em2 = Measurement(measurementId=pm_id * 100 + 5,
+    em2 = Measurement(measurementId=pm_id * 1000 + 5,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
                       codeValue="pre-pregnancy-weight",
@@ -166,14 +166,14 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                       valueDecimal=28.0,
                       valueUnit="kg")
     pm_weight_system = "http://terminology.pmi-ops.org/CodeSystem/protocol-modifications-weight"
-    q2 = Measurement(measurementId=pm_id * 100 + 6,
+    q2 = Measurement(measurementId=pm_id * 1000 + 6,
                      physicalMeasurementsId=pm_id,
                      codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
                      codeValue="protocol-modifications-weight",
                      measurementTime=now,
                      valueCodeSystem=pm_weight_system,
                      valueCodeValue="other")
-    em3 = Measurement(measurementId=pm_id * 100 + 7,
+    em3 = Measurement(measurementId=pm_id * 1000 + 7,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://loinc.org",
                       codeValue="39156-5",
@@ -181,7 +181,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                       valueDecimal=24.2,
                       valueUnit="kg/m2")
     # Skip a bunch -- could add these later
-    em4 = Measurement(measurementId=pm_id * 100 + 14,
+    em4 = Measurement(measurementId=pm_id * 1000 + 14,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://loinc.org",
                       codeValue="8302-2",
@@ -189,7 +189,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                       valueDecimal=111.5,
                       valueUnit="cm",
                       qualifiers=[q1])
-    em5 = Measurement(measurementId=pm_id * 100 + 15,
+    em5 = Measurement(measurementId=pm_id * 1000 + 15,
                       physicalMeasurementsId=pm_id,
                       codeSystem="http://loinc.org",
                       codeValue="29463-7",

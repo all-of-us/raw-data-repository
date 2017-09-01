@@ -1,11 +1,11 @@
 from model.base import Base
 from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Boolean, Integer, BLOB, ForeignKey, String, Float, Table
+from sqlalchemy import Column, Boolean, Integer, BLOB, BIGINT, ForeignKey, String, Float, Table
 
 measurement_to_qualifier = Table('measurement_to_qualifier', Base.metadata,
-    Column('measurement_id', Integer, ForeignKey('measurement.measurement_id'), primary_key=True),
-    Column('qualifier_id', Integer, ForeignKey('measurement.measurement_id'), primary_key=True)
+    Column('measurement_id', BIGINT, ForeignKey('measurement.measurement_id'), primary_key=True),
+    Column('qualifier_id', BIGINT, ForeignKey('measurement.measurement_id'), primary_key=True)
 )
 
 class PhysicalMeasurements(Base):
@@ -30,7 +30,7 @@ class Measurement(Base):
   __tablename__ = 'measurement'
   # Note: measurementId will be physicalMeasurementsId * 100 + an index. (This way we don't have to
   # generate N random unique IDs.)
-  measurementId = Column('measurement_id', Integer, primary_key=True, autoincrement=False)
+  measurementId = Column('measurement_id', BIGINT, primary_key=True, autoincrement=False)
   physicalMeasurementsId = Column('physical_measurements_id', Integer,
                                   ForeignKey('physical_measurements.physical_measurements_id'),
                                   nullable=False)
@@ -45,8 +45,8 @@ class Measurement(Base):
   valueCodeSystem = Column('value_code_system', String(255))
   valueCodeValue = Column('value_code_value', String(255))
   valueDateTime = Column('value_datetime', UTCDateTime)
-  parentId = Column('parent_id', Integer, ForeignKey('measurement.measurement_id'))
-  qualifierId = Column('qualifier_id', Integer, ForeignKey('measurement.measurement_id'))
+  parentId = Column('parent_id', BIGINT, ForeignKey('measurement.measurement_id'))
+  qualifierId = Column('qualifier_id', BIGINT, ForeignKey('measurement.measurement_id'))
   measurements = relationship('Measurement', cascade='all, delete-orphan', foreign_keys=[parentId])
   qualifiers = relationship('Measurement', secondary=measurement_to_qualifier,
                         primaryjoin=measurementId == measurement_to_qualifier.c.measurement_id,
