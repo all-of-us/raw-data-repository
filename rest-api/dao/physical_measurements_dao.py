@@ -9,6 +9,7 @@ from sqlalchemy.orm import subqueryload
 from dao.base_dao import BaseDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
+from dao.site_dao import SiteDao
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements, Measurement
 from participant_enums import PhysicalMeasurementsStatus
@@ -16,6 +17,14 @@ from werkzeug.exceptions import BadRequest
 
 _AMENDMENT_URL = 'http://terminology.pmi-ops.org/StructureDefinition/amends'
 _OBSERVATION_RESOURCE_TYPE = 'Observation'
+_COMPOSITION_RESOURCE_TYPE = 'Composition'
+_CREATED_LOC_EXTENSION = 'http://terminology.pmi-ops.org/StructureDefinition/authored-location'
+_FINALIZED_LOC_EXTENSION = 'http://terminology.pmi-ops.org/StructureDefinition/finalized-location'
+_AUTHORING_STEP = 'http://terminology.pmi-ops.org/StructureDefinition/authoring-step'
+_CREATED_STATUS = 'created'
+_FINALIZED_STATUS = 'finalized'
+_LOCATION_PREFIX = 'Location/'
+_AUTHOR_PREFIX = 'Practitioner/'
 _QUALIFIED_BY_RELATED_TYPE = 'qualified-by'
 
 class PhysicalMeasurementsDao(BaseDao):
@@ -376,15 +385,70 @@ class PhysicalMeasurementsDao(BaseDao):
     return result
 
   @staticmethod
+  def get_location_site_id(location_value):
+    if not location_value.startswith(_LOCATION_PREFIX):
+      logging.warn("Invalid location: %s" % location_value)
+      return None
+    google_group = location_value[len(_LOCATION_PREFIX):]
+    site = SiteDao().get_by_google_group(google_group)
+    if not site:
+      logging.warn("Unknown site: %s" % google_group)
+      return None
+    return site.siteId
+
+  @staticmethod
+  def get_author_username(author_value):
+    if not author_value.startswith(_AUTHOR_PREFIX):
+      logging.warn("Invalid author: %s" % author_value)
+      return None
+    return author_value[len(_AUTHOR_PREFIX):]
+
+  @staticmethod
+  def get_authoring_step(extension):
+    url = extension.get('url')
+    if url == _AUTHORING_STEP:
+      return extension.get('valueCode')
+    return None
+
+  @staticmethod
   def from_client_json(resource_json, participant_id=None, **unused_kwargs):
     #pylint: disable=unused-argument
     measurements = []
     observations = []
     qualifier_map = {}
+    created_site_id = None
+    created_username = None
+    finalized_site_id = None
+    finalized_username = None
     for entry in resource_json['entry']:
       resource = entry.get('resource')
-      if resource and resource.get('resourceType') == _OBSERVATION_RESOURCE_TYPE:
-        observations.append((entry['fullUrl'], fhirclient.models.observation.Observation(resource)))
+      if resource:
+        resource_type = resource.get('resourceType')
+        if resource_type == _OBSERVATION_RESOURCE_TYPE:
+          observations.append((entry['fullUrl'],
+                               fhirclient.models.observation.Observation(resource)))
+        elif resource_type == _COMPOSITION_RESOURCE_TYPE:
+          extensions = resource.get('extension')
+          if extensions:
+            for extension in extensions:
+              value_reference = extension.get('valueReference')
+              if value_reference:
+                url = extension.get('url')
+                if url == _CREATED_LOC_EXTENSION:
+                  created_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
+                elif url == _FINALIZED_LOC_EXTENSION:
+                  finalized_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
+          authors = resource.get('author')
+          for author in authors:
+            author_extension = author.get('extension')
+            reference = author.get('reference')
+            if author_extension and reference:
+              authoring_step = PhysicalMeasurementsDao.get_authoring_step(author_extension)
+              if authoring_step == _FINALIZED_STATUS:
+                finalized_username = PhysicalMeasurementsDao.get_author_username(reference)
+              elif authoring_step == _CREATED_STATUS:
+                created_username = PhysicalMeasurementsDao.get_author_username(reference)
+
     # Take two passes over the observations; once to find all the qualifiers and observations
     # without related qualifiers, and a second time to find all observations with related
     # qualifiers.
@@ -396,5 +460,7 @@ class PhysicalMeasurementsDao(BaseDao):
         if measurement:
           measurements.append(measurement)
     return PhysicalMeasurements(participantId=participant_id, resource=json.dumps(resource_json),
-                                measurements=measurements)
+                                measurements=measurements, createdSiteId=created_site_id,
+                                createdUsername=created_username, finalizedSiteId=finalized_site_id,
+                                finalizedUsername=finalized_username)
 

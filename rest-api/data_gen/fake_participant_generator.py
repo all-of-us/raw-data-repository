@@ -28,6 +28,10 @@ from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from dao.site_dao import SiteDao
 from dao.questionnaire_dao import QuestionnaireDao
+from dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION,\
+  _LOCATION_PREFIX
+from dao.physical_measurements_dao import _AUTHORING_STEP, _CREATED_STATUS, _FINALIZED_STATUS
+from dao.physical_measurements_dao import _AUTHOR_PREFIX
 from model.code import CodeType
 from participant_enums import UNSET_HPO_ID
 from werkzeug.exceptions import BadRequest
@@ -293,12 +297,28 @@ class FakeParticipantGenerator(object):
     }
 
 
+  def _make_author(self, username, authoring_step):
+    return {"reference": "%s%s" % (_AUTHOR_PREFIX, username),
+            "extension": {
+              "url": _AUTHORING_STEP,
+              "valueCode": authoring_step
+            }
+          };
+
   def _make_physical_measurements(self, participant_id, measurements_time):
     time_str = measurements_time.isoformat()
+    site = random.choice(self._sites)
     entries = [{
       "fullUrl": "urn:example:report",
       "resource":
-        {"author": [{"display": "N/A"}],
+        {"author": [self._make_author("creator@pmi-ops.org", "created"),
+                    self._make_author("finalizer@pmi-ops.org", "finalized")],
+         "extension": [{"url": _CREATED_LOC_EXTENSION,
+                        "valueReference": "%s%s" % (_LOCATION_PREFIX, site.googleGroup)
+                       },
+                       {"url": _FINALIZED_LOC_EXTENSION,
+                        "valueReference": "%s%s" % (_LOCATION_PREFIX, site.googleGroup)
+                       }],
          "date": time_str,
          "resourceType": "Composition",
          "section": [{"entry": [{"reference": "urn:example:blood-pressure-1"}]}],
