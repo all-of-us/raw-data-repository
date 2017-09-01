@@ -3,9 +3,11 @@ import clock
 import collections
 import csv
 import datetime
+import json
 import logging
 import random
 
+from concepts import Concept
 from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
 from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, OVERALL_HEALTH_PPI_MODULE
 from code_constants import LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
@@ -39,6 +41,10 @@ _NO_QUESTIONNAIRES_SUBMITTED = 0.2
 _NO_BIOBANK_ORDERS = 0.2
 # 20% of consented participants that submit the basics questionnaire have no physical measurements
 _NO_PHYSICAL_MEASUREMENTS = 0.2
+# 10% of individual physical measurements are absent
+_PHYSICAL_MEASUREMENT_ABSENT = 0.1
+# 20% of eligible physical measurements have qualifiers
+_PHYSICAL_MEASURMENT_QUALIFIED = 0.2
 # 80% of consented participants have no changes to their HPO
 _NO_HPO_CHANGE = 0.8
 # 5% of participants withdraw from the study
@@ -172,6 +178,10 @@ class FakeParticipantGenerator(object):
       reader = csv.reader(f)
       return [line[0].strip() for line in reader]
 
+  def _read_json(self, filename):
+    with open('app_data/%s' % filename) as f:
+      return json.load(f)
+
   def _setup_data(self):
     self._zip_code_to_state = {}
     with open('app_data/zipcodes.txt') as zipcodes:
@@ -183,11 +193,109 @@ class FakeParticipantGenerator(object):
     self._last_names = self._read_all_lines('last_names.txt')
     self._city_names = self._read_all_lines('city_names.txt')
     self._street_names = self._read_all_lines('street_names.txt')
+    measurement_specs = self._read_json('measurement_specs.json')
+    qualifier_concepts = set()
+    for measurement in measurement_specs:
+      for qualifier in measurement['qualifiers']:
+        qualifier_concepts.add(Concept(qualifier['system'], qualifier['code']))
+    measurement_map = {Concept(measurement['code']['system'], measurement['code']['code']):
+                       measurement for measurement in measurement_specs}
+    self._measurement_specs = [measurement for measurement in measurement_specs if 
+                               Concept(measurement['code']['system'], measurement['code']['code'])
+                               not in qualifier_concepts]
+    self._qualifier_map = {qualifier_concept: measurement_map[qualifier_concept] for 
+                           qualifier_concept in qualifier_concepts}
+
+  def _make_full_url(self, concept):
+    return "urn:example:%s" % concept['code']
+
+  def _make_measurement_resource(self, measurement, qualifier_set):
+    resource = {
+      "code": {
+        "coding": [{
+          "code": measurement['code']['code'],
+          "display": "measurement",
+          "system": measurement['code']['system']
+        }],
+        "text": "text"
+      }
+    }
+    if 'decimal' in measurement['types']:
+      # Arguably min and max should vary with units, but in our data there's only one unit 
+      # so we won't bother for now.       
+      min_value = measurement['min']
+      max_value = measurement['max']      
+      unit = random.choice(measurement['units'])      
+      if min_value == int(min_value) and max_value == int(max_value):
+        # Assume int min and max means an integer
+        value = random.randint(min_value, max_value)
+      else:
+        # Otherwise assume a floating point number with one digit after the decimal place
+        value = round(random.uniform(min_value, max_value), 1)      
+      resource['valueQuantity'] = {
+        "code": unit,
+        "system": "http://unitsofmeasure.org",
+        "unit": unit,
+        "value": value
+      }
+    if measurement['valueCodes']:
+      value_code = random.choice(measurement['valueCodes'])
+      resource['valueCodeableConcept'] = {
+        "coding": [{
+          "system": value_code['system'],
+          "code": value_code['code'],
+          "display": "value"
+        }],
+        "text": "value text"
+      }
+    if measurement['qualifiers']:
+      if random.random() <= _PHYSICAL_MEASURMENT_QUALIFIED:
+        qualifiers = random.sample(measurement['qualifiers'], len(measurement['qualifiers']))
+        qualifier_set.update(Concept(qualifier['system'], qualifier['code']) for qualifier in 
+                             qualifiers)
+        resource['related'] = [{
+          "type": "qualified-by",
+          "target": {
+            "reference": self._make_full_url(qualifier)
+          }
+        } for qualifier in qualifiers]        
+    return resource
+  
+  def _make_measurement_entry(self, measurement, time_str, participant_id, qualifier_set):
+    resource = self._make_measurement_resource(measurement, qualifier_set)
+    resource['effectiveDateTime'] = time_str
+    resource['resourceType'] = "Observation"
+    resource['status'] = "final"
+    resource['subject'] = {
+      "reference": "Patient/%s" % participant_id
+    }
+    if measurement['bodySites']:
+      body_site = random.choice(measurement['bodySites'])
+      resource['bodySite'] = {
+        "coding": [{
+          "code": body_site['code'],
+          "display": "body site",
+          "system": body_site['system']
+        }],
+        "text": "text"
+      }
+    if measurement['submeasurements']:
+      components = []
+      for submeasurement in measurement['submeasurements']:
+        if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT:
+          continue
+        components.append(self._make_measurement_resource(submeasurement, qualifier_set))
+      if components:
+        resource['component'] = components              
+    return {
+      "fullUrl": self._make_full_url(measurement['code']),
+      "resource": resource 
+    }
+    
 
   def _make_physical_measurements(self, participant_id, measurements_time):
     time_str = measurements_time.isoformat()
-    blood_pressure = random.randint(50, 200)
-    entry_1 = {
+    entries = [{
       "fullUrl": "urn:example:report",
       "resource":
         {"author": [{"display": "N/A"}],
@@ -206,59 +314,23 @@ class FakeParticipantGenerator(object):
                   "text": "PMI Intake Evaluation v0.0.1"
                 }
         }
-    }
-    entry_2 = {
-      "fullUrl": "urn:example:blood-pressure-1",
-      "resource": {
-        "bodySite": {
-          "coding": [
-            {
-              "code": "368209003",
-              "display": "Right arm",
-              "system": "http://snomed.info/sct"
-            }
-          ],
-          "text": "Right arm"
-        },
-        "code": {
-          "coding": [
-            {
-              "code": "55284-4",
-              "display": "Blood pressure systolic and diastolic",
-              "system": "http://loinc.org"
-            }
-          ],
-          "text": "Blood pressure systolic and diastolic"
-        },
-        "component": [
-          {
-            "code": {
-              "coding": [
-                {
-                  "code": "8480-6",
-                  "display": "Systolic blood pressure",
-                  "system": "http://loinc.org"
-                }
-              ],
-              "text": "Systolic blood pressure"
-            },
-            "valueQuantity": {
-              "code": "mm[Hg]",
-              "system": "http://unitsofmeasure.org",
-              "unit": "mmHg",
-              "value": blood_pressure
-            }
-          }
-        ],
-        "effectiveDateTime": time_str,
-        "resourceType": "Observation",
-        "status": "final",
-        "subject": {
-          "reference": "Patient/%s" % participant_id
-        }
-      }
-    }
-    return {"entry": [entry_1, entry_2]}
+    }]
+
+    qualifier_set = set()
+    for measurement in self._measurement_specs:     
+      if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT:
+        continue
+      entry = self._make_measurement_entry(measurement, time_str, participant_id, qualifier_set)
+      entries.append(entry)
+    # Add any qualifiers that were specified for other measurements.
+    for qualifier in qualifier_set:
+      qualifier_measurement = self._qualifier_map[qualifier]
+      entry = self._make_measurement_entry(qualifier_measurement, time_str, participant_id,
+                                           qualifier_set)
+      entries.append(entry)  
+    return {"resourceType": "Bundle",
+            "type": "document",
+            "entry": entries}
 
   def _submit_physical_measurements(self, participant_id, consent_time):
     if random.random() <= _NO_PHYSICAL_MEASUREMENTS:
