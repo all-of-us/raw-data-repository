@@ -2,6 +2,7 @@ import clock
 import json
 import logging
 
+from concepts import Concept
 import fhirclient.models.observation
 from fhirclient.models.fhirabstractbase import FHIRValidationError
 from sqlalchemy.orm import subqueryload
@@ -41,15 +42,18 @@ class PhysicalMeasurementsDao(BaseDao):
               Measurement.qualifiers))
       return query.get(physical_measurements_id)
 
-  def handle_measurement(self, measurement_map, measurement):
-    code_pair = (measurement.codeSystem, measurement.codeValue)
-    measurement_data = measurement_map.get(code_pair)
+  @staticmethod
+  def handle_measurement(measurement_map, measurement):
+    """Populating measurement_map with information extracted from measurement and its 
+    descendants."""
+    code_concept = Concept(measurement.codeSystem, measurement.codeValue)
+    measurement_data = measurement_map.get(code_concept)
     if not measurement_data:
       measurement_data = {'bodySites': set(), 'types': set(), 'units': set(),
                           'codes': set(), 'submeasurements': set()}
-      measurement_map[code_pair] = measurement_data
+      measurement_map[code_concept] = measurement_data
     if measurement.bodySiteCodeSystem:
-      measurement_data['bodySites'].add((measurement.bodySiteCodeSystem,
+      measurement_data['bodySites'].add(Concept(measurement.bodySiteCodeSystem,
                                          measurement.bodySiteCodeValue))
     if measurement.valueString:
       measurement_data['types'].add('string')
@@ -64,14 +68,14 @@ class PhysicalMeasurementsDao(BaseDao):
     if measurement.valueUnit:
       measurement_data['units'].add(measurement.valueUnit)
     if measurement.valueCodeSystem:
-      measurement_data['codes'].add((measurement.valueCodeSystem,
+      measurement_data['codes'].add(Concept(measurement.valueCodeSystem,
                                      measurement.valueCodeValue))
     if measurement.valueDateTime:
       measurement_data['types'].add('date')
     for sub_measurement in measurement.measurements:
-      measurement_data['submeasurements'].add((sub_measurement.codeSystem,
+      measurement_data['submeasurements'].add(Concept(sub_measurement.codeSystem,
                                                sub_measurement.codeValue))
-      self.handle_measurement(measurement_map, sub_measurement)
+      PhysicalMeasurementsDao.handle_measurement(measurement_map, sub_measurement)
 
   def get_distinct_measurements(self):
     with self.session() as session:
@@ -81,7 +85,7 @@ class PhysicalMeasurementsDao(BaseDao):
           parsed_pms = PhysicalMeasurementsDao.from_client_json(json.loads(pms.resource),
                                                                 pms.participantId)
           for measurement in parsed_pms.measurements:
-            self.handle_measurement(measurement_map, measurement)
+            PhysicalMeasurementsDao.handle_measurement(measurement_map, measurement)
         except FHIRValidationError as e:
           logging.error("Could not parse measurements as FHIR: %s; exception = %s" % (pms.resource,
                                                                                       e))
