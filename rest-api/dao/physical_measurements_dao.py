@@ -76,8 +76,8 @@ class PhysicalMeasurementsDao(BaseDao):
       measurement_data['submeasurements'].add(Concept(sm.codeSystem, sm.codeValue))
       PhysicalMeasurementsDao.handle_measurement(measurement_map, sm)
     for q in m.qualifiers:
-      measurement_data['qualifiers'].add(Concept(q.codeSystem, 
-                                                 q.codeValue))   
+      measurement_data['qualifiers'].add(Concept(q.codeSystem,
+                                                 q.codeValue))
 
   def get_distinct_measurements(self):
     with self.session() as session:
@@ -114,24 +114,24 @@ class PhysicalMeasurementsDao(BaseDao):
     result['qualifiers'] = list(PhysicalMeasurementsDao.concept_json(qualifier_concept)
                                 for qualifier_concept in measurement_data['qualifiers'])
     result['submeasurements'] = [PhysicalMeasurementsDao.get_measurements_json(sm,
-                                                                               m_map[sm],  
+                                                                               m_map[sm],
                                                                                m_map)
                                  for sm in measurement_data['submeasurements']]
-       
+
     return result
 
   def get_distinct_measurements_json(self):
     measurement_map = self.get_distinct_measurements()
     measurements_json = []
-    submeasurements = set()  
+    submeasurements = set()
     for concept, measurement_data in measurement_map.iteritems():
       for submeasurement_concept in measurement_data['submeasurements']:
-        submeasurements.add(submeasurement_concept)    
+        submeasurements.add(submeasurement_concept)
     for concept, measurement_data in measurement_map.iteritems():
       # Only include submeasurements under their parents.
       if concept not in submeasurements:
         measurements_json.append(PhysicalMeasurementsDao.get_measurements_json(concept,
-                                                                               measurement_data, 
+                                                                               measurement_data,
                                                                                measurement_map))
     return measurements_json
 

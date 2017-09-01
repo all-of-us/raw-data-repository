@@ -200,10 +200,10 @@ class FakeParticipantGenerator(object):
         qualifier_concepts.add(Concept(qualifier['system'], qualifier['code']))
     measurement_map = {Concept(measurement['code']['system'], measurement['code']['code']):
                        measurement for measurement in measurement_specs}
-    self._measurement_specs = [measurement for measurement in measurement_specs if 
+    self._measurement_specs = [measurement for measurement in measurement_specs if
                                Concept(measurement['code']['system'], measurement['code']['code'])
                                not in qualifier_concepts]
-    self._qualifier_map = {qualifier_concept: measurement_map[qualifier_concept] for 
+    self._qualifier_map = {qualifier_concept: measurement_map[qualifier_concept] for
                            qualifier_concept in qualifier_concepts}
 
   def _make_full_url(self, concept):
@@ -221,17 +221,17 @@ class FakeParticipantGenerator(object):
       }
     }
     if 'decimal' in measurement['types']:
-      # Arguably min and max should vary with units, but in our data there's only one unit 
-      # so we won't bother for now.       
+      # Arguably min and max should vary with units, but in our data there's only one unit
+      # so we won't bother for now.
       min_value = measurement['min']
-      max_value = measurement['max']      
-      unit = random.choice(measurement['units'])      
+      max_value = measurement['max']
+      unit = random.choice(measurement['units'])
       if min_value == int(min_value) and max_value == int(max_value):
         # Assume int min and max means an integer
         value = random.randint(min_value, max_value)
       else:
         # Otherwise assume a floating point number with one digit after the decimal place
-        value = round(random.uniform(min_value, max_value), 1)      
+        value = round(random.uniform(min_value, max_value), 1)
       resource['valueQuantity'] = {
         "code": unit,
         "system": "http://unitsofmeasure.org",
@@ -251,16 +251,16 @@ class FakeParticipantGenerator(object):
     if measurement['qualifiers']:
       if random.random() <= _PHYSICAL_MEASURMENT_QUALIFIED:
         qualifiers = random.sample(measurement['qualifiers'], len(measurement['qualifiers']))
-        qualifier_set.update(Concept(qualifier['system'], qualifier['code']) for qualifier in 
+        qualifier_set.update(Concept(qualifier['system'], qualifier['code']) for qualifier in
                              qualifiers)
         resource['related'] = [{
           "type": "qualified-by",
           "target": {
             "reference": self._make_full_url(qualifier)
           }
-        } for qualifier in qualifiers]        
+        } for qualifier in qualifiers]
     return resource
-  
+
   def _make_measurement_entry(self, measurement, time_str, participant_id, qualifier_set):
     resource = self._make_measurement_resource(measurement, qualifier_set)
     resource['effectiveDateTime'] = time_str
@@ -286,12 +286,12 @@ class FakeParticipantGenerator(object):
           continue
         components.append(self._make_measurement_resource(submeasurement, qualifier_set))
       if components:
-        resource['component'] = components              
+        resource['component'] = components
     return {
       "fullUrl": self._make_full_url(measurement['code']),
-      "resource": resource 
+      "resource": resource
     }
-    
+
 
   def _make_physical_measurements(self, participant_id, measurements_time):
     time_str = measurements_time.isoformat()
@@ -317,7 +317,7 @@ class FakeParticipantGenerator(object):
     }]
 
     qualifier_set = set()
-    for measurement in self._measurement_specs:     
+    for measurement in self._measurement_specs:
       if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT:
         continue
       entry = self._make_measurement_entry(measurement, time_str, participant_id, qualifier_set)
@@ -327,7 +327,7 @@ class FakeParticipantGenerator(object):
       qualifier_measurement = self._qualifier_map[qualifier]
       entry = self._make_measurement_entry(qualifier_measurement, time_str, participant_id,
                                            qualifier_set)
-      entries.append(entry)  
+      entries.append(entry)
     return {"resourceType": "Bundle",
             "type": "document",
             "entry": entries}
