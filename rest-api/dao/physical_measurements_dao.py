@@ -88,6 +88,9 @@ class PhysicalMeasurementsDao(BaseDao):
       measurement_data['qualifiers'].add(Concept(q.codeSystem,
                                                  q.codeValue))
   def backfill_measurements(self):
+    """Updates all physical measurements rows and their children to reflect all the data parsed
+    from the original resource. This is used to backfill created/finalized user and site information
+    and child measurement rows, which weren't originally in the schema."""
     num_updated = 0
     with self.session() as session:
       for pms in session.query(PhysicalMeasurements).yield_per(100):
@@ -108,6 +111,7 @@ class PhysicalMeasurementsDao(BaseDao):
     return num_updated
 
   def get_distinct_measurements(self):
+    """Returns metadata about all the distinct physical measurements in use for participants."""
     with self.session() as session:
       measurement_map = {}
       for pms in session.query(PhysicalMeasurements).yield_per(100):
@@ -149,6 +153,8 @@ class PhysicalMeasurementsDao(BaseDao):
     return result
 
   def get_distinct_measurements_json(self):
+    """Returns metadata about all the distinct physical measurements in use for participants,
+    in a JSON format that can be used to generate fake physical measurement data later."""
     measurement_map = self.get_distinct_measurements()
     measurements_json = []
     submeasurements = set()
