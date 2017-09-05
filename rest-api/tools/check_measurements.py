@@ -1,6 +1,6 @@
 """Tool used to retrieve metadata about all physical measurements in use for participants,
 or (when run with --run_backfill) to update all existing physical measurements rows to reflect
-all information that can be parsed from the original resources.""" 
+all information that can be parsed from the original resources."""
 
 import logging
 
