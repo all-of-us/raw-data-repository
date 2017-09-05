@@ -21,6 +21,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import from_client_biobank_id, get_biobank_id_prefix
 from offline.sql_exporter import SqlExporter, CompositeSqlExportWriter
+from participant_enums import OrganizationType
 
 # Format for dates in output filenames for the reconciliation report.
 _FILENAME_DATE_FORMAT = '%Y-%m-%d'
@@ -297,6 +298,14 @@ _STORED_SAMPLE_JOIN_CRITERIA = """
       AND biobank_stored_sample.test = biobank_ordered_sample.test
 """
 
+def _get_hpo_type_sql(hpo_alias):
+  result = '(CASE '
+  for organization_type in OrganizationType:
+    result += "WHEN %s.organization_type = %d THEN '%s' " % (hpo_alias, organization_type.number,
+                                                            organization_type.name)
+  result += "ELSE 'UNKNOWN' END)"
+  return result
+
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION ALL a LEFT OUTER JOIN
 # with a SELECT... WHERE NOT EXISTS (the latter for cases where we have a sample but no matching
@@ -340,22 +349,14 @@ _RECONCILIATION_REPORT_SQL = ("""
       source_site.consortium_name source_site_consortium,
       source_site.mayolink_client_number source_site_mayolink_client_number,
       source_site_hpo.name source_site_hpo,
-      (CASE WHEN source_site_hpo.organization_type = 0 THEN 'UNSET'
-            WHEN source_site_hpo.organization_type = 1 THEN 'HPO'
-            WHEN source_site_hpo.organization_type = 2 THEN 'FQHC'
-            WHEN source_site_hpo.organization_type = 3 THEN 'DV'
-            WHEN source_site_hpo.organization_type = 4 THEN 'VA'
-            ELSE 'UNKNOWN' END) source_site_hpo_type,
+      """
+      + _get_hpo_type_sql('source_site_hpo') + """ source_site_hpo_type,
       finalized_site.site_name finalized_site_name,
       finalized_site.consortium_name finalized_site_consortium,
       finalized_site.mayolink_client_number finalized_site_mayolink_client_number,
       finalized_site_hpo.name finalized_site_hpo,
-      (CASE WHEN finalized_site_hpo.organization_type = 0 THEN 'UNSET'
-            WHEN finalized_site_hpo.organization_type = 1 THEN 'HPO'
-            WHEN finalized_site_hpo.organization_type = 2 THEN 'FQHC'
-            WHEN finalized_site_hpo.organization_type = 3 THEN 'DV'
-            WHEN finalized_site_hpo.organization_type = 4 THEN 'VA'
-            ELSE 'UNKNOWN' END) finalized_site_hpo_type,
+      """
+      + _get_hpo_type_sql('finalized_site_hpo') + """ finalized_site_hpo_type,
       biobank_order.finalized_username finalized_username,
       biobank_ordered_sample.test order_test,
       biobank_ordered_sample.collected,
