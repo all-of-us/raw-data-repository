@@ -132,6 +132,12 @@ Creates credentials in a temp file, exports run_cloud_sql_proxy function used to
 Sets PYTHONPATH to include everything in libs and the AppEngine SDK. For use when running python
 scripts that rely on these libraries.
 
+### validate_or_backfill_measurements.sh
+
+Retrieves metadata about all physical measurements in use in the database; or when run with 
+--run_backfill, backfills all physical measurement rows and their children to match parsed
+resources. 
+
 ### check_ppi_data.sh
 
 Validates that participants in the database have answers to PPI questions

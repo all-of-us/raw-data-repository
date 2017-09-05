@@ -10,7 +10,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus
 from test_data import load_measurement_json, load_measurement_json_amendment
-from unit_test_util import SqlTestBase
+from unit_test_util import SqlTestBase, data_path
 from werkzeug.exceptions import BadRequest, Forbidden
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -25,7 +25,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.dao = PhysicalMeasurementsDao()
     self.participant_summary_dao = ParticipantSummaryDao()
     self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
-                                                             TIME_1))
+                                                             TIME_1.isoformat()))
 
   def testInsert_noParticipantId(self):
     with self.assertRaises(BadRequest):
@@ -71,6 +71,31 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     summary = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertEquals(PhysicalMeasurementsStatus.COMPLETED, summary.physicalMeasurementsStatus)
     self.assertEquals(TIME_2, summary.physicalMeasurementsTime)
+
+  def test_backfill(self):
+    self._make_summary()
+    with open(data_path('physical_measurements_2.json')) as measurements_file:
+      json_text = measurements_file.read() % {
+        'participant_id': self.participant.participantId,
+        'authored_time': TIME_1.isoformat()
+      }
+    measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
+                                                  participantId=self.participant.participantId,
+                                                  resource=json_text)
+    measurements = self.dao.insert(measurements_to_insert)
+    self.assertEquals(0, len(measurements.measurements))
+    self.assertIsNone(measurements.createdUsername)
+    self.assertIsNone(measurements.createdSiteId)
+    self.assertIsNone(measurements.finalizedUsername)
+    self.assertIsNone(measurements.finalizedSiteId)
+
+    self.dao.backfill_measurements()
+    measurements = self.dao.get_with_children(measurements.physicalMeasurementsId)
+    self.assertEquals(17, len(measurements.measurements))
+    self.assertEquals('bob.jones@pmi-ops.org', measurements.createdUsername)
+    self.assertEquals(1, measurements.createdSiteId)
+    self.assertEquals('fred.smith@pmi-ops.org', measurements.finalizedUsername)
+    self.assertIsNone(measurements.finalizedSiteId)
 
   def testInsert_withdrawnParticipantFails(self):
     self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
