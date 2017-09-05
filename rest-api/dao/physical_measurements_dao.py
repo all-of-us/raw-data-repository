@@ -87,6 +87,18 @@ class PhysicalMeasurementsDao(BaseDao):
     for q in m.qualifiers:
       measurement_data['qualifiers'].add(Concept(q.codeSystem,
                                                  q.codeValue))
+  def backfill_measurements(self):
+    with self.session() as session:
+      for pms in session.query(PhysicalMeasurements).yield_per(100):
+        try:
+          parsed_pms = PhysicalMeasurementsDao.from_client_json(json.loads(pms.resource),
+                                                                pms.participantId)
+          parsed_pms.physicalMeasurementsId = pms.physicalMeasurementsId
+          self.set_measurement_ids(parsed_pms)
+          session.merge(parsed_pms)
+        except FHIRValidationError as e:
+          logging.error("Could not parse measurements as FHIR: %s; exception = %s" % (pms.resource,
+                                                                                      e))
 
   def get_distinct_measurements(self):
     with self.session() as session:
@@ -167,6 +179,21 @@ class PhysicalMeasurementsDao(BaseDao):
       del result['resource']['id']
     return result
 
+  @staticmethod
+  def set_measurement_ids(physical_measurements):
+    measurement_count = 0
+    pm_id = physical_measurements.physicalMeasurementsId
+    for measurement in physical_measurements.measurements:
+      measurement.physicalMeasurementsId = pm_id
+      measurement.measurementId = PhysicalMeasurementsDao.make_measurement_id(
+          pm_id, measurement_count)
+      measurement_count += 1
+      for sub_measurement in measurement.measurements:
+        sub_measurement.physicalMeasurementsId = pm_id
+        sub_measurement.measurementId = PhysicalMeasurementsDao.make_measurement_id(
+          pm_id, measurement_count)
+        measurement_count += 1
+
   def insert_with_session(self, session, obj):
     if obj.logPosition is not None:
       raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
@@ -192,18 +219,7 @@ class PhysicalMeasurementsDao(BaseDao):
           # If there are already measurements that look exactly like this, return them
           # without inserting new measurements.
           return measurements
-
-    measurement_count = 0
-    for measurement in obj.measurements:
-      measurement.physicalMeasurementsId = obj.physicalMeasurementsId
-      measurement.measurementId = PhysicalMeasurementsDao.make_measurement_id(
-          obj.physicalMeasurementsId, measurement_count)
-      measurement_count += 1
-      for sub_measurement in measurement.measurements:
-        sub_measurement.physicalMeasurementsId = obj.physicalMeasurementsId
-        sub_measurement.measurementId = PhysicalMeasurementsDao.make_measurement_id(
-          obj.physicalMeasurementsId, measurement_count)
-        measurement_count += 1
+    PhysicalMeasurementsDao.set_measurement_ids(obj)
 
     super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
