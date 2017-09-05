@@ -88,7 +88,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertIsNone(measurements.createdSiteId)
     self.assertIsNone(measurements.finalizedUsername)
     self.assertIsNone(measurements.finalizedSiteId)
-    
+
     self.dao.backfill_measurements()
     measurements = self.dao.get_with_children(measurements.physicalMeasurementsId)
     self.assertEquals(17, len(measurements.measurements))
@@ -96,7 +96,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEquals(1, measurements.createdSiteId)
     self.assertEquals('fred.smith@pmi-ops.org', measurements.finalizedUsername)
     self.assertIsNone(measurements.finalizedSiteId)
-    
+
   def testInsert_withdrawnParticipantFails(self):
     self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
     ParticipantDao().update(self.participant)

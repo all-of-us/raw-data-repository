@@ -14,7 +14,7 @@ def main(args):
     logging.info("%d measurements updated." % num_updated)
   else:
     pprint(PhysicalMeasurementsDao().get_distinct_measurements_json(), indent=2)
-  
+
 if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
