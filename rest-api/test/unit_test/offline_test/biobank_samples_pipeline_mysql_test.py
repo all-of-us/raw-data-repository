@@ -153,7 +153,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     # Extra samples ordered now aren't considered missing or late.
     self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time,
                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit1', tracking_number='t1')
-    self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], 
+    self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'],
                          within_24_hours, within_24_hours - datetime.timedelta(hours=1))
 
     # On time order and samples from 10 days ago; shows up in rx
@@ -211,7 +211,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_order(p_withdrawn_late_and_missing, 'WithdrawnSlowOrder', BIOBANK_TESTS[:2],
                        order_time)
     self._insert_samples(p_withdrawn_late_and_missing, [BIOBANK_TESTS[0]],
-                         ['WithdrawnLateSample'], late_time, 
+                         ['WithdrawnLateSample'], late_time,
                          late_time - datetime.timedelta(hours=1))
     self._withdraw(p_withdrawn_late_and_missing, within_24_hours)
 
@@ -219,7 +219,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_order(p_withdrawn_old_late_and_missing, 'WithdrawnOldSlowOrder', BIOBANK_TESTS[:2],
                        old_order_time)
     self._insert_samples(p_withdrawn_old_late_and_missing, [BIOBANK_TESTS[0]],
-                         ['WithdrawnOldLateSample'], old_late_time, 
+                         ['WithdrawnOldLateSample'], old_late_time,
                          old_late_time - datetime.timedelta(hours=1))
     self._withdraw(p_withdrawn_old_late_and_missing, old_late_time)
 
@@ -289,8 +289,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertEquals(row['sent_collection_time'], database_utils.format_datetime(order_time))
     self.assertEquals(row['sent_processed_time'], database_utils.format_datetime(order_time))
     self.assertEquals(row['received_time'], database_utils.format_datetime(within_24_hours))
-    self.assertEquals(row['Sample Family Create Date'], 
-                      database_utils.format_datetime(within_24_hours - 
+    self.assertEquals(row['Sample Family Create Date'],
+                      database_utils.format_datetime(within_24_hours -
                                                      datetime.timedelta(hours=1)))
     self.assertEquals(row['sent_count'], '1')
     self.assertEquals(row['received_count'], '1')

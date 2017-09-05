@@ -124,7 +124,7 @@ class _Columns(object):
   EXTERNAL_PARTICIPANT_ID = 'External Participant Id'
   TEST_CODE = 'Test Code'
   CREATE_DATE = 'Sample Family Create Date'
-  ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID, TEST_CODE, 
+  ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID, TEST_CODE,
                    CREATE_DATE])
 
 
@@ -340,21 +340,21 @@ _RECONCILIATION_REPORT_SQL = ("""
       source_site.consortium_name source_site_consortium,
       source_site.mayolink_client_number source_site_mayolink_client_number,
       source_site_hpo.name source_site_hpo,
-      (CASE WHEN source_site_hpo.organization_type = 0 THEN 'UNSET' 
-            WHEN source_site_hpo.organization_type = 1 THEN 'HPO' 
-            WHEN source_site_hpo.organization_type = 2 THEN 'FQHC' 
-            WHEN source_site_hpo.organization_type = 3 THEN 'DV' 
-            WHEN source_site_hpo.organization_type = 4 THEN 'VA' 
+      (CASE WHEN source_site_hpo.organization_type = 0 THEN 'UNSET'
+            WHEN source_site_hpo.organization_type = 1 THEN 'HPO'
+            WHEN source_site_hpo.organization_type = 2 THEN 'FQHC'
+            WHEN source_site_hpo.organization_type = 3 THEN 'DV'
+            WHEN source_site_hpo.organization_type = 4 THEN 'VA'
             ELSE 'UNKNOWN' END) source_site_hpo_type,
       finalized_site.site_name finalized_site_name,
       finalized_site.consortium_name finalized_site_consortium,
       finalized_site.mayolink_client_number finalized_site_mayolink_client_number,
       finalized_site_hpo.name finalized_site_hpo,
-      (CASE WHEN finalized_site_hpo.organization_type = 0 THEN 'UNSET' 
-            WHEN finalized_site_hpo.organization_type = 1 THEN 'HPO' 
-            WHEN finalized_site_hpo.organization_type = 2 THEN 'FQHC' 
-            WHEN finalized_site_hpo.organization_type = 3 THEN 'DV' 
-            WHEN finalized_site_hpo.organization_type = 4 THEN 'VA' 
+      (CASE WHEN finalized_site_hpo.organization_type = 0 THEN 'UNSET'
+            WHEN finalized_site_hpo.organization_type = 1 THEN 'HPO'
+            WHEN finalized_site_hpo.organization_type = 2 THEN 'FQHC'
+            WHEN finalized_site_hpo.organization_type = 3 THEN 'DV'
+            WHEN finalized_site_hpo.organization_type = 4 THEN 'VA'
             ELSE 'UNKNOWN' END) finalized_site_hpo_type,
       biobank_order.finalized_username finalized_username,
       biobank_ordered_sample.test order_test,
