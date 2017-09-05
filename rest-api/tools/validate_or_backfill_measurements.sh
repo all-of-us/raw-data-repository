@@ -1,8 +1,8 @@
 #!/bin/bash -e
 
-# Checks physical measurements
+# Validates or backfills physical measurements in the database
 
-USAGE="tools/check_measurements.sh [--account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]]"
+USAGE="tools/validate_or_backfill_measurements.sh [--account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]]"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
@@ -37,4 +37,4 @@ else
 fi
 
 source tools/set_path.sh
-python tools/check_measurements.py $RUN_BACKFILL
+python tools/validate_or_backfill_measurements.py $RUN_BACKFILL
