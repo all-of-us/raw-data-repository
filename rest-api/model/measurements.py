@@ -22,8 +22,17 @@ class PhysicalMeasurements(Base):
                                  ForeignKey('physical_measurements.physical_measurements_id'))
   logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'),
                          nullable=False)
+  # The site that created the physical measurements.
+  createdSiteId = Column('created_site_id', Integer, ForeignKey('site.site_id'))
+  # The username / email of the HealthPro user that created the physical measurements.
+  createdUsername = Column('created_username', String(255))
+  # The site that finalized the physical measurements.
+  finalizedSiteId = Column('finalized_site_id', Integer, ForeignKey('site.site_id'))
+  # The username / email of the HealthPro user that finalized the physical measurements.
+  finalizedUsername = Column('finalized_username', String(255))
   logPosition = relationship('LogPosition')
   measurements = relationship('Measurement', cascade='all, delete-orphan')
+
 
 class Measurement(Base):
   """An individual measurement; child of PhysicalMeasurements."""
