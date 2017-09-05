@@ -88,6 +88,7 @@ class PhysicalMeasurementsDao(BaseDao):
       measurement_data['qualifiers'].add(Concept(q.codeSystem,
                                                  q.codeValue))
   def backfill_measurements(self):
+    num_updated = 0
     with self.session() as session:
       for pms in session.query(PhysicalMeasurements).yield_per(100):
         try:
@@ -96,9 +97,15 @@ class PhysicalMeasurementsDao(BaseDao):
           parsed_pms.physicalMeasurementsId = pms.physicalMeasurementsId
           self.set_measurement_ids(parsed_pms)
           session.merge(parsed_pms)
+          for measurement in parsed_pms.measurements:
+            session.merge(measurement)
+            for submeasurement in measurement.measurements:
+              session.merge(submeasurement)
+          num_updated += 1
         except FHIRValidationError as e:
           logging.error("Could not parse measurements as FHIR: %s; exception = %s" % (pms.resource,
                                                                                       e))
+    return num_updated
 
   def get_distinct_measurements(self):
     with self.session() as session:
