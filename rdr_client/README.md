@@ -16,19 +16,3 @@ source venv/bin/activate
 # Install client deps into venv/lib/.
 pip install -r requirements.txt
 ```
-
-## Example of assigning participants to a test HPO:
-
-```
-./run_client.sh --project <PROJECT> --account <ACCOUNT> hpo_assigner.py --file participant_ids.csv [--hpo <HPO>]
-```
-
-where participant_ids.csv is a file containing a list of participant IDs without the leading 'P', e.g.:
-
-```
-123456789
-234567890
-```
-
-and <HPO> is the name of a HPO, e.g. PITT; defaults to TEST.
-

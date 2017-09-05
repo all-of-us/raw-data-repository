@@ -1,35 +1,73 @@
-"""Assigns participants with the specified IDs to the test HPO."""
+"""Assigns participants with the specified IDs to the test HPO.
+
+Usage:
+  ./run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
+      hpo_assigner.py participant_ids_and_hpos.csv [--dry_run]
+
+Where the CSV contains lines with P12345678,NEW_HPO_ID like:
+  P11111111,AZ_TUCSON
+  P22222222,AZ_TUCSON
+  P99999999,PITT
+  P00000000,PITT
+"""
 
 import csv
 import logging
 
 from main_util import get_parser, configure_logging
 
-from client import Client, client_log
+from client import Client, HttpException, client_log
 
 
-def main(parser):
-  client = Client(parser=parser)
-  client_log.setLevel(logging.WARN)  # Suppress the log of HTTP requests.
+def main(client):
   num_updates = 0
-  hpo = client.args.hpo
+  num_errors = 0
   with open(client.args.file) as csvfile:
     reader = csv.reader(csvfile)
     for line in reader:
-      participant_id = line[0].strip()
-      if participant_id:
-        client_participant_id = 'P{}'.format(participant_id)
-        participant = client.request_json('Participant/{}'.format(client_participant_id))
-        logging.info('P%s %s => %s', participant_id, _get_old_hpo(participant), hpo)
-        if hpo == 'UNSET':
-          participant['providerLink'] = []
-        else:
-          participant['providerLink'] = [{'primary': True,
-                                          'organization': {'reference': 'Organization/%s' % hpo}}]
-        client.request_json('Participant/{}'.format(client_participant_id), 'PUT', participant,
+      try:
+        participant_id, hpo = [v.strip() for v in line]
+      except ValueError as e:
+        logging.error('Skipping invalid line %d (parsed as %r): %s.', reader.line_num, line, e)
+        num_errors += 1
+        continue
+      if not (hpo and participant_id):
+        logging.warning(
+            'Skipping invalid line %d: missing hpo (%r) or participant (%r).',
+            reader.line_num, hpo, participant_id)
+        num_errors += 1
+        continue
+      if not participant_id.startswith('P'):
+        logging.error(
+            'Malformed participant ID from line %d: %r does not start with P.',
+            reader.line_num, participant_id)
+        num_errors += 1
+        continue
+
+      try:
+        participant = client.request_json('Participant/%s' % participant_id)
+      except HttpException as e:
+        logging.error('Skipping %s: %s', participant_id, e)
+        num_errors += 1
+        continue
+
+      logging.info('%s %s => %s', participant_id, _get_old_hpo(participant), hpo)
+      if hpo == 'UNSET':
+        participant['providerLink'] = []
+      else:
+        participant['providerLink'] = [{'primary': True,
+                                        'organization': {'reference': 'Organization/%s' % hpo}}]
+      if client.args.dry_run:
+        logging.info('Dry run, would update providerLink to %r.', participant['providerLink'])
+      else:
+        client.request_json('Participant/%s' % participant_id, 'PUT', participant,
                             headers={'If-Match': client.last_etag})
-        num_updates += 1
-  logging.info('Updated %d participants.', num_updates)
+      num_updates += 1
+  logging.info(
+      '%s %d participants, %d errors.',
+      'Would update' if client.args.dry_run else 'Updated',
+      num_updates,
+      num_errors)
 
 
 def _get_old_hpo(participant):
@@ -41,9 +79,8 @@ def _get_old_hpo(participant):
 
 if __name__ == '__main__':
   configure_logging()
+  client_log.setLevel(logging.WARN)  # Suppress the log of HTTP requests.
   arg_parser = get_parser()
-  arg_parser.add_argument('--file', help='File containing the list of participant IDs',
-                          required=True)
-  arg_parser.add_argument('--hpo', help='HPO to assign the participants to; defaults to TEST.',
-                          default='TEST')
-  main(arg_parser)
+  arg_parser.add_argument('file', help='file containing the list of HPOs and participant IDs')
+  arg_parser.add_argument('--dry_run', action='store_true')
+  main(Client(parser=arg_parser))
