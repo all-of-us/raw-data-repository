@@ -114,13 +114,13 @@ class MySqlReconciliationTest(FlaskTestBase):
           finalized=finalized_time))
     return self.order_dao.insert(order)
 
-  def _insert_samples(self, participant, tests, sample_ids, received_time, created_time):
+  def _insert_samples(self, participant, tests, sample_ids, confirmed_time, created_time):
     for test_code, sample_id in zip(tests, sample_ids):
       self.sample_dao.insert(BiobankStoredSample(
           biobankStoredSampleId=sample_id,
           biobankId=participant.biobankId,
           test=test_code,
-          confirmed=received_time,
+          confirmed=confirmed_time,
           created=created_time))
 
   def _submit_race_questionnaire_response(self, participant_id,
