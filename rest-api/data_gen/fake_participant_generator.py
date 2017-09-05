@@ -254,7 +254,8 @@ class FakeParticipantGenerator(object):
       }
     if measurement['qualifiers']:
       if random.random() <= _PHYSICAL_MEASURMENT_QUALIFIED:
-        qualifiers = random.sample(measurement['qualifiers'], len(measurement['qualifiers']))
+        qualifiers = random.sample(measurement['qualifiers'],
+                                   random.randint(1, len(measurement['qualifiers'])))
         qualifier_set.update(Concept(qualifier['system'], qualifier['code']) for qualifier in
                              qualifiers)
         resource['related'] = [{
