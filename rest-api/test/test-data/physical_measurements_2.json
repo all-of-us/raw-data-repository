@@ -7,7 +7,28 @@
       "resource": {
         "author": [
           {
-            "display": "N/A"
+            "reference": "Practitioner/bob.jones@pmi-ops.org",
+            "extension": {
+              "url": "http://terminology.pmi-ops.org/StructureDefinition/authoring-step",
+              "valueCode": "created"
+            }
+          },
+          {
+            "reference": "Practitioner/fred.smith@pmi-ops.org",
+            "extension": {
+              "url": "http://terminology.pmi-ops.org/StructureDefinition/authoring-step",
+              "valueCode": "finalized"
+            }
+          }
+        ],
+        "extension": [
+          {
+            "url": "http://terminology.pmi-ops.org/StructureDefinition/authored-location",
+            "valueReference": "Location/hpo-site-monroeville"
+          },
+          {
+            "url": "http://terminology.pmi-ops.org/StructureDefinition/finalized-location",
+            "valueReference": "Location/hpo-site-bannerphoenix"
           }
         ],
         "date": "2016-09-02T20:59:41Z",
