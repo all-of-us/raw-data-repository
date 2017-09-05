@@ -43,39 +43,41 @@ class PhysicalMeasurementsDao(BaseDao):
       return query.get(physical_measurements_id)
 
   @staticmethod
-  def handle_measurement(measurement_map, measurement):
+  def handle_measurement(measurement_map, m):
     """Populating measurement_map with information extracted from measurement and its
     descendants."""
-    code_concept = Concept(measurement.codeSystem, measurement.codeValue)
+    code_concept = Concept(m.codeSystem, m.codeValue)
     measurement_data = measurement_map.get(code_concept)
     if not measurement_data:
       measurement_data = {'bodySites': set(), 'types': set(), 'units': set(),
-                          'codes': set(), 'submeasurements': set()}
+                          'codes': set(), 'submeasurements': set(), 'qualifiers': set()}
       measurement_map[code_concept] = measurement_data
-    if measurement.bodySiteCodeSystem:
-      measurement_data['bodySites'].add(Concept(measurement.bodySiteCodeSystem,
-                                         measurement.bodySiteCodeValue))
-    if measurement.valueString:
+    if m.bodySiteCodeSystem:
+      measurement_data['bodySites'].add(Concept(m.bodySiteCodeSystem,
+                                                m.bodySiteCodeValue))
+    if m.valueString:
       measurement_data['types'].add('string')
-    if measurement.valueDecimal:
+    if m.valueDecimal:
       measurement_data['types'].add('decimal')
       min_decimal = measurement_data.get('min')
       max_decimal = measurement_data.get('max')
-      if min_decimal is None or min_decimal > measurement.valueDecimal:
-        measurement_data['min'] = measurement.valueDecimal
-      if max_decimal is None or max_decimal < measurement.valueDecimal:
-        measurement_data['max'] = measurement.valueDecimal
-    if measurement.valueUnit:
-      measurement_data['units'].add(measurement.valueUnit)
-    if measurement.valueCodeSystem:
-      measurement_data['codes'].add(Concept(measurement.valueCodeSystem,
-                                     measurement.valueCodeValue))
-    if measurement.valueDateTime:
+      if min_decimal is None or min_decimal > m.valueDecimal:
+        measurement_data['min'] = m.valueDecimal
+      if max_decimal is None or max_decimal < m.valueDecimal:
+        measurement_data['max'] = m.valueDecimal
+    if m.valueUnit:
+      measurement_data['units'].add(m.valueUnit)
+    if m.valueCodeSystem:
+      measurement_data['codes'].add(Concept(m.valueCodeSystem,
+                                            m.valueCodeValue))
+    if m.valueDateTime:
       measurement_data['types'].add('date')
-    for sub_measurement in measurement.measurements:
-      measurement_data['submeasurements'].add(Concept(sub_measurement.codeSystem,
-                                               sub_measurement.codeValue))
-      PhysicalMeasurementsDao.handle_measurement(measurement_map, sub_measurement)
+    for sm in m.measurements:
+      measurement_data['submeasurements'].add(Concept(sm.codeSystem, sm.codeValue))
+      PhysicalMeasurementsDao.handle_measurement(measurement_map, sm)
+    for q in m.qualifiers:
+      measurement_data['qualifiers'].add(Concept(q.codeSystem,
+                                                 q.codeValue))
 
   def get_distinct_measurements(self):
     with self.session() as session:
@@ -90,6 +92,48 @@ class PhysicalMeasurementsDao(BaseDao):
           logging.error("Could not parse measurements as FHIR: %s; exception = %s" % (pms.resource,
                                                                                       e))
       return measurement_map
+
+  @staticmethod
+  def concept_json(concept):
+    return {'system': concept.system, 'code': concept.code}
+
+  @staticmethod
+  def get_measurements_json(concept, measurement_data, m_map):
+    result = {}
+    result['code'] = PhysicalMeasurementsDao.concept_json(concept)
+    result['bodySites'] = list(PhysicalMeasurementsDao.concept_json(body_concept)
+                               for body_concept in measurement_data['bodySites'])
+    result['types'] = list(measurement_data['types'])
+    result['units'] = list(measurement_data['units'])
+    if measurement_data.get('min'):
+      result['min'] = measurement_data['min']
+    if measurement_data.get('max'):
+      result['max'] = measurement_data['max']
+    result['valueCodes'] = list(PhysicalMeasurementsDao.concept_json(code_concept)
+                           for code_concept in measurement_data['codes'])
+    result['qualifiers'] = list(PhysicalMeasurementsDao.concept_json(qualifier_concept)
+                                for qualifier_concept in measurement_data['qualifiers'])
+    result['submeasurements'] = [PhysicalMeasurementsDao.get_measurements_json(sm,
+                                                                               m_map[sm],
+                                                                               m_map)
+                                 for sm in measurement_data['submeasurements']]
+
+    return result
+
+  def get_distinct_measurements_json(self):
+    measurement_map = self.get_distinct_measurements()
+    measurements_json = []
+    submeasurements = set()
+    for concept, measurement_data in measurement_map.iteritems():
+      for submeasurement_concept in measurement_data['submeasurements']:
+        submeasurements.add(submeasurement_concept)
+    for concept, measurement_data in measurement_map.iteritems():
+      # Only include submeasurements under their parents.
+      if concept not in submeasurements:
+        measurements_json.append(PhysicalMeasurementsDao.get_measurements_json(concept,
+                                                                               measurement_data,
+                                                                               measurement_map))
+    return measurements_json
 
   def _initialize_query(self, session, query_def):
     participant_id = None
