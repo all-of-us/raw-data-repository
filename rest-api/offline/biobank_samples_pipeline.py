@@ -123,7 +123,9 @@ class _Columns(object):
   CONFIRMED_DATE = 'Sample Confirmed Date'
   EXTERNAL_PARTICIPANT_ID = 'External Participant Id'
   TEST_CODE = 'Test Code'
-  ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID, TEST_CODE])
+  CREATE_DATE = 'Sample Family Create Date'
+  ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID, TEST_CODE, 
+                   CREATE_DATE])
 
 
 def _upsert_samples_from_csv(csv_reader):
@@ -150,6 +152,19 @@ def _upsert_samples_from_csv(csv_reader):
   except ValueError, e:
     raise DataError(e)
 
+def _parse_timestamp(row, key, sample):
+  str_val = row[key]
+  if str_val:
+    try:
+      naive = datetime.datetime.strptime(str_val, _INPUT_TIMESTAMP_FORMAT)
+    except ValueError, e:
+      raise DataError(
+          'Sample %r for %r has bad timestamp %r: %s'
+          % (sample.biobankStoredSampleId, sample.biobankId, str_val, e.message))
+    # Assume incoming times are in Central time (CST or CDT). Convert to UTC for storage, but drop
+    # tzinfo since storage is naive anyway (to make stored/fetched values consistent).
+    return _US_CENTRAL.localize(naive).astimezone(pytz.utc).replace(tzinfo=None)
+  return None
 
 def _create_sample_from_row(row, biobank_id_prefix):
   """Creates a new BiobankStoredSample object from a CSV row.
@@ -171,20 +186,9 @@ def _create_sample_from_row(row, biobank_id_prefix):
   if row[_Columns.PARENT_ID]:
     # Skip child samples.
     return None
-  confirmed_str = row[_Columns.CONFIRMED_DATE]
-  if confirmed_str:
-    try:
-      confirmed_naive = datetime.datetime.strptime(confirmed_str, _INPUT_TIMESTAMP_FORMAT)
-    except ValueError, e:
-      raise DataError(
-          'Sample %r for %r has bad confirmed timestamp %r: %s'
-          % (sample.biobankStoredSampleId, sample.biobankId, confirmed_str, e.message))
-    # Assume incoming times are in Central time (CST or CDT). Convert to UTC for storage, but drop
-    # tzinfo since storage is naive anyway (to make stored/fetched values consistent).
-    sample.confirmed = _US_CENTRAL.localize(
-        confirmed_naive).astimezone(pytz.utc).replace(tzinfo=None)
+  sample.confirmed = _parse_timestamp(row, _Columns.CONFIRMED_DATE, sample)
+  sample.created = _parse_timestamp(row, _Columns.CREATE_DATE, sample)
   return sample
-
 
 def write_reconciliation_report(now):
   """Writes order/sample reconciliation reports to GCS."""
@@ -253,10 +257,12 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
 _SENT_COUNT_INDEX = 2
 _SENT_COLLECTION_TIME_INDEX = 4
 _SENT_FINALIZED_INDEX = 6
-_RECEIVED_TEST_INDEX = 16
-_RECEIVED_COUNT_INDEX = 17
-_RECEIVED_TIME_INDEX = 19
-_ELAPSED_HOURS_INDEX = 20
+_RECEIVED_TEST_INDEX = 18
+_RECEIVED_COUNT_INDEX = 19
+# TODO: remove received time once Biobank stops using it (DA-374)
+_RECEIVED_TIME_INDEX = 21
+_SAMPLE_FAMILY_CREATE_TIME_INDEX = 22
+_ELAPSED_HOURS_INDEX = 23
 
 _ORDER_JOINS = """
       biobank_order
@@ -310,16 +316,19 @@ _RECONCILIATION_REPORT_SQL = ("""
     GROUP_CONCAT(DISTINCT source_site_consortium) source_site_consortium,
     GROUP_CONCAT(DISTINCT source_site_mayolink_client_number) source_site_mayolink_client_number,
     GROUP_CONCAT(DISTINCT source_site_hpo) source_site_hpo,
+    GROUP_CONCAT(DISTINCT source_site_hpo_type) source_site_hpo_type,
     GROUP_CONCAT(DISTINCT finalized_site_name) finalized_site_name,
     GROUP_CONCAT(DISTINCT finalized_site_consortium) finalized_site_consortium,
     GROUP_CONCAT(DISTINCT finalized_site_mayolink_client_number)
         finalized_site_mayolink_client_number,
     GROUP_CONCAT(DISTINCT finalized_site_hpo) finalized_site_hpo,
+    GROUP_CONCAT(DISTINCT finalized_site_hpo_type) finalized_site_hpo_type,
     GROUP_CONCAT(DISTINCT finalized_username) finalized_username,
     test received_test,
     COUNT(DISTINCT biobank_stored_sample_id) received_count,
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id) received_sample_id,
     ISODATE[MAX(confirmed)] received_time,
+    ISODATE[MAX(created)] 'Sample Family Create Date',
     TIMESTAMPDIFF(HOUR, MAX(collected), MAX(confirmed)) elapsed_hours,
     GROUP_CONCAT(DISTINCT biospecimen_kit_id) biospecimen_kit_id,
     GROUP_CONCAT(DISTINCT fedex_tracking_number) fedex_tracking_number
@@ -331,10 +340,22 @@ _RECONCILIATION_REPORT_SQL = ("""
       source_site.consortium_name source_site_consortium,
       source_site.mayolink_client_number source_site_mayolink_client_number,
       source_site_hpo.name source_site_hpo,
+      (CASE WHEN source_site_hpo.organization_type = 0 THEN 'UNSET' 
+            WHEN source_site_hpo.organization_type = 1 THEN 'HPO' 
+            WHEN source_site_hpo.organization_type = 2 THEN 'FQHC' 
+            WHEN source_site_hpo.organization_type = 3 THEN 'DV' 
+            WHEN source_site_hpo.organization_type = 4 THEN 'VA' 
+            ELSE 'UNKNOWN' END) source_site_hpo_type,
       finalized_site.site_name finalized_site_name,
       finalized_site.consortium_name finalized_site_consortium,
       finalized_site.mayolink_client_number finalized_site_mayolink_client_number,
       finalized_site_hpo.name finalized_site_hpo,
+      (CASE WHEN finalized_site_hpo.organization_type = 0 THEN 'UNSET' 
+            WHEN finalized_site_hpo.organization_type = 1 THEN 'HPO' 
+            WHEN finalized_site_hpo.organization_type = 2 THEN 'FQHC' 
+            WHEN finalized_site_hpo.organization_type = 3 THEN 'DV' 
+            WHEN finalized_site_hpo.organization_type = 4 THEN 'VA' 
+            ELSE 'UNKNOWN' END) finalized_site_hpo_type,
       biobank_order.finalized_username finalized_username,
       biobank_ordered_sample.test order_test,
       biobank_ordered_sample.collected,
@@ -343,6 +364,7 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample.biobank_stored_sample_id,
       biobank_stored_sample.test,
       biobank_stored_sample.confirmed,
+      biobank_stored_sample.created,
       kit_id_identifier.value biospecimen_kit_id,
       tracking_number_identifier.value fedex_tracking_number
     FROM """ + _ORDER_JOINS + """
@@ -368,10 +390,12 @@ _RECONCILIATION_REPORT_SQL = ("""
       NULL source_site_consortium,
       NULL source_site_mayolink_client_number,
       NULL source_site_hpo,
+      NULL source_site_hpo_type,
       NULL finalized_site_name,
       NULL finalized_site_consortium,
       NULL finalized_site_mayolink_client_number,
       NULL finalized_site_hpo,
+      NULL finalized_site_hpo_type,
       NULL finalized_username,
       NULL order_test,
       NULL collected,
@@ -380,6 +404,7 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample.biobank_stored_sample_id,
       biobank_stored_sample.test,
       biobank_stored_sample.confirmed,
+      biobank_stored_sample.created,
       NULL biospecimen_kit_id,
       NULL fedex_tracking_number
     FROM

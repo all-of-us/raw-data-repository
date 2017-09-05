@@ -117,6 +117,10 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEquals(
         confirmed_date.strftime(biobank_samples_pipeline._INPUT_TIMESTAMP_FORMAT),
         row[cols.CONFIRMED_DATE])
+    received_date = self._naive_utc_to_naive_central(sample.created)
+    self.assertEquals(
+        received_date.strftime(biobank_samples_pipeline._INPUT_TIMESTAMP_FORMAT),
+        row[cols.CREATE_DATE])
 
   def test_sample_from_row_wrong_prefix(self):
     samples_file = test_data.open_biobank_samples(111, 222, 333)

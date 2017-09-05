@@ -29,3 +29,7 @@ class BiobankStoredSample(Base):
   # to "In Circulation" in Mayo). This is the end time used for order-to-sample latency measurement.
   # We may receive samples before they are confirmed (and see a confirmed date added later).
   confirmed = Column('confirmed', UTCDateTime)
+  
+  # Timestamp when Biobank received / created the sample.
+  created = Column('created', UTCDateTime)
+  
