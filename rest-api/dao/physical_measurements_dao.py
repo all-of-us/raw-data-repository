@@ -93,11 +93,18 @@ class PhysicalMeasurementsDao(BaseDao):
     and child measurement rows, which weren't originally in the schema."""
     num_updated = 0
     with self.session() as session:
-      for pms in session.query(PhysicalMeasurements).yield_per(100):
+      for pms in session.query(PhysicalMeasurements).all():
         try:
-          parsed_pms = PhysicalMeasurementsDao.from_client_json(json.loads(pms.resource),
-                                                                pms.participantId)
+
+          try:
+            parsed_pms = PhysicalMeasurementsDao.from_client_json(json.loads(pms.resource),
+                                                                  pms.participantId)
+          except AttributeError:
+            logging.warning('Invalid physical measurement JSON with ID %s; skipping.'
+                            % pms.physicalMeasurementsId)
+            continue
           parsed_pms.physicalMeasurementsId = pms.physicalMeasurementsId
+
           self.set_measurement_ids(parsed_pms)
           session.merge(parsed_pms)
           for measurement in parsed_pms.measurements:
@@ -373,7 +380,7 @@ class PhysicalMeasurementsDao(BaseDao):
       value_decimal = observation.valueQuantity.value
       value_unit = observation.valueQuantity.code
     if observation.valueDateTime:
-      value_date_time = observation.valueDateTime.date
+      value_date_time = observation.valueDateTime.date.replace(tzinfo=None)
     if observation.valueString:
       value_string = observation.valueString
     if observation.valueCodeableConcept and observation.valueCodeableConcept.coding:
@@ -398,7 +405,7 @@ class PhysicalMeasurementsDao(BaseDao):
             logging.warning('Could not find qualifier %s' % related.target.reference)
     result = Measurement(codeSystem=observation.code.coding[0].system,
                          codeValue=observation.code.coding[0].code,
-                         measurementTime=observation.effectiveDateTime.date,
+                         measurementTime=observation.effectiveDateTime.date.replace(tzinfo=None),
                          bodySiteCodeSystem=body_site_code_system,
                          bodySiteCodeValue=body_site_code_value,
                          valueString=value_string,
