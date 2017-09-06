@@ -134,9 +134,9 @@ scripts that rely on these libraries.
 
 ### validate_or_backfill_measurements.sh
 
-Retrieves metadata about all physical measurements in use in the database; or when run with 
+Retrieves metadata about all physical measurements in use in the database; or when run with
 --run_backfill, backfills all physical measurement rows and their children to match parsed
-resources. 
+resources.
 
 ### check_ppi_data.sh
 

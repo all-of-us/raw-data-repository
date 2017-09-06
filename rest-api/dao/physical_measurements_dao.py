@@ -95,18 +95,18 @@ class PhysicalMeasurementsDao(BaseDao):
     SiteDao().get_all()
     with self.session() as session:
       for pms in session.query(PhysicalMeasurements).all():
-        try:          
-          
+        try:
+
           try:
             parsed_pms = PhysicalMeasurementsDao.from_client_json(json.loads(pms.resource),
                                                                   pms.participantId)
           except AttributeError:
-            logging.warning('Invalid physical measurement JSON with ID %s; skipping.' 
+            logging.warning('Invalid physical measurement JSON with ID %s; skipping.'
                             % pms.physicalMeasurementsId)
             continue
           parsed_pms.physicalMeasurementsId = pms.physicalMeasurementsId
-          self.set_measurement_ids(parsed_pms)   
-          session.merge(parsed_pms)          
+          self.set_measurement_ids(parsed_pms)
+          session.merge(parsed_pms)
           for measurement in parsed_pms.measurements:
             session.merge(measurement)
             for submeasurement in measurement.measurements:
