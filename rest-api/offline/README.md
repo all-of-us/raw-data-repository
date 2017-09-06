@@ -96,14 +96,17 @@ Column | Description | Example
 `source_site_consortium` | Name of the consortium for the site that created the order. | Arizona or "Arizona,Geisinger"
 `source_site_mayolink_client_number` | MayoLINK client number for the site that created the order. | 7035650 or "7035650,7035651"
 `source_site_hpo` | Name of the HPO for the site that created the order. | AZ_TUCSON or "AZ_TUCSON,GEISINGER"
+`source_site_hpo_type` | Organization type of the HPO for the site that created the order. | UNSET, HPO, FQHC, VA, or DV
 `finalized_site_name` | Name of the site that finalized the order. | University of Arizona CATS Research Center or "University of Arizona CATS Research Center,Banner Desert Medical Center"
 `finalized_site_consortium` | Name of the consortium for the site that finalized the order. | Arizona or "Arizona,Geisinger"
 `finalized_site_mayolink_client_number` | MayoLINK client number for the site that finalized the order. | 7035650 or "7035650,7035651"
 `finalized_site_hpo` | Name of the HPO for the site that finalized the order. | AZ_TUCSON or "AZ_TUCSON,GEISINGER"
+`finalized_site_hpo_type` | Organization type of the HPO for the site that finalized the order. | UNSET, HPO, FQHC, VA, or DV
 `finalized_username` | Username of the HealthPro user that finalized the order | bob@pmi-ops.org or "bob@pmi-ops.org,alice@pmi-ops.org"
 `received_test` | Received sample's test code. Typically the same as `sent_test`, see above. | 1ED04
 `received_count` | | 1
 `received_sample_id` | Received sample's ID, from "Sample Id" column. | 3663123 or "1685731,1809762"
 `received_time` | Received sample's confirmed timestamp, ISO-8601 format. (Converted from Central time.) | 2016-09-22T08:38:42+00:00
+`Sample Family Create Date` | Received sample's created timestamp, ISO-8601 format. (Converted from Central time.) | 2016-09-22T08:38:42+00:00
 `elapsed_hours` | Elapsed integer hours between `sent_collection_time` and `received_time`. | 20
 

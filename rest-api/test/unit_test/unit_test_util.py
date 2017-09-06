@@ -39,6 +39,7 @@ from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from offline import sql_exporter
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
+from participant_enums import OrganizationType
 from test.test_data import data_path
 
 PITT_HPO_ID = 2
@@ -170,7 +171,7 @@ class _TestDb(object):
   def _setup_hpos():
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
-    hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT'))
+    hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT', organizationType=OrganizationType.HPO))
 
     site_dao = SiteDao()
     site_dao.insert(Site(siteName='Monroeville Urgent Care Center',
