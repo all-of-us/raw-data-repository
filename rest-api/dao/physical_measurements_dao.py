@@ -91,8 +91,7 @@ class PhysicalMeasurementsDao(BaseDao):
     """Updates all physical measurements rows and their children to reflect all the data parsed
     from the original resource. This is used to backfill created/finalized user and site information
     and child measurement rows, which weren't originally in the schema."""
-    num_updated = 0
-    SiteDao().get_all()
+    num_updated = 0    
     with self.session() as session:
       for pms in session.query(PhysicalMeasurements).all():
         try:
@@ -105,6 +104,7 @@ class PhysicalMeasurementsDao(BaseDao):
                             % pms.physicalMeasurementsId)
             continue
           parsed_pms.physicalMeasurementsId = pms.physicalMeasurementsId
+          
           self.set_measurement_ids(parsed_pms)
           session.merge(parsed_pms)
           for measurement in parsed_pms.measurements:
@@ -380,7 +380,7 @@ class PhysicalMeasurementsDao(BaseDao):
       value_decimal = observation.valueQuantity.value
       value_unit = observation.valueQuantity.code
     if observation.valueDateTime:
-      value_date_time = observation.valueDateTime.date
+      value_date_time = observation.valueDateTime.date.replace(tzinfo=None)
     if observation.valueString:
       value_string = observation.valueString
     if observation.valueCodeableConcept and observation.valueCodeableConcept.coding:
@@ -405,7 +405,7 @@ class PhysicalMeasurementsDao(BaseDao):
             logging.warning('Could not find qualifier %s' % related.target.reference)
     result = Measurement(codeSystem=observation.code.coding[0].system,
                          codeValue=observation.code.coding[0].code,
-                         measurementTime=observation.effectiveDateTime.date,
+                         measurementTime=observation.effectiveDateTime.date.replace(tzinfo=None),
                          bodySiteCodeSystem=body_site_code_system,
                          bodySiteCodeValue=body_site_code_value,
                          valueString=value_string,
