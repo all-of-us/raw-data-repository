@@ -91,7 +91,7 @@ class PhysicalMeasurementsDao(BaseDao):
     """Updates all physical measurements rows and their children to reflect all the data parsed
     from the original resource. This is used to backfill created/finalized user and site information
     and child measurement rows, which weren't originally in the schema."""
-    num_updated = 0    
+    num_updated = 0
     with self.session() as session:
       for pms in session.query(PhysicalMeasurements).all():
         try:
@@ -104,7 +104,7 @@ class PhysicalMeasurementsDao(BaseDao):
                             % pms.physicalMeasurementsId)
             continue
           parsed_pms.physicalMeasurementsId = pms.physicalMeasurementsId
-          
+
           self.set_measurement_ids(parsed_pms)
           session.merge(parsed_pms)
           for measurement in parsed_pms.measurements:
