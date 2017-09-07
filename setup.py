@@ -19,7 +19,7 @@ setup(
     name='all-of-us-rdr',
 
     long_description=readme_contents,
-    url='https://github.com/vanderbilt/pmi-data',
+    url='https://github.com/all-of-us/raw-data-repository',
 
     # These packages may be imported after the egg is installed.
     packages=['rdr_common', 'rdr_client'],

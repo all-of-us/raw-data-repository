@@ -229,7 +229,7 @@ requests), as second verification of the service account's auth.
 
 ### Deploying to staging
 
-*   Go to https://github.com/vanderbilt/pmi-data/releases/new
+*   Go to https://github.com/all-of-us/raw-data-repository/releases/new
 *   Enter a tag name of the form vX-Y-rcZZ -- e.g. v0-1-rc14. For cherry picks,
     add an additional letter (rc14a).
 *   Unless this is intended to be pushed to prod eventually, check the
@@ -237,7 +237,7 @@ requests), as second verification of the service account's auth.
 *   Submit.
 
 CircleCI should automatically push to staging, based on logic found in
-https://github.com/vanderbilt/pmi-data/blob/master/circle.yml
+[circle.yml](../circle.yml).
 
 If you are adding new indexes, the tests may fail when they aren't ready yet;
 use Rebuild in CircleCI to retry.

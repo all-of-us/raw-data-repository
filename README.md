@@ -8,7 +8,7 @@ should read the version that lives in the branch or tag you need.
 
 ## Documentation and Code Directory Overview
 
-CircleCI Build Status ![Build Status of master](https://circleci.com/gh/vanderbilt/pmi-data.png?circle-token=be5ab3e1a27746993aa0eca88d90f421b72a2b6e)
+CircleCI Build Status ![Build Status of master](https://circleci.com/gh/all-of-us/raw-data-repository.png?circle-token=be5ab3e1a27746993aa0eca88d90f421b72a2b6e)
 
 *   `rest-api` Source for the API server. [README](rest-api/README.md) describes
     development processes, auth model and other design, and summarizes API
@@ -32,7 +32,7 @@ CircleCI Build Status ![Build Status of master](https://circleci.com/gh/vanderbi
 The `rdr_client` and `rdr_common` Python modules may be installed with:
 
 ```Shell
-pip install -e 'git+git@github.com:vanderbilt/pmi-data.git#egg=all-of-us-rdr'
+pip install -e 'git+git@github.com:all-of-us/raw-data-repository.git#egg=all-of-us-rdr'
 ```
 
 and then used like
@@ -422,8 +422,7 @@ individual blood pressure or weight measurements).
 #### `POST /Participant/:pid/PhysicalMeasurements`
 
 Create a new PhysicalMeasurements for a given participant. The payload is a
-Bundle (see
-[example](https://github.com/vanderbilt/pmi-data/blob/master/rest-api/test/test-data/measurements-as-fhir.json))
+Bundle (see [example](rest-api/test/test-data/measurements-as-fhir.json))
 where the first entry is a `Composition` including:
 
 * `subject`: a reference to the participant, in the form `Patient/:pid`.  The
