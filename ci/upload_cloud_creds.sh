@@ -19,8 +19,8 @@ GCLOUD_CREDENTIALS_KEY=$(openssl rand -base64 32)
 GCLOUD_CREDENTIALS=$(openssl enc  -aes-256-cbc -in $1 -base64 -A  -k $GCLOUD_CREDENTIALS_KEY)
 
 VCS_TYPE=github
-CI_USERNAME=vanderbilt
-CI_PROJECT=pmi-data
+CI_USERNAME=all-of-us
+CI_PROJECT=raw-data-repository
 
 echo "----- Environment vars to set in Circle CI Admin UI:"
 
