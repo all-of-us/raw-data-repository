@@ -380,7 +380,7 @@ class FakeParticipantGenerator(object):
     request = {
         "subject": "Patient/%s" % participant_id,
         "identifier": [
-            {"system": "http://health-pro.org",
+            {"system": "https://www.pmi-ops.org",
              "value": "healthpro-order-id-123%s" % order_id_suffix},
             {"system": "https://orders.mayomedicallaboratories.com",
              "value": "WEB1YLHV%s" % order_id_suffix},
