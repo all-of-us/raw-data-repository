@@ -237,7 +237,7 @@ requests), as second verification of the service account's auth.
 *   Submit.
 
 CircleCI should automatically push to staging, based on logic found in
-[circle.yml](circle.yml).
+[circle.yml](../circle.yml).
 
 If you are adding new indexes, the tests may fail when they aren't ready yet;
 use Rebuild in CircleCI to retry.
