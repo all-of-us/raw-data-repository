@@ -25,7 +25,7 @@ import urllib2
 
 import jira
 
-_REPO_BASE_URL = 'https://github.com/vanderbilt/pmi-data'
+_REPO_BASE_URL = 'https://github.com/all-of-us/raw-data-repository'
 
 # Git tags of this format denote releases. Final letter suffixes denote cherry-picks.
 # This should match circle.yml.
