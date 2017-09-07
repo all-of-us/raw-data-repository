@@ -1,14 +1,5 @@
 # The RDR API
 
-The RDR repository is being developed to house data for the All of Us Research
-Program. We are developing this project in the open, and publishing the code
-with an open-source license, to share knowledge and provide insight and sample
-code for the community. We welcome your feedback! Please send any security
-concerns to security@pmi-ops.org, and feel free to file other issues via GitHub.
-Please note that we do not plan to incorporate external code contributions at
-this time, given that the RDR is being developed to meet the specific
-operational needs of the All of Us Research Program.
-
 ## Cloud projects for testing
 
 This api is implemented using Flask. They are served by a AppEngine instance.
