@@ -16,15 +16,20 @@ echo "No keys found!"
 
 # Pylint checks. Use pylint --list-msgs to see more available messages.
 # More options are set in rest-api/pylintrc.
-echo "Linting..."
+# On CircleCI, increasing parallelism with `-j 0` (or the `parallel` command)
+# reduces performance significantly (10s becomes about 1m).
+PYLINT_VERSION=`pylint --version | head -1 | sed 's/pylint \([0-9.]*\),/\1/g'`
+echo "`date -u` Linting with pylint ${PYLINT_VERSION}..."
 ENABLE_FOR_TESTS="\
   --enable=bad-indentation,broad-except,bare-except,logging-too-many-args \
   --enable=unused-argument,redefined-outer-name,redefined-builtin,superfluous-parens \
   --enable=trailing-whitespace,unused-import,unused-variable,undefined-variable"
 ENABLE_FOR_ALL="$ENABLE_FOR_TESTS --enable=bad-whitespace,line-too-long,unused-import,unused-variable"
-PYLINT_OPTS="-r n --disable=all"
-git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e '_test' | \
-    parallel pylint $PYLINT_OPTS $ENABLE_FOR_ALL
-git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' | \
-    parallel pylint $PYLINT_OPTS $ENABLE_FOR_TESTS
-echo "No lint errors!"
+PYLINT_OPTS="-r n --disable=all --score=n"
+echo "`date -u` Linting application files..."
+FILES_NON_TEST=`git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e '_test'`
+pylint $PYLINT_OPTS $ENABLE_FOR_ALL $FILES_NON_TEST
+echo "`date -u` Linting test files..."
+FILES_TEST=`git ls-files | grep '.py$' | grep -v -e 'alembic/versions/'`
+pylint $PYLINT_OPTS $ENABLE_FOR_TESTS $FILES_TEST
+echo "`date -u` No lint errors!"
