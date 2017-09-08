@@ -16,13 +16,14 @@ echo "No keys found!"
 
 # Pylint checks. Use pylint --list-msgs to see more available messages.
 # More options are set in rest-api/pylintrc.
-echo "Linting..."
+PYLINT_VERSION=`pylint --version | head -1 | sed 's/pylint \([0-9.]*\),/\1/g'`
+echo "Linting with pylint ${PYLINT_VERSION}..."
 ENABLE_FOR_TESTS="\
   --enable=bad-indentation,broad-except,bare-except,logging-too-many-args \
   --enable=unused-argument,redefined-outer-name,redefined-builtin,superfluous-parens \
   --enable=trailing-whitespace,unused-import,unused-variable,undefined-variable"
 ENABLE_FOR_ALL="$ENABLE_FOR_TESTS --enable=bad-whitespace,line-too-long,unused-import,unused-variable"
-PYLINT_OPTS="-r n --disable=all --score false"
+PYLINT_OPTS="-r n --disable=all --score=n"
 git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e '_test' | \
     parallel pylint $PYLINT_OPTS $ENABLE_FOR_ALL
 git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' | \
