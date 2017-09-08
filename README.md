@@ -8,13 +8,13 @@ should read the version that lives in the branch or tag you need.
 
 ## Contributions
 
-The RDR repository is being developed to house data for the All of Us Research
+The Raw Data Repository is being developed to house data for the All of Us Research
 Program. We are developing this project in the open, and publishing the code
 with an open-source license, to share knowledge and provide insight and sample
 code for the community. We welcome your feedback! Please send any security
 concerns to security@pmi-ops.org, and feel free to file other issues via GitHub.
 Please note that we do not plan to incorporate external code contributions at
-this time, given that the RDR is being developed to meet the specific
+this time, given that the RDR exists to meet the specific
 operational needs of the All of Us Research Program.
 
 ## Documentation and Code Directory Overview
@@ -290,8 +290,8 @@ For enumeration fields, the following values are defined:
   		`OTHER_RACE`, `PREFER_NOT_TO_SAY`
 
 
-The following fields have code values defined in the [codebook]
-(https://docs.google.com/spreadsheets/d/1TNqJ1ekLFHF4vYA2SNCb-4NL8QgoJrfuJsxnUuXd-is/edit):
+The following fields have code values defined in the [codebook](
+https://docs.google.com/spreadsheets/d/1TNqJ1ekLFHF4vYA2SNCb-4NL8QgoJrfuJsxnUuXd-is/edit):
 
 * `state`
 * `recontactMethod`
@@ -318,7 +318,7 @@ an exact match. Examples:
     GET /ParticipantSummary?hpoId=PITT&state=PIIState_MA
 
 For integer and date fields, the following prefixes can be provided for query parameter values to
-indicate inequality searches, as per the [FHIR search spec] (https://www.hl7.org/fhir/search.html):
+indicate inequality searches, as per the [FHIR search spec](https://www.hl7.org/fhir/search.html):
 
   * `lt`: less than
   * `le`: less than or equal to
