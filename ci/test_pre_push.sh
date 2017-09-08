@@ -16,6 +16,8 @@ echo "No keys found!"
 
 # Pylint checks. Use pylint --list-msgs to see more available messages.
 # More options are set in rest-api/pylintrc.
+# On CircleCI, increasing parallelism with `-j 0` (or the `parallel` command)
+# reduces performance significantly (10s becomes about 1m).
 PYLINT_VERSION=`pylint --version | head -1 | sed 's/pylint \([0-9.]*\),/\1/g'`
 echo "`date -u` Linting with pylint ${PYLINT_VERSION}..."
 ENABLE_FOR_TESTS="\
