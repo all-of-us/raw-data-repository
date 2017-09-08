@@ -17,15 +17,17 @@ echo "No keys found!"
 # Pylint checks. Use pylint --list-msgs to see more available messages.
 # More options are set in rest-api/pylintrc.
 PYLINT_VERSION=`pylint --version | head -1 | sed 's/pylint \([0-9.]*\),/\1/g'`
-echo "Linting with pylint ${PYLINT_VERSION}..."
+echo "`date -u` Linting with pylint ${PYLINT_VERSION}..."
 ENABLE_FOR_TESTS="\
   --enable=bad-indentation,broad-except,bare-except,logging-too-many-args \
   --enable=unused-argument,redefined-outer-name,redefined-builtin,superfluous-parens \
   --enable=trailing-whitespace,unused-import,unused-variable,undefined-variable"
 ENABLE_FOR_ALL="$ENABLE_FOR_TESTS --enable=bad-whitespace,line-too-long,unused-import,unused-variable"
 PYLINT_OPTS="-r n --disable=all --score=n"
+echo "`date -u` Linting application files..."
 git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e '_test' | \
-    parallel pylint $PYLINT_OPTS $ENABLE_FOR_ALL
+    parallel --eta pylint $PYLINT_OPTS $ENABLE_FOR_ALL
+echo "`date -u` Linting test files..."
 git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' | \
-    parallel pylint $PYLINT_OPTS $ENABLE_FOR_TESTS
-echo "No lint errors!"
+    parallel --eta pylint $PYLINT_OPTS $ENABLE_FOR_TESTS
+echo "`date -u` No lint errors!"
