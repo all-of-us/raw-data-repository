@@ -22,7 +22,7 @@ ENABLE_FOR_TESTS="\
   --enable=unused-argument,redefined-outer-name,redefined-builtin,superfluous-parens \
   --enable=trailing-whitespace,unused-import,unused-variable,undefined-variable"
 ENABLE_FOR_ALL="$ENABLE_FOR_TESTS --enable=bad-whitespace,line-too-long,unused-import,unused-variable"
-PYLINT_OPTS="-r n --disable=all"
+PYLINT_OPTS="-r n --disable=all --score false"
 git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' -e '_test' | \
     parallel pylint $PYLINT_OPTS $ENABLE_FOR_ALL
 git ls-files | grep '.py$' | grep -v -e 'alembic/versions/' | \
