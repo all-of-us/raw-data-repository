@@ -20,6 +20,8 @@ class ParticipantBase(object):
 
   lastModified = Column('last_modified', UTCDateTime, nullable=False)
   signUpTime = Column('sign_up_time', UTCDateTime, nullable=False)
+
+  # One or more HPO IDs in FHIR JSON. (The primary link is separately stored as hpoId.)
   providerLink = Column('provider_link', BLOB)
 
   # Both HealthPro and PTC can mutate participants; we use clientId to track
