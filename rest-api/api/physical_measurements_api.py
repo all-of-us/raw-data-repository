@@ -17,7 +17,9 @@ class PhysicalMeasurementsApi(BaseApi):
 
   @api_util.auth_required(HEALTHPRO)
   def post(self, p_id):
-    return super(PhysicalMeasurementsApi, self).post(p_id)
+    measurement = super(PhysicalMeasurementsApi, self).post(p_id)
+    ParticipantDao().add_missing_hpo_from_site(p_id, measurement.finalizedSiteId)
+    return measurement
 
   def list(self, participant_id=None):
     query = Query([FieldFilter('participantId', Operator.EQUALS, participant_id)],

@@ -8,6 +8,7 @@ from api_util import format_json_enum, parse_json_enum, format_json_date
 import clock
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
+from dao.site_dao import SiteDao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
 from model.utils import to_client_participant_id, to_client_biobank_id
@@ -200,6 +201,21 @@ class ParticipantDao(UpdatableDao):
         clientId=client_id,
         withdrawalStatus=resource_json.get('withdrawalStatus'),
         suspensionStatus=resource_json.get('suspensionStatus'))
+
+  def add_missing_hpo_from_site(self, participant_id, site_id):
+    if site_id is None:
+      raise BadRequest('No site ID given for auto-pairing participant.')
+    with self.session() as session:
+      site = SiteDao().get_with_session(session, site_id)
+      if site is None:
+        raise BadRequest('Invalid siteId reference %r.' % site_id)
+
+      participant = self.get_for_update(participant_id)
+      if participant.hpoId != UNSET_HPO_ID:
+        return
+
+      participant.hpoId = site.hpoId
+      # TODO(mwf) Also summary.
 
 
 def _get_primary_provider_link(participant):
