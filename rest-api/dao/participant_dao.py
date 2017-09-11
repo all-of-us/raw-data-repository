@@ -210,7 +210,7 @@ class ParticipantDao(UpdatableDao):
       if site is None:
         raise BadRequest('Invalid siteId reference %r.' % site_id)
 
-      participant = self.get_for_update(participant_id)
+      participant = self.get_for_update(session, participant_id)
       if participant.hpoId != UNSET_HPO_ID:
         return
 
@@ -244,22 +244,22 @@ def raise_if_withdrawn(obj):
     raise Forbidden('Participant %d has withdrawn' % obj.participantId)
 
 
-def make_primary_provider_link(given_hpo_name=None, hpo_id=None, hpo=None):
+def make_primary_provider_link(hpo_name=None, hpo_id=None, hpo=None):
   """Returns serialized FHIR JSON for a primary provider link based on HPO information."""
-  if len([v for v in given_hpo_name, hpo_id, hpo if v is not None]) != 1:
+  if len([v for v in hpo_name, hpo_id, hpo if v is not None]) != 1:
     raise ValuError(
         'Exactly one of hpo_name=%r hpo_id=%r or hpo=%r must be defined.'
         % (given_hpo_name, hpo_id, hpo))
-  if given_hpo_name is not None:
-    hpo_name = given_hpo_name
+  if hpo_name is not None:
+    name = hpo_name
   elif hpo_id is not None:
-    hpo_name = HPODao().get(hpo_id).name
+    name = HPODao().get(hpo_id).name
   else:
-    hpo_name = hpo.name
+    name = hpo.name
 
   return json.dumps([{
       'primary': True,
       'organization': {
-          'reference': 'Organization/%s' % hpo_name
+          'reference': 'Organization/%s' % name
       }
   }])

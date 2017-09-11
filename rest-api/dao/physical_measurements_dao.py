@@ -228,6 +228,7 @@ class PhysicalMeasurementsDao(BaseDao):
         continue
       self._update_amended(obj, extension, url, session)
       break
+    ParticipantDao().add_missing_hpo_from_site(obj.participantId, obj.finalizedSiteId)
     self._update_participant_summary(session, obj.created, obj.participantId)
     existing_measurements = (session.query(PhysicalMeasurements)
                              .filter(PhysicalMeasurements.participantId == obj.participantId)
@@ -242,6 +243,7 @@ class PhysicalMeasurementsDao(BaseDao):
     PhysicalMeasurementsDao.set_measurement_ids(obj)
 
     super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
+
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
     session.flush()
     # Update the resource to contain the ID.

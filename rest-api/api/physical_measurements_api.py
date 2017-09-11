@@ -7,6 +7,7 @@ from flask import request
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from query import Query, Operator, FieldFilter
 
+
 class PhysicalMeasurementsApi(BaseApi):
   def __init__(self):
     super(PhysicalMeasurementsApi, self).__init__(PhysicalMeasurementsDao())
@@ -17,15 +18,14 @@ class PhysicalMeasurementsApi(BaseApi):
 
   @api_util.auth_required(HEALTHPRO)
   def post(self, p_id):
-    measurement = super(PhysicalMeasurementsApi, self).post(p_id)
-    ParticipantDao().add_missing_hpo_from_site(p_id, measurement.finalizedSiteId)
-    return measurement
+    return super(PhysicalMeasurementsApi, self).post(p_id)
 
   def list(self, participant_id=None):
     query = Query([FieldFilter('participantId', Operator.EQUALS, participant_id)],
                   None, DEFAULT_MAX_RESULTS, request.args.get('_token'))
     results = self.dao.query(query)
     return self._make_bundle(results, 'id', participant_id)
+
 
 @api_util.auth_required(PTC)
 def sync_physical_measurements():
