@@ -31,9 +31,6 @@ def data_path(filename):
   return os.path.join(os.path.dirname(__file__), 'test-data', filename)
 
 
-def primary_provider_link(hpo_name):
-  return '[ { "primary": true, "organization": { "reference": "Organization/%s" } } ]' % hpo_name
-
 def load_measurement_json(participant_id, now=None):
   """Loads a PhysicalMeasurement FHIR resource returns it as parsed JSON."""
   with open(data_path('measurements-as-fhir.json')) as measurements_file:

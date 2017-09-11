@@ -26,6 +26,7 @@ from field_mappings import QUESTION_CODE_TO_FIELD
 
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
+from dao.participant_dao import make_primary_provider_link
 from dao.site_dao import SiteDao
 from dao.questionnaire_dao import QuestionnaireDao
 from dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION,\
@@ -450,7 +451,7 @@ class FakeParticipantGenerator(object):
     if random.random() <= _NO_HPO_CHANGE:
       return consent_time, participant_response
     hpo = random.choice(self._hpos)
-    participant_response['providerLink'] = [_make_primary_provider_link(hpo)]
+    participant_response['providerLink'] = [make_primary_provider_link(hpo=hpo)]
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_HPO_CHANGE)
     change_time = consent_time + datetime.timedelta(days=days_delta)
     result = self._update_participant(change_time, participant_response, participant_id)
@@ -506,7 +507,7 @@ class FakeParticipantGenerator(object):
         hpo = random.choice(self._hpos)
     if hpo:
       if hpo.hpoId != UNSET_HPO_ID:
-        participant_json['providerLink'] = [_make_primary_provider_link(hpo)]
+        participant_json['providerLink'] = [make_primary_provider_link(hpo=hpo)]
     creation_time = self._days_ago(random.randint(0, _MAX_DAYS_HISTORY))
     participant_response = self._client.request_json(
         'Participant', method='POST', body=participant_json, pretend_date=creation_time)
@@ -674,6 +675,3 @@ def _string_answer(value):
 
 def _code_answer(code):
   return {"valueCoding": {"system": PPI_SYSTEM, "code": code}}
-
-def _make_primary_provider_link(hpo):
-  return {'primary': True, 'organization': {'reference': 'Organization/' + hpo.name}}

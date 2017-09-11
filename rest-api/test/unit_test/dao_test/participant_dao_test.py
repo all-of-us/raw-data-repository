@@ -1,8 +1,7 @@
 import datetime
-import test_data
 
 from dao.base_dao import MAX_INSERT_ATTEMPTS
-from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
+from dao.participant_dao import ParticipantDao, ParticipantHistoryDao, make_primary_provider_link
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
 from participant_enums import WithdrawalStatus
@@ -90,7 +89,7 @@ class ParticipantDaoTest(SqlTestBase):
       with FakeClock(time):
         self.dao.insert(p)
 
-    p.providerLink = test_data.primary_provider_link('PITT')
+    p.providerLink = make_primary_provider_link(hpo_name='PITT')
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
       self.dao.update(p)
@@ -124,7 +123,7 @@ class ParticipantDaoTest(SqlTestBase):
       with FakeClock(time):
         self.dao.insert(p)
 
-    p.providerLink = test_data.primary_provider_link('PITT')
+    p.providerLink = make_primary_provider_link(hpo_name='PITT')
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
       self.dao.update(p)
@@ -166,7 +165,7 @@ class ParticipantDaoTest(SqlTestBase):
         self.dao.insert(p)
 
     p.version = 1
-    p.providerLink = test_data.primary_provider_link('PITT')
+    p.providerLink = make_primary_provider_link(hpo_name='PITT')
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
       self.dao.update(p)
@@ -185,7 +184,7 @@ class ParticipantDaoTest(SqlTestBase):
         self.dao.insert(p)
 
     p.version = 2
-    p.providerLink = test_data.primary_provider_link('PITT')
+    p.providerLink = make_primary_provider_link(hpo_name='PITT')
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
       with self.assertRaises(PreconditionFailed):
@@ -207,7 +206,7 @@ class ParticipantDaoTest(SqlTestBase):
     self.assertEquals(p.asdict(), p2.asdict())
 
     p.version = 1
-    p.providerLink = test_data.primary_provider_link('PITT')
+    p.providerLink = make_primary_provider_link(hpo_name='PITT')
     self.dao.update(p)
 
   def test_update_withdrawn_status_fails(self):
@@ -237,7 +236,7 @@ class ParticipantDaoTest(SqlTestBase):
 
   def test_bad_hpo_insert(self):
     p = Participant(participantId=1, version=1, biobankId=2,
-                    providerLink = test_data.primary_provider_link('FOO'))
+                    providerLink = make_primary_provider_link(hpo_name='FOO'))
     with self.assertRaises(BadRequest):
       self.dao.insert(p)
 
@@ -247,6 +246,6 @@ class ParticipantDaoTest(SqlTestBase):
     with FakeClock(time):
       self.dao.insert(p)
 
-    p.providerLink = test_data.primary_provider_link('FOO')
+    p.providerLink = make_primary_provider_link(hpo_name='FOO')
     with self.assertRaises(BadRequest):
       self.dao.update(p)

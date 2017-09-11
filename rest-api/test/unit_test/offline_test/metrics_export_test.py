@@ -15,14 +15,14 @@ from model.hpo import HPO
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.hpo_dao import HPODao
 from dao.metrics_dao import MetricsVersionDao, SERVING_METRICS_DATA_VERSION
-from dao.participant_dao import ParticipantDao
+from dao.participant_dao import ParticipantDao, make_primary_provider_link
 from model.metrics import MetricsVersion
 from model.participant import Participant
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from offline.metrics_config import get_participant_fields, HPO_ID_FIELDS, ANSWER_FIELDS
 from offline.metrics_export import MetricsExport, _HPO_IDS_CSV, _PARTICIPANTS_CSV, _ANSWERS_CSV
 from offline_test.gcs_utils import assertCsvContents
-from test_data import primary_provider_link, load_biobank_order_json, load_measurement_json
+from test_data import load_biobank_order_json, load_measurement_json
 from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase
 from unit_test_util import make_questionnaire_response_json, pretty, run_deferred_tasks
 from unit_test_util import PITT_HPO_ID
@@ -110,7 +110,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant = Participant(
           participantId=1,
           biobankId=2,
-          providerLink=primary_provider_link('AZ_TUCSON'))
+          providerLink=make_primary_provider_link(hpo_name='AZ_TUCSON'))
       participant_dao.insert(participant)
       self.send_consent('P1', email='bob@gmail.com')
 
@@ -118,20 +118,20 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant2 = Participant(
           participantId=2,
           biobankId=3,
-          providerLink=primary_provider_link('PITT'))
+          providerLink=make_primary_provider_link(hpo_name='PITT'))
       participant_dao.insert(participant2)
       self.send_consent('P2', email='bob@fexample.com')
 
     with FakeClock(TIME):
       # Test HPO affiliation; this test participant is ignored.
       participant3 = Participant(participantId=3, biobankId=4,
-                                 providerLink=primary_provider_link('TEST'))
+                                 providerLink=make_primary_provider_link(hpo_name='TEST'))
       participant_dao.insert(participant3)
       self.send_consent('P3', email='fred@gmail.com')
 
       # example.com e-mail; this test participant is ignored, too.
       participant4 = Participant(participantId=4, biobankId=5,
-                                 providerLink=primary_provider_link('PITT'))
+                                 providerLink=make_primary_provider_link(hpo_name='PITT'))
       participant_dao.insert(participant4)
       self.send_consent('P4', email='bob@example.com')
 
@@ -139,7 +139,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       # This update to participant has no effect, as the HPO ID didn't change.
       participant = self._participant_with_defaults(
           participantId=1, version=1, biobankId=2,
-          providerLink=primary_provider_link('AZ_TUCSON'))
+          providerLink=make_primary_provider_link(hpo_name='AZ_TUCSON'))
       participant_dao.update(participant)
       self.submit_questionnaire_response('P1', questionnaire_id,
                                          RACE_WHITE_CODE, 'male', None,
@@ -152,7 +152,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
           participantId=1,
           version=2,
           biobankId=2,
-          providerLink=primary_provider_link('PITT'))
+          providerLink=make_primary_provider_link(hpo_name='PITT'))
       participant_dao.update(participant)
       self.send_post('Participant/P2/PhysicalMeasurements',
                      load_measurement_json(2))
