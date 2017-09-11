@@ -1,5 +1,3 @@
-import logging
-
 from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
 from dao.base_dao import BaseDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -207,8 +205,6 @@ class BiobankOrderDao(BaseDao):
     order = BiobankOrder(
         participantId=participant_id,
         created=resource.created.date)
-
-    site_dao = SiteDao()
 
     if not resource.created_info:
       raise BadRequest('Created Info is required, but was missing in request.')
