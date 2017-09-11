@@ -1,5 +1,3 @@
-import logging
-
 from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
 from dao.base_dao import BaseDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -17,6 +15,7 @@ from fhirclient.models.identifier import Identifier
 from fhirclient.models import fhirdate
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest, Conflict
+
 
 def _ToFhirDate(dt):
   if not dt:
@@ -46,6 +45,7 @@ class _FhirBiobankOrderedSample(FhirMixin, BackboneElement):
     FhirProperty('finalized', fhirdate.FHIRDate),
   ]
 
+
 class _FhirBiobankOrderHandlingInfo(FhirMixin, BackboneElement):
   """Information about what user and site handled an order."""
   resource_name = "BiobankOrderHandlingInfo"
@@ -54,27 +54,23 @@ class _FhirBiobankOrderHandlingInfo(FhirMixin, BackboneElement):
     FhirProperty('site', Identifier),
   ]
 
+
 class _FhirBiobankOrder(FhirMixin, DomainResource):
   """FHIR client definition of the expected JSON structure for a BiobankOrder resource."""
   resource_name = 'BiobankOrder'
   _PROPERTIES = [
     FhirProperty('subject', str, required=True),
-    # TODO: get rid of this once HealthPro switches over (DA-280)
-    FhirProperty('author', Identifier),
     FhirProperty('identifier', Identifier, is_list=True, required=True),
     FhirProperty('created', fhirdate.FHIRDate, required=True),
     FhirProperty('samples', _FhirBiobankOrderedSample, is_list=True, required=True),
     FhirProperty('notes', _FhirBiobankOrderNotes),
-    # TODO: get rid of this once HealthPro switches over (DA-280)
-    FhirProperty('source_site', Identifier),
-    # TODO: get rid of this once HealthPro switches over (DA-280)
-    FhirProperty('finalized_site', Identifier),
 
     FhirProperty('created_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('collected_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('processed_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('finalized_info', _FhirBiobankOrderHandlingInfo)
   ]
+
 
 class BiobankOrderDao(BaseDao):
   def __init__(self):
@@ -210,51 +206,16 @@ class BiobankOrderDao(BaseDao):
         participantId=participant_id,
         created=resource.created.date)
 
-    site_dao = SiteDao()
-
-    # TODO: require this once HealthPro switches over (DA-280)
-    if resource.created_info:
-      order.sourceUsername, order.sourceSiteId = self._parse_handling_info(resource.created_info)
-
-    if resource.collected_info:
-      order.collectedUsername, order.collectedSiteId = \
-        self._parse_handling_info(resource.collected_info)
-    if resource.processed_info:
-      order.processedUsername, order.processedSiteId = \
-        self._parse_handling_info(resource.processed_info)
-    if resource.finalized_info:
-      order.finalizedUsername, order.finalizedSiteId = \
-        self._parse_handling_info(resource.finalized_info)
-
-    # TODO: get rid of this once HealthPro switches over (DA-280)
-    if resource.source_site:
-      if resource.source_site.system == SITE_ID_SYSTEM:
-        site = site_dao.get_by_google_group(resource.source_site.value)
-        if not site:
-          logging.warning('Unrecognized source site: %s', resource.source_site.value)
-        else:
-          order.sourceSiteId = site.siteId
-      else:
-        logging.warning('Unrecognized site system: %s', resource.source_site.system)
-
-    if not order.sourceSiteId:
-      raise BadRequest('Either createdInfo or sourceSite must be provided.')
-
-    # TODO: get rid of this once HealthPro switches over (DA-280)
-    if resource.finalized_site:
-      if resource.finalized_site.system != SITE_ID_SYSTEM:
-        raise BadRequest('Invalid site system: %s' % resource.finalized_site.system)
-      site = site_dao.get_by_google_group(resource.finalized_site.value)
-      if not site:
-        raise BadRequest('Unrecognized finalized site: %s' % resource.finalized_site.value)
-      order.finalizedSiteId = site.siteId
-
-    # TODO: get rid of this once HealthPro switches over (DA-280)
-    if resource.author:
-      if resource.author.system == HEALTHPRO_USERNAME_SYSTEM:
-        order.finalizedUsername = resource.author.value
-      else:
-        raise BadRequest('Unrecognized author system: %s' % resource.author.system)
+    if not resource.created_info:
+      raise BadRequest('Created Info is required, but was missing in request.')
+    order.sourceUsername, order.sourceSiteId = self._parse_handling_info(
+        resource.created_info)
+    order.collectedUsername, order.collectedSiteId = self._parse_handling_info(
+        resource.collected_info)
+    order.processedUsername, order.processedSiteId = self._parse_handling_info(
+        resource.processed_info)
+    order.finalizedUsername, order.finalizedSiteId = self._parse_handling_info(
+        resource.finalized_info)
 
     if resource.notes:
       order.collectedNote = resource.notes.collected
@@ -334,23 +295,6 @@ class BiobankOrderDao(BaseDao):
     resource.collected_info = self._to_handling_info(model.collectedUsername, model.collectedSiteId)
     resource.processed_info = self._to_handling_info(model.processedUsername, model.processedSiteId)
     resource.finalized_info = self._to_handling_info(model.finalizedUsername, model.finalizedSiteId)
-
-    # TODO: remove this once HealthPro switches over (DA-280)
-    if resource.created_info and resource.created_info.site:
-      resource.source_site = Identifier()
-      resource.source_site.system = resource.created_info.site.system
-      resource.source_site.value = resource.created_info.site.value
-
-    # TODO: remove this once HealthPro switches over (DA-280)
-    if resource.finalized_info:
-      if resource.finalized_info.site:
-        resource.finalized_site = Identifier()
-        resource.finalized_site.system = resource.finalized_info.site.system
-        resource.finalized_site.value = resource.finalized_info.site.value
-      if resource.finalized_info.author:
-        resource.author = Identifier()
-        resource.author.system = resource.finalized_info.author.system
-        resource.author.value = resource.finalized_info.author.value
 
     self._add_identifiers_to_resource(resource, model)
     self._add_samples_to_resource(resource, model)
