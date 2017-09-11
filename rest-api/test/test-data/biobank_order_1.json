@@ -7,18 +7,6 @@
     "system": "https://orders.mayomedicallaboratories.com",
     "value": "WEB1YLHV%(participant_id)d"
   }],
-  "author": {
-    "system": "https://www.pmi-ops.org/healthpro-username",
-    "value": "bob@pmi-ops.org"
-  },
-  "sourceSite": {
-    "system": "https://www.pmi-ops.org/site-id",
-    "value": "hpo-site-monroeville"
-  },
-  "finalizedSite": {
-    "system": "https://www.pmi-ops.org/site-id",
-    "value": "hpo-site-monroeville"
-  },
   "createdInfo": {
     "author": {
       "system": "https://www.pmi-ops.org/healthpro-username",

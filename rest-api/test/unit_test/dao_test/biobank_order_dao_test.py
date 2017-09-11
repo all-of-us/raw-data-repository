@@ -55,8 +55,7 @@ class BiobankOrderDaoTest(SqlTestBase):
                                       processingRequired=True)])
     order_json = BiobankOrderDao().to_client_json(order)
     expected_order_json = load_biobank_order_json(self.participant.participantId)
-    for key in ['createdInfo', 'collectedInfo', 'processedInfo', 'finalizedInfo',
-                'sourceSite', 'finalizedSite', 'author']:
+    for key in ('createdInfo', 'collectedInfo', 'processedInfo', 'finalizedInfo'):
       self.assertEquals(expected_order_json[key], order_json.get(key))
 
   def test_duplicate_insert_ok(self):
