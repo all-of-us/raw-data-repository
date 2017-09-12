@@ -211,6 +211,8 @@ class ParticipantDao(UpdatableDao):
         raise BadRequest('Invalid siteId reference %r.' % site_id)
 
       participant = self.get_for_update(session, participant_id)
+      if participant is None:
+        raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
       if participant.hpoId != UNSET_HPO_ID:
         return
 
