@@ -218,6 +218,8 @@ class ParticipantDao(UpdatableDao):
 
       participant.hpoId = site.hpoId
       participant.providerLink = make_primary_provider_link(hpo_id=site.hpoId)
+      if participant.participantSummary is None:
+        raise RuntimeError('No ParticipantSummary available for P%d.' % participant_id)
       participant.participantSummary.hpoId = site.hpoId
 
 
