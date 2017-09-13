@@ -34,6 +34,10 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertIsNotNone(measurement.finalizedSiteId)
 
   def _make_physical_measurements(self, **kwargs):
+    """Makes a new PhysicalMeasurements (same values every time) with valid/complete defaults.
+
+    Kwargs pass through to PM constructor, overriding defaults.
+    """
     for k, default_value in (
         ('physicalMeasurementsId', 1),
         ('participantId', self.participant.participantId),
