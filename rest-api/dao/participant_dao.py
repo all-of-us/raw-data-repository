@@ -251,9 +251,9 @@ def raise_if_withdrawn(obj):
 def make_primary_provider_link(hpo_name=None, hpo_id=None, hpo=None):
   """Returns serialized FHIR JSON for a primary provider link based on HPO information."""
   if len([v for v in hpo_name, hpo_id, hpo if v is not None]) != 1:
-    raise ValuError(
+    raise ValueError(
         'Exactly one of hpo_name=%r hpo_id=%r or hpo=%r must be defined.'
-        % (given_hpo_name, hpo_id, hpo))
+        % (hpo_name, hpo_id, hpo))
   if hpo_name is not None:
     name = hpo_name
   elif hpo_id is not None:
