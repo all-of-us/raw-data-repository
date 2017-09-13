@@ -485,10 +485,10 @@ class PhysicalMeasurementsDao(BaseDao):
                 created_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
               elif url == _FINALIZED_LOC_EXTENSION:
                 finalized_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
-              else:
+              elif url not in _ALL_EXTENSIONS:
                 logging.warning(
-                    'Unrecognized extension URL: %r (should be %r or %r)',
-                    url, _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION)
+                    'Unrecognized extension URL: %r (should be one of %s)',
+                    url, _ALL_EXTENSIONS)
             else:
               logging.warning('No valueReference in extension, skipping: %r', extension)
           authors = resource.get('author')
