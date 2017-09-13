@@ -119,11 +119,11 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     physical_measurements_id = response['entry'][0]['resource']['id']
     pm_id = int(physical_measurements_id)
     physical_measurements = PhysicalMeasurementsDao().get_with_children(physical_measurements_id)
-    self.assertEquals(1, physical_measurements.createdSiteId)
-    self.assertEquals('bob.jones@pmi-ops.org', physical_measurements.createdUsername)
-    # Site not present in DB, so we don't set it.
-    self.assertIsNone(physical_measurements.finalizedSiteId)
+    self.assertEquals(physical_measurements.finalizedSiteId, 1)
     self.assertEquals('fred.smith@pmi-ops.org', physical_measurements.finalizedUsername)
+    # Site not present in DB, so we don't set it.
+    self.assertIsNone(physical_measurements.createdSiteId)
+    self.assertEquals('bob.jones@pmi-ops.org', physical_measurements.createdUsername)
 
     em1_id = pm_id * 1000
     bp1 = Measurement(measurementId=pm_id * 1000 + 1,
