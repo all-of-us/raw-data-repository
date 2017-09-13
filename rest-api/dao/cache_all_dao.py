@@ -69,8 +69,9 @@ class CacheAllDao(UpdatableDao):
     singletons.invalidate(self.cache_index)
 
   def insert_with_session(self, session, obj):
-    super(CacheAllDao, self).insert_with_session(session, obj)
+    created_obj = super(CacheAllDao, self).insert_with_session(session, obj)
     self._invalidate_cache()
+    return created_obj
 
   def update_with_session(self, session, obj):
     super(CacheAllDao, self).update_with_session(session, obj)
