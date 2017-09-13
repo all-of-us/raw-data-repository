@@ -167,17 +167,21 @@ class _TestDb(object):
     # Reconnecting to in-memory SQLite (because singletons are cleared above)
     # effectively clears the database.
 
-  @staticmethod
-  def _setup_hpos():
+  def _setup_hpos(self):
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET'))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT', organizationType=OrganizationType.HPO))
+    self.hpo_id = PITT_HPO_ID
 
     site_dao = SiteDao()
-    site_dao.insert(Site(siteName='Monroeville Urgent Care Center',
-                         googleGroup='hpo-site-monroeville',
-                         consortiumName='Pittsburgh', mayolinkClientNumber=7035769,
-                         hpoId=PITT_HPO_ID))
+    created_site = site_dao.insert(Site(
+        siteName='Monroeville Urgent Care Center',
+        googleGroup='hpo-site-monroeville',
+        consortiumName='Pittsburgh',
+        mayolinkClientNumber=7035769,
+        hpoId=PITT_HPO_ID))
+    self.site_id = created_site.siteId
+
 
 class SqlTestBase(TestbedTestBase):
   """Base class for unit tests that use the SQL database."""
