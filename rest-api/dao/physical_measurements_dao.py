@@ -26,6 +26,7 @@ _FINALIZED_STATUS = 'finalized'
 _LOCATION_PREFIX = 'Location/'
 _AUTHOR_PREFIX = 'Practitioner/'
 _QUALIFIED_BY_RELATED_TYPE = 'qualified-by'
+_ALL_EXTENSIONS = set([_AMENDMENT_URL, _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION])
 
 class PhysicalMeasurementsDao(BaseDao):
 
@@ -215,6 +216,7 @@ class PhysicalMeasurementsDao(BaseDao):
         measurement_count += 1
 
   def insert_with_session(self, session, obj):
+    is_amendment = False
     if obj.logPosition is not None:
       raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
     obj.logPosition = LogPosition()
@@ -222,12 +224,16 @@ class PhysicalMeasurementsDao(BaseDao):
     obj.created = clock.CLOCK.now()
     resource_json = json.loads(obj.resource)
     for extension in resource_json['entry'][0]['resource'].get('extension', []):
-      url = extension.get('url', '')
-      if url != _AMENDMENT_URL:
-        logging.info('Ignoring unsupported extension for PhysicalMeasurements: %r.' % url)
+      url = extension.get('url')
+      if url not in _ALL_EXTENSIONS:
+        logging.info(
+            'Ignoring unsupported extension for PhysicalMeasurements: %r. Expected one of: %s',
+            url, _ALL_EXTENSIONS)
         continue
-      self._update_amended(obj, extension, url, session)
-      break
+      if url == _AMENDMENT_URL:
+        self._update_amended(obj, extension, url, session)
+        is_amendment = True
+        break
     self._update_participant_summary(session, obj.created, obj.participantId)
     existing_measurements = (session.query(PhysicalMeasurements)
                              .filter(PhysicalMeasurements.participantId == obj.participantId)
@@ -242,8 +248,9 @@ class PhysicalMeasurementsDao(BaseDao):
     PhysicalMeasurementsDao.set_measurement_ids(obj)
 
     inserted_obj = super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
-    ParticipantDao().add_missing_hpo_from_site(
-        inserted_obj.participantId, inserted_obj.finalizedSiteId)
+    if not is_amendment:  # Amendments aren't expected to have site ID extensions.
+      ParticipantDao().add_missing_hpo_from_site(
+          inserted_obj.participantId, inserted_obj.finalizedSiteId)
 
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
     session.flush()
