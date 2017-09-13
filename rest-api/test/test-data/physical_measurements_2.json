@@ -28,7 +28,7 @@
           },
           {
             "url": "http://terminology.pmi-ops.org/StructureDefinition/finalized-location",
-            "valueReference": "Location/hpo-site-bannerphoenix"
+            "valueReference": "Location/hpo-site-bogussite-notindb"
           }
         ],
         "date": "2016-09-02T20:59:41Z",
