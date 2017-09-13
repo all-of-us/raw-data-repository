@@ -10,7 +10,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus
 from test_data import load_measurement_json, load_measurement_json_amendment
-from unit_test_util import SqlTestBase, data_path
+from unit_test_util import SqlTestBase
 from werkzeug.exceptions import BadRequest, Forbidden
 
 TIME_1 = datetime.datetime(2016, 1, 1)
