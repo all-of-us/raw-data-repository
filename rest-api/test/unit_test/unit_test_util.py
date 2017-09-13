@@ -181,6 +181,12 @@ class _TestDb(object):
         mayolinkClientNumber=7035769,
         hpoId=PITT_HPO_ID))
     self.site_id = created_site.siteId
+    site_dao.insert(Site(
+        siteName='Phoenix Urgent Care Center',
+        googleGroup='hpo-site-bannerphoenix',
+        consortiumName='Pittsburgh',
+        mayolinkClientNumber=7035770,
+        hpoId=PITT_HPO_ID))
 
 
 class SqlTestBase(TestbedTestBase):
