@@ -467,16 +467,23 @@ class PhysicalMeasurementsDao(BaseDao):
           observations.append((entry['fullUrl'],
                                fhirclient.models.observation.Observation(resource)))
         elif resource_type == _COMPOSITION_RESOURCE_TYPE:
-          extensions = resource.get('extension')
-          if extensions:
-            for extension in extensions:
-              value_reference = extension.get('valueReference')
-              if value_reference:
-                url = extension.get('url')
-                if url == _CREATED_LOC_EXTENSION:
-                  created_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
-                elif url == _FINALIZED_LOC_EXTENSION:
-                  finalized_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
+          extensions = resource.get('extension', [])
+          if not extensions:
+            logging.warning('No extensions in composition resource (expected site info).')
+          for extension in extensions:
+            value_reference = extension.get('valueReference')
+            if value_reference:
+              url = extension.get('url')
+              if url == _CREATED_LOC_EXTENSION:
+                created_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
+              elif url == _FINALIZED_LOC_EXTENSION:
+                finalized_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
+              else:
+                logging.warning(
+                    'Unrecognized extension URL: %r (should be %r or %r)',
+                    url, _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION)
+            else:
+              logging.warning('No valueReference in extension, skipping: %r', extension)
           authors = resource.get('author')
           for author in authors:
             author_extension = author.get('extension')
@@ -487,6 +494,10 @@ class PhysicalMeasurementsDao(BaseDao):
                 finalized_username = PhysicalMeasurementsDao.get_author_username(reference)
               elif authoring_step == _CREATED_STATUS:
                 created_username = PhysicalMeasurementsDao.get_author_username(reference)
+        else:
+          logging.warning(
+              'Unrecognized resource type (expected %r or %r), skipping: %r',
+              _OBSERVATION_RESOURCE_TYPE, _COMPOSITION_RESOURCE_TYPE, resource_type)
 
     # Take two passes over the observations; once to find all the qualifiers and observations
     # without related qualifiers, and a second time to find all observations with related
