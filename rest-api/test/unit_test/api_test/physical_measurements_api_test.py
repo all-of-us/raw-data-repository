@@ -1,12 +1,17 @@
 import httplib
 import datetime
-import main
 import json
 
+import main
+from dao.participant_dao import ParticipantDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from model.measurements import Measurement
+from model.participant import Participant
+from model.utils import from_client_participant_id
+from participant_enums import UNSET_HPO_ID
 from test.unit_test.unit_test_util import FlaskTestBase
 from test_data import load_measurement_json, load_measurement_json_amendment, data_path
+
 
 class PhysicalMeasurementsApiTest(FlaskTestBase):
 
@@ -240,3 +245,12 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     sync_response_2 = self.send_get(relative_url)
     self.assertEquals(1, len(sync_response_2['entry']))
     self.assertNotEquals(sync_response['entry'][0], sync_response_2['entry'][0])
+
+  def test_auto_pair_called(self):
+    pid_numeric = from_client_participant_id(self.participant_id)
+    participant_dao = ParticipantDao()
+    self.send_consent(self.participant_id)
+    self.send_consent(self.participant_id_2)
+    self.assertEquals(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
+    self._insert_measurements(datetime.datetime.utcnow().isoformat())
+    self.assertNotEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
