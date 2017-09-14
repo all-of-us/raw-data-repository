@@ -10,12 +10,13 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus
 from test_data import load_measurement_json, load_measurement_json_amendment
-from unit_test_util import SqlTestBase, data_path
+from unit_test_util import SqlTestBase
 from werkzeug.exceptions import BadRequest, Forbidden
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
+
 
 class PhysicalMeasurementsDaoTest(SqlTestBase):
   def setUp(self):
@@ -27,13 +28,33 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
                                                              TIME_1.isoformat()))
 
+  def test_from_client_json(self):
+    measurement = PhysicalMeasurementsDao.from_client_json(json.loads(self.measurement_json))
+    self.assertIsNotNone(measurement.createdSiteId)
+    self.assertIsNotNone(measurement.finalizedSiteId)
+
+  def _make_physical_measurements(self, **kwargs):
+    """Makes a new PhysicalMeasurements (same values every time) with valid/complete defaults.
+
+    Kwargs pass through to PM constructor, overriding defaults.
+    """
+    for k, default_value in (
+        ('physicalMeasurementsId', 1),
+        ('participantId', self.participant.participantId),
+        ('resource', self.measurement_json),
+        ('createdSiteId', 1),
+        ('finalizedSiteId', 2)):
+      if k not in kwargs:
+        kwargs[k] = default_value
+    return PhysicalMeasurements(**kwargs)
+
   def testInsert_noParticipantId(self):
     with self.assertRaises(BadRequest):
-      self.dao.insert(PhysicalMeasurements(resource=self.measurement_json))
+      self.dao.insert(self._make_physical_measurements(participantId=None))
 
   def testInsert_wrongParticipantId(self):
     with self.assertRaises(BadRequest):
-      self.dao.insert(PhysicalMeasurements(participantId=2, resource=self.measurement_json))
+      self.dao.insert(self._make_physical_measurements(participantId=2))
 
   def _with_id(self, resource, id_):
     measurements_json = json.loads(resource)
@@ -42,28 +63,28 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
 
   def testInsert_noSummary(self):
     with self.assertRaises(BadRequest):
-      self.dao.insert(PhysicalMeasurements(participantId=self.participant.participantId,
-                                           resource=self.measurement_json))
+      self.dao.insert(self._make_physical_measurements())
 
   def _make_summary(self):
     self.participant_summary_dao.insert(self.participant_summary(self.participant))
 
   def testInsert_rightParticipantId(self):
     self._make_summary()
-    measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
-                                                  participantId=self.participant.participantId,
-                                                  resource=self.measurement_json)
     summary = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertIsNone(summary.physicalMeasurementsStatus)
-    with FakeClock(TIME_2):
-      measurements = self.dao.insert(measurements_to_insert)
 
-    expected_measurements = PhysicalMeasurements(physicalMeasurementsId=1,
-                                                 participantId=self.participant.participantId,
-                                                 resource=self._with_id(self.measurement_json, '1'),
-                                                 created=TIME_2,
-                                                 final=True,
-                                                 logPositionId=1)
+    with FakeClock(TIME_2):
+      measurements = self.dao.insert(self._make_physical_measurements())
+
+    expected_measurements = PhysicalMeasurements(
+        physicalMeasurementsId=1,
+        participantId=self.participant.participantId,
+        resource=self._with_id(self.measurement_json, '1'),
+        created=TIME_2,
+        final=True,
+        logPositionId=1,
+        createdSiteId=1,
+        finalizedSiteId=2)
     self.assertEquals(expected_measurements.asdict(), measurements.asdict())
     measurements = self.dao.get(measurements.physicalMeasurementsId)
     self.assertEquals(expected_measurements.asdict(), measurements.asdict())
@@ -72,51 +93,32 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEquals(PhysicalMeasurementsStatus.COMPLETED, summary.physicalMeasurementsStatus)
     self.assertEquals(TIME_2, summary.physicalMeasurementsTime)
 
-  def test_backfill(self):
+  def test_backfill_is_noop(self):
     self._make_summary()
-    with open(data_path('physical_measurements_2.json')) as measurements_file:
-      json_text = measurements_file.read() % {
-        'participant_id': self.participant.participantId,
-        'authored_time': TIME_1.isoformat()
-      }
-    measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
-                                                  participantId=self.participant.participantId,
-                                                  resource=json_text)
-    measurements = self.dao.insert(measurements_to_insert)
-    self.assertEquals(0, len(measurements.measurements))
-    self.assertIsNone(measurements.createdUsername)
-    self.assertIsNone(measurements.createdSiteId)
-    self.assertIsNone(measurements.finalizedUsername)
-    self.assertIsNone(measurements.finalizedSiteId)
-
+    measurements_id = self.dao.insert(self._make_physical_measurements()).physicalMeasurementsId
+    orig_measurements = self.dao.get_with_children(measurements_id).asdict()
     self.dao.backfill_measurements()
-    measurements = self.dao.get_with_children(measurements.physicalMeasurementsId)
-    self.assertEquals(17, len(measurements.measurements))
-    self.assertEquals('bob.jones@pmi-ops.org', measurements.createdUsername)
-    self.assertEquals(1, measurements.createdSiteId)
-    self.assertEquals('fred.smith@pmi-ops.org', measurements.finalizedUsername)
-    self.assertIsNone(measurements.finalizedSiteId)
+    backfilled_measurements = self.dao.get_with_children(measurements_id).asdict()
+    # Formatting of resource gets changed, so test it separately as parsed JSON.
+    self.assertEquals(
+        json.loads(orig_measurements['resource']),
+        json.loads(backfilled_measurements['resource']))
+    del orig_measurements['resource']
+    del backfilled_measurements['resource']
+    self.assertEquals(orig_measurements, backfilled_measurements)
 
   def testInsert_withdrawnParticipantFails(self):
     self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
     ParticipantDao().update(self.participant)
     self._make_summary()
-    measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
-                                                  participantId=self.participant.participantId,
-                                                  resource=self.measurement_json)
     summary = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertIsNone(summary.physicalMeasurementsStatus)
     with self.assertRaises(Forbidden):
-      self.dao.insert(measurements_to_insert)
+      self.dao.insert(self._make_physical_measurements())
 
   def testInsert_getFailsForWithdrawnParticipant(self):
     self._make_summary()
-    measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
-                                                  participantId=self.participant.participantId,
-                                                  resource=self.measurement_json)
-    summary = ParticipantSummaryDao().get(self.participant.participantId)
-    self.assertIsNone(summary.physicalMeasurementsStatus)
-    self.dao.insert(measurements_to_insert)
+    self.dao.insert(self._make_physical_measurements())
     self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
     ParticipantDao().update(self.participant)
     with self.assertRaises(Forbidden):
@@ -128,34 +130,24 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
 
   def testInsert_duplicate(self):
     self._make_summary()
-    measurements_to_insert = PhysicalMeasurements(participantId=self.participant.participantId,
-                                                  resource=self.measurement_json)
     with FakeClock(TIME_2):
-      measurements = self.dao.insert(measurements_to_insert)
-
+      measurements = self.dao.insert(self._make_physical_measurements())
     with FakeClock(TIME_3):
-      measurements_2 = self.dao.insert(PhysicalMeasurements(
-                                       participantId=self.participant.participantId,
-                                       resource=self.measurement_json))
-
+      measurements_2 = self.dao.insert(self._make_physical_measurements())
     self.assertEquals(measurements.asdict(), measurements_2.asdict())
 
   def testInsert_amend(self):
     self._make_summary()
-    measurements_to_insert = PhysicalMeasurements(physicalMeasurementsId=1,
-                                                  participantId=self.participant.participantId,
-                                                  resource=self.measurement_json)
     with FakeClock(TIME_2):
-      measurements = self.dao.insert(measurements_to_insert)
+      measurements = self.dao.insert(self._make_physical_measurements(
+          physicalMeasurementsId=1))
 
     amendment_json = load_measurement_json_amendment(self.participant.participantId,
                                                      measurements.physicalMeasurementsId,
                                                      TIME_2)
-    measurements_2 = PhysicalMeasurements(physicalMeasurementsId=2,
-                                          participantId=self.participant.participantId,
-                                          resource=json.dumps(amendment_json))
     with FakeClock(TIME_3):
-      new_measurements = self.dao.insert(measurements_2)
+      new_measurements = self.dao.insert(self._make_physical_measurements(
+          physicalMeasurementsId=2, resource=json.dumps(amendment_json)))
 
     measurements = self.dao.get(measurements.physicalMeasurementsId)
     amended_json = json.loads(measurements.resource)
@@ -166,4 +158,3 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEquals('2', amendment_json['id'])
     self.assertTrue(new_measurements.final)
     self.assertEquals(TIME_3, new_measurements.created)
-

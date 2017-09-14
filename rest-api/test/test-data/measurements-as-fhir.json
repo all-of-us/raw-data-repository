@@ -10,6 +10,16 @@
         ],
         "date": "%(authored_time)s",
         "resourceType": "Composition",
+        "extension": [
+          {
+            "url": "http://terminology.pmi-ops.org/StructureDefinition/authored-location",
+            "valueReference": "Location/hpo-site-monroeville"
+          },
+          {
+            "url": "http://terminology.pmi-ops.org/StructureDefinition/finalized-location",
+            "valueReference": "Location/hpo-site-bannerphoenix"
+          }
+        ],
         "section": [{
           "entry": [
             {

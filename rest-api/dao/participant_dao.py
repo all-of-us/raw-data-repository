@@ -8,6 +8,7 @@ from api_util import format_json_enum, parse_json_enum, format_json_date
 import clock
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
+from dao.site_dao import SiteDao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
 from model.utils import to_client_participant_id, to_client_biobank_id
@@ -201,6 +202,25 @@ class ParticipantDao(UpdatableDao):
         withdrawalStatus=resource_json.get('withdrawalStatus'),
         suspensionStatus=resource_json.get('suspensionStatus'))
 
+  def add_missing_hpo_from_site(self, session, participant_id, site_id):
+    if site_id is None:
+      raise BadRequest('No site ID given for auto-pairing participant.')
+    site = SiteDao().get_with_session(session, site_id)
+    if site is None:
+      raise BadRequest('Invalid siteId reference %r.' % site_id)
+
+    participant = self.get_for_update(session, participant_id)
+    if participant is None:
+      raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
+    if participant.hpoId != UNSET_HPO_ID:
+      return
+
+    participant.hpoId = site.hpoId
+    participant.providerLink = make_primary_provider_link_for_id(site.hpoId)
+    if participant.participantSummary is None:
+      raise RuntimeError('No ParticipantSummary available for P%d.' % participant_id)
+    participant.participantSummary.hpoId = site.hpoId
+
 
 def _get_primary_provider_link(participant):
   if participant.providerLink:
@@ -225,3 +245,21 @@ def _get_hpo_name_from_participant(participant):
 def raise_if_withdrawn(obj):
   if obj.withdrawalStatus == WithdrawalStatus.NO_USE:
     raise Forbidden('Participant %d has withdrawn' % obj.participantId)
+
+
+def make_primary_provider_link_for_id(hpo_id):
+  return make_primary_provider_link_for_hpo(HPODao().get(hpo_id))
+
+
+def make_primary_provider_link_for_hpo(hpo):
+  return make_primary_provider_link_for_name(hpo.name)
+
+
+def make_primary_provider_link_for_name(hpo_name):
+  """Returns serialized FHIR JSON for a primary provider link based on HPO information."""
+  return json.dumps([{
+      'primary': True,
+      'organization': {
+          'reference': 'Organization/%s' % hpo_name
+      }
+  }])

@@ -26,6 +26,7 @@ _FINALIZED_STATUS = 'finalized'
 _LOCATION_PREFIX = 'Location/'
 _AUTHOR_PREFIX = 'Practitioner/'
 _QUALIFIED_BY_RELATED_TYPE = 'qualified-by'
+_ALL_EXTENSIONS = set([_AMENDMENT_URL, _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION])
 
 class PhysicalMeasurementsDao(BaseDao):
 
@@ -215,6 +216,7 @@ class PhysicalMeasurementsDao(BaseDao):
         measurement_count += 1
 
   def insert_with_session(self, session, obj):
+    is_amendment = False
     if obj.logPosition is not None:
       raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
     obj.logPosition = LogPosition()
@@ -222,12 +224,16 @@ class PhysicalMeasurementsDao(BaseDao):
     obj.created = clock.CLOCK.now()
     resource_json = json.loads(obj.resource)
     for extension in resource_json['entry'][0]['resource'].get('extension', []):
-      url = extension.get('url', '')
-      if url != _AMENDMENT_URL:
-        logging.info('Ignoring unsupported extension for PhysicalMeasurements: %r.' % url)
+      url = extension.get('url')
+      if url not in _ALL_EXTENSIONS:
+        logging.info(
+            'Ignoring unsupported extension for PhysicalMeasurements: %r. Expected one of: %s',
+            url, _ALL_EXTENSIONS)
         continue
-      self._update_amended(obj, extension, url, session)
-      break
+      if url == _AMENDMENT_URL:
+        self._update_amended(obj, extension, url, session)
+        is_amendment = True
+        break
     self._update_participant_summary(session, obj.created, obj.participantId)
     existing_measurements = (session.query(PhysicalMeasurements)
                              .filter(PhysicalMeasurements.participantId == obj.participantId)
@@ -241,7 +247,11 @@ class PhysicalMeasurementsDao(BaseDao):
           return measurements
     PhysicalMeasurementsDao.set_measurement_ids(obj)
 
-    super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
+    inserted_obj = super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
+    if not is_amendment:  # Amendments aren't expected to have site ID extensions.
+      ParticipantDao().add_missing_hpo_from_site(
+          session, inserted_obj.participantId, inserted_obj.finalizedSiteId)
+
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
     session.flush()
     # Update the resource to contain the ID.
@@ -464,16 +474,23 @@ class PhysicalMeasurementsDao(BaseDao):
           observations.append((entry['fullUrl'],
                                fhirclient.models.observation.Observation(resource)))
         elif resource_type == _COMPOSITION_RESOURCE_TYPE:
-          extensions = resource.get('extension')
-          if extensions:
-            for extension in extensions:
-              value_reference = extension.get('valueReference')
-              if value_reference:
-                url = extension.get('url')
-                if url == _CREATED_LOC_EXTENSION:
-                  created_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
-                elif url == _FINALIZED_LOC_EXTENSION:
-                  finalized_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
+          extensions = resource.get('extension', [])
+          if not extensions:
+            logging.warning('No extensions in composition resource (expected site info).')
+          for extension in extensions:
+            value_reference = extension.get('valueReference')
+            if value_reference:
+              url = extension.get('url')
+              if url == _CREATED_LOC_EXTENSION:
+                created_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
+              elif url == _FINALIZED_LOC_EXTENSION:
+                finalized_site_id = PhysicalMeasurementsDao.get_location_site_id(value_reference)
+              elif url not in _ALL_EXTENSIONS:
+                logging.warning(
+                    'Unrecognized extension URL: %r (should be one of %s)',
+                    url, _ALL_EXTENSIONS)
+            else:
+              logging.warning('No valueReference in extension, skipping: %r', extension)
           authors = resource.get('author')
           for author in authors:
             author_extension = author.get('extension')
@@ -484,6 +501,10 @@ class PhysicalMeasurementsDao(BaseDao):
                 finalized_username = PhysicalMeasurementsDao.get_author_username(reference)
               elif authoring_step == _CREATED_STATUS:
                 created_username = PhysicalMeasurementsDao.get_author_username(reference)
+        else:
+          logging.warning(
+              'Unrecognized resource type (expected %r or %r), skipping: %r',
+              _OBSERVATION_RESOURCE_TYPE, _COMPOSITION_RESOURCE_TYPE, resource_type)
 
     # Take two passes over the observations; once to find all the qualifiers and observations
     # without related qualifiers, and a second time to find all observations with related

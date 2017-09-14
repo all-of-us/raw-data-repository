@@ -6,22 +6,26 @@ from model.utils import to_client_participant_id
 from model.participant import Participant
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
+from participant_enums import UNSET_HPO_ID
+
 
 class BiobankOrderApiTest(FlaskTestBase):
   def setUp(self):
     super(BiobankOrderApiTest, self).setUp()
     self.participant = Participant(participantId=123, biobankId=555)
-    ParticipantDao().insert(self.participant)
+    self.participant_dao = ParticipantDao()
+    self.participant_dao.insert(self.participant)
+    self.summary_dao = ParticipantSummaryDao()
     self.path = (
         'Participant/%s/BiobankOrder' % to_client_participant_id(self.participant.participantId))
 
   def test_insert_and_refetch(self):
-    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    self.summary_dao.insert(self.participant_summary(self.participant))
     self.create_and_verify_created_obj(
         self.path, load_biobank_order_json(self.participant.participantId))
 
   def test_insert_new_order(self):
-    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    self.summary_dao.insert(self.participant_summary(self.participant))
     order_json = load_biobank_order_json(self.participant.participantId,
                                          filename='biobank_order_2.json')
     result = self.send_post(self.path, order_json)
@@ -44,6 +48,26 @@ class BiobankOrderApiTest(FlaskTestBase):
     order_json = load_biobank_order_json(self.participant.participantId)
     order_json['samples'].extend(list(order_json['samples']))
     self.send_post(self.path, order_json, expected_status=httplib.BAD_REQUEST)
+
+  def test_auto_pair_updates_participant_and_summary(self):
+    self.summary_dao.insert(self.participant_summary(self.participant))
+
+    # Sanity check: No HPO yet.
+    p_unpaired = self.participant_dao.get(self.participant.participantId)
+    self.assertEquals(p_unpaired.hpoId, UNSET_HPO_ID)
+    self.assertIsNone(p_unpaired.providerLink)
+    s_unpaired = self.summary_dao.get(self.participant.participantId)
+    self.assertEquals(s_unpaired.hpoId, UNSET_HPO_ID)
+
+    self.send_post(self.path, load_biobank_order_json(self.participant.participantId))
+
+    # Some HPO has been set. (ParticipantDao tests cover more detailed cases / specific values.)
+    p_paired = self.participant_dao.get(self.participant.participantId)
+    self.assertNotEqual(p_paired.hpoId, UNSET_HPO_ID)
+    self.assertIsNotNone(p_paired.providerLink)
+    s_paired = self.summary_dao.get(self.participant.participantId)
+    self.assertNotEqual(s_paired.hpoId, UNSET_HPO_ID)
+
 
 def _strip_fields(order_json):
   if order_json.get('created'):

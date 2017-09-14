@@ -24,11 +24,11 @@
         "extension": [
           {
             "url": "http://terminology.pmi-ops.org/StructureDefinition/authored-location",
-            "valueReference": "Location/hpo-site-monroeville"
+            "valueReference": "Location/hpo-site-bogussite-notindb"
           },
           {
             "url": "http://terminology.pmi-ops.org/StructureDefinition/finalized-location",
-            "valueReference": "Location/hpo-site-bannerphoenix"
+            "valueReference": "Location/hpo-site-monroeville"
           }
         ],
         "date": "2016-09-02T20:59:41Z",
