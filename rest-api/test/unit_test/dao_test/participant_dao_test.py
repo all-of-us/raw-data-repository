@@ -1,14 +1,19 @@
 import datetime
 
 from dao.base_dao import MAX_INSERT_ATTEMPTS
+from dao.hpo_dao import HPODao
 from dao.participant_dao import ParticipantDao, ParticipantHistoryDao, make_primary_provider_link
 from dao.participant_summary_dao import ParticipantSummaryDao
+from dao.site_dao import SiteDao
+from model.hpo import HPO
 from model.participant import Participant
-from participant_enums import WithdrawalStatus
+from model.site import Site
+from participant_enums import WithdrawalStatus, UNSET_HPO_ID
 from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 from werkzeug.exceptions import Forbidden
+
 
 class ParticipantDaoTest(SqlTestBase):
   def setUp(self):
@@ -129,7 +134,7 @@ class ParticipantDaoTest(SqlTestBase):
       self.dao.update(p)
 
     summary = self.participant_summary(p)
-    ParticipantSummaryDao().insert(summary)
+    self.participant_summary_dao.insert(summary)
 
     # lastModified, hpoId, version is updated on p after being passed in
     p2 = self.dao.get(1);
@@ -249,3 +254,42 @@ class ParticipantDaoTest(SqlTestBase):
     p.providerLink = make_primary_provider_link(hpo_name='FOO')
     with self.assertRaises(BadRequest):
       self.dao.update(p)
+
+  def test_pairs_unset(self):
+    participant_id = 22
+    self.dao.insert(Participant(participantId=participant_id, biobankId=2))
+    refetched = self.dao.get(participant_id)
+    self.assertEquals(refetched.hpoId, UNSET_HPO_ID)  # sanity check
+    self.participant_summary_dao.insert(self.participant_summary(refetched))
+
+    self.dao.add_missing_hpo_from_site(participant_id, self._test_db.site_id)
+
+    paired = self.dao.get(participant_id)
+    self.assertEquals(paired.hpoId, self._test_db.hpo_id)
+    self.assertEquals(paired.providerLink, make_primary_provider_link(hpo_id=self._test_db.hpo_id))
+    self.assertEquals(self.participant_summary_dao.get(participant_id).hpoId, self._test_db.hpo_id)
+
+  def test_does_not_overwrite_existing_pairing(self):
+    participant_id = 99
+    created = self.dao.insert(Participant(
+        participantId=participant_id,
+        biobankId=2,
+        hpoId=self._test_db.hpo_id,
+        providerLink=make_primary_provider_link(hpo_id=self._test_db.hpo_id)))
+    self.participant_summary_dao.insert(self.participant_summary(created))
+    self.assertEquals(created.hpoId, self._test_db.hpo_id)  # sanity check
+
+    other_hpo = HPODao().insert(HPO(hpoId=PITT_HPO_ID + 1, name='DIFFERENT_HPO'))
+    other_site = SiteDao().insert(Site(
+        hpoId=other_hpo.hpoId,
+        siteName='Arbitrary Site',
+        googleGroup='a_site@googlegroups.com',
+        consortiumName='The Arbitrary Site Consortium'))
+
+    self.dao.add_missing_hpo_from_site(participant_id, other_site.siteId)
+
+    # Original Participant + summary is unaffected.
+    refetched = self.dao.get(participant_id)
+    self.assertEquals(created.hpoId, refetched.hpoId)
+    self.assertEquals(created.providerLink, refetched.providerLink)
+    self.assertEquals(created.hpoId, self.participant_summary_dao.get(participant_id).hpoId)
