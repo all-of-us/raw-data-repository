@@ -216,7 +216,7 @@ class ParticipantDao(UpdatableDao):
       return
 
     participant.hpoId = site.hpoId
-    participant.providerLink = make_primary_provider_link(hpo_id=site.hpoId)
+    participant.providerLink = make_primary_provider_link_for_id(site.hpoId)
     if participant.participantSummary is None:
       raise RuntimeError('No ParticipantSummary available for P%d.' % participant_id)
     participant.participantSummary.hpoId = site.hpoId
@@ -247,25 +247,19 @@ def raise_if_withdrawn(obj):
     raise Forbidden('Participant %d has withdrawn' % obj.participantId)
 
 
-def make_primary_provider_link(hpo_name=None, hpo_id=None, hpo=None):
-  """Returns serialized FHIR JSON for a primary provider link based on HPO information.
+def make_primary_provider_link_for_id(hpo_id):
+  return make_primary_provider_link_for_hpo(HPODao().get(hpo_id))
 
-  Exactly one of hpo_name, hpo_id, or hpo (a model.HPO) must be provided.
-  """
-  if len([v for v in hpo_name, hpo_id, hpo if v is not None]) != 1:
-    raise ValueError(
-        'Exactly one of hpo_name=%r hpo_id=%r or hpo=%r must be defined.'
-        % (hpo_name, hpo_id, hpo))
-  if hpo_name is not None:
-    name = hpo_name
-  elif hpo_id is not None:
-    name = HPODao().get(hpo_id).name
-  else:
-    name = hpo.name
 
+def make_primary_provider_link_for_hpo(hpo):
+  return make_primary_provider_link_for_name(hpo.name)
+
+
+def make_primary_provider_link_for_name(hpo_name):
+  """Returns serialized FHIR JSON for a primary provider link based on HPO information."""
   return json.dumps([{
       'primary': True,
       'organization': {
-          'reference': 'Organization/%s' % name
+          'reference': 'Organization/%s' % hpo_name
       }
   }])

@@ -6,7 +6,6 @@ import main
 from dao.participant_dao import ParticipantDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from model.measurements import Measurement
-from model.participant import Participant
 from model.utils import from_client_participant_id
 from participant_enums import UNSET_HPO_ID
 from test.unit_test.unit_test_util import FlaskTestBase
