@@ -250,7 +250,7 @@ class PhysicalMeasurementsDao(BaseDao):
     inserted_obj = super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
     if not is_amendment:  # Amendments aren't expected to have site ID extensions.
       ParticipantDao().add_missing_hpo_from_site(
-          inserted_obj.participantId, inserted_obj.finalizedSiteId)
+          session, inserted_obj.participantId, inserted_obj.finalizedSiteId)
 
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
     session.flush()

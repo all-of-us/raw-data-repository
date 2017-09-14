@@ -202,25 +202,24 @@ class ParticipantDao(UpdatableDao):
         withdrawalStatus=resource_json.get('withdrawalStatus'),
         suspensionStatus=resource_json.get('suspensionStatus'))
 
-  def add_missing_hpo_from_site(self, participant_id, site_id):
+  def add_missing_hpo_from_site(self, session, participant_id, site_id):
     if site_id is None:
       raise BadRequest('No site ID given for auto-pairing participant.')
-    with self.session() as session:
-      site = SiteDao().get_with_session(session, site_id)
-      if site is None:
-        raise BadRequest('Invalid siteId reference %r.' % site_id)
+    site = SiteDao().get_with_session(session, site_id)
+    if site is None:
+      raise BadRequest('Invalid siteId reference %r.' % site_id)
 
-      participant = self.get_for_update(session, participant_id)
-      if participant is None:
-        raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
-      if participant.hpoId != UNSET_HPO_ID:
-        return
+    participant = self.get_for_update(session, participant_id)
+    if participant is None:
+      raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
+    if participant.hpoId != UNSET_HPO_ID:
+      return
 
-      participant.hpoId = site.hpoId
-      participant.providerLink = make_primary_provider_link(hpo_id=site.hpoId)
-      if participant.participantSummary is None:
-        raise RuntimeError('No ParticipantSummary available for P%d.' % participant_id)
-      participant.participantSummary.hpoId = site.hpoId
+    participant.hpoId = site.hpoId
+    participant.providerLink = make_primary_provider_link(hpo_id=site.hpoId)
+    if participant.participantSummary is None:
+      raise RuntimeError('No ParticipantSummary available for P%d.' % participant_id)
+    participant.participantSummary.hpoId = site.hpoId
 
 
 def _get_primary_provider_link(participant):

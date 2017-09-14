@@ -108,7 +108,7 @@ class BiobankOrderDao(BaseDao):
         raise Conflict('Order with ID %s already exists' % obj.biobankOrderId)
     inserted_obj = super(BiobankOrderDao, self).insert_with_session(session, obj)
     ParticipantDao().add_missing_hpo_from_site(
-        inserted_obj.participantId, inserted_obj.finalizedSiteId)
+        session, inserted_obj.participantId, inserted_obj.finalizedSiteId)
     return inserted_obj
 
   def _validate_model(self, session, obj):

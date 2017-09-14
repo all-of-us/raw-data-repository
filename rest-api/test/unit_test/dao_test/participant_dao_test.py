@@ -262,7 +262,8 @@ class ParticipantDaoTest(SqlTestBase):
     self.assertEquals(refetched.hpoId, UNSET_HPO_ID)  # sanity check
     self.participant_summary_dao.insert(self.participant_summary(refetched))
 
-    self.dao.add_missing_hpo_from_site(participant_id, self._test_db.site_id)
+    with self.dao.session() as session:
+      self.dao.add_missing_hpo_from_site(session, participant_id, self._test_db.site_id)
 
     paired = self.dao.get(participant_id)
     self.assertEquals(paired.hpoId, self._test_db.hpo_id)
@@ -286,7 +287,8 @@ class ParticipantDaoTest(SqlTestBase):
         googleGroup='a_site@googlegroups.com',
         consortiumName='The Arbitrary Site Consortium'))
 
-    self.dao.add_missing_hpo_from_site(participant_id, other_site.siteId)
+    with self.dao.session() as session:
+      self.dao.add_missing_hpo_from_site(session, participant_id, other_site.siteId)
 
     # Original Participant + summary is unaffected.
     refetched = self.dao.get(participant_id)
