@@ -1,12 +1,16 @@
 import httplib
 import datetime
-import main
 import json
 
+import main
+from dao.participant_dao import ParticipantDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from model.measurements import Measurement
+from model.utils import from_client_participant_id
+from participant_enums import UNSET_HPO_ID
 from test.unit_test.unit_test_util import FlaskTestBase
 from test_data import load_measurement_json, load_measurement_json_amendment, data_path
+
 
 class PhysicalMeasurementsApiTest(FlaskTestBase):
 
@@ -15,7 +19,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.participant_id = self.create_participant()
     self.participant_id_2 = self.create_participant()
 
-  def insert_measurements(self, now=None):
+  def _insert_measurements(self, now=None):
     measurements_1 = load_measurement_json(self.participant_id, now)
     measurements_2 = load_measurement_json(self.participant_id_2, now)
     path_1 = 'Participant/%s/PhysicalMeasurements' % self.participant_id
@@ -32,7 +36,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.send_consent(self.participant_id)
     self.send_consent(self.participant_id_2)
     now = datetime.datetime.now()
-    self.insert_measurements(now.isoformat())
+    self._insert_measurements(now.isoformat())
 
     response = self.send_get('Participant/%s/PhysicalMeasurements' % self.participant_id)
     self.assertEquals('Bundle', response['resourceType'])
@@ -44,9 +48,9 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     physical_measurements_id = response['entry'][0]['resource']['id']
     pm_id = int(physical_measurements_id)
     physical_measurements = PhysicalMeasurementsDao().get_with_children(physical_measurements_id)
-    self.assertIsNone(physical_measurements.createdSiteId)
+    self.assertEquals(physical_measurements.createdSiteId, 1)
     self.assertIsNone(physical_measurements.createdUsername)
-    self.assertIsNone(physical_measurements.finalizedSiteId)
+    self.assertEquals(physical_measurements.finalizedSiteId, 2)
     self.assertIsNone(physical_measurements.finalizedUsername)
 
     em1 = Measurement(measurementId=pm_id * 1000,
@@ -119,11 +123,11 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     physical_measurements_id = response['entry'][0]['resource']['id']
     pm_id = int(physical_measurements_id)
     physical_measurements = PhysicalMeasurementsDao().get_with_children(physical_measurements_id)
-    self.assertEquals(1, physical_measurements.createdSiteId)
-    self.assertEquals('bob.jones@pmi-ops.org', physical_measurements.createdUsername)
-    # Site not present in DB, so we don't set it.
-    self.assertIsNone(physical_measurements.finalizedSiteId)
+    self.assertEquals(physical_measurements.finalizedSiteId, 1)
     self.assertEquals('fred.smith@pmi-ops.org', physical_measurements.finalizedUsername)
+    # Site not present in DB, so we don't set it.
+    self.assertIsNone(physical_measurements.createdSiteId)
+    self.assertEquals('bob.jones@pmi-ops.org', physical_measurements.createdUsername)
 
     em1_id = pm_id * 1000
     bp1 = Measurement(measurementId=pm_id * 1000 + 1,
@@ -226,7 +230,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertIsNone(link)
     self.assertTrue(len(sync_response['entry']) == 0)
 
-    self.insert_measurements()
+    self._insert_measurements()
 
     sync_response = self.send_get('PhysicalMeasurements/_history?_count=1')
     self.assertTrue(sync_response.get('entry'))
@@ -240,3 +244,12 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     sync_response_2 = self.send_get(relative_url)
     self.assertEquals(1, len(sync_response_2['entry']))
     self.assertNotEquals(sync_response['entry'][0], sync_response_2['entry'][0])
+
+  def test_auto_pair_called(self):
+    pid_numeric = from_client_participant_id(self.participant_id)
+    participant_dao = ParticipantDao()
+    self.send_consent(self.participant_id)
+    self.send_consent(self.participant_id_2)
+    self.assertEquals(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
+    self._insert_measurements(datetime.datetime.utcnow().isoformat())
+    self.assertNotEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)

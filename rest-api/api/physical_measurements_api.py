@@ -7,6 +7,7 @@ from flask import request
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from query import Query, Operator, FieldFilter
 
+
 class PhysicalMeasurementsApi(BaseApi):
   def __init__(self):
     super(PhysicalMeasurementsApi, self).__init__(PhysicalMeasurementsDao())
@@ -24,6 +25,7 @@ class PhysicalMeasurementsApi(BaseApi):
                   None, DEFAULT_MAX_RESULTS, request.args.get('_token'))
     results = self.dao.query(query)
     return self._make_bundle(results, 'id', participant_id)
+
 
 @api_util.auth_required(PTC)
 def sync_physical_measurements():
