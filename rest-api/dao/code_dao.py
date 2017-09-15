@@ -51,13 +51,15 @@ class CodeBookDao(BaseDao):
     property_dict = {p['code']: p['valueCode'] for p in concept['property']}
     topic = property_dict['concept-topic']
     value = concept['code']
+    short_value = concept.get('short-code')
     display = concept['display']
     code_type = _CODE_TYPE_MAP.get(property_dict['concept-type'])
     if code_type is None:
       logging.warning("Unrecognized concept type: %s, value: %s; ignoring." %
                       (property_dict['concept-type'], value))
       return 0
-    code = Code(system=system, codeBookId=code_book_id, value=value, display=display, topic=topic,
+    code = Code(system=system, codeBookId=code_book_id, value=value, shortValue=short_value,
+                display=display, topic=topic,
                 codeType=code_type, mapped=True, parentId=parent_id)
     existing_code = existing_codes.get((system, value))
     if existing_code:
