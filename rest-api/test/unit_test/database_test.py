@@ -35,8 +35,8 @@ class DatabaseTest(SqlTestBase):
 
     site = Site(siteId=1, siteName='site', googleGroup='site@googlegroups.com',
                 consortiumName='consortium', mayolinkClientNumber=12345, hpoId=1)
-    code1 = Code(codeId=1, codeBookId=1, system="a", value="b", shortValue="q", 
-                 display=u"c", topic=u"d", codeType=CodeType.MODULE, mapped=True, 
+    code1 = Code(codeId=1, codeBookId=1, system="a", value="b", shortValue="q",
+                 display=u"c", topic=u"d", codeType=CodeType.MODULE, mapped=True,
                  created=datetime.datetime.now())
     codeHistory1 = CodeHistory(codeId=1, codeBookId=1, system="a", value="b", shortValue="q",
                                display=u"c", topic=u"d", codeType=CodeType.MODULE, mapped=True,
