@@ -51,7 +51,7 @@ class CodeBookDao(BaseDao):
     property_dict = {p['code']: p['valueCode'] for p in concept['property']}
     topic = property_dict['concept-topic']
     value = concept['code']
-    short_value = concept.get('short-code')
+    short_value = property_dict.get('short-code')
     display = concept['display']
     code_type = _CODE_TYPE_MAP.get(property_dict['concept-type'])
     if code_type is None:
