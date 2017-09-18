@@ -43,7 +43,7 @@ class _CodeBase(object):
   system = Column('system', String(255), nullable=False)
   value = Column('value', String(80), nullable=False)
   # OMOP codes are supposed to be at most 50 characters long; for legacy codes that exceeded this
-  # limit, we populate a shortened version for use in OMOP here.
+  # limit, we populate a shortened version for use in OMOP here. Otherwise, shortValue is NULL.
   shortValue = Column('short_value', String(50))
   display = Column('display', UnicodeText)
   topic = Column('topic', UnicodeText)
