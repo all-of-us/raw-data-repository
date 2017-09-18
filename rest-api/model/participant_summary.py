@@ -27,12 +27,14 @@ class ParticipantSummary(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          primary_key=True, autoincrement=False)
   biobankId = Column('biobank_id', Integer, nullable=False)
-  firstName = Column('first_name', String(80), nullable=False)
-  middleName = Column('middle_name', String(80))
-  lastName = Column('last_name', String(80), nullable=False)
+  # PTC string fields will generally be limited to 255 chars; set our field lengths accordingly to
+  # ensure that long values can be inserted.
+  firstName = Column('first_name', String(255), nullable=False)
+  middleName = Column('middle_name', String(255))
+  lastName = Column('last_name', String(255), nullable=False)
   zipCode = Column('zip_code', String(10))
   stateId = Column('state_id', Integer, ForeignKey('code.code_id'))
-  city = Column('city', String(80))
+  city = Column('city', String(255))
   streetAddress = Column('street_address', String(255))
   phoneNumber = Column('phone_number', String(80))
   email = Column('email', String(255), nullable=False)
