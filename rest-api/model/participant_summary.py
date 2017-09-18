@@ -27,7 +27,7 @@ class ParticipantSummary(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          primary_key=True, autoincrement=False)
   biobankId = Column('biobank_id', Integer, nullable=False)
-  # PTC string fields will generally be limited to 255 chars; set our field lengths accordingly to 
+  # PTC string fields will generally be limited to 255 chars; set our field lengths accordingly to
   # ensure that long values can be inserted.
   firstName = Column('first_name', String(255), nullable=False)
   middleName = Column('middle_name', String(255))
