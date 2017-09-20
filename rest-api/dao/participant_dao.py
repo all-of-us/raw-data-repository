@@ -256,7 +256,10 @@ def make_primary_provider_link_for_hpo(hpo):
 
 
 def make_primary_provider_link_for_name(hpo_name):
-  """Returns serialized FHIR JSON for a primary provider link based on HPO information."""
+  """Returns serialized FHIR JSON for a provider link based on HPO information.
+
+  The returned JSON represents a list containing the one primary provider.
+  """
   return json.dumps([{
       'primary': True,
       'organization': {
