@@ -41,7 +41,7 @@ done
 
 # Verify that data generation works.
 ./tools/generate_fake_data.sh \
-    --num_participants 100 \
+    --num_participants 10 \
     --include_physical_measurements --include_biobank_orders --create_biobank_samples
 
 cd ../rdr_client
