@@ -23,6 +23,7 @@ echo "`date -u` Linting with pylint ${PYLINT_VERSION}..."
 ENABLE_FOR_TESTS="\
   --enable=bad-indentation,broad-except,bare-except,logging-too-many-args \
   --enable=unused-argument,redefined-outer-name,redefined-builtin,superfluous-parens \
+  --enable=syntax-error \
   --enable=trailing-whitespace,unused-import,unused-variable,undefined-variable"
 ENABLE_FOR_ALL="$ENABLE_FOR_TESTS --enable=bad-whitespace,line-too-long,unused-import,unused-variable"
 PYLINT_OPTS="-r n --disable=all --score=n"
