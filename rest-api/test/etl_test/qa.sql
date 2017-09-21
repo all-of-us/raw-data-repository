@@ -1,14 +1,11 @@
 -- -------------------------------------------------------------------
 -- @2015-2017, Odysseus Data Services, Inc. All rights reserved
 -- PPI OMOP CDM Conversion
--- last updated September 13, 2017
---
--- QA (integration tests) for:
--- table src_clean
--- table person
--- table observation
---
--- Results are saved in table cdm.qa_result
+-- last updated September 21, 2017
+-- -------------------------------------------------------------------
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_result_create.sql
 -- -------------------------------------------------------------------
 
 -- -------------------------------------------------------------------
@@ -24,11 +21,16 @@ CREATE TABLE cdm.qa_result
     test_table varchar(255),
     test_unit varchar(255),
     test_descr varchar(255),
-    test_result int,
+    test_result decimal(20),
     test_passed int AS (CASE test_result WHEN 0 THEN 1 ELSE 0 END),
     PRIMARY KEY (qa_result_id)
 );
 
+
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_src_clean_value.sql
+-- -------------------------------------------------------------------
 
 -- -------------------------------------------------------
 -- table: src_clean
@@ -553,6 +555,11 @@ VALUES
 
 
 
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_location.sql
+-- -------------------------------------------------------------------
+
 -- -----------------------------------------------------
 -- table: location
 -- -----------------------------------------------------
@@ -777,6 +784,11 @@ VALUES
 );
 
 
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_care_site.sql
+-- -------------------------------------------------------------------
+
 -- ---------------------------------------------------
 -- table: care_site
 -- ---------------------------------------------------
@@ -882,6 +894,11 @@ VALUES
     @test_result
 );
 
+
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_person.sql
+-- -------------------------------------------------------------------
 
 -- --------------------------------------------------------
 -- table:person
@@ -1156,6 +1173,12 @@ VALUES
     @test_result
 );
 
+
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_observation_qra_value.sql
+-- -------------------------------------------------------------------
+
 -- -------------------------------------------------------------------
 -- table: observation (survey)
 -- -------------------------------------------------------------------
@@ -1239,40 +1262,40 @@ VALUES
 -- questionnaire_response_answer.value_code
 SELECT NULL INTO @test_result;
 select  sum(
-        (qr.participant_id - obs.person_id) -- person_id
+        (qr.participant_id - obs.person_id)                                                 -- person_id
         +
-        (coalesce(c2.concept_id, 0) -  obs.observation_concept_id) -- observation_concept_id
+        (coalesce(c2.concept_id, 0) -  obs.observation_concept_id)                          -- observation_concept_id
         +
-        (date(qr.created) - obs.observation_date) -- observation_date
+        (date(qr.created) - obs.observation_date)                                           -- observation_date
         +
-        (time(qr.created) - obs.observation_time) -- observation_time
+        (time(qr.created) - obs.observation_time)                                           -- observation_time
         +
-        (obs.observation_type_concept_id - 45905771) -- observation_type_concept_id
+        (obs.observation_type_concept_id - 45905771)                                        -- observation_type_concept_id
         +
-        (coalesce(obs.value_as_number, 0)) -- value_as_number
+        (coalesce(obs.value_as_number, 0))                                                  -- value_as_number
         +
         CASE
-            WHEN cr.concept_id_2 is null THEN (obs.value_as_string - cd_ans.display) -- value_as_string
+            WHEN cr.concept_id_2 is null THEN (obs.value_as_string - cd_ans.display)        -- value_as_string
             ELSE 0
         END
         +
-        (obs.value_as_concept_id - coalesce(c3.concept_id, 0)) -- value_as_concept_id
+        (obs.value_as_concept_id - coalesce(c3.concept_id, 0))                              -- value_as_concept_id
         +
-        (obs.qualifier_concept_id - 0) -- qualifier_concept_id
+        (obs.qualifier_concept_id - 0)                                                      -- qualifier_concept_id
         +
-        (obs.unit_concept_id - 0) -- unit_concept_id
+        (obs.unit_concept_id - 0)                                                           -- unit_concept_id
         +
-        (cd.value - obs.observation_source_value) -- observation_source_value
+        (cd.value - obs.observation_source_value)                                           -- observation_source_value
         +
-        (obs.observation_source_concept_id - coalesce(c.concept_id, 0)) -- observation_source_concept_id
+        (obs.observation_source_concept_id - coalesce(c.concept_id, 0))                     -- observation_source_concept_id
         +
-        (coalesce(obs.unit_source_value, 0))-- unit_source_value
+        (coalesce(obs.unit_source_value, 0))                                                -- unit_source_value
         +
-        (coalesce(obs.qualifier_source_value, 0)) -- qualifier_source_value
+        (coalesce(obs.qualifier_source_value, 0))                                           -- qualifier_source_value
         +
-        (obs.value_source_concept_id - coalesce(c1.concept_id, 0))-- value_source_concept_id
+        (obs.value_source_concept_id - coalesce(c1.concept_id, 0))                          -- value_source_concept_id
         +
-        (obs.value_source_value - cd_ans.value) -- value_source_value  
+        (obs.value_source_value - cd_ans.value)                                             -- value_source_value  
      ) INTO @test_result 
 from rdr.questionnaire_response_answer qra
 inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.questionnaire_response_id
@@ -1383,74 +1406,6 @@ VALUES
     @test_result
 );
 
--- questionnaire_response_answer.value_decimal
-SELECT NULL INTO @test_result;
-
-select  sum(
-        (qr.participant_id - obs.person_id) -- person_id
-         +
-        (coalesce(c1.concept_id, 0) -  obs.observation_concept_id) -- observation_concept_id
-         +
-        (date(qr.created) - obs.observation_date) -- observation_date
-         +
-        (time(qr.created) - obs.observation_time) -- observation_time
-         +
-        (obs.observation_type_concept_id - 45905771) -- observation_type_concept_id
-         +
-        (obs.value_as_number - qra.value_decimal) -- value_as_number
-         +
-        (coalesce(obs.value_as_string, 0)) -- value_as_string
-         +
-        (coalesce(obs.value_as_concept_id, 0)) -- value_as_concept_id
-         +
-        (obs.qualifier_concept_id - 0) -- qualifier_concept_id
-         +
-        (obs.unit_concept_id - 0) -- unit_concept_id
-         +
-        (cd.value - obs.observation_source_value) -- observation_source_value
-         +
-        (obs.observation_source_concept_id - coalesce(c.concept_id, 0)) -- observation_source_concept_id
-         +
-        (coalesce(obs.unit_source_value, 0)) -- unit_source_value
-         +
-        (coalesce(obs.qualifier_source_value, 0)) -- qualifier_source_value
-         +
-        (coalesce(obs.value_source_concept_id, 0)) -- value_source_concept_id
-         +
-        (coalesce(obs.value_source_value, 0)) -- value_source_value
-     ) INTO @test_result
-from rdr.questionnaire_response_answer qra
-inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.questionnaire_response_id
-inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
-inner join rdr.code cd on cd.code_id = qq.code_id
-
-left join voc.concept c on c.concept_code = left(cd.value, 50) AND c.vocabulary_id = 'PPI'
-left join voc.concept_relationship cr 
-    on c.concept_id = cr.concept_id_1 
-        and cr.invalid_reason is null
-        and cr.relationship_id = 'Maps to'
-left join voc.concept c1 
-    on c1.concept_id = cr.concept_id_2
-        and c1.invalid_reason is null
-        and c1.standard_concept = 'S'
-   
-        
-inner join cdm.observation obs 
-    on qr.questionnaire_response_id = obs.questionnaire_response_id
-    and obs.observation_source_value = cd.value
-    and obs.value_as_number = qra.value_decimal
-
-where qra.value_decimal is not null and obs.unit_id = 'observ.num'
-;
-
-INSERT INTO cdm.qa_result
-(test_table, test_unit, test_descr, test_result)
-VALUES
-(   'observation', 'observ.num',
-    'questionnaire_response_answer.value_decimal',
-    @test_result
-);
-
 -- Verify the difference between source values and observation table in case of values_integer
 SELECT NULL INTO @test_result;
 select sum(
@@ -1505,14 +1460,17 @@ inner join cdm.observation obs
     and obs.observation_source_value = cd.value
     and obs.value_as_number = qra.value_integer
 
-where qra.value_integer is not null and obs.unit_id = 'observ.num'
+where
+    obs.unit_id = 'observ.num'
+    and (qra.value_integer is not null
+        or qra.value_decimal is not null)
 ;
 
 INSERT INTO cdm.qa_result
 (test_table, test_unit, test_descr, test_result)
 VALUES
 (   'observation', 'observ.num',
-    'Verify the difference between source values and observation table in case of values_integer',
+    'Verify the difference between source values and observation table in case of values_integer/value_decimal',
     @test_result
 );
 
@@ -1582,6 +1540,11 @@ VALUES
     @test_result
 );
 
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_observation_observ_meas_count.sql
+-- -------------------------------------------------------------------
+
 -- --------------------------------------------------------
 -- table: observation (measurement)
 -- --------------------------------------------------------
@@ -1648,6 +1611,11 @@ VALUES
     @test_result
 );
 
+
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_measurement.sql
+-- -------------------------------------------------------------------
 
 -- --------------------------------------------------------
 -- table: measurement
@@ -2109,6 +2077,10 @@ VALUES
 );
 
 
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_visit_occurrence.sql
+-- -------------------------------------------------------------------
+
 -- --------------------------------------------------------
 -- table: visit_occurrence
 -- --------------------------------------------------------
@@ -2125,7 +2097,7 @@ from
         select count(*) as c
         from
             (
-                select distinct person_id, visit_satrt_date, visit_start_time, visit_end_date, viist_end_time, 
+                select distinct person_id, visit_start_date, visit_start_time, visit_end_date, visit_end_time, 
                     care_site_id, visit_source_value
                 from cdm.visit_occurrence
             ) a
@@ -2195,13 +2167,13 @@ select  sum(
          +
         (9202 - vis.visit_concept_id)                                       -- visit_concept_id
          +
-        (me.start_date - vis.visit_start_date)                              -- visit_start_date
+        (DATE(me.start_date) - vis.visit_start_date)                        -- visit_start_date
          +
-        (coalesce(vis.visit_start_time, 0))                                 -- visit_start_time
+        (TIME(me.start_date) - vis.visit_start_time)                        -- visit_start_time
          +
-        (me.end_date - vis.visit_end_date)                                  -- visit_end_date
+        (DATE(me.end_date) - vis.visit_end_date)                            -- visit_end_date
          +
-        (coalesce(vis.visit_end_time, 0))                                   -- visit_end_time
+        (TIME(me.end_date) - vis.visit_end_time)                            -- visit_end_time
          +
         (44818519 - vis.visit_type_concept_id)                              -- visit_type_concept_id
          +
@@ -2247,6 +2219,12 @@ VALUES
 );
 
 
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_observation_period.sql
+-- -------------------------------------------------------------------
+
+
 -- --------------------------------------------------------
 -- table: observation_period
 -- --------------------------------------------------------
@@ -2276,6 +2254,10 @@ VALUES
     'Check duplicates in cdm observation_period',
     @test_result
 );
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_fact_relationship.sql
+-- -------------------------------------------------------------------
 
 
 -- -------------------------------------------------------------------

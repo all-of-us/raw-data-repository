@@ -1,24 +1,11 @@
 -- -------------------------------------------------------------------
 -- @2015-2017, Odysseus Data Services, Inc. All rights reserved
 -- PPI OMOP CDM Conversion
--- last updated September 13, 2017
---
--- script for ETL workflow, consisting of:
---
--- populating table cdm.src_clean (and aux tables)
--- populating table cdm.src_mapped (and aux tables)
---
--- populating table cdm.location
--- populating table cdm.person
--- populating table cdm.observation
--- populating table cdm.procedure_occurrence
---
--- post-conversion deduplication of event tables
---
--- populating table cdm_target.location
--- populating table cdm_target.person
--- populating table cdm_target.observation
--- populating table cdm_target.procedure_occurrence
+-- last updated September 21, 2017
+-- -------------------------------------------------------------------
+
+-- -------------------------------------------------------------------
+-- source_file: src/src_clean.sql
 -- -------------------------------------------------------------------
 
 -- -------------------------------------------------------------------
@@ -165,6 +152,11 @@ GROUP BY
 
 ALTER TABLE cdm.src_clean ADD KEY (participant_id);
 ALTER TABLE cdm.src_clean ADD KEY (question_ppi_code);
+
+
+-- -------------------------------------------------------------------
+-- source_file: src/src_mapped.sql
+-- -------------------------------------------------------------------
 
 -- -------------------------------------------------------------------
 -- table: src_participant
@@ -320,6 +312,11 @@ LEFT JOIN voc.concept vc4
 
 ALTER TABLE cdm.src_mapped ADD KEY (participant_id);
 
+
+-- -------------------------------------------------------------------
+-- source_file: src/location.sql
+-- -------------------------------------------------------------------
+
 -- -------------------------------------------------------------------
 -- table: cdm.src_person_location
 -- -------------------------------------------------------------------
@@ -406,6 +403,10 @@ SELECT DISTINCT
     'loc'                           AS unit_id
 FROM cdm.src_person_location src
 ;
+
+-- -------------------------------------------------------------------
+-- source_file: src/person.sql
+-- -------------------------------------------------------------------
 
 -- ---------------------------------------------------
 -- found the gender_concept_id
@@ -574,6 +575,10 @@ LEFT JOIN cdm.src_location_for_pers loc
   DROP TABLE IF EXISTS cdm.src_location_for_pers;
 
 -- -------------------------------------------------------------------
+-- source_file: src/procedure_occurrence.sql
+-- -------------------------------------------------------------------
+
+-- -------------------------------------------------------------------
 -- table: procedure_occurrence
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.procedure_occurrence;
@@ -584,7 +589,7 @@ SELECT
     src_m1.participant_id                       AS person_id,
     COALESCE(vc.concept_id, 0)                  AS procedure_concept_id,
     src_m2.value_date                           AS procedure_date,
-    581412                                      AS procedure_type_concept_id,   -- Procedure Recorded from a Survey
+    581412                                      AS procedure_type_concept_id,   -- 581412, Procedure Recorded from a Survey
     0                                           AS modifier_concept_id,
     NULL                                        AS quantity,
     NULL                                        AS provider_id,
@@ -685,6 +690,10 @@ WHERE
 DROP TABLE cdm.tmp_procedure_occurrence;
 
 -- -------------------------------------------------------------------
+-- source_file: src/src_meas_mapped.sql
+-- -------------------------------------------------------------------
+
+-- -------------------------------------------------------------------
 -- table: src_meas
 -- -------------------------------------------------------------------
 DROP TABLE IF EXISTS cdm.src_meas;
@@ -752,6 +761,7 @@ INNER JOIN voc.concept vc1
     ON meas.code_value = vc1.concept_code
     AND vc1.standard_concept = 'S'
     AND vc1.vocabulary_id IN ('PPI', 'LOINC')
+WHERE meas.code_value IS NOT NULL
 ;
 
 INSERT INTO cdm.tmp_cv_concept_lk
@@ -772,7 +782,9 @@ LEFT JOIN voc.concept_relationship vcr1
 LEFT JOIN voc.concept vc2
     ON vc2.concept_id = vcr1.concept_id_2
     AND vc2.standard_concept = 'S'
-WHERE meas.code_value NOT IN (SELECT code_value FROM cdm.tmp_cv_concept_lk)
+WHERE
+    meas.code_value NOT IN (SELECT code_value FROM cdm.tmp_cv_concept_lk)
+    AND meas.code_value IS NOT NULL
 ;
 
 -- -------------------------------------------------------------------
@@ -800,6 +812,7 @@ INNER JOIN voc.concept vc1
     ON meas.value_code_value = vc1.concept_code
     AND vc1.standard_concept = 'S'
     AND vc1.vocabulary_id IN ('PPI', 'LOINC')
+WHERE meas.value_code_value IS NOT NULL
 ;
 
 INSERT INTO cdm.tmp_vcv_concept_lk
@@ -819,7 +832,9 @@ LEFT JOIN voc.concept_relationship vcr1
 LEFT JOIN voc.concept vc2
     ON vc2.concept_id = vcr1.concept_id_2
     AND vc2.standard_concept = 'S'
-WHERE meas.value_code_value NOT IN (SELECT value_code_value FROM cdm.tmp_vcv_concept_lk)
+WHERE
+    meas.value_code_value NOT IN (SELECT value_code_value FROM cdm.tmp_vcv_concept_lk)
+    AND meas.value_code_value IS NOT NULL
 ;
 
 -- -------------------------------------------------------------------
@@ -889,6 +904,10 @@ LEFT JOIN cdm.tmp_vcv_concept_lk tmp2
   DROP TABLE IF EXISTS cdm.tmp_vcv_concept_lk;
 
 -- -------------------------------------------------------------------
+-- source_file: src/care_site.sql
+-- -------------------------------------------------------------------
+
+-- -------------------------------------------------------------------
 -- table: cdm.care_site
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.care_site;
@@ -906,6 +925,10 @@ FROM cdm.src_meas src_meas
 JOIN rdr.site site
     ON  site.site_id = src_meas.finalized_site_id
 ;
+
+-- -------------------------------------------------------------------
+-- source_file: src/visit_occurrence.sql
+-- -------------------------------------------------------------------
 
 -- -------------------------------------------------------------------
 -- table: cdm.visit_occurrence
@@ -937,6 +960,10 @@ GROUP BY
 ;
 
 -- -------------------------------------------------------------------
+-- source_file: src/observation.sql
+-- -------------------------------------------------------------------
+
+-- -------------------------------------------------------------------
 -- table: cdm.observation
 -- -------------------------------------------------------------------
 
@@ -958,7 +985,7 @@ SELECT
     src_m.question_concept_id                   AS observation_concept_id,
     DATE(src_m.date_of_survey)                  AS observation_date,
     TIME(src_m.date_of_survey)                  AS observation_time,
-    45905771                                    AS observation_type_concept_id,    -- Standard CDM concept: 'Observation Recorded from a Survey'
+    45905771                                    AS observation_type_concept_id, -- 45905771, Observation Recorded from a Survey
     src_m.value_number                          AS value_as_number,
     CASE
         WHEN src_m.value_ppi_code IS NOT NULL
@@ -1005,7 +1032,7 @@ SELECT DISTINCT
     meas.cv_concept_id                      AS observation_concept_id,
     DATE(meas.measurement_time)             AS observation_date,
     TIME(meas.measurement_time)             AS observation_time,
-    581413                                  AS observation_type_concept_id,   -- Observation from Measurement
+    581413                                  AS observation_type_concept_id,   -- 581413, Observation from Measurement
     NULL                                    AS value_as_number,
     NULL                                    AS value_as_string,
     meas.vcv_concept_id                     AS value_as_concept_id,
@@ -1144,6 +1171,10 @@ WHERE
 DROP TABLE cdm.tmp_observation;
 
 -- -------------------------------------------------------------------
+-- source_file: src/measurement.sql
+-- -------------------------------------------------------------------
+
+-- -------------------------------------------------------------------
 -- table: cdm.measurement
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.measurement;
@@ -1164,7 +1195,7 @@ SELECT DISTINCT
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
     TIME(meas.measurement_time)             AS measurement_time,
-    44818701                                AS measurement_type_concept_id,  -- From physical examination
+    44818701                                AS measurement_type_concept_id,  -- 44818701, From physical examination
     0                                       AS operator_concept_id,
     meas.value_decimal                      AS value_as_number, 
     0                                       AS value_as_concept_id,
@@ -1203,7 +1234,7 @@ SELECT DISTINCT
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
     TIME(meas.measurement_time)             AS measurement_time,
-    44818701                                AS measurement_type_concept_id,
+    44818701                                AS measurement_type_concept_id, -- 44818701, From physical examination
     0                                       AS operator_concept_id,
     NULL                                    AS value_as_number, 
     meas.vcv_concept_id                     AS value_as_concept_id,
@@ -1242,7 +1273,7 @@ SELECT DISTINCT
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
     TIME(meas.measurement_time)             AS measurement_time,
-    44818701                                AS measurement_type_concept_id,
+    44818701                                AS measurement_type_concept_id, -- 44818701, From physical examination
     0                                       AS operator_concept_id,
     NULL                                    AS value_as_number, 
     0                                       AS value_as_concept_id,
@@ -1390,6 +1421,11 @@ CREATE INDEX ux_measurement ON cdm.measurement (person_id, measurement_concept_i
                                                 visit_occurrence_id, measurement_source_value, measurement_source_concept_id,
                                                 unit_source_value, unit_concept_id);
 
+
+-- -------------------------------------------------------------------
+-- source_file: src/condition_occurrence.sql
+-- -------------------------------------------------------------------
+
 -- ---------------------------------------------------
 -- table: condition_occurrence
 -- ---------------------------------------------------
@@ -1402,7 +1438,7 @@ SELECT
     meas.cv_concept_id              AS condition_concept_id,
     DATE(meas.measurement_time)     AS condition_start_date,
     NULL                            AS condition_end_date,
-    45905770                        AS condition_type_concept_id,   -- Patient Self-Reported Condition
+    45905770                        AS condition_type_concept_id,   -- 45905770, Patient Self-Reported Condition
     NULL                            AS stop_reason,
     NULL                            AS provider_id,
     vis.visit_occurrence_id         AS visit_occurrence_id,
@@ -1505,6 +1541,11 @@ WHERE
 ;
 
 DROP TABLE cdm.tmp_condition_occurrence;
+
+
+-- -------------------------------------------------------------------
+-- source_file: src/condition_era.sql
+-- -------------------------------------------------------------------
 
 -- ---------------------------------------------------
 -- table: condition_era
@@ -1739,6 +1780,10 @@ ORDER BY
   DROP TABLE IF EXISTS cdm.temp_cteEndDates;
   DROP TABLE IF EXISTS cdm.temp_cteConditionEnds;
   DROP TABLE IF EXISTS cdm.temp_cteEndDates_1;
+
+-- -------------------------------------------------------------------
+-- source_file: src/observation_period.sql
+-- -------------------------------------------------------------------
 
 -- -------------------------------------------------------------------
 -- table: observation_period
@@ -1982,6 +2027,10 @@ DROP TABLE IF EXISTS temp_obs_end_union_part;
 DROP TABLE IF EXISTS temp_obs;
 
 -- -------------------------------------------------------------------
+-- source_file: src/fact_relationship.sql
+-- -------------------------------------------------------------------
+
+-- -------------------------------------------------------------------
 -- table: cdm.fact_relationship
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.fact_relationship;
@@ -2047,7 +2096,7 @@ SELECT
     m2.measurement_id           AS fact_id_1,
     21                          AS domain_concept_id_2,     -- Measurement
     m1.measurement_id           AS fact_id_2,
-    46233682                    AS relationship_concept_id,  -- 'Diastolic to systolic blood pressure measurement
+    46233682                    AS relationship_concept_id,  -- Diastolic to systolic blood pressure measurement
     'syst.diast2'               AS unit_id
 FROM cdm.measurement m1
 INNER JOIN cdm.measurement m2
@@ -2060,3 +2109,5 @@ INNER JOIN cdm.measurement m2
     AND m1.parent_id IS NOT NULL
     AND m2.parent_id IS NOT NULL
 ;
+
+
