@@ -451,7 +451,7 @@ class FakeParticipantGenerator(object):
     if random.random() <= _NO_HPO_CHANGE:
       return consent_time, participant_response
     hpo = random.choice(self._hpos)
-    participant_response['providerLink'] = [make_primary_provider_link_for_hpo(hpo)]
+    participant_response['providerLink'] = json.loads(make_primary_provider_link_for_hpo(hpo))
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_HPO_CHANGE)
     change_time = consent_time + datetime.timedelta(days=days_delta)
     result = self._update_participant(change_time, participant_response, participant_id)
@@ -507,7 +507,7 @@ class FakeParticipantGenerator(object):
         hpo = random.choice(self._hpos)
     if hpo:
       if hpo.hpoId != UNSET_HPO_ID:
-        participant_json['providerLink'] = [make_primary_provider_link_for_hpo(hpo)]
+        participant_json['providerLink'] = json.loads(make_primary_provider_link_for_hpo(hpo))
     creation_time = self._days_ago(random.randint(0, _MAX_DAYS_HISTORY))
     participant_response = self._client.request_json(
         'Participant', method='POST', body=participant_json, pretend_date=creation_time)
