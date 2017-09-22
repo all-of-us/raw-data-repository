@@ -66,7 +66,7 @@ different subsets of the rows:
     a case where the same test was ordered twice and received twice for a
     participant.
 1.  `report_$DATE_over_24h.csv` Rows where the elapsed time between ordered
-    sample collection and sample receipt confirmation is more than 24 hours.
+    sample collection and sample creation is more than 24 hours.
     This may include cases where there is a mismatch in samples ordered/sent
     and samples received. Last 7 days only.
 1.  `report_$DATE_missing.csv` Any case of order and receipt mismatch. This may
@@ -108,5 +108,5 @@ Column | Description | Example
 `received_sample_id` | Received sample's ID, from "Sample Id" column. | 3663123 or "1685731,1809762"
 `received_time` | Received sample's confirmed timestamp, ISO-8601 format. (Converted from Central time.) | 2016-09-22T08:38:42+00:00
 `Sample Family Create Date` | Received sample's created timestamp, ISO-8601 format. (Converted from Central time.) | 2016-09-22T08:38:42+00:00
-`elapsed_hours` | Elapsed integer hours between `sent_collection_time` and `received_time`. | 20
+`elapsed_hours` | Elapsed integer hours between `sent_collection_time` and `Sample Family Create Date`. | 20
 
