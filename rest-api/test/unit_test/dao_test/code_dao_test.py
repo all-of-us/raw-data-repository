@@ -191,29 +191,30 @@ class CodeDaoTest(SqlTestBase):
                                 system=system)
     self.assertEquals(expectedCodeBook.asdict(), self.code_book_dao.get(1).asdict())
 
-    expectedModule1 = Code(codeBookId=1, codeId=1, system=system, value="m1", display=u"d7",
-                           topic=u"mt1", codeType=CodeType.MODULE, mapped=True, created=TIME)
+    expectedModule1 = Code(codeBookId=1, codeId=1, system=system, value="m1", shortValue="m1",
+                           display=u"d7", topic=u"mt1", codeType=CodeType.MODULE, mapped=True,
+                           created=TIME)
     self.assertEquals(expectedModule1.asdict(), self.code_dao.get(1).asdict())
 
     expectedModuleHistory1 = CodeHistory(codeHistoryId=1, codeBookId=1, codeId=1, system=system,
-                                         value="m1", display=u"d7",
+                                         value="m1", shortValue="m1", display=u"d7",
                                          topic=u"mt1", codeType=CodeType.MODULE, mapped=True,
                                          created=TIME)
     self.assertEquals(expectedModuleHistory1.asdict(), self.code_history_dao.get(1).asdict())
 
-    expectedTopic1 = Code(codeBookId=1, codeId=2, system=system, value="t1", display=u"d6",
-                          topic=u"t1", codeType=CodeType.TOPIC, mapped=True, created=TIME,
-                          parentId=1)
+    expectedTopic1 = Code(codeBookId=1, codeId=2, system=system, value="t1", shortValue="t1",
+                          display=u"d6", topic=u"t1", codeType=CodeType.TOPIC, mapped=True,
+                          created=TIME, parentId=1)
     self.assertEquals(expectedTopic1.asdict(), self.code_dao.get(2).asdict())
 
-    expectedQuestion1 = Code(codeBookId=1, codeId=3, system=system, value="q1", display=u"d4",
-                             topic=u"t1", codeType=CodeType.QUESTION, mapped=True, created=TIME,
-                             parentId=2)
+    expectedQuestion1 = Code(codeBookId=1, codeId=3, system=system, value="q1", shortValue="q1",
+                             display=u"d4", topic=u"t1", codeType=CodeType.QUESTION, mapped=True,
+                             created=TIME, parentId=2)
     self.assertEquals(expectedQuestion1.asdict(), self.code_dao.get(3).asdict())
 
-    expectedAnswer1 = Code(codeBookId=1, codeId=4, system=system, value="c1", display=u"d1",
-                          topic=u"t1", codeType=CodeType.ANSWER, mapped=True, created=TIME,
-                          parentId=3)
+    expectedAnswer1 = Code(codeBookId=1, codeId=4, system=system, value="c1", shortValue="c1",
+                           display=u"d1", topic=u"t1", codeType=CodeType.ANSWER, mapped=True,
+                           created=TIME, parentId=3)
     self.assertEquals(expectedAnswer1.asdict(), self.code_dao.get(4).asdict())
 
 def _make_concept(concept_topic, concept_type, code, display, child_concepts=None):
