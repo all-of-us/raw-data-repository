@@ -216,7 +216,7 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
 
   # Gets orders for which the samples arrived, but they arrived late, within the past 7 days.
   late_predicate = lambda result: (result[_ELAPSED_HOURS_INDEX] and
-                                    int(result[_ELAPSED_HOURS_INDEX]) > 24 and
+                                    int(result[_ELAPSED_HOURS_INDEX]) >= 24 and
                                     in_past_week(result, now))
 
   # Gets samples or orders where something has gone missing within the past 7 days, and if an order
@@ -338,7 +338,7 @@ _RECONCILIATION_REPORT_SQL = ("""
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id) received_sample_id,
     ISODATE[MAX(confirmed)] received_time,
     ISODATE[MAX(created)] 'Sample Family Create Date',
-    TIMESTAMPDIFF(HOUR, MAX(collected), MAX(confirmed)) elapsed_hours,
+    TIMESTAMPDIFF(HOUR, MAX(collected), MAX(created)) elapsed_hours,
     GROUP_CONCAT(DISTINCT biospecimen_kit_id) biospecimen_kit_id,
     GROUP_CONCAT(DISTINCT fedex_tracking_number) fedex_tracking_number
   FROM
