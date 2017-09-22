@@ -610,122 +610,44 @@ VALUES
 
 -- Comment : Check values of fields
 SELECT NULL INTO @test_result;
-select  sum(
-        (coalesce(t_src.person_id, 0) - coalesce(t_cdm.person_id, 0))                       -- address_1
-         +
-        (coalesce(t_src.address_1, 0) - coalesce(t_cdm.address_1, 0))                       -- address_1
-         +
-        (coalesce(t_src.address_2, 0) - coalesce(t_cdm.address_2, 0))                       -- address_2
-         +
-        (coalesce(t_src.city, 0) - coalesce(t_cdm.city, 0))                                 -- city
-         +
-        (coalesce(t_src.state, 0) - coalesce(t_cdm.state, 0))                               -- state
-         +
-        (coalesce(t_src.zip, 0) - coalesce(t_cdm.zip, 0))                                   -- zip
-         +
-        coalesce(t_cdm.county, 0)                                                           -- county
-         +
-        (coalesce(t_src.ppi_code, 0) - coalesce(t_cdm.location_source_value, 0))            -- location_source_value
+select COALESCE(c2.result, c1.count) as result INTO @test_result
+from
+    (select count(*) as count
+     from cdm.location
+    ) c1,
 
-     ) INTO @test_result
-from (
-    select distinct
-        a1.participant_id       as person_id,
-        a1.created              as last_date,
-        a2.value_string         as address_1,
-        a3.value_string         as address_2,
-        a4.value_string         as city,
-        right(a5.short_value, 2)      as state,
-        a6.value_string         as zip,
-        a5.short_value                as ppi_code
-    from
-        (select distinct
-            qr.participant_id,
-            max(qr.created)   as created
-        from rdr.questionnaire_response_answer qra
-        inner join rdr.questionnaire_response qr
-            on qra.questionnaire_response_id = qr.questionnaire_response_id
-        inner join rdr.questionnaire_question qq
-            on qq.questionnaire_question_id = qra.question_id
-        inner join rdr.code cd_q
-            on cd_q.code_id = qq.code_id
-        inner join cdm.person p
-            on p.person_id = qr.participant_id
-        left join rdr.code cd_a
-                on qra.value_code_id = cd_a.code_id
-        where
-            (cd_q.short_value in ( 'PIIAddress_StreetAddress',
-                            'PIIAddress_StreetAddress2',
-                            'StreetAddress_PIICity',
-                            'StreetAddress_PIIZIP')
-            and qra.value_string is not null
-            )
+    (select  sum(
+            (coalesce(t_src.person_id, 0) - coalesce(t_cdm.person_id, 0))                       -- address_1
+             +
+            (coalesce(t_src.address_1, 0) - coalesce(t_cdm.address_1, 0))                       -- address_1
+             +
+            (coalesce(t_src.address_2, 0) - coalesce(t_cdm.address_2, 0))                       -- address_2
+             +
+            (coalesce(t_src.city, 0) - coalesce(t_cdm.city, 0))                                 -- city
+             +
+            (coalesce(t_src.state, 0) - coalesce(t_cdm.state, 0))                               -- state
+             +
+            (coalesce(t_src.zip, 0) - coalesce(t_cdm.zip, 0))                                   -- zip
+             +
+            coalesce(t_cdm.county, 0)                                                           -- county
+             +
+            (coalesce(t_src.ppi_code, 0) - coalesce(t_cdm.location_source_value, 0))            -- location_source_value
 
-            or
-
-            (cd_q.short_value = 'StreetAddress_PIIState'
-            and cd_a.topic = 'States'
-            and cd_a.short_value is not null
-                )
-        group by
-            qr.participant_id
-        ) a1
-    left join
+         ) as result
+    from (
+        select distinct
+            a1.participant_id       as person_id,
+            a1.created              as last_date,
+            a2.value_string         as address_1,
+            a3.value_string         as address_2,
+            a4.value_string         as city,
+            right(a5.short_value, 2)      as state,
+            a6.value_string         as zip,
+            a5.short_value                as ppi_code
+        from
             (select distinct
                 qr.participant_id,
-                qr.created,
-                qra.value_string
-            from rdr.questionnaire_response_answer qra
-            inner join rdr.questionnaire_response qr
-                on qra.questionnaire_response_id = qr.questionnaire_response_id
-            inner join rdr.questionnaire_question qq
-                on qq.questionnaire_question_id = qra.question_id
-            inner join rdr.code cd
-                on cd.code_id = qq.code_id
-            where cd.short_value = 'PIIAddress_StreetAddress'
-            ) a2
-        on a1.participant_id = a2.participant_id
-        and a1.created = a2.created
-
-    left join
-            (select distinct
-                qr.participant_id,
-                qr.created,
-                qra.value_string
-            from rdr.questionnaire_response_answer qra
-            inner join rdr.questionnaire_response qr
-                on qra.questionnaire_response_id = qr.questionnaire_response_id
-            inner join rdr.questionnaire_question qq
-                on qq.questionnaire_question_id = qra.question_id
-            inner join rdr.code cd
-                on cd.code_id = qq.code_id
-            where cd.short_value = 'PIIAddress_StreetAddress2'
-            ) a3
-        on a1.participant_id = a3.participant_id
-        and a1.created = a3.created
-
-    left join
-            (select distinct
-                qr.participant_id,
-                qr.created,
-                qra.value_string
-            from rdr.questionnaire_response_answer qra
-            inner join rdr.questionnaire_response qr
-                on qra.questionnaire_response_id = qr.questionnaire_response_id
-            inner join rdr.questionnaire_question qq
-                on qq.questionnaire_question_id = qra.question_id
-            inner join rdr.code cd
-                on cd.code_id = qq.code_id
-            where cd.short_value = 'StreetAddress_PIICity'
-            ) a4
-        on a1.participant_id = a4.participant_id
-        and a1.created = a4.created
-
-    left join
-            (select distinct
-                qr.participant_id,
-                qr.created,
-                cd_a.short_value
+                max(qr.created)   as created
             from rdr.questionnaire_response_answer qra
             inner join rdr.questionnaire_response qr
                 on qra.questionnaire_response_id = qr.questionnaire_response_id
@@ -733,55 +655,140 @@ from (
                 on qq.questionnaire_question_id = qra.question_id
             inner join rdr.code cd_q
                 on cd_q.code_id = qq.code_id
-            inner join rdr.code cd_a
-                on qra.value_code_id = cd_a.code_id
-            where cd_q.short_value = 'StreetAddress_PIIState'
+            inner join cdm.person p
+                on p.person_id = qr.participant_id
+            left join rdr.code cd_a
+                    on qra.value_code_id = cd_a.code_id
+            where
+                (cd_q.short_value in ( 'PIIAddress_StreetAddress',
+                                'PIIAddress_StreetAddress2',
+                                'StreetAddress_PIICity',
+                                'StreetAddress_PIIZIP')
+                and qra.value_string is not null
+                )
+
+                or
+
+                (cd_q.short_value = 'StreetAddress_PIIState'
                 and cd_a.topic = 'States'
-            ) a5
-        on a1.participant_id = a5.participant_id
-        and a1.created = a5.created
+                and cd_a.short_value is not null
+                    )
+            group by
+                qr.participant_id
+            ) a1
+        left join
+                (select distinct
+                    qr.participant_id,
+                    qr.created,
+                    qra.value_string
+                from rdr.questionnaire_response_answer qra
+                inner join rdr.questionnaire_response qr
+                    on qra.questionnaire_response_id = qr.questionnaire_response_id
+                inner join rdr.questionnaire_question qq
+                    on qq.questionnaire_question_id = qra.question_id
+                inner join rdr.code cd
+                    on cd.code_id = qq.code_id
+                where cd.short_value = 'PIIAddress_StreetAddress'
+                ) a2
+            on a1.participant_id = a2.participant_id
+            and a1.created = a2.created
 
+        left join
+                (select distinct
+                    qr.participant_id,
+                    qr.created,
+                    qra.value_string
+                from rdr.questionnaire_response_answer qra
+                inner join rdr.questionnaire_response qr
+                    on qra.questionnaire_response_id = qr.questionnaire_response_id
+                inner join rdr.questionnaire_question qq
+                    on qq.questionnaire_question_id = qra.question_id
+                inner join rdr.code cd
+                    on cd.code_id = qq.code_id
+                where cd.short_value = 'PIIAddress_StreetAddress2'
+                ) a3
+            on a1.participant_id = a3.participant_id
+            and a1.created = a3.created
+
+        left join
+                (select distinct
+                    qr.participant_id,
+                    qr.created,
+                    qra.value_string
+                from rdr.questionnaire_response_answer qra
+                inner join rdr.questionnaire_response qr
+                    on qra.questionnaire_response_id = qr.questionnaire_response_id
+                inner join rdr.questionnaire_question qq
+                    on qq.questionnaire_question_id = qra.question_id
+                inner join rdr.code cd
+                    on cd.code_id = qq.code_id
+                where cd.short_value = 'StreetAddress_PIICity'
+                ) a4
+            on a1.participant_id = a4.participant_id
+            and a1.created = a4.created
+
+        left join
+                (select distinct
+                    qr.participant_id,
+                    qr.created,
+                    cd_a.short_value
+                from rdr.questionnaire_response_answer qra
+                inner join rdr.questionnaire_response qr
+                    on qra.questionnaire_response_id = qr.questionnaire_response_id
+                inner join rdr.questionnaire_question qq
+                    on qq.questionnaire_question_id = qra.question_id
+                inner join rdr.code cd_q
+                    on cd_q.code_id = qq.code_id
+                inner join rdr.code cd_a
+                    on qra.value_code_id = cd_a.code_id
+                where cd_q.short_value = 'StreetAddress_PIIState'
+                    and cd_a.topic = 'States'
+                ) a5
+            on a1.participant_id = a5.participant_id
+            and a1.created = a5.created
+
+        left join
+                (select distinct
+                    qr.participant_id,
+                    qr.created,
+                    qra.value_string
+                from rdr.questionnaire_response_answer qra
+                inner join rdr.questionnaire_response qr
+                    on qra.questionnaire_response_id = qr.questionnaire_response_id
+                inner join rdr.questionnaire_question qq
+                    on qq.questionnaire_question_id = qra.question_id
+                inner join rdr.code cd
+                    on cd.code_id = qq.code_id
+                where cd.short_value = 'StreetAddress_PIIZIP'
+                ) a6
+            on a1.participant_id = a6.participant_id
+            and a1.created = a6.created
+        ) t_src
     left join
-            (select distinct
-                qr.participant_id,
-                qr.created,
-                qra.value_string
-            from rdr.questionnaire_response_answer qra
-            inner join rdr.questionnaire_response qr
-                on qra.questionnaire_response_id = qr.questionnaire_response_id
-            inner join rdr.questionnaire_question qq
-                on qq.questionnaire_question_id = qra.question_id
-            inner join rdr.code cd
-                on cd.code_id = qq.code_id
-            where cd.short_value = 'StreetAddress_PIIZIP'
-            ) a6
-        on a1.participant_id = a6.participant_id
-        and a1.created = a6.created
-    ) t_src
-left join
-    (   select
-            per.person_id,
-            loc.address_1,
-            loc.address_2,
-            loc.city,
-            loc.state,
-            loc.zip,
-            loc.location_source_value,
-            loc.county
-        from cdm.person per
-        inner join cdm.location loc
-            on per.location_id = loc.location_id
-        ) t_cdm
-    ON t_src.person_id = t_cdm.person_id
-    ;
+        (   select
+                per.person_id,
+                loc.address_1,
+                loc.address_2,
+                loc.city,
+                loc.state,
+                loc.zip,
+                loc.location_source_value,
+                loc.county
+            from cdm.person per
+            inner join cdm.location loc
+                on per.location_id = loc.location_id
+            ) t_cdm
+        ON t_src.person_id = t_cdm.person_id
+    ) c2
+;
 
-INSERT INTO cdm.qa_result
-(test_table, test_unit, test_descr, test_result)
-VALUES
-(   'location', '',
-    'check values of fields',
-    @test_result
-);
+    INSERT INTO cdm.qa_result
+    (test_table, test_unit, test_descr, test_result)
+    VALUES
+    (   'location', '',
+        'check values of fields',
+        @test_result
+    );
 
 
 
@@ -862,28 +869,35 @@ VALUES
 
 -- Test 4: Check values of fields
 SELECT NULL INTO @test_result;
-select  sum(
-        (coalesce(s.site_name, 0) - cs.care_site_name)              -- care_site_name
-         +
-        (coalesce(cs.place_of_service_concept_id, 0))               -- place_of_service_concept_id
-         +
-        (coalesce(cs.location_id, 0))                               -- location_id
-         +
-        (pm.finalized_site_id - cs.care_site_source_value)          -- care_site_source_value
-         +
-        (coalesce(cs.place_of_service_source_value, 0))             -- place_of_service_source_value
-     ) INTO @test_result
-from rdr.physical_measurements pm
-inner join rdr.measurement me
-    on pm.physical_measurements_id = me.physical_measurements_id
-    and pm.final = 1
-    and pm.finalized_site_id is not null
-inner join cdm.person per
-    on pm.participant_id = per.person_id
-inner join rdr.site s
-    on pm.finalized_site_id = s.site_id
-left join cdm.care_site cs
-    on cs.care_site_source_value = pm.finalized_site_id
+select COALESCE(c2.result, c1.count) as result INTO @test_result
+from
+    (select count(*) as count
+     from cdm.care_site
+    ) c1,
+    
+    (select  sum(
+            (coalesce(s.site_name, 0) - cs.care_site_name)              -- care_site_name
+             +
+            (coalesce(cs.place_of_service_concept_id, 0))               -- place_of_service_concept_id
+             +
+            (coalesce(cs.location_id, 0))                               -- location_id
+             +
+            (pm.finalized_site_id - cs.care_site_source_value)          -- care_site_source_value
+             +
+            (coalesce(cs.place_of_service_source_value, 0))             -- place_of_service_source_value
+         ) as result
+    from rdr.physical_measurements pm
+    inner join rdr.measurement me
+        on pm.physical_measurements_id = me.physical_measurements_id
+        and pm.final = 1
+        and pm.finalized_site_id is not null
+    inner join cdm.person per
+        on pm.participant_id = per.person_id
+    inner join rdr.site s
+        on pm.finalized_site_id = s.site_id
+    left join cdm.care_site cs
+        on cs.care_site_source_value = pm.finalized_site_id
+    ) c2
 ;
 
 INSERT INTO cdm.qa_result
@@ -1174,6 +1188,141 @@ VALUES
 );
 
 
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_procedure_occurrence.sql
+-- -------------------------------------------------------------------
+
+-- --------------------------------------------------------
+-- table:procedure_occurrence
+-- --------------------------------------------------------
+
+-- Check counts in cdm procedure occurrence
+SELECT NULL INTO @test_result;
+SELECT c1.c - c2.c  INTO @test_result
+from
+    (
+        select count(*) AS c
+        from cdm.procedure_occurrence
+    ) c1,
+    (
+        select count(*) as c
+        from
+            (
+                select distinct
+                    qr1.participant_id,
+                    COALESCE(vc.concept_id, 0) as proc_concept_id,
+                    qra2.value_date,
+                    cd_q1.code_id
+                from rdr.questionnaire_response_answer qra1
+                inner join rdr.questionnaire_response qr1
+                    on qra1.questionnaire_response_id = qr1.questionnaire_response_id
+                inner join cdm.person pp
+                    on pp.person_id = qr1.participant_id
+                inner join rdr.questionnaire_question qq1
+                    on qq1.questionnaire_question_id = qra1.question_id
+                inner join rdr.code cd_q1
+                    on cd_q1.code_id = qq1.code_id
+                inner join rdr.code cd_a1
+                    on qra1.value_code_id = cd_a1.code_id
+                inner join cdm.source_to_concept_map stcm
+                    on cd_a1.short_value = stcm.source_code
+                    and stcm.source_vocabulary_id = 'ppi-proc'
+
+                inner join rdr.questionnaire_response_answer qra2
+                    on qra1.questionnaire_response_id = qra2.questionnaire_response_id
+                inner join rdr.questionnaire_response qr2
+                    on qra2.questionnaire_response_id = qr2.questionnaire_response_id
+                inner join rdr.questionnaire_question qq2
+                    on qq2.questionnaire_question_id = qra2.question_id
+                inner join rdr.code cd_q2
+                    on cd_q2.code_id = qq2.code_id
+                    and cd_q2.short_value = 'OrganTransplant_Date'
+                    and qra2.value_date is not null
+                
+                left join voc.concept vc
+                    on stcm.target_concept_id = vc.concept_id
+                    and vc.standard_concept = 'S'
+            ) a
+    ) c2
+;
+
+INSERT INTO cdm.qa_result
+(test_table, test_unit, test_descr, test_result)
+VALUES
+(   'procedure_occurrence', '',
+    'Check counts in cdm procedure occurrence',
+    @test_result
+);
+
+-- Check values of fields in cdm procedure occurrence
+SELECT NULL INTO @test_result;
+select sum(
+        (qr1.participant_id - cdm_p.person_id )                                         -- person_id
+         +
+        (coalesce(vc.concept_id, 0) - cdm_p.procedure_concept_id)                       -- procedure_concept_id
+         +
+        (qra2.value_date - cdm_p.procedure_date)                                        -- procedure_date
+         +
+        (581412 - cdm_p.procedure_type_concept_id)                                      -- procedure_type_concept_id
+         +
+        (cdm_p.modifier_concept_id)                                                     -- modifier_concept_id
+         +
+        (coalesce(cdm_p.quantity, 0))                                                   -- quantity
+         +
+        (coalesce(cdm_p.provider_id, 0))                                                -- provider
+         +
+        (coalesce(cdm_p.visit_occurrence_id, 0))                                        -- visit_occurrence_id
+         +
+        (cd_a1.short_value - cdm_p.procedure_source_value)                                    -- procedure_source_value
+         +
+        (coalesce(stcm.source_concept_id, 0) - cdm_p.procedure_source_concept_id)       -- procedure_source_concept_id
+         +
+        (coalesce(cdm_p.qualifier_source_value, 0))                                     -- qualifier_source_value
+     ) as result                                                                    INTO @test_result
+from rdr.questionnaire_response_answer qra1
+inner join rdr.questionnaire_response qr1
+    on qra1.questionnaire_response_id = qr1.questionnaire_response_id
+inner join cdm.person pp
+    on pp.person_id = qr1.participant_id
+inner join rdr.questionnaire_question qq1
+    on qq1.questionnaire_question_id = qra1.question_id
+inner join rdr.code cd_q1
+    on cd_q1.code_id = qq1.code_id
+inner join rdr.code cd_a1
+    on qra1.value_code_id = cd_a1.code_id
+inner join cdm.source_to_concept_map stcm
+    on cd_a1.short_value = stcm.source_code
+    and stcm.source_vocabulary_id = 'ppi-proc'
+    
+inner join rdr.questionnaire_response_answer qra2
+    on qra1.questionnaire_response_id = qra2.questionnaire_response_id
+inner join rdr.questionnaire_response qr2
+    on qra2.questionnaire_response_id = qr2.questionnaire_response_id
+inner join rdr.questionnaire_question qq2
+    on qq2.questionnaire_question_id = qra2.question_id
+inner join rdr.code cd_q2
+    on cd_q2.code_id = qq2.code_id
+    and cd_q2.short_value = 'OrganTransplant_Date'
+    and qra2.value_date is not null
+
+left join voc.concept vc
+    on stcm.target_concept_id = vc.concept_id
+    and vc.standard_concept = 'S'
+
+left join cdm.procedure_occurrence cdm_p
+    on cdm_p.person_id = qr1.participant_id
+    and cdm_p.procedure_source_value = cd_a1.short_value
+    and cdm_p.procedure_date = qra2.value_date
+;
+
+INSERT INTO cdm.qa_result
+(test_table, test_unit, test_descr, test_result)
+VALUES
+(   'procedure_occurrence', '',
+    'Check values of fields in cdm procedure occurrence',
+    @test_result
+);
 
 -- -------------------------------------------------------------------
 -- source_file: qa/qa_observation_qra_value.sql
@@ -2076,6 +2225,188 @@ VALUES
     @test_result
 );
 
+
+-- -------------------------------------------------------------------
+-- source_file: qa/qa_condition_occurrence.sql
+-- -------------------------------------------------------------------
+
+-- --------------------------------------------------------
+-- table: condition_occurrence
+-- --------------------------------------------------------
+
+-- Test1 : Check duplicates in cdm condition occurrence
+SELECT NULL INTO @test_result;
+select c1.c - c2.c INTO @test_result
+from
+    (
+        select count(*) as c
+        from cdm.condition_occurrence
+    ) c1,
+    (
+        select count(*) as c
+        from
+            (
+                select distinct person_id,
+                                condition_concept_id,
+                                condition_start_date,
+                                condition_type_concept_id,
+                                visit_occurrence_id,
+                                condition_source_value,
+                                condition_source_concept_id
+                from cdm.condition_occurrence
+            ) a
+    ) c2
+;
+
+INSERT INTO cdm.qa_result
+(test_table, test_unit, test_descr, test_result)
+VALUES
+(   'condition_occurrence', '',
+    'Check duplicates in cdm condition_occurrence',
+    @test_result
+);
+
+-- Test2 : Check counts in cdm condition occurrence
+SELECT NULL INTO @test_result;
+select c1.c - c2.c INTO @test_result
+from
+    (
+        select count(*) AS c
+        from cdm.condition_occurrence
+    ) c1,
+    (
+        select count(*) as c
+        from
+        (
+            select distinct per.person_id,
+                            me.measurement_time,
+                            me.code_value,
+                            COALESCE(vc1.concept_id, vc3.concept_id, 0) as cond_concept_id,
+                            COALESCE(vc1.concept_id, vc2.concept_id, 0) as cond_source_concept_id
+            from rdr.physical_measurements pm
+            inner join rdr.measurement me
+                on pm.physical_measurements_id = me.physical_measurements_id
+                and pm.final = 1
+            inner join cdm.person per
+                on pm.participant_id = per.person_id
+            inner join rdr.measurement_to_qualifier mtq
+                on me.measurement_id != mtq.qualifier_id
+            left join voc.concept vc1
+                on me.code_value = vc1.concept_code
+                and vc1.vocabulary_id IN ('LOINC', 'PPI')
+                and vc1.standard_concept = 'S'
+            left join voc.concept vc2
+                on me.code_value = vc2.concept_code
+                and vc2.vocabulary_id = 'PPI'
+            left join voc.concept_relationship vcr
+                on vc2.concept_id = vcr.concept_id_1
+                and vcr.relationship_id = 'Maps to'
+                and vcr.invalid_reason IS null
+            left join voc.concept vc3
+                on vcr.concept_id_2 = vc3.concept_id
+                and vc3.standard_concept = 'S'
+            where
+                COALESCE(vc1.domain_id, vc3.domain_id, vc2.domain_id, 0) = 'Condition'
+                and
+                    (   me.code_value != 'wheelchair-bound-status'
+                        or
+                        (   me.code_value = 'wheelchair-bound-status'
+                            and
+                            me.value_code_value = 'wheelchair-bound'
+                        )
+                    )
+        ) a
+    ) c2
+;
+
+INSERT INTO cdm.qa_result
+(test_table, test_unit, test_descr, test_result)
+VALUES
+(   'condition_occurrence', '',
+    'Check counts in cdm condition occurrence',
+    @test_result
+);
+
+-- Test3: Check values of fields in cdm condition occurrence
+SELECT NULL INTO @test_result;
+select COALESCE(c2.result, c1.count) as result INTO @test_result
+from
+    (select count(*) as count
+     from cdm.condition_occurrence
+    ) c1,
+
+    (select  sum(
+            (pm.participant_id - cdm_c.person_id)                                               -- person_id
+             +
+            (coalesce(vc1.concept_id, vc3.concept_id, 0) -  cdm_c.condition_concept_id)         -- measurement_concept_id
+             +
+            (date(me.measurement_time) - cdm_c.condition_start_date)                            -- condition_start_date
+             +
+            (coalesce(cdm_c.condition_end_date, 0))                                             -- condition_end_date
+             +
+            (45905770 - cdm_c.condition_type_concept_id)                                        -- condition_type_concept_id
+             +
+            (coalesce(cdm_c.stop_reason, 0))                                                    -- stop_reason
+             +
+            (coalesce(cdm_c.provider_id, 0))                                                    -- provider_id
+             +
+            (coalesce(vis.visit_occurrence_id, 0) - coalesce(cdm_c.visit_occurrence_id, 0))     -- visit_occurrence_id
+             +
+            (me.code_value - cdm_c.condition_source_value)                                      -- condition_source_value
+             +
+            (coalesce(vc1.concept_id, vc2.concept_id, 0) - cdm_c.condition_source_concept_id)   -- condition_source_concept_id
+         ) as result
+    from rdr.physical_measurements pm
+    inner join rdr.measurement me
+        on pm.physical_measurements_id = me.physical_measurements_id
+        and pm.final = 1
+    inner join cdm.person per
+        on pm.participant_id = per.person_id
+    inner join rdr.measurement_to_qualifier mtq
+        on me.measurement_id != mtq.qualifier_id
+    left join cdm.visit_occurrence vis
+        on me.physical_measurements_id = vis.visit_source_value
+
+    left join voc.concept vc1
+        on me.code_value = vc1.concept_code
+        and vc1.vocabulary_id IN ('LOINC', 'PPI')
+        and vc1.standard_concept = 'S'
+    left join voc.concept vc2
+        on me.code_value = vc2.concept_code
+        and vc2.vocabulary_id = 'PPI'
+    left join voc.concept_relationship vcr
+        on vc2.concept_id = vcr.concept_id_1
+        and vcr.relationship_id = 'Maps to'
+        and vcr.invalid_reason IS null
+    left join voc.concept vc3
+        on vcr.concept_id_2 = vc3.concept_id
+        and vc3.standard_concept = 'S'
+
+    left join cdm.condition_occurrence cdm_c
+        on cdm_c.person_id = pm.participant_id
+        and cdm_c.condition_start_date = date(me.measurement_time)
+        and cdm_c.condition_source_value = me.code_value
+
+    where
+        COALESCE(vc1.domain_id, vc3.domain_id, vc2.domain_id, 0) = 'Condition'
+        and
+            (   me.code_value != 'wheelchair-bound-status'
+                or
+                (   me.code_value = 'wheelchair-bound-status'
+                    and
+                    me.value_code_value = 'wheelchair-bound'
+                )
+            )
+    ) c2
+;
+
+INSERT INTO cdm.qa_result
+(test_table, test_unit, test_descr, test_result)
+VALUES
+(   'condition_occurrence', '',
+    'Check values of fields in cdm condition occurrence',
+    @test_result
+);
 
 -- -------------------------------------------------------------------
 -- source_file: qa/qa_visit_occurrence.sql

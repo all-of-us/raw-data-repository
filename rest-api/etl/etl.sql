@@ -289,7 +289,7 @@ FROM cdm.src_clean src_c
 JOIN cdm.src_participant src_p
     ON  src_c.participant_id = src_p.participant_id
 LEFT JOIN voc.concept vc1 
-    ON  LEFT(src_c.question_ppi_code, 50) = vc1.concept_code
+    ON  src_c.question_ppi_code = vc1.concept_code
     AND vc1.vocabulary_id = 'PPI'
 LEFT JOIN voc.concept_relationship vcr1
     ON  vc1.concept_id = vcr1.concept_id_1
@@ -299,7 +299,7 @@ LEFT JOIN voc.concept vc2
     ON  vcr1.concept_id_2 = vc2.concept_id
     AND vc2.standard_concept = 'S'
 LEFT JOIN voc.concept vc3 
-    ON  LEFT(src_c.value_ppi_code, 50) = vc3.concept_code
+    ON  src_c.value_ppi_code = vc3.concept_code
     AND vc3.vocabulary_id = 'PPI'
 LEFT JOIN voc.concept_relationship vcr2
     ON  vc3.concept_id = vcr2.concept_id_1
