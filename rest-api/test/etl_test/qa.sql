@@ -1,7 +1,7 @@
 -- -------------------------------------------------------------------
 -- @2015-2017, Odysseus Data Services, Inc. All rights reserved
 -- PPI OMOP CDM Conversion
--- last updated September 21, 2017
+-- last updated September 22, 2017
 -- -------------------------------------------------------------------
 
 -- -------------------------------------------------------------------
@@ -77,9 +77,9 @@ from
     (
         SELECT  pa.participant_id,
                 qr.created,
-                co_q.value as v1,
+                co_q.short_value as v1,
                 qq.code_id,
-                co_a.value as v2,
+                co_a.short_value as v2,
                 co_a.topic,
                 qra.value_code_id,
                 coalesce(qra.value_integer, qra.value_decimal),
@@ -105,9 +105,9 @@ from
         AND qra.value_boolean IS NOT NULL
         GROUP BY  pa.participant_id,
                   qr.created,
-                  co_q.value,
+                  co_q.short_value,
                   qq.code_id,
-                  co_a.value,
+                  co_a.short_value,
                   co_a.topic,
                   qra.value_code_id,
                   coalesce(qra.value_integer, qra.value_decimal),
@@ -197,9 +197,9 @@ from
     (
         SELECT  pa.participant_id,
                 qr.created,
-                co_q.value as v1,
+                co_q.short_value as v1,
                 qq.code_id,
-                co_a.value as v2,
+                co_a.short_value as v2,
                 co_a.topic,
                 qra.value_code_id,
                 coalesce(qra.value_integer, qra.value_decimal),
@@ -228,13 +228,13 @@ from
                     or
                  qra.value_datetime is not null
                     or
-                 co_a.value is not null
+                 co_a.short_value is not null
                 )
         group by  pa.participant_id,
                   qr.created,
-                  co_q.value,
+                  co_q.short_value,
                   qq.code_id,
-                  co_a.value,
+                  co_a.short_value,
                   co_a.topic,
                   qra.value_code_id,
                   coalesce(qra.value_integer, qra.value_decimal),
@@ -324,9 +324,9 @@ from
     FROM
     (   SELECT  pa.participant_id,
                 qr.created,
-                co_q.value as v1,
+                co_q.short_value as v1,
                 qq.code_id,
-                co_a.value as v2,
+                co_a.short_value as v2,
                 co_a.topic,
                 qra.value_code_id,
                 coalesce(qra.value_integer, qra.value_decimal),
@@ -357,9 +357,9 @@ from
         
         group by  pa.participant_id,
                   qr.created,
-                  co_q.value,
+                  co_q.short_value,
                   qq.code_id,
-                  co_a.value,
+                  co_a.short_value,
                   co_a.topic,
                   qra.value_code_id,
                   coalesce(qra.value_integer, qra.value_decimal),
@@ -449,9 +449,9 @@ from
     (
         SELECT  pa.participant_id,
                 qr.created,
-                co_q.value as v1,
+                co_q.short_value as v1,
                 qq.code_id,
-                co_a.value as v2,
+                co_a.short_value as v2,
                 co_a.topic,
                 qra.value_code_id,
                 coalesce(qra.value_integer, qra.value_decimal),
@@ -474,12 +474,12 @@ from
         WHERE
             pa.withdrawal_status != 2
             AND hp.name != 'TEST'
-            AND co_a.value is not null
+            AND co_a.short_value is not null
         group by  pa.participant_id,
                   qr.created,
-                  co_q.value,
+                  co_q.short_value,
                   qq.code_id,
-                  co_a.value,
+                  co_a.short_value,
                   co_a.topic,
                   qra.value_code_id,
                   coalesce(qra.value_integer, qra.value_decimal),
@@ -569,10 +569,10 @@ SELECT NULL INTO @test_result;
 select count(*) INTO @test_result
 from cdm.location loc
 left join rdr.code co
-    on loc.location_source_value = co.value
+    on loc.location_source_value = co.short_value
     and co.topic = 'States'
 where loc.location_source_value is not null
-    and co.value is null;
+    and co.short_value is null;
 
 INSERT INTO cdm.qa_result
 (test_table, test_unit, test_descr, test_result)
@@ -635,9 +635,9 @@ from (
         a2.value_string         as address_1,
         a3.value_string         as address_2,
         a4.value_string         as city,
-        right(a5.value, 2)      as state,
+        right(a5.short_value, 2)      as state,
         a6.value_string         as zip,
-        a5.value                as ppi_code
+        a5.short_value                as ppi_code
     from
         (select distinct
             qr.participant_id,
@@ -654,7 +654,7 @@ from (
         left join rdr.code cd_a
                 on qra.value_code_id = cd_a.code_id
         where
-            (cd_q.value in ( 'PIIAddress_StreetAddress',
+            (cd_q.short_value in ( 'PIIAddress_StreetAddress',
                             'PIIAddress_StreetAddress2',
                             'StreetAddress_PIICity',
                             'StreetAddress_PIIZIP')
@@ -663,9 +663,9 @@ from (
 
             or
 
-            (cd_q.value = 'StreetAddress_PIIState'
+            (cd_q.short_value = 'StreetAddress_PIIState'
             and cd_a.topic = 'States'
-            and cd_a.value is not null
+            and cd_a.short_value is not null
                 )
         group by
             qr.participant_id
@@ -682,7 +682,7 @@ from (
                 on qq.questionnaire_question_id = qra.question_id
             inner join rdr.code cd
                 on cd.code_id = qq.code_id
-            where cd.value = 'PIIAddress_StreetAddress'
+            where cd.short_value = 'PIIAddress_StreetAddress'
             ) a2
         on a1.participant_id = a2.participant_id
         and a1.created = a2.created
@@ -699,7 +699,7 @@ from (
                 on qq.questionnaire_question_id = qra.question_id
             inner join rdr.code cd
                 on cd.code_id = qq.code_id
-            where cd.value = 'PIIAddress_StreetAddress2'
+            where cd.short_value = 'PIIAddress_StreetAddress2'
             ) a3
         on a1.participant_id = a3.participant_id
         and a1.created = a3.created
@@ -716,7 +716,7 @@ from (
                 on qq.questionnaire_question_id = qra.question_id
             inner join rdr.code cd
                 on cd.code_id = qq.code_id
-            where cd.value = 'StreetAddress_PIICity'
+            where cd.short_value = 'StreetAddress_PIICity'
             ) a4
         on a1.participant_id = a4.participant_id
         and a1.created = a4.created
@@ -725,7 +725,7 @@ from (
             (select distinct
                 qr.participant_id,
                 qr.created,
-                cd_a.value
+                cd_a.short_value
             from rdr.questionnaire_response_answer qra
             inner join rdr.questionnaire_response qr
                 on qra.questionnaire_response_id = qr.questionnaire_response_id
@@ -735,7 +735,7 @@ from (
                 on cd_q.code_id = qq.code_id
             inner join rdr.code cd_a
                 on qra.value_code_id = cd_a.code_id
-            where cd_q.value = 'StreetAddress_PIIState'
+            where cd_q.short_value = 'StreetAddress_PIIState'
                 and cd_a.topic = 'States'
             ) a5
         on a1.participant_id = a5.participant_id
@@ -753,7 +753,7 @@ from (
                 on qq.questionnaire_question_id = qra.question_id
             inner join rdr.code cd
                 on cd.code_id = qq.code_id
-            where cd.value = 'StreetAddress_PIIZIP'
+            where cd.short_value = 'StreetAddress_PIIZIP'
             ) a6
         on a1.participant_id = a6.participant_id
         and a1.created = a6.created
@@ -938,7 +938,7 @@ from
                             inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
                             inner join rdr.code cd on cd.code_id = qq.code_id
                             -- left join rdr.code cd_ans on cd_ans.code_id = qra.value_code_id
-                            where cd.value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
+                            where cd.short_value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
                     ) as t2
                  group by t2.participant_id
                 ) t3
@@ -993,7 +993,7 @@ from
         select count(*) as c
         from
         (
-            select  person_id, cd_ans.value
+            select  person_id, cd_ans.short_value
             from cdm.person p
 
             inner join rdr.questionnaire_response qr on p.person_id = qr.participant_id
@@ -1001,9 +1001,9 @@ from
                 on qra.questionnaire_response_id = qr.questionnaire_response_id
             inner join rdr.code cd_ans 
                 on cd_ans.code_id = qra.value_code_id
-            where cd_ans.value in ('SexAtBirth_Male', 'SexAtBirth_Female')
-            group by person_id, cd_ans.value -- , gender_concept_id, gender_source_value
-            having count(distinct cd_ans.value) = 1
+            where cd_ans.short_value in ('SexAtBirth_Male', 'SexAtBirth_Female')
+            group by person_id, cd_ans.short_value -- , gender_concept_id, gender_source_value
+            having count(distinct cd_ans.short_value) = 1
         ) t
     ) c1,
 
@@ -1039,7 +1039,7 @@ SELECT NULL INTO @test_result;
     from cdm.person p
     left join
     (
-        select  person_id, cd_ans.value as gender
+        select  person_id, cd_ans.short_value as gender
         from cdm.person p
 
         inner join rdr.questionnaire_response qr on p.person_id = qr.participant_id
@@ -1047,9 +1047,9 @@ SELECT NULL INTO @test_result;
             on qra.questionnaire_response_id = qr.questionnaire_response_id
         inner join rdr.code cd_ans 
             on cd_ans.code_id = qra.value_code_id
-        where cd_ans.value in ('SexAtBirth_Male', 'SexAtBirth_Female')
-        group by person_id, cd_ans.value -- , gender_concept_id, gender_source_value
-        having count(distinct cd_ans.value) = 1
+        where cd_ans.short_value in ('SexAtBirth_Male', 'SexAtBirth_Female')
+        group by person_id, cd_ans.short_value -- , gender_concept_id, gender_source_value
+        having count(distinct cd_ans.short_value) = 1
     ) t
     on t.person_id = p.person_id
     where gender_concept_id > 0;
@@ -1081,7 +1081,7 @@ from
                     inner join rdr.questionnaire_question qq on qra.question_id = qq.questionnaire_question_id
                     inner join rdr.code cd 
                         on cd.code_id = qq.code_id
-                    where cd.value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
+                    where cd.short_value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
                 ) t1 
                 inner join
                 (select t2.participant_id, max(t2.created) as created
@@ -1094,7 +1094,7 @@ from
                             inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
                             inner join rdr.code cd on cd.code_id = qq.code_id
                             -- left join rdr.code cd_ans on cd_ans.code_id = qra.value_code_id
-                            where cd.value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
+                            where cd.short_value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
                     ) as t2
                  group by t2.participant_id
                 ) t3
@@ -1142,7 +1142,7 @@ left join
                     inner join rdr.questionnaire_question qq on qra.question_id = qq.questionnaire_question_id
                     inner join rdr.code cd 
                         on cd.code_id = qq.code_id
-                    where cd.value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
+                    where cd.short_value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
                 ) t1 
                 inner join
                 (select t2.participant_id, max(t2.created) as created
@@ -1155,7 +1155,7 @@ left join
                             inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
                             inner join rdr.code cd on cd.code_id = qq.code_id
                             -- left join rdr.code cd_ans on cd_ans.code_id = qra.value_code_id
-                            where cd.value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
+                            where cd.short_value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
                     ) as t2
                  group by t2.participant_id
                 ) t3
@@ -1212,7 +1212,7 @@ select  sum(
         +
         -- TODO: provider
         -- TODO: visit
-        (cd.value - obs.observation_source_value) -- observation_source_value
+        (cd.short_value - obs.observation_source_value) -- observation_source_value
         +
         (obs.observation_source_concept_id - coalesce(c.concept_id, 0)) -- observation_source_concept_id
         +
@@ -1229,7 +1229,7 @@ inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.q
 inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
 inner join rdr.code cd on cd.code_id = qq.code_id
 
-left join voc.concept c on c.concept_code = left(cd.value, 50) AND c.vocabulary_id = 'PPI'
+left join voc.concept c on c.concept_code = cd.short_value AND c.vocabulary_id = 'PPI'
 left join voc.concept_relationship cr 
     on c.concept_id = cr.concept_id_1 
         and cr.invalid_reason is null
@@ -1241,7 +1241,7 @@ left join voc.concept c1
 
 inner join cdm.observation obs 
     on qr.questionnaire_response_id = obs.questionnaire_response_id
-    and obs.observation_source_value = cd.value
+    and obs.observation_source_value = cd.short_value
     and 
     CASE 
             WHEN obs.value_as_concept_id = 45877994 THEN qra.value_boolean = 1
@@ -1285,7 +1285,7 @@ select  sum(
         +
         (obs.unit_concept_id - 0)                                                           -- unit_concept_id
         +
-        (cd.value - obs.observation_source_value)                                           -- observation_source_value
+        (cd.short_value - obs.observation_source_value)                                           -- observation_source_value
         +
         (obs.observation_source_concept_id - coalesce(c.concept_id, 0))                     -- observation_source_concept_id
         +
@@ -1295,7 +1295,7 @@ select  sum(
         +
         (obs.value_source_concept_id - coalesce(c1.concept_id, 0))                          -- value_source_concept_id
         +
-        (obs.value_source_value - cd_ans.value)                                             -- value_source_value  
+        (obs.value_source_value - cd_ans.short_value)                                             -- value_source_value  
      ) INTO @test_result 
 from rdr.questionnaire_response_answer qra
 inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.questionnaire_response_id
@@ -1303,7 +1303,7 @@ inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.q
 inner join rdr.code cd on cd.code_id = qq.code_id
 inner join rdr.code cd_ans on qra.value_code_id = cd_ans.code_id 
 
-left join voc.concept c on c.concept_code = left(cd.value, 50) AND c.vocabulary_id = 'PPI'
+left join voc.concept c on c.concept_code = cd.short_value AND c.vocabulary_id = 'PPI'
 left join voc.concept_relationship cr 
     on c.concept_id = cr.concept_id_1 
         and cr.invalid_reason is null
@@ -1314,7 +1314,7 @@ left join voc.concept c2
         and c2.standard_concept = 'S'
 
 left join voc.concept c1 
-    on c1.concept_code = left(cd_ans.value, 50) 
+    on c1.concept_code = cd_ans.short_value 
         AND c1.vocabulary_id = 'PPI'
 left join voc.concept_relationship cr1 
     on c1.concept_id = cr1.concept_id_1 
@@ -1326,8 +1326,8 @@ left join voc.concept c3
 
 inner join cdm.observation obs 
     on qr.questionnaire_response_id = obs.questionnaire_response_id -- questionnaire instance
-    and obs.observation_source_value = cd.value -- question
-    and obs.value_source_value = cd_ans.value -- answer  
+    and obs.observation_source_value = cd.short_value -- question
+    and obs.value_source_value = cd_ans.short_value -- answer  
 
 where (qra.value_code_id is not null and cd_ans.code_id IS NOT NULL) and unit_id like 'observ.code'
 ;
@@ -1363,7 +1363,7 @@ select  sum(
         +
         (obs.unit_concept_id - 0) -- unit_concept_id
         +
-        (cd.value - obs.observation_source_value) -- observation_source_value
+        (cd.short_value - obs.observation_source_value) -- observation_source_value
         +
         (obs.observation_source_concept_id - coalesce(c.concept_id, 0)) -- observation_source_concept_id
         +
@@ -1380,7 +1380,7 @@ inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.q
 inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
 inner join rdr.code cd on cd.code_id = qq.code_id
 
-left join voc.concept c on c.concept_code = left(cd.value, 50) AND c.vocabulary_id = 'PPI'
+left join voc.concept c on c.concept_code = cd.short_value AND c.vocabulary_id = 'PPI'
 left join voc.concept_relationship cr 
     on c.concept_id = cr.concept_id_1 
         and cr.invalid_reason is null
@@ -1392,7 +1392,7 @@ left join voc.concept c1
 
 inner join cdm.observation obs 
     on qr.questionnaire_response_id = obs.questionnaire_response_id -- questionnaire instance id
-    and obs.observation_source_value = cd.value -- question
+    and obs.observation_source_value = cd.short_value -- question
     and obs.value_as_string = qra.value_date -- answer
 
 where qra.value_date is not null and obs.unit_id = 'observ.str'
@@ -1429,7 +1429,7 @@ select sum(
         +
         (obs.unit_concept_id - 0) -- unit_concept_id
         +
-        (cd.value - obs.observation_source_value) -- observation_source_value
+        (cd.short_value - obs.observation_source_value) -- observation_source_value
         +
         (obs.observation_source_concept_id - coalesce(c.concept_id, 0)) -- observation_source_concept_id
         +
@@ -1446,7 +1446,7 @@ inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.q
 inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
 inner join rdr.code cd on cd.code_id = qq.code_id
 
-left join voc.concept c on c.concept_code = left(cd.value, 50) AND c.vocabulary_id = 'PPI'
+left join voc.concept c on c.concept_code = cd.short_value AND c.vocabulary_id = 'PPI'
 left join voc.concept_relationship cr 
     on c.concept_id = cr.concept_id_1 
         and cr.invalid_reason is null
@@ -1457,7 +1457,7 @@ left join voc.concept c1 on c1.concept_id = cr.concept_id_2
         
 inner join cdm.observation obs 
     on qr.questionnaire_response_id = obs.questionnaire_response_id
-    and obs.observation_source_value = cd.value
+    and obs.observation_source_value = cd.short_value
     and obs.value_as_number = qra.value_integer
 
 where
@@ -1497,7 +1497,7 @@ select  sum(
         +
         (obs.unit_concept_id - 0) -- unit_concept_id
         +
-        (cd.value - obs.observation_source_value) -- observation_source_value
+        (cd.short_value - obs.observation_source_value) -- observation_source_value
         +
         (obs.observation_source_concept_id - coalesce(c.concept_id, 0)) -- observation_source_concept_id
         +
@@ -1514,7 +1514,7 @@ inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.q
 inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
 inner join rdr.code cd on cd.code_id = qq.code_id
 
-left join voc.concept c on c.concept_code = left(cd.value, 50) AND c.vocabulary_id = 'PPI'
+left join voc.concept c on c.concept_code = cd.short_value AND c.vocabulary_id = 'PPI'
 left join voc.concept_relationship cr 
     on c.concept_id = cr.concept_id_1 
         and cr.invalid_reason is null
@@ -1526,7 +1526,7 @@ left join voc.concept c1
 
 inner join cdm.observation obs 
     on qr.questionnaire_response_id = obs.questionnaire_response_id
-    and obs.observation_source_value = cd.value
+    and obs.observation_source_value = cd.short_value
     and obs.value_as_string = qra.value_string
 
 where qra.value_string is not null and obs.unit_id = 'observ.str'

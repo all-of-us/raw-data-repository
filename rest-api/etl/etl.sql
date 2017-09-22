@@ -1,7 +1,7 @@
 -- -------------------------------------------------------------------
 -- @2015-2017, Odysseus Data Services, Inc. All rights reserved
 -- PPI OMOP CDM Conversion
--- last updated September 21, 2017
+-- last updated September 22, 2017
 -- -------------------------------------------------------------------
 
 -- -------------------------------------------------------------------
@@ -38,9 +38,9 @@ INSERT INTO cdm.tmp_clean_all
 SELECT
     pa.participant_id               AS participant_id,
     qr.created                      AS date_of_survey,
-    co_q.value                      AS question_ppi_code,
+    co_q.short_value                AS question_ppi_code,
     qq.code_id                      AS question_code_id,
-    co_a.value                      AS value_ppi_code,
+    co_a.short_value                AS value_ppi_code,
     co_a.topic                      AS topic_value,
     qra.value_code_id               AS value_code_id,
     COALESCE(
