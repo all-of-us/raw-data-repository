@@ -30,8 +30,10 @@ CREATE VIEW questionnaire_response_answer_view AS
    q.created questionnaire_creation_time,
    qr.created questionnaire_response_submission_time,
    qc.value question_code,
+   qc.code_id question_code_id,
    qra.end_time answer_end_time,
    ac.value answer_code,
+   ac.code_id answer_code_id,
    qra.value_boolean answer_boolean, 
    qra.value_decimal answer_decimal,
    qra.value_integer answer_integer,
@@ -57,4 +59,5 @@ def upgrade():
   op.execute(_QUESTIONNAIRE_RESPONSE_ANSWER_VIEW_SQL)
 
 def downgrade():
-    pass
+  pass
+
