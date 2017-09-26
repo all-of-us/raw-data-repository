@@ -18,8 +18,11 @@ from main_util import get_parser, configure_logging
 
 from client import Client, HttpException, client_log
 
+_ORG_PREFIX = 'Organization/'
+
 
 def main(client):
+  num_no_change = 0
   num_updates = 0
   num_errors = 0
   with open(client.args.file) as csvfile:
@@ -51,12 +54,18 @@ def main(client):
         num_errors += 1
         continue
 
-      logging.info('%s %s => %s', participant_id, _get_old_hpo(participant), hpo)
+      old_hpo = _get_old_hpo(participant)
+      if hpo == old_hpo:
+        num_no_change += 1
+        logging.info('%s unchanged (already %s)', participant_id, old_hpo)
+        continue
+
+      logging.info('%s %s => %s', participant_id, old_hpo, hpo)
       if hpo == 'UNSET':
         participant['providerLink'] = []
       else:
         participant['providerLink'] = [{'primary': True,
-                                        'organization': {'reference': 'Organization/%s' % hpo}}]
+                                        'organization': {'reference': _ORG_PREFIX + hpo}}]
       if client.args.dry_run:
         logging.info('Dry run, would update providerLink to %r.', participant['providerLink'])
       else:
@@ -64,9 +73,10 @@ def main(client):
                             headers={'If-Match': client.last_etag})
       num_updates += 1
   logging.info(
-      '%s %d participants, %d errors.',
+      '%s %d participants, %d unchanged, %d errors.',
       'Would update' if client.args.dry_run else 'Updated',
       num_updates,
+      num_no_change,
       num_errors)
 
 
@@ -74,7 +84,12 @@ def _get_old_hpo(participant):
   links = participant['providerLink']
   if not links:
     return 'UNSET'
-  return links[0].get('organization', {}).get('reference', 'UNSET')
+  org = links[0].get('organization', {}).get('reference')
+  if org is None:
+    return 'UNSET'
+  if not org.startswith(_ORG_PREFIX):
+    raise ValueError('Could not parse old organization reference %r.' % org)
+  return org[len(_ORG_PREFIX):]
 
 
 if __name__ == '__main__':
