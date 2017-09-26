@@ -13,6 +13,8 @@ down_revision = '8d12872e0b77'
 branch_labels = None
 depends_on = None
 
+# Creates a view that can be used by the Vanderbilt team (either directly or via CSV export)
+# to analyze PPI quality.
 _QUESTIONNAIRE_RESPONSE_ANSWER_VIEW_SQL = """
 CREATE VIEW questionnaire_response_answer_view AS
  SELECT
