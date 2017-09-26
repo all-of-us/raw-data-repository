@@ -192,14 +192,14 @@ FROM
         SELECT
             src_c.participant_id        AS participant_id,
             MAX(src_c.date_of_survey)   AS latest_date_of_survey
-        FROM src_clean src_c
+        FROM cdm.src_clean src_c
         WHERE
             src_c.question_ppi_code = 'PIIBirthInformation_BirthDate'
             AND src_c.value_date IS NOT NULL
         GROUP BY
             src_c.participant_id
         ) t1
-    INNER JOIN src_clean t2
+    INNER JOIN cdm.src_clean t2
         ON t1.participant_id = t2.participant_id
         AND t1.latest_date_of_survey = t2.date_of_survey
         AND t2.question_ppi_code = 'PIIBirthInformation_BirthDate'
@@ -211,7 +211,7 @@ LEFT JOIN
     (SELECT DISTINCT
         s1.participant_id,
         max(s1.date_of_survey)   AS latest_date_of_location
-    FROM src_clean s1
+    FROM cdm.src_clean s1
     WHERE
         (s1.question_ppi_code IN
             (   'PIIAddress_StreetAddress',
@@ -972,12 +972,6 @@ GROUP BY
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.observation;
 
-ALTER TABLE cdm.observation DROP INDEX ux_observation;
-
-CREATE INDEX ux_observation ON cdm.observation (    person_id, observation_concept_id, observation_date,
-                                                    observation_time, value_as_number, value_as_concept_id,
-                                                    visit_occurrence_id, observation_source_value, value_source_value);
-
 INSERT INTO cdm.observation
 SELECT
     NULL                                        AS observation_id,
@@ -1178,8 +1172,6 @@ DROP TABLE cdm.tmp_observation;
 -- table: cdm.measurement
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.measurement;
-
-ALTER TABLE cdm.measurement DROP INDEX ux_measurement;
 
 alter table cdm.src_meas_mapped add key (physical_measurements_id);
 alter table cdm.visit_occurrence add key (visit_source_value);
@@ -1414,13 +1406,6 @@ WHERE
 ;
 
 DROP TABLE cdm.tmp_measurement;
-
-
-CREATE INDEX ux_measurement ON cdm.measurement (person_id, measurement_concept_id, measurement_date, 
-                                                measurement_time, value_as_number, value_as_concept_id,
-                                                visit_occurrence_id, measurement_source_value, measurement_source_concept_id,
-                                                unit_source_value, unit_concept_id);
-
 
 -- -------------------------------------------------------------------
 -- source_file: src/condition_occurrence.sql
@@ -2019,12 +2004,12 @@ GROUP BY
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
 -- -------------------------------------------------------------------
-DROP TABLE IF EXISTS temp_cdm_observation_period;
-DROP TABLE IF EXISTS temp_obs_target;
-DROP TABLE IF EXISTS temp_obs_end_union;
-DROP TABLE IF EXISTS temp_obs_end;
-DROP TABLE IF EXISTS temp_obs_end_union_part;
-DROP TABLE IF EXISTS temp_obs;
+DROP TABLE IF EXISTS cdm.temp_cdm_observation_period;
+DROP TABLE IF EXISTS cdm.temp_obs_target;
+DROP TABLE IF EXISTS cdm.temp_obs_end_union;
+DROP TABLE IF EXISTS cdm.temp_obs_end;
+DROP TABLE IF EXISTS cdm.temp_obs_end_union_part;
+DROP TABLE IF EXISTS cdm.temp_obs;
 
 -- -------------------------------------------------------------------
 -- source_file: src/fact_relationship.sql
