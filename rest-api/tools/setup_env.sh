@@ -15,13 +15,13 @@ pip install -r requirements.txt -t lib/
 
 # MySQL-python must be installed outside the lib directory, or dev_appserver.py will fail with
 # "No module named _mysql".
-pip install MySQL-python
+pip install --user MySQL-python
 
 echo "Installing Alembic..."
-pip install alembic
+pip install --user alembic
 echo "Installing JIRA..."
-pip install jira
-pip install requests[security]
+pip install --user jira
+pip install --user requests[security]
 
 git submodule update --init
 
