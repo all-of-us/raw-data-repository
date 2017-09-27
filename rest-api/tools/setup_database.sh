@@ -34,7 +34,7 @@ done
 if [ -z "${ACCOUNT}" ]
 then
   echo "Usage: $USAGE"
-xit 1
+  exit 1
 fi
 
 if [ -z "${PROJECT}" ]

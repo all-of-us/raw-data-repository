@@ -430,6 +430,11 @@ CREATE TABLE observation
     PRIMARY KEY (observation_id)
 );
 
+CREATE INDEX ux_observation ON cdm.observation (person_id, observation_concept_id, observation_date,
+                                                observation_time, value_as_number, 
+                                                value_as_concept_id, visit_occurrence_id, 
+                                                observation_source_value, value_source_value);
+
 -- -----------------------------------------------
 -- measurement
 -- -----------------------------------------------
@@ -456,9 +461,17 @@ CREATE TABLE measurement
     unit_source_value varchar(50),
     value_source_value varchar(50),
     meas_id bigint,
+    parent_id bigint,
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (measurement_id)
 );
+
+CREATE INDEX ux_measurement ON cdm.measurement (person_id, measurement_concept_id, measurement_date, 
+                                                measurement_time, value_as_number, 
+                                                value_as_concept_id, visit_occurrence_id, 
+                                                measurement_source_value, 
+                                                measurement_source_concept_id,
+                                                unit_source_value, unit_concept_id);
 
 -- -----------------------------------------------
 -- drug_exposure
