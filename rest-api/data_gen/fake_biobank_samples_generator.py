@@ -81,24 +81,3 @@ def generate_samples():
                            to_client_biobank_id(biobank_id), test])
           num_rows += 1
   logging.info("Generated %d samples in %s.", num_rows, file_name)
-
-class FakeBiobankSamplesGenerator(object):
-  """Generates fake biobank samples for the participants in the database."""
-
-  def generate_samples_for_participant(self, participant_id):
-    participant = ParticipantDao().get(participant_id)
-    if not participant:
-      raise NotFound('No participant with ID %d found' % participant_id)
-    ordered_samples = BiobankOrderDao().get_ordered_samples_for_participant(participant_id)
-    if not ordered_samples:
-      raise NotFound('No ordered samples found for participant %d' % participant_id)
-    now = clock.CLOCK.now()
-    stored_samples = [BiobankStoredSample(biobankStoredSampleId='%d-%s' %
-                                          (participant_id, sample.test),
-                                          biobankId=participant.biobankId,
-                                          test=sample.test,
-                                          confirmed=now) for sample in ordered_samples]
-
-    BiobankStoredSampleDao().upsert_all(stored_samples)
-    ParticipantSummaryDao().update_from_biobank_stored_samples(participant_id)
-    return len(stored_samples)

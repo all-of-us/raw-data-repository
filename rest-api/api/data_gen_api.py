@@ -7,7 +7,7 @@ import api_util
 from api_util import nonprod, get_validated_user_info, HEALTHPRO
 from config_api import is_config_admin
 from data_gen.fake_participant_generator import FakeParticipantGenerator
-from data_gen.fake_biobank_samples_generator import generate_samples, FakeBiobankSamplesGenerator
+from data_gen.fake_biobank_samples_generator import generate_samples
 from data_gen.in_process_client import InProcessClient
 from flask import request
 from flask.ext.restful import Resource
@@ -48,12 +48,5 @@ class DataGenApi(Resource):
         participant_generator.generate_participant(include_physical_measurements,
                                                    include_biobank_orders,
                                                    requested_hpo)
-    biobank_samples_target = resource_json.get('create_biobank_samples', None)
-    if biobank_samples_target:
-      if biobank_samples_target == 'all':
-        deferred.defer(generate_samples)
-      else:
-        participant_id = from_client_participant_id(biobank_samples_target)
-        num_samples = FakeBiobankSamplesGenerator().generate_samples_for_participant(participant_id)
-        response['num_samples'] = num_samples
-    return response
+    if resource_json.get('create_biobank_samples'):
+      deferred.defer(generate_samples)
