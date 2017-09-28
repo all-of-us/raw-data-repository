@@ -11,7 +11,6 @@ from data_gen.fake_biobank_samples_generator import generate_samples
 from data_gen.in_process_client import InProcessClient
 from flask import request
 from flask.ext.restful import Resource
-from model.utils import from_client_participant_id
 from werkzeug.exceptions import Forbidden
 
 
@@ -37,7 +36,6 @@ class DataGenApi(Resource):
     resource = request.get_data()
     resource_json = json.loads(resource)
     num_participants = int(resource_json.get('num_participants', 0))
-    response = {}
     include_physical_measurements = bool(resource_json.get('include_physical_measurements', False))
     include_biobank_orders = bool(resource_json.get('include_biobank_orders', False))
     requested_hpo = resource_json.get('hpo', None)

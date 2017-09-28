@@ -8,13 +8,9 @@ import random
 from cloudstorage import cloudstorage_api
 from code_constants import BIOBANK_TESTS
 from dao.biobank_order_dao import BiobankOrderDao
-from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import to_client_biobank_id
 from offline.biobank_samples_pipeline import INPUT_CSV_TIME_FORMAT
-from werkzeug.exceptions import NotFound
 
 # 80% of participants with orders have corresponding stored samples.
 _PARTICIPANTS_WITH_STORED_SAMPLES = 0.8
