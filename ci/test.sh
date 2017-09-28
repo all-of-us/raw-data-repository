@@ -39,13 +39,15 @@ done
 ./tools/install_config.sh --config=config/config_dev.json --update
 ./tools/setup_local_database.sh --nopassword --db_user ubuntu --db_name circle_test
 
-# Verify that data generation works.
-./tools/generate_fake_data.sh \
-    --num_participants 3 \
-    --include_physical_measurements --include_biobank_orders --create_biobank_samples
-
 cd ../rdr_client
 activate_local_venv
+
+# Verify that the simplest client script works.
+./run_client.sh participant_create_and_get.py
+# Verify that data generation works.
+./run_client.sh generate_fake_data.py \
+    --num_participants 3 \
+    --include_physical_measurements --include_biobank_orders --create_biobank_samples
 
 safety check  # checks current (client) venv
 
@@ -58,9 +60,3 @@ GCLOUD_PATH=$(which gcloud)
 SDK_PATH=${GCLOUD_PATH%/bin/gcloud}
 
 ./run_tests.sh -g $SDK_PATH
-
-# Verify that client scripts work.
-cd ../../rdr_client
-./run_client.sh participant_create_and_get.py
-
-
