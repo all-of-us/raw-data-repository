@@ -58,6 +58,11 @@ def generate_samples():
                                                           _PARTICIPANTS_WITH_STORED_SAMPLES,
                                                           _BATCH_SIZE)
       for biobank_id, collected_time, test in rows:
+        if collected_time is None:
+          logging.warning(
+              '%s test %s has no collected time, omitting', to_client_biobank_id(biobank_id), test)
+          # TODO(mwf) Is this OK?
+          continue
         if random.random() <= _MISSING_STORED_SAMPLE:
           continue
         minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED)
