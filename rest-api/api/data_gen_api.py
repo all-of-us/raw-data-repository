@@ -1,8 +1,9 @@
-import api_util
-import executors
 import json
 import logging
 
+from google.appengine.ext import deferred
+
+import api_util
 from api_util import nonprod, get_validated_user_info, HEALTHPRO
 from config_api import is_config_admin
 from data_gen.fake_participant_generator import FakeParticipantGenerator
@@ -50,7 +51,7 @@ class DataGenApi(Resource):
     biobank_samples_target = resource_json.get('create_biobank_samples', None)
     if biobank_samples_target:
       if biobank_samples_target == 'all':
-        executors.defer(generate_samples)
+        deferred.defer(generate_samples)
       else:
         participant_id = from_client_participant_id(biobank_samples_target)
         num_samples = FakeBiobankSamplesGenerator().generate_samples_for_participant(participant_id)
