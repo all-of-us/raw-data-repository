@@ -14,9 +14,8 @@ from flask.ext.restful import Resource
 from model.utils import from_client_participant_id
 from werkzeug.exceptions import Forbidden
 
-DATE_FORMAT = '%Y-%m-%d'
 
-def auth_required_healthpro_or_config_admin(func):
+def _auth_required_healthpro_or_config_admin(func):
   """A decorator that checks that the caller is a config admin for the app."""
   def wrapped(*args, **kwargs):
     if not is_config_admin(api_util.get_oauth_id()):
@@ -31,7 +30,7 @@ def auth_required_healthpro_or_config_admin(func):
 
 class DataGenApi(Resource):
 
-  method_decorators = [auth_required_healthpro_or_config_admin]
+  method_decorators = [_auth_required_healthpro_or_config_admin]
 
   @nonprod
   def post(self):
