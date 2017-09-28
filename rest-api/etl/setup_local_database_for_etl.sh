@@ -15,20 +15,23 @@
 # "root" will be used.
 #
 # Make sure the user you run the script as has write access to /var/lib/mysql-files.
+# Generates files under /var/lib/mysql-files/cloud-csv (which can be imported into GCS and Cloud
+# SQL.)
 
 source tools/setup_local_vars.sh
 DB_CONNECTION_NAME=
 CREATE_DB_FILE=/tmp/create_dbs.sql
 CSV_DIR=/var/lib/mysql-files/rdr-csv
-CREDS_FILE=/tmp/rdr_creds.json
+OUTPUT_DIR=/var/lib/mysql-files/rdr-sql-dump
 
-USAGE="tools/setup_database.sh --account <ACCOUNT> [--db_user <ROOT_DB_USER>] [--nopassword]"
+USAGE="tools/setup_local_database_for_etl.sh --account <ACCOUNT> [--db_user <ROOT_DB_USER>] [--nopassword]"
 ROOT_PASSWORD_ARGS="-p${ROOT_PASSWORD}"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
     --nopassword) ROOT_PASSWORD=; ROOT_PASSWORD_ARGS=; shift 1;;
     --db_user) ROOT_DB_USER=$2; shift 2;;
+    --generate_sql_dump) GENERATE_SQL_DUMP="Y"; shift 1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -54,7 +57,7 @@ set_local_db_connection_string
 function finish {  
   rm -f ${CREATE_DB_FILE}
   rm -rf ${CSV_DIR}
-  rm -f ${CREDS_FILE}
+  cleanup
 }
 trap finish EXIT
 
@@ -70,10 +73,12 @@ then
   exit 1
 fi
 
-# Set it again with the Alembic user for upgrading the database.
-set_local_db_connection_string alembic
-
 mysql -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < etl/ddl.sql
+if [ $? != '0' ]
+then
+  echo "Error creating ETL database. Exiting."
+  exit 1
+fi
 
 # Delete any existing files.
 rm -rf ${CSV_DIR}
@@ -82,22 +87,27 @@ rm -rf ${CSV_DIR}
 mkdir -p ${CSV_DIR}
 mkdir -p ${CSV_DIR}/cdm
 mkdir -p ${CSV_DIR}/voc
+if [ "${GENERATE_SQL_DUMP}" ]
+then
+  mkdir -p ${OUTPUT_DIR}
+  chmod -R 0777 ${OUTPUT_DIR}
+fi
 
-SERVICE_ACCOUNT=pmi-drc-api-test@appspot.gserviceaccount.com
+PROJECT=pmi-drc-api-test
+CREDS_ACCOUNT="${ACCOUNT}"
 
 echo "Activating service account..."
-#gcloud iam service-accounts keys create $CREDS_FILE --iam-account=$SERVICE_ACCOUNT --account=$ACCOUNT
-#gcloud auth activate-service-account pmi-drc-api-test@appspot.gserviceaccount.com --key-file=$CREDS_FILE
+source tools/auth_setup.sh
+gcloud auth activate-service-account circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com --key-file=$CREDS_FILE
 
 echo "Copying vocabulary files from GCS..."
-gsutil cp gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18/* ${CSV_DIR}/voc
+gsutil cp -r gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18/* ${CSV_DIR}
 
 # Rename files to lower case to match table names in schema.
 for i in ${CSV_DIR}/voc/*; do mv $i `echo $i | tr [:upper:] [:lower:]`; done
 
-cp etl/source_to_concept_map.csv ${CSV_DIR}/cdm
 # Give read permission for MySQL to read the files we're trying to import.
-chmod -R 0755 ${CSV_DIR}
+chmod -R 0777 ${CSV_DIR}
 
 echo "Importing source_to_concept_map.csv..."
 mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --fields-terminated-by=\| cdm ${CSV_DIR}/cdm/source_to_concept_map.csv
@@ -107,5 +117,17 @@ do
     echo "Importing ${file}..."    
     mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --ignore-lines=1 voc ${file}
 done
+
+if [ "${GENERATE_SQL_DUMP}" ]
+then
+    echo "Generating dump for cdm database.."
+    mysqldump --databases cdm -h 127.0.0.1 -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --hex-blob \
+      --skip-triggers --set-gtid-purged=OFF --default-character-set=utf8 > ${OUTPUT_DIR}/cdm.sql
+    echo "Generating dump for voc database.."
+    mysqldump --databases voc -h 127.0.0.1 -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --hex-blob \
+      --skip-triggers --set-gtid-purged=OFF --default-character-set=utf8 > ${OUTPUT_DIR}/voc.sql
+    echo "Copying SQL dumps to GCS..."
+    gsutil cp -r ${OUTPUT_DIR}/*.sql gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18
+fi
 
 echo "Done."
