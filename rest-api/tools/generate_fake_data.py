@@ -50,18 +50,14 @@ if __name__ == '__main__':
                       help='The number of participants to create.',
                       default=0)
   parser.add_argument('--include_physical_measurements',
-                      dest='include_physical_measurements',
                       action='store_true',
                       help='True if physical measurements should be created')
   parser.add_argument('--include_biobank_orders',
-                      dest='include_biobank_orders',
                       action='store_true',
                       help='True if biobank orders should be created')
   parser.add_argument('--hpo',
-                      dest='hpo',
                       help='The HPO to assign participants to; defaults to random choice.')
   parser.add_argument('--create_biobank_samples',
-                      dest="create_biobank_samples",
                       action='store_true',
                       help='True if biobank samples should be created')
 
