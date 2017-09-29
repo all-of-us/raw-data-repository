@@ -187,6 +187,7 @@ tools/export_tables.sh --project <project> --account <account> --bucket <gcs buc
 
 Example:
 
+```
 tools/export_tables.sh --project pmi-drc-api-test --account dan.rodney@pmi-ops.org \
     --bucket pmi-drc-api-test-cdm --directory test_dir --database rdr --tables hpo,code
-
+```
