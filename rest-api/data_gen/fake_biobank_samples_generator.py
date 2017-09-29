@@ -14,8 +14,6 @@ from offline.biobank_samples_pipeline import INPUT_CSV_TIME_FORMAT
 
 # 80% of participants with orders have corresponding stored samples.
 _PARTICIPANTS_WITH_STORED_SAMPLES = 0.8
-# 10% of individual stored samples are missing
-_MISSING_STORED_SAMPLE = 0.1
 # 1% of participants have samples with no associated order
 _PARTICIPANTS_WITH_ORPHAN_SAMPLES = 0.01
 # Max amount of time between collected ordered samples and confirmed biobank stored samples.
@@ -35,11 +33,22 @@ _TIME_FORMAT = "%Y/%m/%d %H:%M:%S"
 
 _BATCH_SIZE = 1000
 
-_HEADERS = ['Sample Id', 'Parent Sample Id', 'Sample Confirmed Date', 'External Participant Id',
-            'Test Code']
+_HEADERS = (
+    'Sample Id',
+    'Parent Sample Id',
+    'Sample Confirmed Date',
+    'External Participant Id',
+    'Test Code',
+    'Sample Family Create Date',
+)
 
-def generate_samples():
-  """Creates fake sample CSV data in GCS."""
+def generate_samples(fraction_missing):
+  """Creates fake sample CSV data in GCS.
+
+  Args:
+    fraction_missing: This many samples which exist as BiobankStoredSamples will not have rows
+        generated in the fake CSV.
+  """
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
   now = clock.CLOCK.now()
   file_name = '/%s/fake_%s.csv' % (bucket_name, now.strftime(INPUT_CSV_TIME_FORMAT))
@@ -54,13 +63,20 @@ def generate_samples():
                                                           _PARTICIPANTS_WITH_STORED_SAMPLES,
                                                           _BATCH_SIZE)
       for biobank_id, collected_time, test in rows:
-        if collected_time is None or random.random() <= _MISSING_STORED_SAMPLE:
+        if collected_time is None or random.random() < fraction_missing:
+          if collected_time is None:
+            logging.warning(
+                'biobank_id=%s test=%s skipped (collected=%s)', biobank_id, test, collected_time)
           continue
         minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED)
         confirmed_time = collected_time + datetime.timedelta(minutes=minutes_delta)
-        writer.writerow([sample_id_start + num_rows, None,
-                         confirmed_time.strftime(_TIME_FORMAT),
-                         to_client_biobank_id(biobank_id), test])
+        writer.writerow([
+            sample_id_start + num_rows,
+            None,  # no parent
+            confirmed_time.strftime(_TIME_FORMAT),
+            to_client_biobank_id(biobank_id),
+            test,
+            confirmed_time.strftime(_TIME_FORMAT)])  # reuse confirmed time as created time
         num_rows += 1
     participant_dao = ParticipantDao()
     with participant_dao.session() as session:

@@ -14,6 +14,10 @@ from flask.ext.restful import Resource
 from werkzeug.exceptions import Forbidden
 
 
+# 10% of individual stored samples are missing by default.
+_SAMPLES_MISSING_FRACTION = 0.1
+
+
 def _auth_required_healthpro_or_config_admin(func):
   """A decorator that checks that the caller is a config admin for the app."""
   def wrapped(*args, **kwargs):
@@ -46,4 +50,6 @@ class DataGenApi(Resource):
                                                    include_biobank_orders,
                                                    requested_hpo)
     if resource_json.get('create_biobank_samples'):
-      deferred.defer(generate_samples)
+      deferred.defer(
+          generate_samples,
+          resource_json.get('samples_missing_fraction', _SAMPLES_MISSING_FRACTION))
