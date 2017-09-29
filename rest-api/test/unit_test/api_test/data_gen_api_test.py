@@ -4,13 +4,11 @@ from testlib import testutil
 
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.utils import from_client_participant_id
-from model.participant import Participant
 from offline.biobank_samples_pipeline import upsert_from_latest_csv
 from participant_enums import SampleStatus
-from test.unit_test.unit_test_util import FlaskTestBase, CloudStorageSqlTestBase
+from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import load_biobank_order_json
 
 
@@ -40,7 +38,7 @@ class DataGenApiTest(testutil.CloudStorageTestBase, FlaskTestBase):
     self.assertEquals(7, len(bo_dao.get_with_children(order.biobankOrderId).samples))
 
     self.send_post('DataGen', {'create_biobank_samples': True, 'samples_missing_fraction': 0.0})
-    upsert_from_latest_csv()
+    upsert_from_latest_csv()  # Run the (usually offline) Biobank CSV import job.
 
     self.assertEquals(7, BiobankStoredSampleDao().count())
     ps = ParticipantSummaryDao().get(from_client_participant_id(participant_id))
