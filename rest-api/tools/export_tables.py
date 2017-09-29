@@ -66,7 +66,7 @@ if __name__ == '__main__':
                       help='Name of the database containing the tables to export.',
                       required=True)
   parser.add_argument('--tables',
-                      help=('Comma separated list of table names to export; ' +
-                            ' all columns will be exported, in the order they are defined.'),
+                      help='Comma separated list of table names to export; '
+                        ' all columns will be exported, in the order they are defined.',
                       required=True)
   main(parser.parse_args())
