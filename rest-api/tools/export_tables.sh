@@ -1,6 +1,8 @@
 #!/bin/bash -e
 
-# Exports database tables to CSV files in GCS.
+# Exports database tables to CSV files in GCS. 
+# Temporarily gives the Cloud SQL service account write access to our GCS bucket. Removes it when
+# the script finishes.
 
 USAGE="tools/export_tables.sh --project <PROJECT> --account <ACCOUNT> --bucket <BUCKET> --directory <DIRECTORY> --database <DATABASE> --tables <TABLES> [--creds_account <ACCOUNT>]"
 while true; do
@@ -34,8 +36,13 @@ SQL_SERVICE_ACCOUNT=`gcloud sql instances describe --project ${PROJECT} --accoun
   rdrmaindb | grep serviceAccountEmailAddress | cut -d: -f2`
 gsutil acl ch -u ${SQL_SERVICE_ACCOUNT}:W gs://${BUCKET}
 
-REPO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd ../.. && pwd )"
-export PYTHONPATH=${PYTHONPATH}:${REPO_ROOT_DIR}/rdr_common
+function finish {
+  gsutil acl ch -d ${SQL_SERVICE_ACCOUNT}:W gs://${BUCKET}
+  cleanup
+}
+
+trap finish EXIT
+source tools/set_path.sh
 
 python tools/export_tables.py --project ${PROJECT} --creds_file ${CREDS_FILE} \
   --output_path gs://${BUCKET}/${DIRECTORY} --database ${DATABASE} --tables ${TABLES}

@@ -3,6 +3,7 @@
 
 import logging
 import sys
+import MySQLdb
 
 from time import sleep
 from main_util import get_parser, configure_logging
@@ -28,7 +29,7 @@ def main(args):
           args.database
         ],
         "csvExportOptions": {
-          "selectQuery": "select * from %s" % table
+          "selectQuery": "select * from %s" % MySQLdb.escape_string(table)
         }
       }
     }
@@ -53,23 +54,18 @@ if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
   parser.add_argument('--project',
-                      type=str,
                       help='Project to export data for',
                       required=True)
   parser.add_argument('--creds_file',
-                      type=str,
                       help='Path to credentials JSON file.',
                       required=True)
   parser.add_argument('--output_path',
-                      type=str,
                       help='GCS path to write the output files to.',
                       required=True)
   parser.add_argument('--database',
-                      type=str,
                       help='Name of the database containing the tables to export.',
                       required=True)
   parser.add_argument('--tables',
-                      type=str,
                       help=('Comma separated list of table names to export; ' +
                             ' all columns will be exported, in the order they are defined.'),
                       required=True)
