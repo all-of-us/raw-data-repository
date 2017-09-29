@@ -1,26 +1,48 @@
-from test.unit_test.unit_test_util import FlaskTestBase
-from test.test_data import load_biobank_order_json
-from model.utils import to_client_participant_id
-from model.participant import Participant
+import mock
+
+from testlib import testutil
+
+from dao.biobank_order_dao import BiobankOrderDao
+from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from model.utils import from_client_participant_id
+from model.participant import Participant
+from offline.biobank_samples_pipeline import upsert_from_latest_csv
 from participant_enums import SampleStatus
+from test.unit_test.unit_test_util import FlaskTestBase, CloudStorageSqlTestBase
+from test.test_data import load_biobank_order_json
 
-class DataGenApiTest(FlaskTestBase):
+
+def _callthrough(fn, *args, **kwargs):
+  fn(*args, **kwargs)
+
+
+class DataGenApiTest(testutil.CloudStorageTestBase, FlaskTestBase):
   def setUp(self):
-    super(DataGenApiTest, self).setUp()
-    self.participant = Participant(participantId=123, biobankId=555)
-    ParticipantDao().insert(self.participant)
-    self.participant_id = to_client_participant_id(self.participant.participantId)
-    self.order_path = ('Participant/%s/BiobankOrder' % self.participant_id)
+    # Neither CloudStorageTestBase nor our FlaskTestBase correctly calls through to
+    # setup(..).setup(..), so explicitly call both here.
+    testutil.CloudStorageTestBase.setUp(self)
+    FlaskTestBase.setUp(self)
 
+  @mock.patch('google.appengine.ext.deferred.defer', new=_callthrough)
   def test_generate_samples(self):
-    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
-    self.create_and_verify_created_obj(
-        self.order_path, load_biobank_order_json(self.participant.participantId))
-    self.send_post('DataGen', { 'create_biobank_samples': self.participant_id})
-    self.assertEquals(7, len(BiobankStoredSampleDao().get_all()))
-    ps = ParticipantSummaryDao().get(self.participant.participantId)
+    participant_id = self.send_post('Participant', {})['participantId']
+    self.send_consent(participant_id)
+    self.send_post(
+        'Participant/%s/BiobankOrder' % participant_id,
+        load_biobank_order_json(from_client_participant_id(participant_id)))
+
+    # Sanity check that the orders were created correctly.
+    bo_dao = BiobankOrderDao()
+    self.assertEquals(1, bo_dao.count())
+    order = bo_dao.get_all()[0]
+    self.assertEquals(7, len(bo_dao.get_with_children(order.biobankOrderId).samples))
+
+    self.send_post('DataGen', {'create_biobank_samples': True, 'samples_missing_fraction': 0.0})
+    upsert_from_latest_csv()
+
+    self.assertEquals(7, BiobankStoredSampleDao().count())
+    ps = ParticipantSummaryDao().get(from_client_participant_id(participant_id))
     self.assertEquals(SampleStatus.RECEIVED, ps.samplesToIsolateDNA)
     self.assertEquals(6, ps.numBaselineSamplesArrived)
