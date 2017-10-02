@@ -22,7 +22,7 @@ source tools/setup_local_vars.sh
 DB_CONNECTION_NAME=
 CREATE_DB_FILE=/tmp/create_dbs.sql
 CSV_DIR=/var/lib/mysql-files/rdr-csv
-OUTPUT_DIR=/var/lib/mysql-files/rdr-sql-dump
+OUTPUT_DIR=/tmp/rdr-sql-dump
 
 USAGE="tools/setup_local_database_for_etl.sh --account <ACCOUNT> [--db_user <ROOT_DB_USER>] [--nopassword]"
 ROOT_PASSWORD_ARGS="-p${ROOT_PASSWORD}"
@@ -94,6 +94,7 @@ then
   chmod -R 0777 ${OUTPUT_DIR}
 fi
 
+# Create keys for the test service account and activate it to copy the vocabulary files from GCS.
 PROJECT=pmi-drc-api-test
 CREDS_ACCOUNT="${ACCOUNT}"
 

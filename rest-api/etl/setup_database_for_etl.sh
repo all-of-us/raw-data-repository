@@ -31,7 +31,7 @@ CREDS_ACCOUNT=${ACCOUNT}
 
 echo "Activating service account..."
 source tools/auth_setup.sh
-gcloud auth activate-service-account circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com --key-file=$CREDS_FILE
+gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file=$CREDS_FILE
 
 SQL_SERVICE_ACCOUNT=`gcloud sql instances describe --project ${PROJECT} --account ${ACCOUNT} \
 rdrmaindb | grep serviceAccountEmailAddress | cut -d: -f2`
