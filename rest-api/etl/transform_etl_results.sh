@@ -40,6 +40,8 @@ gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file=$CREDS_FILE
 
 echo "Copying CSV files from GCS..."
 mkdir -p ${CSV_DIR}
+mkdir -p ${CSV_DIR}/transformed
+
 CLOUD_DIR=gs://${PROJECT}-cdm/${DIRECTORY}
 gsutil cp ${CLOUD_DIR}/*.csv ${CSV_DIR}
 
