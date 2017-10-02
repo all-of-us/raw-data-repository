@@ -22,3 +22,5 @@ else
 fi
 
 mysql --verbose -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < etl/etl.sql
+
+echo "Done."
