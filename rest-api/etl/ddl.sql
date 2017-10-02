@@ -184,8 +184,6 @@ CREATE TABLE cdm.source_to_concept_map
     priority                    int
 );
 
-CREATE UNIQUE INDEX ux_source_to_concept_map ON cdm.source_to_concept_map (source_code, source_concept_id, target_concept_id, target_vocabulary_id);
-
 -- -----------------------------------------------
 -- re-create tables for cdm schema
 -- -----------------------------------------------
@@ -430,11 +428,6 @@ CREATE TABLE observation
     PRIMARY KEY (observation_id)
 );
 
-CREATE INDEX ux_observation ON cdm.observation (person_id, observation_concept_id, observation_date,
-                                                observation_time, value_as_number, 
-                                                value_as_concept_id, visit_occurrence_id, 
-                                                observation_source_value, value_source_value);
-
 -- -----------------------------------------------
 -- measurement
 -- -----------------------------------------------
@@ -465,13 +458,6 @@ CREATE TABLE measurement
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (measurement_id)
 );
-
-CREATE INDEX ux_measurement ON cdm.measurement (person_id, measurement_concept_id, measurement_date, 
-                                                measurement_time, value_as_number, 
-                                                value_as_concept_id, visit_occurrence_id, 
-                                                measurement_source_value, 
-                                                measurement_source_concept_id,
-                                                unit_source_value, unit_concept_id);
 
 -- -----------------------------------------------
 -- drug_exposure
