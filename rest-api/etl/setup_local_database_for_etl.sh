@@ -57,6 +57,7 @@ set_local_db_connection_string
 function finish {  
   rm -f ${CREATE_DB_FILE}
   rm -rf ${CSV_DIR}
+  rm -rf ${OUTPUT_DIR}
   cleanup
 }
 trap finish EXIT
