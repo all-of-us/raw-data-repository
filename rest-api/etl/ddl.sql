@@ -28,8 +28,8 @@ CREATE TABLE concept
     concept_class_id varchar(1000),
     standard_concept varchar(1000),
     concept_code varchar(1000),
-    valid_start_date datetime,
-    valid_end_date datetime,
+    valid_start_date date,
+    valid_end_date date,
     invalid_reason varchar(1000)
 );
 
@@ -68,8 +68,8 @@ CREATE TABLE concept_relationship
     concept_id_1 int,
     concept_id_2 int,
     relationship_id varchar(1000),
-    valid_start_date datetime,
-    valid_end_date datetime,
+    valid_start_date date,
+    valid_end_date date,
     invalid_reason varchar(1000)
 );
 
@@ -113,8 +113,8 @@ CREATE TABLE drug_strength
     denominator_value decimal(20,6),
     denominator_unit_concept_id int,
     box_size int,
-    valid_start_date datetime,
-    valid_end_date datetime,
+    valid_start_date date,
+    valid_end_date date,
     invalid_reason varchar(1000)
 );
 
