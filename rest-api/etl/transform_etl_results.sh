@@ -49,7 +49,7 @@ echo "Transforming CSV files..."
 for file in ${CSV_DIR}/*.csv
 do
     filename=$(basename "$file")
-    cat $file | sed s/\"N,/,/g > ${CSV_DIR}/transformed/$filename
+    cat $file | sed s/\"N,/,/g | sed s/\"N$//g > ${CSV_DIR}/transformed/$filename
 done
 
 echo "Uploading files back to GCS..."
