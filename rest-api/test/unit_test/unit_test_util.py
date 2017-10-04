@@ -22,7 +22,6 @@ from testlib import testutil
 import api_util
 import config
 import config_api
-import executors
 import main
 import dao.base_dao
 import singletons
@@ -469,13 +468,6 @@ def sort_lists(obj):
     if type(val) is list:
       obj[key] = sorted(val)
   return obj
-
-
-def make_deferred_run():
-  executors.defer = executors._do_defer
-
-def make_deferred_not_run():
-  executors.defer = (lambda fn, *args, **kwargs: None)
 
 
 def make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=None,

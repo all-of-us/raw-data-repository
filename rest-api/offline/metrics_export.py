@@ -1,7 +1,7 @@
+from google.appengine.ext import deferred
 
 import clock
 import config
-import executors
 
 from offline.sql_exporter import SqlExporter
 from dao.code_dao import CodeDao
@@ -149,7 +149,7 @@ class MetricsExport(object):
     """Entry point to exporting data for use by the metrics pipeline. Begins the export of
     the first shard of the participant data."""
     filename_prefix = '%s/' % clock.CLOCK.now().isoformat()
-    executors.defer(MetricsExport._start_participant_export, bucket_name, filename_prefix,
+    deferred.defer(MetricsExport._start_participant_export, bucket_name, filename_prefix,
                     num_shards, 0)
 
   @staticmethod
@@ -160,12 +160,12 @@ class MetricsExport(object):
     shard_number += 1
     if shard_number == num_shards:
       if next_type_methodname:
-        executors.defer(getattr(MetricsExport, next_type_methodname), bucket_name, filename_prefix,
+        deferred.defer(getattr(MetricsExport, next_type_methodname), bucket_name, filename_prefix,
                         num_shards, 0)
       else:
         getattr(MetricsExport, finish_methodname)(bucket_name, filename_prefix, num_shards)
     else:
-      executors.defer(getattr(MetricsExport, next_shard_methodname), bucket_name, filename_prefix,
+      deferred.defer(getattr(MetricsExport, next_shard_methodname), bucket_name, filename_prefix,
                       num_shards, shard_number)
 
 
