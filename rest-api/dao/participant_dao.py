@@ -213,6 +213,8 @@ class ParticipantDao(UpdatableDao):
     if participant is None:
       raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
     if participant.hpoId != UNSET_HPO_ID:
+      return  
+    if participant.hpoId == site.hpoId:
       return
 
     participant.hpoId = site.hpoId
@@ -220,7 +222,9 @@ class ParticipantDao(UpdatableDao):
     if participant.participantSummary is None:
       raise RuntimeError('No ParticipantSummary available for P%d.' % participant_id)
     participant.participantSummary.hpoId = site.hpoId
-
+    participant.lastModified = clock.CLOCK.now()
+    # Update the version and add history row 
+    self._do_update(session, participant, participant)    
 
 def _get_primary_provider_link(participant):
   if participant.providerLink:

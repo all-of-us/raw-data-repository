@@ -107,6 +107,7 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.dao.insert(self._make_biobank_order(
         biobankOrderId='1',
         participantId=self.participant.participantId))
+    self.participant.version += 1
     self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
     ParticipantDao().update(self.participant)
     with self.assertRaises(Forbidden):
