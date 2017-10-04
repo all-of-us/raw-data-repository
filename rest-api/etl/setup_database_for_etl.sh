@@ -1,7 +1,7 @@
 #!/bin/bash -ae
 
-# Prepares databases in Cloud SQL for running the RDR -> OMOP ETL. 
-# Imports "cdm" and "voc" databases located in GCS, which were produced by running 
+# Prepares databases in Cloud SQL for running the RDR -> OMOP ETL.
+# Imports "cdm" and "voc" databases located in GCS, which were produced by running
 # setup_local_database_for_etl.
 # If the databases already exist, drop them prior to running this.
 # Note: this takes a while. Go get some coffee while it's running!
@@ -45,5 +45,5 @@ gcloud sql instances import --quiet --project ${PROJECT} --account ${ACCOUNT} rd
 
 echo "Importing VOC database..."
 gcloud sql instances import --quiet --project ${PROJECT} --account ${ACCOUNT} rdrmaindb gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18/voc.sql
-  
+
 echo "Done."

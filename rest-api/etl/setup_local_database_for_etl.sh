@@ -1,11 +1,11 @@
 #!/bin/bash -ae
 
-# Prepares the local databases for running the RDR -> OMOP ETL. 
+# Prepares the local databases for running the RDR -> OMOP ETL.
 # Creates "voc" and "cdm" databases alongside "rdr" (run setup_local_database.sh before running
-# this); creates tables within them; loads vocabulary files and source_to_concept_map rows into 
+# this); creates tables within them; loads vocabulary files and source_to_concept_map rows into
 # the database. (Note: the loading takes upwards of 10 minutes... grab some coffee.)
 #
-# Vocabulary CSV files are copied from GCS at path 
+# Vocabulary CSV files are copied from GCS at path
 # gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18/; these files were originally received
 # via e-mail generated from http://www.ohdsi.org/web/athena/, selecting the vocabularies
 # LOINC, SNOMED, AllOFUs_PPI, Race, Gender, and UCUM.
@@ -54,7 +54,7 @@ fi
 # Set the local db connection string with the RDR user.
 set_local_db_connection_string
 
-function finish {  
+function finish {
   rm -f ${CREATE_DB_FILE}
   rm -rf ${CSV_DIR}
   rm -rf ${OUTPUT_DIR}
@@ -116,7 +116,7 @@ mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --fields-terminated-by=\| cdm 
 
 for file in ${CSV_DIR}/voc/*.csv
 do
-    echo "Importing ${file}..."    
+    echo "Importing ${file}..."
     mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --ignore-lines=1 voc ${file}
 done
 

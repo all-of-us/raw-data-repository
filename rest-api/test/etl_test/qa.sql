@@ -41,11 +41,11 @@ SELECT NULL INTO @test_result;
 select count(*) INTO @test_result
 from
 (
-    select participant_id, date_of_survey, question_ppi_code, 
+    select participant_id, date_of_survey, question_ppi_code,
     COALESCE(value_code_id, value_number, value_boolean, value_date, value_string),
     count(*)
     from cdm.src_clean
-    group by participant_id, date_of_survey, question_ppi_code, 
+    group by participant_id, date_of_survey, question_ppi_code,
     COALESCE(value_code_id, value_number, value_boolean, value_date, value_string)
     having count(*) > 1
 ) as t
@@ -66,14 +66,14 @@ select c1.c - c2.c INTO @test_result
 from
 
   (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_clean c1
     where value_boolean is not null and questionnaire_response_id is not null
   ) c1,
 
  (
     SELECT count(*) as c
-    FROM 
+    FROM
     (
         SELECT  pa.participant_id,
                 qr.created,
@@ -114,7 +114,7 @@ from
                   qra.value_boolean,
                   coalesce(qra.value_date, qra.value_datetime),
                   coalesce(co_a.display, qra.value_date, qra.value_datetime, qra.value_string)
-        
+
     ) as t
   ) c2
 ;
@@ -132,18 +132,18 @@ SELECT NULL INTO @test_result;
 select c1.c - c2.c INTO @test_result
 from
   (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_clean c1
     JOIN cdm.person src_p
     ON  c1.participant_id = src_p.person_id
     where value_boolean is not null  and questionnaire_response_id is not null
   ) c1,
- 
+
  (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_mapped
     where value_boolean is not null  and questionnaire_response_id is not null
-    
+
   ) c2
 ;
 
@@ -164,12 +164,12 @@ from
     from cdm.observation obs
     where value_as_concept_id in (45877994, 45878245) and questionnaire_response_id and unit_id = 'observ.bool'
   ) c1,
- 
+
  (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_mapped
     where value_boolean is not null and questionnaire_response_id is not null
-    
+
   ) c2
 ;
 
@@ -186,11 +186,11 @@ SELECT NULL INTO @test_result;
 select c1.c - c2.c INTO @test_result
 from
   (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_clean c1
     where value_string is not null and questionnaire_response_id is not null
   ) c1,
- 
+
  (
     select count(*) as c
     from
@@ -258,18 +258,18 @@ SELECT NULL INTO @test_result;
 select c1.c - c2.c INTO @test_result
 from
   (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_clean c1
     JOIN cdm.person src_p
     ON  c1.participant_id = src_p.person_id
     where value_string is not null and questionnaire_response_id is not null
   ) c1,
- 
+
  (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_mapped
     where value_string is not null and questionnaire_response_id is not null
-    
+
   ) c2
 ;
 
@@ -290,14 +290,14 @@ from
     from cdm.observation obs
     where value_as_string is not null and questionnaire_response_id is not null and unit_id = 'observ.str'
   ) c1,
- 
+
  (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_mapped
-    where value_string is not null 
-        and value_ppi_code IS NULL 
-        and questionnaire_response_id is not null 
-    
+    where value_string is not null
+        and value_ppi_code IS NULL
+        and questionnaire_response_id is not null
+
   ) c2
 ;
 
@@ -314,11 +314,11 @@ SELECT NULL INTO @test_result;
 select c1.c - c2.c INTO @test_result
 from
   (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_clean c1
     where value_number is not null and questionnaire_response_id is not null
   ) c1,
- 
+
  (
     SELECT count(*) as c
     FROM
@@ -349,12 +349,12 @@ from
         WHERE
         pa.withdrawal_status != 2
         AND hp.name != 'TEST'
-        AND 
+        AND
         (qra.value_integer IS NOT NULL
             or
          qra.value_decimal is not null
         )
-        
+
         group by  pa.participant_id,
                   qr.created,
                   co_q.short_value,
@@ -383,18 +383,18 @@ SELECT NULL INTO @test_result;
 select c1.c - c2.c INTO @test_result
 from
   (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_clean c1
     JOIN cdm.person src_p
     ON  c1.participant_id = src_p.person_id
     where value_number is not null and questionnaire_response_id is not null
   ) c1,
- 
+
  (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_mapped
     where value_number is not null and questionnaire_response_id is not null
-    
+
   ) c2
 ;
 
@@ -415,12 +415,12 @@ from
     from cdm.observation obs
     where value_as_number is not null and questionnaire_response_id is not null and unit_id = 'observ.num'
   ) c1,
- 
+
  (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_mapped
     where value_number is not null and questionnaire_response_id is not null
-    
+
   ) c2
 ;
 
@@ -438,11 +438,11 @@ SELECT NULL INTO @test_result;
 select c1.c - c2.c INTO @test_result
 from
   (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_clean c1
     where value_ppi_code is not null and questionnaire_response_id is not null
   ) c1,
- 
+
  (
     select count(*) as c
     from
@@ -503,18 +503,18 @@ SELECT NULL INTO @test_result;
 select c1.c - c2.c INTO @test_result
 from
   (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_clean c1
     JOIN cdm.person src_p
     ON  c1.participant_id = src_p.person_id
     where value_ppi_code is not null and questionnaire_response_id is not null
   ) c1,
- 
+
  (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_mapped
     where value_ppi_code is not null and questionnaire_response_id is not null
-    
+
   ) c2
 ;
 
@@ -535,13 +535,13 @@ from
     from cdm.observation obs
     where questionnaire_response_id is not null and unit_id = 'observ.code'
   ) c1,
- 
+
  (
-    select count(*) as c 
+    select count(*) as c
     from cdm.src_mapped
     where value_ppi_code IS NOT NULL
-        and questionnaire_response_id is not null 
-    
+        and questionnaire_response_id is not null
+
   ) c2
 ;
 
@@ -874,7 +874,7 @@ from
     (select count(*) as count
      from cdm.care_site
     ) c1,
-    
+
     (select  sum(
             (coalesce(s.site_name, 0) - cs.care_site_name)              -- care_site_name
              +
@@ -1011,9 +1011,9 @@ from
             from cdm.person p
 
             inner join rdr.questionnaire_response qr on p.person_id = qr.participant_id
-            inner join rdr.questionnaire_response_answer qra 
+            inner join rdr.questionnaire_response_answer qra
                 on qra.questionnaire_response_id = qr.questionnaire_response_id
-            inner join rdr.code cd_ans 
+            inner join rdr.code cd_ans
                 on cd_ans.code_id = qra.value_code_id
             where cd_ans.short_value in ('SexAtBirth_Male', 'SexAtBirth_Female')
             group by person_id, cd_ans.short_value -- , gender_concept_id, gender_source_value
@@ -1026,7 +1026,7 @@ from
         from cdm.person
         where gender_concept_id > 0
     ) c2
-    
+
 ) ;
 
 INSERT INTO cdm.qa_result
@@ -1057,9 +1057,9 @@ SELECT NULL INTO @test_result;
         from cdm.person p
 
         inner join rdr.questionnaire_response qr on p.person_id = qr.participant_id
-        inner join rdr.questionnaire_response_answer qra 
+        inner join rdr.questionnaire_response_answer qra
             on qra.questionnaire_response_id = qr.questionnaire_response_id
-        inner join rdr.code cd_ans 
+        inner join rdr.code cd_ans
             on cd_ans.code_id = qra.value_code_id
         where cd_ans.short_value in ('SexAtBirth_Male', 'SexAtBirth_Female')
         group by person_id, cd_ans.short_value -- , gender_concept_id, gender_source_value
@@ -1090,13 +1090,13 @@ from
                     from cdm.person p
 
                     inner join rdr.questionnaire_response qr on p.person_id = qr.participant_id
-                    inner join rdr.questionnaire_response_answer qra 
+                    inner join rdr.questionnaire_response_answer qra
                         on qra.questionnaire_response_id = qr.questionnaire_response_id
                     inner join rdr.questionnaire_question qq on qra.question_id = qq.questionnaire_question_id
-                    inner join rdr.code cd 
+                    inner join rdr.code cd
                         on cd.code_id = qq.code_id
                     where cd.short_value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
-                ) t1 
+                ) t1
                 inner join
                 (select t2.participant_id, max(t2.created) as created
                     from
@@ -1119,7 +1119,7 @@ from
 ) c1,
 (   select count(*) as c
     from cdm.person
-    
+
 ) c2;
 
 INSERT INTO cdm.qa_result
@@ -1151,13 +1151,13 @@ left join
                     from cdm.person p
 
                     inner join rdr.questionnaire_response qr on p.person_id = qr.participant_id
-                    inner join rdr.questionnaire_response_answer qra 
+                    inner join rdr.questionnaire_response_answer qra
                         on qra.questionnaire_response_id = qr.questionnaire_response_id
                     inner join rdr.questionnaire_question qq on qra.question_id = qq.questionnaire_question_id
-                    inner join rdr.code cd 
+                    inner join rdr.code cd
                         on cd.code_id = qq.code_id
                     where cd.short_value in ('PIIBirthInformation_BirthDate') and qra.value_date is not null
-                ) t1 
+                ) t1
                 inner join
                 (select t2.participant_id, max(t2.created) as created
                     from
@@ -1239,7 +1239,7 @@ from
                     on cd_q2.code_id = qq2.code_id
                     and cd_q2.short_value = 'OrganTransplant_Date'
                     and qra2.value_date is not null
-                
+
                 left join voc.concept vc
                     on stcm.target_concept_id = vc.concept_id
                     and vc.standard_concept = 'S'
@@ -1294,7 +1294,7 @@ inner join rdr.code cd_a1
 inner join cdm.source_to_concept_map stcm
     on cd_a1.short_value = stcm.source_code
     and stcm.source_vocabulary_id = 'ppi-proc'
-    
+
 inner join rdr.questionnaire_response_answer qra2
     on qra1.questionnaire_response_id = qra2.questionnaire_response_id
 inner join rdr.questionnaire_response qr2
@@ -1349,7 +1349,7 @@ select  sum(
         +
         (coalesce(obs.value_as_string, 0)) -- value_as_string
         +
-        CASE 
+        CASE
             WHEN qra.value_boolean = 1 THEN (obs.value_as_concept_id - 45877994)
             WHEN qra.value_boolean = 0 THEN (obs.value_as_concept_id - 45878245)
             -- ELSE 0
@@ -1379,8 +1379,8 @@ inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.q
 inner join rdr.code cd on cd.code_id = qq.code_id
 
 left join voc.concept c on c.concept_code = cd.short_value AND c.vocabulary_id = 'PPI'
-left join voc.concept_relationship cr 
-    on c.concept_id = cr.concept_id_1 
+left join voc.concept_relationship cr
+    on c.concept_id = cr.concept_id_1
         and cr.invalid_reason is null
         and cr.relationship_id = 'Maps to'
 left join voc.concept c1
@@ -1388,15 +1388,15 @@ left join voc.concept c1
         and c1.invalid_reason is null
         and c1.standard_concept = 'S'
 
-inner join cdm.observation obs 
+inner join cdm.observation obs
     on qr.questionnaire_response_id = obs.questionnaire_response_id
     and obs.observation_source_value = cd.short_value
-    and 
-    CASE 
+    and
+    CASE
             WHEN obs.value_as_concept_id = 45877994 THEN qra.value_boolean = 1
             WHEN obs.value_as_concept_id = 45878245 THEN qra.value_boolean = 0
     END
-    
+
 where qra.value_boolean is not null and obs.unit_id = 'observ.bool'
 ;
 
@@ -1444,17 +1444,17 @@ select  sum(
         +
         (obs.value_source_concept_id - coalesce(c1.concept_id, 0))                          -- value_source_concept_id
         +
-        (obs.value_source_value - cd_ans.short_value)                                             -- value_source_value  
-     ) INTO @test_result 
+        (obs.value_source_value - cd_ans.short_value)                                             -- value_source_value
+     ) INTO @test_result
 from rdr.questionnaire_response_answer qra
 inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.questionnaire_response_id
 inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
 inner join rdr.code cd on cd.code_id = qq.code_id
-inner join rdr.code cd_ans on qra.value_code_id = cd_ans.code_id 
+inner join rdr.code cd_ans on qra.value_code_id = cd_ans.code_id
 
 left join voc.concept c on c.concept_code = cd.short_value AND c.vocabulary_id = 'PPI'
-left join voc.concept_relationship cr 
-    on c.concept_id = cr.concept_id_1 
+left join voc.concept_relationship cr
+    on c.concept_id = cr.concept_id_1
         and cr.invalid_reason is null
         and cr.relationship_id = 'Maps to'
 left join voc.concept c2
@@ -1462,21 +1462,21 @@ left join voc.concept c2
         and c2.invalid_reason is null
         and c2.standard_concept = 'S'
 
-left join voc.concept c1 
-    on c1.concept_code = cd_ans.short_value 
+left join voc.concept c1
+    on c1.concept_code = cd_ans.short_value
         AND c1.vocabulary_id = 'PPI'
-left join voc.concept_relationship cr1 
-    on c1.concept_id = cr1.concept_id_1 
+left join voc.concept_relationship cr1
+    on c1.concept_id = cr1.concept_id_1
         and cr.invalid_reason is null
 left join voc.concept c3
     on c3.concept_id = cr1.concept_id_2
         and c3.invalid_reason is null
         and c3.standard_concept = 'S'
 
-inner join cdm.observation obs 
+inner join cdm.observation obs
     on qr.questionnaire_response_id = obs.questionnaire_response_id -- questionnaire instance
     and obs.observation_source_value = cd.short_value -- question
-    and obs.value_source_value = cd_ans.short_value -- answer  
+    and obs.value_source_value = cd_ans.short_value -- answer
 
 where (qra.value_code_id is not null and cd_ans.code_id IS NOT NULL) and unit_id like 'observ.code'
 ;
@@ -1530,8 +1530,8 @@ inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.q
 inner join rdr.code cd on cd.code_id = qq.code_id
 
 left join voc.concept c on c.concept_code = cd.short_value AND c.vocabulary_id = 'PPI'
-left join voc.concept_relationship cr 
-    on c.concept_id = cr.concept_id_1 
+left join voc.concept_relationship cr
+    on c.concept_id = cr.concept_id_1
         and cr.invalid_reason is null
         and cr.relationship_id = 'Maps to'
 left join voc.concept c1
@@ -1539,7 +1539,7 @@ left join voc.concept c1
     and c1.invalid_reason is null
     and c1.standard_concept = 'S'
 
-inner join cdm.observation obs 
+inner join cdm.observation obs
     on qr.questionnaire_response_id = obs.questionnaire_response_id -- questionnaire instance id
     and obs.observation_source_value = cd.short_value -- question
     and obs.value_as_string = qra.value_date -- answer
@@ -1596,15 +1596,15 @@ inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.q
 inner join rdr.code cd on cd.code_id = qq.code_id
 
 left join voc.concept c on c.concept_code = cd.short_value AND c.vocabulary_id = 'PPI'
-left join voc.concept_relationship cr 
-    on c.concept_id = cr.concept_id_1 
+left join voc.concept_relationship cr
+    on c.concept_id = cr.concept_id_1
         and cr.invalid_reason is null
         and cr.relationship_id = 'Maps to'
 left join voc.concept c1 on c1.concept_id = cr.concept_id_2
     and c1.invalid_reason is null
     and c1.standard_concept = 'S'
-        
-inner join cdm.observation obs 
+
+inner join cdm.observation obs
     on qr.questionnaire_response_id = obs.questionnaire_response_id
     and obs.observation_source_value = cd.short_value
     and obs.value_as_number = qra.value_integer
@@ -1664,8 +1664,8 @@ inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.q
 inner join rdr.code cd on cd.code_id = qq.code_id
 
 left join voc.concept c on c.concept_code = cd.short_value AND c.vocabulary_id = 'PPI'
-left join voc.concept_relationship cr 
-    on c.concept_id = cr.concept_id_1 
+left join voc.concept_relationship cr
+    on c.concept_id = cr.concept_id_1
         and cr.invalid_reason is null
         and cr.relationship_id = 'Maps to'
 left join voc.concept c1
@@ -1673,7 +1673,7 @@ left join voc.concept c1
         and c1.invalid_reason is null
         and c1.standard_concept = 'S'
 
-inner join cdm.observation obs 
+inner join cdm.observation obs
     on qr.questionnaire_response_id = obs.questionnaire_response_id
     and obs.observation_source_value = cd.short_value
     and obs.value_as_string = qra.value_string
@@ -1701,12 +1701,12 @@ VALUES
 -- observ.meas count testing
 SELECT NULL INTO @test_result;
 select c1.c - c2.c INTO @test_result
-from 
+from
 (
     select count(*) as c
     from
     (
-        select 
+        select
             pe.person_id,
             meas.measurement_time,
             coalesce(c1.concept_id, c3.concept_id, c2.concept_id),
@@ -1722,7 +1722,7 @@ from
 
         inner join cdm.person pe
             on pe.person_id = pm.participant_id
-            
+
         left join voc.concept c1 -- source_concept_id standard
             on meas.code_value = c1.concept_code
                 AND c1.standard_concept = 'S'
@@ -1730,7 +1730,7 @@ from
         left join voc.concept c2 -- source_cocenpt_id non-standard
             on meas.code_value = c2.concept_code
                 AND c2.vocabulary_id IN ('PPI')
-        left join voc.concept_relationship cr1 
+        left join voc.concept_relationship cr1
             on c2.concept_id = cr1.concept_id_1
                 and cr1.relationship_id = 'Maps to'
                 and cr1.invalid_reason is null
@@ -1783,7 +1783,7 @@ from
         from
             (
                 select distinct person_id, measurement_concept_id, measurement_date, measurement_time,
-                    value_as_number, value_as_concept_id, unit_concept_id, visit_occurrence_id, 
+                    value_as_number, value_as_concept_id, unit_concept_id, visit_occurrence_id,
                     measurement_source_value, measurement_source_concept_id, unit_source_value,
                     value_source_value
                 from cdm.measurement
@@ -2428,7 +2428,7 @@ from
         select count(*) as c
         from
             (
-                select distinct person_id, visit_start_date, visit_start_time, visit_end_date, visit_end_time, 
+                select distinct person_id, visit_start_date, visit_start_time, visit_end_date, visit_end_time,
                     care_site_id, visit_source_value
                 from cdm.visit_occurrence
             ) a
@@ -2614,10 +2614,10 @@ from
     ) c2
 ;
 
-INSERT INTO cdm.qa_result (test_table, test_unit, test_descr, test_result) 
+INSERT INTO cdm.qa_result (test_table, test_unit, test_descr, test_result)
 VALUES
-(   
-    'fact_relationship', 
+(
+    'fact_relationship',
     '',
     'Check duplicates in cdm Fact_relationship',
     @test_result
@@ -2643,10 +2643,10 @@ from
     ) c2
 ;
 
-INSERT INTO cdm.qa_result (test_table, test_unit, test_descr, test_result) 
+INSERT INTO cdm.qa_result (test_table, test_unit, test_descr, test_result)
 VALUES
-(   
-    'fact_relationship', 
+(
+    'fact_relationship',
     'observ.meas1',
     'Check counts for unit_id = \'observ.meas1\'',
     @test_result
@@ -2673,10 +2673,10 @@ from
     ) c2
 ;
 
-INSERT INTO cdm.qa_result (test_table, test_unit, test_descr, test_result) 
+INSERT INTO cdm.qa_result (test_table, test_unit, test_descr, test_result)
 VALUES
-(   
-    'fact_relationship', 
+(
+    'fact_relationship',
     'observ.meas2',
     'Check counts for unit_id = \'observ.meas2\'',
     @test_result
@@ -2705,10 +2705,10 @@ from
     ) c2
 ;
 
-INSERT INTO cdm.qa_result (test_table, test_unit, test_descr, test_result) 
+INSERT INTO cdm.qa_result (test_table, test_unit, test_descr, test_result)
 VALUES
-(   
-    'fact_relationship', 
+(
+    'fact_relationship',
     'syst.diast1',
     'Check counts for unit_id = \'syst.diast1\'',
     @test_result
@@ -2738,10 +2738,10 @@ from
     ) c2
 ;
 
-INSERT INTO cdm.qa_result (test_table, test_unit, test_descr, test_result) 
+INSERT INTO cdm.qa_result (test_table, test_unit, test_descr, test_result)
 VALUES
-(   
-    'fact_relationship', 
+(
+    'fact_relationship',
     'syst.diast2',
     'Check counts for unit_id = \'syst.diast2\'',
     @test_result

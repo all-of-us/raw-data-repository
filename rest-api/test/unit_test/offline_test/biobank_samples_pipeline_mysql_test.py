@@ -215,7 +215,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_withdrawn_late_and_missing, [BIOBANK_TESTS[0]],
                          ['WithdrawnLateSample'], late_time,
                          late_time - datetime.timedelta(minutes=59))
-    p_withdrawn_late_and_missing = ( 
+    p_withdrawn_late_and_missing = (
         self.participant_dao.get(p_withdrawn_late_and_missing.participantId))
     self._withdraw(p_withdrawn_late_and_missing, within_24_hours)
 
@@ -225,8 +225,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_withdrawn_old_late_and_missing, [BIOBANK_TESTS[0]],
                          ['WithdrawnOldLateSample'], old_late_time,
                          old_late_time - datetime.timedelta(minutes=59))
-    p_withdrawn_old_late_and_missing = ( 
-        self.participant_dao.get(p_withdrawn_old_late_and_missing.participantId))                         
+    p_withdrawn_old_late_and_missing = (
+        self.participant_dao.get(p_withdrawn_old_late_and_missing.participantId))
     self._withdraw(p_withdrawn_old_late_and_missing, old_late_time)
 
     p_withdrawn_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])

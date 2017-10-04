@@ -116,7 +116,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     with FakeClock(TIME):
       # Participant 2 starts out unpaired; later gets paired automatically when their physical
-      # measurements come in. 
+      # measurements come in.
       participant2 = Participant(
           participantId=2,
           biobankId=3)
