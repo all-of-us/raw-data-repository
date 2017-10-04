@@ -12,8 +12,6 @@ from dao.participant_dao import ParticipantDao
 from model.utils import to_client_biobank_id
 from offline.biobank_samples_pipeline import INPUT_CSV_TIME_FORMAT
 
-# 80% of participants with orders have corresponding stored samples.
-_PARTICIPANTS_WITH_STORED_SAMPLES = 0.8
 # 1% of participants have samples with no associated order
 _PARTICIPANTS_WITH_ORPHAN_SAMPLES = 0.01
 # Max amount of time between collected ordered samples and confirmed biobank stored samples.
