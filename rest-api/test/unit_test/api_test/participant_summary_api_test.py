@@ -303,6 +303,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     path_3 = 'Participant/%s/PhysicalMeasurements' % participant_id_3
     with FakeClock(TIME_2):
       self.send_post(path_2, measurements_2)
+      # This pairs participant 3 with PITT and updates their version.
       self.send_post(path_3, measurements_3)
 
     # Store samples for DNA for participants 1 and 3
@@ -310,6 +311,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self._store_biobank_sample(participant_3, '1SAL')
     # Update participant summaries based on these changes.
     ParticipantSummaryDao().update_from_biobank_stored_samples()
+    # Update version for participant 3, which has changed.
+    participant_3 = self.send_get('Participant/%s' % participant_id_3)
 
     with FakeClock(TIME_3):
       participant_2['withdrawalStatus'] = 'NO_USE'
@@ -395,7 +398,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
-                           [[ps_3, ps_1], [ps_2]])
+                           [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=hpoId',
                            [[ps_1, ps_2], [ps_3]])
 
@@ -409,9 +412,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&zipCode=78752',
                            [[ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=PITT',
-                           [[ps_1, ps_2]])
+                           [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=UNSET',
-                           [[ps_3]])
+                           [[]])
       self.assertResponses('ParticipantSummary?_count=2&genderIdentity=male',
                            [[ps_1, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
@@ -524,7 +527,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
                            [[ps_1, new_ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
-                           [[ps_3, ps_1], [new_ps_2]])
+                           [[ps_1, new_ps_2], [new_ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=hpoId',
                            [[ps_1, new_ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&firstName=Mary',
@@ -534,7 +537,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&lastName=Smith',
                            [[ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=PITT',
-                           [[ps_1, new_ps_2]])
+                           [[ps_1, new_ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&withdrawalStatus=NO_USE',
                            [[new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03',

@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# Exports database tables to CSV files in GCS. 
+# Exports database tables to CSV files in GCS.
 # Temporarily gives the Cloud SQL service account write access to our GCS bucket. Removes it when
 # the script finishes.
 

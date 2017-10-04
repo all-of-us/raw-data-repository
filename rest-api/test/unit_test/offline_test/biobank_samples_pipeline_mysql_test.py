@@ -200,8 +200,10 @@ class MySqlReconciliationTest(FlaskTestBase):
     # Withdrawn participants don't show up in any reports except withdrawal report.
 
     p_withdrawn_old_on_time = self._insert_participant(race_codes=[RACE_AIAN_CODE])
+    # This updates the version of the participant and its HPO ID.
     self._insert_order(p_withdrawn_old_on_time, 'OldWithdrawnGoodOrder', BIOBANK_TESTS[:2],
                        old_order_time)
+    p_withdrawn_old_on_time = self.participant_dao.get(p_withdrawn_old_on_time.participantId)
     self._insert_samples(p_withdrawn_old_on_time, BIOBANK_TESTS[:2],
                          ['OldWithdrawnGoodSample1', 'OldWithdrawnGoodSample2'],
                          old_within_24_hours, old_within_24_hours - datetime.timedelta(hours=1))
@@ -213,6 +215,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_withdrawn_late_and_missing, [BIOBANK_TESTS[0]],
                          ['WithdrawnLateSample'], late_time,
                          late_time - datetime.timedelta(minutes=59))
+    p_withdrawn_late_and_missing = (
+        self.participant_dao.get(p_withdrawn_late_and_missing.participantId))
     self._withdraw(p_withdrawn_late_and_missing, within_24_hours)
 
     p_withdrawn_old_late_and_missing = self._insert_participant()
@@ -221,6 +225,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_withdrawn_old_late_and_missing, [BIOBANK_TESTS[0]],
                          ['WithdrawnOldLateSample'], old_late_time,
                          old_late_time - datetime.timedelta(minutes=59))
+    p_withdrawn_old_late_and_missing = (
+        self.participant_dao.get(p_withdrawn_old_late_and_missing.participantId))
     self._withdraw(p_withdrawn_old_late_and_missing, old_late_time)
 
     p_withdrawn_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])

@@ -119,6 +119,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
   def testInsert_getFailsForWithdrawnParticipant(self):
     self._make_summary()
     self.dao.insert(self._make_physical_measurements())
+    self.participant.version += 1
     self.participant.withdrawalStatus = WithdrawalStatus.NO_USE
     ParticipantDao().update(self.participant)
     with self.assertRaises(Forbidden):
