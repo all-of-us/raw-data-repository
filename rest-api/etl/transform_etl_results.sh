@@ -50,8 +50,8 @@ for file in ${CSV_DIR}/*.csv
 do
     filename=$(basename "$file")
     # Replace "N with empty string, but only when followed by a comma and then a comma, quote, 
-    # or number, and not [0-9],[0-9]- or [0-9],[0-9],[0-9]- (which appear in concept_synonym)
-    cat $file | perl -pe 's/\"N,(?=[,\"0-9])(?![0-9],[0-9]-)(?![0-9],[0-9],[0-9]-)/,/g' | sed 's/\"N$//g' > ${CSV_DIR}/transformed/$filename
+    # or number, and not ([0-9],)*[0-9]- (which appear in concept_synonym)
+    cat $file | perl -pe 's/\"N,(?=[,\"0-9])(?!([0-9],)*[0-9]-)/,/g' | sed 's/\"N$//g' > ${CSV_DIR}/transformed/$filename
 done
 
 echo "Uploading files back to GCS..."
