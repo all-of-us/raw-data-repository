@@ -8,18 +8,10 @@ import random
 from cloudstorage import cloudstorage_api
 from code_constants import BIOBANK_TESTS
 from dao.biobank_order_dao import BiobankOrderDao
-from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
-from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import to_client_biobank_id
 from offline.biobank_samples_pipeline import INPUT_CSV_TIME_FORMAT
-from werkzeug.exceptions import NotFound
 
-# 80% of participants with orders have corresponding stored samples.
-_PARTICIPANTS_WITH_STORED_SAMPLES = 0.8
-# 10% of individual stored samples are missing
-_MISSING_STORED_SAMPLE = 0.1
 # 1% of participants have samples with no associated order
 _PARTICIPANTS_WITH_ORPHAN_SAMPLES = 0.01
 # Max amount of time between collected ordered samples and confirmed biobank stored samples.
@@ -39,11 +31,22 @@ _TIME_FORMAT = "%Y/%m/%d %H:%M:%S"
 
 _BATCH_SIZE = 1000
 
-_HEADERS = ['Sample Id', 'Parent Sample Id', 'Sample Confirmed Date', 'External Participant Id',
-            'Test Code']
+_HEADERS = (
+    'Sample Id',
+    'Parent Sample Id',
+    'Sample Confirmed Date',
+    'External Participant Id',
+    'Test Code',
+    'Sample Family Create Date',
+)
 
-def generate_samples():
-  """Creates fake sample CSV data in GCS."""
+def generate_samples(fraction_missing):
+  """Creates fake sample CSV data in GCS.
+
+  Args:
+    fraction_missing: This many samples which exist as BiobankStoredSamples will not have rows
+        generated in the fake CSV.
+  """
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
   now = clock.CLOCK.now()
   file_name = '/%s/fake_%s.csv' % (bucket_name, now.strftime(INPUT_CSV_TIME_FORMAT))
@@ -55,16 +58,22 @@ def generate_samples():
     biobank_order_dao = BiobankOrderDao()
     with biobank_order_dao.session() as session:
       rows = biobank_order_dao.get_ordered_samples_sample(session,
-                                                          _PARTICIPANTS_WITH_STORED_SAMPLES,
+                                                          1 - fraction_missing,
                                                           _BATCH_SIZE)
       for biobank_id, collected_time, test in rows:
-        if random.random() <= _MISSING_STORED_SAMPLE:
+        if collected_time is None:
+          logging.warning(
+             'biobank_id=%s test=%s skipped (collected=%s)', biobank_id, test, collected_time)
           continue
         minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED)
         confirmed_time = collected_time + datetime.timedelta(minutes=minutes_delta)
-        writer.writerow([sample_id_start + num_rows, None,
-                         confirmed_time.strftime(_TIME_FORMAT),
-                         to_client_biobank_id(biobank_id), test])
+        writer.writerow([
+            sample_id_start + num_rows,
+            None,  # no parent
+            confirmed_time.strftime(_TIME_FORMAT),
+            to_client_biobank_id(biobank_id),
+            test,
+            confirmed_time.strftime(_TIME_FORMAT)])  # reuse confirmed time as created time
         num_rows += 1
     participant_dao = ParticipantDao()
     with participant_dao.session() as session:
@@ -81,24 +90,3 @@ def generate_samples():
                            to_client_biobank_id(biobank_id), test])
           num_rows += 1
   logging.info("Generated %d samples in %s.", num_rows, file_name)
-
-class FakeBiobankSamplesGenerator(object):
-  """Generates fake biobank samples for the participants in the database."""
-
-  def generate_samples_for_participant(self, participant_id):
-    participant = ParticipantDao().get(participant_id)
-    if not participant:
-      raise NotFound('No participant with ID %d found' % participant_id)
-    ordered_samples = BiobankOrderDao().get_ordered_samples_for_participant(participant_id)
-    if not ordered_samples:
-      raise NotFound('No ordered samples found for participant %d' % participant_id)
-    now = clock.CLOCK.now()
-    stored_samples = [BiobankStoredSample(biobankStoredSampleId='%d-%s' %
-                                          (participant_id, sample.test),
-                                          biobankId=participant.biobankId,
-                                          test=sample.test,
-                                          confirmed=now) for sample in ordered_samples]
-
-    BiobankStoredSampleDao().upsert_all(stored_samples)
-    ParticipantSummaryDao().update_from_biobank_stored_samples(participant_id)
-    return len(stored_samples)

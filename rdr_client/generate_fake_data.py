@@ -31,8 +31,7 @@ def generate_fake_data(client, args):
     logging.info('Total participants created: %d', total_participants_created)
   if args.create_biobank_samples:
     logging.info('Requesting Biobank sample generation.')
-    request_body = {'create_biobank_samples': 'all'}
-    client.request_json('DataGen', 'POST', request_body)
+    client.request_json('DataGen', 'POST', {'create_biobank_samples': True})
     logging.info(
         'Biobank samples are being generated asynchronously.'
         ' Wait until done, then use the cron tab in AppEngine to start the samples pipeline.')
