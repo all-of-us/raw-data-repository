@@ -60,13 +60,12 @@ def generate_samples(fraction_missing):
     biobank_order_dao = BiobankOrderDao()
     with biobank_order_dao.session() as session:
       rows = biobank_order_dao.get_ordered_samples_sample(session,
-                                                          _PARTICIPANTS_WITH_STORED_SAMPLES,
+                                                          1 - fraction_missing,
                                                           _BATCH_SIZE)
       for biobank_id, collected_time, test in rows:
-        if collected_time is None or random.random() < fraction_missing:
-          if collected_time is None:
-            logging.warning(
-                'biobank_id=%s test=%s skipped (collected=%s)', biobank_id, test, collected_time)
+        if collected_time is None:
+          logging.warning(
+             'biobank_id=%s test=%s skipped (collected=%s)', biobank_id, test, collected_time)
           continue
         minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED)
         confirmed_time = collected_time + datetime.timedelta(minutes=minutes_delta)
