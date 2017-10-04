@@ -115,10 +115,11 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       self.send_consent('P1', email='bob@gmail.com')
 
     with FakeClock(TIME):
+      # Participant 2 starts out unpaired; later gets paired automatically when their physical
+      # measurements come in.
       participant2 = Participant(
           participantId=2,
-          biobankId=3,
-          providerLink=make_primary_provider_link_for_name('PITT'))
+          biobankId=3)
       participant_dao.insert(participant2)
       self.send_consent('P2', email='bob@fexample.com')
 
@@ -195,7 +196,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     # Two shards are written for each file, one with the first participant and
     # one with the second.
     assertCsvContents(self, BUCKET_NAME, prefix + _HPO_IDS_CSV % 0,
-                      [HPO_ID_FIELDS, ['2', 'PITT', t1]])
+                      [HPO_ID_FIELDS, ['2', 'UNSET', t1], ['2', 'PITT', t3]])
     assertCsvContents(self, BUCKET_NAME, prefix + _HPO_IDS_CSV % 1, [
         HPO_ID_FIELDS, ['1', 'AZ_TUCSON', t1], ['1', 'PITT', t3]
     ])
@@ -238,7 +239,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     buckets = MetricsVersionDao().get_with_children(
         metrics_version.metricsVersionId).buckets
     bucket_map = {(bucket.date, bucket.hpoId): bucket for bucket in buckets}
-    # At TIME, P1 is affiliated with AZ_TUCSON and P2 has PITT.
+    # At TIME, P1 is affiliated with AZ_TUCSON and P2 is UNSET.
     self.assertBucket(bucket_map, TIME, 'TEST')
     self.assertBucket(bucket_map, TIME, 'AZ_TUCSON', {
         'Participant': 1,
@@ -266,7 +267,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.samplesToIsolateDNA.UNSET': 1,
         'Participant.enrollmentStatus.INTERESTED': 1
     })
-    self.assertBucket(bucket_map, TIME, 'PITT', {
+    self.assertBucket(bucket_map, TIME, 'UNSET', {
         'Participant': 1,
         'Participant.ageRange.UNSET': 1,
         'Participant.state.UNSET': 1,
@@ -274,7 +275,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.physicalMeasurements.UNSET': 1,
         'Participant.biospecimen.UNSET': 1,
         'Participant.biospecimenSamples.UNSET': 1,
-        'Participant.hpoId.PITT': 1,
+        'Participant.hpoId.UNSET': 1,
         'Participant.consentForElectronicHealthRecords.UNSET': 1,
         'Participant.consentForStudyEnrollment.SUBMITTED': 1,
         'Participant.questionnaireOnOverallHealth.UNSET': 1,
@@ -301,7 +302,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.physicalMeasurements.UNSET': 2,
         'Participant.biospecimen.UNSET': 2,
         'Participant.biospecimenSamples.UNSET': 2,
-        'Participant.hpoId.PITT': 1,
+        'Participant.hpoId.UNSET': 1,
         'Participant.hpoId.AZ_TUCSON': 1,
         'Participant.consentForElectronicHealthRecords.UNSET': 2,
         'Participant.consentForStudyEnrollment.SUBMITTED': 2,
@@ -349,7 +350,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.samplesToIsolateDNA.UNSET': 1,
         'Participant.enrollmentStatus.INTERESTED': 1
     })
-    self.assertBucket(bucket_map, TIME_2, 'PITT', {
+    self.assertBucket(bucket_map, TIME_2, 'UNSET', {
         'Participant': 1,
         'Participant.ageRange.UNSET': 1,
         'Participant.state.UNSET': 1,
@@ -357,7 +358,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.physicalMeasurements.UNSET': 1,
         'Participant.biospecimen.UNSET': 1,
         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
-        'Participant.hpoId.PITT': 1,
+        'Participant.hpoId.UNSET': 1,
         'Participant.consentForElectronicHealthRecords.UNSET': 1,
         'Participant.consentForStudyEnrollment.SUBMITTED': 1,
         'Participant.questionnaireOnOverallHealth.UNSET': 1,
@@ -384,7 +385,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.physicalMeasurements.UNSET': 2,
         'Participant.biospecimen.UNSET': 2,
         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
-        'Participant.hpoId.PITT': 1,
+        'Participant.hpoId.UNSET': 1,
         'Participant.hpoId.AZ_TUCSON': 1,
         'Participant.consentForElectronicHealthRecords.UNSET': 2,
         'Participant.consentForStudyEnrollment.SUBMITTED': 2,

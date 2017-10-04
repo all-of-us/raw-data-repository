@@ -36,22 +36,22 @@ CREATE VIEW questionnaire_response_answer_view AS
    qra.end_time answer_end_time,
    ac.value answer_code,
    ac.code_id answer_code_id,
-   qra.value_boolean answer_boolean, 
+   qra.value_boolean answer_boolean,
    qra.value_decimal answer_decimal,
    qra.value_integer answer_integer,
    qra.value_string answer_string,
    qra.value_date answer_date,
    qra.value_datetime answer_datetime,
-   qra.value_uri answer_uri   
+   qra.value_uri answer_uri
  FROM
    participant p
     INNER JOIN questionnaire_response qr ON p.participant_id = qr.participant_id
-    INNER JOIN questionnaire_response_answer qra 
+    INNER JOIN questionnaire_response_answer qra
        ON qra.questionnaire_response_id = qr.questionnaire_response_id
     INNER JOIN questionnaire_question qq ON qra.question_id = qq.questionnaire_question_id
     INNER JOIN questionnaire q ON qq.questionnaire_id = q.questionnaire_id
     INNER JOIN code qc ON qq.code_id = qc.code_id
-    INNER JOIN participant_summary ps 
+    INNER JOIN participant_summary ps
     LEFT OUTER JOIN hpo ON p.hpo_id = hpo.hpo_id
     LEFT OUTER JOIN code ac ON qra.value_code_id = ac.code_id
     WHERE (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
