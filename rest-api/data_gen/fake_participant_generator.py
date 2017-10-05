@@ -449,10 +449,10 @@ class FakeParticipantGenerator(object):
 
   def _submit_hpo_changes(self, participant_response, participant_id, consent_time):
     if random.random() <= _NO_HPO_CHANGE:
-      return consent_time, participant_response    
+      return consent_time, participant_response
     # Re-fetch the participant to make sure we have the up-to-date version.
     participant_response = self._client.request_json(_participant_url(participant_id), method='GET')
-    hpo = random.choice(self._hpos)    
+    hpo = random.choice(self._hpos)
     participant_response['providerLink'] = json.loads(make_primary_provider_link_for_hpo(hpo))
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_HPO_CHANGE)
     change_time = consent_time + datetime.timedelta(days=days_delta)
@@ -491,7 +491,7 @@ class FakeParticipantGenerator(object):
       if include_biobank_orders and the_basics_submission_time:
         last_biobank_time = self._submit_biobank_data(participant_id,
                                                       the_basics_submission_time)
-        last_request_time = max(last_request_time, last_biobank_time)    
+        last_request_time = max(last_request_time, last_biobank_time)
       if not requested_hpo:
         last_hpo_change_time, participant_response = self._submit_hpo_changes(participant_response,
                                                                               participant_id,
