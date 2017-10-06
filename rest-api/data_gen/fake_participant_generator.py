@@ -653,19 +653,19 @@ class FakeParticipantGenerator(object):
 
   def _choose_answers_for_other_questions(self, answer_map):
     for question_code, answer_spec in self._answer_specs.iteritems():
-        num_participants = int(answer_spec['num_participants'])
-        # Skip answering this question based on the percentage of participants that answered it.
-        if random.random() > float(num_participants) / float(self._answer_specs_max_participants):
-          continue
-        num_questionnaire_responses = int(answer_spec['num_questionnaire_responses'])
-        num_answers = int(answer_spec['num_answers'])
-        answer_count = 1
-        if num_answers > num_questionnaire_responses:
-          rand_val = random.random() * num_answers / num_questionnaire_responses
-          if rand_val > 1:
-            # Set the answer count to 2 or more
-            answer_count = int(1 + min(1, rand_val))
-        answer_map[question_code] = self._choose_answer_for_spec(answer_spec, answer_count)
+      num_participants = int(answer_spec['num_participants'])
+      # Skip answering this question based on the percentage of participants that answered it.
+      if random.random() > float(num_participants) / float(self._answer_specs_max_participants):
+        continue
+      num_questionnaire_responses = int(answer_spec['num_questionnaire_responses'])
+      num_answers = int(answer_spec['num_answers'])
+      answer_count = 1
+      if num_answers > num_questionnaire_responses:
+        rand_val = random.random() * num_answers / num_questionnaire_responses
+        if rand_val > 1:
+          # Set the answer count to 2 or more
+          answer_count = int(1 + min(1, rand_val))
+      answer_map[question_code] = self._choose_answer_for_spec(answer_spec, answer_count)
 
   def _make_answer_map(self, california_hpo):
     answer_map = {}
