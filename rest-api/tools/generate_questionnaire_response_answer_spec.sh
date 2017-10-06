@@ -37,7 +37,7 @@ else
 fi
 
 if [ -z "${OUTPUT_FILE}" ]
-then 
+then
   echo "Usage: $USAGE"
 fi
 
