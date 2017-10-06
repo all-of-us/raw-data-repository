@@ -618,7 +618,7 @@ class FakeParticipantGenerator(object):
         return [_code_answer(code) for code in random.sample(codes, answer_count)]
     if int(answer_spec['decimal_answer_count']) > 0:
       return [{'valueDecimal': round(random.uniform(float(answer_spec['min_decimal_answer']),
-                                                    float(answer_spec['max_decimal_answer'])), 1) }
+                                                    float(answer_spec['max_decimal_answer'])), 1)}
               for _ in xrange(answer_count)]
     if int(answer_spec['integer_answer_count']) > 0:
       return [{'valueInteger': random.randint(int(answer_spec['min_integer_answer']),
@@ -642,12 +642,12 @@ class FakeParticipantGenerator(object):
     if int(answer_spec['boolean_answer_count']) > 0:
       return [{'valueBoolean': random.random() < 0.5}]
     if int(answer_spec['string_answer_count']) > 0:
-      return [{'valueString': ''.join([random.choice(string.lowercase) for i in xrange(20)])}
+      return [{'valueString': ''.join([random.choice(string.lowercase) for _ in xrange(20)])}
               for _ in xrange(answer_count)]
     if int(answer_spec['uri_answer_count']) > 0:
       return [{'valueUri': 'gs://some-bucket-name/%s' %
-               ''.join([random.choice(string.lowercase) for i in xrange(20)])}
-               for _ in xrange(answer_count) ]
+               ''.join([random.choice(string.lowercase) for _ in xrange(20)])}
+               for _ in xrange(answer_count)]
     logging.warn('No answer type found for %s, skipping...' % answer_spec['question_code'])
     return None
 
