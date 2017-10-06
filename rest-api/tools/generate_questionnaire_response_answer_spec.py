@@ -2,9 +2,7 @@
 import csv
 
 from dao import database_factory
-from pprint import pprint
 from sqlalchemy import text
-from decimal import Decimal
 from main_util import get_parser
 
 _BATCH_SIZE = 1000
