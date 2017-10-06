@@ -6,6 +6,7 @@ import datetime
 import json
 import logging
 import random
+import string
 
 from concepts import Concept
 from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
@@ -24,6 +25,7 @@ from code_constants import PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE, BIOBAN
 from code_constants import HEALTHPRO_USERNAME_SYSTEM, SITE_ID_SYSTEM
 from field_mappings import QUESTION_CODE_TO_FIELD
 
+from cloudstorage import cloudstorage_api
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from dao.participant_dao import make_primary_provider_link_for_hpo
@@ -33,9 +35,14 @@ from dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _FINALIZED_LOC
   _LOCATION_PREFIX
 from dao.physical_measurements_dao import _AUTHORING_STEP, _CREATED_STATUS, _FINALIZED_STATUS
 from dao.physical_measurements_dao import _AUTHOR_PREFIX
+from dateutil.parser import parse
 from model.code import CodeType
 from participant_enums import UNSET_HPO_ID
 from werkzeug.exceptions import BadRequest
+from google.appengine.api import app_identity
+
+_ANSWER_SPECS_BUCKET = "all-of-us-rdr-fake-data-spec"
+_ANSWER_SPECS_FILE = "answer_specs.csv"
 
 _TIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 # 30%+ of participants have no primary provider link / HPO set
@@ -122,8 +129,8 @@ class FakeParticipantGenerator(object):
       raise BadRequest('No sites found; import sites before running generator.')
     self._now = clock.CLOCK.now()
     self._consent_questionnaire_id_and_version = None
-    self._setup_questionnaires()
     self._setup_data()
+    self._setup_questionnaires()
     self._min_birth_date = self._now - datetime.timedelta(days=_MAX_PARTICIPANT_AGE * 365)
     self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE)
 
@@ -166,14 +173,15 @@ class FakeParticipantGenerator(object):
 
       for question in questionnaire.questions:
         question_code = code_dao.get(question.codeId)
-        if question_code.value in _QUESTION_CODES:
+        if (question_code.value in _QUESTION_CODES) or (question_code.value in self._answer_specs):
           question_code_to_questionnaire_id[question_code.value] = questionnaire.questionnaireId
           questions.append((question_code.value, question.linkId))
-          answer_codes = self._get_answer_codes(question_code)
-          all_codes = (answer_codes + _CONSTANT_CODES) if answer_codes else _CONSTANT_CODES
-          self._question_code_to_answer_codes[question_code.value] = all_codes
+          if question_code.value in _QUESTION_CODES:
+            answer_codes = self._get_answer_codes(question_code)
+            all_codes = (answer_codes + _CONSTANT_CODES) if answer_codes else _CONSTANT_CODES
+            self._question_code_to_answer_codes[question_code.value] = all_codes
     # Log warnings for any question codes not found in the questionnaires.
-    for code_value in _QUESTION_CODES:
+    for code_value in _QUESTION_CODES + self._answer_specs.keys():
       questionnaire_id = question_code_to_questionnaire_id.get(code_value)
       if not questionnaire_id:
         logging.warning('Question for code %s missing; import questionnaires', code_value)
@@ -187,6 +195,14 @@ class FakeParticipantGenerator(object):
     with open('app_data/%s' % filename) as f:
       return json.load(f)
 
+  def _read_csv_from_gcs(self, bucket_name, file_name):
+    with cloudstorage_api.open('/%s/%s' % (bucket_name, file_name), mode='r') as infile:
+      return list(csv.DictReader(infile))
+
+  def _read_csv_from_file(self, file_name):
+    with open('app_data/%s' % file_name, mode='r') as infile:
+      return list(csv.DictReader(infile))
+
   def _setup_data(self):
     self._zip_code_to_state = {}
     with open('app_data/zipcodes.txt') as zipcodes:
@@ -199,6 +215,18 @@ class FakeParticipantGenerator(object):
     self._city_names = self._read_all_lines('city_names.txt')
     self._street_names = self._read_all_lines('street_names.txt')
     measurement_specs = self._read_json('measurement_specs.json')
+    if app_identity.get_application_id() == 'None':
+      # Read CSV from a local file when running dev_appserver.
+      answer_specs = self._read_csv_from_file(_ANSWER_SPECS_FILE)
+    else:
+      # Read from GCS when running in Cloud environments.
+      answer_specs = self._read_csv_from_gcs(_ANSWER_SPECS_BUCKET, _ANSWER_SPECS_FILE)
+    # Save all the answer specs for questions that don't have special handling already.
+    self._answer_specs = {answer_spec['question_code']: answer_spec for answer_spec in answer_specs
+                          if answer_spec['question_code'] not in _QUESTION_CODES}
+    # Serves as the denominator when deciding whether to answer a question.
+    self._answer_specs_max_participants = max([int(answer_spec['num_participants'])
+                                               for answer_spec in answer_specs])
     qualifier_concepts = set()
     for measurement in measurement_specs:
       for qualifier in measurement['qualifiers']:
@@ -576,11 +604,68 @@ class FakeParticipantGenerator(object):
     answer_map[EMAIL_QUESTION_CODE] = _string_answer(email)
 
   def _choose_date_of_birth(self, answer_map):
-    if random.random() <= _QUESTION_NOT_ANSWERED:
-      return
     delta = datetime.timedelta(days=random.randint(0, self._max_days_for_birth_date))
     date_of_birth = (self._min_birth_date + delta).date()
     answer_map[DATE_OF_BIRTH_QUESTION_CODE] = [{"valueDate": date_of_birth.isoformat()}]
+
+  def _choose_answer_for_spec(self, answer_spec, answer_count):
+    # We assume that each question only has one type of answer
+    if int(answer_spec['code_answer_count']) > 0:
+      codes = answer_spec['code_answers'].split(',')
+      if answer_count == 1:
+        return [_code_answer(random.choice(codes))]
+      else:
+        return [_code_answer(code) for code in random.sample(codes, answer_count)]
+    if int(answer_spec['decimal_answer_count']) > 0:
+      return [{'valueDecimal': round(random.uniform(float(answer_spec['min_decimal_answer']),
+                                                    float(answer_spec['max_decimal_answer'])), 1) }
+              for _ in xrange(answer_count)]
+    if int(answer_spec['integer_answer_count']) > 0:
+      return [{'valueInteger': random.randint(int(answer_spec['min_integer_answer']),
+                                              int(answer_spec['max_integer_answer']))}
+              for _ in xrange(answer_count)]
+    if int(answer_spec['date_answer_count']) > 0:
+      min_date = parse(answer_spec['min_date_answer'])
+      max_date = parse(answer_spec['max_date_answer'])
+      days_diff = (max_date - min_date).days
+      return [{'valueDate': (min_date +
+                             datetime.timedelta(days=random.randint(0, days_diff))).isoformat()}
+              for _ in xrange(answer_count)]
+    if int(answer_spec['datetime_answer_count']) > 0:
+      min_date = parse(answer_spec['min_datetime_answer'])
+      max_date = parse(answer_spec['max_datetime_answer'])
+      seconds_diff = (max_date - min_date).total_seconds()
+      return [{'valueDateTime': (min_date +
+                                 datetime.timedelta(seconds=random.randint(0, seconds_diff)))
+                                 .isoformat()}
+              for _ in xrange(answer_count)]
+    if int(answer_spec['boolean_answer_count']) > 0:
+      return [{'valueBoolean': random.random() < 0.5}]
+    if int(answer_spec['string_answer_count']) > 0:
+      return [{'valueString': ''.join([random.choice(string.lowercase) for i in xrange(20)])}
+              for _ in xrange(answer_count)]
+    if int(answer_spec['uri_answer_count']) > 0:
+      return [{'valueUri': 'gs://some-bucket-name/%s' %
+               ''.join([random.choice(string.lowercase) for i in xrange(20)])}
+               for _ in xrange(answer_count) ]
+    logging.warn('No answer type found for %s, skipping...' % answer_spec['question_code'])
+    return None
+
+  def _choose_answers_for_other_questions(self, answer_map):
+    for question_code, answer_spec in self._answer_specs.iteritems():
+        num_participants = int(answer_spec['num_participants'])
+        # Skip answering this question based on the percentage of participants that answered it.
+        if random.random() > float(num_participants) / float(self._answer_specs_max_participants):
+          continue
+        num_questionnaire_responses = int(answer_spec['num_questionnaire_responses'])
+        num_answers = int(answer_spec['num_answers'])
+        answer_count = 1
+        if num_answers > num_questionnaire_responses:
+          rand_val = random.random() * num_answers / num_questionnaire_responses
+          if rand_val > 1:
+            # Set the answer count to 2 or more
+            answer_count = int(1 + min(1, rand_val))
+        answer_map[question_code] = self._choose_answer_for_spec(answer_spec, answer_count)
 
   def _make_answer_map(self, california_hpo):
     answer_map = {}
@@ -601,6 +686,7 @@ class FakeParticipantGenerator(object):
     if california_hpo:
       answer_map[CABOR_SIGNATURE_QUESTION_CODE] = _string_answer('signature')
     self._choose_date_of_birth(answer_map)
+    self._choose_answers_for_other_questions(answer_map)
     return answer_map
 
   def _submit_questionnaire_responses(self, participant_id, california_hpo, start_time):
