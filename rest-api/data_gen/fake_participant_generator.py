@@ -450,6 +450,8 @@ class FakeParticipantGenerator(object):
   def _submit_hpo_changes(self, participant_response, participant_id, consent_time):
     if random.random() <= _NO_HPO_CHANGE:
       return consent_time, participant_response
+    # Re-fetch the participant to make sure we have the up-to-date version.
+    participant_response = self._client.request_json(_participant_url(participant_id), method='GET')
     hpo = random.choice(self._hpos)
     participant_response['providerLink'] = json.loads(make_primary_provider_link_for_hpo(hpo))
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_HPO_CHANGE)
