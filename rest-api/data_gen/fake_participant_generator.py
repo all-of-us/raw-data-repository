@@ -645,7 +645,7 @@ class FakeParticipantGenerator(object):
       return [{'valueString': ''.join([random.choice(string.lowercase) for _ in xrange(20)])}
               for _ in xrange(answer_count)]
     if int(answer_spec['uri_answer_count']) > 0:
-      return [{'valueUri': 'gs://some-bucket-name/%s' %
+      return [{'valueUri': 'gs://notarealbucket.example.com/%s' %
                ''.join([random.choice(string.lowercase) for _ in xrange(20)])}
                for _ in xrange(answer_count)]
     logging.warn('No answer type found for %s, skipping...' % answer_spec['question_code'])
@@ -664,7 +664,7 @@ class FakeParticipantGenerator(object):
         rand_val = random.random() * num_answers / num_questionnaire_responses
         if rand_val > 1:
           # Set the answer count to 2 or more
-          answer_count = int(1 + min(1, rand_val))
+          answer_count = int(1 + max(1, rand_val))
       answer_map[question_code] = self._choose_answer_for_spec(answer_spec, answer_count)
 
   def _make_answer_map(self, california_hpo):
