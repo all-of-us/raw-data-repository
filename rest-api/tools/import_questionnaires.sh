@@ -37,10 +37,19 @@ else
   fi
 fi
 
-#TODO: fetch questionnaires from github; for now, we'll use fake test questionnaires
-QUESTIONNAIRE_FILES=(study_consent.json ehr_consent.json the_basics_questionnaire.json questionnaire4.json)
+QUESTIONNAIRE_FILES=(base_consent.json basics.json ehr_consent.json lifestyle.json overall_health.json)
+QUESTIONNAIRE_TMP_DIR=/tmp/rdr-questionnaires/
+echo "Fetching questionnaires from github..."
+mkdir -p ${QUESTIONNAIRE_TMP_DIR}
+# Fetch the questionnaires from github and write them to the questionnaire dir.
+for file in "${QUESTIONNAIRE_FILES[@]}";
+do
+  curl "https://raw.githubusercontent.com/all-of-us-terminology/api-payloads/master/questionnaire_payloads/${file}" > ${QUESTIONNAIRE_TMP_DIR}${file}
+done
+
 QUESTIONNAIRE_FILES_STR=$(IFS=, ; echo "${QUESTIONNAIRE_FILES[*]}")
 QUESTIONNAIRE_DIR=test/test-data/
 
-(source tools/set_path.sh; python tools/import_questionnaires.py --dir $QUESTIONNAIRE_DIR \
+echo "Importing questionnaires..."
+(source tools/set_path.sh; python tools/import_questionnaires.py --dir $QUESTIONNAIRE_TMP_DIR \
  --files $QUESTIONNAIRE_FILES_STR)
