@@ -1,0 +1,11 @@
+module,question_code,num_participants,num_questionnaire_responses,num_answers,min_date_answer,max_date_answer,min_datetime_answer,max_datetime_answer,min_decimal_answer,max_decimal_answer,min_integer_answer,max_integer_answer,code_answers,date_answer_count,datetime_answer_count,decimal_answer_count,integer_answer_count,code_answer_count,boolean_answer_count,string_answer_count,uri_answer_count
+OverallHealth,OutsideTravel6Month_OutsideTravel6MonthWhereTraveled,40,40,40,,,,,,,,,,0,0,0,0,0,0,40,0
+ConsentPII,ExtraConsent_18YearsofAge,100,100,100,,,,,,,,,18YearsofAge_18YearsYes,0,0,0,0,100,0,0,0
+ConsentPII,ExtraConsent_AgreeToConsent,100,100,100,,,,,,,,,,0,0,0,0,0,100,0,0
+ConsentPII,ExtraConsent_Signature,100,100,100,,,,,,,,,,0,0,0,0,0,0,0,100
+Lifestyle,Alcohol_AverageDailyDrinkCount,80,80,80,,,,,,,,,"AverageDailyDrinkCount_1or2,AverageDailyDrinkCount_10orMore,AverageDailyDrinkCount_3or4,PMI_PreferNotToAnswer,AverageDailyDrinkCount_5or6,AverageDailyDrinkCount_7to9",0,0,0,0,80,0,0,0
+Lifestyle,RecreationalDrugUse_WhichDrugsUsed,90,90,240,,,,,,,,,"WhichDrugsUsed_MarijuanaUse,WhichDrugsUsed_CocaineUse,WhichDrugsUsed_PrescriptionStimulantsUse,WhichDrugsUsed_MethamphetamineUse,WhichDrugsUsed_InhalantsUse,WhichDrugsUsed_HallucinogensUse,WhichDrugsUsed_NoneOfTheseDrugs,PMI_PreferNotToAnswer,WhichDrugsUsed_SedativesUse,WhichDrugsUsed_PrescriptionOpioidsUse,WhichDrugsUsed_StreetOpioidsUse,WhichDrugsUsed_OtherSpecify",0,0,0,0,240,0,0,0
+OverallHealth,OrganTransplant_Date,3,3,3,1983-06-11,2010-06-15,,,,,,,,3,0,0,0,0,0,0,0
+OverallHealth,OverallHealthOvaryRemovalHistoryAge,6,6,6,,,,,,,2,71,,0,0,0,6,0,0,0,0
+ConsentPII,ExtraConsent_WelcomeVideo,25,25,25,,,2017-06-17 21:05:17,2017-10-02 13:25:46,,,,,,0,25,0,0,0,0,0,0
+Lifestyle,Smoking_NumberOfYears,57,57,57,,,,,0.1,45.5,0,38,,0,0,2,55,0,0,0,0
