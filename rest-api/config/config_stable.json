@@ -20,6 +20,9 @@
     "pentest@all-of-us-rdr-stable.iam.gserviceaccount.com": {
       "comment": "Penetration testing for Coalfire, PD-334.",
       "roles": ["ptc", "healthpro"]
+    },
+    "exporter@all-of-us-rdr-stable.iam.gserviceaccount.com": {
+      "roles": ["exporter"]
     }
   },
   "biobank_samples_bucket_name": [

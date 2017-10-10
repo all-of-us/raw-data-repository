@@ -7,6 +7,9 @@
   "user_info": {
     "configurator@all-of-us-rdr-sandbox.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]
+    },
+    "exporter@all-of-us-rdr-sandbox.iam.gserviceaccount.com": {
+      "roles": ["exporter"]
     }
   },
   "biobank_samples_bucket_name": [

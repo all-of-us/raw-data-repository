@@ -21,6 +21,9 @@
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]
+    },
+    "exporter@pmi-drc-api-test.iam.gserviceaccount.com": {
+      "roles": ["exporter"]
     }
   },
   "biobank_samples_bucket_name": [
