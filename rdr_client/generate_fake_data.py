@@ -12,7 +12,7 @@ import logging
 from client import Client
 from main_util import get_parser, configure_logging
 
-MAX_PARTICIPANTS_PER_REQUEST = 50
+MAX_PARTICIPANTS_PER_REQUEST = 25
 
 
 def generate_fake_data(client, args):
