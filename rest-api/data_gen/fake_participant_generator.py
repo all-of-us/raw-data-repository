@@ -489,6 +489,8 @@ class FakeParticipantGenerator(object):
 
   def _submit_status_changes(self, participant_response, participant_id, last_request_time):
     if random.random() <= _SUSPENDED_PERCENT:
+      participant_response = self._client.request_json(_participant_url(participant_id), 
+                                                       method='GET')
       participant_response['suspensionStatus'] = 'NO_CONTACT'
       days_delta = random.randint(0, _MAX_DAYS_BEFORE_SUSPENSION)
       change_time = last_request_time + datetime.timedelta(days=days_delta)
@@ -496,6 +498,8 @@ class FakeParticipantGenerator(object):
                                                       participant_id)
       last_request_time = change_time
     if random.random() <= _WITHDRAWN_PERCENT:
+      participant_response = self._client.request_json(_participant_url(participant_id), 
+                                                       method='GET')
       participant_response['withdrawalStatus'] = 'NO_USE'
       days_delta = random.randint(0, _MAX_DAYS_BEFORE_WITHDRAWAL)
       change_time = last_request_time + datetime.timedelta(days=days_delta)
