@@ -1,7 +1,8 @@
 cron:
 - description: Daily metrics
   url: /offline/MetricsRecalculate
-  schedule: every day 01:00
+  schedule: every day 04:00
+  timezone: America/New_York
   target: offline
 - description: Daily Biobank sample import and order reconciliation
   url: /offline/BiobankSamplesImport
