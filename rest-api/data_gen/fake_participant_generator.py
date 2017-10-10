@@ -487,8 +487,9 @@ class FakeParticipantGenerator(object):
     result = self._update_participant(change_time, participant_response, participant_id)
     return change_time, result
 
-  def _submit_status_changes(self, participant_response, participant_id, last_request_time):
+  def _submit_status_changes(self, participant_id, last_request_time):
     if random.random() <= _SUSPENDED_PERCENT:
+      # Fetch the participant to ensure its version is up-to-date.
       participant_response = self._client.request_json(_participant_url(participant_id),
                                                        method='GET')
       participant_response['suspensionStatus'] = 'NO_CONTACT'
@@ -498,6 +499,7 @@ class FakeParticipantGenerator(object):
                                                       participant_id)
       last_request_time = change_time
     if random.random() <= _WITHDRAWN_PERCENT:
+      # Fetch the participant to ensure its version is up-to-date.
       participant_response = self._client.request_json(_participant_url(participant_id),
                                                        method='GET')
       participant_response['withdrawalStatus'] = 'NO_USE'
@@ -529,7 +531,7 @@ class FakeParticipantGenerator(object):
                                                                               participant_id,
                                                                               consent_time)
         last_request_time = max(last_request_time, last_hpo_change_time)
-      self._submit_status_changes(participant_response, participant_id, last_request_time)
+      self._submit_status_changes(participant_id, last_request_time)
 
   def _create_participant(self, hpo_name):
     participant_json = {}
