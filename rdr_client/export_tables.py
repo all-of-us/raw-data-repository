@@ -1,4 +1,6 @@
-# Exports the entire contents of database tables to CSV files stored in GCS.
+# Exports the entire contents of database tables to Unicode CSV files stored in GCS.
+# Used instead of Cloud SQL export because it handles newlines and null characters properly.
+#
 # Usage: ./run_client.sh --project <PROJECT> --account <ACCOUNT> \
 # --service_account exporter@<PROJECT>.iam.gserviceaccount.com export_tables.py \
 # --database rdr --tables code,participant --directory test_directory

@@ -4,7 +4,11 @@ from offline.sql_exporter import SqlExporter
 from werkzeug.exceptions import BadRequest
 
 class TableExporter(object):
-  """API that exports data from our database to UTF-8 CSV files in GCS."""
+  """API that exports data from our database to UTF-8 CSV files in GCS.
+
+  Used instead of Cloud SQL export because it handles newlines and null characters in a way that
+  other CSV clients (e.g. BigQuery, Google Sheets) can actually understand.
+  """
 
   @classmethod
   def _export_csv(cls, bucket_name, database, directory, table_name):
