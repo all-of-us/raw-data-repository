@@ -16,10 +16,11 @@ def export_tables(client):
   table_names = client.args.tables.split(',')
   logging.info('Exporting %s from %s to %s' % (table_names, client.args.database,
                                                client.args.directory))
-  request_body = { 'database': client.args.database,
-                   'tables': table_names,
-                   'directory': client.args.directory }
-  client.request_json('ExportTables', 'POST', request_body)
+  request_body = {'database': client.args.database,
+                  'tables': table_names,
+                  'directory': client.args.directory}
+  response = client.request_json('ExportTables', 'POST', request_body)
+  logging.info('Data is being exported to: %s' % response['destination'])
 
 if __name__ == '__main__':
   configure_logging()
