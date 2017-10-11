@@ -30,4 +30,4 @@ class TableExporter(object):
       raise BadRequest("Invalid database: %s" % database)
     for table_name in tables:
       deferred.defer(TableExporter._export_csv, bucket_name, database, directory, table_name)
-    return { 'destination': 'gs://%s/%s' % (bucket_name, directory) }
+    return {'destination': 'gs://%s/%s' % (bucket_name, directory)}
