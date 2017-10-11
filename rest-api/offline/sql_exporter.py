@@ -5,6 +5,7 @@ import logging
 from dao import database_factory
 from cloudstorage import cloudstorage_api
 from sqlalchemy import text
+from unicode_csv import UnicodeWriter
 
 # Delimiter used in CSVs written (use this when reading them back out).
 DELIMITER = ','
@@ -12,8 +13,11 @@ _BATCH_SIZE = 1000
 
 class SqlExportFileWriter(object):
   """Writes rows to a CSV file, optionally filtering on a predicate."""
-  def __init__(self, dest, predicate=None):
-    self._writer = csv.writer(dest, delimiter=DELIMITER)
+  def __init__(self, dest, predicate=None, use_unicode=False):
+    if use_unicode:
+      self._writer = UnicodeWriter(dest, delimiter=DELIMITER)
+    else:
+      self._writer = csv.writer(dest, delimiter=DELIMITER)
     self._predicate = predicate
 
   def write_header(self, keys):
@@ -40,8 +44,9 @@ class CompositeSqlExportWriter(object):
 
 class SqlExporter(object):
   """Executes a SQL query, fetches results in batches, and writes output to a CSV in GCS."""
-  def __init__(self, bucket_name):
+  def __init__(self, bucket_name, use_unicode=False):
     self._bucket_name = bucket_name
+    self._use_unicode = use_unicode
 
   def run_export(self, file_name, sql, query_params=None):
     with self.open_writer(file_name) as writer:
@@ -70,6 +75,6 @@ class SqlExporter(object):
     gcs_path = '/%s/%s' % (self._bucket_name, file_name)
     logging.info('Exporting data to %s...', gcs_path)
     with cloudstorage_api.open(gcs_path, mode='w') as dest:
-      writer = SqlExportFileWriter(dest, predicate)
+      writer = SqlExportFileWriter(dest, predicate, use_unicode=self._use_unicode)
       yield writer
     logging.info('Export to %s complete.', gcs_path)

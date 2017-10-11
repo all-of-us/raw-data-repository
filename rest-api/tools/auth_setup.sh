@@ -28,10 +28,13 @@ else
   gcloud auth login $ACCOUNT
   gcloud config set project $PROJECT
   INSTANCE=https://${PROJECT}.appspot.com
-  SERVICE_ACCOUNT="circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
-  if [ "${PROJECT}" != "pmi-drc-api-test" ] && [ "${PROJECT}" != "all-of-us-rdr-staging" ]
+  if [ -z "${SERVICE_ACCOUNT}"]
   then
-    SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
+    SERVICE_ACCOUNT="circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
+    if [ "${PROJECT}" != "pmi-drc-api-test" ] && [ "${PROJECT}" != "all-of-us-rdr-staging" ]
+    then
+      SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
+    fi
   fi
   CREDS_FILE=${TMP_DIR}/creds.json
   TMP_CREDS_FILE=$CREDS_FILE

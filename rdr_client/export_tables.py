@@ -1,0 +1,31 @@
+# Exports the entire contents of database tables to CSV files stored in GCS.
+# Usage: ./run_client.sh --project <PROJECT> --account <ACCOUNT> \
+# --service_account exporter@<PROJECT>.iam.gserviceaccount.com export_tables.py \
+# --database rdr --tables code,participant --directory test_directory
+# If "rdr" is chosen for the database, the data will be written to <ENVIRONMENT>-rdr-export;
+# If "cdm" or "voc" are chosen, the data will be written to <ENVIRONMENT>-cdm.
+
+
+import logging
+
+from client import Client
+from main_util import get_parser, configure_logging
+def export_tables(client):
+  table_names = client.args.tables.split(',')
+  logging.info('Exporting %s from %s to %s' % (table_names, client.args.database,
+                                               client.args.directory))
+  request_body = { 'database': client.args.database,
+                   'tables': table_names,
+                   'directory': client.args.directory }
+  client.request_json('ExportTables', 'POST', request_body)
+
+if __name__ == '__main__':
+  configure_logging()
+  parser = get_parser()
+  parser.add_argument('--database', help='The database to export data from', required=True)
+  parser.add_argument('--tables', help='A comma-separated list of tables to export',
+                      required=True)
+  parser.add_argument('--directory',
+                      help='A directory to write CSV output to inside the GCS bucket',
+                      required=True)
+  export_tables(Client(parser=parser, base_path='offline'))
