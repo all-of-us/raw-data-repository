@@ -7,11 +7,11 @@
 # If "rdr" is chosen for the database, the data will be written to <ENVIRONMENT>-rdr-export;
 # If "cdm" or "voc" are chosen, the data will be written to <ENVIRONMENT>-cdm.
 
-
 import logging
 
 from client import Client
 from main_util import get_parser, configure_logging
+
 def export_tables(client):
   table_names = client.args.tables.split(',')
   logging.info('Exporting %s from %s to %s' % (table_names, client.args.database,
