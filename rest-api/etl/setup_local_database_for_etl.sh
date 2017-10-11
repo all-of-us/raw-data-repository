@@ -20,7 +20,6 @@
 
 source tools/setup_local_vars.sh
 DB_CONNECTION_NAME=
-CREATE_DB_FILE=/tmp/create_dbs.sql
 CSV_DIR=/var/lib/mysql-files/rdr-csv
 OUTPUT_DIR=/tmp/rdr-sql-dump
 
@@ -54,20 +53,15 @@ fi
 # Set the local db connection string with the RDR user.
 set_local_db_connection_string
 
-function finish {
-  rm -f ${CREATE_DB_FILE}
+function finish {  
   rm -rf ${CSV_DIR}
   rm -rf ${OUTPUT_DIR}
   cleanup
 }
 trap finish EXIT
 
-# Include charset here since mysqld defaults to Latin1 (even though CloudSQL
-# is configured with UTF8 as the default). Keep in sync with unit_test_util.py.
-cat etl/create_dbs.sql | envsubst > $CREATE_DB_FILE
-
 echo "Creating voc and cdm databases..."
-mysql -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < ${CREATE_DB_FILE}
+mysql -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < etl/create_dbs.sql
 if [ $? != '0' ]
 then
   echo "Error creating database. Exiting."
