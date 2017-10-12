@@ -53,7 +53,7 @@ fi
 # Set the local db connection string with the RDR user.
 set_local_db_connection_string
 
-function finish {  
+function finish {
   rm -rf ${CSV_DIR}
   rm -rf ${OUTPUT_DIR}
   cleanup
