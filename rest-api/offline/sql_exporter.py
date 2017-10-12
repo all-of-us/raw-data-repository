@@ -53,7 +53,7 @@ class SqlExporter(object):
       self.run_export_with_writer(writer, sql, query_params)
 
   def run_export_with_writer(self, writer, sql, query_params):
-    with database_factory.get_database().session() as session:
+    with database_factory.make_server_cursor_database().session() as session:
       self.run_export_with_session(writer, session, sql, query_params=query_params)
 
   def run_export_with_session(self, writer, session, sql, query_params=None):
