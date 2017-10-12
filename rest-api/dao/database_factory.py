@@ -27,5 +27,5 @@ def make_server_cursor_database():
   if get_db_connection_string().startswith('sqlite'):
     # SQLite doesn't have cursors; use the normal database during tests.
     return get_database()
-  else:    
+  else:
     return _SqlDatabase(connect_args={'cursorclass': SSCursor})
