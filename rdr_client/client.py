@@ -46,12 +46,12 @@ class Client(object):
     if parse_cli:
       self.args = self._parse_args(default_instance, parser)
       if base_path == 'offline':
-        # Adjust the instance to be https://offline-dot-<PROJECT>.appspot.com 
+        # Adjust the instance to be https://offline-dot-<PROJECT>.appspot.com
         # for offline requests
-        self.instance = 'https://offline-dot-%s' % self.args.instance[8:] 
+        self.instance = 'https://offline-dot-%s' % self.args.instance[8:]
       else:
         self.instance = self.args.instance
-      
+
       if self.args.creds_file:
         creds_file = self.args.creds_file
     else:
