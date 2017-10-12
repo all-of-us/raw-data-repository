@@ -89,7 +89,7 @@ def export_tables():
   tables = resource_json.get('tables')
   if not database:
     raise BadRequest("database is required")
-  if not tables or not type(tables) is list:
+  if not tables or type(tables) is not list:
     raise BadRequest("tables is required")
   directory = resource_json.get('directory')
   if not directory:

@@ -4,6 +4,9 @@
 # Usage: ./run_client.sh --project <PROJECT> --account <ACCOUNT> \
 # --service_account exporter@<PROJECT>.iam.gserviceaccount.com export_tables.py \
 # --database rdr --tables code,participant --directory test_directory
+#
+# "directory" indicates a directory inside the GCS bucket to write the files to
+#
 # If "rdr" is chosen for the database, the data will be written to <ENVIRONMENT>-rdr-export;
 # If "cdm" or "voc" are chosen, the data will be written to <ENVIRONMENT>-cdm.
 

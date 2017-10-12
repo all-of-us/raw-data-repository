@@ -2,7 +2,7 @@
 
 # Exports ETL results to GCS.
 
-USAGE="etl/export_etl_results.sh --project <PROJECT> --account <ACCOUNT> --directory <DIRECTORY>"
+USAGE="etl/export_etl_results.sh [--project <PROJECT> --account <ACCOUNT>] --directory <DIRECTORY>"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;

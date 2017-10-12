@@ -1,3 +1,5 @@
+import re
+
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from offline.sql_exporter import SqlExporter
@@ -18,16 +20,20 @@ class TableExporter(object):
 
   @staticmethod
   def export_tables(database, tables, directory):
+    table_pattern = re.compile("^[A-Za-z0-9_]+$")
     app_id = app_identity.get_application_id()
     # Determine what GCS bucket to write to based on the environment and database.
-    if app_id == "None":
+    if app_id == 'None':
       bucket_name = app_identity.get_default_gcs_bucket_name()
     elif database == 'rdr':
       bucket_name = '%s-rdr-export' % app_id
-    elif database == 'cdm' or database == 'voc':
+    elif database in ['cdm', 'voc']:
       bucket_name = '%s-cdm' % app_id
     else:
       raise BadRequest("Invalid database: %s" % database)
+    for table_name in tables:
+      if not table_pattern.match(table_name):
+        raise BadRequest("Invalid table name: %s" % table_name)
     for table_name in tables:
       deferred.defer(TableExporter._export_csv, bucket_name, database, directory, table_name)
     return {'destination': 'gs://%s/%s' % (bucket_name, directory)}
