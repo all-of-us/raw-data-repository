@@ -29,8 +29,17 @@ then
 fi
 CREDS_ACCOUNT=${ACCOUNT}
 
-echo "Activating service account..."
+read -s -p "Enter root password for ${PROJECT} database: " root_password
+
 source tools/auth_setup.sh
+run_cloud_sql_proxy
+set_db_connection_string
+
+echo "Creating voc and cdm databases..."
+mysql --verbose -h 127.0.0.1 -u "${ROOT_DB_USER}" -p${root_password} --port ${PORT} < etl/create_dbs.sql
+
+echo "Activating service account..."
+
 gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file=$CREDS_FILE
 
 SQL_SERVICE_ACCOUNT=`gcloud sql instances describe --project ${PROJECT} --account ${ACCOUNT} \
