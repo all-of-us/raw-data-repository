@@ -1,7 +1,7 @@
 import config
 import os
 import singletons
-import MySQLdb
+from MySQLdb.cursors import SSCursor
 
 from model.database import Database
 from singletons import SQL_DATABASE_INDEX
@@ -22,4 +22,4 @@ def make_server_cursor_database():
   Returns a database object that uses a server-side cursor when talking to the database.
   Useful in cases where you're reading a very large amount of data.
   """
-  return _SqlDatabase(connect_args={'cursorclass': MySQLdb.cursors.SSCursor})
+  return _SqlDatabase(connect_args={'cursorclass': SSCursor})
