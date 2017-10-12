@@ -21,7 +21,7 @@ fi
 PROJECT_AND_ACCOUNT=
 if [ "${PROJECT}" ]
 then
-  PROJECT_AND_ACCOUNT="--project ${PROJECT} --account ${ACCOUNT}"
+  PROJECT_AND_ACCOUNT="--project ${PROJECT} --account ${ACCOUNT} --service_account exporter@${PROJECT}.iam.gserviceaccount.com"
 fi
 
 pushd ../rdr_client

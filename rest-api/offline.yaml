@@ -27,8 +27,7 @@ handlers:
   script: google.appengine.ext.deferred.deferred.application
   login: admin
 - url: /offline/.*
-  script: offline.main.app
-  login: admin
+  script: offline.main.app  
 
 libraries:
 - name: pycrypto
