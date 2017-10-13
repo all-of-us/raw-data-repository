@@ -15,7 +15,7 @@ class TableExporter(object):
   """
 
   @classmethod
-  def _export_csv(cls, bucket_name, database, directory, table_name):    
+  def _export_csv(cls, bucket_name, database, directory, table_name):
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
     SqlExporter(bucket_name, use_unicode=True).run_export('%s/%s.csv' % (directory, table_name),
@@ -23,7 +23,7 @@ class TableExporter(object):
                                                           (database, table_name))
 
   @staticmethod
-  def export_tables(database, tables, directory):    
+  def export_tables(database, tables, directory):
     app_id = app_identity.get_application_id()
     # Determine what GCS bucket to write to based on the environment and database.
     if app_id == 'None':
