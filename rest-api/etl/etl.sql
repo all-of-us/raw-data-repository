@@ -124,7 +124,9 @@ CREATE TABLE observation_period
     observation_period_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     observation_period_start_date date NOT NULL,
+    observation_period_start_datetime datetime NOT NULL,
     observation_period_end_date date NOT NULL,
+    observation_period_end_datetime datetime NOT NULL,
     period_type_concept_id bigint NOT NULL,
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (observation_period_id)
@@ -2027,7 +2029,9 @@ SELECT
     NULL                                    AS observation_period_id,
     person_id                               AS person_id,
     MIN(observation_start_date)             AS observation_period_start_date,
+    TIMESTAMP(MIN(observation_start_date))  AS observation_period_start_datetime,
     observation_end_date                    AS observation_period_end_date,
+    TIMESTAMP(observation_end_date)         AS observation_period_end_datetime,
     44814725                                AS period_type_concept_id,         -- Period inferred by algorithm
     'T.observ_period'                       AS unit_id
 FROM cdm.temp_obs
