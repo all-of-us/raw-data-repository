@@ -16,8 +16,8 @@ class TableExporter(object):
 
   @classmethod
   def _export_csv(cls, bucket_name, database, directory, table_name):    
-    assert(_TABLE_PATTERN.match(table_name))
-    assert(_TABLE_PATTERN.match(database))
+    assert _TABLE_PATTERN.match(table_name)
+    assert _TABLE_PATTERN.match(database)
     SqlExporter(bucket_name, use_unicode=True).run_export('%s/%s.csv' % (directory, table_name),
                                                           'SELECT * FROM %s.%s' %
                                                           (database, table_name))
