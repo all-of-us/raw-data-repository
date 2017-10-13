@@ -5,6 +5,8 @@ from google.appengine.ext import deferred
 from offline.sql_exporter import SqlExporter
 from werkzeug.exceptions import BadRequest
 
+_TABLE_PATTERN = re.compile("^[A-Za-z0-9_]+$")
+
 class TableExporter(object):
   """API that exports data from our database to UTF-8 CSV files in GCS.
 
@@ -13,14 +15,15 @@ class TableExporter(object):
   """
 
   @classmethod
-  def _export_csv(cls, bucket_name, database, directory, table_name):
+  def _export_csv(cls, bucket_name, database, directory, table_name):    
+    assert(_TABLE_PATTERN.match(table_name))
+    assert(_TABLE_PATTERN.match(database))
     SqlExporter(bucket_name, use_unicode=True).run_export('%s/%s.csv' % (directory, table_name),
                                                           'SELECT * FROM %s.%s' %
                                                           (database, table_name))
 
   @staticmethod
-  def export_tables(database, tables, directory):
-    table_pattern = re.compile("^[A-Za-z0-9_]+$")
+  def export_tables(database, tables, directory):    
     app_id = app_identity.get_application_id()
     # Determine what GCS bucket to write to based on the environment and database.
     if app_id == 'None':
@@ -32,7 +35,7 @@ class TableExporter(object):
     else:
       raise BadRequest("Invalid database: %s" % database)
     for table_name in tables:
-      if not table_pattern.match(table_name):
+      if not _TABLE_PATTERN.match(table_name):
         raise BadRequest("Invalid table name: %s" % table_name)
     for table_name in tables:
       deferred.defer(TableExporter._export_csv, bucket_name, database, directory, table_name)
