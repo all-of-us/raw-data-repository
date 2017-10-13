@@ -76,3 +76,7 @@ California ,University of Southern California,7035988,HPO USC,hpo-site-USC@prod.
 Test Organization,Prod HPO Site A,,Prod HPO Site A,hpo-site-a@prod.pmi-ops.org,TEST,
 Pittsburgh,University of Pittsburgh - Mobile Team,7036372,HPO Pitt Mobile,hpo-site-pittmobile@prod.pmi-ops.org,PITT,
 Trans-American Consortium (TAC),Spectrum Health,7036220,HPO Spectrum,hpo-site-spectrum@prod.pmi-ops.org,TRANS_AM,
+Arizona,Banner Boswell Medical Center,7036426,HPO Banner Boswell,hpo-site-bannerboswell@prod.pmi-ops.org,AZ_TUCSON,
+Arizona,Banner Thunderbird Medical Center,7036427,HPO Banner Thunderbird,hpo-site-bannerthunderbird@prod.pmi-ops.org,AZ_TUCSON,
+Arizona,Banner Casa Grande Medical Center,7036425,HPO Banner Casa Grande,hpo-site-bannercasagrande@prod.pmi-ops.org,AZ_TUCSON,
+Arizona,Banner Phoenix Mobile Unit,7036460,HPO Banner Phoenix Mobile,hpo-site-bannerphoenixmobile@prod.pmi-ops.org,AZ_TUCSON,
