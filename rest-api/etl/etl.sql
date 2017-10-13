@@ -184,7 +184,9 @@ CREATE TABLE condition_occurrence
     person_id bigint NOT NULL,
     condition_concept_id bigint NOT NULL,
     condition_start_date date NOT NULL,
+    condition_start_datetime datetime NOT NULL,
     condition_end_date date,
+    condition_end_datetime datetime,
     condition_type_concept_id bigint NOT NULL,
     stop_reason varchar(20),
     provider_id bigint,
@@ -206,6 +208,7 @@ CREATE TABLE procedure_occurrence
     person_id bigint NOT NULL,
     procedure_concept_id bigint NOT NULL,
     procedure_date date NOT NULL,
+    procedure_datetime datetime NOT NULL,
     procedure_type_concept_id bigint NOT NULL,
     modifier_concept_id bigint NOT NULL,
     quantity int,
@@ -324,7 +327,9 @@ CREATE TABLE device_exposure
     person_id bigint NOT NULL,
     device_concept_id bigint NOT NULL,
     device_exposure_start_date date NOT NULL,
+    device_exposure_start_datetime datetime NOT NULL,
     device_exposure_end_date date,
+    device_exposure_end_datetime datetime NOT NULL,
     device_type_concept_id bigint NOT NULL,
     unique_device_id varchar(50),
     quantity double,
@@ -1020,6 +1025,7 @@ SELECT
     src_m1.participant_id                       AS person_id,
     COALESCE(vc.concept_id, 0)                  AS procedure_concept_id,
     src_m2.value_date                           AS procedure_date,
+    TIMESTAMP(src_m2.value_date)                AS procedure_datetime,
     581412                                      AS procedure_type_concept_id,   -- 581412, Procedure Recorded from a Survey
     0                                           AS modifier_concept_id,
     NULL                                        AS quantity,
@@ -1543,7 +1549,9 @@ SELECT
     meas.participant_id             AS person_id,
     meas.cv_concept_id              AS condition_concept_id,
     DATE(meas.measurement_time)     AS condition_start_date,
+    meas.measurement_time           AS condition_start_datetime,
     NULL                            AS condition_end_date,
+    NULL                            AS condition_end_datetime,
     45905770                        AS condition_type_concept_id,   -- 45905770, Patient Self-Reported Condition
     NULL                            AS stop_reason,
     NULL                            AS provider_id,
@@ -1823,16 +1831,16 @@ INSERT INTO cdm.temp_obs_target
 -- VISIT_OCCURENCE
 SELECT
     person_id,
-    visit_start_date                                AS start_date,
-    COALESCE(visit_end_date, visit_start_date)      AS end_date
+    visit_start_date                               AS start_date,
+    COALESCE(visit_end_date, visit_start_date) AS end_date
 FROM cdm.visit_occurrence
 
 UNION
 -- CONDITION_OCCURRENCE
 SELECT
     person_id,
-    condition_start_date                                    AS start_date,
-    COALESCE(condition_end_date, condition_start_date)      AS end_date
+    condition_start_date                                   AS start_date,
+    COALESCE(condition_end_date, condition_start_date) AS end_date
 FROM cdm.condition_occurrence
 
 UNION
@@ -1864,7 +1872,7 @@ UNION
 SELECT
     person_id,
     device_exposure_start_date                                          AS start_date,
-    COALESCE( device_exposure_end_date, device_exposure_start_date)     AS end_date
+    COALESCE( device_exposure_end_date, device_exposure_start_date) AS end_date
 FROM cdm.device_exposure
 
 UNION
@@ -1872,7 +1880,7 @@ UNION
 SELECT
     person_id,
     drug_exposure_start_date                                        AS start_date,
-    COALESCE( drug_exposure_end_date, drug_exposure_start_date)     AS end_date
+    COALESCE( drug_exposure_end_date, drug_exposure_start_date) AS end_date
 FROM cdm.drug_exposure
 ;
 
