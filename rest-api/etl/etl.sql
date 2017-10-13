@@ -81,7 +81,7 @@ CREATE TABLE person
     year_of_birth int NOT NULL,
     month_of_birth int,
     day_of_birth int,
-    time_of_birth datetime default current_timestamp,
+    birth_datetime datetime,
     race_concept_id bigint NOT NULL,
     ethnicity_concept_id bigint NOT NULL,
     location_id bigint,
@@ -159,9 +159,9 @@ CREATE TABLE visit_occurrence
     person_id bigint NOT NULL,
     visit_concept_id bigint NOT NULL,
     visit_start_date date NOT NULL,
-    visit_start_time time NULL,
+    visit_start_datetime datetime NULL,
     visit_end_date date NOT NULL,
-    visit_end_time time NULL,
+    visit_end_datetime datetime NULL,
     visit_type_concept_id bigint NOT NULL,
     provider_id bigint,
     care_site_id bigint,
@@ -227,7 +227,7 @@ CREATE TABLE observation
     person_id bigint NOT NULL,
     observation_concept_id bigint NOT NULL,
     observation_date date NOT NULL,
-    observation_time time,
+    observation_datetime datetime,
     observation_type_concept_id bigint NOT NULL,
     value_as_number double,
     value_as_string varchar(1024),
@@ -259,7 +259,7 @@ CREATE TABLE measurement
     person_id bigint NOT NULL,
     measurement_concept_id bigint NOT NULL,
     measurement_date date NOT NULL,
-    measurement_time time,
+    measurement_datetime datetime,
     measurement_type_concept_id bigint NOT NULL,
     operator_concept_id bigint NOT NULL,
     value_as_number double,
@@ -971,7 +971,7 @@ SELECT DISTINCT
     YEAR(b.date_of_birth)                       AS year_of_birth,
     MONTH(b.date_of_birth)                      AS month_of_birth,
     DAY(b.date_of_birth)                        AS day_of_birth,
-    NULL                                        AS time_of_birth,
+    TIMESTAMP(b.date_of_birth)                  AS birth_datetime,
     COALESCE(r.race_target_concept_id, 0)       AS race_concept_id,
     0                                           AS ethnicity_concept_id,
     loc.location_id                             AS location_id,
@@ -1286,9 +1286,9 @@ SELECT
     src_meas.participant_id                 AS person_id,
     9202                                    AS visit_concept_id, -- 9202 - 'Outpatient Visit'
     DATE(MIN(src_meas.measurement_time))    AS visit_start_date,
-    TIME(MIN(src_meas.measurement_time))    AS visit_start_time,
+    MIN(src_meas.measurement_time)          AS visit_start_datetime,
     DATE(MAX(src_meas.measurement_time))    AS visit_end_date,
-    TIME(MAX(src_meas.measurement_time))    AS visit_end_time,
+    MAX(src_meas.measurement_time)          AS visit_end_datetime,
     44818519                                AS visit_type_concept_id, -- 44818519 - 'Clinical Study Visit'
     NULL                                    AS provider_id,
     cs.care_site_id                         AS care_site_id,
@@ -1323,7 +1323,7 @@ SELECT
     src_m.participant_id                        AS person_id,
     src_m.question_concept_id                   AS observation_concept_id,
     DATE(src_m.date_of_survey)                  AS observation_date,
-    TIME(src_m.date_of_survey)                  AS observation_time,
+    src_m.date_of_survey                        AS observation_datetime,
     45905771                                    AS observation_type_concept_id, -- 45905771, Observation Recorded from a Survey
     src_m.value_number                          AS value_as_number,
     CASE
@@ -1370,7 +1370,7 @@ SELECT DISTINCT
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS observation_concept_id,
     DATE(meas.measurement_time)             AS observation_date,
-    TIME(meas.measurement_time)             AS observation_time,
+    meas.measurement_time                   AS observation_time,
     581413                                  AS observation_type_concept_id,   -- 581413, Observation from Measurement
     NULL                                    AS value_as_number,
     NULL                                    AS value_as_string,
@@ -1419,7 +1419,7 @@ SELECT DISTINCT
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
-    TIME(meas.measurement_time)             AS measurement_time,
+    meas.measurement_time                   AS measurement_datetime,
     44818701                                AS measurement_type_concept_id,  -- 44818701, From physical examination
     0                                       AS operator_concept_id,
     meas.value_decimal                      AS value_as_number,
@@ -1458,7 +1458,7 @@ SELECT DISTINCT
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
-    TIME(meas.measurement_time)             AS measurement_time,
+    meas.measurement_time                   AS measurement_time,
     44818701                                AS measurement_type_concept_id, -- 44818701, From physical examination
     0                                       AS operator_concept_id,
     NULL                                    AS value_as_number,
@@ -1497,7 +1497,7 @@ SELECT DISTINCT
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
-    TIME(meas.measurement_time)             AS measurement_time,
+    meas.measurement_time                   AS measurement_time,
     44818701                                AS measurement_type_concept_id, -- 44818701, From physical examination
     0                                       AS operator_concept_id,
     NULL                                    AS value_as_number,
@@ -2102,7 +2102,7 @@ FROM cdm.measurement m1
 INNER JOIN cdm.measurement m2
     ON m1.person_id = m2.person_id
     AND m1.measurement_date = m2.measurement_date
-    AND m1.measurement_time = m2.measurement_time
+    AND m1.measurement_datetime = m2.measurement_datetime
     AND m1.parent_id = m2.parent_id
     AND m1.measurement_source_value = '8480-6'   -- code for Systolic blood pressure measurement
     AND m2.measurement_source_value = '8462-4'   -- code for Diastolic blood pressure measurement
@@ -2122,7 +2122,7 @@ FROM cdm.measurement m1
 INNER JOIN cdm.measurement m2
     ON m1.person_id = m2.person_id
     AND m1.measurement_date = m2.measurement_date
-    AND m1.measurement_time = m2.measurement_time
+    AND m1.measurement_datetime = m2.measurement_datetime
     AND m1.parent_id = m2.parent_id
     AND m1.measurement_source_value = '8462-4'   -- code for Diastolic blood pressure measurement
     AND m2.measurement_source_value = '8480-6'   -- code for Systolic blood pressure measurement
