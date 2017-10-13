@@ -28,10 +28,13 @@ else
   gcloud auth login $ACCOUNT
   gcloud config set project $PROJECT
   INSTANCE=https://${PROJECT}.appspot.com
-  SERVICE_ACCOUNT="circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
-  if [ "${PROJECT}" != "pmi-drc-api-test" ] && [ "${PROJECT}" != "all-of-us-rdr-staging" ]
+  if [ -z "${SERVICE_ACCOUNT}" ]
   then
-    SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
+    SERVICE_ACCOUNT="circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
+    if [ "${PROJECT}" != "pmi-drc-api-test" ] && [ "${PROJECT}" != "all-of-us-rdr-staging" ]
+    then
+      SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
+    fi
   fi
   CREDS_FILE=${TMP_DIR}/creds.json
   TMP_CREDS_FILE=$CREDS_FILE
@@ -45,7 +48,8 @@ else
   TMP_PRIVATE_KEY=`grep private_key_id $CREDS_FILE | cut -d\" -f4`
 fi
 
-source tools/setup_vars.sh
+REPO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
+source ${REPO_ROOT_DIR}/tools/setup_vars.sh
 TMP_DB_INFO_FILE=${TMP_DIR}/db_info.json
 PORT=3308
 CLOUD_PROXY_PID=

@@ -1,6 +1,10 @@
 # Gets credentials and runs a Python script that connects to the instance for a project;
 # deletes credentials when done.
-USAGE="Usage: run_client.sh --project <PROJECT> --account <ACCOUNT> <SCRIPT> [... extra args]
+#
+# The user must be on the ACL for the service account used with the client. If --service_account
+# is not specified, the configurator service account for the environment is used.
+
+USAGE="Usage: run_client.sh --project <PROJECT> --account <ACCOUNT> [--service_account <ACCOUNT>] <SCRIPT> [... extra args]
 
 Example: run_client.sh --project pmi-drc-api-test --account dan.rodney@pmi-ops.org participant_test.py
 "
@@ -13,6 +17,7 @@ while true; do
     --account) ACCOUNT=$2; shift 2;;
     --creds_account) CREDS_ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
+    --service_account) SERVICE_ACCOUNT=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
   esac

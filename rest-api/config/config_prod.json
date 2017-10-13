@@ -9,6 +9,9 @@
     },
     "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]
+    },
+    "exporter@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "roles": ["exporter"]
     }
   },
   "biobank_samples_bucket_name": [

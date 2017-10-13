@@ -28,7 +28,6 @@ handlers:
   login: admin
 - url: /offline/.*
   script: offline.main.app
-  login: admin
 
 libraries:
 - name: pycrypto
