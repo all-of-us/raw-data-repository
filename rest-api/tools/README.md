@@ -173,21 +173,3 @@ that we import into our local environments and some other environments using imp
 
 The tool will generate error messages for any cases where answers don't match
 the expected values.
-
-### export_tables.sh
-
-Exports tables from Cloud SQL as CSV, writing to a specified path in GCS.
-
-Usage:
-
-```
-tools/export_tables.sh --project <project> --account <account> --bucket <gcs bucket> \
-    --directory <directory in bucket> --database <db name> --tables <table1,table2,....>
-```
-
-Example:
-
-```
-tools/export_tables.sh --project pmi-drc-api-test --account dan.rodney@pmi-ops.org \
-    --bucket pmi-drc-api-test-cdm --directory test_dir --database rdr --tables hpo,code
-```

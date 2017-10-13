@@ -8,11 +8,14 @@ import logging
 import traceback
 
 from dao.metrics_dao import MetricsVersionDao
-from flask import Flask
+from flask import Flask, request
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
 from offline.base_pipeline import send_failure_alert
+from offline.table_exporter import TableExporter
 from offline.metrics_export import MetricsExport
+from api_util import EXPORTER
+from werkzeug.exceptions import BadRequest
 
 PREFIX = '/offline/'
 
@@ -78,6 +81,20 @@ def import_biobank_samples():
   logging.info('Generated reconciliation report.')
   return json.dumps({'written': written})
 
+@api_util.auth_required(EXPORTER)
+def export_tables():
+  resource = request.get_data()
+  resource_json = json.loads(resource)
+  database = resource_json.get('database')
+  tables = resource_json.get('tables')
+  if not database:
+    raise BadRequest("database is required")
+  if not tables or type(tables) is not list:
+    raise BadRequest("tables is required")
+  directory = resource_json.get('directory')
+  if not directory:
+    raise BadRequest("directory is required")
+  return json.dumps(TableExporter.export_tables(database, tables, directory))
 
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -94,6 +111,12 @@ def _build_pipeline_app():
       endpoint='metrics_recalc',
       view_func=recalculate_metrics,
       methods=['GET'])
+
+  offline_app.add_url_rule(
+      PREFIX + 'ExportTables',
+      endpoint='ExportTables',
+      view_func=export_tables,
+      methods=['POST'])
 
   offline_app.after_request(app_util.add_headers)
   offline_app.before_request(app_util.request_logging)

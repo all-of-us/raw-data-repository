@@ -81,7 +81,7 @@ CREATE TABLE person
     year_of_birth int NOT NULL,
     month_of_birth int,
     day_of_birth int,
-    time_of_birth datetime default current_timestamp,
+    birth_datetime datetime,
     race_concept_id bigint NOT NULL,
     ethnicity_concept_id bigint NOT NULL,
     location_id bigint,
@@ -124,7 +124,9 @@ CREATE TABLE observation_period
     observation_period_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     observation_period_start_date date NOT NULL,
+    observation_period_start_datetime datetime NOT NULL,
     observation_period_end_date date NOT NULL,
+    observation_period_end_datetime datetime NOT NULL,
     period_type_concept_id bigint NOT NULL,
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (observation_period_id)
@@ -159,9 +161,9 @@ CREATE TABLE visit_occurrence
     person_id bigint NOT NULL,
     visit_concept_id bigint NOT NULL,
     visit_start_date date NOT NULL,
-    visit_start_time time NULL,
+    visit_start_datetime datetime NULL,
     visit_end_date date NOT NULL,
-    visit_end_time time NULL,
+    visit_end_datetime datetime NULL,
     visit_type_concept_id bigint NOT NULL,
     provider_id bigint,
     care_site_id bigint,
@@ -182,7 +184,9 @@ CREATE TABLE condition_occurrence
     person_id bigint NOT NULL,
     condition_concept_id bigint NOT NULL,
     condition_start_date date NOT NULL,
+    condition_start_datetime datetime NOT NULL,
     condition_end_date date,
+    condition_end_datetime datetime,
     condition_type_concept_id bigint NOT NULL,
     stop_reason varchar(20),
     provider_id bigint,
@@ -204,6 +208,7 @@ CREATE TABLE procedure_occurrence
     person_id bigint NOT NULL,
     procedure_concept_id bigint NOT NULL,
     procedure_date date NOT NULL,
+    procedure_datetime datetime NOT NULL,
     procedure_type_concept_id bigint NOT NULL,
     modifier_concept_id bigint NOT NULL,
     quantity int,
@@ -227,7 +232,7 @@ CREATE TABLE observation
     person_id bigint NOT NULL,
     observation_concept_id bigint NOT NULL,
     observation_date date NOT NULL,
-    observation_time time,
+    observation_datetime datetime,
     observation_type_concept_id bigint NOT NULL,
     value_as_number double,
     value_as_string varchar(1024),
@@ -259,7 +264,7 @@ CREATE TABLE measurement
     person_id bigint NOT NULL,
     measurement_concept_id bigint NOT NULL,
     measurement_date date NOT NULL,
-    measurement_time time,
+    measurement_datetime datetime,
     measurement_type_concept_id bigint NOT NULL,
     operator_concept_id bigint NOT NULL,
     value_as_number double,
@@ -322,7 +327,9 @@ CREATE TABLE device_exposure
     person_id bigint NOT NULL,
     device_concept_id bigint NOT NULL,
     device_exposure_start_date date NOT NULL,
+    device_exposure_start_datetime datetime NOT NULL,
     device_exposure_end_date date,
+    device_exposure_end_datetime datetime NOT NULL,
     device_type_concept_id bigint NOT NULL,
     unique_device_id varchar(50),
     quantity double,
@@ -971,7 +978,7 @@ SELECT DISTINCT
     YEAR(b.date_of_birth)                       AS year_of_birth,
     MONTH(b.date_of_birth)                      AS month_of_birth,
     DAY(b.date_of_birth)                        AS day_of_birth,
-    NULL                                        AS time_of_birth,
+    TIMESTAMP(b.date_of_birth)                  AS birth_datetime,
     COALESCE(r.race_target_concept_id, 0)       AS race_concept_id,
     0                                           AS ethnicity_concept_id,
     loc.location_id                             AS location_id,
@@ -1018,6 +1025,7 @@ SELECT
     src_m1.participant_id                       AS person_id,
     COALESCE(vc.concept_id, 0)                  AS procedure_concept_id,
     src_m2.value_date                           AS procedure_date,
+    TIMESTAMP(src_m2.value_date)                AS procedure_datetime,
     581412                                      AS procedure_type_concept_id,   -- 581412, Procedure Recorded from a Survey
     0                                           AS modifier_concept_id,
     NULL                                        AS quantity,
@@ -1286,9 +1294,9 @@ SELECT
     src_meas.participant_id                 AS person_id,
     9202                                    AS visit_concept_id, -- 9202 - 'Outpatient Visit'
     DATE(MIN(src_meas.measurement_time))    AS visit_start_date,
-    TIME(MIN(src_meas.measurement_time))    AS visit_start_time,
+    MIN(src_meas.measurement_time)          AS visit_start_datetime,
     DATE(MAX(src_meas.measurement_time))    AS visit_end_date,
-    TIME(MAX(src_meas.measurement_time))    AS visit_end_time,
+    MAX(src_meas.measurement_time)          AS visit_end_datetime,
     44818519                                AS visit_type_concept_id, -- 44818519 - 'Clinical Study Visit'
     NULL                                    AS provider_id,
     cs.care_site_id                         AS care_site_id,
@@ -1323,7 +1331,7 @@ SELECT
     src_m.participant_id                        AS person_id,
     src_m.question_concept_id                   AS observation_concept_id,
     DATE(src_m.date_of_survey)                  AS observation_date,
-    TIME(src_m.date_of_survey)                  AS observation_time,
+    src_m.date_of_survey                        AS observation_datetime,
     45905771                                    AS observation_type_concept_id, -- 45905771, Observation Recorded from a Survey
     src_m.value_number                          AS value_as_number,
     CASE
@@ -1370,7 +1378,7 @@ SELECT DISTINCT
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS observation_concept_id,
     DATE(meas.measurement_time)             AS observation_date,
-    TIME(meas.measurement_time)             AS observation_time,
+    meas.measurement_time                   AS observation_time,
     581413                                  AS observation_type_concept_id,   -- 581413, Observation from Measurement
     NULL                                    AS value_as_number,
     NULL                                    AS value_as_string,
@@ -1419,7 +1427,7 @@ SELECT DISTINCT
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
-    TIME(meas.measurement_time)             AS measurement_time,
+    meas.measurement_time                   AS measurement_datetime,
     44818701                                AS measurement_type_concept_id,  -- 44818701, From physical examination
     0                                       AS operator_concept_id,
     meas.value_decimal                      AS value_as_number,
@@ -1458,7 +1466,7 @@ SELECT DISTINCT
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
-    TIME(meas.measurement_time)             AS measurement_time,
+    meas.measurement_time                   AS measurement_time,
     44818701                                AS measurement_type_concept_id, -- 44818701, From physical examination
     0                                       AS operator_concept_id,
     NULL                                    AS value_as_number,
@@ -1497,7 +1505,7 @@ SELECT DISTINCT
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
-    TIME(meas.measurement_time)             AS measurement_time,
+    meas.measurement_time                   AS measurement_time,
     44818701                                AS measurement_type_concept_id, -- 44818701, From physical examination
     0                                       AS operator_concept_id,
     NULL                                    AS value_as_number,
@@ -1541,7 +1549,9 @@ SELECT
     meas.participant_id             AS person_id,
     meas.cv_concept_id              AS condition_concept_id,
     DATE(meas.measurement_time)     AS condition_start_date,
+    meas.measurement_time           AS condition_start_datetime,
     NULL                            AS condition_end_date,
+    NULL                            AS condition_end_datetime,
     45905770                        AS condition_type_concept_id,   -- 45905770, Patient Self-Reported Condition
     NULL                            AS stop_reason,
     NULL                            AS provider_id,
@@ -1821,16 +1831,16 @@ INSERT INTO cdm.temp_obs_target
 -- VISIT_OCCURENCE
 SELECT
     person_id,
-    visit_start_date                                AS start_date,
-    COALESCE(visit_end_date, visit_start_date)      AS end_date
+    visit_start_date                               AS start_date,
+    COALESCE(visit_end_date, visit_start_date) AS end_date
 FROM cdm.visit_occurrence
 
 UNION
 -- CONDITION_OCCURRENCE
 SELECT
     person_id,
-    condition_start_date                                    AS start_date,
-    COALESCE(condition_end_date, condition_start_date)      AS end_date
+    condition_start_date                                   AS start_date,
+    COALESCE(condition_end_date, condition_start_date) AS end_date
 FROM cdm.condition_occurrence
 
 UNION
@@ -1862,7 +1872,7 @@ UNION
 SELECT
     person_id,
     device_exposure_start_date                                          AS start_date,
-    COALESCE( device_exposure_end_date, device_exposure_start_date)     AS end_date
+    COALESCE( device_exposure_end_date, device_exposure_start_date) AS end_date
 FROM cdm.device_exposure
 
 UNION
@@ -1870,7 +1880,7 @@ UNION
 SELECT
     person_id,
     drug_exposure_start_date                                        AS start_date,
-    COALESCE( drug_exposure_end_date, drug_exposure_start_date)     AS end_date
+    COALESCE( drug_exposure_end_date, drug_exposure_start_date) AS end_date
 FROM cdm.drug_exposure
 ;
 
@@ -2027,7 +2037,9 @@ SELECT
     NULL                                    AS observation_period_id,
     person_id                               AS person_id,
     MIN(observation_start_date)             AS observation_period_start_date,
+    TIMESTAMP(MIN(observation_start_date))  AS observation_period_start_datetime,
     observation_end_date                    AS observation_period_end_date,
+    TIMESTAMP(observation_end_date)         AS observation_period_end_datetime,
     44814725                                AS period_type_concept_id,         -- Period inferred by algorithm
     'T.observ_period'                       AS unit_id
 FROM cdm.temp_obs
@@ -2102,7 +2114,7 @@ FROM cdm.measurement m1
 INNER JOIN cdm.measurement m2
     ON m1.person_id = m2.person_id
     AND m1.measurement_date = m2.measurement_date
-    AND m1.measurement_time = m2.measurement_time
+    AND m1.measurement_datetime = m2.measurement_datetime
     AND m1.parent_id = m2.parent_id
     AND m1.measurement_source_value = '8480-6'   -- code for Systolic blood pressure measurement
     AND m2.measurement_source_value = '8462-4'   -- code for Diastolic blood pressure measurement
@@ -2122,7 +2134,7 @@ FROM cdm.measurement m1
 INNER JOIN cdm.measurement m2
     ON m1.person_id = m2.person_id
     AND m1.measurement_date = m2.measurement_date
-    AND m1.measurement_time = m2.measurement_time
+    AND m1.measurement_datetime = m2.measurement_datetime
     AND m1.parent_id = m2.parent_id
     AND m1.measurement_source_value = '8462-4'   -- code for Diastolic blood pressure measurement
     AND m2.measurement_source_value = '8480-6'   -- code for Systolic blood pressure measurement
