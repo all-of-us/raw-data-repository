@@ -25,12 +25,6 @@ then
 fi
 
 pushd ../rdr_client
-echo "Exporting tables from the voc database..."
-
-./run_client.sh ${PROJECT_AND_ACCOUNT} export_tables.py \
-   --directory ${DIRECTORY} --database voc \
-   --tables concept,concept_ancestor,concept_class,concept_relationship,concept_synonym,domain,drug_strength,relationship,vocabulary
-
 echo "Exporting tables from the cdm database..."
 ./run_client.sh ${PROJECT_AND_ACCOUNT} export_tables.py \
    --directory ${DIRECTORY} --database cdm \
