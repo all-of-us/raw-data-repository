@@ -34,6 +34,7 @@ def generate_fake_data(client, args):
     while num_consecutive_errors <= MAX_CONSECUTIVE_ERRORS: 
       try:
         client.request_json('DataGen', 'POST', request_body)
+        break
       except HTTPException as e:
         logging.error('Error generating data: %s' % e)
         num_consecutive_errors += 1
