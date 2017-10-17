@@ -9,8 +9,7 @@ Examples:
 
 import logging
 
-from client import Client
-from httplib import HTTPException
+from client import Client, HttpException
 from main_util import get_parser, configure_logging
 from time import sleep
 
@@ -35,7 +34,7 @@ def generate_fake_data(client, args):
       try:
         client.request_json('DataGen', 'POST', request_body)
         break
-      except HTTPException as e:
+      except HttpException as e:
         logging.error('Error generating data: %s' % e)
         num_consecutive_errors += 1
         sleep(SLEEP_TIME_AFTER_ERROR_SECONDS)
