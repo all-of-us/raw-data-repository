@@ -10,13 +10,17 @@ Examples:
 import logging
 
 from client import Client
+from httplib import HTTPException
 from main_util import get_parser, configure_logging
+from time import sleep
 
 MAX_PARTICIPANTS_PER_REQUEST = 25
-
+MAX_CONSECUTIVE_ERRORS = 5
+SLEEP_TIME_AFTER_ERROR_SECONDS = 3
 
 def generate_fake_data(client, args):
   total_participants_created = 0
+  
   while total_participants_created < args.num_participants:
     participants_for_batch = min(MAX_PARTICIPANTS_PER_REQUEST,
                                  args.num_participants - total_participants_created)
@@ -26,7 +30,17 @@ def generate_fake_data(client, args):
     if args.hpo:
       request_body['hpo'] = args.hpo
     logging.info('Generating batch of %d participants.', participants_for_batch)
-    client.request_json('DataGen', 'POST', request_body)
+    num_consecutive_errors = 0
+    while num_consecutive_errors <= MAX_CONSECUTIVE_ERRORS: 
+      try:
+        client.request_json('DataGen', 'POST', request_body)
+      except HTTPException as e:
+        logging.error('Error generating data: %s' % e)
+        num_consecutive_errors += 1
+        sleep(SLEEP_TIME_AFTER_ERROR_SECONDS)
+    if num_consecutive_errors > MAX_CONSECUTIVE_ERRORS:
+      raise "More than %d consecutive errors; bailing out." % MAX_CONSECUTIVE_ERRORS          
+      
     total_participants_created += participants_for_batch
     logging.info('Total participants created: %d', total_participants_created)
   if args.create_biobank_samples:
