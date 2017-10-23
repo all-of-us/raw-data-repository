@@ -60,7 +60,7 @@ class ParticipantSummary(Base):
                                              ForeignKey('site.site_id'))
   physicalMeasurementsFinalizedSiteId = Column('physical_measurements_finalized_site_id', Integer,
                                                ForeignKey('site.site_id'))
-  
+
   signUpTime = Column('sign_up_time', UTCDateTime)
   hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
 
@@ -115,30 +115,30 @@ class ParticipantSummary(Base):
   sampleStatus1UR10Time = Column('sample_status_1ur10_time', UTCDateTime)
   sampleStatus1SAL = Column('sample_status_1sal', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1SALTime = Column('sample_status_1sal_time', UTCDateTime)
-  
+
   # Fields for which samples have been ordered, and at what times.
-  sampleOrderStatus1SST8 = Column('sample_order_status_1sst8', Enum(OrderStatus), 
+  sampleOrderStatus1SST8 = Column('sample_order_status_1sst8', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1SST8Time = Column('sample_order_status_1sst8_time', UTCDateTime)
-  sampleOrderStatus1PST8 = Column('sample_order_status_1pst8', Enum(OrderStatus), 
+  sampleOrderStatus1PST8 = Column('sample_order_status_1pst8', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1PST8Time = Column('sample_order_status_1pst8_time', UTCDateTime)
-  sampleOrderStatus1HEP4 = Column('sample_order_status_1hep4', Enum(OrderStatus), 
+  sampleOrderStatus1HEP4 = Column('sample_order_status_1hep4', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1HEP4Time = Column('sample_order_status_1hep4_time', UTCDateTime)
-  sampleOrderStatus1ED04 = Column('sample_order_status_1ed04', Enum(OrderStatus), 
+  sampleOrderStatus1ED04 = Column('sample_order_status_1ed04', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1ED04Time = Column('sample_order_status_1ed04_time', UTCDateTime)
-  sampleOrderStatus1ED10 = Column('sample_order_status_1ed10', Enum(OrderStatus), 
+  sampleOrderStatus1ED10 = Column('sample_order_status_1ed10', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1ED10Time = Column('sample_order_status_1ed10_time', UTCDateTime)
-  sampleOrderStatus2ED10 = Column('sample_order_status_2ed10', Enum(OrderStatus), 
+  sampleOrderStatus2ED10 = Column('sample_order_status_2ed10', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus2ED10Time = Column('sample_order_status_2ed10_time', UTCDateTime)
-  sampleOrderStatus1UR10 = Column('sample_order_status_1ur10', Enum(OrderStatus), 
+  sampleOrderStatus1UR10 = Column('sample_order_status_1ur10', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1UR10Time = Column('sample_order_status_1ur10_time', UTCDateTime)
-  sampleOrderStatus1SAL = Column('sample_order_status_1sal', Enum(OrderStatus), 
+  sampleOrderStatus1SAL = Column('sample_order_status_1sal', Enum(OrderStatus),
                                  default=OrderStatus.UNSET)
   sampleOrderStatus1SALTime = Column('sample_order_status_1sal_time', UTCDateTime)
 
@@ -154,15 +154,15 @@ class ParticipantSummary(Base):
   # Whether biospecimens have been collected / ordered or not, and the time at which they were
   # ordered.
   biospecimenStatus = Column('biospecimen_status', Enum(OrderStatus), default=OrderStatus.UNSET)
-  biospecimenOrderTime = Column('biospecimen_order_time', UTCDateTime)  
-  biospecimenSourceSiteId = Column('biospecimen_source_site_id', Integer, 
+  biospecimenOrderTime = Column('biospecimen_order_time', UTCDateTime)
+  biospecimenSourceSiteId = Column('biospecimen_source_site_id', Integer,
                                    ForeignKey('site.site_id'))
-  biospecimenCollectedSiteId = Column('biospecimen_collected_site_id', Integer, 
+  biospecimenCollectedSiteId = Column('biospecimen_collected_site_id', Integer,
                                       ForeignKey('site.site_id'))
-  biospecimenProcessedSiteId = Column('biospecimen_processed_site_id', Integer, 
+  biospecimenProcessedSiteId = Column('biospecimen_processed_site_id', Integer,
                                       ForeignKey('site.site_id'))
-  biospecimenFinalizedSiteId = Column('biospecimen_finalized_site_id', Integer, 
-                                      ForeignKey('site.site_id'))                        
+  biospecimenFinalizedSiteId = Column('biospecimen_finalized_site_id', Integer,
+                                      ForeignKey('site.site_id'))
 
   # Withdrawal from the study of the participant's own accord.
   withdrawalStatus = Column(

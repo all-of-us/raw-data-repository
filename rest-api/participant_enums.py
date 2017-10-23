@@ -36,7 +36,7 @@ class SampleStatus(messages.Enum):
   """Status of biobank samples"""
   UNSET = 0
   RECEIVED = 1
-  
+
 class OrderStatus(messages.Enum):
   """Status of biobank orders and samples"""
   UNSET = 0
