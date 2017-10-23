@@ -280,10 +280,10 @@ class PhysicalMeasurementsDao(BaseDao):
     if (not participant_summary.physicalMeasurementsStatus or
         participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.UNSET):
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
-      if not participant_summary.physicalMeasurementsTime:
-        participant_summary.physicalMeasurementsTime = obj.created
-      if not participant_summary.physicalMeasurementsFinalizedTime:
-        participant_summary.physicalMeasurementsFinalizedTime = obj.finalized 
+      participant_summary.physicalMeasurementsTime = obj.created
+      participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
+      participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
+      participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId  
       participant_summary_dao.update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 
