@@ -20,6 +20,7 @@ _OBSERVATION_RESOURCE_TYPE = 'Observation'
 _COMPOSITION_RESOURCE_TYPE = 'Composition'
 _CREATED_LOC_EXTENSION = 'http://terminology.pmi-ops.org/StructureDefinition/authored-location'
 _FINALIZED_LOC_EXTENSION = 'http://terminology.pmi-ops.org/StructureDefinition/finalized-location'
+_PM_SYSTEM = 'http://terminology.pmi-ops.org/CodeSystem/physical-measurements'
 _AUTHORING_STEP = 'http://terminology.pmi-ops.org/StructureDefinition/authoring-step'
 _CREATED_STATUS = 'created'
 _FINALIZED_STATUS = 'finalized'
@@ -328,6 +329,19 @@ class PhysicalMeasurementsDao(BaseDao):
     return (physical_measurements_id * 1000) + measurement_count
 
   @staticmethod
+  def get_preferred_coding(code):
+    '''Extract the code with the PMI system, if there is one.'''
+    pm_coding = None
+    for coding in code.coding:
+      if pm_coding is None:
+        pm_coding = coding
+      elif coding.system == _PM_SYSTEM:
+        if pm_coding.system == _PM_SYSTEM:
+          raise BadRequest('Multiple measurement codes with system %s' % _PM_SYSTEM)
+        pm_coding = coding         
+    return pm_coding
+
+  @staticmethod
   def from_component(observation, component):
     if not component.code or not component.code.coding:
       logging.warning('Skipping component without coding: %s' % component.as_json())
@@ -349,8 +363,9 @@ class PhysicalMeasurementsDao(BaseDao):
       # TODO: use codebook codes for PMI codes?
       value_code_system = component.valueCodeableConcept.coding[0].system
       value_code_value = component.valueCodeableConcept.coding[0].code
-    return Measurement(codeSystem=component.code.coding[0].system,
-                       codeValue=component.code.coding[0].code,
+    pm_coding = PhysicalMeasurementsDao.get_preferred_coding(component.code)
+    return Measurement(codeSystem=pm_coding.system,
+                       codeValue=pm_coding.code,
                        measurementTime=observation.effectiveDateTime.date,
                        valueString=value_string,
                        valueDecimal=value_decimal,
@@ -413,8 +428,9 @@ class PhysicalMeasurementsDao(BaseDao):
             qualifiers.append(qualifier)
           else:
             logging.warning('Could not find qualifier %s' % related.target.reference)
-    result = Measurement(codeSystem=observation.code.coding[0].system,
-                         codeValue=observation.code.coding[0].code,
+    pm_coding = PhysicalMeasurementsDao.get_preferred_coding(observation.code)
+    result = Measurement(codeSystem=pm_coding.system,
+                         codeValue=pm_coding.code,
                          measurementTime=observation.effectiveDateTime.date.replace(tzinfo=None),
                          bodySiteCodeSystem=body_site_code_system,
                          bodySiteCodeValue=body_site_code_value,
