@@ -283,7 +283,7 @@ class PhysicalMeasurementsDao(BaseDao):
       participant_summary.physicalMeasurementsTime = obj.created
       participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
       participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
-      participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId  
+      participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
       participant_summary_dao.update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 
