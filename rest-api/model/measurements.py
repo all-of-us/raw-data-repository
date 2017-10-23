@@ -31,6 +31,7 @@ class PhysicalMeasurements(Base):
   # The username / email of the HealthPro user that finalized the physical measurements.
   finalizedUsername = Column('finalized_username', String(255))
   logPosition = relationship('LogPosition')
+  finalized = Column('finalized', UTCDateTime)
   measurements = relationship('Measurement', cascade='all, delete-orphan')
 
 
