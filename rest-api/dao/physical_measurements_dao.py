@@ -338,7 +338,7 @@ class PhysicalMeasurementsDao(BaseDao):
       elif coding.system == _PM_SYSTEM:
         if pm_coding.system == _PM_SYSTEM:
           raise BadRequest('Multiple measurement codes with system %s' % _PM_SYSTEM)
-        pm_coding = coding         
+        pm_coding = coding
     return pm_coding
 
   @staticmethod
