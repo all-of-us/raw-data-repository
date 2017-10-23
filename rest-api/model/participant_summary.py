@@ -117,21 +117,29 @@ class ParticipantSummary(Base):
   sampleStatus1SALTime = Column('sample_status_1sal_time', UTCDateTime)
   
   # Fields for which samples have been ordered, and at what times.
-  sampleOrderStatus1SST8 = Column('sample_order_status_1sst8', Enum(OrderStatus), default=OrderStatus.UNSET)
+  sampleOrderStatus1SST8 = Column('sample_order_status_1sst8', Enum(OrderStatus), 
+                                  default=OrderStatus.UNSET)
   sampleOrderStatus1SST8Time = Column('sample_order_status_1sst8_time', UTCDateTime)
-  sampleOrderStatus1PST8 = Column('sample_order_status_1pst8', Enum(OrderStatus), default=OrderStatus.UNSET)
+  sampleOrderStatus1PST8 = Column('sample_order_status_1pst8', Enum(OrderStatus), 
+                                  default=OrderStatus.UNSET)
   sampleOrderStatus1PST8Time = Column('sample_order_status_1pst8_time', UTCDateTime)
-  sampleOrderStatus1HEP4 = Column('sample_order_status_1hep4', Enum(OrderStatus), default=OrderStatus.UNSET)
+  sampleOrderStatus1HEP4 = Column('sample_order_status_1hep4', Enum(OrderStatus), 
+                                  default=OrderStatus.UNSET)
   sampleOrderStatus1HEP4Time = Column('sample_order_status_1hep4_time', UTCDateTime)
-  sampleOrderStatus1ED04 = Column('sample_order_status_1ed04', Enum(OrderStatus), default=OrderStatus.UNSET)
+  sampleOrderStatus1ED04 = Column('sample_order_status_1ed04', Enum(OrderStatus), 
+                                  default=OrderStatus.UNSET)
   sampleOrderStatus1ED04Time = Column('sample_order_status_1ed04_time', UTCDateTime)
-  sampleOrderStatus1ED10 = Column('sample_order_status_1ed10', Enum(OrderStatus), default=OrderStatus.UNSET)
+  sampleOrderStatus1ED10 = Column('sample_order_status_1ed10', Enum(OrderStatus), 
+                                  default=OrderStatus.UNSET)
   sampleOrderStatus1ED10Time = Column('sample_order_status_1ed10_time', UTCDateTime)
-  sampleOrderStatus2ED10 = Column('sample_order_status_2ed10', Enum(OrderStatus), default=OrderStatus.UNSET)
+  sampleOrderStatus2ED10 = Column('sample_order_status_2ed10', Enum(OrderStatus), 
+                                  default=OrderStatus.UNSET)
   sampleOrderStatus2ED10Time = Column('sample_order_status_2ed10_time', UTCDateTime)
-  sampleOrderStatus1UR10 = Column('sample_order_status_1ur10', Enum(OrderStatus), default=OrderStatus.UNSET)
+  sampleOrderStatus1UR10 = Column('sample_order_status_1ur10', Enum(OrderStatus), 
+                                  default=OrderStatus.UNSET)
   sampleOrderStatus1UR10Time = Column('sample_order_status_1ur10_time', UTCDateTime)
-  sampleOrderStatus1SAL = Column('sample_order_status_1sal', Enum(OrderStatus), default=OrderStatus.UNSET)
+  sampleOrderStatus1SAL = Column('sample_order_status_1sal', Enum(OrderStatus), 
+                                 default=OrderStatus.UNSET)
   sampleOrderStatus1SALTime = Column('sample_order_status_1sal_time', UTCDateTime)
 
   numCompletedBaselinePPIModules = Column('num_completed_baseline_ppi_modules', SmallInteger,
