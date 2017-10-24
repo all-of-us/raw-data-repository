@@ -329,10 +329,10 @@ class PhysicalMeasurementsDao(BaseDao):
     return (physical_measurements_id * 1000) + measurement_count
 
   @staticmethod
-  def get_preferred_coding(code):
+  def get_preferred_coding(codeable_concept):
     '''Extract the code with the PMI system, if there is one.'''
     pm_coding = None
-    for coding in code.coding:
+    for coding in codeable_concept.coding:
       if pm_coding is None:
         pm_coding = coding
       elif coding.system == _PM_SYSTEM:
