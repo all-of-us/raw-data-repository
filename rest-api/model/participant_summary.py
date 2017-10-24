@@ -151,8 +151,8 @@ class ParticipantSummary(Base):
   numBaselineSamplesArrived = Column('num_baseline_samples_arrived', SmallInteger, default=0)
   samplesToIsolateDNA = Column('samples_to_isolate_dna', Enum(SampleStatus),
                                default=SampleStatus.UNSET)
-  # Whether biospecimens have been collected / ordered or not, and the time at which they were
-  # ordered.
+  # Whether biospecimens have been finalized or not, and the time at which they were
+  # finalized.
   biospecimenStatus = Column('biospecimen_status', Enum(OrderStatus), default=OrderStatus.UNSET)
   biospecimenOrderTime = Column('biospecimen_order_time', UTCDateTime)
   biospecimenSourceSiteId = Column('biospecimen_source_site_id', Integer,
