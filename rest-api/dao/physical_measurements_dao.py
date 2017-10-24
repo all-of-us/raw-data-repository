@@ -2,6 +2,7 @@ import clock
 import json
 import logging
 
+from api_util import parse_date
 from concepts import Concept
 import fhirclient.models.observation
 from fhirclient.models.fhirabstractbase import FHIRValidationError
@@ -224,6 +225,9 @@ class PhysicalMeasurementsDao(BaseDao):
     obj.final = True
     obj.created = clock.CLOCK.now()
     resource_json = json.loads(obj.resource)
+    finalized_date = resource_json['entry'][0]['resource'].get('date')
+    if finalized_date:
+      obj.finalized = parse_date(finalized_date)
     for extension in resource_json['entry'][0]['resource'].get('extension', []):
       url = extension.get('url')
       if url not in _ALL_EXTENSIONS:
@@ -235,7 +239,7 @@ class PhysicalMeasurementsDao(BaseDao):
         self._update_amended(obj, extension, url, session)
         is_amendment = True
         break
-    self._update_participant_summary(session, obj.created, obj.participantId)
+    self._update_participant_summary(session, obj)
     existing_measurements = (session.query(PhysicalMeasurements)
                              .filter(PhysicalMeasurements.participantId == obj.participantId)
                              .all())
@@ -260,7 +264,8 @@ class PhysicalMeasurementsDao(BaseDao):
     obj.resource = json.dumps(resource_json)
     return obj
 
-  def _update_participant_summary(self, session, created, participant_id):
+  def _update_participant_summary(self, session, obj):
+    participant_id = obj.participantId
     if participant_id is None:
       raise BadRequest('participantId is required')
     participant_summary_dao = ParticipantSummaryDao()
@@ -276,8 +281,10 @@ class PhysicalMeasurementsDao(BaseDao):
     if (not participant_summary.physicalMeasurementsStatus or
         participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.UNSET):
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
-      if not participant_summary.physicalMeasurementsTime:
-        participant_summary.physicalMeasurementsTime = created
+      participant_summary.physicalMeasurementsTime = obj.created
+      participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
+      participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
+      participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
       participant_summary_dao.update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 

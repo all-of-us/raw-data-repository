@@ -430,7 +430,9 @@ class FlaskTestBase(NdbTestBase):
   def assertBundle(self, expected_entries, response, has_next=False):
     self.assertEquals('Bundle', response['resourceType'])
     self.assertEquals('searchset', response['type'])
-    self.assertEquals(len(expected_entries), len(response['entry']))
+    if len(expected_entries) != len(response['entry']):
+      self.fail("Expected %d entries, got %d: %s" % (len(expected_entries), len(response['entry']),
+                                                     response['entry']))
     for i in range(0, len(expected_entries)):
       self.assertJsonResponseMatches(expected_entries[i], response['entry'][i])
     if has_next:

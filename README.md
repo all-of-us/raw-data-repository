@@ -224,7 +224,10 @@ The summary includes the following fields:
 * `enrollmentStatus`
 * `race`
 * `physicalMeasurementsStatus`: indicates whether this participant has completed physical measurements
+* `physicalMeasurementsFinalizedTime`: indicates the first time physical measurements were finalized for the participant
 * `physicalMeasurementsTime`: indicates the first time physical measurements were submitted for the participant
+* `physicalMeasurementsCreatedSite`: indicates the site where physical measurements were created for the participant
+* `physicalMeasurementsFinalizedSite`: indicates the site where physical measurements were finalized for the participant
 * `signUpTime`: the time at which the participant initially signed up for All Of Us
 * `hpoId`: HPO marked as `primary` for this participant, if any (just the resource id, like `PITT` — not a reference like `Organization/PITT`)
 * `consentForStudyEnrollment`:  indicates whether enrollment consent has been received (`UNSET` or `SUBMITTED`)
@@ -245,6 +248,28 @@ The summary includes the following fields:
 * `questionnaireOnMedicationsTime`
 * `questionnaireOnFamilyHealth`
 * `questionnaireOnFamilyHealthTime`
+* `biospecimenStatus`: whether biospecimens have been finalized for the participant
+* `biospecimenOrderTime`: the first time at which biospecimens were finalized  
+* `biospecimenSourceSite`: the site where biospecimens were initially created for the participant 
+* `biospecimenCollectedSite`: the site where biospecimens were initially collected for the participant 
+* `biospecimenProcessedSite`: the site where biospecimens were initially processed for the participant 
+* `biospecimenFinalizedSite`: the site where biospecimens were initially finalized for the participant                        
+* `sampleOrderStatus1SST8`
+* `sampleOrderStatus1SST8Time`
+* `sampleOrderStatus1PST8`
+* `sampleOrderStatus1PST8Time`
+* `sampleOrderStatus1HEP4`
+* `sampleOrderStatus1HEP4Time`
+* `sampleOrderStatus1ED04`
+* `sampleOrderStatus1ED04Time`
+* `sampleOrderStatus1ED10`
+* `sampleOrderStatus1ED10Time`
+* `sampleOrderStatus2ED10`
+* `sampleOrderStatus2ED10Time`
+* `sampleOrderStatus1UR10`
+* `sampleOrderStatus1UR10Time`
+* `sampleOrderStatus1SAL`
+* `sampleOrderStatus1SALTime`
 * `sampleStatus1SST8`
 * `sampleStatus1SST8Time`
 * `sampleStatus1PST8`
@@ -277,6 +302,10 @@ For enumeration fields, the following values are defined:
 `physicalMeasurementsStatus`: `UNSET`, `SCHEDULED`, `COMPLETED`, `RESULT_READY`
 
 `questionnaireOn[x]`: `UNSET`, `SUBMITTED`
+
+`biospecimenStatus`: `UNSET`, `FINALIZED`
+
+`sampleOrderStatus[x]`: `UNSET`, `CREATED`, `COLLECTED`, `PROCESSED`, `FINALIZED`
 
 `sampleStatus[x]` and `samplesToIsolateDNA`: `UNSET`, `RECEIVED`
 
@@ -585,3 +614,23 @@ resources. Once these are created, a client can query for available samples:
 
 `POST /ImportCodebook` Imports the latest published Codebook (metadata about
 Questionnaire contents).
+
+## Export API
+
+#### `POST /ExportTables`
+
+Provides the ability to export the full contents of database tables or views to CSV files in a 
+specified directory in one of two GCS buckets.
+
+Requests look like:
+
+```
+{
+  "database": ["rdr" | "cdm" | "voc" ],
+  "tables": "table1,table2...",
+  "directory": "output_directory_name"
+}
+```
+
+The results of the export go to the GCS bucket named `<PROJECT>-rdr-export` for the rdr database,
+and `<PROJECT>-cdm` for the "cdm" and "voc" databases.
