@@ -7,6 +7,7 @@ from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrder
 from model.log_position import LogPosition
 from model.participant import Participant
 from model.utils import to_client_participant_id
+from participant_enums import OrderStatus
 
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models.domainresource import DomainResource
@@ -106,6 +107,7 @@ class BiobankOrderDao(BaseDao):
         return existing_order
       else:
         raise Conflict('Order with ID %s already exists' % obj.biobankOrderId)
+    self._update_participant_summary(session, obj)
     inserted_obj = super(BiobankOrderDao, self).insert_with_session(session, obj)
     ParticipantDao().add_missing_hpo_from_site(
         session, inserted_obj.participantId, inserted_obj.finalizedSiteId)
@@ -167,6 +169,23 @@ class BiobankOrderDao(BaseDao):
                 .join(BiobankOrderedSample)
                 .filter(Participant.biobankId % 100 < percentage * 100)
                 .yield_per(batch_size))
+
+  def _update_participant_summary(self, session, obj):
+    participant_summary_dao = ParticipantSummaryDao()
+    participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
+    if not participant_summary:
+      raise BadRequest("Can't submit biospecimens for participant %s without consent" %
+                       obj.participantId)
+    raise_if_withdrawn(participant_summary)
+    if (not participant_summary.biospecimenStatus or
+        participant_summary.biospecimenStatus == OrderStatus.UNSET):
+      participant_summary.biospecimenStatus = OrderStatus.ORDERED
+      participant_summary.biospecimenOrderTime = obj.created
+      participant_summary.biospecimenSourceSiteId = obj.sourceSiteId
+      participant_summary.biospecimenCreatedSiteId = obj.createdSiteId
+      participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
+      participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
+      
 
   def _parse_handling_info(self, handling_info):
     site_id = None
