@@ -241,6 +241,12 @@ def format_json_hpo(obj, hpo_dao, field_name):
   else:
     obj[field_name] = UNSET
 
+def format_site_hpo(obj, site_dao, field_name):
+  if obj[field_name]:
+    obj[field_name] = site_dao.get(obj[field_name]).googleGroup
+  else:
+    obj[field_name] = UNSET
+
 def unix_time_millis(dt):
   return int((dt - EPOCH).total_seconds() * 1000)
 
