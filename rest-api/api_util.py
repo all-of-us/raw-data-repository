@@ -243,7 +243,7 @@ def format_json_hpo(obj, hpo_dao, field_name):
 
 def format_json_site(obj, site_dao, field_name):
   site_id = obj.get(field_name + 'Id')
-  if site_id:
+  if site_id is not None:
     obj[field_name] = site_dao.get(site_id).googleGroup
     del obj[field_name + 'Id']
   else:
