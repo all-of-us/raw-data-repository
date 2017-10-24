@@ -632,5 +632,5 @@ Requests look like:
 }
 ```
 
-The results of the export go to the GCS bucket named <PROJECT>-rdr-export for the rdr database,
-and <PROJECT>-cdm for the "cdm" and "voc" databases.
+The results of the export go to the GCS bucket named `<PROJECT>-rdr-export` for the rdr database,
+and `<PROJECT>-cdm` for the "cdm" and "voc" databases.
