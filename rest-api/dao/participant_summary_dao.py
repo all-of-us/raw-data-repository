@@ -5,6 +5,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from sqlalchemy import or_
 
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
+from api_util import format_json_site
 import clock
 import config
 from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
@@ -168,11 +169,11 @@ class ParticipantSummaryDao(UpdatableDao):
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
     if field_name in _SITE_FIELDS:
       if value == UNSET:
-        return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
+        return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)      
       site = self.site_dao.get_by_google_group(value)
       if not site:
         raise BadRequest('No site found with google group %s' % value)
-      return super(ParticipantSummaryDao, self).make_query_filter(field_name, site.siteId)
+      return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', site.siteId)
     if field_name in _CODE_FILTER_FIELDS:
       if value == UNSET:
         return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
@@ -277,7 +278,7 @@ class ParticipantSummaryDao(UpdatableDao):
       result['ageRange'] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
     else:
       result['ageRange'] = UNSET
-    format_json_hpo(result, self.hpo_dao, 'hpoId')
+    format_json_hpo(result, self.hpo_dao, 'hpoId')    
     _initialize_field_type_sets()
     for fieldname in _DATE_FIELDS:
       format_json_date(result, fieldname)
@@ -285,6 +286,8 @@ class ParticipantSummaryDao(UpdatableDao):
       format_json_code(result, self.code_dao, fieldname)
     for fieldname in _ENUM_FIELDS:
       format_json_enum(result, fieldname)
+    for fieldname in _SITE_FIELDS:
+      format_json_site(result, self.site_dao, fieldname)
     if (model.withdrawalStatus == WithdrawalStatus.NO_USE or
         model.suspensionStatus == SuspensionStatus.NO_CONTACT):
       result['recontactMethod'] = 'NO_CONTACT'
