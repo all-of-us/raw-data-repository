@@ -169,6 +169,15 @@ class BiobankOrderDao(BaseDao):
                 .join(BiobankOrderedSample)
                 .filter(Participant.biobankId % 100 < percentage * 100)
                 .yield_per(batch_size))
+  
+  def _get_order_status(self, sample):
+    if sample.finalized:
+      return OrderStatus.FINALIZED
+    if sample.processed:
+      return OrderStatus.PROCESSED
+    if sample.collected:
+      return OrderStatus.COLLECTED
+    return OrderStatus.CREATED
 
   def _update_participant_summary(self, session, obj):
     participant_summary_dao = ParticipantSummaryDao()
@@ -179,13 +188,18 @@ class BiobankOrderDao(BaseDao):
     raise_if_withdrawn(participant_summary)
     if (not participant_summary.biospecimenStatus or
         participant_summary.biospecimenStatus == OrderStatus.UNSET):
-      participant_summary.biospecimenStatus = OrderStatus.ORDERED
+      participant_summary.biospecimenStatus = OrderStatus.FINALIZED
       participant_summary.biospecimenOrderTime = obj.created
       participant_summary.biospecimenSourceSiteId = obj.sourceSiteId
-      participant_summary.biospecimenCreatedSiteId = obj.createdSiteId
+      participant_summary.biospecimenCollectedSiteId = obj.collectedSiteId
       participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
       participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
-      
+    for sample in obj.samples:
+      status_field = 'sampleOrderStatus' + sample.test
+      status_value = getattr(participant_summary, status_field)
+      if not status_value or status_value == OrderStatus.UNSET:        
+        setattr(participant_summary, status_field, self._get_order_status(sample))
+        setattr(participant_summary, status_field + 'Time', obj.created)
 
   def _parse_handling_info(self, handling_info):
     site_id = None
