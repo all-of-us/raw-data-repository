@@ -169,7 +169,7 @@ class ParticipantSummaryDao(UpdatableDao):
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
     if field_name in _SITE_FIELDS:
       if value == UNSET:
-        return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)      
+        return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
       site = self.site_dao.get_by_google_group(value)
       if not site:
         raise BadRequest('No site found with google group %s' % value)
@@ -278,7 +278,7 @@ class ParticipantSummaryDao(UpdatableDao):
       result['ageRange'] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
     else:
       result['ageRange'] = UNSET
-    format_json_hpo(result, self.hpo_dao, 'hpoId')    
+    format_json_hpo(result, self.hpo_dao, 'hpoId')
     _initialize_field_type_sets()
     for fieldname in _DATE_FIELDS:
       format_json_date(result, fieldname)

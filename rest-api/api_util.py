@@ -245,9 +245,9 @@ def format_json_site(obj, site_dao, field_name):
   site_id = obj.get(field_name + 'Id')
   if site_id:
     obj[field_name] = site_dao.get(site_id).googleGroup
-    del obj[field_name + 'Id']    
+    del obj[field_name + 'Id']
   else:
-    obj[field_name] = UNSET    
+    obj[field_name] = UNSET
 
 def unix_time_millis(dt):
   return int((dt - EPOCH).total_seconds() * 1000)

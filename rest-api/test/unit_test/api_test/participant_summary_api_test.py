@@ -223,7 +223,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
   def assertResponses(self, initial_query, summaries_list):
     response = self.send_get(initial_query)
     for i in range(0, len(summaries_list)):
-      summaries = summaries_list[i]      
+      summaries = summaries_list[i]
       next_url = self.assertBundle([_make_entry(ps) for ps in summaries], response,
                                    has_next=i < len(summaries_list) - 1)
       if next_url:
@@ -324,7 +324,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_post(path_2, measurements_2)
       # This pairs participant 3 with PITT and updates their version.
       self.send_post(path_3, measurements_3)
-    
+
 
     # Send a biobank order for participant 1
     order_json = load_biobank_order_json(int(participant_id_1[1:]))
@@ -352,7 +352,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
 
     self.assertEquals(1, ps_1['numCompletedBaselinePPIModules'])
-    self.assertEquals(1, ps_1['numBaselineSamplesArrived'])    
+    self.assertEquals(1, ps_1['numBaselineSamplesArrived'])
     self.assertEquals('RECEIVED', ps_1['sampleStatus1ED10'])
     self.assertEquals(TIME_1.isoformat(), ps_1['sampleStatus1ED10Time'])
     self.assertEquals('UNSET', ps_1['sampleStatus1SAL'])
@@ -376,7 +376,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('hpo-site-monroeville', ps_1['biospecimenCollectedSite'])
     self.assertEquals('hpo-site-monroeville', ps_1['biospecimenProcessedSite'])
     self.assertEquals('hpo-site-monroeville', ps_1['biospecimenFinalizedSite'])
-    self.assertEquals('UNSET', ps_1['sampleOrderStatus1ED04'])      
+    self.assertEquals('UNSET', ps_1['sampleOrderStatus1ED04'])
     self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1ED10'])
     self.assertEquals('2016-01-04T10:55:41', ps_1['sampleOrderStatus1ED10Time'])
     self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1PST8'])
@@ -384,8 +384,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1SST8'])
     self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1HEP4'])
     self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1UR10'])
-    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1SAL'])    
-    
+    self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1SAL'])
+
     # One day after participant 2 withdraws, their fields are still all populated.
     self.assertEquals(1, ps_2['numCompletedBaselinePPIModules'])
     self.assertEquals(0, ps_2['numBaselineSamplesArrived'])
@@ -411,7 +411,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('UNSET', ps_2['biospecimenProcessedSite'])
     self.assertEquals('UNSET', ps_2['biospecimenFinalizedSite'])
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1ED04'])
-    self.assertIsNone(ps_2.get('sampleOrderStatus1ED10Time'))    
+    self.assertIsNone(ps_2.get('sampleOrderStatus1ED10Time'))
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1ED10'])
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1PST8'])
     self.assertEquals('UNSET', ps_2['sampleOrderStatus2ED10'])
@@ -420,7 +420,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1UR10'])
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1SAL'])
 
-    
+
     self.assertIsNone(ps_2.get('suspensionTime'))
     self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
     self.assertEquals(0, ps_3['numBaselineSamplesArrived'])
@@ -437,7 +437,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
     self.assertIsNone(ps_3.get('withdrawalTime'))
     self.assertIsNotNone(ps_3['suspensionTime'])
-    
+
     # One day after participant 2 withdraws, the participant is still returned.
     with FakeClock(TIME_4):
       response = self.send_get('ParticipantSummary')
@@ -539,12 +539,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&'
                            + 'physicalMeasurementsCreatedSite=hpo-site-monroeville',
-                           [[ps_2, ps_3]])                           
+                           [[ps_2, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsFinalizedSite=UNSET',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&'
                            + 'physicalMeasurementsFinalizedSite=hpo-site-bannerphoenix',
-                           [[ps_2, ps_3]])                          
+                           [[ps_2, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=UNSET',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&physicalMeasurementsStatus=COMPLETED',
@@ -555,16 +555,16 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&biospecimenOrderTime=lt2016-01-04',
                            [[]])
-      self.assertResponses('ParticipantSummary?_count=2&' + 
+      self.assertResponses('ParticipantSummary?_count=2&' +
                            'biospecimenSourceSite=hpo-site-monroeville',
                            [[ps_1]])
-      self.assertResponses('ParticipantSummary?_count=2&' + 
+      self.assertResponses('ParticipantSummary?_count=2&' +
                            'biospecimenCollectedSite=hpo-site-monroeville',
                            [[ps_1]])
-      self.assertResponses('ParticipantSummary?_count=2&' + 
+      self.assertResponses('ParticipantSummary?_count=2&' +
                            'biospecimenProcessedSite=hpo-site-monroeville',
                            [[ps_1]])
-      self.assertResponses('ParticipantSummary?_count=2&' + 
+      self.assertResponses('ParticipantSummary?_count=2&' +
                            'biospecimenFinalizedSite=hpo-site-monroeville',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&sampleOrderStatus1ED04=UNSET',
@@ -574,7 +574,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&sampleOrderStatus1ED10Time=ge2016-01-04',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&sampleOrderStatus1ED10Time=lt2016-01-04',
-                           [[]])    
+                           [[]])
 
     # Two days after participant 2 withdraws, their fields are not set for anything but
     # participant ID, HPO ID, withdrawal status, and withdrawal time
