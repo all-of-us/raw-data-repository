@@ -99,6 +99,10 @@
               "code": "55284-4",
               "display": "Blood pressure systolic and diastolic",
               "system": "http://loinc.org"
+            },
+            {
+              "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+              "code": "systolic-diastolic-blood-pressure-1"
             }
           ],
           "text": "Blood pressure systolic and diastolic"
@@ -111,6 +115,10 @@
                   "code": "8480-6",
                   "display": "Systolic blood pressure",
                   "system": "http://loinc.org"
+                },
+                {
+                  "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+                  "code": "systolic-blood-pressure-1"
                 }
               ],
               "text": "Systolic blood pressure"
