@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from model.base import Base
 from model.utils import Enum
 from model.utils import UTCDateTime
-from participant_enums import EnrollmentStatus, Race, SampleStatus
+from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
 from participant_enums import WithdrawalStatus, SuspensionStatus
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
@@ -54,6 +54,13 @@ class ParticipantSummary(Base):
                                       default=PhysicalMeasurementsStatus.UNSET)
   # The first time that physical measurements were submitted for the participant.
   physicalMeasurementsTime = Column('physical_measurements_time', UTCDateTime)
+  # The time that physical measurements were finalized (before submission to the RDR)
+  physicalMeasurementsFinalizedTime = Column('physical_measurements_finalized_time', UTCDateTime)
+  physicalMeasurementsCreatedSiteId = Column('physical_measurements_created_site_id', Integer,
+                                             ForeignKey('site.site_id'))
+  physicalMeasurementsFinalizedSiteId = Column('physical_measurements_finalized_site_id', Integer,
+                                               ForeignKey('site.site_id'))
+
   signUpTime = Column('sign_up_time', UTCDateTime)
   hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
 
@@ -109,6 +116,32 @@ class ParticipantSummary(Base):
   sampleStatus1SAL = Column('sample_status_1sal', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1SALTime = Column('sample_status_1sal_time', UTCDateTime)
 
+  # Fields for which samples have been ordered, and at what times.
+  sampleOrderStatus1SST8 = Column('sample_order_status_1sst8', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus1SST8Time = Column('sample_order_status_1sst8_time', UTCDateTime)
+  sampleOrderStatus1PST8 = Column('sample_order_status_1pst8', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus1PST8Time = Column('sample_order_status_1pst8_time', UTCDateTime)
+  sampleOrderStatus1HEP4 = Column('sample_order_status_1hep4', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus1HEP4Time = Column('sample_order_status_1hep4_time', UTCDateTime)
+  sampleOrderStatus1ED04 = Column('sample_order_status_1ed04', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus1ED04Time = Column('sample_order_status_1ed04_time', UTCDateTime)
+  sampleOrderStatus1ED10 = Column('sample_order_status_1ed10', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus1ED10Time = Column('sample_order_status_1ed10_time', UTCDateTime)
+  sampleOrderStatus2ED10 = Column('sample_order_status_2ed10', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus2ED10Time = Column('sample_order_status_2ed10_time', UTCDateTime)
+  sampleOrderStatus1UR10 = Column('sample_order_status_1ur10', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus1UR10Time = Column('sample_order_status_1ur10_time', UTCDateTime)
+  sampleOrderStatus1SAL = Column('sample_order_status_1sal', Enum(OrderStatus),
+                                 default=OrderStatus.UNSET)
+  sampleOrderStatus1SALTime = Column('sample_order_status_1sal_time', UTCDateTime)
+
   numCompletedBaselinePPIModules = Column('num_completed_baseline_ppi_modules', SmallInteger,
                                           default=0)
   numCompletedPPIModules = Column('num_completed_ppi_modules', SmallInteger, default=0)
@@ -118,6 +151,18 @@ class ParticipantSummary(Base):
   numBaselineSamplesArrived = Column('num_baseline_samples_arrived', SmallInteger, default=0)
   samplesToIsolateDNA = Column('samples_to_isolate_dna', Enum(SampleStatus),
                                default=SampleStatus.UNSET)
+  # Whether biospecimens have been finalized or not, and the time at which they were
+  # finalized.
+  biospecimenStatus = Column('biospecimen_status', Enum(OrderStatus), default=OrderStatus.UNSET)
+  biospecimenOrderTime = Column('biospecimen_order_time', UTCDateTime)
+  biospecimenSourceSiteId = Column('biospecimen_source_site_id', Integer,
+                                   ForeignKey('site.site_id'))
+  biospecimenCollectedSiteId = Column('biospecimen_collected_site_id', Integer,
+                                      ForeignKey('site.site_id'))
+  biospecimenProcessedSiteId = Column('biospecimen_processed_site_id', Integer,
+                                      ForeignKey('site.site_id'))
+  biospecimenFinalizedSiteId = Column('biospecimen_finalized_site_id', Integer,
+                                      ForeignKey('site.site_id'))
 
   # Withdrawal from the study of the participant's own accord.
   withdrawalStatus = Column(

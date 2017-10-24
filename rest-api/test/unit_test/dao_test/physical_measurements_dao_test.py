@@ -81,6 +81,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
         participantId=self.participant.participantId,
         resource=self._with_id(self.measurement_json, '1'),
         created=TIME_2,
+        finalized=TIME_1,
         final=True,
         logPositionId=1,
         createdSiteId=1,

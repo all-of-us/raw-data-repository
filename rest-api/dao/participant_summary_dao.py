@@ -5,6 +5,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from sqlalchemy import or_
 
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
+from api_util import format_json_site
 import clock
 import config
 from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
@@ -12,6 +13,7 @@ from dao.base_dao import UpdatableDao
 from dao.database_utils import get_sql_and_params_for_array
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
+from dao.site_dao import SiteDao
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS
 from model.participant_summary import WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
 from model.utils import to_client_participant_id, to_client_biobank_id, get_property_type
@@ -24,6 +26,9 @@ _ORDER_BY_ENDING = ('lastName', 'firstName', 'dateOfBirth', 'participantId')
 # The default ordering of results for queries for withdrawn participants.
 _WITHDRAWN_ORDER_BY_ENDING = ('withdrawalTime', 'participantId')
 _CODE_FILTER_FIELDS = ('genderIdentity',)
+_SITE_FIELDS = ('physicalMeasurementsCreatedSite', 'physicalMeasurementsFinalizedSite',
+                'biospecimenSourceSite', 'biospecimenCollectedSite',
+                'biospecimenProcessedSite', 'biospecimenFinalizedSite')
 
 # Lazy caches of property names for client JSON conversion.
 _DATE_FIELDS = set()
@@ -87,6 +92,7 @@ class ParticipantSummaryDao(UpdatableDao):
                                                 order_by_ending=_ORDER_BY_ENDING)
     self.hpo_dao = HPODao()
     self.code_dao = CodeDao()
+    self.site_dao = SiteDao()
 
   def get_id(self, obj):
     return obj.participantId
@@ -161,6 +167,13 @@ class ParticipantSummaryDao(UpdatableDao):
       if not hpo:
         raise BadRequest('No HPO found with name %s' % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
+    if field_name in _SITE_FIELDS:
+      if value == UNSET:
+        return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
+      site = self.site_dao.get_by_google_group(value)
+      if not site:
+        raise BadRequest('No site found with google group %s' % value)
+      return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', site.siteId)
     if field_name in _CODE_FILTER_FIELDS:
       if value == UNSET:
         return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
@@ -273,6 +286,8 @@ class ParticipantSummaryDao(UpdatableDao):
       format_json_code(result, self.code_dao, fieldname)
     for fieldname in _ENUM_FIELDS:
       format_json_enum(result, fieldname)
+    for fieldname in _SITE_FIELDS:
+      format_json_site(result, self.site_dao, fieldname)
     if (model.withdrawalStatus == WithdrawalStatus.NO_USE or
         model.suspensionStatus == SuspensionStatus.NO_CONTACT):
       result['recontactMethod'] = 'NO_CONTACT'

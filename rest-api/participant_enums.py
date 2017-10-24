@@ -37,6 +37,14 @@ class SampleStatus(messages.Enum):
   UNSET = 0
   RECEIVED = 1
 
+class OrderStatus(messages.Enum):
+  """Status of biobank orders and samples"""
+  UNSET = 0
+  CREATED = 1
+  COLLECTED = 2
+  PROCESSED = 3
+  FINALIZED = 4
+
 # These race values are derived from one or more answers to the race/ethnicity question
 # in questionnaire responses.
 class Race(messages.Enum):
