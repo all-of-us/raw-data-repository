@@ -169,7 +169,7 @@ class BiobankOrderDao(BaseDao):
                 .join(BiobankOrderedSample)
                 .filter(Participant.biobankId % 100 < percentage * 100)
                 .yield_per(batch_size))
-  
+
   def _get_order_status(self, sample):
     if sample.finalized:
       return OrderStatus.FINALIZED
@@ -197,7 +197,7 @@ class BiobankOrderDao(BaseDao):
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
       status_value = getattr(participant_summary, status_field)
-      if not status_value or status_value == OrderStatus.UNSET:        
+      if not status_value or status_value == OrderStatus.UNSET:
         setattr(participant_summary, status_field, self._get_order_status(sample))
         setattr(participant_summary, status_field + 'Time', obj.created)
 

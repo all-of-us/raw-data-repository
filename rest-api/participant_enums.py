@@ -40,8 +40,8 @@ class SampleStatus(messages.Enum):
 class OrderStatus(messages.Enum):
   """Status of biobank orders and samples"""
   UNSET = 0
-  CREATED = 1 
-  COLLECTED = 2 
+  CREATED = 1
+  COLLECTED = 2
   PROCESSED = 3
   FINALIZED = 4
 
