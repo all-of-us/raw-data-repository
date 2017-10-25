@@ -242,7 +242,7 @@ class FakeParticipantGenerator(object):
   def _make_full_url(self, concept):
     return "urn:example:%s" % concept['code']
 
-  def _make_measurement_resource(self, measurement, qualifier_set):
+  def _make_measurement_resource(self, measurement, qualifier_set, previous_resource):
     resource = {
       "code": {
         "coding": [{
@@ -254,6 +254,9 @@ class FakeParticipantGenerator(object):
       }
     }
     if 'decimal' in measurement['types']:
+      if previous_resource:
+        previous_value_quantity = previous_resource['valueQuantity']
+        
       # Arguably min and max should vary with units, but in our data there's only one unit
       # so we won't bother for now.
       min_value = measurement['min']
@@ -295,8 +298,9 @@ class FakeParticipantGenerator(object):
         } for qualifier in qualifiers]
     return resource
 
-  def _make_measurement_entry(self, measurement, time_str, participant_id, qualifier_set):
-    resource = self._make_measurement_resource(measurement, qualifier_set)
+  def _make_measurement_entry(self, measurement, time_str, participant_id, qualifier_set,
+                              previous_entry=None):
+    resource = self._make_measurement_resource(measurement, qualifier_set, previous_entry)
     resource['effectiveDateTime'] = time_str
     resource['resourceType'] = "Observation"
     resource['status'] = "final"
@@ -316,9 +320,16 @@ class FakeParticipantGenerator(object):
     if measurement['submeasurements']:
       components = []
       for submeasurement in measurement['submeasurements']:
-        if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT:
-          continue
-        components.append(self._make_measurement_resource(submeasurement, qualifier_set))
+        previous_component = None
+        # If there was a previous entry, find the component matching the code for this 
+        # submeasurement.
+        if previous_entry:
+          for component in previous_entry['component']:
+            if component['code']['coding'][0]['code'] == submeasurement['code']['code']:
+              previous_component = component
+              break
+        components.append(self._make_measurement_resource(submeasurement, qualifier_set,
+                                                          previous_component))
       if components:
         resource['component'] = components
     return {
@@ -370,8 +381,23 @@ class FakeParticipantGenerator(object):
     for measurement in self._measurement_specs:
       if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT:
         continue
-      entry = self._make_measurement_entry(measurement, time_str, participant_id, qualifier_set)
-      entries.append(entry)
+      num_measurements = 1
+      num_measurements_str = measurement.get('numMeasurements')
+      if num_measurements_str is not None:
+        num_measurements = int(num_measurements_str)      
+      measurement_entries = []
+      first_entry = self._make_measurement_entry(measurement, time_str, participant_id, 
+                                                 qualifier_set)
+      entries.append(first_entry)      
+      if num_measurements > 1:
+        measurement_entries.append(first_entry)
+        for _ in xrange(1, num_measurements):
+          entry = self._make_measurement_entry(measurement, time_str, participant_id, 
+                                               qualifier_set, first_entry)
+          measurement_entries.append(entry)
+          entries.append(entry)
+        self._make_mean_entry(measurement, time_str, participant_id, measurement_entries)
+      
     # Add any qualifiers that were specified for other measurements.
     for qualifier in qualifier_set:
       qualifier_measurement = self._qualifier_map[qualifier]
