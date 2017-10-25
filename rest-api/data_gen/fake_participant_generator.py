@@ -277,19 +277,19 @@ class FakeParticipantGenerator(object):
                          "display": "measurement",
                          "system": _PMI_MEASUREMENTS_SYSTEM}
         resource['code']['coding'].append(pmi_code_json)
-    return resource    
- 
-  def _make_measurement_resource(self, measurement, qualifier_set, previous_resource, 
+    return resource
+
+  def _make_measurement_resource(self, measurement, qualifier_set, previous_resource,
                                  measurement_count):
     resource = self._make_base_measurement_resource(measurement, False, measurement_count)
     if 'decimal' in measurement['types']:
       previous_value = None
       previous_unit = None
-      if previous_resource:        
+      if previous_resource:
         previous_value_quantity = previous_resource['valueQuantity']
         previous_unit = previous_value_quantity['unit']
         previous_value = previous_value_quantity['value']
-                        
+
       # Arguably min and max should vary with units, but in our data there's only one unit
       # so we won't bother for now.
       min_value = measurement['min']
@@ -312,7 +312,7 @@ class FakeParticipantGenerator(object):
           delta = _PERCENT_DEVIATION_FOR_REPEATED_MEASUREMENTS * (max_value - min_value)
           value = round(random.uniform(previous_value - delta, previous_value + delta), 1)
         else:
-          value = round(random.uniform(min_value, max_value), 1)      
+          value = round(random.uniform(min_value, max_value), 1)
       resource['valueQuantity'] = {
         "code": unit,
         "system": "http://unitsofmeasure.org",
@@ -341,9 +341,9 @@ class FakeParticipantGenerator(object):
             "reference": self._make_full_url(qualifier)
           }
         } for qualifier in qualifiers]
-    return resource  
-  
-  def _get_measurement_values(self, measurement_resources):    
+    return resource
+
+  def _get_measurement_values(self, measurement_resources):
     return [resource['valueQuantity']['value'] for resource in measurement_resources]
 
   def _get_related(self, measurement_resources):
@@ -362,7 +362,7 @@ class FakeParticipantGenerator(object):
 
   def _mean(self, values):
     return round(sum(values) / len(values), 1)
-  
+
   def _find_closest_two_mean(self, measurement_resources):
     measurement_values = self._get_measurement_values(measurement_resources)
     # Find the mean of the two closest values; or if they are equally distant from each other,
@@ -382,11 +382,11 @@ class FakeParticipantGenerator(object):
         return self._mean([measurement_values[0], measurement_values[2]])
       else:
         return self._mean(measurement_values[1:])
-        
+
   def _calculate_last_two_mean(self, measurement_resources):
     measurement_values = self._get_measurement_values(measurement_resources)
     return self._mean(measurement_values[1:])
-  
+
   def _find_components(self, measurement_resources, submeasurement):
     components = []
     for resource in measurement_resources:
@@ -397,9 +397,9 @@ class FakeParticipantGenerator(object):
             components.append(subcomponent)
             break
     return components
-      
+
   def _make_mean_resource(self, mean_type, measurement, measurement_resources):
-    resource = self._make_base_measurement_resource(measurement, True, None)    
+    resource = self._make_base_measurement_resource(measurement, True, None)
     if measurement_resources[0].get('valueQuantity'):
       if mean_type == 'closestTwo':
         value = self._find_closest_two_mean(measurement_resources)
@@ -419,11 +419,11 @@ class FakeParticipantGenerator(object):
     if related:
       resource['related'] = related
     return resource
-  
+
   def _make_mean_entry(self, measurement, time_str, participant_id, measurement_resources):
     mean_type = measurement.get('meanType')
     resource = self._make_mean_resource(mean_type, measurement, measurement_resources)
-    self._populate_measurement_entry(resource, time_str, participant_id)    
+    self._populate_measurement_entry(resource, time_str, participant_id)
     body_site = measurement_resources[0].get('bodySite')
     if body_site:
       resource['bodySite'] = body_site
@@ -432,15 +432,15 @@ class FakeParticipantGenerator(object):
       for submeasurement in measurement['submeasurements']:
         measurement_components = self._find_components(measurement_resources, submeasurement)
         if measurement_components:
-          components.append(self._make_mean_resource(mean_type, submeasurement, 
+          components.append(self._make_mean_resource(mean_type, submeasurement,
                                                      measurement_components))
       if components:
-        resource['component'] = components  
+        resource['component'] = components
     return {
       "fullUrl": self._make_full_url(measurement['code']),
       "resource": resource
     }
-    
+
   def _populate_measurement_entry(self, resource, time_str, participant_id):
     resource['effectiveDateTime'] = time_str
     resource['resourceType'] = "Observation"
@@ -448,7 +448,7 @@ class FakeParticipantGenerator(object):
     resource['subject'] = {
       "reference": "Patient/%s" % participant_id
     }
-    
+
   def _make_measurement_entry(self, measurement, time_str, participant_id, qualifier_set,
                               previous_resource=None, measurement_count=None):
     resource = self._make_measurement_resource(measurement, qualifier_set, previous_resource,
@@ -471,7 +471,7 @@ class FakeParticipantGenerator(object):
       components = []
       for submeasurement in measurement['submeasurements']:
         previous_component = None
-        # If there was a previous entry, find the component matching the code for this 
+        # If there was a previous entry, find the component matching the code for this
         # submeasurement.
         if previous_resource:
           for component in previous_resource['component']:
@@ -533,21 +533,21 @@ class FakeParticipantGenerator(object):
       num_measurements = 1
       num_measurements_str = measurement.get('numMeasurements')
       if num_measurements_str is not None:
-        num_measurements = int(num_measurements_str)      
+        num_measurements = int(num_measurements_str)
       measurement_resources = []
-      first_entry = self._make_measurement_entry(measurement, time_str, participant_id, 
+      first_entry = self._make_measurement_entry(measurement, time_str, participant_id,
                                                  qualifier_set, None, 1)
-      entries.append(first_entry)      
+      entries.append(first_entry)
       if num_measurements > 1:
         measurement_resources.append(first_entry['resource'])
         for i in xrange(1, num_measurements):
-          entry = self._make_measurement_entry(measurement, time_str, participant_id, 
+          entry = self._make_measurement_entry(measurement, time_str, participant_id,
                                                qualifier_set, first_entry['resource'], i + 1)
           measurement_resources.append(entry['resource'])
           entries.append(entry)
-        entries.append(self._make_mean_entry(measurement, time_str, 
+        entries.append(self._make_mean_entry(measurement, time_str,
                                              participant_id, measurement_resources))
-      
+
     # Add any qualifiers that were specified for other measurements.
     for qualifier in qualifier_set:
       qualifier_measurement = self._qualifier_map[qualifier]
