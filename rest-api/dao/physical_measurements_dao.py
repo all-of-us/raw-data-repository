@@ -219,8 +219,6 @@ class PhysicalMeasurementsDao(BaseDao):
 
   def insert_with_session(self, session, obj):
     is_amendment = False
-    if obj.logPosition is not None:
-      raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
     obj.logPosition = LogPosition()
     obj.final = True
     obj.created = clock.CLOCK.now()
