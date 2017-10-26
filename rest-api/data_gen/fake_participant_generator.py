@@ -71,6 +71,10 @@ _NO_BIOBANK_SAMPLES = 0.2
 _QUESTIONNAIRE_NOT_SUBMITTED = 0.4
 # Any given question on a submitted questionnaire has a 10% chance of not being answered
 _QUESTION_NOT_ANSWERED = 0.1
+# The maximum percentage deviation of repeated measurements.
+_PERCENT_DEVIATION_FOR_REPEATED_MEASUREMENTS = 0.01
+# The system used with PMI codes in physical measurements
+_PMI_MEASUREMENTS_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation"
 # Maximum number of days between a participant consenting and submitting physical measurements
 _MAX_DAYS_BEFORE_PHYSICAL_MEASUREMENTS = 60
 # Maximum number of days between a participant consenting and submitting a biobank order.
@@ -242,7 +246,7 @@ class FakeParticipantGenerator(object):
   def _make_full_url(self, concept):
     return "urn:example:%s" % concept['code']
 
-  def _make_measurement_resource(self, measurement, qualifier_set):
+  def _make_base_measurement_resource(self, measurement, mean, measurement_count):
     resource = {
       "code": {
         "coding": [{
@@ -253,18 +257,62 @@ class FakeParticipantGenerator(object):
         "text": "text"
       }
     }
+    pmi_code = measurement.get('pmiCode')
+    if pmi_code:
+      pmi_code_json = {
+        "code": pmi_code,
+        "display": "measurement",
+        "system": _PMI_MEASUREMENTS_SYSTEM
+      }
+      resource['code']['coding'].append(pmi_code_json)
+    else:
+      pmi_code_prefix = measurement.get('pmiCodePrefix')
+      if pmi_code_prefix:
+        code_suffix = None
+        if mean:
+          code_suffix = "mean"
+        else:
+          code_suffix = str(measurement_count)
+        pmi_code_json = {"code": pmi_code_prefix + code_suffix,
+                         "display": "measurement",
+                         "system": _PMI_MEASUREMENTS_SYSTEM}
+        resource['code']['coding'].append(pmi_code_json)
+    return resource
+
+  def _make_measurement_resource(self, measurement, qualifier_set, previous_resource,
+                                 measurement_count):
+    resource = self._make_base_measurement_resource(measurement, False, measurement_count)
     if 'decimal' in measurement['types']:
+      previous_value = None
+      previous_unit = None
+      if previous_resource:
+        previous_value_quantity = previous_resource['valueQuantity']
+        previous_unit = previous_value_quantity['unit']
+        previous_value = previous_value_quantity['value']
+
       # Arguably min and max should vary with units, but in our data there's only one unit
       # so we won't bother for now.
       min_value = measurement['min']
       max_value = measurement['max']
-      unit = random.choice(measurement['units'])
+      if previous_unit:
+        unit = previous_unit
+      else:
+        unit = random.choice(measurement['units'])
       if min_value == int(min_value) and max_value == int(max_value):
         # Assume int min and max means an integer
-        value = random.randint(min_value, max_value)
+        if previous_value:
+          # Find a value that is up to some percent of the possible range higher or lower.
+          delta = int(_PERCENT_DEVIATION_FOR_REPEATED_MEASUREMENTS * (max_value - min_value))
+          value = random.randint(previous_value - delta, previous_value + delta)
+        else:
+          value = random.randint(min_value, max_value)
       else:
         # Otherwise assume a floating point number with one digit after the decimal place
-        value = round(random.uniform(min_value, max_value), 1)
+        if previous_value:
+          delta = _PERCENT_DEVIATION_FOR_REPEATED_MEASUREMENTS * (max_value - min_value)
+          value = round(random.uniform(previous_value - delta, previous_value + delta), 1)
+        else:
+          value = round(random.uniform(min_value, max_value), 1)
       resource['valueQuantity'] = {
         "code": unit,
         "system": "http://unitsofmeasure.org",
@@ -295,30 +343,96 @@ class FakeParticipantGenerator(object):
         } for qualifier in qualifiers]
     return resource
 
-  def _make_measurement_entry(self, measurement, time_str, participant_id, qualifier_set):
-    resource = self._make_measurement_resource(measurement, qualifier_set)
-    resource['effectiveDateTime'] = time_str
-    resource['resourceType'] = "Observation"
-    resource['status'] = "final"
-    resource['subject'] = {
-      "reference": "Patient/%s" % participant_id
-    }
-    if measurement['bodySites']:
-      body_site = random.choice(measurement['bodySites'])
-      resource['bodySite'] = {
-        "coding": [{
-          "code": body_site['code'],
-          "display": "body site",
-          "system": body_site['system']
-        }],
-        "text": "text"
+  def _get_measurement_values(self, measurement_resources):
+    return [resource['valueQuantity']['value'] for resource in measurement_resources]
+
+  def _get_related(self, measurement_resources):
+    related_list = []
+    related_urls = set()
+    for measurement_resource in measurement_resources:
+      for related in measurement_resource.get('related', []):
+        # Make sure we don't repeat references to the same qualifier.
+        url = related['target']['reference']
+        if url not in related_urls:
+          related_list.append(related)
+          related_urls.add(url)
+    return related_list
+
+  def _mean(self, values):
+    return round(sum(values) / len(values), 1)
+
+  def _find_closest_two_mean(self, measurement_values):
+    # Find the mean of the two closest values; or if they are equally distant from each other,
+    # find the mean of all three.
+    delta_0_1 = abs(measurement_values[0] - measurement_values[1])
+    delta_0_2 = abs(measurement_values[0] - measurement_values[2])
+    delta_1_2 = abs(measurement_values[1] - measurement_values[2])
+    if delta_0_1 < delta_0_2:
+      if delta_0_1 < delta_1_2:
+        return self._mean(measurement_values[0:2])
+      else:
+        return self._mean(measurement_values[1:])
+    elif delta_0_1 == delta_0_2:
+      return self._mean(measurement_values)
+    else:
+      if delta_0_2 < delta_1_2:
+        return self._mean([measurement_values[0], measurement_values[2]])
+      else:
+        return self._mean(measurement_values[1:])
+
+  def _calculate_last_two_mean(self, measurement_values):
+    return self._mean(measurement_values[1:])
+
+  def _find_components_by_coding(self, measurement_resources, submeasurement_coding):
+    components = []
+    for resource in measurement_resources:
+      for subcomponent in resource.get('component', []):
+        for coding in subcomponent['code']['coding']:
+          if (coding['system'] == submeasurement_coding['system'] and
+              coding['code'] == submeasurement_coding['code']):
+            components.append(subcomponent)
+    return components
+
+  def _make_mean_resource(self, mean_type, measurement, measurement_resources):
+    resource = self._make_base_measurement_resource(measurement, True, None)
+    if measurement_resources[0].get('valueQuantity'):
+      measurement_values = self._get_measurement_values(measurement_resources)
+      if len(measurement_values) < 3:
+        raise BadRequest('Bad measurement resources: %s' % measurement_resources)
+      elif mean_type == 'closestTwo':
+        value = self._find_closest_two_mean(measurement_values)
+      elif mean_type == 'lastTwo':
+        value = self._calculate_last_two_mean(measurement_values)
+      else:
+        raise BadRequest('Unknown meanType: %s' % mean_type)
+      unit = measurement_resources[0]['valueQuantity']['unit']
+      resource['valueQuantity'] = {
+          "code": unit,
+          "system": "http://unitsofmeasure.org",
+          "unit": unit,
+          "value": value
       }
+    # Include all qualifiers on the measurements being averaged.
+    related = self._get_related(measurement_resources)
+    if related:
+      resource['related'] = related
+    return resource
+
+  def _make_mean_entry(self, measurement, time_str, participant_id, measurement_resources):
+    mean_type = measurement.get('meanType')
+    resource = self._make_mean_resource(mean_type, measurement, measurement_resources)
+    self._populate_measurement_entry(resource, time_str, participant_id)
+    body_site = measurement_resources[0].get('bodySite')
+    if body_site:
+      resource['bodySite'] = body_site
     if measurement['submeasurements']:
       components = []
       for submeasurement in measurement['submeasurements']:
-        if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT:
-          continue
-        components.append(self._make_measurement_resource(submeasurement, qualifier_set))
+        measurement_components = self._find_components_by_coding(measurement_resources,
+                                                                 submeasurement['code'])
+        if measurement_components:
+          components.append(self._make_mean_resource(mean_type, submeasurement,
+                                                     measurement_components))
       if components:
         resource['component'] = components
     return {
@@ -326,6 +440,49 @@ class FakeParticipantGenerator(object):
       "resource": resource
     }
 
+  def _populate_measurement_entry(self, resource, time_str, participant_id):
+    resource['effectiveDateTime'] = time_str
+    resource['resourceType'] = "Observation"
+    resource['status'] = "final"
+    resource['subject'] = {
+      "reference": "Patient/%s" % participant_id
+    }
+
+  def _make_measurement_entry(self, measurement, time_str, participant_id, qualifier_set,
+                              previous_resource=None, measurement_count=None):
+    resource = self._make_measurement_resource(measurement, qualifier_set, previous_resource,
+                                               measurement_count)
+    self._populate_measurement_entry(resource, time_str, participant_id)
+    if measurement['bodySites']:
+      if previous_resource:
+        resource['bodySite'] = previous_resource['bodySite']
+      else:
+        body_site = random.choice(measurement['bodySites'])
+        resource['bodySite'] = {
+          "coding": [{
+            "code": body_site['code'],
+            "display": "body site",
+            "system": body_site['system']
+          }],
+          "text": "text"
+        }
+    if measurement['submeasurements']:
+      components = []
+      for submeasurement in measurement['submeasurements']:
+        previous_component = None
+        if previous_resource:
+          subcomponents = self._find_components_by_coding([previous_resource],
+                                                          submeasurement['code'])
+          if subcomponents:
+            previous_component = subcomponents[0]
+        components.append(self._make_measurement_resource(submeasurement, qualifier_set,
+                                                          previous_component, measurement_count))
+      if components:
+        resource['component'] = components
+    return {
+      "fullUrl": self._make_full_url(measurement['code']),
+      "resource": resource
+    }
 
   def _make_author(self, username, authoring_step):
     return {"reference": "%s%s" % (_AUTHOR_PREFIX, username),
@@ -370,8 +527,24 @@ class FakeParticipantGenerator(object):
     for measurement in self._measurement_specs:
       if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT:
         continue
-      entry = self._make_measurement_entry(measurement, time_str, participant_id, qualifier_set)
-      entries.append(entry)
+      num_measurements = 1
+      num_measurements_str = measurement.get('numMeasurements')
+      if num_measurements_str is not None:
+        num_measurements = int(num_measurements_str)
+      measurement_resources = []
+      first_entry = self._make_measurement_entry(measurement, time_str, participant_id,
+                                                 qualifier_set, None, 1)
+      entries.append(first_entry)
+      if num_measurements > 1:
+        measurement_resources.append(first_entry['resource'])
+        for i in xrange(1, num_measurements):
+          entry = self._make_measurement_entry(measurement, time_str, participant_id,
+                                               qualifier_set, first_entry['resource'], i + 1)
+          measurement_resources.append(entry['resource'])
+          entries.append(entry)
+        entries.append(self._make_mean_entry(measurement, time_str,
+                                             participant_id, measurement_resources))
+
     # Add any qualifiers that were specified for other measurements.
     for qualifier in qualifier_set:
       qualifier_measurement = self._qualifier_map[qualifier]
