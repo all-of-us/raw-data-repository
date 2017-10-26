@@ -361,7 +361,7 @@ class FakeParticipantGenerator(object):
   def _mean(self, values):
     return round(sum(values) / len(values), 1)
 
-  def _find_closest_two_mean(self, measurement_values):    
+  def _find_closest_two_mean(self, measurement_values):
     # Find the mean of the two closest values; or if they are equally distant from each other,
     # find the mean of all three.
     delta_0_1 = abs(measurement_values[0] - measurement_values[1])
@@ -380,17 +380,17 @@ class FakeParticipantGenerator(object):
       else:
         return self._mean(measurement_values[1:])
 
-  def _calculate_last_two_mean(self, measurement_values):    
+  def _calculate_last_two_mean(self, measurement_values):
     return self._mean(measurement_values[1:])
 
   def _find_components_by_coding(self, measurement_resources, submeasurement_coding):
-    components = []    
+    components = []
     for resource in measurement_resources:
       for subcomponent in resource.get('component', []):
         for coding in subcomponent['code']['coding']:
           if (coding['system'] == submeasurement_coding['system'] and
-              coding['code'] == submeasurement_coding['code']):            
-            components.append(subcomponent)    
+              coding['code'] == submeasurement_coding['code']):
+            components.append(subcomponent)
     return components
 
   def _make_mean_resource(self, mean_type, measurement, measurement_resources):
@@ -427,10 +427,10 @@ class FakeParticipantGenerator(object):
       resource['bodySite'] = body_site
     if measurement['submeasurements']:
       components = []
-      for submeasurement in measurement['submeasurements']:      
-        measurement_components = self._find_components_by_coding(measurement_resources, 
-                                                                 submeasurement['code'])        
-        if measurement_components:          
+      for submeasurement in measurement['submeasurements']:
+        measurement_components = self._find_components_by_coding(measurement_resources,
+                                                                 submeasurement['code'])
+        if measurement_components:
           components.append(self._make_mean_resource(mean_type, submeasurement,
                                                      measurement_components))
       if components:
@@ -470,11 +470,11 @@ class FakeParticipantGenerator(object):
       components = []
       for submeasurement in measurement['submeasurements']:
         previous_component = None
-        if previous_resource:          
-          subcomponents = self._find_components_by_coding([previous_resource], 
-                                                          submeasurement['code'])          
+        if previous_resource:
+          subcomponents = self._find_components_by_coding([previous_resource],
+                                                          submeasurement['code'])
           if subcomponents:
-            previous_component = subcomponents[0]        
+            previous_component = subcomponents[0]
         components.append(self._make_measurement_resource(submeasurement, qualifier_set,
                                                           previous_component, measurement_count))
       if components:
