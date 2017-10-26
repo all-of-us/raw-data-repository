@@ -55,14 +55,14 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
 
     em1 = Measurement(measurementId=pm_id * 1000,
                       physicalMeasurementsId=pm_id,
-                      codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+                      codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
                       codeValue="systolic-diastolic-blood-pressure-1",
                       measurementTime=now,
                       bodySiteCodeSystem="http://snomed.info/sct",
                       bodySiteCodeValue="368209003")
     bp1 = Measurement(measurementId=pm_id * 1000 + 1,
                       physicalMeasurementsId=pm_id,
-                      codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+                      codeSystem="http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
                       codeValue="systolic-blood-pressure-1",
                       measurementTime=now,
                       valueDecimal=109.0,
