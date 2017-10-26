@@ -72,7 +72,7 @@ _QUESTIONNAIRE_NOT_SUBMITTED = 0.4
 # Any given question on a submitted questionnaire has a 10% chance of not being answered
 _QUESTION_NOT_ANSWERED = 0.1
 # The maximum percentage deviation of repeated measurements.
-_PERCENT_DEVIATION_FOR_REPEATED_MEASUREMENTS = 0.05
+_PERCENT_DEVIATION_FOR_REPEATED_MEASUREMENTS = 0.01
 # The system used with PMI codes in physical measurements
 _PMI_MEASUREMENTS_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation"
 # Maximum number of days between a participant consenting and submitting physical measurements
@@ -350,21 +350,18 @@ class FakeParticipantGenerator(object):
     related_list = []
     related_urls = set()
     for measurement_resource in measurement_resources:
-      resource_related = measurement_resource.get('related')
-      if resource_related:
-        for related in resource_related:
-          # Make sure we don't repeat references to the same qualifier.
-          url = related['target']['reference']
-          if url not in related_urls:
-            related_list.append(related)
-            related_urls.add(url)
+      for related in measurement_resource.get('related', []):
+        # Make sure we don't repeat references to the same qualifier.
+        url = related['target']['reference']
+        if url not in related_urls:
+          related_list.append(related)
+          related_urls.add(url)
     return related_list
 
   def _mean(self, values):
     return round(sum(values) / len(values), 1)
 
-  def _find_closest_two_mean(self, measurement_resources):
-    measurement_values = self._get_measurement_values(measurement_resources)
+  def _find_closest_two_mean(self, measurement_values):    
     # Find the mean of the two closest values; or if they are equally distant from each other,
     # find the mean of all three.
     delta_0_1 = abs(measurement_values[0] - measurement_values[1])
@@ -383,28 +380,29 @@ class FakeParticipantGenerator(object):
       else:
         return self._mean(measurement_values[1:])
 
-  def _calculate_last_two_mean(self, measurement_resources):
-    measurement_values = self._get_measurement_values(measurement_resources)
+  def _calculate_last_two_mean(self, measurement_values):    
     return self._mean(measurement_values[1:])
 
-  def _find_components(self, measurement_resources, submeasurement):
-    components = []
+  def _find_components_by_coding(self, measurement_resources, submeasurement_coding):
+    components = []    
     for resource in measurement_resources:
-      subcomponents = resource.get('component')
-      if subcomponents:
-        for subcomponent in subcomponents:
-          if subcomponent['code']['coding'][0]['code'] == submeasurement['code']['code']:
-            components.append(subcomponent)
-            break
+      for subcomponent in resource.get('component', []):
+        for coding in subcomponent['code']['coding']:
+          if (coding['system'] == submeasurement_coding['system'] and
+              coding['code'] == submeasurement_coding['code']):            
+            components.append(subcomponent)    
     return components
 
   def _make_mean_resource(self, mean_type, measurement, measurement_resources):
     resource = self._make_base_measurement_resource(measurement, True, None)
     if measurement_resources[0].get('valueQuantity'):
-      if mean_type == 'closestTwo':
-        value = self._find_closest_two_mean(measurement_resources)
+      measurement_values = self._get_measurement_values(measurement_resources)
+      if len(measurement_values) < 3:
+        raise BadRequest('Bad measurement resources: %s' % measurement_resources)
+      elif mean_type == 'closestTwo':
+        value = self._find_closest_two_mean(measurement_values)
       elif mean_type == 'lastTwo':
-        value = self._calculate_last_two_mean(measurement_resources)
+        value = self._calculate_last_two_mean(measurement_values)
       else:
         raise BadRequest('Unknown meanType: %s' % mean_type)
       unit = measurement_resources[0]['valueQuantity']['unit']
@@ -429,9 +427,10 @@ class FakeParticipantGenerator(object):
       resource['bodySite'] = body_site
     if measurement['submeasurements']:
       components = []
-      for submeasurement in measurement['submeasurements']:
-        measurement_components = self._find_components(measurement_resources, submeasurement)
-        if measurement_components:
+      for submeasurement in measurement['submeasurements']:      
+        measurement_components = self._find_components_by_coding(measurement_resources, 
+                                                                 submeasurement['code'])        
+        if measurement_components:          
           components.append(self._make_mean_resource(mean_type, submeasurement,
                                                      measurement_components))
       if components:
@@ -471,13 +470,11 @@ class FakeParticipantGenerator(object):
       components = []
       for submeasurement in measurement['submeasurements']:
         previous_component = None
-        # If there was a previous entry, find the component matching the code for this
-        # submeasurement.
-        if previous_resource:
-          for component in previous_resource['component']:
-            if component['code']['coding'][0]['code'] == submeasurement['code']['code']:
-              previous_component = component
-              break
+        if previous_resource:          
+          subcomponents = self._find_components_by_coding([previous_resource], 
+                                                          submeasurement['code'])          
+          if subcomponents:
+            previous_component = subcomponents[0]        
         components.append(self._make_measurement_resource(submeasurement, qualifier_set,
                                                           previous_component, measurement_count))
       if components:

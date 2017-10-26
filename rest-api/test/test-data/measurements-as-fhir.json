@@ -101,7 +101,7 @@
               "system": "http://loinc.org"
             },
             {
-              "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
               "code": "systolic-diastolic-blood-pressure-1"
             }
           ],
@@ -117,7 +117,7 @@
                   "system": "http://loinc.org"
                 },
                 {
-                  "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements",
+                  "system": "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation",
                   "code": "systolic-blood-pressure-1"
                 }
               ],
