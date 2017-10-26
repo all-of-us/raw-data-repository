@@ -31,7 +31,7 @@ done
 if [ "${MYSQL_ROOT_PASSWORD}" ]
 then
   ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD}"
-  ROOT_PASSWORD_ARGS='-p"${ROOT_PASSWORD}"'
+  ROOT_PASSWORD_ARGS="-p${ROOT_PASSWORD}"
 else
   echo "Using a default root mysql password. Set MYSQL_ROOT_PASSWORD to override."
 fi
