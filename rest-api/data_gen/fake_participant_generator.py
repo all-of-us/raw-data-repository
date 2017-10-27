@@ -74,7 +74,7 @@ _QUESTION_NOT_ANSWERED = 0.1
 # The maximum percentage deviation of repeated measurements.
 _PERCENT_DEVIATION_FOR_REPEATED_MEASUREMENTS = 0.01
 # The system used with PMI codes in physical measurements
-_PMI_MEASUREMENTS_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/physical-evaluation"
+_PMI_MEASUREMENTS_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/physical-measurements"
 # Maximum number of days between a participant consenting and submitting physical measurements
 _MAX_DAYS_BEFORE_PHYSICAL_MEASUREMENTS = 60
 # Maximum number of days between a participant consenting and submitting a biobank order.
