@@ -21,7 +21,7 @@ _OBSERVATION_RESOURCE_TYPE = 'Observation'
 _COMPOSITION_RESOURCE_TYPE = 'Composition'
 _CREATED_LOC_EXTENSION = 'http://terminology.pmi-ops.org/StructureDefinition/authored-location'
 _FINALIZED_LOC_EXTENSION = 'http://terminology.pmi-ops.org/StructureDefinition/finalized-location'
-_PM_SYSTEM = 'http://terminology.pmi-ops.org/CodeSystem/physical-measurements'
+_PM_SYSTEM_PREFIX = 'http://terminology.pmi-ops.org/CodeSystem/'
 _AUTHORING_STEP = 'http://terminology.pmi-ops.org/StructureDefinition/authoring-step'
 _CREATED_STATUS = 'created'
 _FINALIZED_STATUS = 'finalized'
@@ -339,9 +339,9 @@ class PhysicalMeasurementsDao(BaseDao):
     for coding in codeable_concept.coding:
       if pm_coding is None:
         pm_coding = coding
-      elif coding.system == _PM_SYSTEM:
-        if pm_coding.system == _PM_SYSTEM:
-          raise BadRequest('Multiple measurement codes with system %s' % _PM_SYSTEM)
+      elif coding.system.startswith(_PM_SYSTEM_PREFIX):
+        if pm_coding.system.startswith(_PM_SYSTEM_PREFIX):
+          raise BadRequest('Multiple measurement codes starting system %s' % _PM_SYSTEM_PREFIX)
         pm_coding = coding
     return pm_coding
 
@@ -364,9 +364,9 @@ class PhysicalMeasurementsDao(BaseDao):
     if component.valueString:
       value_string = component.valueString
     if component.valueCodeableConcept and component.valueCodeableConcept.coding:
-      # TODO: use codebook codes for PMI codes?
-      value_code_system = component.valueCodeableConcept.coding[0].system
-      value_code_value = component.valueCodeableConcept.coding[0].code
+      value_coding = PhysicalMeasurementsDao.get_preferred_coding(component.valueCodeableConcept)
+      value_code_system = value_coding.system
+      value_code_value = value_coding.code
     pm_coding = PhysicalMeasurementsDao.get_preferred_coding(component.code)
     return Measurement(codeSystem=pm_coding.system,
                        codeValue=pm_coding.code,
@@ -403,8 +403,9 @@ class PhysicalMeasurementsDao(BaseDao):
     value_code_value = None
     value_date_time = None
     if observation.bodySite and observation.bodySite.coding:
-      body_site_code_system = observation.bodySite.coding[0].system
-      body_site_code_value = observation.bodySite.coding[0].code
+      body_site_coding = PhysicalMeasurementsDao.get_preferred_coding(observation.bodySite)
+      body_site_code_system = body_site_coding.system
+      body_site_code_value = body_site_coding.code
     if observation.valueQuantity:
       value_decimal = observation.valueQuantity.value
       value_unit = observation.valueQuantity.code
@@ -413,9 +414,9 @@ class PhysicalMeasurementsDao(BaseDao):
     if observation.valueString:
       value_string = observation.valueString
     if observation.valueCodeableConcept and observation.valueCodeableConcept.coding:
-      # TODO: use codebook codes for PMI codes?
-      value_code_system = observation.valueCodeableConcept.coding[0].system
-      value_code_value = observation.valueCodeableConcept.coding[0].code
+      value_coding = PhysicalMeasurementsDao.get_preferred_coding(observation.valueCodeableConcept)
+      value_code_system = value_coding.system
+      value_code_value = value_coding.code
     measurements = []
     if observation.component:
       for component in observation.component:
