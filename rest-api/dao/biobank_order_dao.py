@@ -186,21 +186,17 @@ class BiobankOrderDao(BaseDao):
       raise BadRequest("Can't submit biospecimens for participant %s without consent" %
                        obj.participantId)
     raise_if_withdrawn(participant_summary)
-    if (not participant_summary.biospecimenStatus or
-        participant_summary.biospecimenStatus == OrderStatus.UNSET):
-      participant_summary.biospecimenStatus = OrderStatus.FINALIZED
-      participant_summary.biospecimenOrderTime = obj.created
-      participant_summary.biospecimenSourceSiteId = obj.sourceSiteId
-      participant_summary.biospecimenCollectedSiteId = obj.collectedSiteId
-      participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
-      participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
+    participant_summary.biospecimenStatus = OrderStatus.FINALIZED
+    participant_summary.biospecimenOrderTime = obj.created
+    participant_summary.biospecimenSourceSiteId = obj.sourceSiteId
+    participant_summary.biospecimenCollectedSiteId = obj.collectedSiteId
+    participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
+    participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
-      status_value = getattr(participant_summary, status_field)
-      if not status_value or status_value == OrderStatus.UNSET:
-        status, time = self._get_order_status_and_time(sample, obj)
-        setattr(participant_summary, status_field, status)
-        setattr(participant_summary, status_field + 'Time', time)
+      status, time = self._get_order_status_and_time(sample, obj)
+      setattr(participant_summary, status_field, status)
+      setattr(participant_summary, status_field + 'Time', time)
 
   def _parse_handling_info(self, handling_info):
     site_id = None

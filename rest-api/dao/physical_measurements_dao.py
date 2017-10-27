@@ -276,13 +276,12 @@ class PhysicalMeasurementsDao(BaseDao):
       raise BadRequest("Can't submit physical measurements for participant %s without consent" %
                        participant_id)
     raise_if_withdrawn(participant_summary)
-    if (not participant_summary.physicalMeasurementsStatus or
-        participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.UNSET):
+    participant_summary.physicalMeasurementsTime = obj.created
+    participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
+    participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
+    participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
+    if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.COMPLETED:
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
-      participant_summary.physicalMeasurementsTime = obj.created
-      participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
-      participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
-      participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
       participant_summary_dao.update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 
