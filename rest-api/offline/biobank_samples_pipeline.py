@@ -16,7 +16,7 @@ from code_constants import RACE_QUESTION_CODE, RACE_AIAN_CODE, PPI_SYSTEM
 from dao import database_factory
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.code_dao import CodeDao
-from dao.database_utils import replace_isodate, parse_datetime, get_sql_and_params_for_array
+from dao.database_utils import replace_isodate, parse_datetime
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.utils import from_client_biobank_id, get_biobank_id_prefix
