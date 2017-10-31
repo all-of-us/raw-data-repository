@@ -228,7 +228,7 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
                                                     ordered_before=now - _THIRTY_SIX_HOURS_AGO))
 
   code_dao = CodeDao()
-  race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)    
+  race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
   native_american_race_code = code_dao.get_code(PPI_SYSTEM, RACE_AIAN_CODE)
 
   # Open three files and a database session; run the reconciliation query and pipe the output
@@ -240,7 +240,7 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
     writer = CompositeSqlExportWriter([received_writer, late_writer, missing_writer])
     exporter.run_export_with_session(writer, session, replace_isodate(_RECONCILIATION_REPORT_SQL),
                                      {'race_question_code_id': race_question_code.codeId,
-                                      'native_american_race_code_id': 
+                                      'native_american_race_code_id':
                                         native_american_race_code.codeId,
                                       'biobank_id_prefix': get_biobank_id_prefix(),
                                       'pmi_ops_system': _PMI_OPS_SYSTEM,
