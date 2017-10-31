@@ -4,8 +4,7 @@
 # The CSV is from the site information spreadsheet, "Sites" tab:
 # https://docs.google.com/spreadsheets/d/1AbumEBdalefpxNJaWOu4bMHdzUiVpezurGH5-w9Bv4k
 
-USAGE="tools/import_sites.sh [--file <FILE>] [--account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]]"
-FILE=test/test-data/sites.csv
+USAGE="tools/import_sites.sh --file <FILE> [--account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>]]"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
@@ -17,6 +16,12 @@ while true; do
     * ) break ;;
   esac
 done
+
+if [ -z "${FILE}" ]
+then
+  echo "--file is required. Usage: $USAGE"
+  exit 1
+fi
 
 if [ "${PROJECT}" ]
 then
