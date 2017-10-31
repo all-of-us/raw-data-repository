@@ -6,7 +6,7 @@
 echo "Importing HPOs..."
 tools/import_hpos.sh $@
 echo "Importing sites..."
-tools/import_sites.sh $@
+tools/import_sites.sh --file test/test-data/sites.csv $@
 echo "Importing codebook..."
 ../rdr_client/run_client.sh $@ import_codebook.py
 echo "Importing questionnaires..."

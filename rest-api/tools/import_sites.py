@@ -12,6 +12,7 @@ def main(args):
   skip_count = 0
   new_or_updated_count = 0
   matched_count = 0
+  logging.info('Importing from %r.', args.file)
   with open(args.file, 'r') as csv_file:
     sites_reader = csv.DictReader(csv_file)
     hpo_dao = HPODao()
