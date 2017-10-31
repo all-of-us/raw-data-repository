@@ -12,7 +12,7 @@ from cloudstorage import cloudstorage_api
 
 import clock
 import config
-from code_constants import RACE_QUESTION_CODE, PPI_SYSTEM
+from code_constants import RACE_QUESTION_CODE, RACE_AIAN_CODE, PPI_SYSTEM
 from dao import database_factory
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.code_dao import CodeDao
@@ -227,6 +227,10 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
                                        in_past_week(result, now,
                                                     ordered_before=now - _THIRTY_SIX_HOURS_AGO))
 
+  code_dao = CodeDao()
+  race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)    
+  native_american_race_code = code_dao.get_code(PPI_SYSTEM, RACE_AIAN_CODE)
+
   # Open three files and a database session; run the reconciliation query and pipe the output
   # to the files, using per-file predicates to filter out results.
   with exporter.open_writer(path_received, received_predicate) as received_writer, \
@@ -235,24 +239,20 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
        database_factory.get_database().session() as session:
     writer = CompositeSqlExportWriter([received_writer, late_writer, missing_writer])
     exporter.run_export_with_session(writer, session, replace_isodate(_RECONCILIATION_REPORT_SQL),
-                                     {"biobank_id_prefix": get_biobank_id_prefix(),
-                                      "pmi_ops_system": _PMI_OPS_SYSTEM,
-                                      "kit_id_system": _KIT_ID_SYSTEM,
-                                      "tracking_number_system": _TRACKING_NUMBER_SYSTEM})
+                                     {'race_question_code_id': race_question_code.codeId,
+                                      'native_american_race_code_id': 
+                                        native_american_race_code.codeId,
+                                      'biobank_id_prefix': get_biobank_id_prefix(),
+                                      'pmi_ops_system': _PMI_OPS_SYSTEM,
+                                      'kit_id_system': _KIT_ID_SYSTEM,
+                                      'tracking_number_system': _TRACKING_NUMBER_SYSTEM})
 
   # Now generate the withdrawal report.
-  code_dao = CodeDao()
-  race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
-  race_code_ids = []
-  for code_value in config.getSettingList(config.NATIVE_AMERICAN_RACE_CODES):
-    code = code_dao.get_code(PPI_SYSTEM, code_value)
-    race_code_ids.append(str(code.codeId))
-  race_codes_sql, params = get_sql_and_params_for_array(race_code_ids, 'race')
-  withdrawal_sql = _WITHDRAWAL_REPORT_SQL.format(race_codes_sql)
-  params['race_question_code_id'] = race_question_code.codeId
-  params['seven_days_ago'] = now - datetime.timedelta(days=7)
-  params['biobank_id_prefix'] = get_biobank_id_prefix()
-  exporter.run_export(path_withdrawals, replace_isodate(withdrawal_sql), params)
+  params = {'race_question_code_id': race_question_code.codeId,
+            'native_american_race_code_id': native_american_race_code.codeId,
+            'seven_days_ago': now - datetime.timedelta(days=7),
+            'biobank_id_prefix': get_biobank_id_prefix()}
+  exporter.run_export(path_withdrawals, replace_isodate(_WITHDRAWAL_REPORT_SQL), params)
 
 # Indexes from the SQL query below; used in predicates.
 _SENT_COUNT_INDEX = 2
@@ -306,6 +306,18 @@ def _get_hpo_type_sql(hpo_alias):
   result += "ELSE 'UNKNOWN' END)"
   return result
 
+_NATIVE_AMERICAN_SQL = """
+  (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
+       FROM questionnaire_response qr
+       INNER JOIN questionnaire_response_answer qra
+         ON qra.questionnaire_response_id = qr.questionnaire_response_id
+       INNER JOIN questionnaire_question qq
+         ON qra.question_id = qq.questionnaire_question_id
+      WHERE qr.participant_id = participant.participant_id
+        AND qq.code_id = :race_question_code_id
+        AND qra.value_code_id = :native_american_race_code_id
+        AND qra.end_time IS NULL) is_native_american"""
+
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION ALL a LEFT OUTER JOIN
 # with a SELECT... WHERE NOT EXISTS (the latter for cases where we have a sample but no matching
@@ -340,7 +352,11 @@ _RECONCILIATION_REPORT_SQL = ("""
     ISODATE[MAX(created)] 'Sample Family Create Date',
     TIMESTAMPDIFF(HOUR, MAX(collected), MAX(created)) elapsed_hours,
     GROUP_CONCAT(DISTINCT biospecimen_kit_id) biospecimen_kit_id,
-    GROUP_CONCAT(DISTINCT fedex_tracking_number) fedex_tracking_number
+    GROUP_CONCAT(DISTINCT fedex_tracking_number) fedex_tracking_number,
+    GROUP_CONCAT(DISTINCT is_native_american) is_native_american,
+    GROUP_CONCAT(notes_collected) notes_collected,
+    GROUP_CONCAT(notes_processed) notes_processed,
+    GROUP_CONCAT(notes_finalized) notes_finalized
   FROM
    (SELECT
       participant.biobank_id raw_biobank_id,
@@ -367,7 +383,10 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample.confirmed,
       biobank_stored_sample.created,
       kit_id_identifier.value biospecimen_kit_id,
-      tracking_number_identifier.value fedex_tracking_number
+      tracking_number_identifier.value fedex_tracking_number, """ + _NATIVE_AMERICAN_SQL + """,
+      biobank_order.collected_note notes_collected,
+      biobank_order.processed_note notes_processed,
+      biobank_order.finalized_note notes_finalized
     FROM """ + _ORDER_JOINS + """
     LEFT OUTER JOIN
       biobank_stored_sample
@@ -407,9 +426,14 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample.confirmed,
       biobank_stored_sample.created,
       NULL biospecimen_kit_id,
-      NULL fedex_tracking_number
+      NULL fedex_tracking_number, """ + _NATIVE_AMERICAN_SQL + """,
+      NULL notes_collected,
+      NULL notes_processed,
+      NULL notes_finalized
     FROM
       biobank_stored_sample
+      LEFT OUTER JOIN
+        participant ON biobank_stored_sample.biobank_id = participant.biobank_id
     WHERE NOT EXISTS (
       SELECT 0 FROM """ + _ORDER_JOINS + " WHERE " + _STORED_SAMPLE_JOIN_CRITERIA + """
     ) AND NOT EXISTS (
@@ -430,17 +454,7 @@ _RECONCILIATION_REPORT_SQL = ("""
 _WITHDRAWAL_REPORT_SQL = ("""
   SELECT
     CONCAT(:biobank_id_prefix, participant.biobank_id) biobank_id,
-    ISODATE[participant.withdrawal_time] withdrawal_time,
-    (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
-       FROM questionnaire_response qr
-       INNER JOIN questionnaire_response_answer qra
-         ON qra.questionnaire_response_id = qr.questionnaire_response_id
-       INNER JOIN questionnaire_question qq
-         ON qra.question_id = qq.questionnaire_question_id
-      WHERE qr.participant_id = participant.participant_id
-        AND qq.code_id = :race_question_code_id
-        AND qra.value_code_id IN {}
-        AND qra.end_time IS NULL) is_native_american
+    ISODATE[participant.withdrawal_time] withdrawal_time,""" + _NATIVE_AMERICAN_SQL + """
     FROM participant
    WHERE participant.withdrawal_time >= :seven_days_ago
 """)
