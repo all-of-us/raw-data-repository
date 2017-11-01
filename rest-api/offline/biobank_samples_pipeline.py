@@ -247,12 +247,12 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
                                       'kit_id_system': _KIT_ID_SYSTEM,
                                       'tracking_number_system': _TRACKING_NUMBER_SYSTEM})
 
-  # Now generate the withdrawal report.
-  params = {'race_question_code_id': race_question_code.codeId,
-            'native_american_race_code_id': native_american_race_code.codeId,
-            'seven_days_ago': now - datetime.timedelta(days=7),
-            'biobank_id_prefix': get_biobank_id_prefix()}
-  exporter.run_export(path_withdrawals, replace_isodate(_WITHDRAWAL_REPORT_SQL), params)
+  # Now generate the withdrawal report.  
+  exporter.run_export(path_withdrawals, replace_isodate(_WITHDRAWAL_REPORT_SQL),
+                      {'race_question_code_id': race_question_code.codeId,
+                       'native_american_race_code_id': native_american_race_code.codeId,
+                       'seven_days_ago': now - datetime.timedelta(days=7),
+                       'biobank_id_prefix': get_biobank_id_prefix()})
 
 # Indexes from the SQL query below; used in predicates.
 _SENT_COUNT_INDEX = 2
@@ -306,6 +306,8 @@ def _get_hpo_type_sql(hpo_alias):
   result += "ELSE 'UNKNOWN' END)"
   return result
 
+# Used in the context of queries where "participant" is the table for the participant being 
+# selected.
 _NATIVE_AMERICAN_SQL = """
   (SELECT (CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END)
        FROM questionnaire_response qr
