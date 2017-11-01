@@ -51,9 +51,12 @@ _CSV_COLUMN_NAMES = (
   'elapsed_hours',
 
   'biospecimen_kit_id',
-  'fedex_tracking_number'
+  'fedex_tracking_number',
+  'is_native_american',
+  'notes_collected',
+  'notes_processed',
+  'notes_finalized'
 )
-
 
 class MySqlReconciliationTest(FlaskTestBase):
   """Biobank samples pipeline tests requiring slower MySQL (not SQLite)."""
@@ -81,7 +84,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     return participant
 
   def _insert_order(self, participant, order_id, tests, order_time, finalized_tests=None,
-                    kit_id=None, tracking_number=None):
+                    kit_id=None, tracking_number=None, collected_note=None,
+                    processed_note=None, finalized_note=None):
     order = BiobankOrder(
         biobankOrderId=order_id,
         participantId=participant.participantId,
@@ -89,6 +93,9 @@ class MySqlReconciliationTest(FlaskTestBase):
         finalizedSiteId=1,
         finalizedUsername='bob@pmi-ops.org',
         created=order_time,
+        collectedNote=collected_note,
+        processedNote=processed_note,
+        finalizedNote=finalized_note,
         samples=[])
     id_1 = BiobankOrderIdentifier(system="https://orders.mayomedicallaboratories.com",
                                   value=order_id)
@@ -152,7 +159,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     p_on_time = self._insert_participant()
     # Extra samples ordered now aren't considered missing or late.
     self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time,
-                       finalized_tests=BIOBANK_TESTS[:3], kit_id='kit1', tracking_number='t1')
+                       finalized_tests=BIOBANK_TESTS[:3], kit_id='kit1', tracking_number='t1',
+                       collected_note='foo', processed_note='bar', finalized_note='baz')
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'],
                          within_24_hours, within_24_hours - datetime.timedelta(hours=1))
 
@@ -304,6 +312,10 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertEquals(row['received_sample_id'], 'GoodSample1')
     self.assertEquals(row['biospecimen_kit_id'], 'kit1')
     self.assertEquals(row['fedex_tracking_number'], 't1')
+    self.assertEquals(row['is_native_american'], 'N')
+    self.assertEquals(row['notes_collected'], 'foo')
+    self.assertEquals(row['notes_processed'], 'bar')
+    self.assertEquals(row['notes_finalized'], 'baz')
     # the other sent-and-received rows
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': BIOBANK_TESTS[1]})
@@ -311,12 +323,15 @@ class MySqlReconciliationTest(FlaskTestBase):
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_test': BIOBANK_TESTS[0]})
     exporter.assertHasRow(received, {
-        'biobank_id': to_client_biobank_id(p_old_on_time.biobankId), 'sent_test': BIOBANK_TESTS[0]})
+        'biobank_id': to_client_biobank_id(p_old_on_time.biobankId), 'sent_test': BIOBANK_TESTS[0],
+        'is_native_american': 'Y'})
     exporter.assertHasRow(received, {
-        'biobank_id': to_client_biobank_id(p_old_on_time.biobankId), 'sent_test': BIOBANK_TESTS[1]})
+        'biobank_id': to_client_biobank_id(p_old_on_time.biobankId), 'sent_test': BIOBANK_TESTS[1],
+        'is_native_american': 'Y'})
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_old_late_and_missing.biobankId),
-        'sent_test': BIOBANK_TESTS[0]})
+        'sent_test': BIOBANK_TESTS[0],
+        'is_native_american': 'N'})
 
     # sent-and-received: 2 late; don't include orders/samples from more than 7 days ago
     exporter.assertRowCount(late, 2)
@@ -324,7 +339,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_order_id': 'O%s' % o_late_and_missing.biobankOrderId,
-        'elapsed_hours': '24'})
+        'elapsed_hours': '24',
+        'is_native_american': 'N'})
     exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_repeated.biobankId),
         'elapsed_hours': '45'})
@@ -340,7 +356,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId),
         'sent_order_id': 'OTwoDaysMissingOrder',
-        'sent_test': BIOBANK_TESTS[0]})
+        'sent_test': BIOBANK_TESTS[0],
+        'is_native_american': 'N'})
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId),
         'sent_order_id': 'OTwoDaysMissingOrder',
