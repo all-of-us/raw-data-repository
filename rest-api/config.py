@@ -33,7 +33,7 @@ BASELINE_PPI_QUESTIONNAIRE_FIELDS = 'baseline_ppi_questionnaire_fields'
 PPI_QUESTIONNAIRE_FIELDS = 'ppi_questionnaire_fields'
 BASELINE_SAMPLE_TEST_CODES = 'baseline_sample_test_codes'
 DNA_SAMPLE_TEST_CODES = 'dna_sample_test_codes'
-NATIVE_AMERICAN_RACE_CODES = 'native_american_race_codes'
+
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.
 ALLOW_NONPROD_REQUESTS = 'allow_nonprod_requests'
