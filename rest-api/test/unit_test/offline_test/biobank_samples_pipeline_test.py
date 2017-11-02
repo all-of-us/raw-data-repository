@@ -15,7 +15,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from offline import biobank_samples_pipeline
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 from test import test_data
-from model.utils import to_client_biobank_id, get_biobank_id_prefix
+from model.config_utils import to_client_biobank_id, get_biobank_id_prefix
 from model.participant import Participant
 from participant_enums import SampleStatus
 

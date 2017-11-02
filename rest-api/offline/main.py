@@ -1,6 +1,5 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
 
-import api_util
 import app_util
 import config
 import json
@@ -51,7 +50,7 @@ def _alert_on_exceptions(func):
   return alert_on_exceptions_wrapper
 
 
-@api_util.auth_required_cron
+@app_util.auth_required_cron
 @_alert_on_exceptions
 def recalculate_metrics():
   in_progress = MetricsVersionDao().get_version_in_progress()
@@ -66,7 +65,7 @@ def recalculate_metrics():
     return '{"metrics-pipeline-status": "started"}'
 
 
-@api_util.auth_required_cron
+@app_util.auth_required_cron
 @_alert_on_exceptions
 def import_biobank_samples():
   # Note that crons always have a 10 minute deadline instead of the normal 60s; additionally our
@@ -81,7 +80,7 @@ def import_biobank_samples():
   logging.info('Generated reconciliation report.')
   return json.dumps({'written': written})
 
-@api_util.auth_required(EXPORTER)
+@app_util.auth_required(EXPORTER)
 def export_tables():
   resource = request.get_data()
   resource_json = json.loads(resource)

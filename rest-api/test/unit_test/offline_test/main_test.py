@@ -14,7 +14,7 @@ class MainTest(TestBase):
     config.override_setting(config.BIOBANK_STATUS_MAIL_RECIPIENTS, ['ars@biobank.org'])
 
   @mock.patch('offline.biobank_samples_pipeline.upsert_from_latest_csv')
-  @mock.patch('api_util.check_cron')
+  @mock.patch('app_util.check_cron')
   @mock.patch('google.appengine.api.app_identity.get_application_id')
   @mock.patch('google.appengine.api.mail.send_mail')
   # pylint: disable=unused-argument

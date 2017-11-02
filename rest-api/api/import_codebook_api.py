@@ -3,7 +3,8 @@ import logging
 import pprint
 import urllib2
 
-from api_util import auth_required, PTC_AND_HEALTHPRO
+from api_util import PTC_AND_HEALTHPRO
+from app_util import auth_required
 from dao.code_dao import CodeBookDao
 
 

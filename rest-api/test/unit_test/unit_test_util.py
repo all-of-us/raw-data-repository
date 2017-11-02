@@ -334,7 +334,7 @@ class FlaskTestBase(NdbTestBase):
     self._app = main.app.test_client()
 
     self._patchers = []
-    mock_oauth = mock.patch('api_util.get_oauth_id')
+    mock_oauth = mock.patch('app_util.get_oauth_id')
     self._mock_get_oauth_id = mock_oauth.start()
     self._patchers.append(mock_oauth)
 
@@ -539,4 +539,3 @@ def run_deferred_tasks(test):
       if task.url != '/_ah/queue/deferred':
         return
     test.taskqueue.FlushQueue("default")
-

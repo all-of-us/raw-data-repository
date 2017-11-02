@@ -1,4 +1,4 @@
-import api_util
+import app_util
 import config
 
 from api.base_api import BaseApi, DEFAULT_MAX_RESULTS, get_sync_results_for_request
@@ -12,11 +12,11 @@ class PhysicalMeasurementsApi(BaseApi):
   def __init__(self):
     super(PhysicalMeasurementsApi, self).__init__(PhysicalMeasurementsDao())
 
-  @api_util.auth_required(PTC_AND_HEALTHPRO)
+  @app_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None, p_id=None):
     return super(PhysicalMeasurementsApi, self).get(id_, participant_id=p_id)
 
-  @api_util.auth_required(HEALTHPRO)
+  @app_util.auth_required(HEALTHPRO)
   def post(self, p_id):
     return super(PhysicalMeasurementsApi, self).post(p_id)
 
@@ -27,7 +27,7 @@ class PhysicalMeasurementsApi(BaseApi):
     return self._make_bundle(results, 'id', participant_id)
 
 
-@api_util.auth_required(PTC)
+@app_util.auth_required(PTC)
 def sync_physical_measurements():
   max_results = config.getSetting(config.MEASUREMENTS_ENTITIES_PER_SYNC, 100)
   return get_sync_results_for_request(PhysicalMeasurementsDao(), max_results)

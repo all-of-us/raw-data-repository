@@ -9,7 +9,7 @@ from cloudstorage import cloudstorage_api
 from code_constants import BIOBANK_TESTS
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_dao import ParticipantDao
-from model.utils import to_client_biobank_id
+from model.config_utils import to_client_biobank_id
 from offline.biobank_samples_pipeline import INPUT_CSV_TIME_FORMAT
 
 # 1% of participants have samples with no associated order

@@ -3,8 +3,9 @@ import logging
 
 from google.appengine.ext import deferred
 
-import api_util
-from api_util import nonprod, get_validated_user_info, HEALTHPRO
+import app_util
+from app_util import nonprod, get_validated_user_info
+from api_util import HEALTHPRO
 from config_api import is_config_admin
 from data_gen.fake_participant_generator import FakeParticipantGenerator
 from data_gen.fake_biobank_samples_generator import generate_samples
@@ -21,7 +22,7 @@ _SAMPLES_MISSING_FRACTION = 0.1
 def _auth_required_healthpro_or_config_admin(func):
   """A decorator that checks that the caller is a config admin for the app."""
   def wrapped(*args, **kwargs):
-    if not is_config_admin(api_util.get_oauth_id()):
+    if not is_config_admin(app_util.get_oauth_id()):
       _, user_info = get_validated_user_info()
       if not HEALTHPRO in user_info.get('roles', []):
         logging.info('User has roles {}, but HEALTHPRO or admin is required'.format(

@@ -2,7 +2,8 @@ import json
 
 from flask import request
 
-from api_util import auth_required, PTC_AND_HEALTHPRO
+from api_util import PTC_AND_HEALTHPRO
+from app_util import auth_required
 from code_constants import PPI_SYSTEM, EMAIL_QUESTION_CODE
 from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
