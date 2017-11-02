@@ -237,7 +237,7 @@ class BiobankOrderDao(BaseDao):
 
     order = BiobankOrder(
         participantId=participant_id,
-        created=resource.created.date)
+        created=resource.created.date.replace(tzinfo=None))
 
     if not resource.created_info:
       raise BadRequest('Created Info is required, but was missing in request.')
@@ -285,9 +285,9 @@ class BiobankOrderDao(BaseDao):
           test=s.test,
           description=s.description,
           processingRequired=s.processing_required,
-          collected=s.collected and s.collected.date,
-          processed=s.processed and s.processed.date,
-          finalized=s.finalized and s.finalized.date))
+          collected=s.collected and s.collected.date.replace(tzinfo=None),
+          processed=s.processed and s.processed.date.replace(tzinfo=None),
+          finalized=s.finalized and s.finalized.date.replace(tzinfo=None)))
 
   @classmethod
   def _participant_id_to_subject(cls, participant_id):
