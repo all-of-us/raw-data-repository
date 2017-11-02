@@ -11,17 +11,20 @@ find . | grep \.pyc | xargs rm -if $*
 
 echo "Installing libs..."
 # If this fails due to missing mysql_config, try `sudo apt-get install libmysqlclient-dev`.
-pip install --system -r requirements.txt -t lib/
+pip install -r requirements.txt -t lib/
 
 # MySQL-python must be installed outside the lib directory, or dev_appserver.py will fail with
 # "No module named _mysql".
-pip install --user MySQL-python
+pip install MySQL-python
 
 echo "Installing Alembic..."
-pip install --user alembic
+pip install alembic
 echo "Installing JIRA..."
-pip install --user jira
-pip install --user requests[security]
+pip install jira
+pip install requests[security]
+
+echo "Installing pylint for git hooks..."
+pip install pylint
 
 git submodule update --init
 
