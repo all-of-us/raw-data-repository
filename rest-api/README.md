@@ -10,8 +10,9 @@ The GCS bucket for biobank manifest testing is pmi-drc-biobank-test.
 
 ## Configuring a Ubuntu workstation for API development:
 
-Follow the instructions in the client directory first to set up a virtual
-Python environment, then using the client venv, follow the instructions here.
+Follow the instructions in the [client directory](../rdr_client) first to set up
+a virtual Python environment, then using the client venv, follow the
+instructions here.
 
 ### Installing dependencies
 
@@ -20,8 +21,9 @@ Make sure that you have google
 
 From the rest-api directory, run:
 
-* `tools/setup_env.shi` (get libs, set up git hooks)
-* `sudo apt-get install mysql-server libmysqlclient-dev` (to install MySQL server and client — if you prefer to use docker, see note below)
+* `sudo apt-get install mysql-server libmysqlclient-dev` (to install MySQL server and client —
+if you prefer to use docker, see note below)
+* `tools/setup_env.sh` (get libs, set up git hooks)
 * `mysql -V` to ensure that you have mysql >= 5.7
 * `dev_appserver.py test.yaml --require_indexes` (to run your local server)
 * `tools/setup_local_database.sh` (to create a database in MySQL, upgrade its schema,
@@ -32,7 +34,7 @@ From the rest-api directory, run:
 
 ```
 docker volume create rdr-mysql
-docker run --name mysql -d \
+docker run --rm --name pmi-rdr-mysql -d \
   -p 3306:3306 \
   --volume rdr-mysql:/var/lib/mysql \
   -e MYSQL_ROOT_PASSWORD=root \
@@ -98,7 +100,7 @@ until ack-grep -f --python | entr -r test/run_tests.sh -g $sdk_dir unit;do sleep
 
 ### Adding fake participants to local appserver
 
-See `rdr_client/README.md` for instructions.
+See [rdr_client/README.md](../rdr_client/README.md) for instructions.
 
 Your `config_dev.json` loaded earlier should include a Config entity with
 `config_key=allow_nonprod_requests` and `value=True`. You can check the
