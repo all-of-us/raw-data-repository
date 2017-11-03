@@ -14,7 +14,7 @@ echo "Installing libs..."
 pip install -r requirements.txt -t lib/
 
 # Needed to setup the local DB.
-pip install -r ../rdr_client/requirements.txt -t lib/
+pip install -r ../rdr_client/requirements.txt
 
 # MySQL-python must be installed outside the lib directory, or dev_appserver.py will fail with
 # "No module named _mysql".
