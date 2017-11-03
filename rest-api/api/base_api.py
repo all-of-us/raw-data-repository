@@ -1,6 +1,6 @@
 import logging
 
-import api_util
+import app_util
 
 from query import OrderBy, Query
 from flask import request, jsonify, url_for
@@ -22,7 +22,7 @@ class BaseApi(Resource):
 
   When extending this class, prefer to use the method_decorators class property
   for uniform authentication, e.g.:
-    method_decorators = [api_util.auth_required_cron]
+    method_decorators = [app_util.auth_required_cron]
   """
   def __init__(self, dao, get_returns_children=False):
     self.dao = dao
@@ -54,9 +54,9 @@ class BaseApi(Resource):
     # Children of participants accept a participant_id parameter to from_client_json; others don't.
     if participant_id is not None:
       return self.dao.from_client_json(
-          resource, participant_id=participant_id, client_id=api_util.get_oauth_id())
+          resource, participant_id=participant_id, client_id=app_util.get_oauth_id())
     else:
-      return self.dao.from_client_json(resource, client_id=api_util.get_oauth_id())
+      return self.dao.from_client_json(resource, client_id=app_util.get_oauth_id())
 
   def _do_insert(self, m):
     self.dao.insert(m)
@@ -159,10 +159,10 @@ class UpdatableApi(BaseApi):
     if participant_id is not None:
       return self.dao.from_client_json(
           resource, participant_id=participant_id, id_=id_, expected_version=expected_version,
-          client_id=api_util.get_oauth_id())
+          client_id=app_util.get_oauth_id())
     else:
       return self.dao.from_client_json(
-          resource, id_=id_, expected_version=expected_version, client_id=api_util.get_oauth_id())
+          resource, id_=id_, expected_version=expected_version, client_id=app_util.get_oauth_id())
 
   def _make_response(self, obj):
     result = super(UpdatableApi, self)._make_response(obj)

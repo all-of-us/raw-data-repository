@@ -11,7 +11,8 @@ from dao.hpo_dao import HPODao
 from dao.site_dao import SiteDao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
-from model.utils import to_client_participant_id, to_client_biobank_id
+from model.utils import to_client_participant_id
+from model.config_utils import to_client_biobank_id
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
 
 

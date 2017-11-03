@@ -1,6 +1,7 @@
 """Base class for API handlers."""
 
 import api_util
+import app_util
 import config
 
 from query import Query
@@ -24,7 +25,7 @@ class BaseApi(Resource):
 
   When extending this class, prefer to use the method_decorators class property
   for uniform authentication, e.g.:
-    method_decorators = [api_util.auth_required_cron]
+    method_decorators = [app_util.auth_required_cron]
 
   If include_meta is True (the default), meta will be returned to clients in
   resources when populated; if False, it will be ignored.
@@ -97,7 +98,7 @@ class BaseApi(Resource):
     m = self.dao.from_json(resource, a_id, self.dao.allocate_id())
     self.validate_object(m, a_id)
     self.dao.insert(m, date=_consider_fake_date(),
-                    client_id=api_util.get_oauth_id())
+                    client_id=app_util.get_oauth_id())
     return self.make_response_for_resource(self.dao.to_json(m))
 
   def put(self, id_, a_id=None):
@@ -109,7 +110,7 @@ class BaseApi(Resource):
     """
     m = self.dao.from_json(request.get_json(force=True), a_id, id_)
     self.validate_object(m, a_id)
-    self.dao.replace(m, date=_consider_fake_date(), client_id=api_util.get_oauth_id())
+    self.dao.replace(m, date=_consider_fake_date(), client_id=app_util.get_oauth_id())
     return self.make_response_for_resource(self.dao.to_json(m))
 
   def make_response_for_resource(self, result):

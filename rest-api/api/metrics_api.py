@@ -1,4 +1,4 @@
-import api_util
+import app_util
 import datetime
 import json
 
@@ -12,7 +12,7 @@ DATE_FORMAT = '%Y-%m-%d'
 
 class MetricsApi(Resource):
 
-  @api_util.auth_required(HEALTHPRO)
+  @app_util.auth_required(HEALTHPRO)
   def post(self):
     dao = MetricsBucketDao()
     resource = request.get_data()
