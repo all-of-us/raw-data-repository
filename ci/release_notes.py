@@ -42,7 +42,7 @@ h2. deployed to %(project)s, listing changes since %(prev)s
 """
 
 _JIRA_INSTANCE_URL = 'https://precisionmedicineinitiative.atlassian.net/'
-_JIRA_PROJECT_ID = 'DA'
+_JIRA_PROJECT_ID = 'PD'
 _JIRA_NAME_VARNAME = 'JIRA_API_USER_NAME'
 _JIRA_PASSWORD_VARNAME = 'JIRA_API_USER_PASSWORD'
 _JIRA_WATCHERS_VARNAME = 'JIRA_WATCHER_NAMES'
