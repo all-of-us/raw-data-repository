@@ -776,7 +776,7 @@ class FakeParticipantGenerator(object):
     first_name = random.choice(self._first_names)
     middle_name = random.choice(self._middle_names)
     last_name = random.choice(self._last_names)
-    email = first_name + last_name + '@example.com'
+    email = first_name + last_name + '@fakeexample.com'
     answer_map[FIRST_NAME_QUESTION_CODE] = _string_answer(first_name)
     answer_map[MIDDLE_NAME_QUESTION_CODE] = _string_answer(middle_name)
     answer_map[LAST_NAME_QUESTION_CODE] = _string_answer(last_name)
