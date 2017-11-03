@@ -32,7 +32,7 @@ class MetricsApi(Resource):
         try:
           end_date = datetime.datetime.strptime(end_date_str, DATE_FORMAT).date()
         except ValueError:
-          raise BadRequest("Invalid start date: %s" % end_date_str)
+          raise BadRequest("Invalid end date: %s" % end_date_str)
       if start_date and end_date:
         date_diff = abs((end_date - start_date).days)
         if date_diff > DAYS_LIMIT:
