@@ -109,7 +109,34 @@ CREATE OR REPLACE VIEW participant_view AS
    ps.num_baseline_samples_arrived,
    ps.samples_to_isolate_dna,
    ps.consent_for_cabor,
-   ps.consent_for_cabor_time
+   ps.consent_for_cabor_time,
+   (SELECT IFNULL(GROUP_CONCAT(
+      IF(ac.value = 'WhatRaceEthnicity_RaceEthnicityNoneOfThese',
+         'NoneOfThese',
+         TRIM(LEADING 'WhatRaceEthnicity_' FROM
+              TRIM(LEADING 'PMI_' FROM ac.value)))),
+    'None')
+    FROM questionnaire_response qr, questionnaire_response_answer qra,
+      questionnaire_question qq, code c, code ac
+    WHERE qra.end_time IS NULL AND
+          qr.questionnaire_response_id = qra.questionnaire_response_id AND
+          qra.question_id = qq.questionnaire_question_id AND
+          qq.code_id = c.code_id AND c.value = 'Race_WhatRaceEthnicity' AND
+          qr.participant_id = p.participant_id AND
+          qra.value_code_id = ac.code_id AND
+          ac.value != 'WhatRaceEthnicity_Hispanic'
+   ) race_codes,
+   (SELECT COUNT(ac.value)
+    FROM questionnaire_response qr, questionnaire_response_answer qra,
+      questionnaire_question qq, code c, code ac
+    WHERE qra.end_time IS NULL AND
+      qr.questionnaire_response_id = qra.questionnaire_response_id AND
+      qra.question_id = qq.questionnaire_question_id AND
+      qq.code_id = c.code_id AND c.value = 'Race_WhatRaceEthnicity' AND
+      qr.participant_id = p.participant_id AND
+      qra.value_code_id = ac.code_id AND
+      ac.value = 'WhatRaceEthnicity_Hispanic'
+   ) hispanic
  FROM
    participant p
      LEFT OUTER JOIN hpo ON p.hpo_id = hpo.hpo_id
