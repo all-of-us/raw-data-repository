@@ -28,6 +28,17 @@ class MetricsTest(BaseClientTest):
       else:
         raise
 
+  def test_metrics_limit(self):
+    request = {
+        'start_date': '2017-01-21',
+        'end_date': '2017-01-29'
+    }
+    try:
+      self.client.request_json('Metrics', 'POST', request)
+      assert False, "Request did not raise an exception"
+    except HttpException as ex:
+      self.assertEquals(ex.code , httplib.BAD_REQUEST)
+
   def test_metrics_fields(self):
     response = self.client.request_json('MetricsFields')
     self.assertEquals('Participant.ageRange', response[0]['name'])
