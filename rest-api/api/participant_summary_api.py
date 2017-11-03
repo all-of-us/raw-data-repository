@@ -1,5 +1,6 @@
 from api.base_api import BaseApi
-from api_util import auth_required, PTC_AND_HEALTHPRO
+from api_util import PTC_AND_HEALTHPRO
+from app_util import auth_required
 from dao.participant_summary_dao import ParticipantSummaryDao
 
 

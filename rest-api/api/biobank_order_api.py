@@ -1,5 +1,6 @@
 from api.base_api import BaseApi
-from api_util import auth_required, HEALTHPRO, PTC_AND_HEALTHPRO
+from app_util import auth_required
+from api_util import HEALTHPRO, PTC_AND_HEALTHPRO
 from dao.biobank_order_dao import BiobankOrderDao
 
 

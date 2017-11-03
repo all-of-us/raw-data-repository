@@ -1,6 +1,7 @@
 """The API definition for the config API."""
 
 import api_util
+import app_util
 import base_api
 import config
 import json
@@ -55,7 +56,7 @@ def is_config_admin(user_email):
 
 def check_config_admin():
   """Raises Unauthorized unless the caller is a config admin."""
-  user_email = api_util.get_oauth_id()
+  user_email = app_util.get_oauth_id()
   if is_config_admin(user_email):
     logging.info('User %r ALLOWED for config endpoint' % user_email)
     return

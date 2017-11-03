@@ -15,7 +15,8 @@ from offline import biobank_samples_pipeline
 from unit_test_util import FlaskTestBase, InMemorySqlExporter, make_questionnaire_response_json
 from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
 from model.biobank_stored_sample import BiobankStoredSample
-from model.utils import to_client_biobank_id, to_client_participant_id
+from model.config_utils import to_client_biobank_id
+from model.utils import to_client_participant_id
 from model.participant import Participant
 from participant_enums import WithdrawalStatus
 from offline.biobank_samples_pipeline import _KIT_ID_SYSTEM, _TRACKING_NUMBER_SYSTEM

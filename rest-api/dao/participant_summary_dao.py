@@ -16,7 +16,8 @@ from dao.hpo_dao import HPODao
 from dao.site_dao import SiteDao
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS
 from model.participant_summary import WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
-from model.utils import to_client_participant_id, to_client_biobank_id, get_property_type
+from model.config_utils import to_client_biobank_id
+from model.utils import to_client_participant_id, get_property_type
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus
 from participant_enums import EnrollmentStatus, SuspensionStatus, WithdrawalStatus
 from participant_enums import get_bucketed_age

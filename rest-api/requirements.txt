@@ -21,5 +21,5 @@ sqlalchemy>=1.1
 alembic>=0.8.10
 dictalchemy>=0.1.2.7
 MySQL-python>=1.2.5
-
+protorpc>=0.12.0
 

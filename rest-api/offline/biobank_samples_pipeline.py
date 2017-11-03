@@ -19,7 +19,7 @@ from dao.code_dao import CodeDao
 from dao.database_utils import replace_isodate, parse_datetime
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
-from model.utils import from_client_biobank_id, get_biobank_id_prefix
+from model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from offline.sql_exporter import SqlExporter, CompositeSqlExportWriter
 from participant_enums import OrganizationType
 
@@ -479,5 +479,3 @@ def in_past_week(result, now, ordered_before=None):
   if max_time:
     return (now - max_time).days <= 7
   return False
-
-

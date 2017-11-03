@@ -1,4 +1,3 @@
-import config
 import os
 import singletons
 from MySQLdb.cursors import SSCursor
@@ -17,7 +16,14 @@ def get_database():
   return singletons.get(SQL_DATABASE_INDEX, _SqlDatabase)
 
 def get_db_connection_string():
-  return DB_CONNECTION_STRING or config.get_db_config()['db_connection_string']
+  if DB_CONNECTION_STRING:
+    return DB_CONNECTION_STRING
+
+  # Only import "config" on demand, as it depends on Datastore packages (and
+  # GAE). When running via CLI or tests, we'll have this from the environment
+  # instead (above).
+  import config
+  return config.get_db_config()['db_connection_string']
 
 def make_server_cursor_database():
   """

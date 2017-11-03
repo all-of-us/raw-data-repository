@@ -1,5 +1,4 @@
 import clock
-import config
 import json
 
 import fhirclient.models.questionnaire
@@ -8,7 +7,6 @@ from werkzeug.exceptions import BadRequest
 
 from dao.base_dao import BaseDao, UpdatableDao
 from code_constants import PPI_EXTRA_SYSTEM
-from config import ADD_QUESTIONNAIRE_CODES_IF_MISSING
 from model.code import CodeType
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireConcept
 from model.questionnaire import QuestionnaireQuestion
@@ -246,4 +244,7 @@ class QuestionnaireQuestionDao(BaseDao):
             .filter(QuestionnaireQuestion.questionnaireQuestionId.in_(ids)).all())
 
 def _add_codes_if_missing():
-  return config.getSetting(ADD_QUESTIONNAIRE_CODES_IF_MISSING, False)
+  # Only import "config" on demand, as it depends on Datastore packages (and
+  # GAE). This code path may not be executed via CLI or test code.
+  import config
+  return config.getSetting(config.ADD_QUESTIONNAIRE_CODES_IF_MISSING, False)
