@@ -13,6 +13,9 @@ echo "Installing libs..."
 # If this fails due to missing mysql_config, try `sudo apt-get install libmysqlclient-dev`.
 pip install -r requirements.txt -t lib/
 
+# Needed to setup the local DB.
+pip install -r ../rdr_client/requirements.txt -t lib/
+
 # MySQL-python must be installed outside the lib directory, or dev_appserver.py will fail with
 # "No module named _mysql".
 pip install MySQL-python
