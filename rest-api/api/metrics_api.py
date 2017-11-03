@@ -9,6 +9,7 @@ from flask.ext.restful import Resource
 from werkzeug.exceptions import BadRequest
 
 DATE_FORMAT = '%Y-%m-%d'
+DAYS_LIMIT = 7
 
 class MetricsApi(Resource):
 
@@ -32,6 +33,11 @@ class MetricsApi(Resource):
           end_date = datetime.datetime.strptime(end_date_str, DATE_FORMAT).date()
         except ValueError:
           raise BadRequest("Invalid start date: %s" % end_date_str)
+      if start_date and end_date:
+        date_diff = abs((end_date - start_date).days)
+        if date_diff > DAYS_LIMIT:
+          raise BadRequest("Difference between start date and end date "\
+            "should not be greater than %s days" % DAYS_LIMIT)
     buckets = dao.get_active_buckets(start_date, end_date)
     if buckets is None:
       return []
