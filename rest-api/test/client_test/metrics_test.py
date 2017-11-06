@@ -39,6 +39,17 @@ class MetricsTest(BaseClientTest):
     except HttpException as ex:
       self.assertEquals(ex.code , httplib.BAD_REQUEST)
 
+  def test_metrics_empty_dates(self):
+    request = {
+        'start_date': '',
+        'end_date': ''
+    }
+    try:
+      self.client.request_json('Metrics', 'POST', request)
+      assert False, "Request did not raise an exception"
+    except HttpException as ex:
+      self.assertEquals(ex.code , httplib.BAD_REQUEST)
+
   def test_metrics_fields(self):
     response = self.client.request_json('MetricsFields')
     self.assertEquals('Participant.ageRange', response[0]['name'])
