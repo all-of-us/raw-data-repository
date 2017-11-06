@@ -84,7 +84,9 @@ These are the APIs that the RDR will support for the initial launch:
 * FHIR API and resource definitions where appropriate (questionnaires, physical measurements)
 * FHIR API and resource conventions elsewhere (search, biospecimen orders)
 * API handlers written in Python + Flask, backed by AppEngine.
-* Data stored in [Cloud Datastore](https://cloud.google.com/datastore/docs/concepts/overview) (indexed on fields required for search)
+* Configs stored in [Cloud Datastore](https://cloud.google.com/datastore/docs/concepts/overview) (indexed on fields required for search)
+* Data stored in [Google Cloud SQL](https://cloud.google.com/sql/docs/)
+* [Alembic](http://alembic.zzzcomputing.com/en/latest/) for SQL change management
 
 ### Authentication Details
 
