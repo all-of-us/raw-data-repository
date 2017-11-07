@@ -194,7 +194,7 @@ def _create_sample_from_row(row, biobank_id_prefix):
 def write_reconciliation_report(now):
   """Writes order/sample reconciliation reports to GCS."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
-  _query_and_write_reports(SqlExporter(bucket_name), now, *_get_report_paths(now))
+  _query_and_write_reports(SqlExporter(bucket_name, use_unicode=True), now, *_get_report_paths(now))
 
 
 def _get_report_paths(report_datetime):
