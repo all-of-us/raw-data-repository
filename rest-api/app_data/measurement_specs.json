@@ -257,4 +257,11 @@
                                              "system": "http://terminology.pmi-ops.org/CodeSystem/heart-rhythm-status"}]}],
     "types": ["decimal"],
     "units": ["/min"],
-    "valueCodes": []}]
+    "valueCodes": []},
+  { "bodySites": [],
+    "code": { "code": "notes", "system": "http://terminology.pmi-ops.org/CodeSystem/physical-measurements"},
+    "qualifiers": [],
+    "submeasurements": [],
+    "types": ["string"],
+    "valueCodes": []}
+]
