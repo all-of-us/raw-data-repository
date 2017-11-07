@@ -3,6 +3,10 @@ import codecs
 import csv
 # Writes CSV files with Unicode encoding. (Standard CSV libraries don't handle Unicode.)
 # Adapted from https://docs.python.org/2/library/csv.html
+# Also reads CSV files with Unicode encoding. Adapted from:
+# https://gist.github.com/eightysteele/1174811
+
+#
 DELIMITER = ','
 
 class UnicodeWriter:
@@ -33,3 +37,36 @@ class UnicodeWriter:
   def writerows(self, rows):
     for row in rows:
       self.writerow(row)
+
+class UTF8Recoder:
+  """
+  Iterator that reads an encoded stream and reencodes the input to UTF-8
+  """
+  def __init__(self, f, encoding):
+    self.reader = codecs.getreader(encoding)(f)
+
+  def __iter__(self):
+    return self
+
+  def next(self):
+    return self.reader.next().encode("utf-8")
+
+class UnicodeDictReader:
+  """
+  A CSV reader which will iterate over lines in the CSV file "f",
+  which is encoded in the given encoding.
+  """
+
+  def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
+    f = UTF8Recoder(f, encoding)
+    self.reader = csv.reader(f, dialect=dialect, **kwds)
+    self.fieldnames = self.reader.next()
+
+
+  def next(self):
+    row = self.reader.next()
+    vals = [unicode(s, "utf-8") for s in row]
+    return dict((self.fieldnames[x], vals[x]) for x in range(len(self.fieldnames)))
+
+  def __iter__(self):
+    return self

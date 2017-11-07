@@ -161,7 +161,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     # Extra samples ordered now aren't considered missing or late.
     self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time,
                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit1', tracking_number='t1',
-                       collected_note='foo', processed_note='bar', finalized_note='baz')
+                       collected_note=u'\u2013foo', processed_note='bar', finalized_note='baz')
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'],
                          within_24_hours, within_24_hours - datetime.timedelta(hours=1))
 
@@ -314,7 +314,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertEquals(row['biospecimen_kit_id'], 'kit1')
     self.assertEquals(row['fedex_tracking_number'], 't1')
     self.assertEquals(row['is_native_american'], 'N')
-    self.assertEquals(row['notes_collected'], 'foo')
+    self.assertEquals(row['notes_collected'], u'\u2013foo')
     self.assertEquals(row['notes_processed'], 'bar')
     self.assertEquals(row['notes_finalized'], 'baz')
     # the other sent-and-received rows
