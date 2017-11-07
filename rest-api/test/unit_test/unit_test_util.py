@@ -234,7 +234,7 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
 
   @contextlib.contextmanager
   def open_writer(self, file_name, predicate=None):
-    yield sql_exporter.SqlExportFileWriter(self._path_to_buffer[file_name], predicate, 
+    yield sql_exporter.SqlExportFileWriter(self._path_to_buffer[file_name], predicate,
                                            use_unicode=True)
 
   def assertFilesEqual(self, paths):

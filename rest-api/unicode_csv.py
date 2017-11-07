@@ -61,7 +61,7 @@ class UnicodeDictReader:
     f = UTF8Recoder(f, encoding)
     self.reader = csv.reader(f, dialect=dialect, **kwds)
     self.fieldnames = self.reader.next()
-        
+
 
   def next(self):
     row = self.reader.next()
