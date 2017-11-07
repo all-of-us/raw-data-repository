@@ -33,22 +33,18 @@ class MetricsTest(BaseClientTest):
         'start_date': '2017-01-21',
         'end_date': '2017-01-29'
     }
-    try:
+    with self.assertRaises(HttpException) as cm:
       self.client.request_json('Metrics', 'POST', request)
-      assert False, "Request did not raise an exception"
-    except HttpException as ex:
-      self.assertEquals(ex.code , httplib.BAD_REQUEST)
+    self.assertEqual(cm.exception.code, httplib.BAD_REQUEST)
 
   def test_metrics_empty_dates(self):
     request = {
         'start_date': '',
         'end_date': ''
     }
-    try:
+    with self.assertRaises(HttpException) as cm:
       self.client.request_json('Metrics', 'POST', request)
-      assert False, "Request did not raise an exception"
-    except HttpException as ex:
-      self.assertEquals(ex.code , httplib.BAD_REQUEST)
+    self.assertEqual(cm.exception.code, httplib.BAD_REQUEST)
 
   def test_metrics_fields(self):
     response = self.client.request_json('MetricsFields')
