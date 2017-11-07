@@ -28,6 +28,24 @@ class MetricsTest(BaseClientTest):
       else:
         raise
 
+  def test_metrics_limit(self):
+    request = {
+        'start_date': '2017-01-21',
+        'end_date': '2017-01-29'
+    }
+    with self.assertRaises(HttpException) as cm:
+      self.client.request_json('Metrics', 'POST', request)
+    self.assertEqual(cm.exception.code, httplib.BAD_REQUEST)
+
+  def test_metrics_empty_dates(self):
+    request = {
+        'start_date': '',
+        'end_date': ''
+    }
+    with self.assertRaises(HttpException) as cm:
+      self.client.request_json('Metrics', 'POST', request)
+    self.assertEqual(cm.exception.code, httplib.BAD_REQUEST)
+
   def test_metrics_fields(self):
     response = self.client.request_json('MetricsFields')
     self.assertEquals('Participant.ageRange', response[0]['name'])
