@@ -319,6 +319,8 @@ class FakeParticipantGenerator(object):
         "unit": unit,
         "value": value
       }
+    if 'string' in measurement['types']:
+      resource['valueString'] = ''.join([random.choice(string.lowercase) for _ in xrange(20)])
     if measurement['valueCodes']:
       value_code = random.choice(measurement['valueCodes'])
       resource['valueCodeableConcept'] = {
