@@ -272,7 +272,7 @@ class ParticipantDaoTest(SqlTestBase):
     self.assertEquals(paired.providerLink, make_primary_provider_link_for_id(self._test_db.hpo_id))
     self.assertEquals(self.participant_summary_dao.get(participant_id).hpoId, self._test_db.hpo_id)
 
-  def test_does_not_overwrite_existing_pairing(self):
+  def test_overwrite_existing_pairing(self):
     participant_id = 99
     created = self.dao.insert(Participant(
         participantId=participant_id,
@@ -292,8 +292,8 @@ class ParticipantDaoTest(SqlTestBase):
     with self.dao.session() as session:
       self.dao.add_missing_hpo_from_site(session, participant_id, other_site.siteId)
 
-    # Original Participant + summary is unaffected.
+    # Original Participant + summary is affected.
     refetched = self.dao.get(participant_id)
-    self.assertEquals(created.hpoId, refetched.hpoId)
-    self.assertEquals(created.providerLink, refetched.providerLink)
-    self.assertEquals(created.hpoId, self.participant_summary_dao.get(participant_id).hpoId)
+    self.assertEquals(refetched.hpoId, other_hpo.hpoId)
+    self.assertEquals(refetched.providerLink, make_primary_provider_link_for_id(other_hpo.hpoId))
+    self.assertEquals(self.participant_summary_dao.get(participant_id).hpoId, other_hpo.hpoId)
