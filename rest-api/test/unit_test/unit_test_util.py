@@ -2,7 +2,6 @@ import StringIO
 import collections
 import contextlib
 import copy
-import csv
 import faker
 import httplib
 import json
@@ -40,6 +39,7 @@ from offline import sql_exporter
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
 from participant_enums import OrganizationType
 from test.test_data import data_path
+from unicode_csv import UnicodeDictReader
 
 PITT_HPO_ID = 2
 
@@ -234,13 +234,14 @@ class InMemorySqlExporter(sql_exporter.SqlExporter):
 
   @contextlib.contextmanager
   def open_writer(self, file_name, predicate=None):
-    yield sql_exporter.SqlExportFileWriter(self._path_to_buffer[file_name], predicate)
+    yield sql_exporter.SqlExportFileWriter(self._path_to_buffer[file_name], predicate, 
+                                           use_unicode=True)
 
   def assertFilesEqual(self, paths):
     self._test.assertItemsEqual(paths, self._path_to_buffer.keys())
 
   def _get_dict_reader(self, file_name):
-    return csv.DictReader(
+    return UnicodeDictReader(
         StringIO.StringIO(self._path_to_buffer[file_name].getvalue()),
         delimiter=sql_exporter.DELIMITER)
 
