@@ -213,8 +213,6 @@ class ParticipantDao(UpdatableDao):
     participant = self.get_for_update(session, participant_id)
     if participant is None:
       raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
-    if participant.hpoId != UNSET_HPO_ID:
-      return
     if participant.hpoId == site.hpoId:
       return
 
