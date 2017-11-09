@@ -10,6 +10,7 @@ import pipeline
 import config
 
 
+# TODO(DA-448) For more reliable delivery, switch to creating tickets via the JIRA API.
 def send_failure_alert(job_name, message, log_exc_info=False, extra_recipients=None):
   """Sends an alert email for a failed job."""
   subject = '%s failed in %s' % (job_name, app_identity.get_application_id())
