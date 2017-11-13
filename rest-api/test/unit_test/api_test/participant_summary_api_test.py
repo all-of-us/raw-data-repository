@@ -5,6 +5,7 @@ import threading
 
 from clock import FakeClock
 from code_constants import PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE
+from code_constants import RACE_NONE_OF_THESE_CODE
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -301,7 +302,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "Mary", "Q", "Jones", "78751", None,
                                        None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 8), None)
-    self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_WHITE_CODE, "male",
+    self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_NONE_OF_THESE_CODE, "male",
                                        "Fred", "T", "Smith", "78752", None,
                                        None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10), None)
@@ -483,7 +484,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&genderIdentity=male',
                            [[ps_1, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
-                           [[ps_1, ps_3]])
+                           [[ps_1]])
+      self.assertResponses('ParticipantSummary?_count=2&race=OTHER_RACE',
+                           [[ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&middleName=Q&race=WHITE&zipCode=78752',

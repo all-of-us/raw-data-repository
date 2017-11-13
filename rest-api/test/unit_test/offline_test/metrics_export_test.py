@@ -6,6 +6,7 @@ from clock import FakeClock
 from code_constants import PPI_SYSTEM, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
 from code_constants import GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
 from code_constants import RACE_QUESTION_CODE, STATE_QUESTION_CODE, RACE_WHITE_CODE
+from code_constants import RACE_NONE_OF_THESE_CODE
 from concepts import Concept
 from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from mapreduce import test_support
@@ -96,7 +97,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     # Import codes for white and female, but not male or black.
     SqlTestBase.setup_codes(
         [
-            RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
+            RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE,
             CONSENT_PERMISSION_NO_CODE, 'female', 'PIIState_VA'
         ],
         code_type=CodeType.ANSWER)
@@ -145,7 +146,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       self.submit_questionnaire_response('P1', questionnaire_id,
                                          RACE_WHITE_CODE, 'male', None,
                                          datetime.date(1980, 1, 2))
-      self.submit_questionnaire_response('P2', questionnaire_id, None, None,
+      self.submit_questionnaire_response('P2', questionnaire_id, RACE_NONE_OF_THESE_CODE, None,
                                          None, None)
 
     with FakeClock(TIME_3):
@@ -213,7 +214,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     ])
     assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 0, [
         ANSWER_FIELDS, ['2', t3, STATE_QUESTION_CODE, 'PIIState_VA', ''],
-        ['2', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE, '']
+        ['2', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE, ''],
+        ['2', t2, RACE_QUESTION_CODE, RACE_NONE_OF_THESE_CODE, '']
     ])
     assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 1, [
         ANSWER_FIELDS, ['1', t2, GENDER_IDENTITY_QUESTION_CODE, 'UNMAPPED',
@@ -369,7 +371,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.questionnaireOnHealthcareAccess.UNSET': 1,
         'Participant.questionnaireOnMedications.UNSET': 1,
         'Participant.genderIdentity.UNSET': 1,
-        'Participant.race.UNSET': 1,
+        'Participant.race.OTHER_RACE': 1,
         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 1,
         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
         'Participant.numCompletedBaselinePPIModules.1': 1,
@@ -399,7 +401,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.genderIdentity.UNMAPPED': 1,
         'Participant.genderIdentity.UNSET': 1,
         'Participant.race.WHITE': 1,
-        'Participant.race.UNSET': 1,
+        'Participant.race.OTHER_RACE': 1,
         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
         'Participant.numCompletedBaselinePPIModules.1': 2,
@@ -469,7 +471,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             1,
         'Participant.race.UNMAPPED':
             1,
-        'Participant.race.UNSET':
+        'Participant.race.OTHER_RACE':
             1,
         'Participant.biospecimenSummary.SAMPLES_ARRIVED':
             2,
@@ -523,7 +525,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             1,
         'FullParticipant.genderIdentity.UNSET':
             1,
-        'FullParticipant.race.UNSET':
+        'FullParticipant.race.OTHER_RACE':
             1,
         'FullParticipant.biospecimenSummary.SAMPLES_ARRIVED':
             1,
@@ -591,7 +593,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             1,
         'Participant.race.UNMAPPED':
             1,
-        'Participant.race.UNSET':
+        'Participant.race.OTHER_RACE':
             1,
         'Participant.biospecimenSummary.SAMPLES_ARRIVED':
             2,
@@ -645,7 +647,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             1,
         'FullParticipant.genderIdentity.UNSET':
             1,
-        'FullParticipant.race.UNSET':
+        'FullParticipant.race.OTHER_RACE':
             1,
         'FullParticipant.biospecimenSummary.SAMPLES_ARRIVED':
             1,
