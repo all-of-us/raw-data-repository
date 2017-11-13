@@ -26,13 +26,13 @@ CREATE VIEW physical_measurements_view AS
    p.withdrawal_time participant_withdrawal_time,
    p.suspension_status participant_suspension_status,
    p.suspension_time participant_suspension_time,
-   pm.physical_measurements_id physical_measurements_id,   
+   pm.physical_measurements_id physical_measurements_id,
    pm.created created,
    pm.amended_measurements_id amended_measurements_id,
    pm.created_site_id created_site_id,
    pm.created_username created_username,
    pm.finalized_site_id finalized_site_id,
-   pm.finalized_username finalized_username,   
+   pm.finalized_username finalized_username,
    m.measurement_id measurement_id,
    m.code_system code_system,
    m.code_value code_value,
@@ -47,19 +47,19 @@ CREATE VIEW physical_measurements_view AS
    m.value_datetime value_datetime,
    m.parent_id parent_id,
    m.qualifier_id qualifier_id
- FROM 
+ FROM
    participant p
     INNER JOIN physical_measurements pm
        ON pm.participant_id = p.participant_id
     INNER JOIN measurement m
        ON pm.physical_measurements_id = m.physical_measurements_id
-    INNER JOIN participant_summary ps 
+    INNER JOIN participant_summary ps
        ON p.participant_id = ps.participant_id
-    LEFT OUTER JOIN hpo 
+    LEFT OUTER JOIN hpo
        ON p.hpo_id = hpo.hpo_id
   WHERE (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
         (hpo.name IS NULL OR hpo.name != 'TEST') AND
-        pm.final = 1 
+        pm.final = 1
 """
 
 _PARTICIPANT_VIEW_SQL = """
