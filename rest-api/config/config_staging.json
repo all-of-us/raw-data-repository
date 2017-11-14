@@ -6,14 +6,19 @@
   ],
   "user_info": {
     "healthpro-staging@appspot.gserviceaccount.com": {
-      "roles": ["healthpro"]
+      "roles": ["healthpro"],
+      "whitelisted_appids": ["healthpro-staging", "healthpro-beta"]
     },
     "pmi-hpo-dev@appspot.gserviceaccount.com": {
       "roles": ["healthpro"],
-      "comment": "for HealthPro testing"
+      "comment": "for HealthPro testing",
+      "whitelisted_appids": ["pmi-hpo-dev"]
     },
     "vibrent-drc-staging@vibrent-drc-staging-165017.iam.gserviceaccount.com": {
-      "roles": ["ptc"]
+      "roles": ["ptc"],
+      "whitelisted_ip_ranges": {
+        "ip4": ["52.203.93.76"]
+      }
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"],
