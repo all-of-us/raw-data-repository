@@ -52,6 +52,7 @@ RACE_NHDPI_CODE = 'WhatRaceEthnicity_NHPI'
 RACE_WHITE_CODE = 'WhatRaceEthnicity_White'
 RACE_HISPANIC_CODE = 'WhatRaceEthnicity_Hispanic'
 RACE_FREETEXT_CODE = 'WhatRaceEthnicity_FreeText'
+RACE_NONE_OF_THESE_CODE = 'WhatRaceEthnicity_RaceEthnicityNoneOfThese'
 
 # Consent answer codes
 CONSENT_PERMISSION_YES_CODE = 'ConsentPermission_Yes'
