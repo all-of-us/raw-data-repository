@@ -1,6 +1,7 @@
 from code_constants import UNSET, RACE_AIAN_CODE, RACE_ASIAN_CODE, RACE_BLACK_CODE, RACE_MENA_CODE
 from code_constants import RACE_NHDPI_CODE, RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_FREETEXT_CODE
-from code_constants import PMI_SKIP_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE
+from code_constants import RACE_NONE_OF_THESE_CODE
+from code_constants import PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE
 from code_constants import PMI_FREE_TEXT_CODE, PMI_UNANSWERED_CODE
 import extraction
 from protorpc import messages
@@ -49,8 +50,8 @@ class OrderStatus(messages.Enum):
 # in questionnaire responses.
 class Race(messages.Enum):
   UNSET = 0
-  SKIPPED = 1
-  UNMAPPED = 2
+  # SKIPPED = 1  -- Not actually in use.
+  # UNMAPPED = 2 -- Not actually in use.
   AMERICAN_INDIAN_OR_ALASKA_NATIVE = 3
   BLACK_OR_AFRICAN_AMERICAN = 4
   ASIAN = 5
@@ -87,8 +88,8 @@ ANSWER_CODE_TO_RACE = {
   RACE_WHITE_CODE: Race.WHITE,
   RACE_HISPANIC_CODE: Race.HISPANIC_LATINO_OR_SPANISH,
   RACE_FREETEXT_CODE: Race.OTHER_RACE,
-  PMI_SKIP_CODE: Race.SKIPPED,
   PMI_PREFER_NOT_TO_ANSWER_CODE: Race.PREFER_NOT_TO_SAY,
+  RACE_NONE_OF_THESE_CODE: Race.OTHER_RACE,
   PMI_OTHER_CODE: Race.OTHER_RACE,
   PMI_FREE_TEXT_CODE: Race.OTHER_RACE,
   PMI_UNANSWERED_CODE: Race.UNSET
@@ -128,7 +129,7 @@ def get_bucketed_age(date_of_birth, today):
 
 def _map_single_race(code):
   if code is None:
-    return Race.UNMAPPED
+    return Race.UNSET
   race_value = ANSWER_CODE_TO_RACE.get(code.value)
   if race_value:
     return race_value
