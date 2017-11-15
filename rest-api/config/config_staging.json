@@ -18,7 +18,7 @@
       "roles": ["ptc"],
       "whitelisted_ip_ranges": {
         "ip4": ["52.203.93.76"],
-	"ip6": []
+	    "ip6": []
       }
     },
     "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
