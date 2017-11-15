@@ -9,7 +9,7 @@
       "roles": ["ptc"],
       "whitelisted_ip_ranges": {
         "ip4": ["34.204.157.148"],
-	    "ip6": []
+        "ip6": []
       }
     },
     "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
