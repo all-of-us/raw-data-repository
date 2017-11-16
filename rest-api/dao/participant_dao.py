@@ -2,7 +2,7 @@ import json
 
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.orm import joinedload
-from werkzeug.exceptions import BadRequest, Forbidden
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from api_util import format_json_enum, parse_json_enum, format_json_date
 import clock
@@ -164,6 +164,14 @@ class ParticipantDao(UpdatableDao):
       raise BadRequest('Participant with ID %d is not found.' % participant_id)
     raise_if_withdrawn(participant)
     return participant
+
+  def check_participant_exist(self, participant_id):
+    """Raises NotFound if a participant ID is not found."""
+    with self.session() as session:
+      participant = self.get_with_session(session, participant_id)
+      if participant is None:
+        raise NotFound('Participant with ID %d is not found.' % participant_id)
+    return True
 
   def get_biobank_ids_sample(self, session, percentage, batch_size):
     """Returns biobank ID and signUpTime for a percentage of participants.
