@@ -445,11 +445,11 @@ CREATE TABLE dose_era
 -- -------------------------------------------------------------------
 
 -- -------------------------------------------------------------------
--- table: tmp_clean_all
+-- table: src_clean
 -- -------------------------------------------------------------------
 
-DROP TABLE IF EXISTS cdm.tmp_clean_all;
-CREATE TABLE cdm.tmp_clean_all
+DROP TABLE IF EXISTS cdm.src_clean;
+CREATE TABLE cdm.src_clean
 (
     participant_id              bigint,
     date_of_survey              datetime,
@@ -470,7 +470,7 @@ CREATE TABLE cdm.tmp_clean_all
 -- Rules all together
 -- -------------------------------------------------------------------
 
-INSERT INTO cdm.tmp_clean_all
+INSERT INTO cdm.src_clean
 SELECT
     pa.participant_id               AS participant_id,
     qr.created                      AS date_of_survey,
@@ -530,60 +530,6 @@ WHERE
         OR qra.value_datetime IS NOT NULL
         OR qra.value_string IS NOT NULL
     )
-;
-
-
--- -------------------------------------------------------------------
--- table: src_clean
--- -------------------------------------------------------------------
-
-DROP TABLE IF EXISTS cdm.src_clean;
-CREATE TABLE cdm.src_clean
-(
-    participant_id              bigint,
-    date_of_survey              datetime,
-    question_ppi_code           varchar(200),
-    question_code_id            bigint,
-    value_ppi_code              varchar(200),
-    topic_value                 varchar(200),
-    value_code_id               bigint,
-    value_number                decimal(20,6),
-    value_boolean               tinyint,
-    value_date                  datetime,
-    value_string                varchar(1024),
-    questionnaire_response_id   bigint,
-    unit_id                     varchar(50)
-);
-
-INSERT INTO cdm.src_clean
-SELECT
-    participant_id,
-    date_of_survey,
-    question_ppi_code,
-    question_code_id,
-    value_ppi_code,
-    topic_value,
-    value_code_id,
-    value_number,
-    value_boolean,
-    value_date,
-    value_string,
-    MIN(questionnaire_response_id),
-    unit_id
-FROM cdm.tmp_clean_all a
-GROUP BY
-    participant_id,
-    date_of_survey,
-    question_ppi_code,
-    question_code_id,
-    value_ppi_code,
-    topic_value,
-    value_code_id,
-    value_number,
-    value_boolean,
-    value_date,
-    value_string,
-    unit_id
 ;
 
 ALTER TABLE cdm.src_clean ADD KEY (participant_id);
@@ -670,6 +616,8 @@ LEFT JOIN
 ;
 
 ALTER TABLE cdm.src_participant ADD KEY (latest_date_of_location);
+ALTER TABLE cdm.src_participant ADD KEY (participant_id);
+
 -- -------------------------------------------------------------------
 -- table: src_mapped
 -- -------------------------------------------------------------------
@@ -746,8 +694,9 @@ LEFT JOIN voc.concept vc4
     AND vc4.standard_concept = 'S'
 ;
 
-ALTER TABLE cdm.src_mapped ADD KEY (participant_id);
-
+ALTER TABLE cdm.src_mapped ADD KEY (question_ppi_code);
+CREATE INDEX mapped_p_id_and_ppi ON cdm.src_mapped (participant_id, question_ppi_code);
+CREATE INDEX mapped_qr_id_and_ppi ON cdm.src_mapped (questionnaire_response_id, question_ppi_code);
 
 -- -------------------------------------------------------------------
 -- source_file: src/location.sql
@@ -767,58 +716,47 @@ CREATE TABLE cdm.src_person_location
     zip varchar(255),
     state_ppi_code varchar(255),
     state varchar(255),
+    location_id bigint,
     PRIMARY KEY (participant_id)
 );
 
-DROP VIEW IF EXISTS cdm.temp_src_person_location;
-CREATE VIEW cdm.temp_src_person_location AS
-SELECT
-    src_m.participant_id,
-    src_m.question_ppi_code,
-    src_m.value_string,
-    IF(src_m.question_ppi_code = 'PIIAddress_StreetAddress',
-                src_m.value_string, NULL)                          AS address_1,
-    IF(src_m.question_ppi_code = 'PIIAddress_StreetAddress2',
-                src_m.value_string, NULL)                          AS address_2,
-    IF(src_m.question_ppi_code = 'StreetAddress_PIICity',
-                src_m.value_string, NULL)                          AS city,
-    IF(src_m.question_ppi_code = 'StreetAddress_PIIZIP',
-                src_m.value_string, NULL)                          AS zip,
-    IF(src_m.question_ppi_code = 'StreetAddress_PIIState' AND src_m.topic_value = 'States',
-                src_m.value_ppi_code, NULL)                        AS state_ppi_code
-FROM cdm.src_mapped src_m
-INNER JOIN cdm.src_participant src_p
-    ON  src_m.participant_id = src_p.participant_id
-    AND src_m.date_of_survey = src_p.latest_date_of_location
-WHERE
-    src_m.question_ppi_code IN (
-        'PIIAddress_StreetAddress',
-        'PIIAddress_StreetAddress2',
-        'StreetAddress_PIICity',
-        'StreetAddress_PIIZIP',
-        'StreetAddress_PIIState'
-    )
-;
-
 INSERT cdm.src_person_location
 SELECT
-    src.participant_id                          AS participant_id,
-    MAX(src.address_1)                          AS address_1,
-    MAX(src.address_2)                          AS address_2,
-    MAX(src.city)                               AS city,
-    MAX(src.zip)                                AS zip,
-    MAX(src.state_ppi_code)                     AS state_ppi_code,
-    MAX(RIGHT(src.state_ppi_code, 2))           AS state
-FROM cdm.temp_src_person_location src
-GROUP BY
-    src.participant_id
-HAVING
-    COUNT(DISTINCT src.address_1) <= 2
-    AND COUNT(DISTINCT src.address_2) <= 2
-    AND COUNT(DISTINCT src.city) <= 2
-    AND COUNT(DISTINCT src.zip) <= 2
-    AND COUNT(DISTINCT src.state_ppi_code) <= 2
-;
+    src_participant.participant_id        AS participant_id,
+    MAX(m_address_1.value_string)         AS address_1,
+    MAX(m_address_2.value_string)         AS address_2,
+    MAX(m_city.value_string)              AS city,
+    MAX(m_zip.value_string)               AS zip,
+    MAX(m_state.value_ppi_code)           AS state_ppi_code,
+    MAX(RIGHT(m_state.value_ppi_code, 2)) AS state,
+    NULL                                  AS location_id
+FROM src_participant
+  INNER JOIN
+    cdm.src_mapped m_address_1
+      ON src_participant.participant_id = m_address_1.participant_id
+     AND m_address_1.question_ppi_code = 'PIIAddress_StreetAddress'
+  LEFT JOIN
+    cdm.src_mapped m_address_2
+      ON m_address_1.questionnaire_response_id = m_address_2.questionnaire_response_id
+     AND m_address_2.question_ppi_code = 'PIIAddress_StreetAddress2'
+  LEFT JOIN
+    cdm.src_mapped m_city
+      ON m_address_1.questionnaire_response_id = m_city.questionnaire_response_id
+     AND m_city.question_ppi_code = 'StreetAddress_PIICity'
+  LEFT JOIN
+    cdm.src_mapped m_zip
+      ON m_address_1.questionnaire_response_id = m_zip.questionnaire_response_id
+     AND m_zip.question_ppi_code = 'StreetAddress_PIIZIP'
+  LEFT JOIN
+    cdm.src_mapped m_state
+      ON m_address_1.questionnaire_response_id = m_state.questionnaire_response_id
+     AND m_state.question_ppi_code = 'StreetAddress_PIIState'
+WHERE m_address_1.date_of_survey =
+  (SELECT MAX(date_of_survey)
+     FROM cdm.src_mapped m_address_1_2
+    WHERE m_address_1_2.participant_id = m_address_1.participant_id
+      AND m_address_1_2.question_ppi_code = 'PIIAddress_StreetAddress')
+GROUP BY src_participant.participant_id;
 
 -- -------------------------------------------------------------------
 -- table: location
@@ -839,6 +777,16 @@ SELECT DISTINCT
     'loc'                           AS unit_id
 FROM cdm.src_person_location src
 ;
+
+CREATE INDEX location_address ON cdm.location (address_1, zip);
+
+UPDATE cdm.src_person_location person_loc, cdm.location loc
+   SET person_loc.location_id = loc.location_id
+ WHERE person_loc.address_1 <=> loc.address_1
+   AND person_loc.address_2 <=> loc.address_2
+   AND person_loc.city <=> loc.city
+   AND person_loc.state <=> loc.state
+   AND person_loc.zip <=> loc.zip;
 
 -- -------------------------------------------------------------------
 -- source_file: src/person.sql
@@ -931,41 +879,6 @@ HAVING
     COUNT(distinct src_m.value_ppi_code) = 1
 ;
 
--- ---------------------------------------------------
--- found the location_id
--- ---------------------------------------------------
-DROP TABLE IF EXISTS cdm.src_location_for_pers;
-
-CREATE TABLE cdm.src_location_for_pers
-(
-    person_id               bigint,
-    address_1               varchar(50),
-    address_2               varchar(50),
-    city                    varchar(50),
-    state                   varchar(2),
-    zip                     varchar(9),
-    location_id             bigint,
-    PRIMARY KEY (person_id)
-);
-
-INSERT INTO cdm.src_location_for_pers
-SELECT DISTINCT
-    src_l.participant_id            AS person_id,
-    src_l.address_1                 AS address_1,
-    src_l.address_2                 AS address_2,
-    src_l.city                      AS city,
-    src_l.state                     AS state,
-    src_l.zip                       AS zip,
-    L.location_id                   AS location_id
-FROM cdm.src_person_location src_l
-LEFT JOIN cdm.location L
-    ON COALESCE(L.address_1, 0) = COALESCE(src_l.address_1, 0)
-    AND COALESCE(L.address_2, 0) = COALESCE(src_l.address_2, 0)
-    AND COALESCE(L.city, 0) = COALESCE(src_l.city, 0)
-    AND COALESCE(L.state, 0) = COALESCE(src_l.state, 0)
-    AND COALESCE(L.zip, 0) = COALESCE(src_l.zip, 0)
-;
-
 -- -------------------------------------------------------------------
 -- table: person
 -- -------------------------------------------------------------------
@@ -981,7 +894,7 @@ SELECT DISTINCT
     TIMESTAMP(b.date_of_birth)                  AS birth_datetime,
     COALESCE(r.race_target_concept_id, 0)       AS race_concept_id,
     0                                           AS ethnicity_concept_id,
-    loc.location_id                             AS location_id,
+    person_loc.location_id                      AS location_id,
     NULL                                        AS provider_id,
     NULL                                        AS care_site_id,
     src_m.participant_id                        AS person_source_value,
@@ -999,9 +912,8 @@ LEFT JOIN cdm.src_gender g
     ON src_m.participant_id = g.person_id
 LEFT JOIN cdm.src_race r
     ON src_m.participant_id = r.person_id
-LEFT JOIN cdm.src_location_for_pers loc
-    ON src_m.participant_id = loc.person_id
-;
+LEFT JOIN cdm.src_person_location person_loc
+    ON src_m.participant_id = person_loc.participant_id;
 
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
@@ -1009,6 +921,7 @@ LEFT JOIN cdm.src_location_for_pers loc
   DROP TABLE IF EXISTS cdm.src_gender;
   DROP TABLE IF EXISTS cdm.src_race;
   DROP TABLE IF EXISTS cdm.src_location_for_pers;
+  DROP TABLE IF EXISTS cdm.src_person_location;
 
 -- -------------------------------------------------------------------
 -- source_file: src/procedure_occurrence.sql
@@ -1090,6 +1003,9 @@ INNER JOIN rdr.physical_measurements pm
 INNER JOIN cdm.person pe
     ON pe.person_id = pm.participant_id
 ;
+
+ALTER TABLE cdm.src_meas ADD KEY (code_value);
+ALTER TABLE cdm.src_meas ADD KEY (physical_measurements_id);
 
 -- -------------------------------------------------------------------
 -- additional table: tmp_cv_concept_lk
@@ -1311,6 +1227,8 @@ GROUP BY
     cs.care_site_id,
     src_meas.physical_measurements_id
 ;
+
+ALTER TABLE cdm.visit_occurrence ADD KEY (visit_source_value);
 
 -- -------------------------------------------------------------------
 -- source_file: src/observation.sql
