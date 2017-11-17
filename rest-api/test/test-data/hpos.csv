@@ -16,7 +16,9 @@ Organization/,TRANS_AM,Trans-American Consortium (TAC),HPO
 Organization/,VA,VA,VA
 Organization/,QTC,QTC,DV
 Organization/,WALGREENS,Walgreens,DV
-Organization/,QUEST,Ques Labs,DV
+Organization/,QUEST,Quest Labs,DV
 Organization/,EMSI,EMSI,DV
 Organization/,SDBB,San Diego Blood Bank,DV
 Organization/,TEST,Test organization,UNSET
+Organization/,SOUTHERN,Alabama,HPO
+Organization/,WISCONSIN,Wisconsin,HPO
