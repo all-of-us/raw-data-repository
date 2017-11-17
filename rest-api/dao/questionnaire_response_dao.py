@@ -151,6 +151,11 @@ class QuestionnaireResponseDao(BaseDao):
     """
     # Block on other threads modifying the participant or participant summary.
     participant = ParticipantDao().get_for_update(session, questionnaire_response.participantId)
+
+    if participant is None:
+      raise BadRequest('Participant with ID %d is not found.' %
+                        questionnaire_response.participantId)
+
     participant_summary = participant.participantSummary
 
     code_ids.extend([concept.codeId for concept in questionnaire_history.concepts])

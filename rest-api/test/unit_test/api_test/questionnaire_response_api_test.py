@@ -25,9 +25,6 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     questionnaire_id = self.create_questionnaire('questionnaire1.json')
     with open(data_path('questionnaire_response3.json')) as f:
       resource = json.load(f)
-    # Sending response with the dummy participant id in the url is an error
-    self.send_post(_questionnaire_response_url(participant_id + '0'), resource,
-                   expected_status=httplib.NOT_FOUND)
     # Sending response with the dummy participant id in the file is an error
     self.send_post(_questionnaire_response_url('{participant_id}'), resource,
                    expected_status=httplib.NOT_FOUND)

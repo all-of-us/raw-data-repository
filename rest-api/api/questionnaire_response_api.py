@@ -3,7 +3,6 @@ import app_util
 from api.base_api import BaseApi
 from api_util import PTC
 from dao.questionnaire_response_dao import QuestionnaireResponseDao
-from dao.participant_dao import ParticipantDao
 
 class QuestionnaireResponseApi(BaseApi):
   def __init__(self):
@@ -16,5 +15,4 @@ class QuestionnaireResponseApi(BaseApi):
 
   @app_util.auth_required(PTC)
   def post(self, p_id):
-  	if ParticipantDao().check_participant_exist(p_id):
-  		return super(QuestionnaireResponseApi, self).post(participant_id=p_id)
+  	return super(QuestionnaireResponseApi, self).post(participant_id=p_id)
