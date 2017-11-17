@@ -1166,6 +1166,10 @@ LEFT JOIN cdm.tmp_vcv_concept_lk tmp2
     ON meas.value_code_value = tmp2.value_code_value
 ;
 
+alter table cdm.src_meas_mapped add key (physical_measurements_id);
+alter table cdm.visit_occurrence add key (visit_source_value);
+CREATE INDEX src_meas_pm_ids ON cdm.src_meas_mapped (physical_measurements_id, measurement_id);
+
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
 -- -------------------------------------------------------------------
@@ -1229,6 +1233,7 @@ GROUP BY
 ;
 
 ALTER TABLE cdm.visit_occurrence ADD KEY (visit_source_value);
+CREATE INDEX visit_occ_idx ON cdm.visit_occurrence (visit_source_value, visit_occurrence_id);
 
 -- -------------------------------------------------------------------
 -- source_file: src/observation.sql
@@ -1331,9 +1336,6 @@ WHERE
 -- table: cdm.measurement
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.measurement;
-
-alter table cdm.src_meas_mapped add key (physical_measurements_id);
-alter table cdm.visit_occurrence add key (visit_source_value);
 
 -- -------------------------------------------------------------------
 -- unit: meas.dec - measurements represented as decimal values
