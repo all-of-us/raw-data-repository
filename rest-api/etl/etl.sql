@@ -35,7 +35,7 @@ DROP TABLE IF EXISTS care_site;
 
 CREATE TABLE care_site
 (
-    care_site_id bigint AUTO_INCREMENT NOT NULL,
+    care_site_id bigint NOT NULL,
     care_site_name varchar(255),
     place_of_service_concept_id bigint NOT NULL,
     location_id bigint,
@@ -157,7 +157,7 @@ DROP TABLE IF EXISTS visit_occurrence;
 
 CREATE TABLE visit_occurrence
 (
-    visit_occurrence_id bigint AUTO_INCREMENT NOT NULL,
+    visit_occurrence_id bigint NOT NULL,
     person_id bigint NOT NULL,
     visit_concept_id bigint NOT NULL,
     visit_start_date date NOT NULL,
@@ -1167,7 +1167,6 @@ LEFT JOIN cdm.tmp_vcv_concept_lk tmp2
 ;
 
 alter table cdm.src_meas_mapped add key (physical_measurements_id);
-alter table cdm.visit_occurrence add key (visit_source_value);
 CREATE INDEX src_meas_pm_ids ON cdm.src_meas_mapped (physical_measurements_id, measurement_id);
 
 -- -------------------------------------------------------------------
@@ -1187,7 +1186,7 @@ TRUNCATE TABLE cdm.care_site;
 
 INSERT INTO cdm.care_site
 SELECT DISTINCT
-    NULL                                    AS care_site_id,
+    src_meas.finalized_site_id              AS care_site_id,
     site.site_name                          AS care_site_name,
     0                                       AS place_of_service_concept_id,
     NULL                                    AS location_id,
@@ -1210,7 +1209,7 @@ TRUNCATE TABLE cdm.visit_occurrence;
 
 INSERT INTO cdm.visit_occurrence
 SELECT
-    NULL                                    AS visit_occurrence_id,
+    src_meas.physical_measurements_id       AS visit_occurrence_id,
     src_meas.participant_id                 AS person_id,
     9202                                    AS visit_concept_id, -- 9202 - 'Outpatient Visit'
     DATE(MIN(src_meas.measurement_time))    AS visit_start_date,
@@ -1219,21 +1218,16 @@ SELECT
     MAX(src_meas.measurement_time)          AS visit_end_datetime,
     44818519                                AS visit_type_concept_id, -- 44818519 - 'Clinical Study Visit'
     NULL                                    AS provider_id,
-    cs.care_site_id                         AS care_site_id,
+    src_meas.finalized_site_id              AS care_site_id,
     src_meas.physical_measurements_id       AS visit_source_value,
     0                                       AS visit_source_concept_id,
     'vis.survey'                            AS unit_id
 FROM cdm.src_meas src_meas
-LEFT JOIN cdm.care_site cs
-    ON src_meas.finalized_site_id = cs.care_site_source_value
 GROUP BY
     src_meas.participant_id,
-    cs.care_site_id,
+    src_meas.finalized_site_id,
     src_meas.physical_measurements_id
 ;
-
-ALTER TABLE cdm.visit_occurrence ADD KEY (visit_source_value);
-CREATE INDEX visit_occ_idx ON cdm.visit_occurrence (visit_source_value, visit_occurrence_id);
 
 -- -------------------------------------------------------------------
 -- source_file: src/observation.sql
@@ -1309,7 +1303,7 @@ SELECT DISTINCT
     0                                       AS qualifier_concept_id,
     0                                       AS unit_concept_id,
     NULL                                    AS provider_id,
-    vis.visit_occurrence_id                 AS visit_occurrence_id,
+    meas.physical_measurements_id           AS visit_occurrence_id,
     meas.code_value                         AS observation_source_value,
     meas.cv_source_concept_id               AS observation_source_concept_id,
     NULL                                    AS unit_source_value,
@@ -1320,8 +1314,6 @@ SELECT DISTINCT
     meas.measurement_id                     AS meas_id,
     'observ.meas'                           AS unit_id
 FROM cdm.src_meas_mapped meas
-LEFT JOIN cdm.visit_occurrence vis
-    ON vis.visit_source_value = meas.physical_measurements_id
 WHERE
     meas.cv_domain_id = 'Observation'
     OR meas.cv_concept_class_id = 'PPI Modifier'
@@ -1356,7 +1348,7 @@ SELECT DISTINCT
     NULL                                    AS range_low,
     NULL                                    AS range_high,
     NULL                                    AS provider_id,
-    vis.visit_occurrence_id                 AS visit_occurrence_id,
+    meas.physical_measurements_id           AS visit_occurrence_id,
     meas.code_value                         AS measurement_source_value,
     meas.cv_source_concept_id               AS measurement_source_concept_id,
     meas.value_unit                         AS unit_source_value,
@@ -1367,8 +1359,6 @@ SELECT DISTINCT
 FROM cdm.src_meas_mapped meas
 LEFT JOIN rdr.measurement_to_qualifier mq
     ON  meas.measurement_id = mq.qualifier_id
-LEFT JOIN cdm.visit_occurrence vis
-    ON meas.physical_measurements_id = vis.visit_source_value
 WHERE
     mq.qualifier_id IS NULL
     AND (meas.cv_domain_id = 'Measurement' OR meas.cv_domain_id IS NULL)
@@ -1395,7 +1385,7 @@ SELECT DISTINCT
     NULL                                    AS range_low,
     NULL                                    AS range_high,
     NULL                                    AS provider_id,
-    vis.visit_occurrence_id                 AS visit_occurrence_id,
+    meas.physical_measurements_id           AS visit_occurrence_id,
     meas.code_value                         AS measurement_source_value,
     meas.cv_source_concept_id               AS measurement_source_concept_id,
     NULL                                    AS unit_source_value,
@@ -1406,8 +1396,6 @@ SELECT DISTINCT
 FROM cdm.src_meas_mapped meas
 LEFT JOIN rdr.measurement_to_qualifier mq
     ON  meas.measurement_id = mq.qualifier_id
-LEFT JOIN cdm.visit_occurrence vis
-    ON vis.visit_source_value = meas.physical_measurements_id
 WHERE
     mq.qualifier_id IS NULL
     AND (meas.cv_domain_id = 'Measurement' OR meas.cv_domain_id IS NULL)
@@ -1434,7 +1422,7 @@ SELECT DISTINCT
     NULL                                    AS range_low,
     NULL                                    AS range_high,
     NULL                                    AS provider_id,
-    vis.visit_occurrence_id                 AS visit_occurrence_id,
+    meas.physical_measurements_id           AS visit_occurrence_id,
     meas.code_value                         AS measurement_source_value,
     meas.cv_source_concept_id               AS measurement_source_concept_id,
     NULL                                    AS unit_source_value,
@@ -1445,8 +1433,6 @@ SELECT DISTINCT
 FROM cdm.src_meas_mapped meas
 LEFT JOIN rdr.measurement_to_qualifier mq
     ON  meas.measurement_id = mq.qualifier_id
-LEFT JOIN cdm.visit_occurrence vis
-    ON vis.visit_source_value = meas.physical_measurements_id
 WHERE
     mq.qualifier_id IS NULL
     AND (meas.cv_domain_id = 'Measurement' OR meas.cv_domain_id IS NULL)
@@ -1475,13 +1461,11 @@ SELECT
     45905770                        AS condition_type_concept_id,   -- 45905770, Patient Self-Reported Condition
     NULL                            AS stop_reason,
     NULL                            AS provider_id,
-    vis.visit_occurrence_id         AS visit_occurrence_id,
+    meas.physical_measurements_id   AS visit_occurrence_id,
     meas.code_value                 AS condition_source_value,
     meas.cv_source_concept_id       AS condition_source_concept_id,
     'condition'                     AS unit_id
 FROM cdm.src_meas_mapped meas
-LEFT JOIN cdm.visit_occurrence vis
-    ON meas.physical_measurements_id  = vis.visit_source_value
 WHERE
     (   meas.cv_domain_id = 'Condition'
         AND meas.code_value != 'wheelchair-bound-status'
