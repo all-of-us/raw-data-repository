@@ -1167,6 +1167,7 @@ LEFT JOIN cdm.tmp_vcv_concept_lk tmp2
 ;
 
 alter table cdm.src_meas_mapped add key (physical_measurements_id);
+alter table cdm.src_meas_mapped add key (measurement_id);
 CREATE INDEX src_meas_pm_ids ON cdm.src_meas_mapped (physical_measurements_id, measurement_id);
 
 -- -------------------------------------------------------------------
@@ -1320,6 +1321,8 @@ WHERE
     OR meas.measurement_id IN (SELECT qualifier_id FROM rdr.measurement_to_qualifier)
 ;
 
+ALTER TABLE cdm.observation ADD KEY (meas_id);
+
 -- -------------------------------------------------------------------
 -- source_file: src/measurement.sql
 -- -------------------------------------------------------------------
@@ -1439,6 +1442,8 @@ WHERE
     AND (meas.value_code_value IS NULL AND meas.value_decimal IS NULL)
     AND COALESCE(meas.cv_concept_class_id, '0' ) != 'PPI Modifier'
 ;
+
+CREATE INDEX measurement_idx ON cdm.measurement (person_id, measurement_date, measurement_datetime, parent_id);
 
 -- -------------------------------------------------------------------
 -- source_file: src/condition_occurrence.sql
@@ -1788,6 +1793,9 @@ SELECT
 FROM cdm.drug_exposure
 ;
 
+CREATE INDEX temp_obs_target_idx_start ON cdm.temp_obs_target (person_id, start_date);
+CREATE INDEX temp_obs_target_idx_end ON cdm.temp_obs_target (person_id, end_date);
+
 DROP TABLE IF EXISTS cdm.temp_obs_end_union;
 CREATE TABLE cdm.temp_obs_end_union
 (
@@ -1912,6 +1920,8 @@ WHERE
     (2 * e.start_ordinal) - e.overall_ord = 0
 ;
 
+CREATE INDEX temp_obs_end_idx ON cdm.temp_obs_end (person_id, end_date);
+
 DROP TABLE IF EXISTS cdm.temp_obs;
 CREATE TABLE cdm.temp_obs
 (
@@ -1933,6 +1943,8 @@ GROUP BY
     dt.person_id,
     dt.start_date
 ;
+
+CREATE INDEX temp_obs_idx ON cdm.temp_obs (person_id, observation_end_date);
 
 TRUNCATE TABLE cdm.observation_period;
 
