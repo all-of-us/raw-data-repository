@@ -102,6 +102,17 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
 
+  def test_insert_participant_not_found2(self):
+    self.insert_codes()
+    p = Participant(participantId=1, biobankId=2, withdrawalStatus=WithdrawalStatus.NOT_WITHDRAWN)
+    self.participant_dao.insert(p)
+    self._setup_questionnaire()
+    qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
+                               participantId=2, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.extend(self._names_and_email_answers())
+    with self.assertRaises(BadRequest):
+      self.questionnaire_response_dao.insert(qr)
+
   def test_insert_participant_withdrawn(self):
     self.insert_codes()
     p = Participant(participantId=1, biobankId=2, withdrawalStatus=WithdrawalStatus.NO_USE)
