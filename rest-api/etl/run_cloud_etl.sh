@@ -27,6 +27,6 @@ source tools/auth_setup.sh
 run_cloud_sql_proxy
 set_db_connection_string
 
-mysql --verbose -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/etl.sql
+mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/etl.sql
 
 echo "Done."
