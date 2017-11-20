@@ -171,6 +171,7 @@ class QuestionnaireResponseDao(BaseDao):
       if not consent_code.codeId in code_ids:
         raise BadRequest("Can't submit order for participant %s without consent" %
                          questionnaire_response.participantId)
+      raise_if_withdrawn(participant)
       participant_summary = ParticipantDao.create_summary_for_participant(participant)
       something_changed = True
     else:
