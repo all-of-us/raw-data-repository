@@ -2,10 +2,15 @@
   "biobank_id_prefix": ["A"],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {
-      "roles": ["healthpro", "ptc"]
+      "roles": ["healthpro"],
+      "whitelisted_appids": ["healthpro-prod"]
     },
     "vibrent-drc-prod@vibrent-drc-prod-165017.iam.gserviceaccount.com": {
-      "roles": ["ptc"]
+      "roles": ["ptc"],
+      "whitelisted_ip_ranges": {
+        "ip4": ["34.204.157.148"],
+        "ip6": []
+      }
     },
     "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]
