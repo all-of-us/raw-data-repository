@@ -19,7 +19,7 @@ class Site(Base):
   launchDate = Column('launch_date', Date)
   notes = Column('notes', String(1024))
   latitude = Column('latitude', Float)
-  longitude = Column('latitude', Float)
+  longitude = Column('longitude', Float)
   directions = Column('directions', String(1024))
   physicalLocationName = Column('physical_location_name', String(1024))
   address1 = Column('address_1', String(1024))
@@ -30,5 +30,3 @@ class Site(Base):
   phoneNumber = Column('phone_number', String(80))
   email = Column('email', String(255))
   link = Column('link', String(255))
-
-
