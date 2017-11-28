@@ -1,6 +1,7 @@
 from model.base import Base
 from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey
 from site_enums import SiteStatus
+from model.utils import Enum
 
 class Site(Base):
   __tablename__ = 'site'
@@ -21,4 +22,5 @@ class Site(Base):
   longitude = Column('latitude', Float)
   directions = Column('directions', String(1024))
   physicalLocationName = Column('physical_location_name', String(1024))
-  address1
+
+
