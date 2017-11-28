@@ -22,5 +22,13 @@ class Site(Base):
   longitude = Column('latitude', Float)
   directions = Column('directions', String(1024))
   physicalLocationName = Column('physical_location_name', String(1024))
+  address1 = Column('address_1', String(1024))
+  address2 = Column('address_2', String(1024))
+  city = Column('city', String(255))
+  state = Column('state', String(2))
+  zipCode = Column('zip_code', String(10))
+  phoneNumber = Column('phone_number', String(80))
+  email = Column('email', String(255))
+  link = Column('link', String(255))
 
 
