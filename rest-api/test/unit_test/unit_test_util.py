@@ -176,14 +176,12 @@ class _TestDb(object):
     created_site = site_dao.insert(Site(
         siteName='Monroeville Urgent Care Center',
         googleGroup='hpo-site-monroeville',
-        consortiumName='Pittsburgh',
         mayolinkClientNumber=7035769,
         hpoId=PITT_HPO_ID))
     self.site_id = created_site.siteId
     site_dao.insert(Site(
         siteName='Phoenix Urgent Care Center',
         googleGroup='hpo-site-bannerphoenix',
-        consortiumName='Pittsburgh',
         mayolinkClientNumber=7035770,
         hpoId=PITT_HPO_ID))
 

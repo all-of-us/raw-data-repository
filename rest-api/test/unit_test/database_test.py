@@ -40,7 +40,7 @@ class DatabaseTest(SqlTestBase):
     session.commit()
 
     site = Site(siteId=1, siteName='site', googleGroup='site@googlegroups.com',
-                consortiumName='consortium', mayolinkClientNumber=12345, organizationId=1)
+                mayolinkClientNumber=12345, organizationId=1)
     code1 = Code(codeId=1, codeBookId=1, system="a", value="b", shortValue="q",
                  display=u"c", topic=u"d", codeType=CodeType.MODULE, mapped=True,
                  created=datetime.datetime.now())
@@ -206,7 +206,7 @@ class DatabaseTest(SqlTestBase):
 
     p = self._create_participant(write_session)
     site = Site(siteId=1, siteName='site', googleGroup='site@googlegroups.com',
-                consortiumName='consortium', mayolinkClientNumber=12345, hpoId=1)
+                mayolinkClientNumber=12345, hpoId=1)
     write_session.add(site)
     write_session.commit()
 
