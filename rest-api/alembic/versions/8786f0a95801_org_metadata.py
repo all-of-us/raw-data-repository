@@ -1,8 +1,8 @@
 """Org metadata
 
-Revision ID: 8a19afee7796
+Revision ID: 8786f0a95801
 Revises: b315fec9aa4e
-Create Date: 2017-11-28 16:34:08.719933
+Create Date: 2017-11-29 16:20:00.427120
 
 """
 from alembic import op
@@ -17,7 +17,7 @@ from model.site_enums import SiteStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '8a19afee7796'
+revision = '8786f0a95801'
 down_revision = 'b315fec9aa4e'
 branch_labels = None
 depends_on = None
@@ -35,9 +35,9 @@ def upgrade():
     )
     op.add_column(u'site', sa.Column('address_1', sa.String(length=1024), nullable=True))
     op.add_column(u'site', sa.Column('address_2', sa.String(length=1024), nullable=True))
+    op.add_column(u'site', sa.Column('admin_emails', sa.String(length=4096), nullable=True))
     op.add_column(u'site', sa.Column('city', sa.String(length=255), nullable=True))
     op.add_column(u'site', sa.Column('directions', sa.String(length=1024), nullable=True))
-    op.add_column(u'site', sa.Column('email', sa.String(length=255), nullable=True))
     op.add_column(u'site', sa.Column('latitude', sa.Float(), nullable=True))
     op.add_column(u'site', sa.Column('launch_date', sa.Date(), nullable=True))
     op.add_column(u'site', sa.Column('link', sa.String(length=255), nullable=True))
@@ -75,9 +75,9 @@ def downgrade():
     op.drop_column(u'site', 'link')
     op.drop_column(u'site', 'launch_date')
     op.drop_column(u'site', 'latitude')
-    op.drop_column(u'site', 'email')
     op.drop_column(u'site', 'directions')
     op.drop_column(u'site', 'city')
+    op.drop_column(u'site', 'admin_emails')
     op.drop_column(u'site', 'address_2')
     op.drop_column(u'site', 'address_1')
     op.drop_table('organization')
