@@ -31,11 +31,11 @@ _CSV_COLUMN_NAMES = (
   'sent_collection_time',
   'sent_processed_time',
   'sent_finalized_time',
-  'source_site_name',  
+  'source_site_name',
   'source_site_mayolink_client_number',
   'source_site_hpo',
   'source_site_hpo_type',
-  'finalized_site_name',  
+  'finalized_site_name',
   'finalized_site_mayolink_client_number',
   'finalized_site_hpo',
   'finalized_site_hpo_type',
@@ -287,11 +287,11 @@ class MySqlReconciliationTest(FlaskTestBase):
         'sent_test': BIOBANK_TESTS[0],
         'received_test': BIOBANK_TESTS[0]})
     # Also check the values of all remaining fields on one row.
-    self.assertEquals(row['source_site_name'], 'Monroeville Urgent Care Center')  
+    self.assertEquals(row['source_site_name'], 'Monroeville Urgent Care Center')
     self.assertEquals(row['source_site_mayolink_client_number'], '7035769')
     self.assertEquals(row['source_site_hpo'], 'PITT')
     self.assertEquals(row['source_site_hpo_type'], 'HPO')
-    self.assertEquals(row['finalized_site_name'], 'Monroeville Urgent Care Center')    
+    self.assertEquals(row['finalized_site_name'], 'Monroeville Urgent Care Center')
     self.assertEquals(row['finalized_site_mayolink_client_number'], '7035769')
     self.assertEquals(row['finalized_site_hpo'], 'PITT')
     self.assertEquals(row['finalized_site_hpo_type'], 'HPO')

@@ -335,7 +335,7 @@ _RECONCILIATION_REPORT_SQL = ("""
     ISODATE[MAX(collected)] sent_collection_time,
     ISODATE[MAX(processed)] sent_processed_time,
     ISODATE[MAX(finalized)] sent_finalized_time,
-    GROUP_CONCAT(DISTINCT source_site_name) source_site_name,    
+    GROUP_CONCAT(DISTINCT source_site_name) source_site_name,
     GROUP_CONCAT(DISTINCT source_site_mayolink_client_number) source_site_mayolink_client_number,
     GROUP_CONCAT(DISTINCT source_site_hpo) source_site_hpo,
     GROUP_CONCAT(DISTINCT source_site_hpo_type) source_site_hpo_type,
