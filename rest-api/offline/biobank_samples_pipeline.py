@@ -258,12 +258,12 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
 _SENT_COUNT_INDEX = 2
 _SENT_COLLECTION_TIME_INDEX = 4
 _SENT_FINALIZED_INDEX = 6
-_RECEIVED_TEST_INDEX = 18
-_RECEIVED_COUNT_INDEX = 19
+_RECEIVED_TEST_INDEX = 16
+_RECEIVED_COUNT_INDEX = 17
 # TODO: remove received time once Biobank stops using it (DA-374)
-_RECEIVED_TIME_INDEX = 21
-_SAMPLE_FAMILY_CREATE_TIME_INDEX = 22
-_ELAPSED_HOURS_INDEX = 23
+_RECEIVED_TIME_INDEX = 19
+_SAMPLE_FAMILY_CREATE_TIME_INDEX = 20
+_ELAPSED_HOURS_INDEX = 21
 
 _ORDER_JOINS = """
       biobank_order
@@ -335,13 +335,11 @@ _RECONCILIATION_REPORT_SQL = ("""
     ISODATE[MAX(collected)] sent_collection_time,
     ISODATE[MAX(processed)] sent_processed_time,
     ISODATE[MAX(finalized)] sent_finalized_time,
-    GROUP_CONCAT(DISTINCT source_site_name) source_site_name,
-    GROUP_CONCAT(DISTINCT source_site_consortium) source_site_consortium,
+    GROUP_CONCAT(DISTINCT source_site_name) source_site_name,    
     GROUP_CONCAT(DISTINCT source_site_mayolink_client_number) source_site_mayolink_client_number,
     GROUP_CONCAT(DISTINCT source_site_hpo) source_site_hpo,
     GROUP_CONCAT(DISTINCT source_site_hpo_type) source_site_hpo_type,
     GROUP_CONCAT(DISTINCT finalized_site_name) finalized_site_name,
-    GROUP_CONCAT(DISTINCT finalized_site_consortium) finalized_site_consortium,
     GROUP_CONCAT(DISTINCT finalized_site_mayolink_client_number)
         finalized_site_mayolink_client_number,
     GROUP_CONCAT(DISTINCT finalized_site_hpo) finalized_site_hpo,
@@ -364,13 +362,11 @@ _RECONCILIATION_REPORT_SQL = ("""
       participant.biobank_id raw_biobank_id,
       biobank_order_identifier.value biobank_order_id,
       source_site.site_name source_site_name,
-      source_site.consortium_name source_site_consortium,
       source_site.mayolink_client_number source_site_mayolink_client_number,
       source_site_hpo.name source_site_hpo,
       """
       + _get_hpo_type_sql('source_site_hpo') + """ source_site_hpo_type,
       finalized_site.site_name finalized_site_name,
-      finalized_site.consortium_name finalized_site_consortium,
       finalized_site.mayolink_client_number finalized_site_mayolink_client_number,
       finalized_site_hpo.name finalized_site_hpo,
       """
@@ -409,12 +405,10 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample.biobank_id raw_biobank_id,
       NULL biobank_order_id,
       NULL source_site_name,
-      NULL source_site_consortium,
       NULL source_site_mayolink_client_number,
       NULL source_site_hpo,
       NULL source_site_hpo_type,
       NULL finalized_site_name,
-      NULL finalized_site_consortium,
       NULL finalized_site_mayolink_client_number,
       NULL finalized_site_hpo,
       NULL finalized_site_hpo_type,
