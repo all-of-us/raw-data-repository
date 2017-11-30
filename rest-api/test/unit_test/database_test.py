@@ -11,6 +11,7 @@ from model.hpo import HPO
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements, Measurement
 from model.metrics import MetricsVersion, MetricsBucket
+from model.organization import Organization
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
@@ -33,8 +34,13 @@ class DatabaseTest(SqlTestBase):
     session.add(code_book)
     session.commit()
 
+    organization = Organization(organizationId=1, externalId='org', displayName='Organization',
+                                hpoId=1)
+    session.add(organization)
+    session.commit()
+
     site = Site(siteId=1, siteName='site', googleGroup='site@googlegroups.com',
-                consortiumName='consortium', mayolinkClientNumber=12345, hpoId=1)
+                mayolinkClientNumber=12345, organizationId=1)
     code1 = Code(codeId=1, codeBookId=1, system="a", value="b", shortValue="q",
                  display=u"c", topic=u"d", codeType=CodeType.MODULE, mapped=True,
                  created=datetime.datetime.now())
@@ -200,7 +206,7 @@ class DatabaseTest(SqlTestBase):
 
     p = self._create_participant(write_session)
     site = Site(siteId=1, siteName='site', googleGroup='site@googlegroups.com',
-                consortiumName='consortium', mayolinkClientNumber=12345, hpoId=1)
+                mayolinkClientNumber=12345, hpoId=1)
     write_session.add(site)
     write_session.commit()
 

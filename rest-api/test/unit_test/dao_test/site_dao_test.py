@@ -14,7 +14,7 @@ class SiteDaoTest(SqlTestBase):
 
   def test_insert(self):
     site = Site(siteName='site', googleGroup='site@googlegroups.com',
-                consortiumName='consortium', mayolinkClientNumber=12345, hpoId=PITT_HPO_ID)
+                mayolinkClientNumber=12345, hpoId=PITT_HPO_ID)
     created_site = self.site_dao.insert(site)
     new_site = self.site_dao.get(created_site.siteId)
     site.siteId = created_site.siteId
@@ -24,11 +24,11 @@ class SiteDaoTest(SqlTestBase):
 
   def test_update(self):
     site = Site(siteName='site', googleGroup='site@googlegroups.com',
-                consortiumName='consortium', mayolinkClientNumber=12345, hpoId=PITT_HPO_ID)
+                mayolinkClientNumber=12345, hpoId=PITT_HPO_ID)
     created_site = self.site_dao.insert(site)
     new_site = Site(siteId=created_site.siteId, siteName='site2',
                     googleGroup='site2@googlegroups.com',
-                    consortiumName='consortium2', mayolinkClientNumber=123456, hpoId=UNSET_HPO_ID)
+                    mayolinkClientNumber=123456, hpoId=UNSET_HPO_ID)
     self.site_dao.update(new_site)
     fetched_site = self.site_dao.get(created_site.siteId)
     self.assertEquals(new_site.asdict(), fetched_site.asdict())

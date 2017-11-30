@@ -1,5 +1,7 @@
 from model.base import Base
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey
+from site_enums import SiteStatus
+from model.utils import Enum
 
 class Site(Base):
   __tablename__ = 'site'
@@ -7,6 +9,24 @@ class Site(Base):
   siteName = Column('site_name', String(255), nullable=False)
   # The Google group for the site; this is a unique key used externally.
   googleGroup = Column('google_group', String(255), nullable=False, unique=True)
-  consortiumName = Column('consortium_name', String(255), nullable=False)
   mayolinkClientNumber = Column('mayolink_client_number', Integer)
-  hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
+  organizationId = Column('organization_id', Integer,
+                          ForeignKey('organization.organization_id'))
+  # Deprecated; this is being replaced by organizationId.
+  hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'))
+
+  siteStatus = Column('site_status', Enum(SiteStatus))
+  launchDate = Column('launch_date', Date)
+  notes = Column('notes', String(1024))
+  latitude = Column('latitude', Float)
+  longitude = Column('longitude', Float)
+  directions = Column('directions', String(1024))
+  physicalLocationName = Column('physical_location_name', String(1024))
+  address1 = Column('address_1', String(1024))
+  address2 = Column('address_2', String(1024))
+  city = Column('city', String(255))
+  state = Column('state', String(2))
+  zipCode = Column('zip_code', String(10))
+  phoneNumber = Column('phone_number', String(80))
+  admin_emails = Column('admin_emails', String(4096))
+  link = Column('link', String(255))

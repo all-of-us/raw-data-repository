@@ -51,10 +51,8 @@ def _site_from_row(row, hpo_dao):
         google_group, _GOOGLE_GROUP_SUFFIX, row)
     return None
   google_group_prefix = google_group[:-len(_GOOGLE_GROUP_SUFFIX)].lower()
-  consortium = row['Group (Consortium)']
 
-  return Site(consortiumName=consortium,
-              siteName=row['Site'],
+  return Site(siteName=row['Site'],
               mayolinkClientNumber=(int(mayolink_client_num_str) if mayolink_client_num_str
                                     else None),
               googleGroup=google_group_prefix,
@@ -71,7 +69,6 @@ def _upsert_site(site, existing_site, site_dao, session, dry_run):
       logging.info('Not updating %s.', site_dict['siteName'])
       return False
     else:
-      existing_site.consortiumName = site.consortiumName
       existing_site.siteName = site.siteName
       existing_site.mayolinkClientNumber = site.mayolinkClientNumber
       existing_site.hpoId = site.hpoId
