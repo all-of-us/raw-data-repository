@@ -286,8 +286,7 @@ class ParticipantDaoTest(SqlTestBase):
     other_site = SiteDao().insert(Site(
         hpoId=other_hpo.hpoId,
         siteName='Arbitrary Site',
-        googleGroup='a_site@googlegroups.com',
-        consortiumName='The Arbitrary Site Consortium'))
+        googleGroup='a_site@googlegroups.com'))
 
     with self.dao.session() as session:
       self.dao.add_missing_hpo_from_site(session, participant_id, other_site.siteId)
