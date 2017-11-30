@@ -34,7 +34,7 @@ class DatabaseTest(SqlTestBase):
     session.add(code_book)
     session.commit()
 
-    organization = Organization(organizationId=1, name='org', displayName='Organization',
+    organization = Organization(organizationId=1, externalId='org', displayName='Organization',
                                 hpoId=1)
     session.add(organization)
     session.commit()
