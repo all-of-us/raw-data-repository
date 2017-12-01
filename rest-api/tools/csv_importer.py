@@ -1,26 +1,49 @@
+"""Imports entities into the database based on a CSV file.
+
+Subclasses indicate in the constructor the name of the entity (for logging purposes),
+the DAO used to save the entity, the name of the primary key database ID field,
+the name of the external ID (referenced in the CSV file), and columns that must be populated
+with some value in the CSV.
+
+They then define _entity_from_row(row) to parse an entity out of a row dictionary.
+
+When dry_run flag is true, entities are not updated; instead logging indicates what would be
+updated.
+"""
 import csv
 import logging
 
 class CsvImporter(object):
 
-  def __init__(self, entity_name, dao, id_field, external_id_field):
+  def __init__(self, entity_name, dao, id_field, external_id_field, required_columns):
     self.entity_name = entity_name
     self.dao = dao
     self.id_field = id_field
     self.external_id_field = external_id_field
+    self.required_columns = required_columns
 
   def run(self, filename, dry_run):
     skip_count = 0
     new_count = 0
     updated_count = 0
     matched_count = 0
-    logging.info('Importing %s from %r.', self.entity_name, filename)
+    logging.info('Importing %ss from %r.', self.entity_name, filename)
     with open(filename, 'r') as csv_file:
       reader = csv.DictReader(csv_file)
       existing_map = {getattr(entity, self.external_id_field): entity for entity
                       in self.dao.get_all()}
       with self.dao.session() as session:
         for row in reader:
+          missing_fields = []
+          for column in self.required_columns:
+            value = row.get(column)
+            if value is None or value == '':
+              missing_fields.append(column)
+          if missing_fields:
+            logging.info('Skipping %s with missing columns: %s', self.entity_name, missing_fields)
+            skip_count += 1
+            continue
+
           entity = self._entity_from_row(row)
           if entity is None:
             skip_count += 1
@@ -33,12 +56,15 @@ class CsvImporter(object):
             else:
               matched_count += 1
           else:
-            self._insert_entity(entity, dry_run)
+            self._insert_entity(entity, session, existing_map, session, dry_run)
             new_count += 1
 
-    logging.info('Done importing %s%s: %d skipped, %d new, % d updated, %d not changed',
+    logging.info('Done importing %ss%s: %d skipped, %d new, % d updated, %d not changed',
                  self.entity_name, ' (dry run)' if dry_run else '', skip_count, new_count,
                  updated_count, matched_count)
+
+  def _entity_from_row(self, row):
+    raise Exception('Subclasses must implement _entity_from_row')
 
   def _update_entity(self, entity, existing_entity, session, dry_run):
     new_dict = entity.asdict()
@@ -49,17 +75,19 @@ class CsvImporter(object):
       logging.info('Not updating %s.', new_dict[self.external_id_field])
       return False
     else:
-
-      existing_site.siteName = site.siteName
-      existing_site.mayolinkClientNumber = site.mayolinkClientNumber
-      existing_site.hpoId = site.hpoId
+      logging.info('Updating %s: old = %s, new = %s', self.entity_name, existing_dict,
+                   new_dict.as_dict())
       if not dry_run:
-        site_dao.update_with_session(session, existing_site)
-      logging.info(
-          'Updating site: old = %s, new = %s', existing_site_dict, existing_site.asdict())
+        self._do_update(entity, existing_entity, session)
       return True
-  else:
-    logging.info('Inserting site: %s', site_dict)
-    if not dry_run:
-      site_dao.insert_with_session(session, site)
-    return True
+
+  def _do_update(self, entity, existing_entity, session):
+    """Subclasses must specify how to implement update."""
+    for k, v in entity.as_dict().iteritems():
+      if k != self.external_id_field and k != self.id_field:
+        setattr(existing_entity, k, v)
+    self.dao.update_with_session(session, entity)
+
+  def _insert_entity(self, entity, existing_map, session, dry_run):
+    logging.info('Inserting %s: %s', self.entity_name, entity.as_dict())
+    self.dao.insert_with_session(session, entity)
