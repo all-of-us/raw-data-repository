@@ -10,6 +10,7 @@ CODE_CACHE_INDEX = 0
 HPO_CACHE_INDEX = 1
 SITE_CACHE_INDEX = 2
 SQL_DATABASE_INDEX = 3
+ORGANIZATION_CACHE_INDEX = 4
 
 def reset_for_tests():
   with singletons_lock:
