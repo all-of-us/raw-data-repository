@@ -124,6 +124,13 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant_dao.insert(participant4)
       self.send_consent('P4', email='bob@example.com')
 
+      participant5 = Participant(
+          participantId=5,
+          biobankId=6,
+          providerLink=make_primary_provider_link_for_name('PITT'))
+      participant_dao.insert(participant5)
+      self.send_consent('P5', email='ch@gmail.com')
+
     with FakeClock(TIME_2):
       # This update to participant has no effect, as the HPO ID didn't change.
       participant = self._participant_with_defaults(
@@ -177,10 +184,6 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
   def test_metric_export(self):
     self._create_data()
     want = {
-        'questionnaireOnMedications': [{
-            'count': 4,
-            'value': 'UNSET'
-        }],
         'physicalMeasurements': [{
             'count': 3,
             'value': 'UNSET'
@@ -188,11 +191,10 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             'count': 1,
             'value': 'COMPLETED'
         }],
-        'questionnaireOnHealthcareAccess': [{
-            'count': 4,
-            'value': 'UNSET'
-        }],
         'gender': [{
+            'count': 2,
+            'value': u'UNSET'
+        }, {
             'count': 1,
             'value': u'PMI_PreferNotToAnswer'
         }, {
@@ -221,11 +223,14 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             'value': 'SUBMITTED'
         }],
         'state': [{
+            'count': 3,
+            'value': u'UNSET'
+        }, {
             'count': 1,
             'value': u'VA'
         }],
         'race': [{
-            'count': 2,
+            'count': 3,
             'value': 'UNSET'
         }, {
             'count': 1,
@@ -247,15 +252,7 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             'value': u'36-45'
         }, {
             'count': 3,
-            'value': u'86+'
-        }],
-        'questionnaireOnFamilyHealth': [{
-            'count': 4,
-            'value': 'UNSET'
-        }],
-        'questionnaireOnMedicalHistory': [{
-            'count': 4,
-            'value': 'UNSET'
+            'value': u'UNSET'
         }]
     }
     self.assertEquals(want, PublicMetricsExport.export())
