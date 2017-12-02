@@ -54,33 +54,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     super(MetricsExportTest, self).tearDown()
     FlaskTestBase.doTearDown(self)
 
-  def submit_questionnaire_response(self, participant_id, questionnaire_id,
-                                    race_code, gender_code, state,
-                                    date_of_birth):
-    code_answers = []
-    date_answers = []
-    if race_code:
-      code_answers.append(('race', Concept(PPI_SYSTEM, race_code)))
-    if gender_code:
-      code_answers.append(('genderIdentity', Concept(PPI_SYSTEM, gender_code)))
-    if date_of_birth:
-      date_answers.append(('dateOfBirth', date_of_birth))
-    if state:
-      code_answers.append(('state', Concept(PPI_SYSTEM, state)))
-    qr = make_questionnaire_response_json(
-        participant_id,
-        questionnaire_id,
-        code_answers=code_answers,
-        date_answers=date_answers)
-    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
-
-  def _submit_consent_questionnaire_response(
-      self, participant_id, questionnaire_id, ehr_consent_answer):
-    code_answers = [('ehrConsent', Concept(PPI_SYSTEM, ehr_consent_answer))]
-    qr = make_questionnaire_response_json(
-        participant_id, questionnaire_id, code_answers=code_answers)
-    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
-
   def _submit_empty_questionnaire_response(self, participant_id,
                                            questionnaire_id):
     qr = make_questionnaire_response_json(participant_id, questionnaire_id)
@@ -166,9 +139,9 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                                          None, None)
       self.submit_questionnaire_response('P2', questionnaire_id_2, None, None,
                                          'PIIState_VA', None)
-      self._submit_consent_questionnaire_response('P1', questionnaire_id_3,
+      self.submit_consent_questionnaire_response('P1', questionnaire_id_3,
                                                   CONSENT_PERMISSION_NO_CODE)
-      self._submit_consent_questionnaire_response('P2', questionnaire_id_3,
+      self.submit_consent_questionnaire_response('P2', questionnaire_id_3,
                                                   CONSENT_PERMISSION_YES_CODE)
       sample_dao = BiobankStoredSampleDao()
       sample_dao.insert(
