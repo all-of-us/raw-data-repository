@@ -3,11 +3,10 @@ import json
 import offline.metrics_export
 
 from clock import FakeClock
-from code_constants import PPI_SYSTEM, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
+from code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
 from code_constants import GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
 from code_constants import RACE_QUESTION_CODE, STATE_QUESTION_CODE, RACE_WHITE_CODE
 from code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE
-from concepts import Concept
 from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from mapreduce import test_support
 from model.biobank_stored_sample import BiobankStoredSample
@@ -154,6 +153,12 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
           BiobankStoredSample(
               biobankStoredSampleId='def',
               biobankId=3,
+              test='1SAL',
+              confirmed=TIME_2))
+      sample_dao.insert(
+          BiobankStoredSample(
+              biobankStoredSampleId='xyz',
+              biobankId=4,
               test='1SAL',
               confirmed=TIME_2))
 

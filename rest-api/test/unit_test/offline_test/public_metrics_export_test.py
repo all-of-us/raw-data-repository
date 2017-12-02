@@ -2,10 +2,9 @@ import datetime
 
 from offline.public_metrics_export import PublicMetricsExport
 from clock import FakeClock
-from code_constants import PPI_SYSTEM, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
+from code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
 from code_constants import EHR_CONSENT_QUESTION_CODE, RACE_WHITE_CODE
 from code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE
-from concepts import Concept
 from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from model.biobank_stored_sample import BiobankStoredSample
 from model.code import CodeType
@@ -17,7 +16,7 @@ from dao.participant_dao import ParticipantDao, make_primary_provider_link_for_n
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from test_data import load_biobank_order_json, load_measurement_json
 from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase
-from unit_test_util import make_questionnaire_response_json, PITT_HPO_ID
+from unit_test_util import PITT_HPO_ID
 
 TIME = datetime.datetime(2016, 1, 1)
 
@@ -96,27 +95,23 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant_dao.insert(participant5)
       self.send_consent('P5', email='ch@gmail.com')
 
-      self.submit_questionnaire_response('P1', questionnaire_id,
-                                         RACE_WHITE_CODE, 'male', None,
-                                         datetime.date(1980, 1, 2))
-      self.submit_questionnaire_response(
-          'P2', questionnaire_id, RACE_NONE_OF_THESE_CODE, None, None, None)
-
       self.send_post('Participant/P2/PhysicalMeasurements',
                      load_measurement_json(2))
       self.send_post('Participant/P2/BiobankOrder', load_biobank_order_json(2))
-      self.submit_questionnaire_response('P1', questionnaire_id, 'black',
-                                         'female', None,
-                                         datetime.date(1980, 1, 3))
-      self.submit_questionnaire_response('P2', questionnaire_id, None,
-                                         PMI_PREFER_NOT_TO_ANSWER_CODE, None,
-                                         None)
+      self.submit_questionnaire_response('P1', questionnaire_id,
+                                         RACE_WHITE_CODE, 'female', None,
+                                         datetime.date(1980, 1, 2))
+      self.submit_questionnaire_response(
+          'P2', questionnaire_id, PMI_PREFER_NOT_TO_ANSWER_CODE, 'male', None,
+          datetime.date(1920, 1, 3))
       self.submit_questionnaire_response('P2', questionnaire_id_2, None, None,
                                          'PIIState_VA', None)
+      self.submit_questionnaire_response('P5', questionnaire_id, None, None,
+                                         None, datetime.date(1970, 1, 2))
       self.submit_consent_questionnaire_response('P1', questionnaire_id_3,
-                                                  CONSENT_PERMISSION_NO_CODE)
+                                                 CONSENT_PERMISSION_NO_CODE)
       self.submit_consent_questionnaire_response('P2', questionnaire_id_3,
-                                                  CONSENT_PERMISSION_YES_CODE)
+                                                 CONSENT_PERMISSION_YES_CODE)
       sample_dao = BiobankStoredSampleDao()
       sample_dao.insert(
           BiobankStoredSample(
@@ -130,29 +125,36 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
               biobankId=3,
               test='1SAL',
               confirmed=TIME))
+      # Required to update the HPO linkage (and test filtering for P3).
+      sample_dao.insert(
+          BiobankStoredSample(
+              biobankStoredSampleId='xyz',
+              biobankId=4,
+              test='1SAL',
+              confirmed=TIME))
 
   def test_metric_export(self):
     self._create_data()
     want = {
         'physicalMeasurements': [{
-            'count': 3,
+            'count': 2,
             'value': 'UNSET'
         }, {
             'count': 1,
             'value': 'COMPLETED'
         }],
         'gender': [{
-            'count': 2,
+            'count': 1,
             'value': u'UNSET'
         }, {
             'count': 1,
-            'value': u'PMI_PreferNotToAnswer'
+            'value': u'female'
         }, {
             'count': 1,
-            'value': u'female'
+            'value': u'male'
         }],
         'questionnaireOnOverallHealth': [{
-            'count': 3,
+            'count': 2,
             'value': 'UNSET'
         }, {
             'count': 1,
@@ -162,47 +164,51 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             'count': 1,
             'value': u'COLLECTED'
         }, {
-            'count': 3,
+            'count': 2,
             'value': u'UNSET'
         }],
         'questionnaireOnPersonalHabits': [{
-            'count': 3,
+            'count': 2,
             'value': 'UNSET'
         }, {
             'count': 1,
             'value': 'SUBMITTED'
         }],
         'state': [{
-            'count': 3,
+            'count': 2,
             'value': u'UNSET'
         }, {
             'count': 1,
             'value': u'VA'
         }],
         'race': [{
-            'count': 3,
+            'count': 1,
             'value': 'UNSET'
         }, {
             'count': 1,
-            'value': 'OTHER_RACE'
+            'value': 'WHITE'
+        }, {
+            'count': 1,
+            'value': 'PREFER_NOT_TO_SAY'
         }],
         'enrollmentStatus': [{
-            'count': 4,
+            'count': 3,
             'value': 'INTERESTED'
         }],
         'questionnaireOnSociodemographics': [{
-            'count': 2,
-            'value': 'UNSET'
-        }, {
-            'count': 2,
+            'count': 3,
             'value': 'SUBMITTED'
         }],
         'ageRange': [{
             'count': 1,
             'value': u'36-45'
         }, {
-            'count': 3,
-            'value': u'UNSET'
+            'count': 1,
+            'value': u'46-55'
+        }, {
+            'count': 1,
+            'value': u'86+'
         }]
     }
-    self.assertEquals(want, PublicMetricsExport.export())
+    with FakeClock(TIME):
+      self.assertEquals(want, PublicMetricsExport.export())

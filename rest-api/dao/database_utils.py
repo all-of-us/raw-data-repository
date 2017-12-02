@@ -9,7 +9,7 @@ _DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 # MySQL uses %i for minutes
 _MYSQL_DATE_FORMAT = '%Y-%m-%dT%H:%i:%SZ'
 _ISODATE_PATTERN = 'ISODATE\[([^\]]+)\]'
-_YEARS_OLD_PATTERN = 'YEARS_OLD\[([^\]]+)\]'
+_YEARS_OLD_PATTERN = 'YEARS_OLD\[([^\],]+), +([^\],]+)\]'
 
 
 def get_sql_and_params_for_array(arr, name_prefix):
@@ -40,10 +40,10 @@ def format_datetime(dt):
 def replace_years_old(sql):
   if _is_sqlite():
     return re.sub(_YEARS_OLD_PATTERN,
-                  r"CAST(((JULIANDAY('now') - JULIANDAY(\1)) / 365) AS int)",
+                  r"CAST(((JULIANDAY(\1) - JULIANDAY(\2)) / 365) AS int)",
                   sql)
   return re.sub(_YEARS_OLD_PATTERN,
-                r"FLOOR(DATEDIFF(NOW(), \1) / 365)",
+                r"FLOOR(DATEDIFF(\1, \2) / 365)",
                 sql)
 
 def replace_isodate(sql):

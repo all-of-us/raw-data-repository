@@ -1,6 +1,9 @@
+import clock
+
 from sqlalchemy import text
 from dao import database_factory
 from dao.database_utils import replace_years_old
+from dao.hpo_dao import HPODao
 from participant_enums import EnrollmentStatus, OrderStatus, PhysicalMeasurementsStatus
 from participant_enums import Race, QuestionnaireStatus
 from participant_enums import TEST_EMAIL_PATTERN, TEST_HPO_NAME
@@ -21,8 +24,8 @@ def _questionnaire_metric(name, col):
 
 _FILTER_TEST_SQL = """
 (NOT participant_summary.email LIKE '{test_email}'
- AND NOT participant_summary.hpo_id = '{test_hpo}')
-""".format(test_email=TEST_EMAIL_PATTERN, test_hpo=TEST_HPO_NAME)
+ AND NOT participant_summary.hpo_id = :test_hpo_id)
+""".format(test_email=TEST_EMAIL_PATTERN)
 
 # Metrics definitions. 3-tuples of:
 # - (str) aggregation key name
@@ -96,15 +99,15 @@ _SQL_AGGREGATIONS = [
    SELECT
      CASE
       WHEN date_of_birth IS NULL THEN 'UNSET'
-      WHEN YEARS_OLD[date_of_birth] < 0 THEN 'UNSET'
-      WHEN YEARS_OLD[date_of_birth] <= 17 THEN '0-17'
-      WHEN YEARS_OLD[date_of_birth] <= 25 THEN '18-25'
-      WHEN YEARS_OLD[date_of_birth] <= 35 THEN '26-35'
-      WHEN YEARS_OLD[date_of_birth] <= 45 THEN '36-45'
-      WHEN YEARS_OLD[date_of_birth] <= 55 THEN '46-55'
-      WHEN YEARS_OLD[date_of_birth] <= 65 THEN '56-65'
-      WHEN YEARS_OLD[date_of_birth] <= 75 THEN '66-75'
-      WHEN YEARS_OLD[date_of_birth] <= 85 THEN '76-85'
+      WHEN YEARS_OLD[:now, date_of_birth] < 0 THEN 'UNSET'
+      WHEN YEARS_OLD[:now, date_of_birth] <= 17 THEN '0-17'
+      WHEN YEARS_OLD[:now, date_of_birth] <= 25 THEN '18-25'
+      WHEN YEARS_OLD[:now, date_of_birth] <= 35 THEN '26-35'
+      WHEN YEARS_OLD[:now, date_of_birth] <= 45 THEN '36-45'
+      WHEN YEARS_OLD[:now, date_of_birth] <= 55 THEN '46-55'
+      WHEN YEARS_OLD[:now, date_of_birth] <= 65 THEN '56-65'
+      WHEN YEARS_OLD[:now, date_of_birth] <= 75 THEN '66-75'
+      WHEN YEARS_OLD[:now, date_of_birth] <= 85 THEN '76-85'
       ELSE '86+'
      END age_range,
      COUNT(*)
@@ -158,11 +161,15 @@ class PublicMetricsExport(object):
     # Using a session here should put all following SQL invocations into a
     # non-locking read transaction per
     # https://dev.mysql.com/doc/refman/5.7/en/innodb-consistent-read.html
+    test_hpo = HPODao().get_by_name(TEST_HPO_NAME)
     with database_factory.make_server_cursor_database().session() as session:
       for (key, sql, valuef) in _SQL_AGGREGATIONS:
         sql = replace_years_old(sql)
         out[key] = []
-        result = session.execute(text(sql))
+        result = session.execute(text(sql), params={
+            'now': clock.CLOCK.now(),
+            'test_hpo_id': test_hpo.hpoId
+        })
         for row in result:
           v = row.items()[0][1]
           if valuef:
