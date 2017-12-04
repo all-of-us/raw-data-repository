@@ -248,7 +248,7 @@ class ParticipantSummaryDao(UpdatableDao):
                                                          summary.numCompletedBaselinePPIModules,
                                                          summary.physicalMeasurementsStatus,
                                                          summary.samplesToIsolateDNA)
-    summary.enrollment_status = enrollment_status
+    summary.enrollmentStatus = enrollment_status
 
   def calculate_enrollment_status(self, consent_for_study_enrollment_and_ehr,
                                   num_completed_baseline_ppi_modules,
