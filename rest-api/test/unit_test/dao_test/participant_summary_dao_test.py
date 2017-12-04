@@ -10,9 +10,10 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.participant import Participant
+from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
 from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus
-from participant_enums import SampleStatus
+from participant_enums import SampleStatus, QuestionnaireStatus
 from unit_test_util import NdbTestBase, PITT_HPO_ID
 
 NUM_BASELINE_PPI_MODULES = 3
@@ -243,6 +244,17 @@ class ParticipantSummaryDaoTest(NdbTestBase):
                                                            NUM_BASELINE_PPI_MODULES,
                                                            PhysicalMeasurementsStatus.COMPLETED,
                                                            SampleStatus.RECEIVED))
+
+  def testUpdateEnrollmentStatus(self):
+    summary = ParticipantSummary(
+        participantId=1,
+        biobankId=2,
+        consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+        consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
+        enrollmentStatus=EnrollmentStatus.INTERESTED)
+    self.dao.update_enrollment_status(summary)
+    self.assertEquals(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
+
 
 def _with_token(query, token):
   return Query(query.field_filters, query.order_by, query.max_results, token)
