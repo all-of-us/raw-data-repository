@@ -64,6 +64,7 @@ class CsvImporter(object):
                  updated_count, matched_count)
 
   def _entity_from_row(self, row):
+    #pylint: disable=unused-argument
     raise Exception('Subclasses must implement _entity_from_row')
 
   def _update_entity(self, entity, existing_entity, session, dry_run):
@@ -89,5 +90,7 @@ class CsvImporter(object):
     self.dao.update_with_session(session, entity)
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
+    #pylint: disable=unused-argument
     logging.info('Inserting %s: %s', self.entity_name, entity.as_dict())
-    self.dao.insert_with_session(session, entity)
+    if not dry_run:
+      self.dao.insert_with_session(session, entity)
