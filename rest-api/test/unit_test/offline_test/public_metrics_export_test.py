@@ -192,8 +192,11 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             'value': 'PREFER_NOT_TO_SAY'
         }],
         'enrollmentStatus': [{
-            'count': 3,
-            'value': 'INTERESTED'
+            'count': 2,
+            'value': 'CONSENTED'
+        }, {
+            'count': 1,
+            'value': 'MEMBER'
         }],
         'questionnaireOnSociodemographics': [{
             'count': 3,

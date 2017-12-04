@@ -51,7 +51,9 @@ _SQL_AGGREGATIONS = [
       WHERE {filter_test_sql}
       GROUP BY 1;
       """.format(filter_test_sql=_FILTER_TEST_SQL),
-      lambda v: EnrollmentStatus.lookup_by_number(v).name,
+      # Rewrite INTERESTED to CONSENTED, see note above.
+      lambda v: ('CONSENTED' if v is EnrollmentStatus.INTERESTED.number
+                 else EnrollmentStatus.lookup_by_number(v).name),
       None),
   # TODO(calbach): Verify whether we need to be conditionally trimming these
   # prefixes or leaving them unmodified. Unclear if all codes will have prefix
