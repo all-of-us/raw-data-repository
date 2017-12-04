@@ -1,0 +1,7 @@
+Organization ID,Site ID / Google Group,Site,MayoLINK Client #,Anticipated launch date,Notes,Status,Directions,Physical Location Name,Address 1,Address 2,City,State,Zip,Phone,Admin Email Addresses,Link
+AZ_TUCSON_BANNER_HEALTH,hpo-site-bannertucson,Banner University Medical Center - Tucson,7035650,2017-10-02,Formerly University of Arizona CATS Research  ,Active,Turn left on south street.,,1234 Main Street,,Tucson,AZ,55555,555-555-5555,"bob@example.com,
+alice@example.com",http://www.example.com/
+AZ_TUCSON_BANNER_HEALTH,hpo-site-bannerscampus,Banner University Medical Center - South Campus,7035651,,,,,,,,,,,,,
+AZ_TUCSON_BANNER_HEALTH,hpo-site-bannerphoenix,Banner University Medical Center - Phoenix,7035652,,,,,,,,,,,,,
+WISCONSIN_MADISON,hpo-site-wimadisonahc,"University of WI, Madison- Access Health Center (WI Madison AHC)",,,,,,,,,,,,,,
+WISCONSIN_MADISON,hpo-site-wimadisonhospitalcru,"University of WI, Madison Hospital Clinical Resreach Unit (CRU)",7036506,,,,,,,,,,,,,

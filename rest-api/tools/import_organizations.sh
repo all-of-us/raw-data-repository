@@ -14,12 +14,6 @@ while true; do
   esac
 done
 
-if [ -z "${FILE}" ]
-then
-  echo "--file is required. Usage: $USAGE"
-  exit 1
-fi
-
 if [ "${PROJECT}" ]
 then
   if [ -z "${ACCOUNT}" ]

@@ -28,5 +28,5 @@ class Site(Base):
   state = Column('state', String(2))
   zipCode = Column('zip_code', String(10))
   phoneNumber = Column('phone_number', String(80))
-  admin_emails = Column('admin_emails', String(4096))
+  adminEmails = Column('admin_emails', String(4096))
   link = Column('link', String(255))

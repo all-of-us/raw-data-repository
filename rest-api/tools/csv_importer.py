@@ -77,20 +77,20 @@ class CsvImporter(object):
       return False
     else:
       logging.info('Updating %s: old = %s, new = %s', self.entity_name, existing_dict,
-                   new_dict.as_dict())
+                   new_dict)
       if not dry_run:
         self._do_update(entity, existing_entity, session)
       return True
 
   def _do_update(self, entity, existing_entity, session):
     """Subclasses must specify how to implement update."""
-    for k, v in entity.as_dict().iteritems():
+    for k, v in entity.asdict().iteritems():
       if k != self.external_id_field and k != self.id_field:
         setattr(existing_entity, k, v)
     self.dao.update_with_session(session, entity)
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
     #pylint: disable=unused-argument
-    logging.info('Inserting %s: %s', self.entity_name, entity.as_dict())
+    logging.info('Inserting %s: %s', self.entity_name, entity.asdict())
     if not dry_run:
       self.dao.insert_with_session(session, entity)
