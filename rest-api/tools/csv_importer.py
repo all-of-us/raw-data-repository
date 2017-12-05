@@ -87,7 +87,7 @@ class CsvImporter(object):
     for k, v in entity.asdict().iteritems():
       if k != self.external_id_field and k != self.id_field:
         setattr(existing_entity, k, v)
-    self.dao.update_with_session(session, entity)
+    self.dao.update_with_session(session, existing_entity)
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
     #pylint: disable=unused-argument
