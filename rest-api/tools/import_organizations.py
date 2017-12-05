@@ -32,11 +32,17 @@ class HPOImporter(CsvImporter):
     self.new_count = 0
 
   def _entity_from_row(self, row):
-
-
+    type_str = row['Type']
+    try:
+      organization_type = OrganizationType(type_str)
+      if organization_type == OrganizationType.UNSET:
+        organization_type = None
+    except TypeError:
+      logging.info('Invalid organization type %s for awardee %s', type_str, row['Awardee ID'])
+      return None
     return HPO(name=row['Awardee ID'],
                displayName=row['Name'],
-               organizationType=OrganizationType(row['Type']))
+               organizationType=organization_type)
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
     # HPO IDs are not autoincremented by the database; manually set it here.
@@ -68,7 +74,7 @@ class SiteImporter(CsvImporter):
   def __init__(self):
     super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
                                        ['Organization ID', 'Site ID / Google Group', 'Site',
-                                        'MayoLINK Client #', 'Google Group Name', 'Status'])
+                                        'MayoLINK Client #', 'Status'])
 
     self.organization_dao = OrganizationDao()
 
@@ -84,17 +90,24 @@ class SiteImporter(CsvImporter):
     launch_date_str = row.get('Anticipated launch date')
     if launch_date_str:
       try:
-        launch_date = parse(launch_date_str)
+        launch_date = parse(launch_date_str).date()
       except ValueError:
         logging.info('Invalid launch date %s for site %s', launch_date_str, google_group)
-
+        return None
     name = row['Site']
-    mayolink_client_number = row['MayoLINK Client #']
+    mayolink_client_number_str = row['MayoLINK Client #']
+    try:
+      mayolink_client_number = int(mayolink_client_number_str)
+    except ValueError:
+      logging.info('Invalid Mayolink Client # %s for site %s', mayolink_client_number_str, 
+                   google_group)
+      return None
     notes = row.get('Notes')
     try:
-      site_status = SiteStatus(row['Status'])
-    except ValueError:
+      site_status = SiteStatus(row['Status'].upper())
+    except TypeError:
       logging.info('Invalid site status %s for site %s', row['Status'], google_group)
+      return None
     directions = row.get('Directions')
     physical_location_name = row.get('Physical Location Name')
     address_1 = row.get('Address 1')

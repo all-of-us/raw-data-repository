@@ -23,3 +23,4 @@ TEST,Test organization,UNSET
 SEEC,Miami,HPO
 SOUTHERN,Alabama,HPO
 WISCONSIN,Wisconsin,HPO
+FAKE_AWARDEE,Not a real awardee,FQHC

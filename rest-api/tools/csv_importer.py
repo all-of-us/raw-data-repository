@@ -56,7 +56,7 @@ class CsvImporter(object):
             else:
               matched_count += 1
           else:
-            self._insert_entity(entity, session, existing_map, session, dry_run)
+            self._insert_entity(entity, existing_map, session, dry_run)
             new_count += 1
 
     logging.info('Done importing %ss%s: %d skipped, %d new, % d updated, %d not changed',
