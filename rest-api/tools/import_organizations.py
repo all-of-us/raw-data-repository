@@ -112,6 +112,7 @@ class SiteImporter(CsvImporter):
     physical_location_name = row.get('Physical Location Name')
     address_1 = row.get('Address 1')
     address_2 = row.get('Address 2')
+    # TODO: geocode addresses here (DA-465)
     city = row.get('City')
     state = row.get('State')
     zip_code = row.get('Zip')
