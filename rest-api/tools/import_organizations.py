@@ -99,7 +99,7 @@ class SiteImporter(CsvImporter):
     try:
       mayolink_client_number = int(mayolink_client_number_str)
     except ValueError:
-      logging.info('Invalid Mayolink Client # %s for site %s', mayolink_client_number_str, 
+      logging.info('Invalid Mayolink Client # %s for site %s', mayolink_client_number_str,
                    google_group)
       return None
     notes = row.get('Notes')
