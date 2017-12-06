@@ -1,19 +1,18 @@
 """Imports entities into the database based on a CSV file.
-
-Subclasses indicate in the constructor the name of the entity (for logging purposes),
-the DAO used to save the entity, the name of the primary key database ID field,
-the name of the external ID (referenced in the CSV file), and columns that must be populated
-with some value in the CSV.
-
-They then define _entity_from_row(row) to parse an entity out of a row dictionary.
-
-When dry_run flag is true, entities are not updated; instead logging indicates what would be
-updated.
 """
 import csv
 import logging
 
 class CsvImporter(object):
+  """Importer for database entities from CSV input.
+  
+  Subclasses indicate in the constructor the name of the entity (for logging purposes),
+  the DAO used to save the entity, the name of the primary key database ID field,
+  the name of the external ID (referenced in the CSV file), and columns that must be populated
+  with some value in the CSV.
+
+  They then define _entity_from_row(row) to parse an entity out of a row dictionary.
+  """
 
   def __init__(self, entity_name, dao, id_field, external_id_field, required_columns):
     self.entity_name = entity_name
@@ -23,6 +22,10 @@ class CsvImporter(object):
     self.required_columns = required_columns
 
   def run(self, filename, dry_run):
+    """Imports entities from the CSV file with the specified name.
+    
+    When dry_run flag is true, entities are not updated; instead logging indicates what would be
+    updated."""    
     skip_count = 0
     new_count = 0
     updated_count = 0
@@ -76,14 +79,13 @@ class CsvImporter(object):
       logging.info('Not updating %s.', new_dict[self.external_id_field])
       return False
     else:
-      logging.info('Updating %s: old = %s, new = %s', self.entity_name, existing_dict,
-                   new_dict)
+      logging.info('Updating %s%s: old = %s, new = %s', self.entity_name, 
+                   ' (dry run)' if dry_run else '', existing_dict, new_dict)
       if not dry_run:
         self._do_update(entity, existing_entity, session)
       return True
 
   def _do_update(self, entity, existing_entity, session):
-    """Subclasses must specify how to implement update."""
     for k, v in entity.asdict().iteritems():
       if k != self.external_id_field and k != self.id_field:
         setattr(existing_entity, k, v)
