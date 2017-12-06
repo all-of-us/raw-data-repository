@@ -5,7 +5,7 @@ import logging
 
 class CsvImporter(object):
   """Importer for database entities from CSV input.
-  
+
   Subclasses indicate in the constructor the name of the entity (for logging purposes),
   the DAO used to save the entity, the name of the primary key database ID field,
   the name of the external ID (referenced in the CSV file), and columns that must be populated
@@ -23,9 +23,9 @@ class CsvImporter(object):
 
   def run(self, filename, dry_run):
     """Imports entities from the CSV file with the specified name.
-    
+
     When dry_run flag is true, entities are not updated; instead logging indicates what would be
-    updated."""    
+    updated."""
     skip_count = 0
     new_count = 0
     updated_count = 0
@@ -79,7 +79,7 @@ class CsvImporter(object):
       logging.info('Not updating %s.', new_dict[self.external_id_field])
       return False
     else:
-      logging.info('Updating %s%s: old = %s, new = %s', self.entity_name, 
+      logging.info('Updating %s%s: old = %s, new = %s', self.entity_name,
                    ' (dry run)' if dry_run else '', existing_dict, new_dict)
       if not dry_run:
         self._do_update(entity, existing_entity, session)
