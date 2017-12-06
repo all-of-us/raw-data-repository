@@ -637,29 +637,13 @@ Example response:
             "id": "AZ_TUCSON_BANNER_HEALTH", 
             "sites": [
               {
-                "address1": "1234 Main Street", 
-                "address2": "Suite 400", 
-                "adminEmails": [
-                  "bob@example.com", 
-                  "alice@example.com"
-                ], 
-                "city": "Tucson", 
-                "directions": "Turn left on south street.", 
-                "displayName": "Banner University Medical Center - Tucson", 
-                "id": "hpo-site-bannertucson", 
-                "launchDate": "2017-10-02", 
-                "link": "http://www.example.com/", 
-                "mayolinkClientNumber": 7035650, 
-                "notes": "Formerly University of Arizona CATS Research  ", 
-                "phoneNumber": "555-555-5555", 
-                "physicalLocationName": "Building 23", 
-                "siteStatus": "ACTIVE", 
-                "zipCode": "55555"
-              }, 
-              {
-                "address1": "567 Cherry Lane", 
-                "address2": "", 
-                "city": "Phoenix", 
+                "address": {
+                  "city": "Phoenix", 
+                  "line": [
+                    "567 Cherry Lane"
+                  ], 
+                  "postalCode": "66666"
+                }, 
                 "directions": "", 
                 "displayName": "Banner University Medical Center - Tucson", 
                 "id": "hpo-site-bannernew", 
@@ -669,8 +653,31 @@ Example response:
                 "notes": "Formerly University of Arizona CATS Research  ", 
                 "phoneNumber": "666-666-6666", 
                 "physicalLocationName": "", 
-                "siteStatus": "INACTIVE", 
-                "zipCode": "66666"
+                "siteStatus": "INACTIVE"
+              }, 
+              {
+                "address": {
+                  "city": "Tucson", 
+                  "line": [
+                    "1234 Main Street", 
+                    "Suite 400"
+                  ], 
+                  "postalCode": "55555"
+                }, 
+                "adminEmails": [
+                  "bob@example.com", 
+                  "alice@example.com"
+                ], 
+                "directions": "Turn left on south street.", 
+                "displayName": "Banner University Medical Center - Tucson", 
+                "id": "hpo-site-bannertucson", 
+                "launchDate": "2017-10-02", 
+                "link": "http://www.example.com/", 
+                "mayolinkClientNumber": 7035650, 
+                "notes": "Formerly University of Arizona CATS Research  ", 
+                "phoneNumber": "555-555-5555", 
+                "physicalLocationName": "Building 23", 
+                "siteStatus": "ACTIVE"
               }
             ]
           }
@@ -710,29 +717,13 @@ Example response:
       "id": "AZ_TUCSON_BANNER_HEALTH", 
       "sites": [
         {
-          "address1": "1234 Main Street", 
-          "address2": "Suite 400", 
-          "adminEmails": [
-            "bob@example.com", 
-            "alice@example.com"
-          ], 
-          "city": "Tucson", 
-          "directions": "Turn left on south street.", 
-          "displayName": "Banner University Medical Center - Tucson", 
-          "id": "hpo-site-bannertucson", 
-          "launchDate": "2017-10-02", 
-          "link": "http://www.example.com/", 
-          "mayolinkClientNumber": 7035650, 
-          "notes": "Formerly University of Arizona CATS Research  ", 
-          "phoneNumber": "555-555-5555", 
-          "physicalLocationName": "Building 23", 
-          "siteStatus": "ACTIVE", 
-          "zipCode": "55555"
-        }, 
-        {
-          "address1": "567 Cherry Lane", 
-          "address2": "", 
-          "city": "Phoenix", 
+          "address": {
+            "city": "Phoenix", 
+            "line": [
+              "567 Cherry Lane"
+            ], 
+            "postalCode": "66666"
+          }, 
           "directions": "", 
           "displayName": "Banner University Medical Center - Tucson", 
           "id": "hpo-site-bannernew", 
@@ -742,8 +733,31 @@ Example response:
           "notes": "Formerly University of Arizona CATS Research  ", 
           "phoneNumber": "666-666-6666", 
           "physicalLocationName": "", 
-          "siteStatus": "INACTIVE", 
-          "zipCode": "66666"
+          "siteStatus": "INACTIVE"
+        }, 
+        {
+          "address": {
+            "city": "Tucson", 
+            "line": [
+              "1234 Main Street", 
+              "Suite 400"
+            ], 
+            "postalCode": "55555"
+          }, 
+          "adminEmails": [
+            "bob@example.com", 
+            "alice@example.com"
+          ], 
+          "directions": "Turn left on south street.", 
+          "displayName": "Banner University Medical Center - Tucson", 
+          "id": "hpo-site-bannertucson", 
+          "launchDate": "2017-10-02", 
+          "link": "http://www.example.com/", 
+          "mayolinkClientNumber": 7035650, 
+          "notes": "Formerly University of Arizona CATS Research  ", 
+          "phoneNumber": "555-555-5555", 
+          "physicalLocationName": "Building 23", 
+          "siteStatus": "ACTIVE"
         }
       ]
     }
