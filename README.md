@@ -610,6 +610,148 @@ resources. Once these are created, a client can query for available samples:
 
 #### TODO `GET /Participant/:pid/BiobankSamples
 
+## Organization API
+
+Retrieves metadata about awardees / organizations / sites.
+
+#### `GET /Awardee`
+
+Retrieves a JSON bundle of metadata for all awardees, with nested resources for child 
+organizations and sites within them, representing the full hierarchy of 
+awardees > organizations > sites. No pagination, syncing, or filtering is currently 
+supported on this endpoint.
+
+Example response:
+
+```
+{
+  "entry": [
+    {
+      "fullUrl": "http://localhost:8080/rdr/v1/Awardee/AZ_TUCSON", 
+      "resource": {
+        "displayName": "Arizona", 
+        "id": "AZ_TUCSON", 
+        "organizations": [
+          {
+            "displayName": "Banner Health", 
+            "id": "AZ_TUCSON_BANNER_HEALTH", 
+            "sites": [
+              {
+                "address1": "1234 Main Street", 
+                "address2": "Suite 400", 
+                "adminEmails": [
+                  "bob@example.com", 
+                  "alice@example.com"
+                ], 
+                "city": "Tucson", 
+                "directions": "Turn left on south street.", 
+                "displayName": "Banner University Medical Center - Tucson", 
+                "id": "hpo-site-bannertucson", 
+                "launchDate": "2017-10-02", 
+                "link": "http://www.example.com/", 
+                "mayolinkClientNumber": 7035650, 
+                "notes": "Formerly University of Arizona CATS Research  ", 
+                "phoneNumber": "555-555-5555", 
+                "physicalLocationName": "Building 23", 
+                "siteStatus": "ACTIVE", 
+                "zipCode": "55555"
+              }, 
+              {
+                "address1": "567 Cherry Lane", 
+                "address2": "", 
+                "city": "Phoenix", 
+                "directions": "", 
+                "displayName": "Banner University Medical Center - Tucson", 
+                "id": "hpo-site-bannernew", 
+                "launchDate": "2017-10-02", 
+                "link": "http://www.example.com/", 
+                "mayolinkClientNumber": 5678392, 
+                "notes": "Formerly University of Arizona CATS Research  ", 
+                "phoneNumber": "666-666-6666", 
+                "physicalLocationName": "", 
+                "siteStatus": "INACTIVE", 
+                "zipCode": "66666"
+              }
+            ]
+          }
+        ], 
+        "type": "HPO"
+      }
+    }, 
+    {
+      "fullUrl": "http://localhost:8080/rdr/v1/Awardee/COMM_HEALTH", 
+      "resource": {
+        "displayName": "Community Health Center, Inc", 
+        "id": "COMM_HEALTH", 
+        "type": "FQHC"
+      }
+    }
+    ...
+  ], 
+  "resourceType": "Bundle", 
+  "type": "searchset"
+} 
+```
+
+#### `GET /Awardee/:aid
+
+Retrieves metadata about an individual awardee, with nested resources for child 
+organizations and sites within them.
+
+Example response:
+
+```
+{
+  "displayName": "Arizona", 
+  "id": "AZ_TUCSON", 
+  "organizations": [
+    {
+      "displayName": "Banner Health", 
+      "id": "AZ_TUCSON_BANNER_HEALTH", 
+      "sites": [
+        {
+          "address1": "1234 Main Street", 
+          "address2": "Suite 400", 
+          "adminEmails": [
+            "bob@example.com", 
+            "alice@example.com"
+          ], 
+          "city": "Tucson", 
+          "directions": "Turn left on south street.", 
+          "displayName": "Banner University Medical Center - Tucson", 
+          "id": "hpo-site-bannertucson", 
+          "launchDate": "2017-10-02", 
+          "link": "http://www.example.com/", 
+          "mayolinkClientNumber": 7035650, 
+          "notes": "Formerly University of Arizona CATS Research  ", 
+          "phoneNumber": "555-555-5555", 
+          "physicalLocationName": "Building 23", 
+          "siteStatus": "ACTIVE", 
+          "zipCode": "55555"
+        }, 
+        {
+          "address1": "567 Cherry Lane", 
+          "address2": "", 
+          "city": "Phoenix", 
+          "directions": "", 
+          "displayName": "Banner University Medical Center - Tucson", 
+          "id": "hpo-site-bannernew", 
+          "launchDate": "2017-10-02", 
+          "link": "http://www.example.com/", 
+          "mayolinkClientNumber": 5678392, 
+          "notes": "Formerly University of Arizona CATS Research  ", 
+          "phoneNumber": "666-666-6666", 
+          "physicalLocationName": "", 
+          "siteStatus": "INACTIVE", 
+          "zipCode": "66666"
+        }
+      ]
+    }
+  ], 
+  "type": "HPO"
+}
+``` 
+
 ## Configuration APIs
 
 `POST /CheckPpiData` Non-prod. Verifies data created during tests.
