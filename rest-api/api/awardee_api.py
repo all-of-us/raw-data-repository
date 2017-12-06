@@ -11,9 +11,9 @@ class AwardeeApi(BaseApi):
   @auth_required(PTC_AND_HEALTHPRO)
   def get(self, p_id=None):
     if p_id:
-       hpo = self.dao.get_by_name(p_id)
-       if not hpo:
-         raise NotFound("Awardee with ID %s not found" % p_id)
-       return self._make_response(self.dao.get_with_children(hpo.hpoId))
+      hpo = self.dao.get_by_name(p_id)
+      if not hpo:
+        raise NotFound("Awardee with ID %s not found" % p_id)
+      return self._make_response(self.dao.get_with_children(hpo.hpoId))
     else:
       return super(AwardeeApi, self)._query('id', None)
