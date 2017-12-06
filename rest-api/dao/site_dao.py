@@ -2,8 +2,10 @@ from dao.cache_all_dao import CacheAllDao
 from model.site import Site
 from singletons import SITE_CACHE_INDEX
 from dao.base_dao import FhirMixin, FhirProperty
+from fhirclient.models.address import Address
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models import fhirdate
+
 
 def _ToFhirDate(dt):
   if not dt:
@@ -23,11 +25,7 @@ class _FhirSite(FhirMixin, BackboneElement):
     FhirProperty('longitude', float),
     FhirProperty('directions', str),
     FhirProperty('physical_location_name', str),
-    FhirProperty('address_1', str),
-    FhirProperty('address_2', str),
-    FhirProperty('city', str),
-    FhirProperty('state', str),
-    FhirProperty('zip_code', str),
+    FhirProperty('address', Address),
     FhirProperty('phone_number', str),
     FhirProperty('admin_emails', str, is_list=True),
     FhirProperty('link', str)
@@ -61,10 +59,15 @@ class SiteDao(CacheAllDao):
     resource.longitude = model.longitude
     resource.directions = model.directions
     resource.physical_location_name = model.physicalLocationName
-    resource.address_1 = model.address1
-    resource.address_2 = model.address2
-    resource.city = model.city
-    resource.zip_code = model.zipCode
+    address = Address()
+    resource.address = address
+    address.line = []
+    if model.address1:
+      address.line.append(model.address1)
+    if model.address2:
+      address.line.append(model.address2)
+    address.city = model.city
+    address.postalCode = model.zipCode
     resource.phone_number = model.phoneNumber
     resource.admin_emails = ([email.strip() for email in model.adminEmails.split(',')]
                              if model.adminEmails  else [])
