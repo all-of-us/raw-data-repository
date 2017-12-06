@@ -61,7 +61,7 @@ class SiteDao(CacheAllDao):
     resource.physical_location_name = model.physicalLocationName
     address = Address()
     resource.address = address
-    address.line = []    
+    address.line = []
     if model.address1:
       address.line.append(model.address1)
     if model.address2:
