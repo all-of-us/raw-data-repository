@@ -67,6 +67,7 @@ class SiteDao(CacheAllDao):
     if model.address2:
       address.line.append(model.address2)
     address.city = model.city
+    address.state = model.state
     address.postalCode = model.zipCode
     resource.phone_number = model.phoneNumber
     resource.admin_emails = ([email.strip() for email in model.adminEmails.split(',')]

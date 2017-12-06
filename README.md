@@ -642,7 +642,8 @@ Example response:
                   "line": [
                     "567 Cherry Lane"
                   ], 
-                  "postalCode": "66666"
+                  "postalCode": "66666",
+                  "state": "AZ"
                 }, 
                 "directions": "", 
                 "displayName": "Banner University Medical Center - Tucson", 
@@ -662,7 +663,8 @@ Example response:
                     "1234 Main Street", 
                     "Suite 400"
                   ], 
-                  "postalCode": "55555"
+                  "postalCode": "55555",
+                  "state": "AZ"
                 }, 
                 "adminEmails": [
                   "bob@example.com", 
@@ -722,7 +724,8 @@ Example response:
             "line": [
               "567 Cherry Lane"
             ], 
-            "postalCode": "66666"
+            "postalCode": "66666",
+            "state": "AZ"
           }, 
           "directions": "", 
           "displayName": "Banner University Medical Center - Tucson", 
@@ -742,7 +745,8 @@ Example response:
               "1234 Main Street", 
               "Suite 400"
             ], 
-            "postalCode": "55555"
+            "postalCode": "55555",
+            "state": "AZ"
           }, 
           "adminEmails": [
             "bob@example.com", 
