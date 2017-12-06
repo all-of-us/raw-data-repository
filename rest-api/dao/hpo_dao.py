@@ -13,14 +13,17 @@ class _FhirAwardee(FhirMixin, DomainResource):
   _PROPERTIES = [
     FhirProperty('display_name', str, required=True),
     FhirProperty('type', str, required=True),
-    FhirProperty('organizations', _FhirOrganization, is_list=True, required=True)
+    FhirProperty('organizations', _FhirOrganization, is_list=True)
   ]
+
+_ORDER_BY_ENDING = ('name')
 
 class HPODao(CacheAllDao):
 
   def __init__(self):
     super(HPODao, self).__init__(HPO, cache_index=HPO_CACHE_INDEX,
-                                 cache_ttl_seconds=600, index_field_keys=['name'])
+                                 cache_ttl_seconds=600, index_field_keys=['name'],
+                                 order_by_ending=_ORDER_BY_ENDING)
 
   def _validate_update(self, session, obj, existing_obj):
     # HPOs aren't versioned; suppress the normal check here.
@@ -44,8 +47,9 @@ class HPODao(CacheAllDao):
   def _make_query(self, session, query_def):
     # For now, no filtering, ordering, or pagination is supported; fetch child organizations and
     # sites.
-    return (session.query(HPO)
-        .options(subqueryload(HPO.organizations).subqueryload(Organization.sites)))
+    return (session.query(HPO).options(subqueryload(HPO.organizations)
+                                       .subqueryload(Organization.sites)),
+            _ORDER_BY_ENDING)
 
   def to_client_json(self, model):
     return HPODao._to_json(model)
@@ -55,7 +59,10 @@ class HPODao(CacheAllDao):
     resource = _FhirAwardee()
     resource.id = model.name
     resource.display_name = model.displayName
-    resource.type = str(model.type)
+    resource.type = str(model.organizationType)
+    resource.organizations = []
     for organization in model.organizations:
       resource.organizations.append(OrganizationDao._to_json(organization))
-    return resource
+    json = resource.as_json()
+    del json['resourceType']
+    return json

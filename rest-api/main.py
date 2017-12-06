@@ -99,7 +99,7 @@ api.add_resource(BiobankOrderApi,
 
 api.add_resource(AwardeeApi,
                  PREFIX + 'Awardee',
-                 PREFIX + 'Awardee/<string:awardee_id>',
+                 PREFIX + 'Awardee/<string:p_id>',
                  endpoint='awardee',
                  methods=['GET'])
 

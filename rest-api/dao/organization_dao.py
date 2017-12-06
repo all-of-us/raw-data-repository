@@ -12,7 +12,7 @@ class _FhirOrganization(FhirMixin, BackboneElement):
   resource_name = 'Organization'
   _PROPERTIES = [
     FhirProperty('display_name', str, required=True),
-    FhirProperty('sites', _FhirSite, is_list=True, required=True)
+    FhirProperty('sites', _FhirSite, is_list=True)
   ]
 
 class OrganizationDao(CacheAllDao):
@@ -35,6 +35,7 @@ class OrganizationDao(CacheAllDao):
     resource = _FhirOrganization()
     resource.id = model.externalId
     resource.display_name = model.displayName
+    resource.sites = []
     for site in model.sites:
       resource.sites.append(SiteDao._to_json(site))
     return resource
