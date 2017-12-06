@@ -8,8 +8,8 @@ class AwardeeApi(BaseApi):
     super(AwardeeApi, self).__init__(HPODao(), get_returns_children=True)
 
   @auth_required(PTC_AND_HEALTHPRO)
-  def get(self, awardee_id=None):
-    if awardee_id:
-      return super(AwardeeApi, self).get(awardee_id)
+  def get(self, p_id=None):
+    if p_id:
+      return super(AwardeeApi, self).get(p_id)
     else:
-      return super(AwardeeApi, self)._query('name', None)
+      return super(AwardeeApi, self)._query('id', None)
