@@ -13,6 +13,7 @@ from offline import biobank_samples_pipeline
 from offline.base_pipeline import send_failure_alert
 from offline.table_exporter import TableExporter
 from offline.metrics_export import MetricsExport
+from offline.public_metrics_export import PublicMetricsExport
 from api_util import EXPORTER
 from werkzeug.exceptions import BadRequest
 
@@ -64,6 +65,9 @@ def recalculate_metrics():
                                      int(config.getSetting(config.METRICS_SHARDS, 1)))
     return '{"metrics-pipeline-status": "started"}'
 
+@app_util.auth_required_cron
+def recalculate_public_metrics():
+  return json.dumps(PublicMetricsExport.export())
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -110,6 +114,12 @@ def _build_pipeline_app():
       endpoint='metrics_recalc',
       view_func=recalculate_metrics,
       methods=['GET'])
+
+  offline_app.add_url_rule(
+      PREFIX + 'PublicMetricsRecalculate',
+      endpoint='public_metrics_recalc',
+      view_func=recalculate_public_metrics,
+      methods=['POST'])
 
   offline_app.add_url_rule(
       PREFIX + 'ExportTables',
