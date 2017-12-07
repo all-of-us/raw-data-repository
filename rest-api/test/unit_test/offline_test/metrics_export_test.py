@@ -3,11 +3,10 @@ import json
 import offline.metrics_export
 
 from clock import FakeClock
-from code_constants import PPI_SYSTEM, CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
+from code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
 from code_constants import GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
 from code_constants import RACE_QUESTION_CODE, STATE_QUESTION_CODE, RACE_WHITE_CODE
 from code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE
-from concepts import Concept
 from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from mapreduce import test_support
 from model.biobank_stored_sample import BiobankStoredSample
@@ -53,33 +52,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
   def tearDown(self):
     super(MetricsExportTest, self).tearDown()
     FlaskTestBase.doTearDown(self)
-
-  def submit_questionnaire_response(self, participant_id, questionnaire_id,
-                                    race_code, gender_code, state,
-                                    date_of_birth):
-    code_answers = []
-    date_answers = []
-    if race_code:
-      code_answers.append(('race', Concept(PPI_SYSTEM, race_code)))
-    if gender_code:
-      code_answers.append(('genderIdentity', Concept(PPI_SYSTEM, gender_code)))
-    if date_of_birth:
-      date_answers.append(('dateOfBirth', date_of_birth))
-    if state:
-      code_answers.append(('state', Concept(PPI_SYSTEM, state)))
-    qr = make_questionnaire_response_json(
-        participant_id,
-        questionnaire_id,
-        code_answers=code_answers,
-        date_answers=date_answers)
-    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
-
-  def _submit_consent_questionnaire_response(
-      self, participant_id, questionnaire_id, ehr_consent_answer):
-    code_answers = [('ehrConsent', Concept(PPI_SYSTEM, ehr_consent_answer))]
-    qr = make_questionnaire_response_json(
-        participant_id, questionnaire_id, code_answers=code_answers)
-    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
   def _submit_empty_questionnaire_response(self, participant_id,
                                            questionnaire_id):
@@ -166,9 +138,9 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                                          None, None)
       self.submit_questionnaire_response('P2', questionnaire_id_2, None, None,
                                          'PIIState_VA', None)
-      self._submit_consent_questionnaire_response('P1', questionnaire_id_3,
+      self.submit_consent_questionnaire_response('P1', questionnaire_id_3,
                                                   CONSENT_PERMISSION_NO_CODE)
-      self._submit_consent_questionnaire_response('P2', questionnaire_id_3,
+      self.submit_consent_questionnaire_response('P2', questionnaire_id_3,
                                                   CONSENT_PERMISSION_YES_CODE)
       sample_dao = BiobankStoredSampleDao()
       sample_dao.insert(
@@ -181,6 +153,12 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
           BiobankStoredSample(
               biobankStoredSampleId='def',
               biobankId=3,
+              test='1SAL',
+              confirmed=TIME_2))
+      sample_dao.insert(
+          BiobankStoredSample(
+              biobankStoredSampleId='xyz',
+              biobankId=4,
               test='1SAL',
               confirmed=TIME_2))
 

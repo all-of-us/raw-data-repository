@@ -26,6 +26,7 @@ import dao.base_dao
 import singletons
 
 from code_constants import PPI_SYSTEM
+from concepts import Concept
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from dao.participant_dao import ParticipantDao
@@ -98,6 +99,33 @@ class TestBase(unittest.TestCase):
     }
     common_args.update(kwargs)
     return ParticipantHistory(**common_args)
+
+  def submit_questionnaire_response(self, participant_id, questionnaire_id,
+                                    race_code, gender_code, state,
+                                    date_of_birth):
+    code_answers = []
+    date_answers = []
+    if race_code:
+      code_answers.append(('race', Concept(PPI_SYSTEM, race_code)))
+    if gender_code:
+      code_answers.append(('genderIdentity', Concept(PPI_SYSTEM, gender_code)))
+    if date_of_birth:
+      date_answers.append(('dateOfBirth', date_of_birth))
+    if state:
+      code_answers.append(('state', Concept(PPI_SYSTEM, state)))
+    qr = make_questionnaire_response_json(
+        participant_id,
+        questionnaire_id,
+        code_answers=code_answers,
+        date_answers=date_answers)
+    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+
+  def submit_consent_questionnaire_response(
+      self, participant_id, questionnaire_id, ehr_consent_answer):
+    code_answers = [('ehrConsent', Concept(PPI_SYSTEM, ehr_consent_answer))]
+    qr = make_questionnaire_response_json(
+        participant_id, questionnaire_id, code_answers=code_answers)
+    self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
   def participant_summary(self, participant):
     summary = ParticipantDao.create_summary_for_participant(participant)
