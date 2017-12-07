@@ -1,0 +1,26 @@
+Awardee ID,Name,Type
+UNSET,No organization set,UNSET
+PITT,Pittsburgh,HPO
+COLUMBIA,New York,HPO
+ILLINOIS,Illinois,HPO
+AZ_TUCSON,Arizona,HPO
+COMM_HEALTH,"Community Health Center, Inc",FQHC
+SAN_YSIDRO,San Ysidro Health Center,FQHC
+CHEROKEE,Cherokee Health Systems,FQHC
+EAU_CLAIRE,Eau Claire Cooperative Health Center,FQHC
+HRHCARE,"HRHCare, Inc.",FQHC
+JACKSON,Jackson-Hinds Comprehensive Health Center,FQHC
+CAL_PMC,California ,HPO
+NE_PMC,New England,HPO
+TRANS_AM,Trans-American Consortium (TAC),HPO
+VA,VA,VA
+QTC,QTC,DV
+WALGREENS,Walgreens,DV
+QUEST,Quest Labs,DV
+EMSI,EMSI,DV
+SDBB,San Diego Blood Bank,DV
+TEST,Test organization,UNSET
+SEEC,Miami,HPO
+SOUTHERN,Alabama,HPO
+WISCONSIN,Wisconsin,HPO
+FAKE_AWARDEE,Not a real awardee,FQHC
