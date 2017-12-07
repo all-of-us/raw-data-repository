@@ -87,7 +87,7 @@ class AwardeeApiTest(FlaskTestBase):
               'link': 'http://www.example.com' }]
 
     org_2_dict = _make_organization_dict('AARDVARK_ORG', 'Aardvarks Rock')
-    org_1_dict = _make_organization_dict('ORG_1', 'Organization 1', sites)    
+    org_1_dict = _make_organization_dict('ORG_1', 'Organization 1', sites)
     return _make_awardee_resource('PITT', 'Pittsburgh', 'HPO', [org_2_dict, org_1_dict])
 
   def _setup_data(self):
