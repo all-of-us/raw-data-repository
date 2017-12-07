@@ -170,7 +170,7 @@ class _TestDb(object):
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET', displayName='Unset',
                        organizationType=OrganizationType.UNSET))
-    hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT', displayName='Pittsburgh', 
+    hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT', displayName='Pittsburgh',
                        organizationType=OrganizationType.HPO))
     self.hpo_id = PITT_HPO_ID
 

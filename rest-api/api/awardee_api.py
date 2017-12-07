@@ -17,7 +17,7 @@ class AwardeeApi(BaseApi):
       return self._make_response(self.dao.get_with_children(hpo.hpoId))
     else:
       return super(AwardeeApi, self)._query(id_field='id')
-      
+
   def _make_resource_url(self, json, id_field, participant_id):
     import main
     return main.api.url_for(self.__class__, a_id=json[id_field],

@@ -61,12 +61,12 @@ class HPODao(CacheAllDao):
   def _to_json(model):
     resource = _FhirAwardee()
     resource.id = model.name
-    resource.display_name = model.displayName    
+    resource.display_name = model.displayName
     if model.organizationType:
       resource.type = str(model.organizationType)
     else:
       resource.type = UNSET
-    resource.organizations = [OrganizationDao._to_json(organization) for organization 
+    resource.organizations = [OrganizationDao._to_json(organization) for organization
                               in model.organizations]
     json = resource.as_json()
     del json['resourceType']
