@@ -16,7 +16,8 @@ from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
 from api.participant_summary_api import ParticipantSummaryApi
 from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
-from api.public_metrics_api import PublicMetricSetsApi, PublicMetricsApi
+from api.public_metric_sets_api import PublicMetricSetsApi
+from api.public_metrics_api import PublicMetricsApi
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
 from flask import Flask, got_request_exception
