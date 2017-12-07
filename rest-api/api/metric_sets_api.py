@@ -5,8 +5,13 @@ from flask.ext.restful import Resource
 from werkzeug import exceptions
 
 
-class PublicMetricSetsApi(Resource):
+class MetricSetsApi(Resource):
 
   @app_util.auth_required(STOREFRONT)
   def get(self):
+    raise exceptions.NotImplementedError()
+
+  @app_util.auth_required(STOREFRONT)
+  def get(self, ms_id):
+    #pylint: disable=unused-argument
     raise exceptions.NotImplementedError()
