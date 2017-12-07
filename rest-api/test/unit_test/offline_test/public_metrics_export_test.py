@@ -14,6 +14,7 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.hpo_dao import HPODao
 from dao.participant_dao import ParticipantDao, make_primary_provider_link_for_name
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
+from participant_enums import WithdrawalStatus
 from test_data import load_biobank_order_json, load_measurement_json
 from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase
 from unit_test_util import PITT_HPO_ID
@@ -94,6 +95,17 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
           providerLink=make_primary_provider_link_for_name('PITT'))
       participant_dao.insert(participant5)
       self.send_consent('P5', email='ch@gmail.com')
+
+      # A withdrawn participant should be excluded from metrics.
+      participant6 = Participant(
+          participantId=6,
+          biobankId=7,
+          providerLink=make_primary_provider_link_for_name('PITT')
+      )
+      participant_dao.insert(participant6)
+      self.send_consent('P6', email='cuphead@gmail.com')
+      participant6.withdrawalStatus=WithdrawalStatus.NO_USE
+      participant_dao.update(participant6)
 
       self.send_post('Participant/P2/PhysicalMeasurements',
                      load_measurement_json(2))

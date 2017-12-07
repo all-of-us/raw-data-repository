@@ -6,7 +6,7 @@ from dao import database_factory
 from dao.database_utils import replace_years_old
 from dao.hpo_dao import HPODao
 from participant_enums import EnrollmentStatus, OrderStatus, PhysicalMeasurementsStatus
-from participant_enums import Race, QuestionnaireStatus
+from participant_enums import Race, QuestionnaireStatus, WithdrawalStatus
 from participant_enums import TEST_EMAIL_PATTERN, TEST_HPO_NAME
 
 
@@ -17,15 +17,16 @@ def _questionnaire_metric(name, col):
       """
       SELECT {col}, COUNT(*)
       FROM participant_summary
-      WHERE {filter_test_sql}
+      WHERE {summary_filter_sql}
       GROUP BY 1;
-      """.format(col=col, filter_test_sql=_FILTER_TEST_SQL),
+      """.format(col=col, summary_filter_sql=_SUMMARY_FILTER_SQL),
       lambda v: QuestionnaireStatus.lookup_by_number(v).name,
       None
   )
 
-_FILTER_TEST_SQL = """
-(NOT participant_summary.email LIKE :test_email_pattern
+_SUMMARY_FILTER_SQL = """
+(withdrawal_status = :not_withdrawn_status
+ AND NOT participant_summary.email LIKE :test_email_pattern
  AND NOT participant_summary.hpo_id = :test_hpo_id)
 """
 
@@ -48,9 +49,9 @@ _SQL_AGGREGATIONS = [
       """
       SELECT enrollment_status, COUNT(*)
       FROM participant_summary
-      WHERE {filter_test_sql}
+      WHERE {summary_filter_sql}
       GROUP BY 1;
-      """.format(filter_test_sql=_FILTER_TEST_SQL),
+      """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       # Rewrite INTERESTED to CONSENTED, see note above.
       lambda v: ('CONSENTED' if v is EnrollmentStatus.INTERESTED.number
                  else EnrollmentStatus.lookup_by_number(v).name),
@@ -69,11 +70,11 @@ _SQL_AGGREGATIONS = [
       FROM (
        SELECT gender_identity_id, COUNT(*) count
        FROM participant_summary
-       WHERE {filter_test_sql}
+       WHERE {summary_filter_sql}
        GROUP BY 1
       ) ps LEFT JOIN code
       ON ps.gender_identity_id = code.code_id;
-      """.format(filter_test_sql=_FILTER_TEST_SQL),
+      """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       None, None),
   _SqlAggregation(
       'race',
@@ -84,9 +85,9 @@ _SQL_AGGREGATIONS = [
          ELSE race
         END, COUNT(*)
       FROM participant_summary
-      WHERE {filter_test_sql}
+      WHERE {summary_filter_sql}
       GROUP BY 1
-      """.format(filter_test_sql=_FILTER_TEST_SQL),
+      """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       lambda v: Race.lookup_by_number(v).name, None),
   _SqlAggregation(
       'state',
@@ -101,11 +102,11 @@ _SQL_AGGREGATIONS = [
       FROM (
        SELECT state_id, COUNT(*) count
        FROM participant_summary
-       WHERE {filter_test_sql}
+       WHERE {summary_filter_sql}
        GROUP BY 1
       ) ps LEFT JOIN code
       ON ps.state_id = code.code_id;
-      """.format(filter_test_sql=_FILTER_TEST_SQL),
+      """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       None, None),
   _SqlAggregation(
       'ageRange',
@@ -126,18 +127,18 @@ _SQL_AGGREGATIONS = [
         END age_range,
         COUNT(*)
       FROM participant_summary
-      WHERE {filter_test_sql}
+      WHERE {summary_filter_sql}
       GROUP BY 1;
-      """.format(filter_test_sql=_FILTER_TEST_SQL),
+      """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       None, None),
   _SqlAggregation(
       'physicalMeasurements',
       """
       SELECT physical_measurements_status, COUNT(*)
       FROM participant_summary
-      WHERE {filter_test_sql}
+      WHERE {summary_filter_sql}
       GROUP BY 1;
-      """.format(filter_test_sql=_FILTER_TEST_SQL),
+      """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       lambda v: PhysicalMeasurementsStatus.lookup_by_number(v).name,
       None),
   _SqlAggregation(
@@ -151,9 +152,9 @@ _SQL_AGGREGATIONS = [
          ELSE 'COLLECTED'
         END, COUNT(*)
       FROM participant_summary
-      WHERE {filter_test_sql}
+      WHERE {summary_filter_sql}
       GROUP BY 1;
-      """.format(filter_test_sql=_FILTER_TEST_SQL),
+      """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       None,
       params={
         'unset_status': OrderStatus.UNSET.number,
@@ -188,7 +189,8 @@ class PublicMetricsExport(object):
         p = {
           'now': clock.CLOCK.now(),
           'test_hpo_id': test_hpo.hpoId,
-          'test_email_pattern': TEST_EMAIL_PATTERN
+          'test_email_pattern': TEST_EMAIL_PATTERN,
+          'not_withdrawn_status': WithdrawalStatus.NOT_WITHDRAWN.number
         }
         if params:
           p.update(params)
