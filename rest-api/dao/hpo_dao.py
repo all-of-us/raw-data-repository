@@ -1,3 +1,4 @@
+from code_constants import UNSET
 from dao.cache_all_dao import CacheAllDao
 from dao.base_dao import FhirMixin, FhirProperty
 from dao.organization_dao import _FhirOrganization, OrganizationDao
@@ -48,7 +49,8 @@ class HPODao(CacheAllDao):
     # For now, no filtering, ordering, or pagination is supported; fetch child organizations and
     # sites.
     return (session.query(HPO).options(subqueryload(HPO.organizations)
-                                       .subqueryload(Organization.sites)),
+                                       .subqueryload(Organization.sites))
+                              .order_by(HPO.name),
             _ORDER_BY_ENDING)
 
   def to_client_json(self, model):
@@ -58,8 +60,11 @@ class HPODao(CacheAllDao):
   def _to_json(model):
     resource = _FhirAwardee()
     resource.id = model.name
-    resource.display_name = model.displayName
-    resource.type = str(model.organizationType)
+    resource.display_name = model.displayName    
+    if model.organizationType:
+      resource.type = str(model.organizationType)
+    else:
+      resource.type = UNSET
     resource.organizations = []
     for organization in model.organizations:
       resource.organizations.append(OrganizationDao._to_json(organization))
