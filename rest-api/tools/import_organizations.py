@@ -8,7 +8,7 @@ Usage:
   The CSV files originate from the Google Sheets found here:
 
   https://docs.google.com/spreadsheets/d/1CcIGRV0Bd6BIz7PeuvrV6QDGDRQkp83CJUkWAl-fG58/edit
-  
+
   Imports are idempotent; if you run the import multiple times, subsequent imports should
   have no effect.
 """
@@ -73,7 +73,7 @@ class HPOImporter(CsvImporter):
       if organization_type == OrganizationType.UNSET:
         organization_type = None
     except TypeError:
-      logging.warn('Invalid organization type %s for awardee %s', type_str, 
+      logging.warn('Invalid organization type %s for awardee %s', type_str,
       row[HPO_AWARDEE_ID_COLUMN])
       return None
     return HPO(name=row[HPO_AWARDEE_ID_COLUMN],
@@ -92,15 +92,15 @@ class OrganizationImporter(CsvImporter):
   def __init__(self):
     super(OrganizationImporter, self).__init__('organization', OrganizationDao(),
                                                'organizationId', 'externalId',
-                                               [ORGANIZATION_AWARDEE_ID_COLUMN, 
-                                                ORGANIZATION_ORGANIZATION_ID_COLUMN, 
+                                               [ORGANIZATION_AWARDEE_ID_COLUMN,
+                                                ORGANIZATION_ORGANIZATION_ID_COLUMN,
                                                 ORGANIZATION_NAME_COLUMN])
     self.hpo_dao = HPODao()
 
   def _entity_from_row(self, row):
     hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN])
     if hpo is None:
-      logging.warn('Invalid awardee ID %s importing organization %s', 
+      logging.warn('Invalid awardee ID %s importing organization %s',
                    row[ORGANIZATION_AWARDEE_ID_COLUMN],
                    row[ORGANIZATION_ORGANIZATION_ID_COLUMN])
       return None
@@ -112,8 +112,8 @@ class SiteImporter(CsvImporter):
 
   def __init__(self):
     super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
-                                       [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN, 
-                                       SITE_SITE_COLUMN, SITE_MAYOLINK_CLIENT_NUMBER_COLUMN, 
+                                       [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
+                                       SITE_SITE_COLUMN, SITE_MAYOLINK_CLIENT_NUMBER_COLUMN,
                                        SITE_STATUS_COLUMN])
 
     self.organization_dao = OrganizationDao()
