@@ -181,13 +181,14 @@ class PublicMetricsExport(object):
     # Using a session here should put all following SQL invocations into a
     # non-locking read transaction per
     # https://dev.mysql.com/doc/refman/5.7/en/innodb-consistent-read.html
+    now = clock.CLOCK.now()
     test_hpo = HPODao().get_by_name(TEST_HPO_NAME)
     with database_factory.make_server_cursor_database().session() as session:
       for (key, sql, valuef, params) in _SQL_AGGREGATIONS:
         sql = replace_years_old(sql)
         out[key] = []
         p = {
-          'now': clock.CLOCK.now(),
+          'now': now,
           'test_hpo_id': test_hpo.hpoId,
           'test_email_pattern': TEST_EMAIL_PATTERN,
           'not_withdrawn_status': WithdrawalStatus.NOT_WITHDRAWN.number
