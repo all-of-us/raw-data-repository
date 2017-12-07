@@ -602,6 +602,37 @@ The response body includes:
 }
 ```
 
+## Public Metrics API
+
+Public metrics are high-level aggregations of study data, suitable to expose
+in public dashboards. Public metrics are grouped into metric sets, which share a
+common schema. One metric set will correspond to a live view of the RDR data,
+while others will be fixed snapshots taken during curated data releases.
+
+#### `GET /PublicMetricSets`
+
+List all available metric sets and their IDs.
+
+The response body includes:
+
+* `metricSets`: an array of metric sets
+
+```
+{
+  "metricSets": [
+    {"id": "live"},
+    ...
+  ]
+}
+```
+
+#### `GET /PublicMetricSets/:msid/Metrics`
+
+List all metrics within the given public metric set, optionally limited to a
+subset of metric names.
+
+TODO(calbach): Dump example JSON request/response here.
+
 ## BiobankSamples API
 
 Mayo has defined a sample manifest format that will be uploaded to the RDR

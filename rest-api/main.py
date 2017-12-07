@@ -16,6 +16,7 @@ from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
 from api.participant_summary_api import ParticipantSummaryApi
 from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
+from api.public_metrics_api import PublicMetricSetsApi, PublicMetricsApi
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
 from flask import Flask, got_request_exception
@@ -76,6 +77,16 @@ api.add_resource(MetricsApi,
 api.add_resource(MetricsFieldsApi,
                  PREFIX + 'MetricsFields',
                  endpoint='metrics_fields',
+                 methods=['GET'])
+
+api.add_resource(PublicMetricSetsApi,
+                 PREFIX + 'PublicMetricSets',
+                 endpoint='public_metric_sets',
+                 methods=['GET'])
+
+api.add_resource(PublicMetricsApi,
+                 PREFIX + 'PublicMetricSets/<metric_set_id:ms_id>/Metrics',
+                 endpoint='public_metric_sets.metrics',
                  methods=['GET'])
 
 api.add_resource(QuestionnaireApi,
