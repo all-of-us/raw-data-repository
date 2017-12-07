@@ -1,11 +1,11 @@
 from test.unit_test.unit_test_util import FlaskTestBase
 
-def _make_awardee_dict(id, display_name, type):
-  return { 'fullUrl': 'http://localhost/rdr/v1/Awardee/%s' % id,
+def _make_awardee_dict(awardee_id, display_name, org_type):
+  return { 'fullUrl': 'http://localhost/rdr/v1/Awardee/%s' % awardee_id,
            'resource': {
              'displayName': display_name,
-             'id': id,
-             'type': type
+             'id': awardee_id,
+             'type': org_type
            }}
 
 
