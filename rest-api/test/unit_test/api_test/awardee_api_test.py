@@ -61,7 +61,12 @@ class AwardeeApiTest(FlaskTestBase):
     self.assertEquals(self._make_expected_pitt_awardee_resource(), result)
 
   def _make_expected_pitt_awardee_resource(self):
-    sites = [{'id': 'hpo-site-1',
+    sites = [{'id': 'aaaaaaa',
+             'displayName': 'Zebras Rock',
+             'mayolinkClientNumber': 321,
+             'siteStatus': 'INACTIVE',
+             'address': {}
+            }, {'id': 'hpo-site-1',
               'displayName': 'Site 1',
               'mayolinkClientNumber': 123456,
               'siteStatus': 'ACTIVE',
@@ -79,17 +84,11 @@ class AwardeeApiTest(FlaskTestBase):
               },
               'phoneNumber': '555-555-5555',
               'adminEmails': ['alice@example.com', 'bob@example.com'],
-              'link': 'http://www.example.com' },
-            {'id': 'aaaaaaa',
-             'displayName': 'Zebras Rock',
-             'mayolinkClientNumber': 321,
-             'siteStatus': 'INACTIVE',
-             'address': {}
-            }]
+              'link': 'http://www.example.com' }]
 
-    org_1_dict = _make_organization_dict('ORG_1', 'Organization 1', sites)
     org_2_dict = _make_organization_dict('AARDVARK_ORG', 'Aardvarks Rock')
-    return _make_awardee_resource('PITT', 'Pittsburgh', 'HPO', [org_1_dict, org_2_dict])
+    org_1_dict = _make_organization_dict('ORG_1', 'Organization 1', sites)    
+    return _make_awardee_resource('PITT', 'Pittsburgh', 'HPO', [org_2_dict, org_1_dict])
 
   def _setup_data(self):
     organization_dao = OrganizationDao()

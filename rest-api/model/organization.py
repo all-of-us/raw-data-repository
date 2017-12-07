@@ -14,4 +14,4 @@ class Organization(Base):
   # Foreign key to awardee/hpo this organization belongs to.
   hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
   # Sites belonging to this organization.
-  sites = relationship('Site', cascade='all, delete-orphan')
+  sites = relationship('Site', cascade='all, delete-orphan', order_by='Site.googleGroup')
