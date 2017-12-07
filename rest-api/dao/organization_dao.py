@@ -35,7 +35,5 @@ class OrganizationDao(CacheAllDao):
     resource = _FhirOrganization()
     resource.id = model.externalId
     resource.display_name = model.displayName
-    resource.sites = []
-    for site in model.sites:
-      resource.sites.append(SiteDao._to_json(site))
+    resource.sites = [SiteDao._to_json(site) for site in model.sites]    
     return resource

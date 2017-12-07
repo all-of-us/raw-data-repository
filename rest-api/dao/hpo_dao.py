@@ -17,6 +17,7 @@ class _FhirAwardee(FhirMixin, DomainResource):
     FhirProperty('organizations', _FhirOrganization, is_list=True)
   ]
 
+# Sort order for HPOs.
 _ORDER_BY_ENDING = ('name')
 
 class HPODao(CacheAllDao):
@@ -65,9 +66,8 @@ class HPODao(CacheAllDao):
       resource.type = str(model.organizationType)
     else:
       resource.type = UNSET
-    resource.organizations = []
-    for organization in model.organizations:
-      resource.organizations.append(OrganizationDao._to_json(organization))
+    resource.organizations = [OrganizationDao._to_json(organization) for organization 
+                              in model.organizations]
     json = resource.as_json()
     del json['resourceType']
     return json

@@ -7,7 +7,7 @@ from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models import fhirdate
 
 
-def _ToFhirDate(dt):
+def _to_fhir_date(dt):
   if not dt:
     return None
   return fhirdate.FHIRDate.with_json(dt.isoformat())
@@ -53,7 +53,7 @@ class SiteDao(CacheAllDao):
     resource.display_name = model.siteName
     resource.mayolink_client_number = model.mayolinkClientNumber
     resource.site_status = str(model.siteStatus)
-    resource.launch_date = _ToFhirDate(model.launchDate)
+    resource.launch_date = _to_fhir_date(model.launchDate)
     resource.notes = model.notes
     resource.latitude = model.latitude
     resource.longitude = model.longitude
