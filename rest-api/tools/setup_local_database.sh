@@ -45,22 +45,19 @@ function finish {
 }
 trap finish EXIT
 
-echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
-     ' "db_password": "'$RDR_PASSWORD'", ' \
-     ' "db_connection_name": "", '\
-     ' "db_user": "'$RDR_DB_USER'", '\
-     ' "db_name": "'$DB_NAME'" }' > $DB_INFO_FILE
-# Include charset here since mysqld defaults to Latin1 (even though CloudSQL
-# is configured with UTF8 as the default). Keep in sync with unit_test_util.py.
-cat tools/drop_db.sql tools/create_db.sql | envsubst > $CREATE_DB_FILE
+for db_name in "${DB_NAME}" "${METRICS_DB_NAME}"; do
+  # Include charset here since mysqld defaults to Latin1 (even though CloudSQL
+  # is configured with UTF8 as the default). Keep in sync with unit_test_util.py.
+  cat tools/drop_db.sql tools/create_db.sql | envsubst > $CREATE_DB_FILE
 
-echo "Creating empty database..."
-mysql -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < ${CREATE_DB_FILE}
-if [ $? != '0' ]
-then
-  echo "Error creating database. Exiting."
-  exit 1
-fi
+  echo "Creating empty database..."
+  mysql -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < ${CREATE_DB_FILE}
+  if [ $? != '0' ]
+  then
+    echo "Error creating database. Exiting."
+    exit 1
+  fi
+done
 
 # Set it again with the Alembic user for upgrading the database.
 set_local_db_connection_string alembic
@@ -71,7 +68,24 @@ tools/upgrade_database.sh
 echo "Setting general configuration..."
 tools/install_config.sh --config config/config_dev.json --update
 
+function db_config_json {
+  if [[ -z "${1}" ]]
+  then
+    echo "Usage: db_config_json <db_name>" 1>&2
+    exit 1
+  fi
+  local -r db_connection_string="$(local_db_connection_string "${RDR_DB_USER}" "${1}")"
+  echo '{"db_connection_string": "'${db_connection_string}'", ' \
+       ' "db_password": "'${RDR_PASSWORD}'", ' \
+       ' "db_connection_name": "", '\
+       ' "db_user": "'${RDR_DB_USER}'", '\
+       ' "db_name": "'${1}'" }'
+}
+
 echo "Setting database configuration..."
+db_config_json "rdr" > ${DB_INFO_FILE}
 tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update
+db_config_json "metrics" > ${DB_INFO_FILE}
+tools/install_config.sh --key metrics_db_config --config ${DB_INFO_FILE} --update
 
 tools/import_data.sh

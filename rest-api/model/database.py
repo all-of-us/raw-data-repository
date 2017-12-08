@@ -13,6 +13,7 @@ from model.hpo import HPO
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements, Measurement
 from model.metrics import MetricsVersion, MetricsBucket
+from model.metric_set import MetricSet, AggregateMetrics
 from model.organization import Organization
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept

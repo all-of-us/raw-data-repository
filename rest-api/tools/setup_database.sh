@@ -108,31 +108,43 @@ function finish {
 }
 trap finish EXIT
 
-echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
-     ' "db_password": "'$RDR_PASSWORD'", ' \
-     ' "db_connection_name": "'$INSTANCE_CONNECTION_NAME'", '\
-     ' "db_user": "'$RDR_DB_USER'", '\
-     ' "db_name": "'$DB_NAME'" }' > $TMP_DB_INFO_FILE
+for db_name in "rdr" "metrics"; do
+  if [ "${UPDATE_PASSWORDS}" = "Y" ]
+  then
+    cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
+  else
+    cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+  fi
 
+  run_cloud_sql_proxy
 
-if [ "${UPDATE_PASSWORDS}" = "Y" ]
-then
-  cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
-else
-  cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
-fi
+  if [ "${UPDATE_PASSWORDS}" = "Y" ]
+  then
+    echo "Updating database user passwords..."
+  else
+    echo "Creating empty database..."
+  fi
+  mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
+done
 
-run_cloud_sql_proxy
-
-if [ "${UPDATE_PASSWORDS}" = "Y" ]
-then
-  echo "Updating database user passwords..."
-else
-  echo "Creating empty database..."
-fi
-mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
+function db_config_json {
+  if [[ -z "${1}" ]]
+  then
+    echo "Usage: db_config_json <db_name>" 1>&2
+    exit 1
+  fi
+  local -r db_connection_string="$(local_db_connection_string "${RDR_DB_USER}" "${1}")"
+  echo '{"db_connection_string": "'${db_connection_string}'", ' \
+       ' "db_password": "'${RDR_PASSWORD}'", ' \
+       ' "db_connection_name": "", '\
+       ' "db_user": "'${RDR_DB_USER}'", '\
+       ' "db_name": "'${1}'" }'
+}
 
 echo "Setting database configuration..."
+db_config_json "rdr" > ${DB_INFO_FILE}
 tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
+db_config_json "metrics" > ${DB_INFO_FILE}
+tools/install_config.sh --key metrics_db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
 
 echo "Done."

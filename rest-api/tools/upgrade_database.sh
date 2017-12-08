@@ -68,5 +68,6 @@ else
 fi
 
 # alembic.env.get_url() picks up DB_CONNECTION_STRING to find the db to upgrade.
-(source tools/set_path.sh; alembic upgrade ${REVISION})
-
+for db in "rdr" "metrics"; do
+  (source tools/set_path.sh; cd "alembic/${db}"; alembic upgrade "${REVISION}")
+done
