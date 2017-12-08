@@ -12,7 +12,8 @@ class HPO(Base):
   displayName = Column('display_name', String(255))
   organizationType = Column('organization_type', Enum(OrganizationType),
                             default=OrganizationType.UNSET)
-  organizations = relationship('Organization', cascade='all, delete-orphan')
+  organizations = relationship('Organization', cascade='all, delete-orphan',
+                               order_by='Organization.externalId')
   __table_args__ = (
     UniqueConstraint('name'),
   )
