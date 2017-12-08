@@ -50,7 +50,7 @@ class SiteDao(CacheAllDao):
   def _to_json(model):
     resource = _FhirSite()
     resource.id = model.googleGroup
-    resource.display_name = model.siteName    
+    resource.display_name = model.siteName
     resource.mayolink_client_number = long(model.mayolinkClientNumber)
     resource.site_status = str(model.siteStatus)
     resource.launch_date = _to_fhir_date(model.launchDate)
