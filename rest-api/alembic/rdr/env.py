@@ -20,10 +20,6 @@ config = context.config
 # This line sets up loggers basically.
 fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -38,9 +34,6 @@ def compile_blob_in_mysql_to_longblob(type_, compiler, **kw):
   #pylint: disable=unused-argument
   return "LONGBLOB"
 
-def get_url():
-  return os.environ['DB_CONNECTION_STRING']
-
 def my_compare_type(ctx, inspected_column, metadata_column, inspected_type, metadata_type):
    #pylint: disable=unused-argument
 
@@ -52,6 +45,11 @@ def my_compare_type(ctx, inspected_column, metadata_column, inspected_type, meta
   if isinstance(metadata_type, model.utils.Enum) and isinstance(inspected_type, SMALLINT):
     return False
   return None
+
+
+def get_url():
+  return os.environ['DB_CONNECTION_STRING']
+
 
 def run_migrations_offline():
   """Run migrations in 'offline' mode.
@@ -65,9 +63,9 @@ def run_migrations_offline():
   script output.
 
   """
-  url = get_url()
   context.configure(
-      url=url, target_metadata=target_metadata, literal_binds=True, compare_type=my_compare_type)
+      url=get_url(), target_metadata=target_metadata, literal_binds=True,
+      compare_type=my_compare_type)
 
   with context.begin_transaction():
     context.run_migrations()

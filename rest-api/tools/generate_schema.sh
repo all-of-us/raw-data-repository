@@ -7,9 +7,9 @@
 #
 # Run this before committing whenever you make a change to the model/ directory.
 
-if [ -z "$1" ]
+if [[ -z "$1" || -z "$2" ]]
 then
-  echo "Usage: tools/generate_schema.sh <MESSAGE>"
+  echo "Usage: tools/generate_schema.sh <rdr|metrics> <MESSAGE>"
   exit 1
 fi
 
@@ -20,4 +20,5 @@ then
 fi
 
 (source tools/set_path.sh; cd ${BASE_DIR};
- alembic revision --autogenerate -m "$1")
+ cd "alembic/${1}";
+ alembic revision --autogenerate -m "$2")

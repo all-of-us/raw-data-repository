@@ -9,23 +9,24 @@ a Cloud SQL instance.
 
 ### generate_schema.sh
 
-Generates an Alembic schema migration in alembic/versions after altering the
-SQLAlchemy schema in model/.
+Generates an Alembic schema migration in alembic/{rdr,metrics}/versions after altering the
+SQLAlchemy schema in model/. These parallel alembic directories correspond to separate DBs which
+contain divergent tables.
 
-To regenerate an initial schema:
+To regenerate an initial RDR schema:
 
 ```
 # Remove the existing schema definition.
-rm alembic/versions/*.py
+rm alembic/rdr/versions/*.py
 # Clear the database. (The setup script clears the db, creates an empty one,
 # and then fails everything else leaving it empty.)
 tools/setup_local_database.sh
 # Optionally add any new imports to the Alembic bootstrap.
-$EDITOR alembic/script.py.mako
+$EDITOR alembic/rdr/script.py.mako
 # Regenerate the schema.
-tools/generate_schema.sh 'Initial schema with manual edits for HPO IDs.'
+tools/generate_schema.sh rdr 'Initial schema with manual edits for HPO IDs.'
 # Re-add the HPO IDs.
-$EDITOR alembic/versions/*.py
+$EDITOR alembic/rdr/versions/*.py
 # Start a dev appserver and set up the db according to the new schema (and
 # import the codebook).
 dev_appserver.py test.yaml --require_indexes &
