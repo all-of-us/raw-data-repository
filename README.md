@@ -602,6 +602,41 @@ The response body includes:
 }
 ```
 
+## Metric Sets API
+
+Metrics are grouped into metric sets, which share a common schema. One metric
+set may correspond to a live view of the RDR data, while others will be fixed
+snapshots taken during curated data releases. These primarily exist to provide
+high-level aggregations vs the above `Metrics API`, which predates this and
+primarily drives an internal operational view.
+
+#### `GET /MetricSets`
+
+List all available metric sets and their IDs.
+
+The response body includes:
+
+* `metricSets`: an array of metric sets
+
+```
+{
+  "metricSets": [
+    {
+      "id": "live.public_participants",
+      "type": "participants"
+    }
+    ...
+  ]
+}
+```
+
+#### `GET /MetricSets/:msid/Metrics`
+
+List all metrics within the given metric set, optionally limited to a subset of
+metric names.
+
+TODO(calbach): Dump example JSON request/response here.
+
 ## BiobankSamples API
 
 Mayo has defined a sample manifest format that will be uploaded to the RDR
