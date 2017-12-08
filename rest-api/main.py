@@ -7,6 +7,7 @@ import config_api
 import logging
 import version_api
 
+from api.awardee_api import AwardeeApi
 from api.biobank_order_api import BiobankOrderApi
 from api.check_ppi_data_api import check_ppi_data
 from api.data_gen_api import DataGenApi
@@ -95,6 +96,12 @@ api.add_resource(BiobankOrderApi,
                  PREFIX + 'Participant/<participant_id:p_id>/BiobankOrder',
                  endpoint='participant.biobank_order',
                  methods=['POST', 'GET'])
+
+api.add_resource(AwardeeApi,
+                 PREFIX + 'Awardee',
+                 PREFIX + 'Awardee/<string:a_id>',
+                 endpoint='awardee',
+                 methods=['GET'])
 
 # Configuration API for admin use.
 

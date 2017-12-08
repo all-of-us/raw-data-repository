@@ -134,20 +134,22 @@ class BaseApi(Resource):
     entries = []
     for item in results.items:
       json = self.dao.to_client_json(item)
-      if participant_id:
-        full_url = main.api.url_for(self.__class__,
-                                    id_=json[id_field],
-                                    p_id=to_client_participant_id(participant_id),
-                                    _external=True)
-      else:
-        full_url = main.api.url_for(self.__class__,
-                                    p_id=json[id_field],
-                                    _external=True)
+      full_url = self._make_resource_url(json, id_field, participant_id)
       entries.append({"fullUrl": full_url,
                      "resource": json})
     bundle_dict['entry'] = entries
     return bundle_dict
 
+  def _make_resource_url(self, json, id_field, participant_id):
+    import main
+    if participant_id:
+      return main.api.url_for(self.__class__,
+                              id_=json[id_field],
+                              p_id=to_client_participant_id(participant_id),
+                              _external=True)
+    else:
+      return main.api.url_for(self.__class__, p_id=json[id_field],
+                              _external=True)
 
 class UpdatableApi(BaseApi):
   """Base class for API handlers that support PUT requests.
