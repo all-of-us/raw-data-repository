@@ -17,7 +17,7 @@ class _FhirSite(FhirMixin, BackboneElement):
   resource_name = 'Site'
   _PROPERTIES = [
     FhirProperty('display_name', str, required=True),
-    FhirProperty('mayolink_client_number', int, required=True),
+    FhirProperty('mayolink_client_number', long, required=True),
     FhirProperty('site_status', str, required=True),
     FhirProperty('launch_date', fhirdate.FHIRDate),
     FhirProperty('notes', str),
@@ -50,8 +50,8 @@ class SiteDao(CacheAllDao):
   def _to_json(model):
     resource = _FhirSite()
     resource.id = model.googleGroup
-    resource.display_name = model.siteName
-    resource.mayolink_client_number = model.mayolinkClientNumber
+    resource.display_name = model.siteName    
+    resource.mayolink_client_number = long(model.mayolinkClientNumber)
     resource.site_status = str(model.siteStatus)
     resource.launch_date = _to_fhir_date(model.launchDate)
     resource.notes = model.notes
