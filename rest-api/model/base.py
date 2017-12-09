@@ -1,5 +1,7 @@
-"""Defines the declarative base. Import this and extend from Base for all tables."""
+"""Defines the declarative base. Import this and extend from Base for all rdr
+tables. Extend MetricsBase for all metrics tables."""
 
+from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from dictalchemy import DictableModel
 
@@ -15,7 +17,11 @@ from dictalchemy import DictableModel
 # fromdict() populates fields in the model object based on an input dictionary;
 # see https://pythonhosted.org/dictalchemy/#using-fromdict. fromdict() does not
 # populate fields that contain lists.
-Base = declarative_base(cls=DictableModel)
+Base = declarative_base(cls=DictableModel, metadata=MetaData(schema='rdr'))
+
+# MetricsBase is the parent for all models in the "metrics" DB. These are
+# collected separately for DB migration purposes.
+MetricsBase = declarative_base(cls=DictableModel, metadata=MetaData(schema='metrics'))
 
 def get_column_name(model_type, field_name):
   return getattr(model_type, field_name).property.columns[0].name

@@ -46,6 +46,36 @@ class OrderStatus(messages.Enum):
   PROCESSED = 3
   FINALIZED = 4
 
+class MetricSetType(messages.Enum):
+  """Type determining the schema for a metric set."""
+  PUBLIC_PARTICIPANT_AGGREGATIONS = 1
+
+class MetricsKey(messages.Enum):
+  """Key for a metrics set metric aggregation."""
+  GENDER = 1
+  RACE = 2
+  STATE = 3
+  AGE_RANGE = 4
+  PHYSICAL_MEASUREMENTS = 5
+  BIOSPECIMEN_SAMPLES = 6
+  QUESTIONNAIRE_ON_OVERALL_HEALTH = 7
+  QUESTIONNAIRE_ON_PERSONAL_HABITS = 8
+  QUESTIONNAIRE_ON_SOCIODEMOGRAPHICS = 9
+
+METRIC_SET_KEYS = {
+  MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([
+    MetricsKey.GENDER,
+    MetricsKey.RACE,
+    MetricsKey.STATE,
+    MetricsKey.AGE_RANGE,
+    MetricsKey.PHYSICAL_MEASUREMENTS,
+    MetricsKey.BIOSPECIMEN_SAMPLES,
+    MetricsKey.QUESTIONNAIRE_ON_OVERALL_HEALTH,
+    MetricsKey.QUESTIONNAIRE_ON_PERSONAL_HABITS,
+    MetricsKey.QUESTIONNAIRE_ON_SOCIODEMOGRAPHICS
+  ])
+}
+
 # These race values are derived from one or more answers to the race/ethnicity question
 # in questionnaire responses.
 class Race(messages.Enum):

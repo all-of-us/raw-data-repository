@@ -18,7 +18,7 @@ class BiobankOrder(Base):
   # to us as an identifier with the mayomedicallaboritories.com "system".
   biobankOrderId = Column('biobank_order_id', String(80), primary_key=True)
 
-  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
+  participantId = Column('participant_id', Integer, ForeignKey('rdr.participant.participant_id'),
                          nullable=False)
 
   # For syncing new orders.
