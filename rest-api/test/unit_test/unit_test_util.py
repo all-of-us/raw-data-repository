@@ -176,9 +176,6 @@ class _TestDb(object):
       # Keep in sync with tools/setup_local_database.sh.
       db.get_engine().execute(
           'CREATE DATABASE %s CHARACTER SET utf8 COLLATE utf8_general_ci' % self.__temp_db_name)
-
-      dao.database_factory.DB_CONNECTION_STRING = (
-          'mysql+mysqldb://%s@localhost/%s?charset=utf8' % (mysql_login, self.__temp_db_name))
       singletons.reset_for_tests()
     else:
       dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'

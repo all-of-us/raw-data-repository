@@ -26,7 +26,6 @@ class CodeBook(Base):
   book are left untouched.
   """
   __tablename__ = 'code_book'
-  __table_args__ = {'schema':'rdr'}
   codeBookId = Column('code_book_id', Integer, primary_key=True)
   created = Column('created', UTCDateTime, nullable=False)
   # True if this is the latest imported code book.
