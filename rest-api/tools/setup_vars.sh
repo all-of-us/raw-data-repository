@@ -3,4 +3,3 @@ RDR_DB_USER=rdr
 ALEMBIC_DB_USER=alembic
 ROOT_DB_USER=root
 DB_USER="${RDR_DB_USER}"
-DB_NAME=rdr

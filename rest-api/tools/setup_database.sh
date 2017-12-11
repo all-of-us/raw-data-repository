@@ -114,23 +114,24 @@ echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
      ' "db_user": "'$RDR_DB_USER'", '\
      ' "db_name": "'$DB_NAME'" }' > $TMP_DB_INFO_FILE
 
+for db_name in "rdr" "metrics"; do
+  if [ "${UPDATE_PASSWORDS}" = "Y" ]
+  then
+    cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
+  else
+    cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+  fi
 
-if [ "${UPDATE_PASSWORDS}" = "Y" ]
-then
-  cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
-else
-  cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
-fi
+  run_cloud_sql_proxy
 
-run_cloud_sql_proxy
-
-if [ "${UPDATE_PASSWORDS}" = "Y" ]
-then
-  echo "Updating database user passwords..."
-else
-  echo "Creating empty database..."
-fi
-mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
+  if [ "${UPDATE_PASSWORDS}" = "Y" ]
+  then
+    echo "Updating database user passwords..."
+  else
+    echo "Creating empty database..."
+  fi
+  mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
+done
 
 echo "Setting database configuration..."
 tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
