@@ -98,6 +98,8 @@ echo "Setting root password..."
 gcloud sql instances set-root-password $INSTANCE_NAME --password $ROOT_PASSWORD
 
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
+
+# TODO(calbach): Drop DB_NAME from here, once #549 has been deployed.
 CONNECTION_STRING="mysql+mysqldb://${RDR_DB_USER}:${RDR_PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$INSTANCE_CONNECTION_NAME&charset=utf8"
 
 UPDATE_DB_FILE=/tmp/update_db.sql
