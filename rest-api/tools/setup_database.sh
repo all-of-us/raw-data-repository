@@ -98,6 +98,8 @@ echo "Setting root password..."
 gcloud sql instances set-root-password $INSTANCE_NAME --password $ROOT_PASSWORD
 
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
+
+# TODO(calbach): Drop DB_NAME from here, once #549 has been deployed.
 CONNECTION_STRING="mysql+mysqldb://${RDR_DB_USER}:${RDR_PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$INSTANCE_CONNECTION_NAME&charset=utf8"
 
 UPDATE_DB_FILE=/tmp/update_db.sql
@@ -114,23 +116,24 @@ echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
      ' "db_user": "'$RDR_DB_USER'", '\
      ' "db_name": "'$DB_NAME'" }' > $TMP_DB_INFO_FILE
 
+for db_name in "rdr" "metrics"; do
+  if [ "${UPDATE_PASSWORDS}" = "Y" ]
+  then
+    cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
+  else
+    cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+  fi
 
-if [ "${UPDATE_PASSWORDS}" = "Y" ]
-then
-  cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
-else
-  cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
-fi
+  run_cloud_sql_proxy
 
-run_cloud_sql_proxy
-
-if [ "${UPDATE_PASSWORDS}" = "Y" ]
-then
-  echo "Updating database user passwords..."
-else
-  echo "Creating empty database..."
-fi
-mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
+  if [ "${UPDATE_PASSWORDS}" = "Y" ]
+  then
+    echo "Updating database user passwords..."
+  else
+    echo "Creating empty database..."
+  fi
+  mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
+done
 
 echo "Setting database configuration..."
 tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}

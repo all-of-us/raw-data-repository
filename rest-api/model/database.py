@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 import logging
 
-from model.base import Base
+from model.base import Base, MetricsBase
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
 from model.participant import Participant, ParticipantHistory
@@ -12,6 +12,7 @@ from model.code import CodeBook, Code, CodeHistory
 from model.hpo import HPO
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements, Measurement
+from model.metric_set import AggregateMetrics, MetricSet
 from model.metrics import MetricsVersion, MetricsBucket
 from model.organization import Organization
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
@@ -26,15 +27,15 @@ from sqlalchemy.orm import sessionmaker
 
 class Database(object):
   """Maintains state for accessing the database."""
-  def __init__(self, database_uri, **kwargs):
+  def __init__(self, url, **kwargs):
     # Add echo=True here to spit out SQL statements.
     # Set pool_recycle to 3600 -- one hour in seconds -- which is lower than the MySQL wait_timeout
     # parameter (which defaults to 8 hours) to ensure that we don't attempt to use idle database
     # connections after this period. (See DA-237.) To change the db wait_timeout (seconds), run:
     # gcloud --project <proj> sql instances patch rdrmaindb --database-flags wait_timeout=28800
-    self._engine = create_engine(database_uri, pool_recycle=3600, **kwargs)
+    self._engine = create_engine(url, pool_recycle=3600, **kwargs)
     event.listen(self._engine, 'engine_connect', _ping_connection)
-    self.db_type = database_uri.split(':')[0]
+    self.db_type = url.drivername
     if self.db_type == 'sqlite':
       self._engine.execute('PRAGMA foreign_keys = ON;')
     # expire_on_commit = False allows us to access model objects outside of a transaction.
@@ -47,6 +48,9 @@ class Database(object):
 
   def create_schema(self):
     Base.metadata.create_all(self._engine)
+
+  def create_metrics_schema(self):
+    MetricsBase.metadata.create_all(self._engine)
 
   def make_session(self):
     return self._Session()

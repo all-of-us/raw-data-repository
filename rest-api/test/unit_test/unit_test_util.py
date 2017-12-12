@@ -159,7 +159,9 @@ class _TestDb(object):
   def __init__(self, use_mysql=False):
     self.__use_mysql = use_mysql
     if self.__use_mysql:
-      self.__temp_db_name = 'unittestdb' + uuid.uuid4().hex
+      uid = uuid.uuid4().hex
+      self.__temp_db_name = 'unittestdb' + uid
+      self.__temp_metrics_db_name = 'unittestdb_metrics' + uid
 
   def setup(self, with_data=True):
     singletons.reset_for_tests()  # Clear the db connection cache.
@@ -173,16 +175,27 @@ class _TestDb(object):
       dao.database_factory.DB_CONNECTION_STRING = (
           'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
       db = dao.database_factory.get_database()
+      dao.database_factory.SCHEMA_TRANSLATE_MAP = {
+        'rdr': self.__temp_db_name,
+        'metrics': self.__temp_metrics_db_name
+      }
       # Keep in sync with tools/setup_local_database.sh.
       db.get_engine().execute(
           'CREATE DATABASE %s CHARACTER SET utf8 COLLATE utf8_general_ci' % self.__temp_db_name)
+      db.get_engine().execute(
+          'CREATE DATABASE %s CHARACTER SET utf8 COLLATE utf8_general_ci' % self.__temp_metrics_db_name)
 
       dao.database_factory.DB_CONNECTION_STRING = (
           'mysql+mysqldb://%s@localhost/%s?charset=utf8' % (mysql_login, self.__temp_db_name))
       singletons.reset_for_tests()
     else:
       dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
+      dao.database_factory.SCHEMA_TRANSLATE_MAP = {
+        'rdr': None,
+        'metrics': None
+      }
     dao.database_factory.get_database().create_schema()
+    dao.database_factory.get_generic_database().create_metrics_schema()
     if with_data:
       self._setup_hpos()
 
@@ -191,6 +204,7 @@ class _TestDb(object):
     if self.__use_mysql:
       db.get_engine().execute('DROP DATABASE IF EXISTS %s' % self.__temp_db_name)
     db.get_engine().dispose()
+    dao.database_factory.SCHEMA_TRANSLATE_MAP = None
     # Reconnecting to in-memory SQLite (because singletons are cleared above)
     # effectively clears the database.
 

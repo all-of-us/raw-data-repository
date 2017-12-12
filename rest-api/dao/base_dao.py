@@ -46,9 +46,11 @@ class BaseDao(object):
   another sort field) when query() is invoked. It should always end in the primary key.
   If not specified, query() is not supported.
   """
-  def __init__(self, model_type, order_by_ending=None):
+  def __init__(self, model_type, order_by_ending=None, db=None):
     self.model_type = model_type
-    self._database = dao.database_factory.get_database()
+    if not db:
+      db = dao.database_factory.get_database()
+    self._database = db
     self.order_by_ending = order_by_ending
 
   def session(self):
