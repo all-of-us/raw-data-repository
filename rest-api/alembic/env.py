@@ -92,11 +92,36 @@ def run_migrations_offline():
     with open(file_, 'w') as buf:
       context.configure(url=rec['url'], output_buffer=buf,
                         target_metadata=target_metadata.get(name),
-                        literal_binds=True, compare_type=my_compare_type)
-                        # version_table_schema='rdr')
+                        literal_binds=True,
+                        include_schemas=True,
+                        include_object=include_object_fn(name))
       with context.begin_transaction():
         context.run_migrations(engine_name=name)
 
+
+autogen_blacklist = set(["aggregate_metrics_ibfk_1"])
+
+def include_object_fn(engine_name):
+  def f(obj, name, type_, reflected, compare_to):
+    # pylint: disable=unused-argument
+    # Workaround what appears to be an alembic bug for multi-schema foreign
+    # keys. This should still generate the initial foreign key contraint, but
+    # stops repeated create/destroys of the constraint on subsequent runs.
+    # TODO(calbach): File an issue against alembic.
+    if type_ == "foreign_key_constraint" and obj.table.schema == "metrics":
+      return False
+    if name in autogen_blacklist:
+      logger.info("skipping blacklisted %s", name)
+      return False
+    if type_ == "table" and reflected:
+      # This normally wouldn't be necessary, except that our RDR models do not
+      # specify a schema, so we would otherwise attempt to apply their tables
+      # to the metrics DB. See option 1c on
+      # https://docs.google.com/document/d/1FTmH-DDVlyY7BNsBzj0FV9m_kWQpCjKM__zK0GmIiCc
+      return obj.schema == engine_name
+    return True
+
+  return f
 
 def run_migrations_online():
   """Run migrations in 'online' mode.
@@ -136,9 +161,9 @@ def run_migrations_online():
           connection=rec['connection'],
           upgrade_token="%s_upgrades" % name,
           downgrade_token="%s_downgrades" % name,
-          target_metadata=target_metadata.get(name)
-          # version_table_schema='rdr'
-      )
+          target_metadata=target_metadata.get(name),
+          include_schemas=True,
+          include_object=include_object_fn(name))
       context.run_migrations(engine_name=name)
 
     if USE_TWOPHASE:

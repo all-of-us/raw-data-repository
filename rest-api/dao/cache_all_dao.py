@@ -45,7 +45,7 @@ class CacheAllDao(UpdatableDao):
 
   def __init__(self, model_type, cache_index, cache_ttl_seconds, index_field_keys=None,
                order_by_ending=None):
-    super(CacheAllDao, self).__init__(model_type, order_by_ending)
+    super(CacheAllDao, self).__init__(model_type, order_by_ending=order_by_ending)
     self.index_field_keys = index_field_keys
     self.cache_index = cache_index
     self.cache_ttl_seconds = cache_ttl_seconds

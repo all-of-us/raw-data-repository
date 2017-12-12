@@ -17,7 +17,7 @@ from dictalchemy import DictableModel
 # fromdict() populates fields in the model object based on an input dictionary;
 # see https://pythonhosted.org/dictalchemy/#using-fromdict. fromdict() does not
 # populate fields that contain lists.
-Base = declarative_base(cls=DictableModel, metadata=MetaData(schema='rdr'))
+Base = declarative_base(cls=DictableModel)
 
 # MetricsBase is the parent for all models in the "metrics" DB. These are
 # collected separately for DB migration purposes.
