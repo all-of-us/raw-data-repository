@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 import logging
 
-from model.base import Base
+from model.base import Base, MetricsBase
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
 from model.participant import Participant, ParticipantHistory
@@ -48,6 +48,9 @@ class Database(object):
 
   def create_schema(self):
     Base.metadata.create_all(self._engine)
+
+  def create_metrics_schema(self):
+    MetricsBase.metadata.create_all(self._engine)
 
   def make_session(self):
     return self._Session()
