@@ -23,7 +23,13 @@ def get_database():
   return singletons.get(SQL_DATABASE_INDEX, _SqlDatabase, db_name='rdr')
 
 def get_generic_database():
-  """Returns a singleton generic _SqlDatabase (no database USE)."""
+  """Returns a singleton generic _SqlDatabase (no database USE).
+
+  This should be used to access any tables outside of the primary 'rdr' schema,
+  e.g. metrics. This could also be used for cross-DB joins/inserts - if needed.
+  For simple access to the primary 'rdr' schema (most models - all extending
+  from Base), use get_database() instead.
+  """
   return singletons.get(GENERIC_SQL_DATABASE_INDEX, _SqlDatabase, db_name=None, execution_options={
       'schema_translate_map': SCHEMA_TRANSLATE_MAP
   })
