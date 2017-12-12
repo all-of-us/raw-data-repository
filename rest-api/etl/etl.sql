@@ -253,7 +253,7 @@ CREATE TABLE cdm.observation
     observation_date date NOT NULL,
     observation_datetime datetime,
     observation_type_concept_id bigint NOT NULL,
-    value_as_number double,
+    value_as_number decimal(20,6),
     value_as_string varchar(1024),
     value_as_concept_id bigint NOT NULL,
     qualifier_concept_id bigint NOT NULL,
@@ -288,11 +288,11 @@ CREATE TABLE cdm.measurement
     measurement_datetime datetime,
     measurement_type_concept_id bigint NOT NULL,
     operator_concept_id bigint NOT NULL,
-    value_as_number double,
+    value_as_number decimal(20,6),
     value_as_concept_id bigint NOT NULL,
     unit_concept_id bigint NOT NULL,
-    range_low double,
-    range_high double,
+    range_low decimal(20,6),
+    range_high decimal(20,6),
     provider_id bigint,
     visit_occurrence_id bigint,
     measurement_source_value varchar(50),
@@ -349,7 +349,7 @@ CREATE TABLE cdm.drug_exposure
     drug_type_concept_id bigint NOT NULL,
     stop_reason varchar(20),
     refills int,
-    quantity double,
+    quantity decimal(20,6),
     days_supply int,
     sig varchar(1024),
     route_concept_id bigint,
@@ -380,7 +380,7 @@ CREATE TABLE cdm.device_exposure
     device_exposure_end_datetime datetime,
     device_type_concept_id bigint NOT NULL,
     unique_device_id varchar(50),
-    quantity double,
+    quantity decimal(20,6),
     provider_id bigint,
     visit_occurrence_id bigint,
     device_source_value varchar(50) NOT NULL,
@@ -401,19 +401,19 @@ CREATE TABLE cdm.cost
     cost_domain_id varchar(20) NOT NULL,
     cost_type_concept_id bigint NOT NULL,
     currency_concept_id bigint NOT NULL,
-    total_charge double,
-    total_cost double,
-    total_paid double,
-    paid_by_payer double,
-    paid_by_patient double,
-    paid_patient_copay double,
-    paid_patient_coinsurance double,
-    paid_patient_deductible double,
-    paid_by_primary double,
-    paid_ingredient_cost double,
-    paid_dispensing_fee double,
+    total_charge decimal(20,6),
+    total_cost decimal(20,6),
+    total_paid decimal(20,6),
+    paid_by_payer decimal(20,6),
+    paid_by_patient decimal(20,6),
+    paid_patient_copay decimal(20,6),
+    paid_patient_coinsurance decimal(20,6),
+    paid_patient_deductible decimal(20,6),
+    paid_by_primary decimal(20,6),
+    paid_ingredient_cost decimal(20,6),
+    paid_dispensing_fee decimal(20,6),
     payer_plan_period_id bigint,
-    amount_allowed double,
+    amount_allowed decimal(20,6),
     revenue_code_concept_id bigint NOT NULL,
     revenue_code_source_value varchar(50),
     drg_concept_id bigint NOT NULL,
@@ -483,7 +483,7 @@ CREATE TABLE cdm.dose_era
     person_id bigint NOT NULL,
     drug_concept_id bigint NOT NULL,
     unit_concept_id bigint NOT NULL,
-    dose_value double NOT NULL,
+    dose_value decimal(20,6) NOT NULL,
     dose_era_start_date date NOT NULL,
     dose_era_end_date date NOT NULL,
     unit_id varchar(50) NOT NULL,
@@ -509,7 +509,7 @@ CREATE TABLE cdm.src_clean
     value_ppi_code              varchar(200),
     topic_value                 varchar(200),
     value_code_id               bigint,
-    value_number                double,
+    value_number                decimal(20,6),
     value_boolean               tinyint,
     value_date                  datetime,
     value_string                varchar(1024),
@@ -667,7 +667,7 @@ CREATE TABLE cdm.src_mapped
     value_code_id               bigint,
     value_source_concept_id     bigint,
     value_concept_id            bigint,
-    value_number                double,
+    value_number                decimal(20,6),
     value_boolean               tinyint,
     value_boolean_concept_id    bigint,
     value_date                  datetime,
@@ -948,7 +948,7 @@ SELECT DISTINCT
     YEAR(b.date_of_birth)                       AS year_of_birth,
     MONTH(b.date_of_birth)                      AS month_of_birth,
     DAY(b.date_of_birth)                        AS day_of_birth,
-    NULL                                        AS birth_datetime,
+    TIMESTAMP(b.date_of_birth)                  AS birth_datetime,
     COALESCE(r.race_target_concept_id, 0)       AS race_concept_id,
     0                                           AS ethnicity_concept_id,
     person_loc.location_id                      AS location_id,
@@ -997,7 +997,7 @@ SELECT
     src_m1.participant_id                       AS person_id,
     COALESCE(vc.concept_id, 0)                  AS procedure_concept_id,
     src_m2.value_date                           AS procedure_date,
-    NULL                                        AS procedure_datetime,
+    TIMESTAMP(src_m2.value_date)                AS procedure_datetime,
     581412                                      AS procedure_type_concept_id,   -- 581412, Procedure Recorded from a Survey
     0                                           AS modifier_concept_id,
     NULL                                        AS quantity,
@@ -1274,55 +1274,12 @@ GROUP BY
 ;
 
 -- -------------------------------------------------------------------
--- table: cdm.tmp_visits_num
--- -------------------------------------------------------------------
-DROP TABLE IF EXISTS cdm.tmp_visits_num;
-
--- -------------------------------------------------------------------
--- Here we order visits by person and visit_end_time, numbering each
--- person's visit in 'row_number'. If it's first person's visit, then
--- row_number is 1, subsequent numbers is 2, 3 and so on.
--- This is necessary for obtaining preceding occurence id.
--- -------------------------------------------------------------------
-CREATE TABLE cdm.tmp_visits_num AS
-SELECT
-    src.visit_occurrence_id                                     AS visit_occurrence_id,
-    src.person_id                                               AS person_id, 
-    src.visit_start_datetime                                    AS visit_start_datetime,
-    src.visit_end_datetime                                      AS visit_end_datetime,
-    src.care_site_id                                            AS care_site_id,
-    -- person visits enumeration
-    @partition_expr := src.person_id                            AS partition_expr,
-    @reset_num :=
-        CASE
-            WHEN @partition_expr = @last_part_expr THEN 0
-            ELSE 1
-        END                                                     AS reset_num,
-    @last_part_expr := @partition_expr                          AS last_part_expr,
-    @row_number :=
-        CASE
-            WHEN @reset_num = 0 THEN @row_number + 1
-            ELSE 1
-        END                                                     AS row_number
-FROM 
-    cdm.tmp_visits_src src
-ORDER BY 
-    src.person_id, src.visit_end_datetime DESC, src.visit_start_datetime DESC
-;
-
-CREATE INDEX tmp_visits_num_ids ON cdm.tmp_visits_num (person_id, row_number);
-ALTER TABLE cdm.tmp_visits_num ADD KEY (visit_start_datetime);
-ALTER TABLE cdm.tmp_visits_num ADD KEY (visit_end_datetime);
-
--- -------------------------------------------------------------------
 -- table: cdm.visit_occurrence
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.visit_occurrence;
 
 -- -------------------------------------------------------------------
--- Here we form visit_occurence table from 'tmp_visits_num', filling
--- preceding_visit_occurence_id as visit_occurence_id with smaller
--- by 1 row_number
+-- Here we form visit_occurence table from 'tmp_visits_src'
 -- -------------------------------------------------------------------
 INSERT INTO cdm.visit_occurrence
 SELECT
@@ -1342,20 +1299,15 @@ SELECT
     NULL                                    AS admitting_source_value,
     0                                       AS discharge_to_concept_id,
     NULL                                    AS discharge_to_source_value,
-    vprev.visit_occurrence_id               AS preceding_visit_occurrence_id,
+    NULL                                    AS preceding_visit_occurrence_id,
     'vis.meas'                              AS unit_id
-FROM cdm.tmp_visits_num src
-LEFT JOIN cdm.tmp_visits_num vprev
-    ON  src.person_id = vprev.person_id
-    AND src.visit_start_datetime >= vprev.visit_end_datetime
-    AND src.row_number + 1 = vprev.row_number
+FROM cdm.tmp_visits_src src
 ;
 
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
 -- -------------------------------------------------------------------
   DROP TABLE IF EXISTS cdm.tmp_visits_src;
-  DROP TABLE IF EXISTS cdm.tmp_visits_num;
 
 -- -------------------------------------------------------------------
 -- source_file: src/observation.sql
@@ -1434,12 +1386,12 @@ SELECT
     NULL                                    AS value_as_string,
     meas.vcv_concept_id                     AS value_as_concept_id,
     0                                       AS qualifier_concept_id,
-    0                                       AS unit_concept_id,
+    meas.vu_concept_id                      AS unit_concept_id,
     NULL                                    AS provider_id,
     meas.physical_measurements_id           AS visit_occurrence_id,
     meas.code_value                         AS observation_source_value,
     meas.cv_source_concept_id               AS observation_source_concept_id,
-    NULL                                    AS unit_source_value,
+    meas.value_unit                         AS unit_source_value,
     NULL                                    AS qualifier_source_value,
     meas.vcv_source_concept_id              AS value_source_concept_id,
     meas.value_code_value                   AS value_source_value,

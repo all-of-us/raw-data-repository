@@ -659,7 +659,7 @@ from
     ) c1,
 
     (select  sum(
-            (coalesce(s.site_name, 0) - cs.care_site_name)              -- care_site_name
+            ABS(STRCMP(coalesce(s.site_name, 0), cs.care_site_name))              -- care_site_name
              +
             (coalesce(cs.place_of_service_concept_id, 0))               -- place_of_service_concept_id
              +
@@ -828,7 +828,7 @@ SELECT NULL INTO @test_result;
                     -- ELSE 0
                 END
                +
-               p.gender_source_value - t.gender
+               ABS(STRCMP(p.gender_source_value, t.gender))
                ) as result INTO @test_result
     from cdm.person p
     left join
@@ -1063,7 +1063,7 @@ select sum(
          +
         (coalesce(cdm_p.visit_occurrence_id, 0))                                        -- visit_occurrence_id
          +
-        (cd_a1.short_value - cdm_p.procedure_source_value)                                    -- procedure_source_value
+        ABS(STRCMP(cd_a1.short_value, cdm_p.procedure_source_value))                    -- procedure_source_value
          +
         (coalesce(stcm.source_concept_id, 0) - cdm_p.procedure_source_concept_id)       -- procedure_source_concept_id
          +
@@ -1152,7 +1152,7 @@ select  sum(
         +
         (coalesce(obs.visit_occurrence_id, 0)) -- visit_occurrence_id
         +
-        (cd.short_value - obs.observation_source_value) -- observation_source_value
+        ABS(STRCMP(cd.short_value, obs.observation_source_value))   -- observation_source_value
         +
         (obs.observation_source_concept_id - coalesce(c.concept_id, 0)) -- observation_source_concept_id
         +
@@ -1215,7 +1215,7 @@ select  sum(
         (coalesce(obs.value_as_number, 0))                                                  -- value_as_number
         +
         CASE
-            WHEN c2.concept_id is null THEN (obs.value_as_string - cd_ans.display)        -- value_as_string
+            WHEN c2.concept_id is null THEN ABS(STRCMP(obs.value_as_string, cd_ans.display)) -- value_as_string
             ELSE 0
         END
         +
@@ -1229,7 +1229,7 @@ select  sum(
         +
         (coalesce(obs.visit_occurrence_id, 0))                                                  -- visit_occurrence_id
         +
-        (cd.short_value - obs.observation_source_value)                                           -- observation_source_value
+        ABS(STRCMP(cd.short_value, obs.observation_source_value))                           -- observation_source_value
         +
         (obs.observation_source_concept_id - coalesce(c.concept_id, 0))                     -- observation_source_concept_id
         +
@@ -1239,7 +1239,7 @@ select  sum(
         +
         (obs.value_source_concept_id - coalesce(c1.concept_id, 0))                          -- value_source_concept_id
         +
-        (obs.value_source_value - cd_ans.short_value)                                             -- value_source_value
+        ABS(STRCMP(obs.value_source_value, cd_ans.short_value))                             -- value_source_value
      ) INTO @test_result
 from rdr.questionnaire_response_answer qra
 inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.questionnaire_response_id
@@ -1304,7 +1304,7 @@ select  sum(
         +
         (coalesce(obs.value_as_number, 0)) -- value_as_number
         +
-        (obs.value_as_string - cast(qra.value_date as char)) -- value_as_string
+        ABS(STRCMP(obs.value_as_string, cast(qra.value_date as char))) -- value_as_string
         +
         (coalesce(obs.value_as_concept_id, 0)) -- value_as_concept_id
         +
@@ -1316,7 +1316,7 @@ select  sum(
         +
         (coalesce(obs.visit_occurrence_id, 0))    -- visit_occurrence_id
         +
-        (cd.short_value - obs.observation_source_value) -- observation_source_value
+        ABS(STRCMP(cd.short_value, obs.observation_source_value))       -- observation_source_value
         +
         (obs.observation_source_concept_id - coalesce(c.concept_id, 0)) -- observation_source_concept_id
         +
@@ -1327,7 +1327,7 @@ select  sum(
         (coalesce(obs.value_source_concept_id, 0)) -- value_source_concept_id
         +
         (coalesce(obs.value_source_value, 0)) -- value_source_value
-    ) INTO @test_result
+    ) as result                                                         INTO @test_result
 from rdr.questionnaire_response_answer qra
 inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.questionnaire_response_id
 inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
@@ -1346,7 +1346,7 @@ left join voc.concept c1
 left join cdm.observation obs
     on qr.questionnaire_response_id = obs.questionnaire_response_id -- questionnaire instance id
     and obs.observation_source_value = cd.short_value -- question
-    and obs.value_as_string = qra.value_date -- answer
+    and obs.value_as_string = cast(qra.value_date as char) -- answer
 
 where qra.value_date is not null and obs.unit_id = 'observ.str'
 ;
@@ -1386,7 +1386,7 @@ select sum(
         +
         (coalesce(obs.visit_occurrence_id, 0))     -- visit_occurrence_id
         +
-        (cd.short_value - obs.observation_source_value) -- observation_source_value
+        ABS(STRCMP(cd.short_value, obs.observation_source_value))       -- observation_source_value
         +
         (obs.observation_source_concept_id - coalesce(c.concept_id, 0)) -- observation_source_concept_id
         +
@@ -1446,7 +1446,7 @@ select  sum(
         +
         (coalesce(obs.value_as_number, 0) - 0) -- value_as_number
         +
-        (qra.value_string - obs.value_as_string) -- value_as_string
+        ABS(STRCMP(qra.value_string, obs.value_as_string)) -- value_as_string
         +
         (obs.value_as_concept_id - 0) -- value_as_concept_id
         +
@@ -1458,7 +1458,7 @@ select  sum(
         +
         (coalesce(obs.visit_occurrence_id, 0))     -- visit_occurrence_id
         +
-        (cd.short_value - obs.observation_source_value) -- observation_source_value
+        ABS(STRCMP(cd.short_value, obs.observation_source_value)) -- observation_source_value
         +
         (obs.observation_source_concept_id - coalesce(c.concept_id, 0)) -- observation_source_concept_id
         +
@@ -1753,13 +1753,13 @@ select  sum(
          +
         (coalesce(vis.visit_occurrence_id, 0) - coalesce(cdm_m.visit_occurrence_id, 0))     -- visit_occurrence_id
          +
-        (me.code_value - cdm_m.measurement_source_value)                                    -- measurement_source_value
+        ABS(STRCMP(me.code_value, cdm_m.measurement_source_value))                          -- measurement_source_value
          +
         (coalesce(vc1.concept_id, 0) - cdm_m.measurement_source_concept_id) -- measurement_source_concept_id
          +
-        (coalesce(me.value_unit, 0) - coalesce(cdm_m.unit_source_value, 0))                 -- unit_source_value
+        ABS(STRCMP(coalesce(me.value_unit, ''), coalesce(cdm_m.unit_source_value, '')))     -- unit_source_value
          +
-        (concat(me.value_decimal, ' - ', me.value_unit) - cdm_m.value_source_value)         -- value_source_value
+        ABS(STRCMP(CONCAT(COALESCE(me.value_decimal, ''), ' ', COALESCE(me.value_unit, '')), cdm_m.value_source_value)) -- value_source_value
      ) as result                                                                                    INTO @test_result
 from rdr.physical_measurements pm
 inner join rdr.measurement me
@@ -1831,7 +1831,7 @@ select  sum(
          +
         (coalesce(vis.visit_occurrence_id, 0) - coalesce(cdm_m.visit_occurrence_id, 0))     -- visit_occurrence_id
          +
-        (me.code_value - cdm_m.measurement_source_value)                                    -- measurement_source_value
+        ABS(STRCMP(me.code_value, cdm_m.measurement_source_value))                          -- measurement_source_value
          +
         (coalesce(vc1.concept_id, 0) - cdm_m.measurement_source_concept_id) -- measurement_source_concept_id
          +
@@ -1922,7 +1922,7 @@ select  sum(
          +
         (coalesce(vis.visit_occurrence_id, 0) - coalesce(cdm_m.visit_occurrence_id, 0))     -- visit_occurrence_id
          +
-        (me.code_value - cdm_m.measurement_source_value)                                    -- measurement_source_value
+        ABS(STRCMP(me.code_value, cdm_m.measurement_source_value))                         -- measurement_source_value
          +
         (coalesce(vc1.concept_id, 0) - cdm_m.measurement_source_concept_id) -- measurement_source_concept_id
          +
@@ -2579,30 +2579,30 @@ VALUES
 -- Check values in cdm Note from the source data
 SELECT NULL INTO @test_result;
 select  sum(
-        (pa.participant_id - no.person_id) -- person_id
+        (pa.participant_id - no.person_id)                      -- person_id
         +
-        (date(me.measurement_time) - no.note_date) -- note_date
+        (date(me.measurement_time) - no.note_date)              -- note_date
         +
-        (me.measurement_time - no.note_datetime) -- note_datetime
+        (me.measurement_time - no.note_datetime)                -- note_datetime
         +
-        (no.note_type_concept_id - 44814645) -- note_type_concept_id
+        (no.note_type_concept_id - 44814645)                    -- note_type_concept_id
         +
-        (no.note_class_concept_id - 0) -- note_class_concept_id
+        (no.note_class_concept_id - 0)                          -- note_class_concept_id
         +
-        (COALESCE(no.note_title,0))         -- note_title
+        (COALESCE(no.note_title,0))                             -- note_title
         +
-        (me.value_string - no.note_text) -- note_text
+        ABS(STRCMP(me.value_string, no.note_text))              -- note_text
         +
-        (COALESCE(no.encoding_concept_id,0)) -- encoding_concept_id
+        (COALESCE(no.encoding_concept_id,0))                    -- encoding_concept_id
         +
-        (no.language_concept_id - 4180186) -- language_concept_id
+        (no.language_concept_id - 4180186)                      -- language_concept_id
         +
-        (coalesce(no.provider_id, 0)) -- provider_id
+        (coalesce(no.provider_id, 0))                           -- provider_id
         +
-        (me.code_value - no.note_source_value) -- note_source_value
+        ABS(STRCMP(me.code_value, no.note_source_value))        -- note_source_value
         +
-        (me.physical_measurements_id - no.visit_occurrence_id)-- visit_occurrence_id
-     ) INTO @test_result
+        (me.physical_measurements_id - no.visit_occurrence_id)  -- visit_occurrence_id
+     ) as result                                                    INTO @test_result
 from rdr.physical_measurements as pm
 inner join rdr.measurement as me
     on pm.physical_measurements_id = me.physical_measurements_id
