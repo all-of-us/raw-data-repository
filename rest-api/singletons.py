@@ -11,6 +11,7 @@ HPO_CACHE_INDEX = 1
 SITE_CACHE_INDEX = 2
 SQL_DATABASE_INDEX = 3
 ORGANIZATION_CACHE_INDEX = 4
+GENERIC_SQL_DATABASE_INDEX = 5
 
 def reset_for_tests():
   with singletons_lock:
@@ -22,7 +23,7 @@ def _get(cache_index):
     return existing_pair[0]
   return None
 
-def get(cache_index, constructor, cache_ttl_seconds=None):
+def get(cache_index, constructor, cache_ttl_seconds=None, **kwargs):
   """Get a cache with a specified index from the list above. If not initialized, use
   constructor to initialize it; if cache_ttl_seconds is set, reload it after that period."""
   # First try without a lock
@@ -36,7 +37,7 @@ def get(cache_index, constructor, cache_ttl_seconds=None):
     if result:
       return result
     else:
-      new_instance = constructor()
+      new_instance = constructor(**kwargs)
       expiration_time = None
       if cache_ttl_seconds is not None:
         expiration_time = CLOCK.now() + timedelta(seconds=cache_ttl_seconds)

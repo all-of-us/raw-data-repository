@@ -1,16 +1,21 @@
 import os
+import logging
 # Importing this is what gets our model available for Alembic.
 import model.database # pylint: disable=unused-import
 import sqlalchemy as sa
+import re
 
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import BLOB
 from sqlalchemy.dialects.mysql.types import TINYINT, SMALLINT
 from alembic import context
-from sqlalchemy import create_engine
+from sqlalchemy import engine_from_config, pool
 from logging.config import fileConfig
-from model.base import Base
+from model.base import Base, MetricsBase
 
+
+USE_TWOPHASE = False
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -19,12 +24,21 @@ config = context.config
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 fileConfig(config.config_file_name)
+logger = logging.getLogger('alembic.env')
+
+# gather section names referring to different
+# databases.  These are named "engine1", "engine2"
+# in the sample .ini file.
+db_names = config.get_main_option('databases')
 
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = Base.metadata
+target_metadata = {
+    'rdr': Base.metadata,
+    'metrics': MetricsBase.metadata
+}
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -39,7 +53,7 @@ def compile_blob_in_mysql_to_longblob(type_, compiler, **kw):
   return "LONGBLOB"
 
 def get_url():
-  return os.environ['DB_CONNECTION_STRING']
+  return make_url(os.environ['DB_CONNECTION_STRING'])
 
 def my_compare_type(ctx, inspected_column, metadata_column, inspected_type, metadata_type):
    #pylint: disable=unused-argument
@@ -65,13 +79,49 @@ def run_migrations_offline():
   script output.
 
   """
-  url = get_url()
-  context.configure(
-      url=url, target_metadata=target_metadata, literal_binds=True, compare_type=my_compare_type)
+  engines = {}
+  for name in re.split(r',\s*', db_names):
+    url = get_url()
+    url.database = name
+    engines[name] = {'url': str(url)}
 
-  with context.begin_transaction():
-    context.run_migrations()
+  for name, rec in engines.items():
+    logger.info("Migrating database %s" % name)
+    file_ = "%s.sql" % name
+    logger.info("Writing output to %s" % file_)
+    with open(file_, 'w') as buf:
+      context.configure(url=rec['url'], output_buffer=buf,
+                        target_metadata=target_metadata.get(name),
+                        literal_binds=True,
+                        include_schemas=True,
+                        include_object=include_object_fn(name))
+      with context.begin_transaction():
+        context.run_migrations(engine_name=name)
 
+
+autogen_blacklist = set(["aggregate_metrics_ibfk_1"])
+
+def include_object_fn(engine_name):
+  def f(obj, name, type_, reflected, compare_to):
+    # pylint: disable=unused-argument
+    # Workaround what appears to be an alembic bug for multi-schema foreign
+    # keys. This should still generate the initial foreign key contraint, but
+    # stops repeated create/destroys of the constraint on subsequent runs.
+    # TODO(calbach): File an issue against alembic.
+    if type_ == "foreign_key_constraint" and obj.table.schema == "metrics":
+      return False
+    if name in autogen_blacklist:
+      logger.info("skipping blacklisted %s", name)
+      return False
+    if type_ == "table" and reflected:
+      # This normally wouldn't be necessary, except that our RDR models do not
+      # specify a schema, so we would otherwise attempt to apply their tables
+      # to the metrics DB. See option 1c on
+      # https://docs.google.com/document/d/1FTmH-DDVlyY7BNsBzj0FV9m_kWQpCjKM__zK0GmIiCc
+      return obj.schema == engine_name
+    return True
+
+  return f
 
 def run_migrations_online():
   """Run migrations in 'online' mode.
@@ -80,17 +130,56 @@ def run_migrations_online():
   and associate a connection with the context.
 
   """
-  connectable = create_engine(get_url())
 
-  with connectable.connect() as connection:
-    context.configure(
-          connection=connection,
-          target_metadata=target_metadata,
-          compare_type=my_compare_type
-    )
+  # for the direct-to-DB use case, start a transaction on all
+  # engines, then run all migrations, then commit all transactions.
 
-    with context.begin_transaction():
-      context.run_migrations()
+  engines = {}
+  for name in re.split(r',\s*', db_names):
+    url = get_url()
+    url.database = name
+    engines[name] = {
+        'engine': engine_from_config(
+            {'url': str(url)},
+            prefix='',
+            poolclass=pool.NullPool)
+    }
+
+  for name, rec in engines.items():
+    engine = rec['engine']
+    rec['connection'] = conn = engine.connect()
+
+    if USE_TWOPHASE:
+      rec['transaction'] = conn.begin_twophase()
+    else:
+      rec['transaction'] = conn.begin()
+
+  try:
+    for name, rec in engines.items():
+      logger.info("Migrating database %s" % name)
+      context.configure(
+          connection=rec['connection'],
+          upgrade_token="%s_upgrades" % name,
+          downgrade_token="%s_downgrades" % name,
+          target_metadata=target_metadata.get(name),
+          include_schemas=True,
+          include_object=include_object_fn(name))
+      context.run_migrations(engine_name=name)
+
+    if USE_TWOPHASE:
+      for rec in engines.values():
+        rec['transaction'].prepare()
+
+    for rec in engines.values():
+      rec['transaction'].commit()
+  except:
+    for rec in engines.values():
+      rec['transaction'].rollback()
+    raise
+  finally:
+    for rec in engines.values():
+      rec['connection'].close()
+
 
 if context.is_offline_mode():
   run_migrations_offline()
