@@ -1,8 +1,8 @@
 """Initial metrics
 
-Revision ID: 110166434beb
+Revision ID: 6f9266e7a5fb
 Revises: 51415576d3e9
-Create Date: 2017-12-11 16:42:30.957660
+Create Date: 2017-12-12 10:38:27.166562
 
 """
 from alembic import op
@@ -18,7 +18,7 @@ from model.site_enums import SiteStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '110166434beb'
+revision = '6f9266e7a5fb'
 down_revision = '51415576d3e9'
 branch_labels = None
 depends_on = None
@@ -50,6 +50,7 @@ def upgrade_metrics():
     op.create_table('metric_set',
     sa.Column('metric_set_id', sa.String(length=50), nullable=False),
     sa.Column('metric_set_type', model.utils.Enum(MetricSetType), nullable=False),
+    sa.Column('last_modified', model.utils.UTCDateTime(), nullable=False),
     sa.PrimaryKeyConstraint('metric_set_id'),
     schema='metrics'
     )

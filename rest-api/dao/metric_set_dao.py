@@ -7,11 +7,11 @@ class MetricSetDao(BaseDao):
 
   def __init__(self):
     super(MetricSetDao, self).__init__(MetricSet,
-                                       db=database_factory.get_metrics_database())
+                                       db=database_factory.get_generic_database())
 
 
 class AggregateMetricsDao(BaseDao):
 
   def __init__(self):
     super(AggregateMetricsDao, self).__init__(
-        AggregateMetrics, db=database_factory.get_metrics_database())
+        AggregateMetrics, db=database_factory.get_generic_database())

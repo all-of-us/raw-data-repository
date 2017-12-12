@@ -2,7 +2,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Column, ForeignKey, Integer, String
 
 from model.base import MetricsBase
-from model.utils import Enum
+from model.utils import Enum, UTCDateTime
 from participant_enums import MetricSetType, MetricsKey
 
 
@@ -14,6 +14,7 @@ class MetricSet(MetricsBase):
   __tablename__ = 'metric_set'
   metricSetId = Column('metric_set_id', String(50), primary_key=True)
   metricSetType = Column('metric_set_type', Enum(MetricSetType), nullable=False)
+  lastModified = Column('last_modified', UTCDateTime, nullable=False)
   metrics = relationship('AggregateMetrics', cascade='all, delete-orphan', passive_deletes=True)
 
 

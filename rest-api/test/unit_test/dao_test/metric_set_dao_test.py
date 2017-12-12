@@ -1,3 +1,5 @@
+import datetime
+
 from unit_test_util import SqlTestBase
 from dao.metric_set_dao import MetricSetDao, AggregateMetricsDao
 from model.metric_set import MetricSet, AggregateMetrics
@@ -14,7 +16,9 @@ class MetricSetDaoTest(SqlTestBase):
   def test_get(self):
     ms = MetricSet(
         metricSetId='123',
-        metricSetType=MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS)
+        metricSetType=MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS,
+        lastModified=datetime.datetime(2017, 1, 1)
+    )
     self.assertIsNone(self.metric_set_dao.get(ms.metricSetId))
     self.metric_set_dao.insert(ms)
     self.assertEquals(ms.asdict(), self.metric_set_dao.get(ms.metricSetId).asdict())

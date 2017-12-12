@@ -3,13 +3,13 @@ import singletons
 from MySQLdb.cursors import SSCursor
 
 from model.database import Database
-from singletons import SQL_DATABASE_INDEX, METRICS_SQL_DATABASE_INDEX
+from singletons import SQL_DATABASE_INDEX, GENERIC_SQL_DATABASE_INDEX
 from sqlalchemy.engine.url import make_url
 
 
 DB_CONNECTION_STRING = os.getenv('DB_CONNECTION_STRING')
 # Exposed for testing.
-METRICS_SCHEMA_TRANSLATE_MAP = None
+SCHEMA_TRANSLATE_MAP = None
 
 class _SqlDatabase(Database):
   def __init__(self, db_name, **kwargs):
@@ -19,13 +19,13 @@ class _SqlDatabase(Database):
     super(_SqlDatabase, self).__init__(url, **kwargs)
 
 def get_database():
-  """Returns a singleton _SqlDatabase."""
+  """Returns a singleton _SqlDatabase which USEs the rdr DB."""
   return singletons.get(SQL_DATABASE_INDEX, _SqlDatabase, db_name='rdr')
 
-def get_metrics_database():
-  """Returns a singleton _SqlDatabase."""
-  return singletons.get(METRICS_SQL_DATABASE_INDEX, _SqlDatabase, db_name=None, execution_options={
-      'schema_translate_map': METRICS_SCHEMA_TRANSLATE_MAP
+def get_generic_database():
+  """Returns a singleton generic _SqlDatabase (no database USE)."""
+  return singletons.get(GENERIC_SQL_DATABASE_INDEX, _SqlDatabase, db_name=None, execution_options={
+      'schema_translate_map': SCHEMA_TRANSLATE_MAP
   })
 
 def get_db_connection_string():
