@@ -1,14 +1,19 @@
 import clock
 import collections
 
+from model.metric_set import AggregateMetrics, MetricSet
 from sqlalchemy import text
 from dao import database_factory
 from dao.database_utils import replace_years_old
 from dao.hpo_dao import HPODao
+from dao.metric_set_dao import AggregateMetricsDao, MetricSetDao
+from participant_enums import MetricSetType, MetricsKey
 from participant_enums import EnrollmentStatus, OrderStatus, PhysicalMeasurementsStatus
 from participant_enums import Race, QuestionnaireStatus, WithdrawalStatus
 from participant_enums import TEST_EMAIL_PATTERN, TEST_HPO_NAME
 
+
+LIVE_METRIC_SET_ID = 'public-agg.live'
 
 def _questionnaire_metric(name, col):
   """Returns a metrics SQL aggregation tuple for the given key/column."""
@@ -31,7 +36,7 @@ _SUMMARY_FILTER_SQL = """
 """
 
 # Metrics SQL Aggregations. 4-tuples of:
-# - (str) key: aggregation key name
+# - (MetricsKey) key: aggregation key
 # - (str) sql: statement to select value, count for a metric (in that order)
 # - (func(str): str) valuef: optional function which takes the value from the
 #   above SQL output and converts it for presentation
@@ -45,7 +50,7 @@ _SqlAggregation = collections.namedtuple(
 # individuals.
 _SQL_AGGREGATIONS = [
   _SqlAggregation(
-      'enrollmentStatus',
+      MetricsKey.ENROLLMENT_STATUS,
       """
       SELECT enrollment_status, COUNT(*)
       FROM participant_summary
@@ -60,7 +65,7 @@ _SQL_AGGREGATIONS = [
   # prefixes or leaving them unmodified. Unclear if all codes will have prefix
   # "PMI_".
   _SqlAggregation(
-      'gender',
+      MetricsKey.GENDER,
       """
       SELECT
         CASE
@@ -77,7 +82,7 @@ _SQL_AGGREGATIONS = [
       """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       None, None),
   _SqlAggregation(
-      'race',
+      MetricsKey.RACE,
       """
       SELECT
         CASE
@@ -90,7 +95,7 @@ _SQL_AGGREGATIONS = [
       """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       lambda v: Race.lookup_by_number(v).name, None),
   _SqlAggregation(
-      'state',
+      MetricsKey.STATE,
       """
       SELECT
         CASE
@@ -109,7 +114,7 @@ _SQL_AGGREGATIONS = [
       """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       None, None),
   _SqlAggregation(
-      'ageRange',
+      MetricsKey.AGE_RANGE,
       """
       SELECT
         CASE
@@ -132,7 +137,7 @@ _SQL_AGGREGATIONS = [
       """.format(summary_filter_sql=_SUMMARY_FILTER_SQL),
       None, None),
   _SqlAggregation(
-      'physicalMeasurements',
+      MetricsKey.PHYSICAL_MEASUREMENTS,
       """
       SELECT physical_measurements_status, COUNT(*)
       FROM participant_summary
@@ -142,7 +147,7 @@ _SQL_AGGREGATIONS = [
       lambda v: PhysicalMeasurementsStatus.lookup_by_number(v).name,
       None),
   _SqlAggregation(
-      'biospecimenSamples',
+      MetricsKey.BIOSPECIMEN_SAMPLES,
       """
       SELECT
         CASE
@@ -162,11 +167,14 @@ _SQL_AGGREGATIONS = [
       }),
   # TODO(calbach): Add healthcare_access, medical_history, medications,
   # family_health once available.
-  _questionnaire_metric('questionnaireOnOverallHealth', 'questionnaire_on_overall_health'),
+  _questionnaire_metric(MetricsKey.QUESTIONNAIRE_ON_OVERALL_HEALTH,
+                        'questionnaire_on_overall_health'),
   # Personal habits is a newer naming for lifestyle
-  _questionnaire_metric('questionnaireOnPersonalHabits', 'questionnaire_on_lifestyle'),
+  _questionnaire_metric(MetricsKey.QUESTIONNAIRE_ON_PERSONAL_HABITS,
+                        'questionnaire_on_lifestyle'),
   # Sociodemographics is a newer naming for 'the basics'
-  _questionnaire_metric('questionnaireOnSociodemographics', 'questionnaire_on_the_basics'),
+  _questionnaire_metric(MetricsKey.QUESTIONNAIRE_ON_SOCIODEMOGRAPHICS,
+                        'questionnaire_on_the_basics'),
 ]
 
 
@@ -174,9 +182,11 @@ class PublicMetricsExport(object):
   """Exports data from the database needed to generate public registration metrics."""
 
   @staticmethod
-  def export():
-    # TODO(calbach): Write the output to a given target destination rather than
-    # returning it.
+  def export(metric_set_id):
+    PublicMetricsExport._save(metric_set_id, PublicMetricsExport._compute())
+
+  @staticmethod
+  def _compute():
     out = {}
     # Using a session here should put all following SQL invocations into a
     # non-locking read transaction per
@@ -205,3 +215,25 @@ class PublicMetricsExport(object):
               'count': row.items()[1][1],
           })
     return out
+
+  @staticmethod
+  def _save(metric_set_id, metrics):
+    ms = MetricSet(
+        metricSetId=metric_set_id,
+        metricSetType=MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS,
+        lastModified=clock.CLOCK.now()
+    )
+    with database_factory.get_generic_database().session() as session:
+      MetricSetDao().upsert_with_session(session, ms)
+      agg_dao = AggregateMetricsDao()
+      agg_dao.delete_all_for_metric_set_with_session(session, metric_set_id)
+
+      for (k, vals) in metrics.iteritems():
+        for v in vals:
+          agg = AggregateMetrics(
+              metricSetId=metric_set_id,
+              metricsKey=k,
+              value=v['value'],
+              count=v['count']
+          )
+          agg_dao.insert_with_session(session, agg)

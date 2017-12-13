@@ -13,7 +13,7 @@ from offline import biobank_samples_pipeline
 from offline.base_pipeline import send_failure_alert
 from offline.table_exporter import TableExporter
 from offline.metrics_export import MetricsExport
-from offline.public_metrics_export import PublicMetricsExport
+from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from api_util import EXPORTER
 from werkzeug.exceptions import BadRequest
 
@@ -67,7 +67,7 @@ def recalculate_metrics():
 
 @app_util.auth_required_cron
 def recalculate_public_metrics():
-  return json.dumps(PublicMetricsExport.export())
+  return json.dumps(PublicMetricsExport.export(LIVE_METRIC_SET_ID))
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
