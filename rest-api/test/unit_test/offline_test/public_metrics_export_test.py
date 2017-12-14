@@ -12,6 +12,7 @@ from model.hpo import HPO
 from model.participant import Participant
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.hpo_dao import HPODao
+from dao.metric_set_dao import AggregateMetricsDao, MetricSetDao
 from dao.participant_dao import ParticipantDao, make_primary_provider_link_for_name
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from participant_enums import WithdrawalStatus
@@ -20,6 +21,7 @@ from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, 
 from unit_test_util import PITT_HPO_ID
 
 TIME = datetime.datetime(2016, 1, 1)
+TIME2 = datetime.datetime(2016, 2, 2)
 
 
 class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
@@ -145,85 +147,58 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
               test='1SAL',
               confirmed=TIME))
 
-  def test_metric_export(self):
+
+  def assert_total_count_per_key(self, want_total_count):
+    agg_by_key = {}
+    for agg in AggregateMetricsDao().get_all():
+      if agg.metricsKey not in agg_by_key:
+        agg_by_key[agg.metricsKey] = []
+      agg_by_key[agg.metricsKey].append(agg)
+
+    self.assertNotEquals(0, len(agg_by_key), 'no metrics were persisted')
+
+    for (k, aggs) in agg_by_key.iteritems():
+      count = sum([agg.count for agg in aggs])
+      self.assertEquals(want_total_count, count,
+                        ('metric {} must contain aggregates over exactly '
+                         'the set of {} qualified participants, got {}').format(
+                             k, want_total_count, count))
+
+
+  def test_metrics_export(self):
     self._create_data()
-    want = {
-        'physicalMeasurements': [{
-            'count': 2,
-            'value': 'UNSET'
-        }, {
-            'count': 1,
-            'value': 'COMPLETED'
-        }],
-        'gender': [{
-            'count': 1,
-            'value': u'UNSET'
-        }, {
-            'count': 1,
-            'value': u'female'
-        }, {
-            'count': 1,
-            'value': u'male'
-        }],
-        'questionnaireOnOverallHealth': [{
-            'count': 2,
-            'value': 'UNSET'
-        }, {
-            'count': 1,
-            'value': 'SUBMITTED'
-        }],
-        'biospecimenSamples': [{
-            'count': 1,
-            'value': u'COLLECTED'
-        }, {
-            'count': 2,
-            'value': u'UNSET'
-        }],
-        'questionnaireOnPersonalHabits': [{
-            'count': 2,
-            'value': 'UNSET'
-        }, {
-            'count': 1,
-            'value': 'SUBMITTED'
-        }],
-        'state': [{
-            'count': 2,
-            'value': u'UNSET'
-        }, {
-            'count': 1,
-            'value': u'VA'
-        }],
-        'race': [{
-            'count': 1,
-            'value': 'UNSET'
-        }, {
-            'count': 1,
-            'value': 'WHITE'
-        }, {
-            'count': 1,
-            'value': 'PREFER_NOT_TO_SAY'
-        }],
-        'enrollmentStatus': [{
-            'count': 2,
-            'value': 'CONSENTED'
-        }, {
-            'count': 1,
-            'value': 'MEMBER'
-        }],
-        'questionnaireOnSociodemographics': [{
-            'count': 3,
-            'value': 'SUBMITTED'
-        }],
-        'ageRange': [{
-            'count': 1,
-            'value': u'36-45'
-        }, {
-            'count': 1,
-            'value': u'46-55'
-        }, {
-            'count': 1,
-            'value': u'86+'
-        }]
-    }
+
     with FakeClock(TIME):
-      self.assertEquals(want, PublicMetricsExport.export())
+      PublicMetricsExport.export('123')
+      self.assert_total_count_per_key(3) # 3 qualified participants
+
+
+  def test_metrics_update(self):
+    self._create_data()
+
+    with FakeClock(TIME):
+      PublicMetricsExport.export('123')
+    aggs1 = [a.asdict() for a in AggregateMetricsDao().get_all()]
+
+    with FakeClock(TIME2):
+      PublicMetricsExport.export('123')
+    aggs2 = [a.asdict() for a in AggregateMetricsDao().get_all()]
+
+    self.assertEquals(TIME2, MetricSetDao().get('123').lastModified)
+    self.assertEquals(aggs1, aggs2)
+
+
+  def test_metrics_redaction(self):
+    self._create_data()
+
+    with FakeClock(TIME):
+      PublicMetricsExport.export('123')
+
+      # Withdraw particpant.
+      pdao = ParticipantDao()
+      p1 = pdao.get(1)
+      p1.withdrawalStatus = WithdrawalStatus.NO_USE
+      pdao.update(p1)
+
+      PublicMetricsExport.export('123')
+      self.assert_total_count_per_key(2) # now, 2 qualified participants
