@@ -17,11 +17,8 @@ class AggregateMetricsDao(UpsertableDao):
         AggregateMetrics, db=database_factory.get_generic_database())
 
   def delete_all_for_metric_set_with_session(self, session, ms_id):
-    aggs = (session.query(AggregateMetrics)
-            .filter(AggregateMetrics.metricSetId == ms_id)
-            .all())
-    for a in aggs:
-      session.delete(a)
+    session.execute(AggregateMetrics.__table__.delete()
+                    .where(AggregateMetrics.metricSetId == ms_id))
 
   def delete_all_for_metric_set(self, ms_id):
     with self.session() as session:
