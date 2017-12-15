@@ -125,13 +125,21 @@ then
   else
     APP_YAML=app_nonprod.yaml
   fi
-  echo "${BOLD}Deploying application...${NONE}"
   cat app_base.yaml $APP_YAML > app.yaml
+
+  CRON_YAML=cron_default.yaml
+  if [ "${PROJECT}" = "all-of-us-rdr-sandbox" ]
+  then
+    CRON_YAML=cron_sandbox.yaml
+  fi
+  cp "${CRON_YAML}" cron.yaml
+
+  echo "${BOLD}Deploying application...${NONE}"
   $UPDATE_TRACKER --version $VERSION --comment "Deploying app to ${PROJECT}."
   gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml offline.yaml \
       --quiet --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
   $UPDATE_TRACKER --version $VERSION --comment "App deployed to ${PROJECT}."
-  rm app.yaml
+  rm app.yaml cron.yaml
 fi
 
 echo "${BOLD}Done!${NONE}"
