@@ -7,6 +7,7 @@ import logging
 import traceback
 
 from dao.metrics_dao import MetricsVersionDao
+from dao.metric_set_dao import AggregateMetricsDao
 from flask import Flask, request
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
@@ -67,7 +68,21 @@ def recalculate_metrics():
 
 @app_util.auth_required_cron
 def recalculate_public_metrics():
-  return json.dumps(PublicMetricsExport.export(LIVE_METRIC_SET_ID))
+  logging.info('generating public metrics')
+  aggs = PublicMetricsExport.export(LIVE_METRIC_SET_ID)
+  client_aggs = AggregateMetricsDao.to_client_json(aggs)
+
+  # summing all counts for one metric yields a total qualified participant count
+  participant_count = 0
+  if len(client_aggs) > 0:
+    participant_count = sum([a['count'] for a in client_aggs[0]['values']])
+  logging.info('persisted public metrics: {} aggregations over '
+               '{} participants'.format(len(client_aggs), participant_count))
+
+  # Same format returned by the metric sets API.
+  return json.dumps({
+      'metrics': client_aggs
+  })
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -119,7 +134,7 @@ def _build_pipeline_app():
       PREFIX + 'PublicMetricsRecalculate',
       endpoint='public_metrics_recalc',
       view_func=recalculate_public_metrics,
-      methods=['POST'])
+      methods=['GET'])
 
   offline_app.add_url_rule(
       PREFIX + 'ExportTables',

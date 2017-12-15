@@ -406,8 +406,8 @@ class FlaskTestBase(NdbTestBase):
   def send_get(self, *args, **kwargs):
     return self.send_request('GET', *args, **kwargs)
 
-  def send_request(self, method, local_path, request_data=None, expected_status=httplib.OK,
-                   headers=None, expected_response_headers=None):
+  def send_request(self, method, local_path, request_data=None, query_string=None,
+                   expected_status=httplib.OK, headers=None, expected_response_headers=None):
     """Makes a JSON API call against the test client and returns its response data.
 
     Args:
@@ -420,6 +420,7 @@ class FlaskTestBase(NdbTestBase):
         main.PREFIX + local_path,
         method=method,
         data=json.dumps(request_data) if request_data is not None else None,
+        query_string=query_string,
         content_type='application/json',
         headers=headers)
     self.assertEquals(response.status_code, expected_status, response.data)

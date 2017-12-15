@@ -633,9 +633,137 @@ The response body includes:
 #### `GET /MetricSets/:msid/Metrics`
 
 List all metrics within the given metric set, optionally limited to a subset of
-metric names.
+metric key names. See [MetricsKey](rest-api/participant_enums.py) for an
+up-to-date list of possible key names.
 
-TODO(calbach): Dump example JSON request/response here.
+Keys may optionally be filtered as follows:
+
+```
+GET /MetricSets/:msid/Metrics?keys=GENDER,STATE
+```
+
+Example unfiltered response:
+
+```
+{
+  "metrics": [
+    {
+      "key": "GENDER",
+      "values": [
+        {
+          "count": 1,
+          "value": "GenderIdentity_Man"
+        },
+        ...
+      ]
+    },
+    {
+      "key": "RACE",
+      "values": [
+        {
+          "count": 1,
+          "value": "ASIAN"
+        },
+        ...
+      ]
+    },
+    {
+      "key": "STATE",
+      "values": [
+        {
+          "count": 1,
+          "value": "AL"
+        },
+        ...
+      ]
+    },
+    {
+      "key": "AGE_RANGE",
+      "values": [
+        {
+          "count": 2,
+          "value": "0-17"
+        },
+        ...
+      ]
+    },
+    {
+      "key": "PHYSICAL_MEASUREMENTS",
+      "values": [
+        {
+          "count": 12,
+          "value": "COMPLETED"
+        },
+        {
+          "count": 8,
+          "value": "UNSET"
+        }
+      ]
+    },
+    {
+      "key": "BIOSPECIMEN_SAMPLES",
+      "values": [
+        {
+          "count": 11,
+          "value": "COLLECTED"
+        },
+        {
+          "count": 9,
+          "value": "UNSET"
+        }
+      ]
+    },
+    {
+      "key": "QUESTIONNAIRE_ON_OVERALL_HEALTH",
+      "values": [
+        {
+          "count": 10,
+          "value": "SUBMITTED"
+        },
+        {
+          "count": 10,
+          "value": "UNSET"
+        }
+      ]
+    },
+    {
+      "key": "QUESTIONNAIRE_ON_PERSONAL_HABITS",
+      "values": [
+        {
+          "count": 13,
+          "value": "SUBMITTED"
+        },
+        {
+          "count": 7,
+          "value": "UNSET"
+        }
+      ]
+    },
+    {
+      "key": "QUESTIONNAIRE_ON_SOCIODEMOGRAPHICS",
+      "values": [
+        {
+          "count": 14,
+          "value": "SUBMITTED"
+        },
+        {
+          "count": 6,
+          "value": "UNSET"
+        }
+      ]
+    },
+    {
+      "key": "ENROLLMENT_STATUS",
+      "values": [
+        {
+          "count": 20,
+          "value": "CONSENTED"
+        }
+      ]
+    }
+  ]
+}
+```
 
 ## BiobankSamples API
 
