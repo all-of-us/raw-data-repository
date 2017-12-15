@@ -6,7 +6,7 @@
 # the database. (Note: the loading takes upwards of 10 minutes... grab some coffee.)
 #
 # Vocabulary CSV files are copied from GCS at path
-# gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18/; these files were originally received
+# gs://all-of-us-rdr-vocabulary/vocabularies-2017-11-27/; these files were originally received
 # via e-mail generated from http://www.ohdsi.org/web/athena/, selecting the vocabularies
 # LOINC, SNOMED, AllOFUs_PPI, Race, Gender, and UCUM.
 #
@@ -97,7 +97,7 @@ source tools/auth_setup.sh
 gcloud auth activate-service-account circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com --key-file=$CREDS_FILE
 
 echo "Copying vocabulary files from GCS..."
-gsutil cp -r gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18/* ${CSV_DIR}
+gsutil cp -r gs://all-of-us-rdr-vocabulary/vocabularies-2017-11-27/* ${CSV_DIR}
 
 # Rename files to lower case to match table names in schema.
 for i in ${CSV_DIR}/voc/*; do mv $i `echo $i | tr [:upper:] [:lower:]`; done
@@ -123,7 +123,7 @@ then
     mysqldump --databases voc -h 127.0.0.1 -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --hex-blob \
       --skip-triggers --set-gtid-purged=OFF --default-character-set=utf8 > ${OUTPUT_DIR}/voc.sql
     echo "Copying SQL dumps to GCS..."
-    gsutil cp -r ${OUTPUT_DIR}/*.sql gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18
+    gsutil cp -r ${OUTPUT_DIR}/*.sql gs://all-of-us-rdr-vocabulary/vocabularies-2017-11-27
 fi
 
 echo "Done."
