@@ -52,13 +52,12 @@ cd rest-api
 
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
-echo "Fixing cron.yaml "
-sed -i -e "s/{PROJECT_ID}/${PROJECT_ID}/" cron.yaml
+cp cron_default.yaml cron.yaml
 
 echo "Deploying RDR to ${PROJECT_ID}"
 cat app_base.yaml app_nonprod.yaml > app.yaml
 gcloud app deploy app.yaml cron.yaml index.yaml offline.yaml queue.yaml --project=${PROJECT_ID} --version=${VERSION}
-rm app.yaml
+rm app.yaml cron.yaml
 
 ENDPOINT="https://${PROJECT_ID}.appspot.com"
 echo "Using creds ${CREDS} to update config ${CONFIG} on RDR server at ${ENDPOINT}"
