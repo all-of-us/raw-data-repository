@@ -183,7 +183,7 @@ class PublicMetricsExport(object):
 
   @staticmethod
   def export(metric_set_id):
-    PublicMetricsExport._save(metric_set_id, PublicMetricsExport._compute())
+    return PublicMetricsExport._save(metric_set_id, PublicMetricsExport._compute())
 
   @staticmethod
   def _compute():
@@ -223,6 +223,7 @@ class PublicMetricsExport(object):
         metricSetType=MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS,
         lastModified=clock.CLOCK.now()
     )
+    aggs = []
     with database_factory.get_generic_database().session() as session:
       MetricSetDao().upsert_with_session(session, ms)
       agg_dao = AggregateMetricsDao()
@@ -237,3 +238,6 @@ class PublicMetricsExport(object):
               count=v['count']
           )
           agg_dao.insert_with_session(session, agg)
+          aggs.append(agg)
+
+    return aggs
