@@ -281,7 +281,7 @@ DROP TABLE IF EXISTS cdm.measurement;
 
 CREATE TABLE cdm.measurement
 (
-    measurement_id bigint AUTO_INCREMENT NOT NULL,
+    measurement_id bigint NOT NULL,
     person_id bigint NOT NULL,
     measurement_concept_id bigint NOT NULL,
     measurement_date date NOT NULL,
@@ -300,7 +300,6 @@ CREATE TABLE cdm.measurement
     unit_source_value varchar(50),
     -- specific for this ETL
     value_source_value varchar(50),
-    meas_id bigint,
     parent_id bigint,
     -- 
     unit_id varchar(50) NOT NULL,
@@ -1422,7 +1421,7 @@ TRUNCATE TABLE cdm.measurement;
 -- -------------------------------------------------------------------
 INSERT INTO cdm.measurement
 SELECT
-    NULL                                    AS measurement_id,
+    meas.measurement_id                     AS measurement_id,
     meas.participant_id                     AS person_id,
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
@@ -1446,8 +1445,7 @@ SELECT
         WHEN meas.value_code_value IS NOT NULL 
             THEN meas.value_code_value             -- 'meas.value'
         ELSE NULL                                  -- 'meas.empty'
-    END                                     AS value_source_value,
-    meas.measurement_id                     AS meas_id,
+    END                                     AS value_source_value,    
     meas.parent_id                          AS parent_id,
     CASE
         WHEN meas.value_decimal IS NOT NULL OR meas.value_unit IS NOT NULL
@@ -1784,52 +1782,19 @@ DROP TABLE IF EXISTS cdm.temp_obs;
 TRUNCATE TABLE cdm.fact_relationship;
 
 -- -------------------------------------------------------------------
--- unit: observ.meas[1,2] - to link measurements and their qualifiers
--- -------------------------------------------------------------------
-DROP TABLE IF EXISTS cdm.tmp_fact_rel_om;
-
--- -------------------------------------------------------------------
--- This is temporary table for saving original relationships between
--- measurements and their qualifiers in source tables.
--- -------------------------------------------------------------------
-CREATE TABLE cdm.tmp_fact_rel_om AS 
-SELECT
-    cdm_meas.measurement_id         AS measurement_id,
-    cdm_obs.observation_id          AS observation_id
-FROM cdm.measurement cdm_meas
-INNER JOIN rdr.measurement_to_qualifier  mtq
-    ON cdm_meas.meas_id = mtq.measurement_id
-INNER JOIN cdm.observation cdm_obs
-    ON mtq.qualifier_id = cdm_obs.meas_id
-;
-
--- -------------------------------------------------------------------
 -- Insert to fact_relationships measurement-to-observation relations
 -- -------------------------------------------------------------------
 INSERT INTO cdm.fact_relationship
 SELECT
     21                              AS domain_concept_id_1,     -- Measurement
-    fr.measurement_id               AS fact_id_1,
+    mtq.measurement_id              AS fact_id_1,
     27                              AS domain_concept_id_2,     -- Observation
-    fr.observation_id               AS fact_id_2,
+    cdm_obs.observation_id          AS fact_id_2,
     581411                          AS relationship_concept_id,  -- Measurement to Observation
     'observ.meas1'                  AS unit_id
-FROM cdm.tmp_fact_rel_om fr
-;
-
--- -------------------------------------------------------------------
--- Insert to fact_relationships backwards observation-to-measurement
--- relations
--- -------------------------------------------------------------------
-INSERT INTO cdm.fact_relationship
-SELECT
-    27                              AS domain_concept_id_1,     -- Observation
-    fr.observation_id               AS fact_id_1,
-    21                              AS domain_concept_id_2,     -- Measurement
-    fr.measurement_id               AS fact_id_2,
-    581410                          AS relationship_concept_id,  -- Observation to Measurement
-    'observ.meas2'                  AS unit_id
-FROM cdm.tmp_fact_rel_om fr
+FROM cdm.observation cdm_obs
+INNER JOIN rdr.measurement_to_qualifier mtq
+    ON mtq.qualifier_id = cdm_obs.meas_id
 ;
 
 -- -------------------------------------------------------------------
@@ -1942,49 +1907,18 @@ WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic b
 ;
 
 -- ---------------------------------------------------------------------
--- unit: meas.meas1 - to link parent measurements and child measurements
--- ---------------------------------------------------------------------
-DROP TABLE IF EXISTS cdm.tmp_fact_rel_mm;
-
--- ---------------------------------------------------------------------
--- tmp_fact_rel_mm contains child-to-parent measurements relations
--- ---------------------------------------------------------------------
-CREATE TABLE cdm.tmp_fact_rel_mm AS 
-SELECT
-    cdm_meas1.measurement_id         AS measurement_id_child,
-    cdm_meas2.measurement_id         AS measurement_id_parent
-FROM cdm.measurement cdm_meas1
-INNER JOIN cdm.measurement cdm_meas2
-    ON cdm_meas1.parent_id = cdm_meas2.meas_id
-;
-
--- ---------------------------------------------------------------------
 -- Insert into fact_relationship child-to-parent measurements relations
 -- ---------------------------------------------------------------------
 INSERT INTO cdm.fact_relationship
 SELECT
     21                              AS domain_concept_id_1,     -- Measurement
-    fr.measurement_id_child         AS fact_id_1,
+    cdm_meas.parent_id              AS fact_id_1,
     21                              AS domain_concept_id_2,     -- Measurement
-    fr.measurement_id_parent        AS fact_id_2,
+    cdm_meas.measurement_id         AS fact_id_2,
     581437                          AS relationship_concept_id,  -- 581437, Child to Parent Measurement
     'meas.meas1'                    AS unit_id
-FROM cdm.tmp_fact_rel_mm fr
-;
-
--- ---------------------------------------------------------------------
--- Insert into fact_relationship parent-to-child measurements relations
--- ---------------------------------------------------------------------
-INSERT INTO cdm.fact_relationship
-SELECT
-    21                              AS domain_concept_id_1,     -- Measurement
-    fr.measurement_id_parent        AS fact_id_1,
-    21                              AS domain_concept_id_2,     -- Measurement
-    fr.measurement_id_child         AS fact_id_2,
-    581436                          AS relationship_concept_id,  -- 581436, Parent to Child Measurement
-    'meas.meas2'                    AS unit_id
-FROM cdm.tmp_fact_rel_mm fr
-;
+FROM cdm.measurement cdm_meas
+WHERE cdm_meas.parent_id IS NOT NULL;
 
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
@@ -2013,7 +1947,7 @@ DROP TABLE IF EXISTS cdm.tmp_fact_rel_mm;
 -- ALTER TABLE cdm.drug_exposure DROP COLUMN unit_id;
 -- ALTER TABLE cdm.fact_relationship DROP COLUMN unit_id;
 -- ALTER TABLE cdm.location DROP COLUMN unit_id;
--- ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN meas_id, DROP COLUMN parent_id;
+-- ALTER TABLE cdm.measurement DROP COLUMN unit_id, DROP COLUMN parent_id;
 -- ALTER TABLE cdm.observation DROP COLUMN unit_id, DROP COLUMN meas_id;
 -- ALTER TABLE cdm.observation_period DROP COLUMN unit_id;
 -- ALTER TABLE cdm.payer_plan_period DROP COLUMN unit_id;
