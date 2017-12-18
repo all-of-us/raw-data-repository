@@ -38,6 +38,7 @@ def main(args):
 
 
 def _site_from_row(row, hpo_dao):
+    
   hpo_name = row['HPO Site ID']
   hpo = hpo_dao.get_by_name(hpo_name)
   if not hpo:

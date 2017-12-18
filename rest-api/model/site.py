@@ -27,6 +27,8 @@ class Site(Base):
   city = Column('city', String(255))
   state = Column('state', String(2))
   zipCode = Column('zip_code', String(10))
+  latitude = Column('latitude', Float)
+  longitude = Column('longitude', Float)
   phoneNumber = Column('phone_number', String(80))
   adminEmails = Column('admin_emails', String(4096))
   link = Column('link', String(255))

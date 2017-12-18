@@ -156,6 +156,7 @@ class SiteImporter(CsvImporter):
     city = row.get(SITE_CITY_COLUMN)
     state = row.get(SITE_STATE_COLUMN)
     zip_code = row.get(SITE_ZIP_COLUMN)
+    latitude, longitude = self._get_lat_long_for_site(address_1,city,state,zip_code)
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
@@ -173,9 +174,19 @@ class SiteImporter(CsvImporter):
                 city=city,
                 state=state,
                 zipCode=zip_code,
+                latitude=latitude,
+                longitude=longitude,
                 phoneNumber=phone,
                 adminEmails=admin_email_addresses,
                 link=link)
+
+  def _get_lat_long_for_site(self,address_1,city,state,zip_code):
+    # curl to api
+    # api key or client id and secret?
+    # add basic min/max check for lat long 
+    base_url = 'https://maps.googleapis.com/maps/api/geocode/json?address='
+
+    return 32.012, -68.123 
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
