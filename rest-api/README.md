@@ -137,6 +137,7 @@ and promotes it to receive all traffic / be the default serving version.
 
 If you've changed other files you may need to deploy them as well, for instance the cron config:
 ```Shell
+cp cron_default.yml cron.yaml
 gcloud app deploy cron.yaml
 ```
 
