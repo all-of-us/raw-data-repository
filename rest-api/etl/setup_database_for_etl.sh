@@ -47,12 +47,12 @@ rdrmaindb | grep serviceAccountEmailAddress | cut -d: -f2`
 
 echo "Granting GCS access to ${SQL_SERVICE_ACCOUNT}..."
 gsutil acl ch -u ${SQL_SERVICE_ACCOUNT}:W gs://all-of-us-rdr-vocabulary
-gsutil acl ch -u ${SQL_SERVICE_ACCOUNT}:R gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18/*.sql
+gsutil acl ch -u ${SQL_SERVICE_ACCOUNT}:R gs://all-of-us-rdr-vocabulary/vocabularies-2017-11-27/*.sql
 
 echo "Importing CDM database..."
-gcloud sql instances import --quiet --project ${PROJECT} --account ${ACCOUNT} rdrmaindb gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18/cdm.sql
+gcloud sql instances import --quiet --project ${PROJECT} --account ${ACCOUNT} rdrmaindb gs://all-of-us-rdr-vocabulary/vocabularies-2017-11-27/cdm.sql
 
 echo "Importing VOC database..."
-gcloud sql instances import --quiet --project ${PROJECT} --account ${ACCOUNT} rdrmaindb gs://all-of-us-rdr-vocabulary/vocabularies-2017-09-18/voc.sql
+gcloud sql instances import --quiet --project ${PROJECT} --account ${ACCOUNT} rdrmaindb gs://all-of-us-rdr-vocabulary/vocabularies-2017-11-27/voc.sql
 
 echo "Done."
