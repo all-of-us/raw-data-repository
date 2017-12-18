@@ -884,7 +884,7 @@ CREATE TABLE cdm.src_race
 -- information over priority = 2. So if patient provides
 -- detailed answer about his/her ethnicity, we firstly
 -- use it.
----------------------------------------------------------
+-- -------------------------------------------------------
 INSERT INTO cdm.src_race
 SELECT DISTINCT
     src_m.participant_id                    AS person_id,
