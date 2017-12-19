@@ -14,9 +14,7 @@ Usage:
 """
 
 import logging
-import json
 import googlemaps
-import requests
 
 from dateutil.parser import parse
 from tools.csv_importer import CsvImporter
@@ -183,7 +181,7 @@ class SiteImporter(CsvImporter):
                 adminEmails=admin_email_addresses,
                 link=link)
 
-  def _get_lat_long_for_site(self, address_1, city, state, zip_code):
+  def _get_lat_long_for_site(self, address_1, city, state):
     gmaps = googlemaps.Client(key='59d12c33725f142e8e7fbb6abace7fcbbd989645')
     geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)
 
