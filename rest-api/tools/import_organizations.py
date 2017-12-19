@@ -184,6 +184,7 @@ class SiteImporter(CsvImporter):
   def _get_lat_long_for_site(self, address_1, city, state):
     gmaps = googlemaps.Client(key='59d12c33725f142e8e7fbb6abace7fcbbd989645')
     geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)
+    print geocode_result
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
