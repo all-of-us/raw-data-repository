@@ -14,6 +14,9 @@ Usage:
 """
 
 import logging
+import json
+import googlemaps
+import requests
 
 from dateutil.parser import parse
 from tools.csv_importer import CsvImporter
@@ -181,12 +184,10 @@ class SiteImporter(CsvImporter):
                 link=link)
 
   def _get_lat_long_for_site(self,address_1,city,state,zip_code):
-    # curl to api
     # api key or client id and secret?
     # add basic min/max check for lat long 
-    base_url = 'https://maps.googleapis.com/maps/api/geocode/json?address='
-
-    return 32.012, -68.123 
+    gmaps = googlemaps.Client(key='59d12c33725f142e8e7fbb6abace7fcbbd989645')
+    geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
