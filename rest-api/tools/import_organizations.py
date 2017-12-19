@@ -182,7 +182,7 @@ class SiteImporter(CsvImporter):
                 link=link)
 
   def _get_lat_long_for_site(self, address_1, city, state):
-    gmaps = googlemaps.Client(key='59d12c33725f142e8e7fbb6abace7fcbbd989645')
+    gmaps = googlemaps.Client(key='')
     geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)
     print geocode_result
 
