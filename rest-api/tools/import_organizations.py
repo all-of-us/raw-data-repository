@@ -159,7 +159,7 @@ class SiteImporter(CsvImporter):
     city = row.get(SITE_CITY_COLUMN)
     state = row.get(SITE_STATE_COLUMN)
     zip_code = row.get(SITE_ZIP_COLUMN)
-    latitude, longitude = self._get_lat_long_for_site(address_1, city, state)
+    latitude, longitude = self._get_lat_long_for_site(address_1,city,state,zip_code)
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
@@ -183,8 +183,9 @@ class SiteImporter(CsvImporter):
                 adminEmails=admin_email_addresses,
                 link=link)
 
-  def _get_lat_long_for_site(self, address_1, city, state):
+  def _get_lat_long_for_site(self, address_1, city, state, zip_code):
     # api key or client id and secret?
+    # add basic min/max check for lat long 
     gmaps = googlemaps.Client(key='59d12c33725f142e8e7fbb6abace7fcbbd989645')
     geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)
 
