@@ -159,7 +159,7 @@ class SiteImporter(CsvImporter):
     city = row.get(SITE_CITY_COLUMN)
     state = row.get(SITE_STATE_COLUMN)
     zip_code = row.get(SITE_ZIP_COLUMN)
-    latitude, longitude = self._get_lat_long_for_site(address_1 ,city, state)
+    latitude, longitude = self._get_lat_long_for_site(address_1, city, state)
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
