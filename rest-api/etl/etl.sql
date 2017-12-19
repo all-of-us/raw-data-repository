@@ -1790,8 +1790,21 @@ SELECT
     mtq.measurement_id              AS fact_id_1,
     27                              AS domain_concept_id_2,     -- Observation
     cdm_obs.observation_id          AS fact_id_2,
-    581411                          AS relationship_concept_id,  -- Measurement to Observation
+    581411                          AS relationship_concept_id, -- Measurement to Observation
     'observ.meas1'                  AS unit_id
+FROM cdm.observation cdm_obs
+INNER JOIN rdr.measurement_to_qualifier mtq
+    ON mtq.qualifier_id = cdm_obs.meas_id
+;
+
+INSERT INTO cdm.fact_relationship
+SELECT
+    27                              AS domain_concept_id_1,     -- Observation
+    cdm_obs.observation_id          AS fact_id_1,
+    21                              AS domain_concept_id_2,     -- Measurement
+    mtq.measurement_id              AS fact_id_2,
+    581410                          AS relationship_concept_id, -- Observation to Measurement
+    'observ.meas2'                  AS unit_id
 FROM cdm.observation cdm_obs
 INNER JOIN rdr.measurement_to_qualifier mtq
     ON mtq.qualifier_id = cdm_obs.meas_id
@@ -1912,21 +1925,30 @@ WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic b
 INSERT INTO cdm.fact_relationship
 SELECT
     21                              AS domain_concept_id_1,     -- Measurement
-    cdm_meas.parent_id              AS fact_id_1,
+    cdm_meas.measurement_id         AS fact_id_1,
     21                              AS domain_concept_id_2,     -- Measurement
-    cdm_meas.measurement_id         AS fact_id_2,
-    581437                          AS relationship_concept_id,  -- 581437, Child to Parent Measurement
+    cdm_meas.parent_id              AS fact_id_2,
+    581437                          AS relationship_concept_id, -- 581437, Child to Parent Measurement
     'meas.meas1'                    AS unit_id
 FROM cdm.measurement cdm_meas
 WHERE cdm_meas.parent_id IS NOT NULL;
 
+INSERT INTO cdm.fact_relationship
+SELECT
+    21                              AS domain_concept_id_1,     -- Measurement
+    cdm_meas.parent_id              AS fact_id_1,
+    21                              AS domain_concept_id_2,     -- Measurement
+    cdm_meas.measurement_id         AS fact_id_2,
+    581436                          AS relationship_concept_id, -- 581436, Parent to Child Measurement
+    'meas.meas2'                    AS unit_id
+FROM cdm.measurement cdm_meas
+WHERE cdm_meas.parent_id IS NOT NULL;
+
+
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
 -- -------------------------------------------------------------------
-DROP TABLE IF EXISTS cdm.tmp_fact_rel_om;
 DROP TABLE IF EXISTS cdm.tmp_fact_rel_sd;
-DROP TABLE IF EXISTS cdm.tmp_fact_rel_mm;
-
 
 -- -------------------------------------------------------------------
 -- source_file: cdm_cleanup.sql
