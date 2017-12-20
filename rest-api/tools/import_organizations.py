@@ -12,10 +12,9 @@ Usage:
   Imports are idempotent; if you run the import multiple times, subsequent imports should
   have no effect.
 """
-
+import os
 import logging
 import googlemaps
-
 from dateutil.parser import parse
 from tools.csv_importer import CsvImporter
 from dao.hpo_dao import HPODao
@@ -157,7 +156,7 @@ class SiteImporter(CsvImporter):
     city = row.get(SITE_CITY_COLUMN)
     state = row.get(SITE_STATE_COLUMN)
     zip_code = row.get(SITE_ZIP_COLUMN)
-    latitude, longitude = self._get_lat_long_for_site(address_1, city, state, zip_code)
+    latitude, longitude = self._get_lat_long_for_site(address_1, city, state)
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
@@ -182,9 +181,13 @@ class SiteImporter(CsvImporter):
                 link=link)
 
   def _get_lat_long_for_site(self, address_1, city, state):
-    gmaps = googlemaps.Client(key='')
-    geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)
-    print geocode_result
+    api_key = os.environ.get('API_KEY')
+    gmaps = googlemaps.Client(key=api_key)
+    geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
+    latitude = geocode_result['geometry']['location']['lat']
+    longitude = geocode_result['geometry']['location']['lng']
+    
+    return latitude, longitude
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
