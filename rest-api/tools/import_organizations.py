@@ -185,7 +185,7 @@ class SiteImporter(CsvImporter):
     gmaps = googlemaps.Client(key=api_key)
     geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
     latitude = geocode_result['geometry']['location']['lat']
-    longitude = geocode_result['geometry']['location']['lng'] 
+    longitude = geocode_result['geometry']['location']['lng']
     return latitude, longitude
 
 def main(args):
