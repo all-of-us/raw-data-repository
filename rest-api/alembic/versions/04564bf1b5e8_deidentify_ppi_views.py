@@ -60,7 +60,7 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
    (qra.value_string != '') answer_string_present,
    YEAR(qra.value_date) answer_date_year,
    YEAR(qra.value_datetime) answer_datetime_year,
-   qra.value_uri answer_uri
+   (qra.value_uri != '') answer_uri_present
  FROM
    participant p
     INNER JOIN questionnaire_response qr ON p.participant_id = qr.participant_id
