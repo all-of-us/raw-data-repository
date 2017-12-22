@@ -57,10 +57,10 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
    qra.value_boolean answer_boolean,
    qra.value_decimal answer_decimal,
    qra.value_integer answer_integer,
-   (qra.value_string != '') answer_string_present,
+   IF(qra.value_string IS NULL, NULL, 1) answer_string_present,
    YEAR(qra.value_date) answer_date_year,
    YEAR(qra.value_datetime) answer_datetime_year,
-   (qra.value_uri != '') answer_uri_present
+   IF(qra.value_uri IS NULL, NULL, 1) answer_uri_present
  FROM
    participant p
     INNER JOIN questionnaire_response qr ON p.participant_id = qr.participant_id
@@ -86,7 +86,7 @@ CREATE OR REPLACE VIEW physical_measurements_view AS
    p.suspension_status participant_suspension_status,
    YEAR(p.suspension_time) participant_suspension_year,
    pm.physical_measurements_id physical_measurements_id,
-   pm.created created,
+   YEAR(pm.created) created_year,
    pm.amended_measurements_id amended_measurements_id,
    pm.created_site_id created_site_id,
    pm.created_username created_username,
@@ -98,7 +98,7 @@ CREATE OR REPLACE VIEW physical_measurements_view AS
    YEAR(m.measurement_time) measurement_year,
    m.body_site_code_system body_site_code_system,
    m.body_site_code_value body_site_code_value,
-   (m.value_string != '') value_string_present,
+   IF(m.value_string IS NULL, NULL, 1) value_string_present,
    m.value_decimal value_decimal,
    m.value_unit value_unit,
    m.value_code_system value_code_system,
