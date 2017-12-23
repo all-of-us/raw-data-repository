@@ -1,11 +1,23 @@
+import hashlib
+import random
 import re
+import struct
 
+from dao.database_factory import get_database
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from offline.sql_exporter import SqlExporter
 from werkzeug.exceptions import BadRequest
 
 _TABLE_PATTERN = re.compile("^[A-Za-z0-9_]+$")
+_DEIDENTIFIED_DB_TABLE_WHITELIST = {
+  'rdr': set([
+      'participant_view',
+      'physical_measurements_view',
+      'questionnaire_response_answer_view'
+  ])
+}
+
 
 class TableExporter(object):
   """API that exports data from our database to UTF-8 CSV files in GCS.
@@ -14,20 +26,89 @@ class TableExporter(object):
   other CSV clients (e.g. BigQuery, Google Sheets) can actually understand.
   """
 
+  @staticmethod
+  def _obfuscate_id(pmi_id, salt):
+    """
+    One-way ID obfuscation, intended for PMI participant IDs.
+
+    This method should aim to (1) avoid hash collisions across PMI ID inputs and (2) not be
+    reversible or rerunnable by anyone without RDR production data access.
+
+    Params:
+      - pmi_id (number) must be an integer participant ID
+      - salt (number) must be a long
+
+    Returns: a positive integer
+    """
+    h = hashlib.sha1()
+    h.update(struct.pack('>l', pmi_id))
+    h.update(struct.pack('>q', salt))
+    # Just take the first 4 bytes so that the output ID is an integer, roughly in the same domain as
+    # the input PMI participant ID.
+    b = h.digest()[0:4]
+    return abs(struct.unpack('>l', b)[0])
+
   @classmethod
-  def _export_csv(cls, bucket_name, database, directory, table_name):
+  def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name):
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
-    SqlExporter(bucket_name, use_unicode=True).run_export('%s/%s.csv' % (directory, table_name),
-                                                          'SELECT * FROM %s.%s' %
-                                                          (database, table_name))
+
+    transformf = None
+    if deidentify_salt:
+      # Deidentification requested: hash outgoing participant IDs with a consistent salt across this
+      # export. Cache obfuscated participant IDs across row callbacks to avoid recomputation and to
+      # detect collisions.
+      pmi_to_obfuscated = {}
+      obfuscated_to_pmi = {}
+      def f(row_proxy):
+        out = [v for v in row_proxy]
+        for i, key in enumerate(row_proxy.keys()):
+          if key != 'participant_id':
+            continue
+
+          pmi_id = out[i]
+          if pmi_id not in pmi_to_obfuscated:
+            obf_id = TableExporter._obfuscate_id(pmi_id, deidentify_salt)
+            pmi_to_obfuscated[pmi_id] = obf_id
+            if obf_id in obfuscated_to_pmi:
+              raise ValueError('hash collision, {}, {} for salt {} both yield {}'.format(
+                  pmi_id, obfuscated_to_pmi[obf_id], deidentify_salt, obf_id))
+            obfuscated_to_pmi[obf_id] = pmi_id
+          out[i] = pmi_to_obfuscated[pmi_id]
+          break
+        return out
+      transformf = f
+
+    output_path = '%s/%s.csv' % (directory, table_name)
+    sql_table = '%s.%s' % (database, table_name)
+    if get_database().db_type == 'sqlite':
+      # No schemas in SQLite.
+      sql_table = table_name
+    SqlExporter(bucket_name, use_unicode=True).run_export(
+        output_path, 'SELECT * FROM {}'.format(sql_table), transformf=transformf)
+    return '%s/%s' % (bucket_name, output_path)
 
   @staticmethod
-  def export_tables(database, tables, directory):
+  def export_tables(database, tables, directory, deidentify):
+    """
+    Export the given tables from the given DB; deidentifying if requested.
+
+    A deidentified request outputs exports into a different bucket which may have less restrictive
+    ACLs than the other export buckets; for this reason the tables for these requests are also more
+    restrictive.
+
+    Deidentification also obfuscates participant IDs, as these are known by other systems (e.g.
+    HealthPro, PTC). Currently this ID obfuscation is not reversible and is not stable across
+    separate exports (note: it is stable across multiple tables in a single export request).
+
+    TODO: Address the above shortcomings (possibly via symmetric key encryption).
+    """
     app_id = app_identity.get_application_id()
     # Determine what GCS bucket to write to based on the environment and database.
     if app_id == 'None':
       bucket_name = app_identity.get_default_gcs_bucket_name()
+    elif deidentify:
+      bucket_name = '%s-deidentified-export' % app_id
     elif database == 'rdr':
       bucket_name = '%s-rdr-export' % app_id
     elif database in ['cdm', 'voc']:
@@ -37,6 +118,22 @@ class TableExporter(object):
     for table_name in tables:
       if not _TABLE_PATTERN.match(table_name):
         raise BadRequest("Invalid table name: %s" % table_name)
+
+    deidentify_salt = None
+    if deidentify:
+      if database not in _DEIDENTIFIED_DB_TABLE_WHITELIST:
+        raise BadRequest("deidentified exports are only supported for database: {}".format(
+            _DEIDENTIFIED_DB_TABLE_WHITELIST.keys()))
+      tableset = set(tables)
+      table_whitelist = _DEIDENTIFIED_DB_TABLE_WHITELIST[database]
+      if not tableset.issubset(table_whitelist):
+        raise BadRequest("deidentified exports are unsupported for tables:"
+                         "{} (must be in {})".format(tableset - table_whitelist, table_whitelist))
+      # This salt must be identical across all tables exported, otherwise the exported particpant
+      # IDs will not be consistent. Used with sha1, so ensure this value isn't too short.
+      deidentify_salt = random.randint(1e9, 1e18)
+
     for table_name in tables:
-      deferred.defer(TableExporter._export_csv, bucket_name, database, directory, table_name)
+      deferred.defer(TableExporter._export_csv, bucket_name,
+                     database, directory, deidentify_salt, table_name)
     return {'destination': 'gs://%s/%s' % (bucket_name, directory)}

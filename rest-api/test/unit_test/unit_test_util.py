@@ -143,6 +143,7 @@ class TestbedTestBase(TestBase):
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.testbed.init_taskqueue_stub()
+    self.taskqueue_stub = self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
 
   def tearDown(self):
     self.testbed.deactivate()
@@ -163,7 +164,7 @@ class _TestDb(object):
       self.__temp_db_name = 'unittestdb' + uid
       self.__temp_metrics_db_name = 'unittestdb_metrics' + uid
 
-  def setup(self, with_data=True):
+  def setup(self, with_data=True, with_views=False):
     singletons.reset_for_tests()  # Clear the db connection cache.
     if self.__use_mysql:
       if 'CIRCLECI' in os.environ:
@@ -198,6 +199,8 @@ class _TestDb(object):
     dao.database_factory.get_generic_database().create_metrics_schema()
     if with_data:
       self._setup_hpos()
+    if with_views:
+      self._setup_views()
 
   def teardown(self):
     db = dao.database_factory.get_database()
@@ -228,6 +231,26 @@ class _TestDb(object):
         googleGroup='hpo-site-bannerphoenix',
         mayolinkClientNumber=7035770,
         hpoId=PITT_HPO_ID))
+
+  def _setup_views(self):
+    """
+    Sets up operational DB views.
+
+    This is a minimal recreation of the true views, which are encoded in Alembic DB migrations only
+    (not via SQLAlchemy) and aren't currently compatible with SQLite.
+    """
+    db = dao.database_factory.get_database()
+    db.get_engine().execute("""
+CREATE VIEW participant_view AS
+ SELECT
+   p.participant_id,
+   hpo.name hpo,
+   ps.enrollment_status
+ FROM
+   participant p
+     LEFT OUTER JOIN hpo ON p.hpo_id = hpo.hpo_id
+     LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
+""")
 
 
 class SqlTestBase(TestbedTestBase):
@@ -347,11 +370,12 @@ class CloudStorageSqlTestBase(testutil.CloudStorageTestBase):
 
   Both try to set up a testbed (which stubs out various AppEngine APIs, including cloudstorage_api).
   """
-  def setUp(self, use_mysql=False, with_data=True):
+  def setUp(self, use_mysql=False, with_data=True, with_views=False):
     super(CloudStorageSqlTestBase, self).setUp()
     self._test_db = _TestDb(use_mysql=use_mysql)
-    self._test_db.setup(with_data=with_data)
+    self._test_db.setup(with_data=with_data, with_views=with_views)
     self.database = dao.database_factory.get_database()
+    self.taskqueue_stub = self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
 
   def tearDown(self):
     super(CloudStorageSqlTestBase, self).tearDown()
