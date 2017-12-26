@@ -66,12 +66,9 @@ function cleanup {
     gcloud iam service-accounts keys delete $TMP_PRIVATE_KEY -q \
         --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
   fi
-  if [ "$TMP_GEOCODE_INFO_FILE" ];
-  then
-    kill $TMP_GEOCODE_INFO_FILE
-  fi
   rm -f ${TMP_CREDS_FILE}
   rm -f ${TMP_DB_INFO_FILE}
+  rm -f ${TMP_GEOCODE_INFO_FILE}
   rm -rf ${TMP_DIR}
 }
 
@@ -94,7 +91,7 @@ function get_db_password {
 function get_geocode_key {
   echo "Getting geocode api key ..."
   tools/install_config.sh --key geocode_key --instance $INSTANCE \
-       --config_output "$TMP_GEOCODE_INFO_FILE"
+       --creds_file ${CREDS_FILE} --project ${PROJECT} --config_output "$TMP_GEOCODE_INFO_FILE"
   export API_KEY=$(cat $TMP_GEOCODE_INFO_FILE | python -c 'import json,sys;obj=json.load(sys.stdin);print obj["'api_key'"]')  
 }
 
