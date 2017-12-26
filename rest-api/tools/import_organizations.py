@@ -155,7 +155,8 @@ class SiteImporter(CsvImporter):
     city = row.get(SITE_CITY_COLUMN)
     state = row.get(SITE_STATE_COLUMN)
     zip_code = row.get(SITE_ZIP_COLUMN)
-    latitude, longitude = self._get_lat_long_for_site(address_1, city, state)
+    if address_1 != None:
+      latitude, longitude = self._get_lat_long_for_site(address_1, city, state)
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
@@ -181,15 +182,15 @@ class SiteImporter(CsvImporter):
 
   def _get_lat_long_for_site(self, address_1, city, state):
     try:
-      api_key = os.environ.get('API_KEY')
-      gmaps = googlemaps.Client(key=api_key)
-      geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
-      latitude = geocode_result['geometry']['location']['lat']
-      longitude = geocode_result['geometry']['location']['lng']
-      return latitude, longitude
+        api_key = os.environ.get('API_KEY')
+        gmaps = googlemaps.Client(key=api_key)
+        geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
+        latitude = geocode_result['geometry']['location']['lat']
+        longitude = geocode_result['geometry']['location']['lng']
+        return latitude, longitude
     except ValueError as e:
-      logging.warn('Invalid geocode key: %s . error: %s', api_key, e)
-      return None, None
+        logging.warn('Invalid geocode key: %s . error: %s', api_key, e)
+        return None, None
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)

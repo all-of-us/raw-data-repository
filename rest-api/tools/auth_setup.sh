@@ -91,7 +91,7 @@ function get_db_password {
 function get_geocode_key {
   echo "Getting geocode api key ..."
   tools/install_config.sh --key geocode_key --instance $INSTANCE \
-       --creds_file ${CREDS_FILE} --project ${PROJECT} --config_output "$TMP_GEOCODE_INFO_FILE"
+       --creds_file ${CREDS_FILE} --project "PMI-DRC-API-TEST"  --config_output "$TMP_GEOCODE_INFO_FILE"
   export API_KEY=$(cat $TMP_GEOCODE_INFO_FILE | python -c 'import json,sys;obj=json.load(sys.stdin);print obj["'api_key'"]')  
 }
 
