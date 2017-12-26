@@ -181,15 +181,15 @@ class SiteImporter(CsvImporter):
 
   def _get_lat_long_for_site(self, address_1, city, state):
     try:
-        api_key = os.environ.get('API_KEY')
-        gmaps = googlemaps.Client(key=api_key)
-        geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
-        latitude = geocode_result['geometry']['location']['lat']
-        longitude = geocode_result['geometry']['location']['lng']
-        return latitude, longitude
+      api_key = os.environ.get('API_KEY')
+      gmaps = googlemaps.Client(key=api_key)
+      geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
+      latitude = geocode_result['geometry']['location']['lat']
+      longitude = geocode_result['geometry']['location']['lng']
+      return latitude, longitude
     except ValueError as e:
-        logging.warn('Invalid geocode key: %s . error: %s', api_key, e)
-        return None, None
+      logging.warn('Invalid geocode key: %s . error: %s', api_key, e)
+      return None, None
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
