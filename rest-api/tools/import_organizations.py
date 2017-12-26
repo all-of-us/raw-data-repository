@@ -152,7 +152,6 @@ class SiteImporter(CsvImporter):
     physical_location_name = row.get(SITE_PHYSICAL_LOCATION_NAME_COLUMN)
     address_1 = row.get(SITE_ADDRESS_1_COLUMN)
     address_2 = row.get(SITE_ADDRESS_2_COLUMN)
-    # TODO: geocode addresses here (DA-465)
     city = row.get(SITE_CITY_COLUMN)
     state = row.get(SITE_STATE_COLUMN)
     zip_code = row.get(SITE_ZIP_COLUMN)
@@ -181,12 +180,16 @@ class SiteImporter(CsvImporter):
                 link=link)
 
   def _get_lat_long_for_site(self, address_1, city, state):
-    api_key = os.environ.get('API_KEY')
-    gmaps = googlemaps.Client(key=api_key)
-    geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
-    latitude = geocode_result['geometry']['location']['lat']
-    longitude = geocode_result['geometry']['location']['lng']
-    return latitude, longitude
+    try:
+        api_key = os.environ.get('API_KEY')
+        gmaps = googlemaps.Client(key=api_key)
+        geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
+        latitude = geocode_result['geometry']['location']['lat']
+        longitude = geocode_result['geometry']['location']['lng']
+        return latitude, longitude
+    except ValueError as e:
+        logging.warn('Invalid geocode key: %s . error: %s', api_key, e)
+        return None, None
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
