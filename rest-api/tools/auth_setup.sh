@@ -66,6 +66,10 @@ function cleanup {
     gcloud iam service-accounts keys delete $TMP_PRIVATE_KEY -q \
         --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
   fi
+  if [ "$TMP_GEOCODE_INFO_FILE" ];
+  then
+    kill $TMP_GEOCODE_INFO_FILE
+  fi
   rm -f ${TMP_CREDS_FILE}
   rm -f ${TMP_DB_INFO_FILE}
   rm -rf ${TMP_DIR}
