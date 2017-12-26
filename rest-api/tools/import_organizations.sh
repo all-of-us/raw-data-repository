@@ -25,6 +25,7 @@ then
   source tools/auth_setup.sh
   run_cloud_sql_proxy
   set_db_connection_string
+  get_geocode_key
 else
   if [ -z "${DB_CONNECTION_STRING}" ]
   then
