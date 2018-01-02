@@ -25,7 +25,7 @@
     "exporter@pmi-drc-api-test.iam.gserviceaccount.com": {
       "roles": ["exporter"]
     },
-    "aou-researcher-storefront-dev@appspot.gserviceaccount.com"
+    "aou-researcher-storefront-dev@appspot.gserviceaccount.com": {
       "roles": ["storefront"]
     }
   },
