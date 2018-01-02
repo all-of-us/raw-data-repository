@@ -48,15 +48,17 @@ class SqlExporter(object):
     self._bucket_name = bucket_name
     self._use_unicode = use_unicode
 
-  def run_export(self, file_name, sql, query_params=None):
+  def run_export(self, file_name, sql, query_params=None, transformf=None):
     with self.open_writer(file_name) as writer:
-      self.run_export_with_writer(writer, sql, query_params)
+      self.run_export_with_writer(writer, sql, query_params, transformf=transformf)
 
-  def run_export_with_writer(self, writer, sql, query_params):
+  def run_export_with_writer(self, writer, sql, query_params, transformf=None):
     with database_factory.make_server_cursor_database().session() as session:
-      self.run_export_with_session(writer, session, sql, query_params=query_params)
+      self.run_export_with_session(writer, session, sql,
+                                   query_params=query_params, transformf=transformf)
 
-  def run_export_with_session(self, writer, session, sql, query_params=None):
+  def run_export_with_session(self, writer, session, sql, query_params=None,
+                              transformf=None):
     # Each query from AppEngine standard environment must finish in 60 seconds.
     # If we start running into trouble with that, we'll either
     # need to break the SQL up into pages, or (more likely) switch to cloud SQL export.
@@ -65,6 +67,10 @@ class SqlExporter(object):
       writer.write_header(cursor.keys())
       results = cursor.fetchmany(_BATCH_SIZE)
       while results:
+        if transformf:
+          # Note: transformf accepts an iterable and returns an iterable, the output of this call
+          # may no longer be a row proxy after this point.
+          results = [transformf(r) for r in results]
         writer.write_rows(results)
         results = cursor.fetchmany(_BATCH_SIZE)
     finally:

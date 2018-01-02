@@ -793,9 +793,14 @@ Requests look like:
 {
   "database": ["rdr" | "cdm" | "voc" ],
   "tables": "table1,table2...",
-  "directory": "output_directory_name"
+  "directory": "output_directory_name",
+  "deidentify": false
 }
 ```
 
 The results of the export go to the GCS bucket named `<PROJECT>-rdr-export` for the rdr database,
-and `<PROJECT>-cdm` for the "cdm" and "voc" databases.
+and `<PROJECT>-cdm` for the "cdm" and "voc" databases. Exports with `deidentify` set go to a GCS
+bucket named `<PROJECT>-deidentified-export`.
+
+`deidentify` is only usable on a subset of compatible tables, and will obfuscate participant IDs
+(consistently across all tables specified).

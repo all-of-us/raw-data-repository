@@ -112,7 +112,11 @@ def export_tables():
   directory = resource_json.get('directory')
   if not directory:
     raise BadRequest("directory is required")
-  return json.dumps(TableExporter.export_tables(database, tables, directory))
+
+  # Ensure this has a boolean value to avoid downstream issues.
+  deidentify = resource_json.get('deidentify') is True
+
+  return json.dumps(TableExporter.export_tables(database, tables, directory, deidentify))
 
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
