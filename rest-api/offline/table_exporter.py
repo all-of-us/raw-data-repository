@@ -43,6 +43,7 @@ class TableExporter(object):
     Returns: a positive integer
     """
     h = hashlib.sha1()
+    # l for long, q for long long: https://docs.python.org/2/library/struct.html#format-characters
     h.update(struct.pack('>l', pmi_id))
     h.update(salt)
     # Just take the first 8 bytes so that the output ID is a long, roughly in the same domain as
