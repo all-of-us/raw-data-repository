@@ -24,7 +24,9 @@ def export_tables(client):
                                                client.args.directory))
   request_body = {'database': client.args.database,
                   'tables': table_names,
-                  'directory': client.args.directory}
+                  'directory': client.args.directory,
+                  'deidentify': client.args.deidentify
+  }
   response = client.request_json('ExportTables', 'POST', request_body)
   logging.info('Data is being exported to: %s' % response['destination'])
 
@@ -37,4 +39,6 @@ if __name__ == '__main__':
   parser.add_argument('--directory',
                       help='A directory to write CSV output to inside the GCS bucket',
                       required=True)
+  parser.add_argument('--deidentify', help='Whether to deidentify the exports',
+                      action='store_true')
   export_tables(Client(parser=parser, base_path='offline'))
