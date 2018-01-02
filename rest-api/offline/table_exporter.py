@@ -10,7 +10,9 @@ from offline.sql_exporter import SqlExporter
 from werkzeug.exceptions import BadRequest
 
 _TABLE_PATTERN = re.compile("^[A-Za-z0-9_]+$")
-_DEIDENTIFIED_DB_TABLE_WHITELIST = {
+
+# TODO(calbach): Factor this out into the datastore config.
+_DEIDENTIFY_DB_TABLE_WHITELIST = {
   'rdr': set([
       'participant_view',
       'physical_measurements_view',
@@ -42,7 +44,7 @@ class TableExporter(object):
     """
     h = hashlib.sha1()
     h.update(struct.pack('>l', pmi_id))
-    h.update(struct.pack('>q', salt))
+    h.update(salt)
     # Just take the first 4 bytes so that the output ID is an integer, roughly in the same domain as
     # the input PMI participant ID.
     b = h.digest()[0:4]
@@ -100,8 +102,6 @@ class TableExporter(object):
     Deidentification also obfuscates participant IDs, as these are known by other systems (e.g.
     HealthPro, PTC). Currently this ID obfuscation is not reversible and is not stable across
     separate exports (note: it is stable across multiple tables in a single export request).
-
-    TODO: Address the above shortcomings (possibly via symmetric key encryption).
     """
     app_id = app_identity.get_application_id()
     # Determine what GCS bucket to write to based on the environment and database.
@@ -121,17 +121,17 @@ class TableExporter(object):
 
     deidentify_salt = None
     if deidentify:
-      if database not in _DEIDENTIFIED_DB_TABLE_WHITELIST:
+      if database not in _DEIDENTIFY_DB_TABLE_WHITELIST:
         raise BadRequest("deidentified exports are only supported for database: {}".format(
-            _DEIDENTIFIED_DB_TABLE_WHITELIST.keys()))
+            _DEIDENTIFY_DB_TABLE_WHITELIST.keys()))
       tableset = set(tables)
-      table_whitelist = _DEIDENTIFIED_DB_TABLE_WHITELIST[database]
+      table_whitelist = _DEIDENTIFY_DB_TABLE_WHITELIST[database]
       if not tableset.issubset(table_whitelist):
         raise BadRequest("deidentified exports are unsupported for tables:"
                          "{} (must be in {})".format(tableset - table_whitelist, table_whitelist))
       # This salt must be identical across all tables exported, otherwise the exported particpant
       # IDs will not be consistent. Used with sha1, so ensure this value isn't too short.
-      deidentify_salt = random.randint(1e9, 1e18)
+      deidentify_salt = str(random.getrandbits(256)).encode('utf-8')
 
     for table_name in tables:
       deferred.defer(TableExporter._export_csv, bucket_name,
