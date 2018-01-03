@@ -23,6 +23,13 @@ fi
 TMP_GEOCODE_DIR=$(mktemp -d)
 TMP_GEOCODE_INFO_FILE=${TMP_GEOCODE_DIR}/geocode_key.json
 
+function cleanup {
+  
+  rm -rf ${TMP_GEOCODE_DIR}
+  rm -f ${TMP_GEOCODE_INFO_FILE}
+}
+trap cleanup EXIT
+
 function get_geocode_key {
     echo "Getting geocode api key ..."
     (tools/install_config.sh --key geocode_key --account "${ACCOUNT}" \
@@ -51,8 +58,7 @@ python tools/import_organizations.py --awardee_file data/awardees.csv \
   --organization_file data/organizations.csv --site_file data/sites.csv $DRY_RUN
 
 function finish {
-  rm -rf ${TMP_GEOCODE_DIR}
-  rm -f ${TMP_GEOCODE_INFO_FILE}
+  cleanup
 }
 trap finish EXIT
 
