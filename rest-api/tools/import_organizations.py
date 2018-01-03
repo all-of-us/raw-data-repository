@@ -155,7 +155,7 @@ class SiteImporter(CsvImporter):
     city = row.get(SITE_CITY_COLUMN)
     state = row.get(SITE_STATE_COLUMN)
     zip_code = row.get(SITE_ZIP_COLUMN)
-    if address_1 != None:
+    if address_1 != None and city != None and state != None:
       latitude, longitude = self._get_lat_long_for_site(address_1, city, state)
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
@@ -181,13 +181,26 @@ class SiteImporter(CsvImporter):
                 link=link)
 
   def _get_lat_long_for_site(self, address_1, city, state):
+    full_address = address_1 + ' ' +  city + ' ' + state
     try:
         api_key = os.environ.get('API_KEY')
         gmaps = googlemaps.Client(key=api_key)
         geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
-        latitude = geocode_result['geometry']['location']['lat']
-        longitude = geocode_result['geometry']['location']['lng']
-        return latitude, longitude
+        if geocode_result:
+          try:
+            latitude = geocode_result['geometry']['location']['lat']
+            longitude = geocode_result['geometry']['location']['lng']
+            if latitude != None and longitude != None:
+              return latitude, longitude
+            else:
+              logging.info('Can not find lat/long for %s', full_address) 
+              return None, None
+          except KeyError as e:
+            logging.warn('error for lat/long. There is no %s for this address', e)
+            return None, None
+        else:
+          logging.warn('Geocode results failed for %s.', full_address )
+          return None, None
     except ValueError as e:
         logging.warn('Invalid geocode key: %s . error: %s', api_key, e)
         return None, None

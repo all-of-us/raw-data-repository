@@ -50,7 +50,6 @@ fi
 
 REPO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
 source ${REPO_ROOT_DIR}/tools/setup_vars.sh
-TMP_GEOCODE_INFO_FILE=${TMP_DIR}/geocode_key.json
 TMP_DB_INFO_FILE=${TMP_DIR}/db_info.json
 PORT=3308
 CLOUD_PROXY_PID=
@@ -68,7 +67,6 @@ function cleanup {
   fi
   rm -f ${TMP_CREDS_FILE}
   rm -f ${TMP_DB_INFO_FILE}
-  rm -f ${TMP_GEOCODE_INFO_FILE}
   rm -rf ${TMP_DIR}
 }
 
@@ -86,13 +84,6 @@ function get_db_password {
   tools/install_config.sh --key db_config --instance $INSTANCE \
       --creds_file ${CREDS_FILE} --config_output $TMP_DB_INFO_FILE
   PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
-}
-
-function get_geocode_key {
-  echo "Getting geocode api key ..."
-  tools/install_config.sh --key geocode_key --instance $INSTANCE \
-       --creds_file ${CREDS_FILE} --project "PMI-DRC-API-TEST"  --config_output "$TMP_GEOCODE_INFO_FILE"
-  export API_KEY=$(cat $TMP_GEOCODE_INFO_FILE | python -c 'import json,sys;obj=json.load(sys.stdin);print obj["'api_key'"]')  
 }
 
 function run_cloud_sql_proxy {
