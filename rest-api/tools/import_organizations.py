@@ -187,22 +187,22 @@ class SiteImporter(CsvImporter):
       gmaps = googlemaps.Client(key=api_key)
       geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
       if geocode_result:
-        try:
-          latitude = geocode_result['geometry']['location']['lat']
-          longitude = geocode_result['geometry']['location']['lng']
-          if latitude != None and longitude != None:
-            return latitude, longitude
-          else:
-            logging.info('Can not find lat/long for %s', full_address)
-            return None, None
-        except KeyError as e:
-          logging.warn('error for lat/long. There is no %s for this address', e)
+        geometry = geocode_result.get('geometry')
+        if geometry:
+          location = geometry.get('location')
+        if location:
+          latitude = location.get('lat')
+          longitude = location.get('lng')
+        if latitude and longitude:
+          return latitude, longitude
+        else:
+          logging.warn('Can not find lat/long for %s', full_address)
           return None, None
       else:
         logging.warn('Geocode results failed for %s.', full_address)
         return None, None
     except ValueError as e:
-      logging.warn('Invalid geocode key: %s . error: %s', api_key, e)
+      logging.exception('Invalid geocode key: %s . error: %s', api_key, e)
       return None, None
 
 def main(args):
