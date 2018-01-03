@@ -202,7 +202,10 @@ class SiteImporter(CsvImporter):
         logging.warn('Geocode results failed for %s.', full_address)
         return None, None
     except ValueError as e:
-      logging.exception('Invalid geocode key: %s . error: %s', api_key, e)
+      logging.exception('Invalid geocode key: %s. ERROR: %s', api_key, e)
+      return None, None
+    except IndexError as e:
+      logging.exception('Geocoding failure Check that address is correct. ERROR: %s', e)
       return None, None
 
 def main(args):
