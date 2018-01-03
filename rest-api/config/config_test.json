@@ -24,6 +24,9 @@
     },
     "exporter@pmi-drc-api-test.iam.gserviceaccount.com": {
       "roles": ["exporter"]
+    },
+    "aou-researcher-storefront-dev@appspot.gserviceaccount.com": {
+      "roles": ["storefront"]
     }
   },
   "biobank_samples_bucket_name": [
