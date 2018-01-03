@@ -183,27 +183,27 @@ class SiteImporter(CsvImporter):
   def _get_lat_long_for_site(self, address_1, city, state):
     full_address = address_1 + ' ' +  city + ' ' + state
     try:
-        api_key = os.environ.get('API_KEY')
-        gmaps = googlemaps.Client(key=api_key)
-        geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
-        if geocode_result:
-          try:
-            latitude = geocode_result['geometry']['location']['lat']
-            longitude = geocode_result['geometry']['location']['lng']
-            if latitude != None and longitude != None:
-              return latitude, longitude
-            else:
-              logging.info('Can not find lat/long for %s', full_address) 
-              return None, None
-          except KeyError as e:
-            logging.warn('error for lat/long. There is no %s for this address', e)
+      api_key = os.environ.get('API_KEY')
+      gmaps = googlemaps.Client(key=api_key)
+      geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
+      if geocode_result:
+        try:
+          latitude = geocode_result['geometry']['location']['lat']
+          longitude = geocode_result['geometry']['location']['lng']
+          if latitude != None and longitude != None:
+            return latitude, longitude
+          else:
+            logging.info('Can not find lat/long for %s', full_address)
             return None, None
-        else:
-          logging.warn('Geocode results failed for %s.', full_address )
+        except KeyError as e:
+          logging.warn('error for lat/long. There is no %s for this address', e)
           return None, None
-    except ValueError as e:
-        logging.warn('Invalid geocode key: %s . error: %s', api_key, e)
+      else:
+        logging.warn('Geocode results failed for %s.', full_address)
         return None, None
+    except ValueError as e:
+      logging.warn('Invalid geocode key: %s . error: %s', api_key, e)
+      return None, None
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
