@@ -12,9 +12,9 @@ Usage:
   Imports are idempotent; if you run the import multiple times, subsequent imports should
   have no effect.
 """
-
+import os
 import logging
-
+import googlemaps
 from dateutil.parser import parse
 from tools.csv_importer import CsvImporter
 from dao.hpo_dao import HPODao
@@ -152,10 +152,11 @@ class SiteImporter(CsvImporter):
     physical_location_name = row.get(SITE_PHYSICAL_LOCATION_NAME_COLUMN)
     address_1 = row.get(SITE_ADDRESS_1_COLUMN)
     address_2 = row.get(SITE_ADDRESS_2_COLUMN)
-    # TODO: geocode addresses here (DA-465)
     city = row.get(SITE_CITY_COLUMN)
     state = row.get(SITE_STATE_COLUMN)
     zip_code = row.get(SITE_ZIP_COLUMN)
+    if address_1 != None and city != None and state != None:
+      latitude, longitude = self._get_lat_long_for_site(address_1, city, state)
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
@@ -173,9 +174,39 @@ class SiteImporter(CsvImporter):
                 city=city,
                 state=state,
                 zipCode=zip_code,
+                latitude=latitude,
+                longitude=longitude,
                 phoneNumber=phone,
                 adminEmails=admin_email_addresses,
                 link=link)
+
+  def _get_lat_long_for_site(self, address_1, city, state):
+    full_address = address_1 + ' ' +  city + ' ' + state
+    try:
+      api_key = os.environ.get('API_KEY')
+      gmaps = googlemaps.Client(key=api_key)
+      geocode_result = gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
+      if geocode_result:
+        geometry = geocode_result.get('geometry')
+        if geometry:
+          location = geometry.get('location')
+        if location:
+          latitude = location.get('lat')
+          longitude = location.get('lng')
+        if latitude and longitude:
+          return latitude, longitude
+        else:
+          logging.warn('Can not find lat/long for %s', full_address)
+          return None, None
+      else:
+        logging.warn('Geocode results failed for %s.', full_address)
+        return None, None
+    except ValueError as e:
+      logging.exception('Invalid geocode key: %s. ERROR: %s', api_key, e)
+      return None, None
+    except IndexError as e:
+      logging.exception('Geocoding failure Check that address is correct. ERROR: %s', e)
+      return None, None
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
