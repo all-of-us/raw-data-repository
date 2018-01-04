@@ -63,10 +63,10 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
    YEAR(qra.value_datetime) answer_datetime_year,
    IF(qra.value_uri IS NULL, 0, 1) answer_uri_present,
    IF(qc.value != 'EmploymentWorkAddress_ZipCode', NULL,
-     IF(SUBSTR(LPAD(CONCAT(ps.zip_code), 5, '0'), 1, 3) IN (
+     IF(SUBSTR(LPAD(CONCAT(qra.value_integer), 5, '0'), 1, 3) IN (
           '036', '692', '878', '059', '790', '879', '063', '821', '884', '102',
           '823', '890', '203', '830', '893', '556', '831'),
-        '000', SUBSTR(LPAD(CONCAT(ps.zip_code), 5, '0'), 1, 3)
+        '000', SUBSTR(LPAD(CONCAT(qra.value_integer), 5, '0'), 1, 3)
      )) deidentified_zip_code
  FROM
    participant p
