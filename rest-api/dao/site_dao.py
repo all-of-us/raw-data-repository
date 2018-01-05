@@ -23,6 +23,7 @@ class _FhirSite(FhirMixin, BackboneElement):
     FhirProperty('notes', str),
     FhirProperty('latitude', float),
     FhirProperty('longitude', float),
+    FhirProperty('time_zone_id', str),
     FhirProperty('directions', str),
     FhirProperty('physical_location_name', str),
     FhirProperty('address', Address),
@@ -57,6 +58,7 @@ class SiteDao(CacheAllDao):
     resource.notes = model.notes
     resource.latitude = model.latitude
     resource.longitude = model.longitude
+    resource.time_zone_id = model.timeZoneId
     resource.directions = model.directions
     resource.physical_location_name = model.physicalLocationName
     address = Address()
