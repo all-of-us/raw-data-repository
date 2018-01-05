@@ -15,7 +15,6 @@ Usage:
 import os
 import logging
 import googlemaps
-import datetime
 from dateutil.parser import parse
 from tools.csv_importer import CsvImporter
 from dao.hpo_dao import HPODao
