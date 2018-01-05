@@ -158,7 +158,7 @@ class SiteImporter(CsvImporter):
     if address_1 != None and city != None and state != None:
       latitude, longitude = self._get_lat_long_for_site(address_1, city, state)
     if latitude and longitude:
-        time_zone_id = self._get_time_zone(latitude, longitude)
+      time_zone_id = self._get_time_zone(latitude, longitude)
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
@@ -213,11 +213,11 @@ class SiteImporter(CsvImporter):
   def _get_time_zone(self, latitude, longitude):
     time_zone = self.gmaps.timezone(location=(latitude, longitude))
     if time_zone['status'] == 'OK':
-        time_zone_id = time_zone['timeZoneId']
-        return time_zone_id
+      time_zone_id = time_zone['timeZoneId']
+      return time_zone_id
     else:
-        logging.info('can not retrieve time zone from %s', self.full_address)
-        return None
+      logging.info('can not retrieve time zone from %s', self.full_address)
+      return None
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
