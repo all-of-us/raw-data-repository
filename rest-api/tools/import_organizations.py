@@ -209,9 +209,9 @@ class SiteImporter(CsvImporter):
     except IndexError as e:
       logging.exception('Geocoding failure Check that address is correct. ERROR: %s', e)
       return None, None
-  
+
   def _get_time_zone(self, latitude, longitude):
-    time_zone = self.gmaps.timezone(location=(latitude,longitude))
+    time_zone = self.gmaps.timezone(location=(latitude, longitude))
     if time_zone['status'] == 'OK':
         time_zone_id = time_zone['timeZoneId']
         return time_zone_id
