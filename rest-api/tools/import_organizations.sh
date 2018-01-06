@@ -24,6 +24,7 @@ TMP_GEOCODE_DIR=$(mktemp -d)
 TMP_GEOCODE_INFO_FILE=${TMP_GEOCODE_DIR}/geocode_key.json
 
 function cleanup {
+:
 }
 
 function get_geocode_key {
