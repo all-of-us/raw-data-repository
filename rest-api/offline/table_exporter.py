@@ -14,7 +14,7 @@ _TABLE_PATTERN = re.compile("^[A-Za-z0-9_]+$")
 # TODO(calbach): Factor this out into the datastore config.
 _DEIDENTIFY_DB_TABLE_WHITELIST = {
   'rdr': set([
-      'participant_view',
+      'ppi_participant_view',
       'physical_measurements_view',
       'questionnaire_response_answer_view'
   ])

@@ -13,7 +13,7 @@ class TableExporterTest(CloudStorageSqlTestBase, FlaskTestBase):
     super(TableExporterTest, self).setUp(with_views=True)
 
   def testDeidentifiedExport_empty(self):
-    TableExporter.export_tables('rdr', ['participant_view'], 'dir', deidentify=True)
+    TableExporter.export_tables('rdr', ['ppi_participant_view'], 'dir', deidentify=True)
 
     tasks = self.taskqueue_stub.get_filtered_tasks()
     self.assertEqual(len(tasks), 1)
@@ -23,7 +23,7 @@ class TableExporterTest(CloudStorageSqlTestBase, FlaskTestBase):
                       [['participant_id', 'hpo', 'enrollment_status']])
 
   def testDeidentifiedExport_participantIds(self):
-    TableExporter.export_tables('rdr', ['participant_view'], 'dir', deidentify=True)
+    TableExporter.export_tables('rdr', ['ppi_participant_view'], 'dir', deidentify=True)
 
     p1 = self._participant_with_defaults(
         participantId=1,
