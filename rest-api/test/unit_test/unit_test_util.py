@@ -241,7 +241,7 @@ class _TestDb(object):
     """
     db = dao.database_factory.get_database()
     db.get_engine().execute("""
-CREATE VIEW participant_view AS
+CREATE VIEW ppi_participant_view AS
  SELECT
    p.participant_id,
    hpo.name hpo,
