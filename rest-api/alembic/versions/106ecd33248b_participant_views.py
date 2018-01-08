@@ -173,7 +173,7 @@ CREATE OR REPLACE VIEW participant_view AS
    state_code.value state,
    recontact_method_code.value recontact_method,
    language_code.value language,
-   LEAST(89, TIMESTAMPDIFF(YEAR, ps.date_of_birth, CURDATE())) age_years,
+   TIMESTAMPDIFF(YEAR, ps.date_of_birth, CURDATE()) age_years,
    gender_code.value gender,
    sex_code.value sex,
    sexual_orientation_code.value sexual_orientation,
