@@ -1,6 +1,7 @@
 import datetime
 from sqlalchemy import Column, Integer, String, Date
 from sqlalchemy import ForeignKey, Index, SmallInteger
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
 from model.base import Base
@@ -62,7 +63,6 @@ class ParticipantSummary(Base):
                                                ForeignKey('site.site_id'))
 
   signUpTime = Column('sign_up_time', UTCDateTime)
-  hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
 
   # Fields for which questionnaires have been submitted, and at what times.
   consentForStudyEnrollment = Column('consent_for_study_enrollment',
@@ -180,6 +180,18 @@ class ParticipantSummary(Base):
   suspensionTime = Column('suspension_time', UTCDateTime)
 
   participant = relationship("Participant", back_populates="participantSummary")
+
+  @declared_attr
+  def hpoId(cls):
+    return Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
+
+  @declared_attr
+  def organizationID(cls):
+    return Column('organization_id', Integer, ForeignKey('organization.organization_id'))
+
+  @declared_attr
+  def siteId(cls):
+    return Column('site_id', Integer, ForeignKey('site.site_id'))
 
 
 # TODO(DA-234) Add an index for withdrawal status when querying summaries & filtering by withdrawal.
