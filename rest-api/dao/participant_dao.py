@@ -224,6 +224,8 @@ class ParticipantDao(UpdatableDao):
   def to_client_json(self, model):
     client_json = {
         'participantId': to_client_participant_id(model.participantId),
+        'organizationId': model.organizationID,
+        'siteId': model.siteId,
         'biobankId': to_client_biobank_id(model.biobankId),
         'lastModified': model.lastModified.isoformat(),
         'signUpTime': model.signUpTime.isoformat(),
