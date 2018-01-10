@@ -1,5 +1,6 @@
 import json
-
+import logging
+from main_util import configure_logging
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest, Forbidden
@@ -11,6 +12,8 @@ from dao.hpo_dao import HPODao
 from dao.site_dao import SiteDao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
+from model.organization import Organization
+from model.site import Site
 from model.utils import to_client_participant_id
 from model.config_utils import to_client_biobank_id
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
@@ -104,6 +107,12 @@ class ParticipantDao(UpdatableDao):
                             else None)
       need_new_summary = True
 
+    if obj.organizationID or obj.siteId:
+      organization, site = self.check_for_valid_children(session, obj, existing_obj)
+      obj.organizationID = organization
+      obj.siteId = site
+      need_new_summary = True
+
     # If the provider link changes, update the HPO ID on the participant and its summary.
     obj.hpoId = existing_obj.hpoId
     if obj.providerLink != existing_obj.providerLink:
@@ -117,6 +126,8 @@ class ParticipantDao(UpdatableDao):
       # come from participant.
       summary = existing_obj.participantSummary
       summary.hpoId = obj.hpoId
+      summary.organizationID = obj.organizationID
+      summary.siteId = obj.siteId
       summary.withdrawalStatus = obj.withdrawalStatus
       summary.withdrawalTime = obj.withdrawalTime
       summary.suspensionStatus = obj.suspensionStatus
@@ -126,6 +137,43 @@ class ParticipantDao(UpdatableDao):
       obj.participantSummary = summary
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
+
+
+  def check_for_valid_children(self, session, obj, existing_obj):
+    PM = existing_obj.participantSummary.physicalMeasurementsCreatedSiteId
+    BIO = existing_obj.participantSummary.biospecimenCollectedSiteId
+    organization = obj.organizationID
+    site = obj.siteId
+    true_parent_org = None
+    existing_site = None
+
+    if not site:
+      existing_site = existing_obj.siteId
+      parent_organization = session.query(Site.organizationId).filter_by(siteId=existing_site).first()
+
+    else:
+      parent_organization = session.query(Site.organizationId).filter_by(siteId=site).first()
+
+    if str(parent_organization) is not None:
+      true_parent_org = parent_organization[0]
+
+    if true_parent_org == organization or true_parent_org is None:
+      # If site has no parent, accept this org as the parent.
+      return organization, site if site else existing_site
+
+    else:
+      # TODO: WE MAY WANT TO PREVENT SETTING A NEW ORG. IF SITE HAS PM/BIO AND NEW ORG IS NOT THE PARENT OF SITE.
+      if PM is not None or BIO is not None:
+        raise BadRequest('The existing client paired site has taken Bio Specimens or Physical Measurements.')
+      else:
+        if existing_site:
+          site = None # We remove site from participant table
+          logging.info('you have changed pairing at the organizational level')
+        else: # site is passed in and has no PM/BIO we'll just take site
+          organization = None
+          logging.info('you have changed pairing at the site level')
+
+      return organization, site
 
   @staticmethod
   def create_summary_for_participant(obj):
@@ -201,7 +249,9 @@ class ParticipantDao(UpdatableDao):
         providerLink=json.dumps(resource_json.get('providerLink')),
         clientId=client_id,
         withdrawalStatus=resource_json.get('withdrawalStatus'),
-        suspensionStatus=resource_json.get('suspensionStatus'))
+        suspensionStatus=resource_json.get('suspensionStatus'),
+        organizationID=resource_json.get('organizationID'),
+        siteId=resource_json.get('siteId'))
 
   def add_missing_hpo_from_site(self, session, participant_id, site_id):
     if site_id is None:
