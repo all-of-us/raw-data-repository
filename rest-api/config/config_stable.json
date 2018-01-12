@@ -28,6 +28,9 @@
     },
     "exporter@all-of-us-rdr-stable.iam.gserviceaccount.com": {
       "roles": ["exporter"]
+    },
+    "aou-res-storefront-stable@appspot.gserviceaccount.com": {
+      "roles": ["storefront"]
     }
   },
   "biobank_samples_bucket_name": [

@@ -20,6 +20,7 @@ class Site(Base):
   notes = Column('notes', String(1024))
   latitude = Column('latitude', Float)
   longitude = Column('longitude', Float)
+  timeZoneId = Column('time_zone_id', String(1024))
   directions = Column('directions', String(1024))
   physicalLocationName = Column('physical_location_name', String(1024))
   address1 = Column('address_1', String(1024))
