@@ -93,7 +93,8 @@ class ParticipantDao(UpdatableDao):
                                  options=joinedload(Participant.participantSummary))
 
   def _do_update(self, session, obj, existing_obj):
-    """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link."""
+    """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link
+      or set pairing at another level (site/organization/awardee) with parent/child enforcement."""
     obj.lastModified = clock.CLOCK.now()
     obj.signUpTime = existing_obj.signUpTime
     obj.biobankId = existing_obj.biobankId
