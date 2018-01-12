@@ -8,6 +8,7 @@ class ParticipantApiTest(FlaskTestBase):
   def setUp(self):
     super(ParticipantApiTest, self).setUp()
     provider_link = {
+      "awardeeId": 2,
       "primary": False,
       "organization": {
         "display": None,
@@ -26,6 +27,7 @@ class ParticipantApiTest(FlaskTestBase):
         'providerLink': [provider_link]
     }
     self.provider_link_2 = {
+      "awardeeId": 1,
       "primary": True,
       "organization": {
         "display": None,
@@ -53,6 +55,9 @@ class ParticipantApiTest(FlaskTestBase):
     self.assertEquals(str(SuspensionStatus.NOT_SUSPENDED), response['suspensionStatus'])
     for auto_generated in (
         'participantId',
+        'siteId',
+        'organizationId',
+        'awardeeId',
         'biobankId',
         'signUpTime',
         'lastModified',
@@ -99,6 +104,9 @@ class ParticipantApiTest(FlaskTestBase):
     response['providerLink'] = [ self.provider_link_2 ]
     response['withdrawalStatus'] = 'NO_USE'
     response['suspensionStatus'] = 'NO_CONTACT'
+    response['siteId'] = None
+    response['organizationId'] is int
+    response['awardeeId'] = 2
     path = 'Participant/%s' % participant_id
     update_response = self.send_put(path, response, headers={ 'If-Match': 'W/"1"' })
     response['meta']['versionId'] = 'W/"2"'
