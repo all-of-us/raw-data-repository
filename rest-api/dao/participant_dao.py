@@ -146,8 +146,6 @@ class ParticipantDao(UpdatableDao):
 
 
   def check_for_valid_children(self, session, obj, existing_obj):
-    PM = existing_obj.participantSummary.physicalMeasurementsCreatedSiteId
-    BIO = existing_obj.participantSummary.biospecimenCollectedSiteId
     organization = obj.organizationID
     site = obj.siteId
     awardee = obj.hpoId
@@ -155,9 +153,9 @@ class ParticipantDao(UpdatableDao):
     old_org = existing_obj.organizationID
     old_awardee = existing_obj.hpoId
     existing_obj_list = [old_site, old_org, old_awardee]
-    new_obj_list = []
-    #existing_site = None
     # TODO: DO WE WANT TO PREVENT PAIRING IF EXISTING SITE HAS PM/BIO.
+    PM = existing_obj.participantSummary.physicalMeasurementsCreatedSiteId
+    BIO = existing_obj.participantSummary.biospecimenCollectedSiteId
 
     if site is not None and site != old_site:
       obj_parent_organization = session.query(Site.organizationId).filter_by(siteId=site).first()
@@ -165,10 +163,6 @@ class ParticipantDao(UpdatableDao):
       if obj_parent_organization is not None:
         obj_parent_awardee = session.query(Organization.hpoId).filter_by(organizationId=organization).first()
         awardee = obj_parent_awardee[0] if obj_parent_awardee else None
-
-      new_obj_list = [site, organization, awardee]
-      self.pairing_diff(new_obj_list, existing_obj_list)
-      return site, organization, awardee
 
     elif site is None or site == old_site:
       if organization is not None and organization != old_org:
@@ -182,12 +176,12 @@ class ParticipantDao(UpdatableDao):
         site = None
         organization = None
 
-      new_obj_list = [site, organization, awardee]
-      self.pairing_diff(new_obj_list, existing_obj_list)
-      return site, organization, awardee
+    new_obj_list = [site, organization, awardee]
+    self.log_pairing_diff(new_obj_list, existing_obj_list)
+    return site, organization, awardee
 
   @staticmethod
-  def pairing_diff(new_obj_list, existing_obj_list):
+  def log_pairing_diff(new_obj_list, existing_obj_list):
     new_pairing_list = []
     for count, value in enumerate(new_obj_list, 0):
       if existing_obj_list[count] != new_obj_list[count]:
@@ -203,52 +197,6 @@ class ParticipantDao(UpdatableDao):
         logging.info('you have changed pairing at the %s level', i)
 
     return
-
-
-    # if not site:
-    #   existing_site = existing_obj.siteId
-    #   existing_parent_organization = session.query(Site.organizationId).filter_by(siteId=existing_site).first()
-    #   if existing_parent_organization:
-    #     existing_parent_organization = existing_parent_organization[0]
-    # else:
-    #   obj_parent_organization = session.query(Site.organizationId).filter_by(siteId=site).first()
-    #   if obj_parent_organization:
-    #     obj_parent_organization = obj_parent_organization[0]
-    #
-    # if obj_parent_organization is not None:
-    #   obj_parent_awardee = session.query(Organization.hpoId).filter_by(organizationId=obj_parent_organization).first()
-    #   if obj_parent_awardee:
-    #     obj_parent_awardee = obj_parent_awardee[0]
-    # elif existing_parent_organization is not None:
-    #   existing_parent_organization = session.query(Organization.hpoId).filter_by(organizationId=existing_parent_organization).first()
-    #   if existing_parent_organization:
-    #     existing_parent_organization = existing_parent_organization[0]
-    #
-    # if organization is None and parent_organization is not None:
-    #   parent_awardee = session.query(Organization.hpoId).filter_by(organizationId=parent_organization).first()
-    #   if parent_awardee:
-    #     parent_awardee = parent_awardee[0]
-    #
-    # if parent_awardee is not None and parent_awardee != awardee:
-    #   awardee = parent_awardee
-    #
-    # if parent_organization == organization or parent_organization is None:
-    #   # If site has no parent, accept this org as the parent.
-    #   return organization, site if site else existing_site, awardee
-    #
-    # else:
-    #   # TODO: DO WE WANT TO PREVENT SETTING A NEW ORG. IF SITE HAS PM/BIO AND NEW ORG IS NOT THE PARENT OF SITE.
-    #   if PM is not None or BIO is not None:
-    #     raise BadRequest('The existing client paired site has taken Bio Specimens or Physical Measurements.')
-    #   else:
-    #     if existing_site:
-    #       site = None # We remove site from participant table
-    #       logging.info('you have changed pairing at the organizational level')
-    #     else: # site is passed in and has no PM/BIO we'll just take site
-    #       organization = None
-    #       logging.info('you have changed pairing at the site level')
-    #
-    #   return organization, site, awardee
 
   @staticmethod
   def create_summary_for_participant(obj):
