@@ -107,14 +107,20 @@ class ParticipantDao(UpdatableDao):
                             else None)
       need_new_summary = True
 
-    if obj.organizationID or obj.siteId:
-      organization, site = self.check_for_valid_children(session, obj, existing_obj)
+    if obj.organizationID or obj.siteId or obj.hpoId:
+      site, organization, awardee = self.check_for_valid_children(session, obj, existing_obj)
       obj.organizationID = organization
       obj.siteId = site
+      obj.hpoId = awardee
+      if awardee:
+        # get provider link for hpo_id (awardee)
+        obj.providerLink = make_primary_provider_link_for_id(awardee)
+
       need_new_summary = True
 
     # If the provider link changes, update the HPO ID on the participant and its summary.
-    obj.hpoId = existing_obj.hpoId
+    if obj.hpoId is None:
+      obj.hpoId = existing_obj.hpoId
     if obj.providerLink != existing_obj.providerLink:
       new_hpo_id = self._get_hpo_id(obj)
       if new_hpo_id != existing_obj.hpoId:
@@ -144,36 +150,105 @@ class ParticipantDao(UpdatableDao):
     BIO = existing_obj.participantSummary.biospecimenCollectedSiteId
     organization = obj.organizationID
     site = obj.siteId
-    true_parent_org = None
-    existing_site = None
+    awardee = obj.hpoId
+    old_site = existing_obj.siteId
+    old_org = existing_obj.organizationID
+    old_awardee = existing_obj.hpoId
+    existing_obj_list = [old_site, old_org, old_awardee]
+    new_obj_list = []
+    #existing_site = None
+    # TODO: DO WE WANT TO PREVENT PAIRING IF EXISTING SITE HAS PM/BIO.
 
-    if not site:
-      existing_site = existing_obj.siteId
-      parent_organization = session.query(Site.organizationId).filter_by(siteId=existing_site).first()
+    if site is not None and site != old_site:
+      obj_parent_organization = session.query(Site.organizationId).filter_by(siteId=site).first()
+      organization = obj_parent_organization[0] if obj_parent_organization else None
+      if obj_parent_organization is not None:
+        obj_parent_awardee = session.query(Organization.hpoId).filter_by(organizationId=organization).first()
+        awardee = obj_parent_awardee[0] if obj_parent_awardee else None
 
-    else:
-      parent_organization = session.query(Site.organizationId).filter_by(siteId=site).first()
+      new_obj_list = [site, organization, awardee]
+      self.pairing_diff(new_obj_list, existing_obj_list)
+      return site, organization, awardee
 
-    if str(parent_organization) is not None:
-      true_parent_org = parent_organization[0]
-
-    if true_parent_org == organization or true_parent_org is None:
-      # If site has no parent, accept this org as the parent.
-      return organization, site if site else existing_site
-
-    else:
-      # TODO: WE MAY WANT TO PREVENT SETTING A NEW ORG. IF SITE HAS PM/BIO AND NEW ORG IS NOT THE PARENT OF SITE.
-      if PM is not None or BIO is not None:
-        raise BadRequest('The existing client paired site has taken Bio Specimens or Physical Measurements.')
+    elif site is None or site == old_site:
+      if organization is not None and organization != old_org:
+        if site:
+          parent_organization = session.query(Site.organizationId).filter_by(siteId=site).first()
+          if parent_organization != organization:
+            site = None
+        obj_parent_awardee = session.query(Organization.hpoId).filter_by(organizationId=organization).first()
+        awardee = obj_parent_awardee[0] if obj_parent_awardee else None
       else:
-        if existing_site:
-          site = None # We remove site from participant table
-          logging.info('you have changed pairing at the organizational level')
-        else: # site is passed in and has no PM/BIO we'll just take site
-          organization = None
-          logging.info('you have changed pairing at the site level')
+        site = None
+        organization = None
 
-      return organization, site
+      new_obj_list = [site, organization, awardee]
+      self.pairing_diff(new_obj_list, existing_obj_list)
+      return site, organization, awardee
+
+  @staticmethod
+  def pairing_diff(new_obj_list, existing_obj_list):
+    new_pairing_list = []
+    for count, value in enumerate(new_obj_list, 0):
+      if existing_obj_list[count] != new_obj_list[count]:
+        if count == 0:
+          new_pairing_list.append('site')
+        elif count == 1:
+          new_pairing_list.append('organization')
+        else:
+          new_pairing_list.append('awardee')
+
+    if len(new_pairing_list) > 0:
+      for i in new_pairing_list:
+        logging.info('you have changed pairing at the %s level', i)
+
+    return
+
+
+    # if not site:
+    #   existing_site = existing_obj.siteId
+    #   existing_parent_organization = session.query(Site.organizationId).filter_by(siteId=existing_site).first()
+    #   if existing_parent_organization:
+    #     existing_parent_organization = existing_parent_organization[0]
+    # else:
+    #   obj_parent_organization = session.query(Site.organizationId).filter_by(siteId=site).first()
+    #   if obj_parent_organization:
+    #     obj_parent_organization = obj_parent_organization[0]
+    #
+    # if obj_parent_organization is not None:
+    #   obj_parent_awardee = session.query(Organization.hpoId).filter_by(organizationId=obj_parent_organization).first()
+    #   if obj_parent_awardee:
+    #     obj_parent_awardee = obj_parent_awardee[0]
+    # elif existing_parent_organization is not None:
+    #   existing_parent_organization = session.query(Organization.hpoId).filter_by(organizationId=existing_parent_organization).first()
+    #   if existing_parent_organization:
+    #     existing_parent_organization = existing_parent_organization[0]
+    #
+    # if organization is None and parent_organization is not None:
+    #   parent_awardee = session.query(Organization.hpoId).filter_by(organizationId=parent_organization).first()
+    #   if parent_awardee:
+    #     parent_awardee = parent_awardee[0]
+    #
+    # if parent_awardee is not None and parent_awardee != awardee:
+    #   awardee = parent_awardee
+    #
+    # if parent_organization == organization or parent_organization is None:
+    #   # If site has no parent, accept this org as the parent.
+    #   return organization, site if site else existing_site, awardee
+    #
+    # else:
+    #   # TODO: DO WE WANT TO PREVENT SETTING A NEW ORG. IF SITE HAS PM/BIO AND NEW ORG IS NOT THE PARENT OF SITE.
+    #   if PM is not None or BIO is not None:
+    #     raise BadRequest('The existing client paired site has taken Bio Specimens or Physical Measurements.')
+    #   else:
+    #     if existing_site:
+    #       site = None # We remove site from participant table
+    #       logging.info('you have changed pairing at the organizational level')
+    #     else: # site is passed in and has no PM/BIO we'll just take site
+    #       organization = None
+    #       logging.info('you have changed pairing at the site level')
+    #
+    #   return organization, site, awardee
 
   @staticmethod
   def create_summary_for_participant(obj):
@@ -224,6 +299,7 @@ class ParticipantDao(UpdatableDao):
   def to_client_json(self, model):
     client_json = {
         'participantId': to_client_participant_id(model.participantId),
+        'awardeeId': model.hpoId,
         'organizationId': model.organizationID,
         'siteId': model.siteId,
         'biobankId': to_client_biobank_id(model.biobankId),
@@ -253,6 +329,7 @@ class ParticipantDao(UpdatableDao):
         withdrawalStatus=resource_json.get('withdrawalStatus'),
         suspensionStatus=resource_json.get('suspensionStatus'),
         organizationID=resource_json.get('organizationID'),
+        hpoId=resource_json.get('awardee'),
         siteId=resource_json.get('siteId'))
 
   def add_missing_hpo_from_site(self, session, participant_id, site_id):
