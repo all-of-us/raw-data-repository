@@ -42,13 +42,14 @@ CREATE OR REPLACE VIEW ppi_participant_view AS
    p.suspension_status,
    YEAR(p.suspension_time) suspension_year,
    hpo.name hpo,
-   IF(SUBSTR(ps.zip_code, 1, 3) IN (
-        '036', '692', '878', '059', '790', '879', '063', '821', '884', '102',
-        '823', '890', '203', '830', '893', '556', '831'),
-      '000', SUBSTR(ps.zip_code, 1, 3)
-   ) deidentified_zip_code,
+   /* Deidentify low population zip codes; assumes a 5-digit format. */
+   IF(LENGTH(ps.zip_code) != 5, 'INVALID',
+     IF(SUBSTR(ps.zip_code, 1, 3) IN (
+          '036', '692', '878', '059', '790', '879', '063', '821', '884', '102',
+          '823', '890', '203', '830', '893', '556', '831'),
+        '000', SUBSTR(ps.zip_code, 1, 3)
+     )) deidentified_zip_code,
    state_code.value state,
-   recontact_method_code.value recontact_method,
    language_code.value language,
    LEAST(89, TIMESTAMPDIFF(YEAR, ps.date_of_birth, CURDATE())) age_years,
    gender_code.value gender,
@@ -182,7 +183,6 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
      INNER JOIN code concept_code ON concept_code.code_id = qc.code_id
      WHERE qc.questionnaire_id = q.questionnaire_id) module,
    q.questionnaire_id questionnaire_id,
-   q.created questionnaire_creation_time,
    qr.questionnaire_response_id questionnaire_response_id,
    YEAR(qr.created) questionnaire_response_submission_year,
    qc.value question_code,
@@ -191,7 +191,8 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
    ac.value answer_code,
    ac.code_id answer_code_id,
    qra.value_boolean answer_boolean,
-   qra.value_decimal answer_decimal,
+   IF(qra.value_decimal IS NULL, 0, 1) answer_decimal_present,
+   /* Integer values are potentially identifying, so whitelist questions. */
    IF(qc.value IN (
         'LivingSituation_HowManyPeople',
         'LivingSituation_PeopleUnder18',
@@ -203,8 +204,7 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
         'OutsideTravel6Month_OutsideTravel6MonthHowLong',
         'OverallHealth_AveragePain7Days',
         'OverallHealthOvaryRemovalHistoryAge',
-        'OverallHealth_HysterectomyHistoryAge'
-      ),
+        'OverallHealth_HysterectomyHistoryAge'),
       qra.value_integer, NULL) answer_integer,
    IF(qra.value_integer IS NULL, 0, 1) answer_integer_present,
    IF(qra.value_string IS NULL, 0, 1) answer_string_present,
@@ -223,7 +223,21 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
     LEFT OUTER JOIN hpo ON p.hpo_id = hpo.hpo_id
     LEFT OUTER JOIN code ac ON qra.value_code_id = ac.code_id
     WHERE (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
-           (hpo.name IS NULL OR hpo.name != 'TEST')
+           (hpo.name IS NULL OR hpo.name != 'TEST') AND
+           /* Blacklist any codes which are superfluous for PPI QA. */
+           qc.value NOT IN (
+             'ExtraConsent_DataSharingVideo',
+             'ExtraConsent_EmailACopyToMe',
+             'ExtraConsent_FitnessTrackerVideo',
+             'ExtraConsent_HealthDataVideo',
+             'ExtraConsent_HealthRecordVideo',
+             'ExtraConsent_KeepinginTouchVideo',
+             'ExtraConsent_OtherHealthDataVideo',
+             'ExtraConsent_PhysicalMeausrementsVideo', # Intentional typo
+             'ExtraConsent_WelcomeVideo',
+             'YoutubeVideos_WhatAreWeAsking',
+             'YoutubeVideos_RiskToPrivacy'
+           )
 """
 
 def upgrade_rdr():
