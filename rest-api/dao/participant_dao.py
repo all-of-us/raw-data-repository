@@ -1,6 +1,5 @@
 import json
 import logging
-from main_util import configure_logging
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest, Forbidden
@@ -155,14 +154,19 @@ class ParticipantDao(UpdatableDao):
     old_awardee = existing_obj.hpoId
     existing_obj_list = [old_site, old_org, old_awardee]
     # TODO: DO WE WANT TO PREVENT PAIRING IF EXISTING SITE HAS PM/BIO.
-    PM = existing_obj.participantSummary.physicalMeasurementsCreatedSiteId
-    BIO = existing_obj.participantSummary.biospecimenCollectedSiteId
+    #PM = existing_obj.participantSummary.physicalMeasurementsCreatedSiteId
+    #BIO = existing_obj.participantSummary.biospecimenCollectedSiteId
 
     if site is not None and site != old_site:
       obj_parent_organization = session.query(Site.organizationId).filter_by(siteId=site).first()
       organization = obj_parent_organization[0] if obj_parent_organization else None
-      if obj_parent_organization is not None:
-        obj_parent_awardee = session.query(Organization.hpoId).filter_by(organizationId=organization).first()
+      if organization is not None:
+        obj_parent_awardee = session.query(Organization.hpoId)\
+                            .filter_by(organizationId=organization).first()
+        awardee = obj_parent_awardee[0] if obj_parent_awardee else None
+      else:
+        obj_parent_awardee = session.query(Site.hpoId)\
+                            .filter_by(siteId=site).first()
         awardee = obj_parent_awardee[0] if obj_parent_awardee else None
 
     elif site is None or site == old_site:
@@ -184,7 +188,7 @@ class ParticipantDao(UpdatableDao):
   @staticmethod
   def log_pairing_diff(new_obj_list, existing_obj_list):
     new_pairing_list = []
-    for count, value in enumerate(new_obj_list, 0):
+    for count, _ in enumerate(new_obj_list, 0):
       if existing_obj_list[count] != new_obj_list[count]:
         if count == 0:
           new_pairing_list.append('site')
