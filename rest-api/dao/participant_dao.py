@@ -6,8 +6,9 @@ from sqlalchemy.orm.session import make_transient
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest, Forbidden
 
-from api_util import format_json_enum, parse_json_enum, format_json_date, format_json_hpo, format_json_org, \
-  format_json_site, get_site_id_from_google_group, get_awardee_id_from_name, get_organization_id_from_external_id
+from api_util import format_json_enum, parse_json_enum, format_json_date, format_json_hpo, \
+  format_json_org, format_json_site, get_site_id_from_google_group, get_awardee_id_from_name,\
+  get_organization_id_from_external_id
 import clock
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
@@ -173,7 +174,7 @@ class ParticipantDao(UpdatableDao):
         awardee_id = organization.hpoId
         return None, organization_id, awardee_id
     else:
-        return None, None, awardee_id
+      return None, None, awardee_id
 
   @staticmethod
   def log_pairing_diff(new_obj_list, existing_obj_list):
@@ -200,6 +201,8 @@ class ParticipantDao(UpdatableDao):
         biobankId=obj.biobankId,
         signUpTime=obj.signUpTime,
         hpoId=obj.hpoId,
+        organizationId=obj.organizationId,
+        siteId=obj.siteId,
         withdrawalStatus=obj.withdrawalStatus,
         suspensionStatus=obj.suspensionStatus,
         enrollmentStatus=EnrollmentStatus.INTERESTED)
@@ -242,8 +245,8 @@ class ParticipantDao(UpdatableDao):
   def to_client_json(self, model):
     client_json = {
         'participantId': to_client_participant_id(model.participantId),
-        'awardee': model.hpoId,
-        'organization': model.organizationId,
+        'hpoId': model.hpoId,
+        'organizationId': model.organizationId,
         'siteId': model.siteId,
         'biobankId': to_client_biobank_id(model.biobankId),
         'lastModified': model.lastModified.isoformat(),
@@ -254,9 +257,9 @@ class ParticipantDao(UpdatableDao):
         'suspensionStatus': model.suspensionStatus,
         'suspensionTime': model.suspensionTime
     }
-    format_json_hpo(client_json, self.hpo_dao, 'awardee'),
-    format_json_org(client_json, self.organization_dao, 'organization'),
-    format_json_site(client_json, self.site_dao, 'site'),
+    format_json_hpo(client_json, self.hpo_dao, 'hpoId'),
+    format_json_org(client_json, self.organization_dao, 'organizationId'),
+    format_json_site(client_json, self.site_dao, 'siteId'),
     format_json_enum(client_json, 'withdrawalStatus')
     format_json_enum(client_json, 'suspensionStatus')
     format_json_date(client_json, 'withdrawalTime')
@@ -277,9 +280,9 @@ class ParticipantDao(UpdatableDao):
         clientId=client_id,
         withdrawalStatus=resource_json.get('withdrawalStatus'),
         suspensionStatus=resource_json.get('suspensionStatus'),
-        organizationId=resource_json.get('organization'),
-        hpoId=resource_json.get('awardee'),
-        siteId=resource_json.get('site'))
+        organizationId=resource_json.get('organizationId'),
+        hpoId=resource_json.get('hpoId'),
+        siteId=resource_json.get('siteId'))
 
   def add_missing_hpo_from_site(self, session, participant_id, site_id):
     if site_id is None:

@@ -5,7 +5,6 @@ from dao.base_dao import FhirMixin, FhirProperty
 from fhirclient.models.address import Address
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models import fhirdate
-from sqlalchemy.orm import subqueryload
 
 
 def _to_fhir_date(dt):
