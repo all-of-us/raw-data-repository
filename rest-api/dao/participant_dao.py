@@ -1,18 +1,19 @@
 import json
 import logging
+
+from dao.organization_dao import OrganizationDao
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest, Forbidden
 
-from api_util import format_json_enum, parse_json_enum, format_json_date
+from api_util import format_json_enum, parse_json_enum, format_json_date, format_json_hpo, format_json_org, \
+  format_json_site
 import clock
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
 from dao.site_dao import SiteDao
 from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
-from model.organization import Organization
-from model.site import Site
 from model.utils import to_client_participant_id
 from model.config_utils import to_client_biobank_id
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
@@ -32,6 +33,7 @@ class ParticipantHistoryDao(BaseDao):
   def __init__(self):
     super(ParticipantHistoryDao, self).__init__(ParticipantHistory)
 
+
   def get_id(self, obj):
     return [obj.participantId, obj.version]
 
@@ -39,6 +41,10 @@ class ParticipantHistoryDao(BaseDao):
 class ParticipantDao(UpdatableDao):
   def __init__(self):
     super(ParticipantDao, self).__init__(Participant)
+
+    self.hpo_dao = HPODao()
+    self.organization_dao = OrganizationDao()
+    self.site_dao = SiteDao()
 
   def get_id(self, obj):
     return obj.participantId
@@ -107,9 +113,9 @@ class ParticipantDao(UpdatableDao):
                             else None)
       need_new_summary = True
 
-    if obj.organizationID or obj.siteId or obj.hpoId:
-      site, organization, awardee = self.check_for_valid_children(session, obj, existing_obj)
-      obj.organizationID = organization
+    if obj.organizationId or obj.siteId or obj.hpoId:
+      site, organization, awardee = self.get_pairing_level(obj, existing_obj)
+      obj.organizationId = organization
       obj.siteId = site
       obj.hpoId = awardee
       if awardee:
@@ -132,7 +138,7 @@ class ParticipantDao(UpdatableDao):
       # come from participant.
       summary = existing_obj.participantSummary
       summary.hpoId = obj.hpoId
-      summary.organizationID = obj.organizationID
+      summary.organizationId = obj.organizationId
       summary.siteId = obj.siteId
       summary.withdrawalStatus = obj.withdrawalStatus
       summary.withdrawalTime = obj.withdrawalTime
@@ -145,45 +151,29 @@ class ParticipantDao(UpdatableDao):
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
 
-  def check_for_valid_children(self, session, obj, existing_obj):
-    organization = obj.organizationID
-    site = obj.siteId
-    awardee = obj.hpoId
-    old_site = existing_obj.siteId
-    old_org = existing_obj.organizationID
-    old_awardee = existing_obj.hpoId
-    existing_obj_list = [old_site, old_org, old_awardee]
+  def get_pairing_level(self, obj, existing_obj):
+    organization_id = obj.organizationId
+    site_id = obj.siteId
+    awardee_id = obj.hpoId
+    old_site_id = existing_obj.siteId
+    old_organization_id = existing_obj.organizationId
     # TODO: DO WE WANT TO PREVENT PAIRING IF EXISTING SITE HAS PM/BIO.
     #PM = existing_obj.participantSummary.physicalMeasurementsCreatedSiteId
     #BIO = existing_obj.participantSummary.biospecimenCollectedSiteId
 
-    if site is not None and site != old_site:
-      obj_parent_organization = session.query(Site.organizationId).filter_by(siteId=site).first()
-      organization = obj_parent_organization[0] if obj_parent_organization else None
-      if organization is not None:
-        obj_parent_awardee = session.query(Organization.hpoId)\
-                            .filter_by(organizationId=organization).first()
-        awardee = obj_parent_awardee[0] if obj_parent_awardee else None
-      else:
-        obj_parent_awardee = session.query(Site.hpoId)\
-                            .filter_by(siteId=site).first()
-        awardee = obj_parent_awardee[0] if obj_parent_awardee else None
-
-    elif site is None or site == old_site:
-      if organization is not None and organization != old_org:
-        if site:
-          parent_organization = session.query(Site.organizationId).filter_by(siteId=site).first()
-          if parent_organization != organization:
-            site = None
-        obj_parent_awardee = session.query(Organization.hpoId).filter_by(organizationId=organization).first()
-        awardee = obj_parent_awardee[0] if obj_parent_awardee else None
-      else:
-        site = None
-        organization = None
-
-    new_obj_list = [site, organization, awardee]
-    self.log_pairing_diff(new_obj_list, existing_obj_list)
-    return site, organization, awardee
+    if site_id is not None:
+      if old_site_id != site_id:
+        site = self.site_dao.get(site_id)
+        organization_id = site.organizationId
+        awardee_id = site.hpoId
+        return site_id, organization_id, awardee_id
+    if organization_id is not None:
+      if organization_id != old_organization_id:
+        organization = self.organization_dao.get(organization_id)
+        awardee_id = organization.hpoId
+        return None, organization_id, awardee_id
+    else:
+        return None, None, awardee_id
 
   @staticmethod
   def log_pairing_diff(new_obj_list, existing_obj_list):
@@ -252,8 +242,8 @@ class ParticipantDao(UpdatableDao):
   def to_client_json(self, model):
     client_json = {
         'participantId': to_client_participant_id(model.participantId),
-        'awardeeId': model.hpoId,
-        'organizationId': model.organizationID,
+        'awardee': model.hpoId,
+        'organization': model.organizationId,
         'siteId': model.siteId,
         'biobankId': to_client_biobank_id(model.biobankId),
         'lastModified': model.lastModified.isoformat(),
@@ -264,7 +254,11 @@ class ParticipantDao(UpdatableDao):
         'suspensionStatus': model.suspensionStatus,
         'suspensionTime': model.suspensionTime
     }
+    format_json_hpo(client_json, self.hpo_dao, 'awardee'),
+    format_json_org(client_json, self.organization_dao, 'organization'),
+    format_json_site(client_json, self.site_dao, 'site'),
     format_json_enum(client_json, 'withdrawalStatus')
+    format_json_enum(client_json, 'awardee')
     format_json_enum(client_json, 'suspensionStatus')
     format_json_date(client_json, 'withdrawalTime')
     format_json_date(client_json, 'suspensionTime')
@@ -273,6 +267,9 @@ class ParticipantDao(UpdatableDao):
   def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):
     parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus)
     parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus)
+    site = self.site_dao.get_by_google_group(resource_json['site'])
+    awardee = self.hpo_dao.get_by_name(resource_json['awardee'])
+    organization = self.organization_dao.get_by_external_id(resource_json['organization'])
     # biobankId, lastModified, signUpTime are set by DAO.
     return Participant(
         participantId=id_,
@@ -281,9 +278,9 @@ class ParticipantDao(UpdatableDao):
         clientId=client_id,
         withdrawalStatus=resource_json.get('withdrawalStatus'),
         suspensionStatus=resource_json.get('suspensionStatus'),
-        organizationID=resource_json.get('organizationID'),
-        hpoId=resource_json.get('awardee'),
-        siteId=resource_json.get('siteId'))
+        organizationId=organization.organizationId,
+        hpoId=awardee.hpoId,
+        siteId=site.siteId)
 
   def add_missing_hpo_from_site(self, session, participant_id, site_id):
     if site_id is None:

@@ -186,7 +186,7 @@ class ParticipantSummary(Base):
     return Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
 
   @declared_attr
-  def organizationID(cls):
+  def organizationId(cls):
     return Column('organization_id', Integer, ForeignKey('organization.organization_id'))
 
   @declared_attr

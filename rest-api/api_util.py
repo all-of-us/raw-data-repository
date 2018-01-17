@@ -85,6 +85,12 @@ def format_json_hpo(obj, hpo_dao, field_name):
   else:
     obj[field_name] = UNSET
 
+def format_json_org(obj, organization_dao, field_name):
+  if obj[field_name]:
+    obj[field_name] = organization_dao.get(obj[field_name]).externalId
+  else:
+    obj[field_name] = UNSET
+
 def format_json_site(obj, site_dao, field_name):
   site_id = obj.get(field_name + 'Id')
   if site_id is not None:
