@@ -56,7 +56,7 @@ CREATE OR REPLACE VIEW participant_view AS
    ps.consent_for_electronic_health_records,
    ps.consent_for_electronic_health_records_time,
    ps.questionnaire_on_overall_health,
-   ps.questionnaire_on_overall_health_time questionnaire_on_overall_health_year,
+   ps.questionnaire_on_overall_health_time questionnaire_on_overall_health_time,
    ps.questionnaire_on_lifestyle,
    ps.questionnaire_on_lifestyle_time,
    ps.questionnaire_on_the_basics,
