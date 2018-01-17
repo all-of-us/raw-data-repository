@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from api_util import format_json_enum, parse_json_enum, format_json_date, format_json_hpo, format_json_org, \
-  format_json_site
+  format_json_site, get_site_id_from_google_group, get_awardee_id_from_name, get_organization_id_from_external_id
 import clock
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
@@ -258,7 +258,6 @@ class ParticipantDao(UpdatableDao):
     format_json_org(client_json, self.organization_dao, 'organization'),
     format_json_site(client_json, self.site_dao, 'site'),
     format_json_enum(client_json, 'withdrawalStatus')
-    format_json_enum(client_json, 'awardee')
     format_json_enum(client_json, 'suspensionStatus')
     format_json_date(client_json, 'withdrawalTime')
     format_json_date(client_json, 'suspensionTime')
@@ -267,9 +266,9 @@ class ParticipantDao(UpdatableDao):
   def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):
     parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus)
     parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus)
-    site = self.site_dao.get_by_google_group(resource_json['site'])
-    awardee = self.hpo_dao.get_by_name(resource_json['awardee'])
-    organization = self.organization_dao.get_by_external_id(resource_json['organization'])
+    get_site_id_from_google_group(self, resource_json)
+    get_awardee_id_from_name(self, resource_json)
+    get_organization_id_from_external_id(self, resource_json)
     # biobankId, lastModified, signUpTime are set by DAO.
     return Participant(
         participantId=id_,
@@ -278,9 +277,9 @@ class ParticipantDao(UpdatableDao):
         clientId=client_id,
         withdrawalStatus=resource_json.get('withdrawalStatus'),
         suspensionStatus=resource_json.get('suspensionStatus'),
-        organizationId=organization.organizationId,
-        hpoId=awardee.hpoId,
-        siteId=site.siteId)
+        organizationId=resource_json.get('organization'),
+        hpoId=resource_json.get('awardee'),
+        siteId=resource_json.get('site'))
 
   def add_missing_hpo_from_site(self, session, participant_id, site_id):
     if site_id is None:
