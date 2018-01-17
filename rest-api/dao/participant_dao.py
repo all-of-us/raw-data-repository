@@ -159,22 +159,19 @@ class ParticipantDao(UpdatableDao):
     old_site_id = existing_obj.siteId
     old_organization_id = existing_obj.organizationId
     # TODO: DO WE WANT TO PREVENT PAIRING IF EXISTING SITE HAS PM/BIO.
-    #PM = existing_obj.participantSummary.physicalMeasurementsCreatedSiteId
-    #BIO = existing_obj.participantSummary.biospecimenCollectedSiteId
 
-    if site_id is not None:
+    if site_id != u'UNSET' and site_id is not None:
       if old_site_id != site_id:
         site = self.site_dao.get(site_id)
         organization_id = site.organizationId
         awardee_id = site.hpoId
         return site_id, organization_id, awardee_id
-    if organization_id is not None:
+    if organization_id != u'UNSET' and organization_id is not None:
       if organization_id != old_organization_id:
         organization = self.organization_dao.get(organization_id)
         awardee_id = organization.hpoId
         return None, organization_id, awardee_id
-    else:
-      return None, None, awardee_id
+    return None, None, awardee_id
 
   @staticmethod
   def log_pairing_diff(new_obj_list, existing_obj_list):

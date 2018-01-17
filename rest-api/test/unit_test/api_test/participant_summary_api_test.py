@@ -48,12 +48,14 @@ class ParticipantSummaryMySqlApiTest(FlaskTestBase):
     t1 = threading.Thread(target=lambda:
                           self.send_put('Participant/%s' % participant_id, participant,
                                         headers={'If-Match': participant['meta']['versionId']}))
+
     t2 = threading.Thread(target=lambda:
                           self.send_consent(participant_id))
     t1.start()
     t2.start()
     t1.join()
     t2.join()
+
     # The participant summary should exist (consent has been received), and it should have PITT
     # for its HPO ID (the participant update occurred.)
     # This used to fail a decent percentage of the time, before we started using FOR UPDATE in
