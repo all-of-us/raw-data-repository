@@ -49,8 +49,8 @@ else
 
   # There appears to be a propagation delay after creating a new service account
   # key during which attempts to use it result in "Invalid JWT grant". Sleeping
-  # here mitigates this issue. This appears to be environmental, so at times
-  # tooling may become unusable without this sleep (especially for composite)
+  # here mitigates this issue. This appears to be environmental so at times
+  # tooling may become unusable without this sleep, especially for composite
   # scripts (e.g. deploy) which invoke this method multiple times.
   # See https://precisionmedicineinitiative.atlassian.net/browse/DA-485
   sleep 3
