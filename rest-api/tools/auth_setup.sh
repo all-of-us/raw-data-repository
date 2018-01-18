@@ -46,6 +46,14 @@ else
   gcloud iam service-accounts keys create $CREDS_FILE \
       --iam-account=$SERVICE_ACCOUNT --account=$CREDS_ACCOUNT
   TMP_PRIVATE_KEY=`grep private_key_id $CREDS_FILE | cut -d\" -f4`
+
+  # There appears to be a propagation delay after creating a new service account
+  # key during which attempts to use it result in "Invalid JWT grant". Sleeping
+  # here mitigates this issue. This appears to be environmental, so at times
+  # tooling may become unusable without this sleep (especially for composite)
+  # scripts (e.g. deploy) which invoke this method multiple times.
+  # See https://precisionmedicineinitiative.atlassian.net/browse/DA-485
+  sleep 3
 fi
 
 REPO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
