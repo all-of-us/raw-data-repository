@@ -1,5 +1,4 @@
 import json
-import logging
 
 from dao.organization_dao import OrganizationDao
 from sqlalchemy.orm.session import make_transient
@@ -174,24 +173,6 @@ class ParticipantDao(UpdatableDao):
     return None, None, awardee_id
 
   @staticmethod
-  def log_pairing_diff(new_obj_list, existing_obj_list):
-    new_pairing_list = []
-    for count, _ in enumerate(new_obj_list, 0):
-      if existing_obj_list[count] != new_obj_list[count]:
-        if count == 0:
-          new_pairing_list.append('site')
-        elif count == 1:
-          new_pairing_list.append('organization')
-        else:
-          new_pairing_list.append('awardee')
-
-    if len(new_pairing_list) > 0:
-      for i in new_pairing_list:
-        logging.info('you have changed pairing at the %s level', i)
-
-    return
-
-  @staticmethod
   def create_summary_for_participant(obj):
     return ParticipantSummary(
         participantId=obj.participantId,
@@ -245,7 +226,7 @@ class ParticipantDao(UpdatableDao):
         'hpoId': model.hpoId,
         'awardee': model.hpoId,
         'organization': model.organizationId,
-        'site': model.siteId,
+        'siteId': model.siteId,
         'biobankId': to_client_biobank_id(model.biobankId),
         'lastModified': model.lastModified.isoformat(),
         'signUpTime': model.signUpTime.isoformat(),
@@ -263,6 +244,8 @@ class ParticipantDao(UpdatableDao):
     format_json_date(client_json, 'withdrawalTime')
     format_json_date(client_json, 'suspensionTime')
     client_json['awardee'] = client_json['hpoId']
+    if 'siteId' in client_json:
+      del client_json['siteId']
     return client_json
 
   def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):

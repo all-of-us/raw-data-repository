@@ -10,17 +10,8 @@ class ParticipantApiTest(FlaskTestBase):
     provider_link = {
       "primary": False,
       "organization": {
-        "display": None,
         "reference": "columbia"
-      },
-      "site": [{
-        "display": None,
-        "reference": "columbia-harlem-free-clinic",
-      }],
-      "identifier": [{
-        "system": "http://any-columbia-mrn-system",
-        "value": "MRN123"
-      }]
+      }
     }
     self.participant = {
         'providerLink': [provider_link]

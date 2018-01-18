@@ -1,10 +1,12 @@
 import threading
 
+from dao.organization_dao import OrganizationDao
 from query import OrderBy, PropertyType
 from werkzeug.exceptions import BadRequest, NotFound
 from sqlalchemy import or_
 
-from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo
+from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
+  format_json_org
 from api_util import format_json_site
 import clock
 import config
@@ -29,7 +31,7 @@ _WITHDRAWN_ORDER_BY_ENDING = ('withdrawalTime', 'participantId')
 _CODE_FILTER_FIELDS = ('genderIdentity',)
 _SITE_FIELDS = ('physicalMeasurementsCreatedSite', 'physicalMeasurementsFinalizedSite',
                 'biospecimenSourceSite', 'biospecimenCollectedSite',
-                'biospecimenProcessedSite', 'biospecimenFinalizedSite')
+                'biospecimenProcessedSite', 'biospecimenFinalizedSite', 'site')
 
 # Lazy caches of property names for client JSON conversion.
 _DATE_FIELDS = set()
@@ -94,6 +96,7 @@ class ParticipantSummaryDao(UpdatableDao):
     self.hpo_dao = HPODao()
     self.code_dao = CodeDao()
     self.site_dao = SiteDao()
+    self.organization_dao = OrganizationDao()
 
   def get_id(self, obj):
     return obj.participantId
@@ -163,11 +166,19 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def make_query_filter(self, field_name, value):
     """Handle HPO and code values when parsing filter values."""
-    if field_name == 'hpoId':
+    if field_name == 'hpoId' or field_name == 'awardee':
       hpo = self.hpo_dao.get_by_name(value)
       if not hpo:
         raise BadRequest('No HPO found with name %s' % value)
+      if field_name == 'awardee':
+        field_name = 'hpoId'
       return super(ParticipantSummaryDao, self).make_query_filter(field_name, hpo.hpoId)
+    if field_name == 'organization':
+      organization = self.organization_dao.get_by_external_id(value)
+      if not organization:
+        raise BadRequest('No organization found with name %s' % value)
+      return super(ParticipantSummaryDao, self).make_query_filter(field_name,
+                                                                  organization.organizationId)
     if field_name in _SITE_FIELDS:
       if value == UNSET:
         return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', None)
@@ -279,7 +290,12 @@ class ParticipantSummaryDao(UpdatableDao):
       result['ageRange'] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
     else:
       result['ageRange'] = UNSET
+    if 'organizationId' in result:
+      result['organization'] = result['organizationId']
+      del result['organizationId']
+      format_json_org(result, self.organization_dao, 'organization')
     format_json_hpo(result, self.hpo_dao, 'hpoId')
+    result['awardee'] = result['hpoId']
     _initialize_field_type_sets()
     for fieldname in _DATE_FIELDS:
       format_json_date(result, fieldname)

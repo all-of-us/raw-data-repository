@@ -115,22 +115,25 @@ def format_json_enum(obj, field_name):
     obj[field_name] = UNSET
 
 def get_site_id_from_google_group(obj, site_dao):
-  if 'siteId' in obj:
-    site = site_dao.get_by_google_group(obj['siteId'])
+  if 'site' in obj:
+    site = site_dao.get_by_google_group(obj['site'])
     if site is not None:
       return site.siteId
+  return None
 
 def get_awardee_id_from_name(obj, hpo_dao):
-  if 'hpoId' in obj:
-    awardee = hpo_dao.get_by_name(obj['hpoId'])
+  if 'awardee' in obj:
+    awardee = hpo_dao.get_by_name(obj['awardee'])
     if awardee is not None:
       return awardee.hpoId
+  return None
 
 def get_organization_id_from_external_id(obj, organization_dao):
-  if 'organizationId' in obj:
-    organization = organization_dao.get_by_external_id(obj['organizationId'])
+  if 'organization' in obj:
+    organization = organization_dao.get_by_external_id(obj['organization'])
     if organization is not None:
       return organization.organizationId
+  return None
 
 def remove_field(dict_, field_name):
   """Removes a field from the dict if it exists."""
