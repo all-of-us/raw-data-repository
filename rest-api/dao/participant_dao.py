@@ -243,8 +243,9 @@ class ParticipantDao(UpdatableDao):
     client_json = {
         'participantId': to_client_participant_id(model.participantId),
         'hpoId': model.hpoId,
-        'organizationId': model.organizationId,
-        'siteId': model.siteId,
+        'awardee': model.hpoId,
+        'organization': model.organizationId,
+        'site': model.siteId,
         'biobankId': to_client_biobank_id(model.biobankId),
         'lastModified': model.lastModified.isoformat(),
         'signUpTime': model.signUpTime.isoformat(),
@@ -254,9 +255,9 @@ class ParticipantDao(UpdatableDao):
         'suspensionStatus': model.suspensionStatus,
         'suspensionTime': model.suspensionTime
     }
-    format_json_hpo(client_json, self.hpo_dao, 'hpoId'),
-    format_json_org(client_json, self.organization_dao, 'organizationId'),
-    format_json_site(client_json, self.site_dao, 'siteId'),
+    format_json_hpo(client_json, self.hpo_dao, 'awardee'),
+    format_json_org(client_json, self.organization_dao, 'organization'),
+    format_json_site(client_json, self.site_dao, 'site'),
     format_json_enum(client_json, 'withdrawalStatus')
     format_json_enum(client_json, 'suspensionStatus')
     format_json_date(client_json, 'withdrawalTime')
@@ -266,9 +267,6 @@ class ParticipantDao(UpdatableDao):
   def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):
     parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus)
     parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus)
-    get_site_id_from_google_group(self, resource_json)
-    get_awardee_id_from_name(self, resource_json)
-    get_organization_id_from_external_id(self, resource_json)
     # biobankId, lastModified, signUpTime are set by DAO.
     return Participant(
         participantId=id_,
@@ -277,9 +275,10 @@ class ParticipantDao(UpdatableDao):
         clientId=client_id,
         withdrawalStatus=resource_json.get('withdrawalStatus'),
         suspensionStatus=resource_json.get('suspensionStatus'),
-        organizationId=resource_json.get('organizationId'),
-        hpoId=resource_json.get('hpoId'),
-        siteId=resource_json.get('siteId'))
+        organizationId= get_organization_id_from_external_id(resource_json, self.organization_dao),
+        hpoId=  get_awardee_id_from_name(resource_json, self.hpo_dao),
+        siteId= get_site_id_from_google_group(resource_json, self.site_dao))
+
 
   def add_missing_hpo_from_site(self, session, participant_id, site_id):
     if site_id is None:

@@ -123,7 +123,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     with FakeClock(TIME_3):
       participant = self._participant_with_defaults(
-          participantId=1,
+          participantId=2,
           version=2,
           biobankId=2,
           providerLink=make_primary_provider_link_for_name('PITT'))
