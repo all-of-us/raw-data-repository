@@ -275,9 +275,9 @@ class ParticipantDao(UpdatableDao):
         clientId=client_id,
         withdrawalStatus=resource_json.get('withdrawalStatus'),
         suspensionStatus=resource_json.get('suspensionStatus'),
-        organizationId= get_organization_id_from_external_id(resource_json, self.organization_dao),
-        hpoId=  get_awardee_id_from_name(resource_json, self.hpo_dao),
-        siteId= get_site_id_from_google_group(resource_json, self.site_dao))
+        organizationId=get_organization_id_from_external_id(resource_json, self.organization_dao),
+        hpoId=get_awardee_id_from_name(resource_json, self.hpo_dao),
+        siteId=get_site_id_from_google_group(resource_json, self.site_dao))
 
 
   def add_missing_hpo_from_site(self, session, participant_id, site_id):
