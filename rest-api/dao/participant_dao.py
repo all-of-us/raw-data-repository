@@ -255,13 +255,14 @@ class ParticipantDao(UpdatableDao):
         'suspensionStatus': model.suspensionStatus,
         'suspensionTime': model.suspensionTime
     }
-    format_json_hpo(client_json, self.hpo_dao, 'awardee'),
+    format_json_hpo(client_json, self.hpo_dao, 'hpoId'),
     format_json_org(client_json, self.organization_dao, 'organization'),
     format_json_site(client_json, self.site_dao, 'site'),
     format_json_enum(client_json, 'withdrawalStatus')
     format_json_enum(client_json, 'suspensionStatus')
     format_json_date(client_json, 'withdrawalTime')
     format_json_date(client_json, 'suspensionTime')
+    client_json['awardee'] = client_json['hpoId']
     return client_json
 
   def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):

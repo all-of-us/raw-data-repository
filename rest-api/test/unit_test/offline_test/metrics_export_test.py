@@ -112,8 +112,9 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     with FakeClock(TIME_2):
       # This update to participant has no effect, as the HPO ID didn't change.
       participant = self._participant_with_defaults(
-          participantId=1, version=1, biobankId=2,
+          participantId=1, version=1, biobankId=2, hpoId=3, # <<<< Had to add hpoId here.
           providerLink=make_primary_provider_link_for_name('AZ_TUCSON'))
+
       participant_dao.update(participant)
       self.submit_questionnaire_response('P1', questionnaire_id,
                                          RACE_WHITE_CODE, 'male', None,
@@ -123,7 +124,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     with FakeClock(TIME_3):
       participant = self._participant_with_defaults(
-          participantId=2,
+          participantId=1,
           version=2,
           biobankId=2,
           providerLink=make_primary_provider_link_for_name('PITT'))

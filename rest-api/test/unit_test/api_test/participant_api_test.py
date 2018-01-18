@@ -28,17 +28,8 @@ class ParticipantApiTest(FlaskTestBase):
     self.provider_link_2 = {
       "primary": True,
       "organization": {
-        "display": None,
         "reference": "Organization/PITT",
-      },
-      "site": [{
-        "display": None,
-        "reference": "mayo-clinic",
-      }],
-      "identifier": [{
-        "system": "http://any-columbia-mrn-system",
-        "value": "MRN456"
-      }]
+      }
     }
 
 
@@ -106,7 +97,7 @@ class ParticipantApiTest(FlaskTestBase):
     response['site'] = 'UNSET'
     response['organization'] = 'UNSET'
     response['awardee'] = 'PITT'
-    response['hpoId'] = 2
+    response['hpoId'] = 'PITT'
     path = 'Participant/%s' % participant_id
     update_response = self.send_put(path, response, headers={ 'If-Match': 'W/"1"' })
     response['meta']['versionId'] = 'W/"2"'
