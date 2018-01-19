@@ -10,14 +10,12 @@ import os
 import unittest
 import uuid
 import dao.database_factory
-from dao.organization_dao import OrganizationDao
 
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 from mock import patch
-from model.organization import Organization
 from testlib import testutil
 
 import api_util
