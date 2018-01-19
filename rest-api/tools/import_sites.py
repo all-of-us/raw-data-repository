@@ -1,10 +1,10 @@
-import csv
 import logging
 
 from dao.hpo_dao import HPODao
 from dao.site_dao import SiteDao
 from model.site import Site
 from main_util import get_parser, configure_logging
+from unicode_csv import UnicodeDictReader
 
 _GOOGLE_GROUP_SUFFIX = '@prod.pmi-ops.org'
 
@@ -14,7 +14,7 @@ def main(args):
   matched_count = 0
   logging.info('Importing from %r.', args.file)
   with open(args.file, 'r') as csv_file:
-    sites_reader = csv.DictReader(csv_file)
+    sites_reader = UnicodeDictReader(csv_file)
     hpo_dao = HPODao()
     site_dao = SiteDao()
     existing_site_map = {site.googleGroup: site for site in site_dao.get_all()}
