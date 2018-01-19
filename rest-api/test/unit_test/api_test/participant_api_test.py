@@ -96,3 +96,25 @@ class ParticipantApiTest(FlaskTestBase):
     response['suspensionTime'] = update_response['lastModified']
     self.assertJsonResponseMatches(response, update_response)
 
+  def test_change_pairing_awardee_and_site(self):
+    participant = self.send_post('Participant', self.participant)
+    participant['providerLink'] = [ self.provider_link_2]
+    participant_id = participant['participantId']
+    participant['awardee'] = 'PITT'
+    participant['site'] = 'hpo-site-monroeville'
+    path = 'Participant/%s' % participant_id
+    update_awardee = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
+    self.assertEquals(participant['site'], update_awardee['site'])
+    self.assertEquals(participant['awardee'], update_awardee['awardee'])
+
+  def test_change_pairing_for_org_then_site(self):
+    participant = self.send_post('Participant', self.participant)
+    participant['providerLink'] = [ self.provider_link_2]
+    participant_id = participant['participantId']
+    participant['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
+    path = 'Participant/%s' % participant_id
+    update_awardee = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
+    self.assertEquals(participant['organization'], update_awardee['organization'])
+    update_awardee['site'] = 'hpo-site-bannerphoenix'
+    self.send_put(path, update_awardee, headers={'If-Match': 'W/"2"'})
+    self.assertEqual(update_awardee['site'], 'hpo-site-bannerphoenix')

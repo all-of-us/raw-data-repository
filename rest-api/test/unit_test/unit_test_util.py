@@ -10,12 +10,14 @@ import os
 import unittest
 import uuid
 import dao.database_factory
+from dao.organization_dao import OrganizationDao
 
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 from mock import patch
+from model.organization import Organization
 from testlib import testutil
 
 import api_util
@@ -231,6 +233,13 @@ class _TestDb(object):
         googleGroup='hpo-site-bannerphoenix',
         mayolinkClientNumber=7035770,
         hpoId=PITT_HPO_ID))
+
+    org_dao = OrganizationDao()
+    created_org = org_dao.insert(Organization(
+      externalId='AZ_TUCSON_BANNER_HEALTH',
+      displayName='Banner Health',
+      hpoId=PITT_HPO_ID))
+    self.org_id = created_org.organizationId
 
   def _setup_views(self):
     """
