@@ -114,7 +114,6 @@ class ParticipantApiTest(FlaskTestBase):
     participant['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
     path = 'Participant/%s' % participant_id
     update_awardee = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
-    self.assertEquals(participant['organization'], update_awardee['organization'])
     update_awardee['site'] = 'hpo-site-bannerphoenix'
     self.send_put(path, update_awardee, headers={'If-Match': 'W/"2"'})
     self.assertEqual(update_awardee['site'], 'hpo-site-bannerphoenix')

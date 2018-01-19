@@ -345,7 +345,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     with FakeClock(TIME_3):
       participant_2['withdrawalStatus'] = 'NO_USE'
-      participant_2['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
       participant_3['suspensionStatus'] = 'NO_CONTACT'
       participant_3['site'] = 'hpo-site-monroeville'
       self.send_put('Participant/%s' % participant_id_2, participant_2,
@@ -426,7 +425,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1HEP4'])
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1UR10'])
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1SAL'])
-    self.assertEquals('AZ_TUCSON_BANNER_HEALTH', ps_2['organization'])
 
 
     self.assertIsNone(ps_2.get('suspensionTime'))

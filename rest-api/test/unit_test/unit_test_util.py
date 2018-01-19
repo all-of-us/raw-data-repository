@@ -234,12 +234,6 @@ class _TestDb(object):
         mayolinkClientNumber=7035770,
         hpoId=PITT_HPO_ID))
 
-    org_dao = OrganizationDao()
-    created_org = org_dao.insert(Organization(
-      externalId='AZ_TUCSON_BANNER_HEALTH',
-      displayName='Banner Health',
-      hpoId=PITT_HPO_ID))
-    self.org_id = created_org.organizationId
 
   def _setup_views(self):
     """
