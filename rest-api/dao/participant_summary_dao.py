@@ -290,10 +290,12 @@ class ParticipantSummaryDao(UpdatableDao):
       result['ageRange'] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
     else:
       result['ageRange'] = UNSET
+
     if 'organizationId' in result:
       result['organization'] = result['organizationId']
       del result['organizationId']
       format_json_org(result, self.organization_dao, 'organization')
+
     format_json_hpo(result, self.hpo_dao, 'hpoId')
     result['awardee'] = result['hpoId']
     _initialize_field_type_sets()
