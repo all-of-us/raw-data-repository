@@ -163,11 +163,9 @@ with `B`.
   * `primary`: `true` | `false`, indicating whether this provider is the "main"
     provider responsible for recruiting a participant and performing physical
     measurements and biospecimen collection
-  * `organization`: Reference to an HPO organization, like `{"reference":
-    "Organization/PITT"}`
-  * `site`: array of
-    [references](http://hl7.org/fhir/references.html#reference) to an HPO site,
-    like `{"reference": "Organization/PITT_SOME_CLINIC"}`
+  * `awardee`: Reference to an awardee  pairing level, like `awardee: AZ_TUCSON`
+  * `organization`: Reference to an organizational pairing level below awardee, like `organization: WISCONSIN_MADISON`
+  * `site`: Reference to a physical location pairing level below organization. Site name are a subset of google group, like `site: hpo-site-uabkirklin`
   * `identifier`: array of
     [identifiers](http://hl7.org/fhir/datatypes#identifier)  with `system` and
     `value` indicating medical record numbers by which this participant is known
@@ -232,6 +230,9 @@ The summary includes the following fields:
 * `physicalMeasurementsFinalizedSite`: indicates the site where physical measurements were finalized for the participant
 * `signUpTime`: the time at which the participant initially signed up for All Of Us
 * `hpoId`: HPO marked as `primary` for this participant, if any (just the resource id, like `PITT` — not a reference like `Organization/PITT`)
+* `awardee`: An awardee a participant is paired with or "unset" if none.
+* `organization`: An organization a participant is paired with or "unset" if none.
+* `site`: A physical location a participant is paired with or "unset" if none.
 * `consentForStudyEnrollment`:  indicates whether enrollment consent has been received (`UNSET` or `SUBMITTED`)
 * `consentForStudyEnrollmentTime`: indicates the time at which enrollment consent has been received (ISO-8601 time)
 * `consentForElectronicHealthRecords`
@@ -819,6 +820,7 @@ Example response:
                 "siteStatus": "INACTIVE"
               },
               {
+	        "timeZoneId": "America/Phoenix"
                 "address": {
                   "city": "Tucson",
                   "line": [
@@ -832,6 +834,8 @@ Example response:
                   "alice@example.com"
                 ],
                 "directions": "Turn left on south street.",
+		"latitude": 32.8851,
+		"longitude": -112.045,
                 "displayName": "Banner University Medical Center - Tucson",
                 "id": "hpo-site-bannertucson",
                 "launchDate": "2017-10-02",
@@ -880,6 +884,7 @@ Example response:
       "id": "AZ_TUCSON_BANNER_HEALTH",
       "sites": [
         {
+	  "timeZoneId": "America/Phoenix",
           "address": {
             "city": "Phoenix",
             "line": [
@@ -896,7 +901,9 @@ Example response:
           "notes": "Formerly University of Arizona CATS Research  ",
           "phoneNumber": "666-666-6666",
           "physicalLocationName": "",
-          "siteStatus": "INACTIVE"
+          "siteStatus": "INACTIVE",
+	  "longitude": -110.978,
+	  "latitude": 32.238
         },
         {
           "address": {
