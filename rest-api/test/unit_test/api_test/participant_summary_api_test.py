@@ -72,22 +72,21 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       "organization": {
         "display": None,
         "reference": "Organization/PITT",
-      },
-      "site": [{
-        "display": None,
-        "reference": "mayo-clinic",
-      }],
-      "identifier": [{
-        "system": "http://any-columbia-mrn-system",
-        "value": "MRN456"
-      }]
+      }
     }
+
+  def test_pairing_summary(self):
+    participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id = participant['participantId']
+    path = 'Participant/%s' % participant_id
+    participant['awardee'] = 'PITT'
+    particpant_update = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
+    self.assertEquals(particpant_update['awardee'], participant['awardee'])
 
   def testQuery_noParticipants(self):
     self.send_get('Participant/P1/Summary', expected_status=httplib.NOT_FOUND)
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
-
 
   def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code,
                                     first_name, middle_name, last_name, zip_code,
@@ -346,7 +345,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     with FakeClock(TIME_3):
       participant_2['withdrawalStatus'] = 'NO_USE'
+      participant_2['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
       participant_3['suspensionStatus'] = 'NO_CONTACT'
+      participant_3['site'] = 'hpo-site-monroeville'
       self.send_put('Participant/%s' % participant_id_2, participant_2,
                      headers={ 'If-Match': participant_2['meta']['versionId'] })
       self.send_put('Participant/%s' % participant_id_3, participant_3,
@@ -425,6 +426,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1HEP4'])
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1UR10'])
     self.assertEquals('UNSET', ps_2['sampleOrderStatus1SAL'])
+    self.assertEquals('AZ_TUCSON_BANNER_HEALTH', ps_2['organization'])
 
 
     self.assertIsNone(ps_2.get('suspensionTime'))
@@ -441,6 +443,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
     self.assertEquals('NO_CONTACT', ps_3['suspensionStatus'])
     self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
+    self.assertEquals('hpo-site-monroeville', ps_3['site'])
     self.assertIsNone(ps_3.get('withdrawalTime'))
     self.assertIsNotNone(ps_3['suspensionTime'])
 
@@ -659,6 +662,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED',
                            [[ps_1]])
+
+
+
 
 def _add_code_answer(code_answers, link_id, code):
   if code:
