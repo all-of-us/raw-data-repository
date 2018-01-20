@@ -38,18 +38,18 @@ class AwardeeApiTest(FlaskTestBase):
 
   def test_get_awardees_no_organizations(self):
     result = self.send_get('Awardee')
-    self.assertEquals(2, len(result['entry']))
-    self.assertEquals(_make_awardee('PITT', 'Pittsburgh', 'HPO'), result['entry'][0])
-    self.assertEquals(_make_awardee('UNSET', 'Unset', 'UNSET'), result['entry'][1])
+    self.assertEquals(3, len(result['entry']))
+    self.assertEquals(_make_awardee('PITT', 'Pittsburgh', 'HPO'), result['entry'][1])
+    self.assertEquals(_make_awardee('UNSET', 'Unset', 'UNSET'), result['entry'][2])
 
   def test_get_awardees_with_organizations(self):
     self._setup_data()
     result = self.send_get('Awardee')
-    self.assertEquals(2, len(result['entry']))
+    self.assertEquals(3, len(result['entry']))
     self.assertEquals(_make_awardee_with_resource(self._make_expected_pitt_awardee_resource(),
                                                   'PITT'),
-                      result['entry'][0])
-    self.assertEquals(_make_awardee('UNSET', 'Unset', 'UNSET'), result['entry'][1])
+                      result['entry'][1])
+    self.assertEquals(_make_awardee('UNSET', 'Unset', 'UNSET'), result['entry'][2])
 
   def test_get_awardee_no_organizations(self):
     result = self.send_get('Awardee/PITT')

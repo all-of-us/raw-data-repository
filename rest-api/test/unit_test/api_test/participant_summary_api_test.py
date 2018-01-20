@@ -82,6 +82,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     participant['awardee'] = 'PITT'
     particpant_update = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
     self.assertEquals(particpant_update['awardee'], participant['awardee'])
+    participant['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
+    participant_update_2 = self.send_put(path, participant, headers={'If-Match': 'W/"2"'})
+    self.assertEquals(participant_update_2['organization'], participant['organization'])
+    self.assertEquals(participant_update_2['awardee'], 'AZ_TUCSON')
 
   def testQuery_noParticipants(self):
     self.send_get('Participant/P1/Summary', expected_status=httplib.NOT_FOUND)

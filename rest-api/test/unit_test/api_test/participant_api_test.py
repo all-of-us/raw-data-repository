@@ -111,9 +111,20 @@ class ParticipantApiTest(FlaskTestBase):
     participant = self.send_post('Participant', self.participant)
     participant['providerLink'] = [ self.provider_link_2]
     participant_id = participant['participantId']
-    participant['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
     path = 'Participant/%s' % participant_id
-    update_awardee = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
-    update_awardee['site'] = 'hpo-site-bannerphoenix'
-    self.send_put(path, update_awardee, headers={'If-Match': 'W/"2"'})
-    self.assertEqual(update_awardee['site'], 'hpo-site-bannerphoenix')
+
+    update_1 = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
+    participant['site'] = 'hpo-site-bannerphoenix'
+    update_2 = self.send_put(path, participant, headers={'If-Match': 'W/"2"'})
+    self.assertEqual(update_1['site'], 'UNSET')
+    self.assertEqual(update_1['organization'], 'UNSET')
+    self.assertEqual(update_2['site'], 'hpo-site-bannerphoenix')
+    self.assertEqual(update_2['organization'], 'UNSET')
+    participant['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
+    update_3 = self.send_put(path, participant, headers={'If-Match': 'W/"3"'})
+    self.assertNotEqual(update_2['hpoId'], update_3['hpoId'])
+    self.assertNotEqual(update_2['providerLink'], update_3['providerLink'])
+    self.assertNotEqual(update_2['organization'], update_3['organization'])
+    self.assertEqual(update_3['site'], 'UNSET')
+    self.assertEqual(update_3['awardee'], 'AZ_TUCSON')
+    self.assertEqual(update_3['organization'], 'AZ_TUCSON_BANNER_HEALTH')

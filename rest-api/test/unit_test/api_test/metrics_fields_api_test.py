@@ -9,4 +9,4 @@ class MetricsFieldsApiTest(FlaskTestBase):
     # assert just a couple.
     self.assertEquals(['UNSET', 'MIDWEST', 'NORTHEAST', 'SOUTH', 'WEST'],
                       fields_dict.get('Participant.censusRegion'))
-    self.assertEquals(['UNSET', 'PITT'], fields_dict.get('Participant.hpoId'))
+    self.assertEquals(['UNSET', 'PITT', 'AZ_TUCSON'], fields_dict.get('Participant.hpoId'))
