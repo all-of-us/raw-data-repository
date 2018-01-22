@@ -174,7 +174,8 @@ def main(args):
 if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
-  parser.add_argument('--file', help='Path to the CSV file containing the participant data.')
+  parser.add_argument('--file', help='Path to the CSV file containing the participant data.',
+                      required=True)
   parser.add_argument('--instance',
                       type=str,
                       help='The instance to hit, defaults to http://localhost:8080',
