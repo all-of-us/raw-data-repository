@@ -46,7 +46,7 @@ from unicode_csv import UnicodeDictReader
 
 PITT_HPO_ID = 2
 AZ_HPO_ID = 4
-
+AZ_ORG_ID = 4
 
 class TestBase(unittest.TestCase):
   """Base class for unit tests."""
@@ -224,6 +224,14 @@ class _TestDb(object):
                        organizationType=OrganizationType.HPO))
     self.hpo_id = PITT_HPO_ID
 
+    org_dao = OrganizationDao()
+    created_org = org_dao.insert(Organization(
+      organizationId=AZ_ORG_ID,
+      externalId='AZ_TUCSON_BANNER_HEALTH',
+      displayName='Banner Health',
+      hpoId=AZ_HPO_ID))
+    self.organization_id = created_org.organizationId
+
     site_dao = SiteDao()
     created_site = site_dao.insert(Site(
         siteName='Monroeville Urgent Care Center',
@@ -235,14 +243,15 @@ class _TestDb(object):
         siteName='Phoenix Urgent Care Center',
         googleGroup='hpo-site-bannerphoenix',
         mayolinkClientNumber=7035770,
+        organizationId=AZ_ORG_ID,
         hpoId=PITT_HPO_ID))
 
-    org_dao = OrganizationDao()
-    created_org = org_dao.insert(Organization(
-      externalId='AZ_TUCSON_BANNER_HEALTH',
-      displayName='Banner Health',
+    site_dao.insert(Site(
+      siteName='Phoenix clinic',
+      googleGroup='hpo-site-clinic-phoenix',
+      mayolinkClientNumber=7035770,
+      organizationId=AZ_ORG_ID,
       hpoId=AZ_HPO_ID))
-    self.organization_id = created_org.organizationId
 
   def _setup_views(self):
     """

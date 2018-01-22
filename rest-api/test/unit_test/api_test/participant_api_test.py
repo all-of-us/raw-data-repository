@@ -116,15 +116,17 @@ class ParticipantApiTest(FlaskTestBase):
     update_1 = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
     participant['site'] = 'hpo-site-bannerphoenix'
     update_2 = self.send_put(path, participant, headers={'If-Match': 'W/"2"'})
-    self.assertEqual(update_1['site'], 'UNSET') # after pairing at awardee level.
-    self.assertEqual(update_1['organization'], 'UNSET') # participant only paired at awardee level.
-    self.assertEqual(update_2['site'], 'hpo-site-bannerphoenix') # paired site, no org parent.
-    self.assertEqual(update_2['organization'], 'UNSET') # no org parent in test DB.
+    self.assertEqual(update_1['site'], 'UNSET')
+    self.assertEqual(update_1['organization'], 'UNSET')
+    self.assertEqual(update_2['site'], 'hpo-site-bannerphoenix')
+    self.assertEqual(update_2['organization'], 'AZ_TUCSON_BANNER_HEALTH')
     participant['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
-    update_3 = self.send_put(path, participant, headers={'If-Match': 'W/"3"'}) #pair at org level.
-    self.assertNotEqual(update_2['hpoId'], update_3['hpoId']) # HPO has changed
-    self.assertNotEqual(update_2['providerLink'], update_3['providerLink']) #PL has changed.
-    self.assertNotEqual(update_2['organization'], update_3['organization']) # org has changed.
-    self.assertEqual(update_3['site'], 'UNSET') # paired at org level, site now unset
-    self.assertEqual(update_3['awardee'], 'AZ_TUCSON')# awardee parent of AZ org
-    self.assertEqual(update_3['organization'], 'AZ_TUCSON_BANNER_HEALTH')# org paired with
+    update_3 = self.send_put(path, participant, headers={'If-Match': 'W/"3"'})
+    self.assertNotEqual(update_2['hpoId'], update_3['hpoId'])
+    self.assertNotEqual(update_2['organization'], update_3['organization'])
+    self.assertEqual(update_3['site'], 'UNSET')
+    participant['site'] = 'hpo-site-clinic-phoenix'
+    update_4 = self.send_put(path, participant, headers={'If-Match': 'W/"4"'})
+    self.assertEqual(update_4['site'], 'hpo-site-clinic-phoenix')
+    self.assertEqual(update_4['organization'], 'AZ_TUCSON_BANNER_HEALTH')
+    self.assertEqual(update_4['awardee'], 'AZ_TUCSON')

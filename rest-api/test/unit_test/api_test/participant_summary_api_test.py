@@ -455,7 +455,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertBundle([_make_entry(ps_1), _make_entry(ps_2), _make_entry(ps_3)], response)
 
       self.assertResponses('ParticipantSummary?_count=2', [[ps_1, ps_2], [ps_3]])
-
       # Test sorting on fields of different types.
       self.assertResponses('ParticipantSummary?_count=2&_sort=firstName',
                            [[ps_1, ps_3], [ps_2]])
