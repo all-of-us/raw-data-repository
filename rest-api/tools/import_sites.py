@@ -69,13 +69,14 @@ def _upsert_site(site, existing_site, site_dao, session, dry_run):
       logging.info('Not updating %s.', site_dict['siteName'])
       return False
     else:
+      old_dict = existing_site.asdict()
       existing_site.siteName = site.siteName
       existing_site.mayolinkClientNumber = site.mayolinkClientNumber
       existing_site.hpoId = site.hpoId
       if not dry_run:
         site_dao.update_with_session(session, existing_site)
       logging.info(
-          'Updating site: old = %s, new = %s', existing_site_dict, existing_site.asdict())
+          'Updating site: old = %s, new = %s', old_dict, existing_site.asdict())
       return True
   else:
     logging.info('Inserting site: %s', site_dict)
