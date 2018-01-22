@@ -59,8 +59,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
   def _create_data(self):
-    HPODao().insert(HPO(hpoId=PITT_HPO_ID + 1, name='AZ_TUCSON'))
-    HPODao().insert(HPO(hpoId=PITT_HPO_ID + 2, name='TEST'))
+    HPODao().insert(HPO(hpoId=PITT_HPO_ID + 1, name='AZ_TUCSON_2'))
+    HPODao().insert(HPO(hpoId=PITT_HPO_ID + 4, name='TEST'))
     SqlTestBase.setup_codes(
         ANSWER_FIELD_TO_QUESTION_CODE.values() + [EHR_CONSENT_QUESTION_CODE],
         code_type=CodeType.QUESTION)
@@ -112,8 +112,9 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     with FakeClock(TIME_2):
       # This update to participant has no effect, as the HPO ID didn't change.
       participant = self._participant_with_defaults(
-          participantId=1, version=1, biobankId=2,
+          participantId=1, version=1, biobankId=2, hpoId=3, # <<<< Had to add hpoId here.
           providerLink=make_primary_provider_link_for_name('AZ_TUCSON'))
+
       participant_dao.update(participant)
       self.submit_questionnaire_response('P1', questionnaire_id,
                                          RACE_WHITE_CODE, 'male', None,
@@ -179,7 +180,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     assertCsvContents(self, BUCKET_NAME, prefix + _HPO_IDS_CSV % 0,
                       [HPO_ID_FIELDS, ['2', 'UNSET', t1], ['2', 'PITT', t3]])
     assertCsvContents(self, BUCKET_NAME, prefix + _HPO_IDS_CSV % 1, [
-        HPO_ID_FIELDS, ['1', 'AZ_TUCSON', t1], ['1', 'PITT', t3]
+        HPO_ID_FIELDS, ['1', 'AZ_TUCSON', t1], ['1', 'PITT', t3], ['1', 'AZ_TUCSON_2', t2]
     ])
     participant_fields = get_participant_fields()
     assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0, [
@@ -307,7 +308,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     # At TIME_2, P1 is white, UNMAPPED gender; biobank samples
     # arrived for P1 and P2 (the latter updating samplesToIsolateDNA);
     # and both participants have submitted the basics questionnaire.
-    self.assertBucket(bucket_map, TIME_2, 'AZ_TUCSON', {
+    self.assertBucket(bucket_map, TIME_2, 'AZ_TUCSON_2', {
         'Participant': 1,
         'Participant.ageRange.26-35': 1,
         'Participant.state.UNSET': 1,
@@ -315,7 +316,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.physicalMeasurements.UNSET': 1,
         'Participant.biospecimen.UNSET': 1,
         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
-        'Participant.hpoId.AZ_TUCSON': 1,
+        'Participant.hpoId.AZ_TUCSON_2': 1,
         'Participant.consentForElectronicHealthRecords.UNSET': 1,
         'Participant.consentForStudyEnrollment.SUBMITTED': 1,
         'Participant.questionnaireOnOverallHealth.UNSET': 1,
@@ -369,7 +370,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.biospecimen.UNSET': 2,
         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
         'Participant.hpoId.UNSET': 1,
-        'Participant.hpoId.AZ_TUCSON': 1,
+        'Participant.hpoId.AZ_TUCSON_2': 1,
         'Participant.consentForElectronicHealthRecords.UNSET': 2,
         'Participant.consentForStudyEnrollment.SUBMITTED': 2,
         'Participant.questionnaireOnOverallHealth.UNSET': 2,

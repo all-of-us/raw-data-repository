@@ -1,10 +1,13 @@
 import json
 
+from dao.organization_dao import OrganizationDao
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest, Forbidden
 
-from api_util import format_json_enum, parse_json_enum, format_json_date
+from api_util import format_json_enum, parse_json_enum, format_json_date, format_json_hpo, \
+  format_json_org, format_json_site, get_site_id_from_google_group, get_awardee_id_from_name,\
+  get_organization_id_from_external_id
 import clock
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
@@ -30,6 +33,7 @@ class ParticipantHistoryDao(BaseDao):
   def __init__(self):
     super(ParticipantHistoryDao, self).__init__(ParticipantHistory)
 
+
   def get_id(self, obj):
     return [obj.participantId, obj.version]
 
@@ -37,6 +41,10 @@ class ParticipantHistoryDao(BaseDao):
 class ParticipantDao(UpdatableDao):
   def __init__(self):
     super(ParticipantDao, self).__init__(Participant)
+
+    self.hpo_dao = HPODao()
+    self.organization_dao = OrganizationDao()
+    self.site_dao = SiteDao()
 
   def get_id(self, obj):
     return obj.participantId
@@ -90,7 +98,8 @@ class ParticipantDao(UpdatableDao):
                                  options=joinedload(Participant.participantSummary))
 
   def _do_update(self, session, obj, existing_obj):
-    """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link."""
+    """Updates the associated ParticipantSummary, and extracts HPO ID from the provider link
+      or set pairing at another level (site/organization/awardee) with parent/child enforcement."""
     obj.lastModified = clock.CLOCK.now()
     obj.signUpTime = existing_obj.signUpTime
     obj.biobankId = existing_obj.biobankId
@@ -104,8 +113,20 @@ class ParticipantDao(UpdatableDao):
                             else None)
       need_new_summary = True
 
+    if obj.organizationId or obj.siteId or obj.hpoId:
+      site, organization, awardee = self.get_pairing_level(obj, existing_obj)
+      obj.organizationId = organization
+      obj.siteId = site
+      obj.hpoId = awardee
+      if awardee:
+        # get provider link for hpo_id (awardee)
+        obj.providerLink = make_primary_provider_link_for_id(awardee)
+
+      need_new_summary = True
+
     # If the provider link changes, update the HPO ID on the participant and its summary.
-    obj.hpoId = existing_obj.hpoId
+    if obj.hpoId is None:
+      obj.hpoId = existing_obj.hpoId
     if obj.providerLink != existing_obj.providerLink:
       new_hpo_id = self._get_hpo_id(obj)
       if new_hpo_id != existing_obj.hpoId:
@@ -117,6 +138,8 @@ class ParticipantDao(UpdatableDao):
       # come from participant.
       summary = existing_obj.participantSummary
       summary.hpoId = obj.hpoId
+      summary.organizationId = obj.organizationId
+      summary.siteId = obj.siteId
       summary.withdrawalStatus = obj.withdrawalStatus
       summary.withdrawalTime = obj.withdrawalTime
       summary.suspensionStatus = obj.suspensionStatus
@@ -127,6 +150,28 @@ class ParticipantDao(UpdatableDao):
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
+
+  def get_pairing_level(self, obj, existing_obj):
+    organization_id = obj.organizationId
+    site_id = obj.siteId
+    awardee_id = obj.hpoId
+    old_site_id = existing_obj.siteId
+    old_organization_id = existing_obj.organizationId
+    # TODO: DO WE WANT TO PREVENT PAIRING IF EXISTING SITE HAS PM/BIO.
+
+    if site_id != u'UNSET' and site_id is not None:
+      if old_site_id != site_id:
+        site = self.site_dao.get(site_id)
+        organization_id = site.organizationId
+        awardee_id = site.hpoId
+        return site_id, organization_id, awardee_id
+    if organization_id != u'UNSET' and organization_id is not None:
+      if organization_id != old_organization_id:
+        organization = self.organization_dao.get(organization_id)
+        awardee_id = organization.hpoId
+        return None, organization_id, awardee_id
+    return None, None, awardee_id
+
   @staticmethod
   def create_summary_for_participant(obj):
     return ParticipantSummary(
@@ -134,6 +179,8 @@ class ParticipantDao(UpdatableDao):
         biobankId=obj.biobankId,
         signUpTime=obj.signUpTime,
         hpoId=obj.hpoId,
+        organizationId=obj.organizationId,
+        siteId=obj.siteId,
         withdrawalStatus=obj.withdrawalStatus,
         suspensionStatus=obj.suspensionStatus,
         enrollmentStatus=EnrollmentStatus.INTERESTED)
@@ -176,6 +223,10 @@ class ParticipantDao(UpdatableDao):
   def to_client_json(self, model):
     client_json = {
         'participantId': to_client_participant_id(model.participantId),
+        'hpoId': model.hpoId,
+        'awardee': model.hpoId,
+        'organization': model.organizationId,
+        'siteId': model.siteId,
         'biobankId': to_client_biobank_id(model.biobankId),
         'lastModified': model.lastModified.isoformat(),
         'signUpTime': model.signUpTime.isoformat(),
@@ -185,10 +236,16 @@ class ParticipantDao(UpdatableDao):
         'suspensionStatus': model.suspensionStatus,
         'suspensionTime': model.suspensionTime
     }
+    format_json_hpo(client_json, self.hpo_dao, 'hpoId'),
+    format_json_org(client_json, self.organization_dao, 'organization'),
+    format_json_site(client_json, self.site_dao, 'site'),
     format_json_enum(client_json, 'withdrawalStatus')
     format_json_enum(client_json, 'suspensionStatus')
     format_json_date(client_json, 'withdrawalTime')
     format_json_date(client_json, 'suspensionTime')
+    client_json['awardee'] = client_json['hpoId']
+    if 'siteId' in client_json:
+      del client_json['siteId']
     return client_json
 
   def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):
@@ -201,7 +258,11 @@ class ParticipantDao(UpdatableDao):
         providerLink=json.dumps(resource_json.get('providerLink')),
         clientId=client_id,
         withdrawalStatus=resource_json.get('withdrawalStatus'),
-        suspensionStatus=resource_json.get('suspensionStatus'))
+        suspensionStatus=resource_json.get('suspensionStatus'),
+        organizationId=get_organization_id_from_external_id(resource_json, self.organization_dao),
+        hpoId=get_awardee_id_from_name(resource_json, self.hpo_dao),
+        siteId=get_site_id_from_google_group(resource_json, self.site_dao))
+
 
   def add_missing_hpo_from_site(self, session, participant_id, site_id):
     if site_id is None:

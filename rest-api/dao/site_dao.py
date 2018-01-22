@@ -47,6 +47,7 @@ class SiteDao(CacheAllDao):
   def get_by_google_group(self, google_group):
     return self._get_cache().index_maps['googleGroup'].get(google_group)
 
+
   @staticmethod
   def _to_json(model):
     resource = _FhirSite()

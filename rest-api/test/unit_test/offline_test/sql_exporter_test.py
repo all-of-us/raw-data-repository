@@ -1,7 +1,7 @@
 from offline.sql_exporter import SqlExporter
 from participant_enums import UNSET_HPO_ID
 from offline_test.gcs_utils import assertCsvContents
-from unit_test_util import CloudStorageSqlTestBase, PITT_HPO_ID
+from unit_test_util import CloudStorageSqlTestBase, PITT_HPO_ID, AZ_HPO_ID
 
 _BUCKET_NAME = 'pmi-drc-biobank-test.appspot.com'
 _FILE_NAME = 'hpo_ids.csv'
@@ -18,4 +18,5 @@ class SqlExporterTest(CloudStorageSqlTestBase):
                                         'SELECT hpo_id id, name name FROM hpo ORDER BY hpo_id')
     assertCsvContents(self, _BUCKET_NAME, _FILE_NAME, [['id', 'name'],
                                                      [str(UNSET_HPO_ID), 'UNSET'],
+                                                     [str(AZ_HPO_ID), 'AZ_TUCSON'],
                                                      [str(PITT_HPO_ID), 'PITT']])
