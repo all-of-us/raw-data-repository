@@ -1,10 +1,10 @@
-import csv
 import logging
 
 from dao.hpo_dao import HPODao
 from dao.site_dao import SiteDao
 from model.site import Site
 from main_util import get_parser, configure_logging
+from unicode_csv import UnicodeDictReader
 
 _GOOGLE_GROUP_SUFFIX = '@prod.pmi-ops.org'
 
@@ -14,7 +14,7 @@ def main(args):
   matched_count = 0
   logging.info('Importing from %r.', args.file)
   with open(args.file, 'r') as csv_file:
-    sites_reader = csv.DictReader(csv_file)
+    sites_reader = UnicodeDictReader(csv_file)
     hpo_dao = HPODao()
     site_dao = SiteDao()
     existing_site_map = {site.googleGroup: site for site in site_dao.get_all()}
@@ -69,13 +69,14 @@ def _upsert_site(site, existing_site, site_dao, session, dry_run):
       logging.info('Not updating %s.', site_dict['siteName'])
       return False
     else:
+      old_dict = existing_site.asdict()
       existing_site.siteName = site.siteName
       existing_site.mayolinkClientNumber = site.mayolinkClientNumber
       existing_site.hpoId = site.hpoId
       if not dry_run:
         site_dao.update_with_session(session, existing_site)
       logging.info(
-          'Updating site: old = %s, new = %s', existing_site_dict, existing_site.asdict())
+          'Updating site: old = %s, new = %s', old_dict, existing_site.asdict())
       return True
   else:
     logging.info('Inserting site: %s', site_dict)
