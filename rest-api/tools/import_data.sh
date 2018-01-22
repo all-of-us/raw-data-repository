@@ -12,5 +12,5 @@ echo "Importing codebook..."
 echo "Importing questionnaires..."
 tools/import_questionnaires.sh $@
 echo "Importing participants..."
-tools/import_participants.sh $@
+tools/import_participants.sh --file test/test-data/healthpro_test_participants.csv $@
 
