@@ -104,10 +104,10 @@ class BaseApi(Resource):
     max_results = DEFAULT_MAX_RESULTS
     pagination_token = None
     order_by = None
-    id_list = ['awardee', 'organization','site']
+    missing_id_list = ['awardee', 'organization', 'site']
 
     for key, value in request.args.iteritems(multi=True):
-      if value in id_list:
+      if value in missing_id_list:
         if 'awardee' in value:
           value = 'hpoId'
         else:
