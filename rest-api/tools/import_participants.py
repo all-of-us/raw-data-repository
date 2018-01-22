@@ -27,8 +27,6 @@ from code_constants import OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, THE_
 from code_constants import PPI_SYSTEM
 from main_util import get_parser, configure_logging
 
-HEALTHPRO_PARTICIPANTS_FILE = 'test/test-data/healthpro_test_participants.csv'
-
 ALL_MODULE_CODES = [CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
                     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
                     OVERALL_HEALTH_PPI_MODULE,
@@ -177,7 +175,7 @@ if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
   parser.add_argument('--file', help='Path to the CSV file containing the participant data.',
-                      default=HEALTHPRO_PARTICIPANTS_FILE)
+                      required=True)
   parser.add_argument('--instance',
                       type=str,
                       help='The instance to hit, defaults to http://localhost:8080',
