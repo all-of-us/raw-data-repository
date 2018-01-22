@@ -10,12 +10,14 @@ import os
 import unittest
 import uuid
 import dao.database_factory
+from dao.organization_dao import OrganizationDao
 
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 from mock import patch
+from model.organization import Organization
 from testlib import testutil
 
 import api_util
@@ -43,7 +45,8 @@ from test.test_data import data_path
 from unicode_csv import UnicodeDictReader
 
 PITT_HPO_ID = 2
-
+AZ_HPO_ID = 4
+AZ_ORG_ID = 4
 
 class TestBase(unittest.TestCase):
   """Base class for unit tests."""
@@ -211,13 +214,23 @@ class _TestDb(object):
     # Reconnecting to in-memory SQLite (because singletons are cleared above)
     # effectively clears the database.
 
-  def _setup_hpos(self):
+  def _setup_hpos(self, org_dao=None):
     hpo_dao = HPODao()
     hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET', displayName='Unset',
                        organizationType=OrganizationType.UNSET))
     hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT', displayName='Pittsburgh',
                        organizationType=OrganizationType.HPO))
+    hpo_dao.insert(HPO(hpoId=AZ_HPO_ID, name='AZ_TUCSON', displayName='Arizona',
+                       organizationType=OrganizationType.HPO))
     self.hpo_id = PITT_HPO_ID
+
+    org_dao = OrganizationDao()
+    created_org = org_dao.insert(Organization(
+      organizationId=AZ_ORG_ID,
+      externalId='AZ_TUCSON_BANNER_HEALTH',
+      displayName='Banner Health',
+      hpoId=AZ_HPO_ID))
+    self.organization_id = created_org.organizationId
 
     site_dao = SiteDao()
     created_site = site_dao.insert(Site(
@@ -230,7 +243,15 @@ class _TestDb(object):
         siteName='Phoenix Urgent Care Center',
         googleGroup='hpo-site-bannerphoenix',
         mayolinkClientNumber=7035770,
+        organizationId=AZ_ORG_ID,
         hpoId=PITT_HPO_ID))
+
+    site_dao.insert(Site(
+      siteName='Phoenix clinic',
+      googleGroup='hpo-site-clinic-phoenix',
+      mayolinkClientNumber=7035770,
+      organizationId=AZ_ORG_ID,
+      hpoId=AZ_HPO_ID))
 
   def _setup_views(self):
     """

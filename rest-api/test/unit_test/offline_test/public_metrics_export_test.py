@@ -18,7 +18,7 @@ from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from participant_enums import WithdrawalStatus
 from test_data import load_biobank_order_json, load_measurement_json
 from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase
-from unit_test_util import PITT_HPO_ID
+from unit_test_util import PITT_HPO_ID, AZ_HPO_ID
 
 TIME = datetime.datetime(2016, 1, 1)
 TIME2 = datetime.datetime(2016, 2, 2)
@@ -38,8 +38,8 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     FlaskTestBase.doTearDown(self)
 
   def _create_data(self):
-    HPODao().insert(HPO(hpoId=PITT_HPO_ID + 1, name='AZ_TUCSON'))
-    HPODao().insert(HPO(hpoId=PITT_HPO_ID + 2, name='TEST'))
+    HPODao().insert(HPO(hpoId=AZ_HPO_ID + 1, name='AZ_TUCSON_2'))
+    HPODao().insert(HPO(hpoId=PITT_HPO_ID + 4, name='TEST'))
     SqlTestBase.setup_codes(
         ANSWER_FIELD_TO_QUESTION_CODE.values() + [EHR_CONSENT_QUESTION_CODE],
         code_type=CodeType.QUESTION)

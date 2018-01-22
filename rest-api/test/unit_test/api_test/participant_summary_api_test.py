@@ -48,12 +48,14 @@ class ParticipantSummaryMySqlApiTest(FlaskTestBase):
     t1 = threading.Thread(target=lambda:
                           self.send_put('Participant/%s' % participant_id, participant,
                                         headers={'If-Match': participant['meta']['versionId']}))
+
     t2 = threading.Thread(target=lambda:
                           self.send_consent(participant_id))
     t1.start()
     t2.start()
     t1.join()
     t2.join()
+
     # The participant summary should exist (consent has been received), and it should have PITT
     # for its HPO ID (the participant update occurred.)
     # This used to fail a decent percentage of the time, before we started using FOR UPDATE in
@@ -70,22 +72,25 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       "organization": {
         "display": None,
         "reference": "Organization/PITT",
-      },
-      "site": [{
-        "display": None,
-        "reference": "mayo-clinic",
-      }],
-      "identifier": [{
-        "system": "http://any-columbia-mrn-system",
-        "value": "MRN456"
-      }]
+      }
     }
+
+  def test_pairing_summary(self):
+    participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id = participant['participantId']
+    path = 'Participant/%s' % participant_id
+    participant['awardee'] = 'PITT'
+    particpant_update = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
+    self.assertEquals(particpant_update['awardee'], participant['awardee'])
+    participant['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
+    participant_update_2 = self.send_put(path, participant, headers={'If-Match': 'W/"2"'})
+    self.assertEquals(participant_update_2['organization'], participant['organization'])
+    self.assertEquals(participant_update_2['awardee'], 'AZ_TUCSON')
 
   def testQuery_noParticipants(self):
     self.send_get('Participant/P1/Summary', expected_status=httplib.NOT_FOUND)
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
-
 
   def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code,
                                     first_name, middle_name, last_name, zip_code,
@@ -199,6 +204,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'questionnaireOnMedicalHistory': u'UNSET',
                    'participantId': participant_id,
                    'hpoId': 'PITT',
+                   'awardee': 'PITT',
+                   'site': 'UNSET',
+                   'organization': 'UNSET',
                    'numCompletedPPIModules': 1,
                    'numCompletedBaselinePPIModules': 1,
                    'consentForStudyEnrollment': 'SUBMITTED',
@@ -342,6 +350,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     with FakeClock(TIME_3):
       participant_2['withdrawalStatus'] = 'NO_USE'
       participant_3['suspensionStatus'] = 'NO_CONTACT'
+      participant_3['site'] = 'hpo-site-monroeville'
       self.send_put('Participant/%s' % participant_id_2, participant_2,
                      headers={ 'If-Match': participant_2['meta']['versionId'] })
       self.send_put('Participant/%s' % participant_id_3, participant_3,
@@ -436,6 +445,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
     self.assertEquals('NO_CONTACT', ps_3['suspensionStatus'])
     self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
+    self.assertEquals('hpo-site-monroeville', ps_3['site'])
     self.assertIsNone(ps_3.get('withdrawalTime'))
     self.assertIsNotNone(ps_3['suspensionTime'])
 
@@ -445,7 +455,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertBundle([_make_entry(ps_1), _make_entry(ps_2), _make_entry(ps_3)], response)
 
       self.assertResponses('ParticipantSummary?_count=2', [[ps_1, ps_2], [ps_3]])
-
       # Test sorting on fields of different types.
       self.assertResponses('ParticipantSummary?_count=2&_sort=firstName',
                            [[ps_1, ps_3], [ps_2]])
@@ -467,10 +476,22 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=hpoId',
                            [[ps_1, ps_2], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:desc=awardee',
+                           [[ps_1, ps_2], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:desc=organization',
+                           [[ps_1, ps_2], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:asc=site',
+                           [[ps_1, ps_2], [ps_3]])
 
       # Test filtering on fields.
       self.assertResponses('ParticipantSummary?_count=2&firstName=Mary',
                            [[ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&site=hpo-site-monroeville',
+                           [[ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&awardee=PITT',
+                           [[ps_1, ps_2], [ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&organization=AZ_TUCSON_BANNER_HEALTH',
+                           [])
       self.assertResponses('ParticipantSummary?_count=2&middleName=Q',
                            [[ps_1, ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&lastName=Smith',
@@ -654,6 +675,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED',
                            [[ps_1]])
+
+
+
 
 def _add_code_answer(code_answers, link_id, code):
   if code:
