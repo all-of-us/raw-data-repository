@@ -1,8 +1,8 @@
-"""new_foreign_keys
+"""new_site_pairing
 
-Revision ID: 0185cd07668a
-Revises: d2e17663c615
-Create Date: 2018-01-15 11:38:35.269794
+Revision ID: d111f9087581
+Revises: f81a8b941a77
+Create Date: 2018-01-23 10:51:33.522289
 
 """
 from alembic import op
@@ -18,8 +18,8 @@ from model.site_enums import SiteStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '0185cd07668a'
-down_revision = 'd2e17663c615'
+revision = 'd111f9087581'
+down_revision = 'f81a8b941a77'
 branch_labels = None
 depends_on = None
 
