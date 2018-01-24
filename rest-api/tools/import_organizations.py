@@ -191,11 +191,11 @@ class SiteImporter(CsvImporter):
         if (existing_site.address1 == site.address1 and existing_site.city == site.city
             and existing_site.state == site.state and existing_site.latitude is not None
             and existing_site.longitude is not None and existing_site.timeZoneId is not None):
-            # Address didn't change, use the existing lat/lng and time zone.
-            site.latitude = existing_site.latitude
-            site.longitude = existing_site.longitude
-            site.timeZoneId = existing_site.timeZoneId
-            return
+          # Address didn't change, use the existing lat/lng and time zone.
+          site.latitude = existing_site.latitude
+          site.longitude = existing_site.longitude
+          site.timeZoneId = existing_site.timeZoneId
+          return
       latitude, longitude = self._get_lat_long_for_site(site.address1, site.city, site.state)
       site.latitude = latitude
       site.longitude = longitude
