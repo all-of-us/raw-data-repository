@@ -113,13 +113,12 @@ class SiteImporter(CsvImporter):
   def __init__(self):
     super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
                                        [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
-                                       SITE_SITE_COLUMN, SITE_MAYOLINK_CLIENT_NUMBER_COLUMN,
-                                       SITE_STATUS_COLUMN])
+                                       SITE_SITE_COLUMN, SITE_STATUS_COLUMN])
 
     self.organization_dao = OrganizationDao()
 
   def _entity_from_row(self, row):
-    google_group = row[SITE_SITE_ID_COLUMN]
+    google_group = row[SITE_SITE_ID_COLUMN].lower()
     organization = self.organization_dao.get_by_external_id(row[SITE_ORGANIZATION_ID_COLUMN])
     if organization is None:
       logging.warn('Invalid organization ID %s importing site %s', row[SITE_ORGANIZATION_ID_COLUMN],
@@ -135,13 +134,15 @@ class SiteImporter(CsvImporter):
         logging.warn('Invalid launch date %s for site %s', launch_date_str, google_group)
         return None
     name = row[SITE_SITE_COLUMN]
-    mayolink_client_number_str = row[SITE_MAYOLINK_CLIENT_NUMBER_COLUMN]
-    try:
-      mayolink_client_number = int(mayolink_client_number_str)
-    except ValueError:
-      logging.warn('Invalid Mayolink Client # %s for site %s', mayolink_client_number_str,
-                   google_group)
-      return None
+    mayolink_client_number = None
+    mayolink_client_number_str = row.get(SITE_MAYOLINK_CLIENT_NUMBER_COLUMN)
+    if mayolink_client_number_str:
+      try:
+        mayolink_client_number = int(mayolink_client_number_str)
+      except ValueError:
+        logging.warn('Invalid Mayolink Client # %s for site %s', mayolink_client_number_str,
+                     google_group)
+        return None
     notes = row.get(SITE_NOTES_COLUMN)
     try:
       site_status = SiteStatus(row[SITE_STATUS_COLUMN].upper())
@@ -155,10 +156,6 @@ class SiteImporter(CsvImporter):
     city = row.get(SITE_CITY_COLUMN)
     state = row.get(SITE_STATE_COLUMN)
     zip_code = row.get(SITE_ZIP_COLUMN)
-    if address_1 != None and city != None and state != None:
-      latitude, longitude = self._get_lat_long_for_site(address_1, city, state)
-    if latitude and longitude:
-      time_zone_id = self._get_time_zone(latitude, longitude)
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
@@ -176,12 +173,34 @@ class SiteImporter(CsvImporter):
                 city=city,
                 state=state,
                 zipCode=zip_code,
-                latitude=latitude,
-                longitude=longitude,
-                timeZoneId=time_zone_id,
                 phoneNumber=phone,
                 adminEmails=admin_email_addresses,
                 link=link)
+
+  def _update_entity(self, entity, existing_entity, session, dry_run):
+    self._populate_lat_lng_and_time_zone(entity, existing_entity)
+    return super(SiteImporter, self)._update_entity(entity, existing_entity, session, dry_run)
+
+  def _insert_entity(self, entity, existing_map, session, dry_run):
+    self._populate_lat_lng_and_time_zone(entity, None)
+    super(SiteImporter, self)._insert_entity(entity, existing_map, session, dry_run)
+
+  def _populate_lat_lng_and_time_zone(self, site, existing_site):
+    if site.address1 and site.city and site.state:
+      if existing_site:
+        if (existing_site.address1 == site.address1 and existing_site.city == site.city
+            and existing_site.state == site.state and existing_site.latitude is not None
+            and existing_site.longitude is not None and existing_site.timeZoneId is not None):
+          # Address didn't change, use the existing lat/lng and time zone.
+          site.latitude = existing_site.latitude
+          site.longitude = existing_site.longitude
+          site.timeZoneId = existing_site.timeZoneId
+          return
+      latitude, longitude = self._get_lat_long_for_site(site.address1, site.city, site.state)
+      site.latitude = latitude
+      site.longitude = longitude
+      if latitude and longitude:
+        site.timeZoneId = self._get_time_zone(latitude, longitude)
 
   def _get_lat_long_for_site(self, address_1, city, state):
     self.full_address = address_1 + ' ' +  city + ' ' + state

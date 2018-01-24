@@ -37,6 +37,8 @@ class CsvImporter(object):
                       in self.dao.get_all()}
       with self.dao.session() as session:
         for row in reader:
+          # Strip leading and trailing whitespace
+          row = {k.strip(): v.strip() for k, v in row.iteritems()}
           missing_fields = []
           for column in self.required_columns:
             value = row.get(column)

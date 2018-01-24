@@ -53,7 +53,8 @@ class SiteDao(CacheAllDao):
     resource = _FhirSite()
     resource.id = model.googleGroup
     resource.display_name = model.siteName
-    resource.mayolink_client_number = long(model.mayolinkClientNumber)
+    if model.mayolinkClientNumber:
+      resource.mayolink_client_number = long(model.mayolinkClientNumber)
     resource.site_status = str(model.siteStatus)
     resource.launch_date = _to_fhir_date(model.launchDate)
     resource.notes = model.notes
