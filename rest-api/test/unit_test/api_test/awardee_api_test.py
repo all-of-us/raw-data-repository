@@ -62,8 +62,7 @@ class AwardeeApiTest(FlaskTestBase):
 
   def _make_expected_pitt_awardee_resource(self):
     sites = [{'id': 'aaaaaaa',
-             'displayName': 'Zebras Rock',
-             'mayolinkClientNumber': 321,
+             'displayName': 'Zebras Rock',             
              'siteStatus': 'INACTIVE',
              'address': {}
             }, {'id': 'hpo-site-1',
@@ -118,7 +117,6 @@ class AwardeeApiTest(FlaskTestBase):
                          adminEmails='alice@example.com, bob@example.com',
                          link='http://www.example.com'))
     site_dao.insert(Site(siteName='Zebras Rock',
-                         googleGroup='aaaaaaa',
-                         mayolinkClientNumber=321,
+                         googleGroup='aaaaaaa',                         
                          organizationId=org_1.organizationId,
                          siteStatus=SiteStatus.INACTIVE))
