@@ -12,6 +12,7 @@ COLUMBIA,COLUMBIA_WEILL,Weill Cornell Medicine
 COLUMBIA,COLUMBIA_COLUMBIA,Columbia University
 COMM_HEALTH,COMM_HEALTH_CHC,"Community Health Center, Inc"
 EAU_CLAIRE,EAU_CLAIRE_EAU_CLAIRE_CHC,Eau Claire Cooperative Health Center
+EMSI,EMSI_EMSI,EMSI
 HRHCARE,HRHCARE_HRHCI,"HRHCare, Inc."
 ILLINOIS,ILLINOIS_NORTHWESTERN,Northwestern University
 ILLINOIS,ILLINOIS_CHICAGO,University of Chicago
@@ -22,7 +23,10 @@ JACKSON,JACKSON_JACKSON_HINDS_CHC,Jackson-Hinds Comprehensive Health Center
 NE_PMC,NE_PMC_PARTNERS,Partners Healthcare
 NE_PMC,NE_PMC_BMC,Boston Medical Center
 PITT,PITT_UPMC,University of Pittsburgh Medical Center
+QTC,QTC_QTC,QTC
+QUEST,QUEST_QUEST,Quest Labs
 SAN_YSIDRO,SAN_YSIDRO_SYHC,San Ysidro Health Center
+SDBB,SDBB_SDBB,San Diego Blood Bank
 SEEC,SEEC_EMORY,Emory Uiversity
 SEEC,SEEC_UF,University of Florida
 SEEC,SEEC_MOREHOUSE,Moorehouse School of Medicine
@@ -37,17 +41,13 @@ SOUTHERN,SOUTHERN_COOPER_GREEN,Cooper Green Mercy Hospital
 SOUTHERN,SOUTHERN_LSU,Louisiana State University
 SOUTHERN,SOUTHERN_MISSISSIPPI_MC,Unversity of Mississippi Medical Center
 SOUTHERN,SOUTHERN_TULANE,Tulane Unversity
-STSI,STSI_EMSI,EMSI
-STSI,STSI_QTC,QTC
-STSI,STSI_QUEST,Quest Labs
-STSI,STSI_SDBB,San Diego Blood Bank
-STSI,STSI_WALGREENS,Walgreens
 TEST,TEST_PROD,Test Prod Organization
 TRANS_AM,TRANS_AM_HENRY_FORD,Henry Ford Health System
 TRANS_AM,TRANS_AM_SPECTRUM,Spectrum Health System
 TRANS_AM,TRANS_AM_BAYLOR,Baylor Health Care System
-VA,VA_Boston_VAMC,VA Boston Healthcare System
-VA,VA_Palo_Alto_VAMC,VA Palo Alto Health Care System
+VA,VA_BOSTON_VAMC,VA Boston Healthcare System
+VA,VA_PALO_ALTO_VAMC,VA Palo Alto Health Care System
+WALGREENS,WALGREENS_WALGREENS,Walgreens
 WISCONSIN,WISCONSIN_MARSHFIELD,Marshfield Clinic
 WISCONSIN,WISCONSIN_MEDICAL COLLEGE,Medical College of Wisconsin
 WISCONSIN,WISCONSIN_UW_MADISON,"University of Wisconsin, Madison"
