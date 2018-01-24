@@ -37,6 +37,8 @@ class CsvImporter(object):
                       in self.dao.get_all()}
       with self.dao.session() as session:
         for row in reader:
+          # Strip leading and trailing whitespace
+          row = {k.strip(): v.strip() for k, v in row.iteritems()}
           missing_fields = []
           for column in self.required_columns:
             value = row.get(column)
@@ -51,7 +53,7 @@ class CsvImporter(object):
           if entity is None:
             skip_count += 1
             continue
-          existing_entity = existing_map.get(getattr(entity, self.external_id_field))
+          existing_entity = existing_map.get(getattr(entity, self.external_id_field))          
           if existing_entity:
             changed = self._update_entity(entity, existing_entity, session, dry_run)
             if changed:

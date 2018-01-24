@@ -1,26 +1,21 @@
 Awardee ID,Name,Type
-UNSET,No organization set,UNSET
-PITT,Pittsburgh,HPO
-COLUMBIA,New York,HPO
-ILLINOIS,Illinois,HPO
 AZ_TUCSON,Arizona,HPO
-COMM_HEALTH,"Community Health Center, Inc",FQHC
-SAN_YSIDRO,San Ysidro Health Center,FQHC
+CAL_PMC,California Precision Medicine Consortium,HPO
 CHEROKEE,Cherokee Health Systems,FQHC
+COLUMBIA,New York,HPO
+COMM_HEALTH,"Community Health Center, Inc",FQHC
 EAU_CLAIRE,Eau Claire Cooperative Health Center,FQHC
-HRHCARE,"HRHCare, Inc.",FQHC
+STSI,Scripps Translational Science Institute,DV
+HRHCARE,"Hudson River Health Care, Inc.",FQHC
+ILLINOIS,Illinois,HPO
 JACKSON,Jackson-Hinds Comprehensive Health Center,FQHC
-CAL_PMC,California ,HPO
-NE_PMC,New England,HPO
-TRANS_AM,Trans-American Consortium (TAC),HPO
-VA,VA,VA
-QTC,QTC,DV
-WALGREENS,Walgreens,DV
-QUEST,Quest Labs,DV
-EMSI,EMSI,DV
-SDBB,San Diego Blood Bank,DV
-TEST,Test organization,UNSET
-SEEC,Miami,HPO
-SOUTHERN,Alabama,HPO
-WISCONSIN,Wisconsin,HPO
-FAKE_AWARDEE,Not a real awardee,FQHC
+NE_PMC,New England Precision Medicine Consortium,HPO
+PITT,Pittsburgh,HPO
+SAN_YSIDRO,San Ysidro Health Center,FQHC
+SEEC,Southeast Enrollment Center,HPO
+SOUTHERN,Southern Consortium,HPO
+TEST,Test Awardee,UNSET
+TRANS_AM,Trans-American Consortium for the Health Care Systems Research Network (TACH),HPO
+UNSET,No organization set,UNSET
+VA,United States Department of Veteran Affairs,VA
+WISCONSIN,Wisconsin Consoritum ,HPO
