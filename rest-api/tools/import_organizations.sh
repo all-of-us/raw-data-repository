@@ -30,7 +30,7 @@ function cleanup {
 function get_geocode_key {
     echo "Getting geocode api key ..."
     (tools/install_config.sh --key geocode_key --account "${ACCOUNT}" \
-	    --project "pmi-drc-api-test"  --config_output "$TMP_GEOCODE_INFO_FILE")                    
+	    --project "pmi-drc-api-test"  --config_output "$TMP_GEOCODE_INFO_FILE")
     export API_KEY=$(cat $TMP_GEOCODE_INFO_FILE | python -c 'import json,sys;obj=json.load(sys.stdin);print obj["'api_key'"]')
 }
 

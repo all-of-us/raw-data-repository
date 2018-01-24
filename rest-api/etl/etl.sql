@@ -301,7 +301,7 @@ CREATE TABLE cdm.measurement
     -- specific for this ETL
     value_source_value varchar(50),
     parent_id bigint,
-    -- 
+    --
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (measurement_id)
 );
@@ -312,8 +312,8 @@ CREATE TABLE cdm.measurement
 -- -----------------------------------------------
 DROP TABLE IF EXISTS cdm.note;
 
-CREATE TABLE cdm.note 
-( 
+CREATE TABLE cdm.note
+(
     note_id bigint AUTO_INCREMENT NOT NULL,
     person_id bigint NOT NULL,
     note_date date NOT NULL,
@@ -1440,17 +1440,17 @@ SELECT
     meas.value_unit                         AS unit_source_value,
     CASE
         WHEN meas.value_decimal IS NOT NULL OR meas.value_unit IS NOT NULL
-            THEN CONCAT(COALESCE(meas.value_decimal, ''), ' ', 
+            THEN CONCAT(COALESCE(meas.value_decimal, ''), ' ',
                 COALESCE(meas.value_unit, ''))     -- 'meas.dec'
-        WHEN meas.value_code_value IS NOT NULL 
+        WHEN meas.value_code_value IS NOT NULL
             THEN meas.value_code_value             -- 'meas.value'
         ELSE NULL                                  -- 'meas.empty'
-    END                                     AS value_source_value,    
+    END                                     AS value_source_value,
     meas.parent_id                          AS parent_id,
     CASE
         WHEN meas.value_decimal IS NOT NULL OR meas.value_unit IS NOT NULL
             THEN 'meas.dec'
-        WHEN meas.value_code_value IS NOT NULL 
+        WHEN meas.value_code_value IS NOT NULL
             THEN 'meas.value'
         ELSE 'meas.empty'
     END                                     AS unit_id
@@ -1470,7 +1470,7 @@ CREATE INDEX measurement_idx ON cdm.measurement (person_id, measurement_date, me
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.note;
 
-INSERT INTO cdm.note 
+INSERT INTO cdm.note
 SELECT
     NULL                                    AS note_id,
     meas.participant_id                     AS person_id,
@@ -1852,11 +1852,11 @@ SELECT
     m.parent_id                                                 AS parent_id
 
 FROM cdm.measurement m
-WHERE 
+WHERE
     m.measurement_source_value IN (
-        'blood-pressure-systolic-1', 'blood-pressure-systolic-2', 
+        'blood-pressure-systolic-1', 'blood-pressure-systolic-2',
         'blood-pressure-systolic-3', 'blood-pressure-systolic-mean',
-        'blood-pressure-diastolic-1', 'blood-pressure-diastolic-2', 
+        'blood-pressure-diastolic-1', 'blood-pressure-diastolic-2',
         'blood-pressure-diastolic-3', 'blood-pressure-diastolic-mean'
     )
     AND m.parent_id IS NOT NULL
@@ -1885,8 +1885,8 @@ SELECT
 FROM cdm.tmp_fact_rel_sd tmp1
 INNER JOIN cdm.tmp_fact_rel_sd tmp2
     ON tmp1.person_id = tmp2.person_id
-    AND tmp1.parent_id = tmp2.parent_id    
-    AND tmp1.systolic_blood_pressure_ind = tmp2.diastolic_blood_pressure_ind   -- get the same index to refer between 
+    AND tmp1.parent_id = tmp2.parent_id
+    AND tmp1.systolic_blood_pressure_ind = tmp2.diastolic_blood_pressure_ind   -- get the same index to refer between
                                                                                -- first, second, third and mean blood pressurre measurements
 WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic blood pressure measurements
     AND tmp2.diastolic_blood_pressure_ind != 0             -- take only diastolic blood pressure measurements
@@ -1912,8 +1912,8 @@ SELECT
 FROM cdm.tmp_fact_rel_sd tmp1
 INNER JOIN cdm.tmp_fact_rel_sd tmp2
     ON tmp1.person_id = tmp2.person_id
-    AND tmp1.parent_id = tmp2.parent_id    
-    AND tmp1.systolic_blood_pressure_ind = tmp2.diastolic_blood_pressure_ind   -- get the same index to refer between 
+    AND tmp1.parent_id = tmp2.parent_id
+    AND tmp1.systolic_blood_pressure_ind = tmp2.diastolic_blood_pressure_ind   -- get the same index to refer between
                                                                                -- first, second, third and mean blood pressurre measurements
 WHERE tmp1.systolic_blood_pressure_ind != 0              -- take only systolic blood pressure measurements
     AND tmp2.diastolic_blood_pressure_ind != 0             -- take only diastolic blood pressure measurements
