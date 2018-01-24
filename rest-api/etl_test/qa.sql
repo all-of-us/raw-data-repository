@@ -1244,12 +1244,12 @@ select  sum(
 from rdr.questionnaire_response_answer qra
 inner join rdr.questionnaire_response qr on qra.questionnaire_response_id = qr.questionnaire_response_id
 inner join cdm.person pe
-    on qr.participant_id = pe.person_id 
+    on qr.participant_id = pe.person_id
 inner join rdr.questionnaire_question qq on qq.questionnaire_question_id = qra.question_id
 inner join rdr.code cd on cd.code_id = qq.code_id
 inner join rdr.code cd_ans on qra.value_code_id = cd_ans.code_id
 
-left join voc.concept c 
+left join voc.concept c
   on cd.short_value = c.concept_code
   AND c.vocabulary_id = 'PPI'
 left join voc.concept_relationship cr
@@ -1991,7 +1991,7 @@ from
         select count(*) as c
         from
             (
-                select distinct person_id, visit_start_date, visit_start_datetime, 
+                select distinct person_id, visit_start_date, visit_start_datetime,
                     visit_end_date, visit_end_datetime, care_site_id, visit_source_value
                 from cdm.visit_occurrence
             ) a

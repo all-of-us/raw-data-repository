@@ -53,7 +53,7 @@ class CsvImporter(object):
           if entity is None:
             skip_count += 1
             continue
-          existing_entity = existing_map.get(getattr(entity, self.external_id_field))          
+          existing_entity = existing_map.get(getattr(entity, self.external_id_field))
           if existing_entity:
             changed = self._update_entity(entity, existing_entity, session, dry_run)
             if changed:

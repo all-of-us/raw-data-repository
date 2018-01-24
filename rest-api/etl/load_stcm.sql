@@ -1,8 +1,8 @@
 -- -----------------------------------------------
--- @2015-2017, Odysseus Data Services, Inc. All rights reserved 
--- CDMKit MySQL 
--- Generate script: 
--- srcload, master_data.conf 
+-- @2015-2017, Odysseus Data Services, Inc. All rights reserved
+-- CDMKit MySQL
+-- Generate script:
+-- srcload, master_data.conf
 -- -----------------------------------------------
 -- -----------------------------------------------
 -- new load batch
@@ -53,18 +53,18 @@ IGNORE 0 LINES
     @invalid_reason,
     @priority
 )
-SET 
-    target_concept_id = if((length(@target_concept_id) = 0 or @target_concept_id = '\r'), 
+SET
+    target_concept_id = if((length(@target_concept_id) = 0 or @target_concept_id = '\r'),
         NULL, @target_concept_id),
-    target_vocabulary_id = if((length(@target_vocabulary_id) = 0 or @target_vocabulary_id = '\r'), 
+    target_vocabulary_id = if((length(@target_vocabulary_id) = 0 or @target_vocabulary_id = '\r'),
         NULL, @target_vocabulary_id),
-    valid_start_date = if((length(@valid_start_date) = 0 or @valid_start_date = '\r'), 
+    valid_start_date = if((length(@valid_start_date) = 0 or @valid_start_date = '\r'),
         NULL, @valid_start_date),
-    valid_end_date = if((length(@valid_end_date) = 0 or @valid_end_date = '\r'), 
+    valid_end_date = if((length(@valid_end_date) = 0 or @valid_end_date = '\r'),
         NULL, @valid_end_date),
-    invalid_reason = if((length(@invalid_reason) = 0 or @invalid_reason = '\r'), 
+    invalid_reason = if((length(@invalid_reason) = 0 or @invalid_reason = '\r'),
         NULL, @invalid_reason),
-    priority = if((length(@priority) = 0 or @priority = '\r'), 
+    priority = if((length(@priority) = 0 or @priority = '\r'),
         NULL, @priority)
 ;
 

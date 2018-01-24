@@ -176,11 +176,11 @@ class SiteImporter(CsvImporter):
                 phoneNumber=phone,
                 adminEmails=admin_email_addresses,
                 link=link)
-                
+
   def _update_entity(self, entity, existing_entity, session, dry_run):
     self._populate_lat_lng_and_time_zone(entity, existing_entity)
     return super(SiteImporter, self)._update_entity(entity, existing_entity, session, dry_run)
-    
+
   def _insert_entity(self, entity, existing_map, session, dry_run):
     self._populate_lat_lng_and_time_zone(entity, None)
     super(SiteImporter, self)._insert_entity(entity, existing_map, session, dry_run)
@@ -188,19 +188,19 @@ class SiteImporter(CsvImporter):
   def _populate_lat_lng_and_time_zone(self, site, existing_site):
     if site.address1 and site.city and site.state:
       if existing_site:
-        if (existing_site.address1 == site.address1 and existing_site.city == site.city 
+        if (existing_site.address1 == site.address1 and existing_site.city == site.city
             and existing_site.state == site.state and existing_site.latitude is not None
             and existing_site.longitude is not None and existing_site.timeZoneId is not None):
             # Address didn't change, use the existing lat/lng and time zone.
             site.latitude = existing_site.latitude
             site.longitude = existing_site.longitude
             site.timeZoneId = existing_site.timeZoneId
-            return            
+            return
       latitude, longitude = self._get_lat_long_for_site(site.address1, site.city, site.state)
       site.latitude = latitude
       site.longitude = longitude
       if latitude and longitude:
-        site.timeZoneId = self._get_time_zone(latitude, longitude)    
+        site.timeZoneId = self._get_time_zone(latitude, longitude)
 
   def _get_lat_long_for_site(self, address_1, city, state):
     self.full_address = address_1 + ' ' +  city + ' ' + state
