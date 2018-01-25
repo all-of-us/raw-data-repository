@@ -165,8 +165,6 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
  SELECT
    p.participant_id participant_id,
    YEAR(p.sign_up_time) participant_sign_up_year,
-   p.withdrawal_status participant_withdrawal_status,
-   YEAR(p.withdrawal_time) participant_withdrawal_year,
    p.suspension_status participant_suspension_status,
    YEAR(p.suspension_time) participant_suspension_year,
    hpo.name hpo,
@@ -238,8 +236,6 @@ CREATE OR REPLACE VIEW physical_measurements_view AS
  SELECT
    p.participant_id participant_id,
    YEAR(p.sign_up_time) participant_sign_up_year,
-   p.withdrawal_status participant_withdrawal_status,
-   YEAR(p.withdrawal_time) participant_withdrawal_year,
    p.suspension_status participant_suspension_status,
    YEAR(p.suspension_time) participant_suspension_year,
    pm.physical_measurements_id physical_measurements_id,
