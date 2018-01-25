@@ -1,8 +1,8 @@
-"""drop QA columns
+"""ppi drop withdrawals
 
-Revision ID: 29e344f31b21
-Revises: d2e17663c615
-Create Date: 2018-01-12 17:11:22.258786
+Revision ID: 574efa4de1ba
+Revises: d111f9087581
+Create Date: 2018-01-25 10:27:24.597642
 
 """
 from alembic import op
@@ -18,18 +18,10 @@ from model.site_enums import SiteStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '29e344f31b21'
-down_revision = 'd2e17663c615'
+revision = '574efa4de1ba'
+down_revision = 'd111f9087581'
 branch_labels = None
 depends_on = None
-
-
-def upgrade(engine_name):
-    globals()["upgrade_%s" % engine_name]()
-
-
-def downgrade(engine_name):
-    globals()["downgrade_%s" % engine_name]()
 
 
 _PPI_PARTICIPANT_VIEW_SQL = """
@@ -37,8 +29,6 @@ CREATE OR REPLACE VIEW ppi_participant_view AS
  SELECT
    p.participant_id,
    YEAR(p.sign_up_time) sign_up_year,
-   p.withdrawal_status,
-   YEAR(p.withdrawal_time) withdrawal_year,
    p.suspension_status,
    YEAR(p.suspension_time) suspension_year,
    hpo.name hpo,
@@ -165,7 +155,8 @@ CREATE OR REPLACE VIEW ppi_participant_view AS
      LEFT OUTER JOIN code sexual_orientation_code ON ps.sexual_orientation_id = sexual_orientation_code.code_id
      LEFT OUTER JOIN code education_code ON ps.education_id = education_code.code_id
      LEFT OUTER JOIN code income_code ON ps.income_id = income_code.code_id
-     WHERE (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
+     WHERE p.withdrawal_status = 1 AND # NOT_WITHDRAWN
+           (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
            (hpo.name IS NULL OR hpo.name != 'TEST')
 """
 
@@ -174,8 +165,6 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
  SELECT
    p.participant_id participant_id,
    YEAR(p.sign_up_time) participant_sign_up_year,
-   p.withdrawal_status participant_withdrawal_status,
-   YEAR(p.withdrawal_time) participant_withdrawal_year,
    p.suspension_status participant_suspension_status,
    YEAR(p.suspension_time) participant_suspension_year,
    hpo.name hpo,
@@ -222,27 +211,82 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
     INNER JOIN participant_summary ps ON p.participant_id = ps.participant_id
     LEFT OUTER JOIN hpo ON p.hpo_id = hpo.hpo_id
     LEFT OUTER JOIN code ac ON qra.value_code_id = ac.code_id
-    WHERE (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
-           (hpo.name IS NULL OR hpo.name != 'TEST') AND
-           /* Blacklist any codes which are superfluous for PPI QA. */
-           qc.value NOT IN (
-             'ExtraConsent_DataSharingVideo',
-             'ExtraConsent_EmailACopyToMe',
-             'ExtraConsent_FitnessTrackerVideo',
-             'ExtraConsent_HealthDataVideo',
-             'ExtraConsent_HealthRecordVideo',
-             'ExtraConsent_KeepinginTouchVideo',
-             'ExtraConsent_OtherHealthDataVideo',
-             'ExtraConsent_PhysicalMeausrementsVideo', # Intentional typo
-             'ExtraConsent_WelcomeVideo',
-             'YoutubeVideos_WhatAreWeAsking',
-             'YoutubeVideos_RiskToPrivacy'
-           )
+    WHERE p.withdrawal_status = 1 AND # NOT_WITHDRAWN
+        (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
+        (hpo.name IS NULL OR hpo.name != 'TEST') AND
+        /* Blacklist any codes which are superfluous for PPI QA. */
+        qc.value NOT IN (
+          'ExtraConsent_DataSharingVideo',
+          'ExtraConsent_EmailACopyToMe',
+          'ExtraConsent_FitnessTrackerVideo',
+          'ExtraConsent_HealthDataVideo',
+          'ExtraConsent_HealthRecordVideo',
+          'ExtraConsent_KeepinginTouchVideo',
+          'ExtraConsent_OtherHealthDataVideo',
+          'ExtraConsent_PhysicalMeausrementsVideo', # Intentional typo
+          'ExtraConsent_WelcomeVideo',
+          'YoutubeVideos_WhatAreWeAsking',
+          'YoutubeVideos_RiskToPrivacy'
+        )
 """
+
+
+_MEASUREMENTS_VIEW_SQL = """
+CREATE OR REPLACE VIEW physical_measurements_view AS
+ SELECT
+   p.participant_id participant_id,
+   YEAR(p.sign_up_time) participant_sign_up_year,
+   p.suspension_status participant_suspension_status,
+   YEAR(p.suspension_time) participant_suspension_year,
+   pm.physical_measurements_id physical_measurements_id,
+   YEAR(pm.created) created_year,
+   pm.amended_measurements_id amended_measurements_id,
+   pm.created_site_id created_site_id,
+   pm.created_username created_username,
+   pm.finalized_site_id finalized_site_id,
+   pm.finalized_username finalized_username,
+   m.measurement_id measurement_id,
+   m.code_system code_system,
+   m.code_value code_value,
+   YEAR(m.measurement_time) measurement_year,
+   m.body_site_code_system body_site_code_system,
+   m.body_site_code_value body_site_code_value,
+   IF(m.value_string IS NULL, 0, 1) value_string_present,
+   m.value_decimal value_decimal,
+   m.value_unit value_unit,
+   m.value_code_system value_code_system,
+   m.value_code_value value_code_value,
+   YEAR(m.value_datetime) value_datetime_year,
+   m.parent_id parent_id,
+   m.qualifier_id qualifier_id
+ FROM
+   participant p
+    INNER JOIN physical_measurements pm
+       ON pm.participant_id = p.participant_id
+    INNER JOIN measurement m
+       ON pm.physical_measurements_id = m.physical_measurements_id
+    INNER JOIN participant_summary ps
+       ON p.participant_id = ps.participant_id
+    LEFT OUTER JOIN hpo
+       ON p.hpo_id = hpo.hpo_id
+  WHERE p.withdrawal_status = 1 AND # NOT_WITHDRAWN
+      (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
+      (hpo.name IS NULL OR hpo.name != 'TEST') AND
+      pm.final = 1
+"""
+
+def upgrade(engine_name):
+    globals()["upgrade_%s" % engine_name]()
+
+
+def downgrade(engine_name):
+    globals()["downgrade_%s" % engine_name]()
+
 
 def upgrade_rdr():
     op.execute(_PPI_PARTICIPANT_VIEW_SQL)
     op.execute(_QUESTIONNAIRE_RESPONSE_ANSWER_VIEW_SQL)
+    op.execute(_MEASUREMENTS_VIEW_SQL)
 
 
 def downgrade_rdr():
