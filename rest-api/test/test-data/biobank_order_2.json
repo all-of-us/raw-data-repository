@@ -61,6 +61,13 @@
     "processingRequired":true,
     "processed": "2016-01-04T10:28:50Z",
     "finalized": "2016-01-04T10:55:41Z"
+  },{
+    "test": "1PS08",
+    "description": "Plasma Separator 8 mL",
+    "collected": "2016-01-04T09:45:49Z",
+    "processingRequired":true,
+    "processed": "2016-01-04T10:28:50Z",
+    "finalized": "2016-01-04T10:55:41Z"
   }, {
     "test": "2ED10",
     "description": "Test 2ED10",
@@ -69,7 +76,11 @@
     "test": "1SST8",
     "description": "Test 1SST8",
     "processingRequired":false
-  }, {
+  },{
+    "test": "1SS08",
+    "description": "Test 1SS08",
+    "processingRequired":false
+  },{
     "test": "1HEP4",
     "description": "Test IHEP4",
     "processingRequired":false
