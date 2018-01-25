@@ -52,6 +52,10 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
       biobank_ids.append(participant.biobankId)
       self.assertEquals(summary_dao.get(participant.participantId).numBaselineSamplesArrived, 0)
     test1, test2, test3 = random.sample(_BASELINE_TESTS, 3)
+    test_list = [test1, test2, test3]
+    test1, test2, test3 = ['1PST8' if i=='1PS08' else '1SST8' if i == '1SS08' else i for i in \
+      test_list]
+
     samples_file = test_data.open_biobank_samples(*biobank_ids, test1=test1, test2=test2,
                                                   test3=test3)
     input_filename = 'cloud%s.csv' % self._naive_utc_to_naive_central(clock.CLOCK.now()).strftime(

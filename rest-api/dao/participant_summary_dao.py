@@ -83,8 +83,11 @@ def _get_sample_sql_and_params():
     sample_param = 'sample%d' % i
     sample_param_ref = ':%s' % sample_param
     lower_test = BIOBANK_TESTS[i].lower()
-    sql += _SAMPLE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
-    params[sample_param] = BIOBANK_TESTS[i]
+    if lower_test == '1ps08' or lower_test == '1ss08':
+      del lower_test
+    else:
+      sql += _SAMPLE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
+      params[sample_param] = BIOBANK_TESTS[i]
   return sql, params
 
 
@@ -201,9 +204,12 @@ class ParticipantSummaryDao(UpdatableDao):
     If participant_id is provided, only that participant will have their summary updated."""
     baseline_tests_sql, baseline_tests_params = get_sql_and_params_for_array(
         config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES), 'baseline')
+    self._back_fix_new_codes(baseline_tests_params)
     dna_tests_sql, dna_tests_params = get_sql_and_params_for_array(
         config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
     sample_sql, sample_params = _get_sample_sql_and_params()
+    self._back_fix_new_codes(sample_params)
+
     sql = """
     UPDATE
       participant_summary
@@ -248,6 +254,12 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def _get_num_baseline_ppi_modules(self):
     return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
+
+  def _back_fix_new_codes(self, dict):
+    """replace new codes (1PS08 and 1SS08) with old codes for DB compatability"""
+    for key, value in dict.iteritems():
+      if value == '1PS08' or value == '1SS08':
+        dict[key] = value.replace('0', 'T')
 
   def update_enrollment_status(self, summary):
     """Updates the enrollment status field on the provided participant summary to
