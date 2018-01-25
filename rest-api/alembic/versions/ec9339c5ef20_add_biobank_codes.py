@@ -1,7 +1,7 @@
 """add_biobank_codes
 
 Revision ID: ec9339c5ef20
-Revises: 681ee3771f72
+Revises: 574efa4de1ba
 Create Date: 2018-01-25 16:29:52.206674
 
 """
@@ -19,10 +19,9 @@ from model.code import CodeType
 
 # revision identifiers, used by Alembic.
 revision = 'ec9339c5ef20'
-down_revision = '681ee3771f72'
+down_revision = '574efa4de1ba'
 branch_labels = None
 depends_on = None
-
 
 def upgrade(engine_name):
     globals()["upgrade_%s" % engine_name]()
