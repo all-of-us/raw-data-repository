@@ -29,8 +29,6 @@ CREATE OR REPLACE VIEW ppi_participant_view AS
  SELECT
    p.participant_id,
    YEAR(p.sign_up_time) sign_up_year,
-   p.withdrawal_status,
-   YEAR(p.withdrawal_time) withdrawal_year,
    p.suspension_status,
    YEAR(p.suspension_time) suspension_year,
    hpo.name hpo,
@@ -157,7 +155,8 @@ CREATE OR REPLACE VIEW ppi_participant_view AS
      LEFT OUTER JOIN code sexual_orientation_code ON ps.sexual_orientation_id = sexual_orientation_code.code_id
      LEFT OUTER JOIN code education_code ON ps.education_id = education_code.code_id
      LEFT OUTER JOIN code income_code ON ps.income_id = income_code.code_id
-     WHERE (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
+     WHERE p.withdrawal_status = 1 AND # NOT_WITHDRAWN
+           (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
            (hpo.name IS NULL OR hpo.name != 'TEST')
 """
 
@@ -214,22 +213,23 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
     INNER JOIN participant_summary ps ON p.participant_id = ps.participant_id
     LEFT OUTER JOIN hpo ON p.hpo_id = hpo.hpo_id
     LEFT OUTER JOIN code ac ON qra.value_code_id = ac.code_id
-    WHERE (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
-           (hpo.name IS NULL OR hpo.name != 'TEST') AND
-           /* Blacklist any codes which are superfluous for PPI QA. */
-           qc.value NOT IN (
-             'ExtraConsent_DataSharingVideo',
-             'ExtraConsent_EmailACopyToMe',
-             'ExtraConsent_FitnessTrackerVideo',
-             'ExtraConsent_HealthDataVideo',
-             'ExtraConsent_HealthRecordVideo',
-             'ExtraConsent_KeepinginTouchVideo',
-             'ExtraConsent_OtherHealthDataVideo',
-             'ExtraConsent_PhysicalMeausrementsVideo', # Intentional typo
-             'ExtraConsent_WelcomeVideo',
-             'YoutubeVideos_WhatAreWeAsking',
-             'YoutubeVideos_RiskToPrivacy'
-           )
+    WHERE p.withdrawal_status = 1 AND # NOT_WITHDRAWN
+        (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
+        (hpo.name IS NULL OR hpo.name != 'TEST') AND
+        /* Blacklist any codes which are superfluous for PPI QA. */
+        qc.value NOT IN (
+          'ExtraConsent_DataSharingVideo',
+          'ExtraConsent_EmailACopyToMe',
+          'ExtraConsent_FitnessTrackerVideo',
+          'ExtraConsent_HealthDataVideo',
+          'ExtraConsent_HealthRecordVideo',
+          'ExtraConsent_KeepinginTouchVideo',
+          'ExtraConsent_OtherHealthDataVideo',
+          'ExtraConsent_PhysicalMeausrementsVideo', # Intentional typo
+          'ExtraConsent_WelcomeVideo',
+          'YoutubeVideos_WhatAreWeAsking',
+          'YoutubeVideos_RiskToPrivacy'
+        )
 """
 
 
@@ -273,9 +273,10 @@ CREATE OR REPLACE VIEW physical_measurements_view AS
        ON p.participant_id = ps.participant_id
     LEFT OUTER JOIN hpo
        ON p.hpo_id = hpo.hpo_id
-  WHERE (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
-        (hpo.name IS NULL OR hpo.name != 'TEST') AND
-        pm.final = 1
+  WHERE p.withdrawal_status = 1 AND # NOT_WITHDRAWN
+      (ps.email IS NULL OR ps.email NOT LIKE '%@example.com') AND
+      (hpo.name IS NULL OR hpo.name != 'TEST') AND
+      pm.final = 1
 """
 
 def upgrade(engine_name):
