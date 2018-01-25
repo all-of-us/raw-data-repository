@@ -255,11 +255,11 @@ class ParticipantSummaryDao(UpdatableDao):
   def _get_num_baseline_ppi_modules(self):
     return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
 
-  def _back_fix_new_codes(self, dict):
+  def _back_fix_new_codes(self, obj):
     """replace new codes (1PS08 and 1SS08) with old codes for DB compatability"""
-    for key, value in dict.iteritems():
+    for key, value in obj.iteritems():
       if value == '1PS08' or value == '1SS08':
-        dict[key] = value.replace('0', 'T')
+        obj[key] = value.replace('0', 'T')
 
   def update_enrollment_status(self, summary):
     """Updates the enrollment status field on the provided participant summary to
