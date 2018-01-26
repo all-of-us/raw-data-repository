@@ -35,12 +35,12 @@ class DataGenApiTest(testutil.CloudStorageTestBase, FlaskTestBase):
     bo_dao = BiobankOrderDao()
     self.assertEquals(1, bo_dao.count())
     order = bo_dao.get_all()[0]
-    self.assertEquals(7, len(bo_dao.get_with_children(order.biobankOrderId).samples))
+    self.assertEquals(9, len(bo_dao.get_with_children(order.biobankOrderId).samples))
 
     self.send_post('DataGen', {'create_biobank_samples': True, 'samples_missing_fraction': 0.0})
     upsert_from_latest_csv()  # Run the (usually offline) Biobank CSV import job.
 
-    self.assertEquals(7, BiobankStoredSampleDao().count())
+    self.assertEquals(9, BiobankStoredSampleDao().count())
     ps = ParticipantSummaryDao().get(from_client_participant_id(participant_id))
     self.assertEquals(SampleStatus.RECEIVED, ps.samplesToIsolateDNA)
-    self.assertEquals(6, ps.numBaselineSamplesArrived)
+    self.assertEquals(8, ps.numBaselineSamplesArrived)
