@@ -1,5 +1,7 @@
 # app_base.yaml is concatenated to the beginning of this file for deployment.
 
+instance_class: F2
+
 # Since we expect low QPS, keep at least 1 idle instance to avoid high latency.
 automatic_scaling:
   min_idle_instances: 1
