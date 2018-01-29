@@ -38,6 +38,7 @@ _HEADERS = (
     'External Participant Id',
     'Test Code',
     'Sample Family Create Date',
+    'Sent Order Id'
 )
 
 def generate_samples(fraction_missing):

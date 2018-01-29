@@ -60,6 +60,9 @@ def upsert_from_latest_csv():
   """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
   csv_file, csv_filename = _open_latest_samples_file(bucket_name)
+  print '--------------------------------------------'
+  print 'csv file and filename', csv_file, csv_filename
+  print '--------------------------------------------'
   timestamp = _timestamp_from_filename(csv_filename)
 
   now = clock.CLOCK.now()
@@ -114,6 +117,9 @@ def _find_latest_samples_csv(cloud_bucket_name):
     raise DataError(
         'No CSVs in cloud bucket %r (all files: %s).' % (cloud_bucket_name, bucket_stat_list))
   bucket_stat_list.sort(key=lambda s: s.st_ctime)
+  print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+  print bucket_stat_list[-1].filename
+  print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
   return bucket_stat_list[-1].filename
 
 
@@ -123,9 +129,11 @@ class _Columns(object):
   PARENT_ID = 'Parent Sample Id'
   CONFIRMED_DATE = 'Sample Confirmed Date'
   EXTERNAL_PARTICIPANT_ID = 'External Participant Id'
+  BIOBANK_ORDER_IDENTIFIER = 'Sent Order Id'
   TEST_CODE = 'Test Code'
   CREATE_DATE = 'Sample Family Create Date'
-  ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID, TEST_CODE,
+  ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID,
+                   BIOBANK_ORDER_IDENTIFIER, TEST_CODE,
                    CREATE_DATE])
 
 
@@ -183,6 +191,7 @@ def _create_sample_from_row(row, biobank_id_prefix):
   sample = BiobankStoredSample(
       biobankStoredSampleId=row[_Columns.SAMPLE_ID],
       biobankId=biobank_id,
+      biobankOrderIdentifier=row[_Columns.BIOBANK_ORDER_IDENTIFIER],
       test=row[_Columns.TEST_CODE])
   if row[_Columns.PARENT_ID]:
     # Skip child samples.
