@@ -48,7 +48,27 @@ set_db_connection_string
 # gcloud libraries added by set_path.sh include an older version.
 OLDPATH=$PYTHONPATH
 . tools/set_path.sh;
-export PYTHONPATH=/usr/local/lib/python2.7/dist-packages:$OLDPATH:$PYTHONPATH
+GCLOUD_PATH=$(which gcloud)
+CLOUDSDK_ROOT_DIR=${GCLOUD_PATH%/bin/gcloud}
+GAE_SDK_ROOT="${CLOUDSDK_ROOT_DIR}/platform/google_appengine"
+
+# The next line enables Python libraries for Google Cloud SDK
+GAEPATH=${GAE_SDK_ROOT}
+
+# * OPTIONAL STEP *
+# If you wish to import all Python modules, you may iterate in the directory
+# tree and import each module.
+#
+# * WARNING *
+# Some modules have two or more versions available (Ex. django), so the loop
+# will import always its latest version.
+for module in ${GAE_SDK_ROOT}/lib/*; do
+  if [ -r ${module} ];
+  then
+    GAEPATH=${module}:${GAEPATH}
+  fi
+done
+export PYTHONPATH=/usr/local/lib/python2.7/dist-packages:$OLDPATH:$PYTHONPATH:${GAEPATH}
 
 LOCUST_CREDS_FILE="$CREDS_FILE" \
 LOCUST_TARGET_INSTANCE="https://$PROJECT.appspot.com" \

@@ -81,7 +81,7 @@ class _AuthenticatedLocust(Locust):
     # The "client" field gets copied to TaskSet instances.
     self.client = _ReportingClient(
         creds_file=creds_file, default_instance=instance, parse_cli=False)
-    self.participant_generator = FakeParticipantGenerator(self.client)
+    self.participant_generator = FakeParticipantGenerator(self.client, use_local_files=True)
 
 
 class VersionCheckUser(_AuthenticatedLocust):
