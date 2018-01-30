@@ -70,6 +70,7 @@ def generate_samples(fraction_missing):
         confirmed_time = collected_time + datetime.timedelta(minutes=minutes_delta)
         writer.writerow([
             sample_id_start + num_rows,
+            'KIT',
             None,  # no parent
             confirmed_time.strftime(_TIME_FORMAT),
             to_client_biobank_id(biobank_id),
@@ -86,7 +87,7 @@ def generate_samples(fraction_missing):
         confirmed_time = sign_up_time + datetime.timedelta(minutes=minutes_delta)
         tests = random.sample(BIOBANK_TESTS, random.randint(1, len(BIOBANK_TESTS)))
         for test in tests:
-          writer.writerow([sample_id_start + num_rows, None,
+          writer.writerow([sample_id_start + num_rows, 'KIT', None,
                            confirmed_time.strftime(_TIME_FORMAT),
                            to_client_biobank_id(biobank_id), test])
           num_rows += 1
