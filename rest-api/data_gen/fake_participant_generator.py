@@ -137,7 +137,7 @@ class FakeParticipantGenerator(object):
     self._setup_data()
     self._setup_questionnaires()
     self._min_birth_date = self._now - datetime.timedelta(days=_MAX_PARTICIPANT_AGE * 365)
-    self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE)    
+    self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE)
 
   def _days_ago(self, num_days):
     return self._now - datetime.timedelta(days=num_days)
