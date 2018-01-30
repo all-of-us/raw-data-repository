@@ -126,7 +126,7 @@ class MySqlReconciliationTest(FlaskTestBase):
       self.sample_dao.insert(BiobankStoredSample(
           biobankStoredSampleId=sample_id,
           biobankId=participant.biobankId,
-          biobankOrderIdentifier=identifier,
+          biobankOrderIdentifier=identifier + sample_id,
           test=test_code,
           confirmed=confirmed_time,
           created=created_time))
@@ -171,7 +171,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:3],
                        old_order_time, kit_id='kit2')
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
-                         'KIT',old_within_24_hours,
+                         'KIT', old_within_24_hours,
                          old_within_24_hours - datetime.timedelta(hours=1))
 
     # Late, recent order and samples; shows up in rx and late. (But not missing, as it hasn't been

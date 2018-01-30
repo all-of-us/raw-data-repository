@@ -181,6 +181,8 @@ def _create_sample_from_row(row, biobank_id_prefix):
   if not biobank_id_str.startswith(biobank_id_prefix):
     # This is a biobank sample for another environment. Ignore it.
     return None
+  if _Columns.BIOBANK_ORDER_IDENTIFIER not in row:
+    return None
   biobank_id = from_client_biobank_id(biobank_id_str)
   sample = BiobankStoredSample(
       biobankStoredSampleId=row[_Columns.SAMPLE_ID],

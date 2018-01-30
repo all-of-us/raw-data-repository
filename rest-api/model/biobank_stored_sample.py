@@ -22,7 +22,7 @@ class BiobankStoredSample(Base):
   biobankId = Column('biobank_id', Integer, ForeignKey('participant.biobank_id'))
 
   # The biobank order identifier. to enable joining on reconciliation report.
-  biobankOrderIdentifier = Column('value', String(80), nullable=False)
+  biobankOrderIdentifier = Column('biobank_order_identifier', String(80), nullable=False)
   # Which test was performed to produce this sample (ex: "1UR10" for blood draw). Rarely, the same
   # test may be performed multiple times for the same participant.
   test = Column('test', String(80), nullable=False)
