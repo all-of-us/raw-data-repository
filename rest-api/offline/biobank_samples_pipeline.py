@@ -60,9 +60,6 @@ def upsert_from_latest_csv():
   """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
   csv_file, csv_filename = _open_latest_samples_file(bucket_name)
-  print '--------------------------------------------'
-  print 'csv file and filename', csv_file, csv_filename
-  print '--------------------------------------------'
   timestamp = _timestamp_from_filename(csv_filename)
 
   now = clock.CLOCK.now()
@@ -117,9 +114,6 @@ def _find_latest_samples_csv(cloud_bucket_name):
     raise DataError(
         'No CSVs in cloud bucket %r (all files: %s).' % (cloud_bucket_name, bucket_stat_list))
   bucket_stat_list.sort(key=lambda s: s.st_ctime)
-  print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-  print bucket_stat_list[-1].filename
-  print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
   return bucket_stat_list[-1].filename
 
 
