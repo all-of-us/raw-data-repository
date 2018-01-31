@@ -103,11 +103,13 @@ class DatabaseTest(SqlTestBase):
     session.add(BiobankStoredSample(
         biobankStoredSampleId='WEB1234542',
         biobankId=p.biobankId,
+        biobankOrderIdentifier='KIT',
         test='1UR10',
         confirmed=datetime.datetime.utcnow()))
     session.add(BiobankStoredSample(
         biobankStoredSampleId='WEB99999',  # Sample ID must be unique.
         biobankId=p.biobankId,  # Participant ID and test may be duplicated.
+        biobankOrderIdentifier='KIT',
         test='1UR10',
         confirmed=datetime.datetime.utcnow()))
 

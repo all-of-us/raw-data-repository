@@ -206,7 +206,8 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     sample_dao = BiobankStoredSampleDao()
     def add_sample(participant, test_code, sample_id):
       sample_dao.insert(BiobankStoredSample(
-          biobankStoredSampleId=sample_id, biobankId=participant.biobankId, test=test_code))
+          biobankStoredSampleId=sample_id, biobankId=participant.biobankId,
+        biobankOrderIdentifier='KIT', test=test_code))
 
     add_sample(p_baseline_samples, baseline_tests[0], '11111')
     add_sample(p_baseline_samples, baseline_tests[1], '22223')

@@ -22,6 +22,7 @@ class BiobankStoredSampleDaoTest(SqlTestBase):
     created = self.dao.insert(BiobankStoredSample(
         biobankStoredSampleId=sample_id,
         biobankId=self.participant.biobankId,
+        biobankOrderIdentifier='KIT',
         test=test_code,
         confirmed=now))
     fetched = self.dao.get(sample_id)
