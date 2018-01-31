@@ -323,6 +323,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertEquals(row['notes_collected'], u'\u2013foo')
     self.assertEquals(row['notes_processed'], 'bar')
     self.assertEquals(row['notes_finalized'], 'baz')
+    self.assertEquals(row['sent_order_id'], 'OGoodOrder')
     # the other sent-and-received rows
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId), 'sent_test': BIOBANK_TESTS[1]})
