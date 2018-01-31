@@ -10,6 +10,9 @@
     },
     "exporter@all-of-us-rdr-sandbox.iam.gserviceaccount.com": {
       "roles": ["exporter"]
+    },
+    "pmi-hpo-dev@appspot.gserviceaccount.com": {
+      "roles": ["healthpro"]
     }
   },
   "biobank_samples_bucket_name": [
