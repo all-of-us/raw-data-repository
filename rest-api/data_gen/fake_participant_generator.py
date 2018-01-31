@@ -125,7 +125,8 @@ _CONSTANT_CODES = [PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE]
 
 class FakeParticipantGenerator(object):
 
-  def __init__(self, client):
+  def __init__(self, client, use_local_files=None):
+    self._use_local_files = use_local_files
     self._client = client
     self._hpos = HPODao().get_all()
     self._sites = SiteDao().get_all()
@@ -219,7 +220,7 @@ class FakeParticipantGenerator(object):
     self._city_names = self._read_all_lines('city_names.txt')
     self._street_names = self._read_all_lines('street_names.txt')
     measurement_specs = self._read_json('measurement_specs.json')
-    if app_identity.get_application_id() == 'None':
+    if self._use_local_files or app_identity.get_application_id() == 'None':
       # Read CSV from a local file when running dev_appserver.
       answer_specs = self._read_csv_from_file(_ANSWER_SPECS_FILE)
     else:
