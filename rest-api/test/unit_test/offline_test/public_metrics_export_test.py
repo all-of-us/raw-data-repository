@@ -131,12 +131,14 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
           BiobankStoredSample(
               biobankStoredSampleId='abc',
               biobankId=2,
+              biobankOrderIdentifier='KIT',
               test='test',
               confirmed=TIME))
       sample_dao.insert(
           BiobankStoredSample(
               biobankStoredSampleId='def',
               biobankId=3,
+              biobankOrderIdentifier='KIT',
               test='1SAL',
               confirmed=TIME))
       # Required to update the HPO linkage (and test filtering for P3).
@@ -144,6 +146,7 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
           BiobankStoredSample(
               biobankStoredSampleId='xyz',
               biobankId=4,
+              biobankOrderIdentifier='KIT',
               test='1SAL',
               confirmed=TIME))
 

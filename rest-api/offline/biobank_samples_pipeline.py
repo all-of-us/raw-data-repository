@@ -123,9 +123,11 @@ class _Columns(object):
   PARENT_ID = 'Parent Sample Id'
   CONFIRMED_DATE = 'Sample Confirmed Date'
   EXTERNAL_PARTICIPANT_ID = 'External Participant Id'
+  BIOBANK_ORDER_IDENTIFIER = 'Sent Order Id'
   TEST_CODE = 'Test Code'
   CREATE_DATE = 'Sample Family Create Date'
-  ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID, TEST_CODE,
+  ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID,
+                   BIOBANK_ORDER_IDENTIFIER, TEST_CODE,
                    CREATE_DATE])
 
 
@@ -179,10 +181,13 @@ def _create_sample_from_row(row, biobank_id_prefix):
   if not biobank_id_str.startswith(biobank_id_prefix):
     # This is a biobank sample for another environment. Ignore it.
     return None
+  if _Columns.BIOBANK_ORDER_IDENTIFIER not in row:
+    return None
   biobank_id = from_client_biobank_id(biobank_id_str)
   sample = BiobankStoredSample(
       biobankStoredSampleId=row[_Columns.SAMPLE_ID],
       biobankId=biobank_id,
+      biobankOrderIdentifier=row[_Columns.BIOBANK_ORDER_IDENTIFIER],
       test=row[_Columns.TEST_CODE])
   if row[_Columns.PARENT_ID]:
     # Skip child samples.

@@ -267,6 +267,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         biobankStoredSampleId='s' + participant['participantId'] + test_code,
         biobankId=participant['biobankId'][1:],
         test=test_code,
+        biobankOrderIdentifier='KIT',
         confirmed=TIME_1))
 
   def testQuery_ehrConsent(self):

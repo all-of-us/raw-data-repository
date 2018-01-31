@@ -38,6 +38,7 @@ _HEADERS = (
     'External Participant Id',
     'Test Code',
     'Sample Family Create Date',
+    'Sent Order Id'
 )
 
 def generate_samples(fraction_missing):
@@ -73,7 +74,7 @@ def generate_samples(fraction_missing):
             confirmed_time.strftime(_TIME_FORMAT),
             to_client_biobank_id(biobank_id),
             test,
-            confirmed_time.strftime(_TIME_FORMAT)])  # reuse confirmed time as created time
+            confirmed_time.strftime(_TIME_FORMAT), 'KIT'])  # reuse confirmed time as created time
         num_rows += 1
     participant_dao = ParticipantDao()
     with participant_dao.session() as session:
@@ -87,6 +88,6 @@ def generate_samples(fraction_missing):
         for test in tests:
           writer.writerow([sample_id_start + num_rows, None,
                            confirmed_time.strftime(_TIME_FORMAT),
-                           to_client_biobank_id(biobank_id), test])
+                           to_client_biobank_id(biobank_id), test, 'KIT'])
           num_rows += 1
   logging.info("Generated %d samples in %s.", num_rows, file_name)
