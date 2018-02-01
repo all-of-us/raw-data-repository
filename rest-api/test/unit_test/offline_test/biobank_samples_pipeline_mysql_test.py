@@ -296,6 +296,29 @@ class MySqlReconciliationTest(FlaskTestBase):
         'biobank_id': to_client_biobank_id(p_on_time.biobankId),
         'sent_test': BIOBANK_TESTS[0],
         'received_test': BIOBANK_TESTS[0]})
+    
+    # p_repeated has 2 received and 2 late.
+    exporter.assertHasRow(received, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0],
+        'sent_order_id': 'ORepeatedOrder1'})
+    exporter.assertHasRow(received, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0],
+        'sent_order_id': 'ORepeatedOrder0'})
+    exporter.assertHasRow(late, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0],
+        'sent_order_id': 'ORepeatedOrder0'})
+    exporter.assertHasRow(late, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0],
+        'sent_order_id': 'ORepeatedOrder1'})
+
     # Also check the values of all remaining fields on one row.
     self.assertEquals(row['source_site_name'], 'Monroeville Urgent Care Center')
     self.assertEquals(row['source_site_mayolink_client_number'], '7035769')
@@ -381,9 +404,6 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertItemsEqual(
         multi_sample_row['sent_order_id'].split(','),
         ['ORepeatedOrder2'])
-    self.assertItemsEqual(
-        multi_sample_row['received_sample_id'].split(','),
-        [''])
 
     # We don't include the old withdrawal.
     exporter.assertRowCount(withdrawals, 5)
