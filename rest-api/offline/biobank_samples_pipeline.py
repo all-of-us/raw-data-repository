@@ -209,6 +209,7 @@ def _get_report_paths(report_datetime):
           _REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
       for report_name in ('received', 'over_24h', 'missing', 'withdrawals')]
 
+
 def _query_and_write_reports(exporter, now, path_received, path_late, path_missing,
                              path_withdrawals):
   """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
@@ -227,10 +228,10 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
   # Gets samples or orders where something has gone missing within the past 7 days, and if an order
   # was placed, it was placed at least 36 hours ago.
   missing_predicate = lambda result: ((result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
-                                        (result[_SENT_FINALIZED_INDEX] and
-                                         not result[_RECEIVED_TEST_INDEX])) and
-                                       in_past_week(result, now,
-                                                    ordered_before=now - _THIRTY_SIX_HOURS_AGO))
+                                      (result[_SENT_FINALIZED_INDEX] and
+                                      not result[_RECEIVED_TEST_INDEX])) and
+                                      in_past_week(result, now,
+                                      ordered_before=now - _THIRTY_SIX_HOURS_AGO))
 
   code_dao = CodeDao()
   race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
@@ -301,6 +302,7 @@ _ORDER_JOINS = """
 _STORED_SAMPLE_JOIN_CRITERIA = """
       biobank_stored_sample.biobank_id = participant.biobank_id
       AND biobank_stored_sample.test = biobank_ordered_sample.test
+      AND biobank_stored_sample.biobank_order_identifier = biobank_order_identifier.value
 """
 
 def _get_hpo_type_sql(hpo_alias):
@@ -335,8 +337,8 @@ _RECONCILIATION_REPORT_SQL = ("""
   SELECT
     CONCAT(:biobank_id_prefix, raw_biobank_id) biobank_id,
     order_test sent_test,
-    COUNT(DISTINCT biobank_order_id) sent_count,
-    GROUP_CONCAT(DISTINCT biobank_order_id) sent_order_id,
+    SUM(finalized is not NULL) sent_count,
+    biobank_order_id sent_order_id,
     ISODATE[MAX(collected)] sent_collection_time,
     ISODATE[MAX(processed)] sent_processed_time,
     ISODATE[MAX(finalized)] sent_finalized_time,
@@ -408,7 +410,7 @@ _RECONCILIATION_REPORT_SQL = ("""
     UNION ALL
     SELECT
       biobank_stored_sample.biobank_id raw_biobank_id,
-      NULL biobank_order_id,
+      biobank_stored_sample.biobank_order_identifier,
       NULL source_site_name,
       NULL source_site_mayolink_client_number,
       NULL source_site_hpo,
@@ -443,7 +445,7 @@ _RECONCILIATION_REPORT_SQL = ("""
          AND participant.withdrawal_time IS NOT NULL)
   ) reconciled
   GROUP BY
-    biobank_id, order_test, test
+    biobank_id, sent_order_id, order_test, test
   ORDER BY
     ISODATE[MAX(collected)], ISODATE[MAX(confirmed)], GROUP_CONCAT(DISTINCT biobank_order_id),
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id)
