@@ -175,7 +175,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                          old_within_24_hours - datetime.timedelta(hours=1))
 
     # Late, recent order and samples; shows up in rx and late. (But not missing, as it hasn't been
-    # 24 hours since the order.)
+    # 36 hours since the order.)
     p_late_and_missing = self._insert_participant()
     # Extra missing sample doesn't show up as missing as it hasn't been 24 hours yet.
     o_late_and_missing = self._insert_order(
@@ -193,7 +193,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                          old_late_time, old_late_time - datetime.timedelta(minutes=59))
 
 
-    # Order with missing sample from 2 days ago; shows up in rx and missing.
+    # Order with missing sample from 2 days ago; shows up in missing.
     p_two_days_missing = self._insert_participant()
     # The third test doesn't wind up in missing, as it was never finalized.
     self._insert_order(p_two_days_missing, 'TwoDaysMissingOrder', BIOBANK_TESTS[:3],
@@ -202,13 +202,13 @@ class MySqlReconciliationTest(FlaskTestBase):
     # Recent samples with no matching order; shows up in missing.
     p_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
     self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], ['NobodyOrderedThisSample'],
-                         'OTwoDaysMissingOrder',
+                         'OExtraOrderNotSent',
                          order_time, order_time - datetime.timedelta(minutes=59))
 
-    # Old samples with no matching order; shows up in rx.
+    # Old samples with no matching order; Does not show up.
     p_old_extra = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     self._insert_samples(p_old_extra, [BIOBANK_TESTS[-1]], ['OldNobodyOrderedThisSample'],
-                         'OTwoDaysMissingOrder',
+                         'OOldExtrOrderNotSent',
                          old_order_time, old_order_time - datetime.timedelta(hours=1))
 
     # Withdrawn participants don't show up in any reports except withdrawal report.
@@ -290,12 +290,35 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # sent-and-received: 4 on-time, 2 late, none of the missing/extra/repeated ones;
     # includes orders/samples from more than 7 days ago
-    exporter.assertRowCount(received, 6)
+    exporter.assertRowCount(received, 8)
     exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
     row = exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId),
         'sent_test': BIOBANK_TESTS[0],
         'received_test': BIOBANK_TESTS[0]})
+
+    # p_repeated has 2 received and 2 late.
+    exporter.assertHasRow(received, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0],
+        'sent_order_id': 'ORepeatedOrder1'})
+    exporter.assertHasRow(received, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0],
+        'sent_order_id': 'ORepeatedOrder0'})
+    exporter.assertHasRow(late, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0],
+        'sent_order_id': 'ORepeatedOrder0'})
+    exporter.assertHasRow(late, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0],
+        'sent_order_id': 'ORepeatedOrder1'})
+
     # Also check the values of all remaining fields on one row.
     self.assertEquals(row['source_site_name'], 'Monroeville Urgent Care Center')
     self.assertEquals(row['source_site_mayolink_client_number'], '7035769')
@@ -342,7 +365,7 @@ class MySqlReconciliationTest(FlaskTestBase):
         'is_native_american': 'N'})
 
     # sent-and-received: 2 late; don't include orders/samples from more than 7 days ago
-    exporter.assertRowCount(late, 2)
+    exporter.assertRowCount(late, 3)
     exporter.assertColumnNamesEqual(late, _CSV_COLUMN_NAMES)
     exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
@@ -351,7 +374,7 @@ class MySqlReconciliationTest(FlaskTestBase):
         'is_native_american': 'N'})
     exporter.assertHasRow(late, {
         'biobank_id': to_client_biobank_id(p_repeated.biobankId),
-        'elapsed_hours': '45'})
+        'elapsed_hours': '46'})
 
     # orders/samples where something went wrong; don't include orders/samples from more than 7
     # days ago, or where 24 hours hasn't elapsed yet.
@@ -359,7 +382,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     exporter.assertColumnNamesEqual(missing, _CSV_COLUMN_NAMES)
     # sample received, nothing ordered
     exporter.assertHasRow(missing, {
-        'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id': ''})
+        'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id':
+        'OExtraOrderNotSent'})
     # order received, no sample
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_two_days_missing.biobankId),
@@ -374,16 +398,12 @@ class MySqlReconciliationTest(FlaskTestBase):
     # 3 orders sent, only 2 received
     multi_sample_row = exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_repeated.biobankId),
-        'sent_count': '3',
-        'received_count': '2'})
-
+        'sent_count': '1',
+        'received_count': '0'})
     # Also verify the comma-joined fields of the row with multiple orders/samples.
     self.assertItemsEqual(
         multi_sample_row['sent_order_id'].split(','),
-        ['ORepeatedOrder1', 'ORepeatedOrder0', 'ORepeatedOrder2'])
-    self.assertItemsEqual(
-        multi_sample_row['received_sample_id'].split(','),
-        ['RepeatedSample0', 'RepeatedSample1'])
+        ['ORepeatedOrder2'])
 
     # We don't include the old withdrawal.
     exporter.assertRowCount(withdrawals, 5)
