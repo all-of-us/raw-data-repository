@@ -296,7 +296,7 @@ class MySqlReconciliationTest(FlaskTestBase):
         'biobank_id': to_client_biobank_id(p_on_time.biobankId),
         'sent_test': BIOBANK_TESTS[0],
         'received_test': BIOBANK_TESTS[0]})
-    
+
     # p_repeated has 2 received and 2 late.
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_repeated.biobankId),
