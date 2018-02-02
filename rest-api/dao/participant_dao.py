@@ -274,10 +274,10 @@ class ParticipantDao(UpdatableDao):
     participant = self.get_for_update(session, participant_id)
     if participant is None:
       raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
-    if participant.hpoId == site.hpoId:
-      return
 
     participant.hpoId = site.hpoId
+    participant.organizationId = site.organizationId
+    participant.siteId = site.siteId
     participant.providerLink = make_primary_provider_link_for_id(site.hpoId)
     if participant.participantSummary is None:
       raise RuntimeError('No ParticipantSummary available for P%d.' % participant_id)

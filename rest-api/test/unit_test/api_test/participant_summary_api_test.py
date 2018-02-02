@@ -357,7 +357,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       participant_3['suspensionStatus'] = 'NO_CONTACT'
       participant_3['site'] = 'hpo-site-monroeville'
       self.send_put('Participant/%s' % participant_id_2, participant_2,
-                     headers={ 'If-Match': participant_2['meta']['versionId'] })
+                    headers={ 'If-Match':'W/"2"'})
       self.send_put('Participant/%s' % participant_id_3, participant_3,
                      headers={ 'If-Match': participant_3['meta']['versionId'] })
 
