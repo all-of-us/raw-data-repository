@@ -303,6 +303,7 @@ _STORED_SAMPLE_JOIN_CRITERIA = """
       biobank_stored_sample.biobank_id = participant.biobank_id
       AND biobank_stored_sample.test = biobank_ordered_sample.test
       AND biobank_stored_sample.biobank_order_identifier = biobank_order_identifier.value
+      AND biobank_ordered_sample.finalized IS NOT NULL
 """
 
 def _get_hpo_type_sql(hpo_alias):
@@ -406,7 +407,6 @@ _RECONCILIATION_REPORT_SQL = ("""
        AND tracking_number_identifier.system = :tracking_number_system
     WHERE
       participant.withdrawal_time IS NULL
-      AND biobank_ordered_sample.finalized IS NOT NULL
     UNION ALL
     SELECT
       biobank_stored_sample.biobank_id raw_biobank_id,
