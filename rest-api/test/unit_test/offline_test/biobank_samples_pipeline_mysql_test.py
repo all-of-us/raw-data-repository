@@ -184,6 +184,14 @@ class MySqlReconciliationTest(FlaskTestBase):
                          late_time,
                          late_time - datetime.timedelta(minutes=59))
 
+    # ordered sample not finalized with stored sample should be in missing.
+    p_not_finalized = self._insert_participant()
+    self._insert_order(p_not_finalized, 'UnfinalizedOrder', BIOBANK_TESTS[:2],
+                      order_time, finalized_tests=BIOBANK_TESTS[:1])
+    self._insert_samples(p_not_finalized, [BIOBANK_TESTS[1]], ['missing_order'], 'OUnfinalizedOrder',
+                        order_time,
+                        order_time - datetime.timedelta(hours=1))
+
     # Late order and samples from 10 days ago; shows up in rx (but not missing, as it was too
     # long ago.
     p_old_late_and_missing = self._insert_participant()
@@ -318,6 +326,9 @@ class MySqlReconciliationTest(FlaskTestBase):
         'sent_test': BIOBANK_TESTS[0],
         'received_test': BIOBANK_TESTS[0],
         'sent_order_id': 'ORepeatedOrder1'})
+    exporter.assertHasRow(missing, {
+        'biobank_id': to_client_biobank_id(p_not_finalized.biobankId),
+        'sent_order_id': 'OUnfinalizedOrder'})
 
     # Also check the values of all remaining fields on one row.
     self.assertEquals(row['source_site_name'], 'Monroeville Urgent Care Center')
@@ -378,7 +389,7 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # orders/samples where something went wrong; don't include orders/samples from more than 7
     # days ago, or where 24 hours hasn't elapsed yet.
-    exporter.assertRowCount(missing, 4)
+    exporter.assertRowCount(missing, 5)
     exporter.assertColumnNamesEqual(missing, _CSV_COLUMN_NAMES)
     # sample received, nothing ordered
     exporter.assertHasRow(missing, {
