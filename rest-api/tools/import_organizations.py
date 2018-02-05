@@ -163,6 +163,7 @@ class SiteImporter(CsvImporter):
                 googleGroup=google_group,
                 mayolinkClientNumber=mayolink_client_number,
                 organizationId=organization.organizationId,
+                hpoId=organization.hpoId,
                 siteStatus=site_status,
                 launchDate=launch_date,
                 notes=notes,
