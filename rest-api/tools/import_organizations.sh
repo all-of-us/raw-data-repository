@@ -13,7 +13,6 @@ while true; do
     * ) break ;;
   esac
 done
-
 if [ -z "${ACCOUNT}" ]
 then
   echo "Usage: $USAGE"

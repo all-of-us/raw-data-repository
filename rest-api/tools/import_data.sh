@@ -3,10 +3,8 @@
 # Used after setting up a database.
 # Expected arguments are --account and --project, passed along to sub-scripts.
 
-echo "Importing HPOs..."
-tools/import_hpos.sh $@
-echo "Importing sites..."
-tools/import_sites.sh --file test/test-data/sites.csv $@
+echo "Importing organizations..."
+tools/import_organizations.sh $@
 echo "Importing codebook..."
 ../rdr_client/run_client.sh $@ import_codebook.py
 echo "Importing questionnaires..."
