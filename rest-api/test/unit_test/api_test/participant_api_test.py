@@ -122,9 +122,9 @@ class ParticipantApiTest(FlaskTestBase):
     self.assertEqual(update_2['organization'], 'AZ_TUCSON_BANNER_HEALTH')
     participant['organization'] = 'AZ_TUCSON_BANNER_HEALTH'
     update_3 = self.send_put(path, participant, headers={'If-Match': 'W/"3"'})
-    self.assertNotEqual(update_2['hpoId'], update_3['hpoId'])
-    self.assertNotEqual(update_2['organization'], update_3['organization'])
-    self.assertEqual(update_3['site'], 'UNSET')
+    self.assertEqual(update_2['hpoId'], update_3['hpoId'])
+    self.assertEqual(update_2['organization'], update_3['organization'])
+    self.assertEqual(update_3['site'], 'hpo-site-bannerphoenix')
     participant['site'] = 'hpo-site-clinic-phoenix'
     update_4 = self.send_put(path, participant, headers={'If-Match': 'W/"4"'})
     self.assertEqual(update_4['site'], 'hpo-site-clinic-phoenix')

@@ -160,16 +160,14 @@ class ParticipantDao(UpdatableDao):
     # TODO: DO WE WANT TO PREVENT PAIRING IF EXISTING SITE HAS PM/BIO.
 
     if site_id != u'UNSET' and site_id is not None:
-      if old_site_id != site_id:
-        site = self.site_dao.get(site_id)
-        organization_id = site.organizationId
-        awardee_id = site.hpoId
-        return site_id, organization_id, awardee_id
-    if organization_id != u'UNSET' and organization_id is not None:
-      if organization_id != old_organization_id:
-        organization = self.organization_dao.get(organization_id)
-        awardee_id = organization.hpoId
-        return None, organization_id, awardee_id
+      site = self.site_dao.get(site_id)
+      organization_id = site.organizationId
+      awardee_id = site.hpoId
+      return site_id, organization_id, awardee_id
+    elif organization_id != u'UNSET' and organization_id is not None:
+      organization = self.organization_dao.get(organization_id)
+      awardee_id = organization.hpoId
+      return None, organization_id, awardee_id
     return None, None, awardee_id
 
   @staticmethod
