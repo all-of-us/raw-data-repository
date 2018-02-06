@@ -114,7 +114,7 @@ class ParticipantDao(UpdatableDao):
       need_new_summary = True
 
     if obj.organizationId or obj.siteId or obj.hpoId:
-      site, organization, awardee = self.get_pairing_level(obj, existing_obj)
+      site, organization, awardee = self.get_pairing_level(obj)
       obj.organizationId = organization
       obj.siteId = site
       obj.hpoId = awardee
@@ -151,7 +151,7 @@ class ParticipantDao(UpdatableDao):
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
 
-  def get_pairing_level(self, obj, existing_obj):
+  def get_pairing_level(self, obj):
     organization_id = obj.organizationId
     site_id = obj.siteId
     awardee_id = obj.hpoId
