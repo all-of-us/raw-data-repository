@@ -271,6 +271,8 @@ class ParticipantDao(UpdatableDao):
     if participant is None:
       raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
 
+    if participant.siteId == site.siteId:
+      return
     participant.hpoId = site.hpoId
     participant.organizationId = site.organizationId
     participant.siteId = site.siteId

@@ -237,6 +237,7 @@ class _TestDb(object):
         siteName='Monroeville Urgent Care Center',
         googleGroup='hpo-site-monroeville',
         mayolinkClientNumber=7035769,
+        organizationId=AZ_ORG_ID,
         hpoId=PITT_HPO_ID))
     self.site_id = created_site.siteId
     site_dao.insert(Site(

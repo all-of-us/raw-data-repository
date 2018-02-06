@@ -28,7 +28,7 @@ from participant_enums import get_bucketed_age
 _ORDER_BY_ENDING = ('lastName', 'firstName', 'dateOfBirth', 'participantId')
 # The default ordering of results for queries for withdrawn participants.
 _WITHDRAWN_ORDER_BY_ENDING = ('withdrawalTime', 'participantId')
-_CODE_FILTER_FIELDS = ('genderIdentity',)
+_CODE_FILTER_FIELDS = ('genderIdentity', 'organization', 'site', 'awardee')
 _SITE_FIELDS = ('physicalMeasurementsCreatedSite', 'physicalMeasurementsFinalizedSite',
                 'biospecimenSourceSite', 'biospecimenCollectedSite',
                 'biospecimenProcessedSite', 'biospecimenFinalizedSite', 'site')

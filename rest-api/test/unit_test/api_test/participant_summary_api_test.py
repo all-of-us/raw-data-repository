@@ -484,10 +484,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=awardee',
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=organization',
-                           [[ps_1, ps_2], [ps_3]])
-
-
-      # Test filtering on fields.
+                           [[ps_1, ps_3], [ps_2]])
+      self.assertResponses('ParticipantSummary?_count=2&_sort:asc=site',
+                           [[ps_2, ps_1], [ps_3]])
+                           # Test filtering on fields.
       self.assertResponses('ParticipantSummary?_count=2&firstName=Mary',
                            [[ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&site=hpo-site-monroeville',

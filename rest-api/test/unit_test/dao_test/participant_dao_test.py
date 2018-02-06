@@ -271,7 +271,6 @@ class ParticipantDaoTest(SqlTestBase):
     self.assertEquals(paired.hpoId, self._test_db.hpo_id)
     self.assertEquals(paired.providerLink, make_primary_provider_link_for_id(self._test_db.hpo_id))
     self.assertEquals(self.participant_summary_dao.get(participant_id).hpoId, self._test_db.hpo_id)
-
   def test_overwrite_existing_pairing(self):
     participant_id = 99
     created = self.dao.insert(Participant(
