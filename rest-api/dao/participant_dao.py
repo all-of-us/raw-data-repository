@@ -155,8 +155,6 @@ class ParticipantDao(UpdatableDao):
     organization_id = obj.organizationId
     site_id = obj.siteId
     awardee_id = obj.hpoId
-    old_site_id = existing_obj.siteId
-    old_organization_id = existing_obj.organizationId
     # TODO: DO WE WANT TO PREVENT PAIRING IF EXISTING SITE HAS PM/BIO.
 
     if site_id != u'UNSET' and site_id is not None:
