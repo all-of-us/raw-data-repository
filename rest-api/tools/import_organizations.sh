@@ -13,7 +13,7 @@ while true; do
     * ) break ;;
   esac
 done
-if [ -z "${ACCOUNT}" ]
+if [ -z "${ACCOUNT}" ]  && [ "${PROJECT}" ];
 then
   echo "Usage: $USAGE"
   exit 1
@@ -34,7 +34,12 @@ function get_geocode_key {
 }
 
 CREDS_ACCOUNT="${ACCOUNT}"
+if [ -z "${ACCOUNT}" ]
+then
+echo "Not Geocoding addresses without --account"
+else
 get_geocode_key
+fi
 
 if [ "${PROJECT}" ]
 then
