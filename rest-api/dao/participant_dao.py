@@ -132,7 +132,6 @@ class ParticipantDao(UpdatableDao):
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id
         need_new_summary = True
-
     if need_new_summary and existing_obj.participantSummary:
       # Copy the existing participant summary, and mutate the fields that
       # come from participant.

@@ -102,7 +102,7 @@ class ParticipantDaoTest(SqlTestBase):
       self.dao.update(p)
 
     # lastModified, hpoId, version is updated on p after being passed in
-    p2 = self.dao.get(1);
+    p2 = self.dao.get(1)
     expected_participant = self._participant_with_defaults(
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
@@ -271,6 +271,9 @@ class ParticipantDaoTest(SqlTestBase):
     self.assertEquals(paired.hpoId, self._test_db.hpo_id)
     self.assertEquals(paired.providerLink, make_primary_provider_link_for_id(self._test_db.hpo_id))
     self.assertEquals(self.participant_summary_dao.get(participant_id).hpoId, self._test_db.hpo_id)
+    self.assertEquals(paired.organizationId, self._test_db.organization_id)
+    self.assertEquals(paired.siteId, self._test_db.site_id)
+
   def test_overwrite_existing_pairing(self):
     participant_id = 99
     created = self.dao.insert(Participant(
@@ -292,6 +295,7 @@ class ParticipantDaoTest(SqlTestBase):
 
     # Original Participant + summary is affected.
     refetched = self.dao.get(participant_id)
+
     self.assertEquals(refetched.hpoId, other_hpo.hpoId)
     self.assertEquals(refetched.providerLink, make_primary_provider_link_for_id(other_hpo.hpoId))
     self.assertEquals(self.participant_summary_dao.get(participant_id).hpoId, other_hpo.hpoId)

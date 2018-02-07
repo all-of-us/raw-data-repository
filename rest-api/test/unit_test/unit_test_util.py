@@ -45,6 +45,7 @@ from test.test_data import data_path
 from unicode_csv import UnicodeDictReader
 
 PITT_HPO_ID = 2
+PITT_ORG_ID = 3
 AZ_HPO_ID = 4
 AZ_ORG_ID = 4
 
@@ -225,11 +226,17 @@ class _TestDb(object):
     self.hpo_id = PITT_HPO_ID
 
     org_dao = OrganizationDao()
-    created_org = org_dao.insert(Organization(
+    org_dao.insert(Organization(
       organizationId=AZ_ORG_ID,
       externalId='AZ_TUCSON_BANNER_HEALTH',
       displayName='Banner Health',
       hpoId=AZ_HPO_ID))
+
+    created_org = org_dao.insert(Organization(
+      organizationId=PITT_ORG_ID,
+      externalId='PITT_BANNER_HEALTH',
+      displayName='PITT display Banner Health',
+      hpoId=PITT_HPO_ID))
     self.organization_id = created_org.organizationId
 
     site_dao = SiteDao()
@@ -237,14 +244,14 @@ class _TestDb(object):
         siteName='Monroeville Urgent Care Center',
         googleGroup='hpo-site-monroeville',
         mayolinkClientNumber=7035769,
-        organizationId=AZ_ORG_ID,
+        organizationId=PITT_ORG_ID,
         hpoId=PITT_HPO_ID))
     self.site_id = created_site.siteId
     site_dao.insert(Site(
         siteName='Phoenix Urgent Care Center',
         googleGroup='hpo-site-bannerphoenix',
         mayolinkClientNumber=7035770,
-        organizationId=AZ_ORG_ID,
+        organizationId=PITT_ORG_ID,
         hpoId=PITT_HPO_ID))
 
     site_dao.insert(Site(
@@ -373,8 +380,8 @@ class NdbTestBase(SqlTestBase):
     },
   }
 
-  def setUp(self, use_mysql=False):
-    super(NdbTestBase, self).setUp(use_mysql=use_mysql)
+  def setUp(self, use_mysql=False, with_data=True):
+    super(NdbTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data)
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
     ndb.get_context().clear_cache()
