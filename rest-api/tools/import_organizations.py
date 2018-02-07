@@ -178,15 +178,15 @@ class SiteImporter(CsvImporter):
                 adminEmails=admin_email_addresses,
                 link=link)
 
-  def _update_entity(self, entity, existing_entity, session, dry_run):
-    self._populate_lat_lng_and_time_zone(entity, existing_entity)
-    return super(SiteImporter, self)._update_entity(entity, existing_entity, session, dry_run)
+  def _update_entity(self, entity, existing_entity, session, dry_run, geocode_flag):
+    self._populate_lat_lng_and_time_zone(entity, existing_entity, geocode_flag)
+    return super(SiteImporter, self)._update_entity(entity, existing_entity, session, dry_run, geocode_flag)
 
-  def _insert_entity(self, entity, existing_map, session, dry_run):
-    self._populate_lat_lng_and_time_zone(entity, None)
-    super(SiteImporter, self)._insert_entity(entity, existing_map, session, dry_run)
+  def _insert_entity(self, entity, existing_map, session, dry_run, geocode_flag):
+    self._populate_lat_lng_and_time_zone(entity, None, geocode_flag)
+    super(SiteImporter, self)._insert_entity(entity, existing_map, session, dry_run, geocode_flag)
 
-  def _populate_lat_lng_and_time_zone(self, site, existing_site):
+  def _populate_lat_lng_and_time_zone(self, site, existing_site, geocode_flag):
     if site.address1 and site.city and site.state:
       if existing_site:
         if (existing_site.address1 == site.address1 and existing_site.city == site.city
@@ -197,9 +197,10 @@ class SiteImporter(CsvImporter):
           site.longitude = existing_site.longitude
           site.timeZoneId = existing_site.timeZoneId
           return
-      latitude, longitude = self._get_lat_long_for_site(site.address1, site.city, site.state)
-      site.latitude = latitude
-      site.longitude = longitude
+      if geocode_flag:
+        latitude, longitude = self._get_lat_long_for_site(site.address1, site.city, site.state)
+        site.latitude = latitude
+        site.longitude = longitude
       if latitude and longitude:
         site.timeZoneId = self._get_time_zone(latitude, longitude)
 
@@ -242,7 +243,7 @@ class SiteImporter(CsvImporter):
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
   OrganizationImporter().run(args.organization_file, args.dry_run)
-  SiteImporter().run(args.site_file, args.dry_run)
+  SiteImporter().run(args.site_file, args.dry_run, args.geocode_flag)
 
 if __name__ == '__main__':
   configure_logging()
@@ -254,5 +255,8 @@ if __name__ == '__main__':
   parser.add_argument('--site_file', help='Filename containing site CSV to import',
                       required=True)
   parser.add_argument('--dry_run', help='Read CSV and check for diffs against database.',
+                      action='store_true')
+  parser.add_argument('--geocode_flag', help='If --account passed into import_organizations.sh, '
+                                             'geocoding is performed.',
                       action='store_true')
   main(parser.parse_args())

@@ -21,7 +21,7 @@ fi
 
 TMP_GEOCODE_DIR=$(mktemp -d)
 TMP_GEOCODE_INFO_FILE=${TMP_GEOCODE_DIR}/geocode_key.json
-
+GEOCODE_FLAG=--false
 function cleanup {
 :
 }
@@ -38,6 +38,7 @@ if [ -z "${ACCOUNT}" ]
 then
 echo "Not Geocoding addresses without --account"
 else
+GEOCODE_FLAG=--true
 get_geocode_key
 fi
 
@@ -56,7 +57,7 @@ fi
 
 source tools/set_path.sh
 python tools/import_organizations.py --awardee_file data/awardees.csv \
-  --organization_file data/organizations.csv --site_file data/sites.csv $DRY_RUN
+  --organization_file data/organizations.csv --site_file data/sites.csv $DRY_RUN $GEOCODE_FLAG
 
 function finish {
   cleanup

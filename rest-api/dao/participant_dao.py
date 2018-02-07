@@ -1,5 +1,6 @@
 import json
 
+from code_constants import UNSET
 from dao.organization_dao import OrganizationDao
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.orm import joinedload
@@ -156,13 +157,17 @@ class ParticipantDao(UpdatableDao):
     awardee_id = obj.hpoId
     # TODO: DO WE WANT TO PREVENT PAIRING IF EXISTING SITE HAS PM/BIO.
 
-    if site_id != u'UNSET' and site_id is not None:
+    if site_id != UNSET and site_id is not None:
       site = self.site_dao.get(site_id)
+      if site is None:
+        raise BadRequest('Site with site id %s does not exist.' % site_id)
       organization_id = site.organizationId
       awardee_id = site.hpoId
       return site_id, organization_id, awardee_id
-    elif organization_id != u'UNSET' and organization_id is not None:
+    elif organization_id != UNSET and organization_id is not None:
       organization = self.organization_dao.get(organization_id)
+      if organization is None:
+        raise BadRequest('Organization with id %s does not exist.' % organization_id)
       awardee_id = organization.hpoId
       return None, organization_id, awardee_id
     return None, None, awardee_id
