@@ -180,7 +180,8 @@ class SiteImporter(CsvImporter):
 
   def _update_entity(self, entity, existing_entity, session, dry_run, geocode_flag):
     self._populate_lat_lng_and_time_zone(entity, existing_entity, geocode_flag)
-    return super(SiteImporter, self)._update_entity(entity, existing_entity, session, dry_run, geocode_flag)
+    return super(SiteImporter, self)._update_entity(entity, existing_entity, session, dry_run,
+                                                    geocode_flag)
 
   def _insert_entity(self, entity, existing_map, session, dry_run, geocode_flag):
     self._populate_lat_lng_and_time_zone(entity, None, geocode_flag)
