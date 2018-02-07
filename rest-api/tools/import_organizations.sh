@@ -21,7 +21,7 @@ fi
 
 TMP_GEOCODE_DIR=$(mktemp -d)
 TMP_GEOCODE_INFO_FILE=${TMP_GEOCODE_DIR}/geocode_key.json
-GEOCODE_FLAG=--false
+
 function cleanup {
 :
 }
@@ -38,7 +38,7 @@ if [ -z "${ACCOUNT}" ]
 then
 echo "Not Geocoding addresses without --account"
 else
-GEOCODE_FLAG=--true
+GEOCODE_FLAG=--geocode_flag
 get_geocode_key
 fi
 
