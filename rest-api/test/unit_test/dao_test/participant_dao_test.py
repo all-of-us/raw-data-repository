@@ -11,6 +11,7 @@ from model.hpo import HPO
 from model.participant import Participant
 from model.site import Site
 from participant_enums import WithdrawalStatus, UNSET_HPO_ID
+from test.unit_test.unit_test_util import PITT_ORG_ID
 from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
@@ -299,3 +300,26 @@ class ParticipantDaoTest(SqlTestBase):
     self.assertEquals(refetched.hpoId, other_hpo.hpoId)
     self.assertEquals(refetched.providerLink, make_primary_provider_link_for_id(other_hpo.hpoId))
     self.assertEquals(self.participant_summary_dao.get(participant_id).hpoId, other_hpo.hpoId)
+
+  def test_pairing_at_different_levels(self):
+    p = Participant()
+    time = datetime.datetime(2016, 1, 1)
+    with random_ids([1, 2]):
+      with FakeClock(time):
+        self.dao.insert(p)
+
+    p.version = 1
+    p.siteId = 1
+    time2 = datetime.datetime(2016, 1, 2)
+    with FakeClock(time2):
+      self.dao.update(p)
+
+    p2 = self.dao.get(1)
+    ep = self._participant_with_defaults(
+        participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
+        hpoId=PITT_HPO_ID, siteId=1, organizationId=PITT_ORG_ID,
+                                                           providerLink=p2.providerLink)
+    self.assertEquals(ep.siteId, p2.siteId)
+    # ensure that p2 get paired with expected awardee and organization from update().
+    self.assertEquals(ep.hpoId, p2.hpoId)
+    self.assertEquals(ep.organizationId, p2.organizationId)
