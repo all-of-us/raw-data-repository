@@ -357,7 +357,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       participant_3['suspensionStatus'] = 'NO_CONTACT'
       participant_3['site'] = 'hpo-site-monroeville'
       self.send_put('Participant/%s' % participant_id_2, participant_2,
-                     headers={ 'If-Match': participant_2['meta']['versionId'] })
+                    headers={ 'If-Match':'W/"2"'})
       self.send_put('Participant/%s' % participant_id_3, participant_3,
                      headers={ 'If-Match': participant_3['meta']['versionId'] })
 
@@ -484,15 +484,14 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=awardee',
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=organization',
-                           [[ps_1, ps_2], [ps_3]])
+                           [[ps_1, ps_3], [ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:asc=site',
-                           [[ps_1, ps_2], [ps_3]])
-
-      # Test filtering on fields.
+                           [[ps_2, ps_1], [ps_3]])
+                           # Test filtering on fields.
       self.assertResponses('ParticipantSummary?_count=2&firstName=Mary',
                            [[ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&site=hpo-site-monroeville',
-                           [[ps_3]])
+                           [[ps_1, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&awardee=PITT',
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&organization=AZ_TUCSON_BANNER_HEALTH',

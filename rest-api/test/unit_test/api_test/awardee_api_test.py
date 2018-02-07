@@ -1,12 +1,16 @@
 import datetime
 
+from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
+from model.hpo import HPO
 from model.organization import Organization
 from model.site import Site
 from model.site_enums import SiteStatus
+from participant_enums import UNSET_HPO_ID, OrganizationType
 
-from test.unit_test.unit_test_util import FlaskTestBase, PITT_HPO_ID
+from test.unit_test.unit_test_util import FlaskTestBase, PITT_HPO_ID, AZ_HPO_ID
+
 
 def _make_awardee_resource(awardee_id, display_name, org_type, organizations=None):
   resource = {'displayName': display_name,
@@ -34,7 +38,15 @@ def _make_organization_dict(organization_id, display_name, sites=None):
 
 class AwardeeApiTest(FlaskTestBase):
   def setUp(self):
-    super(AwardeeApiTest, self).setUp()
+    super(AwardeeApiTest, self).setUp(with_data=False)
+
+    hpo_dao = HPODao()
+    hpo_dao.insert(HPO(hpoId=UNSET_HPO_ID, name='UNSET', displayName='Unset',
+                       organizationType=OrganizationType.UNSET))
+    hpo_dao.insert(HPO(hpoId=PITT_HPO_ID, name='PITT', displayName='Pittsburgh',
+                       organizationType=OrganizationType.HPO))
+    hpo_dao.insert(HPO(hpoId=AZ_HPO_ID, name='AZ_TUCSON', displayName='Arizona',
+                       organizationType=OrganizationType.HPO))
 
   def test_get_awardees_no_organizations(self):
     result = self.send_get('Awardee')
@@ -84,6 +96,7 @@ class AwardeeApiTest(FlaskTestBase):
               'phoneNumber': '555-555-5555',
               'adminEmails': ['alice@example.com', 'bob@example.com'],
               'link': 'http://www.example.com' }]
+
 
     org_2_dict = _make_organization_dict('AARDVARK_ORG', 'Aardvarks Rock')
     org_1_dict = _make_organization_dict('ORG_1', 'Organization 1', sites)

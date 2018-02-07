@@ -88,6 +88,7 @@ def generate_samples(fraction_missing):
         for test in tests:
           writer.writerow([sample_id_start + num_rows, None,
                            confirmed_time.strftime(_TIME_FORMAT),
-                           to_client_biobank_id(biobank_id), test, 'KIT'])
+                           to_client_biobank_id(biobank_id), test,
+                           confirmed_time.strftime(_TIME_FORMAT), 'KIT'])
           num_rows += 1
   logging.info("Generated %d samples in %s.", num_rows, file_name)

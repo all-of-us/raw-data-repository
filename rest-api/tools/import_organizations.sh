@@ -13,8 +13,7 @@ while true; do
     * ) break ;;
   esac
 done
-
-if [ -z "${ACCOUNT}" ]
+if [ -z "${ACCOUNT}" ]  && [ "${PROJECT}" ];
 then
   echo "Usage: $USAGE"
   exit 1
@@ -35,7 +34,13 @@ function get_geocode_key {
 }
 
 CREDS_ACCOUNT="${ACCOUNT}"
+if [ -z "${ACCOUNT}" ]
+then
+echo "Not Geocoding addresses without --account"
+else
+GEOCODE_FLAG=--geocode_flag
 get_geocode_key
+fi
 
 if [ "${PROJECT}" ]
 then
@@ -52,7 +57,7 @@ fi
 
 source tools/set_path.sh
 python tools/import_organizations.py --awardee_file data/awardees.csv \
-  --organization_file data/organizations.csv --site_file data/sites.csv $DRY_RUN
+  --organization_file data/organizations.csv --site_file data/sites.csv $DRY_RUN $GEOCODE_FLAG
 
 function finish {
   cleanup

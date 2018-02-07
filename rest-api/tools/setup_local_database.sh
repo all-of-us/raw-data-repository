@@ -77,4 +77,4 @@ tools/install_config.sh --config config/config_dev.json --update
 
 tools/install_config.sh --key db_config --config ${DB_INFO_FILE} --update
 
-tools/import_data.sh
+tools/import_data.sh $@

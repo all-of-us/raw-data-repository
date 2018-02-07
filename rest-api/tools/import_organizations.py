@@ -116,6 +116,8 @@ class SiteImporter(CsvImporter):
                                        SITE_SITE_COLUMN, SITE_STATUS_COLUMN])
 
     self.organization_dao = OrganizationDao()
+    args = parser.parse_args()
+    self.geocode_flag = args.geocode_flag
 
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()
@@ -197,11 +199,12 @@ class SiteImporter(CsvImporter):
           site.longitude = existing_site.longitude
           site.timeZoneId = existing_site.timeZoneId
           return
-      latitude, longitude = self._get_lat_long_for_site(site.address1, site.city, site.state)
-      site.latitude = latitude
-      site.longitude = longitude
-      if latitude and longitude:
-        site.timeZoneId = self._get_time_zone(latitude, longitude)
+      if self.geocode_flag:
+        latitude, longitude = self._get_lat_long_for_site(site.address1, site.city, site.state)
+        site.latitude = latitude
+        site.longitude = longitude
+        if latitude and longitude:
+          site.timeZoneId = self._get_time_zone(latitude, longitude)
 
   def _get_lat_long_for_site(self, address_1, city, state):
     self.full_address = address_1 + ' ' +  city + ' ' + state
@@ -255,4 +258,8 @@ if __name__ == '__main__':
                       required=True)
   parser.add_argument('--dry_run', help='Read CSV and check for diffs against database.',
                       action='store_true')
+  parser.add_argument('--geocode_flag', help='If --account passed into import_organizations.sh, '
+                                             'geocoding is performed.',
+                      action='store_true')
+
   main(parser.parse_args())

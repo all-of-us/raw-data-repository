@@ -1,5 +1,6 @@
 import json
 
+from code_constants import UNSET
 from dao.organization_dao import OrganizationDao
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.orm import joinedload
@@ -114,7 +115,7 @@ class ParticipantDao(UpdatableDao):
       need_new_summary = True
 
     if obj.organizationId or obj.siteId or obj.hpoId:
-      site, organization, awardee = self.get_pairing_level(obj, existing_obj)
+      site, organization, awardee = self.get_pairing_level(obj)
       obj.organizationId = organization
       obj.siteId = site
       obj.hpoId = awardee
@@ -132,7 +133,6 @@ class ParticipantDao(UpdatableDao):
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id
         need_new_summary = True
-
     if need_new_summary and existing_obj.participantSummary:
       # Copy the existing participant summary, and mutate the fields that
       # come from participant.
@@ -151,25 +151,25 @@ class ParticipantDao(UpdatableDao):
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
 
-  def get_pairing_level(self, obj, existing_obj):
+  def get_pairing_level(self, obj):
     organization_id = obj.organizationId
     site_id = obj.siteId
     awardee_id = obj.hpoId
-    old_site_id = existing_obj.siteId
-    old_organization_id = existing_obj.organizationId
     # TODO: DO WE WANT TO PREVENT PAIRING IF EXISTING SITE HAS PM/BIO.
 
-    if site_id != u'UNSET' and site_id is not None:
-      if old_site_id != site_id:
-        site = self.site_dao.get(site_id)
-        organization_id = site.organizationId
-        awardee_id = site.hpoId
-        return site_id, organization_id, awardee_id
-    if organization_id != u'UNSET' and organization_id is not None:
-      if organization_id != old_organization_id:
-        organization = self.organization_dao.get(organization_id)
-        awardee_id = organization.hpoId
-        return None, organization_id, awardee_id
+    if site_id != UNSET and site_id is not None:
+      site = self.site_dao.get(site_id)
+      if site is None:
+        raise BadRequest('Site with site id %s does not exist.' % site_id)
+      organization_id = site.organizationId
+      awardee_id = site.hpoId
+      return site_id, organization_id, awardee_id
+    elif organization_id != UNSET and organization_id is not None:
+      organization = self.organization_dao.get(organization_id)
+      if organization is None:
+        raise BadRequest('Organization with id %s does not exist.' % organization_id)
+      awardee_id = organization.hpoId
+      return None, organization_id, awardee_id
     return None, None, awardee_id
 
   @staticmethod
@@ -274,10 +274,12 @@ class ParticipantDao(UpdatableDao):
     participant = self.get_for_update(session, participant_id)
     if participant is None:
       raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
-    if participant.hpoId == site.hpoId:
-      return
 
+    if participant.siteId == site.siteId:
+      return
     participant.hpoId = site.hpoId
+    participant.organizationId = site.organizationId
+    participant.siteId = site.siteId
     participant.providerLink = make_primary_provider_link_for_id(site.hpoId)
     if participant.participantSummary is None:
       raise RuntimeError('No ParticipantSummary available for P%d.' % participant_id)

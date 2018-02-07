@@ -7,19 +7,19 @@ from client import HttpException
 class ParticipantTest(BaseClientTest):
   def test_create_and_modify_participant(self):
     provider_link = {
-      "primary": False,
+      "primary": True,
       "organization": {
         "display": None,
-        "reference": "columbia"
-      },
-      "site": [{
-        "display": None,
-        "reference": "columbia-harlem-free-clinic",
-      }],
-      "identifier": [{
-        "system": "http://any-columbia-mrn-system",
-        "value": "MRN123"
-      }]
+        "reference": "Organization/AZ_TUCSON"
+      }
+    }
+
+    # Add a provider link to the participant.
+    provider_link_2 = {
+      "primary": True,
+      "organization": {
+        "reference": "Organization/PITT",
+      }
     }
 
     # Create a new participant.
@@ -37,23 +37,8 @@ class ParticipantTest(BaseClientTest):
     response = self.client.request_json('Participant/{}'.format(participant_id))
     last_etag = self.client.last_etag
 
-    # Add a provider link to the participant.
-    provider_link_2 = {
-      "primary": True,
-      "organization": {
-        "display": None,
-        "reference": "Organization/PITT",
-      },
-      "site": [{
-        "display": None,
-        "reference": "mayo-clinic",
-      }],
-      "identifier": [{
-        "system": "http://any-columbia-mrn-system",
-        "value": "MRN456"
-      }]
-    }
-    response['providerLink'] = [ provider_link, provider_link_2 ]
+
+    response['providerLink'] = [  provider_link_2 ]
     try:
       response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PUT', response)
@@ -70,9 +55,9 @@ class ParticipantTest(BaseClientTest):
     response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PUT', response,
           headers = { 'If-Match': last_etag})
-
     self.assertEqual(response['biobankId'], biobank_id)
-    self.assertJsonEquals(response['providerLink'], [provider_link, provider_link_2])
+
+    self.assertJsonEquals(response['providerLink'], [ provider_link_2])
 
 if __name__ == '__main__':
   unittest.main()
