@@ -117,7 +117,7 @@ class ParticipantDao(UpdatableDao):
     # If the provider link changes, update the HPO ID on the participant and its summary.
     if obj.hpoId is None:
       obj.hpoId = existing_obj.hpoId
-    if obj.providerLink != existing_obj.providerLink:
+    if obj.providerLink != existing_obj.providerLink and obj.providerLink != 'null':
       new_hpo_id = self._get_hpo_id(obj)
       if new_hpo_id != existing_obj.hpoId:
         obj.hpoId = new_hpo_id
