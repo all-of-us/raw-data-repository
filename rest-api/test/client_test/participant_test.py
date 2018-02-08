@@ -35,15 +35,18 @@ class ParticipantTest(BaseClientTest):
     response = self.client.request_json('Participant/{}'.format(participant_id))
     # Test that hpo is == current provider link
     self.assertEqual(response['hpoId'], 'PITT')
-    response['providerLink'] = [provider_link]
+    self.assertEqual(response['awardee'], 'PITT')
     new_response = self.client.request_json('Participant/%s' % participant_id, 'PUT', response,
                                             headers={'If-Match': 'W/"1"'})
 
     last_etag = self.client.last_etag
     # Test that hpo and provider link changed
-    self.assertEqual(new_response['hpoId'], 'AZ_TUCSON')
-    self.assertEqual(new_response['providerLink'], [provider_link])
+    self.assertEqual(new_response['hpoId'], 'PITT')
+    self.assertEqual(new_response['providerLink'], [provider_link_2])
+    self.assertEqual(new_response['awardee'], 'PITT')
 
+
+    new_response['providerLink'] = [provider_link]
     try:
       response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PUT', response)
@@ -57,13 +60,14 @@ class ParticipantTest(BaseClientTest):
       self.fail("Wrong If-Match header for update")
     except HttpException, ex:
       self.assertEqual(ex.code, 412)
-    response = self.client.request_json(
-          'Participant/{}'.format(participant_id), 'PUT', response,
+    new_response = self.client.request_json(
+          'Participant/{}'.format(participant_id), 'PUT', new_response,
           headers = { 'If-Match': last_etag})
-    self.assertEqual(response['biobankId'], biobank_id)
 
-    self.assertJsonEquals(response['providerLink'], [provider_link_2])
+    self.assertEqual(new_response['biobankId'], biobank_id)
     self.assertJsonEquals(new_response['providerLink'], [provider_link])
+    self.assertEqual(new_response['hpoId'], 'AZ_TUCSON')
+    self.assertEqual(new_response['awardee'], 'AZ_TUCSON')
 
 if __name__ == '__main__':
   unittest.main()
