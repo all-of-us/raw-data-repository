@@ -9,7 +9,6 @@ class ParticipantTest(BaseClientTest):
     provider_link = {
       "primary": True,
       "organization": {
-        "display": None,
         "reference": "Organization/AZ_TUCSON"
       }
     }
@@ -21,24 +20,30 @@ class ParticipantTest(BaseClientTest):
         "reference": "Organization/PITT",
       }
     }
-
     # Create a new participant.
     participant = {
-        'providerLink': [provider_link]
+        'providerLink': [provider_link_2]
     }
 
     response = self.client.request_json('Participant', 'POST', participant)
-    self.assertJsonEquals(response['providerLink'], [provider_link])
+    self.assertJsonEquals(response['providerLink'], [provider_link_2])
     biobank_id = response['biobankId']
 
     participant_id = response['participantId']
 
     # Fetch that participant.
     response = self.client.request_json('Participant/{}'.format(participant_id))
+    # Test that hpo is == current provider link
+    self.assertEqual(response['hpoId'], 'PITT')
+    response['providerLink'] = [provider_link]
+    new_response = self.client.request_json('Participant/%s' % participant_id, 'PUT', response,
+                                            headers={'If-Match': 'W/"1"'})
+
     last_etag = self.client.last_etag
+    # Test that hpo and provider link changed
+    self.assertEqual(new_response['hpoId'], 'AZ_TUCSON')
+    self.assertEqual(new_response['providerLink'], [provider_link])
 
-
-    response['providerLink'] = [  provider_link_2 ]
     try:
       response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PUT', response)
@@ -57,7 +62,8 @@ class ParticipantTest(BaseClientTest):
           headers = { 'If-Match': last_etag})
     self.assertEqual(response['biobankId'], biobank_id)
 
-    self.assertJsonEquals(response['providerLink'], [ provider_link_2])
+    self.assertJsonEquals(response['providerLink'], [provider_link_2])
+    self.assertJsonEquals(new_response['providerLink'], [provider_link])
 
 if __name__ == '__main__':
   unittest.main()

@@ -1,4 +1,5 @@
 Awardee ID,Name,Type
+UNSET,No organization set,UNSET
 AZ_TUCSON,Arizona,HPO
 CAL_PMC,California Precision Medicine Consortium,HPO
 CHEROKEE,Cherokee Health Systems,FQHC
@@ -19,7 +20,6 @@ SEEC,Southeast Enrollment Center,HPO
 SOUTHERN,Southern Consortium,HPO
 TEST,Test Awardee,UNSET
 TRANS_AM,Trans-American Consortium for the Health Care Systems Research Network (TACH),HPO
-UNSET,No organization set,UNSET
 VA,United States Department of Veteran Affairs,VA
 WALGREENS,Walgreens,DV
 WISCONSIN,Wisconsin Consoritum ,HPO

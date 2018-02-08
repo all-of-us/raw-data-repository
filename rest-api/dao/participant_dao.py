@@ -114,6 +114,15 @@ class ParticipantDao(UpdatableDao):
                             else None)
       need_new_summary = True
 
+    # If the provider link changes, update the HPO ID on the participant and its summary.
+    if obj.hpoId is None:
+      obj.hpoId = existing_obj.hpoId
+    if obj.providerLink != existing_obj.providerLink:
+      new_hpo_id = self._get_hpo_id(obj)
+      if new_hpo_id != existing_obj.hpoId:
+        obj.hpoId = new_hpo_id
+        need_new_summary = True
+
     if obj.organizationId or obj.siteId or obj.hpoId:
       site, organization, awardee = self.get_pairing_level(obj)
       obj.organizationId = organization
@@ -125,14 +134,7 @@ class ParticipantDao(UpdatableDao):
 
       need_new_summary = True
 
-    # If the provider link changes, update the HPO ID on the participant and its summary.
-    if obj.hpoId is None:
-      obj.hpoId = existing_obj.hpoId
-    if obj.providerLink != existing_obj.providerLink:
-      new_hpo_id = self._get_hpo_id(obj)
-      if new_hpo_id != existing_obj.hpoId:
-        obj.hpoId = new_hpo_id
-        need_new_summary = True
+
     if need_new_summary and existing_obj.participantSummary:
       # Copy the existing participant summary, and mutate the fields that
       # come from participant.
