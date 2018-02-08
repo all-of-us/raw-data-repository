@@ -1,0 +1,2 @@
+# This is 64KiB - 1 byte
+MAX_MYSQL_VARCHAR = 65535

@@ -1,3 +1,4 @@
+from model import MAX_MYSQL_VARCHAR
 from model.base import Base
 from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
@@ -53,7 +54,7 @@ class QuestionnaireResponseAnswer(Base):
   valueDecimal = Column('value_decimal', Float)
   valueInteger = Column('value_integer', Integer)
   # Is this big enough?
-  valueString = Column('value_string', String(1024))
+  valueString = Column('value_string', String(MAX_MYSQL_VARCHAR))
   valueDate = Column('value_date', Date)
   valueDateTime = Column('value_datetime', UTCDateTime)
   valueUri = Column('value_uri', String(1024))
