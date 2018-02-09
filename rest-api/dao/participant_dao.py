@@ -114,29 +114,42 @@ class ParticipantDao(UpdatableDao):
                             else None)
       need_new_summary = True
 
+    update_pairing = True
+    if obj.siteId is None and obj.organizationId is None and obj.hpoId is None and \
+      obj.providerLink == 'null':
+      update_pairing = False
 
-    if obj.organizationId or obj.siteId or obj.hpoId:
-      site, organization, awardee = self.get_pairing_level(obj)
-      obj.organizationId = organization
-      obj.siteId = site
-      obj.hpoId = awardee
-      if awardee and (obj.hpoId != existing_obj.hpoId):
-        # get provider link for hpo_id (awardee)
-        obj.providerLink = make_primary_provider_link_for_id(awardee)
+    if update_pairing == True:
+      if obj.organizationId or obj.siteId or obj.hpoId:
+        site, organization, awardee = self.get_pairing_level(obj)
+        obj.organizationId = organization
+        obj.siteId = site
+        obj.hpoId = awardee
+        if awardee is not None and (obj.hpoId != existing_obj.hpoId):
+          # get provider link for hpo_id (awardee)
+          obj.providerLink = make_primary_provider_link_for_id(awardee)
 
-      need_new_summary = True
-
-    # If the provider link changes, update the HPO ID on the participant and its summary.
-    if obj.hpoId is None:
-      obj.hpoId = existing_obj.hpoId
-    if obj.providerLink != existing_obj.providerLink or obj.hpoId != existing_obj.hpoId:
-      new_hpo_id = self._get_hpo_id(obj)
-      if new_hpo_id != existing_obj.hpoId:
-        obj.hpoId = new_hpo_id
-        if obj.hpoId == 0:
-          obj.siteId = None
-          obj.organizationId = None
         need_new_summary = True
+
+    if update_pairing == True:
+      # If the provider link changes, update the HPO ID on the participant and its summary.
+      if obj.hpoId is None:
+        obj.hpoId = existing_obj.hpoId
+      if obj.providerLink != existing_obj.providerLink:
+        new_hpo_id = self._get_hpo_id(obj)
+        if new_hpo_id != existing_obj.hpoId:
+          obj.hpoId = new_hpo_id
+          if obj.hpoId == 0:
+            obj.siteId = None
+            obj.organizationId = None
+          need_new_summary = True
+
+    # No paring updates sent, keep existing values.
+    if update_pairing == False:
+      obj.siteId = existing_obj.siteId
+      obj.organizationId = existing_obj.organizationId
+      obj.hpoId = existing_obj.hpoId
+      obj.providerLink = existing_obj.providerLink
 
     if need_new_summary and existing_obj.participantSummary:
       # Copy the existing participant summary, and mutate the fields that
