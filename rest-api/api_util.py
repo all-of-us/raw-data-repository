@@ -135,6 +135,7 @@ def get_organization_id_from_external_id(obj, organization_dao):
       return organization.organizationId
   return None
 
+
 def remove_field(dict_, field_name):
   """Removes a field from the dict if it exists."""
   if field_name in dict_:

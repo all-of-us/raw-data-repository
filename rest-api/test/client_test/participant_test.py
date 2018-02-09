@@ -69,5 +69,17 @@ class ParticipantTest(BaseClientTest):
     self.assertEqual(new_response['hpoId'], 'AZ_TUCSON')
     self.assertEqual(new_response['awardee'], 'AZ_TUCSON')
 
+    new_response['providerLink'] = []
+    last_etag = self.client.last_etag
+
+    self.client.request_json(
+      'Participant/{}'.format(participant_id), 'PUT', new_response,
+      headers={'If-Match': last_etag})
+    unset_response = self.client.request_json('Participant/{}'.format(participant_id))
+    self.assertEqual(unset_response['providerLink'], [])
+    self.assertEqual(unset_response['hpoId'], 'UNSET')
+    self.assertEqual(unset_response['organization'], 'UNSET')
+    self.assertEqual(unset_response['site'], 'UNSET')
+
 if __name__ == '__main__':
   unittest.main()
