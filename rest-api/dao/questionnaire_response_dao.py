@@ -20,7 +20,6 @@ from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from field_mappings import FieldType, QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
-from model import MAX_MYSQL_VARCHAR
 from model.code import CodeType
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
@@ -365,9 +364,11 @@ class QuestionnaireResponseDao(BaseDao):
                 if answer.valueInteger is not None:
                   qr_answer.valueInteger = answer.valueInteger
                 if answer.valueString:
-                  if len(answer.valueString) > MAX_MYSQL_VARCHAR:
-                    errMsg = 'String value too long (len={}); must be less than {}'
-                    raise BadRequest(errMsg.format(len(answer.valueString), MAX_MYSQL_VARCHAR))
+                  answer_length = len(answer.valueString)
+                  max_length = QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
+                  if answer_length > max_length:
+                    err_msg = 'String value too long (len=%d); must be less than %d'
+                    raise BadRequest(err_msg % (answer_length, max_length))
                   qr_answer.valueString = answer.valueString
                 if answer.valueDate is not None:
                   qr_answer.valueDate = answer.valueDate.date

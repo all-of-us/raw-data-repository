@@ -7,16 +7,20 @@ from clock import FakeClock
 from dao.code_dao import CodeDao
 from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
-from model import MAX_MYSQL_VARCHAR
 from model.utils import from_client_participant_id
-from test.unit_test.unit_test_util import FlaskTestBase
+from model.questionnaire_response import QuestionnaireResponseAnswer
+from test.unit_test.unit_test_util import (FlaskTestBase,
+                                           make_questionnaire_response_json as gen_response)
 from test.test_data import data_path
+
+
+TIME_1 = datetime.datetime(2016, 1, 1)
+TIME_2 = datetime.datetime(2016, 1, 2)
+
 
 def _questionnaire_response_url(participant_id):
   return 'Participant/%s/QuestionnaireResponse' % participant_id
 
-TIME_1 = datetime.datetime(2016, 1, 1)
-TIME_2 = datetime.datetime(2016, 1, 2)
 
 class QuestionnaireResponseApiTest(FlaskTestBase):
 
@@ -25,28 +29,22 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     questionnaire_id = self.create_questionnaire('questionnaire1.json')
     url = _questionnaire_response_url(participant_id)
 
-    with open(data_path('questionnaire_response3.json')) as fd:
-      resource = json.load(fd)
-
-    resource['subject']['reference'] = \
-        resource['subject']['reference'].format(participant_id=participant_id)
-
-    resource['questionnaire']['reference'] = \
-        resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
-
-    answer = resource['group']['group'][0]['group'][0]['question'][0]['answer'][0]
-
-    # Check that a string longer than MAX_MYSQL_VARCHAR will not
-    # This one should evaluate to a string that is one char too long; i.e. exactly 64KiB
-    answer['valueString'] = 'a' * (MAX_MYSQL_VARCHAR + 1)
-    self.send_post(url, resource, expected_status=httplib.BAD_REQUEST)
-
-    # Check that a string MAX_MYSQL_VARCHAR will post
-    # This one should be exactly long enough to pass
     # Remember we need to send the consent first
     self.send_consent(participant_id)
-    answer['valueString'] = 'a' * MAX_MYSQL_VARCHAR
+
+    # Check that a string of exactly the max length will post
+    # This one should be exactly long enough to pass
+    string_answers = [["nameOfChild",
+                       'a' * QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN]]
+    resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
     self.send_post(url, resource)
+
+    # Check that a string longer than the max will not
+    # This one should evaluate to a string that is one char too long; i.e. exactly 64KiB
+    string_answers = [["nameOfChild",
+                       'a' * (QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN + 1)]]
+    resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
+    self.send_post(url, resource, expected_status=httplib.BAD_REQUEST)
 
   def test_insert(self):
     participant_id = self.create_participant()

@@ -1,9 +1,8 @@
-from model import MAX_MYSQL_VARCHAR
 from model.base import Base
 from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, Date, BLOB, ForeignKey, String, Boolean
-from sqlalchemy import ForeignKeyConstraint, Float
+from sqlalchemy import ForeignKeyConstraint, Float, Text
 
 class QuestionnaireResponse(Base):
   """"A response to a questionnaire for a participant. Contains answers to questions found in the
@@ -37,6 +36,10 @@ class QuestionnaireResponseAnswer(Base):
   answers to questions with the same concept codes that don't have endTime set yet should have
   endTime set to the current time.
   """
+  # This is the maximum # bytes that can be stored in a MySQL TEXT field, which
+  # our field valueString should resolve to.
+  VALUE_STRING_MAXLEN = 65535
+
   __tablename__ = 'questionnaire_response_answer'
   questionnaireResponseAnswerId = Column('questionnaire_response_answer_id', Integer,
                                          primary_key=True)
@@ -54,7 +57,7 @@ class QuestionnaireResponseAnswer(Base):
   valueDecimal = Column('value_decimal', Float)
   valueInteger = Column('value_integer', Integer)
   # Is this big enough?
-  valueString = Column('value_string', String(MAX_MYSQL_VARCHAR))
+  valueString = Column('value_string', Text)
   valueDate = Column('value_date', Date)
   valueDateTime = Column('value_datetime', UTCDateTime)
   valueUri = Column('value_uri', String(1024))
