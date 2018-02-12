@@ -38,7 +38,7 @@ class TableExporter(object):
 
     Params:
       - pmi_id (number) must be an integer participant ID
-      - salt (number) must be a long
+      - salt (string) a salt to be combined with the pmi_id
 
     Returns: a positive integer
     """
