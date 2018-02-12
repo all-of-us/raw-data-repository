@@ -113,6 +113,32 @@ class ParticipantTest(BaseClientTest):
     self.assertEqual(updated_response['site'], 'UNSET')
     self.assertEqual(updated_response['organization'], 'UNSET')
 
+    # re-pair at site level.
+    updated_response['site'] = 'hpo-site-monroeville'
+    last_etag = self.client.last_etag
+
+    self.client.request_json(
+      'Participant/{}'.format(participant_id), 'PUT', updated_response,
+      headers={'If-Match': last_etag})
+
+    updated_response = self.client.request_json('Participant/{}'.format(participant_id))
+    self.assertEqual(updated_response['site'], 'hpo-site-monroeville')
+    self.assertEqual(updated_response['awardee'], 'PITT')
+    self.assertEqual(updated_response['providerLink'], [provider_link_2])
+
+    # re-pair at providerlink level
+    updated_response['providerLink'] = [provider_link]
+    last_etag = self.client.last_etag
+
+    self.client.request_json(
+      'Participant/{}'.format(participant_id), 'PUT', updated_response,
+      headers={'If-Match': last_etag})
+
+    updated_response = self.client.request_json('Participant/{}'.format(participant_id))
+    self.assertEqual(updated_response['site'], 'UNSET')
+    self.assertEqual(updated_response['organization'], 'UNSET')
+    self.assertEqual(updated_response['providerLink'], [provider_link])
+    self.assertEqual(updated_response['awardee'], 'AZ_TUCSON')
 
 if __name__ == '__main__':
   unittest.main()

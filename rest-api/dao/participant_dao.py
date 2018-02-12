@@ -113,7 +113,6 @@ class ParticipantDao(UpdatableDao):
       obj.suspensionTime = (obj.lastModified if obj.suspensionStatus == SuspensionStatus.NO_CONTACT
                             else None)
       need_new_summary = True
-
     update_pairing = True
     if obj.siteId is None and obj.organizationId is None and obj.hpoId is None and \
       obj.providerLink == 'null':
@@ -122,7 +121,7 @@ class ParticipantDao(UpdatableDao):
 
     if update_pairing == True:
       # site,org,or awardee is sent in request: Get relationships and try to set provider link.
-      if obj.organizationId or obj.siteId or (obj.hpoId >= 0) and (obj.providerLink ==
+      if (obj.organizationId or obj.siteId or (obj.hpoId >= 0)) and (obj.providerLink ==
                                                             existing_obj.providerLink or
                                                             obj.providerLink == 'null'):
         site, organization, awardee = self.get_pairing_level(obj)
@@ -135,19 +134,15 @@ class ParticipantDao(UpdatableDao):
 
         need_new_summary = True
 
-    if update_pairing == True:
-      # If the provider link changes, update the HPO ID on the participant and its summary.
-      if obj.hpoId is None:
-        obj.hpoId = existing_obj.hpoId
-      if obj.providerLink != existing_obj.providerLink:
-        # check/set hpoId (covers the chance of sending only provider link and not entering logic
-        # above with hpoId.
+      else: # only providerLink has changed
+        # If the provider link changes, update the HPO ID on the participant and its summary.
+        if obj.hpoId is None:
+          obj.hpoId = existing_obj.hpoId
         new_hpo_id = self._get_hpo_id(obj)
         if new_hpo_id != existing_obj.hpoId:
           obj.hpoId = new_hpo_id
-          if obj.hpoId == UNSET_HPO_ID:
-            obj.siteId = None
-            obj.organizationId = None
+          obj.siteId = None
+          obj.organizationId = None
           need_new_summary = True
 
     # No pairing updates sent, keep existing values.
