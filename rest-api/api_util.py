@@ -122,7 +122,7 @@ def get_site_id_from_google_group(obj, site_dao):
   return None
 
 def get_awardee_id_from_name(obj, hpo_dao):
-  if 'awardee' in obj and obj['awardee'] != UNSET:
+  if 'awardee' in obj:
     awardee = hpo_dao.get_by_name(obj['awardee'])
     if awardee is not None:
       return awardee.hpoId

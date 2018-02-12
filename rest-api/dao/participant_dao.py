@@ -117,10 +117,14 @@ class ParticipantDao(UpdatableDao):
     update_pairing = True
     if obj.siteId is None and obj.organizationId is None and obj.hpoId is None and \
       obj.providerLink == 'null':
+      # Prevent unpairing if /PUT is sent with no pairing levels.
       update_pairing = False
 
     if update_pairing == True:
-      if obj.organizationId or obj.siteId or obj.hpoId:
+      # site,org,or awardee is sent in request: Get relationships and try to set provider link.
+      if obj.organizationId or obj.siteId or (obj.hpoId >= 0) and (obj.providerLink ==
+                                                            existing_obj.providerLink or
+                                                            obj.providerLink == 'null'):
         site, organization, awardee = self.get_pairing_level(obj)
         obj.organizationId = organization
         obj.siteId = site
@@ -136,15 +140,17 @@ class ParticipantDao(UpdatableDao):
       if obj.hpoId is None:
         obj.hpoId = existing_obj.hpoId
       if obj.providerLink != existing_obj.providerLink:
+        # check/set hpoId (covers the chance of sending only provider link and not entering logic
+        # above with hpoId.
         new_hpo_id = self._get_hpo_id(obj)
         if new_hpo_id != existing_obj.hpoId:
           obj.hpoId = new_hpo_id
-          if obj.hpoId == 0:
+          if obj.hpoId == UNSET_HPO_ID:
             obj.siteId = None
             obj.organizationId = None
           need_new_summary = True
 
-    # No paring updates sent, keep existing values.
+    # No pairing updates sent, keep existing values.
     if update_pairing == False:
       obj.siteId = existing_obj.siteId
       obj.organizationId = existing_obj.organizationId

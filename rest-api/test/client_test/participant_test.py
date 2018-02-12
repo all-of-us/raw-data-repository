@@ -81,5 +81,38 @@ class ParticipantTest(BaseClientTest):
     self.assertEqual(unset_response['organization'], 'UNSET')
     self.assertEqual(unset_response['site'], 'UNSET')
 
+    # Post a new participant
+    response = self.client.request_json('Participant', 'POST', participant)
+    participant_id = response['participantId']
+    last_etag = self.client.last_etag
+
+    response['awardee'] = 'PITT'
+    # pair with awardee
+    self.client.request_json(
+      'Participant/{}'.format(participant_id), 'PUT', response,
+      headers={'If-Match': last_etag})
+
+    # Get the participant from DB.
+    response = self.client.request_json('Participant/{}'.format(participant_id))
+
+    self.assertEqual(response['awardee'], 'PITT')
+
+    last_etag = self.client.last_etag
+    response['awardee'] = 'UNSET'
+
+    self.client.request_json(
+      'Participant/{}'.format(participant_id), 'PUT', response,
+      headers={'If-Match': last_etag})
+
+    # Get the participant from DB.
+    updated_response = self.client.request_json('Participant/{}'.format(participant_id))
+    # Ensure that setting awardee to UNSET will unpair at all levels.
+    unset_provider = [{u'organization': {u'reference': u'Organization/UNSET'}, u'primary': True}]
+    self.assertEqual(updated_response['awardee'], 'UNSET')
+    self.assertEqual(updated_response['providerLink'], unset_provider)
+    self.assertEqual(updated_response['site'], 'UNSET')
+    self.assertEqual(updated_response['organization'], 'UNSET')
+
+
 if __name__ == '__main__':
   unittest.main()
