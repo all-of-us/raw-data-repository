@@ -242,7 +242,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
       self.questionnaire_response_dao.insert(qr)
       all_strings_query = session.query(QuestionnaireResponseAnswer.valueString).all()
       all_strings = [obj.valueString for obj in all_strings_query]
-      assert string in all_strings
+      self.assertTrue(string in all_strings)
 
     # Now check that the incorrect case throws
     string = 'a' * (QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN + 1)
