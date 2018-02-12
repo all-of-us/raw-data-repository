@@ -2,16 +2,11 @@ import datetime
 import httplib
 import json
 
-from werkzeug.exceptions import BadRequest
-
 from code_constants import PPI_EXTRA_SYSTEM
 from clock import FakeClock
 from dao.code_dao import CodeDao
 from dao.questionnaire_dao import QuestionnaireDao
-from dao.questionnaire_response_dao import (
-    QuestionnaireResponseAnswerDao,
-    QuestionnaireResponseDao
-)
+from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from model.utils import from_client_participant_id
 from model.questionnaire_response import QuestionnaireResponseAnswer
 from test.unit_test.unit_test_util import (
@@ -35,7 +30,6 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     participant_id = self.create_participant()
     questionnaire_id = self.create_questionnaire('questionnaire1.json')
     url = _questionnaire_response_url(participant_id)
-    dao = QuestionnaireResponseDao()
 
     # Remember we need to send the consent first
     self.send_consent(participant_id)
@@ -53,9 +47,6 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     string = 'a' * (QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN + 1)
     string_answers = [["nameOfChild", string]]
     resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
-    # Check the DAO directly
-    with self.assertRaises(BadRequest):
-      dao.from_client_json(resource, participant_id=participant_id)
     self.send_post(url, resource, expected_status=httplib.BAD_REQUEST)
 
   def test_insert(self):

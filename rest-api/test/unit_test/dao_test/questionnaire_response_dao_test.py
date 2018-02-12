@@ -20,7 +20,7 @@ from model.questionnaire_response import QuestionnaireResponse, QuestionnaireRes
 from participant_enums import QuestionnaireStatus, WithdrawalStatus
 import test_data
 from test_data import consent_code, first_name_code, last_name_code, email_code
-from unit_test_util import FlaskTestBase
+from unit_test_util import FlaskTestBase, make_questionnaire_response_json
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, Forbidden
 from sqlalchemy.exc import IntegrityError
@@ -226,6 +226,30 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         valueCodeId=4))
     with self.assertRaises(IntegrityError):
       self.questionnaire_response_dao.insert(qr2)
+
+  def test_from_client_json_raises_BadRequest_for_excessively_long_value_string(self):
+    self.insert_codes()
+    q_id = self.create_questionnaire('questionnaire1.json')
+    p_id = self.create_participant()
+    self.send_consent(p_id)
+
+    # First check that the normal case actually writes out correctly
+    string = 'a' * QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
+    string_answers = [["nameOfChild", string]]
+    resource = make_questionnaire_response_json(p_id, q_id, string_answers=string_answers)
+    qr = self.questionnaire_response_dao.from_client_json(resource, participant_id=int(p_id[1:]))
+    with self.questionnaire_response_answer_dao.session() as session:
+      self.questionnaire_response_dao.insert(qr)
+      all_strings_query = session.query(QuestionnaireResponseAnswer.valueString).all()
+      all_strings = [obj.valueString for obj in all_strings_query]
+      assert string in all_strings
+
+    # Now check that the incorrect case throws
+    string = 'a' * (QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN + 1)
+    string_answers = [["nameOfChild", string]]
+    resource = make_questionnaire_response_json(p_id, q_id, string_answers=string_answers)
+    with self.assertRaises(BadRequest):
+      qr = self.questionnaire_response_dao.from_client_json(resource, participant_id=int(p_id[1:]))
 
   def test_get_after_withdrawal_fails(self):
     self.insert_codes()
