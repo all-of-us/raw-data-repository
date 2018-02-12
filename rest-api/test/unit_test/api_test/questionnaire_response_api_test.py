@@ -8,31 +8,63 @@ from dao.code_dao import CodeDao
 from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from model.utils import from_client_participant_id
-from test.unit_test.unit_test_util import FlaskTestBase
+from model.questionnaire_response import QuestionnaireResponseAnswer
+from test.unit_test.unit_test_util import (
+    FlaskTestBase,
+    make_questionnaire_response_json as gen_response
+)
 from test.test_data import data_path
 
-def _questionnaire_response_url(participant_id):
-  return 'Participant/%s/QuestionnaireResponse' % participant_id
 
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 
+
+def _questionnaire_response_url(participant_id):
+  return 'Participant/%s/QuestionnaireResponse' % participant_id
+
+
 class QuestionnaireResponseApiTest(FlaskTestBase):
+
+  def test_insert_raises_400_for_excessively_long_valueString(self):
+    participant_id = self.create_participant()
+    questionnaire_id = self.create_questionnaire('questionnaire1.json')
+    url = _questionnaire_response_url(participant_id)
+
+    # Remember we need to send the consent first
+    self.send_consent(participant_id)
+
+    # Check that a string of exactly the max length will post
+    # This one should be exactly long enough to pass
+    string = 'a' * QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
+    string_answers = [["nameOfChild", string]]
+    resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
+    response = self.send_post(url, resource)
+    self.assertEquals(response['group']['question'][0]['answer'][0]['valueString'], string)
+
+    # Check that a string longer than the max will not
+    # This one should evaluate to a string that is one char too long; i.e. exactly 64KiB
+    string = 'a' * (QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN + 1)
+    string_answers = [["nameOfChild", string]]
+    resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
+    self.send_post(url, resource, expected_status=httplib.BAD_REQUEST)
 
   def test_insert(self):
     participant_id = self.create_participant()
-
     questionnaire_id = self.create_questionnaire('questionnaire1.json')
-    with open(data_path('questionnaire_response3.json')) as f:
-      resource = json.load(f)
+    with open(data_path('questionnaire_response3.json')) as fd:
+      resource = json.load(fd)
+
     # Sending response with the dummy participant id in the file is an error
     self.send_post(_questionnaire_response_url('{participant_id}'), resource,
                    expected_status=httplib.NOT_FOUND)
+
     # Fixing participant id but not the questionnaire id is also an error
     resource['subject']['reference'] = \
         resource['subject']['reference'].format(participant_id=participant_id)
     self.send_post(_questionnaire_response_url(participant_id), resource,
                    expected_status=httplib.BAD_REQUEST)
+
     # Fix the reference
     resource['questionnaire']['reference'] = \
         resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
@@ -41,8 +73,8 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     self.send_post(_questionnaire_response_url(participant_id), resource,
                    expected_status=httplib.BAD_REQUEST)
 
-    self.send_consent(participant_id)
     # After consent, the post succeeds
+    self.send_consent(participant_id)
     response = self.send_post(_questionnaire_response_url(participant_id), resource)
     resource['id'] = response['id']
     # The resource gets rewritten to include the version

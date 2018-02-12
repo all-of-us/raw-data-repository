@@ -259,8 +259,8 @@ class QuestionnaireResponseDao(BaseDao):
     fhir_qr = fhirclient.models.questionnaireresponse.QuestionnaireResponse(resource_json)
     patient_id = fhir_qr.subject.reference
     if patient_id != 'Patient/P{}'.format(participant_id):
-      raise BadRequest("Questionnaire response subject reference does not match participant_id %d"
-                       % participant_id)
+      msg = "Questionnaire response subject reference does not match participant_id %r"
+      raise BadRequest(msg % participant_id)
     questionnaire = self._get_questionnaire(fhir_qr.questionnaire, resource_json)
     qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
                                questionnaireVersion=questionnaire.version,
@@ -364,6 +364,11 @@ class QuestionnaireResponseDao(BaseDao):
                 if answer.valueInteger is not None:
                   qr_answer.valueInteger = answer.valueInteger
                 if answer.valueString:
+                  answer_length = len(answer.valueString)
+                  max_length = QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
+                  if answer_length > max_length:
+                    err_msg = 'String value too long (len=%d); must be less than %d'
+                    raise BadRequest(err_msg % (answer_length, max_length))
                   qr_answer.valueString = answer.valueString
                 if answer.valueDate is not None:
                   qr_answer.valueDate = answer.valueDate.date
