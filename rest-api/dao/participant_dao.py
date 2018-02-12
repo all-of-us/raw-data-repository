@@ -113,26 +113,45 @@ class ParticipantDao(UpdatableDao):
       obj.suspensionTime = (obj.lastModified if obj.suspensionStatus == SuspensionStatus.NO_CONTACT
                             else None)
       need_new_summary = True
+    update_pairing = True
+    if obj.siteId is None and obj.organizationId is None and obj.hpoId is None and \
+      obj.providerLink == 'null':
+      # Prevent unpairing if /PUT is sent with no pairing levels.
+      update_pairing = False
 
-    if obj.organizationId or obj.siteId or obj.hpoId:
-      site, organization, awardee = self.get_pairing_level(obj)
-      obj.organizationId = organization
-      obj.siteId = site
-      obj.hpoId = awardee
-      if awardee:
-        # get provider link for hpo_id (awardee)
-        obj.providerLink = make_primary_provider_link_for_id(awardee)
+    if update_pairing == True:
+      # site,org,or awardee is sent in request: Get relationships and try to set provider link.
+      if (obj.organizationId or obj.siteId or (obj.hpoId >= 0)) and (obj.providerLink ==
+                                                            existing_obj.providerLink or
+                                                            obj.providerLink == 'null'):
+        site, organization, awardee = self.get_pairing_level(obj)
+        obj.organizationId = organization
+        obj.siteId = site
+        obj.hpoId = awardee
+        if awardee is not None and (obj.hpoId != existing_obj.hpoId):
+          # get provider link for hpo_id (awardee)
+          obj.providerLink = make_primary_provider_link_for_id(awardee)
 
-      need_new_summary = True
-
-    # If the provider link changes, update the HPO ID on the participant and its summary.
-    if obj.hpoId is None:
-      obj.hpoId = existing_obj.hpoId
-    if obj.providerLink != existing_obj.providerLink:
-      new_hpo_id = self._get_hpo_id(obj)
-      if new_hpo_id != existing_obj.hpoId:
-        obj.hpoId = new_hpo_id
         need_new_summary = True
+
+      else: # only providerLink has changed
+        # If the provider link changes, update the HPO ID on the participant and its summary.
+        if obj.hpoId is None:
+          obj.hpoId = existing_obj.hpoId
+        new_hpo_id = self._get_hpo_id(obj)
+        if new_hpo_id != existing_obj.hpoId:
+          obj.hpoId = new_hpo_id
+          obj.siteId = None
+          obj.organizationId = None
+          need_new_summary = True
+
+    # No pairing updates sent, keep existing values.
+    if update_pairing == False:
+      obj.siteId = existing_obj.siteId
+      obj.organizationId = existing_obj.organizationId
+      obj.hpoId = existing_obj.hpoId
+      obj.providerLink = existing_obj.providerLink
+
     if need_new_summary and existing_obj.participantSummary:
       # Copy the existing participant summary, and mutate the fields that
       # come from participant.
@@ -262,7 +281,6 @@ class ParticipantDao(UpdatableDao):
         organizationId=get_organization_id_from_external_id(resource_json, self.organization_dao),
         hpoId=get_awardee_id_from_name(resource_json, self.hpo_dao),
         siteId=get_site_id_from_google_group(resource_json, self.site_dao))
-
 
   def add_missing_hpo_from_site(self, session, participant_id, site_id):
     if site_id is None:

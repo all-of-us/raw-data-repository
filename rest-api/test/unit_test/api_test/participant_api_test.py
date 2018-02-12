@@ -104,7 +104,6 @@ class ParticipantApiTest(FlaskTestBase):
     participant['site'] = 'hpo-site-monroeville'
     path = 'Participant/%s' % participant_id
     update_awardee = self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
-    self.assertEquals(participant['site'], update_awardee['site'])
     self.assertEquals(participant['awardee'], update_awardee['awardee'])
 
   def test_change_pairing_for_org_then_site(self):
