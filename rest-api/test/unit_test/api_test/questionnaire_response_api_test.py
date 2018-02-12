@@ -2,15 +2,22 @@ import datetime
 import httplib
 import json
 
+from werkzeug.exceptions import BadRequest
+
 from code_constants import PPI_EXTRA_SYSTEM
 from clock import FakeClock
 from dao.code_dao import CodeDao
 from dao.questionnaire_dao import QuestionnaireDao
-from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
+from dao.questionnaire_response_dao import (
+    QuestionnaireResponseAnswerDao,
+    QuestionnaireResponseDao
+)
 from model.utils import from_client_participant_id
 from model.questionnaire_response import QuestionnaireResponseAnswer
-from test.unit_test.unit_test_util import (FlaskTestBase,
-                                           make_questionnaire_response_json as gen_response)
+from test.unit_test.unit_test_util import (
+    FlaskTestBase,
+    make_questionnaire_response_json as gen_response
+)
 from test.test_data import data_path
 
 
@@ -28,22 +35,27 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     participant_id = self.create_participant()
     questionnaire_id = self.create_questionnaire('questionnaire1.json')
     url = _questionnaire_response_url(participant_id)
+    dao = QuestionnaireResponseDao()
 
     # Remember we need to send the consent first
     self.send_consent(participant_id)
 
     # Check that a string of exactly the max length will post
     # This one should be exactly long enough to pass
-    string_answers = [["nameOfChild",
-                       'a' * QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN]]
+    string = 'a' * QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN
+    string_answers = [["nameOfChild", string]]
     resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
-    self.send_post(url, resource)
+    response = self.send_post(url, resource)
+    self.assertEquals(response['group']['question'][0]['answer'][0]['valueString'], string)
 
     # Check that a string longer than the max will not
     # This one should evaluate to a string that is one char too long; i.e. exactly 64KiB
-    string_answers = [["nameOfChild",
-                       'a' * (QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN + 1)]]
+    string = 'a' * (QuestionnaireResponseAnswer.VALUE_STRING_MAXLEN + 1)
+    string_answers = [["nameOfChild", string]]
     resource = gen_response(participant_id, questionnaire_id, string_answers=string_answers)
+    # Check the DAO directly
+    with self.assertRaises(BadRequest):
+      dao.from_client_json(resource, participant_id=participant_id)
     self.send_post(url, resource, expected_status=httplib.BAD_REQUEST)
 
   def test_insert(self):

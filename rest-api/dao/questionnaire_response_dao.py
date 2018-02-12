@@ -259,8 +259,8 @@ class QuestionnaireResponseDao(BaseDao):
     fhir_qr = fhirclient.models.questionnaireresponse.QuestionnaireResponse(resource_json)
     patient_id = fhir_qr.subject.reference
     if patient_id != 'Patient/P{}'.format(participant_id):
-      raise BadRequest("Questionnaire response subject reference does not match participant_id %d"
-                       % participant_id)
+      msg = "Questionnaire response subject reference does not match participant_id %r"
+      raise BadRequest(msg % participant_id)
     questionnaire = self._get_questionnaire(fhir_qr.questionnaire, resource_json)
     qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
                                questionnaireVersion=questionnaire.version,

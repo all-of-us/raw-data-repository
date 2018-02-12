@@ -56,7 +56,6 @@ class QuestionnaireResponseAnswer(Base):
   valueBoolean = Column('value_boolean', Boolean)
   valueDecimal = Column('value_decimal', Float)
   valueInteger = Column('value_integer', Integer)
-  # Is this big enough?
   valueString = Column('value_string', Text)
   valueDate = Column('value_date', Date)
   valueDateTime = Column('value_datetime', UTCDateTime)
