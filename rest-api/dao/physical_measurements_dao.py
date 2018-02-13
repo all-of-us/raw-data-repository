@@ -5,7 +5,6 @@ import logging
 from api_util import parse_date
 from concepts import Concept
 import fhirclient.models.observation
-from dao.biobank_order_dao import BiobankOrderDao
 from fhirclient.models.fhirabstractbase import FHIRValidationError
 from sqlalchemy.orm import subqueryload
 from dao.base_dao import BaseDao
