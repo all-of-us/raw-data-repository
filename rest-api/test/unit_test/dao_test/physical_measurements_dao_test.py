@@ -28,6 +28,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
                                                              TIME_1.isoformat()))
 
+
   def test_from_client_json(self):
     measurement = PhysicalMeasurementsDao.from_client_json(json.loads(self.measurement_json))
     self.assertIsNotNone(measurement.createdSiteId)
@@ -93,6 +94,8 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     summary = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertEquals(PhysicalMeasurementsStatus.COMPLETED, summary.physicalMeasurementsStatus)
     self.assertEquals(TIME_2, summary.physicalMeasurementsTime)
+    self.assertEquals(summary.biospecimenFinalizedSiteId, None)
+
 
   def test_backfill_is_noop(self):
     self._make_summary()

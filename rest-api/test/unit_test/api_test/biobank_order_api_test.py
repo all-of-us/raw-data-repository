@@ -65,8 +65,12 @@ class BiobankOrderApiTest(FlaskTestBase):
     p_paired = self.participant_dao.get(self.participant.participantId)
     self.assertNotEqual(p_paired.hpoId, UNSET_HPO_ID)
     self.assertIsNotNone(p_paired.providerLink)
+
     s_paired = self.summary_dao.get(self.participant.participantId)
+
     self.assertNotEqual(s_paired.hpoId, UNSET_HPO_ID)
+    self.assertEqual(s_paired.biospecimenFinalizedSiteId, s_paired.siteId)
+    self.assertEqual(s_paired.physicalMeasurementsFinalizedSiteId, None)
 
 
 def _strip_fields(order_json):

@@ -90,6 +90,7 @@ class MySqlReconciliationTest(FlaskTestBase):
         participantId=participant.participantId,
         sourceSiteId=1,
         finalizedSiteId=1,
+        collectedSiteId=1,
         finalizedUsername='bob@pmi-ops.org',
         created=order_time,
         collectedNote=collected_note,
