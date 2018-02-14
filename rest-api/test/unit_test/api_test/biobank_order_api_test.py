@@ -72,15 +72,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertNotEqual(s_paired.hpoId, UNSET_HPO_ID)
     self.assertEqual(s_paired.biospecimenCollectedSiteId, s_paired.siteId)
     self.assertNotEqual(s_paired.biospecimenCollectedSiteId, s_paired.biospecimenFinalizedSiteId)
-    # print s_paired.biospecimenCollectedSiteId, '...collected id'
-    # print s_paired.participantId
-    # print self.participant.participantId
-    # print self.participant.participantId
-    # self.send_consent(self.participant.participantId)
-    # # self._insert_measurements(datetime.datetime.utcnow().isoformat())
-    # #
-    # # print s_paired.biospecimenCollectedSiteId, '...collected id'
-    self.assertEqual(s_paired.biospecimenCollectedSiteId, s_paired.siteId)
+
     self.assertNotEqual(s_paired.siteId, s_paired.physicalMeasurementsCreatedSiteId )
     self.assertNotEqual(s_paired.siteId, s_paired.physicalMeasurementsFinalizedSiteId )
 
