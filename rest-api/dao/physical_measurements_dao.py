@@ -237,7 +237,7 @@ class PhysicalMeasurementsDao(BaseDao):
         self._update_amended(obj, extension, url, session)
         is_amendment = True
         break
-    self._update_participant_summary(session, obj)
+    participant_summary = self._update_participant_summary(session, obj)
     existing_measurements = (session.query(PhysicalMeasurements)
                              .filter(PhysicalMeasurements.participantId == obj.participantId)
                              .all())
@@ -252,8 +252,9 @@ class PhysicalMeasurementsDao(BaseDao):
 
     inserted_obj = super(PhysicalMeasurementsDao, self).insert_with_session(session, obj)
     if not is_amendment:  # Amendments aren't expected to have site ID extensions.
-      ParticipantDao().add_missing_hpo_from_site(
-          session, inserted_obj.participantId, inserted_obj.finalizedSiteId)
+      if participant_summary.biospecimenCollectedSiteId is None:
+        ParticipantDao().add_missing_hpo_from_site(
+            session, inserted_obj.participantId, inserted_obj.finalizedSiteId)
 
     # Flush to assign an ID to the measurements, as the client doesn't provide one.
     session.flush()
@@ -284,6 +285,8 @@ class PhysicalMeasurementsDao(BaseDao):
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
       participant_summary_dao.update_enrollment_status(participant_summary)
       session.merge(participant_summary)
+
+    return participant_summary
 
   def insert(self, obj):
     if obj.physicalMeasurementsId:

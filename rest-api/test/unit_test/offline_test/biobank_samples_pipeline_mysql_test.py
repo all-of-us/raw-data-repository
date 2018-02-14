@@ -89,7 +89,8 @@ class MySqlReconciliationTest(FlaskTestBase):
         biobankOrderId=order_id,
         participantId=participant.participantId,
         sourceSiteId=1,
-        finalizedSiteId=1,
+        finalizedSiteId=2,
+        collectedSiteId=1,
         finalizedUsername='bob@pmi-ops.org',
         created=order_time,
         collectedNote=collected_note,
@@ -335,8 +336,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertEquals(row['source_site_mayolink_client_number'], '7035769')
     self.assertEquals(row['source_site_hpo'], 'PITT')
     self.assertEquals(row['source_site_hpo_type'], 'HPO')
-    self.assertEquals(row['finalized_site_name'], 'Monroeville Urgent Care Center')
-    self.assertEquals(row['finalized_site_mayolink_client_number'], '7035769')
+    self.assertEquals(row['finalized_site_name'], 'Phoenix Urgent Care Center')
+    self.assertEquals(row['finalized_site_mayolink_client_number'], '7035770')
     self.assertEquals(row['finalized_site_hpo'], 'PITT')
     self.assertEquals(row['finalized_site_hpo_type'], 'HPO')
     self.assertEquals(row['finalized_username'], 'bob@pmi-ops.org')

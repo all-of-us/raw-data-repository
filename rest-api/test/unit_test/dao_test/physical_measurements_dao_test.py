@@ -2,6 +2,7 @@ import datetime
 import json
 
 from clock import FakeClock
+from dao.biobank_order_dao import BiobankOrderDao
 from model.participant import Participant
 from model.measurements import PhysicalMeasurements
 from query import Query, FieldFilter, Operator
@@ -27,6 +28,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.participant_summary_dao = ParticipantSummaryDao()
     self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
                                                              TIME_1.isoformat()))
+    self.biobank = BiobankOrderDao()
 
   def test_from_client_json(self):
     measurement = PhysicalMeasurementsDao.from_client_json(json.loads(self.measurement_json))
@@ -72,7 +74,6 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self._make_summary()
     summary = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertIsNone(summary.physicalMeasurementsStatus)
-
     with FakeClock(TIME_2):
       measurements = self.dao.insert(self._make_physical_measurements())
 

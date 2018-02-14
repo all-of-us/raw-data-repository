@@ -35,7 +35,7 @@ class BiobankOrderDaoTest(SqlTestBase):
         ('collectedUsername', 'joe@pmi-ops.org'),
         ('processedSiteId', 1),
         ('processedUsername', 'sue@pmi-ops.org'),
-        ('finalizedSiteId', 1),
+        ('finalizedSiteId', 2),
         ('finalizedUsername', 'bob@pmi-ops.org'),
         ('identifiers', [BiobankOrderIdentifier(system='a', value='c')]),
         ('samples', [BiobankOrderedSample(
@@ -61,7 +61,7 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.assertEquals('joe@pmi-ops.org', order.collectedUsername)
     self.assertEquals(1, order.processedSiteId)
     self.assertEquals('sue@pmi-ops.org', order.processedUsername)
-    self.assertEquals(1, order.finalizedSiteId)
+    self.assertEquals(2, order.finalizedSiteId)
     self.assertEquals('bob@pmi-ops.org', order.finalizedUsername)
 
   def test_to_json(self):
