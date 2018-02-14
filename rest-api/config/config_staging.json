@@ -17,7 +17,7 @@
     "vibrent-drc-staging@vibrent-drc-staging-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"],
       "whitelisted_ip_ranges": {
-        "ip4": ["52.203.93.76", "72.194.199.150/32"],
+        "ip4": ["52.203.93.76", "72.194.199.150/32", "35.169.80.249", "35.169.121.55", "52.206.129.31"],
         "ip6": []
       }
     },
