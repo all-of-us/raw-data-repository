@@ -245,6 +245,8 @@ class BiobankOrderDao(BaseDao):
         resource.created_info)
     order.collectedUsername, order.collectedSiteId = self._parse_handling_info(
         resource.collected_info)
+    if order.collectedSiteId is None:
+      raise BadRequest('Collected site is required in request.')
     order.processedUsername, order.processedSiteId = self._parse_handling_info(
         resource.processed_info)
     order.finalizedUsername, order.finalizedSiteId = self._parse_handling_info(

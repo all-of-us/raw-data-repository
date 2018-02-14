@@ -141,5 +141,6 @@ class ParticipantTest(BaseClientTest):
     self.assertEqual(updated_response['providerLink'], [provider_link])
     self.assertEqual(updated_response['awardee'], 'AZ_TUCSON')
 
+
 if __name__ == '__main__':
   unittest.main()

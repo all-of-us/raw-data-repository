@@ -390,7 +390,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('hpo-site-monroeville', ps_1['biospecimenSourceSite'])
     self.assertEquals('hpo-site-monroeville', ps_1['biospecimenCollectedSite'])
     self.assertEquals('hpo-site-monroeville', ps_1['biospecimenProcessedSite'])
-    self.assertEquals('hpo-site-monroeville', ps_1['biospecimenFinalizedSite'])
+    self.assertEquals('hpo-site-bannerphoenix', ps_1['biospecimenFinalizedSite'])
     self.assertEquals('UNSET', ps_1['sampleOrderStatus1ED04'])
     self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1ED10'])
     self.assertEquals('2016-01-04T10:55:41', ps_1['sampleOrderStatus1ED10Time'])
@@ -593,7 +593,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            'biospecimenProcessedSite=hpo-site-monroeville',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&' +
-                           'biospecimenFinalizedSite=hpo-site-monroeville',
+                           'biospecimenFinalizedSite=hpo-site-bannerphoenix',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&sampleOrderStatus1ED04=UNSET',
                            [[ps_1, ps_2], [ps_3]])

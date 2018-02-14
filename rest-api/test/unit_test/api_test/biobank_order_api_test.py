@@ -1,8 +1,9 @@
 import httplib
 
+import datetime
 from test.unit_test.unit_test_util import FlaskTestBase
-from test.test_data import load_biobank_order_json
-from model.utils import to_client_participant_id
+from test.test_data import load_biobank_order_json, load_measurement_json
+from model.utils import to_client_participant_id, from_client_participant_id
 from model.participant import Participant
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -69,9 +70,41 @@ class BiobankOrderApiTest(FlaskTestBase):
     s_paired = self.summary_dao.get(self.participant.participantId)
 
     self.assertNotEqual(s_paired.hpoId, UNSET_HPO_ID)
-    self.assertEqual(s_paired.biospecimenFinalizedSiteId, s_paired.siteId)
-    self.assertEqual(s_paired.physicalMeasurementsFinalizedSiteId, None)
+    self.assertEqual(s_paired.biospecimenCollectedSiteId, s_paired.siteId)
+    self.assertNotEqual(s_paired.biospecimenCollectedSiteId, s_paired.biospecimenFinalizedSiteId)
+    # print s_paired.biospecimenCollectedSiteId, '...collected id'
+    # print s_paired.participantId
+    # print self.participant.participantId
+    # print self.participant.participantId
+    # self.send_consent(self.participant.participantId)
+    # # self._insert_measurements(datetime.datetime.utcnow().isoformat())
+    # #
+    # # print s_paired.biospecimenCollectedSiteId, '...collected id'
+    self.assertEqual(s_paired.biospecimenCollectedSiteId, s_paired.siteId)
+    self.assertNotEqual(s_paired.siteId, s_paired.physicalMeasurementsCreatedSiteId )
+    self.assertNotEqual(s_paired.siteId, s_paired.physicalMeasurementsFinalizedSiteId )
 
+  def test_not_pairing_at_pm_when_has_bio(self):
+    self.participant_id = self.create_participant()
+    _id = int(self.participant_id[1:])
+    self.path = (
+      'Participant/%s/BiobankOrder' % to_client_participant_id(_id))
+    pid_numeric = from_client_participant_id(self.participant_id)
+    self.send_consent(self.participant_id)
+    self.send_post(self.path, load_biobank_order_json(pid_numeric))
+    participant_paired = self.summary_dao.get(pid_numeric)
+
+    self.assertEqual(participant_paired.siteId, participant_paired.biospecimenCollectedSiteId)
+    self.path = (
+      'Participant/%s/PhysicalMeasurements' % to_client_participant_id(pid_numeric))
+    self._insert_measurements(datetime.datetime.utcnow().isoformat())
+    self.assertNotEqual(participant_paired.siteId,
+                        participant_paired.physicalMeasurementsFinalizedSiteId)
+
+  def _insert_measurements(self, now=None):
+    measurements_1 = load_measurement_json(self.participant_id, now)
+    path_1 = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    self.send_post(path_1, measurements_1)
 
 def _strip_fields(order_json):
   if order_json.get('created'):
