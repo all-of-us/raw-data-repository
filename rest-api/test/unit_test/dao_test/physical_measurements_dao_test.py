@@ -5,15 +5,11 @@ from clock import FakeClock
 from dao.biobank_order_dao import BiobankOrderDao
 from model.participant import Participant
 from model.measurements import PhysicalMeasurements
-from model.utils import to_client_participant_id
 from query import Query, FieldFilter, Operator
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
-from participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus, UNSET_HPO_ID
-from test.test_data import load_biobank_order_json
-from test.unit_test.dao_test.biobank_order_dao_test import BiobankOrderDaoTest
-from test.unit_test.unit_test_util import FlaskTestBase
+from participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus
 from test_data import load_measurement_json, load_measurement_json_amendment
 from unit_test_util import SqlTestBase
 from werkzeug.exceptions import BadRequest, Forbidden
