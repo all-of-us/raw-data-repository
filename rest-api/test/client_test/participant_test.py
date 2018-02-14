@@ -124,9 +124,10 @@ class ParticipantTest(BaseClientTest):
     updated_response = self.client.request_json('Participant/{}'.format(participant_id))
     self.assertEqual(updated_response['site'], 'hpo-site-monroeville')
 
-    self.assertEqual(updated_response['awardee'], 'PITT')
-    self.assertEqual(updated_response['providerLink'], [provider_link_2])
 
+    self.assertEqual(updated_response['awardee'], 'PITT')
+
+    self.assertEqual(updated_response['providerLink'], [provider_link_2])
     # re-pair at providerlink level
     updated_response['providerLink'] = [provider_link]
     last_etag = self.client.last_etag
