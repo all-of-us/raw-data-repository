@@ -110,7 +110,7 @@ class BiobankOrderDao(BaseDao):
     self._update_participant_summary(session, obj)
     inserted_obj = super(BiobankOrderDao, self).insert_with_session(session, obj)
     ParticipantDao().add_missing_hpo_from_site(
-        session, inserted_obj.participantId, inserted_obj.finalizedSiteId)
+        session, inserted_obj.participantId, inserted_obj.collectedSiteId)
     return inserted_obj
 
   def _validate_model(self, session, obj):
@@ -245,6 +245,8 @@ class BiobankOrderDao(BaseDao):
         resource.created_info)
     order.collectedUsername, order.collectedSiteId = self._parse_handling_info(
         resource.collected_info)
+    if order.collectedSiteId is None:
+      raise BadRequest('Collected site is required in request.')
     order.processedUsername, order.processedSiteId = self._parse_handling_info(
         resource.processed_info)
     order.finalizedUsername, order.finalizedSiteId = self._parse_handling_info(
