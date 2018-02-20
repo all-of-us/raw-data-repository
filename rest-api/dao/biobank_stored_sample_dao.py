@@ -1,5 +1,6 @@
 from code_constants import BIOBANK_TESTS_SET
 from dao.base_dao import BaseDao
+from flask import logging
 from model.biobank_stored_sample import BiobankStoredSample
 
 
@@ -21,9 +22,7 @@ class BiobankStoredSampleDao(BaseDao):
     with self.session() as session:
       for sample in sample_generator:
         if sample.test not in BIOBANK_TESTS_SET:
-          raise ValueError(
-              'Sample %r has invalid test code %r.'
-              % (sample.test, sample.biobankStoredSampleId))
+          logging.warn('test sample %s not recognized.' % sample.test)
         session.merge(sample)
         written += 1
     return written
