@@ -35,6 +35,6 @@ class OrganizationDao(CacheAllDao):
     resource = _FhirOrganization()
     resource.id = model.externalId
     resource.display_name = model.displayName
-    resource.sites = [SiteDao._to_json(site) for site in model.sites if site.siteStatus ==
+    resource.sites = [SiteDao._to_json(site) for site in model.sites if site.siteStatus.name ==
                       'ACTIVE']
     return resource

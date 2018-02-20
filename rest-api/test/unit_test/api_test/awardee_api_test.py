@@ -70,12 +70,16 @@ class AwardeeApiTest(FlaskTestBase):
   def test_get_awardee_with_organizations(self):
     self._setup_data()
     result = self.send_get('Awardee/PITT')
+    test = self._make_expected_pitt_awardee_resource()
+    print test
+    print '------'
+    print result
     self.assertEquals(self._make_expected_pitt_awardee_resource(), result)
 
   def _make_expected_pitt_awardee_resource(self):
     sites = [{'id': 'aaaaaaa',
              'displayName': 'Zebras Rock',
-             'siteStatus': 'INACTIVE',
+             'siteStatus': 'ACTIVE',
              'address': {}
             }, {'id': 'hpo-site-1',
               'displayName': 'Site 1',
