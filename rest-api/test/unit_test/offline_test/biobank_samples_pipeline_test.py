@@ -102,10 +102,9 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEquals(latest_filename, '/%s/%s' % (_FAKE_BUCKET, created_last))
 
   def test_sample_from_row(self):
-    samples_file = test_data.open_biobank_samples(111, 222, 333)
+    samples_file = test_data.open_biobank_samples(112, 222, 333)
     reader = csv.DictReader(samples_file, delimiter='\t')
     row = reader.next()
-
     sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
     self.assertIsNotNone(sample)
 
@@ -137,11 +136,23 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     with self.assertRaises(biobank_samples_pipeline.DataError):
       biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
 
+  def test_sample_from_row_old_test(self):
+    samples_file = test_data.open_biobank_samples(111, 222, 333)
+    reader = csv.DictReader(samples_file, delimiter='\t')
+    row = reader.next()
+    row[biobank_samples_pipeline._Columns.TEST_CODE] = '2PST8'
+    sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
+    self.assertIsNotNone(sample)
+    cols = biobank_samples_pipeline._Columns
+    self.assertEquals(sample.biobankStoredSampleId, row[cols.SAMPLE_ID])
+    self.assertEquals(sample.test, row[cols.TEST_CODE])
+
   def test_column_missing(self):
     with open(test_data.data_path('biobank_samples_missing_field.csv')) as samples_file:
       reader = csv.DictReader(samples_file, delimiter='\t')
       with self.assertRaises(biobank_samples_pipeline.DataError):
         biobank_samples_pipeline._upsert_samples_from_csv(reader)
+
 
   def test_get_reconciliation_report_paths(self):
     dt = datetime.datetime(2016, 12, 22, 18, 30, 45)
