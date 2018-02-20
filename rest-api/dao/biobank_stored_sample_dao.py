@@ -23,6 +23,7 @@ class BiobankStoredSampleDao(BaseDao):
       for sample in sample_generator:
         if sample.test not in BIOBANK_TESTS_SET:
           logging.warn('test sample %s not recognized.' % sample.test)
-        session.merge(sample)
-        written += 1
+        else:
+          session.merge(sample)
+          written += 1
     return written
