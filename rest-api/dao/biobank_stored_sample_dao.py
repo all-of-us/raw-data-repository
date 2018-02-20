@@ -1,6 +1,6 @@
 from code_constants import BIOBANK_TESTS_SET
 from dao.base_dao import BaseDao
-from flask import logging
+import logging
 from model.biobank_stored_sample import BiobankStoredSample
 
 
