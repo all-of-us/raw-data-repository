@@ -58,6 +58,7 @@ class AwardeeApiTest(FlaskTestBase):
     self._setup_data()
     result = self.send_get('Awardee')
     self.assertEquals(3, len(result['entry']))
+    import pdb; pdb.set_trace()
     self.assertEquals(_make_awardee_with_resource(self._make_expected_pitt_awardee_resource(),
                                                   'PITT'),
                       result['entry'][1])
@@ -71,9 +72,6 @@ class AwardeeApiTest(FlaskTestBase):
     self._setup_data()
     result = self.send_get('Awardee/PITT')
     test = self._make_expected_pitt_awardee_resource()
-    print test
-    print '------'
-    print result
     self.assertEquals(self._make_expected_pitt_awardee_resource(), result)
 
   def _make_expected_pitt_awardee_resource(self):
