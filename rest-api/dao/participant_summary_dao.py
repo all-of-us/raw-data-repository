@@ -273,7 +273,7 @@ class ParticipantSummaryDao(UpdatableDao):
       return EnrollmentStatus.MEMBER
     return EnrollmentStatus.INTERESTED
 
-  def to_client_json(self, model):
+  def to_client_json(self, model, inactive_sites=False):
     result = model.asdict()
     # Participants that withdrew more than 48 hours ago should have fields other than
     # WITHDRAWN_PARTICIPANT_FIELDS cleared.

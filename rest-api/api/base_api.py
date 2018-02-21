@@ -136,11 +136,13 @@ class BaseApi(Resource):
     if results.pagination_token:
       query_params = request.args.copy()
       query_params['_token'] = results.pagination_token
+
       next_url = main.api.url_for(self.__class__, _external=True, **query_params)
       bundle_dict['link'] = [{"relation": "next", "url": next_url}]
     entries = []
+    inactive_sites = request.args.get('_inactive')
     for item in results.items:
-      json = self.dao.to_client_json(item)
+      json = self.dao.to_client_json(item, inactive_sites)
       full_url = self._make_resource_url(json, id_field, participant_id)
       entries.append({"fullUrl": full_url,
                      "resource": json})

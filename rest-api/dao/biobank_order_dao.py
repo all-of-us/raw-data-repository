@@ -317,7 +317,7 @@ class BiobankOrderDao(BaseDao):
       fhir_id.value = identifier.value
       resource.identifier.append(fhir_id)
 
-  def to_client_json(self, model):
+  def to_client_json(self, model, inactive_sites=False):
     resource = _FhirBiobankOrder()
     resource.subject = self._participant_id_to_subject(model.participantId)
     resource.created = _ToFhirDate(model.created)

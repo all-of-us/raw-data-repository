@@ -48,6 +48,21 @@ class AwardeeApiTest(FlaskTestBase):
     hpo_dao.insert(HPO(hpoId=AZ_HPO_ID, name='AZ_TUCSON', displayName='Arizona',
                        organizationType=OrganizationType.HPO))
 
+  def test_a_new_test(self):
+    self._setup_data()
+    result = self.send_get('Awardee')
+    result2 = self.send_get('Awardee?_inactive=true')
+    placeholder = result2['entry'] #[1]['resource']['organizations']
+    for x in placeholder:
+     x = x['resource']['organizations']
+     site = x.get('sites')
+     if site:
+       print 'site-- ', site
+       for i in site:
+         print 'i siteStatus-- ', i['siteStatus']
+     else:
+       print 'no site'
+
   def test_get_awardees_no_organizations(self):
     result = self.send_get('Awardee')
     self.assertEquals(3, len(result['entry']))
@@ -58,7 +73,6 @@ class AwardeeApiTest(FlaskTestBase):
     self._setup_data()
     result = self.send_get('Awardee')
     self.assertEquals(3, len(result['entry']))
-    import pdb; pdb.set_trace()
     self.assertEquals(_make_awardee_with_resource(self._make_expected_pitt_awardee_resource(),
                                                   'PITT'),
                       result['entry'][1])
