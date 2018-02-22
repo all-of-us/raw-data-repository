@@ -1,6 +1,5 @@
 import unittest
 
-import time
 from base import BaseClientTest
 from client import HttpException
 
