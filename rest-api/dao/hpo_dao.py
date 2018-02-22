@@ -66,7 +66,8 @@ class HPODao(CacheAllDao):
       resource.type = str(model.organizationType)
     else:
       resource.type = UNSET
-    resource.organizations = [OrganizationDao._to_json(organization, inactive_sites) for organization
+    resource.organizations = [OrganizationDao._to_json(organization, inactive_sites)
+                              for organization
                               in model.organizations]
     json = resource.as_json()
     del json['resourceType']
