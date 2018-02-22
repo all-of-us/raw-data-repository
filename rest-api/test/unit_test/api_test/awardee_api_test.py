@@ -48,20 +48,16 @@ class AwardeeApiTest(FlaskTestBase):
     hpo_dao.insert(HPO(hpoId=AZ_HPO_ID, name='AZ_TUCSON', displayName='Arizona',
                        organizationType=OrganizationType.HPO))
 
-  def test_a_new_test(self):
+  def test_active_and_inactive_site(self):
     self._setup_data()
     result = self.send_get('Awardee')
+    active_only = result['entry'][1]['resource']['organizations']
+    site = active_only[1]['sites'][0]['siteStatus']
+    self.assertEqual(site, 'ACTIVE')
     result2 = self.send_get('Awardee?_inactive=true')
-    placeholder = result2['entry'] #[1]['resource']['organizations']
-    for x in placeholder:
-     x = x['resource']['organizations']
-     site = x.get('sites')
-     if site:
-       print 'site-- ', site
-       for i in site:
-         print 'i siteStatus-- ', i['siteStatus']
-     else:
-       print 'no site'
+    not_active = result2['entry'][1]['resource']['organizations']
+    site = not_active[1]['sites'][0]['siteStatus']
+    self.assertEqual(site, 'INACTIVE')
 
   def test_get_awardees_no_organizations(self):
     result = self.send_get('Awardee')
@@ -71,7 +67,7 @@ class AwardeeApiTest(FlaskTestBase):
 
   def test_get_awardees_with_organizations(self):
     self._setup_data()
-    result = self.send_get('Awardee')
+    result = self.send_get('Awardee?_inactive=true')
     self.assertEquals(3, len(result['entry']))
     self.assertEquals(_make_awardee_with_resource(self._make_expected_pitt_awardee_resource(),
                                                   'PITT'),
@@ -85,13 +81,13 @@ class AwardeeApiTest(FlaskTestBase):
   def test_get_awardee_with_organizations(self):
     self._setup_data()
     result = self.send_get('Awardee/PITT')
-    test = self._make_expected_pitt_awardee_resource()
-    self.assertEquals(self._make_expected_pitt_awardee_resource(), result)
+    # we are now filtering out 'INACTIVE' sites by default.
+    self.assertNotEqual(self._make_expected_pitt_awardee_resource(), result)
 
   def _make_expected_pitt_awardee_resource(self):
     sites = [{'id': 'aaaaaaa',
              'displayName': 'Zebras Rock',
-             'siteStatus': 'ACTIVE',
+             'siteStatus': 'INACTIVE',
              'address': {}
             }, {'id': 'hpo-site-1',
               'displayName': 'Site 1',
