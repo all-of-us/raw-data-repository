@@ -239,7 +239,7 @@ class ParticipantDao(UpdatableDao):
               .filter(Participant.biobankId % 100 <= percentage * 100)
               .yield_per(batch_size))
 
-  def to_client_json(self, model, inactive_sites=False):
+  def to_client_json(self, model):
     client_json = {
         'participantId': to_client_participant_id(model.participantId),
         'hpoId': model.hpoId,

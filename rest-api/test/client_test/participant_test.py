@@ -1,5 +1,6 @@
 import unittest
 
+import time
 from base import BaseClientTest
 from client import HttpException
 
@@ -123,7 +124,6 @@ class ParticipantTest(BaseClientTest):
 
     updated_response_2 = self.client.request_json('Participant/{}'.format(participant_id))
     self.assertEqual(updated_response_2['site'], 'hpo-site-monroeville')
-
 
     self.assertEqual(updated_response_2['awardee'], 'PITT')
 

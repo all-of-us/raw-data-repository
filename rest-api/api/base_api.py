@@ -140,9 +140,8 @@ class BaseApi(Resource):
       next_url = main.api.url_for(self.__class__, _external=True, **query_params)
       bundle_dict['link'] = [{"relation": "next", "url": next_url}]
     entries = []
-    inactive_sites = request.args.get('_inactive')
     for item in results.items:
-      json = self.dao.to_client_json(item, inactive_sites)
+      json = self._make_response(item)
       full_url = self._make_resource_url(json, id_field, participant_id)
       entries.append({"fullUrl": full_url,
                      "resource": json})

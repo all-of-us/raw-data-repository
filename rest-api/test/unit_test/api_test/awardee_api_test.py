@@ -54,6 +54,8 @@ class AwardeeApiTest(FlaskTestBase):
     active_only = result['entry'][1]['resource']['organizations']
     site = active_only[1]['sites'][0]['siteStatus']
     self.assertEqual(site, 'ACTIVE')
+    self.assertEqual(result['entry'][0], _make_awardee('AZ_TUCSON', 'Arizona', 'HPO'))
+
     result2 = self.send_get('Awardee?_inactive=true')
     not_active = result2['entry'][1]['resource']['organizations']
     site = not_active[1]['sites'][0]['siteStatus']
@@ -80,9 +82,9 @@ class AwardeeApiTest(FlaskTestBase):
 
   def test_get_awardee_with_organizations(self):
     self._setup_data()
-    result = self.send_get('Awardee/PITT')
+    result = self.send_get('Awardee/PITT?_inactive=true')
     # we are now filtering out 'INACTIVE' sites by default.
-    self.assertNotEqual(self._make_expected_pitt_awardee_resource(), result)
+    self.assertEqual(self._make_expected_pitt_awardee_resource(), result)
 
   def _make_expected_pitt_awardee_resource(self):
     sites = [{'id': 'aaaaaaa',

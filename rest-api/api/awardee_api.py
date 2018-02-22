@@ -3,6 +3,7 @@ from app_util import auth_required
 from api_util import PTC_AND_HEALTHPRO
 from dao.hpo_dao import HPODao
 from werkzeug.exceptions import NotFound
+from flask import request
 
 class AwardeeApi(BaseApi):
   def __init__(self):
@@ -21,3 +22,7 @@ class AwardeeApi(BaseApi):
     import main
     return main.api.url_for(self.__class__, a_id=json[id_field],
                             _external=True)
+
+  def _make_response(self, obj):
+    inactive = request.args.get('_inactive')
+    return self.dao.to_client_json(obj, inactive)

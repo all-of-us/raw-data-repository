@@ -31,13 +31,13 @@ class OrganizationDao(CacheAllDao):
     return self._get_cache().index_maps['externalId'].get(external_id)
 
   @staticmethod
-  def _to_json(model, inactive_sites=False):
+  def _to_json(model, inactive_sites):
     resource = _FhirOrganization()
     resource.id = model.externalId
     resource.display_name = model.displayName
     if inactive_sites:
       resource.sites = [SiteDao._to_json(site) for site in model.sites]
     else:
-      resource.sites = [SiteDao._to_json(site) for site in model.sites if site.siteStatus.name ==
-                      'ACTIVE']
+      resource.sites = [SiteDao._to_json(site) for site in model.sites if site.siteStatus ==
+                      site.siteStatus.ACTIVE]
     return resource

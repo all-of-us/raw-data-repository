@@ -54,7 +54,7 @@ class HPODao(CacheAllDao):
                               .order_by(HPO.name),
             _ORDER_BY_ENDING)
 
-  def to_client_json(self, model, inactive_sites=False):
+  def to_client_json(self, model, inactive_sites):
     return HPODao._to_json(model, inactive_sites)
 
   @staticmethod
