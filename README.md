@@ -346,8 +346,24 @@ lookup (for physical measurements and biospecimen donation) as well as a
 Participant Work Queue. Any of the above parameters can be provided as a query parameter to do
 an exact match. Examples:
 
-    GET /ParticipantSummary?hpoId=PITT
-    GET /ParticipantSummary?hpoId=PITT&state=PIIState_MA
+    GET /ParticipantSummary?awardee=PITT
+    GET /ParticipantSummary?awardee=PITT&state=PIIState_MA
+
+    GET /ParticipantSummary?organization=PITT_FOO 
+    GET /ParticipantSummary?site=SITE_HPO
+
+The participant summary API supports filtering and sorting on last modified time
+and returns only the participants for the appropriate awardee to a matching Service Account.
+The priority of filter is...
+* last modified time
+* participant ID (ascending)
+
+    GET /ParticipantSummary?awardee=PITT&last_modified=2018-02-29
+
+##### Service Accounts
+* Each awardee partner is issued one service account.
+* authorized users can generate API keys for access.
+* awardees are responsible for rotating keys on a three day timeframe.
 
 For integer and date fields, the following prefixes can be provided for query parameter values to
 indicate inequality searches, as per the [FHIR search spec](https://www.hl7.org/fhir/search.html):
