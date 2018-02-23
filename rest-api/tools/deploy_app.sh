@@ -120,7 +120,20 @@ if [ "$TARGET" == "all" ] || [ "$TARGET" == "app" ] || [ "$TARGET" == "cron" ]
 then
   declare -a yamls
   declare -a tmp_files
-  if [ "$TARGET" == "app" ]
+
+  # Deploy cron/queue in all cases.
+  CRON_YAML=cron_default.yaml
+  if [ "${PROJECT}" = "all-of-us-rdr-sandbox" ]
+  then
+    CRON_YAML=cron_sandbox.yaml
+  fi
+  cp "${CRON_YAML}" cron.yaml
+  yamls+=( cron.yaml queue.yaml )
+  tmp_files+=( cron.yaml )
+  before_comment="Updating cron/queue configuration in ${PROJECT}."
+  after_comment="cron/queue configuration updated in ${PROJECT}."
+
+  if [ "$TARGET" == "app" ] || [ "$TARGET" == "all" ]
   then
     if [ "${PROJECT}" = "all-of-us-rdr-prod" ]
     then
@@ -131,25 +144,18 @@ then
     fi
     cat app_base.yaml $APP_YAML > app.yaml
 
-    yamls=( app.yaml index.yaml offline.yaml )
-    tmp_files=( app.yaml )
+    yamls+=( app.yaml index.yaml offline.yaml )
+    tmp_files+=( app.yaml )
+    before_comment="Deploying app to ${PROJECT}."
+    after_comment="App deployed to ${PROJECT}."
   fi
 
-  CRON_YAML=cron_default.yaml
-  if [ "${PROJECT}" = "all-of-us-rdr-sandbox" ]
-  then
-    CRON_YAML=cron_sandbox.yaml
-  fi
-  cp "${CRON_YAML}" cron.yaml
-  yamls+=( cron.yaml )
-  yamls+=( queue.yaml )
-  tmp_files+=( cron.yaml )
 
   echo "${BOLD}Deploying application...${NONE}"
-  $UPDATE_TRACKER --version $VERSION --comment "Deploying app to ${PROJECT}."
+  $UPDATE_TRACKER --version $VERSION --comment "${before_comment}"
   gcloud app deploy "${yamls[@]}" \
       --quiet --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
-  $UPDATE_TRACKER --version $VERSION --comment "App deployed to ${PROJECT}."
+  $UPDATE_TRACKER --version $VERSION --comment "${after_comment}"
   rm "${tmp_files[@]}"
 fi
 
