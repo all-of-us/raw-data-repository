@@ -349,21 +349,33 @@ an exact match. Examples:
     GET /ParticipantSummary?awardee=PITT
     GET /ParticipantSummary?awardee=PITT&state=PIIState_MA
 
-    GET /ParticipantSummary?organization=PITT_FOO 
-    GET /ParticipantSummary?site=SITE_HPO
+    GET /ParticipantSummary?organization=PITT_UPMC 
+    GET /ParticipantSummary?site=hpo-site-UPMC
 
-The participant summary API supports filtering and sorting on last modified time
-and returns only the participants for the appropriate awardee to a matching Service Account.
-The priority of filter is...
+The participant summary API supports filtering and sorting on last modified time.
+The order results are reuturned is...
 * last modified time
 * participant ID (ascending)
 
-    GET /ParticipantSummary?awardee=PITT&last_modified=2018-02-29
+Example:
+
+    GET /ParticipantSummary?awardee=PITT&last_modified=ge2018-02-29
+See FHIR search prefixes beolow
+
+Synchronize Participant Summary last modified link.
+This allows Awardees to stay up-to-date
+with newly-arrived summaries. The return value is a FHIR History [Bundle](http://hl7.org/fhir/bundle.html)
+where each entry is a `ParticipantSummary` document.
+
+The Bundle's `link` array will include a link with relation=`next` if more results are available immediately.
+Otherwise the array will contain a `link` with relation=`sync` that can be used to check for new results.
 
 ##### Service Accounts
 * Each awardee partner is issued one service account.
-* authorized users can generate API keys for access.
-* awardees are responsible for rotating keys on a three day timeframe.
+* Authorized users can generate API keys for access.
+* Awardees are responsible for rotating keys on a three day timeframe.
+    ** Permissions will be revoked after this time.
+* Awardee must specify Awardee or Organization/Site of Awardee in call to API.
 
 For integer and date fields, the following prefixes can be provided for query parameter values to
 indicate inequality searches, as per the [FHIR search spec](https://www.hl7.org/fhir/search.html):
