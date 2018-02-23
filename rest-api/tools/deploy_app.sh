@@ -2,7 +2,7 @@
 # Checks out RDR code from git in the current directory; by default, uses the same version of the
 # app that is currently running in the staging environment.
 # After a Y/N confirmation, upgrades the database, installs the latest config, deploys the code
-# and crons, or just the crons. By default, does all of the above.
+# and crons, or just the cron+queue config. By default, does all of the above.
 
 # Run this in the rest-api dir of the git repo with no uncommitted changes. You will need to
 # check out whatever branch you want to work in after it's done.
