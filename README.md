@@ -785,6 +785,10 @@ organizations and sites within them, representing the full hierarchy of
 awardees > organizations > sites. No pagination, syncing, or filtering is currently
 supported on this endpoint.
 
+Excepts an `_inactive=true` parameter to allow the addition of inactive sites to
+JSON bundle. The default is false.
+Example: `GET /Awardee/:aid?_inactive=true`
+
 Example response:
 
 ```
