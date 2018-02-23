@@ -14,13 +14,16 @@ from model.biobank_stored_sample import BiobankStoredSample
 from test_data import load_measurement_json, load_biobank_order_json
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase
 
+
 TIME_1 = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
 TIME_4 = datetime.datetime(2016, 1, 4)
 TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
 
+
 class ParticipantSummaryMySqlApiTest(FlaskTestBase):
+
   def setUp(self):
     super(ParticipantSummaryMySqlApiTest, self).setUp(use_mysql=True)
     self.provider_link = {
@@ -62,6 +65,7 @@ class ParticipantSummaryMySqlApiTest(FlaskTestBase):
     # our update statements; see DA-256.
     ps = self.send_get('Participant/%s/Summary' % participant_id)
     self.assertEquals('PITT', ps.get('hpoId'))
+
 
 class ParticipantSummaryApiTest(FlaskTestBase):
 
@@ -679,8 +683,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED',
                            [[ps_1]])
-
-
 
 
 def _add_code_answer(code_answers, link_id, code):
