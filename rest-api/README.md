@@ -89,6 +89,16 @@ test/run_tests.sh -g $sdk_dir
 
 This will run both the unit tests and the client tests.
 
+If a test breaks and you would like to enable the output of Python's `logging`
+module for debugging purposes, you can comment out the following two lines in
+the file `./test/runner.py` to re-enable printing of log statements to the
+console:
+
+```Python
+import logging
+logging.disable(logging.CRITICAL)
+```
+
 If you want to be super slick, and have the tests run every time you change a
 source file, you can do this.
 
