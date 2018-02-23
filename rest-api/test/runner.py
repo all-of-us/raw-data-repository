@@ -73,6 +73,10 @@ def main(sdk_path, test_path, test_pattern):
 
 
 if __name__ == '__main__':
+  # Disables logging for the duration of the tests
+  import logging
+  logging.disable(logging.CRITICAL)
+
   parser = argparse.ArgumentParser(
     description=__doc__,
     formatter_class=argparse.RawDescriptionHelpFormatter)
