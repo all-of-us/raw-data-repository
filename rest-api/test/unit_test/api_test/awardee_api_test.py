@@ -71,9 +71,9 @@ class AwardeeApiTest(FlaskTestBase):
     self._setup_data()
     result = self.send_get('Awardee?_inactive=true')
     self.assertEquals(3, len(result['entry']))
-    self.assertEquals(_make_awardee_with_resource(self._make_expected_pitt_awardee_resource(),
-                                                  'PITT'),
-                      result['entry'][1])
+    self.assertEquals(_make_awardee_with_resource(self._make_expected_pitt_awardee_resource(
+                                                  inactive=True), 'PITT'),
+                                                  result['entry'][1])
     self.assertEquals(_make_awardee('UNSET', 'Unset', 'UNSET'), result['entry'][2])
 
   def test_get_awardee_no_organizations(self):
@@ -84,9 +84,9 @@ class AwardeeApiTest(FlaskTestBase):
     self._setup_data()
     result = self.send_get('Awardee/PITT?_inactive=true')
     # we are now filtering out 'INACTIVE' sites by default.
-    self.assertEqual(self._make_expected_pitt_awardee_resource(), result)
+    self.assertEqual(self._make_expected_pitt_awardee_resource(inactive=True), result)
 
-  def _make_expected_pitt_awardee_resource(self):
+  def _make_expected_pitt_awardee_resource(self, inactive=False):
     sites = [{'id': 'aaaaaaa',
              'displayName': 'Zebras Rock',
              'siteStatus': 'INACTIVE',
@@ -110,10 +110,14 @@ class AwardeeApiTest(FlaskTestBase):
               'phoneNumber': '555-555-5555',
               'adminEmails': ['alice@example.com', 'bob@example.com'],
               'link': 'http://www.example.com' }]
-
+    site = []
+    if inactive:
+      site = sites
+    else:
+      site.append([i for i in sites if i['siteStatus'] == 'ACTIVE'])
 
     org_2_dict = _make_organization_dict('AARDVARK_ORG', 'Aardvarks Rock')
-    org_1_dict = _make_organization_dict('ORG_1', 'Organization 1', sites)
+    org_1_dict = _make_organization_dict('ORG_1', 'Organization 1', site)
     return _make_awardee_resource('PITT', 'Pittsburgh', 'HPO', [org_2_dict, org_1_dict])
 
   def _setup_data(self):
