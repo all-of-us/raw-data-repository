@@ -4,8 +4,8 @@ import main
 import threading
 
 from clock import FakeClock
-from code_constants import PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE
-from code_constants import RACE_NONE_OF_THESE_CODE
+from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
+                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE)
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
