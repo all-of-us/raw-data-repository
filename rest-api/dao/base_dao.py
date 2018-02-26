@@ -329,6 +329,7 @@ class BaseDao(object):
       return session.query(self.model_type).count()
 
   def to_client_json(self, model):
+    # pylint: disable=unused-argument
     """Converts the given model to a JSON object to be returned to API clients.
 
     Subclasses must implement this unless their model store a model.resource attribute.
