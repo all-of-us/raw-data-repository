@@ -378,13 +378,13 @@ Otherwise the array will contain a `link` with relation=`sync` that can be used 
     ** Permissions will be revoked after this time.
 * Awardee must specify Awardee or Organization/Site of Awardee in call to API.
 
-    GET /ParticipantSummary?awardee=PITT
+    `GET /ParticipantSummary?awardee=PITT`
     
-    GET /ParticipantSummary?awardee=PITT&state=PIIState_MA
+    `GET /ParticipantSummary?awardee=PITT&state=PIIState_MA`
     
-    GET /ParticipantSummary?organization=PITT_UPMC 
+    `GET /ParticipantSummary?organization=PITT_UPMC`
     
-    GET /ParticipantSummary?site=hpo-site-UPMC
+    `GET /ParticipantSummary?site=hpo-site-UPMC`
 
 
 For integer and date fields, the following prefixes can be provided for query parameter values to
