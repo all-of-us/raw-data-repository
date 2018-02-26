@@ -20,7 +20,7 @@ class ParticipantCountsOverTimeApi(Resource):
 
   @auth_required(HEALTHPRO)
   def get(self):
-    hpo_dao = HPODao()
+    self.hpo_dao = HPODao()
 
     enrollment_status = request.args.get('enrollmentStatus')
     awardee = request.args.get('awardee')
@@ -31,16 +31,37 @@ class ParticipantCountsOverTimeApi(Resource):
     start_date_str = request.args.get('startDate')
     end_date_str = request.args.get('endDate')
 
-    resource_json = {
-      'enrollment_status': enrollment_status,
-      'awardee': awardee,
-      'organization': organization,
-      'site': site,
-      'withdrawal_status': withdrawal_status,
-      'stratification': stratification,
+    params = {
+      'enrollment_statuses': enrollment_status,
+      'awardees': awardee,
+      'organizations': organization,
+      'sites': site,
+      'withdrawal_statuses': withdrawal_status,
+      'stratifications': stratification,
       'start_date': start_date_str,
       'end_date': end_date_str
     }
+
+    # Most parameters accepted by this API can have multiple, comma-delimited
+    # values.  Arrange them into lists.
+    for param in params:
+      if param not in ['start_date', 'end_date']:
+        continue
+      params[param] = param.split(',')
+
+    params = self.validate_params(params)
+
+
+  def validate_params(self, params):
+
+    enrollment_statuses = params['enrollment_statuses']
+    awardees = params['awardees']
+    organizations = params['organizations']
+    sites = params['sites']
+    withdrawal_statuses = params['withdrawal_statuses']
+    stratifications = params['stratifications']
+    start_date_str = params['start_dates']
+    end_date_str = params['end_dates']
 
     if not start_date_str or not end_date_str:
       raise BadRequest('Start date and end date should not be empty')
@@ -57,6 +78,14 @@ class ParticipantCountsOverTimeApi(Resource):
       raise BadRequest('Difference between start date and end date ' \
                        'should not be greater than %s days' % DAYS_LIMIT)
 
-    awardee_id = get_awardee_id_from_name(resource_json, hpo_dao)
-    if awardee_id == None:
-      raise BadRequest('Invalid awardee name: %s' % awardee)
+    awardee_ids = []
+    for awardee in awardees:
+      awardee_id = get_awardee_id_from_name(params, self.hpo_dao)
+      if awardee_id == None:
+        raise BadRequest('Invalid awardee name: %s' % awardee)
+      awardee_ids.append(awardee_ids)
+
+    params['awardee_ids'] = awardee_ids
+
+    return params
+
