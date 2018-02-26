@@ -6,7 +6,7 @@ from clock import FakeClock
 from code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
 from code_constants import GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
 from code_constants import RACE_QUESTION_CODE, STATE_QUESTION_CODE, RACE_WHITE_CODE
-from code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE
+from code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_SKIP_CODE
 from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from mapreduce import test_support
 from model.biobank_stored_sample import BiobankStoredSample
@@ -70,7 +70,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     SqlTestBase.setup_codes(
         [
             RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE,
-            CONSENT_PERMISSION_NO_CODE, 'female', 'PIIState_VA'
+            CONSENT_PERMISSION_NO_CODE, 'female', 'PIIState_VA', PMI_SKIP_CODE
         ],
         code_type=CodeType.ANSWER)
     participant_dao = ParticipantDao()
@@ -117,7 +117,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
       participant_dao.update(participant)
       self.submit_questionnaire_response('P1', questionnaire_id,
-                                         RACE_WHITE_CODE, 'male', None,
+                                         RACE_WHITE_CODE, 'male', PMI_SKIP_CODE,
                                          datetime.date(1980, 1, 2))
       self.submit_questionnaire_response('P2', questionnaire_id, RACE_NONE_OF_THESE_CODE, None,
                                          None, None)
@@ -207,7 +207,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                         ''], ['1', t2, RACE_QUESTION_CODE, RACE_WHITE_CODE, ''],
         ['1', t3, GENDER_IDENTITY_QUESTION_CODE, 'female',
          ''], ['1', t3, RACE_QUESTION_CODE, 'UNMAPPED', ''],
-        ['1', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_NO_CODE, '']
+        ['1', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_NO_CODE, ''],
+        ['1', '2016-01-02T00:00:00Z', 'StreetAddress_PIIState', PMI_SKIP_CODE, ''],
     ])
 
     # Wait for the metrics pipeline to run, processing the CSV output.
@@ -314,8 +315,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     self.assertBucket(bucket_map, TIME_2, 'AZ_TUCSON_2', {
         'Participant': 1,
         'Participant.ageRange.26-35': 1,
-        'Participant.state.UNSET': 1,
-        'Participant.censusRegion.UNSET': 1,
+        'Participant.state.PMI_Skip': 1,
+        'Participant.censusRegion.PMI_Skip': 1,
         'Participant.physicalMeasurements.UNSET': 1,
         'Participant.biospecimen.UNSET': 1,
         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 1,
@@ -367,8 +368,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant': 2,
         'Participant.ageRange.26-35': 1,
         'Participant.ageRange.UNSET': 1,
-        'Participant.state.UNSET': 2,
-        'Participant.censusRegion.UNSET': 2,
+        'Participant.state.UNSET': 1,
+        'Participant.censusRegion.UNSET': 1,
+        'Participant.state.PMI_Skip': 1,
+        'Participant.censusRegion.PMI_Skip': 1,
         'Participant.physicalMeasurements.UNSET': 2,
         'Participant.biospecimen.UNSET': 2,
         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
@@ -410,11 +413,11 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             1,
         'Participant.state.PIIState_VA':
             1,
-        'Participant.state.UNSET':
+        'Participant.state.PMI_Skip':
             1,
         'Participant.censusRegion.SOUTH':
             1,
-        'Participant.censusRegion.UNSET':
+        'Participant.censusRegion.PMI_Skip':
             1,
         'Participant.physicalMeasurements.COMPLETED':
             1,
@@ -532,11 +535,11 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
             1,
         'Participant.state.PIIState_VA':
             1,
-        'Participant.state.UNSET':
+        'Participant.state.PMI_Skip':
             1,
         'Participant.censusRegion.SOUTH':
             1,
-        'Participant.censusRegion.UNSET':
+        'Participant.censusRegion.PMI_Skip':
             1,
         'Participant.physicalMeasurements.COMPLETED':
             1,
