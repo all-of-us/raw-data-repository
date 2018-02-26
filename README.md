@@ -353,13 +353,16 @@ an exact match. Examples:
     GET /ParticipantSummary?site=hpo-site-UPMC
 
 The participant summary API supports filtering and sorting on last modified time.
-The order results are returned is...
+The default order results are returned is...
 * last modified time
 * participant ID (ascending)
 
 Example:
 
-    GET /ParticipantSummary?awardee=PITT&last_modified=ge2018-02-29
+    GET /ParticipantSummary?awardee=PITT&_sort=lastModified
+Pagination is provided with a token i.e.
+
+    GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=<token string>
 See FHIR search prefixes below
 
 Synchronize Participant Summary last modified link.
