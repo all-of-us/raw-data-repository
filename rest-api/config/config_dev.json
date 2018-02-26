@@ -20,6 +20,6 @@
     "app_default_bucket"
   ],
   "metrics_shards": [
-    "2"
+    "10"
   ]
 }
