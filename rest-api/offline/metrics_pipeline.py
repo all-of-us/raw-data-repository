@@ -273,8 +273,7 @@ def map_answers(reader):
       race = get_race(race_codes)
       if race == Race.SKIPPED:
         race = PMI_SKIP_CODE
-      yield(last_participant_id, make_tuple(last_start_time,
-                                               make_metric(RACE_METRIC, str(race))))
+      yield (last_participant_id, make_tuple(last_start_time, make_metric(RACE_METRIC, str(race))))
       race_code_values = []
     last_participant_id = participant_id
     last_start_time = start_time
@@ -293,24 +292,26 @@ def map_answers(reader):
           if answer_code == PMI_SKIP_CODE:
             census_region = PMI_SKIP_CODE
           else:
+            # The last two letters of the answer code should be a state abbreviation,
+            # e.g. TN, AZ, etc
             state_abbr = answer_code[-2:]
-            census_region = census_regions.get(state_abbr) or UNSET
-          yield(participant_id, make_tuple(start_time, make_metric(CENSUS_REGION_METRIC,
-                                                                   census_region)))
+            census_region = census_regions.get(state_abbr, UNSET)
+          yield (participant_id, make_tuple(start_time, make_metric(CENSUS_REGION_METRIC,
+                                                                    census_region)))
         elif question_field[1] == FieldType.STRING:
           answer_value = answer_string
       else:
         raise AssertionError("Invalid field type: %s" % question_field[1])
-    yield(participant_id, make_tuple(start_time, make_metric(metric, answer_value)))
+    yield (participant_id, make_tuple(start_time, make_metric(metric, answer_value)))
 
   # Emit race for the last participant if we saved some values for it.
   if race_code_values:
     race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
     if race == Race.SKIPPED:
       race = PMI_SKIP_CODE
-    race = get_race(race_codes)
-    yield(last_participant_id, make_tuple(last_start_time,
-                                             make_metric(RACE_METRIC, str(race))))
+    else:
+      race = get_race(race_codes)
+    yield (last_participant_id, make_tuple(last_start_time, make_metric(RACE_METRIC, str(race))))
 
 def map_participants(reader):
   """Emits any or all of the following:

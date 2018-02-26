@@ -208,7 +208,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         ['1', t3, GENDER_IDENTITY_QUESTION_CODE, 'female',
          ''], ['1', t3, RACE_QUESTION_CODE, 'UNMAPPED', ''],
         ['1', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_NO_CODE, ''],
-        ['1', '2016-01-02T00:00:00Z', 'StreetAddress_PIIState', PMI_SKIP_CODE, ''],
+        ['1', t2, STATE_QUESTION_CODE, PMI_SKIP_CODE, ''],
     ])
 
     # Wait for the metrics pipeline to run, processing the CSV output.
