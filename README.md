@@ -346,11 +346,6 @@ lookup (for physical measurements and biospecimen donation) as well as a
 Participant Work Queue. Any of the above parameters can be provided as a query parameter to do
 an exact match. Examples:
 
-    GET /ParticipantSummary?awardee=PITT
-    GET /ParticipantSummary?awardee=PITT&state=PIIState_MA
-
-    GET /ParticipantSummary?organization=PITT_UPMC 
-    GET /ParticipantSummary?site=hpo-site-UPMC
 
 The participant summary API supports filtering and sorting on last modified time.
 The default order results are returned is...
@@ -363,6 +358,9 @@ Example:
 Pagination is provided with a token i.e.
 
     GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=<token string>
+    
+It is possible to return the same participant data multiple times in a sync.
+
 See FHIR search prefixes below
 
 Synchronize Participant Summary last modified link.
@@ -379,6 +377,15 @@ Otherwise the array will contain a `link` with relation=`sync` that can be used 
 * Awardees are responsible for rotating keys on a three day timeframe.
     ** Permissions will be revoked after this time.
 * Awardee must specify Awardee or Organization/Site of Awardee in call to API.
+
+    GET /ParticipantSummary?awardee=PITT
+    
+    GET /ParticipantSummary?awardee=PITT&state=PIIState_MA
+    
+    GET /ParticipantSummary?organization=PITT_UPMC 
+    
+    GET /ParticipantSummary?site=hpo-site-UPMC
+
 
 For integer and date fields, the following prefixes can be provided for query parameter values to
 indicate inequality searches, as per the [FHIR search spec](https://www.hl7.org/fhir/search.html):
