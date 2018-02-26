@@ -1,11 +1,18 @@
-from code_constants import UNSET, RACE_AIAN_CODE, RACE_ASIAN_CODE, RACE_BLACK_CODE, RACE_MENA_CODE
-from code_constants import RACE_NHDPI_CODE, RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_FREETEXT_CODE
-from code_constants import RACE_NONE_OF_THESE_CODE
-from code_constants import PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE
-from code_constants import PMI_FREE_TEXT_CODE, PMI_UNANSWERED_CODE
-import extraction
-from protorpc import messages
 from dateutil.relativedelta import relativedelta
+
+from protorpc import messages
+
+from code_constants import (
+  # Internal Use Codes
+  UNSET,
+  # PMI Codes
+  PMI_SKIP_CODE, PMI_UNANSWERED_CODE, PMI_FREE_TEXT_CODE, PMI_OTHER_CODE,
+  PMI_PREFER_NOT_TO_ANSWER_CODE,
+  # Race Codes
+  RACE_AIAN_CODE, RACE_ASIAN_CODE, RACE_BLACK_CODE, RACE_MENA_CODE, RACE_NHDPI_CODE,
+  RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_FREETEXT_CODE, RACE_NONE_OF_THESE_CODE
+)
+import extraction
 
 # These are handled specially in code; others will be inserted into the database and handled
 # dynamically.
@@ -82,7 +89,7 @@ METRIC_SET_KEYS = {
 # in questionnaire responses.
 class Race(messages.Enum):
   UNSET = 0
-  # SKIPPED = 1  -- Not actually in use.
+  SKIPPED = 1
   # UNMAPPED = 2 -- Not actually in use.
   AMERICAN_INDIAN_OR_ALASKA_NATIVE = 3
   BLACK_OR_AFRICAN_AMERICAN = 4
@@ -124,7 +131,8 @@ ANSWER_CODE_TO_RACE = {
   RACE_NONE_OF_THESE_CODE: Race.OTHER_RACE,
   PMI_OTHER_CODE: Race.OTHER_RACE,
   PMI_FREE_TEXT_CODE: Race.OTHER_RACE,
-  PMI_UNANSWERED_CODE: Race.UNSET
+  PMI_UNANSWERED_CODE: Race.UNSET,
+  PMI_SKIP_CODE: Race.SKIPPED,
 }
 
 

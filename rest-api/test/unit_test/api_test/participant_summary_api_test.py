@@ -11,6 +11,7 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.code import CodeType
 from model.biobank_stored_sample import BiobankStoredSample
+from participant_enums import ANSWER_CODE_TO_RACE
 from test_data import load_measurement_json, load_biobank_order_json
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase
 
@@ -68,16 +69,122 @@ class ParticipantSummaryMySqlApiTest(FlaskTestBase):
 
 
 class ParticipantSummaryApiTest(FlaskTestBase):
-
-  def setUp(self):
-    super(ParticipantSummaryApiTest, self).setUp()
-    self.provider_link = {
-      "primary": True,
-      "organization": {
-        "display": None,
-        "reference": "Organization/PITT",
-      }
+  provider_link = {
+    "primary": True,
+    "organization": {
+      "display": None,
+      "reference": "Organization/PITT",
     }
+  }
+  # Some link ids relevant to the demographics questionnaire
+  code_link_ids = (
+      'race', 'genderIdentity', 'state', 'sex', 'sexualOrientation', 'recontactMethod', 'language',
+      'education', 'income'
+  )
+  string_link_ids = (
+      'firstName', 'middleName', 'lastName', 'streetAddress', 'city', 'phoneNumber', 'zipCode'
+  )
+
+  def create_demographics_questionnaire(self):
+    """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
+    return self.create_questionnaire('questionnaire3.json')
+
+  def create_expected_response(self, participant, answers):
+    # Remove the signature field if it exists
+    answers.pop('CABoRSignature', None)
+    # Copy and mutate the copy, not the original answer dict
+    expected = dict(answers)
+    # These properties are mutated in between sending and retrieving, they require special handling
+    if 'dateOfBirth' in answers:
+      dob = answers['dateOfBirth']
+      expected['dateOfBirth'] = '{}-{:02d}-{:02d}'.format(dob.year, dob.month, dob.day)
+    if 'race' in answers:
+      # The race handling logic here
+      expected['race'] = str(ANSWER_CODE_TO_RACE.get(answers['race']))
+
+    expected.update({
+      'questionnaireOnHealthcareAccess': 'UNSET',
+      'enrollmentStatus': 'INTERESTED',
+      'samplesToIsolateDNA': 'UNSET',
+      'questionnaireOnOverallHealth': 'UNSET',
+      'signUpTime': participant['signUpTime'],
+      'biobankId': participant['biobankId'],
+      'numBaselineSamplesArrived': 0,
+      'questionnaireOnTheBasics': 'SUBMITTED',
+      'questionnaireOnTheBasicsTime': TIME_1.isoformat(),
+      'questionnaireOnLifestyle': 'UNSET',
+      'questionnaireOnFamilyHealth': 'UNSET',
+      'questionnaireOnMedications': 'UNSET',
+      'physicalMeasurementsStatus': 'UNSET',
+      'biospecimenStatus': 'UNSET',
+      'biospecimenSourceSite': 'UNSET',
+      'biospecimenCollectedSite': 'UNSET',
+      'biospecimenProcessedSite': 'UNSET',
+      'biospecimenFinalizedSite': 'UNSET',
+      'physicalMeasurementsCreatedSite': 'UNSET',
+      'physicalMeasurementsFinalizedSite': 'UNSET',
+      'sampleOrderStatus1ED04': 'UNSET',
+      'sampleOrderStatus1ED10': 'UNSET',
+      'sampleOrderStatus1HEP4': 'UNSET',
+      'sampleOrderStatus1PST8': 'UNSET',
+      'sampleOrderStatus1PS08': 'UNSET',
+      'sampleOrderStatus1SAL': 'UNSET',
+      'sampleOrderStatus1SST8': 'UNSET',
+      'sampleOrderStatus1SS08': 'UNSET',
+      'sampleOrderStatus1UR10': 'UNSET',
+      'sampleOrderStatus2ED10': 'UNSET',
+      'sampleStatus1ED04': 'UNSET',
+      'sampleStatus1ED10': 'UNSET',
+      'sampleStatus1HEP4': 'UNSET',
+      'sampleStatus1PST8': 'UNSET',
+      'sampleStatus1PS08': 'UNSET',
+      'sampleStatus1SAL': 'UNSET',
+      'sampleStatus1SST8': 'UNSET',
+      'sampleStatus1SS08': 'UNSET',
+      'sampleStatus1UR10': 'UNSET',
+      'sampleStatus2ED10': 'UNSET',
+      'consentForElectronicHealthRecords': 'UNSET',
+      'consentForCABoR': 'SUBMITTED',
+      'consentForCABoRTime': TIME_1.isoformat(),
+      'questionnaireOnMedicalHistory': u'UNSET',
+      'participantId': participant['participantId'],
+      'hpoId': 'PITT',
+      'awardee': 'PITT',
+      'site': 'UNSET',
+      'organization': 'UNSET',
+      'numCompletedPPIModules': 1,
+      'numCompletedBaselinePPIModules': 1,
+      'consentForStudyEnrollment': 'SUBMITTED',
+      'consentForStudyEnrollmentTime': TIME_1.isoformat(),
+      'ageRange': '36-45',
+      'email': self.email,
+      'withdrawalStatus': 'NOT_WITHDRAWN',
+      'suspensionStatus': 'NOT_SUSPENDED',
+    })
+
+    return expected
+
+  def post_demographics_questionnaire(self, participant_id, questionnaire_id, **kwargs):
+    """POSTs answers to the demographics questionnaire for the participant"""
+    answers = {'code_answers': [],
+               'string_answers': [],
+               'date_answers': [('dateOfBirth', kwargs.get('dateOfBirth'))],
+               'uri_answers': [('CABoRSignature', kwargs.get('CABoRSignature'))]}
+
+    for link_id in self.code_link_ids:
+      if link_id in kwargs:
+        concept = Concept(PPI_SYSTEM, kwargs[link_id])
+        answers['code_answers'].append((link_id, concept))
+
+    for link_id in self.string_link_ids:
+      code = kwargs.get(link_id)
+      answers['string_answers'].append((link_id, code))
+
+    response_data = make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
+
+    with FakeClock(TIME_1):
+      url = 'Participant/%s/QuestionnaireResponse' % participant_id
+      return self.send_post(url, request_data=response_data)
 
   def test_pairing_summary(self):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
@@ -135,6 +242,102 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
+  def test_get_summary_with_skip_codes(self):
+    # Set up the codes so they are mapped later.
+    SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+
+    # Set up participant, questionnaire, and consent
+    participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id = participant['participantId']
+    questionnaire_id = self.create_demographics_questionnaire()
+
+    with FakeClock(TIME_1):
+      self.send_consent(participant_id)
+
+    # Populate some answers to the questionnaire
+    answers = {
+      'race': RACE_WHITE_CODE,
+      'genderIdentity': PMI_SKIP_CODE,
+      'firstName': self.fake.first_name(),
+      'middleName': self.fake.first_name(),
+      'lastName': self.fake.last_name(),
+      'zipCode': '78751',
+      'state': PMI_SKIP_CODE,
+      'streetAddress': '1234 Main Street',
+      'city': 'Austin',
+      'sex': PMI_SKIP_CODE,
+      'sexualOrientation': PMI_SKIP_CODE,
+      'phoneNumber': '512-555-5555',
+      'recontactMethod': PMI_SKIP_CODE,
+      'language': PMI_SKIP_CODE,
+      'education': PMI_SKIP_CODE,
+      'income': PMI_SKIP_CODE,
+      'dateOfBirth': datetime.date(1978, 10, 9),
+      'CABoRSignature': 'signature.pdf',
+    }
+
+    self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
+    # Read the answers back via ParticipantSummary
+    with FakeClock(TIME_2):
+      actual = self.send_get('Participant/%s/Summary' % participant_id)
+
+    # copies the dictionary - some of these are altered slightly in transmission but most should be
+    # the same
+    expected = self.create_expected_response(participant, answers)
+
+    self.assertJsonResponseMatches(expected, actual)
+    response = self.send_get('ParticipantSummary')
+    self.assertBundle([_make_entry(actual)], response)
+
+  def test_get_summary_with_skip_code_for_race(self):
+    # Set up the codes so they are mapped later.
+    SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+
+    # Set up participant, questionnaire, and consent
+    participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id = participant['participantId']
+    questionnaire_id = self.create_demographics_questionnaire()
+
+    with FakeClock(TIME_1):
+      self.send_consent(participant_id)
+
+    # Populate some answers to the questionnaire
+    answers = {
+      'race': PMI_SKIP_CODE,
+      'genderIdentity': PMI_SKIP_CODE,
+      'firstName': self.fake.first_name(),
+      'middleName': self.fake.first_name(),
+      'lastName': self.fake.last_name(),
+      'zipCode': '78751',
+      'state': PMI_SKIP_CODE,
+      'streetAddress': '1234 Main Street',
+      'city': 'Austin',
+      'sex': PMI_SKIP_CODE,
+      'sexualOrientation': PMI_SKIP_CODE,
+      'phoneNumber': '512-555-5555',
+      'recontactMethod': PMI_SKIP_CODE,
+      'language': PMI_SKIP_CODE,
+      'education': PMI_SKIP_CODE,
+      'income': PMI_SKIP_CODE,
+      'dateOfBirth': datetime.date(1978, 10, 9),
+      'CABoRSignature': 'signature.pdf',
+    }
+
+    self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
+    # Read the answers back via ParticipantSummary
+    with FakeClock(TIME_2):
+      actual = self.send_get('Participant/%s/Summary' % participant_id)
+
+    # copies the dictionary - some of these are altered slightly in transmission but most should be
+    # the same
+    expected = self.create_expected_response(participant, answers)
+
+    self.assertJsonResponseMatches(expected, actual)
+    response = self.send_get('ParticipantSummary')
+    self.assertBundle([_make_entry(actual)], response)
+
   def testQuery_oneParticipant(self):
     # Set up the codes so they are mapped later.
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
@@ -144,94 +347,39 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     with FakeClock(TIME_1):
       self.send_consent(participant_id)
     questionnaire_id = self.create_questionnaire('questionnaire3.json')
-    first_name = self.fake.first_name()
-    middle_name = self.fake.first_name()
-    last_name = self.fake.last_name()
-    self.submit_questionnaire_response(participant_id, questionnaire_id, RACE_WHITE_CODE, "male",
-                                       first_name, middle_name, last_name, "78751", "PIIState_VA",
-                                       "1234 Main Street", "Austin", "male_sex",
-                                       "straight", "512-555-5555", "email_code",
-                                       "en", "highschool", "lotsofmoney",
-                                       datetime.date(1978, 10, 9), "signature.pdf")
+
+    # Populate some answers to the questionnaire
+    answers = {
+      'race': RACE_WHITE_CODE,
+      'genderIdentity': 'male',
+      'firstName': self.fake.first_name(),
+      'middleName': self.fake.first_name(),
+      'lastName': self.fake.last_name(),
+      'zipCode': '78751',
+      'state': 'PIIState_VA',
+      'streetAddress': '1234 Main Street',
+      'city': 'Austin',
+      'sex': 'male_sex',
+      'sexualOrientation': 'straight',
+      'phoneNumber': '512-555-5555',
+      'recontactMethod': 'email_code',
+      'language': 'en',
+      'education': 'highschool',
+      'income': 'lotsofmoney',
+      'dateOfBirth': datetime.date(1978, 10, 9),
+      'CABoRSignature': 'signature.pdf',
+    }
+
+    self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
     with FakeClock(TIME_2):
-      ps = self.send_get('Participant/%s/Summary' % participant_id)
-    expected_ps = {'questionnaireOnHealthcareAccess': 'UNSET',
-                   'enrollmentStatus': 'INTERESTED',
-                   'samplesToIsolateDNA': 'UNSET',
-                   'questionnaireOnOverallHealth': 'UNSET',
-                   'signUpTime': participant['signUpTime'],
-                   'biobankId': participant['biobankId'],
-                   'numBaselineSamplesArrived': 0,
-                   'questionnaireOnTheBasics': 'SUBMITTED',
-                   'questionnaireOnTheBasicsTime': TIME_1.isoformat(),
-                   'questionnaireOnLifestyle': 'UNSET',
-                   'questionnaireOnFamilyHealth': 'UNSET',
-                   'questionnaireOnMedications': 'UNSET',
-                   'physicalMeasurementsStatus': 'UNSET',
-                   'state': 'PIIState_VA',
-                   'streetAddress': '1234 Main Street',
-                   'city': 'Austin',
-                   'sex': 'male_sex',
-                   'sexualOrientation': 'straight',
-                   'phoneNumber': '512-555-5555',
-                   'recontactMethod': 'email_code',
-                   'language': 'en',
-                   'education': 'highschool',
-                   'income': 'lotsofmoney',
-                   'biospecimenStatus': 'UNSET',
-                   'biospecimenSourceSite': 'UNSET',
-                   'biospecimenCollectedSite': 'UNSET',
-                   'biospecimenProcessedSite': 'UNSET',
-                   'biospecimenFinalizedSite': 'UNSET',
-                   'physicalMeasurementsCreatedSite': 'UNSET',
-                   'physicalMeasurementsFinalizedSite': 'UNSET',
-                   'sampleOrderStatus1ED04': 'UNSET',
-                   'sampleOrderStatus1ED10': 'UNSET',
-                   'sampleOrderStatus1HEP4': 'UNSET',
-                   'sampleOrderStatus1PST8': 'UNSET',
-                   'sampleOrderStatus1PS08': 'UNSET',
-                   'sampleOrderStatus1SAL': 'UNSET',
-                   'sampleOrderStatus1SST8': 'UNSET',
-                   'sampleOrderStatus1SS08': 'UNSET',
-                   'sampleOrderStatus1UR10': 'UNSET',
-                   'sampleOrderStatus2ED10': 'UNSET',
-                   'sampleStatus1ED04': 'UNSET',
-                   'sampleStatus1ED10': 'UNSET',
-                   'sampleStatus1HEP4': 'UNSET',
-                   'sampleStatus1PST8': 'UNSET',
-                   'sampleStatus1PS08': 'UNSET',
-                   'sampleStatus1SAL': 'UNSET',
-                   'sampleStatus1SST8': 'UNSET',
-                   'sampleStatus1SS08': 'UNSET',
-                   'sampleStatus1UR10': 'UNSET',
-                   'sampleStatus2ED10': 'UNSET',
-                   'genderIdentity': 'male',
-                   'consentForElectronicHealthRecords': 'UNSET',
-                   'consentForCABoR': 'SUBMITTED',
-                   'consentForCABoRTime': TIME_1.isoformat(),
-                   'questionnaireOnMedicalHistory': u'UNSET',
-                   'participantId': participant_id,
-                   'hpoId': 'PITT',
-                   'awardee': 'PITT',
-                   'site': 'UNSET',
-                   'organization': 'UNSET',
-                   'numCompletedPPIModules': 1,
-                   'numCompletedBaselinePPIModules': 1,
-                   'consentForStudyEnrollment': 'SUBMITTED',
-                   'consentForStudyEnrollmentTime': TIME_1.isoformat(),
-                   'race': 'WHITE',
-                   'dateOfBirth': '1978-10-09',
-                   'ageRange': '36-45',
-                   'firstName': first_name,
-                   'middleName': middle_name,
-                   'lastName': last_name,
-                   'email': self.email,
-                   'zipCode' : '78751',
-                   'withdrawalStatus': 'NOT_WITHDRAWN',
-                   'suspensionStatus': 'NOT_SUSPENDED'}
-    self.assertJsonResponseMatches(expected_ps, ps)
+      actual = self.send_get('Participant/%s/Summary' % participant_id)
+
+    expected = self.create_expected_response(participant, answers)
+
+    self.assertJsonResponseMatches(expected, actual)
     response = self.send_get('ParticipantSummary')
-    self.assertBundle([_make_entry(ps)], response)
+    self.assertBundle([_make_entry(actual)], response)
 
   def _send_next(self, next_link):
     prefix_index = next_link.index(main.PREFIX)
