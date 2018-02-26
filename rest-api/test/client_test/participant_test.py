@@ -40,7 +40,6 @@ class ParticipantTest(BaseClientTest):
                                             headers={'If-Match': 'W/"1"'})
 
     last_etag = self.client.last_etag
-    # Test that hpo and provider link changed
     self.assertEqual(new_response['hpoId'], 'PITT')
     self.assertEqual(new_response['providerLink'], [provider_link_2])
     self.assertEqual(new_response['awardee'], 'PITT')
@@ -124,9 +123,6 @@ class ParticipantTest(BaseClientTest):
     updated_response_2 = self.client.request_json('Participant/{}'.format(participant_id))
     self.assertEqual(updated_response_2['site'], 'hpo-site-monroeville')
 
-    self.assertEqual(updated_response_2['awardee'], 'PITT')
-
-    self.assertEqual(updated_response_2['providerLink'], [provider_link_2])
     # re-pair at providerlink level
     updated_response['providerLink'] = [provider_link]
     last_etag = self.client.last_etag
@@ -141,6 +137,24 @@ class ParticipantTest(BaseClientTest):
     self.assertEqual(updated_response['providerLink'], [provider_link])
     self.assertEqual(updated_response['awardee'], 'AZ_TUCSON')
 
+
+
+    user = self.client.request_json('Participant', 'POST')
+    new_participant_id = user['participantId']
+    # Fetch that participant.
+    get_user = self.client.request_json('Participant/{}'.format(new_participant_id))
+    self.assertEqual(get_user['awardee'], 'UNSET')
+
+    get_user['site'] = 'hpo-site-monroeville'
+    last_etag = self.client.last_etag
+    self.client.request_json(
+      'Participant/{}'.format(new_participant_id), 'PUT', get_user,
+      headers={'If-Match': last_etag})
+
+    updated_user = self.client.request_json('Participant/{}'.format(new_participant_id))
+    self.assertEqual(updated_user['organization'], 'PITT_UPMC')
+    self.assertEqual(updated_user['awardee'], 'PITT')
+    self.assertEqual(updated_user['providerLink'], [provider_link_2])
 
 if __name__ == '__main__':
   unittest.main()
