@@ -9,7 +9,7 @@ CAL_PMC,CAL_PMC_CEDARS_SINAI,Cedars-Sinai Medical Center
 CHEROKEE,CHEROKEE_CHS,Cherokee Health Systems
 COLUMBIA,COLUMBIA_HARLEM,Harlem Hospital
 COLUMBIA,COLUMBIA_WEILL,Weill Cornell Medicine
-COLUMBIA,COLUMBIA_COLUMBIA,Columbia University
+COLUMBIA,COLUMBIA_COLUMBIA,New York Presbyterian Columbia University
 COMM_HEALTH,COMM_HEALTH_CHC,"Community Health Center, Inc"
 EAU_CLAIRE,EAU_CLAIRE_EAU_CLAIRE_CHC,Eau Claire Cooperative Health Center
 EMSI,EMSI_EMSI,EMSI
@@ -47,7 +47,7 @@ TRANS_AM,TRANS_AM_SPECTRUM,Spectrum Health System
 TRANS_AM,TRANS_AM_BAYLOR,Baylor Health Care System
 VA,VA_BOSTON_VAMC,VA Boston Healthcare System
 VA,VA_PALO_ALTO_VAMC,VA Palo Alto Health Care System
-WALGREENS,WALGREENS_WALGREENS,Walgreens
+WALGREENS,WALGREENS_PHOENIX,Walgreens Phoenix
 WISCONSIN,WISCONSIN_MARSHFIELD,Marshfield Clinic
 WISCONSIN,WISCONSIN_MEDICAL COLLEGE,Medical College of Wisconsin
 WISCONSIN,WISCONSIN_UW_MADISON,"University of Wisconsin, Madison"
