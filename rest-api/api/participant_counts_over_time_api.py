@@ -1,6 +1,6 @@
 import datetime
-import json
-import logging
+# import json
+# import logging
 
 from flask.ext.restful import Resource
 from flask import request
@@ -10,7 +10,7 @@ from api_util import HEALTHPRO
 from api_util import get_awardee_id_from_name
 from app_util import auth_required
 from dao.hpo_dao import HPODao
-from participant_enums import EnrollmentStatus
+#from participant_enums import EnrollmentStatus
 
 DATE_FORMAT = '%Y-%m-%d'
 DAYS_LIMIT = 100  # provisional, per design doc
@@ -26,8 +26,8 @@ class ParticipantCountsOverTimeApi(Resource):
     # wire in 'organization' and 'site'.
     enrollment_status = request.args.get('enrollmentStatus')
     awardee = request.args.get('awardee')
-    #organization = request.args.get('organization')
-    #site = request.args.get('site')
+    # organization = request.args.get('organization')
+    # site = request.args.get('site')
     withdrawal_status = request.args.get('withdrawalStatus')
     stratification = request.args.get('stratification')
     start_date = request.args.get('startDate')
@@ -36,8 +36,6 @@ class ParticipantCountsOverTimeApi(Resource):
     params = {
       'enrollment_statuses': enrollment_status,
       'awardees': awardee,
-      #'organizations': organization,
-      #'sites': site,
       'withdrawal_statuses': withdrawal_status,
       'stratifications': stratification,
       'start_date': start_date,
@@ -61,12 +59,9 @@ class ParticipantCountsOverTimeApi(Resource):
 
   def validate_params(self, params):
 
-    enrollment_statuses = params['enrollment_statuses']
+    #enrollment_statuses = params['enrollment_statuses']
     awardees = params['awardees']
-    #organizations = params['organizations']
-    #sites = params['sites']
-    withdrawal_statuses = params['withdrawal_statuses']
-    stratifications = params['stratifications']
+    # stratifications = params['stratifications']
     start_date_str = params['start_date']
     end_date_str = params['end_date']
 
