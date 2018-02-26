@@ -1,8 +1,8 @@
 #!/bin/bash -e
 # Checks out RDR code from git in the current directory; by default, uses the same version of the
 # app that is currently running in the staging environment.
-# After a Y/N confirmation, upgrades the database, installs the latest config, deploys the code, or
-# (by default) does all three.
+# After a Y/N confirmation, upgrades the database, installs the latest config, deploys the code
+# and crons, or just the cron+queue config. By default, does all of the above.
 
 # Run this in the rest-api dir of the git repo with no uncommitted changes. You will need to
 # check out whatever branch you want to work in after it's done.
@@ -25,7 +25,7 @@ done
 
 function usage {
   echo "Usage: deploy_app.sh --project all-of-us-rdr-stable --account $USER@pmi-ops.org \\"
-  echo "    [--target app|db|config|all] [--version GIT_REF] [--deploy_as_version APPENGINE_VERSION]"
+  echo "    [--target app|db|config|cron|all] [--version GIT_REF] [--deploy_as_version APPENGINE_VERSION]"
   exit 1
 }
 
@@ -61,9 +61,9 @@ then
   usage
 fi
 
-if [ "$TARGET" != "all" ] && [ "$TARGET" != "app" ] && [ $TARGET != "db" ] && [ $TARGET != "config" ]
+if [ "$TARGET" != "all" ] && [ "$TARGET" != "app" ] && [ $TARGET != "db" ] && [ $TARGET != "config" ] && [ "$TARGET" != "cron" ]
 then
-  echo "Target must be one of: all, app, db, config. Exiting."
+  echo "Target must be one of: all, app, db, config, cron. Exiting."
   usage
 fi
 
@@ -116,30 +116,47 @@ then
   $UPDATE_TRACKER --version $VERSION --comment "Config for ${PROJECT} updated."
 fi
 
-if [ "$TARGET" == "all" ] || [ "$TARGET" == "app" ]
+if [ "$TARGET" == "all" ] || [ "$TARGET" == "app" ] || [ "$TARGET" == "cron" ]
 then
-  if [ "${PROJECT}" = "all-of-us-rdr-prod" ]
-  then
-    echo "Using ${BOLD}prod${NONE} app.yaml for project $PROJECT."
-    APP_YAML=app_prod.yaml
-  else
-    APP_YAML=app_nonprod.yaml
-  fi
-  cat app_base.yaml $APP_YAML > app.yaml
+  declare -a yamls
+  declare -a tmp_files
 
+  # Deploy cron/queue in all cases.
   CRON_YAML=cron_default.yaml
   if [ "${PROJECT}" = "all-of-us-rdr-sandbox" ]
   then
     CRON_YAML=cron_sandbox.yaml
   fi
   cp "${CRON_YAML}" cron.yaml
+  yamls+=( cron.yaml queue.yaml )
+  tmp_files+=( cron.yaml )
+  before_comment="Updating cron/queue configuration in ${PROJECT}."
+  after_comment="cron/queue configuration updated in ${PROJECT}."
+
+  if [ "$TARGET" == "app" ] || [ "$TARGET" == "all" ]
+  then
+    if [ "${PROJECT}" = "all-of-us-rdr-prod" ]
+    then
+      echo "Using ${BOLD}prod${NONE} app.yaml for project $PROJECT."
+      APP_YAML=app_prod.yaml
+    else
+      APP_YAML=app_nonprod.yaml
+    fi
+    cat app_base.yaml $APP_YAML > app.yaml
+
+    yamls+=( app.yaml index.yaml offline.yaml )
+    tmp_files+=( app.yaml )
+    before_comment="Deploying app to ${PROJECT}."
+    after_comment="App deployed to ${PROJECT}."
+  fi
+
 
   echo "${BOLD}Deploying application...${NONE}"
-  $UPDATE_TRACKER --version $VERSION --comment "Deploying app to ${PROJECT}."
-  gcloud app deploy app.yaml cron.yaml index.yaml queue.yaml offline.yaml \
+  $UPDATE_TRACKER --version $VERSION --comment "${before_comment}"
+  gcloud app deploy "${yamls[@]}" \
       --quiet --project "$PROJECT" --version "$DEPLOY_AS_VERSION"
-  $UPDATE_TRACKER --version $VERSION --comment "App deployed to ${PROJECT}."
-  rm app.yaml cron.yaml
+  $UPDATE_TRACKER --version $VERSION --comment "${after_comment}"
+  rm "${tmp_files[@]}"
 fi
 
 echo "${BOLD}Done!${NONE}"
