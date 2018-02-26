@@ -10,7 +10,7 @@ from api_util import HEALTHPRO
 from api_util import get_awardee_id_from_name
 from app_util import auth_required
 from dao.hpo_dao import HPODao
-#from participant_enums import EnrollmentStatus
+from participant_enums import EnrollmentStatus
 
 DATE_FORMAT = '%Y-%m-%d'
 DAYS_LIMIT = 100  # provisional, per design doc
@@ -59,11 +59,12 @@ class ParticipantCountsOverTimeApi(Resource):
 
   def validate_params(self, params):
 
-    #enrollment_statuses = params['enrollment_statuses']
-    awardees = params['awardees']
-    # stratifications = params['stratifications']
     start_date_str = params['start_date']
     end_date_str = params['end_date']
+    enrollment_statuses = params['enrollment_statuses']
+    awardees = params['awardees']
+    # withdrawal_statuses = params['withdrawal_statuses']
+    # stratifications = params['stratifications']
 
     # Validate dates
     if not start_date_str or not end_date_str:
@@ -91,6 +92,11 @@ class ParticipantCountsOverTimeApi(Resource):
         raise BadRequest('Invalid awardee name: %s' % awardee)
       awardee_ids.append(awardee_ids)
     params['awardee_ids'] = awardee_ids
+
+    valid_enrollment_statuses = EnrollmentStatus.to_dict()
+    for enrollment_status in enrollment_statuses:
+      if enrollment_status not in valid_enrollment_statuses:
+        raise BadRequest('Invalid enrollment status: %s' % enrollment_status)
 
     return params
 
