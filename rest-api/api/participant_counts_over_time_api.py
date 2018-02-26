@@ -22,10 +22,12 @@ class ParticipantCountsOverTimeApi(Resource):
   def get(self):
     self.hpo_dao = HPODao()
 
+    # TODO: After enrollment status is filterable,
+    # wire in 'organization' and 'site'.
     enrollment_status = request.args.get('enrollmentStatus')
     awardee = request.args.get('awardee')
-    organization = request.args.get('organization')
-    site = request.args.get('site')
+    #organization = request.args.get('organization')
+    #site = request.args.get('site')
     withdrawal_status = request.args.get('withdrawalStatus')
     stratification = request.args.get('stratification')
     start_date_str = request.args.get('startDate')
@@ -34,8 +36,8 @@ class ParticipantCountsOverTimeApi(Resource):
     params = {
       'enrollment_statuses': enrollment_status,
       'awardees': awardee,
-      'organizations': organization,
-      'sites': site,
+      #'organizations': organization,
+      #'sites': site,
       'withdrawal_statuses': withdrawal_status,
       'stratifications': stratification,
       'start_date': start_date_str,
@@ -56,13 +58,14 @@ class ParticipantCountsOverTimeApi(Resource):
 
     enrollment_statuses = params['enrollment_statuses']
     awardees = params['awardees']
-    organizations = params['organizations']
-    sites = params['sites']
+    #organizations = params['organizations']
+    #sites = params['sites']
     withdrawal_statuses = params['withdrawal_statuses']
     stratifications = params['stratifications']
     start_date_str = params['start_dates']
     end_date_str = params['end_dates']
 
+    # Validate dates
     if not start_date_str or not end_date_str:
       raise BadRequest('Start date and end date should not be empty')
     try:
@@ -78,13 +81,13 @@ class ParticipantCountsOverTimeApi(Resource):
       raise BadRequest('Difference between start date and end date ' \
                        'should not be greater than %s days' % DAYS_LIMIT)
 
+    # Validate awardees, get ID list
     awardee_ids = []
     for awardee in awardees:
       awardee_id = get_awardee_id_from_name(params, self.hpo_dao)
       if awardee_id == None:
         raise BadRequest('Invalid awardee name: %s' % awardee)
       awardee_ids.append(awardee_ids)
-
     params['awardee_ids'] = awardee_ids
 
     return params
