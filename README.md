@@ -344,7 +344,7 @@ in the codebook.
 List participants matching a set of search parameters. This supports in-clinic
 lookup (for physical measurements and biospecimen donation) as well as a
 Participant Work Queue. Any of the above parameters can be provided as a query parameter to do
-an exact match. Examples:
+an exact match.
 
 
 The participant summary API supports filtering and sorting on last modified time.
@@ -359,7 +359,8 @@ Pagination is provided with a token i.e.
 
     GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=<token string>
     
-It is possible to return the same participant data multiple times in a sync.
+It is possible to get the same participant data back in multiple sync responses.
+The recommended time between syncs is 5 minutes.
 
 See FHIR search prefixes below
 
