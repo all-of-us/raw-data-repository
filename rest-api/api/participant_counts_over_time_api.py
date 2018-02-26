@@ -30,8 +30,8 @@ class ParticipantCountsOverTimeApi(Resource):
     #site = request.args.get('site')
     withdrawal_status = request.args.get('withdrawalStatus')
     stratification = request.args.get('stratification')
-    start_date_str = request.args.get('startDate')
-    end_date_str = request.args.get('endDate')
+    start_date = request.args.get('startDate')
+    end_date = request.args.get('endDate')
 
     params = {
       'enrollment_statuses': enrollment_status,
@@ -40,16 +40,21 @@ class ParticipantCountsOverTimeApi(Resource):
       #'sites': site,
       'withdrawal_statuses': withdrawal_status,
       'stratifications': stratification,
-      'start_date': start_date_str,
-      'end_date': end_date_str
+      'start_date': start_date,
+      'end_date': end_date
     }
 
     # Most parameters accepted by this API can have multiple, comma-delimited
     # values.  Arrange them into lists.
     for param in params:
-      if param not in ['start_date', 'end_date']:
+      value = params[param]
+      if param in ['start_date', 'end_date']:
+        params[param] = value.encode()
         continue
-      params[param] = param.split(',')
+      if value is None:
+        params[param] = []
+      else:
+        params[param] = value.encode().split(',')
 
     params = self.validate_params(params)
 
@@ -62,8 +67,8 @@ class ParticipantCountsOverTimeApi(Resource):
     #sites = params['sites']
     withdrawal_statuses = params['withdrawal_statuses']
     stratifications = params['stratifications']
-    start_date_str = params['start_dates']
-    end_date_str = params['end_dates']
+    start_date_str = params['start_date']
+    end_date_str = params['end_date']
 
     # Validate dates
     if not start_date_str or not end_date_str:
@@ -80,11 +85,13 @@ class ParticipantCountsOverTimeApi(Resource):
     if date_diff > DAYS_LIMIT:
       raise BadRequest('Difference between start date and end date ' \
                        'should not be greater than %s days' % DAYS_LIMIT)
+    params['start_date'] = start_date
+    params['end_date'] = end_date
 
     # Validate awardees, get ID list
     awardee_ids = []
     for awardee in awardees:
-      awardee_id = get_awardee_id_from_name(params, self.hpo_dao)
+      awardee_id = get_awardee_id_from_name({'awardee': awardee}, self.hpo_dao)
       if awardee_id == None:
         raise BadRequest('Invalid awardee name: %s' % awardee)
       awardee_ids.append(awardee_ids)
