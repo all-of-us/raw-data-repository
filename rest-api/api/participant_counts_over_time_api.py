@@ -93,7 +93,10 @@ class ParticipantCountsOverTimeApi(Resource):
     try:
       params["enrollment_statuses"] = [EnrollmentStatus(val) for val in enrollment_statuses]
     except TypeError:
-      raise BadRequest('Invalid enrollment status: %s' % enrollment_statuses)
+      valid_enrollment_statuses = EnrollmentStatus.to_dict()
+      for enrollment_status in enrollment_statuses:
+        if enrollment_status not in valid_enrollment_statuses:
+          raise BadRequest('Invalid enrollment status: %s' % enrollment_status)
 
     # Validate stratifications
     try:
