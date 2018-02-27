@@ -372,6 +372,14 @@ where each entry is a `ParticipantSummary` document.
 The Bundle's `link` array will include a link with relation=`next` if more results are available immediately.
 Otherwise the array will contain a `link` with relation=`sync` that can be used to check for new results.
 
+Example response:
+```json
+ "link": [
+        {
+            "relation": "sync",
+            "url": "GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=WzM1XQ%3D%3D"
+        }
+```
 ##### Service Accounts
 * Each awardee partner is issued one service account.
 * Authorized users can generate API keys for access.
@@ -824,8 +832,10 @@ organizations and sites within them, representing the full hierarchy of
 awardees > organizations > sites. No pagination, syncing, or filtering is currently
 supported on this endpoint.
 
-Excepts an `_inactive=true` parameter to allow the addition of inactive sites to
+Accepts an `_inactive=true` parameter to allow the addition of inactive sites to
 JSON bundle. The default is false.
+By default, only sites with an ACTIVE status are included in the response.
+
 Example: `GET /Awardee/:aid?_inactive=true`
 
 Example response:
