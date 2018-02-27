@@ -349,4 +349,4 @@ def make_primary_provider_link_for_name(hpo_name):
       'organization': {
           'reference': 'Organization/%s' % hpo_name
       }
-  }])
+  }], sort_keys=True)
