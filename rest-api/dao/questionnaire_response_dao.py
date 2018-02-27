@@ -67,7 +67,7 @@ class QuestionnaireResponseDao(BaseDao):
         ParticipantDao().validate_participant_reference(session, result)
       return result
 
-  def _validate_model(self, session, obj):
+  def _validate_model(self, session, obj):  # pylint: disable=unused-argument
     _validate_consent_pdfs(json.loads(obj.resource))
     if not obj.questionnaireId:
       raise BadRequest('QuestionnaireResponse.questionnaireId is required.')
