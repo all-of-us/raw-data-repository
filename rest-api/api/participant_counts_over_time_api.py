@@ -26,9 +26,6 @@ class ParticipantCountsOverTimeApi(Resource):
     # wire in 'organization', 'site', and 'enrollmentStatus'.
     enrollment_status = request.args.get('enrollmentStatus')
     awardee = request.args.get('awardee')
-    # organization = request.args.get('organization')
-    # site = request.args.get('site')
-    # withdrawal_status = request.args.get('withdrawalStatus')
     stratification = request.args.get('stratification')
     start_date = request.args.get('startDate')
     end_date = request.args.get('endDate')
