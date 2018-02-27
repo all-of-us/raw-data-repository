@@ -11,6 +11,7 @@ from api_util import get_awardee_id_from_name
 from app_util import auth_required
 from dao.hpo_dao import HPODao
 from participant_enums import EnrollmentStatus
+from participant_enums import Stratifications
 
 DATE_FORMAT = '%Y-%m-%d'
 DAYS_LIMIT = 100  # provisional, per design doc
@@ -95,9 +96,9 @@ class ParticipantCountsOverTimeApi(Resource):
       raise BadRequest('Invalid enrollment status: %s' % enrollment_statuses)
 
     # Validate stratifications
-    valid_stratifications = ['TOTAL', 'ENROLLMENT_STATUS', 'GENDER_IDENTITY',
-                             'RACE', 'AGE_RANGE']
-    if stratification not in valid_stratifications:
+    try:
+      params['stratification'] = Stratifications(params['stratification'])
+    except TypeError:
       raise BadRequest('Invalid stratification: %s' % stratification)
 
     return params
