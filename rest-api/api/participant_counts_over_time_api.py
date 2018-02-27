@@ -23,7 +23,7 @@ class ParticipantCountsOverTimeApi(Resource):
     self.hpo_dao = HPODao()
 
     # TODO: After enrollment status is filterable,
-    # wire in 'organization', 'site', and 'enrollmentStatus'.
+    # wire in 'organization', 'site', 'withdrawalStatus', and 'bucketSize'.
     enrollment_status = request.args.get('enrollmentStatus')
     awardee = request.args.get('awardee')
     stratification = request.args.get('stratification')
