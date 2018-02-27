@@ -33,7 +33,7 @@ class ParticipantCountsOverTimeApi(Resource):
     params = {
       'enrollment_statuses': enrollment_status,
       'awardees': awardee,
-      'stratifications': stratification,
+      'stratification': stratification,
       'start_date': start_date,
       'end_date': end_date
     }
@@ -42,7 +42,7 @@ class ParticipantCountsOverTimeApi(Resource):
     # values.  Arrange them into lists.
     for param in params:
       value = params[param]
-      if param in ['start_date', 'end_date']:
+      if param in ['start_date', 'end_date', 'stratification']:
         params[param] = value.encode()
         continue
       if value is None:
@@ -59,7 +59,7 @@ class ParticipantCountsOverTimeApi(Resource):
     end_date_str = params['end_date']
     enrollment_statuses = params['enrollment_statuses']
     awardees = params['awardees']
-    stratifications = params['stratifications']
+    stratification = params['stratification']
 
     # Validate dates
     if not start_date_str or not end_date_str:
@@ -92,6 +92,11 @@ class ParticipantCountsOverTimeApi(Resource):
     for enrollment_status in enrollment_statuses:
       if enrollment_status not in valid_enrollment_statuses:
         raise BadRequest('Invalid enrollment status: %s' % enrollment_status)
+
+    valid_stratifications = ['TOTAL', 'ENROLLMENT_STATUS', 'GENDER_IDENTITY',
+                             'RACE', 'AGE_RANGE']
+    if stratification not in valid_stratifications:
+      raise BadRequest('Invalid stratification: %s' % stratification)
 
     return params
 
