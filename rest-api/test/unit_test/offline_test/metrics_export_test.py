@@ -40,6 +40,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
    export completes.
   """
+  assertCsvContents = assertCsvContents
 
   def setUp(self):
     super(MetricsExportTest, self).setUp()
@@ -178,37 +179,45 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     t3 = TIME_3.strftime(TIME_FORMAT)
     prefix = TIME_3.isoformat() + '/'
 
+
     # Two shards are written for each file, one with the first participant and
     # one with the second.
-    assertCsvContents(self, BUCKET_NAME, prefix + _HPO_IDS_CSV % 0,
-                      [HPO_ID_FIELDS, ['2', 'UNSET', t1], ['2', 'PITT', t3]])
-    assertCsvContents(self, BUCKET_NAME, prefix + _HPO_IDS_CSV % 1, [
-        HPO_ID_FIELDS, ['1', 'AZ_TUCSON', t1], ['1', 'PITT', t3], ['1', 'AZ_TUCSON_2', t2]
+    self.assertCsvContents(BUCKET_NAME, prefix + _HPO_IDS_CSV % 0, [
+      HPO_ID_FIELDS, ['2', 'UNSET', t1], ['2', 'PITT', t3]
     ])
+
+    self.assertCsvContents(BUCKET_NAME, prefix + _HPO_IDS_CSV % 1, [
+      HPO_ID_FIELDS, ['1', 'AZ_TUCSON', t1], ['1', 'PITT', t3], ['1', 'AZ_TUCSON_2', t2]
+    ])
+
     participant_fields = get_participant_fields()
-    assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0, [
-        participant_fields, [
-            '2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t3, t1, '', '', t3, '',
-            '', t3, t2
-        ]
+
+    self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0, [
+      participant_fields,
+      ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t3, t1, '', '', t3, '', '', t3, t2]
     ])
-    assertCsvContents(self, BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1, [
-        participant_fields,
-        ['1', '1980-01-03', '', t2, '', '', t3, t1, '', '', '', '', '', '', t2]
+
+    self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1, [
+      participant_fields,
+      ['1', '1980-01-03', '', t2, '', '', t3, t1, '', '', '', '', '', '', t2]
     ])
-    assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 0, [
-        ANSWER_FIELDS, ['2', t3, STATE_QUESTION_CODE, 'PIIState_VA', ''],
-        ['2', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE, ''],
-        ['2', t2, RACE_QUESTION_CODE, RACE_NONE_OF_THESE_CODE, ''],
-        ['2', t3, GENDER_IDENTITY_QUESTION_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, ''],
+
+    self.assertCsvContents(BUCKET_NAME, prefix + _ANSWERS_CSV % 0, [
+      ANSWER_FIELDS,
+      ['2', t3, STATE_QUESTION_CODE, 'PIIState_VA', ''],
+      ['2', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE, ''],
+      ['2', t2, RACE_QUESTION_CODE, RACE_NONE_OF_THESE_CODE, ''],
+      ['2', t3, GENDER_IDENTITY_QUESTION_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, ''],
     ])
-    assertCsvContents(self, BUCKET_NAME, prefix + _ANSWERS_CSV % 1, [
-        ANSWER_FIELDS, ['1', t2, GENDER_IDENTITY_QUESTION_CODE, 'UNMAPPED',
-                        ''], ['1', t2, RACE_QUESTION_CODE, RACE_WHITE_CODE, ''],
-        ['1', t3, GENDER_IDENTITY_QUESTION_CODE, 'female',
-         ''], ['1', t3, RACE_QUESTION_CODE, 'UNMAPPED', ''],
-        ['1', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_NO_CODE, ''],
-        ['1', t2, STATE_QUESTION_CODE, PMI_SKIP_CODE, ''],
+
+    self.assertCsvContents(BUCKET_NAME, prefix + _ANSWERS_CSV % 1, [
+      ANSWER_FIELDS,
+      ['1', t2, GENDER_IDENTITY_QUESTION_CODE, 'UNMAPPED', ''],
+      ['1', t2, RACE_QUESTION_CODE, RACE_WHITE_CODE, ''],
+      ['1', t3, GENDER_IDENTITY_QUESTION_CODE, 'female', ''],
+      ['1', t3, RACE_QUESTION_CODE, 'UNMAPPED', ''],
+      ['1', t3, EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_NO_CODE, ''],
+      ['1', t2, STATE_QUESTION_CODE, PMI_SKIP_CODE, ''],
     ])
 
     # Wait for the metrics pipeline to run, processing the CSV output.
