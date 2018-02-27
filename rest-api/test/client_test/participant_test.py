@@ -116,7 +116,6 @@ class ParticipantTest(BaseClientTest):
     # re-pair at site level.
     updated_response['site'] = 'hpo-site-monroeville'
     last_etag = self.client.last_etag
-
     self.client.request_json(
       'Participant/{}'.format(participant_id), 'PUT', updated_response,
       headers={'If-Match': last_etag})
