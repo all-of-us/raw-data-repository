@@ -43,12 +43,12 @@ class ParticipantCountsOverTimeApi(Resource):
     for param in params:
       value = params[param]
       if param in ['start_date', 'end_date', 'stratification']:
-        params[param] = value.encode()
+        params[param] = value
         continue
       if value is None:
         params[param] = []
       else:
-        params[param] = value.encode().split(',')
+        params[param] = value.split(',')
 
     params = self.validate_params(params)
 
