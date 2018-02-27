@@ -46,7 +46,7 @@ class HPODao(CacheAllDao):
     with self.session() as session:
       return self.get_with_children_in_session(session, obj_id)
 
-  def _make_query(self, session, query_def):
+  def _make_query(self, session, query_def):  # pylint: disable=unused-argument
     # For now, no filtering, ordering, or pagination is supported; fetch child organizations and
     # sites.
     return (session.query(HPO).options(subqueryload(HPO.organizations)

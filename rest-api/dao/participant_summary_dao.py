@@ -105,7 +105,7 @@ class ParticipantSummaryDao(UpdatableDao):
     with self.session() as session:
       return session.query(ParticipantSummary).filter(ParticipantSummary.email == email).all()
 
-  def _validate_update(self, session, obj, existing_obj):
+  def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
     """Participant summaries don't have a version value; drop it from validation logic."""
     if not existing_obj:
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
