@@ -380,6 +380,7 @@ Example response:
             "url": "GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=WzM1XQ%3D%3D"
         }
 ```
+
 ##### Service Accounts
 * Each awardee partner is issued one service account.
 * Authorized users can generate API keys for access.
