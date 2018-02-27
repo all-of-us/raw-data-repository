@@ -88,11 +88,13 @@ class ParticipantCountsOverTimeApi(Resource):
       awardee_ids.append(awardee_ids)
     params['awardee_ids'] = awardee_ids
 
-    valid_enrollment_statuses = EnrollmentStatus.to_dict()
-    for enrollment_status in enrollment_statuses:
-      if enrollment_status not in valid_enrollment_statuses:
-        raise BadRequest('Invalid enrollment status: %s' % enrollment_status)
+    # Validate enrollment statuses
+    try:
+      params["enrollment_statuses"] = [EnrollmentStatus(val) for val in enrollment_statuses]
+    except TypeError:
+      raise BadRequest('Invalid enrollment status: %s' % enrollment_statuses)
 
+    # Validate stratifications
     valid_stratifications = ['TOTAL', 'ENROLLMENT_STATUS', 'GENDER_IDENTITY',
                              'RACE', 'AGE_RANGE']
     if stratification not in valid_stratifications:
