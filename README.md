@@ -344,10 +344,58 @@ in the codebook.
 List participants matching a set of search parameters. This supports in-clinic
 lookup (for physical measurements and biospecimen donation) as well as a
 Participant Work Queue. Any of the above parameters can be provided as a query parameter to do
-an exact match. Examples:
+an exact match.
 
-    GET /ParticipantSummary?hpoId=PITT
-    GET /ParticipantSummary?hpoId=PITT&state=PIIState_MA
+
+The participant summary API supports filtering and sorting on last modified time.
+The default order results are returned is...
+* last modified time
+* participant ID (ascending)
+
+Example:
+
+    GET /ParticipantSummary?awardee=PITT&_sort=lastModified
+Pagination is provided with a token i.e.
+
+    GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=<token string>
+    
+It is possible to get the same participant data back in multiple sync responses.
+The recommended time between syncs is 5 minutes.
+
+See FHIR search prefixes below
+
+Synchronize Participant Summary last modified link.
+This allows Awardees to stay up-to-date
+with newly-arrived summaries. The return value is a FHIR History [Bundle](http://hl7.org/fhir/bundle.html)
+where each entry is a `ParticipantSummary` document.
+
+The Bundle's `link` array will include a link with relation=`next` if more results are available immediately.
+Otherwise the array will contain a `link` with relation=`sync` that can be used to check for new results.
+
+Example response:
+```json
+ "link": [
+        {
+            "relation": "sync",
+            "url": "GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=WzM1XQ%3D%3D"
+        }
+```
+
+##### Service Accounts
+* Each awardee partner is issued one service account.
+* Authorized users can generate API keys for access.
+* Awardees are responsible for rotating keys on a three day timeframe.
+    ** Permissions will be revoked after this time.
+* Awardee must specify Awardee or Organization/Site of Awardee in call to API.
+
+    `GET /ParticipantSummary?awardee=PITT`
+    
+    `GET /ParticipantSummary?awardee=PITT&state=PIIState_MA`
+    
+    `GET /ParticipantSummary?organization=PITT_UPMC`
+    
+    `GET /ParticipantSummary?site=hpo-site-UPMC`
+
 
 For integer and date fields, the following prefixes can be provided for query parameter values to
 indicate inequality searches, as per the [FHIR search spec](https://www.hl7.org/fhir/search.html):
@@ -784,6 +832,12 @@ Retrieves a JSON bundle of metadata for all awardees, with nested resources for 
 organizations and sites within them, representing the full hierarchy of
 awardees > organizations > sites. No pagination, syncing, or filtering is currently
 supported on this endpoint.
+
+Accepts an `_inactive=true` parameter to allow the addition of inactive sites to
+JSON bundle. The default is false.
+By default, only sites with an ACTIVE status are included in the response.
+
+Example: `GET /Awardee/:aid?_inactive=true`
 
 Example response:
 
