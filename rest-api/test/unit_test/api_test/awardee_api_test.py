@@ -48,6 +48,21 @@ class AwardeeApiTest(FlaskTestBase):
     hpo_dao.insert(HPO(hpoId=AZ_HPO_ID, name='AZ_TUCSON', displayName='Arizona',
                        organizationType=OrganizationType.HPO))
 
+  def test_active_and_inactive_site(self):
+    self._setup_data()
+    result = self.send_get('Awardee')
+    active_only = result['entry'][1]['resource']['organizations']
+    site = active_only[1]['sites'][0]['siteStatus']
+    self.assertEqual(site, 'ACTIVE')
+    self.assertEqual(result['entry'][0], _make_awardee('AZ_TUCSON', 'Arizona', 'HPO'))
+    self.assertEqual(result['entry'][1], _make_awardee_with_resource(
+                      self._make_expected_pitt_awardee_resource(), 'PITT'))
+
+    result2 = self.send_get('Awardee?_inactive=true')
+    not_active = result2['entry'][1]['resource']['organizations']
+    site = not_active[1]['sites'][0]['siteStatus']
+    self.assertEqual(site, 'INACTIVE')
+
   def test_get_awardees_no_organizations(self):
     result = self.send_get('Awardee')
     self.assertEquals(3, len(result['entry']))
@@ -56,28 +71,37 @@ class AwardeeApiTest(FlaskTestBase):
 
   def test_get_awardees_with_organizations(self):
     self._setup_data()
-    result = self.send_get('Awardee')
+    result = self.send_get('Awardee?_inactive=true')
     self.assertEquals(3, len(result['entry']))
-    self.assertEquals(_make_awardee_with_resource(self._make_expected_pitt_awardee_resource(),
-                                                  'PITT'),
-                      result['entry'][1])
+    self.assertEquals(_make_awardee_with_resource(self._make_expected_pitt_awardee_resource(
+                                                  inactive=True), 'PITT'),
+                                                  result['entry'][1])
     self.assertEquals(_make_awardee('UNSET', 'Unset', 'UNSET'), result['entry'][2])
 
   def test_get_awardee_no_organizations(self):
     result = self.send_get('Awardee/PITT')
     self.assertEquals(_make_awardee_resource('PITT', 'Pittsburgh', 'HPO'), result)
 
+
   def test_get_awardee_with_organizations(self):
     self._setup_data()
-    result = self.send_get('Awardee/PITT')
-    self.assertEquals(self._make_expected_pitt_awardee_resource(), result)
+    result = self.send_get('Awardee/PITT?_inactive=true')
+    # we are now filtering out 'INACTIVE' sites by default.
+    self.assertEqual(self._make_expected_pitt_awardee_resource(inactive=True), result)
 
-  def _make_expected_pitt_awardee_resource(self):
+  def test_get_awardee_with_organizations_active_only(self):
+    self._setup_data()
+    result = self.send_get('Awardee/PITT')
+    # we are now filtering out 'INACTIVE' sites by default.
+    self.assertEqual(self._make_expected_pitt_awardee_resource(), result)
+
+  def _make_expected_pitt_awardee_resource(self, inactive=False):
     sites = [{'id': 'aaaaaaa',
              'displayName': 'Zebras Rock',
              'siteStatus': 'INACTIVE',
              'address': {}
-            }, {'id': 'hpo-site-1',
+            },
+             {'id': 'hpo-site-1',
               'displayName': 'Site 1',
               'mayolinkClientNumber': 123456,
               'siteStatus': 'ACTIVE',
@@ -96,10 +120,13 @@ class AwardeeApiTest(FlaskTestBase):
               'phoneNumber': '555-555-5555',
               'adminEmails': ['alice@example.com', 'bob@example.com'],
               'link': 'http://www.example.com' }]
-
-
+    site = []
+    if inactive:
+      site = sites
+    else:
+      site.extend([i for i in sites if i['siteStatus'] == 'ACTIVE'])
     org_2_dict = _make_organization_dict('AARDVARK_ORG', 'Aardvarks Rock')
-    org_1_dict = _make_organization_dict('ORG_1', 'Organization 1', sites)
+    org_1_dict = _make_organization_dict('ORG_1', 'Organization 1', site)
     return _make_awardee_resource('PITT', 'Pittsburgh', 'HPO', [org_2_dict, org_1_dict])
 
   def _setup_data(self):

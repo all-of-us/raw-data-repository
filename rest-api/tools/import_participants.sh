@@ -30,7 +30,7 @@ if [ "${PROJECT}" ]
 then
   echo "Getting credentials for ${PROJECT}..."
   source tools/auth_setup.sh
-  EXTRA_ARGS=" --creds_file ${CREDS_FILE} --instance ${INSTANCE}"
+  EXTRA_ARGS+=" --creds_file ${CREDS_FILE} --instance ${INSTANCE}"
 fi
 
 (cd ${BASE_DIR}; python tools/import_participants.py $EXTRA_ARGS)

@@ -54,11 +54,11 @@ class HPODao(CacheAllDao):
                               .order_by(HPO.name),
             _ORDER_BY_ENDING)
 
-  def to_client_json(self, model):
-    return HPODao._to_json(model)
+  def to_client_json(self, model, inactive_sites):
+    return HPODao._to_json(model, inactive_sites)
 
   @staticmethod
-  def _to_json(model):
+  def _to_json(model, inactive_sites=False):
     resource = _FhirAwardee()
     resource.id = model.name
     resource.display_name = model.displayName
@@ -66,7 +66,8 @@ class HPODao(CacheAllDao):
       resource.type = str(model.organizationType)
     else:
       resource.type = UNSET
-    resource.organizations = [OrganizationDao._to_json(organization) for organization
+    resource.organizations = [OrganizationDao._to_json(organization, inactive_sites)
+                              for organization
                               in model.organizations]
     json = resource.as_json()
     del json['resourceType']
