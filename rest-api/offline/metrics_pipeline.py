@@ -307,10 +307,9 @@ def map_answers(reader):
   # Emit race for the last participant if we saved some values for it.
   if race_code_values:
     race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
+    race = get_race(race_codes)
     if race == Race.SKIPPED:
       race = PMI_SKIP_CODE
-    else:
-      race = get_race(race_codes)
     yield (last_participant_id, make_tuple(last_start_time, make_metric(RACE_METRIC, str(race))))
 
 def map_participants(reader):
