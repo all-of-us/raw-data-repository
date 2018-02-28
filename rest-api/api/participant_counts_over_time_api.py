@@ -10,6 +10,7 @@ from api_util import HEALTHPRO
 from api_util import get_awardee_id_from_name
 from app_util import auth_required
 from dao.hpo_dao import HPODao
+from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from participant_enums import EnrollmentStatus
 from participant_enums import Stratifications
 
@@ -52,6 +53,12 @@ class ParticipantCountsOverTimeApi(Resource):
         params[param] = value.split(',')
 
     params = self.validate_params(params)
+
+    start_date = params['start_date']
+    end_date = params['end_date']
+    filters = "awardee=" + params['awardees'][0]
+
+    ParticipantCountsOverTimeService().get_strata_by_filter(start_date, end_date, filters)
 
 
   def validate_params(self, params):
