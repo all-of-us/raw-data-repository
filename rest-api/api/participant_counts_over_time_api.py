@@ -1,6 +1,6 @@
 import datetime
 # import json
-# import logging
+import logging
 
 from flask.ext.restful import Resource
 from flask import request
@@ -58,6 +58,9 @@ class ParticipantCountsOverTimeApi(Resource):
     end_date = params['end_date']
     filters = "awardee=" + params['awardees'][0]
 
+    logging.info('params')
+    logging.info(params)
+
     ParticipantCountsOverTimeService().get_strata_by_filter(start_date, end_date, filters)
 
 
@@ -84,8 +87,8 @@ class ParticipantCountsOverTimeApi(Resource):
     if date_diff > DAYS_LIMIT:
       raise BadRequest('Difference between start date and end date ' \
                        'should not be greater than %s days' % DAYS_LIMIT)
-    params['start_date'] = start_date
-    params['end_date'] = end_date
+    params['start_date'] = start_date_str
+    params['end_date'] = end_date_str
 
     # Validate awardees, get ID list
     awardee_ids = []
