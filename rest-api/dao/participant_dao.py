@@ -128,7 +128,8 @@ class ParticipantDao(UpdatableDao):
       provider_link_unchanged = True
       if obj.providerLink is not None:
         if existing_obj.providerLink:
-          provider_link_unchanged = json.loads(obj.providerLink) == json.loads(existing_obj.providerLink)
+          provider_link_unchanged = json.loads(obj.providerLink) == \
+                                    json.loads(existing_obj.providerLink)
         else:
           provider_link_unchanged = False
 
