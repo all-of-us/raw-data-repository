@@ -6,6 +6,7 @@ from client import HttpException
 
 class ParticipantTest(BaseClientTest):
   def test_create_and_modify_participant(self):
+
     provider_link = {
       "primary": True,
       "organization": {
@@ -99,7 +100,6 @@ class ParticipantTest(BaseClientTest):
 
     last_etag = self.client.last_etag
     response['awardee'] = 'UNSET'
-
     self.client.request_json(
       'Participant/{}'.format(participant_id), 'PUT', response,
       headers={'If-Match': last_etag})
