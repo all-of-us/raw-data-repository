@@ -81,6 +81,19 @@
     "collected": "2016-01-04T09:45:49Z",
     "finalized": "2016-01-04T10:55:41Z"
   }, {
+    "test": "2SST8",
+    "description": "Test 2SST8",
+    "processingRequired":false,
+    "collected": "2016-01-04T09:45:49Z",
+    "finalized": "2016-01-04T10:55:41Z"
+  },{
+    "test": "2PST8",
+    "description": "Test 2PST8",
+    "processingRequired":false,
+    "collected": "2016-01-04T09:45:49Z",
+    "finalized": "2016-01-04T10:55:41Z"
+  },
+    {
     "test": "1SS08",
     "description": "Test 1SS08",
     "processingRequired":false,
