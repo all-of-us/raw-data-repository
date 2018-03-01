@@ -101,7 +101,6 @@ class ParticipantDaoTest(SqlTestBase):
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
       self.dao.update(p)
-
     # lastModified, hpoId, version is updated on p after being passed in
     p2 = self.dao.get(1)
     expected_participant = self._participant_with_defaults(
@@ -130,7 +129,6 @@ class ParticipantDaoTest(SqlTestBase):
     with random_ids([1, 2]):
       with FakeClock(time):
         self.dao.insert(p)
-
     p.providerLink = make_primary_provider_link_for_name('PITT')
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
@@ -140,7 +138,7 @@ class ParticipantDaoTest(SqlTestBase):
     self.participant_summary_dao.insert(summary)
 
     # lastModified, hpoId, version is updated on p after being passed in
-    p2 = self.dao.get(1);
+    p2 = self.dao.get(1)
     expected_participant = self._participant_with_defaults(
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
@@ -171,14 +169,13 @@ class ParticipantDaoTest(SqlTestBase):
     with random_ids([1, 2]):
       with FakeClock(time):
         self.dao.insert(p)
-
     p.version = 1
     p.providerLink = make_primary_provider_link_for_name('PITT')
     time2 = datetime.datetime(2016, 1, 2)
     with FakeClock(time2):
       self.dao.update(p)
 
-    p2 = self.dao.get(1);
+    p2 = self.dao.get(1)
     expected_participant = self._participant_with_defaults(
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)

@@ -70,6 +70,14 @@ class MetricsKey(messages.Enum):
   QUESTIONNAIRE_ON_SOCIODEMOGRAPHICS = 9
   ENROLLMENT_STATUS = 10
 
+class Stratifications(messages.Enum):
+  """Variables by which participant counts can be stacked"""
+  TOTAL = 1
+  ENROLLMENT_STATUS = 2
+  GENDER_IDENTITY = 3
+  RACE = 4
+  AGE_RANGE = 5
+
 METRIC_SET_KEYS = {
   MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([
     MetricsKey.GENDER,
