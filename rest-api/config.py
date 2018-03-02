@@ -237,4 +237,5 @@ def get_db_config():
                         cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS).config_dict
 
 def get_config():
-  return singletons.get(singletons.MAIN_CONFIG_INDEX, MainConfig, cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS)
+  return singletons.get(singletons.MAIN_CONFIG_INDEX, MainConfig,
+                        cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS)
