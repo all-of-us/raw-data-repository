@@ -46,7 +46,7 @@ SITE_SITE_ID_COLUMN = 'Site ID / Google Group'
 SITE_SITE_COLUMN = 'Site'
 SITE_MAYOLINK_CLIENT_NUMBER_COLUMN = 'MayoLINK Client #'
 SITE_NOTES_COLUMN = 'Notes'
-# TODO: switch this back to 'Status' [RW-404]
+# TODO: switch this back to 'Status' [DA-538]
 SITE_STATUS_COLUMN = 'PTSC Scheduling Status'
 SITE_LAUNCH_DATE_COLUMN = 'Anticipated Launch Date'
 SITE_DIRECTIONS_COLUMN = 'Directions'
