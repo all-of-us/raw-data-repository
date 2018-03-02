@@ -2,10 +2,8 @@
 
 Contains things such as the accounts allowed access to the system.
 """
-import cachetools
 import logging
-import time
-
+import singletons
 import data_access_object
 
 from google.appengine.ext import ndb
@@ -18,7 +16,6 @@ CONFIG_SINGLETON_KEY = 'current_config'
 DB_CONFIG_KEY = 'db_config'
 
 CONFIG_CACHE_TTL_SECONDS = 60
-
 BIOBANK_ID_PREFIX = 'biobank_id_prefix'
 METRICS_SHARDS = 'metrics_shards'
 PARTICIPANT_SUMMARY_SHARDS = 'participant_summary_shards'
@@ -46,8 +43,32 @@ BIOBANK_STATUS_MAIL_RECIPIENTS = 'biobank_status_mail_recipients'
 # True if we should add codes referenced in questionnaires that
 # aren't in the code book; false if we should reject the questionnaires.
 ADD_QUESTIONNAIRE_CODES_IF_MISSING = 'add_questionnaire_codes_if_missing'
-
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
+
+CONFIG_OVERRIDES = {}
+
+class BaseConfig(object):
+
+  def __init__(self, config_key):
+    config_obj = DAO().load_if_present(config_key)
+    if config_obj is None:
+      raise KeyError('No config for %r.' % config_key)
+
+    self.config_dict = config_obj.configuration
+
+
+class MainConfig(BaseConfig):
+
+  def __init__(self):
+    super(MainConfig, self).__init__(CONFIG_SINGLETON_KEY)
+
+
+class DbConfig(BaseConfig):
+
+  def __init__(self):
+    super(DbConfig, self).__init__(DB_CONFIG_KEY)
+
+
 
 def _get_config(key):
   """This function is called by the `TTLCache` to grab an updated config.
@@ -62,8 +83,6 @@ def override_setting(key, value):
   """Overrides a config setting. Used in tests."""
   CONFIG_OVERRIDES[key] = value
 
-CONFIG_CACHE = cachetools.TTLCache(1, ttl=CONFIG_CACHE_TTL_SECONDS, missing=_get_config)
-CONFIG_OVERRIDES = {}
 
 # Used to override the whole config in tests without use of the REST API
 def store_current_config(config_json):
@@ -110,6 +129,7 @@ class ConfigurationDAO(data_access_object.DataAccessObject):
 def DAO():
   return ConfigurationDAO()
 
+
 _NO_DEFAULT = '_NO_DEFAULT'
 
 def getSettingJson(key, default=_NO_DEFAULT):
@@ -130,7 +150,8 @@ def getSettingJson(key, default=_NO_DEFAULT):
   if config_values is not None:
     return config_values
 
-  current_config = CONFIG_CACHE[CONFIG_SINGLETON_KEY]
+  current_config = get_config().config_dict
+
   config_values = current_config.get(key, default)
   if config_values == _NO_DEFAULT:
     raise MissingConfigException('Config key "{}" has no values.'.format(key))
@@ -192,8 +213,8 @@ def invalidate():
   """Invalidate the config cache when we learn something new has been written.
   The `expire` function takes one argument, which effectively says, "pretend
   it's this time, and expire everything that's due to expire by then"."""
-  CONFIG_CACHE.expire(time.time() + CONFIG_CACHE_TTL_SECONDS)
-
+  singletons.invalidate(singletons.DB_CONFIG_INDEX)
+  singletons.invalidate(singletons.MAIN_CONFIG_INDEX)
 
 def insert_config(key, value_list):
   """Updates a config key.  Used for tests"""
@@ -212,4 +233,9 @@ def get_config_that_was_active_at(key, date):
   return h[0].obj
 
 def get_db_config():
-  return CONFIG_CACHE[DB_CONFIG_KEY]
+  return singletons.get(singletons.DB_CONFIG_INDEX, DbConfig,
+                        cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS).config_dict
+
+def get_config():
+  return singletons.get(singletons.MAIN_CONFIG_INDEX, MainConfig,
+                        cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS)
