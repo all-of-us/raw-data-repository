@@ -5,7 +5,10 @@ import mock
 from testlib import testutil
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 
-from code_constants import PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, THE_BASICS_PPI_MODULE
+from code_constants import (
+  PPI_SYSTEM, GENDER_IDENTITY_QUESTION_CODE, THE_BASICS_PPI_MODULE, PMI_SKIP_CODE,
+)
+
 import config
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao
@@ -75,7 +78,59 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.CODE_2_QUESTION = QuestionnaireQuestion(linkId='d', codeId=2, repeats=True)
     # Same code as question 1
     self.CODE_1_QUESTION_2 = QuestionnaireQuestion(linkId='x', codeId=1, repeats=False)
+
+    self.skip_code = Code(codeId=8, system=PPI_SYSTEM, value=PMI_SKIP_CODE, mapped=True,
+                          codeType=CodeType.ANSWER)
+
+
     config.override_setting(config.CONSENT_PDF_BUCKET, [_FAKE_BUCKET])
+
+  def _setup_questionnaire(self):
+    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
+    q.concepts.append(self.CONCEPT_1)
+    q.concepts.append(QuestionnaireConcept(codeId=self.consent_code_id))
+    q.questions.append(self.CODE_1_QUESTION_1)
+    q.questions.append(self.CODE_2_QUESTION)
+    q.questions.append(self.FN_QUESTION)
+    q.questions.append(self.LN_QUESTION)
+    q.questions.append(self.EMAIL_QUESTION)
+    return self.questionnaire_dao.insert(q)
+
+  def insert_codes(self):
+    self.code_dao.insert(self.CODE_1)
+    self.code_dao.insert(self.CODE_2)
+    self.code_dao.insert(self.CODE_3)
+    self.code_dao.insert(self.CODE_4)
+    self.code_dao.insert(self.CODE_5)
+    self.code_dao.insert(self.CODE_6)
+    self.code_dao.insert(self.MODULE_CODE_7)
+    self.code_dao.insert(self.skip_code)
+    self.consent_code_id = self.code_dao.insert(consent_code()).codeId
+    self.first_name_code_id = self.code_dao.insert(first_name_code()).codeId
+    self.last_name_code_id = self.code_dao.insert(last_name_code()).codeId
+    self.email_code_id = self.code_dao.insert(email_code()).codeId
+    self.FN_QUESTION = QuestionnaireQuestion(linkId='fn', codeId=self.first_name_code_id,
+                                             repeats=False)
+    self.LN_QUESTION = QuestionnaireQuestion(linkId='ln', codeId=self.last_name_code_id,
+                                             repeats=False)
+    self.EMAIL_QUESTION = QuestionnaireQuestion(linkId='email', codeId=self.email_code_id,
+                                                repeats=False)
+    self.first_name = self.fake.first_name()
+    self.last_name = self.fake.last_name()
+    self.email = self.fake.email()
+    self.FN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
+                                                 questionnaireResponseId=1,
+                                                 questionId=3, valueString=self.first_name)
+    self.LN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=4,
+                                                 questionnaireResponseId=1,
+                                                 questionId=4, valueString=self.last_name)
+    self.EMAIL_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=5,
+                                                    questionnaireResponseId=1,
+                                                    questionId=5, valueString=self.email)
+
+  def check_response(self, expected_qr):
+    qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
+    self.assertEquals(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
 
   def _names_and_email_answers(self):
     return [self.FN_ANSWER, self.LN_ANSWER, self.EMAIL_ANSWER]
@@ -230,6 +285,57 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     with self.assertRaises(IntegrityError):
       self.questionnaire_response_dao.insert(qr2)
 
+  def test_insert_skip_codes(self):
+    self.insert_codes()
+    p = Participant(participantId=1, biobankId=2)
+    with FakeClock(TIME):
+      self.participant_dao.insert(p)
+    self._setup_questionnaire()
+
+    qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+
+    answer_1 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=1,
+                                           questionnaireResponseId=1,
+                                           questionId=1,
+                                           valueSystem='a',
+                                           valueCodeId=self.skip_code.codeId)
+
+    answer_2 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=2,
+                                           questionnaireResponseId=1,
+                                           questionId=2,
+                                           valueSystem='c',
+                                           valueCodeId=4)
+
+    qr.answers.extend([answer_1, answer_2])
+    qr.answers.extend(self._names_and_email_answers())
+    with FakeClock(TIME_2):
+      self.questionnaire_response_dao.insert(qr)
+
+    expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
+                                        questionnaireVersion=1, participantId=1,
+                                        resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
+                                        created=TIME_2)
+
+    qr2 = self.questionnaire_response_dao.get(1)
+    self.assertEquals(expected_qr.asdict(), qr2.asdict())
+
+    expected_qr.answers.extend([answer_1, answer_2])
+    expected_qr.answers.extend(self._names_and_email_answers())
+    self.check_response(expected_qr)
+
+    expected_ps = self._participant_summary_with_defaults(
+      genderIdentityId=self.skip_code.codeId,
+      participantId=1, biobankId=2, signUpTime=TIME,
+      numCompletedBaselinePPIModules=1, numCompletedPPIModules=1,
+      questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
+      questionnaireOnTheBasicsTime=TIME_2,
+      consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+      consentForStudyEnrollmentTime=TIME_2,
+      firstName=self.first_name, lastName=self.last_name, email=self.email
+    )
+    self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
+
   def test_from_client_json_raises_BadRequest_for_excessively_long_value_string(self):
     self.insert_codes()
     q_id = self.create_questionnaire('questionnaire1.json')
@@ -267,52 +373,6 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.participant_dao.update(p)
     with self.assertRaises(Forbidden):
       self.questionnaire_response_dao.get(qr.questionnaireResponseId)
-
-  def check_response(self, expected_qr):
-    qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
-    self.assertEquals(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
-
-  def insert_codes(self):
-    self.code_dao.insert(self.CODE_1)
-    self.code_dao.insert(self.CODE_2)
-    self.code_dao.insert(self.CODE_3)
-    self.code_dao.insert(self.CODE_4)
-    self.code_dao.insert(self.CODE_5)
-    self.code_dao.insert(self.CODE_6)
-    self.code_dao.insert(self.MODULE_CODE_7)
-    self.consent_code_id = self.code_dao.insert(consent_code()).codeId
-    self.first_name_code_id = self.code_dao.insert(first_name_code()).codeId
-    self.last_name_code_id = self.code_dao.insert(last_name_code()).codeId
-    self.email_code_id = self.code_dao.insert(email_code()).codeId
-    self.FN_QUESTION = QuestionnaireQuestion(linkId='fn', codeId=self.first_name_code_id,
-                                             repeats=False)
-    self.LN_QUESTION = QuestionnaireQuestion(linkId='ln', codeId=self.last_name_code_id,
-                                             repeats=False)
-    self.EMAIL_QUESTION = QuestionnaireQuestion(linkId='email', codeId=self.email_code_id,
-                                                repeats=False)
-    self.first_name = self.fake.first_name()
-    self.last_name = self.fake.last_name()
-    self.email = self.fake.email()
-    self.FN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
-                                                 questionnaireResponseId=1,
-                                                 questionId=3, valueString=self.first_name)
-    self.LN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=4,
-                                                 questionnaireResponseId=1,
-                                                 questionId=4, valueString=self.last_name)
-    self.EMAIL_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=5,
-                                                    questionnaireResponseId=1,
-                                                    questionId=5, valueString=self.email)
-
-  def _setup_questionnaire(self):
-    q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
-    q.concepts.append(self.CONCEPT_1)
-    q.concepts.append(QuestionnaireConcept(codeId=self.consent_code_id))
-    q.questions.append(self.CODE_1_QUESTION_1)
-    q.questions.append(self.CODE_2_QUESTION)
-    q.questions.append(self.FN_QUESTION)
-    q.questions.append(self.LN_QUESTION)
-    q.questions.append(self.EMAIL_QUESTION)
-    return self.questionnaire_dao.insert(q)
 
   def test_insert_with_answers(self):
     self.insert_codes()
