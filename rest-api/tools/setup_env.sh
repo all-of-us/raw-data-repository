@@ -11,7 +11,7 @@ find . | grep \.pyc | xargs rm -if $*
 
 echo "Installing libs..."
 # If this fails due to missing mysql_config, try `sudo apt-get install libmysqlclient-dev`.
-pip install -r requirements.txt -t lib/
+pip install --system --no-binary MySQL-python -r requirements.txt -t lib/
 
 # Needed to setup the local DB.
 pip install -r ../rdr_client/requirements.txt
