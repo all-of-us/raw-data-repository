@@ -39,12 +39,15 @@ QUESTIONNAIRE_RESPONSE_RESOURCE_3 = '{"resourceType": "QuestionnaireResponse", "
 
 _FAKE_BUCKET = 'ptc-uploads-unit-testing'
 
+
 def with_id(resource, id_):
   resource_json = json.loads(resource)
   resource_json['id'] = str(id_)
   return json.dumps(resource_json)
 
+
 class QuestionnaireResponseDaoTest(FlaskTestBase):
+
   def setUp(self):
     super(QuestionnaireResponseDaoTest, self).setUp()
     self.code_dao = CodeDao()
@@ -299,7 +302,6 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.EMAIL_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=5,
                                                     questionnaireResponseId=1,
                                                     questionId=5, valueString=self.email)
-
 
   def _setup_questionnaire(self):
     q = Questionnaire(resource=QUESTIONNAIRE_RESOURCE)
