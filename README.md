@@ -820,7 +820,7 @@ Mayo has defined a sample manifest format that will be uploaded to the RDR
 daily. The RDR scans this manifest and uses it to populate `BiobankSamples`
 resources. Once these are created, a client can query for available samples:
 
-#### TODO `GET /Participant/:pid/BiobankSamples
+#### TODO `GET /Participant/:pid/BiobankSamples`
 
 ## Organization API
 
@@ -921,7 +921,7 @@ Example response:
 }
 ```
 
-#### `GET /Awardee/:aid
+#### `GET /Awardee/:aid`
 
 Retrieves metadata about an individual awardee, with nested resources for child
 organizations and sites within them.
