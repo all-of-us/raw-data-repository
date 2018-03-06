@@ -101,10 +101,14 @@ class ParticipantSummary(Base):
   # Fields for which samples have been received, and at what times.
   sampleStatus1SST8 = Column('sample_status_1sst8', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1SST8Time = Column('sample_status_1sst8_time', UTCDateTime)
+  sampleStatus2SST8 = Column('sample_status_2sst8', Enum(SampleStatus), default=SampleStatus.UNSET)
+  sampleStatus2SST8Time = Column('sample_status_2sst8_time', UTCDateTime)
   sampleStatus1SS08 = Column('sample_status_1ss08', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1SS08Time = Column('sample_status_1ss08_time', UTCDateTime)
   sampleStatus1PST8 = Column('sample_status_1pst8', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1PST8Time = Column('sample_status_1pst8_time', UTCDateTime)
+  sampleStatus2PST8 = Column('sample_status_2pst8', Enum(SampleStatus), default=SampleStatus.UNSET)
+  sampleStatus2PST8Time = Column('sample_status_2pst8_time', UTCDateTime)
   sampleStatus1PS08 = Column('sample_status_1ps08', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1PS08Time = Column('sample_status_1ps08_time', UTCDateTime)
   sampleStatus1HEP4 = Column('sample_status_1hep4', Enum(SampleStatus), default=SampleStatus.UNSET)
@@ -124,12 +128,18 @@ class ParticipantSummary(Base):
   sampleOrderStatus1SST8 = Column('sample_order_status_1sst8', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1SST8Time = Column('sample_order_status_1sst8_time', UTCDateTime)
+  sampleOrderStatus2SST8 = Column('sample_order_status_2sst8', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus2SST8Time = Column('sample_order_status_2sst8_time', UTCDateTime)
   sampleOrderStatus1SS08 = Column('sample_order_status_1ss08', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1SS08Time = Column('sample_order_status_1ss08_time', UTCDateTime)
   sampleOrderStatus1PST8 = Column('sample_order_status_1pst8', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1PST8Time = Column('sample_order_status_1pst8_time', UTCDateTime)
+  sampleOrderStatus2PST8 = Column('sample_order_status_2pst8', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus2PST8Time = Column('sample_order_status_2pst8_time', UTCDateTime)
   sampleOrderStatus1PS08 = Column('sample_order_status_1ps08', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1PS08Time = Column('sample_order_status_1ps08_time', UTCDateTime)
