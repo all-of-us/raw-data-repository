@@ -233,7 +233,8 @@ class ParticipantSummaryDao(UpdatableDao):
                                 'received': int(SampleStatus.RECEIVED),
                                 'full_participant': int(EnrollmentStatus.FULL_PARTICIPANT),
                                 'member': int(EnrollmentStatus.MEMBER),
-                                'interested': int(EnrollmentStatus.INTERESTED)}
+                                'interested': int(EnrollmentStatus.INTERESTED),
+                                'lastModified': clock.CLOCK.now()}
     enrollment_status_sql = _ENROLLMENT_STATUS_SQL
     # If participant_id is provided, add the participant ID filter to both update statements.
     if participant_id:
@@ -260,6 +261,7 @@ class ParticipantSummaryDao(UpdatableDao):
                                                          summary.physicalMeasurementsStatus,
                                                          summary.samplesToIsolateDNA)
     summary.enrollmentStatus = enrollment_status
+    summary.lastModified = clock.CLOCK.now()
 
   def calculate_enrollment_status(self, consent_for_study_enrollment_and_ehr,
                                   num_completed_baseline_ppi_modules,
