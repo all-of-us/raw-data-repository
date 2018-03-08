@@ -284,6 +284,7 @@ class ParticipantSummaryDao(UpdatableDao):
       result = {k: result.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
 
     result['participantId'] = to_client_participant_id(model.participantId)
+    result['lastModified'] = model.lastModified
     biobank_id = result.get('biobankId')
     if biobank_id:
       result['biobankId'] = to_client_biobank_id(biobank_id)
