@@ -174,6 +174,7 @@ class ParticipantDao(UpdatableDao):
       summary.withdrawalTime = obj.withdrawalTime
       summary.suspensionStatus = obj.suspensionStatus
       summary.suspensionTime = obj.suspensionTime
+      summary.lastModified = clock.CLOCK.now()
       make_transient(summary)
       make_transient(obj)
       obj.participantSummary = summary

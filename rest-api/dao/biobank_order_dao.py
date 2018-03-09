@@ -1,3 +1,4 @@
+import clock
 from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
 from dao.base_dao import BaseDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -192,6 +193,7 @@ class BiobankOrderDao(BaseDao):
     participant_summary.biospecimenCollectedSiteId = obj.collectedSiteId
     participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
     participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
+    participant_summary.lastModified = clock.CLOCK.now()
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
       status, time = self._get_order_status_and_time(sample, obj)
