@@ -281,6 +281,7 @@ class PhysicalMeasurementsDao(BaseDao):
     participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
     participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
     participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
+    participant_summary.lastModified = clock.CLOCK.now()
     if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.COMPLETED:
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
       participant_summary_dao.update_enrollment_status(participant_summary)

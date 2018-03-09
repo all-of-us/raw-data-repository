@@ -354,6 +354,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         questionnaireOnTheBasicsTime=TIME_2,
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=TIME_2,
+        lastModified=TIME_2,
         firstName=self.first_name, lastName=self.last_name, email=self.email)
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -402,6 +403,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         questionnaireOnTheBasicsTime=TIME_2,
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=TIME_2,
+        lastModified=TIME_2,
         firstName=self.first_name, lastName=self.last_name, email=self.email)
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
@@ -442,6 +444,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         numCompletedBaselinePPIModules=1, numCompletedPPIModules=1,
         questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
         questionnaireOnTheBasicsTime=TIME_2,
+        lastModified=TIME_3,
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=TIME_2,
         firstName=self.first_name, lastName=self.last_name, email=self.email)
@@ -483,6 +486,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         questionnaireOnTheBasicsTime=TIME_2,
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForStudyEnrollmentTime=TIME_2,
+        lastModified=TIME_4,
         firstName=self.first_name, lastName=self.last_name, email=self.email)
     # The participant summary should be updated with the new gender identity, but nothing else
     # changes.

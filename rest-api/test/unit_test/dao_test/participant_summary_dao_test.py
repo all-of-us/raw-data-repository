@@ -194,7 +194,9 @@ class ParticipantSummaryDaoTest(NdbTestBase):
                         [ps_3, ps_4])
 
   def test_update_from_samples(self):
-    baseline_tests = ['BASELINE1', 'BASELINE2']
+    # baseline_tests = ['BASELINE1', 'BASELINE2']
+    baseline_tests = ["1PST8", "2PST8"]
+
     config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
     self.dao.update_from_biobank_stored_samples()  # safe noop
 
@@ -205,9 +207,10 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
     sample_dao = BiobankStoredSampleDao()
     def add_sample(participant, test_code, sample_id):
+      TIME = datetime.datetime(2018, 3, 2)
       sample_dao.insert(BiobankStoredSample(
           biobankStoredSampleId=sample_id, biobankId=participant.biobankId,
-        biobankOrderIdentifier='KIT', test=test_code))
+        biobankOrderIdentifier='KIT', test=test_code, confirmed=TIME))
 
     add_sample(p_baseline_samples, baseline_tests[0], '11111')
     add_sample(p_baseline_samples, baseline_tests[1], '22223')
@@ -215,9 +218,23 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     add_sample(p_mixed_samples, 'NOT1', '44441')
 
     self.dao.update_from_biobank_stored_samples()
+    test_last_modified_doesnt_change_below = self.dao.get(1).lastModified
     self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 2)
     self.assertEquals(self.dao.get(p_mixed_samples.participantId).numBaselineSamplesArrived, 1)
     self.assertEquals(self.dao.get(p_no_samples.participantId).numBaselineSamplesArrived, 0)
+
+    M_baseline_samples = self._insert(Participant(participantId=9, biobankId=99))
+    add_sample(M_baseline_samples, baseline_tests[0], '999')
+    M_first_update = self.dao.get(M_baseline_samples.participantId)
+
+    self.dao.update_from_biobank_stored_samples()
+    add_sample(M_baseline_samples, baseline_tests[1], '9999')
+    M_second_update = self.dao.get(M_baseline_samples.participantId)
+    self.dao.update_from_biobank_stored_samples()
+
+    p_baseline_update = self.dao.get(p_baseline_samples.participantId)
+    self.assertNotEqual(M_first_update.lastModified, M_second_update.lastModified)
+    self.assertEquals(p_baseline_update.lastModified, test_last_modified_doesnt_change_below)
 
   def test_calculate_enrollment_status(self):
     self.assertEquals(EnrollmentStatus.FULL_PARTICIPANT,

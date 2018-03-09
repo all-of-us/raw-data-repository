@@ -684,6 +684,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED',
                            [[ps_1]])
 
+      self.assertResponses('ParticipantSummary?_count=2&lastModified=lt2016-01-04',
+                           [[ps_3]])
 
 
 
