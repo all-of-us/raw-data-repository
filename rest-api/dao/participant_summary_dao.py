@@ -73,8 +73,8 @@ _SAMPLE_SQL = """,
 
 _PARTICIPANT_ID_FILTER = " WHERE participant_id = :participant_id"
 
-_WHERE_SQL = """ 
-not sample_status_%(test)s_time <=> 
+_WHERE_SQL = """
+not sample_status_%(test)s_time <=>
 (SELECT MAX(confirmed) FROM biobank_stored_sample
 WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
 AND biobank_stored_sample.test = %(sample_param_ref)s)
