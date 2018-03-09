@@ -174,6 +174,7 @@ class ParticipantDao(UpdatableDao):
       summary.withdrawalTime = obj.withdrawalTime
       summary.suspensionStatus = obj.suspensionStatus
       summary.suspensionTime = obj.suspensionTime
+      summary.lastModified = clock.CLOCK.now()
       make_transient(summary)
       make_transient(obj)
       obj.participantSummary = summary
@@ -206,6 +207,7 @@ class ParticipantDao(UpdatableDao):
   def create_summary_for_participant(obj):
     return ParticipantSummary(
         participantId=obj.participantId,
+        lastModified=obj.lastModified,
         biobankId=obj.biobankId,
         signUpTime=obj.signUpTime,
         hpoId=obj.hpoId,

@@ -246,6 +246,7 @@ class QuestionnaireResponseDao(BaseDao):
             'First name (%s), last name (%s), and email address (%s) required for consenting.'
             % tuple(['present' if part else 'missing' for part in first_last_email]))
       ParticipantSummaryDao().update_enrollment_status(participant_summary)
+      participant_summary.lastModified = clock.CLOCK.now()
       session.merge(participant_summary)
 
   def insert(self, obj):

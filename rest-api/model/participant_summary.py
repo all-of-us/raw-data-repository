@@ -28,6 +28,7 @@ class ParticipantSummary(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          primary_key=True, autoincrement=False)
   biobankId = Column('biobank_id', Integer, nullable=False)
+  lastModified = Column('last_modified', UTCDateTime, nullable=False)
   # PTC string fields will generally be limited to 255 chars; set our field lengths accordingly to
   # ensure that long values can be inserted.
   firstName = Column('first_name', String(255), nullable=False)
@@ -214,7 +215,6 @@ class ParticipantSummary(Base):
     return Column('site_id', Integer, ForeignKey('site.site_id'))
 
 
-# TODO(DA-234) Add an index for withdrawal status when querying summaries & filtering by withdrawal.
 Index('participant_summary_biobank_id', ParticipantSummary.biobankId)
 Index('participant_summary_ln_dob', ParticipantSummary.lastName,
       ParticipantSummary.dateOfBirth)

@@ -12,7 +12,7 @@ import clock
 import config
 from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
 from dao.base_dao import UpdatableDao
-from dao.database_utils import get_sql_and_params_for_array
+from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from dao.site_dao import SiteDao
@@ -73,18 +73,33 @@ _SAMPLE_SQL = """,
 
 _PARTICIPANT_ID_FILTER = " WHERE participant_id = :participant_id"
 
+_WHERE_SQL = """
+not sample_status_%(test)s_time <=>
+(SELECT MAX(confirmed) FROM biobank_stored_sample
+WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
+AND biobank_stored_sample.test = %(sample_param_ref)s)
+
+"""
+
 def _get_sample_sql_and_params():
   """Gets SQL and params needed to update status and time fields on the participant summary for
   each biobank sample.
   """
   sql = ''
   params = {}
+  where_sql = ''
   for i in range(0, len(BIOBANK_TESTS)):
     sample_param = 'sample%d' % i
     sample_param_ref = ':%s' % sample_param
     lower_test = BIOBANK_TESTS[i].lower()
     sql += _SAMPLE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
     params[sample_param] = BIOBANK_TESTS[i]
+    if where_sql != '':
+      where_sql += ' or '
+    where_sql += _WHERE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
+
+  sql += ' where ' + where_sql
+
   return sql, params
 
 
@@ -222,8 +237,11 @@ class ParticipantSummaryDao(UpdatableDao):
                            WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
                            AND biobank_stored_sample.test IN %s)
           THEN :received ELSE :unset END
-      ) %s""" % (baseline_tests_sql, dna_tests_sql, sample_sql)
-    params = {'received': int(SampleStatus.RECEIVED), 'unset': int(SampleStatus.UNSET)}
+      ),
+      last_modified = :now
+       %s""" % (baseline_tests_sql, dna_tests_sql, sample_sql)
+    params = {'received': int(SampleStatus.RECEIVED), 'unset': int(SampleStatus.UNSET),
+              'now': clock.CLOCK.now()}
     params.update(baseline_tests_params)
     params.update(dna_tests_params)
     params.update(sample_params)
@@ -234,6 +252,7 @@ class ParticipantSummaryDao(UpdatableDao):
                                 'full_participant': int(EnrollmentStatus.FULL_PARTICIPANT),
                                 'member': int(EnrollmentStatus.MEMBER),
                                 'interested': int(EnrollmentStatus.INTERESTED)}
+
     enrollment_status_sql = _ENROLLMENT_STATUS_SQL
     # If participant_id is provided, add the participant ID filter to both update statements.
     if participant_id:
@@ -242,6 +261,7 @@ class ParticipantSummaryDao(UpdatableDao):
       enrollment_status_sql += _PARTICIPANT_ID_FILTER
       enrollment_status_params['participant_id'] = participant_id
 
+    sql = replace_null_safe_equals(sql)
     with self.session() as session:
       session.execute(sql, params)
       session.execute(enrollment_status_sql, enrollment_status_params)
