@@ -153,6 +153,13 @@ class ParticipantDaoTest(SqlTestBase):
       email=summary.email)
     self.assertEquals(expected_ps.asdict(), ps.asdict())
 
+    p2_last_modified = p2.lastModified
+    p2.hpoId = 2
+    self.dao.update(p2)
+    p2_update = self.dao.get(1)
+    self.assertNotEquals(p2_last_modified, p2_update.lastModified)
+    self.assertEquals(p2_update.lastModified, p2.lastModified)
+
     expected_ph = self._participant_history_with_defaults(
         participantId=1, biobankId=2, lastModified=time, signUpTime=time)
     # And updating the participant adds a new ParticipantHistory row.

@@ -218,9 +218,21 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     add_sample(p_mixed_samples, 'NOT1', '44441')
 
     self.dao.update_from_biobank_stored_samples()
+    test_last_modified_doesnt_change_below = p_baseline_samples.lastModified
     self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 2)
     self.assertEquals(self.dao.get(p_mixed_samples.participantId).numBaselineSamplesArrived, 1)
     self.assertEquals(self.dao.get(p_no_samples.participantId).numBaselineSamplesArrived, 0)
+
+    M_baseline_samples = self._insert(Participant(participantId=9, biobankId=99))
+    add_sample(M_baseline_samples, baseline_tests[0], '999')
+    M_first_update = self.dao.get(M_baseline_samples.participantId)
+    self.dao.update_from_biobank_stored_samples()
+    add_sample(M_baseline_samples, baseline_tests[1], '9999')
+    M_second_update = self.dao.get(M_baseline_samples.participantId)
+    self.dao.update_from_biobank_stored_samples()
+
+    self.assertNotEqual(M_first_update.lastModified, M_second_update.lastModified)
+    self.assertEquals(p_baseline_samples.lastModified, test_last_modified_doesnt_change_below)
 
   def test_calculate_enrollment_status(self):
     self.assertEquals(EnrollmentStatus.FULL_PARTICIPANT,

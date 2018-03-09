@@ -262,7 +262,6 @@ class ParticipantSummaryDao(UpdatableDao):
       enrollment_status_params['participant_id'] = participant_id
 
     sql = replace_null_safe_equals(sql)
-    print sql
     with self.session() as session:
       session.execute(sql, params)
       session.execute(enrollment_status_sql, enrollment_status_params)
