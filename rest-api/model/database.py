@@ -33,7 +33,7 @@ class Database(object):
     # parameter (which defaults to 8 hours) to ensure that we don't attempt to use idle database
     # connections after this period. (See DA-237.) To change the db wait_timeout (seconds), run:
     # gcloud --project <proj> sql instances patch rdrmaindb --database-flags wait_timeout=28800
-    self._engine = create_engine(url, pool_recycle=3600, echo=True, **kwargs)
+    self._engine = create_engine(url, pool_recycle=3600, **kwargs)
     event.listen(self._engine, 'engine_connect', _ping_connection)
     self.db_type = url.drivername
     if self.db_type == 'sqlite':

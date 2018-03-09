@@ -194,7 +194,9 @@ class ParticipantSummaryDaoTest(NdbTestBase):
                         [ps_3, ps_4])
 
   def test_update_from_samples(self):
-    baseline_tests = ['BASELINE1', 'BASELINE2']
+    # baseline_tests = ['BASELINE1', 'BASELINE2']
+    baseline_tests = ["1PST8", "2PST8"]
+
     config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
     self.dao.update_from_biobank_stored_samples()  # safe noop
 
@@ -205,7 +207,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
     sample_dao = BiobankStoredSampleDao()
     def add_sample(participant, test_code, sample_id):
-      TIME = datetime.datetime(2016, 1, 2)
+      TIME = datetime.datetime(2018, 3, 2)
       sample_dao.insert(BiobankStoredSample(
           biobankStoredSampleId=sample_id, biobankId=participant.biobankId,
         biobankOrderIdentifier='KIT', test=test_code, confirmed=TIME))
