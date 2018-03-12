@@ -105,6 +105,7 @@ class BaseApi(Resource):
     pagination_token = None
     order_by = None
     missing_id_list = ['awardee', 'organization', 'site']
+    include_total = request.args.get('_includeTotal', False)
 
     for key, value in request.args.iteritems(multi=True):
       if value in missing_id_list:
@@ -128,7 +129,8 @@ class BaseApi(Resource):
         field_filter = self.dao.make_query_filter(key, value)
         if field_filter:
           field_filters.append(field_filter)
-    return Query(field_filters, order_by, max_results, pagination_token)
+    return Query(field_filters, order_by, max_results, pagination_token,
+                 include_total=include_total)
 
   def _make_bundle(self, results, id_field, participant_id):
     import main
@@ -146,7 +148,7 @@ class BaseApi(Resource):
       entries.append({"fullUrl": full_url,
                      "resource": json})
     bundle_dict['entry'] = entries
-    if results.total:
+    if results.total is not None:
       bundle_dict['total'] = results.total
     return bundle_dict
 
