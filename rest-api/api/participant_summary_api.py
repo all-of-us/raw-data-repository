@@ -12,6 +12,7 @@ class ParticipantSummaryApi(BaseApi):
 
   @auth_required(PTC_HEALTHPRO_AWARDEE)
   def get(self, p_id=None):
+    user_awardee = None
     user_email, user_info = get_validated_user_info()
     if AWARDEE in user_info['roles']:
       user_awardee = user_info['awardee']
@@ -43,7 +44,7 @@ class ParticipantSummaryApi(BaseApi):
 
   def _make_bundle(self, results, id_field, participant_id):
     if self._is_last_modified_sync():
-      return make_sync_results_for_request(results)
+      return make_sync_results_for_request(self, results)
 
     return super(ParticipantSummaryApi, self)._make_bundle(results, id_field,
                                                                    participant_id)
