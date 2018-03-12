@@ -157,25 +157,24 @@ class BaseDao(object):
     with self.session() as session:
       query, field_names = self._make_query(session, query_def)
       items = query.all()
-    if items:
-      if len(items) > query_def.max_results:
-        # Items, pagination token, and more are available
-        return Results(items[0:query_def.max_results],
-                       self._make_pagination_token(items[query_def.max_results - 1].asdict(),
-                                                   field_names),
-                       True)
-      else:
-        if query_def.always_return_token:
-          # Items and pagination token, but no more available
-          return Results(items,
-                         self._make_pagination_token(items[len(items) - 1].asdict(), field_names),
-                         False)
-        else:
-          # Items but no pagination token, and no more available
-          return Results(items, None, False)
-    else:
+      # We could use query.count() here but since we're executing and iterating the entire result
+      # set every time anyways it should be unnecessary: len(items) ought to be the same thing
+      total = len(items)
+
+    if not items:
       # No items, no pagination token, and no more available
-      return Results([], None, False)
+      return Results([], None, False, total=0)
+
+    if total > query_def.max_results:
+      # Items, pagination token, and more are available
+      page = items[0:query_def.max_results]
+      token = self._make_pagination_token(items[query_def.max_results - 1].asdict(), field_names)
+      return Results(page, token, more_available=True, total=total)
+    else:
+      token = (self._make_pagination_token(items[-1].asdict(), field_names)
+               if query_def.always_return_token
+               else None)
+      return Results(items, token, more_available=False, total=total)
 
   def _make_pagination_token(self, item_dict, field_names):
     vals = [item_dict.get(field_name) for field_name in field_names]

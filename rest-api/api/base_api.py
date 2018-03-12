@@ -146,6 +146,8 @@ class BaseApi(Resource):
       entries.append({"fullUrl": full_url,
                      "resource": json})
     bundle_dict['entry'] = entries
+    if results.total:
+      bundle_dict['total'] = results.total
     return bundle_dict
 
   def _make_resource_url(self, json, id_field, participant_id):

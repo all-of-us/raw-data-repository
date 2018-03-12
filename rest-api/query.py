@@ -40,9 +40,8 @@ class Query(object):
     self.always_return_token = always_return_token
 
 class Results(object):
-  def __init__(self, items, pagination_token, more_available=False):
+  def __init__(self, items, pagination_token, more_available=False, total=None):
     self.items = items
     self.pagination_token = pagination_token
     self.more_available = more_available
-
-
+    self.total = total
