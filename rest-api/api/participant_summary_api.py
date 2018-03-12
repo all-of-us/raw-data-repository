@@ -34,8 +34,8 @@ class ParticipantSummaryApi(BaseApi):
     query = super(ParticipantSummaryApi, self)._make_query()
     if self._is_last_modified_sync():
       # roll back last modified time
-      for filter in  query.field_filters:
-        if filter.field_name == 'lastModified':
+      for filters in query.field_filters:
+        if filters.field_name == 'lastModified':
           # set time delta subtract
           pass
       query.always_return_token = True
