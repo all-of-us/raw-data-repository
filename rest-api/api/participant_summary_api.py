@@ -15,6 +15,7 @@ class ParticipantSummaryApi(BaseApi):
     user_email, user_info = get_validated_user_info()
     if AWARDEE in user_info['roles']:
       user_awardee = user_info['awardee']
+      print user_email
 
     # data only for user_awardee, assert that query has same awardee
     if p_id:
@@ -35,13 +36,14 @@ class ParticipantSummaryApi(BaseApi):
       # roll back last modified time
       for filter in  query.field_filters:
         if filter.field_name == 'lastModified':
-          # set time delta subtract 
+          # set time delta subtract
+          pass
       query.always_return_token = True
     return query
 
   def _make_bundle(self, results, id_field, participant_id):
     if self._is_last_modified_sync():
-      return self.make_sync_results_for_request(results)
+      return make_sync_results_for_request(results)
 
     return super(ParticipantSummaryApi, self)._make_bundle(results, id_field,
                                                                    participant_id)
