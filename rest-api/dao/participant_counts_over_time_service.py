@@ -9,20 +9,75 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
   def get_strata_by_filter(self, start_date, end_date, filters, stratification='TOTAL'):
 
-    sql = """
-      SELECT calendar.day start_date,
-         {stratification},
-         SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) cnt
-      FROM calendar,
-      (SELECT COUNT(*) cnt, ps.{stratification} {stratification}, DATE(ps.sign_up_time) day
-            FROM participant_summary ps
-          WHERE {filters}
-          GROUP BY day) ps_sum,
-      WHERE calendar.day >= :start_date
+    start_date = start_date.replace('-', '')
+    end_date = end_date.replace('-', '')
+
+    if stratification == 'TOTAL':
+      sql = """
+        SELECT calendar.day start_date,
+            SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) registered_count
+        FROM calendar,
+        (SELECT COUNT(*) cnt, DATE(ps.sign_up_time) day
+        FROM participant_summary ps
+        GROUP BY day) ps_sum
+        WHERE calendar.day >= :start_date
         AND calendar.day <= :end_date
-      GROUP BY calendar.day, {stratification}
-      ORDER BY calendar.day, {stratification};
-    """.format(stratification=stratification, filters=filters)
+        GROUP BY calendar.day
+        ORDER BY calendar.day;
+      """
+    elif stratification == 'ENROLLMENT_STATUS':
+      sql = """
+      SELECT SUM(registered_cnt * (cnt_day <= calendar.day)) registered_participants,
+       SUM(member_cnt * (cnt_day <= calendar.day)) member_participants,
+       SUM(full_cnt * (cnt_day <= calendar.day)) full_participants,
+       calendar.day from
+       (SELECT c2.day cnt_day,
+               registered.cnt registered_cnt,
+               member.cnt member_cnt,
+               full.cnt full_cnt
+            FROM calendar c2
+            LEFT OUTER JOIN
+            (SELECT COUNT(*) cnt, DATE(ps.consent_for_study_enrollment_time) day
+               FROM participant_summary ps
+              WHERE (ps.hpo_id = 1 OR ps.hpo_id = 2)
+               AND ps.withdrawal_status = 1
+              GROUP BY day) registered
+             ON c2.day = registered.day
+           LEFT OUTER JOIN
+            (SELECT COUNT(*) cnt,
+                    DATE(ps.consent_for_electronic_health_records_time) day
+               FROM participant_summary ps
+              WHERE (ps.hpo_id = 1 OR ps.hpo_id = 2)
+                AND ps.withdrawal_status = 1
+           GROUP BY day) member
+             ON c2.day = member.day
+           LEFT OUTER JOIN
+            (SELECT COUNT(*) cnt,
+             DATE(CASE WHEN enrollment_status = 3 THEN
+                   GREATEST(consent_for_electronic_health_records,
+                            questionnaire_on_the_basics_time,
+                            questionnaire_on_lifestyle_time,
+                            questionnaire_on_overall_health_time,
+                            physical_measurements_time,
+                            CASE WHEN sample_status_1ed04_time IS NOT NULL
+                             THEN
+                             (CASE WHEN sample_status_1sal_time IS NOT
+                                NULL
+                                THEN LEAST(sample_status_1ed04_time,
+                                           sample_status_1sal_time)
+                                ELSE sample_status_1ed04_time END)
+                             ELSE sample_status_1sal_time END)
+                   ELSE NULL END) day
+               FROM participant_summary ps
+              WHERE (ps.hpo_id = 1 OR ps.hpo_id = 2)
+                AND ps.withdrawal_status = 1
+           GROUP BY day) full
+             ON c2.day = full.day) day_sums, calendar
+          WHERE calendar.day >= :start_date
+            AND calendar.day <= :end_date
+          GROUP BY calendar.day
+          ORDER BY calendar.day;
+      """
 
     params = {'start_date': start_date, 'end_date': end_date}
 
