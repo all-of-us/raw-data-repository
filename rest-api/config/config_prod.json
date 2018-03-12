@@ -17,7 +17,11 @@
     },
     "exporter@all-of-us-rdr-prod.iam.gserviceaccount.com": {
       "roles": ["exporter"]
-    }
+    },
+    "awardee-pitt@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+     "roles": ["awardee_sa"],
+     "awardee": "PITT"
+   }
   },
   "biobank_samples_bucket_name": [
     "prod_biobank_samples_upload_bucket"

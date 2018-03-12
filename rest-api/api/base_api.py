@@ -218,8 +218,13 @@ def get_sync_results_for_request(dao, max_results):
   token = request.args.get('_token')
   count_str = request.args.get('_count')
   count = int(count_str) if count_str else max_results
+
   results = dao.query(Query([], OrderBy('logPositionId', True),
                             count, token, always_return_token=True))
+
+  return make_sync_results_for_request(results)
+
+def make_sync_results_for_request(self, results):
   bundle_dict = {'resourceType': 'Bundle', 'type': 'history'}
   if results.pagination_token:
     query_params = request.args.copy()
@@ -229,6 +234,6 @@ def get_sync_results_for_request(dao, max_results):
     bundle_dict['link'] = [{'relation': link_type, 'url': next_url}]
   entries = []
   for item in results.items:
-    entries.append({'resource': dao.to_client_json(item)})
+    entries.append({'resource': self.dao.to_client_json(item)})
   bundle_dict['entry'] = entries
   return jsonify(bundle_dict)

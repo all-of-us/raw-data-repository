@@ -6,7 +6,7 @@
   ],
   "user_info": {
     "example@example.com": {
-      "roles": ["ptc", "healthpro", "exporter", "storefront"],
+      "roles": ["awardee_sa", "ptc", "healthpro", "exporter", "storefront"],
       "whitelisted_ip_ranges": {
         "ip6": ["::1/64"],
         "ip4": ["127.0.0.1/32"]
