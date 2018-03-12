@@ -3,7 +3,6 @@ import httplib
 import main
 import threading
 
-from api.base_api import DEFAULT_MAX_RESULTS
 from clock import FakeClock
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE)
@@ -251,7 +250,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertBundle([], response)
 
   def test_get_summary_list_returns_total(self):
-    num_participants = 200
+    page_size = 10
+    num_participants = 20
     SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
     questionnaire_id = self.create_demographics_questionnaire()
     # generate participants to count
@@ -284,11 +284,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       }
       self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
 
-    response = self.send_get('ParticipantSummary?_includeTotal=true')
+    response = self.send_get('ParticipantSummary?_count=10&_includeTotal=true')
     # Prove that the 'total' key is correct
     self.assertEqual(num_participants, response['total'])
     # Prove that we're still only returning what's on a single page
-    self.assertEqual(DEFAULT_MAX_RESULTS, len(response['entry']))
+    self.assertEqual(page_size, len(response['entry']))
 
   def test_get_summary_with_skip_codes(self):
     # Set up the codes so they are mapped later.
