@@ -7,5 +7,3 @@ def assertCsvContents(test, bucket_name, file_name, contents):
     reader = csv.reader(output)
     rows = sorted(reader)
   test.assertEquals(sorted(contents), rows)
-
-

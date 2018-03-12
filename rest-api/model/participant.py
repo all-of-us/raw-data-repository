@@ -57,6 +57,7 @@ class ParticipantBase(object):
   def siteId(cls):
     return Column('site_id', Integer, ForeignKey('site.site_id'))
 
+
 class Participant(ParticipantBase, Base):
   __tablename__ = 'participant'
   participantSummary = relationship('ParticipantSummary', uselist=False,
