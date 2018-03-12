@@ -309,6 +309,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
     qr.answers.extend([answer_1, answer_2])
     qr.answers.extend(self._names_and_email_answers())
+
     with FakeClock(TIME_2):
       self.questionnaire_response_dao.insert(qr)
 
@@ -332,7 +333,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
       questionnaireOnTheBasicsTime=TIME_2,
       consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
       consentForStudyEnrollmentTime=TIME_2,
-      firstName=self.first_name, lastName=self.last_name, email=self.email
+      firstName=self.first_name, lastName=self.last_name, email=self.email,
+      lastModified=TIME_2,
     )
     self.assertEquals(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
