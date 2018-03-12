@@ -73,7 +73,7 @@ from dao.database_utils import parse_datetime
 from dateutil.relativedelta import relativedelta
 from census_regions import census_regions
 from code_constants import UNSET, RACE_QUESTION_CODE, PPI_SYSTEM, EHR_CONSENT_QUESTION_CODE
-from code_constants import CONSENT_PERMISSION_YES_CODE
+from code_constants import CONSENT_PERMISSION_YES_CODE, PMI_SKIP_CODE
 from dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
 from field_mappings import QUESTION_CODE_TO_FIELD, FieldType, QUESTIONNAIRE_MODULE_FIELD_NAMES
 from field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
@@ -88,7 +88,7 @@ from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields,
 from metrics_config import transform_participant_summary_field, SAMPLES_TO_ISOLATE_DNA_METRIC
 from metrics_config import FULL_PARTICIPANT_KIND, EHR_CONSENT_ANSWER_METRIC
 from participant_enums import get_bucketed_age, get_race, PhysicalMeasurementsStatus, SampleStatus
-from participant_enums import EnrollmentStatus, QuestionnaireStatus
+from participant_enums import EnrollmentStatus, QuestionnaireStatus, Race
 from dao.code_dao import CodeDao
 
 class PipelineNotRunningException(BaseException):
@@ -271,8 +271,9 @@ def map_answers(reader):
                              question_code != RACE_QUESTION_CODE):
       race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
       race = get_race(race_codes)
-      yield(last_participant_id, make_tuple(last_start_time,
-                                               make_metric(RACE_METRIC, str(race))))
+      if race == Race.SKIPPED:
+        race = PMI_SKIP_CODE
+      yield (last_participant_id, make_tuple(last_start_time, make_metric(RACE_METRIC, str(race))))
       race_code_values = []
     last_participant_id = participant_id
     last_start_time = start_time
@@ -288,22 +289,28 @@ def map_answers(reader):
       if question_field[1] == FieldType.CODE:
         answer_value = answer_code
         if metric == 'state':
-          state_val = answer_code[len(answer_code) - 2:]
-          census_region = census_regions.get(state_val) or UNSET
-          yield(participant_id, make_tuple(start_time, make_metric(CENSUS_REGION_METRIC,
-                                                                   census_region)))
+          if answer_code == PMI_SKIP_CODE:
+            census_region = PMI_SKIP_CODE
+          else:
+            # The last two letters of the answer code should be a state abbreviation,
+            # e.g. TN, AZ, etc
+            state_abbr = answer_code[-2:]
+            census_region = census_regions.get(state_abbr, UNSET)
+          yield (participant_id, make_tuple(start_time, make_metric(CENSUS_REGION_METRIC,
+                                                                    census_region)))
         elif question_field[1] == FieldType.STRING:
           answer_value = answer_string
       else:
         raise AssertionError("Invalid field type: %s" % question_field[1])
-    yield(participant_id, make_tuple(start_time, make_metric(metric, answer_value)))
+    yield (participant_id, make_tuple(start_time, make_metric(metric, answer_value)))
 
   # Emit race for the last participant if we saved some values for it.
   if race_code_values:
     race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
     race = get_race(race_codes)
-    yield(last_participant_id, make_tuple(last_start_time,
-                                             make_metric(RACE_METRIC, str(race))))
+    if race == Race.SKIPPED:
+      race = PMI_SKIP_CODE
+    yield (last_participant_id, make_tuple(last_start_time, make_metric(RACE_METRIC, str(race))))
 
 def map_participants(reader):
   """Emits any or all of the following:

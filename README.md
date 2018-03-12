@@ -252,11 +252,11 @@ The summary includes the following fields:
 * `questionnaireOnFamilyHealth`
 * `questionnaireOnFamilyHealthTime`
 * `biospecimenStatus`: whether biospecimens have been finalized for the participant
-* `biospecimenOrderTime`: the first time at which biospecimens were finalized  
-* `biospecimenSourceSite`: the site where biospecimens were initially created for the participant 
-* `biospecimenCollectedSite`: the site where biospecimens were initially collected for the participant 
-* `biospecimenProcessedSite`: the site where biospecimens were initially processed for the participant 
-* `biospecimenFinalizedSite`: the site where biospecimens were initially finalized for the participant                        
+* `biospecimenOrderTime`: the first time at which biospecimens were finalized
+* `biospecimenSourceSite`: the site where biospecimens were initially created for the participant
+* `biospecimenCollectedSite`: the site where biospecimens were initially collected for the participant
+* `biospecimenProcessedSite`: the site where biospecimens were initially processed for the participant
+* `biospecimenFinalizedSite`: the site where biospecimens were initially finalized for the participant
 * `sampleOrderStatus1SST8`
 * `sampleOrderStatus1SST8Time`
 * `sampleOrderStatus1PST8`
@@ -313,8 +313,11 @@ For enumeration fields, the following values are defined:
 `sampleStatus[x]` and `samplesToIsolateDNA`: `UNSET`, `RECEIVED`
 
 `withdrawalStatus`: `NOT_WITHDRAWN`, `NO_USE`
+
 `suspensionStatus`: `NOT_SUSPENDED`, `NO_CONTACT`
+
 `enrollmentStatus`: `INTERESTED`, `MEMBER`, `FULL_PARTICIPANT`
+
 `race`: `UNSET`, `UNMAPPED`, `AMERICAN_INDIAN_OR_ALASKA_NATIVE`, `BLACK_OR_AFRICAN_AMERICAN`,
         `ASIAN`, `NATIVE_HAWAIIAN_OR_OTHER_PACIFIC_ISLANDER`, `WHITE`, `HISPANIC_LATINO_OR_SPANISH`,
         `MIDDLE_EASTERN_OR_NORTH_AFRICAN`, `HLS_AND_WHITE`, `HLS_AND_BLACK`,
@@ -322,7 +325,7 @@ For enumeration fields, the following values are defined:
   		`OTHER_RACE`, `PREFER_NOT_TO_SAY`
 
 
-The following fields have code values defined in the [codebook](
+The values for the following fields are defined in the [codebook](
 https://docs.google.com/spreadsheets/d/1TNqJ1ekLFHF4vYA2SNCb-4NL8QgoJrfuJsxnUuXd-is/edit):
 
 * `state`
@@ -335,9 +338,10 @@ https://docs.google.com/spreadsheets/d/1TNqJ1ekLFHF4vYA2SNCb-4NL8QgoJrfuJsxnUuXd
 * `income`
 * `race`
 
-The values returned for them are defined in the codebook; also values of UNSET will be returned
-for participants that have not set a value, and UNMAPPED for values that do not match anything
-in the codebook.
+If one of these fields has a value that is not mapped in the codebook, the API
+returns `"UNMAPPED"`.  If the participant has not yet provided a value the API
+returns `"UNSET"` (this is the default state).  If the participant elected to skip
+the question the API will return `"SKIPPED"`.
 
 #### `GET /ParticipantSummary?`
 
@@ -358,7 +362,7 @@ Example:
 Pagination is provided with a token i.e.
 
     GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=<token string>
-    
+
 It is possible to get the same participant data back in multiple sync responses.
 The recommended time between syncs is 5 minutes.
 
@@ -389,11 +393,11 @@ Example response:
 * Awardee must specify Awardee or Organization/Site of Awardee in call to API.
 
     `GET /ParticipantSummary?awardee=PITT`
-    
+
     `GET /ParticipantSummary?awardee=PITT&state=PIIState_MA`
-    
+
     `GET /ParticipantSummary?organization=PITT_UPMC`
-    
+
     `GET /ParticipantSummary?site=hpo-site-UPMC`
 
 
@@ -1001,7 +1005,7 @@ Questionnaire contents).
 
 #### `POST /ExportTables`
 
-Provides the ability to export the full contents of database tables or views to CSV files in a 
+Provides the ability to export the full contents of database tables or views to CSV files in a
 specified directory in one of two GCS buckets.
 
 Requests look like:
