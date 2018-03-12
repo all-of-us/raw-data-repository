@@ -295,6 +295,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.assertJsonResponseMatches(expected, actual)
     response = self.send_get('ParticipantSummary')
+    self.assertEqual(1, response['total'])
     self.assertBundle([_make_entry(actual)], response)
 
   def test_get_summary_with_skip_code_for_race(self):
