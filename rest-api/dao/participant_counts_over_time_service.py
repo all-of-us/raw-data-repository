@@ -1,5 +1,6 @@
 from .participant_summary_dao import ParticipantSummaryDao
 from model.participant_summary import ParticipantSummary
+from participant_enums import EnrollmentStatus
 
 class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
@@ -15,6 +16,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     filters_sql = self.get_facets_sql(filters)
 
     if stratification == 'TOTAL':
+      strata = ['TOTAL']
       sql = """
         SELECT calendar.day start_date,
             SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) registered_count
@@ -28,6 +30,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         ORDER BY calendar.day;
       """
     elif stratification == 'ENROLLMENT_STATUS':
+      strata = [str(EnrollmentStatus(val)) for val in EnrollmentStatus]
       sql = """
       SELECT SUM(registered_cnt * (cnt_day <= calendar.day)) registered_participants,
        SUM(member_cnt * (cnt_day <= calendar.day)) member_participants,
@@ -88,11 +91,20 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     try:
       results = cursor.fetchall()
       for result in results:
-        results_by_date.append(result)
+        date = result[-1]
+        metrics = {}
+        values = result[:-1]
+        for i, value in enumerate(values):
+          key = strata[i]
+          metrics[key] = value
+        results_by_date.append({
+          'date': date,
+          'metrics': metrics
+        })
     finally:
       cursor.close()
 
-      return results_by_date
+    return results_by_date
 
 
   def get_facets_sql(self, facets):
