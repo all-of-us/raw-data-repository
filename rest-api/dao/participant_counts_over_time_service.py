@@ -96,9 +96,11 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         values = result[:-1]
         for i, value in enumerate(values):
           key = strata[i]
-          metrics[key] = value
+          if value == None:
+            value = 0
+          metrics[key] = int(value)
         results_by_date.append({
-          'date': date,
+          'date': str(date),
           'metrics': metrics
         })
     finally:
