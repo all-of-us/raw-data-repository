@@ -93,10 +93,11 @@ class ParticipantCountsOverTimeApi(Resource):
     # Validate awardees, get ID list
     awardee_ids = []
     for awardee in awardees:
-      awardee_id = get_awardee_id_from_name({'awardee': awardee}, self.hpo_dao)
-      if awardee_id == None:
-        raise BadRequest('Invalid awardee name: %s' % awardee)
-      awardee_ids.append(awardee_ids)
+      if awardee != '':
+        awardee_id = get_awardee_id_from_name({'awardee': awardee}, self.hpo_dao)
+        if awardee_id == None:
+          raise BadRequest('Invalid awardee name: %s' % awardee)
+        awardee_ids.append(awardee_ids)
     params['awardee_ids'] = awardee_ids
 
     # Validate enrollment statuses
