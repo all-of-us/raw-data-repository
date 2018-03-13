@@ -51,6 +51,7 @@ AZ_ORG_ID = 4
 
 class TestBase(unittest.TestCase):
   """Base class for unit tests."""
+
   def setUp(self):
     # Allow printing the full diff report on errors.
     self.maxDiff = None
@@ -137,6 +138,7 @@ class TestBase(unittest.TestCase):
     summary.lastName = self.fake.last_name()
     summary.email = self.fake.email()
     return summary
+
 
 class TestbedTestBase(TestBase):
   """Base class for unit tests that need the testbed."""
@@ -538,6 +540,7 @@ class FlaskTestBase(NdbTestBase):
     else:
       self.assertIsNone(response.get('link'))
       return None
+
 
 def _clean_and_format_response_json(input_obj):
   obj = sort_lists(copy.deepcopy(input_obj))
