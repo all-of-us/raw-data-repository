@@ -7,10 +7,12 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     super(ParticipantSummaryDao, self).__init__(ParticipantSummary)
 
 
-  def get_strata_by_filter(self, start_date, end_date, filters, stratification='TOTAL'):  # pylint: disable=unused-argument
+  def get_strata_by_filter(self, start_date, end_date, filters, stratification='ENROLLMENT_STATUS'):
 
     start_date = start_date.replace('-', '')
     end_date = end_date.replace('-', '')
+
+    filters_sql = self.get_facets_sql(filters)
 
     if stratification == 'TOTAL':
       sql = """
@@ -39,16 +41,14 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
             LEFT OUTER JOIN
             (SELECT COUNT(*) cnt, DATE(ps.consent_for_study_enrollment_time) day
                FROM participant_summary ps
-              WHERE (ps.hpo_id = 1 OR ps.hpo_id = 2)
-               AND ps.withdrawal_status = 1
+              WHERE :filters
               GROUP BY day) registered
              ON c2.day = registered.day
            LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
                     DATE(ps.consent_for_electronic_health_records_time) day
                FROM participant_summary ps
-              WHERE (ps.hpo_id = 1 OR ps.hpo_id = 2)
-                AND ps.withdrawal_status = 1
+              WHERE :filters
            GROUP BY day) member
              ON c2.day = member.day
            LEFT OUTER JOIN
@@ -69,8 +69,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
                              ELSE sample_status_1sal_time END)
                    ELSE NULL END) day
                FROM participant_summary ps
-              WHERE (ps.hpo_id = 1 OR ps.hpo_id = 2)
-                AND ps.withdrawal_status = 1
+              WHERE :filters
            GROUP BY day) full
              ON c2.day = full.day) day_sums, calendar
           WHERE calendar.day >= :start_date
@@ -79,7 +78,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
           ORDER BY calendar.day;
       """
 
-    params = {'start_date': start_date, 'end_date': end_date}
+    params = {'start_date': start_date, 'end_date': end_date, 'filters': filters_sql}
 
     results_by_date = []
 
@@ -92,3 +91,35 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         results_by_date.append(result)
     finally:
       cursor.close()
+
+      return results_by_date
+
+
+  def get_facets_sql(self, facets):
+
+    facets_sql = []
+
+    facet_map = {
+      'awardee_ids': 'hpo_id',
+      'withdrawal_status': 'withdrawal_status',
+      'enrollment_statuses': 'enrollment_status'
+    }
+
+    for facet in facets:
+      filters_sql = []
+      db_field = facet_map[facet]
+      filters = facets[facet]
+      for filter in filters:
+        if str(filter) != '':
+          filters_sql.append('ps.' + db_field + ' = ' + str(int(filter)))
+      if len(filters_sql) > 0:
+        filters_sql = ' OR '.join(filters_sql)
+        facets_sql.append(filters_sql)
+
+    if len(facets_sql) > 0:
+      facets_sql = ' AND '.join(facets_sql)
+    else:
+      facets_sql = ''
+
+    return facets_sql
+
