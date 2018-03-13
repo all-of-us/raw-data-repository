@@ -119,7 +119,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     if len(facets_sql) > 0:
       facets_sql = ' AND '.join(facets_sql)
     else:
-      facets_sql = ''
+      facets_sql = '1 = 1'
 
     return facets_sql
 
