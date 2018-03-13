@@ -256,10 +256,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     questionnaire_id = self.create_demographics_questionnaire()
 
     # Prove that no results means a total of zero (if requested)
-    response = self.send_get('ParticipantSummary?_count=10&_includeTotal=true')
+    response = self.send_get('ParticipantSummary?_count=%d&_includeTotal=true' % page_size)
     self.assertEqual(0, response['total'])
     # ... but ONLY if requested
-    response = self.send_get('ParticipantSummary?_count=10')
+    response = self.send_get('ParticipantSummary?_count=%d' % page_size)
     self.assertIsNone(response.get('total'))
 
     # generate participants to count
@@ -293,16 +293,17 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
 
     # Prove that without the query param, no total is returned
-    response = self.send_get('ParticipantSummary?_count=10')
+    response = self.send_get('ParticipantSummary?_count=%d' % page_size)
     self.assertIsNone(response.get('total'))
 
     # Prove that the count and page are accurate even when the page size is larger than the total
-    response = self.send_get('ParticipantSummary?_count=100&_includeTotal=true')
+    url = 'ParticipantSummary?_count=%d&_includeTotal=true' % (num_participants * 2)
+    response = self.send_get(url)
     self.assertEqual(response['total'], len(response['entry']))
     self.assertEqual(response['total'], num_participants)
 
     # Prove that the 'total' key is correct
-    response = self.send_get('ParticipantSummary?_count=10&_includeTotal=true')
+    response = self.send_get('ParticipantSummary?_count=%d&_includeTotal=true' % page_size)
     self.assertEqual(num_participants, response['total'])
     # Prove that we're still only returning what's on a single page
     self.assertEqual(page_size, len(response['entry']))
