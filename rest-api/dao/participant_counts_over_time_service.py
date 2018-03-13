@@ -7,7 +7,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     super(ParticipantSummaryDao, self).__init__(ParticipantSummary)
 
 
-  def get_strata_by_filter(self, start_date, end_date, filters, stratification='TOTAL'):
+  def get_strata_by_filter(self, start_date, end_date, filters, stratification='TOTAL'):  # pylint: disable=unused-argument
 
     start_date = start_date.replace('-', '')
     end_date = end_date.replace('-', '')
@@ -81,5 +81,14 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
     params = {'start_date': start_date, 'end_date': end_date}
 
+    results_by_date = []
+
     with self.session() as session:
-      session.execute(sql, params)
+      cursor = session.execute(sql, params)
+
+    try:
+      results = cursor.fetchall()
+      for result in results:
+        results_by_date.append(result)
+    finally:
+      cursor.close()
