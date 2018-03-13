@@ -123,9 +123,9 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       filters_sql = []
       db_field = facet_map[facet]
       filters = facets[facet]
-      for filter in filters:
-        if str(filter) != '':
-          filters_sql.append('ps.' + db_field + ' = ' + str(int(filter)))
+      for q_filter in filters:
+        if str(q_filter) != '':
+          filters_sql.append('ps.' + db_field + ' = ' + str(int(q_filter)))
       if len(filters_sql) > 0:
         filters_sql = ' OR '.join(filters_sql)
         facets_sql.append(filters_sql)
