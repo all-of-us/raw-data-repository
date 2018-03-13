@@ -22,6 +22,8 @@ class ParticipantCountsOverTimeApi(Resource):
 
   @auth_required(HEALTHPRO)
   def get(self):
+
+    self.service = ParticipantCountsOverTimeService()
     self.hpo_dao = HPODao()
 
     # TODO: After enrollment status is filterable,
@@ -66,7 +68,10 @@ class ParticipantCountsOverTimeApi(Resource):
     del filters['stratification']
     del filters['awardees']
 
-    ParticipantCountsOverTimeService().get_strata_by_filter(start_date, end_date, filters)
+    results = self.service.get_strata_by_filter(start_date, end_date, filters)
+
+    return results
+
 
 
   def validate_params(self, params):
