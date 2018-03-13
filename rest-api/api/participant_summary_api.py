@@ -2,14 +2,13 @@ import json
 
 import datetime
 from api.base_api import BaseApi, make_sync_results_for_request
-from api_util import PTC_HEALTHPRO_AWARDEE, AWARDEE,  DEV_MAIL
+from api_util import PTC_HEALTHPRO_AWARDEE, AWARDEE, DEV_MAIL
 from app_util import auth_required, get_validated_user_info
 from dao.base_dao import json_serial
 from dao.participant_summary_dao import ParticipantSummaryDao
 from flask import request
-from werkzeug.exceptions import Forbidden, BadRequest
-from base64 import urlsafe_b64decode, urlsafe_b64encode
-from protorpc import messages
+from werkzeug.exceptions import Forbidden
+from base64 import urlsafe_b64encode
 
 class ParticipantSummaryApi(BaseApi):
   def __init__(self):
