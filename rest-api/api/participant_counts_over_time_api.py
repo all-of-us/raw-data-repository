@@ -56,10 +56,15 @@ class ParticipantCountsOverTimeApi(Resource):
 
     start_date = params['start_date']
     end_date = params['end_date']
-    filters = "awardee=" + params['awardees'][0]
 
     logging.info('params')
     logging.info(params)
+    filters = params
+
+    del filters['start_date']
+    del filters['end_date']
+    del filters['stratification']
+    del filters['awardees']
 
     ParticipantCountsOverTimeService().get_strata_by_filter(start_date, end_date, filters)
 
@@ -97,17 +102,18 @@ class ParticipantCountsOverTimeApi(Resource):
         awardee_id = get_awardee_id_from_name({'awardee': awardee}, self.hpo_dao)
         if awardee_id == None:
           raise BadRequest('Invalid awardee name: %s' % awardee)
-        awardee_ids.append(awardee_ids)
+        awardee_ids.append(awardee_id)
     params['awardee_ids'] = awardee_ids
 
     # Validate enrollment statuses
     try:
-      params["enrollment_statuses"] = [EnrollmentStatus(val) for val in enrollment_statuses]
+      params['enrollment_statuses'] = [EnrollmentStatus(val) for val in enrollment_statuses]
     except TypeError:
       valid_enrollment_statuses = EnrollmentStatus.to_dict()
       for enrollment_status in enrollment_statuses:
-        if enrollment_status not in valid_enrollment_statuses:
-          raise BadRequest('Invalid enrollment status: %s' % enrollment_status)
+        if enrollment_status != '':
+          if enrollment_status not in valid_enrollment_statuses:
+            raise BadRequest('Invalid enrollment status: %s' % enrollment_status)
 
     # Validate stratifications
     try:
