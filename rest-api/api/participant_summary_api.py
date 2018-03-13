@@ -1,10 +1,15 @@
+import json
+
+import datetime
 from api.base_api import BaseApi, make_sync_results_for_request
 from api_util import PTC_HEALTHPRO_AWARDEE, AWARDEE,  DEV_MAIL
 from app_util import auth_required, get_validated_user_info
+from dao.base_dao import json_serial
 from dao.participant_summary_dao import ParticipantSummaryDao
 from flask import request
-from werkzeug.exceptions import Forbidden
-
+from werkzeug.exceptions import Forbidden, BadRequest
+from base64 import urlsafe_b64decode, urlsafe_b64encode
+from protorpc import messages
 
 class ParticipantSummaryApi(BaseApi):
   def __init__(self):
@@ -41,7 +46,9 @@ class ParticipantSummaryApi(BaseApi):
       for filters in query.field_filters:
         if filters.field_name == 'lastModified':
           # set time delta subtract
-          print filters
+          time_delta = filters.value - datetime.timedelta(0, 300)
+          filters.value = time_delta
+
       query.always_return_token = True
     return query
 
@@ -54,3 +61,22 @@ class ParticipantSummaryApi(BaseApi):
 
   def _is_last_modified_sync(self):
     return request.args.get('_sync') == 'true'
+
+
+  def _make_pagination_token(self, item_dict, field_names):
+    vals = [item_dict.get(field_name) for field_name in field_names]
+    vals_json = json.dumps(vals, default=json_serial)
+    return urlsafe_b64encode(vals_json)
+
+
+  def _decode_token(self, pagination_token, fields):
+    try:
+      decoded_vals = json.loads(urlsafe_b64decode(pagination_token.encode("ascii")))
+    except:
+      raise BadRequest('Invalid pagination token: %r.' % pagination_token)
+    if not type(decoded_vals) is list or len(decoded_vals) != len(fields):
+      raise BadRequest('Invalid pagination token: %r.' % pagination_token)
+    for i in range(0, len(fields)):
+      decoded_vals[i] = self._from_json_value(fields[i], decoded_vals[i])
+    return decoded_vals
+
