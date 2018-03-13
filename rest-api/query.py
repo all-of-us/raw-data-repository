@@ -31,18 +31,18 @@ class OrderBy(object):
 
 class Query(object):
   def __init__(self, field_filters, order_by, max_results, pagination_token, a_id=None,
-               always_return_token=False):
+               always_return_token=False, include_total=False):
     self.field_filters = field_filters
     self.order_by = order_by
     self.max_results = max_results
     self.pagination_token = pagination_token
     self.ancestor_id = a_id
     self.always_return_token = always_return_token
+    self.include_total = include_total
 
 class Results(object):
-  def __init__(self, items, pagination_token, more_available=False):
+  def __init__(self, items, pagination_token=None, more_available=False, total=None):
     self.items = items
     self.pagination_token = pagination_token
     self.more_available = more_available
-
-
+    self.total = total
