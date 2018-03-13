@@ -159,12 +159,12 @@ class BaseDao(object):
       query, field_names = self._make_query(session, query_def)
       items = query.all()
 
-      if not items:
-        return Results([], None, False, total=0)
-
       total = None
       if query_def.include_total:
         total = self._count_query(session, query_def)
+
+      if not items:
+        return Results([], total=total)
 
     if len(items) > query_def.max_results:
       # Items, pagination token, and more are available

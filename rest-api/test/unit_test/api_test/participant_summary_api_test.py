@@ -254,6 +254,14 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     num_participants = 20
     SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
     questionnaire_id = self.create_demographics_questionnaire()
+
+    # Prove that no results means a total of zero (if requested)
+    response = self.send_get('ParticipantSummary?_count=10&_includeTotal=true')
+    self.assertEqual(0, response['total'])
+    # ... but ONLY if requested
+    response = self.send_get('ParticipantSummary?_count=10')
+    self.assertIsNone(response.get('total'))
+
     # generate participants to count
     for _ in range(num_participants):
       # Set up participant, questionnaire, and consent
@@ -284,11 +292,29 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       }
       self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
 
-    response = self.send_get('ParticipantSummary?_count=10&_includeTotal=true')
+    # Prove that without the query param, no total is returned
+    response = self.send_get('ParticipantSummary?_count=10')
+    self.assertIsNone(response.get('total'))
+
+    # Prove that the count and page are accurate even when the page size is larger than the total
+    response = self.send_get('ParticipantSummary?_count=100&_includeTotal=true')
+    self.assertEqual(response['total'], len(response['entry']))
+    self.assertEqual(response['total'], num_participants)
+
     # Prove that the 'total' key is correct
+    response = self.send_get('ParticipantSummary?_count=10&_includeTotal=true')
     self.assertEqual(num_participants, response['total'])
     # Prove that we're still only returning what's on a single page
     self.assertEqual(page_size, len(response['entry']))
+
+    # Prove that the total remains consistent across pages
+    next_url = response['link'][0]['url']
+    # Shave off the front so send_get actually sends the right thing
+    index = next_url.find('ParticipantSummary')
+    response2 = self.send_get(next_url[index:])
+    # Check that the total has remained the same and that it is still the total # participants
+    self.assertEqual(response2['total'], response['total'])
+    self.assertEqual(response2['total'], num_participants)
 
   def test_get_summary_with_skip_codes(self):
     # Set up the codes so they are mapped later.
