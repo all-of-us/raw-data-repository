@@ -47,6 +47,17 @@ class ParticipantSummaryDaoTest(NdbTestBase):
                       "Pagination tokens don't match; decoded = %s, %s" %
                       (_decode_token(pagination_token), _decode_token(results.pagination_token)))
 
+  def test_query_with_total(self):
+    num_participants = 5
+    query = Query([], None, 10, None, include_total=True)
+    results = self.dao.query(query)
+    self.assertEqual(results.total, 0)
+    for i in range(num_participants):
+      participant = Participant(participantId=i, biobankId=i)
+      self._insert(participant)
+    results = self.dao.query(query)
+    self.assertEqual(results.total, num_participants)
+
   def testQuery_noSummaries(self):
     self.assert_no_results(self.no_filter_query)
     self.assert_no_results(self.one_filter_query)

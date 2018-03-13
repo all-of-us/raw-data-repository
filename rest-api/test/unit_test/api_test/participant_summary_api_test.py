@@ -249,6 +249,74 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
+  def test_get_summary_list_returns_total(self):
+    page_size = 10
+    num_participants = 20
+    SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+    questionnaire_id = self.create_demographics_questionnaire()
+
+    # Prove that no results means a total of zero (if requested)
+    response = self.send_get('ParticipantSummary?_count=%d&_includeTotal=true' % page_size)
+    self.assertEqual(0, response['total'])
+    # ... but ONLY if requested
+    response = self.send_get('ParticipantSummary?_count=%d' % page_size)
+    self.assertIsNone(response.get('total'))
+
+    # generate participants to count
+    for _ in range(num_participants):
+      # Set up participant, questionnaire, and consent
+      participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+      participant_id = participant['participantId']
+      with FakeClock(TIME_1):
+        self.send_consent(participant_id)
+      # Populate some answers to the questionnaire
+      answers = {
+        'race': RACE_WHITE_CODE,
+        'genderIdentity': PMI_SKIP_CODE,
+        'firstName': self.fake.first_name(),
+        'middleName': self.fake.first_name(),
+        'lastName': self.fake.last_name(),
+        'zipCode': '78751',
+        'state': PMI_SKIP_CODE,
+        'streetAddress': '1234 Main Street',
+        'city': 'Austin',
+        'sex': PMI_SKIP_CODE,
+        'sexualOrientation': PMI_SKIP_CODE,
+        'phoneNumber': '512-555-5555',
+        'recontactMethod': PMI_SKIP_CODE,
+        'language': PMI_SKIP_CODE,
+        'education': PMI_SKIP_CODE,
+        'income': PMI_SKIP_CODE,
+        'dateOfBirth': datetime.date(1978, 10, 9),
+        'CABoRSignature': 'signature.pdf',
+      }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
+    # Prove that without the query param, no total is returned
+    response = self.send_get('ParticipantSummary?_count=%d' % page_size)
+    self.assertIsNone(response.get('total'))
+
+    # Prove that the count and page are accurate even when the page size is larger than the total
+    url = 'ParticipantSummary?_count=%d&_includeTotal=true' % (num_participants * 2)
+    response = self.send_get(url)
+    self.assertEqual(response['total'], len(response['entry']))
+    self.assertEqual(response['total'], num_participants)
+
+    # Prove that the 'total' key is correct
+    response = self.send_get('ParticipantSummary?_count=%d&_includeTotal=true' % page_size)
+    self.assertEqual(num_participants, response['total'])
+    # Prove that we're still only returning what's on a single page
+    self.assertEqual(page_size, len(response['entry']))
+
+    # Prove that the total remains consistent across pages
+    next_url = response['link'][0]['url']
+    # Shave off the front so send_get actually sends the right thing
+    index = next_url.find('ParticipantSummary')
+    response2 = self.send_get(next_url[index:])
+    # Check that the total has remained the same and that it is still the total # participants
+    self.assertEqual(response2['total'], response['total'])
+    self.assertEqual(response2['total'], num_participants)
+
   def test_get_summary_with_skip_codes(self):
     # Set up the codes so they are mapped later.
     SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
