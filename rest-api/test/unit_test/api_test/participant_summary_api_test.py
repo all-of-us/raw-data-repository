@@ -249,6 +249,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
+  def test_last_modified_sync(self):
+    uri = self.send_get('ParticipantSummary')
+    print uri
+
   def test_get_summary_list_returns_total(self):
     page_size = 10
     num_participants = 20
