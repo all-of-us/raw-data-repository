@@ -115,7 +115,6 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
     facet_map = {
       'awardee_ids': 'hpo_id',
-      'withdrawal_status': 'withdrawal_status',
       'enrollment_statuses': 'enrollment_status'
     }
 
