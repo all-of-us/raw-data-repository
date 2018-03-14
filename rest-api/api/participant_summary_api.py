@@ -26,9 +26,8 @@ class ParticipantSummaryApi(BaseApi):
 
     # data only for user_awardee, assert that query has same awardee
     if p_id:
-      if user_awardee:
-        if user_email != DEV_MAIL:
-          raise Forbidden
+      if user_awardee and user_email != DEV_MAIL:
+        raise Forbidden
       return super(ParticipantSummaryApi, self).get(p_id)
     else:
       if user_awardee:
@@ -54,13 +53,10 @@ class ParticipantSummaryApi(BaseApi):
   def _make_bundle(self, results, id_field, participant_id):
     if self._is_last_modified_sync():
       return make_sync_results_for_request(self.dao, results)
-
-    return super(ParticipantSummaryApi, self)._make_bundle(results, id_field,
-                                                                   participant_id)
+    return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id)
 
   def _is_last_modified_sync(self):
     return request.args.get('_sync') == 'true'
-
 
   def _make_pagination_token(self, item_dict, field_names):
     vals = [item_dict.get(field_name) for field_name in field_names]
