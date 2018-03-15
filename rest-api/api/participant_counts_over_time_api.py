@@ -75,7 +75,7 @@ class ParticipantCountsOverTimeApi(Resource):
 
 
   def validate_params(self, params):
-    """Validates URL parameters, converting human-friendly values to canonical representations as needed
+    """Validates URL parameters, converting human-friendly values to canonical representations
 
     :param params: Dictionary of URL parameters and their values
     :return: Validated parameters in canonical form
