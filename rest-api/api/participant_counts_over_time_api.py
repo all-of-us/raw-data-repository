@@ -68,13 +68,18 @@ class ParticipantCountsOverTimeApi(Resource):
     del filters['stratification']
     del filters['awardees']
 
-    results = self.service.get_strata_by_filter(start_date, end_date, filters)
+    results = self.service.get_filtered_results(start_date, end_date, filters,
+                                                stratification=stratification)
 
     return results
 
 
-
   def validate_params(self, params):
+    """Validates URL parameters, converting human-friendly values to canonical representations as needed
+
+    :param params: Dictionary of URL parameters and their values
+    :return: Validated parameters in canonical form
+    """
 
     start_date_str = params['start_date']
     end_date_str = params['end_date']

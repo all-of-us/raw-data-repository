@@ -8,7 +8,15 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     super(ParticipantSummaryDao, self).__init__(ParticipantSummary)
 
 
-  def get_strata_by_filter(self, start_date, end_date, filters, stratification='ENROLLMENT_STATUS'):
+  def get_filtered_results(self, start_date, end_date, filters, stratification='ENROLLMENT_STATUS'):
+    """Queries DB, returns results in format consumed by front-end
+
+    :param start_date: Start date string, e.g. '2018-01-01'
+    :param end_date: End date string, e.g. '2018-01-31'
+    :param filters: Objects representing filters specified in UI
+    :param stratification: How to stratify (layer) results, as in a stacked bar chart
+    :return: Filtered, stratified results by date
+    """
 
     start_date = start_date.replace('-', '')
     end_date = end_date.replace('-', '')
@@ -18,8 +26,9 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     if stratification == 'TOTAL':
       strata = ['TOTAL']
       sql = """
-        SELECT calendar.day start_date,
-            SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) registered_count
+        SELECT
+            SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) registered_count,
+            calendar.day start_date
         FROM calendar,
         (SELECT COUNT(*) cnt, DATE(ps.sign_up_time) day
         FROM participant_summary ps
@@ -32,10 +41,12 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     elif stratification == 'ENROLLMENT_STATUS':
       strata = [str(EnrollmentStatus(val)) for val in EnrollmentStatus]
       sql = """
-      SELECT SUM(registered_cnt * (cnt_day <= calendar.day)) registered_participants,
-       SUM(member_cnt * (cnt_day <= calendar.day)) member_participants,
-       SUM(full_cnt * (cnt_day <= calendar.day)) full_participants,
-       calendar.day from
+      SELECT
+         SUM(registered_cnt * (cnt_day <= calendar.day)) registered_participants,
+         SUM(member_cnt * (cnt_day <= calendar.day)) member_participants,
+         SUM(full_cnt * (cnt_day <= calendar.day)) full_participants,
+         calendar.day
+       FROM
        (SELECT c2.day cnt_day,
                registered.cnt registered_cnt,
                member.cnt member_cnt,
@@ -88,6 +99,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     with self.session() as session:
       cursor = session.execute(sql, params)
 
+    # Iterate through each result (by date), transforming tabular SQL results
+    # into expected list-of-dictionaries response format
     try:
       results = cursor.fetchall()
       for result in results:
@@ -110,6 +123,11 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
 
   def get_facets_sql(self, facets):
+    """Helper function to transform facets/filters selection into SQL
+
+    :param facets: Object representing facets and filters to apply to query results
+    :return: SQL for 'WHERE' clause, reflecting filters specified in UI
+    """
 
     facets_sql = []
 
