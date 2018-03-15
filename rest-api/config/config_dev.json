@@ -12,7 +12,7 @@
         "ip4": ["127.0.0.1/32"]
       }
     },
-    "awardee-test@pmi-drc-api-test.iam.gserviceaccount.com": {
+    "awardee-dev@pmi-drc-api-test.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "PITT"
     }
