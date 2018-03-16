@@ -299,8 +299,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response2 = self.send_get(next_url[index:])
     # print response2['link']
     self.assertEqual(len(response2['entry']), 10)
-    # new_batch = [setup_participants(TIME_5) for _ in range(10)]
-    # self.assertNotEqual(sorted(new_batch), sorted(response['entry']))
     for _ in range(num_participants):
       setup_participants(TIME_3)
 
@@ -310,10 +308,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     print len(response3['entry'])
     # self.assertEqual(len(response3['entry']), 10)
 
-
-    next_url3 = response3['link'][0]['url']
-    response4 = self.send_get(next_url3[index:])
-    print len(response4)
 
   def test_get_summary_list_returns_total(self):
     page_size = 10
