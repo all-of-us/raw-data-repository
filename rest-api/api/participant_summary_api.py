@@ -16,27 +16,32 @@ class ParticipantSummaryApi(BaseApi):
 
   @auth_required(PTC_HEALTHPRO_AWARDEE)
   def get(self, p_id=None):
-    user_awardee = None
+    auth_awardee = None
     user_email, user_info = get_validated_user_info()
     if AWARDEE in user_info['roles']:
       if user_email == DEV_MAIL:
-        user_awardee = request.args.get('awardee')
+        auth_awardee = request.args.get('awardee')
       else:
         try:
-          user_awardee = user_info['awardee']
+          if user_info['awardee']:
+            auth_awardee = user_info['awardee']
+          elif user_info['organization']:
+            auth_awardee = user_info['organization']
+          else:
+            auth_awardee = user_info['site']
         except KeyError:
           raise BadRequest("Must supply awardee for request.")
 
     # data only for user_awardee, assert that query has same awardee
     if p_id:
-      if user_awardee and user_email != DEV_MAIL:
+      if auth_awardee and user_email != DEV_MAIL:
         raise Forbidden
       return super(ParticipantSummaryApi, self).get(p_id)
     else:
-      if user_awardee:
+      if auth_awardee:
         # make sure request has awardee
         requested_awardee = request.args.get('awardee')
-        if requested_awardee != user_awardee:
+        if requested_awardee != auth_awardee:
           raise Forbidden
       return super(ParticipantSummaryApi, self)._query('participantId')
 
