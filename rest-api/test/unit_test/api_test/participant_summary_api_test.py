@@ -292,7 +292,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     first_batch = [setup_participant(t1) for _ in range(10)]
     url = 'ParticipantSummary?_sort=lastModified&_sync=true&awardee=PITT'
     response = self.send_get(url)
-
     # We have the same number of participants as summaries
     self.assertEqual(len(response['entry']), len(first_batch))
     # With the same ID's (they're the same participants)
@@ -300,6 +299,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       sorted([p['participantId'] for p in first_batch]),
       sorted([p['resource']['participantId'] for p in response['entry']]),
     )
+    self.assertEqual(sorted([p['resource']['lastModified'] for p in response['entry']]),
+                      [p['resource']['lastModified'] for p in response['entry']])
 
     # Get the next chunk with the sync url
     # Verify that this is, in fact, a sync URL - not a next
@@ -315,7 +316,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # Create a second batch
     second_batch = [setup_participant(t2) for _ in range(10)]
     response3 = self.send_get(sync_url[index:])
-
     # We have the same number of participants as summaries
     self.assertEqual(len(response3['entry']), len(second_batch))
     # With the same ID's (they're the same participants)
@@ -323,6 +323,17 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       sorted([p['participantId'] for p in second_batch]),
       sorted([p['resource']['participantId'] for p in response3['entry']]),
     )
+
+    no_count_url = 'ParticipantSummary?lastModified=lt%s&_sync=true&awardee=PITT' % TIME_5
+    no_count_response = self.send_get(no_count_url)
+    total_count = len(no_count_response['entry'])
+
+    url = 'ParticipantSummary?lastModified=lt%s&_count=10&_sync=true&awardee=PITT' % TIME_5
+    response = self.send_get(url)
+    self.assertEqual(len(response['entry']), total_count//2)
+    next_url = response['link'][0]['url']
+    next_10 = self.send_get(next_url[index:])
+    self.assertEqual(len(next_10['entry']), total_count//2)
 
   def test_get_summary_list_returns_total(self):
     page_size = 10
