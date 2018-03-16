@@ -24,7 +24,7 @@ class ParticipantSummaryApi(BaseApi):
       else:
         try:
           user_awardee = user_info['awardee']
-        except KeyError as err:
+        except KeyError:
           raise BadRequest("Must supply awardee for request.")
 
     # data only for user_awardee, assert that query has same awardee
