@@ -51,12 +51,10 @@ class ParticipantSummaryApi(BaseApi):
           filters.value = time_delta
 
       query.always_return_token = True
-      print 'PS make query'
     return query
 
   def _make_bundle(self, results, id_field, participant_id):
     if self._is_last_modified_sync():
-      print 'ps make bundle'
       return make_sync_results_for_request(self.dao, results)
     return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id)
 
@@ -64,7 +62,6 @@ class ParticipantSummaryApi(BaseApi):
     return request.args.get('_sync') == 'true'
 
   def _make_pagination_token(self, item_dict, field_names):
-    print 'ps make pagination'
     vals = [item_dict.get(field_name) for field_name in field_names]
     vals_json = json.dumps(vals, default=json_serial)
     return urlsafe_b64encode(vals_json)
