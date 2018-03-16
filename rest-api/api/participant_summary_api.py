@@ -47,7 +47,7 @@ class ParticipantSummaryApi(BaseApi):
       for filters in query.field_filters:
         if filters.field_name == 'lastModified':
           # set time delta subtract
-          time_delta = filters.value - datetime.timedelta(0, 300)
+          time_delta = filters.value - datetime.timedelta(seconds=300)
           filters.value = time_delta
 
       query.always_return_token = True

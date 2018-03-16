@@ -171,7 +171,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     return expected
 
-  def post_demographics_questionnaire(self, participant_id, questionnaire_id, **kwargs):
+  def post_demographics_questionnaire(self,
+                                      participant_id,
+                                      questionnaire_id,
+                                      time=TIME_1, **kwargs):
     """POSTs answers to the demographics questionnaire for the participant"""
     answers = {'code_answers': [],
                'string_answers': [],
@@ -189,7 +192,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     response_data = make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
 
-    with FakeClock(TIME_1):
+    with FakeClock(time):
       url = 'Participant/%s/QuestionnaireResponse' % participant_id
       return self.send_post(url, request_data=response_data)
 
@@ -250,20 +253,18 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertBundle([], response)
 
   def test_last_modified_sync(self):
-    num_participants = 20
     SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
     questionnaire_id = self.create_demographics_questionnaire()
+    t1 = TIME_1
+    t2 = TIME_1 + datetime.timedelta(seconds=400)
 
-
-
-    def setup_participants(TIME):
+    def setup_participant(when):
       # Set up participant, questionnaire, and consent
-      with FakeClock(TIME):
-
+      with FakeClock(when):
         participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
         participant_id = participant['participantId']
         self.send_consent(participant_id)
-      # Populate some answers to the questionnaire
+        # Populate some answers to the questionnaire
         answers = {
           'race': RACE_WHITE_CODE,
           'genderIdentity': PMI_SKIP_CODE,
@@ -284,36 +285,44 @@ class ParticipantSummaryApiTest(FlaskTestBase):
           'dateOfBirth': datetime.date(1978, 10, 9),
           'CABoRSignature': 'signature.pdf',
         }
-        self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+      return participant
 
-    # generate participants to count
-    for _ in range(num_participants):
-      setup_participants(TIME_2)
+    # Create the first batch and fetch their summaries
+    first_batch = [setup_participant(t1) for _ in range(10)]
+    url = 'ParticipantSummary?_sort=lastModified&_sync=true&awardee=PITT'
+    response = self.send_get(url)
 
-    response = self.send_get('ParticipantSummary?_sync=true&_count=10&awardee=PITT&lastModified'
-                             '=gt%s' % TIME_6)
-    self.assertEqual(len(response['entry']), 10)
-    # Prove that the total remains consistent across pages
-    next_url = response['link'][0]['url']
-    index = next_url.find('ParticipantSummary')
-    response2 = self.send_get(next_url[index:])
-    # print response2['link']
-    self.assertEqual(len(response2['entry']), 10)
-    # new_batch = [setup_participants(TIME_5) for _ in range(10)]
-    # self.assertNotEqual(sorted(new_batch), sorted(response['entry']))
-    for _ in range(num_participants):
-      setup_participants(TIME_3)
+    # We have the same number of participants as summaries
+    self.assertEqual(len(response['entry']), len(first_batch))
+    # With the same ID's (they're the same participants)
+    self.assertEqual(
+      sorted([p['participantId'] for p in first_batch]),
+      sorted([p['resource']['participantId'] for p in response['entry']]),
+    )
 
-    self.assertNotEqual(response2, response)
-    next_url2 = response2['link'][0]['url']
-    response3 = self.send_get(next_url2[index:])
-    print len(response3['entry'])
-    # self.assertEqual(len(response3['entry']), 10)
+    # Get the next chunk with the sync url
+    # Verify that this is, in fact, a sync URL - not a next
+    sync_url = response['link'][0]['url']
+    index = sync_url.find('ParticipantSummary')
+    self.assertEqual(response['link'][0]['relation'], 'sync')
 
+    # Verify that the next chunk has no results (everyone is accounted for)
+    response2 = self.send_get(sync_url[index:])
+    self.assertEqual(len(response2['entry']), 0)
+    self.assertEqual(response2['entry'], [])
 
-    next_url3 = response3['link'][0]['url']
-    response4 = self.send_get(next_url3[index:])
-    print len(response4)
+    # Create a second batch
+    second_batch = [setup_participant(t2) for _ in range(10)]
+    response3 = self.send_get(sync_url[index:])
+
+    # We have the same number of participants as summaries
+    self.assertEqual(len(response3['entry']), len(second_batch))
+    # With the same ID's (they're the same participants)
+    self.assertEqual(
+      sorted([p['participantId'] for p in second_batch]),
+      sorted([p['resource']['participantId'] for p in response3['entry']]),
+    )
 
   def test_get_summary_list_returns_total(self):
     page_size = 10
