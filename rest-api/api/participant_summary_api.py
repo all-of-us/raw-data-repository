@@ -7,7 +7,7 @@ from app_util import auth_required, get_validated_user_info
 from dao.base_dao import json_serial
 from dao.participant_summary_dao import ParticipantSummaryDao
 from flask import request
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, BadRequest
 from base64 import urlsafe_b64encode
 
 class ParticipantSummaryApi(BaseApi):
@@ -22,7 +22,10 @@ class ParticipantSummaryApi(BaseApi):
       if user_email == DEV_MAIL:
         user_awardee = request.args.get('awardee')
       else:
-        user_awardee = user_info['awardee']
+        try:
+          user_awardee = user_info['awardee']
+        except KeyError as err:
+          raise BadRequest("Must supply awardee for request.")
 
     # data only for user_awardee, assert that query has same awardee
     if p_id:

@@ -225,7 +225,6 @@ def get_sync_results_for_request(dao, max_results):
 
   results = dao.query(Query([], OrderBy('logPositionId', True),
                             count, token, always_return_token=True))
-
   return make_sync_results_for_request(dao, results)
 
 def make_sync_results_for_request(dao, results):
@@ -240,4 +239,5 @@ def make_sync_results_for_request(dao, results):
   for item in results.items:
     entries.append({'resource': dao.to_client_json(item)})
   bundle_dict['entry'] = entries
+  print len(entries), '...from base api make_sync_resluts'
   return jsonify(bundle_dict)

@@ -21,7 +21,7 @@ TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
 TIME_4 = datetime.datetime(2016, 1, 4)
 TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
-
+TIME_6 = datetime.datetime(2015, 1, 1)
 
 class ParticipantSummaryMySqlApiTest(FlaskTestBase):
 
@@ -254,44 +254,66 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
     questionnaire_id = self.create_demographics_questionnaire()
 
-    # generate participants to count
-    for _ in range(num_participants):
+
+
+    def setup_participants(TIME):
       # Set up participant, questionnaire, and consent
-      participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
-      participant_id = participant['participantId']
-      with FakeClock(TIME_1):
+      with FakeClock(TIME):
+
+        participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+        participant_id = participant['participantId']
         self.send_consent(participant_id)
       # Populate some answers to the questionnaire
-      answers = {
-        'race': RACE_WHITE_CODE,
-        'genderIdentity': PMI_SKIP_CODE,
-        'firstName': self.fake.first_name(),
-        'middleName': self.fake.first_name(),
-        'lastName': self.fake.last_name(),
-        'zipCode': '78751',
-        'state': PMI_SKIP_CODE,
-        'streetAddress': '1234 Main Street',
-        'city': 'Austin',
-        'sex': PMI_SKIP_CODE,
-        'sexualOrientation': PMI_SKIP_CODE,
-        'phoneNumber': '512-555-5555',
-        'recontactMethod': PMI_SKIP_CODE,
-        'language': PMI_SKIP_CODE,
-        'education': PMI_SKIP_CODE,
-        'income': PMI_SKIP_CODE,
-        'dateOfBirth': datetime.date(1978, 10, 9),
-        'CABoRSignature': 'signature.pdf',
-      }
-      self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+        answers = {
+          'race': RACE_WHITE_CODE,
+          'genderIdentity': PMI_SKIP_CODE,
+          'firstName': self.fake.first_name(),
+          'middleName': self.fake.first_name(),
+          'lastName': self.fake.last_name(),
+          'zipCode': '78751',
+          'state': PMI_SKIP_CODE,
+          'streetAddress': '1234 Main Street',
+          'city': 'Austin',
+          'sex': PMI_SKIP_CODE,
+          'sexualOrientation': PMI_SKIP_CODE,
+          'phoneNumber': '512-555-5555',
+          'recontactMethod': PMI_SKIP_CODE,
+          'language': PMI_SKIP_CODE,
+          'education': PMI_SKIP_CODE,
+          'income': PMI_SKIP_CODE,
+          'dateOfBirth': datetime.date(1978, 10, 9),
+          'CABoRSignature': 'signature.pdf',
+        }
+        self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
 
-    response = self.send_get('ParticipantSummary?_sync=true&_count=10&lastModified=gt%s' % TIME_1)
+    # generate participants to count
+    for _ in range(num_participants):
+      setup_participants(TIME_2)
 
+    response = self.send_get('ParticipantSummary?_sync=true&_count=10&awardee=PITT&lastModified'
+                             '=gt%s' % TIME_6)
     self.assertEqual(len(response['entry']), 10)
     # Prove that the total remains consistent across pages
     next_url = response['link'][0]['url']
     index = next_url.find('ParticipantSummary')
     response2 = self.send_get(next_url[index:])
+    # print response2['link']
     self.assertEqual(len(response2['entry']), 10)
+    # new_batch = [setup_participants(TIME_5) for _ in range(10)]
+    # self.assertNotEqual(sorted(new_batch), sorted(response['entry']))
+    for _ in range(num_participants):
+      setup_participants(TIME_3)
+
+    self.assertNotEqual(response2, response)
+    next_url2 = response2['link'][0]['url']
+    response3 = self.send_get(next_url2[index:])
+    print len(response3['entry'])
+    # self.assertEqual(len(response3['entry']), 10)
+
+
+    next_url3 = response3['link'][0]['url']
+    response4 = self.send_get(next_url3[index:])
+    print len(response4)
 
   def test_get_summary_list_returns_total(self):
     page_size = 10
