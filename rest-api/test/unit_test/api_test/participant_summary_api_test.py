@@ -260,7 +260,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     t3 = t2 + datetime.timedelta(seconds=30)
     t4 = t3 + datetime.timedelta(seconds=30)
     # 5 minute buffer
-    t5 = t4 + datetime.timedelta(seconds=299)
+    # t5 = t4 + datetime.timedelta(seconds=299)
 
     def setup_participant(when):
       # Set up participant, questionnaire, and consent
