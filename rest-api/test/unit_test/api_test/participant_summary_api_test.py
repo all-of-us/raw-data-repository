@@ -21,7 +21,7 @@ TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
 TIME_4 = datetime.datetime(2016, 1, 4)
 TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
-
+TIME_6 = datetime.datetime(2015, 1, 1)
 
 class ParticipantSummaryMySqlApiTest(FlaskTestBase):
 
@@ -171,7 +171,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     return expected
 
-  def post_demographics_questionnaire(self, participant_id, questionnaire_id, **kwargs):
+  def post_demographics_questionnaire(self,
+                                      participant_id,
+                                      questionnaire_id,
+                                      time=TIME_1, **kwargs):
     """POSTs answers to the demographics questionnaire for the participant"""
     answers = {'code_answers': [],
                'string_answers': [],
@@ -189,7 +192,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     response_data = make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
 
-    with FakeClock(TIME_1):
+    with FakeClock(time):
       url = 'Participant/%s/QuestionnaireResponse' % participant_id
       return self.send_post(url, request_data=response_data)
 
@@ -249,6 +252,78 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
+  def test_last_modified_sync(self):
+    SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+    questionnaire_id = self.create_demographics_questionnaire()
+    t1 = TIME_1
+    t2 = TIME_1 + datetime.timedelta(seconds=400)
+
+    def setup_participant(when):
+      # Set up participant, questionnaire, and consent
+      with FakeClock(when):
+        participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+        participant_id = participant['participantId']
+        self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+          'race': RACE_WHITE_CODE,
+          'genderIdentity': PMI_SKIP_CODE,
+          'firstName': self.fake.first_name(),
+          'middleName': self.fake.first_name(),
+          'lastName': self.fake.last_name(),
+          'zipCode': '78751',
+          'state': PMI_SKIP_CODE,
+          'streetAddress': '1234 Main Street',
+          'city': 'Austin',
+          'sex': PMI_SKIP_CODE,
+          'sexualOrientation': PMI_SKIP_CODE,
+          'phoneNumber': '512-555-5555',
+          'recontactMethod': PMI_SKIP_CODE,
+          'language': PMI_SKIP_CODE,
+          'education': PMI_SKIP_CODE,
+          'income': PMI_SKIP_CODE,
+          'dateOfBirth': datetime.date(1978, 10, 9),
+          'CABoRSignature': 'signature.pdf',
+        }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+      return participant
+
+    # Create the first batch and fetch their summaries
+    first_batch = [setup_participant(t1) for _ in range(10)]
+    url = 'ParticipantSummary?_sort=lastModified&_sync=true&awardee=PITT'
+    response = self.send_get(url)
+
+    # We have the same number of participants as summaries
+    self.assertEqual(len(response['entry']), len(first_batch))
+    # With the same ID's (they're the same participants)
+    self.assertEqual(
+      sorted([p['participantId'] for p in first_batch]),
+      sorted([p['resource']['participantId'] for p in response['entry']]),
+    )
+
+    # Get the next chunk with the sync url
+    # Verify that this is, in fact, a sync URL - not a next
+    sync_url = response['link'][0]['url']
+    index = sync_url.find('ParticipantSummary')
+    self.assertEqual(response['link'][0]['relation'], 'sync')
+
+    # Verify that the next chunk has no results (everyone is accounted for)
+    response2 = self.send_get(sync_url[index:])
+    self.assertEqual(len(response2['entry']), 0)
+    self.assertEqual(response2['entry'], [])
+
+    # Create a second batch
+    second_batch = [setup_participant(t2) for _ in range(10)]
+    response3 = self.send_get(sync_url[index:])
+
+    # We have the same number of participants as summaries
+    self.assertEqual(len(response3['entry']), len(second_batch))
+    # With the same ID's (they're the same participants)
+    self.assertEqual(
+      sorted([p['participantId'] for p in second_batch]),
+      sorted([p['resource']['participantId'] for p in response3['entry']]),
+    )
+
   def test_get_summary_list_returns_total(self):
     page_size = 10
     num_participants = 20
@@ -295,7 +370,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # Prove that without the query param, no total is returned
     response = self.send_get('ParticipantSummary?_count=%d' % page_size)
     self.assertIsNone(response.get('total'))
-
     # Prove that the count and page are accurate even when the page size is larger than the total
     url = 'ParticipantSummary?_count=%d&_includeTotal=true' % (num_participants * 2)
     response = self.send_get(url)
