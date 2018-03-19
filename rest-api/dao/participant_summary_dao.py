@@ -1,9 +1,5 @@
 import threading
-import json
-from base64 import urlsafe_b64decode
-
 import datetime
-from flask import request
 from dao.organization_dao import OrganizationDao
 from query import OrderBy, PropertyType
 from werkzeug.exceptions import BadRequest, NotFound
