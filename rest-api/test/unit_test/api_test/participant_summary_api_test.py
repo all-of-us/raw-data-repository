@@ -324,11 +324,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       sorted([p['resource']['participantId'] for p in response3['entry']]),
     )
 
-    no_count_url = 'ParticipantSummary?lastModified=lt%s&_sync=true&awardee=PITT' % TIME_5
+    no_count_url = 'ParticipantSummary?lastModified=lt%s&_sync=true&awardee=PITT' % TIME_4
     no_count_response = self.send_get(no_count_url)
     total_count = len(no_count_response['entry'])
     self.assertEquals(total_count, 20)
-    url = 'ParticipantSummary?lastModified=lt%s&_count=10&_sync=true&awardee=PITT' % TIME_5
+    url = 'ParticipantSummary?lastModified=lt%s&_count=10&_sync=true&awardee=PITT' % TIME_4
     response = self.send_get(url)
     self.assertEqual(len(response['entry']), 10)
     next_url = response['link'][0]['url']
@@ -339,10 +339,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     no_lm_response = self.send_get(no_last_modified_url)
     self.assertEquals(len(no_lm_response['entry']), 20)
     self.assertEquals(no_lm_response['link'][0]['relation'], 'sync')
-    sync_url = no_lm_response['link'][0]['url']
-    no_lm_participant = setup_participant(TIME_6)
-    update = self.send_get(sync_url[index:])
-    print update
 
   def test_get_summary_list_returns_total(self):
     page_size = 10
