@@ -43,14 +43,8 @@ class ParticipantSummaryApi(BaseApi):
   def _make_query(self):
     query = super(ParticipantSummaryApi, self)._make_query()
     if self._is_last_modified_sync():
-      # roll back last modified time
-      # for filters in query.field_filters:
-      #   if filters.field_name == 'lastModified':
-      #     # set time delta subtract
-      #     time_delta = filters.value - datetime.timedelta(seconds=300)
-      #     filters.value = time_delta
-
       query.always_return_token = True
+
     return query
 
   def _make_bundle(self, results, id_field, participant_id):

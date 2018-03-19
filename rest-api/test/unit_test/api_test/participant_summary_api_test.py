@@ -257,6 +257,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     questionnaire_id = self.create_demographics_questionnaire()
     t1 = TIME_1
     t2 = TIME_1 + datetime.timedelta(seconds=400)
+    t3 = t2 + datetime.timedelta(seconds=30)
+    t4 = t3 + datetime.timedelta(seconds=30)
+    # 5 minute buffer
+    t5 = t4 + datetime.timedelta(seconds=299)
+    t6 = t5 + datetime.timedelta(seconds=600)
 
     def setup_participant(when):
       # Set up participant, questionnaire, and consent
@@ -289,11 +294,21 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       return participant
 
     # Create the first batch and fetch their summaries
-    first_batch = [setup_participant(t1) for _ in range(10)]
+    first_batch = [setup_participant(t1) for _ in range(5)]
+    first_batch.extend([setup_participant(t2) for _ in range(2)])
+    first_batch.extend([setup_participant(t3) for _ in range(3)])
     url = 'ParticipantSummary?_sort=lastModified&_sync=true&awardee=PITT'
     response = self.send_get(url)
     # We have the same number of participants as summaries
     self.assertEqual(len(response['entry']), len(first_batch))
+    last_modified_list = list()
+    first_batch_list = list()
+    for i in response['entry']:
+      last_modified_list.append(i['resource']['lastModified'])
+    for i in first_batch:
+      first_batch_list.append(i['lastModified'])
+
+    self.assertListEqual(last_modified_list, sorted(first_batch_list))
     # With the same ID's (they're the same participants)
     self.assertEqual(
       sorted([p['participantId'] for p in first_batch]),
@@ -314,7 +329,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEqual(response2['entry'], [])
 
     # Create a second batch
-    second_batch = [setup_participant(t2) for _ in range(10)]
+    second_batch = [setup_participant(t4) for _ in range(10)]
     response3 = self.send_get(sync_url[index:])
     # We have the same number of participants as summaries
     self.assertEqual(len(response3['entry']), len(second_batch))
@@ -339,6 +354,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     no_lm_response = self.send_get(no_last_modified_url)
     self.assertEquals(len(no_lm_response['entry']), 20)
     self.assertEquals(no_lm_response['link'][0]['relation'], 'sync')
+    # ensure same participants are returned before 5 min. buffer
+    sync_url = no_lm_response['link'][0]['url']
+    setup_participant(t4)
+    add_one_more = self.send_get(sync_url[index:])
+    # self.assertEquals(len(add_one_more['entry']), 21)
+    # pretty sure this should be true ^
 
   def test_get_summary_list_returns_total(self):
     page_size = 10
