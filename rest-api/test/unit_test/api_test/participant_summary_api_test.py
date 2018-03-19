@@ -261,7 +261,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     t4 = t3 + datetime.timedelta(seconds=30)
     # 5 minute buffer
     t5 = t4 + datetime.timedelta(seconds=299)
-    t6 = t5 + datetime.timedelta(seconds=600)
 
     def setup_participant(when):
       # Set up participant, questionnaire, and consent
@@ -358,6 +357,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     sync_url = no_lm_response['link'][0]['url']
     setup_participant(t4)
     add_one_more = self.send_get(sync_url[index:])
+    print len(add_one_more['entry'])
     # self.assertEquals(len(add_one_more['entry']), 21)
     # pretty sure this should be true ^
 
