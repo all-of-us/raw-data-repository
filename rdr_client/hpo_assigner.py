@@ -2,7 +2,7 @@
 
 Usage:
   ./run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
-      hpo_assigner.py participant_ids_and_hpos.csv [--dry_run]
+      hpo_assigner.py participant_ids_and_hpos.csv --pairing [site|organization|awardee] [--dry_run]
 
 Where the CSV contains lines with P12345678,NEW_HPO_ID like:
   P11111111,AZ_TUCSON
@@ -13,7 +13,6 @@ Where the CSV contains lines with P12345678,NEW_HPO_ID like:
 
 import csv
 import logging
-
 from main_util import get_parser, configure_logging
 
 from client import Client, HttpException, client_log
@@ -25,11 +24,13 @@ def main(client):
   num_no_change = 0
   num_updates = 0
   num_errors = 0
+
   with open(client.args.file) as csvfile:
     reader = csv.reader(csvfile)
     for line in reader:
       try:
         participant_id, hpo = [v.strip() for v in line]
+        pairing = client.args.pairing
       except ValueError as e:
         logging.error('Skipping invalid line %d (parsed as %r): %s.', reader.line_num, line, e)
         num_errors += 1
@@ -64,10 +65,10 @@ def main(client):
       if hpo == 'UNSET':
         participant['providerLink'] = []
       else:
-        participant['providerLink'] = [{'primary': True,
-                                        'organization': {'reference': _ORG_PREFIX + hpo}}]
+        participant[pairing] = hpo
+
       if client.args.dry_run:
-        logging.info('Dry run, would update providerLink to %r.', participant['providerLink'])
+        logging.info('Dry run, would update participant[%r] to %r.', pairing, hpo)
       else:
         client.request_json('Participant/%s' % participant_id, 'PUT', participant,
                             headers={'If-Match': client.last_etag})
@@ -98,4 +99,5 @@ if __name__ == '__main__':
   arg_parser = get_parser()
   arg_parser.add_argument('file', help='file containing the list of HPOs and participant IDs')
   arg_parser.add_argument('--dry_run', action='store_true')
+  arg_parser.add_argument('--pairing', help='set level of pairing at site')
   main(Client(parser=arg_parser))
