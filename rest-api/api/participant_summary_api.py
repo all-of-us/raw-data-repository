@@ -1,14 +1,10 @@
-import json
-
-import datetime
 from api.base_api import BaseApi, make_sync_results_for_request
 from api_util import PTC_HEALTHPRO_AWARDEE, AWARDEE, DEV_MAIL
 from app_util import auth_required, get_validated_user_info
-from dao.base_dao import json_serial
 from dao.participant_summary_dao import ParticipantSummaryDao
 from flask import request
-from werkzeug.exceptions import Forbidden, BadRequest
-from base64 import urlsafe_b64encode
+from werkzeug.exceptions import Forbidden, InternalServerError
+
 
 class ParticipantSummaryApi(BaseApi):
   def __init__(self):
@@ -25,12 +21,9 @@ class ParticipantSummaryApi(BaseApi):
         try:
           if user_info['awardee']:
             auth_awardee = user_info['awardee']
-          elif user_info['organization']:
-            auth_awardee = user_info['organization']
-          else:
-            auth_awardee = user_info['site']
+
         except KeyError:
-          raise BadRequest("Must supply awardee for request.")
+          raise InternalServerError("Config error for awardee")
 
     # data only for user_awardee, assert that query has same awardee
     if p_id:
@@ -45,15 +38,17 @@ class ParticipantSummaryApi(BaseApi):
           raise Forbidden
       return super(ParticipantSummaryApi, self)._query('participantId')
 
+
+
   def _make_query(self):
     query = super(ParticipantSummaryApi, self)._make_query()
     if self._is_last_modified_sync():
       # roll back last modified time
-      for filters in query.field_filters:
-        if filters.field_name == 'lastModified':
-          # set time delta subtract
-          time_delta = filters.value - datetime.timedelta(seconds=300)
-          filters.value = time_delta
+      # for filters in query.field_filters:
+      #   if filters.field_name == 'lastModified':
+      #     # set time delta subtract
+      #     time_delta = filters.value - datetime.timedelta(seconds=300)
+      #     filters.value = time_delta
 
       query.always_return_token = True
     return query
@@ -65,8 +60,3 @@ class ParticipantSummaryApi(BaseApi):
 
   def _is_last_modified_sync(self):
     return request.args.get('_sync') == 'true'
-
-  def _make_pagination_token(self, item_dict, field_names):
-    vals = [item_dict.get(field_name) for field_name in field_names]
-    vals_json = json.dumps(vals, default=json_serial)
-    return urlsafe_b64encode(vals_json)

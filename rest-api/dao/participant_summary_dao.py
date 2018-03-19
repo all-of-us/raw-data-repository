@@ -1,5 +1,9 @@
 import threading
+import json
+from base64 import urlsafe_b64decode
 
+import datetime
+from flask import request
 from dao.organization_dao import OrganizationDao
 from query import OrderBy, PropertyType
 from werkzeug.exceptions import BadRequest, NotFound
@@ -10,7 +14,7 @@ from api_util import format_json_date, format_json_enum, format_json_code, forma
 from api_util import format_json_site
 import clock
 import config
-from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
+from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS, LAST_MODIFIED_BUFFER_SECONDS
 from dao.base_dao import UpdatableDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from dao.code_dao import CodeDao
@@ -335,6 +339,15 @@ class ParticipantSummaryDao(UpdatableDao):
 
     return result
 
+  def _decode_token(self, query_def, fields):
+    decoded_vals = super(ParticipantSummaryDao, self)._decode_token(query_def, fields)
+    if query_def.always_return_token == True and 'lastModified' in fields:
+      last_modified_index = fields.index['lastModified']
+      decoded_vals[last_modified_index] = decoded_vals[last_modified_index] - datetime.timedelta(
+      seconds=LAST_MODIFIED_BUFFER_SECONDS)
+
+    return decoded_vals
+
 def _initialize_field_type_sets():
   """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are
   used when formatting JSON from participant summaries.
@@ -365,3 +378,4 @@ def _initialize_field_type_sets():
               if fk._get_colspec() == 'code.code_id':
                 _CODE_FIELDS.add(prop_name)
                 break
+
