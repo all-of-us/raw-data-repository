@@ -11,6 +11,10 @@
         "ip6": ["::1/64"],
         "ip4": ["127.0.0.1/32"]
       }
+    },
+    "awardee-pitt@pmi-drc-api-test.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "PITT"
     }
   },
   "biobank_samples_bucket_name": [

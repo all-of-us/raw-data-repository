@@ -1,5 +1,5 @@
 import threading
-
+import datetime
 from dao.organization_dao import OrganizationDao
 from query import OrderBy, PropertyType
 from werkzeug.exceptions import BadRequest, NotFound
@@ -335,6 +335,19 @@ class ParticipantSummaryDao(UpdatableDao):
 
     return result
 
+  def _decode_token(self, query_def, fields):
+    """ If token exists in participant_summary api, decode and use lastModified to add a buffer
+    of 60 seconds. This ensures when a _sync link is used no one is missed. This will return
+    at a minimum, the last participant and any more that have been modified in the previous 60
+    seconds. Duplicate participants returned should be handled on the client side."""
+    decoded_vals = super(ParticipantSummaryDao, self)._decode_token(query_def, fields)
+    if query_def.order_by and (query_def.order_by.field_name == 'lastModified' and
+                                            query_def.always_return_token == True):
+      decoded_vals[0] = decoded_vals[0] - datetime.timedelta(
+                                          seconds=config.LAST_MODIFIED_BUFFER_SECONDS)
+
+    return decoded_vals
+
 def _initialize_field_type_sets():
   """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are
   used when formatting JSON from participant summaries.
@@ -365,3 +378,4 @@ def _initialize_field_type_sets():
               if fk._get_colspec() == 'code.code_id':
                 _CODE_FIELDS.add(prop_name)
                 break
+

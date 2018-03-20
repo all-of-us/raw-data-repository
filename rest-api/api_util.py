@@ -14,9 +14,12 @@ from code_constants import UNSET, UNMAPPED
 # Role constants
 PTC = "ptc"
 HEALTHPRO = "healthpro"
+AWARDEE = "awardee_sa"
 STOREFRONT = "storefront"
 EXPORTER = "exporter"
+DEV_MAIL = "example@example.com"
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
+PTC_HEALTHPRO_AWARDEE = [PTC, HEALTHPRO, AWARDEE]
 ALL_ROLES = [PTC, HEALTHPRO, STOREFRONT, EXPORTER]
 
 EPOCH = datetime.datetime.utcfromtimestamp(0)

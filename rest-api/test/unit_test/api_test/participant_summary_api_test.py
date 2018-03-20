@@ -21,7 +21,7 @@ TIME_2 = datetime.datetime(2016, 1, 2)
 TIME_3 = datetime.datetime(2016, 1, 3)
 TIME_4 = datetime.datetime(2016, 1, 4)
 TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
-
+TIME_6 = datetime.datetime(2015, 1, 1)
 
 class ParticipantSummaryMySqlApiTest(FlaskTestBase):
 
@@ -74,6 +74,13 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     "organization": {
       "display": None,
       "reference": "Organization/PITT",
+    }
+  }
+  az_provider_link = {
+    "primary": True,
+    "organization": {
+      "display": None,
+      "reference": "Organization/AZ_TUCSON",
     }
   }
   # Some link ids relevant to the demographics questionnaire
@@ -171,7 +178,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     return expected
 
-  def post_demographics_questionnaire(self, participant_id, questionnaire_id, **kwargs):
+  def post_demographics_questionnaire(self,
+                                      participant_id,
+                                      questionnaire_id,
+                                      time=TIME_1, **kwargs):
     """POSTs answers to the demographics questionnaire for the participant"""
     answers = {'code_answers': [],
                'string_answers': [],
@@ -189,7 +199,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     response_data = make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
 
-    with FakeClock(TIME_1):
+    with FakeClock(time):
       url = 'Participant/%s/QuestionnaireResponse' % participant_id
       return self.send_post(url, request_data=response_data)
 
@@ -249,6 +259,178 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response = self.send_get('ParticipantSummary')
     self.assertBundle([], response)
 
+  def test_last_modified_sync(self):
+    SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+    questionnaire_id = self.create_demographics_questionnaire()
+    t1 = TIME_1
+    t2 = TIME_1 + datetime.timedelta(seconds=200)
+    t3 = t2 + datetime.timedelta(seconds=30)
+    t4 = t3 + datetime.timedelta(seconds=30)
+    # 1 minute buffer
+    t5 = t4 + datetime.timedelta(seconds=30)
+
+    def setup_participant(when, providerLink=self.provider_link):
+      # Set up participant, questionnaire, and consent
+      with FakeClock(when):
+        participant = self.send_post('Participant', {"providerLink": [providerLink]})
+        participant_id = participant['participantId']
+        self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+          'race': RACE_WHITE_CODE,
+          'genderIdentity': PMI_SKIP_CODE,
+          'firstName': self.fake.first_name(),
+          'middleName': self.fake.first_name(),
+          'lastName': self.fake.last_name(),
+          'zipCode': '78751',
+          'state': PMI_SKIP_CODE,
+          'streetAddress': '1234 Main Street',
+          'city': 'Austin',
+          'sex': PMI_SKIP_CODE,
+          'sexualOrientation': PMI_SKIP_CODE,
+          'phoneNumber': '512-555-5555',
+          'recontactMethod': PMI_SKIP_CODE,
+          'language': PMI_SKIP_CODE,
+          'education': PMI_SKIP_CODE,
+          'income': PMI_SKIP_CODE,
+          'dateOfBirth': datetime.date(1978, 10, 9),
+          'CABoRSignature': 'signature.pdf',
+        }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+      return participant
+
+    # Create the first batch and fetch their summaries
+    first_batch = [setup_participant(t1) for _ in range(5)]
+    first_batch.extend([setup_participant(t2) for _ in range(2)])
+    first_batch.extend([setup_participant(t3) for _ in range(3)])
+    url = 'ParticipantSummary?_sort=lastModified&_sync=true&awardee=PITT'
+    response = self.send_get(url)
+    # We have the same number of participants as summaries
+    self.assertEqual(len(response['entry']), len(first_batch))
+    last_modified_list = list()
+    first_batch_list = list()
+    for i in response['entry']:
+      last_modified_list.append(i['resource']['lastModified'])
+    for i in first_batch:
+      first_batch_list.append(i['lastModified'])
+
+    self.assertListEqual(last_modified_list, sorted(first_batch_list))
+    # With the same ID's (they're the same participants)
+    self.assertEqual(
+      sorted([p['participantId'] for p in first_batch]),
+      sorted([p['resource']['participantId'] for p in response['entry']]),
+    )
+    self.assertEqual(sorted([p['resource']['lastModified'] for p in response['entry']]),
+                      [p['resource']['lastModified'] for p in response['entry']])
+
+    t1_list_ids = list()
+    t2_list_ids = list()
+    t3_list_ids = list()
+    response_list_1 = list()
+    response_list_2 = list()
+    response_list_3 = list()
+
+    for participant in first_batch:
+      if participant['lastModified'] == t1.strftime('%Y''-''%m''-''%d''T''%X'):
+        t1_list_ids.append(participant['participantId'])
+      elif participant['lastModified'] == t2.strftime('%Y''-''%m''-''%d''T''%X'):
+        t2_list_ids.append(participant['participantId'])
+      else:
+        t3_list_ids.append(participant['participantId'])
+
+    for i in response['entry'][:5]:
+      response_list_1.append(i['resource']['participantId'])
+
+    for i in response['entry'][5:7]:
+      response_list_2.append(i['resource']['participantId'])
+
+    for i in response['entry'][7:]:
+      response_list_3.append(i['resource']['participantId'])
+
+    self.assertEqual(sorted(response_list_1), sorted(t1_list_ids))
+    self.assertEqual(sorted(response_list_2), sorted(t2_list_ids))
+    self.assertEqual(sorted(response_list_3), sorted(t3_list_ids))
+
+    self.assertEqual(response['entry'][0]['resource']['lastModified'], t1.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response['entry'][1]['resource']['lastModified'], t1.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response['entry'][5]['resource']['lastModified'], t2.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response['entry'][7]['resource']['lastModified'], t3.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+
+    # Get the next chunk with the sync url
+    # Verify that this is, in fact, a sync URL - not a next
+    sync_url = response['link'][0]['url']
+    index = sync_url.find('ParticipantSummary')
+    self.assertEqual(response['link'][0]['relation'], 'sync')
+
+    # Verify that the next sync has results from t2 and t3 (within BUFFER).
+    response2 = self.send_get(sync_url[index:])
+    self.assertEqual(len(response2['entry']), 5)
+    self.assertEqual(response2['entry'][0]['resource']['lastModified'], t2.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response2['entry'][1]['resource']['lastModified'], t2.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response2['entry'][2]['resource']['lastModified'], t3.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response2['entry'][3]['resource']['lastModified'], t3.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response2['entry'][4]['resource']['lastModified'], t3.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    # Create a second batch
+    second_batch = [setup_participant(t4) for _ in range(10)]
+    response3 = self.send_get(sync_url[index:])
+    # We have the same number of participants as summaries
+    self.assertEqual(len(response3['entry']), len(second_batch) + len(response2['entry']))
+
+    no_count_url = 'ParticipantSummary?lastModified=lt%s&_sync=true&awardee=PITT' % TIME_4
+    no_count_response = self.send_get(no_count_url)
+    total_count = len(no_count_response['entry'])
+    self.assertEquals(total_count, 20)
+    url = 'ParticipantSummary?lastModified=lt%s&_count=10&_sync=true&awardee=PITT' % TIME_4
+    response = self.send_get(url)
+    self.assertEqual(len(response['entry']), 10)
+    next_url = response['link'][0]['url']
+    next_10 = self.send_get(next_url[index:])
+    self.assertEqual(len(next_10['entry']), 10)
+
+    sort_by_lastmodified = 'ParticipantSummary?_sync=true&awardee=PITT&_sort=lastModified'
+    sort_lm_response = self.send_get(sort_by_lastmodified)
+    self.assertEquals(len(sort_lm_response['entry']), 20)
+    self.assertEquals(sort_lm_response['link'][0]['relation'], 'sync')
+    # ensure same participants are returned before 5 min. buffer
+    sync_url = sort_lm_response['link'][0]['url']
+    setup_participant(t5)
+
+    # az_provider_link should not be returned.
+    setup_participant(t5, self.az_provider_link)
+    sync_again = self.send_get(sync_url[index:])
+    self.send_get(sort_by_lastmodified)
+    self.assertEquals(len(sync_again['entry']), 14)
+    # The last 14 participants from sort_lm_response should be equal to the sync_again response.
+    self.assertEquals(sort_lm_response['entry'][7:], sync_again['entry'][:13])
+
+    one_min_modified = list()
+    for i in sync_again['entry']:
+      one_min_modified.append(datetime.datetime.strptime(i['resource']['lastModified'],
+                                                            '%Y''-''%m''-''%d''T''%X'))
+
+    # Everything should be within 60 seconds.
+    margin = datetime.timedelta(seconds=60)
+    out_of_range_margin = datetime.timedelta(seconds=61)
+    self.assertTrue(one_min_modified[0] + margin <= t5)
+    self.assertTrue(t5 - margin >= one_min_modified[0])
+    self.assertTrue(one_min_modified[-1] <= t5)
+    self.assertFalse(one_min_modified[0] + out_of_range_margin <= t5)
+
+    # participants with az_tucson still dont show up in sync.
+    setup_participant(t5, self.az_provider_link)
+    sync_again = self.send_get(sync_url[index:])
+    self.send_get(sort_by_lastmodified)
+    self.assertEquals(len(sync_again['entry']), 14)
+
   def test_get_summary_list_returns_total(self):
     page_size = 10
     num_participants = 20
@@ -295,7 +477,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # Prove that without the query param, no total is returned
     response = self.send_get('ParticipantSummary?_count=%d' % page_size)
     self.assertIsNone(response.get('total'))
-
     # Prove that the count and page are accurate even when the page size is larger than the total
     url = 'ParticipantSummary?_count=%d&_includeTotal=true' % (num_participants * 2)
     response = self.send_get(url)
