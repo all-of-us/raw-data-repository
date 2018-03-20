@@ -31,6 +31,9 @@ def main(client):
       try:
         participant_id, hpo = [v.strip() for v in line]
         pairing = client.args.pairing
+        assert pairing in ('site', 'organization', 'awardee')
+      except AssertionError:
+            logging.error('Pairing must be one of site|organization|awardee')
       except ValueError as e:
         logging.error('Skipping invalid line %d (parsed as %r): %s.', reader.line_num, line, e)
         num_errors += 1
@@ -99,5 +102,5 @@ if __name__ == '__main__':
   arg_parser = get_parser()
   arg_parser.add_argument('file', help='file containing the list of HPOs and participant IDs')
   arg_parser.add_argument('--dry_run', action='store_true')
-  arg_parser.add_argument('--pairing', help='set level of pairing at site')
+  arg_parser.add_argument('--pairing', help='set level of pairing at site', required=True, default='awardee')
   main(Client(parser=arg_parser))
