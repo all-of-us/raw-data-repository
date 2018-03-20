@@ -10,7 +10,7 @@ from api_util import format_json_date, format_json_enum, format_json_code, forma
 from api_util import format_json_site
 import clock
 import config
-from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS, LAST_MODIFIED_BUFFER_SECONDS
+from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
 from dao.base_dao import UpdatableDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from dao.code_dao import CodeDao
@@ -336,11 +336,15 @@ class ParticipantSummaryDao(UpdatableDao):
     return result
 
   def _decode_token(self, query_def, fields):
+    """ If token exists in participant_summary api, decode and use lastModified to add a buffer
+    of 60 seconds. This ensures when a _sync link is used no one is missed. This may return
+    participants more than once if it is called to often, which should be handled on the client
+    side."""
     decoded_vals = super(ParticipantSummaryDao, self)._decode_token(query_def, fields)
     if query_def.order_by and (query_def.order_by.field_name == 'lastModified' and
                                             query_def.always_return_token == True):
       decoded_vals[0] = decoded_vals[0] - datetime.timedelta(
-                                          seconds=LAST_MODIFIED_BUFFER_SECONDS)
+                                          seconds=config.LAST_MODIFIED_BUFFER_SECONDS)
 
     return decoded_vals
 

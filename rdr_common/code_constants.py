@@ -6,7 +6,6 @@ PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 # these codes are ignored by RDR.
 PPI_EXTRA_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi-extra"
 
-LAST_MODIFIED_BUFFER_SECONDS = 60
 SITE_ID_SYSTEM = "https://www.pmi-ops.org/site-id"
 HEALTHPRO_USERNAME_SYSTEM = "https://www.pmi-ops.org/healthpro-username"
 FIRST_NAME_QUESTION_CODE = "PIIName_First"

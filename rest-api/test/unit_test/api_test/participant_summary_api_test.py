@@ -315,6 +315,35 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     )
     self.assertEqual(sorted([p['resource']['lastModified'] for p in response['entry']]),
                       [p['resource']['lastModified'] for p in response['entry']])
+
+    t1_list_ids = list()
+    t2_list_ids = list()
+    t3_list_ids = list()
+    response_list_1 = list()
+    response_list_2 = list()
+    response_list_3 = list()
+
+    for participant in first_batch:
+      if participant['lastModified'] == t1.strftime('%Y''-''%m''-''%d''T''%X'):
+        t1_list_ids.append(participant['participantId'])
+      elif participant['lastModified'] == t2.strftime('%Y''-''%m''-''%d''T''%X'):
+        t2_list_ids.append(participant['participantId'])
+      else:
+        t3_list_ids.append(participant['participantId'])
+
+    for i in response['entry'][:5]:
+      response_list_1.append(i['resource']['participantId'])
+
+    for i in response['entry'][5:7]:
+      response_list_2.append(i['resource']['participantId'])
+
+    for i in response['entry'][7:]:
+      response_list_3.append(i['resource']['participantId'])
+
+    self.assertEqual(sorted(response_list_1), sorted(t1_list_ids))
+    self.assertEqual(sorted(response_list_2), sorted(t2_list_ids))
+    self.assertEqual(sorted(response_list_3), sorted(t3_list_ids))
+
     self.assertEqual(response['entry'][0]['resource']['lastModified'], t1.strftime(
       '%Y''-''%m''-''%d''T''%X'))
     self.assertEqual(response['entry'][1]['resource']['lastModified'], t1.strftime(
@@ -333,7 +362,16 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # Verify that the next sync has results from t2 and t3 (within BUFFER).
     response2 = self.send_get(sync_url[index:])
     self.assertEqual(len(response2['entry']), 5)
-
+    self.assertEqual(response2['entry'][0]['resource']['lastModified'], t2.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response2['entry'][1]['resource']['lastModified'], t2.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response2['entry'][2]['resource']['lastModified'], t3.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response2['entry'][3]['resource']['lastModified'], t3.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response2['entry'][4]['resource']['lastModified'], t3.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
     # Create a second batch
     second_batch = [setup_participant(t4) for _ in range(10)]
     response3 = self.send_get(sync_url[index:])
@@ -361,8 +399,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     sync_again = self.send_get(sync_url[index:])
     self.send_get(sort_by_lastmodified)
     self.assertEquals(len(sync_again['entry']), 14)
-    one_min_modified = list()
+    # The last 14 participants from sort_lm_response should be equal to the sync_again response.
+    self.assertEquals(sort_lm_response['entry'][7:], sync_again['entry'][:13])
 
+    one_min_modified = list()
     for i in sync_again['entry']:
       one_min_modified.append(datetime.datetime.strptime(i['resource']['lastModified'],
                                                             '%Y''-''%m''-''%d''T''%X'))
