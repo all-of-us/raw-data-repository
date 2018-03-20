@@ -15,6 +15,7 @@ CONFIG_SINGLETON_KEY = 'current_config'
 # Key that the database configuration is stored under
 DB_CONFIG_KEY = 'db_config'
 
+LAST_MODIFIED_BUFFER_SECONDS = 60
 CONFIG_CACHE_TTL_SECONDS = 60
 BIOBANK_ID_PREFIX = 'biobank_id_prefix'
 METRICS_SHARDS = 'metrics_shards'

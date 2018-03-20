@@ -206,7 +206,7 @@ class BaseDao(object):
     query = self._add_order_by_ending(query, order_by_field_names, order_by_fields)
     if query_def.pagination_token:
       # Add a query filter based on the pagination token.
-      query = self._add_pagination_filter(query, query_def.pagination_token, order_by_fields,
+      query = self._add_pagination_filter(query, query_def, order_by_fields,
                                           first_descending)
     # Return one more than max_results, so that we know if there are more results.
     query = query.limit(query_def.max_results + 1)
@@ -235,10 +235,10 @@ class BaseDao(object):
       raise BadRequest('Invalid operator: %r.' % field_filter.operator)
     return query
 
-  def _add_pagination_filter(self, query, pagination_token, fields, first_descending):
+  def _add_pagination_filter(self, query, query_def, fields, first_descending):
     """Adds a pagination filter for the decoded values in the pagination token based on
     the sort order."""
-    decoded_vals = self._decode_token(pagination_token, fields)
+    decoded_vals = self._decode_token(query_def, fields)
     # SQLite does not support tuple comparisons, so make an or-of-ands statements that is
     # equivalent.
     or_clauses = []
@@ -262,7 +262,8 @@ class BaseDao(object):
       or_clauses.append(and_(*and_clauses))
     return query.filter(or_(*or_clauses))
 
-  def _decode_token(self, pagination_token, fields):
+  def _decode_token(self, query_def, fields):
+    pagination_token = query_def.pagination_token
     try:
       decoded_vals = json.loads(urlsafe_b64decode(pagination_token.encode("ascii")))
     except:

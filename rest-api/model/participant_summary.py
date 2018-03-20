@@ -241,3 +241,5 @@ Index('participant_summary_hpo_num_baseline_samples', ParticipantSummary.hpoId,
       ParticipantSummary.numBaselineSamplesArrived)
 Index('participant_summary_hpo_withdrawal_status_time', ParticipantSummary.hpoId,
       ParticipantSummary.withdrawalStatus, ParticipantSummary.withdrawalTime)
+Index('participant_summary_last_modified', ParticipantSummary.hpoId,
+      ParticipantSummary.lastModified)
