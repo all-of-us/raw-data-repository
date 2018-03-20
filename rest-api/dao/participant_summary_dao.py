@@ -337,9 +337,9 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def _decode_token(self, query_def, fields):
     """ If token exists in participant_summary api, decode and use lastModified to add a buffer
-    of 60 seconds. This ensures when a _sync link is used no one is missed. This may return
-    participants more than once if it is called to often, which should be handled on the client
-    side."""
+    of 60 seconds. This ensures when a _sync link is used no one is missed. This will return
+    at a minimum, the last participant and any more that have been modified in the previous 60
+    seconds. Duplicate participants returned should be handled on the client side."""
     decoded_vals = super(ParticipantSummaryDao, self)._decode_token(query_def, fields)
     if query_def.order_by and (query_def.order_by.field_name == 'lastModified' and
                                             query_def.always_return_token == True):
