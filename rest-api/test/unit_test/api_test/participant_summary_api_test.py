@@ -76,6 +76,13 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       "reference": "Organization/PITT",
     }
   }
+  az_provider_link = {
+    "primary": True,
+    "organization": {
+      "display": None,
+      "reference": "Organization/AZ_TUCSON",
+    }
+  }
   # Some link ids relevant to the demographics questionnaire
   code_link_ids = (
       'race', 'genderIdentity', 'state', 'sex', 'sexualOrientation', 'recontactMethod', 'language',
@@ -262,10 +269,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # 1 minute buffer
     t5 = t4 + datetime.timedelta(seconds=30)
 
-    def setup_participant(when):
+    def setup_participant(when, providerLink=self.provider_link):
       # Set up participant, questionnaire, and consent
       with FakeClock(when):
-        participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+        participant = self.send_post('Participant', {"providerLink": [providerLink]})
         participant_id = participant['participantId']
         self.send_consent(participant_id)
         # Populate some answers to the questionnaire
@@ -396,6 +403,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # ensure same participants are returned before 5 min. buffer
     sync_url = sort_lm_response['link'][0]['url']
     setup_participant(t5)
+
+    # az_provider_link should not be returned.
+    setup_participant(t5, self.az_provider_link)
     sync_again = self.send_get(sync_url[index:])
     self.send_get(sort_by_lastmodified)
     self.assertEquals(len(sync_again['entry']), 14)
@@ -414,6 +424,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertTrue(t5 - margin >= one_min_modified[0])
     self.assertTrue(one_min_modified[-1] <= t5)
     self.assertFalse(one_min_modified[0] + out_of_range_margin <= t5)
+
+    # participants with az_tucson still dont show up in sync.
+    setup_participant(t5, self.az_provider_link)
+    sync_again = self.send_get(sync_url[index:])
+    self.send_get(sort_by_lastmodified)
+    self.assertEquals(len(sync_again['entry']), 14)
 
   def test_get_summary_list_returns_total(self):
     page_size = 10
