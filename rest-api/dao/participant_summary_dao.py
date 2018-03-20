@@ -337,10 +337,10 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def _decode_token(self, query_def, fields):
     decoded_vals = super(ParticipantSummaryDao, self)._decode_token(query_def, fields)
-    if query_def.always_return_token == True and 'lastModified' in fields:
-      last_modified_index = fields.index['lastModified']
-      decoded_vals[last_modified_index] = decoded_vals[last_modified_index] - datetime.timedelta(
-      seconds=LAST_MODIFIED_BUFFER_SECONDS)
+    if query_def.order_by and (query_def.order_by.field_name == 'lastModified' and
+                                            query_def.always_return_token == True):
+      decoded_vals[0] = decoded_vals[0] - datetime.timedelta(
+                                          seconds=LAST_MODIFIED_BUFFER_SECONDS)
 
     return decoded_vals
 

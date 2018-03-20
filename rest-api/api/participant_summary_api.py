@@ -19,8 +19,7 @@ class ParticipantSummaryApi(BaseApi):
         auth_awardee = request.args.get('awardee')
       else:
         try:
-          if user_info['awardee']:
-            auth_awardee = user_info['awardee']
+          auth_awardee = user_info['awardee']
 
         except KeyError:
           raise InternalServerError("Config error for awardee")
@@ -37,8 +36,6 @@ class ParticipantSummaryApi(BaseApi):
         if requested_awardee != auth_awardee:
           raise Forbidden
       return super(ParticipantSummaryApi, self)._query('participantId')
-
-
 
   def _make_query(self):
     query = super(ParticipantSummaryApi, self)._make_query()

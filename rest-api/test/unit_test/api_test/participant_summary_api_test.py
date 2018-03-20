@@ -256,11 +256,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
     questionnaire_id = self.create_demographics_questionnaire()
     t1 = TIME_1
-    t2 = TIME_1 + datetime.timedelta(seconds=400)
+    t2 = TIME_1 + datetime.timedelta(seconds=200)
     t3 = t2 + datetime.timedelta(seconds=30)
     t4 = t3 + datetime.timedelta(seconds=30)
-    # 5 minute buffer
-    # t5 = t4 + datetime.timedelta(seconds=299)
+    # 1 minute buffer
+    t5 = t4 + datetime.timedelta(seconds=30)
 
     def setup_participant(when):
       # Set up participant, questionnaire, and consent
@@ -315,6 +315,14 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     )
     self.assertEqual(sorted([p['resource']['lastModified'] for p in response['entry']]),
                       [p['resource']['lastModified'] for p in response['entry']])
+    self.assertEqual(response['entry'][0]['resource']['lastModified'], t1.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response['entry'][1]['resource']['lastModified'], t1.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response['entry'][5]['resource']['lastModified'], t2.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
+    self.assertEqual(response['entry'][7]['resource']['lastModified'], t3.strftime(
+      '%Y''-''%m''-''%d''T''%X'))
 
     # Get the next chunk with the sync url
     # Verify that this is, in fact, a sync URL - not a next
@@ -322,21 +330,15 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     index = sync_url.find('ParticipantSummary')
     self.assertEqual(response['link'][0]['relation'], 'sync')
 
-    # Verify that the next chunk has no results (everyone is accounted for)
+    # Verify that the next sync has results from t2 and t3 (within BUFFER).
     response2 = self.send_get(sync_url[index:])
-    self.assertEqual(len(response2['entry']), 0)
-    self.assertEqual(response2['entry'], [])
+    self.assertEqual(len(response2['entry']), 5)
 
     # Create a second batch
     second_batch = [setup_participant(t4) for _ in range(10)]
     response3 = self.send_get(sync_url[index:])
     # We have the same number of participants as summaries
-    self.assertEqual(len(response3['entry']), len(second_batch))
-    # With the same ID's (they're the same participants)
-    self.assertEqual(
-      sorted([p['participantId'] for p in second_batch]),
-      sorted([p['resource']['participantId'] for p in response3['entry']]),
-    )
+    self.assertEqual(len(response3['entry']), len(second_batch) + len(response2['entry']))
 
     no_count_url = 'ParticipantSummary?lastModified=lt%s&_sync=true&awardee=PITT' % TIME_4
     no_count_response = self.send_get(no_count_url)
@@ -349,17 +351,29 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     next_10 = self.send_get(next_url[index:])
     self.assertEqual(len(next_10['entry']), 10)
 
-    no_last_modified_url = 'ParticipantSummary?_sync=true&awardee=PITT'
-    no_lm_response = self.send_get(no_last_modified_url)
-    self.assertEquals(len(no_lm_response['entry']), 20)
-    self.assertEquals(no_lm_response['link'][0]['relation'], 'sync')
+    sort_by_lastmodified = 'ParticipantSummary?_sync=true&awardee=PITT&_sort=lastModified'
+    sort_lm_response = self.send_get(sort_by_lastmodified)
+    self.assertEquals(len(sort_lm_response['entry']), 20)
+    self.assertEquals(sort_lm_response['link'][0]['relation'], 'sync')
     # ensure same participants are returned before 5 min. buffer
-    sync_url = no_lm_response['link'][0]['url']
-    setup_participant(t4)
-    add_one_more = self.send_get(sync_url[index:])
-    print len(add_one_more['entry'])
-    # self.assertEquals(len(add_one_more['entry']), 21)
-    # pretty sure this should be true ^
+    sync_url = sort_lm_response['link'][0]['url']
+    setup_participant(t5)
+    sync_again = self.send_get(sync_url[index:])
+    self.send_get(sort_by_lastmodified)
+    self.assertEquals(len(sync_again['entry']), 14)
+    one_min_modified = list()
+
+    for i in sync_again['entry']:
+      one_min_modified.append(datetime.datetime.strptime(i['resource']['lastModified'],
+                                                            '%Y''-''%m''-''%d''T''%X'))
+
+    # Everything should be within 60 seconds.
+    margin = datetime.timedelta(seconds=60)
+    out_of_range_margin = datetime.timedelta(seconds=61)
+    self.assertTrue(one_min_modified[0] + margin <= t5)
+    self.assertTrue(t5 - margin >= one_min_modified[0])
+    self.assertTrue(one_min_modified[-1] <= t5)
+    self.assertFalse(one_min_modified[0] + out_of_range_margin <= t5)
 
   def test_get_summary_list_returns_total(self):
     page_size = 10
