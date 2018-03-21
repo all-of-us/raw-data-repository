@@ -1,8 +1,8 @@
-"""add enrolling status to site
+"""add enrolling status
 
-Revision ID: 9f5f8f187f1a
+Revision ID: 2be6f6d054e8
 Revises: f17f0686ea6b
-Create Date: 2018-03-21 13:40:41.878354
+Create Date: 2018-03-21 13:57:41.685020
 
 """
 from alembic import op
@@ -14,11 +14,11 @@ from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, O
 from participant_enums import WithdrawalStatus, SuspensionStatus
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType
 from participant_enums import MetricSetType, MetricsKey
-from model.site_enums import SiteStatus
+from model.site_enums import SiteStatus, EnrollmentStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '9f5f8f187f1a'
+revision = '2be6f6d054e8'
 down_revision = 'f17f0686ea6b'
 branch_labels = None
 depends_on = None
