@@ -1,6 +1,6 @@
 from model.base import Base
 from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey
-from site_enums import SiteStatus
+from site_enums import SiteStatus, EnrollmentStatus
 from model.utils import Enum
 
 class Site(Base):
@@ -16,6 +16,7 @@ class Site(Base):
   hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'))
 
   siteStatus = Column('site_status', Enum(SiteStatus))
+  enrollmentStatus = Column('enrollment_status', Enum(EnrollmentStatus))
   launchDate = Column('launch_date', Date)
   notes = Column('notes', String(1024))
   latitude = Column('latitude', Float)
