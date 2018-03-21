@@ -11,7 +11,7 @@
     },
     "awardee-pitt@pmi-drc-api-test.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
-      "awardee": ["PITT"],
+      "awardee": "PITT",
       "comment": "for testing service account access to participant summary api"
     },
     "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {

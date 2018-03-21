@@ -14,7 +14,6 @@ def main():
                                  'GET')
   logging.info(pprint.pformat(response))
 
-
 if __name__ == '__main__':
   configure_logging()
   main()
