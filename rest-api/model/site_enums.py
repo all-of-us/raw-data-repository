@@ -6,7 +6,7 @@ class SiteStatus(messages.Enum):
   ACTIVE = 1
   INACTIVE = 2
 
-class EnrollmentStatus(messages.Enum):
+class EnrollingStatus(messages.Enum):
   """ The actively enrolling status of a site. """
   UNSET = 0
   ACTIVE = 1

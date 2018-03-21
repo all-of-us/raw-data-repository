@@ -23,7 +23,7 @@ from dao.site_dao import SiteDao
 from model.hpo import HPO
 from model.organization import Organization
 from model.site import Site
-from model.site_enums import SiteStatus
+from model.site_enums import SiteStatus, EnrollingStatus
 from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
 
@@ -48,6 +48,7 @@ SITE_MAYOLINK_CLIENT_NUMBER_COLUMN = 'MayoLINK Client #'
 SITE_NOTES_COLUMN = 'Notes'
 # TODO: switch this back to 'Status' [DA-538]
 SITE_STATUS_COLUMN = 'PTSC Scheduling Status'
+ENROLLING_STATUS_COLUMN = 'Actively Enrolling Status'
 SITE_LAUNCH_DATE_COLUMN = 'Anticipated Launch Date'
 SITE_DIRECTIONS_COLUMN = 'Directions'
 SITE_PHYSICAL_LOCATION_NAME_COLUMN = 'Physical Location Name'
@@ -152,6 +153,7 @@ class SiteImporter(CsvImporter):
     except TypeError:
       logging.warn('Invalid site status %s for site %s', row[SITE_STATUS_COLUMN], google_group)
       return None
+    enrolling_status = EnrollingStatus(row[ENROLLING_STATUS_COLUMN].upper())
     directions = row.get(SITE_DIRECTIONS_COLUMN)
     physical_location_name = row.get(SITE_PHYSICAL_LOCATION_NAME_COLUMN)
     address_1 = row.get(SITE_ADDRESS_1_COLUMN)
@@ -168,6 +170,7 @@ class SiteImporter(CsvImporter):
                 organizationId=organization.organizationId,
                 hpoId=organization.hpoId,
                 siteStatus=site_status,
+                enrollingStatus=enrolling_status,
                 launchDate=launch_date,
                 notes=notes,
                 directions=directions,
