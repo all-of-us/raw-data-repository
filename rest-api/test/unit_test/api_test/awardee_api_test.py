@@ -191,7 +191,7 @@ class AwardeeApiTest(FlaskTestBase):
            [{'displayName': 'Organization 2', 'id': 'ORG_2',
            'sites':
            [{'siteStatus': 'INACTIVE', 'displayName': 'not enrolling site', 'id': 'not_enrolling_dot_com',
-           'address': {}}]}]}, 'fullUrl': 'http://localhost/rdr/v1/Awardee/PITT'}, 
+           'address': {}}]}]}, 'fullUrl': 'http://localhost/rdr/v1/Awardee/PITT'},
            {'resource': {'displayName': 'Unset', 'type': 'UNSET', 'id': 'UNSET'},
            'fullUrl': 'http://localhost/rdr/v1/Awardee/UNSET'}], 'type': 'searchset'}
 
