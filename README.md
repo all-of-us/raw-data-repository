@@ -356,7 +356,7 @@ The default order results are returned is...
 * last modified time
 * participant ID (ascending)
 
-For service account access the awardee parameter is required.
+For service accounts access, the awardee parameter is required.
 Example:
 
     GET /ParticipantSummary?awardee=PITT&_sort=lastModified
