@@ -11,13 +11,15 @@ from client import Client
 def main():
   client = Client()
   AWARDEE = 'PITT'
-  response = client.request_json('ParticipantSummary?_sync=true&_sort=lastModified&awardee={}'
+  response = client.request_json('ParticipantSummary?_sync=true&_count=1&_sort=lastModified&awardee'
+                                 '={}'
                                                                       .format(AWARDEE), 'GET')
 
   sync_url = response['link'][0]['url']
   index = sync_url.find('ParticipantSummary')
-  #next_batch = client.request_json(sync_url[index:])
+  sync_results = client.request_json(sync_url[index:], 'GET')
   logging.info(pprint.pformat(response))
+  logging.info(pprint.pformat(sync_results))
 
 if __name__ == '__main__':
   configure_logging()
