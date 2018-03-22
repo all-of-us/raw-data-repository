@@ -48,7 +48,7 @@ SITE_MAYOLINK_CLIENT_NUMBER_COLUMN = 'MayoLINK Client #'
 SITE_NOTES_COLUMN = 'Notes'
 # TODO: switch this back to 'Status' [DA-538]
 SITE_STATUS_COLUMN = 'PTSC Scheduling Status'
-ENROLLING_STATUS_COLUMN = 'Actively Enrolling Status'
+ENROLLING_STATUS_COLUMN = 'Status'
 SITE_LAUNCH_DATE_COLUMN = 'Anticipated Launch Date'
 SITE_DIRECTIONS_COLUMN = 'Directions'
 SITE_PHYSICAL_LOCATION_NAME_COLUMN = 'Physical Location Name'
