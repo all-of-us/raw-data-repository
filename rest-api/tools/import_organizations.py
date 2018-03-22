@@ -157,7 +157,7 @@ class SiteImporter(CsvImporter):
     try:
       enrolling_status = EnrollingStatus(row[ENROLLING_STATUS_COLUMN].upper())
     except TypeError:
-      logging.warn('Invalid enrollment site status %s for site %s', row[ENROLLING_STATUS_COLUMN], 
+      logging.warn('Invalid enrollment site status %s for site %s', row[ENROLLING_STATUS_COLUMN],
                    google_group)
     directions = row.get(SITE_DIRECTIONS_COLUMN)
     physical_location_name = row.get(SITE_PHYSICAL_LOCATION_NAME_COLUMN)
