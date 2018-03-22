@@ -98,7 +98,6 @@ class AwardeeApiTest(FlaskTestBase):
   def test_get_not_enrolling_awardees_with_organizations(self):
     self._setup_unset_enrollment_site()
     result = self.send_get('Awardee?_inactive=true')
-    print result
     self.assertEqual(self._make_expected_unset_enrollment_data(), result)
 
   def _make_expected_pitt_awardee_resource(self, inactive=False):
