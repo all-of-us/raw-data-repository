@@ -115,7 +115,8 @@ class SiteImporter(CsvImporter):
   def __init__(self):
     super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
                                        [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
-                                       SITE_SITE_COLUMN, SITE_STATUS_COLUMN])
+                                       SITE_SITE_COLUMN, SITE_STATUS_COLUMN,
+                                       ENROLLING_STATUS_COLUMN])
 
     self.organization_dao = OrganizationDao()
     args = parser.parse_args()
@@ -153,7 +154,10 @@ class SiteImporter(CsvImporter):
     except TypeError:
       logging.warn('Invalid site status %s for site %s', row[SITE_STATUS_COLUMN], google_group)
       return None
-    enrolling_status = EnrollingStatus(row[ENROLLING_STATUS_COLUMN].upper())
+    try:
+      enrolling_status = EnrollingStatus(row[ENROLLING_STATUS_COLUMN].upper())
+    except TypeError:
+      logging.warn('Invalid enrollment site status %s for site %s', row[ENROLLING_STATUS_COLUMN], google_group)
     directions = row.get(SITE_DIRECTIONS_COLUMN)
     physical_location_name = row.get(SITE_PHYSICAL_LOCATION_NAME_COLUMN)
     address_1 = row.get(SITE_ADDRESS_1_COLUMN)
@@ -167,8 +171,8 @@ class SiteImporter(CsvImporter):
     return Site(siteName=name,
                 googleGroup=google_group,
                 mayolinkClientNumber=mayolink_client_number,
-                organizationId=organization.organizationId,
-                hpoId=organization.hpoId,
+                organizationId=organization.organizationId.upper(),
+                hpoId=organization.hpoId.upper(),
                 siteStatus=site_status,
                 enrollingStatus=enrolling_status,
                 launchDate=launch_date,
