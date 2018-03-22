@@ -100,7 +100,7 @@ class OrganizationImporter(CsvImporter):
     self.hpo_dao = HPODao()
 
   def _entity_from_row(self, row):
-    hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN])
+    hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN.upper()])
     if hpo is None:
       logging.warn('Invalid awardee ID %s importing organization %s',
                    row[ORGANIZATION_AWARDEE_ID_COLUMN],
@@ -124,8 +124,8 @@ class SiteImporter(CsvImporter):
 
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()
-    organization =
-      self.organization_dao.get_by_external_id(row[SITE_ORGANIZATION_ID_COLUMN].upper())
+    organization = self.organization_dao.get_by_external_id(
+                                        row[SITE_ORGANIZATION_ID_COLUMN].upper())
     if organization is None:
       logging.warn('Invalid organization ID %s importing site %s', row[SITE_ORGANIZATION_ID_COLUMN],
                    google_group)
