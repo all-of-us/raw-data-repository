@@ -640,7 +640,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertJsonResponseMatches(expected, actual)
     response = self.send_get('ParticipantSummary')
     self.assertBundle([_make_entry(actual)], response)
-    
+
   def testQuery_oneParticipantStringConse(self):
     # Set up the codes so they are mapped later.
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
