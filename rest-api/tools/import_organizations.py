@@ -124,7 +124,8 @@ class SiteImporter(CsvImporter):
 
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()
-    organization = self.organization_dao.get_by_external_id(row[SITE_ORGANIZATION_ID_COLUMN])
+    organization =
+      self.organization_dao.get_by_external_id(row[SITE_ORGANIZATION_ID_COLUMN].upper())
     if organization is None:
       logging.warn('Invalid organization ID %s importing site %s', row[SITE_ORGANIZATION_ID_COLUMN],
                    google_group)
