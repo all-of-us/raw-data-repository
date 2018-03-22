@@ -203,7 +203,7 @@ class QuestionnaireResponseDao(BaseDao):
             if code and code.value == CONSENT_PERMISSION_YES_CODE:
               ehr_consent = True
           elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
-            if answer.valueUri:
+            if answer.valueUri or answer.valueString:
               # TODO: validate the URI? [DA-326]
               if not participant_summary.consentForCABoR:
                 participant_summary.consentForCABoR = True
