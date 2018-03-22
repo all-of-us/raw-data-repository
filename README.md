@@ -396,7 +396,7 @@ Example response:
 * Authorized users can generate API keys for access.
 * Awardees are responsible for rotating keys on a three day timeframe.
     ** Permissions will be revoked after this time.
-* Awardee must specify Awardee  in call to API.
+* Service account for specific awardees  must specify the awardee parameter in requests.
 
     `GET /ParticipantSummary?awardee=PITT`
 

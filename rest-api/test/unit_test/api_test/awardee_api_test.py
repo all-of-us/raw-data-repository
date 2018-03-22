@@ -95,6 +95,12 @@ class AwardeeApiTest(FlaskTestBase):
     # we are now filtering out 'INACTIVE' sites by default.
     self.assertEqual(self._make_expected_pitt_awardee_resource(), result)
 
+  def test_get_not_enrolling_awardees_with_organizations(self):
+    self._setup_unset_enrollment_site()
+    result = self.send_get('Awardee?_inactive=true')
+    print result
+    self.assertEqual(self._make_expected_unset_enrollment_data(), result)
+
   def _make_expected_pitt_awardee_resource(self, inactive=False):
     sites = [{'id': 'aaaaaaa',
              'displayName': 'Zebras Rock',
@@ -164,3 +170,28 @@ class AwardeeApiTest(FlaskTestBase):
                          organizationId=org_1.organizationId,
                          enrollingStatus=EnrollingStatus.INACTIVE,
                          siteStatus=SiteStatus.INACTIVE))
+
+
+  def _setup_unset_enrollment_site(self):
+    site_dao = SiteDao()
+    organization_dao = OrganizationDao()
+    org_2 = organization_dao.insert(Organization(externalId='ORG_2',
+                                                 displayName='Organization 2', hpoId=PITT_HPO_ID))
+    site_dao.insert(Site(siteName='not enrolling site',
+                         googleGroup='not_enrolling_dot_com',
+                         organizationId=org_2.organizationId,
+                         enrollingStatus=EnrollingStatus.UNSET,
+                         siteStatus=SiteStatus.INACTIVE))
+
+  def _make_expected_unset_enrollment_data(self):
+    return {'resourceType': 'Bundle', 'entry':
+           [{'resource': {'displayName': 'Arizona', 'type': 'HPO', 'id': 'AZ_TUCSON'},
+           'fullUrl': 'http://localhost/rdr/v1/Awardee/AZ_TUCSON'},
+           {'resource': {'displayName': 'Pittsburgh', 'type': 'HPO', 'id': 'PITT', 'organizations':
+           [{'displayName': 'Organization 2', 'id': 'ORG_2',
+           'sites':
+           [{'siteStatus': 'INACTIVE', 'displayName': 'not enrolling site', 'id': 'not_enrolling_dot_com',
+           'address': {}}]}]}, 'fullUrl': 'http://localhost/rdr/v1/Awardee/PITT'}, 
+           {'resource': {'displayName': 'Unset', 'type': 'UNSET', 'id': 'UNSET'},
+           'fullUrl': 'http://localhost/rdr/v1/Awardee/UNSET'}], 'type': 'searchset'}
+
