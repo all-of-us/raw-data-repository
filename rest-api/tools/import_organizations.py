@@ -65,7 +65,7 @@ class HPOImporter(CsvImporter):
 
   def __init__(self):
     super(HPOImporter, self).__init__('awardee', HPODao(), 'hpoId', 'name',
-                                      [HPO_AWARDEE_ID_COLUMN.upper(), HPO_NAME_COLUMN,
+                                      [HPO_AWARDEE_ID_COLUMN, HPO_NAME_COLUMN,
                                        HPO_TYPE_COLUMN])
     self.new_count = 0
 
@@ -77,9 +77,9 @@ class HPOImporter(CsvImporter):
         organization_type = None
     except TypeError:
       logging.warn('Invalid organization type %s for awardee %s', type_str,
-      row[HPO_AWARDEE_ID_COLUMN.upper()])
+      row[HPO_AWARDEE_ID_COLUMN])
       return None
-    return HPO(name=row[HPO_AWARDEE_ID_COLUMN.upper()],
+    return HPO(name=row[HPO_AWARDEE_ID_COLUMN].upper(),
                displayName=row[HPO_NAME_COLUMN],
                organizationType=organization_type)
 
@@ -95,17 +95,17 @@ class OrganizationImporter(CsvImporter):
   def __init__(self):
     super(OrganizationImporter, self).__init__('organization', OrganizationDao(),
                                                'organizationId', 'externalId',
-                                               [ORGANIZATION_AWARDEE_ID_COLUMN.upper(),
-                                                ORGANIZATION_ORGANIZATION_ID_COLUMN.upper(),
+                                               [ORGANIZATION_AWARDEE_ID_COLUMN,
+                                                ORGANIZATION_ORGANIZATION_ID_COLUMN,
                                                 ORGANIZATION_NAME_COLUMN])
     self.hpo_dao = HPODao()
 
   def _entity_from_row(self, row):
-    hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN]).upper()
+    hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN])
     if hpo is None:
       logging.warn('Invalid awardee ID %s importing organization %s',
-                   row[ORGANIZATION_AWARDEE_ID_COLUMN.upper()],
-                   row[ORGANIZATION_ORGANIZATION_ID_COLUMN]).upper()
+                   row[ORGANIZATION_AWARDEE_ID_COLUMN],
+                   row[ORGANIZATION_ORGANIZATION_ID_COLUMN])
       return None
     return Organization(externalId=row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper(),
                         displayName=row[ORGANIZATION_NAME_COLUMN],
@@ -115,7 +115,7 @@ class SiteImporter(CsvImporter):
 
   def __init__(self):
     super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
-                                       [SITE_ORGANIZATION_ID_COLUMN.upper(), SITE_SITE_ID_COLUMN,
+                                       [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
                                        SITE_SITE_COLUMN, SITE_STATUS_COLUMN,
                                        ENROLLING_STATUS_COLUMN])
 
@@ -126,7 +126,7 @@ class SiteImporter(CsvImporter):
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()
     organization = self.organization_dao.get_by_external_id(
-                                        row[SITE_ORGANIZATION_ID_COLUMN]).upper()
+                                        row[SITE_ORGANIZATION_ID_COLUMN])
     if organization is None:
       logging.warn('Invalid organization ID %s importing site %s',
                    row[SITE_ORGANIZATION_ID_COLUMN].upper(),
