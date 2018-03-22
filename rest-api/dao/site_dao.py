@@ -19,6 +19,7 @@ class _FhirSite(FhirMixin, BackboneElement):
     FhirProperty('display_name', str, required=True),
     FhirProperty('mayolink_client_number', long),
     FhirProperty('site_status', str, required=True),
+    FhirProperty('enrolling_status', str),
     FhirProperty('launch_date', fhirdate.FHIRDate),
     FhirProperty('notes', str),
     FhirProperty('latitude', float),
@@ -56,6 +57,8 @@ class SiteDao(CacheAllDao):
     if model.mayolinkClientNumber:
       resource.mayolink_client_number = long(model.mayolinkClientNumber)
     resource.site_status = str(model.siteStatus)
+    if model.enrollingStatus:
+      resource.enrolling_status = str(model.enrollingStatus)
     resource.launch_date = _to_fhir_date(model.launchDate)
     resource.notes = model.notes
     resource.latitude = model.latitude
