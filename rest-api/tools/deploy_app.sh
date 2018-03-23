@@ -163,6 +163,12 @@ then
   fi
 
 
+if [[ $(git status --porcelain) ]]; then
+  # Changes
+  echo "git status must be clean"
+  EXIT 1
+fi
+
   echo "${BOLD}Deploying application...${NONE}"
   $UPDATE_TRACKER --version $VERSION --comment "${before_comment}"
   gcloud app deploy "${yamls[@]}" \
