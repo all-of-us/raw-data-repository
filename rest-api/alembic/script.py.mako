@@ -17,7 +17,7 @@ from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, O
 from participant_enums import WithdrawalStatus, SuspensionStatus
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType
 from participant_enums import MetricSetType, MetricsKey
-from model.site_enums import SiteStatus
+from model.site_enums import SiteStatus, EnrollingStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
