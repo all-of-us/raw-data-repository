@@ -12,13 +12,15 @@ def main():
   client = Client()
   AWARDEE = 'PITT'
   response = client.request_json('ParticipantSummary?_sync=true&_count=1&_sort=lastModified&awardee'
-                                 '={}'
-                                                                      .format(AWARDEE), 'GET')
+                                 '={}'.format(AWARDEE), 'GET')
 
   sync_url = response['link'][0]['url']
   index = sync_url.find('ParticipantSummary')
   sync_results = client.request_json(sync_url[index:], 'GET')
   logging.info(pprint.pformat(response))
+  print
+  print '--------------      Getting next batch from sync...        -----------------'
+  print
   logging.info(pprint.pformat(sync_results))
 
 if __name__ == '__main__':
