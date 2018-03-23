@@ -35,10 +35,10 @@ then
   usage
 fi
 
-if [[ `git status --porcelain` ]]; then
+if [[ $(git status --porcelain) ]]; then
   # Changes
   echo "git status must be clean"
-  EXIT 0
+  EXIT 1
 fi
 
 UPDATE_TRACKER=tools/update_release_tracker.py
@@ -105,6 +105,12 @@ fi
 
 echo "${BOLD}Checking out code...${NONE}"
 git checkout $VERSION
+
+if [[ $(git status --porcelain) ]]; then
+  # Changes
+  echo "git status must be clean"
+  EXIT 1
+fi
 
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "db" ]
 then
