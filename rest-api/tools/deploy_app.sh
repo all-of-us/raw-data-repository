@@ -35,6 +35,12 @@ then
   usage
 fi
 
+if [[ `git status --porcelain` ]]; then
+  # Changes
+  echo "git status must be clean"
+  EXIT 0
+fi
+
 UPDATE_TRACKER=tools/update_release_tracker.py
 if [ "${PROJECT}" == "all-of-us-rdr-prod" ]
 then

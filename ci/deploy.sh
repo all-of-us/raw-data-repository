@@ -49,11 +49,6 @@ fi
 echo "Deploying $VERSION to: $PROJECT_ID"
 
 cd rest-api
-if [[ `git status --porcelain` ]]; then
-  # Changes
-  echo "git status must be clean"
-  EXIT 0
-fi
 
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
