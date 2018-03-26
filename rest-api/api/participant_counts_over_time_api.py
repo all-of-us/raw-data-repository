@@ -1,6 +1,4 @@
 import datetime
-# import json
-import logging
 
 from flask.ext.restful import Resource
 from flask import request
@@ -28,6 +26,7 @@ class ParticipantCountsOverTimeApi(Resource):
 
     # TODO: After enrollment status is filterable,
     # wire in 'organization', 'site', 'withdrawalStatus', and 'bucketSize'.
+    # Note: withdrawalStatus ought to filter out withdrawn individuals by default, per Scott
     enrollment_status = request.args.get('enrollmentStatus')
     awardee = request.args.get('awardee')
     stratification = request.args.get('stratification')
@@ -59,8 +58,6 @@ class ParticipantCountsOverTimeApi(Resource):
     start_date = params['start_date']
     end_date = params['end_date']
 
-    logging.info('params')
-    logging.info(params)
     filters = params
 
     del filters['start_date']
