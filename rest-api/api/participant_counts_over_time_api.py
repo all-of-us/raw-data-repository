@@ -78,7 +78,7 @@ class ParticipantCountsOverTimeApi(Resource):
     :param start_date_str: Start date string, e.g. '2018-01-01'
     :param end_date_str: End date string, e.g. '2018-01-31'
     :param stratification_str: How to stratify (layer) results, as in a stacked bar chart
-    :param enrollment_statuses: enrollment level filters as list, e.g. ['MEMBER', 'FULL_PARTICIPANT']
+    :param enrollment_statuses: enrollment level filters as list
     :param awardees: awardee name filters as list, e.g. ['AZ_TUSCON']
     :return: Validated parameters in canonical form
     """
