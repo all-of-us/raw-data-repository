@@ -27,18 +27,18 @@ class ParticipantCountsOverTimeApi(Resource):
     # TODO: After enrollment status is filterable,
     # wire in 'organization', 'site', 'withdrawalStatus', and 'bucketSize'.
     # Note: withdrawalStatus ought to filter out withdrawn individuals by default, per Scott
-    enrollment_status = request.args.get('enrollmentStatus')
-    awardee = request.args.get('awardee')
-    stratification = request.args.get('stratification')
-    start_date = request.args.get('startDate')
-    end_date = request.args.get('endDate')
+    enrollment_statuses = request.args.get('enrollmentStatus')
+    awardees = request.args.get('awardee')
+    stratification_str = request.args.get('stratification')
+    start_date_str = request.args.get('startDate')
+    end_date_str = request.args.get('endDate')
 
     params = {
-      'enrollment_statuses': enrollment_status,
-      'awardees': awardee,
-      'stratification': stratification,
-      'start_date': start_date,
-      'end_date': end_date
+      'enrollment_statuses': enrollment_statuses,
+      'awardees': awardees,
+      'stratification': stratification_str,
+      'start_date': start_date_str,
+      'end_date': end_date_str
     }
 
     # Most parameters accepted by this API can have multiple, comma-delimited
@@ -53,36 +53,34 @@ class ParticipantCountsOverTimeApi(Resource):
       else:
         params[param] = value.split(',')
 
-    params = self.validate_params(params)
+    params = self.validate_params(start_date_str, end_date_str, stratification_str, enrollment_statuses, awardees)
 
     start_date = params['start_date']
     end_date = params['end_date']
+    stratification = params['stratification']
 
     filters = params
 
     del filters['start_date']
     del filters['end_date']
     del filters['stratification']
-    del filters['awardees']
 
-    results = self.service.get_filtered_results(start_date, end_date, filters,
-                                                stratification=stratification)
+    results = self.service.get_filtered_results(start_date, end_date, stratification, filters)
 
     return results
 
-
-  def validate_params(self, params):
+  def validate_params(self, start_date_str, end_date_str, stratification_str, enrollment_statuses, awardees):
     """Validates URL parameters, and converts human-friendly values to canonical form
 
-    :param params: Dictionary of URL parameters and their values
+    :param start_date_str: Start date string, e.g. '2018-01-01'
+    :param end_date_str: End date string, e.g. '2018-01-31'
+    :param stratification_str: How to stratify (layer) results, as in a stacked bar chart
+    :param enrollment_statuses: enrollment level filters as list, e.g. ['MEMBER', 'FULL_PARTICIPANT']
+    :param awardees: awardee name filters as list, e.g. ['AZ_TUSCON']
     :return: Validated parameters in canonical form
     """
 
-    start_date_str = params['start_date']
-    end_date_str = params['end_date']
-    enrollment_statuses = params['enrollment_statuses']
-    awardees = params['awardees']
-    stratification = params['stratification']
+    params = {}
 
     # Validate dates
     if not start_date_str or not end_date_str:
@@ -99,8 +97,8 @@ class ParticipantCountsOverTimeApi(Resource):
     if date_diff > DAYS_LIMIT:
       raise BadRequest('Difference between start date and end date ' \
                        'should not be greater than %s days' % DAYS_LIMIT)
-    params['start_date'] = start_date_str
-    params['end_date'] = end_date_str
+    params['start_date'] = start_date
+    params['end_date'] = end_date
 
     # Validate awardees, get ID list
     awardee_ids = []
@@ -124,9 +122,9 @@ class ParticipantCountsOverTimeApi(Resource):
 
     # Validate stratifications
     try:
-      params['stratification'] = Stratifications(params['stratification'])
+      params['stratification'] = Stratifications(stratification_str)
     except TypeError:
-      raise BadRequest('Invalid stratification: %s' % stratification)
+      raise BadRequest('Invalid stratification: %s' % stratification_str)
 
     return params
 
