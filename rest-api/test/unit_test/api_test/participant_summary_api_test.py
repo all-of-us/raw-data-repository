@@ -181,12 +181,16 @@ class ParticipantSummaryApiTest(FlaskTestBase):
   def post_demographics_questionnaire(self,
                                       participant_id,
                                       questionnaire_id,
+                                      cabor_signature_string=False,
                                       time=TIME_1, **kwargs):
     """POSTs answers to the demographics questionnaire for the participant"""
     answers = {'code_answers': [],
                'string_answers': [],
-               'date_answers': [('dateOfBirth', kwargs.get('dateOfBirth'))],
-               'uri_answers': [('CABoRSignature', kwargs.get('CABoRSignature'))]}
+               'date_answers': [('dateOfBirth', kwargs.get('dateOfBirth'))]}
+    if cabor_signature_string:
+      answers['string_answers'].append(('CABoRSignature', kwargs.get('CABoRSignature')))
+    else:
+      answers['uri_answers'] = [('CABoRSignature', kwargs.get('CABoRSignature'))]
 
     for link_id in self.code_link_ids:
       if link_id in kwargs:
@@ -636,6 +640,51 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertJsonResponseMatches(expected, actual)
     response = self.send_get('ParticipantSummary')
     self.assertBundle([_make_entry(actual)], response)
+
+  def testQuery_oneParticipantStringConse(self):
+    # Set up the codes so they are mapped later.
+    SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
+                             "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
+    participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id = participant['participantId']
+    with FakeClock(TIME_1):
+      self.send_consent(participant_id)
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+
+    # Populate some answers to the questionnaire
+    answers = {
+      'race': RACE_WHITE_CODE,
+      'genderIdentity': 'male',
+      'firstName': self.fake.first_name(),
+      'middleName': self.fake.first_name(),
+      'lastName': self.fake.last_name(),
+      'zipCode': '78751',
+      'state': 'PIIState_VA',
+      'streetAddress': '1234 Main Street',
+      'city': 'Austin',
+      'sex': 'male_sex',
+      'sexualOrientation': 'straight',
+      'phoneNumber': '512-555-5555',
+      'recontactMethod': 'email_code',
+      'language': 'en',
+      'education': 'highschool',
+      'income': 'lotsofmoney',
+      'dateOfBirth': datetime.date(1978, 10, 9),
+      'CABoRSignature': 'signature.pdf',
+    }
+
+    self.post_demographics_questionnaire(participant_id, questionnaire_id, cabor_signature_string=True,
+                                          **answers)
+
+    with FakeClock(TIME_2):
+      actual = self.send_get('Participant/%s/Summary' % participant_id)
+
+    expected = self.create_expected_response(participant, answers)
+
+    self.assertJsonResponseMatches(expected, actual)
+    response = self.send_get('ParticipantSummary')
+    self.assertBundle([_make_entry(actual)], response)
+
 
   def _send_next(self, next_link):
     prefix_index = next_link.index(main.PREFIX)

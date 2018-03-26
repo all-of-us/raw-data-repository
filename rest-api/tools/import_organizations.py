@@ -23,7 +23,7 @@ from dao.site_dao import SiteDao
 from model.hpo import HPO
 from model.organization import Organization
 from model.site import Site
-from model.site_enums import SiteStatus
+from model.site_enums import SiteStatus, EnrollingStatus
 from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
 
@@ -48,6 +48,7 @@ SITE_MAYOLINK_CLIENT_NUMBER_COLUMN = 'MayoLINK Client #'
 SITE_NOTES_COLUMN = 'Notes'
 # TODO: switch this back to 'Status' [DA-538]
 SITE_STATUS_COLUMN = 'PTSC Scheduling Status'
+ENROLLING_STATUS_COLUMN = 'Enrolling Status'
 SITE_LAUNCH_DATE_COLUMN = 'Anticipated Launch Date'
 SITE_DIRECTIONS_COLUMN = 'Directions'
 SITE_PHYSICAL_LOCATION_NAME_COLUMN = 'Physical Location Name'
@@ -64,7 +65,8 @@ class HPOImporter(CsvImporter):
 
   def __init__(self):
     super(HPOImporter, self).__init__('awardee', HPODao(), 'hpoId', 'name',
-                                      [HPO_AWARDEE_ID_COLUMN, HPO_NAME_COLUMN, HPO_TYPE_COLUMN])
+                                      [HPO_AWARDEE_ID_COLUMN, HPO_NAME_COLUMN,
+                                       HPO_TYPE_COLUMN])
     self.new_count = 0
 
   def _entity_from_row(self, row):
@@ -77,7 +79,7 @@ class HPOImporter(CsvImporter):
       logging.warn('Invalid organization type %s for awardee %s', type_str,
       row[HPO_AWARDEE_ID_COLUMN])
       return None
-    return HPO(name=row[HPO_AWARDEE_ID_COLUMN],
+    return HPO(name=row[HPO_AWARDEE_ID_COLUMN].upper(),
                displayName=row[HPO_NAME_COLUMN],
                organizationType=organization_type)
 
@@ -99,13 +101,13 @@ class OrganizationImporter(CsvImporter):
     self.hpo_dao = HPODao()
 
   def _entity_from_row(self, row):
-    hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN])
+    hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN].upper())
     if hpo is None:
       logging.warn('Invalid awardee ID %s importing organization %s',
                    row[ORGANIZATION_AWARDEE_ID_COLUMN],
                    row[ORGANIZATION_ORGANIZATION_ID_COLUMN])
       return None
-    return Organization(externalId=row[ORGANIZATION_ORGANIZATION_ID_COLUMN],
+    return Organization(externalId=row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper(),
                         displayName=row[ORGANIZATION_NAME_COLUMN],
                         hpoId=hpo.hpoId)
 
@@ -114,7 +116,8 @@ class SiteImporter(CsvImporter):
   def __init__(self):
     super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
                                        [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
-                                       SITE_SITE_COLUMN, SITE_STATUS_COLUMN])
+                                       SITE_SITE_COLUMN, SITE_STATUS_COLUMN,
+                                       ENROLLING_STATUS_COLUMN])
 
     self.organization_dao = OrganizationDao()
     args = parser.parse_args()
@@ -122,9 +125,11 @@ class SiteImporter(CsvImporter):
 
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()
-    organization = self.organization_dao.get_by_external_id(row[SITE_ORGANIZATION_ID_COLUMN])
+    organization = self.organization_dao.get_by_external_id(
+                                        row[SITE_ORGANIZATION_ID_COLUMN].upper())
     if organization is None:
-      logging.warn('Invalid organization ID %s importing site %s', row[SITE_ORGANIZATION_ID_COLUMN],
+      logging.warn('Invalid organization ID %s importing site %s',
+                   row[SITE_ORGANIZATION_ID_COLUMN].upper(),
                    google_group)
       return None
 
@@ -152,6 +157,11 @@ class SiteImporter(CsvImporter):
     except TypeError:
       logging.warn('Invalid site status %s for site %s', row[SITE_STATUS_COLUMN], google_group)
       return None
+    try:
+      enrolling_status = EnrollingStatus(row[ENROLLING_STATUS_COLUMN].upper())
+    except TypeError:
+      logging.warn('Invalid enrollment site status %s for site %s', row[ENROLLING_STATUS_COLUMN],
+                   google_group)
     directions = row.get(SITE_DIRECTIONS_COLUMN)
     physical_location_name = row.get(SITE_PHYSICAL_LOCATION_NAME_COLUMN)
     address_1 = row.get(SITE_ADDRESS_1_COLUMN)
@@ -168,6 +178,7 @@ class SiteImporter(CsvImporter):
                 organizationId=organization.organizationId,
                 hpoId=organization.hpoId,
                 siteStatus=site_status,
+                enrollingStatus=enrolling_status,
                 launchDate=launch_date,
                 notes=notes,
                 directions=directions,
