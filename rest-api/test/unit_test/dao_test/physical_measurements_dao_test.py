@@ -94,6 +94,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     summary = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertEquals(PhysicalMeasurementsStatus.COMPLETED, summary.physicalMeasurementsStatus)
     self.assertEquals(TIME_2, summary.physicalMeasurementsTime)
+    self.assertEquals(TIME_2, summary.lastModified)
 
   def test_backfill_is_noop(self):
     self._make_summary()

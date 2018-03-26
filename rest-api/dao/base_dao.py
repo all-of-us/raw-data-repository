@@ -154,28 +154,28 @@ class BaseDao(object):
   def query(self, query_def):
     if not self.order_by_ending:
       raise BadRequest("Can't query on type %s -- no order by ending speciifed" % self.model_type)
+
     with self.session() as session:
       query, field_names = self._make_query(session, query_def)
       items = query.all()
-    if items:
-      if len(items) > query_def.max_results:
-        # Items, pagination token, and more are available
-        return Results(items[0:query_def.max_results],
-                       self._make_pagination_token(items[query_def.max_results - 1].asdict(),
-                                                   field_names),
-                       True)
-      else:
-        if query_def.always_return_token:
-          # Items and pagination token, but no more available
-          return Results(items,
-                         self._make_pagination_token(items[len(items) - 1].asdict(), field_names),
-                         False)
-        else:
-          # Items but no pagination token, and no more available
-          return Results(items, None, False)
+
+      total = None
+      if query_def.include_total:
+        total = self._count_query(session, query_def)
+
+      if not items:
+        return Results([], total=total)
+
+    if len(items) > query_def.max_results:
+      # Items, pagination token, and more are available
+      page = items[0:query_def.max_results]
+      token = self._make_pagination_token(items[query_def.max_results - 1].asdict(), field_names)
+      return Results(page, token, more_available=True, total=total)
     else:
-      # No items, no pagination token, and no more available
-      return Results([], None, False)
+      token = (self._make_pagination_token(items[-1].asdict(), field_names)
+               if query_def.always_return_token
+               else None)
+      return Results(items, token, more_available=False, total=total)
 
   def _make_pagination_token(self, item_dict, field_names):
     vals = [item_dict.get(field_name) for field_name in field_names]
@@ -189,15 +189,14 @@ class BaseDao(object):
     #pylint: disable=unused-argument
     return session.query(self.model_type)
 
+  def _count_query(self, session, query_def):
+    query = self._initialize_query(session, query_def)
+    query = self._set_filters(query, query_def.field_filters)
+    return query.count()
+
   def _make_query(self, session, query_def):
     query = self._initialize_query(session, query_def)
-    for field_filter in query_def.field_filters:
-      try:
-        f = getattr(self.model_type, field_filter.field_name)
-      except AttributeError:
-        raise BadRequest(
-            'No field named %r found on %r.' % (field_filter.field_name, self.model_type))
-      query = self._add_filter(query, field_filter, f)
+    query = self._set_filters(query, query_def.field_filters)
     order_by_field_names = []
     order_by_fields = []
     first_descending = False
@@ -207,12 +206,21 @@ class BaseDao(object):
     query = self._add_order_by_ending(query, order_by_field_names, order_by_fields)
     if query_def.pagination_token:
       # Add a query filter based on the pagination token.
-      query = self._add_pagination_filter(query, query_def.pagination_token, order_by_fields,
+      query = self._add_pagination_filter(query, query_def, order_by_fields,
                                           first_descending)
     # Return one more than max_results, so that we know if there are more results.
     query = query.limit(query_def.max_results + 1)
-
     return query, order_by_field_names
+
+  def _set_filters(self, query, filters):
+    for field_filter in filters:
+      try:
+        f = getattr(self.model_type, field_filter.field_name)
+      except AttributeError:
+        raise BadRequest(
+            'No field named %r found on %r.' % (field_filter.field_name, self.model_type))
+      query = self._add_filter(query, field_filter, f)
+    return query
 
   def _add_filter(self, query, field_filter, f):
     if field_filter.value is None:
@@ -227,10 +235,10 @@ class BaseDao(object):
       raise BadRequest('Invalid operator: %r.' % field_filter.operator)
     return query
 
-  def _add_pagination_filter(self, query, pagination_token, fields, first_descending):
+  def _add_pagination_filter(self, query, query_def, fields, first_descending):
     """Adds a pagination filter for the decoded values in the pagination token based on
     the sort order."""
-    decoded_vals = self._decode_token(pagination_token, fields)
+    decoded_vals = self._decode_token(query_def, fields)
     # SQLite does not support tuple comparisons, so make an or-of-ands statements that is
     # equivalent.
     or_clauses = []
@@ -254,7 +262,8 @@ class BaseDao(object):
       or_clauses.append(and_(*and_clauses))
     return query.filter(or_(*or_clauses))
 
-  def _decode_token(self, pagination_token, fields):
+  def _decode_token(self, query_def, fields):
+    pagination_token = query_def.pagination_token
     try:
       decoded_vals = json.loads(urlsafe_b64decode(pagination_token.encode("ascii")))
     except:

@@ -35,6 +35,12 @@ then
   usage
 fi
 
+if [[ $(git status --porcelain) ]]; then
+  # Changes
+  echo "git status must be clean"
+  EXIT 1
+fi
+
 UPDATE_TRACKER=tools/update_release_tracker.py
 if [ "${PROJECT}" == "all-of-us-rdr-prod" ]
 then
@@ -100,6 +106,12 @@ fi
 echo "${BOLD}Checking out code...${NONE}"
 git checkout $VERSION
 
+if [[ $(git status --porcelain) ]]; then
+  # Changes
+  echo "git status must be clean"
+  EXIT 1
+fi
+
 if [ "$TARGET" == "all" ] || [ "$TARGET" == "db" ]
 then
   echo "${BOLD}Upgrading database...${NONE}"
@@ -150,6 +162,12 @@ then
     after_comment="App deployed to ${PROJECT}."
   fi
 
+
+if [[ $(git status --porcelain) ]]; then
+  # Changes
+  echo "git status must be clean"
+  EXIT 1
+fi
 
   echo "${BOLD}Deploying application...${NONE}"
   $UPDATE_TRACKER --version $VERSION --comment "${before_comment}"

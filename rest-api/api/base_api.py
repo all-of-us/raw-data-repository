@@ -105,6 +105,7 @@ class BaseApi(Resource):
     pagination_token = None
     order_by = None
     missing_id_list = ['awardee', 'organization', 'site']
+    include_total = request.args.get('_includeTotal', False)
 
     for key, value in request.args.iteritems(multi=True):
       if value in missing_id_list:
@@ -128,7 +129,8 @@ class BaseApi(Resource):
         field_filter = self.dao.make_query_filter(key, value)
         if field_filter:
           field_filters.append(field_filter)
-    return Query(field_filters, order_by, max_results, pagination_token)
+    return Query(field_filters, order_by, max_results, pagination_token,
+                 include_total=include_total)
 
   def _make_bundle(self, results, id_field, participant_id):
     import main
@@ -146,6 +148,8 @@ class BaseApi(Resource):
       entries.append({"fullUrl": full_url,
                      "resource": json})
     bundle_dict['entry'] = entries
+    if results.total is not None:
+      bundle_dict['total'] = results.total
     return bundle_dict
 
   def _make_resource_url(self, json, id_field, participant_id):
@@ -218,8 +222,13 @@ def get_sync_results_for_request(dao, max_results):
   token = request.args.get('_token')
   count_str = request.args.get('_count')
   count = int(count_str) if count_str else max_results
+
   results = dao.query(Query([], OrderBy('logPositionId', True),
                             count, token, always_return_token=True))
+  return make_sync_results_for_request(dao, results)
+
+
+def make_sync_results_for_request(dao, results):
   bundle_dict = {'resourceType': 'Bundle', 'type': 'history'}
   if results.pagination_token:
     query_params = request.args.copy()

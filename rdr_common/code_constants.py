@@ -1,10 +1,6 @@
 '''Constants for code values for questions and modules and their mappings to fields on
 participant summaries and metrics.'''
 
-UNSET = 'UNSET'
-UNMAPPED = 'UNMAPPED'
-BASE_VALUES = [UNSET, UNMAPPED]
-
 PPI_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi"
 # System for codes that are used in questionnaires but we don't need for analysis purposes;
 # these codes are ignored by RDR.
@@ -12,7 +8,6 @@ PPI_EXTRA_SYSTEM = "http://terminology.pmi-ops.org/CodeSystem/ppi-extra"
 
 SITE_ID_SYSTEM = "https://www.pmi-ops.org/site-id"
 HEALTHPRO_USERNAME_SYSTEM = "https://www.pmi-ops.org/healthpro-username"
-
 FIRST_NAME_QUESTION_CODE = "PIIName_First"
 LAST_NAME_QUESTION_CODE = "PIIName_Last"
 MIDDLE_NAME_QUESTION_CODE = "PIIName_Middle"
@@ -75,4 +70,6 @@ BIOBANK_TESTS = ['1ED10', '2ED10', '1ED04', '1SST8', '1SS08', '1PST8', '1PS08',\
                  '2SST8', '2PST8', '1HEP4', '1UR10', '1SAL']
 BIOBANK_TESTS_SET = frozenset(BIOBANK_TESTS)
 
-
+UNSET = 'UNSET'
+UNMAPPED = 'UNMAPPED'
+BASE_VALUES = [UNSET, UNMAPPED, PMI_SKIP_CODE]

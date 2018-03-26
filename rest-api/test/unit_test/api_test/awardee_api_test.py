@@ -6,7 +6,7 @@ from dao.site_dao import SiteDao
 from model.hpo import HPO
 from model.organization import Organization
 from model.site import Site
-from model.site_enums import SiteStatus
+from model.site_enums import SiteStatus, EnrollingStatus
 from participant_enums import UNSET_HPO_ID, OrganizationType
 
 from test.unit_test.unit_test_util import FlaskTestBase, PITT_HPO_ID, AZ_HPO_ID
@@ -95,9 +95,15 @@ class AwardeeApiTest(FlaskTestBase):
     # we are now filtering out 'INACTIVE' sites by default.
     self.assertEqual(self._make_expected_pitt_awardee_resource(), result)
 
+  def test_get_not_enrolling_awardees_with_organizations(self):
+    self._setup_unset_enrollment_site()
+    result = self.send_get('Awardee?_inactive=true')
+    self.assertEqual(self._make_expected_unset_enrollment_data(), result)
+
   def _make_expected_pitt_awardee_resource(self, inactive=False):
     sites = [{'id': 'aaaaaaa',
              'displayName': 'Zebras Rock',
+             'enrollingStatus': 'INACTIVE',
              'siteStatus': 'INACTIVE',
              'address': {}
             },
@@ -105,6 +111,7 @@ class AwardeeApiTest(FlaskTestBase):
               'displayName': 'Site 1',
               'mayolinkClientNumber': 123456,
               'siteStatus': 'ACTIVE',
+              'enrollingStatus': 'ACTIVE',
               'launchDate': '2016-01-01',
               'notes': 'notes',
               'latitude': 12.1,
@@ -142,6 +149,7 @@ class AwardeeApiTest(FlaskTestBase):
                          mayolinkClientNumber=123456,
                          organizationId=org_1.organizationId,
                          siteStatus=SiteStatus.ACTIVE,
+                         enrollingStatus=EnrollingStatus.ACTIVE,
                          launchDate=datetime.datetime(2016, 1, 1),
                          notes='notes',
                          latitude=12.1,
@@ -159,4 +167,30 @@ class AwardeeApiTest(FlaskTestBase):
     site_dao.insert(Site(siteName='Zebras Rock',
                          googleGroup='aaaaaaa',
                          organizationId=org_1.organizationId,
+                         enrollingStatus=EnrollingStatus.INACTIVE,
                          siteStatus=SiteStatus.INACTIVE))
+
+
+  def _setup_unset_enrollment_site(self):
+    site_dao = SiteDao()
+    organization_dao = OrganizationDao()
+    org_2 = organization_dao.insert(Organization(externalId='ORG_2',
+                                                 displayName='Organization 2', hpoId=PITT_HPO_ID))
+    site_dao.insert(Site(siteName='not enrolling site',
+                         googleGroup='not_enrolling_dot_com',
+                         organizationId=org_2.organizationId,
+                         enrollingStatus=EnrollingStatus.UNSET,
+                         siteStatus=SiteStatus.INACTIVE))
+
+  def _make_expected_unset_enrollment_data(self):
+    return {'resourceType': 'Bundle', 'entry':
+           [{'resource': {'displayName': 'Arizona', 'type': 'HPO', 'id': 'AZ_TUCSON'},
+           'fullUrl': 'http://localhost/rdr/v1/Awardee/AZ_TUCSON'},
+           {'resource': {'displayName': 'Pittsburgh', 'type': 'HPO', 'id': 'PITT', 'organizations':
+           [{'displayName': 'Organization 2', 'id': 'ORG_2',
+           'sites':
+           [{'siteStatus': 'INACTIVE', 'displayName': 'not enrolling site', 'id': 'not_enrolling_dot_com',
+           'address': {}}]}]}, 'fullUrl': 'http://localhost/rdr/v1/Awardee/PITT'},
+           {'resource': {'displayName': 'Unset', 'type': 'UNSET', 'id': 'UNSET'},
+           'fullUrl': 'http://localhost/rdr/v1/Awardee/UNSET'}], 'type': 'searchset'}
+

@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, Date, BLOB, ForeignKey, String, Boolean
 from sqlalchemy import ForeignKeyConstraint, Float, Text
 
+
 class QuestionnaireResponse(Base):
   """"A response to a questionnaire for a participant. Contains answers to questions found in the
   questionnaire."""

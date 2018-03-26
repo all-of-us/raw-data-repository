@@ -39,10 +39,12 @@ def count_completed_baseline_ppi_modules(participant_summary):
   return sum(1 for field in baseline_ppi_module_fields
              if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED)
 
+
 def count_completed_ppi_modules(participant_summary):
   ppi_module_fields = config.getSettingList(config.PPI_QUESTIONNAIRE_FIELDS, [])
   return sum(1 for field in ppi_module_fields
              if getattr(participant_summary, field) == QuestionnaireStatus.SUBMITTED)
+
 
 class QuestionnaireResponseDao(BaseDao):
 
@@ -201,7 +203,7 @@ class QuestionnaireResponseDao(BaseDao):
             if code and code.value == CONSENT_PERMISSION_YES_CODE:
               ehr_consent = True
           elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
-            if answer.valueUri:
+            if answer.valueUri or answer.valueString:
               # TODO: validate the URI? [DA-326]
               if not participant_summary.consentForCABoR:
                 participant_summary.consentForCABoR = True
@@ -246,6 +248,7 @@ class QuestionnaireResponseDao(BaseDao):
             'First name (%s), last name (%s), and email address (%s) required for consenting.'
             % tuple(['present' if part else 'missing' for part in first_last_email]))
       ParticipantSummaryDao().update_enrollment_status(participant_summary)
+      participant_summary.lastModified = clock.CLOCK.now()
       session.merge(participant_summary)
 
   def insert(self, obj):

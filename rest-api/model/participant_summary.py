@@ -10,6 +10,7 @@ from model.utils import UTCDateTime
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
 from participant_enums import WithdrawalStatus, SuspensionStatus
+
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
 WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime', 'participantId', 'hpoId',
@@ -17,9 +18,11 @@ WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime', 'participa
                                 'consentForStudyEnrollment', 'consentForStudyEnrollmentTime',
                                 'consentForElectronicHealthRecords',
                                 'consentForElectronicHealthRecordsTime']
+
 # The period of time for which withdrawn participants will still be returned in results for
 # queries that don't ask for withdrawn participants.
 WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days=2)
+
 
 class ParticipantSummary(Base):
   """Summary fields extracted from participant data (combined from multiple tables).
@@ -28,6 +31,7 @@ class ParticipantSummary(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          primary_key=True, autoincrement=False)
   biobankId = Column('biobank_id', Integer, nullable=False)
+  lastModified = Column('last_modified', UTCDateTime, nullable=False)
   # PTC string fields will generally be limited to 255 chars; set our field lengths accordingly to
   # ensure that long values can be inserted.
   firstName = Column('first_name', String(255), nullable=False)
@@ -214,7 +218,6 @@ class ParticipantSummary(Base):
     return Column('site_id', Integer, ForeignKey('site.site_id'))
 
 
-# TODO(DA-234) Add an index for withdrawal status when querying summaries & filtering by withdrawal.
 Index('participant_summary_biobank_id', ParticipantSummary.biobankId)
 Index('participant_summary_ln_dob', ParticipantSummary.lastName,
       ParticipantSummary.dateOfBirth)
@@ -238,3 +241,5 @@ Index('participant_summary_hpo_num_baseline_samples', ParticipantSummary.hpoId,
       ParticipantSummary.numBaselineSamplesArrived)
 Index('participant_summary_hpo_withdrawal_status_time', ParticipantSummary.hpoId,
       ParticipantSummary.withdrawalStatus, ParticipantSummary.withdrawalTime)
+Index('participant_summary_last_modified', ParticipantSummary.hpoId,
+      ParticipantSummary.lastModified)

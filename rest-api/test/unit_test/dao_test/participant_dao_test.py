@@ -149,8 +149,16 @@ class ParticipantDaoTest(SqlTestBase):
     ps = self.participant_summary_dao.get(1)
     expected_ps = self._participant_summary_with_defaults(
         participantId=1, biobankId=2, signUpTime=time, hpoId=PITT_HPO_ID,
-        firstName=summary.firstName, lastName=summary.lastName, email=summary.email)
+        lastModified=time2, firstName=summary.firstName, lastName=summary.lastName,
+      email=summary.email)
     self.assertEquals(expected_ps.asdict(), ps.asdict())
+
+    p2_last_modified = p2.lastModified
+    p2.hpoId = 2
+    self.dao.update(p2)
+    p2_update = self.dao.get(1)
+    self.assertNotEquals(p2_last_modified, p2_update.lastModified)
+    self.assertEquals(p2_update.lastModified, p2.lastModified)
 
     expected_ph = self._participant_history_with_defaults(
         participantId=1, biobankId=2, lastModified=time, signUpTime=time)

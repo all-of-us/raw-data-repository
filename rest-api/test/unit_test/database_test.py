@@ -81,6 +81,7 @@ class DatabaseTest(SqlTestBase):
     ps = self._participant_summary_with_defaults(
         participantId=1,
         biobankId=2,
+        lastModified=datetime.datetime.now(),
         hpoId=hpo.hpoId,
         firstName=self.fake.first_name(),
         middleName=self.fake.first_name(),
