@@ -28,12 +28,13 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         FROM calendar,
         (SELECT COUNT(*) cnt, DATE(ps.sign_up_time) day
         FROM participant_summary ps
+        WHERE %(filters)s
         GROUP BY day) ps_sum
         WHERE calendar.day >= :start_date
         AND calendar.day <= :end_date
         GROUP BY calendar.day
         ORDER BY calendar.day;
-      """
+      """ % {'filters': filters_sql}
     elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(EnrollmentStatus(val)) for val in EnrollmentStatus]
       sql = """
@@ -144,7 +145,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         facets_sql.append(filters_sql)
 
     if len(facets_sql) > 0:
-      facets_sql = ' AND '.join(facets_sql)
+      facets_sql = '(' + ' AND '.join(facets_sql) + ')'
     else:
       facets_sql = '1 = 1'
 
