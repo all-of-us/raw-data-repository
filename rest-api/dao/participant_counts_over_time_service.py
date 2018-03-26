@@ -1,3 +1,5 @@
+from werkzeug.exceptions import BadRequest
+
 from .participant_summary_dao import ParticipantSummaryDao
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus
@@ -88,6 +90,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
           GROUP BY calendar.day
           ORDER BY calendar.day;
       """ % {'filters': filters_sql}
+    else:
+      raise BadRequest('Invalid stratification: %s' % stratification)
 
     params = {'start_date': start_date, 'end_date': end_date}
 
