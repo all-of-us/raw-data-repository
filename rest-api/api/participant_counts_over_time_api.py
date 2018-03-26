@@ -53,7 +53,8 @@ class ParticipantCountsOverTimeApi(Resource):
       else:
         params[param] = value.split(',')
 
-    params = self.validate_params(start_date_str, end_date_str, stratification_str, enrollment_statuses, awardees)
+    params = self.validate_params(start_date_str, end_date_str, stratification_str,
+                                  enrollment_statuses, awardees)
 
     start_date = params['start_date']
     end_date = params['end_date']
@@ -65,11 +66,13 @@ class ParticipantCountsOverTimeApi(Resource):
     del filters['end_date']
     del filters['stratification']
 
-    results = self.service.get_filtered_results(start_date, end_date, stratification, filters)
+    results = self.service.get_filtered_results(start_date, end_date,
+                                                stratification, filters)
 
     return results
 
-  def validate_params(self, start_date_str, end_date_str, stratification_str, enrollment_statuses, awardees):
+  def validate_params(self, start_date_str, end_date_str, stratification_str,
+                      enrollment_statuses, awardees):
     """Validates URL parameters, and converts human-friendly values to canonical form
 
     :param start_date_str: Start date string, e.g. '2018-01-01'
