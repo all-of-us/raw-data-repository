@@ -18,7 +18,6 @@
 import logging
 import pprint
 import time
-import sys
 from main_util import configure_logging
 from client import Client
 
