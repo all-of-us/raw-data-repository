@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# remove keys for service accounts that start with 'awardee-' that are older than 3 days.
+# PARAM: --PROJECT
+
 while true; do
   case "$1" in
     --project) PROJECT=$2; shift 2;;
