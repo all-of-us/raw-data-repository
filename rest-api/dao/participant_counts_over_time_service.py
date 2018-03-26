@@ -7,20 +7,19 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
   def __init__(self):
     super(ParticipantSummaryDao, self).__init__(ParticipantSummary)
 
-
-  def get_filtered_results(self, start_date, end_date, stratification, filters):
+  def get_filtered_results(self, start_date, end_date, filters, stratification='ENROLLMENT_STATUS'):
     """Queries DB, returns results in format consumed by front-end
 
     :param start_date: Start date object
     :param end_date: End date object
-    :param stratification: How to stratify (layer) results, as in a stacked bar chart
     :param filters: Objects representing filters specified in UI
+    :param stratification: How to stratify (layer) results, as in a stacked bar chart
     :return: Filtered, stratified results by date
     """
 
     filters_sql = self.get_facets_sql(filters)
 
-    if stratification == 'TOTAL':
+    if str(stratification) == 'TOTAL':
       strata = ['TOTAL']
       sql = """
         SELECT
@@ -35,7 +34,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         GROUP BY calendar.day
         ORDER BY calendar.day;
       """
-    elif stratification == 'ENROLLMENT_STATUS':
+    elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(EnrollmentStatus(val)) for val in EnrollmentStatus]
       sql = """
       SELECT

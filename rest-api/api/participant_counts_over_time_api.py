@@ -41,18 +41,6 @@ class ParticipantCountsOverTimeApi(Resource):
       'end_date': end_date_str
     }
 
-    # Most parameters accepted by this API can have multiple, comma-delimited
-    # values.  Arrange them into lists.
-    for param in params:
-      value = params[param]
-      if param in ['start_date', 'end_date', 'stratification']:
-        params[param] = value
-        continue
-      if value is None:
-        params[param] = []
-      else:
-        params[param] = value.split(',')
-
     params = self.validate_params(start_date_str, end_date_str, stratification_str,
                                   enrollment_statuses, awardees)
 
@@ -67,7 +55,7 @@ class ParticipantCountsOverTimeApi(Resource):
     del filters['stratification']
 
     results = self.service.get_filtered_results(start_date, end_date,
-                                                stratification, filters)
+                                                filters, stratification=stratification)
 
     return results
 
@@ -78,8 +66,8 @@ class ParticipantCountsOverTimeApi(Resource):
     :param start_date_str: Start date string, e.g. '2018-01-01'
     :param end_date_str: End date string, e.g. '2018-01-31'
     :param stratification_str: How to stratify (layer) results, as in a stacked bar chart
-    :param enrollment_statuses: enrollment level filters as list
-    :param awardees: awardee name filters as list, e.g. ['AZ_TUSCON']
+    :param enrollment_statuses: enrollment level filters
+    :param awardees: awardee name filters
     :return: Validated parameters in canonical form
     """
 
@@ -104,6 +92,7 @@ class ParticipantCountsOverTimeApi(Resource):
     params['end_date'] = end_date
 
     # Validate awardees, get ID list
+    awardees = awardees.split(',')
     awardee_ids = []
     for awardee in awardees:
       if awardee != '':
@@ -114,6 +103,7 @@ class ParticipantCountsOverTimeApi(Resource):
     params['awardee_ids'] = awardee_ids
 
     # Validate enrollment statuses
+    enrollment_statuses = enrollment_statuses.split(',')
     try:
       params['enrollment_statuses'] = [EnrollmentStatus(val) for val in enrollment_statuses]
     except TypeError:
