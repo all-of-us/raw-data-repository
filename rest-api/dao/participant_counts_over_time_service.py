@@ -36,7 +36,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         ORDER BY calendar.day;
       """ % {'filters': filters_sql}
     elif str(stratification) == 'ENROLLMENT_STATUS':
-      strata = [str(EnrollmentStatus(val)) for val in EnrollmentStatus]
+      strata = [str(val) for val in EnrollmentStatus]
       sql = """
       SELECT
          SUM(registered_cnt * (cnt_day <= calendar.day)) registered_participants,
