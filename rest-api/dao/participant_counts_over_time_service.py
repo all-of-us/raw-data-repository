@@ -30,7 +30,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         FROM calendar,
         (SELECT COUNT(*) cnt, DATE(ps.sign_up_time) day
         FROM participant_summary ps
-        WHERE %(filters)s
+        %(filters)s
         GROUP BY day) ps_sum
         WHERE calendar.day >= :start_date
         AND calendar.day <= :end_date
@@ -54,14 +54,14 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
             LEFT OUTER JOIN
             (SELECT COUNT(*) cnt, DATE(ps.consent_for_study_enrollment_time) day
                FROM participant_summary ps
-              WHERE %(filters)s
+              %(filters)s
               GROUP BY day) registered
              ON c2.day = registered.day
            LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
                     DATE(ps.consent_for_electronic_health_records_time) day
                FROM participant_summary ps
-              WHERE %(filters)s
+              %(filters)s
            GROUP BY day) member
              ON c2.day = member.day
            LEFT OUTER JOIN
@@ -82,7 +82,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
                              ELSE sample_status_1sal_time END)
                    ELSE NULL END) day
                FROM participant_summary ps
-              WHERE %(filters)s
+              %(filters)s
            GROUP BY day) full
              ON c2.day = full.day) day_sums, calendar
           WHERE calendar.day >= :start_date
@@ -149,9 +149,9 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         facets_sql.append(filters_sql)
 
     if len(facets_sql) > 0:
-      facets_sql = ' AND '.join(facets_sql)
+      facets_sql = 'WHERE ' + ' AND '.join(facets_sql)
     else:
-      facets_sql = '1 = 1'
+      return None
 
     return facets_sql
 
