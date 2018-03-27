@@ -81,8 +81,21 @@ class CsvImporter(object):
       logging.info('Not updating %s.', new_dict[self.external_id_field])
       return False
     else:
-      logging.info('Updating %s%s: old = %s, new = %s', self.entity_name,
-                   ' (dry run)' if dry_run else '', existing_dict, new_dict)
+      changes = {}
+      keys = set(existing_dict.keys() + new_dict.keys())
+      for k in sorted(list(keys)):
+        old = existing_dict.get(k)
+        if isinstance(old, unicode):
+          old = old.encode('utf-8')
+        new = new_dict.get(k)
+        if isinstance(new, unicode):
+          new = new.encode('utf-8')
+        if old != new:
+          changes[k] = '{} -> {}'.format(old, new)
+
+      log_prefix = '(dry run) ' if dry_run else ''
+      logging.info(log_prefix + 'Updating %s "%s": changes = %s', self.entity_name,
+                   new_dict[self.external_id_field], changes)
       if not dry_run:
         self._do_update(entity, existing_entity, session)
       return True
