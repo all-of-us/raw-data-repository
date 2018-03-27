@@ -2,7 +2,7 @@
     You can only return results for the same awardee that the service account is connected to.
 
     Run this using ./run_client.sh --project all-of-us-rdr-prod --account [your account]
-    --service_account [service account]@email.com work_queue.py
+    --service_account [service account] work_queue.py
 
     You should call code like this with credentials for a service account that has been set up for
     your awardee by AllOfUs.
