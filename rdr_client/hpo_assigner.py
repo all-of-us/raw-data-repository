@@ -29,7 +29,7 @@ def main(client):
     reader = csv.reader(csvfile)
     for line in reader:
       try:
-        participant_id, hpo = [v.strip() for v in line]
+        participant_id, new_pairing = [v.strip() for v in line]
         pairing = client.args.pairing
         assert pairing in ('site', 'organization', 'awardee')
       except AssertionError:
@@ -38,10 +38,10 @@ def main(client):
         logging.error('Skipping invalid line %d (parsed as %r): %s.', reader.line_num, line, e)
         num_errors += 1
         continue
-      if not (hpo and participant_id):
+      if not (new_pairing and participant_id):
         logging.warning(
-            'Skipping invalid line %d: missing hpo (%r) or participant (%r).',
-            reader.line_num, hpo, participant_id)
+            'Skipping invalid line %d: missing new_pairing (%r) or participant (%r).',
+            reader.line_num, new_pairing, participant_id)
         num_errors += 1
         continue
       if not participant_id.startswith('P'):
@@ -58,20 +58,20 @@ def main(client):
         num_errors += 1
         continue
 
-      old_hpo = _get_old_hpo(participant)
-      if hpo == old_hpo:
+      old_pairing = _get_old_pairing(participant)
+      if new_pairing == old_pairing:
         num_no_change += 1
-        logging.info('%s unchanged (already %s)', participant_id, old_hpo)
+        logging.info('%s unchanged (already %s)', participant_id, old_pairing)
         continue
 
-      logging.info('%s %s => %s', participant_id, old_hpo, hpo)
-      if hpo == 'UNSET':
+      logging.info('%s %s => %s', participant_id, old_pairing, new_pairing)
+      if new_pairing == 'UNSET':
         participant['providerLink'] = []
       else:
-        participant[pairing] = hpo
+        participant[pairing] = new_pairing
 
       if client.args.dry_run:
-        logging.info('Dry run, would update participant[%r] to %r.', pairing, hpo)
+        logging.info('Dry run, would update participant[%r] to %r.', pairing, new_pairing)
       else:
         client.request_json('Participant/%s' % participant_id, 'PUT', participant,
                             headers={'If-Match': client.last_etag})
@@ -84,7 +84,7 @@ def main(client):
       num_errors)
 
 
-def _get_old_hpo(participant):
+def _get_old_pairing(participant):
   links = participant['providerLink']
   if not links:
     return 'UNSET'
