@@ -97,6 +97,11 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
     results_by_date = []
 
+    print('sql')
+    print(sql)
+    print('params')
+    print(params)
+
     with self.session() as session:
       cursor = session.execute(sql, params)
 
@@ -151,7 +156,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     if len(facets_sql) > 0:
       facets_sql = 'WHERE ' + ' AND '.join(facets_sql)
     else:
-      return None
+      return ''
 
     return facets_sql
 
