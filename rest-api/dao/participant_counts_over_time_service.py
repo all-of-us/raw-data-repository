@@ -29,7 +29,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
             calendar.day start_date
         FROM calendar,
         (SELECT COUNT(*) cnt, DATE(ps.sign_up_time) day
-        FROM participant_summary ps
+        FROM participant p
+        LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
         %(filters)s
         GROUP BY day) ps_sum
         WHERE calendar.day >= :start_date
@@ -53,7 +54,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
             FROM calendar c2
             LEFT OUTER JOIN
             (SELECT COUNT(*) cnt, DATE(ps.consent_for_study_enrollment_time) day
-               FROM participant_summary ps
+                FROM participant p
+                LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
               %(filters)s
               GROUP BY day) registered
              ON c2.day = registered.day
@@ -96,11 +98,6 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     params = {'start_date': start_date, 'end_date': end_date}
 
     results_by_date = []
-
-    print('sql')
-    print(sql)
-    print('params')
-    print(params)
 
     with self.session() as session:
       cursor = session.execute(sql, params)
