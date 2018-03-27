@@ -101,7 +101,7 @@ SOUTHERN_COOPER_GREEN,hpo-site-coopergreen,Cooper Green Mercy Hospital,HPO Coope
 SOUTHERN_LSU,hpo-site-lsuhcumcneworleans,"LSU Health Science Center, University Medical Center - New Orleans (LSUHC New Orleans)",HPO LSUHC UMC New Orleans,7036568,,,Inactive,Inactive,,,,,,,,,,
 SOUTHERN_LSU,hpo-site-lsuhchealthcarenetwork,LSUHC Healthcare Network,HPO LSUHC Healthcare Network,,,,Inactive,Inactive,,,,,,,,,,
 SOUTHERN_LSU,hpo-site-lsuhcctrc,LSUHC Clinical & Translational Research Center (LSUHC CTRC),HPO LSUHC CTRC,,,,Inactive,Inactive,,,,,,,,,,
-SOUTHERN_MISSISSIPPI_MC,hpo-site-ummedicalceterjackson,University of Mississippi Medical Center - Jackson,HPO UM Medical Center Jackson,703569,,,Inactive,Inactive,,,,,,,,,,
+SOUTHERN_MISSISSIPPI_MC,hpo-site-ummedicalcenterjackson,University of Mississippi Medical Center - Jackson,HPO UM Medical Center Jackson,703569,,,Inactive,Inactive,,,,,,,,,,
 SOUTHERN_TULANE,hpo-site-tulane,Tulane Medical Center,HPO Tulane,,,,Inactive,Inactive,,,,,,,,,,
 VA_BOSTON_VAMC,hpo-site-VABostonHC,VA Boston Healthcare System,HPO VA Boston HC,7035759,2/28/18,,Active,Inactive,,,1400 VFW Parkway,,West Roxbury,MA,02132,,"Charlotte.Doran@va.gov, RonaMargaret.Relova@va.gov",
 VA_PALO_ALTO_VAMC,hpo-site-VAPaloAlto,VA Palo Alto Health Care System,HPO VA Palo Alto,7035758,2/28/18,,Active,Inactive,,,3100 Miranda Ave,,Palo Alto,CA,94304,,"Charlotte.Doran@va.gov, RonaMargaret.Relova@va.gov",
