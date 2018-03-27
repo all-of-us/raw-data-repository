@@ -41,15 +41,13 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(val) for val in EnrollmentStatus]
 
-
       # Noteworthy comments / documentation from Dan (and lightly adapted)
-      # from https://github.com/all-of-us/raw-data-repository/pull/626/files/edec6768686e0f4d57c5b61946f6d2788da6d9d3#r175495301
       #
       # This SQL works OK but hardcodes the baseline questionnaires and the
       # fact that 1ED04 and 1SAL are the samples needed to be a full
       # participant into the SQL. Previously this was done with config:
       #
-      # https://github.com/all-of-us/raw-data-repository/blob/master/rest-api/config/base_config.json#L29
+      # rest-api/config/base_config.json#L29
       #
       # For the samples, MySQL doesn't make it easy to do the LEAST of N
       # nullable values, so this is probably OK...
@@ -60,7 +58,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
       # TODO when implementing unit testing:
       # Add macros for GREATEST and LEAST, as they don't work in SQLite
-      # Example: https://github.com/all-of-us/raw-data-repository/blob/master/rest-api/dao/database_utils.py#L50
+      # Example: master/rest-api/dao/database_utils.py#L50
 
       sql = """
       SELECT
