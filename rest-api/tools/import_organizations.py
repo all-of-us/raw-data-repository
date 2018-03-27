@@ -68,6 +68,7 @@ class HPOImporter(CsvImporter):
                                       [HPO_AWARDEE_ID_COLUMN, HPO_NAME_COLUMN,
                                        HPO_TYPE_COLUMN])
     self.new_count = 0
+    self.errors = list()
 
   def _entity_from_row(self, row):
     type_str = row[HPO_TYPE_COLUMN]
@@ -99,6 +100,7 @@ class OrganizationImporter(CsvImporter):
                                                 ORGANIZATION_ORGANIZATION_ID_COLUMN,
                                                 ORGANIZATION_NAME_COLUMN])
     self.hpo_dao = HPODao()
+    self.errors = list()
 
   def _entity_from_row(self, row):
     hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN].upper())
@@ -122,6 +124,9 @@ class SiteImporter(CsvImporter):
     self.organization_dao = OrganizationDao()
     args = parser.parse_args()
     self.geocode_flag = args.geocode_flag
+    self.errors = list()
+    self.ACTIVE = SiteStatus.ACTIVE
+    self.status_exception_list = ['hpo-site-walgreensphoenix']
 
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()
@@ -206,7 +211,7 @@ class SiteImporter(CsvImporter):
         if (existing_site.address1 == site.address1 and existing_site.city == site.city
             and existing_site.state == site.state and existing_site.latitude is not None
             and existing_site.longitude is not None and existing_site.timeZoneId is not None):
-          # Address didn't change, use the existing lat/lng and time zone.
+            # Address didn't change, use the existing lat/lng and time zone.
           site.latitude = existing_site.latitude
           site.longitude = existing_site.longitude
           site.timeZoneId = existing_site.timeZoneId
@@ -217,6 +222,13 @@ class SiteImporter(CsvImporter):
         site.longitude = longitude
         if latitude and longitude:
           site.timeZoneId = self._get_time_zone(latitude, longitude)
+    else:
+      if site.googleGroup not in self.status_exception_list:
+        if site.siteStatus == self.ACTIVE:
+          if len(self.errors) == 0:
+            self.errors.append('Active sites must have valid addresses')
+            self.errors.append('The following sites were not geocoded')
+          self.errors.append('Site: {}, Group: {}'.format(site.siteName, site.googleGroup))
 
   def _get_lat_long_for_site(self, address_1, city, state):
     self.full_address = address_1 + ' ' +  city + ' ' + state
@@ -258,6 +270,7 @@ def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
   OrganizationImporter().run(args.organization_file, args.dry_run)
   SiteImporter().run(args.site_file, args.dry_run)
+
 
 if __name__ == '__main__':
   configure_logging()

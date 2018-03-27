@@ -64,6 +64,9 @@ class CsvImporter(object):
             self._insert_entity(entity, existing_map, session, dry_run)
             new_count += 1
 
+    if self.errors:
+      for err in self.errors:
+        logging.warn(err)
     logging.info('Done importing %ss%s: %d skipped, %d new, % d updated, %d not changed',
                  self.entity_name, ' (dry run)' if dry_run else '', skip_count, new_count,
                  updated_count, matched_count)
