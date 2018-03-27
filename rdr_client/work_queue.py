@@ -2,7 +2,7 @@
     You can only return results for the same awardee that the service account is connected to.
 
     Run this using ./run_client.sh --project all-of-us-rdr-prod --account [your account]
-    --service_account [service account]@all-of-us-rdr-prod.iam.gserviceaccount.com work_queue.py
+    --service_account [service account]@email.com work_queue.py
 
     You should call code like this with credentials for a service account that has been set up for
     your awardee by AllOfUs.
@@ -10,7 +10,7 @@
     within 60 seconds of the last summary in the previous response).
     you'll get back relation="next" on the link if there are more results available in the RDR
     that weren't returned and relation="sync" if there were.
-    Use the _count parameter to adjust this number. The default is 100
+    Use the _count parameter to adjust this number. The recommended _count is 5000.
 
     README: https://github.com/all-of-us/raw-data-repository#participantsummary-api
 """
@@ -24,10 +24,10 @@ from client import Client
 
 def main():
   client = Client()
-  awardee = 'PITT'
+  awardee = 'PITT'  # Change to the awardee ID you're requesting data for.
   sync_time = 300  # Number of seconds before next sync.
-  response = client.request_json('ParticipantSummary?_sync=true&_sort=lastModified&awardee'
-                                 '={}'.format(awardee), 'GET')
+  response = client.request_json('ParticipantSummary?_count=5000&_sync=true&_sort=lastModified'
+                                 '&awardee={}'.format(awardee), 'GET')
 
   logging.info(pprint.pformat(response))
   sync_url = response['link'][0]['url']
