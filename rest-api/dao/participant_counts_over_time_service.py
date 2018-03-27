@@ -145,11 +145,11 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         if str(q_filter) != '':
           filters_sql.append('ps.' + db_field + ' = ' + str(int(q_filter)))
       if len(filters_sql) > 0:
-        filters_sql = ' OR '.join(filters_sql)
+        filters_sql = '(' + ' OR '.join(filters_sql) + ')'
         facets_sql.append(filters_sql)
 
     if len(facets_sql) > 0:
-      facets_sql = '(' + ' AND '.join(facets_sql) + ')'
+      facets_sql = ' AND '.join(facets_sql)
     else:
       facets_sql = '1 = 1'
 
