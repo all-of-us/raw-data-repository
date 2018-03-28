@@ -46,6 +46,8 @@ jobs:
         - ~/virtualenvs
 
   test:
+    machine:
+      enabled: true
     steps:
     - run: ./ci/test.sh
     - store_test_results:
@@ -56,6 +58,8 @@ jobs:
         path: /tmp/circleci-test-results
 
   deploy:
+    machine:
+      enabled: true
     steps:
     - run:
         name: Activate credentials
