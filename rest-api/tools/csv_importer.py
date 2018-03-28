@@ -72,17 +72,35 @@ class CsvImporter(object):
     #pylint: disable=unused-argument
     raise Exception('Subclasses must implement _entity_from_row')
 
+  @staticmethod
+  def _maybe_convert_unicode(s):
+    if not isinstance(s, unicode):
+      return s
+    return s.encode('utf-8')
+
+  @staticmethod
+  def _diff_dicts(old_dict, new_dict):
+    changes = {}
+    keys = set(old_dict.keys() + new_dict.keys())
+    for k in keys:
+      old = CsvImporter._maybe_convert_unicode(old_dict.get(k))
+      new = CsvImporter._maybe_convert_unicode(new_dict.get(k))
+      if old != new:
+        changes[k] = '{} -> {}'.format(old, new)
+    return changes
+
   def _update_entity(self, entity, existing_entity, session, dry_run):
     new_dict = entity.asdict()
     new_dict[self.id_field] = None
     existing_dict = existing_entity.asdict()
     existing_dict[self.id_field] = None
     if existing_dict == new_dict:
-      logging.info('Not updating %s.', new_dict[self.external_id_field])
       return False
     else:
-      logging.info('Updating %s%s: old = %s, new = %s', self.entity_name,
-                   ' (dry run)' if dry_run else '', existing_dict, new_dict)
+      changes = CsvImporter._diff_dicts(existing_dict, new_dict)
+      log_prefix = '(dry run) ' if dry_run else ''
+      logging.info(log_prefix + 'Updating %s "%s": changes = %s', self.entity_name,
+                   new_dict[self.external_id_field], changes)
       if not dry_run:
         self._do_update(entity, existing_entity, session)
       return True
