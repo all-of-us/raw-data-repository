@@ -50,6 +50,7 @@ jobs:
       enabled: true
     working_directory: ~/all-of-us/raw-data-repository
     steps:
+    - checkout
     - run: ./ci/test.sh
     - store_test_results:
         path: /tmp/circleci-test-results
@@ -63,6 +64,7 @@ jobs:
       enabled: true
     working_directory: ~/all-of-us/raw-data-repository
     steps:
+    - checkout
     - run:
         name: Activate credentials
         command: ./ci/activate_creds.sh ~/gcloud-credentials.key
