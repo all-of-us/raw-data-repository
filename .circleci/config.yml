@@ -46,6 +46,7 @@ jobs:
         - ~/virtualenvs
 
   test:
+    steps:
     - run: ./ci/test.sh
     - store_test_results:
         path: /tmp/circleci-test-results
@@ -55,6 +56,7 @@ jobs:
         path: /tmp/circleci-test-results
 
   deploy:
+    steps:
     - run:
         name: Activate credentials
         command: ./ci/activate_creds.sh ~/gcloud-credentials.key
@@ -80,4 +82,3 @@ workflows:
       - deploy:
           requires:
             - test
-            
