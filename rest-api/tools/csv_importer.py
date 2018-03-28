@@ -20,6 +20,8 @@ class CsvImporter(object):
     self.id_field = id_field
     self.external_id_field = external_id_field
     self.required_columns = required_columns
+    self.errors = list()
+    self.skip = False
 
   def run(self, filename, dry_run):
     """Imports entities from the CSV file with the specified name.
@@ -58,6 +60,9 @@ class CsvImporter(object):
             changed = self._update_entity(entity, existing_entity, session, dry_run)
             if changed:
               updated_count += 1
+            elif self.skip is True:
+              skip_count += 1
+              self.skip = False
             else:
               matched_count += 1
           else:
@@ -67,9 +72,9 @@ class CsvImporter(object):
     if self.errors:
       for err in self.errors:
         logging.warn(err)
-    logging.info('Done importing %ss%s: %d skipped, %d new, % d updated, %d not changed',
+    logging.info('Done importing %ss%s: %d skipped, %d new, %d updated, %d not changed, %d errors.',
                  self.entity_name, ' (dry run)' if dry_run else '', skip_count, new_count,
-                 updated_count, matched_count)
+                 updated_count, matched_count, len(self.errors))
 
   def _entity_from_row(self, row):
     #pylint: disable=unused-argument
