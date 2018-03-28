@@ -77,9 +77,9 @@ class HPOImporter(CsvImporter):
         organization_type = None
     except TypeError:
       logging.warn('Invalid organization type %s for awardee %s', type_str,
-      row[HPO_AWARDEE_ID_COLUMN])
+                   row[HPO_AWARDEE_ID_COLUMN])
       self.errors.append('Invalid organization type {} for awardee {}'.format(type_str,
-                                                                      row[HPO_AWARDEE_ID_COLUMN]))
+                         row[HPO_AWARDEE_ID_COLUMN]))
       return None
     return HPO(name=row[HPO_AWARDEE_ID_COLUMN].upper(),
                displayName=row[HPO_NAME_COLUMN],
@@ -214,15 +214,15 @@ class SiteImporter(CsvImporter):
     self._populate_lat_lng_and_time_zone(entity, existing_entity)
     if entity.siteStatus == self.ACTIVE and (entity.latitude == None or entity.longitude == None):
       self.errors.append('Skipped active site without geocoding: {}'.format(entity.googleGroup))
-      self.skip = True
-      return
+      print 'I AM IN THE RIGHT PLACE.'
+      return False, True
     return super(SiteImporter, self)._update_entity(entity, existing_entity, session, dry_run)
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
     self._populate_lat_lng_and_time_zone(entity, None)
     if entity.siteStatus == self.ACTIVE and (entity.latitude == None or entity.longitude == None):
       self.errors.append('Skipped active site without geocoding: {}'.format(entity.googleGroup))
-      return
+      return False, True
     super(SiteImporter, self)._insert_entity(entity, existing_map, session, dry_run)
 
   def _populate_lat_lng_and_time_zone(self, site, existing_site):

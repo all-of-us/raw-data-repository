@@ -21,7 +21,6 @@ class CsvImporter(object):
     self.external_id_field = external_id_field
     self.required_columns = required_columns
     self.errors = list()
-    self.skip = False
 
   def run(self, filename, dry_run):
     """Imports entities from the CSV file with the specified name.
@@ -57,12 +56,11 @@ class CsvImporter(object):
             continue
           existing_entity = existing_map.get(getattr(entity, self.external_id_field))
           if existing_entity:
-            changed = self._update_entity(entity, existing_entity, session, dry_run)
+            changed, skipped = self._update_entity(entity, existing_entity, session, dry_run)
             if changed:
               updated_count += 1
-            elif self.skip is True:
+            elif skipped:
               skip_count += 1
-              self.skip = False
             else:
               matched_count += 1
           else:
@@ -87,13 +85,13 @@ class CsvImporter(object):
     existing_dict[self.id_field] = None
     if existing_dict == new_dict:
       logging.info('Not updating %s.', new_dict[self.external_id_field])
-      return False
+      return False, False
     else:
       logging.info('Updating %s%s: old = %s, new = %s', self.entity_name,
                    ' (dry run)' if dry_run else '', existing_dict, new_dict)
       if not dry_run:
         self._do_update(entity, existing_entity, session)
-      return True
+      return True, False
 
   def _do_update(self, entity, existing_entity, session):
     for k, v in entity.asdict().iteritems():
