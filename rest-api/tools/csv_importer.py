@@ -95,7 +95,6 @@ class CsvImporter(object):
     existing_dict = existing_entity.asdict()
     existing_dict[self.id_field] = None
     if existing_dict == new_dict:
-      logging.info('Not updating %s.', new_dict[self.external_id_field])
       return False
     else:
       changes = CsvImporter._diff_dicts(existing_dict, new_dict)
