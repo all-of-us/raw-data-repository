@@ -48,6 +48,7 @@ jobs:
   test:
     machine:
       enabled: true
+    working_directory: ~/all-of-us/raw-data-repository
     steps:
     - run: ./ci/test.sh
     - store_test_results:
@@ -60,6 +61,7 @@ jobs:
   deploy:
     machine:
       enabled: true
+    working_directory: ~/all-of-us/raw-data-repository
     steps:
     - run:
         name: Activate credentials
