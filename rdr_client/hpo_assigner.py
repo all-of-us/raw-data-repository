@@ -1,10 +1,12 @@
-"""Assigns participants with the specified IDs to the test HPO.
+"""Assigns participants with the specified IDs to the organization.
 
 Usage:
   ./run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
       hpo_assigner.py participant_ids_and_hpos.csv --pairing [site|organization|awardee] [--dry_run]
+Where site = google_group, organization = external_id, awardee = name.
 
-Where the CSV contains lines with P12345678,NEW_HPO_ID like:
+The CSV contains lines with P12345678,NEW_ORGANIZATION like:
+Example awardees:
   P11111111,AZ_TUCSON
   P22222222,AZ_TUCSON
   P99999999,PITT
@@ -26,7 +28,6 @@ def main(client):
 
   if client.args.pairing not in ['site', 'organization', 'awardee']:
     sys.exit('Pairing must be one of site|organization|awardee')
-
 
   with open(client.args.file) as csvfile:
     reader = csv.reader(csvfile)
