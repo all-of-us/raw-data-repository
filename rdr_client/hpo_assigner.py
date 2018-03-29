@@ -25,8 +25,9 @@ def main(client):
   num_no_change = 0
   num_updates = 0
   num_errors = 0
+  pairing_list = ['site', 'organization', 'awardee']
 
-  if client.args.pairing not in ['site', 'organization', 'awardee']:
+  if client.args.pairing not in pairing_list:
     sys.exit('Pairing must be one of site|organization|awardee')
 
   with open(client.args.file) as csvfile:
@@ -67,7 +68,8 @@ def main(client):
 
       logging.info('%s %s => %s', participant_id, old_pairing, new_pairing)
       if new_pairing == 'UNSET':
-        participant['providerLink'] = []
+        for i in pairing_list:
+          participant[i] = 'UNSET'
       else:
         participant[pairing] = new_pairing
 
