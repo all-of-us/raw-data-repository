@@ -18,12 +18,24 @@ import config
 _GMT = pytz.timezone('GMT')
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 
+def handle_database_disconnect(err):
+  """Intended to catch DBAPIError's thrown during a request cycle and transform them into 503's.
+  If the DBAPIError does not represent an invalidated connection, reraise the error.
+
+  Usage: app.register_error_handler(DBAPIError, handle_database_disconnect)
+  """
+  if err.connection_invalidated:
+    return 'DB connection lost, please retry', 503
+  raise err
+
+
 def auth_required_cron(func):
   """A decorator that ensures that the user is a cron job."""
   def wrapped(*args, **kwargs):
     check_cron()
     return func(*args, **kwargs)
   return wrapped
+
 
 def nonprod(func):
   """The decorated function may never run in environments without config.ALLOW_NONPROD_REQUESTS."""
@@ -32,6 +44,7 @@ def nonprod(func):
       raise Forbidden('Request not allowed in production environment (according to config).')
     return func(*args, **kwargs)
   return wrapped
+
 
 def check_auth(role_whitelist):
   """Raises Unauthorized or Forbidden if the current user is not allowed."""
@@ -46,6 +59,7 @@ def check_auth(role_whitelist):
      role_whitelist))
   raise Forbidden()
 
+
 def get_oauth_id():
   """Returns user email ID if OAUTH token present, or None."""
   try:
@@ -54,6 +68,7 @@ def get_oauth_id():
     user_email = None
     logging.error('OAuth failure: {}'.format(e))
   return user_email
+
 
 def check_cron():
   """Raises Forbidden if the current user is not a cron job."""
@@ -64,8 +79,10 @@ def check_cron():
       get_oauth_id()))
   raise Forbidden()
 
+
 def lookup_user_info(user_email):
   return config.getSettingJson(config.USER_INFO, {}).get(user_email)
+
 
 def _is_self_request():
   return (request.remote_addr is None
@@ -76,7 +93,6 @@ def _is_self_request():
 def get_validated_user_info():
   """Returns a valid (user email, user info), or raises Unauthorized or Forbidden."""
   user_email = get_oauth_id()
-
   # Allow clients to simulate an unauthentiated request (for testing)
   # becaues we haven't found another way to create an unauthenticated request
   # when using dev_appserver. When client tests are checking to ensure that an
@@ -106,6 +122,7 @@ def get_whitelisted_ips(user_info):
           for rng in user_info['whitelisted_ip_ranges']['ip6'] + \
                      user_info['whitelisted_ip_ranges']['ip4']]
 
+
 def enforce_ip_whitelisted(request_ip, whitelisted_ips):
   if whitelisted_ips == None: # No whitelist means "don't apply restrictions"
     return
@@ -116,8 +133,10 @@ def enforce_ip_whitelisted(request_ip, whitelisted_ips):
     raise Forbidden('Client IP not whitelisted: {}'.format(ip))
   logging.info('IP {} ALLOWED'.format(ip))
 
+
 def get_whitelisted_appids(user_info):
   return user_info.get('whitelisted_appids')
+
 
 def enforce_appid_whitelisted(request_app_id, whitelisted_appids):
   if not whitelisted_appids:  # No whitelist means "don't apply restrictions"
@@ -131,6 +150,7 @@ def enforce_appid_whitelisted(request_app_id, whitelisted_appids):
   else:
     logging.info('NO APP ID FOUND WHEN REQUIRED TO BE ONE OF: {}'.format(whitelisted_appids))
   raise Forbidden()
+
 
 def update_model(old_model, new_model):
   """Updates a model.
