@@ -17,8 +17,6 @@ from main_util import get_parser, configure_logging
 
 from client import Client, HttpException, client_log
 
-_ORG_PREFIX = 'Organization/'
-
 
 def main(client):
   num_no_change = 0
@@ -58,7 +56,7 @@ def main(client):
         num_errors += 1
         continue
 
-      old_pairing = _get_old_pairing(participant)
+      old_pairing = _get_old_pairing(participant, pairing)
       if new_pairing == old_pairing:
         num_no_change += 1
         logging.info('%s unchanged (already %s)', participant_id, old_pairing)
@@ -84,16 +82,11 @@ def main(client):
       num_errors)
 
 
-def _get_old_pairing(participant):
-  links = participant['providerLink']
-  if not links:
+def _get_old_pairing(participant, pairing):
+  old_pairing = participant[pairing]
+  if not old_pairing:
     return 'UNSET'
-  org = links[0].get('organization', {}).get('reference')
-  if org is None:
-    return 'UNSET'
-  if not org.startswith(_ORG_PREFIX):
-    raise ValueError('Could not parse old organization reference %r.' % org)
-  return org[len(_ORG_PREFIX):]
+  return old_pairing
 
 
 if __name__ == '__main__':
@@ -102,5 +95,6 @@ if __name__ == '__main__':
   arg_parser = get_parser()
   arg_parser.add_argument('file', help='file containing the list of HPOs and participant IDs')
   arg_parser.add_argument('--dry_run', action='store_true')
-  arg_parser.add_argument('--pairing', help='set level of pairing at site', required=True, default='awardee')
+  arg_parser.add_argument('--pairing', help='set level of pairing as one of'
+                          '[site|organization|awardee]', required=True)
   main(Client(parser=arg_parser))
