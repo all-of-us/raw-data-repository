@@ -1,8 +1,9 @@
 """Assigns participants with the specified IDs to the organization.
 
 Usage:
-  ./run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
-      pairing_assigner.py participant_ids_and_hpos.csv --pairing [site|organization|awardee] [--dry_run]
+./run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
+  pairing_assigner.py participant_ids_and_hpos.csv --pairing [site|organization|awardee] [--dry_run]
+
 Where site = google_group, organization = external_id, awardee = name.
 
 The CSV contains lines with P12345678,NEW_ORGANIZATION like:
