@@ -31,7 +31,7 @@ def main(client):
         pairing = client.args.pairing
         assert pairing in ('site', 'organization', 'awardee')
       except AssertionError:
-            logging.error('Pairing must be one of site|organization|awardee')
+        logging.error('Pairing must be one of site|organization|awardee')
       except ValueError as e:
         logging.error('Skipping invalid line %d (parsed as %r): %s.', reader.line_num, line, e)
         num_errors += 1
