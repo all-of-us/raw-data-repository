@@ -2,7 +2,7 @@
 
 Usage:
   ./run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
-      hpo_assigner.py participant_ids_and_hpos.csv --pairing [site|organization|awardee] [--dry_run]
+      pairing_assigner.py participant_ids_and_hpos.csv --pairing [site|organization|awardee] [--dry_run]
 Where site = google_group, organization = external_id, awardee = name.
 
 The CSV contains lines with P12345678,NEW_ORGANIZATION like:
@@ -11,6 +11,12 @@ Example awardees:
   P22222222,AZ_TUCSON
   P99999999,PITT
   P00000000,PITT
+
+Example sites:
+  P11111111,hpo-site-monroeville
+  P22222222,hpo-site-phoenix
+  P99999999,hpo-site-tucson
+  P00000000,hpo-site-pitt
 """
 
 import csv
@@ -26,6 +32,7 @@ def main(client):
   num_updates = 0
   num_errors = 0
   pairing_list = ['site', 'organization', 'awardee']
+  pairing_key = client.args.pairing
 
   if client.args.pairing not in pairing_list:
     sys.exit('Pairing must be one of site|organization|awardee')
@@ -35,7 +42,6 @@ def main(client):
     for line in reader:
       try:
         participant_id, new_pairing = [v.strip() for v in line]
-        pairing = client.args.pairing
       except ValueError as e:
         logging.error('Skipping invalid line %d (parsed as %r): %s.', reader.line_num, line, e)
         num_errors += 1
@@ -60,7 +66,7 @@ def main(client):
         num_errors += 1
         continue
 
-      old_pairing = _get_old_pairing(participant, pairing)
+      old_pairing = _get_old_pairing(participant, pairing_key)
       if new_pairing == old_pairing:
         num_no_change += 1
         logging.info('%s unchanged (already %s)', participant_id, old_pairing)
@@ -70,11 +76,12 @@ def main(client):
       if new_pairing == 'UNSET':
         for i in pairing_list:
           participant[i] = 'UNSET'
+        participant['providerLink'] = []
       else:
-        participant[pairing] = new_pairing
+        participant[pairing_key] = new_pairing
 
       if client.args.dry_run:
-        logging.info('Dry run, would update participant[%r] to %r.', pairing, new_pairing)
+        logging.info('Dry run, would update participant[%r] to %r.', pairing_key, new_pairing)
       else:
         client.request_json('Participant/%s' % participant_id, 'PUT', participant,
                             headers={'If-Match': client.last_etag})
@@ -87,8 +94,8 @@ def main(client):
       num_errors)
 
 
-def _get_old_pairing(participant, pairing):
-  old_pairing = participant[pairing]
+def _get_old_pairing(participant, pairing_key):
+  old_pairing = participant[pairing_key]
   if not old_pairing:
     return 'UNSET'
   return old_pairing
