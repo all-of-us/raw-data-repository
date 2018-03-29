@@ -214,15 +214,14 @@ class SiteImporter(CsvImporter):
     self._populate_lat_lng_and_time_zone(entity, existing_entity)
     if entity.siteStatus == self.ACTIVE and (entity.latitude == None or entity.longitude == None):
       self.errors.append('Skipped active site without geocoding: {}'.format(entity.googleGroup))
-      print 'I AM IN THE RIGHT PLACE.'
-      return False, True
+      return None, True
     return super(SiteImporter, self)._update_entity(entity, existing_entity, session, dry_run)
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
     self._populate_lat_lng_and_time_zone(entity, None)
     if entity.siteStatus == self.ACTIVE and (entity.latitude == None or entity.longitude == None):
       self.errors.append('Skipped active site without geocoding: {}'.format(entity.googleGroup))
-      return False, True
+      return False
     super(SiteImporter, self)._insert_entity(entity, existing_map, session, dry_run)
 
   def _populate_lat_lng_and_time_zone(self, site, existing_site):

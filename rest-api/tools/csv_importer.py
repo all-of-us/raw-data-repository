@@ -64,8 +64,11 @@ class CsvImporter(object):
             else:
               matched_count += 1
           else:
-            self._insert_entity(entity, existing_map, session, dry_run)
-            new_count += 1
+            entity = self._insert_entity(entity, existing_map, session, dry_run)
+            if not entity:
+              skip_count += 1
+            else:
+              new_count += 1
 
     if self.errors:
       for err in self.errors:
@@ -123,3 +126,4 @@ class CsvImporter(object):
     logging.info('Inserting %s: %s', self.entity_name, entity.asdict())
     if not dry_run:
       self.dao.insert_with_session(session, entity)
+    return True
