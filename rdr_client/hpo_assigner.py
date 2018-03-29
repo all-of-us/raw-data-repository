@@ -13,6 +13,7 @@ Where the CSV contains lines with P12345678,NEW_HPO_ID like:
 
 import csv
 import logging
+import sys
 from main_util import get_parser, configure_logging
 
 from client import Client, HttpException, client_log
@@ -23,16 +24,16 @@ def main(client):
   num_updates = 0
   num_errors = 0
 
+  if client.args.pairing not in ['site', 'organization', 'awardee']:
+    sys.exit('Pairing must be one of site|organization|awardee')
+
+
   with open(client.args.file) as csvfile:
     reader = csv.reader(csvfile)
     for line in reader:
       try:
         participant_id, new_pairing = [v.strip() for v in line]
         pairing = client.args.pairing
-        assert pairing in ['site', 'organization', 'awardee']
-      except AssertionError:
-        logging.error('Pairing must be one of site|organization|awardee')
-        num_errors += 1
       except ValueError as e:
         logging.error('Skipping invalid line %d (parsed as %r): %s.', reader.line_num, line, e)
         num_errors += 1
