@@ -20,6 +20,7 @@ class CsvImporter(object):
     self.id_field = id_field
     self.external_id_field = external_id_field
     self.required_columns = required_columns
+    self.errors = list()
 
   def run(self, filename, dry_run):
     """Imports entities from the CSV file with the specified name.
@@ -55,18 +56,26 @@ class CsvImporter(object):
             continue
           existing_entity = existing_map.get(getattr(entity, self.external_id_field))
           if existing_entity:
-            changed = self._update_entity(entity, existing_entity, session, dry_run)
+            changed, skipped = self._update_entity(entity, existing_entity, session, dry_run)
             if changed:
               updated_count += 1
+            elif skipped:
+              skip_count += 1
             else:
               matched_count += 1
           else:
-            self._insert_entity(entity, existing_map, session, dry_run)
-            new_count += 1
+            entity = self._insert_entity(entity, existing_map, session, dry_run)
+            if not entity:
+              skip_count += 1
+            else:
+              new_count += 1
 
-    logging.info('Done importing %ss%s: %d skipped, %d new, % d updated, %d not changed',
+    if self.errors:
+      for err in self.errors:
+        logging.warn(err)
+    logging.info('Done importing %ss%s: %d skipped, %d new, %d updated, %d not changed, %d errors.',
                  self.entity_name, ' (dry run)' if dry_run else '', skip_count, new_count,
-                 updated_count, matched_count)
+                 updated_count, matched_count, len(self.errors))
 
   def _entity_from_row(self, row):
     #pylint: disable=unused-argument
@@ -95,7 +104,8 @@ class CsvImporter(object):
     existing_dict = existing_entity.asdict()
     existing_dict[self.id_field] = None
     if existing_dict == new_dict:
-      return False
+      logging.info('Not updating %s.', new_dict[self.external_id_field])
+      return False, False
     else:
       changes = CsvImporter._diff_dicts(existing_dict, new_dict)
       log_prefix = '(dry run) ' if dry_run else ''
@@ -103,7 +113,7 @@ class CsvImporter(object):
                    new_dict[self.external_id_field], changes)
       if not dry_run:
         self._do_update(entity, existing_entity, session)
-      return True
+      return True, False
 
   def _do_update(self, entity, existing_entity, session):
     for k, v in entity.asdict().iteritems():
@@ -116,3 +126,4 @@ class CsvImporter(object):
     logging.info('Inserting %s: %s', self.entity_name, entity.asdict())
     if not dry_run:
       self.dao.insert_with_session(session, entity)
+    return True
