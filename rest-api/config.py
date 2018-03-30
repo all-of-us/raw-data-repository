@@ -51,7 +51,7 @@ CONFIG_OVERRIDES = {}
 class BaseConfig(object):
 
   def __init__(self, config_key):
-    config_obj = DAO().load_if_present(config_key)
+    config_obj = ConfigurationDAO().load_if_present(config_key)
     if config_obj is None:
       raise KeyError('No config for %r.' % config_key)
 
@@ -75,7 +75,7 @@ def _get_config(key):
   """This function is called by the `TTLCache` to grab an updated config.
   Note that `TTLCache` always supplies a key, which we assert here."""
   assert key in (CONFIG_SINGLETON_KEY, DB_CONFIG_KEY)
-  config_entity = DAO().load_if_present(key)
+  config_entity = ConfigurationDAO().load_if_present(key)
   if config_entity is None:
     raise KeyError('No config for %r.' % key)
   return config_entity.configuration
@@ -89,7 +89,7 @@ def override_setting(key, value):
 def store_current_config(config_json):
   conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
   conf = Configuration(key=conf_ndb_key, configuration=config_json)
-  DAO().store(conf)
+  ConfigurationDAO().store(conf)
 
 class MissingConfigException(BaseException):
   """Exception raised if the setting does not exist"""
@@ -126,10 +126,6 @@ class ConfigurationDAO(data_access_object.DataAccessObject):
     ret = super(ConfigurationDAO, self).store(model, date, client_id)
     invalidate()
     return ret
-
-def DAO():
-  return ConfigurationDAO()
-
 
 _NO_DEFAULT = '_NO_DEFAULT'
 
@@ -219,15 +215,15 @@ def invalidate():
 
 def insert_config(key, value_list):
   """Updates a config key.  Used for tests"""
-  conf = DAO().load(CONFIG_SINGLETON_KEY)
+  conf = ConfigurationDAO().load(CONFIG_SINGLETON_KEY)
   conf.configuration[key] = value_list
-  DAO().store(conf)
+  ConfigurationDAO().store(conf)
   invalidate()
 
 def get_config_that_was_active_at(key, date):
-  history_model = DAO().history_model
+  history_model = ConfigurationDAO().history_model
   q = history_model.query(ancestor=ndb.Key('Configuration', key));
-  q = q.filter(history_model.date < date).order(-DAO().history_model.date)
+  q = q.filter(history_model.date < date).order(-ConfigurationDAO().history_model.date)
   h = q.fetch(limit=1)
   if not h:
     raise NotFound('No history object active at {}.'.format(date))
