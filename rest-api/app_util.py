@@ -6,7 +6,6 @@ import netaddr
 
 from google.appengine.api import app_identity
 from google.appengine.api import oauth
-from google.appengine.ext import ndb
 
 from flask import request
 from werkzeug.exceptions import Forbidden, Unauthorized
@@ -131,19 +130,6 @@ def enforce_appid_whitelisted(request_app_id, whitelisted_appids):
   else:
     logging.info('NO APP ID FOUND WHEN REQUIRED TO BE ONE OF: {}'.format(whitelisted_appids))
   raise Forbidden()
-
-def update_model(old_model, new_model):
-  """Updates a model.
-  For all fields that are set in new_model, copy them into old_model.
-
-  Args:
-    old_model: The ndb model object retrieved from the datastore.
-    new_model_dict: A json object containing the new values.
-  """
-
-  for k, v in new_model.to_dict().iteritems():
-    if type(getattr(type(new_model), k)) != ndb.ComputedProperty and v is not None:
-      setattr(old_model, k, v)
 
 
 def add_headers(response):
