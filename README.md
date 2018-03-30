@@ -324,6 +324,9 @@ For enumeration fields, the following values are defined:
         `HLS_AND_ONE_OTHER_RACE`, `HLS_AND_MORE_THAN_ONE_OTHER_RACE`, `MORE_THAN_ONE_RACE`,
   		`OTHER_RACE`, `PREFER_NOT_TO_SAY`
 
+Note: hpoId maps to awardee. If awardee is set in a request, hpoId is updated and vice versa.
+
+See `GET` examples below using `awardee=` for requests.
 
 The values for the following fields are defined in the [codebook](
 https://docs.google.com/spreadsheets/d/1TNqJ1ekLFHF4vYA2SNCb-4NL8QgoJrfuJsxnUuXd-is/edit):
