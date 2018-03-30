@@ -17,6 +17,7 @@ import config
 _GMT = pytz.timezone('GMT')
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 
+
 def handle_database_disconnect(err):
   """Intended to catch DBAPIError's thrown during a request cycle and transform them into 503's.
   If the DBAPIError does not represent an invalidated connection, reraise the error.
