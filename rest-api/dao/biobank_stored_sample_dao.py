@@ -4,6 +4,8 @@ import logging
 from model.biobank_stored_sample import BiobankStoredSample
 from sqlalchemy.exc import DBAPIError
 
+UPSERT_RETRY_LIMIT = 10
+
 
 class BiobankStoredSampleDao(BaseDao):
   """Batch operations for updating samples. Individual insert/get operations are testing only."""
@@ -21,7 +23,7 @@ class BiobankStoredSampleDao(BaseDao):
     # expensive but cannot be effectively batched, see stackoverflow.com/questions/25955200. If this
     # proves to be a bottleneck, we can switch to generating "INSERT .. ON DUPLICATE KEY UPDATE".
     tries = 0
-    while tries < 10:
+    while tries < UPSERT_RETRY_LIMIT:
       written = 0
       session = self._database.make_session()
       for sample in sample_generator:
