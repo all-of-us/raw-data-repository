@@ -139,7 +139,7 @@ function run_cloud_sql_proxy {
 # set_db_connection_string alembic
 # (This works because alembic and rdr users share the same password)
 function set_db_connection_string {
-  PASSWORD=`grep rdr_db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
+  PASSWORD=$(grep rdr_db_password $TMP_DB_INFO_FILE | cut -d\" -f4)
   DB_USER=$RDR_DB_USER
   if [ $1 ]
   then
