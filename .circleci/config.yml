@@ -46,14 +46,15 @@ jobs:
         paths:
         - ~/virtualenvs
     - persist_to_workspace:
-      root: ~/all-of-us/raw-data-repository
+      root: ~/
       paths:
-        - .
+        - all-of-us/raw-data-repository
 
   test:
     <<: *defaults
     steps:
-    - checkout
+    - attach_workspace:
+        at: ~/all-of-us/raw-data-repository
     - run: ./ci/test.sh
     - store_test_results:
         path: /tmp/circleci-test-results
@@ -61,13 +62,12 @@ jobs:
         path: /tmp/circleci-artifacts
     - store_artifacts:
         path: /tmp/circleci-test-results
-    - attach_workspace:
-        at: ~/all-of-us/raw-data-repository
 
   deploy:
     <<: *defaults
     steps:
-    - checkout
+    - attach_workspace:
+        at: ~/all-of-us/raw-data-repository
     - run:
         name: Activate credentials
         command: ./ci/activate_creds.sh ~/gcloud-credentials.key
@@ -81,8 +81,6 @@ jobs:
     - run:
         name: Start test server
         command: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com -c ~/gcloud-credentials.key
-    - attach_workspace:
-        at: ~/all-of-us/raw-data-repository
 
 workflows:
   version: 2
