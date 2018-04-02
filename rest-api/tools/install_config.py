@@ -8,6 +8,7 @@ import difflib
 import httplib
 import json
 import logging
+import re
 
 from client import Client, HttpException
 from main_util import get_parser, configure_logging
@@ -18,7 +19,8 @@ BASE_CONFIG_FILE = 'config/base_config.json'
 def _log_and_write_config_lines(raw_config_lines, output_path):
   safe_config_lines = []
   for line in raw_config_lines:
-    if '"db_connection_string":' in line or '"db_password":' in line:
+    match = re.search('db_password', line)
+    if '"db_connection_string":' in line or match is not None:
       safe_config_lines.append(line.split(':')[0] + ' *******')
     else:
       safe_config_lines.append(line)
