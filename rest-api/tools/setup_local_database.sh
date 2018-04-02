@@ -17,12 +17,14 @@ DB_CONNECTION_NAME=
 DB_INFO_FILE=/tmp/db_info.json
 CREATE_DB_FILE=/tmp/create_db.sql
 
+UPGRADE=
 ROOT_PASSWORD_ARGS="-p${ROOT_PASSWORD}"
 while true; do
   case "$1" in
     --nopassword) ROOT_PASSWORD=; ROOT_PASSWORD_ARGS=; shift 1;;
     --db_user) ROOT_DB_USER=$2; shift 2;;
     --db_name) DB_NAME=$2; shift 2;;
+    --upgrade) UPGRADE="Y"; shift 1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -52,19 +54,22 @@ echo '{"db_connection_string": "'$DB_CONNECTION_STRING'", ' \
      ' "db_user": "'$RDR_DB_USER'", '\
      ' "db_name": "'$DB_NAME'" }' > $DB_INFO_FILE
 
-for db_name in "rdr" "metrics"; do
-  # Include charset here since mysqld defaults to Latin1 (even though CloudSQL
-  # is configured with UTF8 as the default). Keep in sync with unit_test_util.py.
-  cat tools/drop_db.sql tools/create_db.sql | envsubst > $CREATE_DB_FILE
+if [ -z "${UPGRADE}" ]
+then
+  for db_name in "rdr" "metrics"; do
+    # Include charset here since mysqld defaults to Latin1 (even though CloudSQL
+    # is configured with UTF8 as the default). Keep in sync with unit_test_util.py.
+    cat tools/drop_db.sql tools/create_db.sql | envsubst > $CREATE_DB_FILE
 
-  echo "Creating empty database..."
-  mysql -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < ${CREATE_DB_FILE}
-  if [ $? != '0' ]
-  then
-    echo "Error creating database. Exiting."
-    exit 1
-  fi
-done
+    echo "Creating empty database..."
+    mysql -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < ${CREATE_DB_FILE}
+    if [ $? != '0' ]
+    then
+      echo "Error creating database. Exiting."
+      exit 1
+    fi
+  done
+fi
 
 # Set it again with the Alembic user for upgrading the database.
 set_local_db_connection_string alembic

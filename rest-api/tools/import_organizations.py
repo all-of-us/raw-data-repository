@@ -77,7 +77,9 @@ class HPOImporter(CsvImporter):
         organization_type = None
     except TypeError:
       logging.warn('Invalid organization type %s for awardee %s', type_str,
-      row[HPO_AWARDEE_ID_COLUMN])
+                   row[HPO_AWARDEE_ID_COLUMN])
+      self.errors.append('Invalid organization type {} for awardee {}'.format(type_str,
+                         row[HPO_AWARDEE_ID_COLUMN]))
       return None
     return HPO(name=row[HPO_AWARDEE_ID_COLUMN].upper(),
                displayName=row[HPO_NAME_COLUMN],
@@ -106,6 +108,9 @@ class OrganizationImporter(CsvImporter):
       logging.warn('Invalid awardee ID %s importing organization %s',
                    row[ORGANIZATION_AWARDEE_ID_COLUMN],
                    row[ORGANIZATION_ORGANIZATION_ID_COLUMN])
+      self.errors.append('Invalid awardee ID {} importing organization {}'.format(
+                        row[ORGANIZATION_AWARDEE_ID_COLUMN],
+                        row[ORGANIZATION_ORGANIZATION_ID_COLUMN]))
       return None
     return Organization(externalId=row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper(),
                         displayName=row[ORGANIZATION_NAME_COLUMN],
@@ -122,6 +127,8 @@ class SiteImporter(CsvImporter):
     self.organization_dao = OrganizationDao()
     args = parser.parse_args()
     self.geocode_flag = args.geocode_flag
+    self.ACTIVE = SiteStatus.ACTIVE
+    self.status_exception_list = ['hpo-site-walgreensphoenix']
 
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()
@@ -131,6 +138,8 @@ class SiteImporter(CsvImporter):
       logging.warn('Invalid organization ID %s importing site %s',
                    row[SITE_ORGANIZATION_ID_COLUMN].upper(),
                    google_group)
+      self.errors.append('Invalid organization ID {} importing site {}'.format(
+                         row[SITE_ORGANIZATION_ID_COLUMN].upper(), google_group))
       return None
 
     launch_date = None
@@ -140,6 +149,8 @@ class SiteImporter(CsvImporter):
         launch_date = parse(launch_date_str).date()
       except ValueError:
         logging.warn('Invalid launch date %s for site %s', launch_date_str, google_group)
+        self.errors.append('Invalid launch date {} for site {}'.format(
+                          launch_date_str, google_group))
         return None
     name = row[SITE_SITE_COLUMN]
     mayolink_client_number = None
@@ -150,18 +161,25 @@ class SiteImporter(CsvImporter):
       except ValueError:
         logging.warn('Invalid Mayolink Client # %s for site %s', mayolink_client_number_str,
                      google_group)
+        self.errors.append('Invalid Mayolink Client # {} for site {}'.format(
+                          mayolink_client_number_str, google_group))
         return None
     notes = row.get(SITE_NOTES_COLUMN)
     try:
       site_status = SiteStatus(row[SITE_STATUS_COLUMN].upper())
     except TypeError:
       logging.warn('Invalid site status %s for site %s', row[SITE_STATUS_COLUMN], google_group)
+      self.errors.append('Invalid site status {} for site {}'.format(row[SITE_STATUS_COLUMN],
+                         google_group))
       return None
     try:
       enrolling_status = EnrollingStatus(row[ENROLLING_STATUS_COLUMN].upper())
     except TypeError:
       logging.warn('Invalid enrollment site status %s for site %s', row[ENROLLING_STATUS_COLUMN],
                    google_group)
+      self.errors.append('Invalid enrollment site status {} for site {}'.format(
+                         row[ENROLLING_STATUS_COLUMN], google_group))
+
     directions = row.get(SITE_DIRECTIONS_COLUMN)
     physical_location_name = row.get(SITE_PHYSICAL_LOCATION_NAME_COLUMN)
     address_1 = row.get(SITE_ADDRESS_1_COLUMN)
@@ -194,10 +212,16 @@ class SiteImporter(CsvImporter):
 
   def _update_entity(self, entity, existing_entity, session, dry_run):
     self._populate_lat_lng_and_time_zone(entity, existing_entity)
+    if entity.siteStatus == self.ACTIVE and (entity.latitude == None or entity.longitude == None):
+      self.errors.append('Skipped active site without geocoding: {}'.format(entity.googleGroup))
+      return None, True
     return super(SiteImporter, self)._update_entity(entity, existing_entity, session, dry_run)
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
     self._populate_lat_lng_and_time_zone(entity, None)
+    if entity.siteStatus == self.ACTIVE and (entity.latitude == None or entity.longitude == None):
+      self.errors.append('Skipped active site without geocoding: {}'.format(entity.googleGroup))
+      return False
     super(SiteImporter, self)._insert_entity(entity, existing_map, session, dry_run)
 
   def _populate_lat_lng_and_time_zone(self, site, existing_site):
@@ -206,7 +230,7 @@ class SiteImporter(CsvImporter):
         if (existing_site.address1 == site.address1 and existing_site.city == site.city
             and existing_site.state == site.state and existing_site.latitude is not None
             and existing_site.longitude is not None and existing_site.timeZoneId is not None):
-          # Address didn't change, use the existing lat/lng and time zone.
+            # Address didn't change, use the existing lat/lng and time zone.
           site.latitude = existing_site.latitude
           site.longitude = existing_site.longitude
           site.timeZoneId = existing_site.timeZoneId
@@ -217,13 +241,22 @@ class SiteImporter(CsvImporter):
         site.longitude = longitude
         if latitude and longitude:
           site.timeZoneId = self._get_time_zone(latitude, longitude)
+    else:
+      if site.googleGroup not in self.status_exception_list:
+        if site.siteStatus == self.ACTIVE:
+          self.errors.append('Active site must have valid address. Site: {}, Group: {}'.format(
+                            site.siteName, site.googleGroup))
 
   def _get_lat_long_for_site(self, address_1, city, state):
-    self.full_address = address_1 + ' ' +  city + ' ' + state
+    self.full_address = address_1 + ' ' + city + ' ' + state
     try:
       self.api_key = os.environ.get('API_KEY')
       self.gmaps = googlemaps.Client(key=self.api_key)
-      geocode_result = self.gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
+      try:
+        geocode_result = self.gmaps.geocode(address_1 + '' +  city + ' ' +  state)[0]
+      except IndexError:
+        self.errors.append('Bad address for {}, could not geocode.'.format(self.full_address))
+        return None, None
       if geocode_result:
         geometry = geocode_result.get('geometry')
         if geometry:
@@ -234,15 +267,20 @@ class SiteImporter(CsvImporter):
           return latitude, longitude
         else:
           logging.warn('Can not find lat/long for %s', self.full_address)
+          self.errors.append('Can not find lat/long for {}'.format(self.full_address))
           return None, None
       else:
         logging.warn('Geocode results failed for %s.', self.full_address)
+        self.errors.append('Geocode results failed for {}'.format(self.full_address))
         return None, None
     except ValueError as e:
       logging.exception('Invalid geocode key: %s. ERROR: %s', self.api_key, e)
+      self.errors.append('Invalid geocode key: {}. ERROR: {}'.format(self.api_key, e))
       return None, None
     except IndexError as e:
       logging.exception('Geocoding failure Check that address is correct. ERROR: %s', e)
+      self.errors.append('Geocoding failured Check that address is correct. ERROR: {}'.format(
+                        self.api_key, e))
       return None, None
 
   def _get_time_zone(self, latitude, longitude):
@@ -252,12 +290,14 @@ class SiteImporter(CsvImporter):
       return time_zone_id
     else:
       logging.info('can not retrieve time zone from %s', self.full_address)
+      self.errors.append('Can not retrieve time zone from {}'.format(self.full_address))
       return None
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
   OrganizationImporter().run(args.organization_file, args.dry_run)
   SiteImporter().run(args.site_file, args.dry_run)
+
 
 if __name__ == '__main__':
   configure_logging()
