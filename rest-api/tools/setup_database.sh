@@ -52,7 +52,7 @@ source tools/setup_vars.sh
 
 # Get a randomly generated password
 function randpw {
-    new_password=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z-0-9 | head -c${1:-16};echo;)
+    new_password=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z0-9 | head -c${1:-16};echo;)
     }
 
 randpw

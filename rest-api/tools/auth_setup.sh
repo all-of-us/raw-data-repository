@@ -94,28 +94,16 @@ function get_db_password {
       --creds_file ${CREDS_FILE} --config_output $TMP_DB_INFO_FILE
   if [ "$user" == "$RDR_DB_USER" ]
   then
-      DB_PASSWORD=$(grep rdr_db_password $TMP_DB_INFO_FILE | cut -d\" -f4)
+      PASSWORD_KEY="rdr_db_password"
   elif [ "$user" == "$READONLY_DB_USER" ]
   then
-      READONLY_PASSWORD=$(grep read_only_db_password $TMP_DB_INFO_FILE | cut -d\" -f4)
+      PASSWORD_KEY="read_only_db_password"
   elif [ "$user" == "$ROOT_DB_USER" ]
   then
-      ROOT_PASSWORD=$(grep root_db_password $TMP_DB_INFO_FILE | cut -d\" -f4)
+      PASSWORD_KEY="root_db_password"
   fi
 
-  if [ -n "${DB_PASSWORD}" ]
-  then
-    PASSWORD=$DB_PASSWORD
-  elif [ -n "${READONLY_PASSWORD}" ]
-  then
-    PASSWORD=$READONLY_PASSWORD
-  elif [ -n "${ROOT_PASSWORD}" ]
-  then
-    PASSWORD=$ROOT_PASSWORD
-  else
-    echo "Can not get password for user: $user"
-    exit 1
-  fi
+  PASSWORD=$(grep $PASSWORD_KEY $TMP_DB_INFO_FILE | cut -d\" -f4)
 
   if [ -z "${PASSWORD}" ]
   then
@@ -151,7 +139,7 @@ function run_cloud_sql_proxy {
 # set_db_connection_string alembic
 # (This works because alembic and rdr users share the same password)
 function set_db_connection_string {
-  PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
+  PASSWORD=`grep rdr_db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
   DB_USER=$RDR_DB_USER
   if [ $1 ]
   then
