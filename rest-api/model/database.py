@@ -26,11 +26,12 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
 
-RETRY_CONNECTION_LIMIT = 10
-
 
 class Database(object):
   """Maintains state for accessing the database."""
+
+  RETRY_CONNECTION_LIMIT = 10
+
   def __init__(self, url, **kwargs):
     # Add echo=True here to spit out SQL statements.
     # Set pool_recycle to 3600 -- one hour in seconds -- which is lower than the MySQL wait_timeout
@@ -76,24 +77,15 @@ class Database(object):
   # ludicriously long retry periods.
   @backoff.on_exception(backoff.expo,
                         DBAPIError,
-                        max_tries=RETRY_CONNECTION_LIMIT,
-                        giveup=lambda err: not err.connection_invalidated)
+                        max_tries=Database.RETRY_CONNECTION_LIMIT,
+                        giveup=lambda err: not getattr(err, 'connection_invalidated', False))
   def autoretry(self, func):
     """Runs a function of the db session and attempts to commit.  If we encounter a dropped
     connection, we retry the operation.  The retries are spaced out using exponential backoff with
     full jitter.  All other errors are propagated.
     """
-    session = self.make_session()
-    results = func(session)
-    try:
-      session.commit()
-    except:  # noqa
-      session.rollback()
-      raise
-    else:
-      return results
-    finally:
-      session.close()
+    with self.session() as session:
+      return func(session)
 
 
 def _ping_connection(connection, branch):
