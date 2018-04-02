@@ -1,13 +1,10 @@
-defaults: &defaults
-  working_directory: ~/all-of-us/raw-data-repository
-  docker:
-    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
-      command: /sbin/init
-
 version: 2
 jobs:
   build:
-    <<: *defaults
+    working_directory: ~/all-of-us/raw-data-repository
+    docker:
+      - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+        command: /sbin/init
     parallelism: 1
     shell: /bin/bash --login
     environment:
@@ -51,7 +48,10 @@ jobs:
         - all-of-us/raw-data-repository
 
   test:
-    <<: *defaults
+    working_directory: ~/all-of-us/raw-data-repository
+    docker:
+      - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+        command: /sbin/init
     steps:
     - attach_workspace:
         at: ~/all-of-us/raw-data-repository
@@ -64,7 +64,10 @@ jobs:
         path: /tmp/circleci-test-results
 
   deploy:
-    <<: *defaults
+    working_directory: ~/all-of-us/raw-data-repository
+    docker:
+      - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+        command: /sbin/init
     steps:
     - attach_workspace:
         at: ~/all-of-us/raw-data-repository
