@@ -1,6 +1,8 @@
 from contextlib import contextmanager
 import logging
 
+import backoff
+
 from model.base import Base, MetricsBase
 # All tables in the schema should be imported below here.
 # pylint: disable=unused-import
@@ -23,6 +25,8 @@ from model.site import Site
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
+
+RETRY_CONNECTION_LIMIT = 10
 
 
 class Database(object):
@@ -66,6 +70,30 @@ class Database(object):
       raise
     finally:
       sess.close()
+
+  # TODO: at the time of writing, a PR went in to backoff that adds a `max_time` parameter.  This
+  # will be part of backoff 1.5 (we are on backoff 1.4).  When it releases, use it to prevent
+  # ludicriously long retry periods.
+  @backoff.on_exception(backoff.expo,
+                        DBAPIError,
+                        max_tries=RETRY_CONNECTION_LIMIT,
+                        giveup=lambda err: not err.connection_invalidated)
+  def autoretry(self, func):
+    """Runs a function of the db session and attempts to commit.  If we encounter a dropped
+    connection, we retry the operation.  The retries are spaced out using exponential backoff with
+    full jitter.  All other errors are propagated.
+    """
+    session = self.make_session()
+    results = func(session)
+    try:
+      session.commit()
+    except:  # noqa
+      session.rollback()
+      raise
+    else:
+      return results
+    finally:
+      session.close()
 
 
 def _ping_connection(connection, branch):
