@@ -2,11 +2,16 @@
 
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
+import logging
+
+from flask import Flask, got_request_exception
+from flask_restful import Api
+from sqlalchemy.exc import DBAPIError
+from werkzeug.exceptions import HTTPException
+
 import app_util
 import config_api
-import logging
 import version_api
-
 from api.awardee_api import AwardeeApi
 from api.biobank_order_api import BiobankOrderApi
 from api.check_ppi_data_api import check_ppi_data
@@ -21,10 +26,8 @@ from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical
 from api.metric_sets_api import MetricSetsApi
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
-from flask import Flask, got_request_exception
-from flask_restful import Api
 from model.utils import ParticipantIdConverter
-from werkzeug.exceptions import HTTPException
+
 
 PREFIX = '/rdr/v1/'
 
@@ -158,3 +161,4 @@ app.add_url_rule(PREFIX + 'ImportCodebook',
 
 app.after_request(app_util.add_headers)
 app.before_request(app_util.request_logging)
+app.register_error_handler(DBAPIError, app_util.handle_database_disconnect)
