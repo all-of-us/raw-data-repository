@@ -2,7 +2,6 @@ import logging
 
 from code_constants import BIOBANK_TESTS_SET
 from dao.base_dao import BaseDao
-from dao.database_factory import autoretry
 from model.biobank_stored_sample import BiobankStoredSample
 
 
@@ -14,7 +13,7 @@ class BiobankStoredSampleDao(BaseDao):
   def get_id(self, obj):
     return obj.biobankStoredSampleId
 
-  def __upsert_all(self, samples):
+  def upsert_all(self, samples):
     """Inserts/updates samples. """
     # Ensure that the sample set can be re-iterated if the operation needs to be retried
     samples = list(samples)
@@ -32,14 +31,3 @@ class BiobankStoredSampleDao(BaseDao):
           written += 1
       return written
     return self._database.autoretry(upsert)
-
-  @autoretry
-  def upsert_all(self, session, samples):
-    written = 0
-    for sample in samples:
-      if sample.test not in BIOBANK_TESTS_SET:
-        logging.warn('test sample %s not recognized.' % sample.test)
-      else:
-        session.merge(sample)
-        written += 1
-    return written

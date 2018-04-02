@@ -1,4 +1,3 @@
-from functools import wraps
 import os
 
 from MySQLdb.cursors import SSCursor
@@ -19,17 +18,6 @@ class _SqlDatabase(Database):
     if url.drivername != "sqlite" and not url.database:
       url.database = db_name
     super(_SqlDatabase, self).__init__(url, **kwargs)
-
-
-def autoretry(func):
-  """Wraps a function so that the database will run it in a transaction and automatically retry on
-  lost connection
-  """
-  @wraps(func)
-  def wrapper(*args, **kwargs):
-    db = get_database()
-    return db.autoretry(func, *args, **kwargs)
-  return wrapper
 
 
 def get_database():

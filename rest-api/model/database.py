@@ -78,13 +78,13 @@ class Database(object):
                         DBAPIError,
                         max_tries=RETRY_CONNECTION_LIMIT,
                         giveup=lambda err: not getattr(err, 'connection_invalidated', False))
-  def autoretry(self, func, func_self, *args, **kwargs):
+  def autoretry(self, func):
     """Runs a function of the db session and attempts to commit.  If we encounter a dropped
     connection, we retry the operation.  The retries are spaced out using exponential backoff with
     full jitter.  All other errors are propagated.
     """
     with self.session() as session:
-      return func(func_self, session, *args, **kwargs)
+      return func(session)
 
 
 def _ping_connection(connection, branch):
