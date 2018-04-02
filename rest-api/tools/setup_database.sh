@@ -50,24 +50,20 @@ fi
 
 source tools/setup_vars.sh
 
+# Get a randomly generated password
+function randpw {
+    new_password=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z-0-9_\!\@\#\$\%\^\&\*\(\)-+= | head -c${1:-16};echo;)
+    }
+
 # Prompts the user for a database user password.
 function get_required_password {
   db_user_name=$1
-  echo -n "Store and share this password in Valentine with"
-  echo " name=\"$db_user_name\" and description=\"$PROJECT database\"."
-  read -s -p "$db_user_name password for database: " new_password
+  echo "Setting random password for user: $db_user_name "
+  randpw
   echo
   if [ -z "${new_password}" ]
   then
     echo "Password required; exiting."
-    exit 1
-  fi
-
-  read -s -p "Repeat $db_user_name password: " repeat_new_password
-  echo
-  if [ "${repeat_new_password}" != "${new_password}" ]
-  then
-    echo "Password mismatch; exiting."
     exit 1
   fi
 }
@@ -112,6 +108,8 @@ trap finish EXIT
 
 echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
      ' "db_password": "'$RDR_PASSWORD'", ' \
+     ' "root_db_password": "'$ROOT_PASSWORD'", ' \
+     ' "read_only_db_password": "'$READONLY_PASSWORD'", ' \
      ' "db_connection_name": "'$INSTANCE_CONNECTION_NAME'", '\
      ' "db_user": "'$RDR_DB_USER'", '\
      ' "db_name": "'$DB_NAME'" }' > $TMP_DB_INFO_FILE

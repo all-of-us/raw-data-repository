@@ -88,10 +88,24 @@ function get_instance_connection_name {
 }
 
 function get_db_password {
+  user=$1
   echo "Getting database password..."
   tools/install_config.sh --key db_config --instance $INSTANCE \
       --creds_file ${CREDS_FILE} --config_output $TMP_DB_INFO_FILE
-  PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
+  if [ "${user}" == "${RDR_DB_USER}" ]
+  then
+      PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
+  elif [ "${user}" == "${READONLY_DB_USER}" ]
+  then
+      PASSWORD=`grep read_only_db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
+  elif [ "${user}" == "${ROOT_DB_USER}" ]
+  then
+      PASSWORD=`grep root_db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
+  echo "This is a test --------------------------------------------------"
+  echo "user is $user"
+  echo "PASSWORD IS $PASSWORD"
+  echo " END TEST ======================================================="
+  fi
 }
 
 function run_cloud_sql_proxy {
