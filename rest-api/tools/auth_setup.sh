@@ -101,6 +101,9 @@ function get_db_password {
   elif [ "$user" == "$ROOT_DB_USER" ]
   then
       PASSWORD_KEY="root_db_password"
+  else
+      echo "Can not find password for user."
+      exit 1
   fi
 
   PASSWORD=$(grep $PASSWORD_KEY $TMP_DB_INFO_FILE | cut -d\" -f4)
