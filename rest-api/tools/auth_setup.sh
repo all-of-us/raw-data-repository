@@ -88,10 +88,31 @@ function get_instance_connection_name {
 }
 
 function get_db_password {
+  user=$1
   echo "Getting database password..."
   tools/install_config.sh --key db_config --instance $INSTANCE \
       --creds_file ${CREDS_FILE} --config_output $TMP_DB_INFO_FILE
-  PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
+  if [ "$user" == "$RDR_DB_USER" ]
+  then
+      PASSWORD_KEY="rdr_db_password"
+  elif [ "$user" == "$READONLY_DB_USER" ]
+  then
+      PASSWORD_KEY="read_only_db_password"
+  elif [ "$user" == "$ROOT_DB_USER" ]
+  then
+      PASSWORD_KEY="root_db_password"
+  else
+      echo "Can not find password for user."
+      exit 1
+  fi
+
+  PASSWORD=$(grep $PASSWORD_KEY $TMP_DB_INFO_FILE | cut -d\" -f4)
+
+  if [ -z "${PASSWORD}" ]
+  then
+    echo "Password not found, exiting."
+    exit 1
+  fi
 }
 
 function run_cloud_sql_proxy {
@@ -121,7 +142,7 @@ function run_cloud_sql_proxy {
 # set_db_connection_string alembic
 # (This works because alembic and rdr users share the same password)
 function set_db_connection_string {
-  PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
+  PASSWORD=$(grep rdr_db_password $TMP_DB_INFO_FILE | cut -d\" -f4)
   DB_USER=$RDR_DB_USER
   if [ $1 ]
   then
