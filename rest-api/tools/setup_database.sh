@@ -52,27 +52,14 @@ source tools/setup_vars.sh
 
 # Get a randomly generated password
 function randpw {
-    new_password=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z-0-9_\!\@\#\$\%\^\&\*\(\)-+= | head -c${1:-16};echo;)
+    new_password=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z-0-9 | head -c${1:-16};echo;)
     }
 
-# Prompts the user for a database user password.
-function get_required_password {
-  db_user_name=$1
-  echo "Setting random password for user: $db_user_name "
-  randpw
-  echo
-  if [ -z "${new_password}" ]
-  then
-    echo "Password required; exiting."
-    exit 1
-  fi
-}
-
-get_required_password $ROOT_DB_USER
+randpw
 ROOT_PASSWORD=$new_password
-get_required_password $RDR_DB_USER/$ALEMBIC_DB_USER
+randpw
 RDR_PASSWORD=$new_password
-get_required_password $READONLY_DB_USER
+randpw
 READONLY_PASSWORD=$new_password
 
 INSTANCE_NAME=rdrmaindb
@@ -107,7 +94,7 @@ function finish {
 trap finish EXIT
 
 echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
-     ' "db_password": "'$RDR_PASSWORD'", ' \
+     ' "rdr_db_password": "'$RDR_PASSWORD'", ' \
      ' "root_db_password": "'$ROOT_PASSWORD'", ' \
      ' "read_only_db_password": "'$READONLY_PASSWORD'", ' \
      ' "db_connection_name": "'$INSTANCE_CONNECTION_NAME'", '\

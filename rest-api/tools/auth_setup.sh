@@ -92,19 +92,35 @@ function get_db_password {
   echo "Getting database password..."
   tools/install_config.sh --key db_config --instance $INSTANCE \
       --creds_file ${CREDS_FILE} --config_output $TMP_DB_INFO_FILE
-  if [ "${user}" == "${RDR_DB_USER}" ]
+  if [ "$user" == "$RDR_DB_USER" ]
   then
-      PASSWORD=`grep db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
-  elif [ "${user}" == "${READONLY_DB_USER}" ]
+      DB_PASSWORD=$(grep rdr_db_password $TMP_DB_INFO_FILE | cut -d\" -f4)
+  elif [ "$user" == "$READONLY_DB_USER" ]
   then
-      PASSWORD=`grep read_only_db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
-  elif [ "${user}" == "${ROOT_DB_USER}" ]
+      READONLY_PASSWORD=$(grep read_only_db_password $TMP_DB_INFO_FILE | cut -d\" -f4)
+  elif [ "$user" == "$ROOT_DB_USER" ]
   then
-      PASSWORD=`grep root_db_password $TMP_DB_INFO_FILE | cut -d\" -f4`
-  echo "This is a test --------------------------------------------------"
-  echo "user is $user"
-  echo "PASSWORD IS $PASSWORD"
-  echo " END TEST ======================================================="
+      ROOT_PASSWORD=$(grep root_db_password $TMP_DB_INFO_FILE | cut -d\" -f4)
+  fi
+
+  if [ -n "${DB_PASSWORD}" ]
+  then
+    PASSWORD=$DB_PASSWORD
+  elif [ -n "${READONLY_PASSWORD}" ]
+  then
+    PASSWORD=$READONLY_PASSWORD
+  elif [ -n "${ROOT_PASSWORD}" ]
+  then
+    PASSWORD=$ROOT_PASSWORD
+  else
+    echo "Can not get password for user: $user"
+    exit 1
+  fi
+
+  if [ -z "${PASSWORD}" ]
+  then
+    echo "Password not found, exiting."
+    exit 1
   fi
 }
 
