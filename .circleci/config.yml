@@ -1,17 +1,18 @@
+defaults: &defaults
+  working_directory: ~/all-of-us/raw-data-repository
+  docker:
+    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+      command: /sbin/init
+
 version: 2
 jobs:
   build:
-    working_directory: ~/all-of-us/raw-data-repository
+    <<: *defaults
     parallelism: 1
     shell: /bin/bash --login
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
-
-    docker:
-    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
-      command: /sbin/init
-
     steps:
     # Get code under test
     - checkout
@@ -44,11 +45,13 @@ jobs:
         key: v1-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - ~/virtualenvs
+    - persist_to_workspace:
+      root: ~/all-of-us/raw-data-repository
+      paths:
+        - .
 
   test:
-    machine:
-      enabled: true
-    working_directory: ~/all-of-us/raw-data-repository
+    <<: *defaults
     steps:
     - checkout
     - run: ./ci/test.sh
@@ -58,11 +61,11 @@ jobs:
         path: /tmp/circleci-artifacts
     - store_artifacts:
         path: /tmp/circleci-test-results
+    - attach_workspace:
+        at: ~/all-of-us/raw-data-repository
 
   deploy:
-    machine:
-      enabled: true
-    working_directory: ~/all-of-us/raw-data-repository
+    <<: *defaults
     steps:
     - checkout
     - run:
@@ -78,6 +81,8 @@ jobs:
     - run:
         name: Start test server
         command: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com -c ~/gcloud-credentials.key
+    - attach_workspace:
+        at: ~/all-of-us/raw-data-repository
 
 workflows:
   version: 2
