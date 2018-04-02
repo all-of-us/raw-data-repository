@@ -2,6 +2,9 @@ from contextlib import contextmanager
 import logging
 
 import backoff
+from sqlalchemy import create_engine, event, select
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.orm import sessionmaker
 
 from model.base import Base, MetricsBase
 # All tables in the schema should be imported below here.
@@ -22,15 +25,11 @@ from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from model.site import Site
 
-from sqlalchemy import create_engine, event, select
-from sqlalchemy.exc import DBAPIError
-from sqlalchemy.orm import sessionmaker
+RETRY_CONNECTION_LIMIT = 10
 
 
 class Database(object):
   """Maintains state for accessing the database."""
-
-  RETRY_CONNECTION_LIMIT = 10
 
   def __init__(self, url, **kwargs):
     # Add echo=True here to spit out SQL statements.
@@ -77,15 +76,15 @@ class Database(object):
   # ludicriously long retry periods.
   @backoff.on_exception(backoff.expo,
                         DBAPIError,
-                        max_tries=Database.RETRY_CONNECTION_LIMIT,
+                        max_tries=RETRY_CONNECTION_LIMIT,
                         giveup=lambda err: not getattr(err, 'connection_invalidated', False))
-  def autoretry(self, func):
+  def autoretry(self, func, func_self, *args, **kwargs):
     """Runs a function of the db session and attempts to commit.  If we encounter a dropped
     connection, we retry the operation.  The retries are spaced out using exponential backoff with
     full jitter.  All other errors are propagated.
     """
     with self.session() as session:
-      return func(session)
+      return func(func_self, session, *args, **kwargs)
 
 
 def _ping_connection(connection, branch):
