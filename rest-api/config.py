@@ -122,6 +122,7 @@ def store(model, date=None, client_id=None):
   singletons.invalidate(singletons.MAIN_CONFIG_INDEX)
   return model
 
+
 _NO_DEFAULT = '_NO_DEFAULT'
 
 def getSettingJson(key, default=_NO_DEFAULT):
