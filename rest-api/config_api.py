@@ -1,18 +1,17 @@
 """The API definition for the config API."""
-
-import api_util
-import app_util
-import base_api
-import config
 import json
 import logging
 import os
 
 from flask import request
-
+from flask.ext.restful import Resource
 from google.appengine.api import app_identity
+from google.appengine.ext import ndb
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from werkzeug.exceptions import BadRequest, Forbidden
+import app_util
+import config
+from api_util import unix_time_millis, parse_date
 
 # Read bootstrap config admin service account configuration
 CONFIG_ADMIN_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -64,45 +63,60 @@ def check_config_admin():
   raise Forbidden()
 
 
-class ConfigApi(base_api.BaseApi):
+class ConfigApi(Resource):
   """Api handlers for retrieving and setting config values."""
-
   method_decorators = [auth_required_config_admin]
 
-  def __init__(self):
-    super(ConfigApi, self).__init__(config.ConfigurationDAO())
-
-  def get_config_by_date(self, key, date):
-    result = config.get_config_that_was_active_at(key, api_util.parse_date(date))
-    return self.make_response_for_resource(self.dao.to_json(result))
-
-  def get(self, key=None):
+  def get(self, key=config.CONFIG_SINGLETON_KEY):
     date = request.args.get('date')
-    key = key or config.CONFIG_SINGLETON_KEY
-    if not date:
-      # Return the live config.
-      return super(ConfigApi, self).get(key)
-    else:
-      return self.get_config_by_date(key, date)
+    if date is not None:
+      date = parse_date(date)
+    model = config.load(key, date=date)
+    data = model.configuration or {}
+    return self.make_response_for_resource(data)
 
-  # Insert or update to configuration
-  def post(self, key=None):
-    key = key or config.CONFIG_SINGLETON_KEY
+  def post(self, key=config.CONFIG_SINGLETON_KEY):
     resource = request.get_json(force=True)
-    m = self.dao.from_json(resource, None, key)
-    self.validate_object(m, None)
-    self.dao.store(m)
-    return self.make_response_for_resource(self.dao.to_json(m))
+    keypath = [config.Configuration, key]
+    model = config.Configuration(key=ndb.Key(flat=keypath))
+    model.populate(configuration=resource)
+    self.validate(model)
+    config.store(model)
+    return self.make_response_for_resource(model.configuration)
 
-  def put(self, key=None):
-    return super(ConfigApi, self).put(key or config.CONFIG_SINGLETON_KEY)
+  def put(self, key=config.CONFIG_SINGLETON_KEY):
+    resource = request.get_json(force=True)
+    keypath = [config.Configuration, key]
+    model = config.Configuration(key=ndb.Key(flat=keypath))
+    model.populate(configuration=resource)
 
-  def validate_object(self, obj, a_id=None):
-    super(ConfigApi, self).validate_object(obj, a_id)
-    if obj.key.id() != config.CONFIG_SINGLETON_KEY:
+    self.validate(model)
+    if not model.key.get():
+      raise NotFound('{} with key {} does not exist'.format('Configuration', model.key))
+
+    date = None
+    if config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False):
+      date = request.headers.get('x-pretend-date', None)
+      if date:
+        date = parse_date(date)
+
+    client_id = app_util.get_oauth_id()
+    config.store(model, date=date, client_id=client_id)
+    return self.make_response_for_resource(model.configuration)
+
+  def make_response_for_resource(self, data):
+    last_modified = data.pop('last_modified', None)
+    if last_modified:
+      version_id = 'W/"{}"'.format(unix_time_millis(last_modified))
+      data['meta'] = {'versionId': version_id}
+      return data, 200, {'ETag': version_id}
+    return data
+
+  def validate(self, model):
+    if model.key.id() != config.CONFIG_SINGLETON_KEY:
       return
 
-    config_obj = obj.configuration
+    config_obj = model.configuration
     # make sure all required keys are present and that the values are the right type.
     for k in config.REQUIRED_CONFIG_KEYS:
       if k not in config_obj:
