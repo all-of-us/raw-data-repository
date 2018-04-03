@@ -1,7 +1,8 @@
 from model.base import Base
 from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Boolean, Integer, BLOB, BIGINT, ForeignKey, String, Float, Table
+from sqlalchemy import Column, Boolean, Integer, BLOB, BIGINT, ForeignKey, String, Float, Table, \
+  Text
 
 measurement_to_qualifier = Table('measurement_to_qualifier', Base.metadata,
     Column('measurement_id', BIGINT, ForeignKey('measurement.measurement_id'), primary_key=True),
@@ -49,7 +50,7 @@ class Measurement(Base):
   measurementTime = Column('measurement_time', UTCDateTime, nullable=False)
   bodySiteCodeSystem = Column('body_site_code_system', String(255))
   bodySiteCodeValue = Column('body_site_code_value', String(255))
-  valueString = Column('value_string', String(1024))
+  valueString = Column('value_string', Text)
   valueDecimal = Column('value_decimal', Float)
   valueUnit = Column('value_unit', String(255))
   valueCodeSystem = Column('value_code_system', String(255))
