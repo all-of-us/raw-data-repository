@@ -626,9 +626,12 @@ def reduce_hpo_date_metric_counts_to_database_buckets(reducer_key, reducer_value
                          date=date,
                          hpoId=hpo_id,
                          metrics=json.dumps(metrics_dict))
+  dao = MetricsBucketDao()
   # Use upsert here; when reducer shards retry, we will just replace any metrics bucket that was
   # written before, rather than failing.
-  MetricsBucketDao().upsert(bucket)
+  def upsert(session):
+    dao.upsert_with_session(session, bucket)
+  dao._database.autoretry(upsert)
 
 def parse_metric(metric):
   return metric.split('.')
