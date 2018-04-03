@@ -1,6 +1,7 @@
 import clock
 import json
 import logging
+import sys
 
 from api_util import parse_date
 from concepts import Concept
@@ -29,6 +30,7 @@ _LOCATION_PREFIX = 'Location/'
 _AUTHOR_PREFIX = 'Practitioner/'
 _QUALIFIED_BY_RELATED_TYPE = 'qualified-by'
 _ALL_EXTENSIONS = set([_AMENDMENT_URL, _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION])
+_BYTE_LIMIT = 64000
 
 class PhysicalMeasurementsDao(BaseDao):
 
@@ -68,6 +70,8 @@ class PhysicalMeasurementsDao(BaseDao):
       measurement_data['bodySites'].add(Concept(m.bodySiteCodeSystem,
                                                 m.bodySiteCodeValue))
     if m.valueString:
+      if sys.getsizeof(m.valueString) > _BYTE_LIMIT:
+        raise BadRequest('Notes field exceeds limit.')
       measurement_data['types'].add('string')
     if m.valueDecimal:
       measurement_data['types'].add('decimal')
@@ -367,6 +371,8 @@ class PhysicalMeasurementsDao(BaseDao):
       value_date_time = component.valueDateTime.date
     if component.valueString:
       value_string = component.valueString
+      if sys.getsizeof(value_string) > _BYTE_LIMIT:
+        raise BadRequest('Component notes field exceeds limit.')
     if component.valueCodeableConcept and component.valueCodeableConcept.coding:
       value_coding = PhysicalMeasurementsDao.get_preferred_coding(component.valueCodeableConcept)
       value_code_system = value_coding.system
@@ -417,6 +423,8 @@ class PhysicalMeasurementsDao(BaseDao):
       value_date_time = observation.valueDateTime.date.replace(tzinfo=None)
     if observation.valueString:
       value_string = observation.valueString
+      if sys.getsizeof(value_string) > _BYTE_LIMIT:
+        raise BadRequest('Observation notes field exceeds limit.')
     if observation.valueCodeableConcept and observation.valueCodeableConcept.coding:
       value_coding = PhysicalMeasurementsDao.get_preferred_coding(observation.valueCodeableConcept)
       value_code_system = value_coding.system
