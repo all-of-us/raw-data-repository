@@ -45,7 +45,8 @@ jobs:
     - persist_to_workspace:
         root: ~/
         paths:
-          - all-of-us/raw-data-repository
+          - virtualenvs
+          - all-of-us
 
   test:
     working_directory: ~/all-of-us/raw-data-repository
