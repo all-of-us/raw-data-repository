@@ -805,6 +805,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     # Store samples for DNA for participants 1 and 3
     self._store_biobank_sample(participant_1, '1ED10')
+    self._store_biobank_sample(participant_1, '1SAL2')
     self._store_biobank_sample(participant_3, '1SAL')
     # Update participant summaries based on these changes.
     ParticipantSummaryDao().update_from_biobank_stored_samples()
@@ -830,7 +831,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('RECEIVED', ps_1['sampleStatus1ED10'])
     self.assertEquals(TIME_1.isoformat(), ps_1['sampleStatus1ED10Time'])
     self.assertEquals('UNSET', ps_1['sampleStatus1SAL'])
-    self.assertEquals('UNSET', ps_1['samplesToIsolateDNA'])
+    self.assertEquals('RECEIVED', ps_1['sampleStatus1SAL2'])
+    self.assertEquals('RECEIVED', ps_1['samplesToIsolateDNA'])
     self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
     self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
