@@ -1,7 +1,6 @@
 import clock
 import json
 import logging
-import sys
 
 from api_util import parse_date
 from concepts import Concept
