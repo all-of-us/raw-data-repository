@@ -46,6 +46,7 @@ BIOBANK_STATUS_MAIL_RECIPIENTS = 'biobank_status_mail_recipients'
 # True if we should add codes referenced in questionnaires that
 # aren't in the code book; false if we should reject the questionnaires.
 ADD_QUESTIONNAIRE_CODES_IF_MISSING = 'add_questionnaire_codes_if_missing'
+
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 
 
@@ -86,12 +87,12 @@ class ConfigurationHistory(ndb.Model):
   client_id = ndb.StringProperty()
 
 
-def load(_id, date=None):
+def load(_id=CONFIG_SINGLETON_KEY, date=None):
   key = ndb.Key(Configuration, _id)
   if date is not None:
     history = (ConfigurationHistory
-                .query(ancestor=key)
-                .filter(ConfigurationHistory.date < date)
+                .query(ancestor=ndb.Key('Configuration', _id))
+                .filter(ConfigurationHistory.date <= date)
                 .order(-ConfigurationHistory.date)
                 .fetch(limit=1)
                )
@@ -106,7 +107,7 @@ def load(_id, date=None):
       model.put()
       logging.info('Setting an empty configuration.')
     else:
-      raise KeyError('No config for %r.' % _id)
+      raise NotFound('No config for %r.' % _id)
   return model
 
 

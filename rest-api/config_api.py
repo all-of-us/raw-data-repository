@@ -11,12 +11,13 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import app_util
 import config
-from api_util import unix_time_millis, parse_date
+from api_util import parse_date
 
 # Read bootstrap config admin service account configuration
 CONFIG_ADMIN_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                  'config',
                                  'config_admins.json')
+
 with open(CONFIG_ADMIN_FILE) as config_file:
   try:
     CONFIG_ADMIN_MAP = json.load(config_file)
@@ -72,45 +73,37 @@ class ConfigApi(Resource):
     if date is not None:
       date = parse_date(date)
     model = config.load(key, date=date)
-    data = model.configuration or {}
-    return self.make_response_for_resource(data)
+    return model.configuration
 
   def post(self, key=config.CONFIG_SINGLETON_KEY):
-    resource = request.get_json(force=True)
-    keypath = [config.Configuration, key]
-    model = config.Configuration(key=ndb.Key(flat=keypath))
-    model.populate(configuration=resource)
+    model = config.Configuration(key=ndb.Key(config.Configuration, key),
+                                 configuration=request.get_json(force=True))
     self.validate(model)
     config.store(model)
-    return self.make_response_for_resource(model.configuration)
+    return model.configuration
 
   def put(self, key=config.CONFIG_SINGLETON_KEY):
-    resource = request.get_json(force=True)
-    keypath = [config.Configuration, key]
-    model = config.Configuration(key=ndb.Key(flat=keypath))
-    model.populate(configuration=resource)
-
+    model_key = ndb.Key(config.Configuration, key)
+    old_model = model_key.get()
+    if not old_model:
+      raise NotFound('{} with key {} does not exist'.format('Configuration', key))
+    # the history mechanism doesn't work unless we make a copy.  So a put is always a clone, never
+    # an actual update.
+    model = config.Configuration(**old_model.to_dict())
+    model.key = model_key
+    model.configuration = request.get_json(force=True)
     self.validate(model)
-    if not model.key.get():
-      raise NotFound('{} with key {} does not exist'.format('Configuration', model.key))
 
     date = None
     if config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False):
       date = request.headers.get('x-pretend-date', None)
-      if date:
-        date = parse_date(date)
+    if date is not None:
+      date = parse_date(date)
 
     client_id = app_util.get_oauth_id()
-    config.store(model, date=date, client_id=client_id)
-    return self.make_response_for_resource(model.configuration)
 
-  def make_response_for_resource(self, data):
-    last_modified = data.pop('last_modified', None)
-    if last_modified:
-      version_id = 'W/"{}"'.format(unix_time_millis(last_modified))
-      data['meta'] = {'versionId': version_id}
-      return data, 200, {'ETag': version_id}
-    return data
+    config.store(model, date=date, client_id=client_id)
+    return model.configuration
 
   def validate(self, model):
     if model.key.id() != config.CONFIG_SINGLETON_KEY:
