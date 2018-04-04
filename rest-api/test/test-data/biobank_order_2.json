@@ -106,6 +106,10 @@
     "test": "1SAL",
     "description": "Test 1SAL",
     "processingRequired":false
+  }, {
+    "test": "1SAL2",
+    "description": "Test 1SAL2",
+    "processingRequired":false
   }],
   "notes": {
     "collected": "Only got 7mL in the ED10 tubes",

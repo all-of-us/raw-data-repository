@@ -127,6 +127,8 @@ class ParticipantSummary(Base):
   sampleStatus1UR10Time = Column('sample_status_1ur10_time', UTCDateTime)
   sampleStatus1SAL = Column('sample_status_1sal', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1SALTime = Column('sample_status_1sal_time', UTCDateTime)
+  sampleStatus1SAL2 = Column('sample_status_1sal2', Enum(SampleStatus), default=SampleStatus.UNSET)
+  sampleStatus1SAL2Time = Column('sample_status_1sal2_time', UTCDateTime)
 
   # Fields for which samples have been ordered, and at what times.
   sampleOrderStatus1SST8 = Column('sample_order_status_1sst8', Enum(OrderStatus),
@@ -165,6 +167,9 @@ class ParticipantSummary(Base):
   sampleOrderStatus1SAL = Column('sample_order_status_1sal', Enum(OrderStatus),
                                  default=OrderStatus.UNSET)
   sampleOrderStatus1SALTime = Column('sample_order_status_1sal_time', UTCDateTime)
+  sampleOrderStatus1SAL2 = Column('sample_order_status_1sal2', Enum(OrderStatus),
+                                 default=OrderStatus.UNSET)
+  sampleOrderStatus1SAL2Time = Column('sample_order_status_1sal2_time', UTCDateTime)
 
   numCompletedBaselinePPIModules = Column('num_completed_baseline_ppi_modules', SmallInteger,
                                           default=0)
