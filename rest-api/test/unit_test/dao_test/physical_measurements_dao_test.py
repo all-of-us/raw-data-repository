@@ -4,7 +4,7 @@ import json
 from clock import FakeClock
 from dao.biobank_order_dao import BiobankOrderDao
 from model.participant import Participant
-from model.measurements import PhysicalMeasurements
+from model.measurements import PhysicalMeasurements, Measurement
 from query import Query, FieldFilter, Operator
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -162,3 +162,8 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEquals('2', amendment_json['id'])
     self.assertTrue(new_measurements.final)
     self.assertEquals(TIME_3, new_measurements.created)
+
+  def test_new(self):
+    new_measurements = self.dao.insert(self._make_physical_measurements(
+      physicalMeasurementsId=2, measurements=['a']))
+    print new_measurements
