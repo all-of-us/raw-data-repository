@@ -1,34 +1,85 @@
-# import google.auth.iam as ga
-# from oauth2client.service_account import ServiceAccountCredentials
-# from google.auth.credentials import Credentials
-# from google.oauth2 import credentials, id_token, service_account
-# import httplib2
-# from oauth2client.contrib import gce
-# import sys
-# creds = 'pmi-drc-api-test@appspot.gserviceaccount.com'
-# SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
-# signer = ga.Signer(SCOPE, creds, creds)
-#
-# creds_file = sys.argv[1]
-# sa = ServiceAccountCredentials('michael.mead@pmi-ops.org', signer)
-# print sa.id_token
-# print sa.access_token
-# print sa.serialization_data
-# print sa.scopes
-# print sa.client_secret
-# print sa.client_id
-#
-# print signer.key_id
+from googleapiclient import discovery
+import os
+import logging
+from logging.handlers import RotatingFileHandler
+from gcp import get_key, get_projects
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
-token = '0d41bd307b8d0c04239062484739c0e001e2c4fd'
-# curl 'https://iam.googleapis.com/v1/projects/pmi-drc-api-test/serviceAccounts' \
-#   -H 'Authorization: Bearer [YOUR_BEARER_TOKEN]' \
-#   -H 'Accept: application/json' \
-#   --compressed
+"""Deletes service account keys older than 3 days as required by NIH"""
+_DELETE_PREFIX = 'awardee-'
 
-headers = {"Authorization":"Bearer 0d41bd307b8d0c04239062484739c0e001e2c4fd" , "Accept":"application/json"}
+if os.path.isfile(get_key()):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = get_key()
 
-import requests
-r = requests.get('https://iam.googleapis.com/v1/projects/pmi-drc-api-test/serviceAccounts',
-                 headers=headers)
-print r
+alert = False
+
+path = os.path.expanduser('~/python-logs')
+logfile = os.path.expanduser('~/python-logs/security.log')
+
+if os.path.isdir(path):
+    pass
+else:
+    os.mkdir(path)
+
+
+logger = logging.getLogger("Rotating Log")
+log_formatter = logging.Formatter('%(asctime)s\t %(levelname)s %(message)s')
+logger.setLevel(logging.INFO)
+handler = RotatingFileHandler(logfile, maxBytes=5*1024*1024, backupCount=5)
+handler.setFormatter(log_formatter)
+logger.addHandler(handler)
+
+logger.info('-----Checking Service Account Key age-----')
+for project in get_projects():
+  project_name = 'projects/' + project
+  try:
+    service = discovery.build('iam', 'v1')
+    request = service.projects().serviceAccounts().list(name=project_name)
+    response = request.execute()
+    accounts = response['accounts']
+
+    for account in accounts:
+      serviceaccount = project_name + '/serviceAccounts/' + account['email']
+      unique_id = account['uniqueId']
+      request = service.projects().serviceAccounts().keys().list(name=serviceaccount)
+      response = request.execute()
+      keys = response['keys']
+
+      for key in keys:
+        keyname = key['name']
+        startdate = datetime.strptime(key['validAfterTime'], '%Y-%m-%dT%H:%M:%SZ')
+        enddate = datetime.strptime(key['validBeforeTime'], '%Y-%m-%dT%H:%M:%SZ')
+        key_age_years = relativedelta(enddate, startdate).years
+
+        key_age_days = (datetime.utcnow() - startdate).days
+
+        if keyname.split('/')[3].startswith(_DELETE_PREFIX):
+          if key_age_days < 3:
+            alert = True
+            logger.warning('Deleting service Account key older than 3 days [{0}]: {1}'.format(
+                                                                      key_age_days, keyname))
+            print('Deleting service Account key older than 3 days [{0}]: {1}'.format(
+                                                                      key_age_days, keyname))
+            # drequest = service.projects().serviceAccounts().keys().delete(name=serviceaccount)
+            # drequest = service.projects().serviceAccounts().keys().list(name=serviceaccount)
+            # res = drequest.execute()
+            # print res
+            # create_request = service.projects().serviceAccounts().keys().create(name=serviceaccount)
+            # res2 = create_request.execute()
+            # print res2
+
+            drequest = service.projects().serviceAccounts().getIamPolicy(resource=project, body={})
+            res = drequest.execute()
+            print res
+          else:
+            logger.info('Service Account key is {0} days old: {1}'.format(key_age_days, keyname))
+
+  except KeyError:
+      logger.info('No Service Accounts found in project "{0}"'.format(project))
+
+  except Exception as err:
+      logger.error(err)
+
+if alert is False:
+    logger.info(' No Service Account Keys older than 3 days found')
