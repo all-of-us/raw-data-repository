@@ -19,9 +19,9 @@ def get_projects():
   request = service.projects().list()
   while request is not None:
     response = request.execute()
-    for project in response['projects']:
-      if project['lifecycleState'] == 'ACTIVE':
-        project_list.append(project['projectId'])
+    for projects in response['projects']:
+      if projects['lifecycleState'] == 'ACTIVE':
+        project_list.append(projects['projectId'])
 
     request = service.projects().list_next(previous_request=request, previous_response=response)
 
@@ -29,7 +29,7 @@ def get_projects():
 
 
 if __name__ == "__main__":
-  print(get_key())
+  print get_key()
 
   for project in get_projects():
-    print(project)
+    print project

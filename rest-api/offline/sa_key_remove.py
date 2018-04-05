@@ -72,8 +72,5 @@ for project in get_projects():
   except KeyError:
     logger.info('No Service Accounts found in project "{0}"'.format(project))
 
-  except Exception as err:
-    logger.error(err)
-
 if alert is False:
   logger.info(' No Service Account Keys older than 3 days found')
