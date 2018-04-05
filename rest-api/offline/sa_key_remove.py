@@ -41,7 +41,7 @@ for project in get_projects():
 
     for account in accounts:
       serviceaccount = project_name + '/serviceAccounts/' + account['email']
-      unique_id = account['uniqueId']
+      account_key = serviceaccount + '/key/' + ''
       request = service.projects().serviceAccounts().keys().list(name=serviceaccount)
       response = request.execute()
       keys = response['keys']
@@ -55,23 +55,17 @@ for project in get_projects():
         key_age_days = (datetime.utcnow() - startdate).days
 
         if keyname.split('/')[3].startswith(_DELETE_PREFIX):
-          if key_age_days < 3:
+          if key_age_days > 3:
             alert = True
             logger.warning('Deleting service Account key older than 3 days [{0}]: {1}'.format(
                                                                       key_age_days, keyname))
             print('Deleting service Account key older than 3 days [{0}]: {1}'.format(
                                                                       key_age_days, keyname))
-            # drequest = service.projects().serviceAccounts().keys().delete(name=serviceaccount)
-            # drequest = service.projects().serviceAccounts().keys().list(name=serviceaccount)
-            # res = drequest.execute()
-            # print res
-            # create_request = service.projects().serviceAccounts().keys().create(name=serviceaccount)
-            # res2 = create_request.execute()
-            # print res2
+            delete_request = service.projects().serviceAccounts().keys().delete(name=keyname)
+            delete_request.execute()
+            create_request = service.projects().serviceAccounts().keys().create(name=serviceaccount)
+            create_request.execute()
 
-            drequest = service.projects().serviceAccounts().getIamPolicy(resource=project, body={})
-            res = drequest.execute()
-            print res
           else:
             logger.info('Service Account key is {0} days old: {1}'.format(key_age_days, keyname))
 
