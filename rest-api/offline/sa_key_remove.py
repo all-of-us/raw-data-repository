@@ -10,7 +10,7 @@ from dateutil.relativedelta import relativedelta
 _DELETE_PREFIX = 'awardee-'
 
 if os.path.isfile(get_key()):
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = get_key()
+  os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = get_key()
 
 alert = False
 
@@ -18,9 +18,9 @@ path = os.path.expanduser('~/python-logs')
 logfile = os.path.expanduser('~/python-logs/security.log')
 
 if os.path.isdir(path):
-    pass
+  pass
 else:
-    os.mkdir(path)
+  os.mkdir(path)
 
 
 logger = logging.getLogger("Rotating Log")
@@ -70,10 +70,10 @@ for project in get_projects():
             logger.info('Service Account key is {0} days old: {1}'.format(key_age_days, keyname))
 
   except KeyError:
-      logger.info('No Service Accounts found in project "{0}"'.format(project))
+    logger.info('No Service Accounts found in project "{0}"'.format(project))
 
   except Exception as err:
-      logger.error(err)
+    logger.error(err)
 
 if alert is False:
-    logger.info(' No Service Account Keys older than 3 days found')
+  logger.info(' No Service Account Keys older than 3 days found')
