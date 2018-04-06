@@ -1,3 +1,29 @@
+# Setup python on hosts
+setup_python: &setup_python
+  # Restore the dependency cache
+  - restore_cache:
+      keys:
+      # This branch if available
+      - v1-dep-{{ .Branch }}-
+      # Default branch if not
+      - v1-dep-master-
+      # Fallback if no branch specified
+      - v1-dep-
+  # chmod to address a Circle "bug", since gcloud lives at /opt
+  # and wants to make a .staging directory (as a sibling!)
+  # when upgrading or installing new components.
+  - run: sudo chmod o+w /opt
+  # CircleCI's version of pip can be out of date; make sure it's up-to-date first.
+  - run: pip install --upgrade pip
+  # Then install requirements needed to run our tools.
+  - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
+  - run: pip install -I alembic==0.9.1
+  # Save dependency cache
+  - save_cache:
+      key: v1-dep-{{ .Branch }}-{{ epoch }}
+      paths:
+      - ~/virtualenvs
+
 version: 2
 jobs:
   build:
@@ -19,29 +45,7 @@ jobs:
     - run:
         working_directory: ~/all-of-us/raw-data-repository
         command: 'sudo service mysql status || sudo service mysql start; '
-    # Restore the dependency cache
-    - restore_cache:
-        keys:
-        # This branch if available
-        - v1-dep-{{ .Branch }}-
-        # Default branch if not
-        - v1-dep-master-
-        # Fallback if no branch specified
-        - v1-dep-
-    # chmod to address a Circle "bug", since gcloud lives at /opt
-    # and wants to make a .staging directory (as a sibling!)
-    # when upgrading or installing new components.
-    - run: sudo chmod o+w /opt
-    # CircleCI's version of pip can be out of date; make sure it's up-to-date first.
-    - run: pip install --upgrade pip
-    # Then install requirements needed to run our tools.
-    - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
-    - run: pip install -I alembic==0.9.1
-    # Save dependency cache
-    - save_cache:
-        key: v1-dep-{{ .Branch }}-{{ epoch }}
-        paths:
-        - ~/virtualenvs
+    <<: *setup_python
     - persist_to_workspace:
         root: ~/
         paths:
@@ -56,6 +60,7 @@ jobs:
     steps:
     - attach_workspace:
         at: ~/
+    <<: *setup_python
     - run: ./ci/test.sh
     - store_test_results:
         path: /tmp/circleci-test-results
@@ -72,6 +77,7 @@ jobs:
     steps:
     - attach_workspace:
         at: ~/
+    <<: *setup_python
     - run:
         name: Activate credentials
         command: ./ci/activate_creds.sh ~/gcloud-credentials.key
