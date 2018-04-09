@@ -147,6 +147,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
             LEFT OUTER JOIN
             (SELECT COUNT(*) cnt, DATE(p.sign_up_time) day
                 FROM participant p
+                LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
               %(filters)s
               GROUP BY day) registered
              ON c2.day = registered.day
