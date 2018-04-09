@@ -175,7 +175,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
            LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
              DATE(CASE WHEN enrollment_status = 3 THEN
-                   GREATEST(consent_for_electronic_health_records,
+                   GREATEST(consent_for_electronic_health_records_time,
                             questionnaire_on_the_basics_time,
                             questionnaire_on_lifestyle_time,
                             questionnaire_on_overall_health_time,
