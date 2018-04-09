@@ -11,7 +11,6 @@ while true; do
     --creds_account) CREDS_ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
     --user) CONNECT_USER=$2; shift 2;;
-    --password) CONNECT_PASSWORD=$2; shift 2;;
     --command) COMMAND=$2; shift 2;;
     --output_csv) OUTPUT=$2; shift 2;;
     -- ) shift; break ;;
@@ -31,14 +30,15 @@ fi
 
 source tools/setup_vars.sh
 source tools/auth_setup.sh
-get_db_password
-run_cloud_sql_proxy
 
 if [ -z $CONNECT_USER ]
 then
   CONNECT_USER="${DB_USER}"
-  CONNECT_PASSWORD="${PASSWORD}"
 fi
+
+get_db_password $CONNECT_USER
+CONNECT_PASSWORD="${PASSWORD}"
+run_cloud_sql_proxy
 
 SUFFIX=
 if [ "${COMMAND}" ]
