@@ -77,6 +77,20 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       filters_sql = []
       db_field = facet_map[facet]
       filters = facets[facet]
+
+      # TODO:
+      # Consider using an IN clause with bound parameters, instead, which
+      # would be simpler than this,
+      #
+      # TODO:
+      # Consider using bound parameters here instead of inlining the values
+      # in the SQL. We do that in other places using this function:
+      #
+      # dao/database_utils.py#L16
+      #
+      # This may help the SQL perform slightly better since the execution
+      # plan for the query can be cached when the only thing changing are
+      # the bound params.
       for q_filter in filters:
         if str(q_filter) != '':
           filters_sql.append('ps.' + db_field + ' = ' + str(int(q_filter)))
