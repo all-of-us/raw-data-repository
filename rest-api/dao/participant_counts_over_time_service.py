@@ -23,7 +23,77 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
     if str(stratification) == 'TOTAL':
       strata = ['TOTAL']
-      sql = """
+      sql = self.get_total_sql(filters_sql)
+    elif str(stratification) == 'ENROLLMENT_STATUS':
+      strata = [str(val) for val in EnrollmentStatus]
+      sql = self.get_enrollment_status_sql(filters_sql)
+    else:
+      raise BadRequest('Invalid stratification: %s' % stratification)
+
+    params = {'start_date': start_date, 'end_date': end_date}
+
+    results_by_date = []
+
+    with self.session() as session:
+      cursor = session.execute(sql, params)
+
+    # Iterate through each result (by date), transforming tabular SQL results
+    # into expected list-of-dictionaries response format
+    try:
+      results = cursor.fetchall()
+      for result in results:
+        date = result[-1]
+        metrics = {}
+        values = result[:-1]
+        for i, value in enumerate(values):
+          key = strata[i]
+          if value == None:
+            value = 0
+          metrics[key] = int(value)
+        results_by_date.append({
+          'date': str(date),
+          'metrics': metrics
+        })
+    finally:
+      cursor.close()
+
+    return results_by_date
+
+  def get_facets_sql(self, facets):
+    """Helper function to transform facets/filters selection into SQL
+
+    :param facets: Object representing facets and filters to apply to query results
+    :return: SQL for 'WHERE' clause, reflecting filters specified in UI
+    """
+
+    facets_sql = []
+
+    facet_map = {
+      'awardee_ids': 'hpo_id',
+      'enrollment_statuses': 'enrollment_status'
+    }
+
+    for facet in facets:
+      filters_sql = []
+      db_field = facet_map[facet]
+      filters = facets[facet]
+      for q_filter in filters:
+        if str(q_filter) != '':
+          filters_sql.append('ps.' + db_field + ' = ' + str(int(q_filter)))
+      if len(filters_sql) > 0:
+        filters_sql = '(' + ' OR '.join(filters_sql) + ')'
+        facets_sql.append(filters_sql)
+
+    if len(facets_sql) > 0:
+      facets_sql = 'WHERE ' + ' AND '.join(facets_sql)
+    else:
+      return ''
+
+    return facets_sql
+
+  def get_total_sql(self, filters_sql):
+
+    sql = """
         SELECT
             SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) registered_count,
             calendar.day start_date
@@ -38,29 +108,31 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         GROUP BY calendar.day
         ORDER BY calendar.day;
       """ % {'filters': filters_sql}
-    elif str(stratification) == 'ENROLLMENT_STATUS':
-      strata = [str(val) for val in EnrollmentStatus]
 
-      # Noteworthy comments / documentation from Dan (and lightly adapted)
-      #
-      # This SQL works OK but hardcodes the baseline questionnaires and the
-      # fact that 1ED04 and 1SAL are the samples needed to be a full
-      # participant into the SQL. Previously this was done with config:
-      #
-      # rest-api/config/base_config.json#L29
-      #
-      # For the samples, MySQL doesn't make it easy to do the LEAST of N
-      # nullable values, so this is probably OK...
-      #
-      # For the baseline questionnaires, note that we might want to use the config to
-      # generate the GREATEST statement instead, but for now are hardcoding as
-      # we do with samples.
+    return sql
 
-      # TODO when implementing unit testing:
-      # Add macros for GREATEST and LEAST, as they don't work in SQLite
-      # Example: master/rest-api/dao/database_utils.py#L50
+  def get_enrollment_status_sql(self, filters_sql):
 
-      sql = """
+    # Noteworthy comments / documentation from Dan (and lightly adapted)
+    #
+    # This SQL works OK but hardcodes the baseline questionnaires and the
+    # fact that 1ED04 and 1SAL are the samples needed to be a full
+    # participant into the SQL. Previously this was done with config:
+    #
+    # rest-api/config/base_config.json#L29
+    #
+    # For the samples, MySQL doesn't make it easy to do the LEAST of N
+    # nullable values, so this is probably OK...
+    #
+    # For the baseline questionnaires, note that we might want to use the config to
+    # generate the GREATEST statement instead, but for now are hardcoding as
+    # we do with samples.
+
+    # TODO when implementing unit testing:
+    # Add macros for GREATEST and LEAST, as they don't work in SQLite
+    # Example: master/rest-api/dao/database_utils.py#L50
+
+    sql = """
       SELECT
          SUM(registered_cnt * (cnt_day <= calendar.day)) registered_participants,
          SUM(member_cnt * (cnt_day <= calendar.day)) member_participants,
@@ -112,68 +184,5 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
           GROUP BY calendar.day
           ORDER BY calendar.day;
       """ % {'filters': filters_sql}
-    else:
-      raise BadRequest('Invalid stratification: %s' % stratification)
 
-    params = {'start_date': start_date, 'end_date': end_date}
-
-    results_by_date = []
-
-    with self.session() as session:
-      cursor = session.execute(sql, params)
-
-    # Iterate through each result (by date), transforming tabular SQL results
-    # into expected list-of-dictionaries response format
-    try:
-      results = cursor.fetchall()
-      for result in results:
-        date = result[-1]
-        metrics = {}
-        values = result[:-1]
-        for i, value in enumerate(values):
-          key = strata[i]
-          if value == None:
-            value = 0
-          metrics[key] = int(value)
-        results_by_date.append({
-          'date': str(date),
-          'metrics': metrics
-        })
-    finally:
-      cursor.close()
-
-    return results_by_date
-
-
-  def get_facets_sql(self, facets):
-    """Helper function to transform facets/filters selection into SQL
-
-    :param facets: Object representing facets and filters to apply to query results
-    :return: SQL for 'WHERE' clause, reflecting filters specified in UI
-    """
-
-    facets_sql = []
-
-    facet_map = {
-      'awardee_ids': 'hpo_id',
-      'enrollment_statuses': 'enrollment_status'
-    }
-
-    for facet in facets:
-      filters_sql = []
-      db_field = facet_map[facet]
-      filters = facets[facet]
-      for q_filter in filters:
-        if str(q_filter) != '':
-          filters_sql.append('ps.' + db_field + ' = ' + str(int(q_filter)))
-      if len(filters_sql) > 0:
-        filters_sql = '(' + ' OR '.join(filters_sql) + ')'
-        facets_sql.append(filters_sql)
-
-    if len(facets_sql) > 0:
-      facets_sql = 'WHERE ' + ' AND '.join(facets_sql)
-    else:
-      return ''
-
-    return facets_sql
-
+    return sql
