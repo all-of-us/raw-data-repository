@@ -115,10 +115,10 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
     facets_sql = 'WHERE ' + facets_sql
 
-    facets_sql += """
-      p.hpo_id != %(test_hpo_id)s
-      AND NOT ps.email LIKE %(test_email_pattern)s
-    """ % {'test_hpo_id': self.test_hpo_id, 'test_email_pattern': self.test_email_pattern}
+    facets_sql += ' %(table_prefix)s.hpo_id != %(test_hpo_id)s AND NOT ps.email LIKE "%(test_email_pattern)s"' % {
+      'table_prefix': table_prefix,
+      'test_hpo_id': self.test_hpo_id,
+      'test_email_pattern': self.test_email_pattern}
 
 
     return facets_sql
