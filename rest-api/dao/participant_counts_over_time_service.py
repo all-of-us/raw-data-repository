@@ -19,14 +19,16 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     :return: Filtered, stratified results by date
     """
 
-    filters_sql = self.get_facets_sql(filters)
+    # Filters for participant_summary (ps) and participant (p) table
+    filters_sql_ps = self.get_facets_sql(filters)
+    filters_sql_p = self.get_facets_sql(filters, table_prefix='p')
 
     if str(stratification) == 'TOTAL':
       strata = ['TOTAL']
-      sql = self.get_total_sql(filters_sql)
+      sql = self.get_total_sql(filters_sql_ps)
     elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(val) for val in EnrollmentStatus]
-      sql = self.get_enrollment_status_sql(filters_sql)
+      sql = self.get_enrollment_status_sql(filters_sql_ps, filters_sql_p)
     else:
       raise BadRequest('Invalid stratification: %s' % stratification)
 
@@ -59,10 +61,11 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
     return results_by_date
 
-  def get_facets_sql(self, facets):
+  def get_facets_sql(self, facets, table_prefix='ps'):
     """Helper function to transform facets/filters selection into SQL
 
     :param facets: Object representing facets and filters to apply to query results
+    :param table_prefix: Either 'ps' (for participant_summary) or 'p' (for participant)
     :return: SQL for 'WHERE' clause, reflecting filters specified in UI
     """
 
@@ -77,6 +80,9 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       filters_sql = []
       db_field = facet_map[facet]
       filters = facets[facet]
+
+      if db_field == 'enrollment_status':
+        table_prefix = 'ps'
 
       # TODO:
       # Consider using an IN clause with bound parameters, instead, which
@@ -93,7 +99,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       # the bound params.
       for q_filter in filters:
         if str(q_filter) != '':
-          filters_sql.append('ps.' + db_field + ' = ' + str(int(q_filter)))
+          filters_sql.append(table_prefix + '.' + db_field + ' = ' + str(int(q_filter)))
       if len(filters_sql) > 0:
         filters_sql = '(' + ' OR '.join(filters_sql) + ')'
         facets_sql.append(filters_sql)
@@ -125,7 +131,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
     return sql
 
-  def get_enrollment_status_sql(self, filters_sql):
+  def get_enrollment_status_sql(self, filters_sql_ps, filters_sql_p):
 
     # Noteworthy comments / documentation from Dan (and lightly adapted)
     #
@@ -162,14 +168,14 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
             (SELECT COUNT(*) cnt, DATE(p.sign_up_time) day
                 FROM participant p
                 LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
-              %(filters)s
+              %(filters_p)s
               GROUP BY day) registered
              ON c2.day = registered.day
            LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
                     DATE(ps.consent_for_electronic_health_records_time) day
                FROM participant_summary ps
-              %(filters)s
+              %(filters_ps)s
            GROUP BY day) member
              ON c2.day = member.day
            LEFT OUTER JOIN
@@ -190,13 +196,13 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
                              ELSE sample_status_1sal_time END)
                    ELSE NULL END) day
                FROM participant_summary ps
-              %(filters)s
+              %(filters_ps)s
            GROUP BY day) full
              ON c2.day = full.day) day_sums, calendar
           WHERE calendar.day >= :start_date
             AND calendar.day <= :end_date
           GROUP BY calendar.day
           ORDER BY calendar.day;
-      """ % {'filters': filters_sql}
+      """ % {'filters_ps': filters_sql_ps, 'filters_p': filters_sql_p}
 
     return sql
