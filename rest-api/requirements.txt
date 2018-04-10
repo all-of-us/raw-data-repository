@@ -24,4 +24,3 @@ protorpc>=0.12.0
 parameterized>=0.6.1
 googlemaps>=2.5.1
 backoff
-coverage

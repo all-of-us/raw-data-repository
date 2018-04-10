@@ -33,6 +33,8 @@ pip install requests[security]
 
 echo "Installing pylint for git hooks..."
 pip install pylint
+echo "Installing coverage.py..."
+pip install coverage
 
 git submodule update --init
 
