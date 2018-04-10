@@ -94,7 +94,19 @@ if __name__ == '__main__':
 
   args = parser.parse_args()
 
+  from coverage import Coverage
+  cov = Coverage(omit=[
+    '*/lib/*',
+    '*/appengine-mapreduce/*',
+    '*/site-packages/*',
+    '*/google_appengine/*',
+    '*/test/*',
+  ])
+  cov.start()
   result = main(args.sdk_path, args.test_path, args.test_pattern)
+  cov.stop()
+  cov.save()
+  cov.html_report()
 
   if not result.wasSuccessful():
     sys.exit(1)
