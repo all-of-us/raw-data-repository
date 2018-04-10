@@ -10,7 +10,9 @@ rm -rf lib
 echo "Cleaning up artifacts (pyo, pyc, etc)..."
 find . -type f -name "*.py[co]" -delete
 find . -type d -name "__pycache__" -delete
-export PYTHONDONTWRITEBYTECODE=1
+rm -f .coverage
+rm -rf htmlcov/
+export PYTHONDONTWRITEBYTECODE=True
 
 echo "Installing libs..."
 # If this fails due to missing mysql_config, try `sudo apt-get install libmysqlclient-dev`.
