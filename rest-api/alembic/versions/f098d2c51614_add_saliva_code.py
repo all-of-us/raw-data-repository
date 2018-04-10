@@ -1,14 +1,14 @@
-"""add 1sal2 code
+"""add_saliva_code
 
-Revision ID: c0e5a9912dca
-Revises: 2be6f6d054e8
-Create Date: 2018-04-04 13:42:58.256740
+Revision ID: f098d2c51614
+Revises: e26ea978c345
+Create Date: 2018-04-10 11:55:36.406746
 
 """
 from alembic import op
 import sqlalchemy as sa
 import model.utils
-from sqlalchemy.dialects import mysql
+
 
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
 from participant_enums import WithdrawalStatus, SuspensionStatus
@@ -18,8 +18,8 @@ from model.site_enums import SiteStatus, EnrollingStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = 'c0e5a9912dca'
-down_revision = '2be6f6d054e8'
+revision = 'f098d2c51614'
+down_revision = 'e26ea978c345'
 branch_labels = None
 depends_on = None
 
