@@ -4,7 +4,7 @@ import json
 from clock import FakeClock
 from dao.biobank_order_dao import BiobankOrderDao
 from model.participant import Participant
-from model.measurements import PhysicalMeasurements, Measurement
+from model.measurements import PhysicalMeasurements
 from query import Query, FieldFilter, Operator
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
