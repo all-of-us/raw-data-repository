@@ -2,7 +2,8 @@ from werkzeug.exceptions import BadRequest
 
 from .participant_summary_dao import ParticipantSummaryDao
 from model.participant_summary import ParticipantSummary
-from participant_enums import EnrollmentStatus
+from participant_enums import EnrollmentStatus, TEST_HPO_NAME, TEST_EMAIL_PATTERN
+from dao.hpo_dao import HPODao
 
 class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
@@ -18,6 +19,9 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     :param stratification: How to stratify (layer) results, as in a stacked bar chart
     :return: Filtered, stratified results by date
     """
+
+    self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
+    self.test_email_pattern = TEST_EMAIL_PATTERN
 
     # Filters for participant_summary (ps) and participant (p) table
     filters_sql_ps = self.get_facets_sql(filters)
@@ -105,9 +109,17 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
         facets_sql.append(filters_sql)
 
     if len(facets_sql) > 0:
-      facets_sql = 'WHERE ' + ' AND '.join(facets_sql)
+      facets_sql = ' AND '.join(facets_sql) + ' AND'
     else:
-      return ''
+      facets_sql = ''
+
+    facets_sql = 'WHERE ' + facets_sql
+
+    facets_sql += """
+      p.hpo_id != %(test_hpo_id)s
+      AND NOT ps.email LIKE %(test_email_pattern)s
+    """ % {'test_hpo_id': self.test_hpo_id, 'test_email_pattern': self.test_email_pattern}
+
 
     return facets_sql
 
@@ -173,7 +185,9 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
              ON c2.day = registered.day
            LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
-                    DATE(ps.consent_for_electronic_health_records_time) day
+                   (CASE WHEN enrollment_status >= 2 THEN
+                    DATE(ps.consent_for_electronic_health_records_time)
+                    ELSE NULL END) day
                FROM participant_summary ps
               %(filters_ps)s
            GROUP BY day) member
