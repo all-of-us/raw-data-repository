@@ -162,8 +162,3 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEquals('2', amendment_json['id'])
     self.assertTrue(new_measurements.final)
     self.assertEquals(TIME_3, new_measurements.created)
-
-  def test_new(self):
-    new_measurements = self.dao.insert(self._make_physical_measurements(
-      physicalMeasurementsId=2, measurements=['a']))
-    print new_measurements
