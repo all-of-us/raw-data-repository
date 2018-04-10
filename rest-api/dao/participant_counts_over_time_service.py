@@ -112,7 +112,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
             SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) registered_count,
             calendar.day start_date
         FROM calendar,
-        (SELECT COUNT(*) cnt, DATE(ps.sign_up_time) day
+        (SELECT COUNT(*) cnt, DATE(p.sign_up_time) day
         FROM participant p
         LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
         %(filters)s
