@@ -18,7 +18,7 @@ class Site(Base):
   siteStatus = Column('site_status', Enum(SiteStatus))
   enrollingStatus = Column('enrolling_status', Enum(EnrollingStatus))
   digitalSchedulingStatus = Column('digital_scheduling_status', Enum(DigitalSchedulingStatus))
-  scheduleInstructions = Column('schedule_instructions', String(1024))
+  scheduleInstructions = Column('schedule_instructions', String(2048))
   launchDate = Column('launch_date', Date)
   notes = Column('notes', String(1024))
   latitude = Column('latitude', Float)
