@@ -1072,14 +1072,16 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&sampleOrderStatus1ED10Time=lt2016-01-04',
                            [[]])
-
+      self.assertResponses('ParticipantSummary?_count=2&organization=PITT_BANNER_HEALTH',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&site=hpo-site-monroeville',
+                           [[ps_1, ps_3]])
     # Two days after participant 2 withdraws, their fields are not set for anything but
     # participant ID, HPO ID, withdrawal status, and withdrawal time
     with FakeClock(TIME_5):
       new_ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
       new_ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
       new_ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
-
     self.assertEquals(ps_1, new_ps_1)
     self.assertEquals(ps_3, new_ps_3)
     self.assertEquals('Mary', new_ps_2['firstName'])
@@ -1103,10 +1105,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('UNSET', new_ps_2['suspensionStatus'])
     self.assertEquals('NO_CONTACT', new_ps_2['recontactMethod'])
     self.assertEquals('PITT', new_ps_2['hpoId'])
+    self.assertEquals('UNSET', new_ps_2['organization'])
+    self.assertEquals('UNSET', new_ps_2['site'])
     self.assertEquals(participant_id_2, new_ps_2['participantId'])
     self.assertIsNotNone(ps_2['withdrawalTime'])
     self.assertIsNone(new_ps_2.get('suspensionTime'))
-
     # Queries that filter on fields not returned for withdrawn participants no longer return
     # participant 2; queries that filter on fields that are returned for withdrawn participants
     # include it; queries that ask for withdrawn participants get back participant 2 only.
