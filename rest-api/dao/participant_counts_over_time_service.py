@@ -73,7 +73,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     :return: SQL for 'WHERE' clause, reflecting filters specified in UI
     """
 
-    facets_sql = []
+    facets_sql = 'WHERE'
+    facets_sql_list = []
 
     facet_map = {
       'awardee_ids': 'hpo_id',
@@ -106,20 +107,15 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
           filters_sql.append(table_prefix + '.' + db_field + ' = ' + str(int(q_filter)))
       if len(filters_sql) > 0:
         filters_sql = '(' + ' OR '.join(filters_sql) + ')'
-        facets_sql.append(filters_sql)
+        facets_sql_list.append(filters_sql)
 
-    if len(facets_sql) > 0:
-      facets_sql = ' AND '.join(facets_sql) + ' AND'
-    else:
-      facets_sql = ''
-
-    facets_sql = 'WHERE ' + facets_sql
+    if len(facets_sql_list) > 0:
+      facets_sql += ' AND '.join(facets_sql_list) + ' AND'
 
     facets_sql += ' %(table_prefix)s.hpo_id != %(test_hpo_id)s ' % {
       'table_prefix': table_prefix, 'test_hpo_id': self.test_hpo_id}
     facets_sql += ' AND NOT ps.email LIKE "%(test_email_pattern)s"' % {
       'test_email_pattern': self.test_email_pattern}
-
 
     return facets_sql
 
