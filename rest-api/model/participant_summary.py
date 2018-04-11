@@ -125,6 +125,8 @@ class ParticipantSummary(Base):
   sampleStatus2ED10Time = Column('sample_status_2ed10_time', UTCDateTime)
   sampleStatus1UR10 = Column('sample_status_1ur10', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1UR10Time = Column('sample_status_1ur10_time', UTCDateTime)
+  sampleStatus1UR90 = Column('sample_status_1ur90', Enum(SampleStatus), default=SampleStatus.UNSET)
+  sampleStatus1UR90Time = Column('sample_status_1ur90_time', UTCDateTime)
   sampleStatus1SAL = Column('sample_status_1sal', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1SALTime = Column('sample_status_1sal_time', UTCDateTime)
   sampleStatus1SAL2 = Column('sample_status_1sal2', Enum(SampleStatus), default=SampleStatus.UNSET)
@@ -170,6 +172,9 @@ class ParticipantSummary(Base):
   sampleOrderStatus1UR10 = Column('sample_order_status_1ur10', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
   sampleOrderStatus1UR10Time = Column('sample_order_status_1ur10_time', UTCDateTime)
+  sampleOrderStatus1UR90 = Column('sample_order_status_1ur90', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus1UR90Time = Column('sample_order_status_1ur90_time', UTCDateTime)
   sampleOrderStatus1SAL = Column('sample_order_status_1sal', Enum(OrderStatus),
                                  default=OrderStatus.UNSET)
   sampleOrderStatus1SALTime = Column('sample_order_status_1sal_time', UTCDateTime)
