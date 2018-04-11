@@ -124,7 +124,7 @@ class SiteImporter(CsvImporter):
     super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
                                        [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
                                        SITE_SITE_COLUMN, SITE_STATUS_COLUMN,
-                                       ENROLLING_STATUS_COLUMN])
+                                       ENROLLING_STATUS_COLUMN, DIGITAL_SCHEDULING_STATUS])
 
     self.organization_dao = OrganizationDao()
     args = parser.parse_args()
