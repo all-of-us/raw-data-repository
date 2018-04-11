@@ -3,7 +3,6 @@ from clock import CLOCK
 from datetime import timedelta
 
 singletons_lock = threading.RLock()
-# We use a list with indexes, rather than a dict, to eliminate the performance hit of hashing.
 singletons_map = {}
 
 CODE_CACHE_INDEX = 0

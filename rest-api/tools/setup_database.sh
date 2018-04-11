@@ -78,8 +78,8 @@ then
   sleep 3
 fi
 echo "Setting root password..."
-gcloud sql instances set-root-password $INSTANCE_NAME --password $ROOT_PASSWORD
-
+#gcloud sql instances set-root-password $INSTANCE_NAME --password $ROOT_PASSWORD
+gcloud sql users set-password root % --instance $INSTANCE_NAME --password $ROOT_PASSWORD
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
 
 # TODO(calbach): Drop DB_NAME from here, once #549 has been deployed.

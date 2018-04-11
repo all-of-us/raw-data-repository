@@ -23,7 +23,7 @@ from dao.site_dao import SiteDao
 from model.hpo import HPO
 from model.organization import Organization
 from model.site import Site
-from model.site_enums import SiteStatus, EnrollingStatus
+from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
 from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
 
@@ -49,6 +49,8 @@ SITE_NOTES_COLUMN = 'Notes'
 # TODO: switch this back to 'Status' [DA-538]
 SITE_STATUS_COLUMN = 'PTSC Scheduling Status'
 ENROLLING_STATUS_COLUMN = 'Enrolling Status'
+DIGITAL_SCHEDULING_STATUS = 'Digital Scheduling Status'
+SCHEDULING_INSTRUCTIONS = 'Scheduling Instructions'
 SITE_LAUNCH_DATE_COLUMN = 'Anticipated Launch Date'
 SITE_DIRECTIONS_COLUMN = 'Directions'
 SITE_PHYSICAL_LOCATION_NAME_COLUMN = 'Physical Location Name'
@@ -122,7 +124,7 @@ class SiteImporter(CsvImporter):
     super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
                                        [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
                                        SITE_SITE_COLUMN, SITE_STATUS_COLUMN,
-                                       ENROLLING_STATUS_COLUMN])
+                                       ENROLLING_STATUS_COLUMN, DIGITAL_SCHEDULING_STATUS])
 
     self.organization_dao = OrganizationDao()
     args = parser.parse_args()
@@ -190,6 +192,8 @@ class SiteImporter(CsvImporter):
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
+    digital_scheduling_status = DigitalSchedulingStatus(row[DIGITAL_SCHEDULING_STATUS].upper())
+    schedule_instructions = row.get(SCHEDULING_INSTRUCTIONS)
     return Site(siteName=name,
                 googleGroup=google_group,
                 mayolinkClientNumber=mayolink_client_number,
@@ -197,6 +201,8 @@ class SiteImporter(CsvImporter):
                 hpoId=organization.hpoId,
                 siteStatus=site_status,
                 enrollingStatus=enrolling_status,
+                digitalSchedulingStatus=digital_scheduling_status,
+                scheduleInstructions=schedule_instructions,
                 launchDate=launch_date,
                 notes=notes,
                 directions=directions,

@@ -12,7 +12,6 @@ from code_constants import (
   RACE_AIAN_CODE, RACE_ASIAN_CODE, RACE_BLACK_CODE, RACE_MENA_CODE, RACE_NHDPI_CODE,
   RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_FREETEXT_CODE, RACE_NONE_OF_THESE_CODE
 )
-import extraction
 
 # These are handled specially in code; others will be inserted into the database and handled
 # dynamically.
@@ -160,12 +159,6 @@ class SuspensionStatus(messages.Enum):
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
 AGE_BUCKETS = ['{}-{}'.format(b, e) for b, e in zip(_AGE_LB, [a - 1 for a in _AGE_LB[1:]] + [''])]
 
-def extract_bucketed_age(participant_hist_obj):
-  if participant_hist_obj.date_of_birth:
-    bucketed_age = get_bucketed_age(participant_hist_obj.date_of_birth, participant_hist_obj.date)
-    if bucketed_age:
-      return extraction.ExtractionResult(bucketed_age, True)
-  return extraction.ExtractionResult(None, False)
 
 def get_bucketed_age(date_of_birth, today):
   if not date_of_birth:

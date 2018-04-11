@@ -1,23 +1,23 @@
 """The API definition for the config API."""
-
-import api_util
-import app_util
-import base_api
-import config
 import json
 import logging
 import os
 
 from flask import request
-
+from flask.ext.restful import Resource
 from google.appengine.api import app_identity
+from google.appengine.ext import ndb
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from werkzeug.exceptions import BadRequest, Forbidden
+import app_util
+import config
+from api_util import parse_date
 
 # Read bootstrap config admin service account configuration
 CONFIG_ADMIN_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                  'config',
                                  'config_admins.json')
+
 with open(CONFIG_ADMIN_FILE) as config_file:
   try:
     CONFIG_ADMIN_MAP = json.load(config_file)
@@ -64,45 +64,52 @@ def check_config_admin():
   raise Forbidden()
 
 
-class ConfigApi(base_api.BaseApi):
+class ConfigApi(Resource):
   """Api handlers for retrieving and setting config values."""
-
   method_decorators = [auth_required_config_admin]
 
-  def __init__(self):
-    super(ConfigApi, self).__init__(config.ConfigurationDAO())
-
-  def get_config_by_date(self, key, date):
-    result = config.get_config_that_was_active_at(key, api_util.parse_date(date))
-    return self.make_response_for_resource(self.dao.to_json(result))
-
-  def get(self, key=None):
+  def get(self, key=config.CONFIG_SINGLETON_KEY):
     date = request.args.get('date')
-    key = key or config.CONFIG_SINGLETON_KEY
-    if not date:
-      # Return the live config.
-      return super(ConfigApi, self).get(key)
-    else:
-      return self.get_config_by_date(key, date)
+    if date is not None:
+      date = parse_date(date)
+    model = config.load(key, date=date)
+    return model.configuration
 
-  # Insert or update to configuration
-  def post(self, key=None):
-    key = key or config.CONFIG_SINGLETON_KEY
-    resource = request.get_json(force=True)
-    m = self.dao.from_json(resource, None, key)
-    self.validate_object(m, None)
-    self.dao.store(m)
-    return self.make_response_for_resource(self.dao.to_json(m))
+  def post(self, key=config.CONFIG_SINGLETON_KEY):
+    model = config.Configuration(key=ndb.Key(config.Configuration, key),
+                                 configuration=request.get_json(force=True))
+    self.validate(model)
+    config.store(model)
+    return model.configuration
 
-  def put(self, key=None):
-    return super(ConfigApi, self).put(key or config.CONFIG_SINGLETON_KEY)
+  def put(self, key=config.CONFIG_SINGLETON_KEY):
+    model_key = ndb.Key(config.Configuration, key)
+    old_model = model_key.get()
+    if not old_model:
+      raise NotFound('{} with key {} does not exist'.format('Configuration', key))
+    # the history mechanism doesn't work unless we make a copy.  So a put is always a clone, never
+    # an actual update.
+    model = config.Configuration(**old_model.to_dict())
+    model.key = model_key
+    model.configuration = request.get_json(force=True)
+    self.validate(model)
 
-  def validate_object(self, obj, a_id=None):
-    super(ConfigApi, self).validate_object(obj, a_id)
-    if obj.key.id() != config.CONFIG_SINGLETON_KEY:
+    date = None
+    if config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False):
+      date = request.headers.get('x-pretend-date', None)
+    if date is not None:
+      date = parse_date(date)
+
+    client_id = app_util.get_oauth_id()
+
+    config.store(model, date=date, client_id=client_id)
+    return model.configuration
+
+  def validate(self, model):
+    if model.key.id() != config.CONFIG_SINGLETON_KEY:
       return
 
-    config_obj = obj.configuration
+    config_obj = model.configuration
     # make sure all required keys are present and that the values are the right type.
     for k in config.REQUIRED_CONFIG_KEYS:
       if k not in config_obj:
