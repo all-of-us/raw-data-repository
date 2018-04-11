@@ -19,7 +19,7 @@ class _FhirSite(FhirMixin, BackboneElement):
     FhirProperty('display_name', str, required=True),
     FhirProperty('mayolink_client_number', long),
     FhirProperty('site_status', str, required=True),
-    FhirProperty('digital_scheduling_status', str, required=True),
+    FhirProperty('digital_scheduling_status', str),
     FhirProperty('scheduling_instructions', str),
     FhirProperty('enrolling_status', str),
     FhirProperty('launch_date', fhirdate.FHIRDate),
