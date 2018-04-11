@@ -271,6 +271,8 @@ The summary includes the following fields:
 * `sampleOrderStatus2ED10Time`
 * `sampleOrderStatus1UR10`
 * `sampleOrderStatus1UR10Time`
+* `sampleOrderStatus1UR90`
+* `sampleOrderStatus1UR90Time`
 * `sampleOrderStatus1SAL`
 * `sampleOrderStatus1SALTime`
 * `sampleStatus1SST8`
@@ -287,6 +289,8 @@ The summary includes the following fields:
 * `sampleStatus2ED10Time`
 * `sampleStatus1UR10`
 * `sampleStatus1UR10Time`
+* `sampleStatus1UR90`
+* `sampleStatus1UR90Time`
 * `sampleStatus1SAL`
 * `sampleStatus1SALTime`
 * `numCompletedBaselinePPIModules`
