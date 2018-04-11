@@ -167,7 +167,6 @@ WALGREENS_PHOENIX,hpo-site-walgreensphoenixthomas,Thomas,DV Walgreens Phoenix,70
 WALGREENS_PHOENIX,hpo-site-walgreensphoenixapachejunction,Apache Junction,DV Walgreens Phoenix,7035735,,,Inactive,Inactive,,,55 Apache Trail,,Apache Junction,AZ,85120,,,
 WALGREENS_PHOENIX,hpo-site-walgreensphoenix,Walgreens Phoenix,DV Walgreens Phoenix,7035735,,,Active,Inactive,,,,,,,,,"jaime.metzler@walgreens.com, lucille.skuteris@walgreens.com",
 TEST_PROD,hpo-site-a,Prod HPO Site A,Prod HPO Site A,,,,Inactive,Inactive,,,1515 N Campbell Ave,,Tucson ,AZ,85724,,,
-=======
 Organization ID,Site ID / Google Group,Site,Google Group Name,MayoLINK Client #,Anticipated Launch Date,Notes,Enrolling Status,Digital Scheduling Status,Scheduling Instructions,PTSC Scheduling Status,Directions,Physical Location Name,Address 1,Address 2,City,State,Zip,Phone,Admin Email Addresses,Link
 AZ_TUCSON_BANNER_HEALTH,hpo-site-bannertucson,Banner University Medical Center - Tucson,HPO Banner Tucson,7035650,,Formerly CATS,Active,Inactive,,Inactive,,,1515 N Campbell Ave,,Tucson,AZ,85724,,"mwences@email.arizona.edu, jillianwilson@email.arizona.edu",
 AZ_TUCSON_BANNER_HEALTH,hpo-site-bannerscampus,Banner University Medical Center - South Campus,HPO Banner S Campus,7035651,,,Active,Inactive,,Inactive,,,2800 E Ajo Way,,Tucson,AZ,85713,,jillianwilson@email.arizona.edu,
