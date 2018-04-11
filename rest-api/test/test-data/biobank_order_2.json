@@ -102,6 +102,11 @@
     "test": "1UR10",
     "description": "Test 1UR10",
     "processingRequired":false
+  },
+  {
+    "test": "1UR90",
+    "description": "Test 1UR90",
+    "processingRequired":false
   }, {
     "test": "1SAL",
     "description": "Test 1SAL",
