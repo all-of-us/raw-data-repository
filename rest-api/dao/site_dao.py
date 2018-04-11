@@ -19,6 +19,8 @@ class _FhirSite(FhirMixin, BackboneElement):
     FhirProperty('display_name', str, required=True),
     FhirProperty('mayolink_client_number', long),
     FhirProperty('site_status', str, required=True),
+    FhirProperty('digital_scheduling_status', str, required=True),
+    FhirProperty('scheduling_instructions', str),
     FhirProperty('enrolling_status', str),
     FhirProperty('launch_date', fhirdate.FHIRDate),
     FhirProperty('notes', str),
@@ -54,6 +56,9 @@ class SiteDao(CacheAllDao):
     resource = _FhirSite()
     resource.id = model.googleGroup
     resource.display_name = model.siteName
+    resource.digital_scheduling_status = str(model.digitalSchedulingStatus)
+    if model.scheduleInstructions:
+      resource.scheduling_instructions = str(model.scheduleInstructions)
     if model.mayolinkClientNumber:
       resource.mayolink_client_number = long(model.mayolinkClientNumber)
     resource.site_status = str(model.siteStatus)

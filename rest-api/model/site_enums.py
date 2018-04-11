@@ -11,3 +11,9 @@ class EnrollingStatus(messages.Enum):
   UNSET = 0
   ACTIVE = 1
   INACTIVE = 2
+
+class DigitalSchedulingStatus(messages.Enum):
+  """ The status of a sites digital scheduling capability. """
+  UNSET = 0
+  ACTIVE = 1
+  INACTIVE = 2
