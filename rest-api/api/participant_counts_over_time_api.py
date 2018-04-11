@@ -1,6 +1,4 @@
 import datetime
-# import json
-# import logging
 
 from flask.ext.restful import Resource
 from flask import request
@@ -10,6 +8,7 @@ from api_util import HEALTHPRO
 from api_util import get_awardee_id_from_name
 from app_util import auth_required
 from dao.hpo_dao import HPODao
+from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from participant_enums import EnrollmentStatus
 from participant_enums import Stratifications
 
@@ -21,46 +20,58 @@ class ParticipantCountsOverTimeApi(Resource):
 
   @auth_required(HEALTHPRO)
   def get(self):
+
+    self.service = ParticipantCountsOverTimeService()
     self.hpo_dao = HPODao()
 
     # TODO: After enrollment status is filterable,
     # wire in 'organization', 'site', 'withdrawalStatus', and 'bucketSize'.
-    enrollment_status = request.args.get('enrollmentStatus')
-    awardee = request.args.get('awardee')
-    stratification = request.args.get('stratification')
-    start_date = request.args.get('startDate')
-    end_date = request.args.get('endDate')
+    # Note: withdrawalStatus ought to filter out withdrawn individuals by default, per Scott
+    enrollment_statuses = request.args.get('enrollmentStatus')
+    awardees = request.args.get('awardee')
+    stratification_str = request.args.get('stratification')
+    start_date_str = request.args.get('startDate')
+    end_date_str = request.args.get('endDate')
 
     params = {
-      'enrollment_statuses': enrollment_status,
-      'awardees': awardee,
-      'stratification': stratification,
-      'start_date': start_date,
-      'end_date': end_date
+      'enrollment_statuses': enrollment_statuses,
+      'awardees': awardees,
+      'stratification': stratification_str,
+      'start_date': start_date_str,
+      'end_date': end_date_str
     }
 
-    # Most parameters accepted by this API can have multiple, comma-delimited
-    # values.  Arrange them into lists.
-    for param in params:
-      value = params[param]
-      if param in ['start_date', 'end_date', 'stratification']:
-        params[param] = value
-        continue
-      if value is None:
-        params[param] = []
-      else:
-        params[param] = value.split(',')
+    params = self.validate_params(start_date_str, end_date_str, stratification_str,
+                                  enrollment_statuses, awardees)
 
-    params = self.validate_params(params)
-
-
-  def validate_params(self, params):
-
-    start_date_str = params['start_date']
-    end_date_str = params['end_date']
-    enrollment_statuses = params['enrollment_statuses']
-    awardees = params['awardees']
+    start_date = params['start_date']
+    end_date = params['end_date']
     stratification = params['stratification']
+
+    filters = params
+
+    del filters['start_date']
+    del filters['end_date']
+    del filters['stratification']
+
+    results = self.service.get_filtered_results(start_date, end_date,
+                                                filters, stratification=stratification)
+
+    return results
+
+  def validate_params(self, start_date_str, end_date_str, stratification_str,
+                      enrollment_statuses, awardees):
+    """Validates URL parameters, and converts human-friendly values to canonical form
+
+    :param start_date_str: Start date string, e.g. '2018-01-01'
+    :param end_date_str: End date string, e.g. '2018-01-31'
+    :param stratification_str: How to stratify (layer) results, as in a stacked bar chart
+    :param enrollment_statuses: enrollment level filters
+    :param awardees: awardee name filters
+    :return: Validated parameters in canonical form
+    """
+
+    params = {}
 
     # Validate dates
     if not start_date_str or not end_date_str:
@@ -81,28 +92,32 @@ class ParticipantCountsOverTimeApi(Resource):
     params['end_date'] = end_date
 
     # Validate awardees, get ID list
+    awardees = awardees.split(',')
     awardee_ids = []
     for awardee in awardees:
-      awardee_id = get_awardee_id_from_name({'awardee': awardee}, self.hpo_dao)
-      if awardee_id == None:
-        raise BadRequest('Invalid awardee name: %s' % awardee)
-      awardee_ids.append(awardee_ids)
+      if awardee != '':
+        awardee_id = get_awardee_id_from_name({'awardee': awardee}, self.hpo_dao)
+        if awardee_id == None:
+          raise BadRequest('Invalid awardee name: %s' % awardee)
+        awardee_ids.append(awardee_id)
     params['awardee_ids'] = awardee_ids
 
     # Validate enrollment statuses
+    enrollment_statuses = enrollment_statuses.split(',')
     try:
-      params["enrollment_statuses"] = [EnrollmentStatus(val) for val in enrollment_statuses]
+      params['enrollment_statuses'] = [EnrollmentStatus(val) for val in enrollment_statuses]
     except TypeError:
       valid_enrollment_statuses = EnrollmentStatus.to_dict()
       for enrollment_status in enrollment_statuses:
-        if enrollment_status not in valid_enrollment_statuses:
-          raise BadRequest('Invalid enrollment status: %s' % enrollment_status)
+        if enrollment_status != '':
+          if enrollment_status not in valid_enrollment_statuses:
+            raise BadRequest('Invalid enrollment status: %s' % enrollment_status)
 
     # Validate stratifications
     try:
-      params['stratification'] = Stratifications(params['stratification'])
+      params['stratification'] = Stratifications(stratification_str)
     except TypeError:
-      raise BadRequest('Invalid stratification: %s' % stratification)
+      raise BadRequest('Invalid stratification: %s' % stratification_str)
 
     return params
 
