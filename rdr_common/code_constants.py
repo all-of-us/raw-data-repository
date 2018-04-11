@@ -67,7 +67,8 @@ HEALTHCARE_ACCESS_MODULE = "HealthcareAccess"
 
 
 BIOBANK_TESTS = ['1ED10', '2ED10', '1ED04', '1SST8', '1SS08', '1PST8', '1PS08',\
-                 '2SST8', '2PST8', '1HEP4', '1UR10', '1SAL2', '1SAL']
+                 '2SST8', '2PST8', '1HEP4', '1UR10', '1UR90', '1SAL2', '1SAL', '1ED02', '1CFD9',
+                 '1PXR2']
 BIOBANK_TESTS_SET = frozenset(BIOBANK_TESTS)
 
 UNSET = 'UNSET'
