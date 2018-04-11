@@ -24,6 +24,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     self.test_email_pattern = TEST_EMAIL_PATTERN
 
     # Filters for participant_summary (ps) and participant (p) table
+    # filters_sql_ps is used in the general case when we're querying participant_summary
+    # filters_sql_p is used when also LEFT OUTER JOINing p and ps
     filters_sql_ps = self.get_facets_sql(filters)
     filters_sql_p = self.get_facets_sql(filters, table_prefix='p')
 
