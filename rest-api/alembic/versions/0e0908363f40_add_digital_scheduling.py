@@ -1,8 +1,8 @@
-"""digital scheduling status
+"""add digital scheduling
 
-Revision ID: 9222b3066d41
-Revises: f098d2c51614
-Create Date: 2018-04-11 09:54:23.771732
+Revision ID: 0e0908363f40
+Revises: 2bd074e60e19
+Create Date: 2018-04-11 13:59:29.497293
 
 """
 from alembic import op
@@ -18,8 +18,8 @@ from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatu
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '9222b3066d41'
-down_revision = 'f098d2c51614'
+revision = '0e0908363f40'
+down_revision = '2bd074e60e19'
 branch_labels = None
 depends_on = None
 
