@@ -129,6 +129,12 @@ class ParticipantSummary(Base):
   sampleStatus1SALTime = Column('sample_status_1sal_time', UTCDateTime)
   sampleStatus1SAL2 = Column('sample_status_1sal2', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1SAL2Time = Column('sample_status_1sal2_time', UTCDateTime)
+  sampleStatus1ED02 = Column('sample_status_1ed02', Enum(SampleStatus), default=SampleStatus.UNSET)
+  sampleStatus1ED02Time = Column('sample_status_1ed02_time', UTCDateTime)
+  sampleStatus1CFD9 = Column('sample_status_1cfd9', Enum(SampleStatus), default=SampleStatus.UNSET)
+  sampleStatus1CFD9Time = Column('sample_status_1cfd9_time', UTCDateTime)
+  sampleStatus1PXR2 = Column('sample_status_1pxr2', Enum(SampleStatus), default=SampleStatus.UNSET)
+  sampleStatus1PXR2Time = Column('sample_status_1pxr2_time', UTCDateTime)
 
   # Fields for which samples have been ordered, and at what times.
   sampleOrderStatus1SST8 = Column('sample_order_status_1sst8', Enum(OrderStatus),
@@ -170,6 +176,16 @@ class ParticipantSummary(Base):
   sampleOrderStatus1SAL2 = Column('sample_order_status_1sal2', Enum(OrderStatus),
                                  default=OrderStatus.UNSET)
   sampleOrderStatus1SAL2Time = Column('sample_order_status_1sal2_time', UTCDateTime)
+
+  sampleOrderStatus1ED02 = Column('sample_order_status_1ed02', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus1ED02Time = Column('sample_order_status_1ed02_time', UTCDateTime)
+  sampleOrderStatus1CFD9 = Column('sample_order_status_1cfd9', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus1CFD9Time = Column('sample_order_status_1cfd9_time', UTCDateTime)
+  sampleOrderStatus1PXR2 = Column('sample_order_status_1pxr2', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatus1PXR2Time = Column('sample_order_status_1pxr2_time', UTCDateTime)
 
   numCompletedBaselinePPIModules = Column('num_completed_baseline_ppi_modules', SmallInteger,
                                           default=0)

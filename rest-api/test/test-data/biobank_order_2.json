@@ -110,6 +110,24 @@
     "test": "1SAL2",
     "description": "Test 1SAL2",
     "processingRequired":false
+  }, {
+    "test": "1ED02",
+    "description": "Test 1ED02",
+    "processingRequired":false,
+    "collected": "2016-01-04T09:45:49Z",
+    "finalized": "2016-01-04T10:55:41Z"
+  }, {
+    "test": "1CFD9",
+    "description": "Test 1CFD9",
+    "processingRequired":false,
+    "collected": "2016-01-04T09:45:49Z",
+    "finalized": "2016-01-04T10:55:41Z"
+  }, {
+    "test": "1PXR2",
+    "description": "Test 1PXR2",
+    "processingRequired":false,
+    "collected": "2016-01-04T09:45:49Z",
+    "finalized": "2016-01-04T10:55:41Z"
   }],
   "notes": {
     "collected": "Only got 7mL in the ED10 tubes",
