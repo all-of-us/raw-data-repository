@@ -26,7 +26,13 @@ from model.site import Site
 from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
 from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
-
+# Environments
+ENV_LOCAL = 'localhost'
+ENV_TEST = 'pmi-drc-api-test'
+ENV_STAGING = 'all-of-us-rdr-staging'
+ENV_STABLE = 'all-of-us-rdr-stable'
+ENV_PROD = 'all-of-us-rdr-prod'
+ENV_LIST = [ENV_TEST, ENV_STABLE, ENV_STAGING, ENV_PROD]
 # Column headers from the Awardees sheet at:
 # https://docs.google.com/spreadsheets/d/1CcIGRV0Bd6BIz7PeuvrV6QDGDRQkp83CJUkWAl-fG58/edit#gid=1076878570
 HPO_AWARDEE_ID_COLUMN = 'Awardee ID'
@@ -47,9 +53,6 @@ SITE_SITE_COLUMN = 'Site'
 SITE_MAYOLINK_CLIENT_NUMBER_COLUMN = 'MayoLINK Client #'
 SITE_NOTES_COLUMN = 'Notes'
 # TODO: switch this back to 'Status' [DA-538]
-SITE_STATUS_COLUMN = 'PTSC Scheduling Status'
-ENROLLING_STATUS_COLUMN = 'Enrolling Status'
-DIGITAL_SCHEDULING_STATUS = 'Digital Scheduling Status'
 SCHEDULING_INSTRUCTIONS = 'Scheduling Instructions'
 SITE_LAUNCH_DATE_COLUMN = 'Anticipated Launch Date'
 SITE_DIRECTIONS_COLUMN = 'Directions'
@@ -62,6 +65,23 @@ SITE_ZIP_COLUMN = 'Zip'
 SITE_PHONE_COLUMN = 'Phone'
 SITE_ADMIN_EMAIL_ADDRESSES_COLUMN = 'Admin Email Addresses'
 SITE_LINK_COLUMN = 'Link'
+# Environment specific site values
+# Prod
+SITE_STATUS_COLUMN = 'PTSC Scheduling Status'
+ENROLLING_STATUS_COLUMN = 'Enrolling Status'
+DIGITAL_SCHEDULING_STATUS_COLUMN = 'Digital Scheduling Status'
+# # Stable
+# SITE_STATUS_COLUMN_STABLE = 'PTSC Scheduling Status STABLE'
+# ENROLLING_STATUS_COLUMN_STABLE = 'Enrolling Status STABLE'
+# DIGITAL_SCHEDULING_STATUS_COLUMN_STABLE = 'Digital Scheduling Status STABLE'
+# # Staging
+# SITE_STATUS_COLUMN_STAGING = 'PTSC Scheduling Status STAGING'
+# ENROLLING_STATUS_COLUMN_STAGING = 'Enrolling Status STAGING'
+# DIGITAL_SCHEDULING_STATUS_COLUMN_STAGING = 'Digital Scheduling Status STAGING'
+# # Test
+# SITE_STATUS_COLUMN_TEST = 'PTSC Scheduling Status TEST'
+# ENROLLING_STATUS_COLUMN_TEST = 'Enrolling Status TEST'
+# DIGITAL_SCHEDULING_STATUS_COLUMN_TEST = 'Digital Scheduling Status TEST'
 
 class HPOImporter(CsvImporter):
 
@@ -121,16 +141,24 @@ class OrganizationImporter(CsvImporter):
 class SiteImporter(CsvImporter):
 
   def __init__(self):
-    super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
-                                       [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
-                                       SITE_SITE_COLUMN, SITE_STATUS_COLUMN,
-                                       ENROLLING_STATUS_COLUMN, DIGITAL_SCHEDULING_STATUS])
 
-    self.organization_dao = OrganizationDao()
     args = parser.parse_args()
+    self.organization_dao = OrganizationDao()
     self.geocode_flag = args.geocode_flag
     self.ACTIVE = SiteStatus.ACTIVE
     self.status_exception_list = ['hpo-site-walgreensphoenix']
+    self.project = args.project
+
+    if self.project in ENV_LIST:
+      self.environment = ' ' + self.project.split('-')[-1].upper()
+    elif self.project == ENV_LOCAL:
+      self.environment = ' ' + ENV_TEST.split('-')[-1].upper()
+
+    super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
+                                       [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
+                                        SITE_SITE_COLUMN, SITE_STATUS_COLUMN + self.environment,
+                                        ENROLLING_STATUS_COLUMN + self.environment,
+                                        DIGITAL_SCHEDULING_STATUS_COLUMN + self.environment])
 
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()
@@ -168,19 +196,20 @@ class SiteImporter(CsvImporter):
         return None
     notes = row.get(SITE_NOTES_COLUMN)
     try:
-      site_status = SiteStatus(row[SITE_STATUS_COLUMN].upper())
+      site_status = SiteStatus(row[SITE_STATUS_COLUMN + self.environment].upper())
     except TypeError:
-      logging.warn('Invalid site status %s for site %s', row[SITE_STATUS_COLUMN], google_group)
-      self.errors.append('Invalid site status {} for site {}'.format(row[SITE_STATUS_COLUMN],
-                         google_group))
+      logging.warn('Invalid site status %s for site %s', row[SITE_STATUS_COLUMN + self.environment],
+                                                                                      google_group)
+      self.errors.append('Invalid site status {} for site {}'.format(row[SITE_STATUS_COLUMN +
+                                                                  self.environment], google_group))
       return None
     try:
-      enrolling_status = EnrollingStatus(row[ENROLLING_STATUS_COLUMN].upper())
+      enrolling_status = EnrollingStatus(row[ENROLLING_STATUS_COLUMN + self.environment].upper())
     except TypeError:
-      logging.warn('Invalid enrollment site status %s for site %s', row[ENROLLING_STATUS_COLUMN],
-                   google_group)
+      logging.warn('Invalid enrollment site status %s for site %s', row[ENROLLING_STATUS_COLUMN +
+                                                                  self.environment], google_group)
       self.errors.append('Invalid enrollment site status {} for site {}'.format(
-                         row[ENROLLING_STATUS_COLUMN], google_group))
+                         row[ENROLLING_STATUS_COLUMN + self.environment], google_group))
 
     directions = row.get(SITE_DIRECTIONS_COLUMN)
     physical_location_name = row.get(SITE_PHYSICAL_LOCATION_NAME_COLUMN)
@@ -192,7 +221,8 @@ class SiteImporter(CsvImporter):
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
-    digital_scheduling_status = DigitalSchedulingStatus(row[DIGITAL_SCHEDULING_STATUS].upper())
+    digital_scheduling_status = DigitalSchedulingStatus(row[DIGITAL_SCHEDULING_STATUS_COLUMN +
+                                                            self.environment].upper())
     schedule_instructions = row.get(SCHEDULING_INSTRUCTIONS)
     return Site(siteName=name,
                 googleGroup=google_group,
@@ -317,7 +347,8 @@ if __name__ == '__main__':
   parser.add_argument('--dry_run', help='Read CSV and check for diffs against database.',
                       action='store_true')
   parser.add_argument('--geocode_flag', help='If --account passed into import_organizations.sh, '
-                                             'geocoding is performed.',
-                      action='store_true')
+                      'geocoding is performed.', action='store_true')
+  parser.add_argument('--project', help='Project is used to determine enviroment for specific '
+                      'settings', required=True)
 
   main(parser.parse_args())

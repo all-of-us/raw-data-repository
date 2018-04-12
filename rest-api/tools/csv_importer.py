@@ -126,4 +126,6 @@ class CsvImporter(object):
     logging.info('Inserting %s: %s', self.entity_name, entity.asdict())
     if not dry_run:
       self.dao.insert_with_session(session, entity)
+      # if in stable make fake participants
+
     return True
