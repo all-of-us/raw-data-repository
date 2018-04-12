@@ -177,8 +177,12 @@ class _TestDb(object):
         # Default no-pw login, according to https://circleci.com/docs/1.0/manually/#databases .
         mysql_login = 'ubuntu'
       else:
+        if 'MYSQL_ROOT_PASSWORD' in os.environ:
+          password = os.environ['MYSQL_ROOT_PASSWORD']
+        else:
+          password = 'root'
         # Match setup_local_database.sh which is run locally.
-        mysql_login = 'root:root'
+        mysql_login = 'root:' + password
       dao.database_factory.DB_CONNECTION_STRING = (
           'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
       db = dao.database_factory.get_database()
