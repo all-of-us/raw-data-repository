@@ -138,13 +138,15 @@ class CsvImporter(object):
     return True
 
   def _insert_new_participants(self, entity):
-    # client = Client('rdr/v1', False, self.creds_file, self.instance)
-    # client_log.setLevel(logging.WARN)
-    # num_participants = 0
-    # questionnaire_to_questions, consent_questionnaire_id_and_version = \
-    #                                       _setup_questionnaires(client)
-    # consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
+    client = Client('rdr/v1', False, self.creds_file, self.instance)
+    client_log.setLevel(logging.WARN)
+    num_participants = 0
+    questionnaire_to_questions, consent_questionnaire_id_and_version = \
+                                          _setup_questionnaires(client)
+    consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
 
+    print num_participants
+    print consent_questions
     print '------------------'
     print entity.googleGroup
     print entity.hpoId
