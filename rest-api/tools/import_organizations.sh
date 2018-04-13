@@ -57,8 +57,17 @@ else
 fi
 
 source tools/set_path.sh
+
+EXTRA_ARGS="$@"
+if [ "${PROJECT}" ]
+then
+  echo "Getting credentials for ${PROJECT}..."
+  source tools/auth_setup.sh
+  EXTRA_ARGS+=" --creds_file ${CREDS_FILE} --instance ${INSTANCE}"
+fi
+
 python tools/import_organizations.py --awardee_file data/awardees.csv \
-  --organization_file data/organizations.csv --site_file data/sites.csv --project $PROJECT  $DRY_RUN $GEOCODE_FLAG
+  --organization_file data/organizations.csv --site_file data/sites.csv --project $PROJECT  $EXTRA_ARGS $DRY_RUN $GEOCODE_FLAG
 
 function finish {
   cleanup

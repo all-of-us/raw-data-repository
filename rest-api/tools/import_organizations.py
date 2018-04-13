@@ -65,23 +65,10 @@ SITE_ZIP_COLUMN = 'Zip'
 SITE_PHONE_COLUMN = 'Phone'
 SITE_ADMIN_EMAIL_ADDRESSES_COLUMN = 'Admin Email Addresses'
 SITE_LINK_COLUMN = 'Link'
-# Environment specific site values
-# Prod
+# values of these columns generated based on environment
 SITE_STATUS_COLUMN = 'PTSC Scheduling Status'
 ENROLLING_STATUS_COLUMN = 'Enrolling Status'
 DIGITAL_SCHEDULING_STATUS_COLUMN = 'Digital Scheduling Status'
-# # Stable
-# SITE_STATUS_COLUMN_STABLE = 'PTSC Scheduling Status STABLE'
-# ENROLLING_STATUS_COLUMN_STABLE = 'Enrolling Status STABLE'
-# DIGITAL_SCHEDULING_STATUS_COLUMN_STABLE = 'Digital Scheduling Status STABLE'
-# # Staging
-# SITE_STATUS_COLUMN_STAGING = 'PTSC Scheduling Status STAGING'
-# ENROLLING_STATUS_COLUMN_STAGING = 'Enrolling Status STAGING'
-# DIGITAL_SCHEDULING_STATUS_COLUMN_STAGING = 'Digital Scheduling Status STAGING'
-# # Test
-# SITE_STATUS_COLUMN_TEST = 'PTSC Scheduling Status TEST'
-# ENROLLING_STATUS_COLUMN_TEST = 'Enrolling Status TEST'
-# DIGITAL_SCHEDULING_STATUS_COLUMN_TEST = 'Digital Scheduling Status TEST'
 
 class HPOImporter(CsvImporter):
 
@@ -90,6 +77,7 @@ class HPOImporter(CsvImporter):
                                       [HPO_AWARDEE_ID_COLUMN, HPO_NAME_COLUMN,
                                        HPO_TYPE_COLUMN])
     self.new_count = 0
+    self.environment = None
 
   def _entity_from_row(self, row):
     type_str = row[HPO_TYPE_COLUMN]
@@ -123,6 +111,7 @@ class OrganizationImporter(CsvImporter):
                                                 ORGANIZATION_ORGANIZATION_ID_COLUMN,
                                                 ORGANIZATION_NAME_COLUMN])
     self.hpo_dao = HPODao()
+    self.environment = None
 
   def _entity_from_row(self, row):
     hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN].upper())
@@ -141,18 +130,19 @@ class OrganizationImporter(CsvImporter):
 class SiteImporter(CsvImporter):
 
   def __init__(self):
-
     args = parser.parse_args()
     self.organization_dao = OrganizationDao()
     self.geocode_flag = args.geocode_flag
     self.ACTIVE = SiteStatus.ACTIVE
     self.status_exception_list = ['hpo-site-walgreensphoenix']
     self.project = args.project
+    self.instance = args.instance
+    self.creds_file = args.creds_file
 
     if self.project in ENV_LIST:
       self.environment = ' ' + self.project.split('-')[-1].upper()
     elif self.project == ENV_LOCAL:
-      self.environment = ' ' + ENV_TEST.split('-')[-1].upper()
+      self.environment = ' ' + ENV_STABLE.split('-')[-1].upper()
 
     super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
                                        [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
@@ -258,6 +248,7 @@ class SiteImporter(CsvImporter):
     if entity.siteStatus == self.ACTIVE and (entity.latitude == None or entity.longitude == None):
       self.errors.append('Skipped active site without geocoding: {}'.format(entity.googleGroup))
       return False
+    self.new_site_list.append(entity)
     super(SiteImporter, self)._insert_entity(entity, existing_map, session, dry_run)
 
   def _populate_lat_lng_and_time_zone(self, site, existing_site):
@@ -351,4 +342,11 @@ if __name__ == '__main__':
   parser.add_argument('--project', help='Project is used to determine enviroment for specific '
                       'settings', required=True)
 
+  parser.add_argument('--instance',
+                      type=str,
+                      help='The instance to hit, defaults to http://localhost:8080',
+                      default='http://localhost:8080')
+  parser.add_argument('--creds_file',
+                      type=str,
+                      help='Path to credentials JSON file.')
   main(parser.parse_args())
