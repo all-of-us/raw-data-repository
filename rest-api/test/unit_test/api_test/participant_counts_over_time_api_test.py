@@ -22,6 +22,13 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     hpo_dao.insert(HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
                      organizationType=OrganizationType.UNSET))
 
+    curr_date = datetime.date(2017, 12, 22)
+    # Insert 2 weeks of dates
+    for _ in xrange(0, 14 * 1):
+      calendar_day = Calendar(day=curr_date )
+      CalendarDao().insert(calendar_day)
+      curr_date = curr_date + datetime.timedelta(days=1)
+
   def test_get_counts_with_default_parameters(self):
     p = Participant()
 
@@ -29,13 +36,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     with random_ids([1, 2]):
       with FakeClock(time):
         self.dao.insert(p)
-
-    curr_date = datetime.date(2017, 1, 1)
-    # Insert 1 years of dates
-    for _ in xrange(0, 365 * 1):
-      calendar_day = Calendar(day=curr_date )
-      CalendarDao().insert(calendar_day)
-      curr_date = curr_date + datetime.timedelta(days=1)
 
     qs = """
       bucketSize=1

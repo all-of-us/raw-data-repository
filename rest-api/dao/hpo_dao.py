@@ -35,6 +35,9 @@ class HPODao(CacheAllDao):
     return obj.hpoId
 
   def get_by_name(self, name):
+    # print("in get_by_name")
+    # print("self._get_cache().index_maps['name']")
+    # print(self._get_cache().index_maps['name'])
     return self._get_cache().index_maps['name'].get(name)
 
   def get_with_children_in_session(self, session, obj_id):
