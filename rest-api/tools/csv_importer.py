@@ -154,5 +154,5 @@ class CsvImporter(object):
     print entity.siteName
     # @todo get 'row' from new sites list
     # @todo create participants based on site names
-    # import_participants('row', client, consent_questionnaire_id_and_version,
-    #                     questionnaire_to_questions, consent_questions, num_participants)
+    import_participants('row', client, consent_questionnaire_id_and_version,
+                        questionnaire_to_questions, consent_questions, num_participants)
