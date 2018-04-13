@@ -29,7 +29,7 @@ class DatabaseTest(SqlTestBase):
 
     hpo = HPO(hpoId=1, name='UNSET', displayName='No organization set',
               organizationType=OrganizationType.UNSET)
-    calendar = Calendar(day=datetime.date(2018, 01, 01))
+    calendar = Calendar(day=datetime.date(2018, 1, 1))
     code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True, name="pmi",
                          system="http://foo/bar", version="v0.1.1")
     session.add(hpo)
