@@ -26,7 +26,7 @@ class CsvImporter(object):
     self.errors = list()
     self.new_sites_list = []
 
-  def run(self, filename, dry_run, instance=None, creds_file=None):
+  def run(self, filename, dry_run):
     """Imports entities from the CSV file with the specified name.
 
     When dry_run flag is true, entities are not updated; instead logging indicates what would be
@@ -138,19 +138,19 @@ class CsvImporter(object):
     return True
 
   def _insert_new_participants(self, entity):
-      client = Client('rdr/v1', False, self.creds_file, self.instance)
-      client_log.setLevel(logging.WARN)
-      num_participants = 0
-      questionnaire_to_questions, consent_questionnaire_id_and_version = \
-                                            _setup_questionnaires(client)
-      consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
+    # client = Client('rdr/v1', False, self.creds_file, self.instance)
+    # client_log.setLevel(logging.WARN)
+    # num_participants = 0
+    # questionnaire_to_questions, consent_questionnaire_id_and_version = \
+    #                                       _setup_questionnaires(client)
+    # consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
 
-      print '------------------'
-      print entity.googleGroup
-      print entity.hpoId
-      print entity.siteId
-      print entity.siteName
-      # @todo get 'row' from new sites list
-      # @todo create participants based on site names
-      # import_participants('row', client, consent_questionnaire_id_and_version,
-      #                     questionnaire_to_questions, consent_questions, num_participants)
+    print '------------------'
+    print entity.googleGroup
+    print entity.hpoId
+    print entity.siteId
+    print entity.siteName
+    # @todo get 'row' from new sites list
+    # @todo create participants based on site names
+    # import_participants('row', client, consent_questionnaire_id_and_version,
+    #                     questionnaire_to_questions, consent_questions, num_participants)
