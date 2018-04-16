@@ -12,3 +12,7 @@
 **/.idea
 **/.project
 **/.pydevproject
+
+# Test coverage files
+.coverage
+htmlcov/

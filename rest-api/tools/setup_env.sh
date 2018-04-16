@@ -7,7 +7,12 @@ cd ${BASE_DIR};
 
 echo "Removing old libs..."
 rm -rf lib
-find . | grep \.pyc | xargs rm -if $*
+echo "Cleaning up artifacts (pyo, pyc, etc)..."
+find . -type f -name "*.py[co]" -delete
+find . -type d -name "__pycache__" -delete
+rm -f .coverage
+rm -rf htmlcov/
+export PYTHONDONTWRITEBYTECODE=True
 
 echo "Installing libs..."
 # If this fails due to missing mysql_config, try `sudo apt-get install libmysqlclient-dev`.
@@ -28,6 +33,8 @@ pip install requests[security]
 
 echo "Installing pylint for git hooks..."
 pip install pylint
+echo "Installing coverage.py..."
+pip install coverage
 
 git submodule update --init
 
