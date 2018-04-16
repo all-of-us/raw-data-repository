@@ -169,7 +169,7 @@ class SiteImporter(CsvImporter):
           # if in stable make fake participants
           # @TODO: run command to bounce instances
           service = discovery.build('cloudresourcemanager', 'v1')
-          request = service.projects().list()
+          request = service.projects().list() # probably service.projects.instance.delete ?
           request.execute()
           self._insert_new_participants(self.new_sites_list)
 
