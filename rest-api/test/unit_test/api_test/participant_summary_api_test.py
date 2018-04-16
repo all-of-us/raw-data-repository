@@ -139,24 +139,34 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'sampleOrderStatus1PST8': 'UNSET',
       'sampleOrderStatus1PS08': 'UNSET',
       'sampleOrderStatus1SAL': 'UNSET',
+      'sampleOrderStatus1SAL2': 'UNSET',
       'sampleOrderStatus1SST8': 'UNSET',
       'sampleOrderStatus1SS08': 'UNSET',
       'sampleOrderStatus1UR10': 'UNSET',
+      'sampleOrderStatus1UR90': 'UNSET',
       'sampleOrderStatus2ED10': 'UNSET',
       'sampleOrderStatus2PST8': 'UNSET',
       'sampleOrderStatus2SST8': 'UNSET',
+      'sampleOrderStatus1CFD9': 'UNSET',
+      'sampleOrderStatus1PXR2': 'UNSET',
+      'sampleOrderStatus1ED02': 'UNSET',
       'sampleStatus1ED04': 'UNSET',
       'sampleStatus1ED10': 'UNSET',
       'sampleStatus1HEP4': 'UNSET',
       'sampleStatus1PST8': 'UNSET',
       'sampleStatus1PS08': 'UNSET',
       'sampleStatus1SAL': 'UNSET',
+      'sampleStatus1SAL2': 'UNSET',
       'sampleStatus1SST8': 'UNSET',
       'sampleStatus1SS08': 'UNSET',
       'sampleStatus1UR10': 'UNSET',
+      'sampleStatus1UR90': 'UNSET',
       'sampleStatus2ED10': 'UNSET',
       'sampleStatus2PST8': 'UNSET',
       'sampleStatus2SST8': 'UNSET',
+      'sampleStatus1CFD9': 'UNSET',
+      'sampleStatus1ED02': 'UNSET',
+      'sampleStatus1PXR2': 'UNSET',
       'consentForElectronicHealthRecords': 'UNSET',
       'consentForCABoR': 'SUBMITTED',
       'consentForCABoRTime': TIME_1.isoformat(),
@@ -803,6 +813,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     # Store samples for DNA for participants 1 and 3
     self._store_biobank_sample(participant_1, '1ED10')
+    self._store_biobank_sample(participant_1, '1SAL2')
     self._store_biobank_sample(participant_3, '1SAL')
     # Update participant summaries based on these changes.
     ParticipantSummaryDao().update_from_biobank_stored_samples()
@@ -828,7 +839,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('RECEIVED', ps_1['sampleStatus1ED10'])
     self.assertEquals(TIME_1.isoformat(), ps_1['sampleStatus1ED10Time'])
     self.assertEquals('UNSET', ps_1['sampleStatus1SAL'])
-    self.assertEquals('UNSET', ps_1['samplesToIsolateDNA'])
+    self.assertEquals('RECEIVED', ps_1['sampleStatus1SAL2'])
+    self.assertEquals('RECEIVED', ps_1['samplesToIsolateDNA'])
     self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
     self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
@@ -1060,14 +1072,16 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&sampleOrderStatus1ED10Time=lt2016-01-04',
                            [[]])
-
+      self.assertResponses('ParticipantSummary?_count=2&organization=PITT_BANNER_HEALTH',
+                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&site=hpo-site-monroeville',
+                           [[ps_1, ps_3]])
     # Two days after participant 2 withdraws, their fields are not set for anything but
     # participant ID, HPO ID, withdrawal status, and withdrawal time
     with FakeClock(TIME_5):
       new_ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
       new_ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
       new_ps_3 = self.send_get('Participant/%s/Summary' % participant_id_3)
-
     self.assertEquals(ps_1, new_ps_1)
     self.assertEquals(ps_3, new_ps_3)
     self.assertEquals('Mary', new_ps_2['firstName'])
@@ -1091,10 +1105,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('UNSET', new_ps_2['suspensionStatus'])
     self.assertEquals('NO_CONTACT', new_ps_2['recontactMethod'])
     self.assertEquals('PITT', new_ps_2['hpoId'])
+    self.assertEquals('UNSET', new_ps_2['organization'])
+    self.assertEquals('UNSET', new_ps_2['site'])
     self.assertEquals(participant_id_2, new_ps_2['participantId'])
     self.assertIsNotNone(ps_2['withdrawalTime'])
     self.assertIsNone(new_ps_2.get('suspensionTime'))
-
     # Queries that filter on fields not returned for withdrawn participants no longer return
     # participant 2; queries that filter on fields that are returned for withdrawn participants
     # include it; queries that ask for withdrawn participants get back participant 2 only.
