@@ -13,10 +13,6 @@ Usage:
 
 # fhirclient makes sys.path edits on import which mask our client module, so make sure to import
 # our client before importing fhirclient.
-import json
-
-import datetime
-
 from client import Client, client_log
 
 import csv

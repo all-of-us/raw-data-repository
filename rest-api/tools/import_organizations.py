@@ -13,7 +13,6 @@ Usage:
   have no effect.
 """
 # client needs to be top level import due to another client package in AppengineSDK
-import datetime
 
 from client import Client, client_log
 import os
@@ -30,7 +29,7 @@ from model.site import Site
 from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
 from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
-from tools.import_participants import _setup_questionnaires, import_participants, _date_answer
+from tools.import_participants import _setup_questionnaires, import_participants
 
 from googleapiclient import discovery
 
