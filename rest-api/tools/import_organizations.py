@@ -26,6 +26,9 @@ from model.site import Site
 from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
 from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
+from client import Client, client_log
+from tools.import_participants import _setup_questionnaires, import_participants
+
 # Environments
 ENV_LOCAL = 'localhost'
 ENV_TEST = 'pmi-drc-api-test'
@@ -138,6 +141,7 @@ class SiteImporter(CsvImporter):
     self.project = args.project
     self.instance = args.instance
     self.creds_file = args.creds_file
+    self.new_site_list = []
 
     if self.project in ENV_LIST:
       self.environment = ' ' + self.project.split('-')[-1].upper()
@@ -149,6 +153,36 @@ class SiteImporter(CsvImporter):
                                         SITE_SITE_COLUMN, SITE_STATUS_COLUMN + self.environment,
                                         ENROLLING_STATUS_COLUMN + self.environment,
                                         DIGITAL_SCHEDULING_STATUS_COLUMN + self.environment])
+
+  def run(self, filename, dry_run):
+    super(SiteImporter, self).run(filename, dry_run)
+    if self.environment:
+      if self.environment.strip() == 'TEST' and len(self.new_site_list) > 0:
+        print '=============================================================='
+        print len(self.new_site_list)
+        # if in stable make fake participants
+        # @TODO: run command to bounce instances
+        self._insert_new_participants(self.new_sites_list)
+
+  def _insert_new_participants(self, entity):
+    client = Client('rdr/v1', False, self.creds_file, self.instance)
+    client_log.setLevel(logging.WARN)
+    num_participants = 0
+    questionnaire_to_questions, consent_questionnaire_id_and_version = \
+      _setup_questionnaires(client)
+    consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
+
+    print num_participants
+    print consent_questions
+    print '------------------'
+    print entity.googleGroup
+    print entity.hpoId
+    print entity.siteId
+    print entity.siteName
+    # @todo get 'row' from new sites list
+    # @todo create participants based on site names
+    # import_participants('row', client, consent_questionnaire_id_and_version,
+    #                     questionnaire_to_questions, consent_questions, num_participants)
 
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()

@@ -2,8 +2,6 @@
 """
 import csv
 import logging
-from client import Client, client_log
-from import_participants import import_participants, _setup_questionnaires
 
 
 class CsvImporter(object):
@@ -24,7 +22,6 @@ class CsvImporter(object):
     self.external_id_field = external_id_field
     self.required_columns = required_columns
     self.errors = list()
-    self.new_sites_list = []
 
   def run(self, filename, dry_run):
     """Imports entities from the CSV file with the specified name.
@@ -73,11 +70,6 @@ class CsvImporter(object):
               skip_count += 1
             else:
               new_count += 1
-
-    if self.environment.strip() == 'TEST' and len(self.new_sites_list) > 0:
-      # if in stable make fake participants
-      # @TODO: run command to bounce instances
-      self._insert_new_participants(self.new_sites_list)
 
     if self.errors:
       for err in self.errors:
@@ -136,23 +128,3 @@ class CsvImporter(object):
     if not dry_run:
       self.dao.insert_with_session(session, entity)
     return True
-
-  def _insert_new_participants(self, entity):
-    client = Client('rdr/v1', False, self.creds_file, self.instance)
-    client_log.setLevel(logging.WARN)
-    num_participants = 0
-    questionnaire_to_questions, consent_questionnaire_id_and_version = \
-                                          _setup_questionnaires(client)
-    consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
-
-    print num_participants
-    print consent_questions
-    print '------------------'
-    print entity.googleGroup
-    print entity.hpoId
-    print entity.siteId
-    print entity.siteName
-    # @todo get 'row' from new sites list
-    # @todo create participants based on site names
-    import_participants('row', client, consent_questionnaire_id_and_version,
-                        questionnaire_to_questions, consent_questions, num_participants)
