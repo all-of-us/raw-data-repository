@@ -12,6 +12,10 @@ Usage:
   Imports are idempotent; if you run the import multiple times, subsequent imports should
   have no effect.
 """
+# client needs to be top level import due to another client package in AppengineSDK
+import datetime
+
+from client import Client, client_log
 import os
 import logging
 import googlemaps
@@ -26,8 +30,9 @@ from model.site import Site
 from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
 from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
-from client import Client, client_log
-from tools.import_participants import _setup_questionnaires, import_participants
+from tools.import_participants import _setup_questionnaires, import_participants, _date_answer
+
+from googleapiclient import discovery
 
 # Environments
 ENV_LOCAL = 'localhost'
@@ -35,7 +40,8 @@ ENV_TEST = 'pmi-drc-api-test'
 ENV_STAGING = 'all-of-us-rdr-staging'
 ENV_STABLE = 'all-of-us-rdr-stable'
 ENV_PROD = 'all-of-us-rdr-prod'
-ENV_LIST = [ENV_TEST, ENV_STABLE, ENV_STAGING, ENV_PROD]
+ENV_SANDBOX = 'all-of-us-rdr-sandbox'
+ENV_LIST = [ENV_TEST, ENV_SANDBOX, ENV_STABLE, ENV_STAGING, ENV_PROD]
 # Column headers from the Awardees sheet at:
 # https://docs.google.com/spreadsheets/d/1CcIGRV0Bd6BIz7PeuvrV6QDGDRQkp83CJUkWAl-fG58/edit#gid=1076878570
 HPO_AWARDEE_ID_COLUMN = 'Awardee ID'
@@ -141,7 +147,7 @@ class SiteImporter(CsvImporter):
     self.project = args.project
     self.instance = args.instance
     self.creds_file = args.creds_file
-    self.new_site_list = []
+    self.new_sites_list = []
 
     if self.project in ENV_LIST:
       self.environment = ' ' + self.project.split('-')[-1].upper()
@@ -156,33 +162,42 @@ class SiteImporter(CsvImporter):
 
   def run(self, filename, dry_run):
     super(SiteImporter, self).run(filename, dry_run)
-    if self.environment:
-      if self.environment.strip() == 'TEST' and len(self.new_site_list) > 0:
-        print '=============================================================='
-        print len(self.new_site_list)
-        # if in stable make fake participants
-        # @TODO: run command to bounce instances
-        self._insert_new_participants(self.new_sites_list)
+    if not dry_run:
+      if self.environment:
+        # TODO: Make sure to change to stable before PR.
+        if self.environment.strip() == 'TEST' and len(self.new_sites_list) > 0:
+          # if in stable make fake participants
+          # @TODO: run command to bounce instances
+          service = discovery.build('cloudresourcemanager', 'v1')
+          request = service.projects().list()
+          request.execute()
+          self._insert_new_participants(self.new_sites_list)
 
   def _insert_new_participants(self, entity):
+    num_participants = 0
+    participants = {'zip_code': '20001',
+                    'date_of_birth': '1933-3-3',
+                    'gender_identity': 'GenderIdentity_Woman',
+                    'withdrawalStatus': 'NOT_WITHDRAWN',
+                    'suspensionStatus': 'NOT_SUSPENDED'
+                    }
+
     client = Client('rdr/v1', False, self.creds_file, self.instance)
     client_log.setLevel(logging.WARN)
-    num_participants = 0
-    questionnaire_to_questions, consent_questionnaire_id_and_version = \
-      _setup_questionnaires(client)
+    questionnaire_to_questions, consent_questionnaire_id_and_version = _setup_questionnaires(client)
     consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
+    for site in entity:
+      for participant, v in enumerate(range(1, 21), 1):
+        num_participants += 1
+        participant = participants
+        participant.update({'last_name': site.googleGroup.split('-')[-1]})
+        participant.update({'first_name': 'Participant {}'.format(v)})
+        participant.update({'site': site.googleGroup})
 
-    print num_participants
-    print consent_questions
-    print '------------------'
-    print entity.googleGroup
-    print entity.hpoId
-    print entity.siteId
-    print entity.siteName
-    # @todo get 'row' from new sites list
-    # @todo create participants based on site names
-    # import_participants('row', client, consent_questionnaire_id_and_version,
-    #                     questionnaire_to_questions, consent_questions, num_participants)
+        import_participants(participant, client, consent_questionnaire_id_and_version,
+                            questionnaire_to_questions, consent_questions, num_participants)
+
+    logging.info('%d participants imported.' % num_participants)
 
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()
@@ -282,7 +297,7 @@ class SiteImporter(CsvImporter):
     if entity.siteStatus == self.ACTIVE and (entity.latitude == None or entity.longitude == None):
       self.errors.append('Skipped active site without geocoding: {}'.format(entity.googleGroup))
       return False
-    self.new_site_list.append(entity)
+    self.new_sites_list.append(entity)
     super(SiteImporter, self)._insert_entity(entity, existing_map, session, dry_run)
 
   def _populate_lat_lng_and_time_zone(self, site, existing_site):

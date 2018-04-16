@@ -13,6 +13,10 @@ Usage:
 
 # fhirclient makes sys.path edits on import which mask our client module, so make sure to import
 # our client before importing fhirclient.
+import json
+
+import datetime
+
 from client import Client, client_log
 
 import csv
@@ -167,6 +171,10 @@ def import_participants(row, client, consent_questionnaire_id_and_version,
   answer_map[GENDER_IDENTITY_QUESTION_CODE] = _code_answer(row['gender_identity'])
   participant_response = client.request_json('Participant', 'POST', participant_resource)
   participant_id = participant_response['participantId']
+
+  client.request_json('Participant/%s' % participant_id, 'PUT', row,
+                      headers={'If-Match': 'W/"1"'})
+
   _submit_questionnaire_response(client, participant_id, consent_questionnaire_id_and_version,
                                  consent_questions, answer_map)
   for questionnaire_id_and_version, questions in questionnaire_to_questions.iteritems():
@@ -183,6 +191,7 @@ def import_participants(row, client, consent_questionnaire_id_and_version,
       participant_id, row['first_name'], row['last_name'])
 
   num_participants += 1
+
 
 if __name__ == '__main__':
   configure_logging()
