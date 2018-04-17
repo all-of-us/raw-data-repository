@@ -175,7 +175,10 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
                full.cnt full_cnt
             FROM calendar c2
             LEFT OUTER JOIN
-            (SELECT COUNT(*) cnt, DATE(p.sign_up_time) day
+            (SELECT COUNT(*) cnt,
+                (CASE WHEN enrollment_status = 1 THEN
+                  DATE(p.sign_up_time)
+                  ELSE NULL END) day
                 FROM participant p
                 LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
               %(filters_p)s
@@ -183,7 +186,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
              ON c2.day = registered.day
            LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
-                   (CASE WHEN enrollment_status >= 2 THEN
+                   (CASE WHEN enrollment_status = 2 THEN
                     DATE(ps.consent_for_electronic_health_records_time)
                     ELSE NULL END) day
                FROM participant_summary ps
