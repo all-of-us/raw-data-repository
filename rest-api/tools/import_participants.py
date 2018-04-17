@@ -167,9 +167,9 @@ def import_participants(row, client, consent_questionnaire_id_and_version,
   answer_map[GENDER_IDENTITY_QUESTION_CODE] = _code_answer(row['gender_identity'])
   participant_response = client.request_json('Participant', 'POST', participant_resource)
   participant_id = participant_response['participantId']
-
-  client.request_json('Participant/%s' % participant_id, 'PUT', row,
-                      headers={'If-Match': 'W/"1"'})
+  if not reader:
+    client.request_json('Participant/%s' % participant_id, 'PUT', row,
+                        headers={'If-Match': 'W/"1"'})
 
   _submit_questionnaire_response(client, participant_id, consent_questionnaire_id_and_version,
                                  consent_questions, answer_map)
