@@ -54,13 +54,13 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     with FakeClock(time_pair):
       self.ps_dao.insert(summary)
-
-    print('dict(self.dao.get(1))')
-    ps = dict(self.ps_dao.get(1))
-    for key in ps:
-      value = str(ps[key])
-      if value != 'None':
-        print(key + ': ' + str(ps[key]))
+    #
+    # print('dict(self.dao.get(1))')
+    # ps = dict(self.ps_dao.get(1))
+    # for key in ps:
+    #   value = str(ps[key])
+    #   if value != 'None':
+    #     print(key + ': ' + str(ps[key]))
 
     return participant
 
@@ -86,9 +86,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())  # Remove all whitespace
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
-
-    print('response')
-    print(response)
+    #
+    # print('response')
+    # print(response)
 
     interested_count_day_1 = response[0]['metrics']['INTERESTED']
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
