@@ -9,28 +9,6 @@ from dateutil.relativedelta import relativedelta
 """Deletes service account keys older than 3 days as required by NIH"""
 _DELETE_PREFIX = 'awardee-'
 
-if os.path.isfile(get_key()):
-  os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = get_key()
-
-alert = False
-
-path = os.path.expanduser('~/python-logs')
-logfile = os.path.expanduser('~/python-logs/security.log')
-
-if os.path.isdir(path):
-  pass
-else:
-  os.mkdir(path)
-
-
-logger = logging.getLogger("Rotating Log")
-log_formatter = logging.Formatter('%(asctime)s\t %(levelname)s %(message)s')
-logger.setLevel(logging.INFO)
-handler = RotatingFileHandler(logfile, maxBytes=5*1024*1024, backupCount=5)
-handler.setFormatter(log_formatter)
-logger.addHandler(handler)
-
-logger.info('-----Checking Service Account Key age-----')
 for project in get_projects():
   project_name = 'projects/' + project
   try:
