@@ -92,9 +92,32 @@ if __name__ == '__main__':
     help='The file pattern for test modules, defaults to *_test.py.',
     default='*_test.py')
 
+  parser.add_argument(
+    '--no-coverage',
+    dest='coverage',
+    action='store_false',
+    help='Turn off the coverage report'
+  )
+
   args = parser.parse_args()
 
+  if args.coverage:
+    from coverage import Coverage
+    cov = Coverage(omit=[
+      '*/lib/*',
+      '*/appengine-mapreduce/*',
+      '*/site-packages/*',
+      '*/google_appengine/*',
+      '*/test/*',
+    ])
+    cov.start()
+
   result = main(args.sdk_path, args.test_path, args.test_pattern)
+
+  if args.coverage:
+    cov.stop()
+    cov.save()
+    cov.html_report()
 
   if not result.wasSuccessful():
     sys.exit(1)
