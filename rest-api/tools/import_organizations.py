@@ -15,6 +15,7 @@ Usage:
 # client needs to be top level import due to another client package in AppengineSDK
 
 from client import Client, client_log
+
 import os
 import logging
 import googlemaps
@@ -31,7 +32,6 @@ from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
 from tools.import_participants import _setup_questionnaires, import_participants
 
-from googleapiclient import discovery
 
 # Environments
 ENV_LOCAL = 'localhost'
@@ -161,16 +161,23 @@ class SiteImporter(CsvImporter):
 
   def run(self, filename, dry_run):
     super(SiteImporter, self).run(filename, dry_run)
-    if not dry_run:
+    if dry_run: # @TODO: change to not after testing
       if self.environment:
-        # TODO: Make sure to change to stable before PR.
+        # TODO: Make sure to change to stable before merge.
         if self.environment.strip() == 'TEST' and len(self.new_sites_list) > 0:
           # if in stable make fake participants
           # @TODO: run command to bounce instances
-          service = discovery.build('cloudresourcemanager', 'v1')
-          request = service.projects().list() # probably service.projects.instance.delete ?
-          request.execute()
-          self._insert_new_participants(self.new_sites_list)
+          from oauth2client.client import GoogleCredentials
+          from googleapiclient.discovery import build
+
+          service = build('cloudresourcemanager', 'v1', cache_discovery=False,
+                          credentials=GoogleCredentials.get_application_default())
+          request = service.projects().list()
+          response = request.execute()
+          for project in response['projects']:
+            if project['name'] == 'PMI DRC API Test':
+              print project
+              self._insert_new_participants(self.new_sites_list)
 
   def _insert_new_participants(self, entity):
     num_participants = 0
