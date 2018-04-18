@@ -161,23 +161,42 @@ class SiteImporter(CsvImporter):
 
   def run(self, filename, dry_run):
     super(SiteImporter, self).run(filename, dry_run)
-    if dry_run: # @TODO: change to not after testing
+    insert_participants = False
+    if not dry_run:
       if self.environment:
-        # TODO: Make sure to change to stable before merge.
-        if self.environment.strip() == 'TEST' and len(self.new_sites_list) > 0:
-          # if in stable make fake participants
-          # @TODO: run command to bounce instances
-          from oauth2client.client import GoogleCredentials
+        if self.environment.strip() == 'STABLE' and len(self.new_sites_list) > 0:
           from googleapiclient.discovery import build
+          service = build('appengine', 'v1', cache_discovery=False)
+          request = service.apps().services().versions().list(appsId='pmi-drc-api-test',
+                                                                    servicesId='default')
+          versions = request.execute()
 
-          service = build('cloudresourcemanager', 'v1', cache_discovery=False,
-                          credentials=GoogleCredentials.get_application_default())
-          request = service.projects().list()
-          response = request.execute()
-          for project in response['projects']:
-            if project['name'] == 'PMI DRC API Test':
-              print project
-              self._insert_new_participants(self.new_sites_list)
+          for version in versions['versions']:
+            if version['servingStatus'] == 'SERVING':
+              _id = version['id']
+              request = service.apps().services().versions().instances().list(
+                                                                      appsId='all-of-us-rdr-stable',
+                                                                      servicesId='default',
+                                                                      versionsId=_id)
+              instances = request.execute()
+              
+              for instance in instances['instances']:
+                sha = instance['name'].split('/')[-1]
+                delete_instance = service.apps().services().versions().instances().delete(
+                                                                      appsId='all-of-us-rdr-stable',
+                                                                      servicesId='default',
+                                                                      versionsId=_id,
+                                                                      instancesId=sha)
+
+                response = delete_instance.execute()
+
+                if response['done']:
+                  insert_participants = True
+                else:
+                  logging.warn('Not able to reboot instance on server, Error: %s', response)
+
+          if insert_participants:
+            self._insert_new_participants(self.new_sites_list)
 
   def _insert_new_participants(self, entity):
     num_participants = 0
