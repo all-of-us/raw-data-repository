@@ -34,7 +34,6 @@ from tools.import_participants import _setup_questionnaires, import_participants
 
 
 # Environments
-ENV_LOCAL = 'localhost'
 ENV_TEST = 'pmi-drc-api-test'
 ENV_STAGING = 'all-of-us-rdr-staging'
 ENV_STABLE = 'all-of-us-rdr-stable'
@@ -143,15 +142,17 @@ class SiteImporter(CsvImporter):
     self.geocode_flag = args.geocode_flag
     self.ACTIVE = SiteStatus.ACTIVE
     self.status_exception_list = ['hpo-site-walgreensphoenix']
-    self.project = args.project
     self.instance = args.instance
     self.creds_file = args.creds_file
     self.new_sites_list = []
+    self.project = None
+    if args.project:
+      self.project = args.project
 
     if self.project in ENV_LIST:
       self.environment = ' ' + self.project.split('-')[-1].upper()
-    elif self.project == ENV_LOCAL:
-      self.environment = ' ' + ENV_STABLE.split('-')[-1].upper()
+    else:
+      self.environment = ' ' + ENV_TEST.split('-')[-1].upper()
 
     super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
                                        [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
@@ -414,7 +415,7 @@ if __name__ == '__main__':
   parser.add_argument('--geocode_flag', help='If --account passed into import_organizations.sh, '
                       'geocoding is performed.', action='store_true')
   parser.add_argument('--project', help='Project is used to determine enviroment for specific '
-                      'settings', required=True)
+                      'settings')
 
   parser.add_argument('--instance',
                       type=str,
