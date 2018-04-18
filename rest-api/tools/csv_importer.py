@@ -3,6 +3,7 @@
 import csv
 import logging
 
+
 class CsvImporter(object):
   """Importer for database entities from CSV input.
 
