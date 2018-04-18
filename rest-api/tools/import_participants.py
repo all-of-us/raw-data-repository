@@ -136,14 +136,14 @@ def main(args):
   with open(args.file, 'r') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
-      import_participants(row, client, consent_questionnaire_id_and_version,
-                          questionnaire_to_questions, consent_questions, num_participants, reader)
+      import_participant(row, client, consent_questionnaire_id_and_version,
+                         questionnaire_to_questions, consent_questions, num_participants, reader)
   logging.info('%d participants imported.' % num_participants)
 
 
-def import_participants(row, client, consent_questionnaire_id_and_version,
-                          questionnaire_to_questions, consent_questions, num_participants,
-                        reader=None):
+def import_participant(row, client, consent_questionnaire_id_and_version,
+                       questionnaire_to_questions, consent_questions, num_participants,
+                       reader=None):
 
   answer_map = {}
   answer_map[LAST_NAME_QUESTION_CODE] = _string_answer(row['last_name'])

@@ -30,7 +30,7 @@ from model.site import Site
 from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
 from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
-from tools.import_participants import _setup_questionnaires, import_participants
+from tools.import_participants import _setup_questionnaires, import_participant
 
 
 # Environments
@@ -38,8 +38,7 @@ ENV_TEST = 'pmi-drc-api-test'
 ENV_STAGING = 'all-of-us-rdr-staging'
 ENV_STABLE = 'all-of-us-rdr-stable'
 ENV_PROD = 'all-of-us-rdr-prod'
-ENV_SANDBOX = 'all-of-us-rdr-sandbox'
-ENV_LIST = [ENV_TEST, ENV_SANDBOX, ENV_STABLE, ENV_STAGING, ENV_PROD]
+ENV_LIST = [ENV_TEST, ENV_STABLE, ENV_STAGING, ENV_PROD]
 # Column headers from the Awardees sheet at:
 # https://docs.google.com/spreadsheets/d/1CcIGRV0Bd6BIz7PeuvrV6QDGDRQkp83CJUkWAl-fG58/edit#gid=1076878570
 HPO_AWARDEE_ID_COLUMN = 'Awardee ID'
@@ -167,6 +166,7 @@ class SiteImporter(CsvImporter):
       if self.environment:
         if self.environment.strip() == 'STABLE' and len(self.new_sites_list) > 0:
           from googleapiclient.discovery import build
+          logging.info('Starting reboot of app instances to insert new test participants')
           service = build('appengine', 'v1', cache_discovery=False)
           request = service.apps().services().versions().list(appsId='pmi-drc-api-test',
                                                                     servicesId='default')
@@ -193,10 +193,12 @@ class SiteImporter(CsvImporter):
 
                 if response['done']:
                   insert_participants = True
+                  logging.info('Reboot of instances in stable complete.')
                 else:
                   logging.warn('Not able to reboot instance on server, Error: %s', response)
 
           if insert_participants:
+            logging.info('Starting import of test participants.')
             self._insert_new_participants(self.new_sites_list)
 
   def _insert_new_participants(self, entity):
@@ -220,8 +222,8 @@ class SiteImporter(CsvImporter):
         participant.update({'first_name': 'Participant {}'.format(v)})
         participant.update({'site': site.googleGroup})
 
-        import_participants(participant, client, consent_questionnaire_id_and_version,
-                            questionnaire_to_questions, consent_questions, num_participants)
+        import_participant(participant, client, consent_questionnaire_id_and_version,
+                           questionnaire_to_questions, consent_questions, num_participants)
 
     logging.info('%d participants imported.' % num_participants)
 
