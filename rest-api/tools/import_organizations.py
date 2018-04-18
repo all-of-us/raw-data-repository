@@ -179,7 +179,7 @@ class SiteImporter(CsvImporter):
                                                                       servicesId='default',
                                                                       versionsId=_id)
               instances = request.execute()
-              
+
               for instance in instances['instances']:
                 sha = instance['name'].split('/')[-1]
                 delete_instance = service.apps().services().versions().instances().delete(
