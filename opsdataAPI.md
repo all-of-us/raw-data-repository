@@ -5,14 +5,31 @@ participant details, including data from consent (name, contact information),
 from PPI modules (a status indicating whether the participant has completed
 each questionnaire), basic demographics (age, gender, race).
 
-Example Uses:
+Uses:
 * Full data extracts for participants associated with their awardee
 * Incremental updates on participants affiliated with their site
 * Updates for withdrawn participants
 
-Target users
+Target users:
 * System developers
 * Informatics users at Awardee Partners
+
+Examples:
+See https://github.com/all-of-us/raw-data-repository/blob/master/rdr_client/work_queue.py for Python examples
+The recommended time frame for calling the sync link is every 5 minutes.
+
+Product Documentation:
+Product Requirements Document: https://docs.google.com/document/d/1awYhWQuTjZUcnJfIKRN_sEpcrfcVwmxKMKGgfwa5Zdo/edit#heading=h.jc27x3bvh7yb
+Product Design Specs: https://docs.google.com/document/d/1bLbDMtKCZZViu2WgwHjHLpwWet4GxwMSdd3oYOrpY7E/edit
+Participant Summary README: https://github.com/all-of-us/raw-data-repository#get-participantsummary
+SOP for Managing Ops Data API Access:
+https://docs.google.com/document/d/1Q-nakFlXwVuzbTrBa1ITm0znor9M_oCjZuraJQJyw0o/edit#
+SOP for creating and managing Service Account Keys:
+https://docs.google.com/document/d/11jWfQhTr-ns6PWzXwgchmhsJW_S1oXLdvbLkCdovytQ/edit#
+Volunteer Testers for Ops Data API:
+https://docs.google.com/spreadsheets/d/1ki7uFpELE34mxQajW4PfLNHqeETX2o98aHxUf0wlqdI/edit#gid=0
+
+
 
 The summary includes the following fields:
 
