@@ -38,7 +38,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       curr_date = curr_date + datetime.timedelta(days=1)
 
   def _insert(self, participant, first_name=None, last_name=None, hpo_name=None,
-              date_of_birth=None, time_int=None, time_mem=None, time_fp=None):
+              time_int=None, time_mem=None, time_fp=None):
 
     if time_mem == None:
       enrollment_status = EnrollmentStatus.INTERESTED
@@ -60,8 +60,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       summary.firstName = first_name
     if last_name:
       summary.lastName = last_name
-    if date_of_birth:
-      summary.dateOfBirth = date_of_birth
+
+    summary.dateOfBirth = datetime.date(1978, 10, 10)
 
     summary.enrollmentStatus = enrollment_status
     summary.hpoId = PITT_HPO_ID
@@ -77,10 +77,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   def test_get_counts_with_default_parameters(self):
     # The most basic test in this class
 
-    dob = datetime.date(1978, 10, 10)
-
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'PITT', dob, time_int=self.time1)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
 
     qs = """
       bucketSize=1
@@ -104,16 +102,14 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   def test_get_counts_with_single_awardee_filter(self):
     # Does the awardee filter work?
 
-    dob = datetime.date(1978, 10, 10)
-
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'PITT', dob, time_int=self.time1)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
 
     p1 = Participant(participantId=2, biobankId=5)
-    self._insert(p1, 'Bob', 'Builder', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p1, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
 
     p1 = Participant(participantId=3, biobankId=6)
-    self._insert(p1, 'Chad', 'Caterpillar', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p1, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
 
     qs = """
       bucketSize=1
@@ -133,7 +129,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 1)
-
 
     qs = """
       bucketSize=1
@@ -157,16 +152,14 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   def test_get_counts_with_single_awardee_filter(self):
     # Does the awardee filter work when passed a single awardee?
 
-    dob = datetime.date(1978, 10, 10)
-
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'PITT', dob, time_int=self.time1)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
 
     p1 = Participant(participantId=2, biobankId=5)
-    self._insert(p1, 'Bob', 'Builder', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p1, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
 
     p1 = Participant(participantId=3, biobankId=6)
-    self._insert(p1, 'Chad', 'Caterpillar', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p1, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
 
     qs = """
         bucketSize=1
@@ -186,7 +179,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 1)
-
 
     qs = """
         bucketSize=1
@@ -210,16 +202,14 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   def test_get_counts_with_multiple_awardee_filters(self):
     # Does the awardee filter work when passed more than one awardee?
 
-    dob = datetime.date(1978, 10, 10)
-
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'PITT', dob, time_int=self.time1)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
 
     qs = """
         bucketSize=1
@@ -243,19 +233,17 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   def test_get_counts_with_single_various_filters(self):
     # Do the awardee and enrollment status filters work when passed multiple values?
 
-    dob = datetime.date(1978, 10, 10)
-
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'PITT', dob, time_int=self.time1)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
 
     p4 = Participant(participantId=4, biobankId=5)
-    self._insert(p4, 'Debra', 'Dinosaur', 'PITT', dob, time_int=self.time1)
+    self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1)
 
     qs = """
       bucketSize=1
@@ -279,16 +267,14 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   def test_get_counts_with_multiple_various_filters(self):
     # Do the awardee and enrollment status filters work when passed multiple values?
 
-    dob = datetime.date(1978, 10, 10)
-
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'PITT', dob, time_int=self.time1)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
 
     qs = """
         bucketSize=1
@@ -312,16 +298,14 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   def test_get_counts_with_total_stratification_unfiltered(self):
     # Do the awardee and enrollment status filters work when passed multiple values?
 
-    dob = datetime.date(1978, 10, 10)
-
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'PITT', dob, time_int=self.time1)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', dob, time_int=self.time1)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
 
     qs = """
       bucketSize=1
@@ -345,16 +329,15 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   # def test_get_counts_with_total_stratification_filtered(self):
   #   # Do the awardee and enrollment status filters work when passed multiple values?
   #
-  #   dob = datetime.date(1978, 10, 10)
-  #
+  #     #
   #   p1 = Participant(participantId=1, biobankId=4)
-  #   self._insert(p1, 'Alice', 'Aardvark', 'PITT', dob, time_int=self.time1)
+  #   self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
   #
   #   p2 = Participant(participantId=2, biobankId=5)
-  #   self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', dob, time_int=self.time1)
+  #   self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
   #
   #   p3 = Participant(participantId=3, biobankId=6)
-  #   self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', dob, time_int=self.time1)
+  #   self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
   #
   #   qs = """
   #     bucketSize=1
