@@ -1,9 +1,18 @@
 ## OPS-DATA API
 
-The opsdata API uses the ParticipantSummary resource and represents an aggregated view of relevant
+The opsdata API offers access to the ParticipantSummary resource and represents an aggregated view of relevant
 participant details, including data from consent (name, contact information),
 from PPI modules (a status indicating whether the participant has completed
 each questionnaire), basic demographics (age, gender, race).
+
+Example Uses:
+* Full data extracts for participants associated with their awardee
+* Incremental updates on participants affiliated with their site
+* Updates for withdrawn participants
+
+Target users
+* System developers
+* Informatics users at Awardee Partners
 
 The summary includes the following fields:
 
@@ -240,11 +249,6 @@ indicate inequality searches, as per the [FHIR search spec](https://www.hl7.org/
   * `gt`: greater than
   * `ge`: greater than or equal to
   * `ne`: not equal to
-
-If no HPO is provided, then a last name and date of birth (at minimum) should be
-supplied. Example query:
-
-    GET /ParticipantSummary?dateOfBirth=1980-12-30&lastName=Smith
 
 
 Other supported parameters from the FHIR spec:
