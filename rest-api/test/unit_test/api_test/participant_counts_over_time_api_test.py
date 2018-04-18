@@ -39,14 +39,25 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
   def _insert(self, participant, first_name=None, last_name=None, hpo_name=None,
               time_int=None, time_mem=None, time_fp=None):
+    """
+    Create a participant in a transient test database.
+
+    :param participant: Participant object
+    :param first_name: First name
+    :param last_name: Last name
+    :param hpo_name: HPO name (one of PITT or AZ_TUCSON)
+    :param time_int: Time that participant fulfilled INTERESTED criteria
+    :param time_mem: Time that participant fulfilled MEMBER criteria
+    :param time_fp: Time that participant fulfilled FULL_PARTICIPANT criteria
+    :return: Participant object
+    """
 
     if time_mem == None:
       enrollment_status = EnrollmentStatus.INTERESTED
-    elif time_fp:
+    elif time_fp == None:
       enrollment_status = EnrollmentStatus.MEMBER
     else:
       enrollment_status = EnrollmentStatus.FULL_PARTICIPANT
-
 
     with FakeClock(time_int):
       self.dao.insert(participant)
@@ -66,9 +77,20 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     summary.enrollmentStatus = enrollment_status
     summary.hpoId = PITT_HPO_ID
 
-    if time_mem == None:
+    if time_mem != None:
       with FakeClock(time_mem):
         summary.consentForElectronicHealthRecordsTime = time_mem
+
+    # # DEBUG, remove before PR
+    # ps = self.ps_dao.get(2)
+    # if ps != None:
+    #   print('dict(self.dao.get(2))')
+    #   ps = dict(ps)
+    #   for key in ps:
+    #     if ps[key] != None:
+    #       print(key)
+    #       print(ps[key])
+    #       print('')
 
     self.ps_dao.insert(summary)
 
@@ -230,8 +252,121 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 3)
 
+  def test_get_counts_with_enrollment_status_member_filter(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time2)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1, time_mem=self.time3)
+
+    qs = """
+      bucketSize=1
+      &stratification=ENROLLMENT_STATUS
+      &startDate=2017-12-30
+      &endDate=2018-01-04
+      &awardee=
+      &enrollmentStatus=MEMBER
+      """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    member_count_day_1 = response[0]['metrics']['MEMBER']
+    member_count_day_2 = response[1]['metrics']['MEMBER']
+    member_count_day_3 = response[2]['metrics']['MEMBER']
+    member_count_day_4 = response[3]['metrics']['MEMBER']
+    interested_count_day_4 = response[1]['metrics']['INTERESTED']
+
+    self.assertEquals(member_count_day_1, 0)
+    self.assertEquals(member_count_day_2, 0)
+    self.assertEquals(member_count_day_3, 2)
+    self.assertEquals(member_count_day_4, 3)
+    self.assertEquals(interested_count_day_4, 0)
+
+    qs = """
+      bucketSize=1
+      &stratification=TOTAL
+      &startDate=2017-12-30
+      &endDate=2018-01-04
+      &awardee=
+      &enrollmentStatus=MEMBER
+      """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    total_count_day_1 = response[0]['metrics']['TOTAL']
+    total_count_day_2 = response[1]['metrics']['TOTAL']
+
+    self.assertEquals(total_count_day_1, 0)
+    self.assertEquals(total_count_day_2, 3)
+
+  # def test_get_counts_with_enrollment_status_full_participant_filter(self):
+  #
+  #   p1 = Participant(participantId=1, biobankId=4)
+  #   self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
+  #
+  #   p2 = Participant(participantId=2, biobankId=5)
+  #   self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
+  #
+  #   p3 = Participant(participantId=3, biobankId=6)
+  #   self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
+  #
+  #   p4 = Participant(participantId=4, biobankId=7)
+  #   self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1)
+  #
+  #   qs = """
+  #     bucketSize=1
+  #     &stratification=ENROLLMENT_STATUS
+  #     &startDate=2017-12-30
+  #     &endDate=2018-01-04
+  #     &awardee=
+  #     &enrollmentStatus=MEMBER
+  #     """
+  #
+  #   qs = ''.join(qs.split())  # Remove all whitespace
+  #
+  #   response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+  #
+  #   interested_count_day_1 = response[0]['metrics']['INTERESTED']
+  #   interested_count_day_2 = response[1]['metrics']['INTERESTED']
+  #
+  #   self.assertEquals(interested_count_day_1, 0)
+  #   self.assertEquals(interested_count_day_2, 0)
+  #
+  #   qs = """
+  #     bucketSize=1
+  #     &stratification=TOTAL
+  #     &startDate=2017-12-30
+  #     &endDate=2018-01-04
+  #     &awardee=
+  #     &enrollmentStatus=MEMBER
+  #     """
+  #
+  #   qs = ''.join(qs.split())  # Remove all whitespace
+  #
+  #   response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+  #
+  #   print('response')
+  #   print(response)
+  #
+  #   total_count_day_1 = response[0]['metrics']['TOTAL']
+  #   total_count_day_2 = response[1]['metrics']['TOTAL']
+  #
+  #   self.assertEquals(total_count_day_1, 0)
+  #   self.assertEquals(total_count_day_2, 0)
+
   def test_get_counts_with_single_various_filters(self):
-    # Do the awardee and enrollment status filters work when passed multiple values?
+    # Do the awardee and enrollment status filters work when passed single values?
 
     p1 = Participant(participantId=1, biobankId=4)
     self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
