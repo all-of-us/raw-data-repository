@@ -91,25 +91,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
         summary.sampleStatus1ED04Time = time_fp
         summary.sampleStatus1SALTime = time_fp
 
-    # DEBUG, remove before PR
-    # if first_name == 'Chad':
-    #   ps = self.ps_dao.get(2)
-    #   if ps != None:
-    #     print('dict(self.dao.get(2))')
-    #     ps = dict(ps)
-    #     for key in ps:
-    #       if ps[key] != None:
-    #         print(key)
-    #         print(ps[key])
-    #         print('')
-
-    # print(first_name)
-
     self.ps_dao.insert(summary)
 
     return participant
 
-  def foo_test_get_counts_with_default_parameters(self):
+  def test_get_counts_with_default_parameters(self):
     # The most basic test in this class
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -134,7 +120,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 1)
 
-  def foo_test_get_counts_with_single_awardee_filter(self):
+  def test_get_counts_with_single_awardee_filter(self):
     # Does the awardee filter work?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -184,7 +170,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 2)
 
-  def foo_test_get_counts_with_single_awardee_filter(self):
+  def test_get_counts_with_single_awardee_filter(self):
     # Does the awardee filter work when passed a single awardee?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -234,7 +220,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 2)
 
-  def foo_test_get_counts_with_multiple_awardee_filters(self):
+  def test_get_counts_with_multiple_awardee_filters(self):
     # Does the awardee filter work when passed more than one awardee?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -265,7 +251,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 3)
 
-  def foo_test_get_counts_with_enrollment_status_member_filter(self):
+  def test_get_counts_with_enrollment_status_member_filter(self):
 
     p1 = Participant(participantId=1, biobankId=4)
     self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
@@ -351,18 +337,12 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       &startDate=2017-12-30
       &endDate=2018-01-04
       &awardee=
-      &enrollmentStatus=
+      &enrollmentStatus=FULL_PARTICIPANT
       """
 
     qs = ''.join(qs.split())  # Remove all whitespace
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
-    #
-    # print('')
-    # print('')
-    # print('')
-    # print('response')
-    # print(response)
 
     full_participant_count_day_1 = response[0]['metrics']['FULL_PARTICIPANT']
     full_participant_count_day_2 = response[1]['metrics']['FULL_PARTICIPANT']
@@ -405,7 +385,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     # self.assertEquals(total_count_day_3, 2)
     # self.assertEquals(total_count_day_4, 3)
 
-  def foo_test_get_counts_with_single_various_filters(self):
+  def test_get_counts_with_single_various_filters(self):
     # Do the awardee and enrollment status filters work when passed single values?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -439,7 +419,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 0)
 
-  def foo_test_get_counts_with_multiple_various_filters(self):
+  def test_get_counts_with_multiple_various_filters(self):
     # Do the awardee and enrollment status filters work when passed multiple values?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -470,7 +450,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 3)
 
-  def foo_test_get_counts_with_total_stratification_unfiltered(self):
+  def test_get_counts_with_total_stratification_unfiltered(self):
     # Do the awardee and enrollment status filters work when passed multiple values?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -501,7 +481,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 3)
 
-  # def foo_test_get_counts_with_total_stratification_filtered(self):
+  # def test_get_counts_with_total_stratification_filtered(self):
   #   # Do the awardee and enrollment status filters work when passed multiple values?
   #
   #     #
