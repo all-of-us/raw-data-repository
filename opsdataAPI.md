@@ -19,8 +19,6 @@ See https://github.com/all-of-us/raw-data-repository/blob/master/rdr_client/work
 The recommended time frame for calling the sync link is every 5 minutes.
 
 Product Documentation:
-Product Requirements Document: https://docs.google.com/document/d/1awYhWQuTjZUcnJfIKRN_sEpcrfcVwmxKMKGgfwa5Zdo/edit#heading=h.jc27x3bvh7yb
-Product Design Specs: https://docs.google.com/document/d/1bLbDMtKCZZViu2WgwHjHLpwWet4GxwMSdd3oYOrpY7E/edit
 Participant Summary README: https://github.com/all-of-us/raw-data-repository#get-participantsummary
 SOP for Managing Ops Data API Access:
 https://docs.google.com/document/d/1Q-nakFlXwVuzbTrBa1ITm0znor9M_oCjZuraJQJyw0o/edit#
