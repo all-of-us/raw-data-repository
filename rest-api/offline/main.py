@@ -160,7 +160,7 @@ def _build_pipeline_app():
     PREFIX + 'RotateKeys',
     endpoint='rotate_keys',
     view_func=rotate_keys,
-    methods=['GET'])
+    methods=['GET', 'DELETE', 'POST'])
 
   offline_app.after_request(app_util.add_headers)
   offline_app.before_request(app_util.request_logging)
