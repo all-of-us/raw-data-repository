@@ -8,7 +8,7 @@ from model.calendar import Calendar
 from dao.calendar_dao import CalendarDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.participant_dao import make_primary_provider_link_for_name
-from test.unit_test.unit_test_util import FlaskTestBase, PITT_HPO_ID
+from test.unit_test.unit_test_util import FlaskTestBase
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID
@@ -356,7 +356,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(full_participant_count_day_3, 2)
     self.assertEquals(full_participant_count_day_4, 3)
     self.assertEquals(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
-
 
   def test_get_counts_with_total_enrollment_status_full_participant_filter(self):
     # When filtering with TOTAL stratification, filtered participants are
