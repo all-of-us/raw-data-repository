@@ -3,6 +3,7 @@ from werkzeug.exceptions import BadRequest
 from .participant_summary_dao import ParticipantSummaryDao
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, TEST_HPO_NAME, TEST_EMAIL_PATTERN
+from participant_enums import WithdrawalStatus
 from dao.hpo_dao import HPODao
 
 class ParticipantCountsOverTimeService(ParticipantSummaryDao):
@@ -114,10 +115,14 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     if len(facets_sql_list) > 0:
       facets_sql += ' AND '.join(facets_sql_list) + ' AND'
 
+    # TODO: use bound parameters
+    # See https://github.com/all-of-us/raw-data-repository/pull/669/files/a08be0ffe445da60ebca13b41d694368e4d42617#diff-6c62346e0cbe4a7fd7a45af6d4559c3e  # pylint: disable=line-too-long
     facets_sql += ' %(table_prefix)s.hpo_id != %(test_hpo_id)s ' % {
       'table_prefix': table_prefix, 'test_hpo_id': self.test_hpo_id}
     facets_sql += ' AND NOT ps.email LIKE "%(test_email_pattern)s"' % {
       'test_email_pattern': self.test_email_pattern}
+    facets_sql += ' AND ps.withdrawal_status = %(not_withdrawn)i' % {
+      'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
 
     return facets_sql
 
@@ -158,7 +163,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     # generate the GREATEST statement instead, but for now are hardcoding as
     # we do with samples.
 
-    # TODO when implementing unit testing:
+    # TODO when implementing unit testing for service class:
     # Add macros for GREATEST and LEAST, as they don't work in SQLite
     # Example: master/rest-api/dao/database_utils.py#L50
 
@@ -175,7 +180,10 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
                full.cnt full_cnt
             FROM calendar c2
             LEFT OUTER JOIN
-            (SELECT COUNT(*) cnt, DATE(p.sign_up_time) day
+            (SELECT COUNT(*) cnt,
+                (CASE WHEN enrollment_status = 1 THEN
+                  DATE(p.sign_up_time)
+                  ELSE NULL END) day
                 FROM participant p
                 LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
               %(filters_p)s
@@ -183,7 +191,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
              ON c2.day = registered.day
            LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
-                   (CASE WHEN enrollment_status >= 2 THEN
+                   (CASE WHEN enrollment_status = 2 THEN
                     DATE(ps.consent_for_electronic_health_records_time)
                     ELSE NULL END) day
                FROM participant_summary ps
