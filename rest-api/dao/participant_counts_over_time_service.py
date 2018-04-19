@@ -118,6 +118,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       'table_prefix': table_prefix, 'test_hpo_id': self.test_hpo_id}
     facets_sql += ' AND NOT ps.email LIKE "%(test_email_pattern)s"' % {
       'test_email_pattern': self.test_email_pattern}
+    facets_sql += ' AND ps.withdrawal_status = 1'
 
     return facets_sql
 
