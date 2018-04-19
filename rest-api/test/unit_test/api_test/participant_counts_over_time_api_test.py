@@ -114,6 +114,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
+    # You can debug API responses easily by uncommenting the lines below
+    # print('response')
+    # print(response)
+
     interested_count_day_1 = response[0]['metrics']['INTERESTED']
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
 
@@ -188,7 +192,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
         &startDate=2017-12-30
         &endDate=2018-01-04
         &awardee=PITT
-        &enrollmentStatus=
         """
 
     qs = ''.join(qs.split())  # Remove all whitespace
@@ -207,7 +210,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
         &startDate=2017-12-30
         &endDate=2018-01-04
         &awardee=AZ_TUCSON
-        &enrollmentStatus=
         """
 
     qs = ''.join(qs.split())  # Remove all whitespace
@@ -413,10 +415,12 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1,
+                 time_mem=self.time1)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1)
+    self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1,
+                 time_mem=self.time1)
 
     qs = """
       bucketSize=1
@@ -433,9 +437,15 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     interested_count_day_1 = response[0]['metrics']['INTERESTED']
     interested_count_day_2 = response[1]['metrics']['INTERESTED']
+    member_count_day_2 = response[1]['metrics']['MEMBER']
 
     self.assertEquals(interested_count_day_1, 0)
+
+    # We requested data for only MEMBERs, so no INTERESTEDs should be returned
     self.assertEquals(interested_count_day_2, 0)
+
+    # We requested data for only MEMBERs in PITT, so no MEMBERs in AZ_TUCSON should be returned
+    self.assertEquals(member_count_day_2, 1)
 
   def test_get_counts_with_multiple_various_filters(self):
     # Do the awardee and enrollment status filters work when passed multiple values?
