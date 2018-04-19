@@ -356,6 +356,32 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(full_participant_count_day_4, 3)
     self.assertEquals(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
 
+
+  def test_get_counts_with_total_enrollment_status_full_participant_filter(self):
+    # When filtering with TOTAL stratification, filtered participants are
+    # returned by their sign up date, not the date they reached their highest
+    # enrollment status.
+
+    # MEMBER @ time 1
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1,
+                 time_mem=self.time1)
+
+    # FULL PARTICIPANT @ time 2
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1,
+                 time_mem=self.time1, time_fp=self.time2)
+
+    # FULL PARTICIPANT @ time 2
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1,
+                 time_mem=self.time1, time_fp=self.time2)
+
+    # FULL PARTICIPANT @ time 3
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1,
+                 time_mem=self.time1, time_fp=self.time3)
+
     qs = """
       bucketSize=1
       &stratification=TOTAL
@@ -368,7 +394,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())  # Remove all whitespace
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
-    print(response)
 
     total_count_day_1 = response[0]['metrics']['TOTAL']
     total_count_day_2 = response[1]['metrics']['TOTAL']
@@ -376,8 +401,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     total_count_day_4 = response[3]['metrics']['TOTAL']
 
     self.assertEquals(total_count_day_1, 0)
-    self.assertEquals(total_count_day_2, 0)
-    self.assertEquals(total_count_day_3, 2)
+    self.assertEquals(total_count_day_2, 3)
+    self.assertEquals(total_count_day_3, 3)
     self.assertEquals(total_count_day_4, 3)
 
   def test_get_counts_with_single_various_filters(self):
