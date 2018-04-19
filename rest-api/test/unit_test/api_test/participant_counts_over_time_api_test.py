@@ -52,9 +52,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     :return: Participant object
     """
 
-    if time_mem == None:
+    if time_mem is None:
       enrollment_status = EnrollmentStatus.INTERESTED
-    elif time_fp == None:
+    elif time_fp is None:
       enrollment_status = EnrollmentStatus.MEMBER
     else:
       enrollment_status = EnrollmentStatus.FULL_PARTICIPANT
@@ -77,11 +77,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     summary.enrollmentStatus = enrollment_status
     summary.hpoId = PITT_HPO_ID
 
-    if time_mem != None:
+    if time_mem is not None:
       with FakeClock(time_mem):
         summary.consentForElectronicHealthRecordsTime = time_mem
 
-    if time_fp != None:
+    if time_fp is not None:
       with FakeClock(time_fp):
         summary.consentForElectronicHealthRecordsTime = time_fp
         summary.questionnaireOnTheBasicsTime = time_fp
