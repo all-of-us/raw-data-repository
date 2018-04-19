@@ -355,35 +355,30 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(full_participant_count_day_3, 2)
     self.assertEquals(full_participant_count_day_4, 3)
     self.assertEquals(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
-    #
-    # qs = """
-    #   bucketSize=1
-    #   &stratification=TOTAL
-    #   &startDate=2017-12-30
-    #   &endDate=2018-01-04
-    #   &awardee=
-    #   &enrollmentStatus=FULL_PARTICIPANT
-    #   """
-    #
-    # qs = ''.join(qs.split())  # Remove all whitespace
-    #
-    # response = self.send_get('ParticipantCountsOverTime', query_string=qs)
-    #
-    # print('')
-    # print('')
-    # print('')
-    # print('second response')
-    # print(response)
-    #
-    # total_count_day_1 = response[0]['metrics']['TOTAL']
-    # total_count_day_2 = response[1]['metrics']['TOTAL']
-    # total_count_day_3 = response[2]['metrics']['TOTAL']
-    # total_count_day_4 = response[3]['metrics']['TOTAL']
-    #
-    # self.assertEquals(total_count_day_1, 0)
-    # self.assertEquals(total_count_day_2, 0)
-    # self.assertEquals(total_count_day_3, 2)
-    # self.assertEquals(total_count_day_4, 3)
+
+    qs = """
+      bucketSize=1
+      &stratification=TOTAL
+      &startDate=2017-12-30
+      &endDate=2018-01-04
+      &awardee=
+      &enrollmentStatus=FULL_PARTICIPANT
+      """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+    print(response)
+
+    total_count_day_1 = response[0]['metrics']['TOTAL']
+    total_count_day_2 = response[1]['metrics']['TOTAL']
+    total_count_day_3 = response[2]['metrics']['TOTAL']
+    total_count_day_4 = response[3]['metrics']['TOTAL']
+
+    self.assertEquals(total_count_day_1, 0)
+    self.assertEquals(total_count_day_2, 0)
+    self.assertEquals(total_count_day_3, 2)
+    self.assertEquals(total_count_day_4, 3)
 
   def test_get_counts_with_single_various_filters(self):
     # Do the awardee and enrollment status filters work when passed single values?
