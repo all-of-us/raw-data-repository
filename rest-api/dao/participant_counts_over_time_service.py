@@ -3,6 +3,7 @@ from werkzeug.exceptions import BadRequest
 from .participant_summary_dao import ParticipantSummaryDao
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, TEST_HPO_NAME, TEST_EMAIL_PATTERN
+from participant_enums import WithdrawalStatus
 from dao.hpo_dao import HPODao
 
 class ParticipantCountsOverTimeService(ParticipantSummaryDao):
@@ -118,7 +119,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       'table_prefix': table_prefix, 'test_hpo_id': self.test_hpo_id}
     facets_sql += ' AND NOT ps.email LIKE "%(test_email_pattern)s"' % {
       'test_email_pattern': self.test_email_pattern}
-    facets_sql += ' AND ps.withdrawal_status = 1'
+    facets_sql += ' AND ps.withdrawal_status = %(not_withdrawn)i' % {
+      'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
 
     return facets_sql
 

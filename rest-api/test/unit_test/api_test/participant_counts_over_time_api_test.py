@@ -13,6 +13,7 @@ from test.unit_test.unit_test_util import FlaskTestBase
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID
+from participant_enums import WithdrawalStatus
 
 class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
@@ -96,7 +97,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.ps_dao.insert(summary)
 
-    return participant
+    return summary
 
   def test_get_counts_with_default_parameters(self):
     # The most basic test in this class
@@ -505,6 +506,37 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 3)
+
+  def test_get_counts_excluding_withdrawn_participants(self):
+    # Withdrawn participants should not appear in counts
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    ps3 = self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
+    ps3.withdrawalStatus = WithdrawalStatus.NO_USE  # Chad withdrew from the study
+    self.ps_dao.update(ps3)
+
+    qs = """
+        bucketSize=1
+        &stratification=TOTAL
+        &startDate=2017-12-30
+        &endDate=2018-01-04
+        """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    total_count_day_1 = response[0]['metrics']['TOTAL']
+    total_count_day_2 = response[1]['metrics']['TOTAL']
+
+    self.assertEquals(total_count_day_1, 0)
+    self.assertEquals(total_count_day_2, 2)
 
   def test_url_parameter_validation_for_date_range(self):
     # Ensure requests for very long date ranges are marked BAD REQUEST
