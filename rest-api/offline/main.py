@@ -15,6 +15,7 @@ from offline.base_pipeline import send_failure_alert
 from offline.table_exporter import TableExporter
 from offline.metrics_export import MetricsExport
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
+from offline.sa_key_remove import rotate_sa_keys
 from api_util import EXPORTER
 from werkzeug.exceptions import BadRequest
 
@@ -118,6 +119,11 @@ def export_tables():
 
   return json.dumps(TableExporter.export_tables(database, tables, directory, deidentify))
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def rotate_keys():
+  rotate_sa_keys()
+
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
   offline_app = Flask(__name__)
@@ -145,6 +151,12 @@ def _build_pipeline_app():
       endpoint='ExportTables',
       view_func=export_tables,
       methods=['POST'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'RotateKeys',
+    endpoint='RotateKeys',
+    view_func=rotate_keys,
+    methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)
   offline_app.before_request(app_util.request_logging)

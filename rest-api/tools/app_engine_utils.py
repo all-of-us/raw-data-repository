@@ -1,6 +1,7 @@
 from googleapiclient import discovery
 import os
 
+""" Helper functions for using app_engine api's with Python SDK """
 
 def get_key():
   storage_key = os.path.expanduser('~/.gcp/cloudsecurity-monitoring.json')
@@ -26,10 +27,3 @@ def get_projects():
     request = service.projects().list_next(previous_request=request, previous_response=response)
 
   return project_list
-
-
-if __name__ == "__main__":
-  print get_key()
-
-  for project in get_projects():
-    print project
