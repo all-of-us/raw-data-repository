@@ -26,7 +26,8 @@ class ParticipantCountsOverTimeApi(Resource):
 
     # TODO: After enrollment status is filterable,
     # wire in 'organization', 'site', 'withdrawalStatus', and 'bucketSize'.
-    # Note: withdrawalStatus ought to filter out withdrawn individuals by default, per Scott
+    # Withdrawn participants are currently always excluded per SQL in
+    # ParticipantCountsOverTimeService; eventually want to that filterable.
     enrollment_statuses = request.args.get('enrollmentStatus')
     awardees = request.args.get('awardee')
     stratification_str = request.args.get('stratification')
@@ -92,26 +93,28 @@ class ParticipantCountsOverTimeApi(Resource):
     params['end_date'] = end_date
 
     # Validate awardees, get ID list
-    awardees = awardees.split(',')
     awardee_ids = []
-    for awardee in awardees:
-      if awardee != '':
-        awardee_id = get_awardee_id_from_name({'awardee': awardee}, self.hpo_dao)
-        if awardee_id == None:
-          raise BadRequest('Invalid awardee name: %s' % awardee)
-        awardee_ids.append(awardee_id)
+    if awardees is not None:
+      awardees = awardees.split(',')
+      for awardee in awardees:
+        if awardee != '':
+          awardee_id = get_awardee_id_from_name({'awardee': awardee}, self.hpo_dao)
+          if awardee_id == None:
+            raise BadRequest('Invalid awardee name: %s' % awardee)
+          awardee_ids.append(awardee_id)
     params['awardee_ids'] = awardee_ids
 
     # Validate enrollment statuses
-    enrollment_statuses = enrollment_statuses.split(',')
-    try:
-      params['enrollment_statuses'] = [EnrollmentStatus(val) for val in enrollment_statuses]
-    except TypeError:
-      valid_enrollment_statuses = EnrollmentStatus.to_dict()
-      for enrollment_status in enrollment_statuses:
-        if enrollment_status != '':
-          if enrollment_status not in valid_enrollment_statuses:
-            raise BadRequest('Invalid enrollment status: %s' % enrollment_status)
+    if enrollment_statuses is not None:
+      enrollment_statuses = enrollment_statuses.split(',')
+      try:
+        params['enrollment_statuses'] = [EnrollmentStatus(val) for val in enrollment_statuses]
+      except TypeError:
+        valid_enrollment_statuses = EnrollmentStatus.to_dict()
+        for enrollment_status in enrollment_statuses:
+          if enrollment_status != '':
+            if enrollment_status not in valid_enrollment_statuses:
+              raise BadRequest('Invalid enrollment status: %s' % enrollment_status)
 
     # Validate stratifications
     try:
