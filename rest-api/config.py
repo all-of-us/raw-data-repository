@@ -3,15 +3,17 @@
 Contains things such as the accounts allowed access to the system.
 """
 import logging
-import singletons
-import data_access_object
 
 from google.appengine.ext import ndb
-
 from werkzeug.exceptions import NotFound
+
+import clock
+import singletons
+
 
 # Key that the main server configuration is stored under
 CONFIG_SINGLETON_KEY = 'current_config'
+
 # Key that the database configuration is stored under
 DB_CONFIG_KEY = 'db_config'
 
@@ -72,63 +74,82 @@ class DbConfig(BaseConfig):
   def __init__(self):
     super(DbConfig, self).__init__(DB_CONFIG_KEY)
 
+REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 
 
-def _get_config(key):
-  """This function is called by the `TTLCache` to grab an updated config.
-  Note that `TTLCache` always supplies a key, which we assert here."""
-  assert key in (CONFIG_SINGLETON_KEY, DB_CONFIG_KEY)
-  config_entity = ConfigurationDAO().load_if_present(key)
-  if config_entity is None:
-    raise KeyError('No config for %r.' % key)
-  return config_entity.configuration
+# Overrides for testing scenarios
+CONFIG_OVERRIDES = {}
 
 def override_setting(key, value):
   """Overrides a config setting. Used in tests."""
   CONFIG_OVERRIDES[key] = value
 
-
-# Used to override the whole config in tests without use of the REST API
 def store_current_config(config_json):
   conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
   conf = Configuration(key=conf_ndb_key, configuration=config_json)
-  ConfigurationDAO().store(conf)
+  store(conf)
 
-class MissingConfigException(BaseException):
+def insert_config(key, value_list):
+  """Updates a config key.  Used for tests"""
+  model = load(CONFIG_SINGLETON_KEY)
+  model.configuration[key] = value_list
+  store(model)
+
+
+class MissingConfigException(Exception):
   """Exception raised if the setting does not exist"""
 
 
-class InvalidConfigException(BaseException):
-  """Exception raised when the config setting is a not in the expected form."""
+class InvalidConfigException(Exception):
+  """Exception raised when the config setting is not in the expected form."""
 
 
 class Configuration(ndb.Model):
   configuration = ndb.JsonProperty()
 
 
-class ConfigurationDAO(data_access_object.DataAccessObject):
-  def __init__(self):
-    super(ConfigurationDAO, self).__init__(Configuration)
+class ConfigurationHistory(ndb.Model):
+  date = ndb.DateTimeProperty(auto_now_add=True)
+  obj = ndb.StructuredProperty(Configuration, repeated=False)
+  client_id = ndb.StringProperty()
 
-  def properties_from_json(self, dict_, ancestor_id, id_):
-    return {
-        "configuration": dict_
-    }
 
-  def properties_to_json(self, dict_):
-    return dict_.get('configuration', {})
+def load(_id=CONFIG_SINGLETON_KEY, date=None):
+  key = ndb.Key(Configuration, _id)
+  if date is not None:
+    history = (ConfigurationHistory
+                .query(ancestor=ndb.Key('Configuration', _id))
+                .filter(ConfigurationHistory.date <= date)
+                .order(-ConfigurationHistory.date)
+                .fetch(limit=1)
+               )
+    if not history:
+      raise NotFound('No history object active at {}.'.format(date))
+    return history[0].obj
 
-  def load_if_present(self, id_, ancestor_id=None):
-    obj = super(ConfigurationDAO, self).load_if_present(id_, ancestor_id)
-    if not obj and id_ == CONFIG_SINGLETON_KEY:
-      initialize_config()
-      obj = super(ConfigurationDAO, self).load_if_present(id_, ancestor_id)
-    return obj
+  model = key.get()
+  if model is None:
+    if _id == CONFIG_SINGLETON_KEY:
+      model = Configuration(key=key, configuration={})
+      model.put()
+      logging.info('Setting an empty configuration.')
+    else:
+      raise NotFound('No config for %r.' % _id)
+  return model
 
-  def store(self, model, date=None, client_id=None):
-    ret = super(ConfigurationDAO, self).store(model, date, client_id)
-    invalidate()
-    return ret
+
+@ndb.transactional
+def store(model, date=None, client_id=None):
+  date = date or clock.CLOCK.now()
+  history = ConfigurationHistory(parent=model.key, obj=model, date=date)
+  if client_id:
+    history.populate(client_id=client_id)
+  history.put()
+  model.put()
+  singletons.invalidate(singletons.DB_CONFIG_INDEX)
+  singletons.invalidate(singletons.MAIN_CONFIG_INDEX)
+  return model
+
 
 _NO_DEFAULT = '_NO_DEFAULT'
 
@@ -150,7 +171,7 @@ def getSettingJson(key, default=_NO_DEFAULT):
   if config_values is not None:
     return config_values
 
-  current_config = get_config().config_dict
+  current_config = get_config()
 
   config_values = current_config.get(key, default)
   if config_values == _NO_DEFAULT:
@@ -203,39 +224,15 @@ def getSetting(key, default=_NO_DEFAULT):
         'Config key {} has multiple entries in datastore.'.format(key))
   return settings_list[0]
 
-def initialize_config():
-  """Initalize an empty configuration."""
-  conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)
-  Configuration(key=conf_ndb_key, configuration={}).put()
-  logging.info('Setting an empty configuration.')
-
-def invalidate():
-  """Invalidate the config cache when we learn something new has been written.
-  The `expire` function takes one argument, which effectively says, "pretend
-  it's this time, and expire everything that's due to expire by then"."""
-  singletons.invalidate(singletons.DB_CONFIG_INDEX)
-  singletons.invalidate(singletons.MAIN_CONFIG_INDEX)
-
-def insert_config(key, value_list):
-  """Updates a config key.  Used for tests"""
-  conf = ConfigurationDAO().load(CONFIG_SINGLETON_KEY)
-  conf.configuration[key] = value_list
-  ConfigurationDAO().store(conf)
-  invalidate()
-
-def get_config_that_was_active_at(key, date):
-  history_model = ConfigurationDAO().history_model
-  q = history_model.query(ancestor=ndb.Key('Configuration', key));
-  q = q.filter(history_model.date < date).order(-ConfigurationDAO().history_model.date)
-  h = q.fetch(limit=1)
-  if not h:
-    raise NotFound('No history object active at {}.'.format(date))
-  return h[0].obj
 
 def get_db_config():
-  return singletons.get(singletons.DB_CONFIG_INDEX, DbConfig,
-                        cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS).config_dict
+  model = singletons.get(singletons.DB_CONFIG_INDEX,
+                         lambda: load(DB_CONFIG_KEY),
+                         cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS)
+  return model.configuration
 
 def get_config():
-  return singletons.get(singletons.MAIN_CONFIG_INDEX, MainConfig,
-                        cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS)
+  model = singletons.get(singletons.MAIN_CONFIG_INDEX,
+                         lambda: load(CONFIG_SINGLETON_KEY),
+                         cache_ttl_seconds=CONFIG_CACHE_TTL_SECONDS)
+  return model.configuration

@@ -6,6 +6,7 @@ from participant_enums import QuestionnaireStatus, OrganizationType
 from dateutil.tz import tzutc
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from model.calendar import Calendar
 from model.code import Code, CodeType, CodeBook, CodeHistory
 from model.hpo import HPO
 from model.log_position import LogPosition
@@ -28,9 +29,11 @@ class DatabaseTest(SqlTestBase):
 
     hpo = HPO(hpoId=1, name='UNSET', displayName='No organization set',
               organizationType=OrganizationType.UNSET)
+    calendar = Calendar(day=datetime.date(2018, 1, 1))
     code_book = CodeBook(codeBookId=1, created=datetime.datetime.now(), latest=True, name="pmi",
                          system="http://foo/bar", version="v0.1.1")
     session.add(hpo)
+    session.add(calendar)
     session.add(code_book)
     session.commit()
 

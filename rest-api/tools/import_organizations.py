@@ -12,6 +12,10 @@ Usage:
   Imports are idempotent; if you run the import multiple times, subsequent imports should
   have no effect.
 """
+# client needs to be top level import due to another client package in AppengineSDK
+
+from client import Client, client_log
+
 import os
 import logging
 import googlemaps
@@ -23,10 +27,18 @@ from dao.site_dao import SiteDao
 from model.hpo import HPO
 from model.organization import Organization
 from model.site import Site
-from model.site_enums import SiteStatus, EnrollingStatus
+from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
 from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
+from tools.import_participants import _setup_questionnaires, import_participant
 
+
+# Environments
+ENV_TEST = 'pmi-drc-api-test'
+ENV_STAGING = 'all-of-us-rdr-staging'
+ENV_STABLE = 'all-of-us-rdr-stable'
+ENV_PROD = 'all-of-us-rdr-prod'
+ENV_LIST = [ENV_TEST, ENV_STABLE, ENV_STAGING, ENV_PROD]
 # Column headers from the Awardees sheet at:
 # https://docs.google.com/spreadsheets/d/1CcIGRV0Bd6BIz7PeuvrV6QDGDRQkp83CJUkWAl-fG58/edit#gid=1076878570
 HPO_AWARDEE_ID_COLUMN = 'Awardee ID'
@@ -47,8 +59,7 @@ SITE_SITE_COLUMN = 'Site'
 SITE_MAYOLINK_CLIENT_NUMBER_COLUMN = 'MayoLINK Client #'
 SITE_NOTES_COLUMN = 'Notes'
 # TODO: switch this back to 'Status' [DA-538]
-SITE_STATUS_COLUMN = 'PTSC Scheduling Status'
-ENROLLING_STATUS_COLUMN = 'Enrolling Status'
+SCHEDULING_INSTRUCTIONS = 'Scheduling Instructions'
 SITE_LAUNCH_DATE_COLUMN = 'Anticipated Launch Date'
 SITE_DIRECTIONS_COLUMN = 'Directions'
 SITE_PHYSICAL_LOCATION_NAME_COLUMN = 'Physical Location Name'
@@ -60,6 +71,10 @@ SITE_ZIP_COLUMN = 'Zip'
 SITE_PHONE_COLUMN = 'Phone'
 SITE_ADMIN_EMAIL_ADDRESSES_COLUMN = 'Admin Email Addresses'
 SITE_LINK_COLUMN = 'Link'
+# values of these columns generated based on environment
+SITE_STATUS_COLUMN = 'PTSC Scheduling Status'
+ENROLLING_STATUS_COLUMN = 'Enrolling Status'
+DIGITAL_SCHEDULING_STATUS_COLUMN = 'Digital Scheduling Status'
 
 class HPOImporter(CsvImporter):
 
@@ -68,6 +83,7 @@ class HPOImporter(CsvImporter):
                                       [HPO_AWARDEE_ID_COLUMN, HPO_NAME_COLUMN,
                                        HPO_TYPE_COLUMN])
     self.new_count = 0
+    self.environment = None
 
   def _entity_from_row(self, row):
     type_str = row[HPO_TYPE_COLUMN]
@@ -101,6 +117,7 @@ class OrganizationImporter(CsvImporter):
                                                 ORGANIZATION_ORGANIZATION_ID_COLUMN,
                                                 ORGANIZATION_NAME_COLUMN])
     self.hpo_dao = HPODao()
+    self.environment = None
 
   def _entity_from_row(self, row):
     hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN].upper())
@@ -119,16 +136,99 @@ class OrganizationImporter(CsvImporter):
 class SiteImporter(CsvImporter):
 
   def __init__(self):
-    super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
-                                       [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
-                                       SITE_SITE_COLUMN, SITE_STATUS_COLUMN,
-                                       ENROLLING_STATUS_COLUMN])
-
-    self.organization_dao = OrganizationDao()
     args = parser.parse_args()
+    self.organization_dao = OrganizationDao()
     self.geocode_flag = args.geocode_flag
     self.ACTIVE = SiteStatus.ACTIVE
     self.status_exception_list = ['hpo-site-walgreensphoenix']
+    self.instance = args.instance
+    self.creds_file = args.creds_file
+    self.new_sites_list = []
+    self.project = None
+    if args.project:
+      self.project = args.project
+
+    if self.project in ENV_LIST:
+      self.environment = ' ' + self.project.split('-')[-1].upper()
+    else:
+      self.environment = ' ' + ENV_TEST.split('-')[-1].upper()
+
+    super(SiteImporter, self).__init__('site', SiteDao(), 'siteId', 'googleGroup',
+                                       [SITE_ORGANIZATION_ID_COLUMN, SITE_SITE_ID_COLUMN,
+                                        SITE_SITE_COLUMN, SITE_STATUS_COLUMN + self.environment,
+                                        ENROLLING_STATUS_COLUMN + self.environment,
+                                        DIGITAL_SCHEDULING_STATUS_COLUMN + self.environment])
+
+  def run(self, filename, dry_run):
+    super(SiteImporter, self).run(filename, dry_run)
+    insert_participants = False
+    if dry_run:
+      if self.environment:
+        if self.environment.strip() == 'STABLE' and len(self.new_sites_list) > 0:
+          from googleapiclient.discovery import build
+          logging.info('Starting reboot of app instances to insert new test participants')
+          service = build('appengine', 'v1', cache_discovery=False)
+          request = service.apps().services().versions().list(appsId=ENV_STABLE,
+                                                                    servicesId='default')
+          versions = request.execute()
+
+          for version in versions['versions']:
+            if version['servingStatus'] == 'SERVING':
+              _id = version['id']
+              request = service.apps().services().versions().instances().list(
+                                                                      appsId=ENV_STABLE,
+                                                                      servicesId='default',
+                                                                      versionsId=_id)
+              instances = request.execute()
+
+              try:
+                for instance in instances['instances']:
+                  sha = instance['name'].split('/')[-1]
+                  delete_instance = service.apps().services().versions().instances().delete(
+                                                                        appsId=ENV_STABLE,
+                                                                        servicesId='default',
+                                                                        versionsId=_id,
+                                                                        instancesId=sha)
+
+                  response = delete_instance.execute()
+              except KeyError:
+                logging.warn('No running instance for %s', version['name'])
+
+                if response['done']:
+                  insert_participants = True
+                  logging.info('Reboot of instance: %s in stable complete.', instance['name'])
+                else:
+                  logging.warn('Not able to reboot instance on server, Error: %s', response)
+
+          if insert_participants:
+            logging.info('Starting import of test participants.')
+            self._insert_new_participants(self.new_sites_list)
+
+  def _insert_new_participants(self, entity):
+    num_participants = 0
+    participants = {'zip_code': '20001',
+                    'date_of_birth': '1933-3-3',
+                    'gender_identity': 'GenderIdentity_Woman',
+                    'withdrawalStatus': 'NOT_WITHDRAWN',
+                    'suspensionStatus': 'NOT_SUSPENDED'
+                    }
+
+    client = Client('rdr/v1', False, self.creds_file, self.instance)
+    client_log.setLevel(logging.WARN)
+    questionnaire_to_questions, consent_questionnaire_id_and_version = _setup_questionnaires(client)
+    consent_questions = questionnaire_to_questions[consent_questionnaire_id_and_version]
+    for site in entity:
+      for participant, v in enumerate(range(1, 21), 1):
+        num_participants += 1
+        participant = participants
+        participant.update({'last_name': site.googleGroup.split('-')[-1]})
+        participant.update({'first_name': 'Participant {}'.format(v)})
+        participant.update({'site': site.googleGroup})
+
+        import_participant(participant, client, consent_questionnaire_id_and_version,
+                           questionnaire_to_questions, consent_questions, num_participants)
+
+    logging.info('%d participants imported.' % num_participants)
 
   def _entity_from_row(self, row):
     google_group = row[SITE_SITE_ID_COLUMN].lower()
@@ -166,19 +266,20 @@ class SiteImporter(CsvImporter):
         return None
     notes = row.get(SITE_NOTES_COLUMN)
     try:
-      site_status = SiteStatus(row[SITE_STATUS_COLUMN].upper())
+      site_status = SiteStatus(row[SITE_STATUS_COLUMN + self.environment].upper())
     except TypeError:
-      logging.warn('Invalid site status %s for site %s', row[SITE_STATUS_COLUMN], google_group)
-      self.errors.append('Invalid site status {} for site {}'.format(row[SITE_STATUS_COLUMN],
-                         google_group))
+      logging.warn('Invalid site status %s for site %s', row[SITE_STATUS_COLUMN + self.environment],
+                                                                                      google_group)
+      self.errors.append('Invalid site status {} for site {}'.format(row[SITE_STATUS_COLUMN +
+                                                                  self.environment], google_group))
       return None
     try:
-      enrolling_status = EnrollingStatus(row[ENROLLING_STATUS_COLUMN].upper())
+      enrolling_status = EnrollingStatus(row[ENROLLING_STATUS_COLUMN + self.environment].upper())
     except TypeError:
-      logging.warn('Invalid enrollment site status %s for site %s', row[ENROLLING_STATUS_COLUMN],
-                   google_group)
+      logging.warn('Invalid enrollment site status %s for site %s', row[ENROLLING_STATUS_COLUMN +
+                                                                  self.environment], google_group)
       self.errors.append('Invalid enrollment site status {} for site {}'.format(
-                         row[ENROLLING_STATUS_COLUMN], google_group))
+                         row[ENROLLING_STATUS_COLUMN + self.environment], google_group))
 
     directions = row.get(SITE_DIRECTIONS_COLUMN)
     physical_location_name = row.get(SITE_PHYSICAL_LOCATION_NAME_COLUMN)
@@ -190,6 +291,9 @@ class SiteImporter(CsvImporter):
     phone = row.get(SITE_PHONE_COLUMN)
     admin_email_addresses = row.get(SITE_ADMIN_EMAIL_ADDRESSES_COLUMN)
     link = row.get(SITE_LINK_COLUMN)
+    digital_scheduling_status = DigitalSchedulingStatus(row[DIGITAL_SCHEDULING_STATUS_COLUMN +
+                                                            self.environment].upper())
+    schedule_instructions = row.get(SCHEDULING_INSTRUCTIONS)
     return Site(siteName=name,
                 googleGroup=google_group,
                 mayolinkClientNumber=mayolink_client_number,
@@ -197,6 +301,8 @@ class SiteImporter(CsvImporter):
                 hpoId=organization.hpoId,
                 siteStatus=site_status,
                 enrollingStatus=enrolling_status,
+                digitalSchedulingStatus=digital_scheduling_status,
+                scheduleInstructions=schedule_instructions,
                 launchDate=launch_date,
                 notes=notes,
                 directions=directions,
@@ -222,6 +328,7 @@ class SiteImporter(CsvImporter):
     if entity.siteStatus == self.ACTIVE and (entity.latitude == None or entity.longitude == None):
       self.errors.append('Skipped active site without geocoding: {}'.format(entity.googleGroup))
       return False
+    self.new_sites_list.append(entity)
     super(SiteImporter, self)._insert_entity(entity, existing_map, session, dry_run)
 
   def _populate_lat_lng_and_time_zone(self, site, existing_site):
@@ -311,7 +418,15 @@ if __name__ == '__main__':
   parser.add_argument('--dry_run', help='Read CSV and check for diffs against database.',
                       action='store_true')
   parser.add_argument('--geocode_flag', help='If --account passed into import_organizations.sh, '
-                                             'geocoding is performed.',
-                      action='store_true')
+                      'geocoding is performed.', action='store_true')
+  parser.add_argument('--project', help='Project is used to determine enviroment for specific '
+                      'settings')
 
+  parser.add_argument('--instance',
+                      type=str,
+                      help='The instance to hit, defaults to http://localhost:8080',
+                      default='http://localhost:8080')
+  parser.add_argument('--creds_file',
+                      type=str,
+                      help='Path to credentials JSON file.')
   main(parser.parse_args())

@@ -1,15 +1,16 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
 
-import app_util
-import config
 import json
 import logging
 import traceback
 
-from dao.metrics_dao import MetricsVersionDao
-from dao.metric_set_dao import AggregateMetricsDao
 from flask import Flask, request
 from google.appengine.api import app_identity
+from sqlalchemy.exc import DBAPIError
+import app_util
+import config
+from dao.metrics_dao import MetricsVersionDao
+from dao.metric_set_dao import AggregateMetricsDao
 from offline import biobank_samples_pipeline
 from offline.base_pipeline import send_failure_alert
 from offline.table_exporter import TableExporter
@@ -67,6 +68,7 @@ def recalculate_metrics():
                                      int(config.getSetting(config.METRICS_SHARDS, 1)))
     return '{"metrics-pipeline-status": "started"}'
 
+
 @app_util.auth_required_cron
 def recalculate_public_metrics():
   logging.info('generating public metrics')
@@ -85,6 +87,7 @@ def recalculate_public_metrics():
       'metrics': client_aggs
   })
 
+
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def import_biobank_samples():
@@ -99,6 +102,7 @@ def import_biobank_samples():
   biobank_samples_pipeline.write_reconciliation_report(timestamp)
   logging.info('Generated reconciliation report.')
   return json.dumps({'written': written})
+
 
 @app_util.auth_required(EXPORTER)
 def export_tables():
@@ -160,6 +164,8 @@ def _build_pipeline_app():
 
   offline_app.after_request(app_util.add_headers)
   offline_app.before_request(app_util.request_logging)
+  offline_app.register_error_handler(DBAPIError, app_util.handle_database_disconnect)
+
   return offline_app
 
 

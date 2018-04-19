@@ -1,11 +1,7 @@
 """Utilities used by the API definition, and authentication/authorization/roles."""
-
 import datetime
-import string
 
 from dateutil.parser import parse
-from protorpc import message_types
-from protorpc import messages
 from werkzeug.exceptions import BadRequest
 
 from code_constants import UNSET, UNMAPPED
@@ -21,11 +17,6 @@ DEV_MAIL = "example@example.com"
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
 PTC_HEALTHPRO_AWARDEE = [PTC, HEALTHPRO, AWARDEE]
 ALL_ROLES = [PTC, HEALTHPRO, STOREFRONT, EXPORTER]
-
-EPOCH = datetime.datetime.utcfromtimestamp(0)
-
-class DateHolder(messages.Message):
-  date = message_types.DateTimeField(1)
 
 
 def parse_date(date_str, date_format=None, date_only=False):
@@ -51,12 +42,6 @@ def parse_date(date_str, date_format=None, date_only=False):
         raise BadRequest('Date contains non zero time fields')
     return date_obj
 
-
-def parse_json_date(obj, field_name, date_format=None):
-  """Converts a field of a dictionary from a string to a datetime."""
-  if field_name in obj:
-    obj[field_name] = parse_date(obj[field_name], date_format)
-
 def format_json_date(obj, field_name, date_format=None):
   """Converts a field of a dictionary from a datetime to a string."""
   if field_name in obj:
@@ -67,7 +52,6 @@ def format_json_date(obj, field_name, date_format=None):
         obj[field_name] = obj[field_name].strftime(date_format)
       else:
         obj[field_name] = obj[field_name].isoformat()
-
 
 def format_json_code(obj, code_dao, field_name):
   field_without_id = field_name[0:len(field_name) - 2]
@@ -102,9 +86,6 @@ def format_json_site(obj, site_dao, field_name):
   else:
     obj[field_name] = UNSET
 
-def unix_time_millis(dt):
-  return int((dt - EPOCH).total_seconds() * 1000)
-
 def parse_json_enum(obj, field_name, enum_cls):
   """Converts a field of a dictionary from a string to an enum."""
   if field_name in obj and obj[field_name] is not None:
@@ -137,20 +118,3 @@ def get_organization_id_from_external_id(obj, organization_dao):
     if organization is not None:
       return organization.organizationId
   return None
-
-
-def remove_field(dict_, field_name):
-  """Removes a field from the dict if it exists."""
-  if field_name in dict_:
-    del dict_[field_name]
-
-def searchable_representation(str_):
-  """Takes a string, and returns a searchable representation.
-
-  The string is lowercased and punctuation is removed.
-  """
-  if not str_:
-    return str_
-
-  str_ = str(str_)
-  return str_.lower().translate(None, string.punctuation)

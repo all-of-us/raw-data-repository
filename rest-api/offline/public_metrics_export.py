@@ -223,12 +223,12 @@ class PublicMetricsExport(object):
         metricSetType=MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS,
         lastModified=clock.CLOCK.now()
     )
-    aggs = []
-    with database_factory.get_generic_database().session() as session:
+    db = database_factory.get_generic_database()
+    def save(session):
+      aggs = []
       MetricSetDao().upsert_with_session(session, ms)
       agg_dao = AggregateMetricsDao()
       agg_dao.delete_all_for_metric_set_with_session(session, metric_set_id)
-
       for (k, vals) in metrics.iteritems():
         for v in vals:
           agg = AggregateMetrics(
@@ -239,5 +239,5 @@ class PublicMetricsExport(object):
           )
           agg_dao.insert_with_session(session, agg)
           aggs.append(agg)
-
-    return aggs
+      return aggs
+    return db.autoretry(save)

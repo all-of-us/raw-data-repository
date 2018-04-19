@@ -105,12 +105,14 @@ class AwardeeApiTest(FlaskTestBase):
              'displayName': 'Zebras Rock',
              'enrollingStatus': 'INACTIVE',
              'siteStatus': 'INACTIVE',
+              'digitalSchedulingStatus': 'None',
              'address': {}
             },
              {'id': 'hpo-site-1',
               'displayName': 'Site 1',
               'mayolinkClientNumber': 123456,
               'siteStatus': 'ACTIVE',
+              'digitalSchedulingStatus': 'None',
               'enrollingStatus': 'ACTIVE',
               'launchDate': '2016-01-01',
               'notes': 'notes',
@@ -189,7 +191,8 @@ class AwardeeApiTest(FlaskTestBase):
            {'resource': {'displayName': 'Pittsburgh', 'type': 'HPO', 'id': 'PITT', 'organizations':
            [{'displayName': 'Organization 2', 'id': 'ORG_2',
            'sites':
-           [{'siteStatus': 'INACTIVE', 'displayName': 'not enrolling site', 'id': 'not_enrolling_dot_com',
+           [{'siteStatus': 'INACTIVE', 'displayName': 'not enrolling site', 'id':
+             'not_enrolling_dot_com', 'digitalSchedulingStatus': 'None',
            'address': {}}]}]}, 'fullUrl': 'http://localhost/rdr/v1/Awardee/PITT'},
            {'resource': {'displayName': 'Unset', 'type': 'UNSET', 'id': 'UNSET'},
            'fullUrl': 'http://localhost/rdr/v1/Awardee/UNSET'}], 'type': 'searchset'}

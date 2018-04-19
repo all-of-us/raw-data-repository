@@ -1,3 +1,18 @@
 *.pyc
+*.pyo
+**/__pycache__
+
 *.swp
-rest-api/lib
+*.bak
+
+**/lib
+**/bin
+**/venv
+
+**/.idea
+**/.project
+**/.pydevproject
+
+# Test coverage files
+.coverage
+htmlcov/

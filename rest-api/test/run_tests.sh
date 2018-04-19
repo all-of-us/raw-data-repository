@@ -4,7 +4,6 @@
 
 subset="all"
 
-
 function usage() {
   echo "Usage: run_test.sh -g /path/to/google/cloud/sdk_dir" \
       "[-s all|unit|client]" \
@@ -12,8 +11,12 @@ function usage() {
   exit 1
 }
 
-while getopts "s:g:h:r:" opt; do
+while getopts "cs:g:h:r:" opt; do
   case $opt in
+    c)
+      coverage="true"
+      echo "Coverage report generation enabled"
+      ;;
     g)
       sdk_dir=$OPTARG
       echo "Using SDK dir: $OPTARG" >&2
@@ -59,11 +62,12 @@ BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
 
 if [[ "$subset" == "all" || "$subset" == "unit" ]];
 then
-  if [[ -z $substring ]]
-  then
-    cmd="test/runner.py --test-path test/unit_test/ ${sdk_dir}"
-  else
-    cmd="test/runner.py --test-path test/unit_test/ ${sdk_dir} --test-pattern $substring"
+  cmd="test/runner.py --test-path test/unit_test/ ${sdk_dir}"
+  if [[ ! -z $substring ]]; then
+    cmd="$cmd --test-pattern $substring"
+  fi
+  if [[ -z $coverage ]]; then
+    cmd="$cmd --no-coverage"
   fi
   (cd ${BASE_DIR}; python $cmd)
 fi

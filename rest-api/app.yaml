@@ -13,16 +13,13 @@ handlers:
 - url: /_ah/queue/deferred
   script: google.appengine.ext.deferred.deferred.application
   login: admin
-  secure: always
 - url: /.*
   script: main.app
-  secure: always
 # App data directory used to load static files in AppEngine; not used for actual serving.
 - url: /app_data/.*
   login: admin
   static_dir: app_data
   application_readable: true
-  secure: always
 
 libraries:
 - name: pycrypto
@@ -31,3 +28,4 @@ libraries:
   version: 1.0
 - name: MySQLdb
   version: "latest"
+# app_base.yaml is concatenated to the beginning of this file for deployment.
