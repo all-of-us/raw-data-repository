@@ -1,5 +1,6 @@
 import datetime
 from clock import FakeClock
+import httplib
 
 from dao.participant_dao import ParticipantDao
 from model.hpo import HPO
@@ -504,3 +505,65 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 3)
+
+  def test_url_parameter_validation_for_date_range(self):
+    # Ensure requests for very long date ranges are marked BAD REQUEST
+
+    qs = """
+        bucketSize=1
+        &stratification=TOTAL
+        &startDate=2017-12-30
+        &endDate=2217-12-30
+        """
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs,
+                             expected_status=httplib.BAD_REQUEST)
+    self.assertEquals(response, None)
+
+  def test_url_parameter_validation_for_stratifications(self):
+    # Ensure requests invalid stratifications are marked BAD REQUEST
+
+    qs = """
+          bucketSize=1
+          &stratification=FOOBAR
+          &startDate=2017-12-30
+          &endDate=2018-01-04
+          """
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs,
+                             expected_status=httplib.BAD_REQUEST)
+    self.assertEquals(response, None)
+
+  def test_url_parameter_validation_for_awardee(self):
+    # Ensure requests invalid awardee are marked BAD REQUEST
+
+    qs = """
+            bucketSize=1
+            &stratification=ENROLLMENT_STATUS
+            &startDate=2017-12-30
+            &endDate=2018-01-04
+            &awardee=FOOBAR
+            """
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs,
+                             expected_status=httplib.BAD_REQUEST)
+    self.assertEquals(response, None)
+
+  def test_url_parameter_validation_for_enrollment_status(self):
+    # Ensure requests invalid enrollment status are marked BAD REQUEST
+
+    qs = """
+            bucketSize=1
+            &stratification=ENROLLMENT_STATUS
+            &startDate=2017-12-30
+            &endDate=2018-01-04
+            &enrollmentStatus=FOOBAR
+            """
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs,
+                             expected_status=httplib.BAD_REQUEST)
+    self.assertEquals(response, None)
