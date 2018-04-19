@@ -1,4 +1,4 @@
-"""Simple client call to use app engine apis on the server."""
+"""Simple client call to use to rotate keys on the server."""
 
 import json
 import logging
