@@ -158,7 +158,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     # generate the GREATEST statement instead, but for now are hardcoding as
     # we do with samples.
 
-    # TODO when implementing unit testing:
+    # TODO when implementing unit testing for service class:
     # Add macros for GREATEST and LEAST, as they don't work in SQLite
     # Example: master/rest-api/dao/database_utils.py#L50
 
