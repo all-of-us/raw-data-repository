@@ -116,7 +116,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       facets_sql += ' AND '.join(facets_sql_list) + ' AND'
 
     # TODO: use bound parameters
-    # See https://github.com/all-of-us/raw-data-repository/pull/669/files/a08be0ffe445da60ebca13b41d694368e4d42617#diff-6c62346e0cbe4a7fd7a45af6d4559c3e
+    # See https://github.com/all-of-us/raw-data-repository/pull/669/files/a08be0ffe445da60ebca13b41d694368e4d42617#diff-6c62346e0cbe4a7fd7a45af6d4559c3e  # pylint: disable=line-too-long
     facets_sql += ' %(table_prefix)s.hpo_id != %(test_hpo_id)s ' % {
       'table_prefix': table_prefix, 'test_hpo_id': self.test_hpo_id}
     facets_sql += ' AND NOT ps.email LIKE "%(test_email_pattern)s"' % {
