@@ -46,35 +46,9 @@ BIOBANK_STATUS_MAIL_RECIPIENTS = 'biobank_status_mail_recipients'
 # True if we should add codes referenced in questionnaires that
 # aren't in the code book; false if we should reject the questionnaires.
 ADD_QUESTIONNAIRE_CODES_IF_MISSING = 'add_questionnaire_codes_if_missing'
-REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
-
-# Service account key age
-DAYS_TO_DELETE = 3
-
-CONFIG_OVERRIDES = {}
-
-class BaseConfig(object):
-
-  def __init__(self, config_key):
-    config_obj = ConfigurationDAO().load_if_present(config_key)
-    if config_obj is None:
-      raise KeyError('No config for %r.' % config_key)
-
-    self.config_dict = config_obj.configuration
-
-
-class MainConfig(BaseConfig):
-
-  def __init__(self):
-    super(MainConfig, self).__init__(CONFIG_SINGLETON_KEY)
-
-
-class DbConfig(BaseConfig):
-
-  def __init__(self):
-    super(DbConfig, self).__init__(DB_CONFIG_KEY)
 
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
+DAY_TO_DELETE = 3
 
 
 # Overrides for testing scenarios

@@ -4,11 +4,11 @@ import os
 """ Helper functions for using app_engine api's with Python SDK """
 
 def get_key():
- if os.path.isfile(get_key()):
-   os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = get_key()
-   storage_key = os.path.expanduser('~/.gcp/cloudsecurity-monitoring.json')
+  if os.path.isfile(get_key()):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = get_key()
+    storage_key = os.path.expanduser('~/.gcp/cloudsecurity-monitoring.json')
 
- return storage_key
+  return storage_key
 
 
 
@@ -39,10 +39,3 @@ def make_key(app_id):
   create_request = service.projects().serviceAccounts().keys().create(name=serviceaccount)
   key = create_request.execute()
   print key
-
-def main():
-  pass
-
-
-if __name__ == '__main__':
- main()

@@ -33,11 +33,8 @@ def rotate_sa_keys():
           key_age_days = (datetime.utcnow() - startdate).days
 
           if key_age_days > DAYS_TO_DELETE:
-            logging.warning('Deleting service Account key older than {} days [{0}]: {1}'.format(
+            logging.warning('Deleting service Account key older than {} days [{}]: {}'.format(
                             DAYS_TO_DELETE, key_age_days, keyname))
-
-            print('Deleting service Account key older than 3 days [{0}]: {1}'.format(
-                  key_age_days, keyname))
 
             delete_request = service.projects().serviceAccounts().keys().delete(name=keyname)
             delete_request.execute()
@@ -47,7 +44,7 @@ def rotate_sa_keys():
             create_request.execute()
 
           else:
-            logging.info('Service Account key is {0} days old: {1}'.format(key_age_days, keyname))
+            logging.info('Service Account key is {} days old: {}'.format(key_age_days, keyname))
 
   except KeyError:
-    logging.info('No Service Accounts found in project "{0}"'.format(app_id))
+    logging.info('No Service Accounts found in project "{}"'.format(app_id))
