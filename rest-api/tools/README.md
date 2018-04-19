@@ -137,3 +137,7 @@ scripts that rely on these libraries.
 Retrieves metadata about all physical measurements in use in the database; or when run with
 --run_backfill, backfills all physical measurement rows and their children to match parsed
 resources.
+
+### remove_service_account_keys.sh
+
+Rotates service account keys older than three days where service account starts with 'awardee-'.

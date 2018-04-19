@@ -2,6 +2,8 @@
 
 # remove keys for service accounts that start with 'awardee-' that are older than 3 days.
 # PARAM: --PROJECT
+# There is an endpoint for this same functionality as an offline cron job.
+# The difference here is it only rotates service account keys for SA's beginning with 'awardee-' such as an HPO service account.
 
 while true; do
   case "$1" in
