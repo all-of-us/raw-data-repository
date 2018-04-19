@@ -11,7 +11,7 @@ from client import Client
 def main():
   client = Client(base_path='offline')
 
-  response = client.request_json('RotateKeys', 'GET', cron=True)
+  response = client.request_json('rotate_keys', 'GET', cron=True)
   logging.info(json.dumps(response, indent=2, sort_keys=True))
 
 

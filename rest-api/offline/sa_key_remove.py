@@ -1,5 +1,5 @@
-from googleapiclient import discovery
 from google.appengine.api import app_identity
+from googleapiclient import discovery
 import logging
 from datetime import datetime
 from config import DAYS_TO_DELETE

@@ -154,7 +154,7 @@ def _build_pipeline_app():
 
   offline_app.add_url_rule(
     PREFIX + 'RotateKeys',
-    endpoint='RotateKeys',
+    endpoint='rotate_keys',
     view_func=rotate_keys,
     methods=['GET'])
 
