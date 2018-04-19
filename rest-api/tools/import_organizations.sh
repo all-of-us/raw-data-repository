@@ -42,11 +42,14 @@ GEOCODE_FLAG=--geocode_flag
 get_geocode_key
 fi
 
+EXTRA_ARGS="$@"
 if [ "${PROJECT}" ]
 then
+  echo "Getting credentials for ${PROJECT}..."
   source tools/auth_setup.sh
   run_cloud_sql_proxy
   set_db_connection_string
+  EXTRA_ARGS+=" --creds_file ${CREDS_FILE} --instance ${INSTANCE} --project ${PROJECT}"
 else
   if [ -z "${DB_CONNECTION_STRING}" ]
   then
@@ -56,8 +59,9 @@ else
 fi
 
 source tools/set_path.sh
+
 python tools/import_organizations.py --awardee_file data/awardees.csv \
-  --organization_file data/organizations.csv --site_file data/sites.csv $DRY_RUN $GEOCODE_FLAG
+  --organization_file data/organizations.csv --site_file data/sites.csv $EXTRA_ARGS $DRY_RUN $GEOCODE_FLAG
 
 function finish {
   cleanup
