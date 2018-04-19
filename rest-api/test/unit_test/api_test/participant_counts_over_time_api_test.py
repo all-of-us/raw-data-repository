@@ -130,12 +130,14 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     p1 = Participant(participantId=3, biobankId=6)
     self._insert(p1, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
 
+    # enrollmentStatus param left blank to test we can handle it
     qs = """
       bucketSize=1
       &stratification=ENROLLMENT_STATUS
       &startDate=2017-12-30
       &endDate=2018-01-04
       &awardee=PITT
+      &enrollmentStatus=
       """
 
     qs = ''.join(qs.split())  # Remove all whitespace
@@ -261,11 +263,13 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1, time_mem=self.time3)
 
+    # awardee param intentionally left blank to test we can handle it
     qs = """
       bucketSize=1
       &stratification=ENROLLMENT_STATUS
       &startDate=2017-12-30
       &endDate=2018-01-04
+      &awardee=
       &enrollmentStatus=MEMBER
       """
 
@@ -489,35 +493,3 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 3)
-
-  # def test_get_counts_with_total_stratification_filtered(self):
-  #   # Do the awardee and enrollment status filters work when passed multiple values?
-  #
-  #     #
-  #   p1 = Participant(participantId=1, biobankId=4)
-  #   self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
-  #
-  #   p2 = Participant(participantId=2, biobankId=5)
-  #   self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
-  #
-  #   p3 = Participant(participantId=3, biobankId=6)
-  #   self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
-  #
-  #   qs = """
-  #     bucketSize=1
-  #     &stratification=TOTAL
-  #     &startDate=2017-12-30
-  #     &endDate=2018-01-04
-  #     &awardee=PITT
-  #     &enrollmentStatus=INTERESTED
-  #     """
-  #
-  #   qs = ''.join(qs.split())  # Remove all whitespace
-  #
-  #   response = self.send_get('ParticipantCountsOverTime', query_string=qs)
-  #
-  #   total_count_day_1 = response[0]['metrics']['TOTAL']
-  #   total_count_day_2 = response[1]['metrics']['TOTAL']
-  #
-  #   self.assertEquals(total_count_day_1, 0)
-  #   self.assertEquals(total_count_day_2, 1)
