@@ -48,7 +48,7 @@ BIOBANK_STATUS_MAIL_RECIPIENTS = 'biobank_status_mail_recipients'
 ADD_QUESTIONNAIRE_CODES_IF_MISSING = 'add_questionnaire_codes_if_missing'
 
 REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
-DAY_TO_DELETE = 3
+DAYS_TO_DELETE = 3
 
 
 # Overrides for testing scenarios
