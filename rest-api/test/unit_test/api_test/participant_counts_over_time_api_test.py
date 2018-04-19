@@ -106,8 +106,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       &stratification=ENROLLMENT_STATUS
       &startDate=2017-12-30
       &endDate=2018-01-04
-      &awardee=
-      &enrollmentStatus=
       """
 
     qs = ''.join(qs.split())  # Remove all whitespace
@@ -138,7 +136,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       &startDate=2017-12-30
       &endDate=2018-01-04
       &awardee=PITT
-      &enrollmentStatus=
       """
 
     qs = ''.join(qs.split())  # Remove all whitespace
@@ -157,7 +154,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       &startDate=2017-12-30
       &endDate=2018-01-04
       &awardee=AZ_TUCSON
-      &enrollmentStatus=
       """
 
     qs = ''.join(qs.split())  # Remove all whitespace
@@ -270,7 +266,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       &stratification=ENROLLMENT_STATUS
       &startDate=2017-12-30
       &endDate=2018-01-04
-      &awardee=
       &enrollmentStatus=MEMBER
       """
 
@@ -295,7 +290,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       &stratification=TOTAL
       &startDate=2017-12-30
       &endDate=2018-01-04
-      &awardee=
       &enrollmentStatus=MEMBER
       """
 
@@ -336,7 +330,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       &stratification=ENROLLMENT_STATUS
       &startDate=2017-12-30
       &endDate=2018-01-04
-      &awardee=
       &enrollmentStatus=FULL_PARTICIPANT
       """
 
@@ -387,7 +380,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       &stratification=TOTAL
       &startDate=2017-12-30
       &endDate=2018-01-04
-      &awardee=
       &enrollmentStatus=FULL_PARTICIPANT
       """
 
@@ -471,7 +463,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_2, 3)
 
   def test_get_counts_with_total_stratification_unfiltered(self):
-    # Do the awardee and enrollment status filters work when passed multiple values?
 
     p1 = Participant(participantId=1, biobankId=4)
     self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
@@ -487,8 +478,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       &stratification=TOTAL
       &startDate=2017-12-30
       &endDate=2018-01-04
-      &awardee=
-      &enrollmentStatus=
       """
 
     qs = ''.join(qs.split())  # Remove all whitespace
