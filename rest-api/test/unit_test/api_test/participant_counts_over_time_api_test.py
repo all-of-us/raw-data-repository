@@ -21,8 +21,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.ps_dao = ParticipantSummaryDao()
     self.ps = ParticipantSummary()
     self.calendar_dao = CalendarDao()
-    hpo_dao = HPODao()
-    hpo_dao.insert(HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
+    self.hpo_dao = HPODao()
+
+    # Needed by ParticipantCountsOverTimeApi
+    self.hpo_dao.insert(HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
                        organizationType=OrganizationType.UNSET))
 
     self.time1 = datetime.datetime(2017, 12, 31)
@@ -30,8 +32,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.time3 = datetime.datetime(2018, 1, 2)
     self.time4 = datetime.datetime(2018, 1, 3)
 
-    curr_date = datetime.date(2017, 12, 22)
     # Insert 2 weeks of dates
+    curr_date = datetime.date(2017, 12, 22)
     for _ in xrange(0, 14):
       calendar_day = Calendar(day=curr_date )
       CalendarDao().insert(calendar_day)
@@ -75,7 +77,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     summary.dateOfBirth = datetime.date(1978, 10, 10)
 
     summary.enrollmentStatus = enrollment_status
-    summary.hpoId = PITT_HPO_ID
+    summary.hpoId = self.hpo_dao.get_by_name(hpo_name).hpoId
 
     if time_mem is not None:
       with FakeClock(time_mem):
