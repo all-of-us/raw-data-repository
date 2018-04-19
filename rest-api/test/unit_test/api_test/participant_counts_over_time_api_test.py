@@ -105,6 +105,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     p1 = Participant(participantId=1, biobankId=4)
     self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
 
+    # TODO: remove bucketSize from these parameters in all tests
     qs = """
       bucketSize=1
       &stratification=ENROLLMENT_STATUS
@@ -599,3 +600,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     response = self.send_get('ParticipantCountsOverTime', query_string=qs,
                              expected_status=httplib.BAD_REQUEST)
     self.assertEquals(response, None)
+
+  # Add tests for more invalida parameters, e.g.:
+  # * starting or ending halfway through the data
+  # * startDate = endDate
+  # * missing required parameters
