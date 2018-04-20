@@ -80,3 +80,4 @@ def delete_keys(project):
 if __name__ == '__main__':
   # delete_keys('pmi-drc-api-test')
   # make_key('pmi-drc-api-test')
+  print 'choose a path'
