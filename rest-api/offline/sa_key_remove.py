@@ -34,7 +34,7 @@ def delete_service_account_keys():
 
           key_age_days = (datetime.utcnow() - startdate).days
 
-          if key_age_days > days_to_delete:
+          if key_age_days >= days_to_delete:
             logging.warning('Deleting service Account key older than {} days [{}]: {}'.format(
                             days_to_delete, key_age_days, keyname))
 
