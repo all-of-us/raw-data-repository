@@ -2,7 +2,8 @@ Awardee ID,Organization ID,Name
 AZ_TUCSON,AZ_TUCSON_BANNER_HEALTH,Banner Health
 CAL_PMC,CAL_PMC_UCD,"University of California, Davis"
 CAL_PMC,CAL_PMC_UCSF,"University of California, San Francisco"
-CAL_PMC,CAL_PMC_UCSD,San Diego Blood Bank (HPO)
+CAL_PMC,CAL_PMC_UCSD,"University of California, San Diego"
+CAL_PMC,CAL_PMC_SDBB,HPO San Diego Blood Bank 
 CAL_PMC,CAL_PMC_USC,University of Southern California
 CAL_PMC,CAL_PMC_UCI,University of California Irvine School of Medicine
 CAL_PMC,CAL_PMC_CEDARS_SINAI,Cedars-Sinai Medical Center
@@ -26,7 +27,7 @@ PITT,PITT_UPMC,University of Pittsburgh Medical Center
 QTC,QTC_QTC,QTC
 QUEST,QUEST_QUEST,Quest Labs
 SAN_YSIDRO,SAN_YSIDRO_SYHC,San Ysidro Health Center
-SDBB,SDBB_SDBB,San Diego Blood Bank
+SDBB,SDBB_SDBB,DV San Diego Blood Bank 
 SEEC,SEEC_EMORY,Emory Uiversity
 SEEC,SEEC_UF,University of Florida
 SEEC,SEEC_MOREHOUSE,Moorehouse School of Medicine
