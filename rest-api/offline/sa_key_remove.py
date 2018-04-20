@@ -21,9 +21,10 @@ def rotate_sa_keys():
 
     for account in accounts:
       serviceaccount = project_name + '/serviceAccounts/' + account['email']
-      request = service.projects().serviceAccounts().keys().list(name=serviceaccount)
+      request = service.projects().serviceAccounts().keys().list(name=serviceaccount,
+                                                                 keyTypes='USER_MANAGED')
       response = request.execute()
-      if response['keys'] is not None:
+      if 'keys' in response:
         keys = response['keys']
 
         for key in keys:
@@ -45,6 +46,8 @@ def rotate_sa_keys():
 
           else:
             logging.info('Service Account key is {} days old: {}'.format(key_age_days, keyname))
+      else:
+        logging.info('No user managed keys for Service Account {}'.format(account))
 
   except KeyError:
     logging.info('No Service Accounts found in project "{}"'.format(app_id))
