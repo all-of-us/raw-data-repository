@@ -42,5 +42,8 @@
   ],
   "internal_status_email_recipients": [
     "pmi-drc-alerts+nonprod@googlegroups.com"
+  ],
+  "days_to_delete_keys": [
+    3
   ]
 }
