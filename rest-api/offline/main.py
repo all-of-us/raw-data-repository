@@ -127,7 +127,7 @@ def export_tables():
 @_alert_on_exceptions
 def rotate_keys():
   delete_service_account_keys()
-  return '{"Key rotation": "started"}'
+  return '{"success": "true"}'
 
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
