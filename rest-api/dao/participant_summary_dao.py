@@ -235,6 +235,7 @@ class ParticipantSummaryDao(UpdatableDao):
       samples_to_isolate_dna = (
           CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
                            WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
+                           AND biobank_stored_sample.confirmed IS NOT NULL
                            AND biobank_stored_sample.test IN %s)
           THEN :received ELSE :unset END
       ),
