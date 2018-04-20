@@ -3,6 +3,7 @@
 Locust docs: http://docs.locust.io/en/latest/writing-a-locustfile.html
 
 Instructions:
+*   In your venv, run pip install locustio
 *   Run "export $sdk_dir" to export the path to your locally installed Google Cloud SDK.
 *   Run load_test.sh, which wraps this and starts a locust server, e.g.:
    tools/load_test.sh --project all-of-us-rdr-staging --account dan.rodney@pmi-ops.org
