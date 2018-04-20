@@ -127,6 +127,7 @@ def export_tables():
 @_alert_on_exceptions
 def rotate_keys():
   rotate_sa_keys()
+  return '{"Key rotation": "started"}'
 
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
