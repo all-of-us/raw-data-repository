@@ -7,11 +7,8 @@ import traceback
 from flask import Flask, request
 from google.appengine.api import app_identity
 from sqlalchemy.exc import DBAPIError
-from werkzeug.exceptions import BadRequest
-
 import app_util
 import config
-from api_util import EXPORTER
 from dao.metrics_dao import MetricsVersionDao
 from dao.metric_set_dao import AggregateMetricsDao
 from offline import biobank_samples_pipeline
@@ -19,7 +16,9 @@ from offline.base_pipeline import send_failure_alert
 from offline.table_exporter import TableExporter
 from offline.metrics_export import MetricsExport
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
-
+from offline.sa_key_remove import delete_service_account_keys
+from api_util import EXPORTER
+from werkzeug.exceptions import BadRequest
 
 PREFIX = '/offline/'
 
@@ -124,6 +123,11 @@ def export_tables():
 
   return json.dumps(TableExporter.export_tables(database, tables, directory, deidentify))
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def delete_old_keys():
+  delete_service_account_keys()
+  return '{"success": "true"}'
 
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -152,6 +156,12 @@ def _build_pipeline_app():
       endpoint='ExportTables',
       view_func=export_tables,
       methods=['POST'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'DeleteOldKeys',
+    endpoint='delete_old_keys',
+    view_func=delete_old_keys,
+    methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)
   offline_app.before_request(app_util.request_logging)
