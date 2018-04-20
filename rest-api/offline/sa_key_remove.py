@@ -1,13 +1,14 @@
+import config
 from google.appengine.api import app_identity
 from googleapiclient import discovery
 import logging
 from datetime import datetime
-from config import DAYS_TO_DELETE
 
 """Deletes service account keys older than 3 days as required by NIH"""
 
 
 def rotate_sa_keys():
+  days_to_delete = config.getSetting(config.DAYS_TO_DELETE_KEYS)
   app_id = app_identity.get_application_id()
   if app_id is None:
     return
@@ -33,9 +34,9 @@ def rotate_sa_keys():
 
           key_age_days = (datetime.utcnow() - startdate).days
 
-          if key_age_days > DAYS_TO_DELETE:
+          if key_age_days > days_to_delete:
             logging.warning('Deleting service Account key older than {} days [{}]: {}'.format(
-                            DAYS_TO_DELETE, key_age_days, keyname))
+                            days_to_delete, key_age_days, keyname))
 
             delete_request = service.projects().serviceAccounts().keys().delete(name=keyname)
             delete_request.execute()
