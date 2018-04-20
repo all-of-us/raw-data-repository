@@ -125,7 +125,7 @@ def export_tables():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def rotate_keys():
+def delete_old_keys():
   delete_service_account_keys()
   return '{"success": "true"}'
 
@@ -158,9 +158,9 @@ def _build_pipeline_app():
       methods=['POST'])
 
   offline_app.add_url_rule(
-    PREFIX + 'RotateKeys',
-    endpoint='rotate_keys',
-    view_func=rotate_keys,
+    PREFIX + 'DeleteOldKeys',
+    endpoint='delete_old_keys',
+    view_func=delete_old_keys,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)

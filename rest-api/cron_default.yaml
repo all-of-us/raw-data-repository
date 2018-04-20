@@ -15,7 +15,7 @@ cron:
   timezone: America/New_York
   target: offline
 - description: Rotate service account keys older than 3 days
-  url: /offline/RotateKeys
+  url: /offline/DeleteOldKeys
   schedule: every day 01:00
   timezone: America/New_York
   target: offline
