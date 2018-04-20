@@ -48,9 +48,8 @@ set_db_connection_string
 # gcloud libraries added by set_path.sh include an older version.
 OLDPATH=$PYTHONPATH
 . tools/set_path.sh;
-GCLOUD_PATH=$(which gcloud)
-CLOUDSDK_ROOT_DIR=${GCLOUD_PATH%/bin/gcloud}
-GAE_SDK_ROOT="${CLOUDSDK_ROOT_DIR}/platform/google_appengine"
+
+GAE_SDK_ROOT="${sdk_dir}/platform/google_appengine"
 
 # The next line enables Python libraries for Google Cloud SDK
 GAEPATH=${GAE_SDK_ROOT}
