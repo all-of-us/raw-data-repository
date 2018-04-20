@@ -7,7 +7,7 @@ from datetime import datetime
 """Deletes service account keys older than 3 days as required by NIH"""
 
 
-def rotate_sa_keys():
+def delete_service_account_keys():
   days_to_delete = config.getSetting(config.DAYS_TO_DELETE_KEYS)
   app_id = app_identity.get_application_id()
   if app_id is None:
@@ -40,11 +40,6 @@ def rotate_sa_keys():
 
             delete_request = service.projects().serviceAccounts().keys().delete(name=keyname)
             delete_request.execute()
-
-            create_request = service.projects().serviceAccounts().keys().create(
-                             name=serviceaccount)
-            create_request.execute()
-
           else:
             logging.info('Service Account key is {} days old: {}'.format(key_age_days, keyname))
       else:

@@ -16,7 +16,7 @@ from offline.base_pipeline import send_failure_alert
 from offline.table_exporter import TableExporter
 from offline.metrics_export import MetricsExport
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
-from offline.sa_key_remove import rotate_sa_keys
+from offline.sa_key_remove import delete_service_account_keys
 from api_util import EXPORTER
 from werkzeug.exceptions import BadRequest
 
@@ -126,7 +126,7 @@ def export_tables():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def rotate_keys():
-  rotate_sa_keys()
+  delete_service_account_keys()
   return '{"Key rotation": "started"}'
 
 def _build_pipeline_app():
@@ -161,7 +161,7 @@ def _build_pipeline_app():
     PREFIX + 'RotateKeys',
     endpoint='rotate_keys',
     view_func=rotate_keys,
-    methods=['GET', 'DELETE', 'POST'])
+    methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)
   offline_app.before_request(app_util.request_logging)
