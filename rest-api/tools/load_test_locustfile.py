@@ -3,7 +3,9 @@
 Locust docs: http://docs.locust.io/en/latest/writing-a-locustfile.html
 
 Instructions:
-*   Run load_test.sh, which wraps this and starts a locust server.
+*   Run "export $sdk_dir" to export the path to your locally installed Google Cloud SDK.
+*   Run load_test.sh, which wraps this and starts a locust server, e.g.:
+   tools/load_test.sh --project all-of-us-rdr-staging --account dan.rodney@pmi-ops.org
 *   Once started, locust prints "Starting web monitor at *:8089". Open
     http://localhost:8089 to view the control/status page.
 *   Set the number of users to 100 (and hatch/sec to an arbitrary number, using 100 will start all
