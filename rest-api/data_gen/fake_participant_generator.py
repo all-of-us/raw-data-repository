@@ -95,8 +95,8 @@ _MAX_MINUTES_BETWEEN_SAMPLE_PROCESSED_AND_FINALIZED = 72 * 60
 # Random amount of time between questionnaire submissions
 _MAX_DAYS_BETWEEN_SUBMISSIONS = 30
 
-# Start creating participants from 4 years ago
-_MAX_DAYS_HISTORY = 4 * 365
+# Start creating participants from 1 years ago
+_MAX_DAYS_HISTORY = 365
 
 # Percentage of participants with multiple race answers
 _MULTIPLE_RACE_ANSWERS = 0.2
