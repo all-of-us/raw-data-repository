@@ -23,6 +23,9 @@ handlers:
   static_dir: app_data
   application_readable: true
   secure: always
+- url: /_ah/warmup
+  script: main.app
+  login: admin
 
 libraries:
 - name: pycrypto

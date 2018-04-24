@@ -26,6 +26,7 @@ from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical
 from api.metric_sets_api import MetricSetsApi
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
+from config import get_config, get_db_config
 from model.utils import ParticipantIdConverter
 
 
@@ -34,6 +35,12 @@ PREFIX = '/rdr/v1/'
 app = Flask(__name__)
 app.url_map.converters['participant_id'] = ParticipantIdConverter
 
+
+def _warmup():
+  # Load configurations into the cache.
+  get_config()
+  get_db_config()
+  return '{ "success": "true" }'
 
 def _log_request_exception(sender, exception, **extra):  # pylint: disable=unused-argument
   """Logs HTTPExceptions.
@@ -158,6 +165,11 @@ app.add_url_rule(PREFIX + 'ImportCodebook',
                  endpoint='import_codebook',
                  view_func=import_codebook,
                  methods=['POST'])
+
+app.add_url_rule('/_ah/warmup',
+                 endpoint='warmup',
+                 view_func=_warmup,
+                 methods='GET')
 
 app.after_request(app_util.add_headers)
 app.before_request(app_util.request_logging)
