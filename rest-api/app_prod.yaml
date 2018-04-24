@@ -6,5 +6,6 @@ instance_class: F2
 automatic_scaling:
   min_idle_instances: 10
 
+# Send warmup requests to instances on startup, which will initialize the app and load configs.
 inbound_services:
 - warmup
