@@ -82,12 +82,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     summary.enrollmentStatus = enrollment_status
 
-    print('summary.firstName')
-    print(summary.firstName)
-
-    print('summary.enrollmentStatus')
-    print(summary.enrollmentStatus)
-
     summary.hpoId = self.hpo_dao.get_by_name(hpo_name).hpoId
 
     if time_mem is not None:
@@ -106,17 +100,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.ps_dao.insert(summary)
 
-    print('dict(summary)')
-    ps = dict(summary)
-    for key in ps:
-      value = ps[key]
-      if value != None:
-        print(key + ': ')
-        print(ps[key])
-
     return summary
 
-  def foo_test_get_counts_with_default_parameters(self):
+  def test_get_counts_with_default_parameters(self):
     # The most basic test in this class
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -144,7 +130,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 1)
 
-  def foo_test_get_counts_with_single_awardee_filter(self):
+  def test_get_counts_with_single_awardee_filter(self):
     # Does the awardee filter work?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -194,7 +180,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 2)
 
-  def foo_test_get_counts_with_single_awardee_filter(self):
+  def test_get_counts_with_single_awardee_filter(self):
     # Does the awardee filter work when passed a single awardee?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -242,7 +228,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 2)
 
-  def foo_test_get_counts_with_multiple_awardee_filters(self):
+  def test_get_counts_with_multiple_awardee_filters(self):
     # Does the awardee filter work when passed more than one awardee?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -273,7 +259,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 3)
 
-  def foo_test_get_counts_with_enrollment_status_member_filter(self):
+  def test_get_counts_with_enrollment_status_member_filter(self):
 
     p1 = Participant(participantId=1, biobankId=4)
     self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
@@ -331,7 +317,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 3)
 
-  def foo_test_get_counts_with_enrollment_status_full_participant_filter(self):
+  def test_get_counts_with_enrollment_status_full_participant_filter(self):
 
     # MEMBER @ time 1
     p1 = Participant(participantId=1, biobankId=4)
@@ -377,7 +363,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(full_participant_count_day_4, 3)
     self.assertEquals(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
 
-  def foo_test_get_counts_with_total_enrollment_status_full_participant_filter(self):
+  def test_get_counts_with_total_enrollment_status_full_participant_filter(self):
     # When filtering with TOTAL stratification, filtered participants are
     # returned by their sign up date, not the date they reached their highest
     # enrollment status.
@@ -424,7 +410,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(total_count_day_3, 3)
     self.assertEquals(total_count_day_4, 3)
 
-  def foo_test_get_counts_with_single_various_filters(self):
+  def test_get_counts_with_single_various_filters(self):
     # Do the awardee and enrollment status filters work when passed single values?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -466,7 +452,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     # We requested data for only MEMBERs in PITT, so no MEMBERs in AZ_TUCSON should be returned
     self.assertEquals(member_count_day_2, 1)
 
-  def foo_test_get_counts_with_multiple_various_filters(self):
+  def test_get_counts_with_multiple_various_filters(self):
     # Do the awardee and enrollment status filters work when passed multiple values?
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -497,7 +483,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 3)
 
-  def foo_test_get_counts_with_total_stratification_unfiltered(self):
+  def test_get_counts_with_total_stratification_unfiltered(self):
 
     p1 = Participant(participantId=1, biobankId=4)
     self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
@@ -525,7 +511,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 3)
 
-  def foo_test_get_counts_excluding_withdrawn_participants(self):
+  def test_get_counts_excluding_withdrawn_participants(self):
     # Withdrawn participants should not appear in counts
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -585,7 +571,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 3)
 
-  def foo_test_url_parameter_validation_for_date_range(self):
+  def test_url_parameter_validation_for_date_range(self):
     # Ensure requests for very long date ranges are marked BAD REQUEST
 
     qs = """
@@ -600,7 +586,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                              expected_status=httplib.BAD_REQUEST)
     self.assertEquals(response, None)
 
-  def foo_test_url_parameter_validation_for_stratifications(self):
+  def test_url_parameter_validation_for_stratifications(self):
     # Ensure requests invalid stratifications are marked BAD REQUEST
 
     qs = """
@@ -615,7 +601,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                              expected_status=httplib.BAD_REQUEST)
     self.assertEquals(response, None)
 
-  def foo_test_url_parameter_validation_for_awardee(self):
+  def test_url_parameter_validation_for_awardee(self):
     # Ensure requests invalid awardee are marked BAD REQUEST
 
     qs = """
@@ -631,7 +617,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                              expected_status=httplib.BAD_REQUEST)
     self.assertEquals(response, None)
 
-  def foo_test_url_parameter_validation_for_enrollment_status(self):
+  def test_url_parameter_validation_for_enrollment_status(self):
     # Ensure requests invalid enrollment status are marked BAD REQUEST
 
     qs = """
