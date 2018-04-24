@@ -14,9 +14,15 @@ rm -f .coverage
 rm -rf htmlcov/
 export PYTHONDONTWRITEBYTECODE=True
 
+SYSTEM_FLAG=
+if [ "${OSTYPE}" = "linux-gnu" ]
+then
+  SYSTEM_FLAG="--system "
+fi
+
 echo "Installing libs..."
 # If this fails due to missing mysql_config, try `sudo apt-get install libmysqlclient-dev`.
-pip install -r requirements.txt -t lib/
+pip install ${SYSTEM_FLAG}-r requirements.txt -t lib/
 
 # Needed to setup the local DB.
 pip install -r ../rdr_client/requirements.txt
@@ -29,7 +35,7 @@ echo "Installing Alembic..."
 pip install alembic
 echo "Installing JIRA..."
 pip install jira
-pip install requests[security]
+pip install --no-binary requests[security]
 
 echo "Installing pylint for git hooks..."
 pip install pylint
