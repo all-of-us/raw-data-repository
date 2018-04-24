@@ -197,8 +197,6 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     self.assertEquals(TIME2, MetricSetDao().get('123').lastModified)
     self.assertEquals(aggs1, aggs2)
-    print aggs1
-    print '^^^^^^^^^'
 
 
   def test_metrics_redaction(self):
@@ -221,5 +219,4 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     with FakeClock(TIME):
       PublicMetricsExport.export('123')
     aggs1 = [a.asdict() for a in AggregateMetricsDao().get_all()]
-    print '--------------------------------'
     print aggs1

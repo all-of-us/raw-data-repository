@@ -214,6 +214,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     p_baseline_samples = self._insert(Participant(participantId=1, biobankId=11))
     p_mixed_samples = self._insert(Participant(participantId=2, biobankId=22))
     p_no_samples = self._insert(Participant(participantId=3, biobankId=33))
+    p_unconfirmed = self._insert(Participant(participantId=4, biobankId=44))
     self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 0)
 
     sample_dao = BiobankStoredSampleDao()
@@ -227,6 +228,8 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     add_sample(p_baseline_samples, baseline_tests[1], '22223')
     add_sample(p_mixed_samples, baseline_tests[0], '11112')
     add_sample(p_mixed_samples, 'NOT1', '44441')
+    add_sample(p_unconfirmed, baseline_tests[1], '44442', confirmed=None)
+    print '<<<< stopped here.'
 
     self.dao.update_from_biobank_stored_samples()
     test_last_modified_doesnt_change_below = self.dao.get(1).lastModified
