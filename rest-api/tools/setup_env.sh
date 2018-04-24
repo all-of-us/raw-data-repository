@@ -15,9 +15,11 @@ rm -rf htmlcov/
 export PYTHONDONTWRITEBYTECODE=True
 
 SYSTEM_FLAG=
+NO_BINARY_FLAG=
 if [ "${OSTYPE}" = "linux-gnu" ]
 then
   SYSTEM_FLAG="--system "
+  NO_BINARY_FLAG="--no-binary "
 fi
 
 echo "Installing libs..."
@@ -35,7 +37,7 @@ echo "Installing Alembic..."
 pip install alembic
 echo "Installing JIRA..."
 pip install jira
-pip install --no-binary requests[security]
+pip install ${NO_BINARY_FLAG}requests[security]
 
 echo "Installing pylint for git hooks..."
 pip install pylint
