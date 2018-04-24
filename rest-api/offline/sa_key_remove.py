@@ -21,27 +21,28 @@ def delete_service_account_keys():
     accounts = response['accounts']
 
     for account in accounts:
-      serviceaccount = project_name + '/serviceAccounts/' + account['email']
-      request = service.projects().serviceAccounts().keys().list(name=serviceaccount,
-                                                                 keyTypes='USER_MANAGED')
-      response = request.execute()
-      if 'keys' in response:
-        keys = response['keys']
+      if 'circle-deploy' not in account['email']:
+        serviceaccount = project_name + '/serviceAccounts/' + account['email']
+        request = service.projects().serviceAccounts().keys().list(name=serviceaccount,
+                                                                   keyTypes='USER_MANAGED')
+        response = request.execute()
+        if 'keys' in response:
+          keys = response['keys']
 
-        for key in keys:
-          keyname = key['name']
-          startdate = datetime.strptime(key['validAfterTime'], '%Y-%m-%dT%H:%M:%SZ')
+          for key in keys:
+            keyname = key['name']
+            startdate = datetime.strptime(key['validAfterTime'], '%Y-%m-%dT%H:%M:%SZ')
 
-          key_age_days = (datetime.utcnow() - startdate).days
+            key_age_days = (datetime.utcnow() - startdate).days
 
-          if key_age_days >= days_to_delete:
-            logging.warning('Deleting service Account key older than {} days [{}]: {}'.format(
-                            days_to_delete, key_age_days, keyname))
+            if key_age_days >= days_to_delete:
+              logging.warning('Deleting service Account key older than {} days [{}]: {}'.format(
+                              days_to_delete, key_age_days, keyname))
 
-            delete_request = service.projects().serviceAccounts().keys().delete(name=keyname)
-            delete_request.execute()
-          else:
-            logging.info('Service Account key is {} days old: {}'.format(key_age_days, keyname))
+              delete_request = service.projects().serviceAccounts().keys().delete(name=keyname)
+              delete_request.execute()
+            else:
+              logging.info('Service Account key is {} days old: {}'.format(key_age_days, keyname))
       else:
         logging.info('No user managed keys for Service Account {}'.format(account))
 
