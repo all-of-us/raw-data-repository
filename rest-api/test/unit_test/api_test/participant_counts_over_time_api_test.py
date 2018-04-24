@@ -71,6 +71,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     participant.providerLink = make_primary_provider_link_for_name(hpo_name)
     with FakeClock(time_mem):
       self.dao.update(participant)
+
+    if enrollment_status is None:
+      return None
+
     summary = self.participant_summary(participant)
 
     if first_name:
