@@ -154,7 +154,7 @@ then
 
   if [ "$TARGET" == "app" ] || [ "$TARGET" == "all" ]
   then
-    if [ "${PROJECT}" = "all-of-us-rdr-sandbox" ]
+    if [ "${PROJECT}" = "all-of-us-rdr-prod" ]
     then
       echo "Using ${BOLD}prod${NONE} app.yaml for project $PROJECT."
       APP_YAML=app_prod.yaml
