@@ -304,6 +304,7 @@ _STORED_SAMPLE_JOIN_CRITERIA = """
       AND biobank_stored_sample.test = biobank_ordered_sample.test
       AND biobank_stored_sample.biobank_order_identifier = biobank_order_identifier.value
       AND biobank_ordered_sample.finalized IS NOT NULL
+      AND biobank_stored_sample.confirmed IS NOT NULL
 """
 
 def _get_hpo_type_sql(hpo_alias):
