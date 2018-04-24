@@ -150,6 +150,14 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
               test='1SAL',
               confirmed=TIME))
 
+      sample_dao.insert(
+        BiobankStoredSample(
+          biobankStoredSampleId='ghi',
+          biobankId=4,
+          biobankOrderIdentifier='KIT',
+          test='1SAL',
+          confirmed=None))
+
 
   def assert_total_count_per_key(self, want_total_count):
     agg_by_key = {}
@@ -189,6 +197,8 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     self.assertEquals(TIME2, MetricSetDao().get('123').lastModified)
     self.assertEquals(aggs1, aggs2)
+    print aggs1
+    print '^^^^^^^^^'
 
 
   def test_metrics_redaction(self):
@@ -205,3 +215,11 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
       PublicMetricsExport.export('123')
       self.assert_total_count_per_key(2) # now, 2 qualified participants
+
+  def test_biobank(self):
+    self._create_data()
+    with FakeClock(TIME):
+      PublicMetricsExport.export('123')
+    aggs1 = [a.asdict() for a in AggregateMetricsDao().get_all()]
+    print '--------------------------------'
+    print aggs1
