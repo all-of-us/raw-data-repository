@@ -181,7 +181,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
             FROM calendar c2
             LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
-                (CASE WHEN (enrollment_status = 1 OR enrollment_status IS NULL) THEN
+                (CASE WHEN (ps.enrollment_status = 1 OR ps.enrollment_status IS NULL) THEN
                   DATE(p.sign_up_time)
                   ELSE NULL END) day
                 FROM participant p
