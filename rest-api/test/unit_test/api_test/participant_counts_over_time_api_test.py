@@ -556,7 +556,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
 
     p3 = Participant(participantId=3, biobankId=6)
-    ps3 = self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
 
     qs = """
           bucketSize=1
