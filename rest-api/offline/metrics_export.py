@@ -39,6 +39,7 @@ SELECT p.participant_id, ps.date_of_birth date_of_birth,
  WHERE p.participant_id = ps.participant_id
    AND p.participant_id % :num_shards = :shard_number
    AND p.hpo_id != :test_hpo_id
+   AND p.withdrawal_status != 2
    AND NOT ps.email LIKE :test_email_pattern
 """
 
@@ -58,7 +59,8 @@ SELECT ph.participant_id participant_id, hpo.name hpo,
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = ph.participant_id
-        AND ps.email LIKE :test_email_pattern)
+      AND ps.withdrawal_status != 2
+      AND ps.email LIKE :test_email_pattern)
 """
 
 _ANSWER_QUERY = """
@@ -80,6 +82,7 @@ SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time,
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = p.participant_id
         AND ps.email LIKE :test_email_pattern)
+        AND ps.withdrawal_status != 2
  ORDER BY qr.participant_id, qr.created, qc.value
 """
 
