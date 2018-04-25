@@ -9,6 +9,7 @@ from code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CO
 from code_constants import GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
 from code_constants import RACE_QUESTION_CODE, STATE_QUESTION_CODE, RACE_WHITE_CODE
 from code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_SKIP_CODE
+from participant_enums import WithdrawalStatus
 from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from mapreduce import test_support
 from model.biobank_stored_sample import BiobankStoredSample
@@ -111,6 +112,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant_dao.insert(participant5)
       self.send_consent('P5', email='larry@gmail.com')
 
+      participant6 = Participant(participantId=6, biobankId=7, providerLink=pl_tucson)
+      participant_dao.insert(participant6)
+      self.send_consent('P6', email='larry@gmail.com')
+
     with FakeClock(TIME_2):
       # FIXME: The test passes, but the following "update" doesn't actually make much sense.  The
       # providerlink is not changed but the HPO ID actually is (at this point in time
@@ -142,6 +147,12 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                                          state=None,
                                          date_of_birth=None)
 
+      self.submit_questionnaire_response('P6', questionnaire_id,
+                                         race_code=PMI_SKIP_CODE,
+                                         gender_code=PMI_SKIP_CODE,
+                                         state=None,
+                                         date_of_birth=None)
+
     with FakeClock(TIME_3):
       # Re-pair the original participant
       participant.version = 2
@@ -167,12 +178,20 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                                          gender_code=None,
                                          state='PIIState_VA',
                                          date_of_birth=None)
+      self.submit_questionnaire_response('P6', questionnaire_id_2,
+                                         race_code=None,
+                                         gender_code=None,
+                                         state='PIIState_VA',
+                                         date_of_birth=None)
 
       self.submit_consent_questionnaire_response('P1', questionnaire_id_3,
                                                   CONSENT_PERMISSION_NO_CODE)
 
       self.submit_consent_questionnaire_response('P2', questionnaire_id_3,
                                                   CONSENT_PERMISSION_YES_CODE)
+
+      self.submit_consent_questionnaire_response('P6', questionnaire_id_3,
+                                                 CONSENT_PERMISSION_YES_CODE)
 
       sample_dao = BiobankStoredSampleDao()
       sample_dao.insert(
@@ -196,6 +215,10 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
               biobankOrderIdentifier='KIT',
               test='1SAL',
               confirmed=TIME_2))
+
+      # participant 6 withdrawl shouldn't be in csv's.
+      participant6.withdrawalStatus = WithdrawalStatus.NO_USE
+      participant_dao.update(participant6)
 
   def test_metric_export(self):
     self._create_data()
