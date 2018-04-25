@@ -213,10 +213,3 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
       PublicMetricsExport.export('123')
       self.assert_total_count_per_key(2) # now, 2 qualified participants
-
-  def test_biobank(self):
-    self._create_data()
-    with FakeClock(TIME):
-      PublicMetricsExport.export('123')
-    aggs1 = [a.asdict() for a in AggregateMetricsDao().get_all()]
-    print aggs1

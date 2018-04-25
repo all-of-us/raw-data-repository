@@ -228,8 +228,6 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     add_sample(p_baseline_samples, baseline_tests[1], '22223')
     add_sample(p_mixed_samples, baseline_tests[0], '11112')
     add_sample(p_mixed_samples, 'NOT1', '44441')
-    add_sample(p_unconfirmed, baseline_tests[1], '44442', confirmed=None)
-    print '<<<< stopped here.'
 
     self.dao.update_from_biobank_stored_samples()
     test_last_modified_doesnt_change_below = self.dao.get(1).lastModified
