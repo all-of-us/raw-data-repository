@@ -115,7 +115,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant6 = Participant(participantId=6, biobankId=7, providerLink=pl_tucson)
       participant_dao.insert(participant6)
       self.send_consent('P6', email='larry@gmail.com')
-      print (dir(participant6))
 
     with FakeClock(TIME_2):
       # FIXME: The test passes, but the following "update" doesn't actually make much sense.  The
