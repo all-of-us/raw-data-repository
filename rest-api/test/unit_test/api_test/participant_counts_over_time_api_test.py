@@ -42,7 +42,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       curr_date = curr_date + datetime.timedelta(days=1)
 
   def _insert(self, participant, first_name=None, last_name=None, hpo_name=None,
-              time_int=None, time_mem=None, time_fp=None):
+              unconsented=False, time_int=None, time_mem=None, time_fp=None):
     """
     Create a participant in a transient test database.
 
@@ -56,7 +56,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     :return: Participant object
     """
 
-    if time_mem is None:
+    if unconsented is True:
+      enrollment_status = None
+    elif time_mem is None:
       enrollment_status = EnrollmentStatus.INTERESTED
     elif time_fp is None:
       enrollment_status = EnrollmentStatus.MEMBER
@@ -69,6 +71,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     participant.providerLink = make_primary_provider_link_for_name(hpo_name)
     with FakeClock(time_mem):
       self.dao.update(participant)
+
+    if enrollment_status is None:
+      return None
+
     summary = self.participant_summary(participant)
 
     if first_name:
@@ -79,6 +85,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     summary.dateOfBirth = datetime.date(1978, 10, 10)
 
     summary.enrollmentStatus = enrollment_status
+
     summary.hpoId = self.hpo_dao.get_by_name(hpo_name).hpoId
 
     if time_mem is not None:
@@ -538,6 +545,35 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 2)
+
+  def test_get_counts_for_unconsented_individuals(self):
+    # Those who have signed up but not consented should be INTERESTED
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
+
+    qs = """
+          bucketSize=1
+          &stratification=ENROLLMENT_STATUS
+          &startDate=2017-12-30
+          &endDate=2018-01-04
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    total_count_day_1 = response[0]['metrics']['INTERESTED']
+    total_count_day_2 = response[1]['metrics']['INTERESTED']
+
+    self.assertEquals(total_count_day_1, 0)
+    self.assertEquals(total_count_day_2, 3)
 
   def test_url_parameter_validation_for_date_range(self):
     # Ensure requests for very long date ranges are marked BAD REQUEST
