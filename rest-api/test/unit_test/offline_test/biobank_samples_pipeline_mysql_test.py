@@ -166,15 +166,13 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], 'OGoodOrder',
                          within_24_hours, within_24_hours - datetime.timedelta(hours=1))
 
-
-
     # On time, recent order and samples not confirmed shows up in missing;
     p_unconfirmed_samples = self._insert_participant()
     self._insert_order(p_unconfirmed_samples, 'not_confirmed_order', BIOBANK_TESTS[:4], order_time,
                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit3', tracking_number='t3',
                        collected_note=u'\u2013foo', processed_note='bar', finalized_note='baz')
     self._insert_samples(p_unconfirmed_samples, BIOBANK_TESTS[:3], ['Unconfirmed_sample',
-                         'Unconfirmed_sample2'], 'Ounconfirmed_sample', within_24_hours, None)
+                         'Unconfirmed_sample2'], 'Ounconfirmed_sample', None, within_24_hours)
 
     # old order time and samples not confirmed does not exist;
     p_unconfirmed_samples_3 = self._insert_participant()
@@ -183,7 +181,11 @@ class MySqlReconciliationTest(FlaskTestBase):
                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit5', tracking_number='t5',
                        collected_note=u'\u2013foo', processed_note='bar', finalized_note='baz')
     self._insert_samples(p_unconfirmed_samples_3, BIOBANK_TESTS[:5], ['Unconfirmed_sample_2',
-                         'Unconfirmed_sample_3'], 'Ounconfirmed_sample_2', old_order_time, None)
+                         'Unconfirmed_sample_3'], 'Ounconfirmed_sample_2', None, old_order_time)
+    # insert a sample without an order (should not be in reports)
+    self._insert_samples(p_unconfirmed_samples_3, BIOBANK_TESTS[:5], ['Unconfirmed_sample_4',
+                                                                      'Unconfirmed_sample_5'],
+                         'Ounconfirmed_sample_3', None, old_order_time)
 
 
     # On time order and samples from 10 days ago; shows up in rx
@@ -410,8 +412,12 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # orders/samples where something went wrong; don't include orders/samples from more than 7
     # days ago, or where 24 hours hasn't elapsed yet.
-    exporter.assertRowCount(missing, 7)
+    exporter.assertRowCount(missing, 5)
     exporter.assertColumnNamesEqual(missing, _CSV_COLUMN_NAMES)
+    exporter.assertHasRow(missing, {
+      'biobank_id': to_client_biobank_id(p_not_finalized.biobankId),
+      'sent_order_id': 'OUnfinalizedOrder',
+    })
     # sample received, nothing ordered
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id':

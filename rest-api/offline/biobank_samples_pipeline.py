@@ -438,7 +438,7 @@ _RECONCILIATION_REPORT_SQL = ("""
       biobank_stored_sample
       LEFT OUTER JOIN
         participant ON biobank_stored_sample.biobank_id = participant.biobank_id
-    WHERE NOT EXISTS (
+    WHERE biobank_stored_sample.confirmed IS NOT NULL AND NOT EXISTS (
       SELECT 0 FROM """ + _ORDER_JOINS + " WHERE " + _STORED_SAMPLE_JOIN_CRITERIA + """
     ) AND NOT EXISTS (
       SELECT 0 FROM participant
