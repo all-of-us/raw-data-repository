@@ -59,8 +59,8 @@ SELECT ph.participant_id participant_id, hpo.name hpo,
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = ph.participant_id
-      AND ps.withdrawal_status != 2
-      AND ps.email LIKE :test_email_pattern)
+      AND (ps.withdrawal_status = 2 OR
+      ps.email LIKE :test_email_pattern))
 """
 
 _ANSWER_QUERY = """
@@ -81,8 +81,8 @@ SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time,
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = p.participant_id
-        AND ps.withdrawal_status != 2
-        AND ps.email LIKE :test_email_pattern)
+        AND (ps.withdrawal_status = 2 OR
+        ps.email LIKE :test_email_pattern))
  ORDER BY qr.participant_id, qr.created, qc.value
 """
 
