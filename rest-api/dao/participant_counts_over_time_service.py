@@ -121,8 +121,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       'table_prefix': table_prefix, 'test_hpo_id': self.test_hpo_id}
     facets_sql += ' AND NOT ps.email LIKE "%(test_email_pattern)s"' % {
       'test_email_pattern': self.test_email_pattern}
-    facets_sql += ' AND ps.withdrawal_status = %(not_withdrawn)i' % {
-      'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
+    facets_sql += ' AND %(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
+      'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
 
     return facets_sql
 
@@ -181,7 +181,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
             FROM calendar c2
             LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
-                (CASE WHEN (ps.enrollment_status = 1 OR ps.enrollment_status IS NULL) THEN
+                (CASE WHEN (enrollment_status = 1 OR enrollment_status IS NULL) THEN
                   DATE(p.sign_up_time)
                   ELSE NULL END) day
                 FROM participant p
