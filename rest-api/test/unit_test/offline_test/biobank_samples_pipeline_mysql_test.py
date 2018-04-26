@@ -433,6 +433,12 @@ class MySqlReconciliationTest(FlaskTestBase):
       'biobank_id': to_client_biobank_id(p_not_finalized.biobankId),
       'sent_order_id': 'OUnfinalizedOrder',
     })
+    # order not confirmed 2 days old
+    exporter.assertHasRow(missing, {
+      'biobank_id': to_client_biobank_id(p_unconfirmed_missing.biobankId),
+      'sent_order_id': 'Ounconfirmed_missing',
+      'sent_test': '1ED10'
+    })
     # sample received, nothing ordered
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id':
