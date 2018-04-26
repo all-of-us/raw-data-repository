@@ -177,7 +177,7 @@ then
   rm "${tmp_files[@]}"
 fi
 
-test_request=$(curl -s -L https://${project}.appspot.com/rdr/v1 | grep version_id)
+test_request=$(curl -s https://${project}.appspot.com/rdr/v1/ | grep version_id)
 if [[ -z "$test_request" ]];
 then
   echo "${BOLD}Test request failed to return the expected response, something may be wrong with
