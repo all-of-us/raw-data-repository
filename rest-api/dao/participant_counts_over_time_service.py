@@ -206,15 +206,20 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
                             questionnaire_on_lifestyle_time,
                             questionnaire_on_overall_health_time,
                             physical_measurements_time,
-                            CASE WHEN sample_status_1ed04_time IS NOT NULL
-                             THEN
-                             (CASE WHEN sample_status_1sal_time IS NOT
-                                NULL
-                                THEN LEAST(sample_status_1ed04_time,
-                                           sample_status_1sal_time)
-                                ELSE sample_status_1ed04_time END)
-                             ELSE sample_status_1sal_time END)
-                   ELSE NULL END) day
+                           CASE WHEN 
+                                LEAST(
+                                    COALESCE(sample_status_1ed04_time, '3000-01-01'),
+                                    COALESCE(sample_status_1ed10_time, '3000-01-01'),
+                                    COALESCE(sample_status_1sal_time, '3000-01-01'),
+                                    COALESCE(sample_status_1sal2_time, '3000-01-01'),
+                                    ) = '3001-01-01' THEN NULL
+                                ELSE LEAST(
+                                    COALESCE(sample_status_1ed04_time, '3000-01-01'),
+                                    COALESCE(sample_status_1ed10_time, '3000-01-01'),
+                                    COALESCE(sample_status_1sal_time, '3000-01-01'),
+                                    COALESCE(sample_status_1sal2_time, '3000-01-01'),
+                                    )
+                                END) day
                FROM participant_summary ps
               %(filters_ps)s
            GROUP BY day) full
