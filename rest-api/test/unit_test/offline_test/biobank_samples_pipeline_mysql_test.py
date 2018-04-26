@@ -166,7 +166,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], 'OGoodOrder',
                          within_24_hours, within_24_hours - datetime.timedelta(hours=1))
 
-    # On time, recent order and samples not confirmed do not show up in reports. 
+    # On time, recent order and samples not confirmed do not show up in reports.
     p_unconfirmed_samples = self._insert_participant()
     self._insert_order(p_unconfirmed_samples, 'not_confirmed_order', BIOBANK_TESTS[:4], order_time,
                        finalized_tests=BIOBANK_TESTS[:3], kit_id='kit3', tracking_number='t3',
