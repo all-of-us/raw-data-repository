@@ -166,9 +166,46 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], 'OGoodOrder',
                          within_24_hours, within_24_hours - datetime.timedelta(hours=1))
 
+    # On time, recent order and samples not confirmed do not show up in reports.
+    p_unconfirmed_samples = self._insert_participant()
+    self._insert_order(p_unconfirmed_samples, 'not_confirmed_order', BIOBANK_TESTS[:4], order_time,
+                       finalized_tests=BIOBANK_TESTS[:3], kit_id='kit3', tracking_number='t3',
+                       collected_note=u'\u2013foo', processed_note='bar', finalized_note='baz')
+    self._insert_samples(p_unconfirmed_samples, BIOBANK_TESTS[:3], ['Unconfirmed_sample',
+                         'Unconfirmed_sample2'], 'Ounconfirmed_sample', None, within_24_hours)
+
+    # two day old order not confirmed shows up in missing.
+    p_unconfirmed_missing = self._insert_participant()
+    self._insert_order(p_unconfirmed_missing, 'unconfirmed_missing', BIOBANK_TESTS[:1],
+                       two_days_ago, finalized_tests=BIOBANK_TESTS[:1], kit_id='kit4', tracking_number='t4',
+                       collected_note=u'\u2013foo', processed_note='baz', finalized_note='eggs')
+    self._insert_samples(p_unconfirmed_missing, BIOBANK_TESTS[:1], ['Unconfirmed_missing',
+                         'Unconfirmed_missing2'], 'Ounconfirmed_missing_sample', None, two_days_ago)
+
+
+    # old order time and samples not confirmed does not exist;
+    p_unconfirmed_samples_3 = self._insert_participant()
+    self._insert_order(p_unconfirmed_samples_3, 'not_confirmed_order_old', BIOBANK_TESTS[:4],
+                       order_time,
+                       finalized_tests=BIOBANK_TESTS[:3], kit_id='kit5', tracking_number='t5',
+                       collected_note=u'\u2013foo', processed_note='bar', finalized_note='baz')
+    self._insert_samples(p_unconfirmed_samples_3, BIOBANK_TESTS[:5], ['Unconfirmed_sample_2',
+                         'Unconfirmed_sample_3'], 'Ounconfirmed_sample_2', None, old_order_time)
+
+    # insert a sample without an order, should not be in reports
+    self._insert_samples(p_unconfirmed_samples_3, BIOBANK_TESTS[:5], ['Unconfirmed_sample_4',
+                                                                      'Unconfirmed_sample_5'],
+                         'Ounconfirmed_sample_3', None, old_order_time)
+    # insert a sample without an order for two days ago, should not be in reports
+    p_unconfirmed_samples_4 = self._insert_participant()
+    self._insert_samples(p_unconfirmed_samples_4, BIOBANK_TESTS[5], ['Unconfirmed_sample_6',
+                                                                      'Unconfirmed_sample_7'],
+                         'Ounconfirmed_sample_4', two_days_ago, two_days_ago)
+
+
     # On time order and samples from 10 days ago; shows up in rx
     p_old_on_time = self._insert_participant(race_codes=[RACE_AIAN_CODE])
-   # Old missing samples from 10 days ago don't show up in missing or late.
+    # Old missing samples from 10 days ago don't show up in missing or late.
     self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:3],
                        old_order_time, kit_id='kit2')
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
@@ -390,8 +427,18 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # orders/samples where something went wrong; don't include orders/samples from more than 7
     # days ago, or where 24 hours hasn't elapsed yet.
-    exporter.assertRowCount(missing, 5)
+    exporter.assertRowCount(missing, 8)
     exporter.assertColumnNamesEqual(missing, _CSV_COLUMN_NAMES)
+    exporter.assertHasRow(missing, {
+      'biobank_id': to_client_biobank_id(p_not_finalized.biobankId),
+      'sent_order_id': 'OUnfinalizedOrder',
+    })
+    # order not confirmed 2 days old
+    exporter.assertHasRow(missing, {
+      'biobank_id': to_client_biobank_id(p_unconfirmed_missing.biobankId),
+      'sent_order_id': 'Ounconfirmed_missing',
+      'sent_test': '1ED10'
+    })
     # sample received, nothing ordered
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_extra.biobankId), 'sent_order_id':
