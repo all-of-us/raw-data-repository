@@ -182,7 +182,9 @@ if [[ -z "$test_request" ]];
 then
   echo "${BOLD}Test request failed to return the expected response, something may be wrong with
        the deployment${NONE}"
+  $UPDATE_TRACKER --version $VERSION --comment "Test request failed to return a valid response."
 else
   echo "Test request succeeded !"
+  $UPDATE_TRACKER --version $VERSION --comment "Test request received a valid response."
 fi
 echo "${BOLD}Done!${NONE}"
