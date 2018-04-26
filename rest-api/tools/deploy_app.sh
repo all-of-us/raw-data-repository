@@ -177,4 +177,12 @@ then
   rm "${tmp_files[@]}"
 fi
 
+test_request=$(curl -s http://localhost:8080/rdr/v1/ | grep version_id)
+if [[ -z "$test_request" ]];
+then
+  echo "${BOLD}Test request failed to return the expected response, something may be wrong with
+       the deployment${NONE}"
+else
+  echo "Test request succeeded !"
+fi
 echo "${BOLD}Done!${NONE}"
