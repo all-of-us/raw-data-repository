@@ -211,15 +211,16 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
                                     COALESCE(sample_status_1ed04_time, '3000-01-01'),
                                     COALESCE(sample_status_1ed10_time, '3000-01-01'),
                                     COALESCE(sample_status_1sal_time, '3000-01-01'),
-                                    COALESCE(sample_status_1sal2_time, '3000-01-01'),
+                                    COALESCE(sample_status_1sal2_time, '3000-01-01')
                                     ) = '3001-01-01' THEN NULL
                                 ELSE LEAST(
                                     COALESCE(sample_status_1ed04_time, '3000-01-01'),
                                     COALESCE(sample_status_1ed10_time, '3000-01-01'),
                                     COALESCE(sample_status_1sal_time, '3000-01-01'),
-                                    COALESCE(sample_status_1sal2_time, '3000-01-01'),
+                                    COALESCE(sample_status_1sal2_time, '3000-01-01')
                                     )
-                                END) day
+                           END)
+                END) day
                FROM participant_summary ps
               %(filters_ps)s
            GROUP BY day) full
