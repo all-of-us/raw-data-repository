@@ -98,9 +98,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
         summary.questionnaireOnTheBasicsTime = time_fp
         summary.questionnaireOnLifestyleTime = time_fp
         summary.questionnaireOnOverallHealthTime = time_fp
-        summary.physicalMeasurementsTime = time_fp
-        summary.sampleStatus1ED04Time = time_fp
-        summary.sampleStatus1SALTime = time_fp
+        summary.physicalMeasurementsFinalizedTime = time_fp
+        summary.sampleOrderStatus1ED04Time = time_fp
+        summary.sampleOrderStatus1SALTime = time_fp
 
     self.ps_dao.insert(summary)
 

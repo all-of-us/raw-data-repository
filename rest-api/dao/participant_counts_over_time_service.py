@@ -205,19 +205,19 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
                             questionnaire_on_the_basics_time,
                             questionnaire_on_lifestyle_time,
                             questionnaire_on_overall_health_time,
-                            physical_measurements_time,
+                            physical_measurements_finalized_time,
                            CASE WHEN 
                                 LEAST(
-                                    COALESCE(sample_status_1ed04_time, '3000-01-01'),
-                                    COALESCE(sample_status_1ed10_time, '3000-01-01'),
-                                    COALESCE(sample_status_1sal_time, '3000-01-01'),
-                                    COALESCE(sample_status_1sal2_time, '3000-01-01')
+                                    COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1sal_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1sal2_time, '3000-01-01')
                                     ) = '3001-01-01' THEN NULL
                                 ELSE LEAST(
-                                    COALESCE(sample_status_1ed04_time, '3000-01-01'),
-                                    COALESCE(sample_status_1ed10_time, '3000-01-01'),
-                                    COALESCE(sample_status_1sal_time, '3000-01-01'),
-                                    COALESCE(sample_status_1sal2_time, '3000-01-01')
+                                    COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1sal_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1sal2_time, '3000-01-01')
                                     )
                            END)
                 END) day
