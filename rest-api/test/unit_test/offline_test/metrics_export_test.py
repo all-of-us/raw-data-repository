@@ -154,11 +154,12 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                                          date_of_birth=None)
 
     with FakeClock(TIME_3):
+      t3 = TIME_3.strftime(TIME_FORMAT)
       # Re-pair the original participant
       participant.version = 2
       participant.providerLink = pl_pitt
       participant_dao.update(participant)
-      self.send_post('Participant/P2/PhysicalMeasurements', load_measurement_json(2))
+      self.send_post('Participant/P2/PhysicalMeasurements', load_measurement_json(2, t3))
       self.send_post('Participant/P2/BiobankOrder', load_biobank_order_json(2))
 
       self.submit_questionnaire_response('P1', questionnaire_id,
@@ -255,7 +256,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     #  'date_of_birth',
     #  'first_order_date',
     #  'first_samples_arrived_date',
-    #  'first_physical_measurements_date',
+    #  'final_physical_measurements_date',
     #  'first_samples_to_isolate_dna_date',
     #  'consent_for_electronic_health_records_time',
     #  'consent_for_study_enrollment_time',
