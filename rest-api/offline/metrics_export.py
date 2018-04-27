@@ -30,7 +30,7 @@ SELECT p.participant_id, ps.date_of_birth date_of_birth,
     WHERE bo.participant_id = p.participant_id) first_order_date,
   (SELECT ISODATE[MIN(bs.confirmed)] FROM biobank_stored_sample bs
     WHERE bs.biobank_id = p.biobank_id) first_samples_arrived_date,
-  (SELECT ISODATE[MIN(pm.created)] FROM physical_measurements pm
+  (SELECT ISODATE[MIN(pm.finalized)] FROM physical_measurements pm
     WHERE pm.participant_id = p.participant_id) first_physical_measurements_date,
   (SELECT ISODATE[MIN(bss.confirmed)] FROM biobank_stored_sample bss
     WHERE bss.biobank_id = p.biobank_id
