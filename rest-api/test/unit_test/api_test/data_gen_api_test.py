@@ -1,5 +1,5 @@
 import mock
-
+import time
 from testlib import testutil
 
 from dao.biobank_order_dao import BiobankOrderDao
@@ -39,7 +39,9 @@ class DataGenApiTest(testutil.CloudStorageTestBase, FlaskTestBase):
 
     self.send_post('DataGen', {'create_biobank_samples': True, 'samples_missing_fraction': 0.0})
     upsert_from_latest_csv()  # Run the (usually offline) Biobank CSV import job.
-
+    # as the fake data generater function is riddled with random dates and times and this test
+    # occassionaly fails, I'm hoping sleep will help it complete before the assertion.
+    time.sleep(1)
     self.assertEquals(16, BiobankStoredSampleDao().count())
     ps = ParticipantSummaryDao().get(from_client_participant_id(participant_id))
     self.assertEquals(SampleStatus.RECEIVED, ps.samplesToIsolateDNA)
