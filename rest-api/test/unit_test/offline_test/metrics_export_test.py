@@ -256,7 +256,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     #  'date_of_birth',
     #  'first_order_date',
     #  'first_samples_arrived_date',
-    #  'final_physical_measurements_date',
+    #  'first_physical_measurements_date',
     #  'first_samples_to_isolate_dna_date',
     #  'consent_for_electronic_health_records_time',
     #  'consent_for_study_enrollment_time',
