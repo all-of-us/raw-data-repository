@@ -913,7 +913,9 @@ Example response:
                 "notes": "Formerly University of Arizona CATS Research  ",
                 "phoneNumber": "555-555-5555",
                 "physicalLocationName": "Building 23",
-                "enrollingStatus": "ACTIVE"
+                "enrollingStatus": "ACTIVE",
+		"digitalSchedulingStatus": "INACTIVE",
+		"schedule_instructions": "Call 555-5555 to schedule",
                 "siteStatus": "ACTIVE"
               }
             ]
@@ -999,6 +1001,8 @@ Example response:
           "phoneNumber": "555-555-5555",
           "physicalLocationName": "Building 23",
           "enrollingStatus": "ACTIVE",
+	  "digitalSchedulingStatus": "ACTIVE",
+	  "schedule_instructions": "Schedule through portal",
           "siteStatus": "ACTIVE"
         }
       ]
