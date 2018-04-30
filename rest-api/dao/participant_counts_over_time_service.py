@@ -111,7 +111,7 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       for q_filter in filters:
         if str(q_filter) != '':
           filter_sql = filter_prefix + '.' + db_field + ' = ' + str(int(q_filter))
-          if allow_null:
+          if allow_null and str(int(q_filter)) == '1':
             filters_sql.append('(' + filter_sql + ' or ' + filter_prefix
                                + '.' + db_field + ' IS NULL)')
           else:
