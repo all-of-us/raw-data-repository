@@ -43,9 +43,6 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
     results_by_date = []
 
-    # print('sql')
-    # print(sql)
-
     with self.session() as session:
       cursor = session.execute(sql, params)
 
@@ -88,14 +85,15 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     }
 
     for facet in facets:
+      filter_prefix = table_prefix
       filters_sql = []
       db_field = facet_map[facet]
       filters = facets[facet]
 
+      allow_null = False
       if db_field == 'enrollment_status':
-        table_prefix = 'ps'
-
-      has_interested_filter = False
+        filter_prefix = 'ps'
+        allow_null = True
 
       # TODO:
       # Consider using an IN clause with bound parameters, instead, which
@@ -112,14 +110,12 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       # the bound params.
       for q_filter in filters:
         if str(q_filter) != '':
-          if str(q_filter) != '':
-            if db_field == 'enrollment_status' and str(int(q_filter)) == '1':
-              has_interested_filter = True
-              clause1 = table_prefix + '.' + db_field + ' = ' + str(int(q_filter))
-              clause2 = ' OR ' + table_prefix + '.' + db_field + ' IS NULL'
-              filters_sql.append(clause1 + clause2)
-            else:
-              filters_sql.append(table_prefix + '.' + db_field + ' = ' + str(int(q_filter)))
+          filter_sql = filter_prefix + '.' + db_field + ' = ' + str(int(q_filter))
+          if allow_null:
+            filters_sql.append('(' + filter_sql + ' or ' + filter_prefix
+                               + '.' + db_field + ' IS NULL)')
+          else:
+            filters_sql.append(filter_sql)
       if len(filters_sql) > 0:
         filters_sql = '(' + ' OR '.join(filters_sql) + ')'
         facets_sql_list.append(filters_sql)
@@ -133,15 +129,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       'table_prefix': table_prefix, 'test_hpo_id': self.test_hpo_id}
     facets_sql += ' AND (ps.email IS NULL OR NOT ps.email LIKE "%(test_email_pattern)s")' % {
       'test_email_pattern': self.test_email_pattern}
-
-    if has_interested_filter is True:
-      facets_sql += ' AND (%(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
-        'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
-      facets_sql += ' OR %(table_prefix)s.withdrawal_status IS NULL)' % {
-        'table_prefix': table_prefix}
-    else:
-      facets_sql += ' AND %(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
-        'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
+    facets_sql += ' AND %(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
+      'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
 
 
     return facets_sql
