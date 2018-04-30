@@ -150,7 +150,6 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
               test='1SAL',
               confirmed=TIME))
 
-
   def assert_total_count_per_key(self, want_total_count):
     agg_by_key = {}
     for agg in AggregateMetricsDao().get_all():

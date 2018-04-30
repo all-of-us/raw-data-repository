@@ -68,6 +68,7 @@ _SAMPLE_SQL = """,
       sample_status_%(test)s_time =
         (SELECT MAX(confirmed) FROM biobank_stored_sample
           WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
+          AND biobank_stored_sample.confirmed IS NOT NULL
           AND biobank_stored_sample.test = %(sample_param_ref)s)
    """
 
@@ -230,11 +231,13 @@ class ParticipantSummaryDao(UpdatableDao):
           biobank_stored_sample
         WHERE
           biobank_stored_sample.biobank_id = participant_summary.biobank_id
+          AND biobank_stored_sample.confirmed IS NOT NULL
           AND biobank_stored_sample.test IN %s
       ),
       samples_to_isolate_dna = (
           CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
                            WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
+                           AND biobank_stored_sample.confirmed IS NOT NULL
                            AND biobank_stored_sample.test IN %s)
           THEN :received ELSE :unset END
       ),

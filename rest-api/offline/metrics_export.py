@@ -30,8 +30,8 @@ SELECT p.participant_id, ps.date_of_birth date_of_birth,
     WHERE bo.participant_id = p.participant_id) first_order_date,
   (SELECT ISODATE[MIN(bs.confirmed)] FROM biobank_stored_sample bs
     WHERE bs.biobank_id = p.biobank_id) first_samples_arrived_date,
-  (SELECT ISODATE[MIN(pm.created)] FROM physical_measurements pm
-    WHERE pm.participant_id = p.participant_id) first_physical_measurements_date,
+  (SELECT ISODATE[MIN(pm.finalized)] FROM physical_measurements pm
+    WHERE pm.participant_id = p.participant_id and pm.finalized is not null) first_physical_measurements_date,
   (SELECT ISODATE[MIN(bss.confirmed)] FROM biobank_stored_sample bss
     WHERE bss.biobank_id = p.biobank_id
       AND bss.test IN {}) first_samples_to_isolate_dna_date, {}
@@ -39,6 +39,7 @@ SELECT p.participant_id, ps.date_of_birth date_of_birth,
  WHERE p.participant_id = ps.participant_id
    AND p.participant_id % :num_shards = :shard_number
    AND p.hpo_id != :test_hpo_id
+   AND p.withdrawal_status != 2
    AND NOT ps.email LIKE :test_email_pattern
 """
 
@@ -58,7 +59,8 @@ SELECT ph.participant_id participant_id, hpo.name hpo,
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = ph.participant_id
-        AND ps.email LIKE :test_email_pattern)
+      AND (ps.withdrawal_status = 2 OR
+      ps.email LIKE :test_email_pattern))
 """
 
 _ANSWER_QUERY = """
@@ -79,7 +81,8 @@ SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time,
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = p.participant_id
-        AND ps.email LIKE :test_email_pattern)
+        AND (ps.withdrawal_status = 2 OR
+        ps.email LIKE :test_email_pattern))
  ORDER BY qr.participant_id, qr.created, qc.value
 """
 

@@ -85,12 +85,15 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     }
 
     for facet in facets:
+      filter_prefix = table_prefix
       filters_sql = []
       db_field = facet_map[facet]
       filters = facets[facet]
 
+      allow_null = False
       if db_field == 'enrollment_status':
-        table_prefix = 'ps'
+        filter_prefix = 'ps'
+        allow_null = True
 
       # TODO:
       # Consider using an IN clause with bound parameters, instead, which
@@ -107,7 +110,12 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       # the bound params.
       for q_filter in filters:
         if str(q_filter) != '':
-          filters_sql.append(table_prefix + '.' + db_field + ' = ' + str(int(q_filter)))
+          filter_sql = filter_prefix + '.' + db_field + ' = ' + str(int(q_filter))
+          if allow_null:
+            filters_sql.append('(' + filter_sql + ' or ' + filter_prefix
+                               + '.' + db_field + ' IS NULL)')
+          else:
+            filters_sql.append(filter_sql)
       if len(filters_sql) > 0:
         filters_sql = '(' + ' OR '.join(filters_sql) + ')'
         facets_sql_list.append(filters_sql)
@@ -119,10 +127,11 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
     # See https://github.com/all-of-us/raw-data-repository/pull/669/files/a08be0ffe445da60ebca13b41d694368e4d42617#diff-6c62346e0cbe4a7fd7a45af6d4559c3e  # pylint: disable=line-too-long
     facets_sql += ' %(table_prefix)s.hpo_id != %(test_hpo_id)s ' % {
       'table_prefix': table_prefix, 'test_hpo_id': self.test_hpo_id}
-    facets_sql += ' AND NOT ps.email LIKE "%(test_email_pattern)s"' % {
+    facets_sql += ' AND (ps.email IS NULL OR NOT ps.email LIKE "%(test_email_pattern)s")' % {
       'test_email_pattern': self.test_email_pattern}
-    facets_sql += ' AND ps.withdrawal_status = %(not_withdrawn)i' % {
-      'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
+    facets_sql += ' AND %(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
+      'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
+
 
     return facets_sql
 
@@ -205,16 +214,22 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
                             questionnaire_on_the_basics_time,
                             questionnaire_on_lifestyle_time,
                             questionnaire_on_overall_health_time,
-                            physical_measurements_time,
-                            CASE WHEN sample_status_1ed04_time IS NOT NULL
-                             THEN
-                             (CASE WHEN sample_status_1sal_time IS NOT
-                                NULL
-                                THEN LEAST(sample_status_1ed04_time,
-                                           sample_status_1sal_time)
-                                ELSE sample_status_1ed04_time END)
-                             ELSE sample_status_1sal_time END)
-                   ELSE NULL END) day
+                            physical_measurements_finalized_time,
+                           CASE WHEN 
+                                LEAST(
+                                    COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1sal_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1sal2_time, '3000-01-01')
+                                    ) = '3001-01-01' THEN NULL
+                                ELSE LEAST(
+                                    COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1sal_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_1sal2_time, '3000-01-01')
+                                    )
+                           END)
+                END) day
                FROM participant_summary ps
               %(filters_ps)s
            GROUP BY day) full
