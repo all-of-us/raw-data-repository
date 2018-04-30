@@ -1055,7 +1055,7 @@ SELECT
     meas.value_decimal              AS value_decimal,
     meas.value_unit                 AS value_unit,
     meas.value_code_value           AS value_code_value,
-    meas.value_string               AS value_string,
+    LEFT(meas.value_string, 1024)   AS value_string,
     meas.measurement_id             AS measurement_id,
     pm.physical_measurements_id     AS physical_measurements_id,
     meas.parent_id                  AS parent_id
