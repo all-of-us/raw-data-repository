@@ -43,6 +43,9 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
     results_by_date = []
 
+    print('sql')
+    print(sql)
+
     with self.session() as session:
       cursor = session.execute(sql, params)
 
@@ -92,6 +95,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       if db_field == 'enrollment_status':
         table_prefix = 'ps'
 
+      has_interested_filter = False
+
       # TODO:
       # Consider using an IN clause with bound parameters, instead, which
       # would be simpler than this,
@@ -107,7 +112,14 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       # the bound params.
       for q_filter in filters:
         if str(q_filter) != '':
-          filters_sql.append(table_prefix + '.' + db_field + ' = ' + str(int(q_filter)))
+          if str(q_filter) != '':
+            if db_field == 'enrollment_status' and str(int(q_filter)) == '1':
+              has_interested_filter = True
+              clause1 = table_prefix + '.' + db_field + ' = ' + str(int(q_filter))
+              clause2 = ' OR ' + table_prefix + '.' + db_field + ' IS NULL'
+              filters_sql.append(clause1 + clause2)
+            else:
+              filters_sql.append(table_prefix + '.' + db_field + ' = ' + str(int(q_filter)))
       if len(filters_sql) > 0:
         filters_sql = '(' + ' OR '.join(filters_sql) + ')'
         facets_sql_list.append(filters_sql)
@@ -121,8 +133,16 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
       'table_prefix': table_prefix, 'test_hpo_id': self.test_hpo_id}
     facets_sql += ' AND (ps.email IS NULL OR NOT ps.email LIKE "%(test_email_pattern)s")' % {
       'test_email_pattern': self.test_email_pattern}
-    facets_sql += ' AND %(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
-      'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
+
+    if has_interested_filter is True:
+      facets_sql += ' AND (%(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
+        'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
+      facets_sql += ' OR %(table_prefix)s.withdrawal_status IS NULL)' % {
+        'table_prefix': table_prefix}
+    else:
+      facets_sql += ' AND %(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
+        'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
+
 
     return facets_sql
 
