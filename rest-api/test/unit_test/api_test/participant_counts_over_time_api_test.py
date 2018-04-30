@@ -515,6 +515,36 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 3)
 
+  def test_get_counts_excluding_interested_participants(self):
+    # When filtering only for MEMBER, no INTERESTED (neither consented nor unconsented) should be counted
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time1)
+
+    qs = """
+        bucketSize=1
+        &stratification=ENROLLMENT_STATUS
+        &startDate=2017-12-30
+        &endDate=2018-01-04
+        &enrollmentStatus=MEMBER
+        """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    interested_count_day_2 = response[1]['metrics']['INTERESTED']
+    member_count_day_2 = response[1]['metrics']['MEMBER']
+
+    self.assertEquals(interested_count_day_2, 0)
+    self.assertEquals(member_count_day_2, 1)
+
   def test_get_counts_excluding_withdrawn_participants(self):
     # Withdrawn participants should not appear in counts
 
