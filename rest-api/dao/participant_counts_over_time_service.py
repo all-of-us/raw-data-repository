@@ -43,8 +43,8 @@ class ParticipantCountsOverTimeService(ParticipantSummaryDao):
 
     results_by_date = []
 
-    print('sql')
-    print(sql)
+    # print('sql')
+    # print(sql)
 
     with self.session() as session:
       cursor = session.execute(sql, params)
