@@ -32,7 +32,7 @@ def get_database():
 
 
 def get_backup_database():
-  """Returns a singleton _SqlDatabase which USEs the rdr DB."""
+  """Returns a singleton _BackupSqlDatabase which USEs the rdr failover DB."""
   return singletons.get(singletons.BACKUP_SQL_DATABASE_INDEX, _BackupSqlDatabase, db_name='rdr')
 
 
