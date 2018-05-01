@@ -1,15 +1,15 @@
 from werkzeug.exceptions import BadRequest
 
-from .participant_summary_dao import ParticipantSummaryDao
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, TEST_HPO_NAME, TEST_EMAIL_PATTERN
 from participant_enums import WithdrawalStatus
 from dao.hpo_dao import HPODao
+from dao.base_dao import BaseDao
 
-class ParticipantCountsOverTimeService(ParticipantSummaryDao):
+class ParticipantCountsOverTimeService(BaseDao):
 
   def __init__(self):
-    super(ParticipantSummaryDao, self).__init__(ParticipantSummary)
+    super(ParticipantCountsOverTimeService, self).__init__(ParticipantSummary, backup=True)
 
   def get_filtered_results(self, start_date, end_date, filters, stratification='ENROLLMENT_STATUS'):
     """Queries DB, returns results in format consumed by front-end

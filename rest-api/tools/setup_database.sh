@@ -81,9 +81,16 @@ echo "Setting root password..."
 #gcloud sql instances set-root-password $INSTANCE_NAME --password $ROOT_PASSWORD
 gcloud sql users set-password root % --instance $INSTANCE_NAME --password $ROOT_PASSWORD
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
+BACKUP_INSTANCE_NAME=$(gcloud sql instances describe $FAILOVER_INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
+
+if [ ${PROJECT} = 'all-of-us-rdr-sandbox' ]
+then
+    BACKUP_INSTANCE_NAME=$INSTANCE_CONNECTION_NAME
+fi
 
 # TODO(calbach): Drop DB_NAME from here, once #549 has been deployed.
 CONNECTION_STRING="mysql+mysqldb://${RDR_DB_USER}:${RDR_PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$INSTANCE_CONNECTION_NAME&charset=utf8"
+BACKUP_CONNECTION_STRING="mysql+mysqldb://${RDR_DB_USER}:${RDR_PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$BACKUP_INSTANCE_NAME&charset=utf8"
 
 UPDATE_DB_FILE=/tmp/update_db.sql
 
@@ -94,10 +101,12 @@ function finish {
 trap finish EXIT
 
 echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
+     ' "backup_db_connection_string": "'$BACKUP_CONNECTION_STRING'", '\
      ' "rdr_db_password": "'$RDR_PASSWORD'", ' \
      ' "root_db_password": "'$ROOT_PASSWORD'", ' \
      ' "read_only_db_password": "'$READONLY_PASSWORD'", ' \
      ' "db_connection_name": "'$INSTANCE_CONNECTION_NAME'", '\
+     ' "backup_db_connection_name": "'$BACKUP_INSTANCE_NAME'", '\
      ' "db_user": "'$RDR_DB_USER'", '\
      ' "db_name": "'$DB_NAME'" }' > $TMP_DB_INFO_FILE
 
