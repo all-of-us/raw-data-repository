@@ -48,12 +48,12 @@ class SqlExporter(object):
     self._bucket_name = bucket_name
     self._use_unicode = use_unicode
 
-  def run_export(self, file_name, sql, query_params=None, transformf=None):
+  def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None):
     with self.open_writer(file_name) as writer:
-      self.run_export_with_writer(writer, sql, query_params, transformf=transformf)
+      self.run_export_with_writer(writer, sql, query_params, backup=backup, transformf=transformf)
 
-  def run_export_with_writer(self, writer, sql, query_params, transformf=None):
-    with database_factory.make_server_cursor_database().session() as session:
+  def run_export_with_writer(self, writer, sql, query_params, backup=False, transformf=None):
+    with database_factory.make_server_cursor_database(backup).session() as session:
       self.run_export_with_session(writer, session, sql,
                                    query_params=query_params, transformf=transformf)
 

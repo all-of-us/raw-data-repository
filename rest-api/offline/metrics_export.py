@@ -133,19 +133,19 @@ class MetricsExport(object):
   def _export_participants(self, bucket_name, filename_prefix, num_shards, shard_number):
     sql, params = _get_participant_sql(num_shards, shard_number)
     SqlExporter(bucket_name).run_export(filename_prefix + _PARTICIPANTS_CSV % shard_number,
-                                        sql, params)
+                                        sql, params, backup=True)
 
   @classmethod
   def _export_hpo_ids(self, bucket_name, filename_prefix, num_shards, shard_number):
     sql, params = _get_hpo_id_sql(num_shards, shard_number)
     SqlExporter(bucket_name).run_export(filename_prefix + _HPO_IDS_CSV % shard_number,
-                                        sql, params)
+                                        sql, params, backup=True)
 
   @classmethod
   def _export_answers(self, bucket_name, filename_prefix, num_shards, shard_number):
     sql, params = _get_answer_sql(num_shards, shard_number)
     SqlExporter(bucket_name).run_export(filename_prefix + _ANSWERS_CSV % shard_number,
-                                        sql, params)
+                                        sql, params, backup=True)
 
   @staticmethod
   def start_export_tasks(bucket_name, num_shards):
