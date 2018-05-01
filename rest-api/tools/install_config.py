@@ -20,7 +20,7 @@ def _log_and_write_config_lines(raw_config_lines, output_path):
   safe_config_lines = []
   for line in raw_config_lines:
     match = re.search('db_password', line)
-    if '"db_connection_string":' in line or match is not None:
+    if 'db_connection_string' in line or match is not None:
       safe_config_lines.append(line.split(':')[0] + ' *******')
     else:
       safe_config_lines.append(line)
