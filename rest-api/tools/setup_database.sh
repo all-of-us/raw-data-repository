@@ -101,7 +101,7 @@ function finish {
 trap finish EXIT
 
 echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
-     '"backup_db_connection_string": "'$BACKUP_CONNECTION_STRING'", '\
+     ' "backup_db_connection_string": "'$BACKUP_CONNECTION_STRING'", '\
      ' "rdr_db_password": "'$RDR_PASSWORD'", ' \
      ' "root_db_password": "'$ROOT_PASSWORD'", ' \
      ' "read_only_db_password": "'$READONLY_PASSWORD'", ' \
