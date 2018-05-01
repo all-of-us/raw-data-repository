@@ -179,7 +179,7 @@ class SummaryPipeline(pipeline.Pipeline):
         'Process Input CSV',
         mapper_spec='offline.metrics_pipeline.map_csv_to_participant_and_date_metric',
         input_reader_spec='mapreduce.input_readers.GoogleCloudStorageInputReader',
-        output_writer_spec='mapreduce.output_writers.GoogleCloudStorageOutputWriter',
+        output_writer_spec='mapreduce.output_writers.GoogleCloudStorageConsistentOutputWriter',
         mapper_params=mapper_params,
         reducer_spec='offline.metrics_pipeline.reduce_participant_data_to_hpo_metric_date_deltas',
         reducer_params={
@@ -195,7 +195,7 @@ class SummaryPipeline(pipeline.Pipeline):
         'Calculate Counts',
         mapper_spec='offline.metrics_pipeline.map_hpo_metric_date_deltas_to_hpo_metric_key',
         input_reader_spec='mapreduce.input_readers.GoogleCloudStorageInputReader',
-        output_writer_spec='mapreduce.output_writers.GoogleCloudStorageOutputWriter',
+        output_writer_spec='mapreduce.output_writers.GoogleCloudStorageConsistentOutputWriter',
         mapper_params=(yield BlobKeys(bucket_name, blob_key_1, now, version_id)),
         combiner_spec='offline.metrics_pipeline.combine_hpo_metric_date_deltas',
         reducer_spec='offline.metrics_pipeline.reduce_hpo_metric_date_deltas_to_all_date_counts',
