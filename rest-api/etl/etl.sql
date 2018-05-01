@@ -539,7 +539,7 @@ SELECT
         qra.value_date,
         qra.value_datetime)         AS value_date,
     COALESCE(
-        qra.value_string,
+        LEFT(qra.value_string, 1024),
         qra.value_date,
         qra.value_datetime,
         co_a.display)               AS value_string,
