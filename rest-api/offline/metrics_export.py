@@ -47,10 +47,13 @@ SELECT p.participant_id, ps.date_of_birth date_of_birth,
 _HPO_ID_QUERY = """
 SELECT ph.participant_id participant_id, hpo.name hpo,
        ISODATE[ph.last_modified] last_modified
-  FROM participant_history ph, hpo
+  FROM participant_history ph, hpo, participant p
  WHERE ph.participant_id % :num_shards = :shard_number
    AND ph.hpo_id = hpo.hpo_id
-   AND NOT ph.hpo_id = :test_hpo_id
+   AND ph.participant_id = p.participant_id
+   AND ph.hpo_id != :test_hpo_id
+   AND p.hpo_id != :test_hpo_id
+   AND p.withdrawal_status != 2
    AND NOT EXISTS
     (SELECT * FROM participant_history ph_prev
       WHERE ph_prev.participant_id = ph.participant_id
@@ -59,8 +62,7 @@ SELECT ph.participant_id participant_id, hpo.name hpo,
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = ph.participant_id
-      AND (ps.withdrawal_status = 2 OR
-      ps.email LIKE :test_email_pattern))
+      AND ps.email LIKE :test_email_pattern)
 """
 
 _ANSWER_QUERY = """
@@ -78,11 +80,11 @@ SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time,
    AND qr.participant_id % :num_shards = :shard_number
    AND qr.participant_id = p.participant_id
    AND p.hpo_id != :test_hpo_id
+   AND p.withdrawal_status != 2
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = p.participant_id
-        AND (ps.withdrawal_status = 2 OR
-        ps.email LIKE :test_email_pattern))
+        AND ps.email LIKE :test_email_pattern)
  ORDER BY qr.participant_id, qr.created, qc.value
 """
 
