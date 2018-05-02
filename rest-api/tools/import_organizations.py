@@ -138,7 +138,7 @@ class SiteImporter(CsvImporter):
   def __init__(self):
     args = parser.parse_args()
     self.organization_dao = OrganizationDao()
-    self.geocode_flag = args.geocode_flag
+    self.stub_geocoding = args.stub_geocoding
     self.ACTIVE = SiteStatus.ACTIVE
     self.status_exception_list = ['hpo-site-walgreensphoenix']
     self.instance = args.instance
@@ -342,7 +342,12 @@ class SiteImporter(CsvImporter):
           site.longitude = existing_site.longitude
           site.timeZoneId = existing_site.timeZoneId
           return
-      if self.geocode_flag:
+      if self.stub_geocoding:
+        # Set dummy latitude and longitude when importing sites locally / on a CircleCI box.
+        site.latitude = 32.176
+        site.longitude = -110.93
+        site.timeZoneId = 'America/Phoenix'
+      else:
         latitude, longitude = self._get_lat_long_for_site(site.address1, site.city, site.state)
         site.latitude = latitude
         site.longitude = longitude
@@ -417,8 +422,9 @@ if __name__ == '__main__':
                       required=True)
   parser.add_argument('--dry_run', help='Read CSV and check for diffs against database.',
                       action='store_true')
-  parser.add_argument('--geocode_flag', help='If --account passed into import_organizations.sh, '
-                      'geocoding is performed.', action='store_true')
+  parser.add_argument('--stub_geocoding',
+                      help='Set sites to have the same lat/lng/time zone rather than geocoding.',
+                      action='store_true')
   parser.add_argument('--project', help='Project is used to determine enviroment for specific '
                       'settings')
 
