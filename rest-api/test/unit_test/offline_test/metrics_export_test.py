@@ -116,6 +116,16 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant_dao.insert(participant6)
       self.send_consent('P6', email='larry@gmail.com')
 
+      # Participant that starts at PITT but winds up in TEST; should be ignored.
+      participant7 = Participant(participantId=7, biobankId=8, providerLink=pl_pitt)
+      participant_dao.insert(participant7)
+      self.send_consent('P7', email='larry@gmail.com')
+
+      # Participant that re-pairs and then withdraws; should be ignored.
+      participant8 = Participant(participantId=8, biobankId=9, providerLink=pl_pitt)
+      participant_dao.insert(participant8)
+      self.send_consent('P8', email='larry@gmail.com')
+
     with FakeClock(TIME_2):
       # FIXME: The test passes, but the following "update" doesn't actually make much sense.  The
       # providerlink is not changed but the HPO ID actually is (at this point in time
@@ -128,6 +138,9 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         providerLink=pl_tucson
       )
       participant_dao.update(participant)
+
+      participant8.providerLink = pl_tucson
+      participant_dao.update(participant8)
 
       self.submit_questionnaire_response('P1', questionnaire_id,
                                          race_code=RACE_WHITE_CODE,
@@ -159,6 +172,13 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant.version = 2
       participant.providerLink = pl_pitt
       participant_dao.update(participant)
+
+      participant7.providerLink = pl_test
+      participant_dao.update(participant7)
+
+      participant8.withdrawalStatus = WithdrawalStatus.NO_USE
+      participant_dao.update(participant8)
+
       self.send_post('Participant/P2/PhysicalMeasurements', load_measurement_json(2, t3))
       self.send_post('Participant/P2/BiobankOrder', load_biobank_order_json(2))
 
@@ -258,7 +278,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     #  'first_samples_arrived_date',
     #  'first_physical_measurements_date',
     #  'first_samples_to_isolate_dna_date',
-    #  'consent_for_electronic_health_records_time',
     #  'consent_for_study_enrollment_time',
     #  'questionnaire_on_family_health_time',
     #  'questionnaire_on_healthcare_access_time',
@@ -270,13 +289,13 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0, [
       participant_fields,
-      ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t3, t1, '', '', t3, '', '', t3, t2]
+      ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t1, '', '', t3, '', '', t3, t2]
     ])
 
     self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1, [
       participant_fields,
-      ['1', '1980-01-03', '', t2, '', '', t3, t1, '', '', '', '', '', '', t2],
-      ['5', '', '', '', '', '', '', t1, '', '', '', '', '', '', t2]
+      ['1', '1980-01-03', '', t2, '', '', t1, '', '', '', '', '', '', t2],
+      ['5', '', '', '', '', '', t1, '', '', '', '', '', '', t2]
     ])
 
     self.assertCsvContents(BUCKET_NAME, prefix + _ANSWERS_CSV % 0, [

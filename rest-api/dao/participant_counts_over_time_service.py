@@ -215,7 +215,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                             questionnaire_on_lifestyle_time,
                             questionnaire_on_overall_health_time,
                             physical_measurements_finalized_time,
-                           CASE WHEN 
+                           CASE WHEN
                                 LEAST(
                                     COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
                                     COALESCE(sample_order_status_1ed10_time, '3000-01-01'),

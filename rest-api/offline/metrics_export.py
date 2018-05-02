@@ -10,10 +10,10 @@ from dao.database_utils import replace_isodate, get_sql_and_params_for_array
 from model.base import get_column_name
 from model.participant_summary import ParticipantSummary
 from code_constants import PPI_SYSTEM, UNMAPPED, RACE_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
-from field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES
+from field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from offline.metrics_pipeline import MetricsPipeline
-from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN
+from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, QuestionnaireStatus
 
 # TODO: filter out participants that have withdrawn in here
 
@@ -47,10 +47,13 @@ SELECT p.participant_id, ps.date_of_birth date_of_birth,
 _HPO_ID_QUERY = """
 SELECT ph.participant_id participant_id, hpo.name hpo,
        ISODATE[ph.last_modified] last_modified
-  FROM participant_history ph, hpo
+  FROM participant_history ph, hpo, participant p
  WHERE ph.participant_id % :num_shards = :shard_number
    AND ph.hpo_id = hpo.hpo_id
-   AND NOT ph.hpo_id = :test_hpo_id
+   AND ph.participant_id = p.participant_id
+   AND ph.hpo_id != :test_hpo_id
+   AND p.hpo_id != :test_hpo_id
+   AND p.withdrawal_status != 2
    AND NOT EXISTS
     (SELECT * FROM participant_history ph_prev
       WHERE ph_prev.participant_id = ph.participant_id
@@ -59,8 +62,7 @@ SELECT ph.participant_id participant_id, hpo.name hpo,
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = ph.participant_id
-      AND (ps.withdrawal_status = 2 OR
-      ps.email LIKE :test_email_pattern))
+      AND ps.email LIKE :test_email_pattern)
 """
 
 _ANSWER_QUERY = """
@@ -78,11 +80,11 @@ SELECT qr.participant_id participant_id, ISODATE[qr.created] start_time,
    AND qr.participant_id % :num_shards = :shard_number
    AND qr.participant_id = p.participant_id
    AND p.hpo_id != :test_hpo_id
+   AND p.withdrawal_status != 2
    AND NOT EXISTS
     (SELECT * FROM participant_summary ps
       WHERE ps.participant_id = p.participant_id
-        AND (ps.withdrawal_status = 2 OR
-        ps.email LIKE :test_email_pattern))
+        AND ps.email LIKE :test_email_pattern)
  ORDER BY qr.participant_id, qr.created, qc.value
 """
 
@@ -94,13 +96,15 @@ def _get_params(num_shards, shard_number):
           'test_email_pattern': TEST_EMAIL_PATTERN}
 
 def _get_participant_sql(num_shards, shard_number):
-  module_time_fields = ['ISODATE[ps.{0}] {0}'.format(get_column_name(ParticipantSummary,
-                                                            field_name + 'Time'))
-                        for field_name in QUESTIONNAIRE_MODULE_FIELD_NAMES]
+  module_time_fields = ['(CASE WHEN ps.{0} = :submitted THEN ISODATE[ps.{1}] ELSE NULL END) {1}'
+                          .format(get_column_name(ParticipantSummary, field_name),
+                                  get_column_name(ParticipantSummary, field_name + 'Time'))
+                        for field_name in NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES]
   modules_sql = ', '.join(module_time_fields)
   dna_tests_sql, params = get_sql_and_params_for_array(
         config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
   params.update(_get_params(num_shards, shard_number))
+  params['submitted'] = int(QuestionnaireStatus.SUBMITTED)
   return replace_isodate(_PARTICIPANT_SQL_TEMPLATE.format(dna_tests_sql, modules_sql)), params
 
 def _get_hpo_id_sql(num_shards, shard_number):
