@@ -91,13 +91,7 @@ function finish {
 }
 trap finish EXIT
 
-function get_existing_db_config {
-  "Getting database info..."
-  tools/install_config.sh --key db_config --instance $INSTANCE \
-   --creds_file ${CREDS_FILE} --config_output "$TMP_DB_INFO_FILE"
-}
-
-if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" == "Y" ]
+if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ]
   then
     	echo "Updating database user passwords..."
 	randpw
@@ -126,20 +120,18 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" == "Y" ]
 		echo "updating passwords for database"
 		cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
 	else
-	if [ "${CREATE_INSTANCE}" = "Y" ]
-	    then
 		echo "creating new database"
 		for db_name in "rdr" "metrics"; do
-	       	   cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+		   cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+		   cat tools/grant_permissions.sql | envsubst >> $UPDATE_DB_FILE
 		done
 	fi
 
 	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
   else
 	echo "getting database config..."
-	get_existing_db_config
 	for db_name in "rdr" "metrics"; do
-	   cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+	   cat tools/grant_permissions.sql | envsubst > $UPDATE_DB_FILE
 	done
 fi
 
