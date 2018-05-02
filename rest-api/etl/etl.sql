@@ -32,13 +32,13 @@ DROP TABLE IF EXISTS cdm.location;
 CREATE TABLE cdm.location
 (
     location_id bigint AUTO_INCREMENT NOT NULL,
-    address_1 varchar(50),
-    address_2 varchar(50),
-    city varchar(50),
-    state varchar(2),
-    zip varchar(9),
-    county varchar(20),
-    location_source_value varchar(50),
+    address_1 varchar(255),
+    address_2 varchar(255),
+    city varchar(255),
+    state varchar(255),
+    zip varchar(255),
+    county varchar(255),
+    location_source_value varchar(255),
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (location_id)
 );
@@ -539,7 +539,7 @@ SELECT
         qra.value_date,
         qra.value_datetime)         AS value_date,
     COALESCE(
-        qra.value_string,
+        LEFT(qra.value_string, 1024),
         qra.value_date,
         qra.value_datetime,
         co_a.display)               AS value_string,
@@ -1055,7 +1055,7 @@ SELECT
     meas.value_decimal              AS value_decimal,
     meas.value_unit                 AS value_unit,
     meas.value_code_value           AS value_code_value,
-    meas.value_string               AS value_string,
+    LEFT(meas.value_string, 1024)   AS value_string,
     meas.measurement_id             AS measurement_id,
     pm.physical_measurements_id     AS physical_measurements_id,
     meas.parent_id                  AS parent_id

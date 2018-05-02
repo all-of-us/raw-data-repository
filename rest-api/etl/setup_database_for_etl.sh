@@ -29,14 +29,13 @@ then
 fi
 CREDS_ACCOUNT=${ACCOUNT}
 
-read -s -p "Enter root password for ${PROJECT} database: " root_password
-
 source tools/auth_setup.sh
+get_db_password "${ROOT_DB_USER}"
+
 run_cloud_sql_proxy
-set_db_connection_string
 
 echo "Creating voc and cdm databases..."
-mysql --verbose -h 127.0.0.1 -u "${ROOT_DB_USER}" -p${root_password} --port ${PORT} < etl/create_dbs.sql
+mysql --verbose -h 127.0.0.1 -u "${ROOT_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/create_dbs.sql
 
 echo "Activating service account..."
 
