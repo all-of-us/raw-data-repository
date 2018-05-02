@@ -13,7 +13,8 @@ from code_constants import PPI_SYSTEM
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES, NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
+from field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES
+from field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
 from field_mappings import CONSENT_FOR_STUDY_ENROLLMENT_FIELD, FIELD_TO_QUESTION_CODE
 from field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
 from model.base import get_column_name
