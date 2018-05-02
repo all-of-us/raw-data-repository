@@ -352,7 +352,7 @@ class SiteImporter(CsvImporter):
         site.latitude = latitude
         site.longitude = longitude
         if latitude and longitude:
-          site.timeZoneId = self._get_time_zone(latitude, longitude)        
+          site.timeZoneId = self._get_time_zone(latitude, longitude)
     else:
       if site.googleGroup not in self.status_exception_list:
         if site.siteStatus == self.ACTIVE:
@@ -422,7 +422,7 @@ if __name__ == '__main__':
                       required=True)
   parser.add_argument('--dry_run', help='Read CSV and check for diffs against database.',
                       action='store_true')
-  parser.add_argument('--stub_geocoding', 
+  parser.add_argument('--stub_geocoding',
                       help='Set sites to have the same lat/lng/time zone rather than geocoding.',
                       action='store_true')
   parser.add_argument('--project', help='Project is used to determine enviroment for specific '
