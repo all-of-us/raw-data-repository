@@ -61,6 +61,7 @@ then
     # Include charset here since mysqld defaults to Latin1 (even though CloudSQL
     # is configured with UTF8 as the default). Keep in sync with unit_test_util.py.
     cat tools/drop_db.sql tools/create_db.sql | envsubst > $CREATE_DB_FILE
+    cat tools/grant_permissions.sql | envsubst >> $CREATE_DB_FILE
 
     echo "Creating empty database..."
     mysql -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < ${CREATE_DB_FILE}
