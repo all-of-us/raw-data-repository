@@ -97,8 +97,7 @@ function get_existing_db_config {
    --creds_file ${CREDS_FILE} --config_output "$TMP_DB_INFO_FILE"
 }
 
-for db_name in "rdr" "metrics"; do
-  if [ "${UPDATE_PASSWORDS}" = "Y" ]
+if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" == "Y" ]
   then
     	echo "Updating database user passwords..."
 	randpw
@@ -122,19 +121,26 @@ for db_name in "rdr" "metrics"; do
 	#gcloud sql instances set-root-password $INSTANCE_NAME --password $ROOT_PASSWORD
 	gcloud sql users set-password root % --instance $INSTANCE_NAME --password $ROOT_PASSWORD
 
-        cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
+	if [ "${UPDATE_PASSWORDS}" = "Y" ]
+	    then 
+		echo "updating passwords for database"
+		cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
+	fi
+	if [ "${CREATE_INSTANCE}" = "Y" ]
+	    then
+		echo "creating new database"
+	        cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+	fi
+
+	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
   else
-	get_existing_db_config
-	echo "Creating empty database..."
-	cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
-  fi
+	echo "getting database config..."
+	for db_name in "rdr" "metrics"; do
+		get_existing_db_config
+		echo "Setting database configuration for:", $db_name
+		tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
+	done
 
-  mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
-done
-
-
-echo "Setting database configuration..."
-tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
-
+fi
 echo "Done."
 
