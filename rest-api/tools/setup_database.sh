@@ -125,7 +125,7 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" == "Y" ]
 	    then 
 		echo "updating passwords for database"
 		cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
-	fi
+	else
 	if [ "${CREATE_INSTANCE}" = "Y" ]
 	    then
 		echo "creating new database"
@@ -138,9 +138,12 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" == "Y" ]
   else
 	echo "getting database config..."
 	get_existing_db_config
-	echo "Setting database configuration..."
-	tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
-
+	for db_name in "rdr" "metrics"; do
+	   cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+	done
 fi
+
+echo "Setting database configuration..."
+tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
 echo "Done."
 
