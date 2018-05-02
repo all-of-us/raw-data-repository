@@ -348,6 +348,11 @@ class SiteImporter(CsvImporter):
         site.longitude = longitude
         if latitude and longitude:
           site.timeZoneId = self._get_time_zone(latitude, longitude)
+      else:
+        # Set dummy latitude and longitude when importing sites locally / on a CircleCI box.
+        site.latitude = 32.176
+        site.longitude = -110.93
+        site.timeZoneId = 'America/Phoenix'
     else:
       if site.googleGroup not in self.status_exception_list:
         if site.siteStatus == self.ACTIVE:
