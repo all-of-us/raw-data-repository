@@ -128,14 +128,14 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ]
 	fi
 
 	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
+	echo "Setting database configuration..."
+	tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
   else
-	echo "getting database config..."
+	echo "Setting permissions for database"
 	for db_name in "rdr" "metrics"; do
 	   cat tools/grant_permissions.sql | envsubst > $UPDATE_DB_FILE
 	done
 fi
 
-echo "Setting database configuration..."
-tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
 echo "Done."
 
