@@ -68,7 +68,7 @@ FIELD_TO_QUESTIONNAIRE_MODULE_CODE = {
 QUESTIONNAIRE_MODULE_CODE_TO_FIELD = {v: k for k, v in
                                       FIELD_TO_QUESTIONNAIRE_MODULE_CODE.iteritems()}
 QUESTIONNAIRE_MODULE_FIELD_NAMES = sorted(FIELD_TO_QUESTIONNAIRE_MODULE_CODE.keys())
-NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES = [field_name for field_name in 
+NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES = [field_name for field_name in
                                             QUESTIONNAIRE_MODULE_FIELD_NAMES
-                                            if field_name != 
+                                            if field_name !=
                                             CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD]
