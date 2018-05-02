@@ -115,16 +115,16 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant6 = Participant(participantId=6, biobankId=7, providerLink=pl_tucson)
       participant_dao.insert(participant6)
       self.send_consent('P6', email='larry@gmail.com')
-      
+
       # Participant that starts at PITT but winds up in TEST; should be ignored.
       participant7 = Participant(participantId=7, biobankId=8, providerLink=pl_pitt)
       participant_dao.insert(participant7)
       self.send_consent('P7', email='larry@gmail.com')
-      
+
       # Participant that re-pairs and then withdraws; should be ignored.
       participant8 = Participant(participantId=8, biobankId=9, providerLink=pl_pitt)
       participant_dao.insert(participant8)
-      self.send_consent('P8', email='larry@gmail.com')      
+      self.send_consent('P8', email='larry@gmail.com')
 
     with FakeClock(TIME_2):
       # FIXME: The test passes, but the following "update" doesn't actually make much sense.  The
@@ -172,13 +172,13 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant.version = 2
       participant.providerLink = pl_pitt
       participant_dao.update(participant)
-      
+
       participant7.providerLink = pl_test
       participant_dao.update(participant7)
-      
+
       participant8.withdrawalStatus = WithdrawalStatus.NO_USE
       participant_dao.update(participant8)
-      
+
       self.send_post('Participant/P2/PhysicalMeasurements', load_measurement_json(2, t3))
       self.send_post('Participant/P2/BiobankOrder', load_biobank_order_json(2))
 
