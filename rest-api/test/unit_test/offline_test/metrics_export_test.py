@@ -257,8 +257,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     #  'first_order_date',
     #  'first_samples_arrived_date',
     #  'first_physical_measurements_date',
-    #  'first_samples_to_isolate_dna_date',
-    #  'consent_for_electronic_health_records_time',
+    #  'first_samples_to_isolate_dna_date',  
     #  'consent_for_study_enrollment_time',
     #  'questionnaire_on_family_health_time',
     #  'questionnaire_on_healthcare_access_time',
@@ -270,13 +269,13 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0, [
       participant_fields,
-      ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t3, t1, '', '', t3, '', '', t3, t2]
+      ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t1, '', '', t3, '', '', t3, t2]
     ])
 
     self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1, [
       participant_fields,
-      ['1', '1980-01-03', '', t2, '', '', t3, t1, '', '', '', '', '', '', t2],
-      ['5', '', '', '', '', '', '', t1, '', '', '', '', '', '', t2]
+      ['1', '1980-01-03', '', t2, '', '', t1, '', '', '', '', '', '', t2],
+      ['5', '', '', '', '', '', t1, '', '', '', '', '', '', t2]
     ])
 
     self.assertCsvContents(BUCKET_NAME, prefix + _ANSWERS_CSV % 0, [

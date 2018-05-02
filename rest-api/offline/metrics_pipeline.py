@@ -75,7 +75,7 @@ from census_regions import census_regions
 from code_constants import UNSET, RACE_QUESTION_CODE, PPI_SYSTEM, EHR_CONSENT_QUESTION_CODE
 from code_constants import CONSENT_PERMISSION_YES_CODE, PMI_SKIP_CODE
 from dao.metrics_dao import MetricsBucketDao, MetricsVersionDao
-from field_mappings import QUESTION_CODE_TO_FIELD, FieldType, QUESTIONNAIRE_MODULE_FIELD_NAMES
+from field_mappings import QUESTION_CODE_TO_FIELD, FieldType, NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
 from field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
 from model.metrics import MetricsBucket
 from mapreduce.lib.input_reader._gcs import GCSInputReader
@@ -349,7 +349,7 @@ def map_participants(reader):
     for i in range(6, len(row)):
       questionnaire_submitted_time = row[i]
       if questionnaire_submitted_time:
-        metric = QUESTIONNAIRE_MODULE_FIELD_NAMES[i - 6]
+        metric = NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES[i - 6]
         yield(participant_id, make_tuple(questionnaire_submitted_time,
                                             make_metric(metric, SUBMITTED_VALUE)))
 

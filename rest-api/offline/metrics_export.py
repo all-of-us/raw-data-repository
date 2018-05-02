@@ -10,10 +10,10 @@ from dao.database_utils import replace_isodate, get_sql_and_params_for_array
 from model.base import get_column_name
 from model.participant_summary import ParticipantSummary
 from code_constants import PPI_SYSTEM, UNMAPPED, RACE_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
-from field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES
+from field_mappings import NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from offline.metrics_pipeline import MetricsPipeline
-from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN
+from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, QuestionnaireStatus
 
 # TODO: filter out participants that have withdrawn in here
 
@@ -94,13 +94,15 @@ def _get_params(num_shards, shard_number):
           'test_email_pattern': TEST_EMAIL_PATTERN}
 
 def _get_participant_sql(num_shards, shard_number):
-  module_time_fields = ['ISODATE[ps.{0}] {0}'.format(get_column_name(ParticipantSummary,
-                                                            field_name + 'Time'))
-                        for field_name in QUESTIONNAIRE_MODULE_FIELD_NAMES]
+  module_time_fields = ['(CASE WHEN ps.{0} = :submitted THEN ISODATE[ps.{1}] ELSE NULL END) {1}'
+                          .format(get_column_name(ParticipantSummary, field_name),
+                                  get_column_name(ParticipantSummary, field_name + 'Time'))
+                        for field_name in NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES]
   modules_sql = ', '.join(module_time_fields)
   dna_tests_sql, params = get_sql_and_params_for_array(
         config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
   params.update(_get_params(num_shards, shard_number))
+  params['submitted'] = int(QuestionnaireStatus.SUBMITTED)
   return replace_isodate(_PARTICIPANT_SQL_TEMPLATE.format(dna_tests_sql, modules_sql)), params
 
 def _get_hpo_id_sql(num_shards, shard_number):

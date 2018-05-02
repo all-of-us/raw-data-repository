@@ -13,8 +13,8 @@ from code_constants import PPI_SYSTEM
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES, FIELD_TO_QUESTION_CODE
-from field_mappings import CONSENT_FOR_STUDY_ENROLLMENT_FIELD
+from field_mappings import QUESTIONNAIRE_MODULE_FIELD_NAMES, NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES
+from field_mappings import CONSENT_FOR_STUDY_ENROLLMENT_FIELD, FIELD_TO_QUESTION_CODE
 from field_mappings import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_FIELD
 from model.base import get_column_name
 from model.code import CodeType
@@ -153,7 +153,7 @@ ANSWER_FIELDS = ['participant_id', 'start_time', 'question_code', 'answer_code',
 
 def get_participant_fields():
   return BASE_PARTICIPANT_FIELDS + [get_column_name(ParticipantSummary, field_name + 'Time')
-                                    for field_name in QUESTIONNAIRE_MODULE_FIELD_NAMES]
+                                    for field_name in NON_EHR_QUESTIONNAIRE_MODULE_FIELD_NAMES]
 
 #TODO(danrodney): handle membership tier
 # CONFIG defines the fields that can appear in metrics, and functions that can be used
