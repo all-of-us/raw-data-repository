@@ -36,9 +36,9 @@ function get_geocode_key {
 CREDS_ACCOUNT="${ACCOUNT}"
 if [ -z "${ACCOUNT}" ]
 then
-echo "Not Geocoding addresses without --account"
+echo "Using stub geocoding when --account is not specified"
+GEOCODE_FLAG=--stub_geocoding
 else
-GEOCODE_FLAG=--geocode_flag
 get_geocode_key
 fi
 
