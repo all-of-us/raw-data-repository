@@ -129,17 +129,17 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" == "Y" ]
 	if [ "${CREATE_INSTANCE}" = "Y" ]
 	    then
 		echo "creating new database"
-	        cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+		for db_name in "rdr" "metrics"; do
+	       	   cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+		done
 	fi
 
 	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
   else
 	echo "getting database config..."
-	for db_name in "rdr" "metrics"; do
 		get_existing_db_config
-		echo "Setting database configuration for:", $db_name
+		echo "Setting database configuration..."
 		tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
-	done
 
 fi
 echo "Done."
