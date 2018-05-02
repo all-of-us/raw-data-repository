@@ -137,9 +137,9 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" == "Y" ]
 	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
   else
 	echo "getting database config..."
-		get_existing_db_config
-		echo "Setting database configuration..."
-		tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
+	get_existing_db_config
+	echo "Setting database configuration..."
+	tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
 
 fi
 echo "Done."
