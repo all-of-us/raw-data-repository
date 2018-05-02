@@ -55,13 +55,6 @@ function randpw {
     new_password=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z0-9 | head -c${1:-16};echo;)
     }
 
-randpw
-ROOT_PASSWORD=$new_password
-randpw
-RDR_PASSWORD=$new_password
-randpw
-READONLY_PASSWORD=$new_password
-
 INSTANCE_NAME=rdrmaindb
 FAILOVER_INSTANCE_NAME=rdrbackupdb
 # Default to a lightweight config; uses a non-shared CPU, with 1 core and 3.75 GB of memory
@@ -77,9 +70,7 @@ then
       --database-version MYSQL_5_7 --project $PROJECT --storage-auto-increase
   sleep 3
 fi
-echo "Setting root password..."
-#gcloud sql instances set-root-password $INSTANCE_NAME --password $ROOT_PASSWORD
-gcloud sql users set-password root % --instance $INSTANCE_NAME --password $ROOT_PASSWORD
+
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
 BACKUP_INSTANCE_NAME=$(gcloud sql instances describe $FAILOVER_INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
 
@@ -100,36 +91,50 @@ function finish {
 }
 trap finish EXIT
 
-echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
-     ' "backup_db_connection_string": "'$BACKUP_CONNECTION_STRING'", '\
-     ' "rdr_db_password": "'$RDR_PASSWORD'", ' \
-     ' "root_db_password": "'$ROOT_PASSWORD'", ' \
-     ' "read_only_db_password": "'$READONLY_PASSWORD'", ' \
-     ' "db_connection_name": "'$INSTANCE_CONNECTION_NAME'", '\
-     ' "backup_db_connection_name": "'$BACKUP_INSTANCE_NAME'", '\
-     ' "db_user": "'$RDR_DB_USER'", '\
-     ' "db_name": "'$DB_NAME'" }' > $TMP_DB_INFO_FILE
+function get_existing_db_config {
+  "Getting database info..."
+  tools/install_config.sh --key db_config --instance $INSTANCE \
+   --creds_file ${CREDS_FILE} --config_output "$TMP_DB_INFO_FILE"
+}
 
 for db_name in "rdr" "metrics"; do
   if [ "${UPDATE_PASSWORDS}" = "Y" ]
   then
-    cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
+    	echo "Updating database user passwords..."
+	randpw
+	ROOT_PASSWORD=$new_password
+	randpw
+	RDR_PASSWORD=$new_password
+	randpw
+	READONLY_PASSWORD=$new_password
+
+	echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
+	     ' "backup_db_connection_string": "'$BACKUP_CONNECTION_STRING'", '\
+	     ' "rdr_db_password": "'$RDR_PASSWORD'", ' \
+	     ' "root_db_password": "'$ROOT_PASSWORD'", ' \
+	     ' "read_only_db_password": "'$READONLY_PASSWORD'", ' \
+	     ' "db_connection_name": "'$INSTANCE_CONNECTION_NAME'", '\
+	     ' "backup_db_connection_name": "'$BACKUP_INSTANCE_NAME'", '\
+	     ' "db_user": "'$RDR_DB_USER'", '\
+	     ' "db_name": "'$DB_NAME'" }' > $TMP_DB_INFO_FILE
+
+	echo "Setting root password..."
+	#gcloud sql instances set-root-password $INSTANCE_NAME --password $ROOT_PASSWORD
+	gcloud sql users set-password root % --instance $INSTANCE_NAME --password $ROOT_PASSWORD
+
+        cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
   else
-    cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+	get_existing_db_config
+	echo "Creating empty database..."
+	cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
   fi
 
-  run_cloud_sql_proxy
-
-  if [ "${UPDATE_PASSWORDS}" = "Y" ]
-  then
-    echo "Updating database user passwords..."
-  else
-    echo "Creating empty database..."
-  fi
   mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
 done
+
 
 echo "Setting database configuration..."
 tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
 
 echo "Done."
+
