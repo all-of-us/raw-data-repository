@@ -1,4 +1,5 @@
 import mock
+import unittest
 
 from testlib import testutil
 
@@ -23,6 +24,7 @@ class DataGenApiTest(testutil.CloudStorageTestBase, FlaskTestBase):
     testutil.CloudStorageTestBase.setUp(self)
     FlaskTestBase.setUp(self)
 
+  @unittest.skip("DA-471")
   @mock.patch('google.appengine.ext.deferred.defer', new=_callthrough)
   def test_generate_samples(self):
     participant_id = self.send_post('Participant', {})['participantId']
