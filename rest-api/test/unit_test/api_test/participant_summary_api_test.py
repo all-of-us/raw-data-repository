@@ -723,7 +723,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
   def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id):
     qr = make_questionnaire_response_json(participant_id, questionnaire_id)
     with FakeClock(TIME_1):
-      self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+      self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr,
+                     expected_status=httplib.BAD_REQUEST)
 
   def _send_biobank_order(self, participant_id, order):
     with FakeClock(TIME_1):
@@ -906,13 +907,13 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
 
     self.assertIsNone(ps_2.get('suspensionTime'))
-    self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
+    self.assertEquals(1, ps_3['numCompletedBaselinePPIModules'])
     self.assertEquals(0, ps_3['numBaselineSamplesArrived'])
     self.assertEquals('UNSET', ps_3['sampleStatus1ED10'])
     self.assertEquals('RECEIVED', ps_3['sampleStatus1SAL'])
     self.assertEquals(TIME_1.isoformat(), ps_3['sampleStatus1SALTime'])
     self.assertEquals('RECEIVED', ps_3['samplesToIsolateDNA'])
-    self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
+    self.assertEquals('MEMBER', ps_3['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
     self.assertEquals('male', ps_3['genderIdentity'])
@@ -998,9 +999,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=INTERESTED',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=MEMBER',
-                           [[ps_2]])
+                           [[ps_2, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&enrollmentStatus=FULL_PARTICIPANT',
-                           [[ps_3]])
+                           [[]])
       self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=1978-10-08',
                            [[ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&dateOfBirth=gt1978-10-08',
