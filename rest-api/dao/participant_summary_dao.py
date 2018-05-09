@@ -41,6 +41,8 @@ _fields_lock = threading.RLock()
 
 # Query used to update the enrollment status for all participant summaries after
 # a Biobank samples import.
+# TODO(DA-631): This should likely be a conditional update (e.g. see
+# baseline/dna updates) which updates last modified.
 _ENROLLMENT_STATUS_SQL = """
     UPDATE
       participant_summary
@@ -72,8 +74,6 @@ _SAMPLE_SQL = """,
           AND biobank_stored_sample.test = %(sample_param_ref)s)
    """
 
-_PARTICIPANT_ID_FILTER = " WHERE participant_id = :participant_id"
-
 _WHERE_SQL = """
 not sample_status_%(test)s_time <=>
 (SELECT MAX(confirmed) FROM biobank_stored_sample
@@ -82,12 +82,21 @@ AND biobank_stored_sample.test = %(sample_param_ref)s)
 
 """
 
-def _get_sample_sql_and_params():
+def _get_sample_sql_and_params(now):
   """Gets SQL and params needed to update status and time fields on the participant summary for
   each biobank sample.
   """
-  sql = ''
-  params = {}
+  sql = """
+  UPDATE
+    participant_summary
+  SET
+    last_modified = :now
+  """
+  params = {
+      'received': int(SampleStatus.RECEIVED),
+      'unset': int(SampleStatus.UNSET),
+      'now': now
+  }
   where_sql = ''
   for i in range(0, len(BIOBANK_TESTS)):
     sample_param = 'sample%d' % i
@@ -99,10 +108,48 @@ def _get_sample_sql_and_params():
       where_sql += ' or '
     where_sql += _WHERE_SQL % {"test": lower_test, "sample_param_ref": sample_param_ref}
 
-  sql += ' where ' + where_sql
+  sql += ' WHERE ' + where_sql
 
   return sql, params
 
+def _get_baseline_sql_and_params():
+  tests_sql, params = get_sql_and_params_for_array(
+      config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES), 'baseline')
+  return (
+      """
+      (
+        SELECT
+          COUNT(*)
+        FROM
+          biobank_stored_sample
+        WHERE
+          biobank_stored_sample.biobank_id = participant_summary.biobank_id
+          AND biobank_stored_sample.confirmed IS NOT NULL
+          AND biobank_stored_sample.test IN %s
+      )
+      """ % (tests_sql),
+      params
+  )
+
+def _get_dna_isolates_sql_and_params():
+  tests_sql, params = get_sql_and_params_for_array(
+      config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
+  params.update({
+      'received': int(SampleStatus.RECEIVED),
+      'unset': int(SampleStatus.UNSET)
+  })
+  return (
+      """
+      (
+        CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
+                         WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
+                         AND biobank_stored_sample.confirmed IS NOT NULL
+                         AND biobank_stored_sample.test IN %s)
+        THEN :received ELSE :unset END
+      )
+      """ % (tests_sql),
+      params
+  )
 
 class ParticipantSummaryDao(UpdatableDao):
 
@@ -215,39 +262,30 @@ class ParticipantSummaryDao(UpdatableDao):
   def update_from_biobank_stored_samples(self, participant_id=None):
     """Rewrites sample-related summary data. Call this after updating BiobankStoredSamples.
     If participant_id is provided, only that participant will have their summary updated."""
-    baseline_tests_sql, baseline_tests_params = get_sql_and_params_for_array(
-        config.getSettingList(config.BASELINE_SAMPLE_TEST_CODES), 'baseline')
-    dna_tests_sql, dna_tests_params = get_sql_and_params_for_array(
-        config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
-    sample_sql, sample_params = _get_sample_sql_and_params()
-    sql = """
+    now = clock.CLOCK.now()
+    sample_sql, sample_params = _get_sample_sql_and_params(now)
+
+    baseline_tests_sql, baseline_tests_params = _get_baseline_sql_and_params()
+    dna_tests_sql, dna_tests_params = _get_dna_isolates_sql_and_params()
+
+    counts_sql = """
     UPDATE
       participant_summary
     SET
-      num_baseline_samples_arrived = (
-        SELECT
-          COUNT(*)
-        FROM
-          biobank_stored_sample
-        WHERE
-          biobank_stored_sample.biobank_id = participant_summary.biobank_id
-          AND biobank_stored_sample.confirmed IS NOT NULL
-          AND biobank_stored_sample.test IN %s
-      ),
-      samples_to_isolate_dna = (
-          CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
-                           WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
-                           AND biobank_stored_sample.confirmed IS NOT NULL
-                           AND biobank_stored_sample.test IN %s)
-          THEN :received ELSE :unset END
-      ),
+      num_baseline_samples_arrived = {baseline_tests_sql},
+      samples_to_isolate_dna = {dna_tests_sql},
       last_modified = :now
-       %s""" % (baseline_tests_sql, dna_tests_sql, sample_sql)
-    params = {'received': int(SampleStatus.RECEIVED), 'unset': int(SampleStatus.UNSET),
-              'now': clock.CLOCK.now()}
-    params.update(baseline_tests_params)
-    params.update(dna_tests_params)
-    params.update(sample_params)
+    WHERE
+      num_baseline_samples_arrived != {baseline_tests_sql} OR
+      samples_to_isolate_dna != {dna_tests_sql}
+    """.format(
+           baseline_tests_sql=baseline_tests_sql,
+           dna_tests_sql=dna_tests_sql)
+    counts_params = {'now': now}
+    counts_params.update(baseline_tests_params)
+    counts_params.update(dna_tests_params)
+
+    enrollment_status_sql = _ENROLLMENT_STATUS_SQL
     enrollment_status_params = {'submitted': int(QuestionnaireStatus.SUBMITTED),
                                 'num_baseline_ppi_modules': self._get_num_baseline_ppi_modules(),
                                 'completed': int(PhysicalMeasurementsStatus.COMPLETED),
@@ -256,17 +294,20 @@ class ParticipantSummaryDao(UpdatableDao):
                                 'member': int(EnrollmentStatus.MEMBER),
                                 'interested': int(EnrollmentStatus.INTERESTED)}
 
-    enrollment_status_sql = _ENROLLMENT_STATUS_SQL
-    # If participant_id is provided, add the participant ID filter to both update statements.
+    # If participant_id is provided, add the participant ID filter to all update statements.
     if participant_id:
-      sql += _PARTICIPANT_ID_FILTER
-      params['participant_id'] = participant_id
-      enrollment_status_sql += _PARTICIPANT_ID_FILTER
+      sample_sql += ' AND participant_id = :participant_id'
+      sample_params['participant_id'] = participant_id
+      counts_sql += ' AND participant_id = :participant_id'
+      counts_params['participant_id'] = participant_id
+      enrollment_status_sql += ' WHERE participant_id = :participant_id'
       enrollment_status_params['participant_id'] = participant_id
 
-    sql = replace_null_safe_equals(sql)
+    sample_sql = replace_null_safe_equals(sample_sql)
+    counts_sql = replace_null_safe_equals(counts_sql)
     with self.session() as session:
-      session.execute(sql, params)
+      session.execute(sample_sql, sample_params)
+      session.execute(counts_sql, counts_params)
       session.execute(enrollment_status_sql, enrollment_status_params)
 
   def _get_num_baseline_ppi_modules(self):
@@ -381,4 +422,3 @@ def _initialize_field_type_sets():
               if fk._get_colspec() == 'code.code_id':
                 _CODE_FIELDS.add(prop_name)
                 break
-

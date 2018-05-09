@@ -216,6 +216,9 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     p_no_samples = self._insert(Participant(participantId=3, biobankId=33))
     p_unconfirmed = self._insert(Participant(participantId=4, biobankId=44))
     self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 0)
+    def get_p_baseline_last_modified():
+      return self.dao.get(p_baseline_samples.participantId).lastModified
+    p_baseline_last_modified1 = get_p_baseline_last_modified()
 
     sample_dao = BiobankStoredSampleDao()
     def add_sample(participant, test_code, sample_id):
@@ -234,7 +237,10 @@ class ParticipantSummaryDaoTest(NdbTestBase):
                                           biobankOrderIdentifier='KIT', test=baseline_tests[1],
                                           confirmed=None))
     self.dao.update_from_biobank_stored_samples()
-    test_last_modified_doesnt_change_below = self.dao.get(1).lastModified
+
+    p_baseline_last_modified2 = get_p_baseline_last_modified()
+    self.assertNotEquals(p_baseline_last_modified2, p_baseline_last_modified1)
+
     self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 2)
     self.assertEquals(self.dao.get(p_mixed_samples.participantId).numBaselineSamplesArrived, 1)
     self.assertEquals(self.dao.get(p_no_samples.participantId).numBaselineSamplesArrived, 0)
@@ -249,9 +255,39 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     M_second_update = self.dao.get(M_baseline_samples.participantId)
     self.dao.update_from_biobank_stored_samples()
 
-    p_baseline_update = self.dao.get(p_baseline_samples.participantId)
     self.assertNotEqual(M_first_update.lastModified, M_second_update.lastModified)
-    self.assertEquals(p_baseline_update.lastModified, test_last_modified_doesnt_change_below)
+    self.assertEquals(get_p_baseline_last_modified(), p_baseline_last_modified2)
+
+  def test_update_from_samples_changed_tests(self):
+    baseline_tests = ["1PST8", "2PST8"]
+    config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
+    self.dao.update_from_biobank_stored_samples()  # safe noop
+
+    participant = self._insert(Participant(participantId=1, biobankId=11))
+    self.assertEquals(self.dao.get(participant.participantId).numBaselineSamplesArrived, 0)
+
+    sample_dao = BiobankStoredSampleDao()
+    def add_sample(test_code, sample_id):
+      TIME = datetime.datetime(2018, 3, 2)
+      sample_dao.insert(BiobankStoredSample(
+          biobankStoredSampleId=sample_id, biobankId=participant.biobankId,
+        biobankOrderIdentifier='KIT', test=test_code, confirmed=TIME))
+
+    add_sample(baseline_tests[0], '11111')
+    add_sample(baseline_tests[1], '22223')
+    self.dao.update_from_biobank_stored_samples()
+    summary = self.dao.get(participant.participantId)
+    init_last_modified = summary.lastModified
+    self.assertEquals(summary.numBaselineSamplesArrived, 2)
+
+    # Simulate removal of one of the baseline tests from config.json.
+    baseline_tests.pop()
+    config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)
+    self.dao.update_from_biobank_stored_samples()
+
+    summary = self.dao.get(participant.participantId)
+    self.assertEquals(summary.numBaselineSamplesArrived, 1)
+    self.assertNotEqual(init_last_modified, summary.lastModified)
 
   def test_calculate_enrollment_status(self):
     self.assertEquals(EnrollmentStatus.FULL_PARTICIPANT,
