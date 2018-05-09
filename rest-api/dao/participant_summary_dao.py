@@ -41,6 +41,8 @@ _fields_lock = threading.RLock()
 
 # Query used to update the enrollment status for all participant summaries after
 # a Biobank samples import.
+# TODO: This should likely be a conditional update (e.g. see baseline/dna
+# updates) which updates last modified.
 _ENROLLMENT_STATUS_SQL = """
     UPDATE
       participant_summary
