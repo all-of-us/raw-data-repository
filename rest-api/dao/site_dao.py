@@ -86,3 +86,41 @@ class SiteDao(CacheAllDao):
                              if model.adminEmails  else [])
     resource.link = model.link
     return resource
+
+  def _do_update(self, session, obj, existing_obj):
+    super(SiteDao, self)._do_update(session, obj, existing_obj)
+    if obj.organizationId != existing_obj.organizationId:
+      # from participant_dao import make_primary_provider_link_for_id
+      # provider_link = make_primary_provider_link_for_id(obj.hpoId)
+      provider_link = "'NOT A PROVIDER'"
+
+      participant_sql = """ 
+            UPDATE participant 
+            SET organization_id = {},
+                last_modified = now(),
+                provider_link = {}
+            WHERE site_id = {};
+            
+            """ .format(obj.organizationId, provider_link, existing_obj.siteId)
+
+      participant_summary_sql = """ 
+            UPDATE participant_summary
+            SET organization_id = {},
+                last_modified = now()
+            WHERE site_id = {};
+            
+            """ .format(obj.organizationId, existing_obj.siteId)
+
+      participant_history_sql = """ 
+            UPDATE participant_history 
+            SET organization_id = {},
+                last_modified = now(),
+                provider_link = {}
+            WHERE site_id = {};
+            
+            """ .format(obj.organizationId, provider_link, existing_obj.siteId)
+
+      with self.session() as session:
+        session.execute(participant_sql)
+        session.execute(participant_summary_sql)
+        session.execute(participant_history_sql)

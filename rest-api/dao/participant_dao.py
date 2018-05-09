@@ -34,7 +34,6 @@ class ParticipantHistoryDao(BaseDao):
   def __init__(self):
     super(ParticipantHistoryDao, self).__init__(ParticipantHistory)
 
-
   def get_id(self, obj):
     return [obj.participantId, obj.version]
 

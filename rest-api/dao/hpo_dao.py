@@ -72,3 +72,42 @@ class HPODao(CacheAllDao):
     json = resource.as_json()
     del json['resourceType']
     return json
+
+
+  def _do_update(self, session, obj, existing_obj):
+    super(HPODao, self)._do_update(session, obj, existing_obj)
+    if obj.hpoId != existing_obj.hpoId:
+      # from participant_dao import make_primary_provider_link_for_id
+      # provider_link = make_primary_provider_link_for_id(obj.hpoId)
+      provider_link = "'NOT A PROVIDER'"
+
+      participant_sql = """ 
+            UPDATE participant 
+            SET hpo_id = {},
+                last_modified = now(),
+                provider_link = {}
+            WHERE hpo_id = {};
+            
+            """ .format(obj.hpoId, provider_link, existing_obj.hpoId)
+
+      participant_summary_sql = """ 
+            UPDATE participant_summary
+            SET hpo_id = {},
+                last_modified = now()
+            WHERE hpo_id = {};
+            
+            """ .format(obj.hpoId, existing_obj.hpoId)
+
+      participant_history_sql = """ 
+            UPDATE participant_history 
+            SET hpo_id = {},
+                last_modified = now(),
+                provider_link = {}
+            WHERE hpo_id = {};
+            
+            """ .format(obj.hpoId, provider_link, existing_obj.hpoId)
+
+      with self.session() as session:
+        session.execute(participant_sql)
+        session.execute(participant_summary_sql)
+        session.execute(participant_history_sql)
