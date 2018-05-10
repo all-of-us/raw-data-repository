@@ -73,6 +73,5 @@ class HPODao(CacheAllDao):
     del json['resourceType']
     return json
 
-
   def _do_update(self, session, obj, existing_obj):
     super(HPODao, self)._do_update(session, obj, existing_obj)
