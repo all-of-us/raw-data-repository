@@ -29,40 +29,41 @@ class OrganizationDao(CacheAllDao):
   def _do_update(self, session, obj, existing_obj):
     super(OrganizationDao, self)._do_update(session, obj, existing_obj)
     if obj.hpoId != existing_obj.hpoId:
-      # from participant_dao import make_primary_provider_link_for_id
-      # provider_link = make_primary_provider_link_for_id(obj.hpoId)
-      provider_link = "'NOT A PROVIDER'"
+      from participant_dao import make_primary_provider_link_for_id
+      provider_link = make_primary_provider_link_for_id(obj.hpoId)
+      # provider_link = "'NOT A PROVIDER'"
 
       participant_sql = """ 
             UPDATE participant 
-            SET hpo_id = {},
-                last_modified = now(),
-                provider_link = {}
-            WHERE organization_id = {};
+            SET hpo_id = :hpo_id,
+                last_modified = :now,
+                provider_link = :provider_link
+            WHERE organization_id = :org_id;
             
-            """ .format(obj.hpoId, provider_link, existing_obj.organizationId)
+            """
 
       participant_summary_sql = """ 
             UPDATE participant_summary
-            SET hpo_id = {},
-                last_modified = now(),
-            WHERE organization_id = {};
+            SET hpo_id = :hpo_id,
+                last_modified = :now,
+            WHERE organization_id = :org_id;
             
-            """ .format(obj.hpoId, existing_obj.organizationId)
+            """
 
       participant_history_sql = """ 
             UPDATE participant_history 
-            SET hpo_id = {},
-                last_modified = now(),
-                provider_link = {}
-            WHERE organization_id = {};
+            SET hpo_id = :hpo_id,
+                last_modified = :now,
+                provider_link = :provider_link 
+            WHERE organization_id = :org_id;
             
-            """ .format(obj.hpoId, provider_link, existing_obj.organizationId)
+            """
+      params = {'hpo_id': obj.hpoId, 'provider_link': provider_link, 'org_id':
+        existing_obj.organizationId, 'now': clock.CLOCK.now()}
 
-      with self.session() as session:
-        session.execute(participant_sql)
-        session.execute(participant_summary_sql)
-        session.execute(participant_history_sql)
+      session.execute(participant_sql, params)
+      session.execute(participant_summary_sql, params)
+      session.execute(participant_history_sql, params)
 
   def get_id(self, obj):
     return obj.organizationId
