@@ -94,7 +94,7 @@ class SiteDao(CacheAllDao):
       # provider_link = make_primary_provider_link_for_id(obj.hpoId)
       provider_link = "'NOT A PROVIDER'"
 
-      participant_sql = """ 
+      participant_sql = """
             UPDATE participant 
             SET organization_id = {},
                 last_modified = now(),
@@ -103,7 +103,7 @@ class SiteDao(CacheAllDao):
             
             """ .format(obj.organizationId, provider_link, existing_obj.siteId)
 
-      participant_summary_sql = """ 
+      participant_summary_sql = """
             UPDATE participant_summary
             SET organization_id = {},
                 last_modified = now()
@@ -111,7 +111,7 @@ class SiteDao(CacheAllDao):
             
             """ .format(obj.organizationId, existing_obj.siteId)
 
-      participant_history_sql = """ 
+      participant_history_sql = """
             UPDATE participant_history 
             SET organization_id = {},
                 last_modified = now(),

@@ -1,5 +1,4 @@
 import clock
-import json
 from dao.cache_all_dao import CacheAllDao
 from dao.site_dao import _FhirSite, SiteDao
 from model.organization import Organization
@@ -33,7 +32,7 @@ class OrganizationDao(CacheAllDao):
       provider_link = make_primary_provider_link_for_id(obj.hpoId)
       # provider_link = "'NOT A PROVIDER'"
 
-      participant_sql = """ 
+      participant_sql = """
             UPDATE participant 
             SET hpo_id = :hpo_id,
                 last_modified = :now,
@@ -42,7 +41,7 @@ class OrganizationDao(CacheAllDao):
             
             """
 
-      participant_summary_sql = """ 
+      participant_summary_sql = """
             UPDATE participant_summary
             SET hpo_id = :hpo_id,
                 last_modified = :now,
@@ -50,7 +49,7 @@ class OrganizationDao(CacheAllDao):
             
             """
 
-      participant_history_sql = """ 
+      participant_history_sql = """
             UPDATE participant_history 
             SET hpo_id = :hpo_id,
                 last_modified = :now,

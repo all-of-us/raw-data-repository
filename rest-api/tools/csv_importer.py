@@ -57,9 +57,6 @@ class CsvImporter(object):
             continue
           existing_entity = existing_map.get(getattr(entity, self.external_id_field))
           if existing_entity:
-            print '========================'
-            print existing_entity, 'existing entity'
-            print '========================'
             changed, skipped = self._update_entity(entity, existing_entity, session, dry_run)
             if changed:
               updated_count += 1
@@ -68,9 +65,6 @@ class CsvImporter(object):
             else:
               matched_count += 1
           else:
-            print '========================'
-            print existing_entity, 'NOT existing entity'
-            print '========================'
             entity = self._insert_entity(entity, existing_map, session, dry_run)
             if not entity:
               skip_count += 1
@@ -106,7 +100,6 @@ class CsvImporter(object):
     return changes
 
   def _update_entity(self, entity, existing_entity, session, dry_run):
-    print 'IN UPDATE ENTITY'
     new_dict = entity.asdict()
     new_dict[self.id_field] = None
     existing_dict = existing_entity.asdict()
@@ -130,7 +123,6 @@ class CsvImporter(object):
 #    self.dao.update_with_session(session, existing_entity)
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
-    print 'IN INSERT ENTITY'
     #pylint: disable=unused-argument
     logging.info('Inserting %s: %s', self.entity_name, entity.asdict())
     if not dry_run:
