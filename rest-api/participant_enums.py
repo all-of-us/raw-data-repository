@@ -1,3 +1,5 @@
+import json
+
 from dateutil.relativedelta import relativedelta
 
 from protorpc import messages
@@ -197,3 +199,24 @@ def get_race(race_codes):
       return Race.HLS_AND_ONE_OTHER_RACE
     else:
       return Race.MORE_THAN_ONE_RACE
+
+def make_primary_provider_link_for_id(hpo_id):
+  from dao.hpo_dao import HPODao
+  return make_primary_provider_link_for_hpo(HPODao().get(hpo_id))
+
+
+def make_primary_provider_link_for_hpo(hpo):
+  return make_primary_provider_link_for_name(hpo.name)
+
+
+def make_primary_provider_link_for_name(hpo_name):
+  """Returns serialized FHIR JSON for a provider link based on HPO information.
+
+  The returned JSON represents a list containing the one primary provider.
+  """
+  return json.dumps([{
+    'primary': True,
+    'organization': {
+      'reference': 'Organization/%s' % hpo_name
+    }
+  }], sort_keys=True)

@@ -113,14 +113,14 @@ class CsvImporter(object):
       logging.info(log_prefix + 'Updating %s "%s": changes = %s', self.entity_name,
                    new_dict[self.external_id_field], changes)
       if not dry_run:
-        self.dao._do_update(session, entity, existing_entity)
+        self._do_update(session, entity, existing_entity)
       return True, False
 
-#  def _do_update(self, session, entity, existing_entity):
-#    for k, v in entity.asdict().iteritems():
-#      if k != self.external_id_field and k != self.id_field:
-#        setattr(existing_entity, k, v)
-#    self.dao.update_with_session(session, existing_entity)
+  def _do_update(self, session, entity, existing_entity):
+    for k, v in entity.asdict().iteritems():
+      if k != self.external_id_field and k != self.id_field:
+        setattr(existing_entity, k, v)
+    self.dao.update_with_session(session, existing_entity)
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
     #pylint: disable=unused-argument

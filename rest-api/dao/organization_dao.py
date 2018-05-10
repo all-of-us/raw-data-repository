@@ -26,11 +26,16 @@ class OrganizationDao(CacheAllDao):
     pass
 
   def _do_update(self, session, obj, existing_obj):
+    print '!!!! in  dao do update !!!!!!!'
     super(OrganizationDao, self)._do_update(session, obj, existing_obj)
+    print 'super called'
+    print obj.hpoId, 'obj.hpoid'
+    print existing_obj.hpoId, 'existing_obj.hpoid'
     if obj.hpoId != existing_obj.hpoId:
-      from participant_dao import make_primary_provider_link_for_id
+      print 'if condition is met !!!!!!!'
+      from participant_enums import make_primary_provider_link_for_id
       provider_link = make_primary_provider_link_for_id(obj.hpoId)
-      # provider_link = "'NOT A PROVIDER'"
+      print provider_link, '< provider link'
 
       participant_sql = """
             UPDATE participant 
@@ -44,7 +49,7 @@ class OrganizationDao(CacheAllDao):
       participant_summary_sql = """
             UPDATE participant_summary
             SET hpo_id = :hpo_id,
-                last_modified = :now,
+                last_modified = :now
             WHERE organization_id = :org_id;
             
             """
@@ -58,11 +63,12 @@ class OrganizationDao(CacheAllDao):
             
             """
       params = {'hpo_id': obj.hpoId, 'provider_link': provider_link, 'org_id':
-        existing_obj.organizationId, 'now': clock.CLOCK.now()}
+                existing_obj.organizationId, 'now': clock.CLOCK.now()}
 
       session.execute(participant_sql, params)
       session.execute(participant_summary_sql, params)
       session.execute(participant_history_sql, params)
+      print '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<   completed sql'
 
   def get_id(self, obj):
     return obj.organizationId

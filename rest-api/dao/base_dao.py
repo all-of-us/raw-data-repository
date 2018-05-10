@@ -419,6 +419,7 @@ class UpdatableDao(BaseDao):
   def update_with_session(self, session, obj):
     """Updates the object in the database with the specified session. Will fail if the object
     doesn't exist already, or if obj.version does not match the version of the existing object."""
+    print 'I AM IN UPDATE WITH SESSION IN BASE DAO'
     existing_obj = self.get_for_update(session, self.get_id(obj))
     self._validate_update(session, obj, existing_obj)
     self._do_update(session, obj, existing_obj)
