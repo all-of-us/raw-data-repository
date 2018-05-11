@@ -18,8 +18,7 @@ from model.participant import Participant, ParticipantHistory
 from model.utils import to_client_participant_id
 from model.config_utils import to_client_biobank_id
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus,\
-  make_primary_provider_link_for_id, make_primary_provider_link_for_hpo, \
-  make_primary_provider_link_for_name
+  make_primary_provider_link_for_id
 
 
 class ParticipantHistoryDao(BaseDao):

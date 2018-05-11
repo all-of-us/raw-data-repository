@@ -9,7 +9,7 @@ from code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CO
 from code_constants import GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
 from code_constants import RACE_QUESTION_CODE, STATE_QUESTION_CODE, RACE_WHITE_CODE
 from code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_SKIP_CODE
-from participant_enums import WithdrawalStatus
+from participant_enums import WithdrawalStatus, make_primary_provider_link_for_name
 from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from mapreduce import test_support
 from model.biobank_stored_sample import BiobankStoredSample
@@ -18,7 +18,7 @@ from model.hpo import HPO
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.hpo_dao import HPODao
 from dao.metrics_dao import MetricsVersionDao, SERVING_METRICS_DATA_VERSION
-from dao.participant_dao import ParticipantDao, make_primary_provider_link_for_name
+from dao.participant_dao import ParticipantDao
 from model.metrics import MetricsVersion
 from model.participant import Participant
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE

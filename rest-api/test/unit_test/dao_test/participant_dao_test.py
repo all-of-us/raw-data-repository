@@ -3,8 +3,7 @@ import datetime
 from dao.base_dao import MAX_INSERT_ATTEMPTS
 from dao.hpo_dao import HPODao
 from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
-from dao.participant_dao import make_primary_provider_link_for_name
-from dao.participant_dao import make_primary_provider_link_for_id
+from participant_enums import make_primary_provider_link_for_name, make_primary_provider_link_for_id
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
 from model.hpo import HPO
