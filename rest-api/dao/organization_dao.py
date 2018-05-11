@@ -26,20 +26,14 @@ class OrganizationDao(CacheAllDao):
     pass
 
   def _do_update(self, session, obj, existing_obj):
-    print '!!!! in  dao do update !!!!!!!'
-    print existing_obj.hpoId, 'EXISTING OBJ BEFORE THE SUPER'
+    update_participants = False
     if obj.hpoId != existing_obj.hpoId:
       update_participants = True
       new_hpo_id = obj.hpoId
     super(OrganizationDao, self)._do_update(session, obj, existing_obj)
-    print 'super called'
-    print obj.hpoId, 'obj.hpoid'
-    print existing_obj.hpoId, 'existing_obj.hpoid'
     if update_participants:
-      print 'if condition is met !!!!!!!'
       from participant_enums import make_primary_provider_link_for_id
       provider_link = make_primary_provider_link_for_id(new_hpo_id)
-      print provider_link, '< provider link'
 
       participant_sql = """
             UPDATE participant 
@@ -72,7 +66,6 @@ class OrganizationDao(CacheAllDao):
       session.execute(participant_sql, params)
       session.execute(participant_summary_sql, params)
       session.execute(participant_history_sql, params)
-      print '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<   completed sql'
 
   def get_id(self, obj):
     return obj.organizationId

@@ -60,11 +60,7 @@ class CacheAllDao(UpdatableDao):
 
   def get_with_session(self, session, obj_id, **kwargs):
     #pylint: disable=unused-argument
-    print 'cache_all_dao get with session'
     if kwargs.get('for_update'):
-      print 'kwags if statement is true!!!!!!!!!!'
-      print kwargs, 'kwargs from cache_all_dao'
-      print obj_id, '--- obj_id'
       return super(CacheAllDao, self).get_with_session(session, obj_id, **kwargs)
     return self._get_cache().id_to_entity.get(obj_id)
 

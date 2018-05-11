@@ -89,22 +89,29 @@ class SiteDao(CacheAllDao):
     return resource
 
   def _do_update(self, session, obj, existing_obj):
-    super(SiteDao, self)._do_update(session, obj, existing_obj)
+    update_participants = False
     if obj.organizationId != existing_obj.organizationId:
+      update_participants = True
+      new_org_id = obj.organizationId
+      new_hpo_id = obj.hpoId
+    super(SiteDao, self)._do_update(session, obj, existing_obj)
+    if update_participants:
       from participant_enums import make_primary_provider_link_for_id
-      provider_link = make_primary_provider_link_for_id(obj.hpoId)
+      provider_link = make_primary_provider_link_for_id(new_hpo_id)
 
       participant_sql = """
             UPDATE participant 
-            SET organization_id = :org_id,
+            SET hpo_id = :hpo_id,
+                organization_id = :org_id,
                 last_modified = :now,
                 provider_link = :provider_link
             WHERE site_id = :site_id
-            """ .format(obj.organizationId, provider_link, existing_obj.siteId)
+            """
 
       participant_summary_sql = """
             UPDATE participant_summary
-            SET organization_id = :org_id,
+            SET hpo_id = :hpo_id,
+                organization_id = :org_id,
                 last_modified = :now
             WHERE site_id = :site_id
             
@@ -112,7 +119,8 @@ class SiteDao(CacheAllDao):
 
       participant_history_sql = """
             UPDATE participant_history 
-            SET organization_id = :org_id,
+            SET hpo_id = :hpo_id, 
+                organization_id = :org_id,
                 last_modified = :now,
                 provider_link = :provider_link
             WHERE site_id = :site_id
@@ -120,7 +128,7 @@ class SiteDao(CacheAllDao):
             """
 
       params = {'site_id': existing_obj.siteId, 'provider_link': provider_link, 'org_id':
-                obj.organizationId, 'now': clock.CLOCK.now()}
+                new_org_id, 'hpo_id': new_hpo_id, 'now': clock.CLOCK.now()}
 
       session.execute(participant_sql, params)
       session.execute(participant_summary_sql, params)

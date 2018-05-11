@@ -17,7 +17,9 @@ from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
 from model.utils import to_client_participant_id
 from model.config_utils import to_client_biobank_id
-from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus
+from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus,\
+  make_primary_provider_link_for_id, make_primary_provider_link_for_hpo, \
+  make_primary_provider_link_for_name
 
 
 class ParticipantHistoryDao(BaseDao):
@@ -341,24 +343,3 @@ def _get_hpo_name_from_participant(participant):
 def raise_if_withdrawn(obj):
   if obj.withdrawalStatus == WithdrawalStatus.NO_USE:
     raise Forbidden('Participant %d has withdrawn' % obj.participantId)
-
-
-def make_primary_provider_link_for_id(hpo_id):
-  return make_primary_provider_link_for_hpo(HPODao().get(hpo_id))
-
-
-def make_primary_provider_link_for_hpo(hpo):
-  return make_primary_provider_link_for_name(hpo.name)
-
-
-def make_primary_provider_link_for_name(hpo_name):
-  """Returns serialized FHIR JSON for a provider link based on HPO information.
-
-  The returned JSON represents a list containing the one primary provider.
-  """
-  return json.dumps([{
-      'primary': True,
-      'organization': {
-          'reference': 'Organization/%s' % hpo_name
-      }
-  }], sort_keys=True)
