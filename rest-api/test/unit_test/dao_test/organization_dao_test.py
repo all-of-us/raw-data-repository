@@ -1,5 +1,5 @@
 from model.organization import Organization
-from unit_test_util import SqlTestBase, PITT_HPO_ID, UNSET_HPO_ID, AZ_HPO_ID
+from unit_test_util import SqlTestBase, PITT_HPO_ID, AZ_HPO_ID
 from dao.organization_dao import OrganizationDao
 from model.participant import Participant
 from dao.participant_dao import ParticipantDao, ParticipantHistoryDao
@@ -31,7 +31,7 @@ class OrganizationDaoTest(SqlTestBase):
     self.participant_dao.update(participant)
 
     self.assertEquals(participant.hpoId, insert_org.hpoId)
-    insert_org.hpoId = 4
+    insert_org.hpoId = AZ_HPO_ID
     self.organization_dao.update(insert_org)
     new_org = self.organization_dao.get_by_external_id('tardis')
     participant = self.participant_dao.get(1)
