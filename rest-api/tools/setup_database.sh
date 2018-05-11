@@ -116,7 +116,7 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ]
 	gcloud sql users set-password root % --instance $INSTANCE_NAME --password $ROOT_PASSWORD
 
 	if [ "${UPDATE_PASSWORDS}" = "Y" ]
-	    then 
+	    then
 		echo "updating passwords for database"
 		cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
 	else
@@ -126,6 +126,8 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ]
 		   cat tools/grant_permissions.sql | envsubst >> $UPDATE_DB_FILE
 		done
 	fi
+
+	run_cloud_sql_proxy
 
 	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
 	echo "Setting database configuration..."
