@@ -103,7 +103,6 @@ class SiteDao(CacheAllDao):
             UPDATE participant 
             SET hpo_id = :hpo_id,
                 organization_id = :org_id,
-                last_modified = :now,
                 provider_link = :provider_link
             WHERE site_id = :site_id
             """
@@ -114,17 +113,14 @@ class SiteDao(CacheAllDao):
                 organization_id = :org_id,
                 last_modified = :now
             WHERE site_id = :site_id
-            
             """
 
       participant_history_sql = """
             UPDATE participant_history 
             SET hpo_id = :hpo_id, 
                 organization_id = :org_id,
-                last_modified = :now,
                 provider_link = :provider_link
             WHERE site_id = :site_id
-            
             """
 
       params = {'site_id': existing_obj.siteId, 'provider_link': provider_link, 'org_id':

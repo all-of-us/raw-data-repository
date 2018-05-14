@@ -38,10 +38,8 @@ class OrganizationDao(CacheAllDao):
       participant_sql = """
             UPDATE participant 
             SET hpo_id = :hpo_id,
-                last_modified = :now,
                 provider_link = :provider_link
             WHERE organization_id = :org_id;
-            
             """
 
       participant_summary_sql = """
@@ -49,16 +47,13 @@ class OrganizationDao(CacheAllDao):
             SET hpo_id = :hpo_id,
                 last_modified = :now
             WHERE organization_id = :org_id;
-            
             """
 
       participant_history_sql = """
             UPDATE participant_history 
             SET hpo_id = :hpo_id,
-                last_modified = :now,
                 provider_link = :provider_link 
             WHERE organization_id = :org_id;
-            
             """
       params = {'hpo_id': new_hpo_id, 'provider_link': provider_link, 'org_id':
                 existing_obj.organizationId, 'now': clock.CLOCK.now()}
