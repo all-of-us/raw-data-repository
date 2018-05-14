@@ -25,9 +25,11 @@ class OrganizationDaoTest(SqlTestBase):
     self.assertEquals(organization.asdict(), new_organization.asdict())
 
   def test_participant_pairing_updates_onchange(self):
+    provider_link = '[{"organization": {"reference": "Organization/AZ_TUCSON"}, "primary": true}]'
     TIME = datetime.datetime(2018, 1, 1)
+    TIME2 = datetime.datetime(2018, 1, 2)
     insert_org = self.organization_dao.insert(
-                  Organization(externalId='tardis', displayName='bluebox', hpoId=PITT_HPO_ID))
+      Organization(externalId='tardis', displayName='bluebox', hpoId=PITT_HPO_ID))
 
     with FakeClock(TIME):
       self.participant_dao.insert(Participant(participantId=1, biobankId=2))
@@ -36,15 +38,19 @@ class OrganizationDaoTest(SqlTestBase):
       self.participant_dao.update(participant)
 
       self.assertEquals(participant.hpoId, insert_org.hpoId)
-      insert_org.hpoId = AZ_HPO_ID
-      self.organization_dao.update(insert_org)
-      new_org = self.organization_dao.get_by_external_id('tardis')
       participant = self.participant_dao.get(1)
       p_summary = self.ps_dao.insert(self.participant_summary(participant))
-      ps = self.ps_dao.get(p_summary.participantId)
-      ph = self.ps_history.get([participant.participantId, 2])
-      provider_link = '[{"organization": {"reference": "Organization/AZ_TUCSON"}, "primary": true}]'
 
+    with FakeClock(TIME2):
+      insert_org.hpoId = AZ_HPO_ID
+      self.organization_dao.update(insert_org)
+
+    new_org = self.organization_dao.get_by_external_id('tardis')
+    ps = self.ps_dao.get(p_summary.participantId)
+    ph = self.ps_history.get([participant.participantId, 2])
+    participant = self.participant_dao.get(1)
+
+    self.assertEquals(ps.lastModified, TIME2)
     self.assertEquals(ps.hpoId, new_org.hpoId)
     self.assertEquals(ph.hpoId, insert_org.hpoId)
     self.assertEquals(ph.organizationId, insert_org.organizationId)
@@ -52,7 +58,6 @@ class OrganizationDaoTest(SqlTestBase):
     self.assertEquals(new_org.organizationId, participant.organizationId)
     self.assertIsNone(participant.siteId)
     self.assertEquals(participant.providerLink, provider_link)
-    self.assertEquals(ps.lastModified, TIME)
 
   def test_participant_different_hpo_does_not_change(self):
     insert_org = self.organization_dao.insert(
