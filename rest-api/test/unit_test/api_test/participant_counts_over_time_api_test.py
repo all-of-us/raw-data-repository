@@ -8,12 +8,11 @@ from dao.hpo_dao import HPODao
 from model.calendar import Calendar
 from dao.calendar_dao import CalendarDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from dao.participant_dao import make_primary_provider_link_for_name
 from test.unit_test.unit_test_util import FlaskTestBase
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
-from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID
-from participant_enums import WithdrawalStatus
+from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
+  WithdrawalStatus, make_primary_provider_link_for_name
 
 class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 

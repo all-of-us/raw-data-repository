@@ -28,7 +28,7 @@ from field_mappings import QUESTION_CODE_TO_FIELD
 from cloudstorage import cloudstorage_api
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
-from dao.participant_dao import make_primary_provider_link_for_hpo
+from participant_enums import make_primary_provider_link_for_hpo
 from dao.site_dao import SiteDao
 from dao.questionnaire_dao import QuestionnaireDao
 from dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION,\

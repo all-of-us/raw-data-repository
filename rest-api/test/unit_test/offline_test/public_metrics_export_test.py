@@ -13,7 +13,8 @@ from model.participant import Participant
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.hpo_dao import HPODao
 from dao.metric_set_dao import AggregateMetricsDao, MetricSetDao
-from dao.participant_dao import ParticipantDao, make_primary_provider_link_for_name
+from dao.participant_dao import ParticipantDao
+from participant_enums import make_primary_provider_link_for_name
 from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
 from participant_enums import WithdrawalStatus
 from test_data import load_biobank_order_json, load_measurement_json
