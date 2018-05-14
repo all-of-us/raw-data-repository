@@ -1,8 +1,10 @@
+import clock
 from dao.cache_all_dao import CacheAllDao
 from dao.site_dao import _FhirSite, SiteDao
 from model.organization import Organization
 from singletons import ORGANIZATION_CACHE_INDEX
 
+from participant_enums import make_primary_provider_link_for_id
 from dao.base_dao import FhirMixin, FhirProperty
 from fhirclient.models.backboneelement import BackboneElement
 
@@ -23,6 +25,42 @@ class OrganizationDao(CacheAllDao):
   def _validate_update(self, session, obj, existing_obj):
     # Organizations aren't versioned; suppress the normal check here.
     pass
+
+  def _do_update(self, session, obj, existing_obj):
+    update_participants = False
+    if obj.hpoId != existing_obj.hpoId:
+      update_participants = True
+      new_hpo_id = obj.hpoId
+    super(OrganizationDao, self)._do_update(session, obj, existing_obj)
+    if update_participants:
+      provider_link = make_primary_provider_link_for_id(new_hpo_id)
+
+      participant_sql = """
+            UPDATE participant 
+            SET hpo_id = :hpo_id,
+                provider_link = :provider_link
+            WHERE organization_id = :org_id;
+            """
+
+      participant_summary_sql = """
+            UPDATE participant_summary
+            SET hpo_id = :hpo_id,
+                last_modified = :now
+            WHERE organization_id = :org_id;
+            """
+
+      participant_history_sql = """
+            UPDATE participant_history 
+            SET hpo_id = :hpo_id,
+                provider_link = :provider_link 
+            WHERE organization_id = :org_id;
+            """
+      params = {'hpo_id': new_hpo_id, 'provider_link': provider_link, 'org_id':
+                existing_obj.organizationId, 'now': clock.CLOCK.now()}
+
+      session.execute(participant_sql, params)
+      session.execute(participant_summary_sql, params)
+      session.execute(participant_history_sql, params)
 
   def get_id(self, obj):
     return obj.organizationId

@@ -1,3 +1,4 @@
+import clock
 from dao.cache_all_dao import CacheAllDao
 from model.site import Site
 from singletons import SITE_CACHE_INDEX
@@ -5,6 +6,7 @@ from dao.base_dao import FhirMixin, FhirProperty
 from fhirclient.models.address import Address
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models import fhirdate
+from participant_enums import make_primary_provider_link_for_id
 
 
 def _to_fhir_date(dt):
@@ -86,3 +88,44 @@ class SiteDao(CacheAllDao):
                              if model.adminEmails  else [])
     resource.link = model.link
     return resource
+
+  def _do_update(self, session, obj, existing_obj):
+    update_participants = False
+    if obj.organizationId != existing_obj.organizationId:
+      update_participants = True
+      new_org_id = obj.organizationId
+      new_hpo_id = obj.hpoId
+    super(SiteDao, self)._do_update(session, obj, existing_obj)
+    if update_participants:
+      provider_link = make_primary_provider_link_for_id(new_hpo_id)
+
+      participant_sql = """
+            UPDATE participant 
+            SET hpo_id = :hpo_id,
+                organization_id = :org_id,
+                provider_link = :provider_link
+            WHERE site_id = :site_id
+            """
+
+      participant_summary_sql = """
+            UPDATE participant_summary
+            SET hpo_id = :hpo_id,
+                organization_id = :org_id,
+                last_modified = :now
+            WHERE site_id = :site_id
+            """
+
+      participant_history_sql = """
+            UPDATE participant_history 
+            SET hpo_id = :hpo_id, 
+                organization_id = :org_id,
+                provider_link = :provider_link
+            WHERE site_id = :site_id
+            """
+
+      params = {'site_id': existing_obj.siteId, 'provider_link': provider_link, 'org_id':
+                new_org_id, 'hpo_id': new_hpo_id, 'now': clock.CLOCK.now()}
+
+      session.execute(participant_sql, params)
+      session.execute(participant_summary_sql, params)
+      session.execute(participant_history_sql, params)
