@@ -137,12 +137,13 @@ def main(args):
     reader = csv.DictReader(csvfile)
     for row in reader:
       import_participant(row, client, consent_questionnaire_id_and_version,
-                         questionnaire_to_questions, consent_questions, num_participants, reader)
+                         questionnaire_to_questions, consent_questions, reader)
+      num_participants += 1
   logging.info('%d participants imported.' % num_participants)
 
 
 def import_participant(row, client, consent_questionnaire_id_and_version,
-                       questionnaire_to_questions, consent_questions, num_participants,
+                       questionnaire_to_questions, consent_questions,
                        reader=None):
 
   answer_map = {}
@@ -185,8 +186,6 @@ def import_participant(row, client, consent_questionnaire_id_and_version,
     logging.info(
       '%s created from (%r %r).',
       participant_id, row['first_name'], row['last_name'])
-
-  num_participants += 1
 
 
 if __name__ == '__main__':
