@@ -6,6 +6,7 @@ from dao.base_dao import FhirMixin, FhirProperty
 from fhirclient.models.address import Address
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models import fhirdate
+from participant_enums import make_primary_provider_link_for_id
 
 
 def _to_fhir_date(dt):
@@ -96,7 +97,6 @@ class SiteDao(CacheAllDao):
       new_hpo_id = obj.hpoId
     super(SiteDao, self)._do_update(session, obj, existing_obj)
     if update_participants:
-      from participant_enums import make_primary_provider_link_for_id
       provider_link = make_primary_provider_link_for_id(new_hpo_id)
 
       participant_sql = """
