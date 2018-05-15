@@ -25,9 +25,12 @@ depends_on = None
 
 
 _RAW_PARTICIPANT_VIEW_EXPORT_SQL = """
-CREATE OR REPLACE VIEW ppi_participant_view AS
+CREATE OR REPLACE VIEW raw_ppi_participant_view AS
  SELECT
    p.participant_id,
+   ps.last_name,
+   ps.first_name,
+   ps.email,
    p.sign_up_time,
    p.suspension_status,
    p.suspension_time,
@@ -156,9 +159,12 @@ CREATE OR REPLACE VIEW ppi_participant_view AS
 
 
 _RAW_QUESTIONNAIRE_RESPONSE_VIEW_EXPORT_SQL = """
-CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
+CREATE OR REPLACE VIEW raw_questionnaire_response_answer_view AS
  SELECT
    p.participant_id participant_id,
+   ps.last_name,
+   ps.first_name,
+   ps.email,
    p.sign_up_time,
    p.suspension_status participant_suspension_status,
    p.suspension_time,
@@ -180,7 +186,7 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
    qra.value_string,
    qra.value_date,
    qra.value_datetime,
-   IF(qra.value_uri IS NULL, 0, 1) answer_uri_present
+   qra.value_uri
  FROM
    participant p
     INNER JOIN questionnaire_response qr ON p.participant_id = qr.participant_id
@@ -213,9 +219,12 @@ CREATE OR REPLACE VIEW questionnaire_response_answer_view AS
 
 
 _RAW_PHYSICAL_MEASUREMENTS_VIEW_EXPORT_SQL = """
-CREATE OR REPLACE VIEW physical_measurements_view AS
+CREATE OR REPLACE VIEW raw_physical_measurements_view AS
  SELECT
    p.participant_id participant_id,
+   ps.last_name,
+   ps.first_name,
+   ps.email,
    p.sign_up_time,
    p.suspension_status participant_suspension_status,
    p.suspension_time,
