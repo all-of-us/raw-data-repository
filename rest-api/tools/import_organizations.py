@@ -137,6 +137,7 @@ class HPOImporter(CsvImporter):
     if hpos_to_remove:
       hpo_id_list = []
       for hpo in hpos_to_remove:
+        logging.info('Deleting old Awardee no longer in master list: %s', hpo)
         old_hpo = hpo_dao.get_by_name(hpo)
         hpo_id_list.append(old_hpo.hpoId)
 
@@ -196,6 +197,7 @@ class OrganizationImporter(CsvImporter):
     if orgs_to_remove:
       org_id_list = []
       for org in orgs_to_remove:
+        logging.info('Deleting old Organization no longer in master list: %s', org)
         old_org = org_dao.get_by_external_id(org)
         org_id_list.append(old_org.organizationId)
 
@@ -299,6 +301,7 @@ class SiteImporter(CsvImporter):
     if sites_to_remove:
       site_id_list = []
       for site in sites_to_remove:
+        logging.info('Deleting old Site no longer in master list: %s', site)
         old_site = site_dao.get_by_google_group(site)
         site_id_list.append(old_site.siteId)
 
