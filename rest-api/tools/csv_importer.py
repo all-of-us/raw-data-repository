@@ -32,6 +32,7 @@ class CsvImporter(object):
     new_count = 0
     updated_count = 0
     matched_count = 0
+    row_list = []
     logging.info('Importing %ss from %r.', self.entity_name, filename)
     with open(filename, 'r') as csv_file:
       reader = csv.DictReader(csv_file)
@@ -41,6 +42,7 @@ class CsvImporter(object):
         for row in reader:
           # Strip leading and trailing whitespace
           row = {k.strip(): v.strip() for k, v in row.iteritems()}
+
           missing_fields = []
           for column in self.required_columns:
             value = row.get(column)
@@ -57,6 +59,7 @@ class CsvImporter(object):
             continue
           existing_entity = existing_map.get(getattr(entity, self.external_id_field))
           if existing_entity:
+            row_list.append(row)
             changed, skipped = self._update_entity(entity, existing_entity, session, dry_run)
             if changed:
               updated_count += 1
@@ -65,11 +68,14 @@ class CsvImporter(object):
             else:
               matched_count += 1
           else:
+            row_list.append(row)
             entity = self._insert_entity(entity, existing_map, session, dry_run)
             if not entity:
               skip_count += 1
             else:
               new_count += 1
+
+        self._cleanup_old_entities(session, row_list)
 
     if self.errors:
       for err in self.errors:

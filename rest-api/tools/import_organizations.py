@@ -108,6 +108,41 @@ class HPOImporter(CsvImporter):
     super(HPOImporter, self)._insert_entity(entity, existing_map, session, dry_run)
 
 
+  def delete_sql_statement(self, session, hpo_id_list):
+    str_list = ','.join([str(i) for i in hpo_id_list])
+    sql = """
+          DELETE FROM hpo
+          WHERE hpo_id IN ({str_list})
+          AND NOT EXISTS(
+          SELECT * FROM participant p, participant_history ph, site s, organization org
+          WHERE p.hpo_id IN ({str_list})
+          OR
+          ph.hpo_id in ({str_list})
+          OR
+          s.hpo_id in ({str_list})
+          OR
+          org.hpo_id in ({str_list})
+          )
+          """.format(str_list=str_list)
+
+    session.execute(sql)
+
+  def _cleanup_old_entities(self, session, row_list):
+    hpo_dao = HPODao()
+    hpo_group_list_from_sheet = []
+    existing_hpos = set(hpo.name for hpo in hpo_dao.get_all())
+    [hpo_group_list_from_sheet.append(row[HPO_AWARDEE_ID_COLUMN].upper()) for row in row_list]
+
+    hpos_to_remove = existing_hpos - set(hpo_group_list_from_sheet)
+    if hpos_to_remove:
+      hpo_id_list = []
+      for hpo in hpos_to_remove:
+        old_hpo = hpo_dao.get_by_name(hpo)
+        hpo_id_list.append(old_hpo.hpoId)
+
+      self.delete_sql_statement(session, hpo_id_list)
+
+
 class OrganizationImporter(CsvImporter):
 
   def __init__(self):
@@ -132,6 +167,40 @@ class OrganizationImporter(CsvImporter):
     return Organization(externalId=row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper(),
                         displayName=row[ORGANIZATION_NAME_COLUMN],
                         hpoId=hpo.hpoId)
+
+  def delete_sql_statement(self, session, org_id_list):
+    str_list = ','.join([str(i) for i in org_id_list])
+    sql = """
+          DELETE FROM organization
+          WHERE organization_id IN ({str_list})
+          AND NOT EXISTS(
+          SELECT * FROM participant p, participant_history ph, site s
+          WHERE p.organization_id IN ({str_list})
+          OR
+          ph.organization_id in ({str_list})
+          OR
+          s.organization_id in ({str_list})
+          )
+          """.format(str_list=str_list)
+
+    session.execute(sql)
+
+  def _cleanup_old_entities(self, session, row_list):
+    org_dao = OrganizationDao()
+    org_group_list_from_sheet = []
+    existing_orgs = set(str(org.externalId) for org in org_dao.get_all())
+    [org_group_list_from_sheet.append(row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper()) for row in
+     row_list]
+
+    orgs_to_remove = existing_orgs - set(org_group_list_from_sheet)
+    if orgs_to_remove:
+      org_id_list = []
+      for org in orgs_to_remove:
+        old_org = org_dao.get_by_external_id(org)
+        org_id_list.append(old_org.organizationId)
+
+      self.delete_sql_statement(session, org_id_list)
+
 
 class SiteImporter(CsvImporter):
 
@@ -203,6 +272,37 @@ class SiteImporter(CsvImporter):
           if insert_participants:
             logging.info('Starting import of test participants.')
             self._insert_new_participants(self.new_sites_list)
+
+
+  def delete_sql_statement(self, session, site_id_list):
+    str_list = ','.join([str(i) for i in site_id_list])
+    sql = """
+          DELETE FROM site
+          WHERE site_id IN ({str_list}) 
+          AND NOT EXISTS(
+          SELECT * FROM participant p, participant_history ph
+          WHERE p.site_id IN ({str_list})
+          OR
+          ph.site_id IN ({str_list})
+          )
+          """.format(str_list=str_list)
+
+    session.execute(sql)
+
+  def _cleanup_old_entities(self, session, row_list):
+    site_dao = SiteDao()
+    site_group_list_from_sheet = []
+    existing_sites = set(site.googleGroup for site in site_dao.get_all())
+    [site_group_list_from_sheet.append(str(row[SITE_SITE_ID_COLUMN].lower())) for row in row_list]
+
+    sites_to_remove = existing_sites - set(site_group_list_from_sheet)
+    if sites_to_remove:
+      site_id_list = []
+      for site in sites_to_remove:
+        old_site = site_dao.get_by_google_group(site)
+        site_id_list.append(old_site.siteId)
+
+      self.delete_sql_statement(session, site_id_list)
 
   def _insert_new_participants(self, entity):
     num_participants = 0
@@ -404,6 +504,7 @@ class SiteImporter(CsvImporter):
       logging.info('can not retrieve time zone from %s', self.full_address)
       self.errors.append('Can not retrieve time zone from {}'.format(self.full_address))
       return None
+
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
