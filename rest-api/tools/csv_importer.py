@@ -58,8 +58,8 @@ class CsvImporter(object):
             skip_count += 1
             continue
           existing_entity = existing_map.get(getattr(entity, self.external_id_field))
+          row_list.append(row)
           if existing_entity:
-            row_list.append(row)
             changed, skipped = self._update_entity(entity, existing_entity, session, dry_run)
             if changed:
               updated_count += 1
@@ -68,7 +68,6 @@ class CsvImporter(object):
             else:
               matched_count += 1
           else:
-            row_list.append(row)
             entity = self._insert_entity(entity, existing_map, session, dry_run)
             if not entity:
               skip_count += 1
