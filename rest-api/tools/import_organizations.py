@@ -114,24 +114,23 @@ class HPOImporter(CsvImporter):
           DELETE FROM hpo
           WHERE hpo_id IN ({str_list})
           AND NOT EXISTS(
-          SELECT * FROM participant p, participant_history ph, site s, organization org
-          WHERE p.hpo_id IN ({str_list})
-          OR
-          ph.hpo_id in ({str_list})
-          OR
-          s.hpo_id in ({str_list})
-          OR
-          org.hpo_id in ({str_list})
-          )
+          SELECT * FROM participant WHERE hpo_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_history WHERE hpo_id IN ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_summary WHERE hpo_id IN ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM organization WHERE hpo_id IN ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM site WHERE hpo_id IN ({str_list}))
           """.format(str_list=str_list)
 
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list):
     hpo_dao = HPODao()
-    hpo_group_list_from_sheet = []
     existing_hpos = set(hpo.name for hpo in hpo_dao.get_all())
-    [hpo_group_list_from_sheet.append(row[HPO_AWARDEE_ID_COLUMN].upper()) for row in row_list]
+    hpo_group_list_from_sheet = [row[HPO_AWARDEE_ID_COLUMN].upper() for row in row_list]
 
     hpos_to_remove = existing_hpos - set(hpo_group_list_from_sheet)
     if hpos_to_remove:
@@ -141,7 +140,8 @@ class HPOImporter(CsvImporter):
         old_hpo = hpo_dao.get_by_name(hpo)
         hpo_id_list.append(old_hpo.hpoId)
 
-      self.delete_sql_statement(session, hpo_id_list)
+      if hpo_id_list:
+        self.delete_sql_statement(session, hpo_id_list)
 
 
 class OrganizationImporter(CsvImporter):
@@ -175,23 +175,22 @@ class OrganizationImporter(CsvImporter):
           DELETE FROM organization
           WHERE organization_id IN ({str_list})
           AND NOT EXISTS(
-          SELECT * FROM participant p, participant_history ph, site s
-          WHERE p.organization_id IN ({str_list})
-          OR
-          ph.organization_id in ({str_list})
-          OR
-          s.organization_id in ({str_list})
-          )
+          SELECT * FROM participant WHERE organization_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_summary WHERE organization_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_history WHERE organization_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM site WHERE organization_id in ({str_list}))
           """.format(str_list=str_list)
 
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list):
     org_dao = OrganizationDao()
-    org_group_list_from_sheet = []
     existing_orgs = set(str(org.externalId) for org in org_dao.get_all())
-    [org_group_list_from_sheet.append(row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper()) for row in
-     row_list]
+    org_group_list_from_sheet = [row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper()
+                                 for row in row_list]
 
     orgs_to_remove = existing_orgs - set(org_group_list_from_sheet)
     if orgs_to_remove:
@@ -201,7 +200,8 @@ class OrganizationImporter(CsvImporter):
         old_org = org_dao.get_by_external_id(org)
         org_id_list.append(old_org.organizationId)
 
-      self.delete_sql_statement(session, org_id_list)
+      if org_id_list:
+        self.delete_sql_statement(session, org_id_list)
 
 
 class SiteImporter(CsvImporter):
@@ -282,20 +282,19 @@ class SiteImporter(CsvImporter):
           DELETE FROM site
           WHERE site_id IN ({str_list}) 
           AND NOT EXISTS(
-          SELECT * FROM participant p, participant_history ph
-          WHERE p.site_id IN ({str_list})
-          OR
-          ph.site_id IN ({str_list})
-          )
+          SELECT * FROM participant WHERE site_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_summary WHERE site_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_history WHERE site_id in ({str_list}))
           """.format(str_list=str_list)
 
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list):
     site_dao = SiteDao()
-    site_group_list_from_sheet = []
     existing_sites = set(site.googleGroup for site in site_dao.get_all())
-    [site_group_list_from_sheet.append(str(row[SITE_SITE_ID_COLUMN].lower())) for row in row_list]
+    site_group_list_from_sheet = [str(row[SITE_SITE_ID_COLUMN].lower()) for row in row_list]
 
     sites_to_remove = existing_sites - set(site_group_list_from_sheet)
     if sites_to_remove:
@@ -305,7 +304,8 @@ class SiteImporter(CsvImporter):
         old_site = site_dao.get_by_google_group(site)
         site_id_list.append(old_site.siteId)
 
-      self.delete_sql_statement(session, site_id_list)
+      if site_id_list:
+        self.delete_sql_statement(session, site_id_list)
 
   def _insert_new_participants(self, entity):
     num_participants = 0
