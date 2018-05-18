@@ -86,8 +86,6 @@ class HPOImporter(CsvImporter):
     self.environment = None
 
   def _entity_from_row(self, row):
-    logging.warning('TEST: ROW FROM HPO IMPORTER ENTITY_FROM_ROW')
-    logging.warning(row)
     type_str = row[HPO_TYPE_COLUMN]
     try:
       organization_type = OrganizationType(type_str)
@@ -130,23 +128,16 @@ class HPOImporter(CsvImporter):
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list):
-    logging.warning('TEST: RUNNING CLEANUP ON HPO')
-    hpo_dao = HPODao()
-    existing_hpos = set(hpo.name for hpo in hpo_dao.get_all())
-    if existing_hpos:
-      logging.warning('TEST: THERE ARE EXISTING HPOS IN DB')
-    else:
-      logging.warning('TEST: NO EXISTING HPOS !!!!!!')
-
+    self.hpo_dao = HPODao()
+    existing_hpos = set(hpo.name for hpo in self.hpo_dao.get_all())
     hpo_group_list_from_sheet = [row[HPO_AWARDEE_ID_COLUMN].upper() for row in row_list]
 
     hpos_to_remove = existing_hpos - set(hpo_group_list_from_sheet)
     if hpos_to_remove:
-      logging.warning('TEST: THERE ARE HPOS TO REMOVE')
       hpo_id_list = []
       for hpo in hpos_to_remove:
         logging.info('Deleting old Awardee no longer in master list: %s', hpo)
-        old_hpo = hpo_dao.get_by_name(hpo)
+        old_hpo = self.hpo_dao.get_by_name(hpo)
         hpo_id_list.append(old_hpo.hpoId)
 
       if hpo_id_list:
@@ -165,13 +156,6 @@ class OrganizationImporter(CsvImporter):
     self.environment = None
 
   def _entity_from_row(self, row):
-    logging.warning('TEST: ROW FROM ORG IMPORTER ENTITY_FROM_ROW')
-    logging.warning(row)
-    logging.warning('TEST: row[ORGANIZATION_AWARDEE_ID_COLUMN].upper()')
-    logging.warning(row[ORGANIZATION_AWARDEE_ID_COLUMN].upper())
-    test = self.hpo_dao.get_by_name('AZ_TUCSON')
-    logging.warning('TEST: GET BY NAME FUNCTION returns --> ')
-    logging.warning(test)
     hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN].upper())
     if hpo is None:
       logging.warn('Invalid awardee ID %s importing organization %s',
@@ -203,8 +187,8 @@ class OrganizationImporter(CsvImporter):
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list):
-    org_dao = OrganizationDao()
-    existing_orgs = set(str(org.externalId) for org in org_dao.get_all())
+    self.org_dao = OrganizationDao()
+    existing_orgs = set(str(org.externalId) for org in self.org_dao.get_all())
     org_group_list_from_sheet = [row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper()
                                  for row in row_list]
 
@@ -213,7 +197,7 @@ class OrganizationImporter(CsvImporter):
       org_id_list = []
       for org in orgs_to_remove:
         logging.info('Deleting old Organization no longer in master list: %s', org)
-        old_org = org_dao.get_by_external_id(org)
+        old_org = self.org_dao.get_by_external_id(org)
         org_id_list.append(old_org.organizationId)
 
       if org_id_list:
@@ -308,8 +292,8 @@ class SiteImporter(CsvImporter):
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list):
-    site_dao = SiteDao()
-    existing_sites = set(site.googleGroup for site in site_dao.get_all())
+    self.site_dao = SiteDao()
+    existing_sites = set(site.googleGroup for site in self.site_dao.get_all())
     site_group_list_from_sheet = [str(row[SITE_SITE_ID_COLUMN].lower()) for row in row_list]
 
     sites_to_remove = existing_sites - set(site_group_list_from_sheet)
@@ -317,7 +301,7 @@ class SiteImporter(CsvImporter):
       site_id_list = []
       for site in sites_to_remove:
         logging.info('Deleting old Site no longer in master list: %s', site)
-        old_site = site_dao.get_by_google_group(site)
+        old_site = self.site_dao.get_by_google_group(site)
         site_id_list.append(old_site.siteId)
 
       if site_id_list:
