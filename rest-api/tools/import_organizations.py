@@ -86,6 +86,7 @@ class HPOImporter(CsvImporter):
     self.environment = None
 
   def _entity_from_row(self, row):
+    logging.warning('TEST: ROW FROM HPO IMPORTER ENTITY_FROM_ROW', row)
     type_str = row[HPO_TYPE_COLUMN]
     try:
       organization_type = OrganizationType(type_str)
@@ -163,6 +164,11 @@ class OrganizationImporter(CsvImporter):
     self.environment = None
 
   def _entity_from_row(self, row):
+    logging.warning('TEST: ROW FROM ORG IMPORTER ENTITY_FROM_ROW', row)
+    logging.warning('TEST: row[ORGANIZATION_AWARDEE_ID_COLUMN].upper()',
+                    row[ORGANIZATION_AWARDEE_ID_COLUMN].upper())
+    test = self.hpo_dao.get_by_name('AZ_TUCSON')
+    logging.warning('TEST: GET BY NAME FUNCTION returns --> ', test)
     hpo = self.hpo_dao.get_by_name(row[ORGANIZATION_AWARDEE_ID_COLUMN].upper())
     if hpo is None:
       logging.warn('Invalid awardee ID %s importing organization %s',
