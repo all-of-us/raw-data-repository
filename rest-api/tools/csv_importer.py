@@ -38,7 +38,7 @@ class CsvImporter(object):
       reader = csv.DictReader(csv_file)
       existing_map = {getattr(entity, self.external_id_field): entity for entity
                       in self.dao.get_all()}
-      logging.debug('TEST: EXISTING MAP -->', existing_map, '\n')
+      logging.debug('TEST: EXISTING MAP -->', existing_map)
       with self.dao.session() as session:
         for row in reader:
           # Strip leading and trailing whitespace
@@ -56,13 +56,13 @@ class CsvImporter(object):
 
           entity = self._entity_from_row(row)
           if entity is None:
-            logging.debug('TEST: ENTITY IS NONE: ', entity, '\n')
+            logging.debug('TEST: ENTITY IS NONE: ', entity)
             skip_count += 1
             continue
           existing_entity = existing_map.get(getattr(entity, self.external_id_field))
           row_list.append(row)
           if existing_entity:
-            logging.debug('TEST: EXISTING ENTITY, RUNNING UPDATE ENTITY ON ', existing_entity, '\n')
+            logging.debug('TEST: EXISTING ENTITY, RUNNING UPDATE ENTITY ON ', existing_entity)
             changed, skipped = self._update_entity(entity, existing_entity, session, dry_run)
             if changed:
               updated_count += 1
@@ -71,13 +71,13 @@ class CsvImporter(object):
             else:
               matched_count += 1
           else:
-            logging.debug('TEST: EXISTING ENTITY, RUNNING INSERT ENTITY', '\n')
+            logging.debug('TEST: EXISTING ENTITY, RUNNING INSERT ENTITY')
             entity = self._insert_entity(entity, existing_map, session, dry_run)
             if not entity:
               skip_count += 1
             else:
               new_count += 1
-        logging.debug('TEST: RUNNING CLEANUP OLD ENTITIES FROM CSV IMPORTER', '\n')
+        logging.debug('TEST: RUNNING CLEANUP OLD ENTITIES FROM CSV IMPORTER')
         self._cleanup_old_entities(session, row_list)
 
     if self.errors:
@@ -109,7 +109,7 @@ class CsvImporter(object):
     return changes
 
   def _update_entity(self, entity, existing_entity, session, dry_run):
-    logging.debug('TEST: UPDATING ENTITY', entity, '\n')
+    logging.debug('TEST: UPDATING ENTITY', entity)
     new_dict = entity.asdict()
     new_dict[self.id_field] = None
     existing_dict = existing_entity.asdict()
@@ -133,8 +133,8 @@ class CsvImporter(object):
     self.dao.update_with_session(session, existing_entity)
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
-    logging.debug('TEST: INSERTING ENTITY', entity, '\n')
     #pylint: disable=unused-argument
+    logging.debug('TEST: INSERTING ENTITY', entity)
     logging.info('Inserting %s: %s', self.entity_name, entity.asdict())
     if not dry_run:
       self.dao.insert_with_session(session, entity)

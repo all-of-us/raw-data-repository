@@ -128,7 +128,7 @@ class HPOImporter(CsvImporter):
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list):
-    logging.debug('TEST: RUNNING CLEANUP ON HPO', '\n')
+    logging.debug('TEST: RUNNING CLEANUP ON HPO')
     hpo_dao = HPODao()
     existing_hpos = set(hpo.name for hpo in hpo_dao.get_all())
     if existing_hpos:
@@ -140,7 +140,7 @@ class HPOImporter(CsvImporter):
 
     hpos_to_remove = existing_hpos - set(hpo_group_list_from_sheet)
     if hpos_to_remove:
-      logging.debug('TEST: THERE ARE HPOS TO REMOVE', '\n')
+      logging.debug('TEST: THERE ARE HPOS TO REMOVE')
       hpo_id_list = []
       for hpo in hpos_to_remove:
         logging.info('Deleting old Awardee no longer in master list: %s', hpo)
