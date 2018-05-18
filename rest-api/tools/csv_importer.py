@@ -37,6 +37,9 @@ class CsvImporter(object):
       reader = csv.DictReader(csv_file)
       existing_map = {getattr(entity, self.external_id_field): entity for entity
                       in self.dao.get_all()}
+      logging.warning('EXISTING MAP ---->')
+      logging.warning(existing_map)
+      logging.warning('IF EXISTING MAP IS EMPTY THEN ITS BROKE IN MASTER')
       with self.dao.session() as session:
         for row in reader:
           # Strip leading and trailing whitespace
