@@ -130,18 +130,12 @@ class HPOImporter(CsvImporter):
   def _cleanup_old_entities(self, session, row_list):
     self.hpo_dao = HPODao()
     existing_hpos = set(hpo.name for hpo in self.hpo_dao.get_all())
-    logging.warning('TEST: EXISTING HPOS, should not be any in new VM')
-    logging.warning(existing_hpos)
     hpo_group_list_from_sheet = [row[HPO_AWARDEE_ID_COLUMN].upper() for row in row_list]
 
     hpos_to_remove = existing_hpos - set(hpo_group_list_from_sheet)
-    logging.warning('TEST: HPOS_TO_REMOVE, SHOULD BE 0')
-    logging.warning(hpos_to_remove)
     if hpos_to_remove:
-      logging.warning('TEST: SHOULD NOT BE IN HPOS TO REMOVE')
       hpo_id_list = []
       for hpo in hpos_to_remove:
-        logging.info('Deleting old Awardee no longer in master list: %s', hpo)
         old_hpo = self.hpo_dao.get_by_name(hpo)
         hpo_id_list.append(old_hpo.hpoId)
 
@@ -516,7 +510,9 @@ class SiteImporter(CsvImporter):
 
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
+  HPODao()._invalidate_cache()
   OrganizationImporter().run(args.organization_file, args.dry_run)
+  OrganizationDao()._invalidate_cache()
   SiteImporter().run(args.site_file, args.dry_run)
 
 
