@@ -272,8 +272,6 @@ def map_answers(reader):
                              question_code != RACE_QUESTION_CODE):
       race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
       race = get_race(race_codes)
-      if race == Race.PMI_Skip:
-        race = PMI_SKIP_CODE
       yield (last_participant_id, make_tuple(last_start_time, make_metric(RACE_METRIC, str(race))))
       race_code_values = []
     last_participant_id = participant_id
@@ -309,8 +307,6 @@ def map_answers(reader):
   if race_code_values:
     race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
     race = get_race(race_codes)
-    if race == Race.PMI_Skip:
-      race = PMI_SKIP_CODE
     yield (last_participant_id, make_tuple(last_start_time, make_metric(RACE_METRIC, str(race))))
 
 def map_participants(reader):
