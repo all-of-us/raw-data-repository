@@ -138,7 +138,7 @@ class HPOImporter(CsvImporter):
       for hpo in hpos_to_remove:
         old_hpo = self.hpo_dao.get_by_name(hpo)
         if old_hpo:
-          logging.info('Deleting old HPO no longer in Google sheet: ', old_hpo.name)
+          logging.info('Deleting old HPO no longer in Google sheet: %s', old_hpo.name)
           hpo_id_list.append(old_hpo.hpoId)
           self.deletion_count += 1
 
