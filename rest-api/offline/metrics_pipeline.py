@@ -89,7 +89,7 @@ from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields,
 from metrics_config import transform_participant_summary_field, SAMPLES_TO_ISOLATE_DNA_METRIC
 from metrics_config import FULL_PARTICIPANT_KIND, EHR_CONSENT_ANSWER_METRIC
 from participant_enums import get_bucketed_age, get_race, PhysicalMeasurementsStatus, SampleStatus
-from participant_enums import EnrollmentStatus, QuestionnaireStatus, Race
+from participant_enums import EnrollmentStatus, QuestionnaireStatus
 from dao.code_dao import CodeDao
 
 class PipelineNotRunningException(BaseException):
