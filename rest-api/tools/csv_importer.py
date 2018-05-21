@@ -22,6 +22,7 @@ class CsvImporter(object):
     self.external_id_field = external_id_field
     self.required_columns = required_columns
     self.errors = list()
+    self.deletion_count = 0
 
   def run(self, filename, dry_run):
     """Imports entities from the CSV file with the specified name.
@@ -32,6 +33,7 @@ class CsvImporter(object):
     new_count = 0
     updated_count = 0
     matched_count = 0
+    row_list = []
     logging.info('Importing %ss from %r.', self.entity_name, filename)
     with open(filename, 'r') as csv_file:
       reader = csv.DictReader(csv_file)
@@ -41,6 +43,7 @@ class CsvImporter(object):
         for row in reader:
           # Strip leading and trailing whitespace
           row = {k.strip(): v.strip() for k, v in row.iteritems()}
+
           missing_fields = []
           for column in self.required_columns:
             value = row.get(column)
@@ -56,6 +59,7 @@ class CsvImporter(object):
             skip_count += 1
             continue
           existing_entity = existing_map.get(getattr(entity, self.external_id_field))
+          row_list.append(row)
           if existing_entity:
             changed, skipped = self._update_entity(entity, existing_entity, session, dry_run)
             if changed:
@@ -70,13 +74,15 @@ class CsvImporter(object):
               skip_count += 1
             else:
               new_count += 1
+        self._cleanup_old_entities(session, row_list)
 
     if self.errors:
       for err in self.errors:
         logging.warn(err)
-    logging.info('Done importing %ss%s: %d skipped, %d new, %d updated, %d not changed, %d errors.',
+    logging.info('Done importing %ss%s: %d skipped, %d new, %d updated, %d not changed, '
+                 '%d deleted, %d errors.',
                  self.entity_name, ' (dry run)' if dry_run else '', skip_count, new_count,
-                 updated_count, matched_count, len(self.errors))
+                 updated_count, matched_count, self.deletion_count, len(self.errors))
 
   def _entity_from_row(self, row):
     #pylint: disable=unused-argument

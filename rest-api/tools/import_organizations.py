@@ -108,6 +108,44 @@ class HPOImporter(CsvImporter):
     super(HPOImporter, self)._insert_entity(entity, existing_map, session, dry_run)
 
 
+  def delete_sql_statement(self, session, hpo_id_list):
+    str_list = ','.join([str(i) for i in hpo_id_list])
+    sql = """
+          DELETE FROM hpo
+          WHERE hpo_id IN ({str_list})
+          AND NOT EXISTS(
+          SELECT * FROM participant WHERE hpo_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_history WHERE hpo_id IN ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_summary WHERE hpo_id IN ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM organization WHERE hpo_id IN ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM site WHERE hpo_id IN ({str_list}))
+          """.format(str_list=str_list)
+
+    session.execute(sql)
+
+  def _cleanup_old_entities(self, session, row_list):
+    self.hpo_dao = HPODao()
+    existing_hpos = set(hpo.name for hpo in self.hpo_dao.get_all())
+    hpo_group_list_from_sheet = [row[HPO_AWARDEE_ID_COLUMN].upper() for row in row_list]
+
+    hpos_to_remove = existing_hpos - set(hpo_group_list_from_sheet)
+    if hpos_to_remove:
+      hpo_id_list = []
+      for hpo in hpos_to_remove:
+        old_hpo = self.hpo_dao.get_by_name(hpo)
+        if old_hpo:
+          logging.info('Deleting old HPO no longer in Google sheet: %s', old_hpo.name)
+          hpo_id_list.append(old_hpo.hpoId)
+          self.deletion_count += 1
+
+      if hpo_id_list:
+        self.delete_sql_statement(session, hpo_id_list)
+
+
 class OrganizationImporter(CsvImporter):
 
   def __init__(self):
@@ -132,6 +170,42 @@ class OrganizationImporter(CsvImporter):
     return Organization(externalId=row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper(),
                         displayName=row[ORGANIZATION_NAME_COLUMN],
                         hpoId=hpo.hpoId)
+
+  def delete_sql_statement(self, session, org_id_list):
+    str_list = ','.join([str(i) for i in org_id_list])
+    sql = """
+          DELETE FROM organization
+          WHERE organization_id IN ({str_list})
+          AND NOT EXISTS(
+          SELECT * FROM participant WHERE organization_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_summary WHERE organization_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_history WHERE organization_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM site WHERE organization_id in ({str_list}))
+          """.format(str_list=str_list)
+
+    session.execute(sql)
+
+  def _cleanup_old_entities(self, session, row_list):
+    self.org_dao = OrganizationDao()
+    existing_orgs = set(str(org.externalId) for org in self.org_dao.get_all())
+    org_group_list_from_sheet = [row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper()
+                                 for row in row_list]
+
+    orgs_to_remove = existing_orgs - set(org_group_list_from_sheet)
+    if orgs_to_remove:
+      org_id_list = []
+      for org in orgs_to_remove:
+        logging.info('Deleting old Organization no longer in Google sheet: %s', org)
+        old_org = self.org_dao.get_by_external_id(org)
+        org_id_list.append(old_org.organizationId)
+        self.deletion_count += 1
+
+      if org_id_list:
+        self.delete_sql_statement(session, org_id_list)
+
 
 class SiteImporter(CsvImporter):
 
@@ -203,6 +277,39 @@ class SiteImporter(CsvImporter):
           if insert_participants:
             logging.info('Starting import of test participants.')
             self._insert_new_participants(self.new_sites_list)
+
+
+  def delete_sql_statement(self, session, site_id_list):
+    str_list = ','.join([str(i) for i in site_id_list])
+    sql = """
+          DELETE FROM site
+          WHERE site_id IN ({str_list}) 
+          AND NOT EXISTS(
+          SELECT * FROM participant WHERE site_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_summary WHERE site_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM participant_history WHERE site_id in ({str_list}))
+          """.format(str_list=str_list)
+
+    session.execute(sql)
+
+  def _cleanup_old_entities(self, session, row_list):
+    self.site_dao = SiteDao()
+    existing_sites = set(site.googleGroup for site in self.site_dao.get_all())
+    site_group_list_from_sheet = [str(row[SITE_SITE_ID_COLUMN].lower()) for row in row_list]
+
+    sites_to_remove = existing_sites - set(site_group_list_from_sheet)
+    if sites_to_remove:
+      site_id_list = []
+      for site in sites_to_remove:
+        logging.info('Deleting old Site no longer in Google sheet: %s', site)
+        old_site = self.site_dao.get_by_google_group(site)
+        site_id_list.append(old_site.siteId)
+        self.deletion_count += 1
+
+      if site_id_list:
+        self.delete_sql_statement(session, site_id_list)
 
   def _insert_new_participants(self, entity):
     num_participants = 0
@@ -405,9 +512,12 @@ class SiteImporter(CsvImporter):
       self.errors.append('Can not retrieve time zone from {}'.format(self.full_address))
       return None
 
+
 def main(args):
   HPOImporter().run(args.awardee_file, args.dry_run)
+  HPODao()._invalidate_cache()
   OrganizationImporter().run(args.organization_file, args.dry_run)
+  OrganizationDao()._invalidate_cache()
   SiteImporter().run(args.site_file, args.dry_run)
 
 
