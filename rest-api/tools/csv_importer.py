@@ -130,7 +130,8 @@ class CsvImporter(object):
 
   def _insert_entity(self, entity, existing_map, session, dry_run):
     #pylint: disable=unused-argument
-    logging.info('Inserting %s: %s', self.entity_name, entity.asdict())
+    log_prefix = '(dry run) ' if dry_run else ''
+    logging.info(log_prefix + 'Inserting %s: %s', self.entity_name, entity.asdict())
     if not dry_run:
       self.dao.insert_with_session(session, entity)
     return True
