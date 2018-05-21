@@ -114,6 +114,9 @@ do
     mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --ignore-lines=1 voc ${file}
 done
 
+echo "Nulling out empty string fields..."
+mysql -v -v -v -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < etl/set_empty_strings_to_null.sql
+
 if [ "${GENERATE_SQL_DUMP}" ]
 then
     echo "Generating dump for cdm database.."
