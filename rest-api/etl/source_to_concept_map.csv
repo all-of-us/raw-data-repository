@@ -1,0 +1,79 @@
+AIANSpecific_AIANNoneOfTheseDescribeMe|1585603|ppi-race|AIAN None of These Describe Me|8657|Race|1970-1-1|2099-12-31|\N|1
+AIANSpecific_AlaskaNative|1585601|ppi-race|Alaska Native|38003573|Race|1970-1-1|2099-12-31|\N|1
+AIANSpecific_AmericanIndian|1585600|ppi-race|American Indian|38003572|Race|1970-1-1|2099-12-31|\N|1
+AIANSpecific_CentralSouthAmericanIndian|1585602|ppi-race|Central or South American Indian|8657|Race|1970-1-1|2099-12-31|\N|1
+AsianSpecific_AsianSpecificIndian|1585609|ppi-race|Asian Indian|38003574|Race|1970-1-1|2099-12-31|\N|1
+AsianSpecific_Cambodian|1585605|ppi-race|Cambodian|38003578|Race|1970-1-1|2099-12-31|\N|1
+AsianSpecific_Chinese|1585606|ppi-race|Chinese|38003579|Race|1970-1-1|2099-12-31|\N|1
+AsianSpecific_Filipino|1585607|ppi-race|Filipino|38003581|Race|1970-1-1|2099-12-31|\N|1
+AsianSpecific_Hmong|1585608|ppi-race|Hmong|38003582|Race|1970-1-1|2099-12-31|\N|1
+AsianSpecific_Japanese|1585613|ppi-race|Japanese|38003584|Race|1970-1-1|2099-12-31|\N|1
+AsianSpecific_Korean|1585612|ppi-race|Korean|38003585|Race|1970-1-1|2099-12-31|\N|1
+AsianSpecific_NoneOfTheseDescribeMe|1585614|ppi-race|Asian None of These Describe Me|8515|Race|1970-1-1|2099-12-31|\N|1
+AsianSpecific_Pakistani|1585610|ppi-race|Pakistani|38003589|Race|1970-1-1|2099-12-31|\N|1
+AsianSpecific_Vietnamese|1585611|ppi-race|Vietnamese|38003592|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_AfricanAmerican|1585621|ppi-race|African American|38003599|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_Barbadian|1585616|ppi-race|Barbadian|38003602|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_BlackNoneOfTheseDescribeMe|1585627|ppi-race|Black None of These Describe Me|38003598|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_Caribbean|1585617|ppi-race|Caribbean|38003598|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_Ethiopian|1585625|ppi-race|Ethiopian|38003598|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_Ghanaian|1585626|ppi-race|Ghanaian|38003598|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_Haitian|1585623|ppi-race|Haitian|38003605|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_Jamaican|1585622|ppi-race|Jamaican|38003606|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_Liberian|1585618|ppi-race|Liberian|38003598|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_Nigerian|1585624|ppi-race|Nigerian|38003598|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_Somali|1585619|ppi-race|Somali|38003598|Race|1970-1-1|2099-12-31|\N|1
+BlackSpecific_SouthAfrican|1585620|ppi-race|South African|38003598|Race|1970-1-1|2099-12-31|\N|1
+Hispanic_HispanicSpecific|1586156|ppi-race|Hispanic, Latino, or Spanish (For example: Columbian, Cuban, Dominican, Mexican or Mexican American, Puerto Rican, Salvadoran, etc.) *|0|\N|\N|\N|\N|2
+HispanicSpecific_Mexican|1585345|ppi-race|Mexican or Mexican American|0|\N|\N|\N|\N|1
+HispanicSpecific_PuertoRican|1585346|ppi-race|Puerto Rican|0|\N|\N|\N|\N|1
+MENASpecific_Egypt|1585316|ppi-race|Egyptian|38003615|Race|1970-1-1|2099-12-31|\N|1
+MENASpecific_Iranian|1585633|ppi-race|Iranian|38003615|Race|1970-1-1|2099-12-31|\N|1
+MENASpecific_Iraqi|1585630|ppi-race|Iraqi|38003615|Race|1970-1-1|2099-12-31|\N|1
+MENASpecific_Israeli|1585631|ppi-race|Israeli|38003615|Race|1970-1-1|2099-12-31|\N|1
+MENASpecific_Lebanese|1585629|ppi-race|Lebanese|38003615|Race|1970-1-1|2099-12-31|\N|1
+MENASpecific_MENANoneOfTheseDescribeMe|1585319|ppi-race|MENA None of These Describe Me|38003615|Race|1970-1-1|2099-12-31|\N|1
+MENASpecific_Moroccan|1585318|ppi-race|Moroccan|38003615|Race|1970-1-1|2099-12-31|\N|1
+MENASpecific_Syrian|1585317|ppi-race|Syrian|38003615|Race|1970-1-1|2099-12-31|\N|1
+MENASpecific_Tunisian|1585632|ppi-race|Tunisian|38003615|Race|1970-1-1|2099-12-31|\N|1
+NHPISpecific_Chamorro|1585326|ppi-race|Chamorro|8557|Race|1970-1-1|2099-12-31|\N|1
+NHPISpecific_Chuukese|1585323|ppi-race|Chuukese|8557|Race|1970-1-1|2099-12-31|\N|1
+NHPISpecific_Fijian|1585328|ppi-race|Fijian|8557|Race|1970-1-1|2099-12-31|\N|1
+NHPISpecific_Marshallese|1585329|ppi-race|Marshallese|8557|Race|1970-1-1|2099-12-31|\N|1
+NHPISpecific_NativeHawaiian|1585321|ppi-race|Native Hawaiian|8557|Race|1970-1-1|2099-12-31|\N|1
+NHPISpecific_NHPINoneOfTheseDescribeMe|1585330|ppi-race|NHPI None of These Describe Me|8557|Race|1970-1-1|2099-12-31|\N|1
+NHPISpecific_Palauan|1585324|ppi-race|Palauan|8557|Race|1970-1-1|2099-12-31|\N|1
+NHPISpecific_Samoan|1585322|ppi-race|Samoan|8557|Race|1970-1-1|2099-12-31|\N|1
+NHPISpecific_Tahitian|1585325|ppi-race|Tahitian|8557|Race|1970-1-1|2099-12-31|\N|1
+NHPISpecific_Tongan|1585327|ppi-race|Tongan|8557|Race|1970-1-1|2099-12-31|\N|1
+OrganTransplantDescription_BloodVessels|1585834|ppi-proc|Blood vessels|4264998|SNOMED|1970-1-1|2099-12-31|\N|\N
+OrganTransplantDescription_Bone|1585831|ppi-proc|Bone|4214028|SNOMED|1970-1-1|2099-12-31|\N|\N
+OrganTransplantDescription_Cornea|1585830|ppi-proc|Cornea|4246067|SNOMED|1970-1-1|2099-12-31|\N|\N
+OrganTransplantDescription_Heart|1585824|ppi-proc|Heart|4137127|SNOMED|1970-1-1|2099-12-31|\N|\N
+OrganTransplantDescription_Intestine|1585829|ppi-proc|Intestine|40480467|SNOMED|2009-7-31|2099-12-31|\N|\N
+OrganTransplantDescription_Kidney|1585825|ppi-proc|Kidney|4322471|SNOMED|1970-1-1|2099-12-31|\N|\N
+OrganTransplantDescription_Liver|1585826|ppi-proc|Liver|4076862|SNOMED|1970-1-1|2099-12-31|\N|\N
+OrganTransplantDescription_Lung|1585827|ppi-proc|Lung|4337138|SNOMED|1970-1-1|2099-12-31|\N|\N
+OrganTransplantDescription_OtherOrgan|1585807|ppi-proc|Other organ (free text field)|0|\N|\N|\N|\N|\N
+OrganTransplantDescription_OtherTissue|1585808|ppi-proc|Other tissue (free text field)|0|\N|\N|\N|\N|\N
+OrganTransplantDescription_Pancreas|1585828|ppi-proc|Pancreas|4266668|SNOMED|1970-1-1|2099-12-31|\N|\N
+OrganTransplantDescription_Skin|1585833|ppi-proc|Skin|4118634|SNOMED|1970-1-1|2099-12-31|\N|\N
+OrganTransplantDescription_Valve|1585832|ppi-proc|Valve|4105593|SNOMED|1970-1-1|2099-12-31|\N|\N
+WhatRaceEthnicity_AIAN|1586141|ppi-race|American Indian or Alaska Native (For example: Aztec, Blackfeet Tribe, Mayan, Navajo Nation, Native Village of Barrow Inupiat Traditional Government, Nome Eskimo Community, etc.)*|8657|Race|1970-1-1|2099-12-31|\N|2
+WhatRaceEthnicity_Asian|1586142|ppi-race|Asian (For example: Asian Indian, Chinese, Filipino, Japanese, Korean, Vietnamese, etc.) *|8515|Race|1970-1-1|2099-12-31|\N|2
+WhatRaceEthnicity_Black|1586143|ppi-race|Black, African American, or African (For example: African American, Ethiopian, Haitian, Jamaican, Nigerian, Somali, etc.) *|8516|Race|1970-1-1|2099-12-31|\N|2
+WhatRaceEthnicity_MENA|1586144|ppi-race|Middle Eastern or North African (For example: Algerian, Egyptian, Iranian, Lebanese, Moroccan, Syrian, etc.) *|38003615|Race|1970-1-1|2099-12-31|\N|2
+WhatRaceEthnicity_NHPI|1586145|ppi-race|Native Hawaiian or other Pacific Islander (For example: Chamorro, Fijian, Marshallese, Native Hawaiian, Tongan, etc.) *|8557|Race|1970-1-1|2099-12-31|\N|2
+WhatRaceEthnicity_White|1586146|ppi-race|White (For example: English, European, French, German, Irish, Italian, Polish, etc.) *|8527|Race|1970-1-1|2099-12-31|\N|2
+WhiteSpecific_Dutch|1585333|ppi-race|Dutch|8527|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_English|1585339|ppi-race|English|8527|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_European|1585337|ppi-race|European|38003614|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_French|1585342|ppi-race|French|8527|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_German|1585332|ppi-race|German|8527|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_Irish|1585338|ppi-race|Irish|8527|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_Italian|1585340|ppi-race|Italian|8527|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_Norwegian|1585334|ppi-race|Norwegian|8527|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_Polish|1585341|ppi-race|Polish|8527|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_Scottish|1585335|ppi-race|Scottish|8527|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_Spanish|1585336|ppi-race|Spanish|8527|Race|1970-1-1|2099-12-31|\N|1
+WhiteSpecific_WhiteNoneOfTheseDescribeMe|1585343|ppi-race|White None of These Describe Me|8527|Race|1970-1-1|2099-12-31|\N|1
