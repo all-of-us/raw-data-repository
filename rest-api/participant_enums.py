@@ -99,7 +99,7 @@ METRIC_SET_KEYS = {
 # in questionnaire responses.
 class Race(messages.Enum):
   UNSET = 0
-  SKIPPED = 1
+  PMI_Skip = 1
   # UNMAPPED = 2 -- Not actually in use.
   AMERICAN_INDIAN_OR_ALASKA_NATIVE = 3
   BLACK_OR_AFRICAN_AMERICAN = 4
@@ -142,7 +142,7 @@ ANSWER_CODE_TO_RACE = {
   PMI_OTHER_CODE: Race.OTHER_RACE,
   PMI_FREE_TEXT_CODE: Race.OTHER_RACE,
   PMI_UNANSWERED_CODE: Race.UNSET,
-  PMI_SKIP_CODE: Race.SKIPPED,
+  PMI_SKIP_CODE: Race.PMI_Skip,
 }
 
 

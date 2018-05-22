@@ -89,7 +89,7 @@ from metrics_config import HPO_ID_FIELDS, ANSWER_FIELDS, get_participant_fields,
 from metrics_config import transform_participant_summary_field, SAMPLES_TO_ISOLATE_DNA_METRIC
 from metrics_config import FULL_PARTICIPANT_KIND, EHR_CONSENT_ANSWER_METRIC
 from participant_enums import get_bucketed_age, get_race, PhysicalMeasurementsStatus, SampleStatus
-from participant_enums import EnrollmentStatus, QuestionnaireStatus, Race
+from participant_enums import EnrollmentStatus, QuestionnaireStatus
 from dao.code_dao import CodeDao
 
 class PipelineNotRunningException(BaseException):
@@ -272,8 +272,6 @@ def map_answers(reader):
                              question_code != RACE_QUESTION_CODE):
       race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
       race = get_race(race_codes)
-      if race == Race.SKIPPED:
-        race = PMI_SKIP_CODE
       yield (last_participant_id, make_tuple(last_start_time, make_metric(RACE_METRIC, str(race))))
       race_code_values = []
     last_participant_id = participant_id
@@ -309,8 +307,6 @@ def map_answers(reader):
   if race_code_values:
     race_codes = [code_dao.get_code(PPI_SYSTEM, value) for value in race_code_values]
     race = get_race(race_codes)
-    if race == Race.SKIPPED:
-      race = PMI_SKIP_CODE
     yield (last_participant_id, make_tuple(last_start_time, make_metric(RACE_METRIC, str(race))))
 
 def map_participants(reader):
