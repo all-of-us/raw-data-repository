@@ -302,7 +302,7 @@ class SiteImporter(CsvImporter):
           OR finalized_site_id in ({str_list}))
           AND NOT EXISTS(
           SELECT * FROM biobank_order WHERE finalized_site_id in ({str_list})
-          OR source_site_id in ({str_list}
+          OR source_site_id in ({str_list})
           OR collected_site_id IN ({str_list})
           OR processed_site_id IN ({str_list})
           )
