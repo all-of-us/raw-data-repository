@@ -127,7 +127,7 @@ class HPOImporter(CsvImporter):
 
     session.execute(sql)
 
-  def _cleanup_old_entities(self, session, row_list):
+  def _cleanup_old_entities(self, session, row_list, dry_run):
     self.hpo_dao = HPODao()
     existing_hpos = set(hpo.name for hpo in self.hpo_dao.get_all())
     hpo_group_list_from_sheet = [row[HPO_AWARDEE_ID_COLUMN].upper() for row in row_list]
@@ -142,7 +142,7 @@ class HPOImporter(CsvImporter):
           hpo_id_list.append(old_hpo.hpoId)
           self.deletion_count += 1
 
-      if hpo_id_list:
+      if hpo_id_list and not dry_run:
         self.delete_sql_statement(session, hpo_id_list)
 
 
@@ -188,7 +188,7 @@ class OrganizationImporter(CsvImporter):
 
     session.execute(sql)
 
-  def _cleanup_old_entities(self, session, row_list):
+  def _cleanup_old_entities(self, session, row_list, dry_run):
     self.org_dao = OrganizationDao()
     existing_orgs = set(str(org.externalId) for org in self.org_dao.get_all())
     org_group_list_from_sheet = [row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper()
@@ -203,7 +203,7 @@ class OrganizationImporter(CsvImporter):
         org_id_list.append(old_org.organizationId)
         self.deletion_count += 1
 
-      if org_id_list:
+      if org_id_list and not dry_run:
         self.delete_sql_statement(session, org_id_list)
 
 
@@ -310,7 +310,7 @@ class SiteImporter(CsvImporter):
 
     session.execute(sql)
 
-  def _cleanup_old_entities(self, session, row_list):
+  def _cleanup_old_entities(self, session, row_list, dry_run):
     self.site_dao = SiteDao()
     existing_sites = set(site.googleGroup for site in self.site_dao.get_all())
     site_group_list_from_sheet = [str(row[SITE_SITE_ID_COLUMN].lower()) for row in row_list]
@@ -324,7 +324,7 @@ class SiteImporter(CsvImporter):
         site_id_list.append(old_site.siteId)
         self.deletion_count += 1
 
-      if site_id_list:
+      if site_id_list and not dry_run:
         self.delete_sql_statement(session, site_id_list)
 
   def _insert_new_participants(self, entity):
