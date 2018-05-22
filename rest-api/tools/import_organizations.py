@@ -114,15 +114,15 @@ class HPOImporter(CsvImporter):
           DELETE FROM hpo
           WHERE hpo_id IN ({str_list})
           AND NOT EXISTS(
-          SELECT * FROM participant WHERE hpo_id in ({str_list}))
+          SELECT * FROM participant WHERE hpo_id = hpo.hpo_id)
           AND NOT EXISTS(
-          SELECT * FROM participant_history WHERE hpo_id IN ({str_list}))
+          SELECT * FROM participant_history WHERE hpo_id = hpo.hpo_id)
           AND NOT EXISTS(
-          SELECT * FROM participant_summary WHERE hpo_id IN ({str_list}))
+          SELECT * FROM participant_summary WHERE hpo_id = hpo.hpo_id)
           AND NOT EXISTS(
-          SELECT * FROM organization WHERE hpo_id IN ({str_list}))
+          SELECT * FROM organization WHERE hpo_id = hpo.hpo_id)
           AND NOT EXISTS(
-          SELECT * FROM site WHERE hpo_id IN ({str_list}))
+          SELECT * FROM site WHERE hpo_id = hpo.hpo_id)
           """.format(str_list=str_list)
 
     session.execute(sql)
@@ -177,13 +177,13 @@ class OrganizationImporter(CsvImporter):
           DELETE FROM organization
           WHERE organization_id IN ({str_list})
           AND NOT EXISTS(
-          SELECT * FROM participant WHERE organization_id in ({str_list}))
+          SELECT * FROM participant WHERE organization_id = organization.organization_id)
           AND NOT EXISTS(
-          SELECT * FROM participant_summary WHERE organization_id in ({str_list}))
+          SELECT * FROM participant_summary WHERE organization_id = organization.organization_id)
           AND NOT EXISTS(
-          SELECT * FROM participant_history WHERE organization_id in ({str_list}))
+          SELECT * FROM participant_history WHERE organization_id = organization.organization_id)
           AND NOT EXISTS(
-          SELECT * FROM site WHERE organization_id in ({str_list}))
+          SELECT * FROM site WHERE organization_id = organization.organization_id)
           """.format(str_list=str_list)
 
     session.execute(sql)
@@ -285,26 +285,26 @@ class SiteImporter(CsvImporter):
           DELETE FROM site
           WHERE site_id IN ({str_list}) 
           AND NOT EXISTS(
-          SELECT * FROM participant WHERE site_id in ({str_list}))
+          SELECT * FROM participant WHERE site_id = site.site_id)
           AND NOT EXISTS(
-          SELECT * FROM participant_summary WHERE site_id in ({str_list})
-          OR physical_measurements_finalized_site_id in ({str_list})
-          OR physical_measurements_created_site_id in ({str_list})
-          OR biospecimen_source_site_id in ({str_list})
-          OR biospecimen_collected_site_id in ({str_list})
-          OR biospecimen_processed_site_id in ({str_list})
-          OR biospecimen_finalized_site_id in ({str_list})
+          SELECT * FROM participant_summary WHERE site_id = site.site_id
+          OR physical_measurements_finalized_site_id = site.site_id
+          OR physical_measurements_created_site_id = site.site_id
+          OR biospecimen_source_site_id = site.site_id
+          OR biospecimen_collected_site_id = site.site_id
+          OR biospecimen_processed_site_id = site.site_id
+          OR biospecimen_finalized_site_id = site.site_id
           )
           AND NOT EXISTS(
-          SELECT * FROM participant_history WHERE site_id in ({str_list}))
+          SELECT * FROM participant_history WHERE site_id = site.site_id)
           AND NOT EXISTS(
-          SELECT * FROM physical_measurements WHERE created_site_id in ({str_list})
-          OR finalized_site_id in ({str_list}))
+          SELECT * FROM physical_measurements WHERE created_site_id = site.site_id
+          OR finalized_site_id = site.site_id)
           AND NOT EXISTS(
-          SELECT * FROM biobank_order WHERE finalized_site_id in ({str_list})
-          OR source_site_id in ({str_list}
-          OR collected_site_id IN ({str_list})
-          OR processed_site_id IN ({str_list})
+          SELECT * FROM biobank_order WHERE finalized_site_id = site.site_id
+          OR source_site_id = site.site_id
+          OR collected_site_id = site.site_id 
+          OR processed_site_id = site.site_id
           )
           """.format(str_list=str_list)
 
