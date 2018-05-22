@@ -138,7 +138,8 @@ class HPOImporter(CsvImporter):
       for hpo in hpos_to_remove:
         old_hpo = self.hpo_dao.get_by_name(hpo)
         if old_hpo:
-          logging.info('Deleting old HPO no longer in Google sheet: %s', old_hpo.name)
+          log_prefix = '(dry run) ' if dry_run else ''
+          logging.info(log_prefix + 'Deleting old HPO no longer in Google sheet: %s', old_hpo.name)
           hpo_id_list.append(old_hpo.hpoId)
           self.deletion_count += 1
 
@@ -198,7 +199,8 @@ class OrganizationImporter(CsvImporter):
     if orgs_to_remove:
       org_id_list = []
       for org in orgs_to_remove:
-        logging.info('Deleting old Organization no longer in Google sheet: %s', org)
+        log_prefix = '(dry run) ' if dry_run else ''
+        logging.info(log_prefix + 'Deleting old Organization no longer in Google sheet: %s', org)
         old_org = self.org_dao.get_by_external_id(org)
         org_id_list.append(old_org.organizationId)
         self.deletion_count += 1
@@ -319,7 +321,8 @@ class SiteImporter(CsvImporter):
     if sites_to_remove:
       site_id_list = []
       for site in sites_to_remove:
-        logging.info('Deleting old Site no longer in Google sheet: %s', site)
+        log_prefix = '(dry run) ' if dry_run else ''
+        logging.info(log_prefix + 'Deleting old Site no longer in Google sheet: %s', site)
         old_site = self.site_dao.get_by_google_group(site)
         site_id_list.append(old_site.siteId)
         self.deletion_count += 1
