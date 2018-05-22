@@ -106,7 +106,7 @@ for i in ${CSV_DIR}/voc/*; do mv $i `echo $i | tr [:upper:] [:lower:]`; done
 chmod -R 0777 ${CSV_DIR}
 
 echo "Importing source_to_concept_map.csv..."
-mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --fields-terminated-by=\| cdm ${CSV_DIR}/cdm/source_to_concept_map.csv
+mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --fields-terminated-by=\| cdm etl/source_to_concept_map.csv
 
 for file in ${CSV_DIR}/voc/*.csv
 do
