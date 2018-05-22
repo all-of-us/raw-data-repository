@@ -308,7 +308,6 @@ class SiteImporter(CsvImporter):
           )
           """.format(str_list=str_list)
 
-    logging.info('sql is >>> %s', sql)
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list):
