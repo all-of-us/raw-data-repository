@@ -287,9 +287,25 @@ class SiteImporter(CsvImporter):
           AND NOT EXISTS(
           SELECT * FROM participant WHERE site_id in ({str_list}))
           AND NOT EXISTS(
-          SELECT * FROM participant_summary WHERE site_id in ({str_list}))
+          SELECT * FROM participant_summary WHERE site_id in ({str_list})
+          OR physical_measurements_finalized_site_id in ({str_list})
+          OR physical_measurements_created_site_id in ({str_list})
+          OR biospecimen_source_site_id in ({str_list})
+          OR biospecimen_collected_site_id in ({str_list})
+          OR biospecimen_processed_site_id in ({str_list})
+          OR biospecimen_finalized_site_id in ({str_list})
+          )
           AND NOT EXISTS(
           SELECT * FROM participant_history WHERE site_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM physical_measurements WHERE created_site_id in ({str_list})
+          OR finalized_site_id in ({str_list}))
+          AND NOT EXISTS(
+          SELECT * FROM biobank_order WHERE finalized_site_id in ({str_list})
+          OR source_site_id in ({str_list}
+          OR collected_site_id IN ({str_list})
+          OR processed_site_id IN ({str_list})
+          )
           """.format(str_list=str_list)
 
     session.execute(sql)
