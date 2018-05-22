@@ -114,15 +114,15 @@ class HPOImporter(CsvImporter):
           DELETE FROM hpo
           WHERE hpo_id IN ({str_list})
           AND NOT EXISTS(
-          SELECT * FROM participant WHERE hpo_id = hpo.hpo_id
+          SELECT * FROM participant WHERE hpo_id = hpo.hpo_id)
           AND NOT EXISTS(
-          SELECT * FROM participant_history WHERE hpo_id = hpo.hpo_id
+          SELECT * FROM participant_history WHERE hpo_id = hpo.hpo_id)
           AND NOT EXISTS(
-          SELECT * FROM participant_summary WHERE hpo_id = hpo.hpo_id
+          SELECT * FROM participant_summary WHERE hpo_id = hpo.hpo_id)
           AND NOT EXISTS(
-          SELECT * FROM organization WHERE hpo_id = hpo.hpo_id
+          SELECT * FROM organization WHERE hpo_id = hpo.hpo_id)
           AND NOT EXISTS(
-          SELECT * FROM site WHERE hpo_id = hpo.hpo_id
+          SELECT * FROM site WHERE hpo_id = hpo.hpo_id)
           """.format(str_list=str_list)
 
     session.execute(sql)
@@ -177,13 +177,13 @@ class OrganizationImporter(CsvImporter):
           DELETE FROM organization
           WHERE organization_id IN ({str_list})
           AND NOT EXISTS(
-          SELECT * FROM participant WHERE organization_id = organization.organization_id
+          SELECT * FROM participant WHERE organization_id = organization.organization_id)
           AND NOT EXISTS(
-          SELECT * FROM participant_summary WHERE organization_id = organization.organization_id
+          SELECT * FROM participant_summary WHERE organization_id = organization.organization_id)
           AND NOT EXISTS(
-          SELECT * FROM participant_history WHERE organization_id = organization.organization_id
+          SELECT * FROM participant_history WHERE organization_id = organization.organization_id)
           AND NOT EXISTS(
-          SELECT * FROM site WHERE organization_id = organization.organization_id
+          SELECT * FROM site WHERE organization_id = organization.organization_id)
           """.format(str_list=str_list)
 
     session.execute(sql)
