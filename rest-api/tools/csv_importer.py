@@ -74,7 +74,7 @@ class CsvImporter(object):
               skip_count += 1
             else:
               new_count += 1
-        self._cleanup_old_entities(session, row_list)
+        self._cleanup_old_entities(session, row_list, dry_run)
 
     if self.errors:
       for err in self.errors:
