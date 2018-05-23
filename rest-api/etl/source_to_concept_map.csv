@@ -1,3 +1,5 @@
+SexAtBirth_Male|1585846|ppi-sex|MALE|8507|Gender|1970-1-1|2099-12-31|\N|1
+SexAtBirth_Female|1585847|ppi-sex|FEMALE|8532|Gender|1970-1-1|2099-12-31|\N|1
 AIANSpecific_AIANNoneOfTheseDescribeMe|1585603|ppi-race|AIAN None of These Describe Me|8657|Race|1970-1-1|2099-12-31|\N|1
 AIANSpecific_AlaskaNative|1585601|ppi-race|Alaska Native|38003573|Race|1970-1-1|2099-12-31|\N|1
 AIANSpecific_AmericanIndian|1585600|ppi-race|American Indian|38003572|Race|1970-1-1|2099-12-31|\N|1
@@ -24,7 +26,7 @@ BlackSpecific_Liberian|1585618|ppi-race|Liberian|38003598|Race|1970-1-1|2099-12-
 BlackSpecific_Nigerian|1585624|ppi-race|Nigerian|38003598|Race|1970-1-1|2099-12-31|\N|1
 BlackSpecific_Somali|1585619|ppi-race|Somali|38003598|Race|1970-1-1|2099-12-31|\N|1
 BlackSpecific_SouthAfrican|1585620|ppi-race|South African|38003598|Race|1970-1-1|2099-12-31|\N|1
-Hispanic_HispanicSpecific|1586156|ppi-race|Hispanic, Latino, or Spanish (For example: Columbian, Cuban, Dominican, Mexican or Mexican American, Puerto Rican, Salvadoran, etc.) *|0|\N|\N|\N|\N|2
+Hispanic_HispanicSpecific|1586156|ppi-race|Hispanic, Latino, or Spanish (For example: Columbian, Cuban, Dominican, Mexican or Mexican American, Puerto Rican, Salvadoran, etc.) *|38003563|Ethnicity|1970-1-1|2099-12-31|\N|2
 HispanicSpecific_Mexican|1585345|ppi-race|Mexican or Mexican American|0|\N|\N|\N|\N|1
 HispanicSpecific_PuertoRican|1585346|ppi-race|Puerto Rican|0|\N|\N|\N|\N|1
 MENASpecific_Egypt|1585316|ppi-race|Egyptian|38003615|Race|1970-1-1|2099-12-31|\N|1
