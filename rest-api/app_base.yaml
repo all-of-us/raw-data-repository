@@ -27,7 +27,7 @@ handlers:
 - url: /_ah/warmup
   script: main.app
   login: admin
--url: /stats.*
+-url: /_ah/stats.*
  script: google.appengine.ext.appstats.ui.app
 
 libraries:
