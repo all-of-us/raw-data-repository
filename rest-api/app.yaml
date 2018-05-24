@@ -27,7 +27,7 @@ handlers:
 - url: /_ah/warmup
   script: main.app
   login: admin
-- url: /_ah/stats.*
+-url: /_ah/stats.*
  script: google.appengine.ext.appstats.ui.app
 
 libraries:
@@ -37,3 +37,4 @@ libraries:
   version: 1.0
 - name: MySQLdb
   version: "latest"
+# app_base.yaml is concatenated to the beginning of this file for deployment.
