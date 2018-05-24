@@ -27,7 +27,7 @@ handlers:
 - url: /_ah/warmup
   script: main.app
   login: admin
-- url: /_ah/stats.*
+- url: /stats.*
   script: main.app
 
 libraries:
