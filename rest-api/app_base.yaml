@@ -28,7 +28,7 @@ handlers:
   script: main.app
   login: admin
 - url: /_ah/stats.*
- script: google.appengine.ext.appstats.ui.app
+  script: main.app
 
 libraries:
 - name: pycrypto
