@@ -1,10 +1,10 @@
 # app_base.yaml is concatenated to the beginning of this file for deployment.
 
-instance_class: F2
+instance_class: F4
 
-# Have 10 idle instances to prepare for sudden traffic spikes.
+# Have 5 idle instances to prepare for sudden traffic spikes.
 automatic_scaling:
-  min_idle_instances: 10
+  min_idle_instances: 5
 
 # Send warmup requests to instances on startup, which will initialize the app and load configs.
 inbound_services:
