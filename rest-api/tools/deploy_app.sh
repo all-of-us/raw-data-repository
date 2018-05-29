@@ -162,7 +162,7 @@ then
       APP_YAML=app_nonprod.yaml
     fi
     # merge base yaml with app yaml to avoid key duplication
-    python merge_yaml.py --base_yaml app_base.yaml --env_yaml $APP_YAML
+    python tools/merge_yaml.py --base_yaml app_base.yaml --env_yaml $APP_YAML
     cat app_base.yaml $APP_YAML > app.yaml
 
     yamls+=( app.yaml index.yaml offline.yaml )
