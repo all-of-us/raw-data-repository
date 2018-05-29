@@ -1,5 +1,1 @@
 # app_base.yaml is concatenated to the beginning of this file for deployment.
-
-handlers:
-- url: /_ah/stats.*
-  script: main.app
