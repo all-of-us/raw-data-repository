@@ -1,5 +1,21 @@
 # app_base.yaml is concatenated to the beginning of this file for deployment.
 
 handlers:
+- url: /_ah/queue/deferred
+  script: google.appengine.ext.deferred.deferred.application
+  login: admin
+  secure: always
+- url: /.*
+  script: main.app
+  secure: always
+# App data directory used to load static files in AppEngine; not used for actual serving.
+- url: /app_data/.*
+  login: admin
+  static_dir: app_data
+  application_readable: true
+  secure: always
+- url: /_ah/warmup
+  script: main.app
+  login: admin
 - url: /_ah/stats.*
   script: main.app
