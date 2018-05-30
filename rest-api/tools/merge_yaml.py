@@ -8,11 +8,15 @@ def main(args):
   env_file = args.env_yaml
   try:
     with open(base_file, 'r') as base_reader, open(env_file, 'r') as env_reader:
-      print yaml.load(base_reader)
-      base_lines = base_reader.readlines()
-      env_lines = env_reader.readlines()
-      # print base_lines, '< base lines'
-      # print env_lines, '< env lines'
+      base_yaml = yaml.load(base_reader)
+      env_yaml = yaml.load(env_reader)
+      combined_yaml = (base_yaml.items() + env_yaml.items())
+
+      with open('app.yaml', 'w') as app:
+        app.writelines(yaml.dump(combined_yaml))
+        print 'done writing to file'
+
+
   except IOError:
     logging.warning('Unable to open files for reading.')
 
