@@ -14,7 +14,7 @@ def main(args):
       with open(env_file, 'r') as env_reader:
         env_yaml = yaml.load(env_reader)
         pprint(env_yaml)
-        combined_yaml = (base_yaml + env_yaml)
+        combined_yaml = (base_yaml.items() + env_yaml.items())
         pprint(combined_yaml)
         yaml.load_all(combined_yaml)
 
