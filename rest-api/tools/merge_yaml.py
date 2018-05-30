@@ -9,8 +9,8 @@ from main_util import configure_logging, get_parser
 
 def main(args):
   # yaml = ruamel.yaml.YAML()
-  # base_file = args.base_yaml
-  # env_file = args.env_yaml
+    base_file = args.base_yaml
+    env_file = args.env_yaml
   # try:
   #   with open(base_file, 'r') as base_reader:
   #     base_yaml = yaml.load(base_reader)
@@ -24,7 +24,7 @@ def main(args):
   #       yaml.dump(base_yaml, file('app.yaml'), 'w')
   #       print 'done writing to file'
     sList = []
-    for f in args:
+    for f in (base_file, env_file):
         with open(f, 'r') as stream:
             sList.append(stream.read())
     fString = ''
