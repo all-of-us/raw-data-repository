@@ -12,7 +12,7 @@ def main(args):
       base_yaml = yaml.load(base_reader)
       with open(env_file, 'r') as env_reader:
         env_yaml = yaml.load(env_reader)
-        combined_yaml = {i: list(j) for i in base_yaml.keys() for j in zip(base_yaml.values(),
+        combined_yaml = {i: list(j) for i in env_yaml.keys() for j in zip(base_yaml.values(),
                                                                env_yaml.values())}
         # combined_yaml = (base_yaml.items() + env_yaml.items())
         pprint(combined_yaml)
