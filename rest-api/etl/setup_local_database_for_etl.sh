@@ -92,12 +92,17 @@ fi
 PROJECT=pmi-drc-api-test
 CREDS_ACCOUNT="${ACCOUNT}"
 
-echo "Activating service account..."
 source tools/auth_setup.sh
-gcloud auth activate-service-account circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com --key-file=$CREDS_FILE
 
 echo "Copying vocabulary files from GCS..."
-gsutil cp -r gs://all-of-us-rdr-vocabulary/vocabularies-2017-11-27/* ${CSV_DIR}
+gsutil cp -r gs://aou-res-curation-test-vocab-22-dec-17/CONCEPT.csv ${CSV_DIR}/voc
+gsutil cp -r gs://aou-res-curation-test-vocab-22-dec-17/CONCEPT_RELATIONSHIP.csv ${CSV_DIR}/voc
+
+# Strip concept relationships to "Maps to" as those are the only ones we use in the ETL
+grep "Maps to" ${CSV_DIR}/voc/CONCEPT_RELATIONSHIP.csv > ${CSV_DIR}/voc/rel.csv
+rm ${CSV_DIR}/voc/CONCEPT_RELATIONSHIP.csv
+mv ${CSV_DIR}/voc/rel.csv ${CSV_DIR}/voc/CONCEPT_RELATIONSHIP.csv
+cp etl/source_to_concept_map.csv ${CSV_DIR}
 
 # Rename files to lower case to match table names in schema.
 for i in ${CSV_DIR}/voc/*; do mv $i `echo $i | tr [:upper:] [:lower:]`; done
@@ -106,7 +111,7 @@ for i in ${CSV_DIR}/voc/*; do mv $i `echo $i | tr [:upper:] [:lower:]`; done
 chmod -R 0777 ${CSV_DIR}
 
 echo "Importing source_to_concept_map.csv..."
-mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --fields-terminated-by=\| cdm etl/source_to_concept_map.csv
+mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --fields-terminated-by=\| cdm ${CSV_DIR}/source_to_concept_map.csv
 
 for file in ${CSV_DIR}/voc/*.csv
 do
