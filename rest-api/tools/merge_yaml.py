@@ -8,15 +8,15 @@ def main(args):
   base_file = args.base_yaml
   env_file = args.env_yaml
   try:
-    with open(base_file, 'r') as base_reader, open(env_file, 'r') as env_reader:
-      pprint(env_reader.readlines())
-      # base_yaml = yaml.load(base_reader)
-      # pprint(base_yaml)
-      env_yaml = yaml.load(env_reader.readlines())
-      pprint(env_yaml)
-      # combined_yaml = (base_reader + env_reader)
-      # pprint(combined_yaml)
-      # yaml.load_all(combined_yaml)
+    with open(base_file, 'r') as base_reader: #, open(env_file, 'r') as env_reader:
+      base_yaml = yaml.load(base_reader)
+      pprint(base_yaml)
+      with open(env_file, 'r') as env_reader:
+        env_yaml = yaml.load(env_reader)
+        pprint(env_yaml)
+        # combined_yaml = (base_reader + env_reader)
+        # pprint(combined_yaml)
+        # yaml.load_all(combined_yaml)
 
       with open('app.yaml', 'w') as app:
         # app.writelines(yaml.dump(combined_yaml))
