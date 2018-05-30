@@ -21,9 +21,8 @@ def main(args):
       print(i, env_yaml[i])
       base_yaml.update({i:env_yaml[i]})
 
-    with open('app.yaml', 'w') as app:
-      app.writelines(yaml.dump(base_yaml))
-      print 'done writing to file'
+    yaml.dump(base_yaml, file('app.yaml'), 'w')
+    print 'done writing to file'
 
 
   except IOError:
