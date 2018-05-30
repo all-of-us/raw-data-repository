@@ -12,7 +12,7 @@ def main(args):
       pprint(env_reader.readlines())
       # base_yaml = yaml.load(base_reader)
       # pprint(base_yaml)
-      env_yaml = yaml.load(env_reader)
+      env_yaml = yaml.load(env_reader.readlines())
       pprint(env_yaml)
       # combined_yaml = (base_reader + env_reader)
       # pprint(combined_yaml)
