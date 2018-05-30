@@ -1,5 +1,6 @@
 import logging
 import yaml
+from pprint import pprint
 from main_util import configure_logging, get_parser
 
 
@@ -9,8 +10,11 @@ def main(args):
   try:
     with open(base_file, 'r') as base_reader, open(env_file, 'r') as env_reader:
       base_yaml = yaml.load(base_reader)
+      pprint(base_yaml)
       env_yaml = yaml.load(env_reader)
+      pprint(env_yaml)
       combined_yaml = (base_yaml.items() + env_yaml.items())
+      pprint(combined_yaml)
 
       with open('app.yaml', 'w') as app:
         app.writelines(yaml.dump(combined_yaml))
