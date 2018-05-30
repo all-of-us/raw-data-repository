@@ -14,15 +14,15 @@ def main(args):
   try:
     with open(base_file, 'r') as base_reader:
       base_yaml = yaml.load(base_reader)
-    with open(env_file, 'r') as env_reader:
-      env_yaml = yaml.load(env_reader)
+      with open(env_file, 'r') as env_reader:
+        env_yaml = yaml.load(env_reader)
 
-    for i in env_yaml:
-      print(i, env_yaml[i])
-      base_yaml.update({i:env_yaml[i]})
+        for i in env_yaml:
+          print(i, env_yaml[i])
+          base_yaml.update({i:env_yaml[i]})
 
-    yaml.dump(base_yaml, file('app.yaml'), 'w')
-    print 'done writing to file'
+        yaml.dump(base_yaml, file('app.yaml'), 'w')
+        print 'done writing to file'
 
 
   except IOError:
