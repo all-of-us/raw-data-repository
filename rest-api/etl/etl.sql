@@ -827,10 +827,8 @@ UPDATE cdm.src_person_location person_loc, cdm.location loc
 -- -------------------------------------------------------------------
 
 -- ---------------------------------------------------
--- table scr_gender
--- Contains persons's gender in concept_id form.
--- Forms as answer to the gender question if all such
--- answers remains the same during all observations.
+-- table src_gender.
+-- Contains gender information from patient surveys.
 -- ---------------------------------------------------
 DROP TABLE IF EXISTS cdm.src_gender;
 
@@ -838,27 +836,33 @@ CREATE TABLE cdm.src_gender
 (
     person_id                   bigint,
     ppi_code                    varchar(255),
-    gender_concept_id           bigint,
+    gender_source_concept_id    bigint,
+    gender_target_concept_id    bigint,
     PRIMARY KEY (person_id)
 );
 
+-- ------------------------------------------------------
+-- Map many non-standard genders from src_mapped to allowed
+-- by cdm standards by 'source_to_concept_map' relation.
+-- -------------------------------------------------------
 INSERT INTO cdm.src_gender
 SELECT DISTINCT
-    src_m.participant_id            AS person_id,
-    MIN(src_m.value_ppi_code)       AS ppi_code,
-    CASE
-        WHEN MIN(src_m.value_ppi_code) = 'SexAtBirth_Male' THEN 8507
-        WHEN MIN(src_m.value_ppi_code) = 'SexAtBirth_Female' THEN 8532
-        ELSE 0
-    END                             AS gender_concept_id
+    src_m.participant_id                    AS person_id,
+    MIN(stcm1.source_code)                  AS ppi_code,
+    MIN(stcm1.source_concept_id)            AS gender_source_concept_id,
+    MIN(COALESCE(vc1.concept_id, 0))        AS gender_target_concept_id
 FROM cdm.src_mapped src_m
-WHERE
-    src_m.value_ppi_code IN ('SexAtBirth_Male', 'SexAtBirth_Female')
-    AND NOT EXISTS (SELECT * FROM cdm.src_gender g
-                    WHERE src_m.participant_id = g.person_id)
-GROUP BY
-    src_m.participant_id
-HAVING count(distinct src_m.value_ppi_code) = 1
+INNER JOIN cdm.source_to_concept_map stcm1
+    ON src_m.value_ppi_code = stcm1.source_code
+    AND stcm1.priority = 1              -- priority 1
+    AND stcm1.source_vocabulary_id = 'ppi-sex'
+LEFT JOIN voc.concept vc1
+    ON stcm1.target_concept_id = vc1.concept_id
+    AND vc1.standard_concept = 'S'
+    AND vc1.invalid_reason IS NULL
+GROUP BY src_m.participant_id
+HAVING
+    COUNT(distinct src_m.value_ppi_code) = 1
 ;
 
 -- ---------------------------------------------------
@@ -879,9 +883,9 @@ CREATE TABLE cdm.src_race
 -- ------------------------------------------------------
 -- Map many non-standard races from src_mapped to allowed
 -- by cdm standards by 'source_to_concept_map' relation.
--- priority = 1 means more detailed racial or ethnicial
+-- priority = 1 means more detailed racial 
 -- information over priority = 2. So if patient provides
--- detailed answer about his/her ethnicity, we firstly
+-- detailed answer about his/her race, we firstly
 -- use it.
 -- -------------------------------------------------------
 INSERT INTO cdm.src_race
@@ -906,7 +910,7 @@ HAVING
 
 -- ----------------------------------------------------
 -- Then we find and insert priority-2 (more common)
--- ethnicity info, if priority-1 info was not already
+-- race info, if priority-1 info was not already
 -- provided.
 -- ----------------------------------------------------
 INSERT INTO cdm.src_race
@@ -932,34 +936,106 @@ HAVING
     COUNT(distinct src_m.value_ppi_code) = 1
 ;
 
+-- ---------------------------------------------------
+-- table src_ethnicity.
+-- Contains ethnicity information from patient surveys.
+-- ---------------------------------------------------
+DROP TABLE IF EXISTS cdm.src_ethnicity;
+
+CREATE TABLE cdm.src_ethnicity
+(
+    person_id                   bigint,
+    ppi_code                    varchar(255),
+    ethnicity_source_concept_id bigint,
+    ethnicity_target_concept_id bigint,
+    PRIMARY KEY (person_id)
+);
+
+-- ------------------------------------------------------
+-- Map many non-standard ethnicities from src_mapped to allowed
+-- by cdm standards by 'source_to_concept_map' relation.
+-- priority = 1 means more detailed ethnic
+-- information over priority = 2. So if patient provides
+-- detailed answer about his/her ethnicity, we firstly
+-- use it.
+-- -------------------------------------------------------
+INSERT INTO cdm.src_ethnicity
+SELECT DISTINCT
+    src_m.participant_id                    AS person_id,
+    MIN(stcm1.source_code)                  AS ppi_code,
+    MIN(stcm1.source_concept_id)            AS ethnicity_source_concept_id,
+    MIN(COALESCE(vc1.concept_id, 0))        AS ethnicity_target_concept_id
+FROM cdm.src_mapped src_m
+INNER JOIN cdm.source_to_concept_map stcm1
+    ON src_m.value_ppi_code = stcm1.source_code
+    AND stcm1.priority = 1              -- priority 1
+    AND stcm1.source_vocabulary_id = 'ppi-ethnicity'
+LEFT JOIN voc.concept vc1
+    ON stcm1.target_concept_id = vc1.concept_id
+    AND vc1.standard_concept = 'S'
+    AND vc1.invalid_reason IS NULL
+GROUP BY src_m.participant_id
+HAVING
+    COUNT(distinct src_m.value_ppi_code) = 1
+;
+
+-- ----------------------------------------------------
+-- Then we find and insert priority-2 (more common)
+-- ethnicity info, if priority-1 info was not already
+-- provided.
+-- ----------------------------------------------------
+INSERT INTO cdm.src_ethnicity
+SELECT DISTINCT
+    src_m.participant_id                    AS person_id,
+    MIN(stcm1.source_code)                  AS ppi_code,
+    MIN(stcm1.source_concept_id)            AS ethnicity_source_concept_id,
+    MIN(COALESCE(vc1.concept_id, 0))        AS ethnicity_target_concept_id
+FROM cdm.src_mapped src_m
+INNER JOIN cdm.source_to_concept_map stcm1
+    ON src_m.value_ppi_code = stcm1.source_code
+    AND stcm1.priority = 2              -- priority 2
+    AND stcm1.source_vocabulary_id = 'ppi-ethnicity'
+LEFT JOIN voc.concept vc1
+    ON stcm1.target_concept_id = vc1.concept_id
+    AND vc1.standard_concept = 'S'
+    AND vc1.invalid_reason IS NULL
+WHERE
+    NOT EXISTS (SELECT * FROM cdm.src_ethnicity g
+                WHERE src_m.participant_id = g.person_id)
+GROUP BY src_m.participant_id
+HAVING
+    COUNT(distinct src_m.value_ppi_code) = 1
+;
+
+
 -- -------------------------------------------------------------------
 -- table: cdm_person
 -- Assembles person's birthday, gender, racial, ethnicity and
 -- location information altogether from 'src_mapped', 'src_gender',
--- 'src_race', 'src_person_location' relations.
+-- 'src_race', 'src_ethnicity', 'src_person_location' relations.
 -- -------------------------------------------------------------------
 TRUNCATE TABLE cdm.person;
 
 INSERT INTO cdm.person
 SELECT DISTINCT
     src_m.participant_id                        AS person_id,
-    COALESCE(g.gender_concept_id, 0)            AS gender_concept_id,
+    COALESCE(g.gender_target_concept_id, 0)     AS gender_concept_id,
     YEAR(b.date_of_birth)                       AS year_of_birth,
     MONTH(b.date_of_birth)                      AS month_of_birth,
     DAY(b.date_of_birth)                        AS day_of_birth,
     TIMESTAMP(b.date_of_birth)                  AS birth_datetime,
     COALESCE(r.race_target_concept_id, 0)       AS race_concept_id,
-    0                                           AS ethnicity_concept_id,
+    COALESCE(e.ethnicity_target_concept_id, 0)  AS ethnicity_concept_id,
     person_loc.location_id                      AS location_id,
     NULL                                        AS provider_id,
     NULL                                        AS care_site_id,
     src_m.participant_id                        AS person_source_value,
     g.ppi_code                                  AS gender_source_value,
-    0                                           AS gender_source_concept_id,
+    COALESCE(g.gender_source_concept_id, 0)     AS gender_source_concept_id,
     r.ppi_code                                  AS race_source_value,
     COALESCE(r.race_source_concept_id, 0)       AS race_source_concept_id,
-    NULL                                        AS ethnisity_source_value,
-    0                                           AS ethnicity_source_concept_id,
+    e.ppi_code                                  AS ethnicity_source_value,
+    COALESCE(e.ethnicity_source_concept_id, 0) AS ethnicity_source_concept_id,
     'person'                                    AS unit_id
 FROM cdm.src_mapped src_m
 INNER JOIN cdm.src_participant b
@@ -968,6 +1044,8 @@ LEFT JOIN cdm.src_gender g
     ON src_m.participant_id = g.person_id
 LEFT JOIN cdm.src_race r
     ON src_m.participant_id = r.person_id
+LEFT JOIN cdm.src_ethnicity e
+    ON src_m.participant_id = e.person_id
 LEFT JOIN cdm.src_person_location person_loc
     ON src_m.participant_id = person_loc.participant_id;
 ;
