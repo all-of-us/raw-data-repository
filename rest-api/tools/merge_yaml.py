@@ -9,6 +9,7 @@ def main(args):
   env_file = args.env_yaml
   try:
     with open(base_file, 'r') as base_reader, open(env_file, 'r') as env_reader:
+      pprint(env_reader)
       base_yaml = yaml.load(base_reader)
       pprint(base_yaml)
       env_yaml = yaml.load(env_reader)
