@@ -14,12 +14,12 @@ def main(args):
       with open(env_file, 'r') as env_reader:
         env_yaml = yaml.load(env_reader)
         pprint(env_yaml)
-        # combined_yaml = (base_reader + env_reader)
-        # pprint(combined_yaml)
-        # yaml.load_all(combined_yaml)
+        combined_yaml = (base_yaml + env_yaml)
+        pprint(combined_yaml)
+        yaml.load_all(combined_yaml)
 
       with open('app.yaml', 'w') as app:
-        # app.writelines(yaml.dump(combined_yaml))
+        app.writelines(yaml.dump(combined_yaml))
         print 'done writing to file'
 
 
