@@ -17,7 +17,7 @@ def main(args):
         dd = defaultdict(list)
         for d in (base_yaml, env_yaml):  # you can list as many input dicts as you want here
           for key, value in d.iteritems():
-            dd[key].append(value)
+            dd[key].extend(value)
 
         pprint(dd)
         yaml.load_all(dd)
