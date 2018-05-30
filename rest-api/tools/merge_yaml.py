@@ -8,25 +8,37 @@ from main_util import configure_logging, get_parser
 
 
 def main(args):
-  yaml = ruamel.yaml.YAML()
-  base_file = args.base_yaml
-  env_file = args.env_yaml
-  try:
-    with open(base_file, 'r') as base_reader:
-      base_yaml = yaml.load(base_reader)
-      with open(env_file, 'r') as env_reader:
-        env_yaml = yaml.load(env_reader)
+  # yaml = ruamel.yaml.YAML()
+  # base_file = args.base_yaml
+  # env_file = args.env_yaml
+  # try:
+  #   with open(base_file, 'r') as base_reader:
+  #     base_yaml = yaml.load(base_reader)
+  #     with open(env_file, 'r') as env_reader:
+  #       env_yaml = yaml.load(env_reader)
+  #
+  #       for i in env_yaml:
+  #         print(i, env_yaml[i])
+  #         base_yaml.update({i:env_yaml[i]})
+  #
+  #       yaml.dump(base_yaml, file('app.yaml'), 'w')
+  #       print 'done writing to file'
+    sList = []
+    for f in args:
+        with open(f, 'r') as stream:
+            sList.append(stream.read())
+    fString = ''
+    for s in sList:
+        fString = fString + '\n'+ s
 
-        for i in env_yaml:
-          print(i, env_yaml[i])
-          base_yaml.update({i:env_yaml[i]})
+    y = yaml.load(fString)
 
-        yaml.dump(base_yaml, file('app.yaml'), 'w')
-        print 'done writing to file'
+    yaml.dump(y, file('app.yaml'), 'w')
+    print 'done writing to file'
+    # return y
 
-
-  except IOError:
-    logging.warning('Unable to open files for reading.')
+  # except IOError:
+  #   logging.warning('Unable to open files for reading.')
 
 
 
