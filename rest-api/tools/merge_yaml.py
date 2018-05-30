@@ -1,4 +1,5 @@
 import logging
+import ruamel.yaml
 from collections import defaultdict
 
 import yaml
@@ -7,24 +8,22 @@ from main_util import configure_logging, get_parser
 
 
 def main(args):
+  yaml = ruamel.yaml.YAML()
   base_file = args.base_yaml
   env_file = args.env_yaml
   try:
-    with open(base_file, 'r') as base_reader: #, open(env_file, 'r') as env_reader:
+    with open(base_file, 'r') as base_reader:
       base_yaml = yaml.load(base_reader)
-      with open(env_file, 'r') as env_reader:
-        env_yaml = yaml.load(env_reader)
-        dd = defaultdict(list)
-        for d in (base_yaml, env_yaml):  # you can list as many input dicts as you want here
-          for key, value in d.iteritems():
-            dd[key].extend(value)
+    with open(env_file, 'r') as env_reader:
+      env_yaml = yaml.load(env_reader)
 
-        pprint(dd)
-        yaml.load_all(dd)
+    for i in env_yaml:
+      pprint(i, env_yaml[i])
+      base_yaml.update({i:env_yaml[i]})
 
-      with open('app.yaml', 'w') as app:
-        app.writelines(yaml.dump(dd))
-        print 'done writing to file'
+    with open('app.yaml', 'w') as app:
+      app.writelines(yaml.dump(base_yaml))
+      print 'done writing to file'
 
 
   except IOError:
