@@ -18,7 +18,7 @@ def main(args):
       env_yaml = yaml.load(env_reader)
 
     for i in env_yaml:
-      pprint(i, env_yaml[i])
+      print(i, env_yaml[i])
       base_yaml.update({i:env_yaml[i]})
 
     with open('app.yaml', 'w') as app:
