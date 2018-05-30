@@ -33,8 +33,8 @@ def main(args):
 
     y = yaml.load(fString)
 
-    yaml.dump(y, file('app.yaml'), 'w+')
-    with open('app.yaml', 'w') as app:
+    # yaml.dump(y, file('app.yaml'), 'w+')
+    with open('app.yaml', 'w+') as app:
       app.writelines(yaml.dump(y))
       print 'done writing to file'
     # return y
