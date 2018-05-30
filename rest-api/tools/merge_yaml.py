@@ -1,4 +1,6 @@
 import logging
+from collections import defaultdict
+
 import yaml
 from pprint import pprint
 from main_util import configure_logging, get_parser
@@ -12,14 +14,16 @@ def main(args):
       base_yaml = yaml.load(base_reader)
       with open(env_file, 'r') as env_reader:
         env_yaml = yaml.load(env_reader)
-        combined_yaml = {i: list(j) for i in env_yaml.keys() for j in zip(base_yaml.values(),
-                                                               env_yaml.values())}
-        # combined_yaml = (base_yaml.items() + env_yaml.items())
-        pprint(combined_yaml)
-        yaml.load_all(combined_yaml)
+        dd = defaultdict(list)
+        for d in (base_yaml, env_yaml):  # you can list as many input dicts as you want here
+          for key, value in d.iteritems():
+            dd[key].append(value)
+
+        pprint(dd)
+        yaml.load_all(dd)
 
       with open('app.yaml', 'w') as app:
-        app.writelines(yaml.dump(combined_yaml))
+        app.writelines(yaml.dump(dd))
         print 'done writing to file'
 
 
