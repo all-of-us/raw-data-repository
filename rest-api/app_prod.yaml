@@ -1,4 +1,6 @@
 # app_base.yaml is concatenated to the beginning of this file for deployment.
+builtins:
+- deferred: on
 
 instance_class: F2
 

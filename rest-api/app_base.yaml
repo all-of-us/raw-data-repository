@@ -6,9 +6,6 @@ threadsafe: true
 runtime: python27
 api_version: 1
 
-builtins:
-- deferred: on
-- appstats: on
 
 
 libraries:
