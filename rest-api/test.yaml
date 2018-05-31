@@ -32,7 +32,7 @@ handlers:
   login: admin
   static_dir: app_data
   application_readable: true
-  
+
 libraries:
 - name: pycrypto
   version: 2.6
@@ -40,4 +40,4 @@ libraries:
   version: 1.0
 - name: MySQLdb
   version: "latest"
-  
+
