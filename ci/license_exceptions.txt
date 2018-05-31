@@ -15,7 +15,3 @@ certifi
 # ordereddict is MIT according to https://pypi.python.org/pypi/ordereddict but
 # apparently the metadata is lacking (it shows up as UNKNOWN)
 ordereddict
-
-# pyzmq/zmq is BSD. Metadata missing.
-pyzmq
-zmq
