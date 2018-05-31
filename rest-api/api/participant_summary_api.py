@@ -47,7 +47,13 @@ class ParticipantSummaryApi(BaseApi):
   def _make_bundle(self, results, id_field, participant_id):
     if self._is_last_modified_sync():
       return make_sync_results_for_request(self.dao, results)
+    if self._output_is_csv():
+      return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id,
+                                                             csv=True)
     return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id)
 
   def _is_last_modified_sync(self):
     return request.args.get('_sync') == 'true'
+
+  def _output_is_csv(self):
+    return request.args.get('output') == 'csv'

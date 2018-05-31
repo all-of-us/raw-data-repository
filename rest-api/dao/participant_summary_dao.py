@@ -1,3 +1,5 @@
+import cStringIO
+import csv
 import threading
 import datetime
 from dao.organization_dao import OrganizationDao
@@ -378,6 +380,35 @@ class ParticipantSummaryDao(UpdatableDao):
     result = {k: v for k, v in result.iteritems() if v is not None}
 
     return result
+
+  def to_client_csv(self, model):
+    import csv
+    from flask import Response
+    import StringIO
+    from unicode_csv import UnicodeWriter
+
+
+    def iter_csv(data):
+      line = StringIO.StringIO()
+      writer = csv.writer(line)
+      for csv_line in data:
+        writer.writerow(csv_line)
+        # line.seek(0)
+        # yield line.read()
+        # line.truncate(0)
+
+    response = Response(iter_csv(model), mimetype='text/csv')
+    # response.headers['Content-Disposition'] = 'attachment; filename=participant_summary.csv'
+    return response
+
+
+    # def generate():
+    #   for row in model:
+    #     yield ','.join(row) + '\n'
+    #
+    # return Response(generate(), mimetype='text/csv')
+
+
 
   def _decode_token(self, query_def, fields):
     """ If token exists in participant_summary api, decode and use lastModified to add a buffer

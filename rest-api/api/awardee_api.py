@@ -23,6 +23,6 @@ class AwardeeApi(BaseApi):
     return main.api.url_for(self.__class__, a_id=json[id_field],
                             _external=True)
 
-  def _make_response(self, obj):
+  def _make_response(self, obj, csv=False):
     inactive = request.args.get('_inactive')
     return self.dao.to_client_json(obj, inactive)

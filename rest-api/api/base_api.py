@@ -47,7 +47,9 @@ class BaseApi(Resource):
                        (self.dao.model_type.__name__, id_, participant_id))
     return self._make_response(obj)
 
-  def _make_response(self, obj):
+  def _make_response(self, obj, csv=False):
+    if csv:
+      return self.dao.to_client_csv(obj)
     return self.dao.to_client_json(obj)
 
   def _get_model_to_insert(self, resource, participant_id=None):
@@ -132,7 +134,7 @@ class BaseApi(Resource):
     return Query(field_filters, order_by, max_results, pagination_token,
                  include_total=include_total)
 
-  def _make_bundle(self, results, id_field, participant_id):
+  def _make_bundle(self, results, id_field, participant_id, csv=False):
     import main
     bundle_dict = {"resourceType": "Bundle", "type": "searchset"}
     if results.pagination_token:
@@ -143,7 +145,7 @@ class BaseApi(Resource):
       bundle_dict['link'] = [{"relation": "next", "url": next_url}]
     entries = []
     for item in results.items:
-      json = self._make_response(item)
+      json = self._make_response(item, csv=csv)
       full_url = self._make_resource_url(json, id_field, participant_id)
       entries.append({"fullUrl": full_url,
                      "resource": json})
