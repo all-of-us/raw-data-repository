@@ -1,4 +1,3 @@
-import cStringIO
 import csv
 import threading
 import datetime
@@ -382,10 +381,9 @@ class ParticipantSummaryDao(UpdatableDao):
     return result
 
   def to_client_csv(self, model):
-    import csv
     from flask import Response
     import StringIO
-    from unicode_csv import UnicodeWriter
+    # from unicode_csv import UnicodeWriter
 
 
     def iter_csv(data):

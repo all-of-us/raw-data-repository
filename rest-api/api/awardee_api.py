@@ -24,5 +24,6 @@ class AwardeeApi(BaseApi):
                             _external=True)
 
   def _make_response(self, obj, csv=False):
+    # pylint: disable=unused-argument
     inactive = request.args.get('_inactive')
     return self.dao.to_client_json(obj, inactive)
