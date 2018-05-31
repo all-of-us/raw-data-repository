@@ -32,8 +32,6 @@ handlers:
   login: admin
   static_dir: app_data
   application_readable: true
-- url: /_ah/stats.*
-  script: main.app
 
 libraries:
 - name: pycrypto
