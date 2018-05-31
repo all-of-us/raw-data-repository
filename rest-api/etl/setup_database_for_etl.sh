@@ -37,10 +37,6 @@ run_cloud_sql_proxy
 echo "Creating voc and cdm databases..."
 mysql --verbose -h 127.0.0.1 -u "${ROOT_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/create_dbs.sql
 
-echo "Activating service account..."
-
-gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file=$CREDS_FILE
-
 SQL_SERVICE_ACCOUNT=`gcloud sql instances describe --project ${PROJECT} --account ${ACCOUNT} \
 rdrmaindb | grep serviceAccountEmailAddress | cut -d: -f2`
 
