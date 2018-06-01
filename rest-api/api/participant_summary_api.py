@@ -48,8 +48,10 @@ class ParticipantSummaryApi(BaseApi):
     if self._is_last_modified_sync():
       return make_sync_results_for_request(self.dao, results)
     if self._output_is_csv():
-      return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id,
-                                                             csv=True)
+      csv_data = self.dao.make_csv(results)
+      from flask import Response
+      return Response(csv_data, mimetype='text/csv')
+
     return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id)
 
   def _is_last_modified_sync(self):

@@ -380,33 +380,67 @@ class ParticipantSummaryDao(UpdatableDao):
 
     return result
 
-  def to_client_csv(self, model):
-    from flask import Response
+  def make_csv(self, results):
+    # pass in csv writer to client_csv
+    import csv
+    import unicode_csv
+    from code_constants import ps_full_data_headers as headers
     import StringIO
-    # from unicode_csv import UnicodeWriter
+    csv_data = StringIO.StringIO()
+    # writer = csv.writer(csv_data)
+    writer = unicode_csv.UnicodeWriter(csv_data)
+    writer.writerow(headers)
+    for row in results.items:
+      line = self.to_client_csv(row)
+      writer.writerow(line)
+    return csv_data.getvalue()
+
+  def to_client_csv(self, row):
+    line = []
+    line.append(to_client_participant_id(row.participantId))
+    line.append(to_client_biobank_id(row.biobankId))
+    line.append(row.lastName)
+    line.append(row.firstName)
+    line.append(row.dateOfBirth)  #TODO: NEED AGERANGE?
+    line.append(row.languageId)
+    line.append(row.enrollmentStatus)
+    line.append(row.consentForStudyEnrollment)
+    line.append(row.consentForStudyEnrollmentTime)
+    line.append(row.consentForElectronicHealthRecords)
+    line.append(row.consentForElectronicHealthRecordsTime)
+    line.append(row.consentForCABoR)
+    line.append(row.consentForCABoRTime)
+    line.append(row.withdrawalStatus)
+    line.append(row.withdrawalTime)
+    line.append(row.streetAddress)
+    line.append(row.city)
+    line.append(row.stateId)
+    line.append(row.zipCode)
+    line.append(row.email)
+    line.append(row.phoneNumber)
+    line.append(row.sexId)
+    line.append(row.genderIdentityId)
+    line.append(row.race)
+    line.append(row.educationId)
+    line.append(row.numCompletedBaselinePPIModules)  # TODO: == 3 ? '1' : '0'
+    line.append(row.numCompletedPPIModules)
+    # line.append(row.ppisurveycomplete)  #  TODO: PPI SURVEY COMPELETE (ENUMERATE SURVEYS ?)
+    # line.append(row.ppisurveycomplete)  #  TODO: PPI SURVEY COMPELETE DATE
+    line.append(row.physicalMeasurementsStatus)
+    line.append(row.physicalMeasurementsTime)
+    line.append(row.siteId)
+    line.append(row.organizationId)  #TODO: FORMATJSONORG ? & NEED HPO ?
+    line.append(row.physicalMeasurementsFinalizedSiteId)
+    line.append(row.samplesToIsolateDNA)
+    line.append(row.biospecimenStatus)  #TODO: CHECK 'BIOSPECIMEN'
+    line.append(row.biospecimenCollectedSiteId)
+    line.append(row.biospecimenOrderTime)  #TODO: COLLECTION DATE
+    line.append(row.biospecimenSourceSiteId)
 
 
-    def iter_csv(data):
-      line = StringIO.StringIO()
-      writer = csv.writer(line)
-      for csv_line in data:
-        writer.writerow(csv_line)
-        # line.seek(0)
-        # yield line.read()
-        # line.truncate(0)
-
-    response = Response(iter_csv(model), mimetype='text/csv')
-    # response.headers['Content-Disposition'] = 'attachment; filename=participant_summary.csv'
-    return response
 
 
-    # def generate():
-    #   for row in model:
-    #     yield ','.join(row) + '\n'
-    #
-    # return Response(generate(), mimetype='text/csv')
-
-
+    return line
 
   def _decode_token(self, query_def, fields):
     """ If token exists in participant_summary api, decode and use lastModified to add a buffer
