@@ -12,7 +12,7 @@
     "vibrent-drc-stable@vibrent-drc-stable-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"],
       "whitelisted_ip_ranges": {
-        "ip4": ["52.4.219.3", "72.194.199.150/32", "52.206.129.31"],
+        "ip4": ["52.4.219.3", "52.206.129.31", "70.183.7.122/32"],
         "ip6": []
       }
     },
