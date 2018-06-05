@@ -1,16 +1,16 @@
-import csv
 import threading
+import StringIO
 import datetime
+import clock
+import config
+import unicode_csv
 from dao.organization_dao import OrganizationDao
 from query import OrderBy, PropertyType
 from werkzeug.exceptions import BadRequest, NotFound
 from sqlalchemy import or_
-
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
   format_json_org
 from api_util import format_json_site
-import clock
-import config
 from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
 from dao.base_dao import UpdatableDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -381,14 +381,13 @@ class ParticipantSummaryDao(UpdatableDao):
     return result
 
   def make_csv(self, results):
-    # pass in csv writer to client_csv
-    import csv
-    import unicode_csv
-    from code_constants import ps_full_data_headers as headers
-    import StringIO
     csv_data = StringIO.StringIO()
-    # writer = csv.writer(csv_data)
     writer = unicode_csv.UnicodeWriter(csv_data)
+    formatted_list = []
+    for row in results.items:
+      formatted_row = self.to_client_json(row)
+      formatted_list.append(formatted_row)
+    headers = [i[0] for i in results.items[0]]
     writer.writerow(headers)
     for row in results.items:
       line = self.to_client_csv(row)
@@ -397,49 +396,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def to_client_csv(self, row):
     line = []
-    line.append(to_client_participant_id(row.participantId))
-    line.append(to_client_biobank_id(row.biobankId))
-    line.append(row.lastName)
-    line.append(row.firstName)
-    line.append(row.dateOfBirth)  #TODO: NEED AGERANGE?
-    line.append(row.languageId)
-    line.append(row.enrollmentStatus)
-    line.append(row.consentForStudyEnrollment)
-    line.append(row.consentForStudyEnrollmentTime)
-    line.append(row.consentForElectronicHealthRecords)
-    line.append(row.consentForElectronicHealthRecordsTime)
-    line.append(row.consentForCABoR)
-    line.append(row.consentForCABoRTime)
-    line.append(row.withdrawalStatus)
-    line.append(row.withdrawalTime)
-    line.append(row.streetAddress)
-    line.append(row.city)
-    line.append(row.stateId)
-    line.append(row.zipCode)
-    line.append(row.email)
-    line.append(row.phoneNumber)
-    line.append(row.sexId)
-    line.append(row.genderIdentityId)
-    line.append(row.race)
-    line.append(row.educationId)
-    line.append(row.numCompletedBaselinePPIModules)  # TODO: == 3 ? '1' : '0'
-    line.append(row.numCompletedPPIModules)
-    # line.append(row.ppisurveycomplete)  #  TODO: PPI SURVEY COMPELETE (ENUMERATE SURVEYS ?)
-    # line.append(row.ppisurveycomplete)  #  TODO: PPI SURVEY COMPELETE DATE
-    line.append(row.physicalMeasurementsStatus)
-    line.append(row.physicalMeasurementsTime)
-    line.append(row.siteId)
-    line.append(row.organizationId)  #TODO: FORMATJSONORG ? & NEED HPO ?
-    line.append(row.physicalMeasurementsFinalizedSiteId)
-    line.append(row.samplesToIsolateDNA)
-    line.append(row.biospecimenStatus)  #TODO: CHECK 'BIOSPECIMEN'
-    line.append(row.biospecimenCollectedSiteId)
-    line.append(row.biospecimenOrderTime)  #TODO: COLLECTION DATE
-    line.append(row.biospecimenSourceSiteId)
-
-
-
-
+    [line.append(v) for k, v in row]
     return line
 
   def _decode_token(self, query_def, fields):

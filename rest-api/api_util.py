@@ -118,3 +118,4 @@ def get_organization_id_from_external_id(obj, organization_dao):
     if organization is not None:
       return organization.organizationId
   return None
+
