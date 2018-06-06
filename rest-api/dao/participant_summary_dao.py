@@ -387,7 +387,8 @@ class ParticipantSummaryDao(UpdatableDao):
     for row in results.items:
       formatted_row = self.to_client_json(row)
       formatted_list.append(formatted_row)
-    headers = [i[0] for i in results.items[0]]
+    # headers = [i[0] for i in results.items[0]]
+    headers = [k for k, v in formatted_list[0].iteritems()]
     writer.writerow(headers)
     for row in results.items:
       line = self.to_client_csv(row)
