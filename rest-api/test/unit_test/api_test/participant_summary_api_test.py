@@ -252,7 +252,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
       return participant
 
-    users = [setup_participant(t1) for _ in range(5)]
+    [setup_participant(t1) for _ in range(5)]
     response = self.send_get_csv('ParticipantSummary?output=csv')
     self.assertEqual(type(response), str)
 
