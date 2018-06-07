@@ -462,6 +462,21 @@ class FlaskTestBase(NdbTestBase):
   def send_get(self, *args, **kwargs):
     return self.send_request('GET', *args, **kwargs)
 
+  def send_get_csv(self, *args, **kwargs):
+    return self.send_csv_request(*args, **kwargs)
+
+  def send_csv_request(self, local_path, request_data=None, query_string=None, headers=None):
+    response = self._app.open(
+      main.PREFIX + local_path,
+      method='GET',
+      data=request_data if request_data else None,
+      query_string=query_string,
+      content_type='text/csv',
+      headers=headers)
+
+    self.assertEquals(response.status_code, httplib.OK, response.data)
+    return response.data
+
   def send_request(self, method, local_path, request_data=None, query_string=None,
                    expected_status=httplib.OK, headers=None, expected_response_headers=None):
     """Makes a JSON API call against the test client and returns its response data.

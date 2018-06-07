@@ -11,7 +11,8 @@ from sqlalchemy import or_
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
   format_json_org
 from api_util import format_json_site
-from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
+from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS, ps_full_data_headers, \
+  ps_sample_status_collection
 from dao.base_dao import UpdatableDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from dao.code_dao import CodeDao
@@ -383,12 +384,7 @@ class ParticipantSummaryDao(UpdatableDao):
   def make_csv(self, results):
     csv_data = StringIO.StringIO()
     writer = unicode_csv.UnicodeWriter(csv_data)
-    formatted_list = []
-    for row in results.items:
-      formatted_row = self.to_client_json(row)
-      formatted_list.append(formatted_row)
-    # headers = [i[0] for i in results.items[0]]
-    headers = [k for k, v in formatted_list[0].iteritems()]
+    headers = ps_full_data_headers
     writer.writerow(headers)
     for row in results.items:
       line = self.to_client_csv(row)
@@ -397,7 +393,104 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def to_client_csv(self, row):
     line = []
-    [line.append(v) for k, v in row]
+    if (row.withdrawalStatus == WithdrawalStatus.NO_USE and
+      row.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME):
+      row = {k: row.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
+
+    line.append(to_client_participant_id(row.participantId))
+    line.append(to_client_biobank_id(row.biobankId))
+    line.append(row.lastName)
+    line.append(row.firstName)
+    line.append(row.dateOfBirth)
+    if row.languageId:
+      language = self.code_dao.get(row.languageId).value
+      line.append(language)
+    else:
+      line.append(UNSET)
+    line.append(row.enrollmentStatus)
+    if row.consentForStudyEnrollment == 'SUBMITTED':
+      line.append(1)
+    else:
+      line.append(0)
+    line.append(row.consentForStudyEnrollmentTime)
+    line.append(row.consentForElectronicHealthRecords)  #TODO: EHR CONSENT ( 1 || 0)
+    line.append(row.consentForElectronicHealthRecordsTime)
+    line.append(row.consentForCABoR)  #TODO: CABOR (1 || 0)
+    line.append(row.consentForCABoRTime)
+    if (row.withdrawalStatus == WithdrawalStatus.NO_USE or
+      row.suspensionStatus == SuspensionStatus.NO_CONTACT):
+      row.recontactMethod = 'NO_CONTACT'
+      line.append(row.recontactMethod)
+    else:
+      line.append(row.withdrawalStatus) #TODO: WITHDRAWAL (1 || 0)
+
+    line.append(row.withdrawalTime)
+    line.append(row.streetAddress)
+    line.append(row.city)
+    line.append(row.stateId)
+    line.append(row.zipCode)
+    line.append(row.email)
+    line.append(row.phoneNumber)
+    if row.sexId:
+      sex = self.code_dao.get(row.sexId).value
+      line.append(sex)
+    else:
+      line.append(UNSET)
+
+    line.append(row.genderIdentityId)
+    line.append(row.race)
+    if row.educationId:
+      education = self.code_dao.get(row.educationId).value
+      line.append(education)
+    else:
+      line.append(UNSET)
+    if row.numCompletedBaselinePPIModules == 3:
+      line.append(1)
+    else:
+      line.append(0)
+    line.append(row.numCompletedPPIModules)
+    line.append(row.questionnaireOnTheBasics)
+    line.append(row.questionnaireOnTheBasicsTime)
+    line.append(row.questionnaireOnOverallHealth)
+    line.append(row.questionnaireOnOverallHealthTime)
+    line.append(row.questionnaireOnLifestyle)
+    line.append(row.questionnaireOnLifestyleTime)
+    line.append(row.questionnaireOnMedicalHistory)
+    line.append(row.questionnaireOnMedicalHistoryTime)
+    line.append(row.questionnaireOnMedications)
+    line.append(row.questionnaireOnMedicationsTime)
+    line.append(row.questionnaireOnFamilyHealth)
+    line.append(row.questionnaireOnFamilyHealthTime)
+    line.append(row.questionnaireOnHealthcareAccess)
+    line.append(row.questionnaireOnHealthcareAccessTime)
+    line.append(row.physicalMeasurementsStatus)  #TODO: IS STATUS THE CORRECT FIELD
+    line.append(row.physicalMeasurementsTime)
+    if row.siteId:
+      site = self.site_dao.get(row.siteId)
+      line.append(site.siteName)  #TODO: SITENAME OR GOOGLEGROUP
+    else:
+      line.append(UNSET)
+    if row.organizationId:
+      organization = self.organization_dao.get(row.organizationId)
+      line.append(organization.displayName)  #TODO: DISPLAY NAME OR EXTERNALID
+    else:
+      line.append(UNSET)
+    if row.physicalMeasurementsFinalizedSiteId:
+      site = self.site_dao.get(row.physicalMeasurementsFinalizedSiteId)
+      line.append(site.siteName)  #TODO: SITENAME OR GOOGLEGROUP
+    else:
+      line.append(UNSET)
+    line.append(row.samplesToIsolateDNA)
+    line.append(row.biospecimenStatus)  #TODO: CHECK 'BIOSPECIMEN'
+    for i in ps_sample_status_collection:
+      line.append(getattr(row, i))
+      line.append(getattr(row, i+'Time'))
+    if row.biospecimenSourceSiteId:  #TODO: IS BIOSOURCESITEID CORRECT ?
+      site = self.site_dao.get(row.biospecimenSourceSiteId)
+      line.append(site.siteName)  #TODO: SITENAME OR GOOGLEGROUP
+    else:
+      line.append(UNSET)
+
     return line
 
   def _decode_token(self, query_def, fields):

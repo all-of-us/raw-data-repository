@@ -217,6 +217,45 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       url = 'Participant/%s/QuestionnaireResponse' % participant_id
       return self.send_post(url, request_data=response_data)
 
+  def test_csv_output(self):
+
+    SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+    questionnaire_id = self.create_demographics_questionnaire()
+    t1 = TIME_1
+    def setup_participant(when, providerLink=self.provider_link):
+      # Set up participant, questionnaire, and consent
+      with FakeClock(when):
+        participant = self.send_post('Participant', {"providerLink": [providerLink]})
+        participant_id = participant['participantId']
+        self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+          'race': RACE_WHITE_CODE,
+          'genderIdentity': PMI_SKIP_CODE,
+          'firstName': self.fake.first_name(),
+          'middleName': self.fake.first_name(),
+          'lastName': self.fake.last_name(),
+          'zipCode': '78751',
+          'state': PMI_SKIP_CODE,
+          'streetAddress': '1234 Main Street',
+          'city': 'Austin',
+          'sex': PMI_SKIP_CODE,
+          'sexualOrientation': PMI_SKIP_CODE,
+          'phoneNumber': '512-555-5555',
+          'recontactMethod': PMI_SKIP_CODE,
+          'language': PMI_SKIP_CODE,
+          'education': PMI_SKIP_CODE,
+          'income': PMI_SKIP_CODE,
+          'dateOfBirth': datetime.date(1978, 10, 9),
+          'CABoRSignature': 'signature.pdf',
+        }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+      return participant
+
+    users = [setup_participant(t1) for _ in range(5)]
+    response = self.send_get_csv('ParticipantSummary?output=csv')
+    self.assertEqual(type(response), str)
+
   def test_pairing_summary(self):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id = participant['participantId']
