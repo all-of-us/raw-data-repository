@@ -2,7 +2,7 @@ from api.base_api import BaseApi, make_sync_results_for_request
 from api_util import PTC_HEALTHPRO_AWARDEE, AWARDEE, DEV_MAIL
 from app_util import auth_required, get_validated_user_info
 from dao.participant_summary_dao import ParticipantSummaryDao
-from flask import request
+from flask import request, Response
 from werkzeug.exceptions import Forbidden, InternalServerError
 
 
@@ -49,7 +49,6 @@ class ParticipantSummaryApi(BaseApi):
       return make_sync_results_for_request(self.dao, results)
     if self._output_is_csv():
       csv_data = self.dao.make_csv(results)
-      from flask import Response
       return Response(csv_data, mimetype='text/csv')
 
     return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id)
@@ -58,4 +57,4 @@ class ParticipantSummaryApi(BaseApi):
     return request.args.get('_sync') == 'true'
 
   def _output_is_csv(self):
-    return request.args.get('output') == 'csv'
+    return request.args.get('_output') == 'csv'
