@@ -46,6 +46,7 @@ TEST,TEST_PROD,Test Prod Organization
 TRANS_AM,TRANS_AM_HENRY_FORD,Henry Ford Health System
 TRANS_AM,TRANS_AM_SPECTRUM,Spectrum Health System
 TRANS_AM,TRANS_AM_BAYLOR,Baylor Health Care System
+TRANS_AM,TRANS_AM_MEYERS,Meyers Primary Care Institute 
 VA,VA_BOSTON_VAMC,VA Boston Healthcare System
 VA,VA_PALO_ALTO_VAMC,VA Palo Alto Health Care System
 WALGREENS,WALGREENS_HOUSTON,Walgreens Houston
