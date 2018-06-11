@@ -1,21 +1,21 @@
 cron:
 - description: Daily metrics
   url: /offline/MetricsRecalculate
-  schedule: every day 02:30
+  schedule: every day 03:30
   timezone: America/New_York
   target: offline
 - description: Daily public metrics
   url: /offline/PublicMetricsRecalculate
-  schedule: every day 03:30
+  schedule: every day 04:30
   timezone: America/New_York
   target: offline
 - description: Daily Biobank sample import and order reconciliation
   url: /offline/BiobankSamplesImport
-  schedule: every day 02:00
+  schedule: every day 02:30
   timezone: America/New_York
   target: offline
 - description: Rotate service account keys older than 3 days
   url: /offline/DeleteOldKeys
-  schedule: every day 01:00
+  schedule: every day 02:00
   timezone: America/New_York
   target: offline
