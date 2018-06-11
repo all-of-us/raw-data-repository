@@ -260,7 +260,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     reader = StringIO.StringIO(response)
     row = UnicodeDictReader(reader)
     row = row.next()
-    headers = [k for k, v in row.iteritems()]
+    headers = [k for k, _ in row.iteritems()]
     for i in headers:
       assert i in ps_full_data_headers
     self.assertEqual(row['City'], 'Austin')
