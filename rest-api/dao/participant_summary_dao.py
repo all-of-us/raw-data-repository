@@ -392,6 +392,7 @@ class ParticipantSummaryDao(UpdatableDao):
     return csv_data.getvalue()
 
   def to_client_csv(self, row):
+    """this method must append values in the same order as CODE_CONSTANTS.PS_FULL_HEADERS"""
     line = []
     if (row.withdrawalStatus == WithdrawalStatus.NO_USE and
       row.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME):
@@ -408,26 +409,21 @@ class ParticipantSummaryDao(UpdatableDao):
     else:
       line.append(UNSET)
     line.append(row.enrollmentStatus)
-    if row.consentForStudyEnrollment == 'SUBMITTED':
-      line.append(1)
-    else:
-      line.append(0)
+    line.append(row.consentForStudyEnrollment)
     line.append(row.consentForStudyEnrollmentTime)
-    line.append(row.consentForElectronicHealthRecords)  #TODO: EHR CONSENT ( 1 || 0)
+    line.append(row.consentForElectronicHealthRecords)
     line.append(row.consentForElectronicHealthRecordsTime)
-    line.append(row.consentForCABoR)  #TODO: CABOR (1 || 0)
+    line.append(row.consentForCABoR)
     line.append(row.consentForCABoRTime)
-    if (row.withdrawalStatus == WithdrawalStatus.NO_USE or
-      row.suspensionStatus == SuspensionStatus.NO_CONTACT):
-      row.recontactMethod = 'NO_CONTACT'
-      line.append(row.recontactMethod)
-    else:
-      line.append(row.withdrawalStatus) #TODO: WITHDRAWAL (1 || 0)
-
+    line.append(row.withdrawalStatus)
     line.append(row.withdrawalTime)
     line.append(row.streetAddress)
     line.append(row.city)
-    line.append(row.stateId)
+    if row.stateId:
+      state = self.code_dao.get(row.stateId).value
+      line.append(state)
+    else:
+      line.append(UNSET)
     line.append(row.zipCode)
     line.append(row.email)
     line.append(row.phoneNumber)
@@ -436,8 +432,11 @@ class ParticipantSummaryDao(UpdatableDao):
       line.append(sex)
     else:
       line.append(UNSET)
-
-    line.append(row.genderIdentityId)
+    if row.genderIdentityId:
+      gender = self.code_dao.get(row.genderIdentityId).value
+      line.append(gender)
+    else:
+      line.append(UNSET)
     line.append(row.race)
     if row.educationId:
       education = self.code_dao.get(row.educationId).value
@@ -463,31 +462,31 @@ class ParticipantSummaryDao(UpdatableDao):
     line.append(row.questionnaireOnFamilyHealthTime)
     line.append(row.questionnaireOnHealthcareAccess)
     line.append(row.questionnaireOnHealthcareAccessTime)
-    line.append(row.physicalMeasurementsStatus)  #TODO: IS STATUS THE CORRECT FIELD
+    line.append(row.physicalMeasurementsStatus)
     line.append(row.physicalMeasurementsTime)
     if row.siteId:
       site = self.site_dao.get(row.siteId)
-      line.append(site.siteName)  #TODO: SITENAME OR GOOGLEGROUP
+      line.append(site.googleGroup)
     else:
       line.append(UNSET)
     if row.organizationId:
       organization = self.organization_dao.get(row.organizationId)
-      line.append(organization.displayName)  #TODO: DISPLAY NAME OR EXTERNALID
+      line.append(organization.externalId)
     else:
       line.append(UNSET)
     if row.physicalMeasurementsFinalizedSiteId:
       site = self.site_dao.get(row.physicalMeasurementsFinalizedSiteId)
-      line.append(site.siteName)  #TODO: SITENAME OR GOOGLEGROUP
+      line.append(site.googleGroup)
     else:
       line.append(UNSET)
     line.append(row.samplesToIsolateDNA)
-    line.append(row.biospecimenStatus)  #TODO: CHECK 'BIOSPECIMEN'
+    line.append(row.biospecimenStatus)
     for i in ps_sample_status_collection:
       line.append(getattr(row, i))
       line.append(getattr(row, i+'Time'))
-    if row.biospecimenSourceSiteId:  #TODO: IS BIOSOURCESITEID CORRECT ?
+    if row.biospecimenSourceSiteId:
       site = self.site_dao.get(row.biospecimenSourceSiteId)
-      line.append(site.siteName)  #TODO: SITENAME OR GOOGLEGROUP
+      line.append(site.googleGroup)
     else:
       line.append(UNSET)
 

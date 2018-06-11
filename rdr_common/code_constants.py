@@ -75,6 +75,7 @@ UNSET = 'UNSET'
 UNMAPPED = 'UNMAPPED'
 BASE_VALUES = [UNSET, UNMAPPED, PMI_SKIP_CODE]
 
+# These headers are used to make the csv output for participant summary
 ps_full_data_headers = [
  'PMI ID',
  'Biobank ID',
@@ -148,9 +149,10 @@ ps_full_data_headers = [
  'Urine 90 mL Collection Date',
  'Saliva Collected',
  'Saliva Collection Date',
- 'Biospecimens Site',
+ 'Biospecimens Site'
 ]
 
+# Used to iterate and append to csv return of csv output for participant summary
 ps_sample_status_collection = [
   'sampleStatus1SST8',
   'sampleStatus1PST8',

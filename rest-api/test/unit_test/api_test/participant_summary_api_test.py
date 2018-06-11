@@ -2,10 +2,12 @@ import datetime
 import httplib
 import main
 import threading
+import StringIO
 
 from clock import FakeClock
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
-                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, ps_full_data_headers)
+                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, ps_full_data_headers, UNSET)
+from unicode_csv import UnicodeDictReader
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -255,11 +257,20 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     [setup_participant(t1) for _ in range(5)]
     response = self.send_get_csv('ParticipantSummary?_output=csv')
-    response = response.split(',')
-    headers = response[:73]
-    # remove '/r/n' from end of list the easy way.
-    headers[72] = 'Biospecimens Site'
-    self.assertEqual(headers, ps_full_data_headers)
+    reader = StringIO.StringIO(response)
+    row = UnicodeDictReader(reader)
+    row = row.next()
+    headers = [k for k, v in row.iteritems()]
+    for i in headers:
+      assert i in ps_full_data_headers
+    self.assertEqual(row['City'], 'Austin')
+    self.assertEqual(row['Withdrawal Status'], 'NOT_WITHDRAWN')
+    self.assertEqual(row['Biospecimens Site'], UNSET)
+    self.assertTrue(row['PMI ID'].startswith('P'))
+    self.assertEqual(row['Gender Identity'], PMI_SKIP_CODE)
+    self.assertEqual(row['ZIP'], str(78751))
+    self.assertEqual(row['State'], PMI_SKIP_CODE)
+    self.assertEqual(row['Paired Site'], UNSET)
 
   def test_pairing_summary(self):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
