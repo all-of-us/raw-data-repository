@@ -392,103 +392,107 @@ class ParticipantSummaryDao(UpdatableDao):
     return csv_data.getvalue()
 
   def to_client_csv(self, row):
-    """this method must append values in the same order as CODE_CONSTANTS.PS_FULL_HEADERS"""
+    """This method must append values in the same order as code_constants.ps_full_headers"""
     line = []
+    redacted = False
     if (row.withdrawalStatus == WithdrawalStatus.NO_USE and
       row.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME):
-      row = {k: row.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
+      redacted = True
+
 
     line.append(to_client_participant_id(row.participantId))
     line.append(to_client_biobank_id(row.biobankId))
     line.append(row.lastName)
     line.append(row.firstName)
     line.append(row.dateOfBirth)
-    if row.languageId:
-      language = self.code_dao.get(row.languageId).value
-      line.append(language)
-    else:
-      line.append(UNSET)
-    line.append(row.enrollmentStatus)
+    line.append(row.withdrawalStatus)
+    line.append(row.withdrawalTime)
     line.append(row.consentForStudyEnrollment)
     line.append(row.consentForStudyEnrollmentTime)
     line.append(row.consentForElectronicHealthRecords)
     line.append(row.consentForElectronicHealthRecordsTime)
-    line.append(row.consentForCABoR)
-    line.append(row.consentForCABoRTime)
-    line.append(row.withdrawalStatus)
-    line.append(row.withdrawalTime)
-    line.append(row.streetAddress)
-    line.append(row.city)
-    if row.stateId:
-      state = self.code_dao.get(row.stateId).value
-      line.append(state)
-    else:
-      line.append(UNSET)
-    line.append(row.zipCode)
-    line.append(row.email)
-    line.append(row.phoneNumber)
-    if row.sexId:
-      sex = self.code_dao.get(row.sexId).value
-      line.append(sex)
-    else:
-      line.append(UNSET)
-    if row.genderIdentityId:
-      gender = self.code_dao.get(row.genderIdentityId).value
-      line.append(gender)
-    else:
-      line.append(UNSET)
-    line.append(row.race)
-    if row.educationId:
-      education = self.code_dao.get(row.educationId).value
-      line.append(education)
-    else:
-      line.append(UNSET)
-    if row.numCompletedBaselinePPIModules == 3:
-      line.append(1)
-    else:
-      line.append(0)
-    line.append(row.numCompletedPPIModules)
-    line.append(row.questionnaireOnTheBasics)
-    line.append(row.questionnaireOnTheBasicsTime)
-    line.append(row.questionnaireOnOverallHealth)
-    line.append(row.questionnaireOnOverallHealthTime)
-    line.append(row.questionnaireOnLifestyle)
-    line.append(row.questionnaireOnLifestyleTime)
-    line.append(row.questionnaireOnMedicalHistory)
-    line.append(row.questionnaireOnMedicalHistoryTime)
-    line.append(row.questionnaireOnMedications)
-    line.append(row.questionnaireOnMedicationsTime)
-    line.append(row.questionnaireOnFamilyHealth)
-    line.append(row.questionnaireOnFamilyHealthTime)
-    line.append(row.questionnaireOnHealthcareAccess)
-    line.append(row.questionnaireOnHealthcareAccessTime)
-    line.append(row.physicalMeasurementsStatus)
-    line.append(row.physicalMeasurementsTime)
-    if row.siteId:
-      site = self.site_dao.get(row.siteId)
-      line.append(site.googleGroup)
-    else:
-      line.append(UNSET)
-    if row.organizationId:
-      organization = self.organization_dao.get(row.organizationId)
-      line.append(organization.externalId)
-    else:
-      line.append(UNSET)
-    if row.physicalMeasurementsFinalizedSiteId:
-      site = self.site_dao.get(row.physicalMeasurementsFinalizedSiteId)
-      line.append(site.googleGroup)
-    else:
-      line.append(UNSET)
-    line.append(row.samplesToIsolateDNA)
-    line.append(row.biospecimenStatus)
-    for i in ps_sample_status_collection:
-      line.append(getattr(row, i))
-      line.append(getattr(row, i+'Time'))
-    if row.biospecimenSourceSiteId:
-      site = self.site_dao.get(row.biospecimenSourceSiteId)
-      line.append(site.googleGroup)
-    else:
-      line.append(UNSET)
+
+    if not redacted:
+      if row.languageId:
+        language = self.code_dao.get(row.languageId).value
+        line.append(language)
+      else:
+        line.append(UNSET)
+      line.append(row.enrollmentStatus)
+      line.append(row.consentForCABoR)
+      line.append(row.consentForCABoRTime)
+      line.append(row.streetAddress)
+      line.append(row.city)
+      if row.stateId:
+        state = self.code_dao.get(row.stateId).value
+        line.append(state)
+      else:
+        line.append(UNSET)
+      line.append(row.zipCode)
+      line.append(row.email)
+      line.append(row.phoneNumber)
+      if row.sexId:
+        sex = self.code_dao.get(row.sexId).value
+        line.append(sex)
+      else:
+        line.append(UNSET)
+      if row.genderIdentityId:
+        gender = self.code_dao.get(row.genderIdentityId).value
+        line.append(gender)
+      else:
+        line.append(UNSET)
+      line.append(row.race)
+      if row.educationId:
+        education = self.code_dao.get(row.educationId).value
+        line.append(education)
+      else:
+        line.append(UNSET)
+      if row.numCompletedBaselinePPIModules == 3:
+        line.append(1)
+      else:
+        line.append(0)
+      line.append(row.numCompletedPPIModules)
+      line.append(row.questionnaireOnTheBasics)
+      line.append(row.questionnaireOnTheBasicsTime)
+      line.append(row.questionnaireOnOverallHealth)
+      line.append(row.questionnaireOnOverallHealthTime)
+      line.append(row.questionnaireOnLifestyle)
+      line.append(row.questionnaireOnLifestyleTime)
+      line.append(row.questionnaireOnMedicalHistory)
+      line.append(row.questionnaireOnMedicalHistoryTime)
+      line.append(row.questionnaireOnMedications)
+      line.append(row.questionnaireOnMedicationsTime)
+      line.append(row.questionnaireOnFamilyHealth)
+      line.append(row.questionnaireOnFamilyHealthTime)
+      line.append(row.questionnaireOnHealthcareAccess)
+      line.append(row.questionnaireOnHealthcareAccessTime)
+      line.append(row.physicalMeasurementsStatus)
+      line.append(row.physicalMeasurementsTime)
+      if row.siteId:
+        site = self.site_dao.get(row.siteId)
+        line.append(site.googleGroup)
+      else:
+        line.append(UNSET)
+      if row.organizationId:
+        organization = self.organization_dao.get(row.organizationId)
+        line.append(organization.externalId)
+      else:
+        line.append(UNSET)
+      if row.physicalMeasurementsFinalizedSiteId:
+        site = self.site_dao.get(row.physicalMeasurementsFinalizedSiteId)
+        line.append(site.googleGroup)
+      else:
+        line.append(UNSET)
+      line.append(row.samplesToIsolateDNA)
+      line.append(row.biospecimenStatus)
+      for i in ps_sample_status_collection:
+        line.append(getattr(row, i))
+        line.append(getattr(row, i+'Time'))
+      if row.biospecimenSourceSiteId:
+        site = self.site_dao.get(row.biospecimenSourceSiteId)
+        line.append(site.googleGroup)
+      else:
+        line.append(UNSET)
 
     return line
 
