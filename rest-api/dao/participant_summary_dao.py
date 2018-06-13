@@ -406,11 +406,20 @@ class ParticipantSummaryDao(UpdatableDao):
     line.append(row.firstName)
     line.append(row.dateOfBirth)
     line.append(row.withdrawalStatus)
-    line.append(row.withdrawalTime)
+    if row.withdrawalTime:
+      line.append(row.withdrawalTime.isoformat())
+    else:
+      line.append('')
     line.append(row.consentForStudyEnrollment)
-    line.append(row.consentForStudyEnrollmentTime)
+    if row.consentForStudyEnrollmentTime:
+      line.append(row.consentForStudyEnrollmentTime.isoformat())
+    else:
+      line.append('')
     line.append(row.consentForElectronicHealthRecords)
-    line.append(row.consentForElectronicHealthRecordsTime)
+    if row.consentForElectronicHealthRecordsTime:
+      line.append(row.consentForElectronicHealthRecordsTime.isoformat())
+    else:
+      line.append('')
 
     if not redacted:
       if row.languageId:
@@ -420,7 +429,10 @@ class ParticipantSummaryDao(UpdatableDao):
         line.append(UNSET)
       line.append(row.enrollmentStatus)
       line.append(row.consentForCABoR)
-      line.append(row.consentForCABoRTime)
+      if row.consentForCABoRTime:
+        line.append(row.consentForCABoRTime.isoformat())
+      else:
+        line.append('')
       line.append(row.streetAddress)
       line.append(row.city)
       if row.stateId:
@@ -453,21 +465,45 @@ class ParticipantSummaryDao(UpdatableDao):
         line.append(0)
       line.append(row.numCompletedPPIModules)
       line.append(row.questionnaireOnTheBasics)
-      line.append(row.questionnaireOnTheBasicsTime)
+      if row.questionnaireOnTheBasicsTime:
+        line.append(row.questionnaireOnTheBasicsTime.isoformat())
+      else:
+        line.append('')
       line.append(row.questionnaireOnOverallHealth)
-      line.append(row.questionnaireOnOverallHealthTime)
+      if row.questionnaireOnOverallHealthTime:
+        line.append(row.questionnaireOnOverallHealthTime.isoformat())
+      else:
+        line.append('')
       line.append(row.questionnaireOnLifestyle)
-      line.append(row.questionnaireOnLifestyleTime)
+      if row.questionnaireOnLifestyleTime:
+        line.append(row.questionnaireOnLifestyleTime.isoformat())
+      else:
+        line.append('')
       line.append(row.questionnaireOnMedicalHistory)
-      line.append(row.questionnaireOnMedicalHistoryTime)
+      if row.questionnaireOnMedicalHistoryTime:
+        line.append(row.questionnaireOnMedicalHistoryTime.isoformat())
+      else:
+        line.append('')
       line.append(row.questionnaireOnMedications)
-      line.append(row.questionnaireOnMedicationsTime)
+      if row.questionnaireOnMedicationsTime:
+        line.append(row.questionnaireOnMedicationsTime.isoformat())
+      else:
+        line.append('')
       line.append(row.questionnaireOnFamilyHealth)
-      line.append(row.questionnaireOnFamilyHealthTime)
+      if row.questionnaireOnFamilyHealthTime:
+        line.append(row.questionnaireOnFamilyHealthTime.isoformat())
+      else:
+        line.append('')
       line.append(row.questionnaireOnHealthcareAccess)
-      line.append(row.questionnaireOnHealthcareAccessTime)
+      if row.questionnaireOnHealthcareAccessTime:
+        line.append(row.questionnaireOnHealthcareAccessTime.isoformat())
+      else:
+        line.append('')
       line.append(row.physicalMeasurementsStatus)
-      line.append(row.physicalMeasurementsTime)
+      if row.physicalMeasurementsTime:
+        line.append(row.physicalMeasurementsTime.isoformat())
+      else:
+        line.append('')
       if row.siteId:
         site = self.site_dao.get(row.siteId)
         line.append(site.googleGroup)
@@ -487,7 +523,11 @@ class ParticipantSummaryDao(UpdatableDao):
       line.append(row.biospecimenStatus)
       for i in ps_sample_status_collection:
         line.append(getattr(row, i))
-        line.append(getattr(row, i+'Time'))
+        time = getattr(row, i+'Time')
+        if time is not None:
+          line.append(time.isoformat())
+        else:
+          line.append('')
       if row.biospecimenSourceSiteId:
         site = self.site_dao.get(row.biospecimenSourceSiteId)
         line.append(site.googleGroup)
