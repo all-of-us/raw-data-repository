@@ -6,7 +6,7 @@ import StringIO
 
 from clock import FakeClock
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
-                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, ps_full_data_headers, UNSET)
+                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, UNSET)
 from unicode_csv import UnicodeDictReader
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
@@ -14,7 +14,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from model.code import CodeType
 from model.biobank_stored_sample import BiobankStoredSample
 from participant_enums import ANSWER_CODE_TO_RACE
-from test_data import load_measurement_json, load_biobank_order_json
+from test_data import load_measurement_json, load_biobank_order_json, data_path
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase
 
 
@@ -226,7 +226,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     t1 = TIME_1
 
     def setup_participant(when, providerLink=self.provider_link):
-      # Set up participant, questionnaire, and consent
       with FakeClock(when):
         participant = self.send_post('Participant', {"providerLink": [providerLink]})
         participant_id = participant['participantId']
@@ -260,9 +259,16 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     reader = StringIO.StringIO(response)
     row = UnicodeDictReader(reader)
     row = row.next()
-    headers = [k for k, _ in row.iteritems()]
-    for i in headers:
-      assert i in ps_full_data_headers
+    # change data that is randomly generated to a known value
+    row['PMI ID'] = 'P123456'
+    row['Biobank ID'] = 'Z123456'
+
+    with open(data_path('participant_summary.csv')) as f:
+      test_csv = UnicodeDictReader(f)
+      test_csv = test_csv.next()
+
+    self.assertEqual(test_csv, row)
+
     self.assertEqual(row['City'], 'Austin')
     self.assertEqual(row['Withdrawal Status'], 'NOT_WITHDRAWN')
     self.assertEqual(row['Biospecimens Site'], UNSET)
