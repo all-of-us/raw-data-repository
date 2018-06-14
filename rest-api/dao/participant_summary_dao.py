@@ -12,8 +12,7 @@ from api_util import format_json_date, format_json_enum, format_json_code, forma
   format_json_org, format_csv_code, format_csv_date, format_csv_enum, format_csv_site, \
   format_csv_org
 from api_util import format_json_site
-from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS, ps_full_data_headers, \
-  ps_sample_status_collection
+from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
 from dao.base_dao import UpdatableDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from dao.code_dao import CodeDao
@@ -385,8 +384,6 @@ class ParticipantSummaryDao(UpdatableDao):
   def make_csv(self, results):
     csv_data = StringIO.StringIO()
     writer = unicode_csv.UnicodeWriter(csv_data)
-    # headers = ps_full_data_headers
-    # writer.writerow(headers)
     headers_list = []
     write_headers = True
     for row in results.items:
@@ -405,7 +402,6 @@ class ParticipantSummaryDao(UpdatableDao):
       for i in headers_list:
         values_list.append(line.get(i))
 
-
       if write_headers:
         csv_data.seek(0)
         writer.writerow(headers_list)
@@ -416,7 +412,6 @@ class ParticipantSummaryDao(UpdatableDao):
     return csv_data.getvalue()
 
   def to_client_csv(self, model):
-    """This method must append values in the same order as code_constants.ps_full_headers"""
     result = model.asdict()
     # Participants that withdrew more than 48 hours ago should have fields other than
     # WITHDRAWN_PARTICIPANT_FIELDS cleared.
@@ -456,169 +451,6 @@ class ParticipantSummaryDao(UpdatableDao):
       result['recontactMethod'] = 'NO_CONTACT'
 
     return result
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # line = []
-    # redacted = False
-    # from code_constants import ps_sample_status
-    # if (row.withdrawalStatus == WithdrawalStatus.NO_USE and
-    #   row.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME):
-    #   redacted = True
-    #
-    #
-    # line.append(to_client_participant_id(row.participantId))
-    # line.append(to_client_biobank_id(row.biobankId))
-    # line.append(row.lastName)
-    # line.append(row.firstName)
-    # line.append(row.dateOfBirth)
-    # line.append(row.withdrawalStatus)
-    # if row.withdrawalTime:
-    #   line.append(row.withdrawalTime.isoformat())
-    # else:
-    #   line.append('')
-    # line.append(row.consentForStudyEnrollment)
-    # if row.consentForStudyEnrollmentTime:
-    #   line.append(row.consentForStudyEnrollmentTime.isoformat())
-    # else:
-    #   line.append('')
-    # line.append(row.consentForElectronicHealthRecords)
-    # if row.consentForElectronicHealthRecordsTime:
-    #   line.append(row.consentForElectronicHealthRecordsTime.isoformat())
-    # else:
-    #   line.append('')
-    #
-    # if not redacted:
-    #   if row.languageId:
-    #     language = self.code_dao.get(row.languageId).value
-    #     line.append(language)
-    #   else:
-    #     line.append(UNSET)
-    #   line.append(row.enrollmentStatus)
-    #   line.append(row.consentForCABoR)
-    #   if row.consentForCABoRTime:
-    #     line.append(row.consentForCABoRTime.isoformat())
-    #   else:
-    #     line.append('')
-    #   line.append(row.streetAddress)
-    #   line.append(row.city)
-    #   if row.stateId:
-    #     state = self.code_dao.get(row.stateId).value
-    #     line.append(state)
-    #   else:
-    #     line.append(UNSET)
-    #   line.append(row.zipCode)
-    #   line.append(row.email)
-    #   line.append(row.phoneNumber)
-    #   if row.sexId:
-    #     sex = self.code_dao.get(row.sexId).value
-    #     line.append(sex)
-    #   else:
-    #     line.append(UNSET)
-    #   if row.genderIdentityId:
-    #     gender = self.code_dao.get(row.genderIdentityId).value
-    #     line.append(gender)
-    #   else:
-    #     line.append(UNSET)
-    #   line.append(row.race)
-    #   if row.educationId:
-    #     education = self.code_dao.get(row.educationId).value
-    #     line.append(education)
-    #   else:
-    #     line.append(UNSET)
-    #   if row.numCompletedBaselinePPIModules == 3:
-    #     line.append(1)
-    #   else:
-    #     line.append(0)
-    #   line.append(row.numCompletedPPIModules)
-    #   line.append(row.questionnaireOnTheBasics)
-    #   if row.questionnaireOnTheBasicsTime:
-    #     line.append(row.questionnaireOnTheBasicsTime.isoformat())
-    #   else:
-    #     line.append('')
-    #   line.append(row.questionnaireOnOverallHealth)
-    #   if row.questionnaireOnOverallHealthTime:
-    #     line.append(row.questionnaireOnOverallHealthTime.isoformat())
-    #   else:
-    #     line.append('')
-    #   line.append(row.questionnaireOnLifestyle)
-    #   if row.questionnaireOnLifestyleTime:
-    #     line.append(row.questionnaireOnLifestyleTime.isoformat())
-    #   else:
-    #     line.append('')
-    #   line.append(row.questionnaireOnMedicalHistory)
-    #   if row.questionnaireOnMedicalHistoryTime:
-    #     line.append(row.questionnaireOnMedicalHistoryTime.isoformat())
-    #   else:
-    #     line.append('')
-    #   line.append(row.questionnaireOnMedications)
-    #   if row.questionnaireOnMedicationsTime:
-    #     line.append(row.questionnaireOnMedicationsTime.isoformat())
-    #   else:
-    #     line.append('')
-    #   line.append(row.questionnaireOnFamilyHealth)
-    #   if row.questionnaireOnFamilyHealthTime:
-    #     line.append(row.questionnaireOnFamilyHealthTime.isoformat())
-    #   else:
-    #     line.append('')
-    #   line.append(row.questionnaireOnHealthcareAccess)
-    #   if row.questionnaireOnHealthcareAccessTime:
-    #     line.append(row.questionnaireOnHealthcareAccessTime.isoformat())
-    #   else:
-    #     line.append('')
-    #   line.append(row.physicalMeasurementsStatus)
-    #   if row.physicalMeasurementsTime:
-    #     line.append(row.physicalMeasurementsTime.isoformat())
-    #   else:
-    #     line.append('')
-    #   if row.siteId:
-    #     site = self.site_dao.get(row.siteId)
-    #     line.append(site.googleGroup)
-    #   else:
-    #     line.append(UNSET)
-    #   if row.organizationId:
-    #     organization = self.organization_dao.get(row.organizationId)
-    #     line.append(organization.externalId)
-    #   else:
-    #     line.append(UNSET)
-    #   if row.physicalMeasurementsFinalizedSiteId:
-    #     site = self.site_dao.get(row.physicalMeasurementsFinalizedSiteId)
-    #     line.append(site.googleGroup)
-    #   else:
-    #     line.append(UNSET)
-    #   line.append(row.samplesToIsolateDNA)
-    #   line.append(row.biospecimenStatus)
-    #   sample_status_list = ps_sample_status()
-    #   for i in sample_status_list:
-    #     line.append(getattr(row, i))
-    #     time = getattr(row, i+'Time')
-    #     if time is not None:
-    #       line.append(time.isoformat())
-    #     else:
-    #       line.append('')
-    #   if row.biospecimenSourceSiteId:
-    #     site = self.site_dao.get(row.biospecimenSourceSiteId)
-    #     line.append(site.googleGroup)
-    #   else:
-    #     line.append('')
-    #
-    # return line
 
   def _decode_token(self, query_def, fields):
     """ If token exists in participant_summary api, decode and use lastModified to add a buffer
