@@ -6,7 +6,7 @@ import StringIO
 
 from clock import FakeClock
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
-                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, UNSET)
+                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE)
 from unicode_csv import UnicodeDictReader
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
