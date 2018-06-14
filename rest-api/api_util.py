@@ -146,12 +146,12 @@ def format_csv_enum(obj, field_name):
     obj[field_name] = UNSET
 
 def format_csv_site(obj, site_dao, field_name):
-  id = 'Id'
-  site_id = obj.get(field_name + id)
+  _id = 'Id'
+  site_id = obj.get(field_name + _id)
   if site_id is not None:
-    obj[field_name + id] = site_dao.get(site_id).googleGroup
+    obj[field_name + _id] = site_dao.get(site_id).googleGroup
   else:
-    obj[field_name + id] = UNSET
+    obj[field_name + _id] = UNSET
 
 def format_csv_org(obj, organization_dao, field_name):
   if obj[field_name]:
