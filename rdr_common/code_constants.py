@@ -152,7 +152,13 @@ ps_full_data_headers = [
  'Biospecimens Site'
 ]
 
-# Used to iterate and append to csv return of csv output for participant summary
+def ps_sample_status():
+  # Used to iterate and append to csv return of csv output for participant summary
+  sample_list = []
+  for i in BIOBANK_TESTS:
+    sample_list.append('sampleStatus' + i)
+  return sample_list
+
 ps_sample_status_collection = [
   'sampleStatus1SST8',
   'sampleStatus1PST8',

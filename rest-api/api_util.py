@@ -119,3 +119,42 @@ def get_organization_id_from_external_id(obj, organization_dao):
       return organization.organizationId
   return None
 
+def format_csv_date(obj, field_name, date_format=None):
+  """Converts a field of a dictionary from a datetime to a string."""
+  if field_name in obj and obj[field_name] is not None:
+    if date_format:
+      obj[field_name] = obj[field_name].strftime(date_format)
+    else:
+      obj[field_name] = obj[field_name].isoformat()
+
+def format_csv_code(obj, code_dao, field_name):
+  value = obj.get(field_name)
+  if value:
+    code = code_dao.get(value)
+    if code.mapped:
+      obj[field_name] = code.value
+    else:
+      obj[field_name] = UNMAPPED
+  else:
+    obj[field_name] = UNSET
+
+def format_csv_enum(obj, field_name):
+  """Converts a field of a dictionary from a enum to an string."""
+  if field_name in obj and obj[field_name] is not None:
+    obj[field_name] = str(obj[field_name])
+  else:
+    obj[field_name] = UNSET
+
+def format_csv_site(obj, site_dao, field_name):
+  id = 'Id'
+  site_id = obj.get(field_name + id)
+  if site_id is not None:
+    obj[field_name + id] = site_dao.get(site_id).googleGroup
+  else:
+    obj[field_name + id] = UNSET
+
+def format_csv_org(obj, organization_dao, field_name):
+  if obj[field_name]:
+    obj[field_name] = organization_dao.get(obj[field_name]).externalId
+  else:
+    obj[field_name] = UNSET

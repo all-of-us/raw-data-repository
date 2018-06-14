@@ -260,23 +260,14 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     row = UnicodeDictReader(reader)
     row = row.next()
     # change data that is randomly generated to a known value
-    row['PMI ID'] = 'P123456'
-    row['Biobank ID'] = 'Z123456'
+    row['participantId'] = 'P123456'
+    row['biobankId'] = 'Z123456'
 
     with open(data_path('participant_summary.csv')) as f:
       test_csv = UnicodeDictReader(f)
       test_csv = test_csv.next()
 
     self.assertEqual(test_csv, row)
-
-    self.assertEqual(row['City'], 'Austin')
-    self.assertEqual(row['Withdrawal Status'], 'NOT_WITHDRAWN')
-    self.assertEqual(row['Biospecimens Site'], UNSET)
-    self.assertTrue(row['PMI ID'].startswith('P'))
-    self.assertEqual(row['Gender Identity'], PMI_SKIP_CODE)
-    self.assertEqual(row['ZIP'], str(78751))
-    self.assertEqual(row['State'], PMI_SKIP_CODE)
-    self.assertEqual(row['Paired Site'], UNSET)
 
   def test_pairing_summary(self):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
