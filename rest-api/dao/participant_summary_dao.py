@@ -1,15 +1,17 @@
 import threading
+import StringIO
 import datetime
+import clock
+import config
+import unicode_csv
 from dao.organization_dao import OrganizationDao
 from query import OrderBy, PropertyType
 from werkzeug.exceptions import BadRequest, NotFound
 from sqlalchemy import or_
-
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
-  format_json_org
+  format_json_org, format_csv_code, format_csv_date, format_csv_enum, format_csv_site, \
+  format_csv_org
 from api_util import format_json_site
-import clock
-import config
 from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
 from dao.base_dao import UpdatableDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -376,6 +378,77 @@ class ParticipantSummaryDao(UpdatableDao):
       result['recontactMethod'] = 'NO_CONTACT'
     # Strip None values.
     result = {k: v for k, v in result.iteritems() if v is not None}
+
+    return result
+
+  def make_csv(self, results):
+    csv_data = StringIO.StringIO()
+    writer = unicode_csv.UnicodeWriter(csv_data)
+    headers_list = []
+    write_headers = True
+    for row in results.items:
+      line = self.to_client_csv(row)
+      values_list = []
+
+      if len(headers_list) == 0:
+        for k in line.keys():
+          headers_list.append(k)
+      else:
+        for k in line.keys():
+          if k not in headers_list:
+            headers_list.append(k)
+            write_headers = True
+
+      for i in headers_list:
+        values_list.append(line.get(i))
+
+      if write_headers:
+        csv_data.seek(0)
+        writer.writerow(headers_list)
+        write_headers = False
+
+      writer.writerow(values_list)
+
+    return csv_data.getvalue()
+
+  def to_client_csv(self, model):
+    result = model.asdict()
+    # Participants that withdrew more than 48 hours ago should have fields other than
+    # WITHDRAWN_PARTICIPANT_FIELDS cleared.
+    if (model.withdrawalStatus == WithdrawalStatus.NO_USE and
+      model.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME):
+      for k in result.keys():
+        if k not in WITHDRAWN_PARTICIPANT_FIELDS:
+          result[k] = None
+
+    result['participantId'] = to_client_participant_id(model.participantId)
+    biobank_id = result.get('biobankId')
+    if biobank_id:
+      result['biobankId'] = to_client_biobank_id(biobank_id)
+    date_of_birth = result.get('dateOfBirth')
+
+    if date_of_birth:
+      result['ageRange'] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
+    else:
+      result['ageRange'] = UNSET
+
+    if 'organizationId' in result:
+      format_csv_org(result, self.organization_dao, 'organizationId')
+
+    format_json_hpo(result, self.hpo_dao, 'hpoId')
+    result['awardee'] = result['hpoId']
+    _initialize_field_type_sets()
+    for fieldname in _DATE_FIELDS:
+      format_csv_date(result, fieldname)
+    for fieldname in _CODE_FIELDS:
+      format_csv_code(result, self.code_dao, fieldname)
+    for fieldname in _ENUM_FIELDS:
+      format_csv_enum(result, fieldname)
+    for fieldname in _SITE_FIELDS:
+      format_csv_site(result, self.site_dao, fieldname)
+    if (model.withdrawalStatus == WithdrawalStatus.NO_USE or
+      model.suspensionStatus == SuspensionStatus.NO_CONTACT):
+      result['recontactMethod'] = 'NO_CONTACT'
 
     return result
 

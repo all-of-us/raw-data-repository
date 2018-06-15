@@ -132,6 +132,7 @@ class BaseApi(Resource):
     return Query(field_filters, order_by, max_results, pagination_token,
                  include_total=include_total)
 
+
   def _make_bundle(self, results, id_field, participant_id):
     import main
     bundle_dict = {"resourceType": "Bundle", "type": "searchset"}

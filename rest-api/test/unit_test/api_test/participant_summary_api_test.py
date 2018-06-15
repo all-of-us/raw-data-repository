@@ -2,17 +2,19 @@ import datetime
 import httplib
 import main
 import threading
+import StringIO
 
 from clock import FakeClock
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE)
+from unicode_csv import UnicodeDictReader
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.code import CodeType
 from model.biobank_stored_sample import BiobankStoredSample
 from participant_enums import ANSWER_CODE_TO_RACE
-from test_data import load_measurement_json, load_biobank_order_json
+from test_data import load_measurement_json, load_biobank_order_json, data_path
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase
 
 
@@ -216,6 +218,56 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     with FakeClock(time):
       url = 'Participant/%s/QuestionnaireResponse' % participant_id
       return self.send_post(url, request_data=response_data)
+
+  def test_csv_output(self):
+
+    SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+    questionnaire_id = self.create_demographics_questionnaire()
+    t1 = TIME_1
+
+    def setup_participant(when, providerLink=self.provider_link):
+      with FakeClock(when):
+        participant = self.send_post('Participant', {"providerLink": [providerLink]})
+        participant_id = participant['participantId']
+        self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+          'race': RACE_WHITE_CODE,
+          'genderIdentity': PMI_SKIP_CODE,
+          'firstName': self.fake.first_name(),
+          'middleName': self.fake.first_name(),
+          'lastName': self.fake.last_name(),
+          'zipCode': '78751',
+          'state': PMI_SKIP_CODE,
+          'streetAddress': '1234 Main Street',
+          'city': 'Austin',
+          'sex': PMI_SKIP_CODE,
+          'sexualOrientation': PMI_SKIP_CODE,
+          'phoneNumber': '512-555-5555',
+          'recontactMethod': PMI_SKIP_CODE,
+          'language': PMI_SKIP_CODE,
+          'education': PMI_SKIP_CODE,
+          'income': PMI_SKIP_CODE,
+          'dateOfBirth': datetime.date(1978, 10, 9),
+          'CABoRSignature': 'signature.pdf',
+        }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+      return participant
+
+    [setup_participant(t1) for _ in range(5)]
+    response = self.send_get_csv('ParticipantSummary?_output=csv')
+    reader = StringIO.StringIO(response)
+    row = UnicodeDictReader(reader)
+    row = row.next()
+    # change data that is randomly generated to a known value
+    row['participantId'] = 'P123456'
+    row['biobankId'] = 'Z123456'
+
+    with open(data_path('participant_summary.csv')) as f:
+      test_csv = UnicodeDictReader(f)
+      test_csv = test_csv.next()
+
+    self.assertEqual(test_csv, row)
 
   def test_pairing_summary(self):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
