@@ -9,6 +9,13 @@
       "roles": ["healthpro"],
       "whitelisted_appids": ["pmi-hpo-test"]
     },
+    "awardee-pitt@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "PITT",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["136.142.28.15", "136.142.28.122", "136.142.28.123", "136.142.28.76", "136.142.202.70", "136.142.202.71", "136.142.202.72", "136.142.202.73", "136.142.202.74", "136.142.202.75", "136.142.202.76", "136.142.202.77", "136.142.202.78"]
+      }
+    },
     "vibrent-drc-stable@vibrent-drc-stable-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"],
       "whitelisted_ip_ranges": {
