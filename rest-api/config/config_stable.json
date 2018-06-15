@@ -9,7 +9,7 @@
       "roles": ["healthpro"],
       "whitelisted_appids": ["pmi-hpo-test"]
     },
-    "awardee-pitt@pmi-drc-api-test.iam.gserviceaccount.com": {
+    "awardee-pitt@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "PITT",
       "whitelisted_ip_ranges" : {
