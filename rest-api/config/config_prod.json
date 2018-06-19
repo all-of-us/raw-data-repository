@@ -8,7 +8,7 @@
     "vibrent-drc-prod@vibrent-drc-prod-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"],
       "whitelisted_ip_ranges": {
-        "ip4": ["34.204.157.148", "35.169.121.55", "70.183.7.122/32"],
+        "ip4": ["34.204.157.148", "35.169.121.55", "70.183.7.122/32", "184.185.47.42/32"],
         "ip6": []
       }
     },
