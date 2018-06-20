@@ -45,7 +45,7 @@ class DataLossPrevention(object):
 
     self.http = google_auth_httplib2.AuthorizedHttp(self.credentials)
 
-    self.body = {
+    self.body = '''{
       "item":{
         "table":{
           "headers": [{"name":"column1"}],
@@ -69,9 +69,9 @@ class DataLossPrevention(object):
         "limits":{
           "maxFindingsPerItem":0
         },
-        "includeQuote":True
+        "includeQuote":true
       }
-    }
+    }'''
 
   def dlp_content_inspection(self, body):
     url = 'https://dlp.googleapis.com/v2/projects/%s/content:inspect' % self.project_id
