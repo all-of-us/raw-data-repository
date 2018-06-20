@@ -2,12 +2,11 @@ import hashlib
 import random
 import re
 import struct
-
+from dlp import DataLossPrevention
 from dao.database_factory import get_database
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
 from offline.sql_exporter import SqlExporter
-from offline.dlp import deidentify_content
 from werkzeug.exceptions import BadRequest
 
 _TABLE_PATTERN = re.compile("^[A-Za-z0-9_]+$")
@@ -55,6 +54,9 @@ class TableExporter(object):
   @classmethod
   def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name):
     # call DLP from in here, fake it in tests. (add parameter to call DLP)
+    dlp = DataLossPrevention()
+    dlp_response = dlp.dlp_content_inspection(dlp.body)
+    print dlp_response
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
 
@@ -67,11 +69,11 @@ class TableExporter(object):
       obfuscated_to_pmi = {}
       def f(row_proxy):
         out = [v for v in row_proxy]
-        dlp = deidentify_content(out)
-        print '======================'
-        print dlp
-        print dir(dlp)
-        print '======================'
+        # dlp = deidentify_content(out)
+        # print '======================'
+        # print dlp
+        # print dir(dlp)
+        # print '======================'
         for i, key in enumerate(row_proxy.keys()):
           if key != 'participant_id':
             continue
@@ -94,6 +96,7 @@ class TableExporter(object):
     if get_database().db_type == 'sqlite':
       # No schemas in SQLite.
       sql_table = table_name
+      # maybe subclass sql exporter or change transformf
     SqlExporter(bucket_name, use_unicode=True).run_export(
         output_path, 'SELECT * FROM {}'.format(sql_table), transformf=transformf)
     return '%s/%s' % (bucket_name, output_path)

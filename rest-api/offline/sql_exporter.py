@@ -71,6 +71,7 @@ class SqlExporter(object):
           # Note: transformf accepts an iterable and returns an iterable, the output of this call
           # may no longer be a row proxy after this point.
           results = [transformf(r) for r in results]
+        # pass to dlp api
         writer.write_rows(results)
         results = cursor.fetchmany(_BATCH_SIZE)
     finally:
