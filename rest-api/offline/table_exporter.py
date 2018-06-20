@@ -57,6 +57,7 @@ class TableExporter(object):
     dlp = DataLossPrevention()
     dlp_response = dlp.dlp_content_inspection(dlp.body)
     print dlp_response
+
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
 
@@ -69,11 +70,6 @@ class TableExporter(object):
       obfuscated_to_pmi = {}
       def f(row_proxy):
         out = [v for v in row_proxy]
-        # dlp = deidentify_content(out)
-        # print '======================'
-        # print dlp
-        # print dir(dlp)
-        # print '======================'
         for i, key in enumerate(row_proxy.keys()):
           if key != 'participant_id':
             continue

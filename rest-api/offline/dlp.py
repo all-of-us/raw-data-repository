@@ -2,6 +2,41 @@ import google.auth
 import google_auth_httplib2
 import json
 
+""" IAM permissions required:
+    serviceusage.services.use
+    
+request body for content inspection:
+
+{
+  "item":{
+    "table":{
+      "headers": [{"name":"column1"}],
+      "rows": [{
+        "values":[
+          {"string_value": "My phone number is (206) 555-0123"},
+        ]},
+      ],
+    }
+  },
+  "inspectConfig":{
+    "infoTypes":[
+      {
+        "name":"PHONE_NUMBER"
+      },
+      {
+        "name":"US_TOLLFREE_PHONE_NUMBER"
+      }
+    ],
+    "minLikelihood":"POSSIBLE",
+    "limits":{
+      "maxFindingsPerItem":0
+    },
+    "includeQuote":true
+  }
+}
+
+"""
+
 
 class DataLossPrevention(object):
   def __init__(self):
@@ -46,12 +81,6 @@ class DataLossPrevention(object):
   def dlp_request(self, body, url):
     response, content = self.http.request(method='POST', uri=url, body=json.dumps(body))
     return response, content
-
-
-
-    print response
-    print '^^^^^^^^^^^^^'
-    print content
 
   # may subclass sqlExporter, call dlp whether or not transformf, call around the writer in
   # sqlexporter
