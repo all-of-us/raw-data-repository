@@ -9,6 +9,7 @@ class DataLossPrevention(object):
       scopes=['https://www.googleapis.com/auth/cloud-platform'])
 
     self.http = google_auth_httplib2.AuthorizedHttp(self.credentials)
+
     self.body = {
       "item":{
         "table":{
