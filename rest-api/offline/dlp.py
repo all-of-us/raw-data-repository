@@ -2,7 +2,6 @@ import google.auth
 import google_auth_httplib2
 import json
 
-import urllib2
 import google.auth
 """ IAM permissions required:
     serviceusage.services.use
@@ -89,9 +88,6 @@ class DataLossPrevention(object):
 
 
 def main():
-  import google.auth
-  import google_auth_httplib2
-  import json
 
   credentials, project_id = google.auth.default(
     scopes=['https://www.googleapis.com/auth/cloud-platform'])
