@@ -4,7 +4,7 @@ import json
 
 """ IAM permissions required:
     serviceusage.services.use
-    
+
 request body for content inspection:
 
 {
