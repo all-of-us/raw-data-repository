@@ -88,36 +88,6 @@ class DataLossPrevention(object):
   # sqlexporter
 
 
-class LocalDataLossPrevention(object):
-  def __init__(self):
-
-    self.credentials, self.project_id = google.auth.default(scopes=[
-      'https://www.googleapis.com/auth/cloud-platform'])
-
-    self.http =  google_auth_httplib2.AuthorizedHttp(self.credentials)
-    self.body = {''}
-
-  def dlp_content_inspection(self, body):
-    # url = 'https://dlp.googleapis.com/v2/projects/%s/content:inspect' % self.project_id
-    url = 'https://dlp.googleapis.com/v2/infoTypes?key=AIzaSyCfHKET9xc9j-OAYWwIwPXrwZM2hnpvrYU'
-    response, content = self.dlp_request(body, url)
-    return response, content
-
-  def dlp_request(self, body, url):
-    # response, content = self.http.request(method='GET', uri=url, body=json.dumps(body))
-    # response, content = self.http.request(method='GET', uri=url)
-    print '=============================================='
-    # print response, '<<<<<< response'
-    # print content, '<<<<<<<<<<<< content'
-    print '=============================================='
-    # return response, content
-
-    response = urllib2.urlopen(url)
-    print dir(response)
-    new_response = json.loads(response.read())
-    print new_response, "< <<<<<<<< new_response "
-    return response, new_response
-
 def main():
   import google.auth
   import google_auth_httplib2
@@ -161,5 +131,5 @@ def main():
   print content
 
 if __name__ == '__main__':
-    # LocalDataLossPrevention()
-    main()
+  # LocalDataLossPrevention()
+  main()
