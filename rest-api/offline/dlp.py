@@ -77,12 +77,12 @@ class DataLossPrevention(object):
         "limits":{
           "maxFindingsPerItem":0
         },
-        "includeQuote": "true"
+        "includeQuote": True
       }
     }
 
   def dlp_content_inspection(self, body):
-    url = 'https://dlp.googleapis.com/v2/projects/%s/content:inspect' % self.project_id
+    url = 'https://dlp.googleapis.com/v2/projects/%s/content:inspect?alt=json' % self.project_id
     print url, '< url'
     response, content = self.dlp_request(body, url)
     logging.info('response from dlp_content_inspection: %r.', response)
