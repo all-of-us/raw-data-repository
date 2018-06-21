@@ -1,7 +1,7 @@
 import google.auth
 import google_auth_httplib2
 import json
-
+import logging
 import google.auth
 """ IAM permissions required:
     serviceusage.services.use
@@ -43,8 +43,10 @@ class DataLossPrevention(object):
   def __init__(self):
     self.credentials, self.project_id = google.auth.default(
       scopes=['https://www.googleapis.com/auth/cloud-platform'])
-
+    logging.info('credential: %r.', self.credentials)
+    logging.info('project_id: %r.', self.project_id)
     self.http = google_auth_httplib2.AuthorizedHttp(self.credentials)
+    logging.info('http: %r.', self.http)
 
     self.body = {
       "item":{
@@ -77,17 +79,21 @@ class DataLossPrevention(object):
   def dlp_content_inspection(self, body):
     url = 'https://dlp.googleapis.com/v2/projects/%s/content:inspect' % self.project_id
     response, content = self.dlp_request(body, url)
+    logging.info('response from dlp_content_inspection: %r.', response)
+    logging.info('content from dlp_content_inspection: %r.', content)
     return response, content
 
   def dlp_request(self, body, url):
     response, content = self.http.request(method='POST', uri=url, body=json.dumps(body))
+    logging.info('response from dlp_request: %r.', response)
+    logging.info('content from dlp_request: %r.', content)
     return response, content
 
   # may subclass sqlExporter, call dlp whether or not transformf, call around the writer in
   # sqlexporter
 
 
-def main():
+def localdef():
 
   credentials, project_id = google.auth.default(
     scopes=['https://www.googleapis.com/auth/cloud-platform'])
@@ -125,7 +131,8 @@ def main():
   print response
   print '^^^^^^^^^^^^^'
   print content
+  return response, content
 
 if __name__ == '__main__':
   # LocalDataLossPrevention()
-  main()
+  localdef()

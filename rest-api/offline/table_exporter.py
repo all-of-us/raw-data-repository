@@ -2,7 +2,7 @@ import hashlib
 import random
 import re
 import struct
-from dlp import DataLossPrevention
+from dlp import DataLossPrevention, localdef
 from dao.database_factory import get_database
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
@@ -57,6 +57,10 @@ class TableExporter(object):
     dlp = DataLossPrevention()
     dlp_response = dlp.dlp_content_inspection(dlp.body)
     print dlp_response
+    # dlp, other = localdef()
+    # print dlp
+    # print other
+    # print '^^^^^%^'
 
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
