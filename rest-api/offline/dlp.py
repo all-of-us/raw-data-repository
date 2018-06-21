@@ -84,7 +84,7 @@ class DataLossPrevention(object):
     return response, content
 
   def dlp_request(self, body, url):
-    response, content = self.http.request(method='POST', uri=url, body=json.dumps(body))
+    response, content = self.http.request(method='POST', uri=url, body=body)
     logging.info('response from dlp_request: %r.', response)
     logging.info('content from dlp_request: %r.', content)
     return response, content
