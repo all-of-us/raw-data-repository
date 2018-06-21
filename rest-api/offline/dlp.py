@@ -77,7 +77,7 @@ class DataLossPrevention(object):
         "limits":{
           "maxFindingsPerItem":0
         },
-        "includeQuote": True
+        "includeQuote": "true"
       }
     }
 
