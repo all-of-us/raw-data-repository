@@ -3,6 +3,7 @@ import google_auth_httplib2
 import json
 import logging
 import google.auth
+import httplib2
 """ IAM permissions required:
     serviceusage.services.use
 
@@ -41,12 +42,16 @@ request body for content inspection:
 
 class DataLossPrevention(object):
   def __init__(self):
+    httplib2.debuglevel = 4
     self.credentials, self.project_id = google.auth.default(
       scopes=['https://www.googleapis.com/auth/cloud-platform'])
     logging.info('credential: %r.', self.credentials)
     logging.info('project_id: %r.', self.project_id)
     self.http = google_auth_httplib2.AuthorizedHttp(self.credentials)
     logging.info('http: %r.', self.http)
+    print self.credentials, "< creds"
+    print self.project_id, '< Project id'
+    print self.http, '< http'
 
     self.body = {
       "item":{
@@ -78,13 +83,17 @@ class DataLossPrevention(object):
 
   def dlp_content_inspection(self, body):
     url = 'https://dlp.googleapis.com/v2/projects/%s/content:inspect' % self.project_id
+    print url, '< url'
     response, content = self.dlp_request(body, url)
     logging.info('response from dlp_content_inspection: %r.', response)
     logging.info('content from dlp_content_inspection: %r.', content)
     return response, content
 
   def dlp_request(self, body, url):
-    response, content = self.http.request(method='POST', uri=url, body=body)
+    print body, '< body from dlp_request'
+    response, content = self.http.request(method='POST', uri=url, body=json.dumps(body))
+    print response, '< response'
+    print content, '< content'
     logging.info('response from dlp_request: %r.', response)
     logging.info('content from dlp_request: %r.', content)
     return response, content
@@ -134,5 +143,5 @@ def localdef():
   return response, content
 
 if __name__ == '__main__':
-  # LocalDataLossPrevention()
-  localdef()
+  d = DataLossPrevention()
+  d.dlp_content_inspection(d.body)
