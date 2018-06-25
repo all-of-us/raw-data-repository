@@ -57,7 +57,7 @@ class DataLossPrevention(object):
     return response, content
 
   def setup_dlp_request(self, results):
-    self.body['item']['table']['rows'][0]['values'] = results
+    self.body['item']['table']['rows'][0]['values'] = json.dumps(results)
     return self.body
 
 
