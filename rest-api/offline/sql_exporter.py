@@ -4,6 +4,7 @@ import logging
 
 from dao import database_factory
 from cloudstorage import cloudstorage_api
+from offline.dlp import DataLossPrevention
 from sqlalchemy import text
 from unicode_csv import UnicodeWriter
 
@@ -71,7 +72,16 @@ class SqlExporter(object):
           # Note: transformf accepts an iterable and returns an iterable, the output of this call
           # may no longer be a row proxy after this point.
           results = [transformf(r) for r in results]
+          logging.info('results from sql exporter: ', results)
+
+        # may subclass sqlExporter, call dlp whether or not transformf
         # pass to dlp api
+        dlp = DataLossPrevention()
+        dlp_results = dlp.setup_dlp_request(results)
+        dlp_response = dlp.dlp_content_inspection(dlp_results)
+        logging.info('dlp body: ', dlp)
+        logging.info('dlp response: ', dlp_response)
+        print dlp_response
         writer.write_rows(results)
         results = cursor.fetchmany(_BATCH_SIZE)
     finally:

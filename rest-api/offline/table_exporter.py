@@ -53,14 +53,6 @@ class TableExporter(object):
 
   @classmethod
   def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name):
-    # call DLP from in here, fake it in tests. (add parameter to call DLP)
-    dlp = DataLossPrevention()
-    dlp_response = dlp.dlp_content_inspection(dlp.body)
-    print dlp_response
-    # dlp, other = localdef()
-    # print dlp
-    # print other
-    # print '^^^^^%^'
 
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
