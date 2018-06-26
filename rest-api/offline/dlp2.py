@@ -783,3 +783,4 @@ if __name__ == '__main__':
       min_likelihood=args.min_likelihood,
       max_findings=args.max_findings,
       timeout=args.timeout)
+

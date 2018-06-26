@@ -10,14 +10,12 @@ import httplib2
 
 
 class DataLossPrevention(object):
-  def __init__(self, gcs_path):
+  def __init__(self, gcs_path=None):
     httplib2.debuglevel = 4
     self.credentials, self.project_id = google.auth.default(
       scopes=['https://www.googleapis.com/auth/cloud-platform'])
     self.http = google_auth_httplib2.AuthorizedHttp(self.credentials)
-    self.gcs_path = gcs_path
-
-    self.body = {
+    self.content_inspection_template = {
       "item":{
         "table":{
           "headers": [{"name":"column 1"}],
@@ -47,7 +45,9 @@ class DataLossPrevention(object):
         "includeQuote": True
       }
     }
-    self.sample_input = {
+    if gcs_path:
+      self.gcs_path = gcs_path
+      self.bucket_inspection_template = {
   "inspectJob":{
     "storageConfig":{
       "cloudStorageOptions":{
@@ -58,14 +58,14 @@ class DataLossPrevention(object):
       }
     },
     "timespanConfig":{
-      "startTime":"2017-11-13T12:34:29.965633345Z ",
-      "endTime":"2018-01-05T04:45:04.240912125Z "
+      "startTime":"2018-06-25",
+      "endTime":"2018-06-26"
     }
   },
   "inspectConfig":{
     "infoTypes":[
       {
-        "name":"PHONE_NUMBER"
+        "name":"LAST_NAME"
       }
     ],
     "excludeInfoTypes":False,
@@ -86,24 +86,27 @@ class DataLossPrevention(object):
   ],
 }
 
-  def dlp_content_inspection(self):
-    # url = 'https://dlp.googleapis.com/v2/projects/%s/content:inspect?alt=json' % self.project_id
+  def dlp_content_inspection(self, results):
+    url = 'https://dlp.googleapis.com/v2/projects/%s/content:inspect?alt=json' % self.project_id
+    return self.dlp_request(url, results)
+
+  def dlp_bucket_inspection(self):
     url = 'https://dlp.googleapis.com/v2/projects/%s/dlpJobs' % self.project_id
     return self.dlp_request(url)
 
-  def dlp_request(self, url):
-    logging.info('the sample input is %s', self.sample_input)
+  def dlp_request(self, url, results=None):
     headers = {"Content-Type": "application/json"}
-    response, content = self.http.request(method='POST', uri=url, headers=headers, body=json.dumps(
-      self.sample_input))
+    if results:
+      response, content = self.http.request(method='POST', uri=url, headers=headers,
+                                            body=json.dumps(results))
+    else:
+      response, content = self.http.request(method='POST', uri=url, headers=headers)
     logging.info('response from dlp_request: %r.', response)
     logging.info('content from dlp_request: %r.', content)
     return response, content
 
-  def setup_dlp_request(self, results):
+  def setup_dlp_content_inspection_request(self, results):
     # results is a list of tuples. values is a list of dicts.
-    return self.body
-
     fields = []
     r = []
     for row in results :
@@ -115,11 +118,5 @@ class DataLossPrevention(object):
         r.append(_row)
       break
     r = json.dumps(r)
-    self.body['item']['table']['rows'][0]['values'] = r
-      #self.body['item']['table']['rows'][0]['values'] = [json.dumps(dict(r)) for r in results]
-    return self.body
-
-
-if __name__ == '__main__':
-  d = DataLossPrevention()
-  d.dlp_content_inspection(d.body)
+    self.content_inspection_template['item']['table']['rows'][0]['values'] = r
+    return self.content_inspection_template
