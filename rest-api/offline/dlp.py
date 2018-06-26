@@ -19,7 +19,7 @@ class DataLossPrevention(object):
     self.body = {
       "item":{
         "table":{
-          "headers": [{"dlp header inspection":"header"}],
+          "headers": [{"name":"column 1"}],
           "rows": [{
             "values":[
               {"string_value": "My phone number is (206) 555-0123"},
@@ -61,7 +61,8 @@ class DataLossPrevention(object):
 
   def setup_dlp_request(self, results):
     # results is a list of tuples. values is a list of dicts.
-    #print (dict(results[0]) )
+    return self.body
+    
     fields = []
     r = []
     for row in results :
