@@ -81,7 +81,6 @@ class SqlExporter(object):
         dlp_response = dlp.dlp_content_inspection(dlp_results)
         logging.info('dlp body: ', dlp)
         logging.info('dlp response: ', dlp_response)
-        print dlp_response
         writer.write_rows(results)
         results = cursor.fetchmany(_BATCH_SIZE)
     finally:

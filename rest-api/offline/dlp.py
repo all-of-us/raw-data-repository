@@ -19,7 +19,7 @@ class DataLossPrevention(object):
     self.body = {
       "item":{
         "table":{
-          "headers": [{"dlp header inspection":""}],
+          "headers": [{"dlp header inspection":"header"}],
           "rows": [{
             "values":[
               {"string_value": "My phone number is (206) 555-0123"},
@@ -30,10 +30,13 @@ class DataLossPrevention(object):
       "inspectConfig":{
         "infoTypes":[
           {
-            "name":"PHONE_NUMBER"
+            "name":"EMAIL_ADDRESS"
           },
           {
-            "name":"US_TOLLFREE_PHONE_NUMBER"
+            "name":"IP_ADDRESS"
+          },
+          {
+            "name":"LAST_NAME"
           }
         ],
         "minLikelihood":"POSSIBLE",
@@ -57,7 +60,21 @@ class DataLossPrevention(object):
     return response, content
 
   def setup_dlp_request(self, results):
-    self.body['item']['table']['rows'][0]['values'] = json.dumps(str(list(results)))
+    # results is a list of tuples. values is a list of dicts.
+    #print (dict(results[0]) )
+    fields = []
+    r = []
+    for row in results :
+      if not fields :
+        fields = row.keys()
+      _row = {}
+      for name in fields :
+        _row[name] = str(row[name]) if row[name] is not None else ''
+        r.append(_row)
+      break
+    r = json.dumps(r)
+    self.body['item']['table']['rows'][0]['values'] = r
+      #self.body['item']['table']['rows'][0]['values'] = [json.dumps(dict(r)) for r in results]
     return self.body
 
 
