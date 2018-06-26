@@ -89,8 +89,13 @@ class SqlExporter(object):
       writer = SqlExportFileWriter(dest, predicate, use_unicode=self._use_unicode)
       yield writer
     logging.info('Export to %s complete.', gcs_path)
-    dlp = DataLossPrevention(gcs_path)
-    # dlp_results = dlp.setup_dlp_request(results)
-    dlp_response = dlp.dlp_content_inspection()
-    logging.info('dlp body: ', dlp)
-    logging.info('dlp response: ', dlp_response)
+    # dlp = DataLossPrevention(gcs_path)
+    # # dlp_results = dlp.setup_dlp_request(results)
+    # dlp_response = dlp.dlp_content_inspection()
+    # logging.info('dlp body: ', dlp)
+    # logging.info('dlp response: ', dlp_response)
+    from dlp2 import inspect_gcs_file
+    inspection = inspect_gcs_file('all-of-us-rdr-sandbox', self._bucket_name, file_name, 'dlp',
+                            'dlp_sub', ['EMAIL', 'LAST_NAME'])
+    logging.info('inspection: ', inspection)
+    print inspection, '< INSPECTION'
