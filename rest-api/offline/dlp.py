@@ -10,11 +10,12 @@ import httplib2
 
 
 class DataLossPrevention(object):
-  def __init__(self):
+  def __init__(self, gcs_path):
     httplib2.debuglevel = 4
     self.credentials, self.project_id = google.auth.default(
       scopes=['https://www.googleapis.com/auth/cloud-platform'])
     self.http = google_auth_httplib2.AuthorizedHttp(self.credentials)
+    self.gcs_path = gcs_path
 
     self.body = {
       "item":{
@@ -51,7 +52,7 @@ class DataLossPrevention(object):
     "storageConfig":{
       "cloudStorageOptions":{
         "fileSet":{
-          "url":"gs://test_dlp_bucket/*."
+          "url":"gs://%s/" % self.gcs_path
         },
         "bytesLimitPerFile":"1073741824"
       }
@@ -91,6 +92,7 @@ class DataLossPrevention(object):
     return self.dlp_request(url)
 
   def dlp_request(self, url):
+    logging.info('the sample input is %s', self.sample_input)
     headers = {"Content-Type": "application/json"}
     response, content = self.http.request(method='POST', uri=url, headers=headers, body=json.dumps(
       self.sample_input))
