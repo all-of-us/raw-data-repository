@@ -76,11 +76,6 @@ class SqlExporter(object):
 
         # may subclass sqlExporter, call dlp whether or not transformf
         # pass to dlp api
-        dlp = DataLossPrevention()
-        dlp_results = dlp.setup_dlp_request(results)
-        dlp_response = dlp.dlp_content_inspection(dlp_results)
-        logging.info('dlp body: ', dlp)
-        logging.info('dlp response: ', dlp_response)
         writer.write_rows(results)
         results = cursor.fetchmany(_BATCH_SIZE)
     finally:
@@ -94,3 +89,8 @@ class SqlExporter(object):
       writer = SqlExportFileWriter(dest, predicate, use_unicode=self._use_unicode)
       yield writer
     logging.info('Export to %s complete.', gcs_path)
+    dlp = DataLossPrevention()
+    # dlp_results = dlp.setup_dlp_request(results)
+    dlp_response = dlp.dlp_content_inspection()
+    logging.info('dlp body: ', dlp)
+    logging.info('dlp response: ', dlp_response)
