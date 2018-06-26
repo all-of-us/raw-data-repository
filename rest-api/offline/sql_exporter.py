@@ -72,7 +72,6 @@ class SqlExporter(object):
           # Note: transformf accepts an iterable and returns an iterable, the output of this call
           # may no longer be a row proxy after this point.
           results = [transformf(r) for r in results]
-          logging.info('results from sql exporter: ', results)
 
         dlp = DataLossPrevention()
         dlp_results = dlp.setup_dlp_content_inspection_request(results)

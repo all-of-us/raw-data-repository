@@ -109,11 +109,11 @@ class DataLossPrevention(object):
     # results is a list of tuples. values is a list of dicts.
     fields = []
     r = []
-    for row in results :
-      if not fields :
+    for row in results:
+      if not fields:
         fields = row.keys()
       _row = {}
-      for name in fields :
+      for name in fields:
         _row[name] = str(row[name]) if row[name] is not None else ''
         r.append(_row)
       break
