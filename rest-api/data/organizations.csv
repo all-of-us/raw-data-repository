@@ -50,10 +50,10 @@ TRANS_AM,TRANS_AM_MEYERS,Meyers Primary Care Institute
 VA,VA_BOSTON_VAMC,VA Boston Healthcare System
 VA,VA_PALO_ALTO_VAMC,VA Palo Alto Health Care System
 VA,VA_ATLANTA_VAMC,VA Atlanta Medical Center
-VA,VA_MICHAEL_E_DEBAKEY_VAMC,VA Michael E. DeBakey Medical Center
-VA,VA_EASTERN_KANSAS_VAMC,VA Eastern Kansas Health Care System
-VA,VA_NEW_YORK_HARBOR_VAMC,VA New York Harbor Healthcare System
-VA,VA_CLEMENT_J_ZABLOCKI_VAMC,VA Clement J. Zablocki Medical Center
+VA,VA_HOUSTON_VAMC,VA Michael E. DeBakey Medical Center
+VA,VA_LEAVENWORTH_VAMC,VA Eastern Kansas Health Care System
+VA,VA_MANHATTAN_VAMC,VA New York Harbor Healthcare System
+VA,VA_MILWAUKEE_VAMC,VA Clement J. Zablocki Medical Center
 VA,VA_MINNEAPOLIS_VAMC,VA Minneapolis Healthcare System
 VA,VA_PHOENIX_VAMC,VA Phoenix Healthcare System
 VA,VA_SAN_DIEGO_VAMC,VA San Diego Healthcare System
