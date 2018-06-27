@@ -23,9 +23,11 @@ class _FhirSite(FhirMixin, BackboneElement):
     FhirProperty('site_status', str, required=True),
     FhirProperty('digital_scheduling_status', str),
     FhirProperty('scheduling_instructions', str),
+    FhirProperty('scheduling_instructions_es', str),
     FhirProperty('enrolling_status', str),
     FhirProperty('launch_date', fhirdate.FHIRDate),
     FhirProperty('notes', str),
+    FhirProperty('notes_es', str),
     FhirProperty('latitude', float),
     FhirProperty('longitude', float),
     FhirProperty('time_zone_id', str),
@@ -61,6 +63,8 @@ class SiteDao(CacheAllDao):
     resource.digital_scheduling_status = str(model.digitalSchedulingStatus)
     if model.scheduleInstructions:
       resource.scheduling_instructions = str(model.scheduleInstructions)
+    if model.scheduleInstructions_ES:
+      resource.scheduling_instructions_es = str(model.scheduleInstructions_ES)
     if model.mayolinkClientNumber:
       resource.mayolink_client_number = long(model.mayolinkClientNumber)
     resource.site_status = str(model.siteStatus)
@@ -68,6 +72,7 @@ class SiteDao(CacheAllDao):
       resource.enrolling_status = str(model.enrollingStatus)
     resource.launch_date = _to_fhir_date(model.launchDate)
     resource.notes = model.notes
+    resource.notes_es = model.notes_ES
     resource.latitude = model.latitude
     resource.longitude = model.longitude
     resource.time_zone_id = model.timeZoneId
