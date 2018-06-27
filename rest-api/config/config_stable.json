@@ -22,6 +22,20 @@
           "ip4": ["10.50.178.54"]
         }
     },
+      "awardee-marshfield@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+        "roles": ["awardee_sa"],
+        "awardee": "WISCONSIN",
+        "whitelisted_ip_ranges" : {
+          "ip4": ["10.50.178.54"]
+        }
+    },
+      "awardee-columbia@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+        "roles": ["awardee_sa"],
+        "awardee": "COLUMBIA",
+        "whitelisted_ip_ranges" : {
+          "ip4": ["156.145.115.47", "156.145.115.138", "156.145.115.188"]
+        }
+      },
     "vibrent-drc-stable@vibrent-drc-stable-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"],
       "whitelisted_ip_ranges": {
