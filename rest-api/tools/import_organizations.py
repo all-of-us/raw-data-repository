@@ -58,8 +58,10 @@ SITE_SITE_ID_COLUMN = 'Site ID / Google Group'
 SITE_SITE_COLUMN = 'Site'
 SITE_MAYOLINK_CLIENT_NUMBER_COLUMN = 'MayoLINK Client #'
 SITE_NOTES_COLUMN = 'Notes'
+SITE_NOTES_COLUMN_ES = 'Notes Spanish'
 # TODO: switch this back to 'Status' [DA-538]
 SCHEDULING_INSTRUCTIONS = 'Scheduling Instructions'
+SCHEDULING_INSTRUCTIONS_ES = 'Scheduling Instructions Spanish'
 SITE_LAUNCH_DATE_COLUMN = 'Anticipated Launch Date'
 SITE_DIRECTIONS_COLUMN = 'Directions'
 SITE_PHYSICAL_LOCATION_NAME_COLUMN = 'Physical Location Name'
@@ -391,6 +393,7 @@ class SiteImporter(CsvImporter):
                           mayolink_client_number_str, google_group))
         return None
     notes = row.get(SITE_NOTES_COLUMN)
+    notes_es = row.get(SITE_NOTES_COLUMN_ES)
     try:
       site_status = SiteStatus(row[SITE_STATUS_COLUMN + self.environment].upper())
     except TypeError:
@@ -420,6 +423,7 @@ class SiteImporter(CsvImporter):
     digital_scheduling_status = DigitalSchedulingStatus(row[DIGITAL_SCHEDULING_STATUS_COLUMN +
                                                             self.environment].upper())
     schedule_instructions = row.get(SCHEDULING_INSTRUCTIONS)
+    schedule_instructions_es = row.get(SCHEDULING_INSTRUCTIONS_ES)
     return Site(siteName=name,
                 googleGroup=google_group,
                 mayolinkClientNumber=mayolink_client_number,
@@ -429,8 +433,10 @@ class SiteImporter(CsvImporter):
                 enrollingStatus=enrolling_status,
                 digitalSchedulingStatus=digital_scheduling_status,
                 scheduleInstructions=schedule_instructions,
+                scheduleInstructions_ES=schedule_instructions_es,
                 launchDate=launch_date,
                 notes=notes,
+                notes_ES=notes_es,
                 directions=directions,
                 physicalLocationName=physical_location_name,
                 address1=address_1,
