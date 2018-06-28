@@ -37,7 +37,7 @@ class SiteDaoTest(SqlTestBase):
     created_site = self.site_dao.insert(site)
     new_site = Site(siteId=created_site.siteId, siteName='site2',
                     googleGroup='site2@googlegroups.com',
-                    mayolinkClientNumber=123456, hpoId=UNSET_HPO_ID)
+                    mayolinkClientNumber=123456, hpoId=UNSET_HPO_ID, isObsolete=0)
     self.site_dao.update(new_site)
     fetched_site = self.site_dao.get(created_site.siteId)
     self.assertEquals(new_site.asdict(), fetched_site.asdict())
