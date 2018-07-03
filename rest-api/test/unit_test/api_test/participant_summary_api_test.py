@@ -555,6 +555,18 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # Prove that first and last entry in response2 matches 3rd and 7th entry in response
     self.assertEqual(response2['entry'][0], response['entry'][2])
     self.assertEqual(response2['entry'][4], response['entry'][6])
+    # Verify participants count for response2
+    self.assertEqual(len(response2['entry']), 5)
+
+    response3 = self.send_get('ParticipantSummary?_count=5&_offset=6')
+    # Prove that only available participants are returned even if the count is greater than available participants after offset
+    self.assertEqual(len(response3['entry']), 4)
+
+    response4 = self.send_get('ParticipantSummary?_count=5&_offset=10')
+    response5 = self.send_get('ParticipantSummary?_count=5&_offset=12')
+    # Prove that zero participants are returned if offset is greater than or equal to total number of available participants
+    self.assertEqual(len(response4['entry']), 0)
+    self.assertEqual(len(response5['entry']), 0)
 
   def test_get_summary_with_skip_codes(self):
     # Set up the codes so they are mapped later.
