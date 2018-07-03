@@ -512,6 +512,62 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEqual(response2['total'], response['total'])
     self.assertEqual(response2['total'], num_participants)
 
+  def test_get_summary_list_returns_offset_results(self):
+    num_participants = 10
+    SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)
+    questionnaire_id = self.create_demographics_questionnaire()
+
+    # generate participants to count
+    for _ in range(num_participants):
+      # Set up participant, questionnaire, and consent
+      participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+      participant_id = participant['participantId']
+      with FakeClock(TIME_1):
+        self.send_consent(participant_id)
+      # Populate some answers to the questionnaire
+      answers = {
+        'race': RACE_WHITE_CODE,
+        'genderIdentity': PMI_SKIP_CODE,
+        'firstName': self.fake.first_name(),
+        'middleName': self.fake.first_name(),
+        'lastName': self.fake.last_name(),
+        'zipCode': '78751',
+        'state': PMI_SKIP_CODE,
+        'streetAddress': '1234 Main Street',
+        'city': 'Austin',
+        'sex': PMI_SKIP_CODE,
+        'sexualOrientation': PMI_SKIP_CODE,
+        'phoneNumber': '512-555-5555',
+        'recontactMethod': PMI_SKIP_CODE,
+        'language': PMI_SKIP_CODE,
+        'education': PMI_SKIP_CODE,
+        'income': PMI_SKIP_CODE,
+        'dateOfBirth': datetime.date(1978, 10, 9),
+        'CABoRSignature': 'signature.pdf',
+      }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
+    response = self.send_get('ParticipantSummary?_count=10')
+    # Pass offset query parameter
+    response2 = self.send_get('ParticipantSummary?_count=5&_offset=2')
+
+    # Verify offset results
+    # Prove that first and last entry in response2 matches 3rd and 7th entry in response
+    self.assertEqual(response2['entry'][0], response['entry'][2])
+    self.assertEqual(response2['entry'][4], response['entry'][6])
+    # Verify participants count for response2
+    self.assertEqual(len(response2['entry']), 5)
+
+    response3 = self.send_get('ParticipantSummary?_count=5&_offset=6')
+    # Prove that only available participants are returned even if the count is greater than available participants after offset
+    self.assertEqual(len(response3['entry']), 4)
+
+    response4 = self.send_get('ParticipantSummary?_count=5&_offset=10')
+    response5 = self.send_get('ParticipantSummary?_count=5&_offset=12')
+    # Prove that zero participants are returned if offset is greater than or equal to total number of available participants
+    self.assertEqual(len(response4['entry']), 0)
+    self.assertEqual(len(response5['entry']), 0)
+
   def test_get_summary_with_skip_codes(self):
     # Set up the codes so they are mapped later.
     SqlTestBase.setup_codes([PMI_SKIP_CODE], code_type=CodeType.ANSWER)

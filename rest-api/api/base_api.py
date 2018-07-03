@@ -106,6 +106,7 @@ class BaseApi(Resource):
     order_by = None
     missing_id_list = ['awardee', 'organization', 'site']
     include_total = request.args.get('_includeTotal', False)
+    offset = request.args.get('_offset', False)
 
     for key, value in request.args.iteritems(multi=True):
       if value in missing_id_list:
@@ -130,7 +131,7 @@ class BaseApi(Resource):
         if field_filter:
           field_filters.append(field_filter)
     return Query(field_filters, order_by, max_results, pagination_token,
-                 include_total=include_total)
+                 include_total=include_total, offset=offset)
 
   def _make_bundle(self, results, id_field, participant_id):
     import main
