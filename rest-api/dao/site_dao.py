@@ -62,9 +62,9 @@ class SiteDao(CacheAllDao):
     resource.display_name = model.siteName
     resource.digital_scheduling_status = str(model.digitalSchedulingStatus)
     if model.scheduleInstructions:
-      resource.scheduling_instructions = str(model.scheduleInstructions)
+      resource.scheduling_instructions = model.scheduleInstructions
     if model.scheduleInstructions_ES:
-      resource.scheduling_instructions_es = str(model.scheduleInstructions_ES)
+      resource.scheduling_instructions_es = model.scheduleInstructions_ES
     if model.mayolinkClientNumber:
       resource.mayolink_client_number = long(model.mayolinkClientNumber)
     resource.site_status = str(model.siteStatus)
