@@ -50,6 +50,8 @@ activate_local_venv
 ./run_client.sh generate_fake_data.py \
     --num_participants 3 \
     --include_physical_measurements --include_biobank_orders --create_biobank_samples
+# Verify that we can retrieve awardees successfully.
+./run_client.sh get_awardees.py
 
 safety check  # checks current (client) venv
 
