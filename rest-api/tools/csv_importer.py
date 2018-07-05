@@ -1,6 +1,7 @@
 """Imports entities into the database based on a CSV file.
 """
-import csv
+from unicode_csv import UnicodeDictReader
+
 import logging
 
 
@@ -36,7 +37,7 @@ class CsvImporter(object):
     row_list = []
     logging.info('Importing %ss from %r.', self.entity_name, filename)
     with open(filename, 'r') as csv_file:
-      reader = csv.DictReader(csv_file)
+      reader = UnicodeDictReader(csv_file)
       existing_map = {getattr(entity, self.external_id_field): entity for entity
                       in self.dao.get_all()}
       with self.dao.session() as session:
