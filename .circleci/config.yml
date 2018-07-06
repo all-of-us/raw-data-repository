@@ -1,0 +1,145 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/all-of-us/raw-data-repository
+    docker:
+      - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+        command: /sbin/init
+    parallelism: 1
+    shell: /bin/bash --login
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+    steps:
+    # Get code under test
+    - checkout
+    # Create artifact directory
+    - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+    # Set up database
+    - run:
+        working_directory: ~/all-of-us/raw-data-repository
+        command: 'sudo service mysql status || sudo service mysql start; '
+    # Restore the dependency cache
+    - restore_cache:
+        keys:
+        # This branch if available
+        - v1-dep-{{ .Branch }}-
+        # Default branch if not
+        - v1-dep-master-
+        # Fallback if no branch specified
+        - v1-dep-
+    # chmod to address a Circle "bug", since gcloud lives at /opt
+    # and wants to make a .staging directory (as a sibling!)
+    # when upgrading or installing new components.
+    - run: sudo chmod o+w /opt
+    # CircleCI's version of pip can be out of date; make sure it's up-to-date first.
+    - run: pip install --upgrade pip
+    # Then install requirements needed to run our tools.
+    - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
+    - run: pip install -I alembic==0.9.1
+    # Save dependency cache
+    - save_cache:
+        key: v1-dep-{{ .Branch }}-{{ epoch }}
+        paths:
+        - ~/virtualenvs
+    - persist_to_workspace:
+        root: ~/
+        paths:
+          - virtualenvs
+          - all-of-us
+
+  test:
+    working_directory: ~/all-of-us/raw-data-repository
+    docker:
+      - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+        command: /sbin/init
+    steps:
+    - attach_workspace:
+        at: ~/
+    # Restore the dependency cache
+    - restore_cache:
+        keys:
+        # This branch if available
+        - v1-dep-{{ .Branch }}-
+        # Default branch if not
+        - v1-dep-master-
+        # Fallback if no branch specified
+        - v1-dep-
+    # chmod to address a Circle "bug", since gcloud lives at /opt
+    # and wants to make a .staging directory (as a sibling!)
+    # when upgrading or installing new components.
+    - run: sudo chmod o+w /opt
+    # CircleCI's version of pip can be out of date; make sure it's up-to-date first.
+    - run: pip install --upgrade pip
+    # Then install requirements needed to run our tools.
+    - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
+    - run: pip install -I alembic==0.9.1
+    # Save dependency cache
+    - save_cache:
+        key: v1-dep-{{ .Branch }}-{{ epoch }}
+        paths:
+        - ~/virtualenvs
+    - run: ./ci/test.sh
+    - store_test_results:
+        path: /tmp/circleci-test-results
+    - store_artifacts:
+        path: /tmp/circleci-artifacts
+    - store_artifacts:
+        path: /tmp/circleci-test-results
+
+  deploy:
+    working_directory: ~/all-of-us/raw-data-repository
+    docker:
+      - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+        command: /sbin/init
+    steps:
+    - attach_workspace:
+        at: ~/
+    # Restore the dependency cache
+    - restore_cache:
+        keys:
+        # This branch if available
+        - v1-dep-{{ .Branch }}-
+        # Default branch if not
+        - v1-dep-master-
+        # Fallback if no branch specified
+        - v1-dep-
+    # chmod to address a Circle "bug", since gcloud lives at /opt
+    # and wants to make a .staging directory (as a sibling!)
+    # when upgrading or installing new components.
+    - run: sudo chmod o+w /opt
+    # CircleCI's version of pip can be out of date; make sure it's up-to-date first.
+    - run: pip install --upgrade pip
+    # Then install requirements needed to run our tools.
+    - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
+    - run: pip install -I alembic==0.9.1
+    # Save dependency cache
+    - save_cache:
+        key: v1-dep-{{ .Branch }}-{{ epoch }}
+        paths:
+        - ~/virtualenvs
+    - run:
+        name: Activate credentials
+        command: ./ci/activate_creds.sh ~/gcloud-credentials.key
+    - run:
+        name: Upgrade database
+        command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
+        working_directory: rest-api
+    - run:
+        name: Deploy to test server
+        command: ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
+    - run:
+        name: Start test server
+        command: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com -c ~/gcloud-credentials.key
+
+workflows:
+  version: 2
+  build-test-and-deploy:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
+      - deploy:
+          requires:
+            - test
