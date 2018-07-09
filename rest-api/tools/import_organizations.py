@@ -131,6 +131,7 @@ class HPOImporter(CsvImporter):
 
   def _cleanup_old_entities(self, session, row_list, dry_run):
     self.hpo_dao = HPODao()
+    log_prefix = '(dry run) ' if dry_run else ''
     existing_hpos = set(hpo.name for hpo in self.hpo_dao.get_all())
     hpo_group_list_from_sheet = [row[HPO_AWARDEE_ID_COLUMN].upper() for row in row_list]
 
@@ -140,7 +141,6 @@ class HPOImporter(CsvImporter):
       for hpo in hpos_to_remove:
         old_hpo = self.hpo_dao.get_by_name(hpo)
         if old_hpo:
-          log_prefix = '(dry run) ' if dry_run else ''
           logging.info(log_prefix + 'Deleting old HPO no longer in Google sheet: %s', old_hpo.name)
           hpo_id_list.append(old_hpo.hpoId)
           self.deletion_count += 1
@@ -153,7 +153,7 @@ class HPOImporter(CsvImporter):
         # checking for entities again to know if we should mark them as obsolete
         old_hpo = self.hpo_dao.get(hpo)
         if old_hpo:
-          log_prefix = '(dry run) ' if dry_run else ''
+          """ If we weren't able to delete before due to foreign key constraint, mark as obsolete"""
           logging.info(log_prefix + 'Marking old HPO as obsolete referenced in other table: %s',
                        old_hpo.name)
           sql = """ UPDATE HPO
@@ -205,6 +205,7 @@ class OrganizationImporter(CsvImporter):
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list, dry_run):
+    log_prefix = '(dry run) ' if dry_run else ''
     self.org_dao = OrganizationDao()
     existing_orgs = set(str(org.externalId) for org in self.org_dao.get_all())
     org_group_list_from_sheet = [row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper()
@@ -214,7 +215,6 @@ class OrganizationImporter(CsvImporter):
     if orgs_to_remove:
       org_id_list = []
       for org in orgs_to_remove:
-        log_prefix = '(dry run) ' if dry_run else ''
         logging.info(log_prefix + 'Deleting old Organization no longer in Google sheet: %s', org)
         old_org = self.org_dao.get_by_external_id(org)
         org_id_list.append(old_org.organizationId)
@@ -228,7 +228,7 @@ class OrganizationImporter(CsvImporter):
         # checking for entities again to know if we should mark them as obsolete
         old_org = self.org_dao.get(org)
         if old_org:
-          log_prefix = '(dry run) ' if dry_run else ''
+          """ If we weren't able to delete before due to foreign key constraint, mark as obsolete"""
           logging.info(log_prefix + 'Marking old Organization as obsolete referenced in other '
                                     'table: %s', old_org)
           sql = """ UPDATE organization
@@ -341,6 +341,7 @@ class SiteImporter(CsvImporter):
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list, dry_run):
+    log_prefix = '(dry run) ' if dry_run else ''
     self.site_dao = SiteDao()
     existing_sites = set(site.googleGroup for site in self.site_dao.get_all())
     site_group_list_from_sheet = [str(row[SITE_SITE_ID_COLUMN].lower()) for row in row_list]
@@ -349,7 +350,6 @@ class SiteImporter(CsvImporter):
     if sites_to_remove:
       site_id_list = []
       for site in sites_to_remove:
-        log_prefix = '(dry run) ' if dry_run else ''
         logging.info(log_prefix + 'Deleting old Site no longer in Google sheet: %s', site)
         old_site = self.site_dao.get_by_google_group(site)
         site_id_list.append(old_site.siteId)
@@ -363,7 +363,7 @@ class SiteImporter(CsvImporter):
         # checking for entities again to know if we should mark them as obsolete
         old_site = self.site_dao.get(site)
         if old_site:
-          log_prefix = '(dry run) ' if dry_run else ''
+          """ If we weren't able to delete before due to foreign key constraint, mark as obsolete"""
           logging.info(log_prefix + 'Marking old Organization as obsolete referenced in other '
                                     'table: %s', old_site)
           sql = """ UPDATE site
