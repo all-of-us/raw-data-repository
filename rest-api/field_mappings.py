@@ -26,7 +26,7 @@ QUESTIONNAIRE_ON_MEDICAL_HISTORY_FIELD = "questionnaireOnMedicalHistory"
 QUESTIONNAIRE_ON_MEDICATIONS_FIELD = "questionnaireOnMedications"
 QUESTIONNAIRE_ON_FAMILY_HEALTH_FIELD = "questionnaireOnFamilyHealth"
 QUESTIONNAIRE_ON_HEALTHCARE_ACCESS_FIELD = "questionnaireOnHealthcareAccess"
-QUESTIONNAIRE_ON_DVEHR_SHARING_FIELD = 'questionnaireOnDvEhrSharing'
+QUESTIONNAIRE_ON_DVEHR_SHARING_FIELD = 'consentForDvElectronicHealthRecordsSharing'
 
 class FieldType(messages.Enum):
   """A type of field that shows up in a questionnaire response."""

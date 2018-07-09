@@ -5,7 +5,8 @@ import threading
 
 from clock import FakeClock
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
-                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE)
+                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, DVEHRSHARING_CONSENT_CODE_YES,
+                            DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE)
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -116,6 +117,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'questionnaireOnHealthcareAccess': 'UNSET',
       'enrollmentStatus': 'INTERESTED',
       'samplesToIsolateDNA': 'UNSET',
+      'consentForDvElectronicHealthRecordsSharing': 'UNSET',
       'questionnaireOnOverallHealth': 'UNSET',
       'signUpTime': participant['signUpTime'],
       'biobankId': participant['biobankId'],
@@ -809,6 +811,39 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                 CONSENT_PERMISSION_YES_CODE)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('SUBMITTED', ps_1['consentForElectronicHealthRecords'])
+
+  def _submit_dvehr_consent_questionnaire_response(self, participant_id, questionnaire_id,
+                                             dvehr_consent_answer, time=TIME_1):
+    code_answers = []
+    _add_code_answer(code_answers, "DVEHRSharing_AreYouInterested", dvehr_consent_answer)
+    qr = make_questionnaire_response_json(participant_id, questionnaire_id,
+                                          code_answers=code_answers)
+    with FakeClock(time):
+      self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+
+  def test_dvehr_consent(self):
+    questionnaire_id = self.create_questionnaire('all_consents_questionnaire.json')
+    participant_1 = self.send_post('Participant', {})
+    participant_id_1 = participant_1['participantId']
+    self.send_consent(participant_id_1)
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('UNSET', ps_1['consentForDvElectronicHealthRecordsSharing'])
+
+    self._submit_dvehr_consent_questionnaire_response(participant_id_1, questionnaire_id,
+                                                DVEHRSHARING_CONSENT_CODE_NO)
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('SUBMITTED_NO_CONSENT', ps_1['consentForDvElectronicHealthRecordsSharing'])
+
+    self._submit_dvehr_consent_questionnaire_response(participant_id_1, questionnaire_id,
+                                                DVEHRSHARING_CONSENT_CODE_YES)
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('SUBMITTED', ps_1['consentForDvElectronicHealthRecordsSharing'])
+
+    self._submit_dvehr_consent_questionnaire_response(participant_id_1, questionnaire_id,
+                                                      DVEHRSHARING_CONSENT_CODE_NOT_SURE)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('SUBMITTED_NOT_SURE', ps_1['consentForDvElectronicHealthRecordsSharing'])
 
   def testQuery_manyParticipants(self):
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
