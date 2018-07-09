@@ -29,7 +29,6 @@ source tools/auth_setup.sh
 # main DB instance for the ETL.
 get_backup_instance_connection_name
 
-echo $INSTANCE_CONNECTION_NAME
 run_cloud_sql_proxy
 set_db_connection_string
 
