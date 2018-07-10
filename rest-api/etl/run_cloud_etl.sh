@@ -24,6 +24,11 @@ fi
 CREDS_ACCOUNT=${ACCOUNT}
 
 source tools/auth_setup.sh
+
+# Set INSTANCE_CONNECTION_NAME to the replica database connection, so we use the replica instead of the
+# main DB instance for the ETL.
+get_backup_instance_connection_name
+
 run_cloud_sql_proxy
 set_db_connection_string
 
