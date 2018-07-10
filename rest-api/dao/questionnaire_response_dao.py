@@ -239,11 +239,8 @@ class QuestionnaireResponseDao(BaseDao):
           new_status = QuestionnaireStatus.SUBMITTED
           if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE and not ehr_consent:
             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-          if code.value == CONSENT_FOR_DVEHR_MODULE:
+          elif code.value == CONSENT_FOR_DVEHR_MODULE:
             new_status = dvehr_consent
-          if code.value == CONSENT_FOR_DVEHR_MODULE and \
-            dvehr_consent == QuestionnaireStatus.SUBMITTED_NOT_SURE:
-            new_status = QuestionnaireStatus.SUBMITTED_NOT_SURE
           if getattr(participant_summary, summary_field) != new_status:
             setattr(participant_summary, summary_field, new_status)
             setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)

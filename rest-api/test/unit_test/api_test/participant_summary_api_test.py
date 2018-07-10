@@ -845,6 +845,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('SUBMITTED_NOT_SURE', ps_1['consentForDvElectronicHealthRecordsSharing'])
 
+    self._submit_dvehr_consent_questionnaire_response(participant_id_1, questionnaire_id,
+                                                      '')
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('SUBMITTED_NO_CONSENT', ps_1['consentForDvElectronicHealthRecordsSharing'])
+
   def testQuery_manyParticipants(self):
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
                              "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
