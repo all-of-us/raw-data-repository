@@ -187,7 +187,7 @@ class QuestionnaireResponseDao(BaseDao):
     question_map = {question.questionnaireQuestionId: question for question in questions}
     race_code_ids = []
     ehr_consent = False
-    dvehr_consent = False
+    dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
     # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
     for answer in questionnaire_response.answers:
       question = question_map.get(answer.questionId)
@@ -205,7 +205,7 @@ class QuestionnaireResponseDao(BaseDao):
           elif code.value == DVEHR_SHARING_QUESTION_CODE:
             code = code_dao.get(answer.valueCodeId)
             if code and code.value == DVEHRSHARING_CONSENT_CODE_YES:
-              dvehr_consent = True
+              dvehr_consent = QuestionnaireStatus.SUBMITTED
             elif code and code.value == DVEHRSHARING_CONSENT_CODE_NOT_SURE:
               dvehr_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
           elif code.value == EHR_CONSENT_QUESTION_CODE:
@@ -239,8 +239,8 @@ class QuestionnaireResponseDao(BaseDao):
           new_status = QuestionnaireStatus.SUBMITTED
           if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE and not ehr_consent:
             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
-          if code.value == CONSENT_FOR_DVEHR_MODULE and not dvehr_consent:
-            new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+          if code.value == CONSENT_FOR_DVEHR_MODULE:
+            new_status = dvehr_consent
           if code.value == CONSENT_FOR_DVEHR_MODULE and \
             dvehr_consent == QuestionnaireStatus.SUBMITTED_NOT_SURE:
             new_status = QuestionnaireStatus.SUBMITTED_NOT_SURE
