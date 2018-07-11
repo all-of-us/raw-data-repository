@@ -162,6 +162,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'biobankId': participant['biobankId'],
                 'participantId': participant_id,
                 'physicalMeasurementsStatus': 'UNSET',
+                'consentForDvElectronicHealthRecordsSharing': 'UNSET',
                 'consentForElectronicHealthRecords': 'UNSET',
                 'consentForStudyEnrollment': 'SUBMITTED',
                 'consentForStudyEnrollmentTime': TIME_1.isoformat(),

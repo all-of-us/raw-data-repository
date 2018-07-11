@@ -289,13 +289,13 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
     self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0, [
       participant_fields,
-      ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, t1, '', '', t3, '', '', t3, t2]
+      ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, '', t1, '', '', t3, '', '', t3, t2]
     ])
 
     self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1, [
       participant_fields,
-      ['1', '1980-01-03', '', t2, '', '', t1, '', '', '', '', '', '', t2],
-      ['5', '', '', '', '', '', t1, '', '', '', '', '', '', t2]
+      ['1', '1980-01-03', '', t2, '', '', '', t1, '', '', '', '', '', '', t2],
+      ['5', '', '', '', '', '', '', t1, '', '', '', '', '', '', t2]
     ])
 
     self.assertCsvContents(BUCKET_NAME, prefix + _ANSWERS_CSV % 0, [
@@ -366,6 +366,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.race.UNSET': 2,
         'Participant.samplesToIsolateDNA.UNSET': 2,
         'Participant.state.UNSET': 2,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 2
     })
     self.assertBucket(bucket_map, TIME, 'UNSET', {
         'Participant': 1,
@@ -392,6 +393,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.race.UNSET': 1,
         'Participant.samplesToIsolateDNA.UNSET': 1,
         'Participant.state.UNSET': 1,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
     })
     self.assertBucket(bucket_map, TIME, '', {
         'Participant': 3,
@@ -420,6 +422,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.race.UNSET': 3,
         'Participant.samplesToIsolateDNA.UNSET': 3,
         'Participant.state.UNSET': 3,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 3,
     })
 
     # At TIME_2, P1 is white, UNMAPPED gender; biobank samples
@@ -450,6 +453,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.race.WHITE': 1,
         'Participant.samplesToIsolateDNA.UNSET': 1,
         'Participant.state.PMI_Skip': 1,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
     })
     self.assertBucket(bucket_map, TIME_2, 'UNSET', {
         'Participant': 1,
@@ -476,6 +480,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.race.OTHER_RACE': 1,
         'Participant.samplesToIsolateDNA.RECEIVED': 1,
         'Participant.state.UNSET': 1,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
     })
     self.assertBucket(bucket_map, TIME_2, '', {
         'Participant': 3,
@@ -514,6 +519,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.samplesToIsolateDNA.UNSET': 2,
         'Participant.state.PMI_Skip': 1,
         'Participant.state.UNSET': 2,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 3,
     })
 
     # At TIME_3, P1 is UNSET race, UNMAPPED female gender, and now in PITT HPO;
@@ -548,6 +554,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.race.PMI_Skip': 1,
         'Participant.samplesToIsolateDNA.UNSET': 1,
         'Participant.state.UNSET': 1,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
     })
 
     self.assertBucket(bucket_map, TIME_3, 'PITT', {
@@ -588,6 +595,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.samplesToIsolateDNA.UNSET': 1,
         'Participant.state.PIIState_VA': 1,
         'Participant.state.PMI_Skip': 1,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 2,
 
         'FullParticipant.ageRange.UNSET': 1,
         'FullParticipant.biospecimen.UNSET': 1,
@@ -612,6 +620,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'FullParticipant.race.OTHER_RACE': 1,
         'FullParticipant.samplesToIsolateDNA.RECEIVED': 1,
         'FullParticipant.state.PIIState_VA': 1,
+        'FullParticipant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
     })
     self.assertBucket(bucket_map, TIME_3, '', {
         'Participant': 3,
@@ -659,6 +668,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.state.PIIState_VA': 1,
         'Participant.state.PMI_Skip': 1,
         'Participant.state.UNSET': 1,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 3,
 
         'FullParticipant.ageRange.UNSET': 1,
         'FullParticipant.biospecimen.UNSET': 1,
@@ -683,6 +693,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'FullParticipant.race.OTHER_RACE': 1,
         'FullParticipant.samplesToIsolateDNA.RECEIVED': 1,
         'FullParticipant.state.PIIState_VA': 1,
+        'FullParticipant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
     })
 
     # There is a biobank order on 1/4, but it gets ignored since it's after the run date.

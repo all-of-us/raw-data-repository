@@ -11,6 +11,10 @@
       },
       {
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "DVEHRSharing"
+      },
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
         "code": "EHRConsentPII"
       }],
     "question": [
@@ -36,6 +40,36 @@
             "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
             "code": "ConsentPermission_No",
             "display": "I have read this consent form. I understand the information in this form. All of my questions have been answered. I freely and willingly choose to not to take part."
+          }
+        ]
+      },
+          {
+        "linkId": "DVEHRSharing_AreYouInterested",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "DVEHRSharing_AreYouInterested"
+          }
+        ],
+        "text": "DVEHRSharing_AreYouInterested",
+        "type": "choice",
+        "required": false,
+        "repeats": false,
+        "option": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "DVEHRSharing_Yes",
+            "display": "I have read this consent form. I understand the information in this form. All of my questions have been answered. I freely and willingly choose to take part."
+          },
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "DVEHRSharing_NotSure",
+            "display": "I have read this consent form. I understand the information in this form. I may have further questions and I'm not sure."
+          },
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "DVEHRSharing_No",
+            "display": "I have read this consent form. I understand the information in this form. All of my questions have been answered. I do not wish to share my information."
           }
         ]
       }]

@@ -77,6 +77,11 @@ class ParticipantSummary(Base):
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   consentForElectronicHealthRecordsTime = Column('consent_for_electronic_health_records_time',
                                                  UTCDateTime)
+  consentForDvElectronicHealthRecordsSharing = Column(
+    'consent_for_dv_electronic_health_records_sharing', Enum(QuestionnaireStatus),
+    default=QuestionnaireStatus.UNSET)
+  consentForDvElectronicHealthRecordsSharingTime = Column(
+    'consent_for_dv_electronic_health_records_sharing_time', UTCDateTime)
   consentForCABoR = Column('consent_for_cabor',
                            Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   consentForCABoRTime = Column('consent_for_cabor_time', UTCDateTime)
