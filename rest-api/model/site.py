@@ -1,5 +1,5 @@
 from model.base import Base
-from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, Text
 from site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
 from model.utils import Enum
 
@@ -26,7 +26,7 @@ class Site(Base):
   latitude = Column('latitude', Float)
   longitude = Column('longitude', Float)
   timeZoneId = Column('time_zone_id', String(1024))
-  directions = Column('directions', String(1024))
+  directions = Column('directions', Text)
   physicalLocationName = Column('physical_location_name', String(1024))
   address1 = Column('address_1', String(1024))
   address2 = Column('address_2', String(1024))
