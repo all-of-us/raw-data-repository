@@ -9,10 +9,11 @@ import fhirclient.models.questionnaireresponse
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
-from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
+  DVEHR_SHARING_QUESTION_CODE, CONSENT_FOR_DVEHR_MODULE, DVEHRSHARING_CONSENT_CODE_NOT_SURE
 from code_constants import EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE
 from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PPI_EXTRA_SYSTEM
-from code_constants import CABOR_SIGNATURE_QUESTION_CODE
+from code_constants import CABOR_SIGNATURE_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES
 from config_api import is_config_admin
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
@@ -186,6 +187,7 @@ class QuestionnaireResponseDao(BaseDao):
     question_map = {question.questionnaireQuestionId: question for question in questions}
     race_code_ids = []
     ehr_consent = False
+    dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
     # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
     for answer in questionnaire_response.answers:
       question = question_map.get(answer.questionId)
@@ -198,6 +200,14 @@ class QuestionnaireResponseDao(BaseDao):
                                                    summary_field[1], answer)
           elif code.value == RACE_QUESTION_CODE:
             race_code_ids.append(answer.valueCodeId)
+
+
+          elif code.value == DVEHR_SHARING_QUESTION_CODE:
+            code = code_dao.get(answer.valueCodeId)
+            if code and code.value == DVEHRSHARING_CONSENT_CODE_YES:
+              dvehr_consent = QuestionnaireStatus.SUBMITTED
+            elif code and code.value == DVEHRSHARING_CONSENT_CODE_NOT_SURE:
+              dvehr_consent = QuestionnaireStatus.SUBMITTED_NOT_SURE
           elif code.value == EHR_CONSENT_QUESTION_CODE:
             code = code_dao.get(answer.valueCodeId)
             if code and code.value == CONSENT_PERMISSION_YES_CODE:
@@ -229,6 +239,8 @@ class QuestionnaireResponseDao(BaseDao):
           new_status = QuestionnaireStatus.SUBMITTED
           if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE and not ehr_consent:
             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
+          elif code.value == CONSENT_FOR_DVEHR_MODULE:
+            new_status = dvehr_consent
           if getattr(participant_summary, summary_field) != new_status:
             setattr(participant_summary, summary_field, new_status)
             setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)

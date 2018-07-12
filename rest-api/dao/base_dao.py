@@ -213,6 +213,8 @@ class BaseDao(object):
                                           first_descending)
     # Return one more than max_results, so that we know if there are more results.
     query = query.limit(query_def.max_results + 1)
+    if query_def.offset:
+      query = query.offset(query_def.offset)
     return query, order_by_field_names
 
   def _set_filters(self, query, filters):

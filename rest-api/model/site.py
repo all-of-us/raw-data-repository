@@ -1,5 +1,6 @@
 from model.base import Base
 from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, SmallInteger
+from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, UnicodeText
 from site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
 from model.utils import Enum
 
@@ -21,12 +22,12 @@ class Site(Base):
   scheduleInstructions = Column('schedule_instructions', String(2048))
   scheduleInstructions_ES = Column('schedule_instructions_es', String(2048))
   launchDate = Column('launch_date', Date)
-  notes = Column('notes', String(1024))
-  notes_ES = Column('notes_es', String(1024))
+  notes = Column('notes', UnicodeText)
+  notes_ES = Column('notes_es', UnicodeText)
   latitude = Column('latitude', Float)
   longitude = Column('longitude', Float)
   timeZoneId = Column('time_zone_id', String(1024))
-  directions = Column('directions', String(1024))
+  directions = Column('directions', UnicodeText)
   physicalLocationName = Column('physical_location_name', String(1024))
   address1 = Column('address_1', String(1024))
   address2 = Column('address_2', String(1024))
