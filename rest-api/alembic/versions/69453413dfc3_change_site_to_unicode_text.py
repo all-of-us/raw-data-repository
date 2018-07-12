@@ -1,7 +1,7 @@
 """change site to unicode text
 
 Revision ID: 69453413dfc3
-Revises: 0a4ccc37472a
+Revises: 995557d8098a
 Create Date: 2018-07-11 14:20:54.392997
 
 """
@@ -19,7 +19,7 @@ from model.code import CodeType
 
 # revision identifiers, used by Alembic.
 revision = '69453413dfc3'
-down_revision = '0a4ccc37472a'
+down_revision = '995557d809a8'
 branch_labels = None
 depends_on = None
 
