@@ -1,7 +1,8 @@
+from model.site_enums import ObsoleteStatus
 from participant_enums import OrganizationType
 from model.base import Base
 from model.utils import Enum
-from sqlalchemy import Column, Integer, String, UniqueConstraint, SmallInteger
+from sqlalchemy import Column, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 class HPO(Base):
@@ -14,7 +15,7 @@ class HPO(Base):
                             default=OrganizationType.UNSET)
   organizations = relationship('Organization', cascade='all, delete-orphan',
                                order_by='Organization.externalId')
-  isObsolete = Column('is_obsolete', SmallInteger, default=0)
+  isObsolete = Column('is_obsolete', Enum(ObsoleteStatus), default=0)
   __table_args__ = (
     UniqueConstraint('name'),
   )
