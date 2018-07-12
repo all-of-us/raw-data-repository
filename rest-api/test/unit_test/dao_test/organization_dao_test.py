@@ -18,7 +18,8 @@ class OrganizationDaoTest(SqlTestBase):
     self.ps_history = ParticipantHistoryDao()
 
   def test_insert(self):
-    organization = Organization(externalId='myorg', displayName='myorg_display', hpoId=PITT_HPO_ID)
+    organization = Organization(externalId='myorg', displayName='myorg_display',
+                                hpoId=PITT_HPO_ID, isObsolete=0)
     created_organization = self.organization_dao.insert(organization)
     new_organization = self.organization_dao.get(created_organization.organizationId)
     organization.organizationId = created_organization.organizationId
