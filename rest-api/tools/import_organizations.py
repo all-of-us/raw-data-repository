@@ -141,25 +141,25 @@ class HPOImporter(CsvImporter):
       for hpo in hpos_to_remove:
         old_hpo = self.hpo_dao.get_by_name(hpo)
         if old_hpo:
-          logging.info(log_prefix + 'Deleting old HPO no longer in Google sheet: %s', old_hpo.name)
           hpo_id_list.append(old_hpo.hpoId)
           self.deletion_count += 1
 
       if hpo_id_list and not dry_run:
-        self.delete_sql_statement(session, hpo_id_list)
-        self.hpo_dao._invalidate_cache()
-
-      for hpo in hpo_id_list:
-        # checking for entities again to know if we should mark them as obsolete
-        old_hpo = self.hpo_dao.get(hpo)
-        if old_hpo:
-          """ If we weren't able to delete before due to foreign key constraint, mark as obsolete"""
-          logging.info(log_prefix + 'Marking old HPO as obsolete referenced in other table: %s',
-                       old_hpo.name)
-          sql = """ UPDATE HPO
+        for hpo in hpo_id_list:
+          old_hpo = self.hpo_dao.get(hpo)
+          if old_hpo:
+            logging.info(log_prefix + 'Marking old HPO as obsolete referenced in other table: %s',
+                         old_hpo.name)
+            sql = """ UPDATE HPO
                 SET is_obsolete = 1
                 WHERE hpo_id = {hpo}""".format(hpo=old_hpo.hpoId)
-          session.execute(sql)
+            session.execute(sql)
+
+        self.hpo_dao._invalidate_cache()
+        # Try to delete the old HPO's but if they are referenced in another table they are at least
+        # marked as obsolete
+        self.delete_sql_statement(session, hpo_id_list)
+
 
 
 class OrganizationImporter(CsvImporter):
@@ -221,20 +221,22 @@ class OrganizationImporter(CsvImporter):
         self.deletion_count += 1
 
       if org_id_list and not dry_run:
-        self.delete_sql_statement(session, org_id_list)
-        self.org_dao._invalidate_cache()
-
-      for org in org_id_list:
-        # checking for entities again to know if we should mark them as obsolete
-        old_org = self.org_dao.get(org)
-        if old_org:
-          """ If we weren't able to delete before due to foreign key constraint, mark as obsolete"""
-          logging.info(log_prefix + 'Marking old Organization as obsolete referenced in other '
-                                    'table: %s', old_org)
-          sql = """ UPDATE organization
+        for org in org_id_list:
+          # checking for entities again to know if we should mark them as obsolete
+          old_org = self.org_dao.get(org)
+          if old_org:
+            # If we weren't able to delete before due to foreign key constraint, mark as obsolete
+            logging.info(log_prefix + 'Marking old Organization as obsolete referenced in other '
+                                      'table: %s', old_org)
+            sql = """ UPDATE organization
                 SET is_obsolete = 1
                 WHERE organization_id = {org}""".format(org=old_org.organizationId)
-          session.execute(sql)
+            session.execute(sql)
+
+        self.org_dao._invalidate_cache()
+        # Try to delete old orgs.
+        self.delete_sql_statement(session, org_id_list)
+
 
 
 class SiteImporter(CsvImporter):
@@ -356,20 +358,22 @@ class SiteImporter(CsvImporter):
         self.deletion_count += 1
 
       if site_id_list and not dry_run:
-        self.delete_sql_statement(session, site_id_list)
-        self.site_dao._invalidate_cache()
-
-      for site in site_id_list:
-        # checking for entities again to know if we should mark them as obsolete
-        old_site = self.site_dao.get(site)
-        if old_site:
-          """ If we weren't able to delete before due to foreign key constraint, mark as obsolete"""
-          logging.info(log_prefix + 'Marking old Organization as obsolete referenced in other '
-                                    'table: %s', old_site)
-          sql = """ UPDATE site
+        for site in site_id_list:
+          # checking for entities again to know if we should mark them as obsolete
+          old_site = self.site_dao.get(site)
+          if old_site:
+            # If we weren't able to delete before due to foreign key constraint, mark as obsolete
+            logging.info(log_prefix + 'Marking old Organization as obsolete referenced in other '
+                                      'table: %s', old_site)
+            sql = """ UPDATE site
                 SET is_obsolete = 1
                 WHERE site_id = {site}""".format(site=old_site.siteId)
-          session.execute(sql)
+            session.execute(sql)
+            
+        self.site_dao._invalidate_cache()
+        # Try to delete old sites.
+        self.delete_sql_statement(session, site_id_list)
+
 
   def _insert_new_participants(self, entity):
     num_participants = 0
