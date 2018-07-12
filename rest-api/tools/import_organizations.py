@@ -369,7 +369,6 @@ class SiteImporter(CsvImporter):
                 SET is_obsolete = 1
                 WHERE site_id = {site}""".format(site=old_site.siteId)
             session.execute(sql)
-            
         self.site_dao._invalidate_cache()
         # Try to delete old sites.
         self.delete_sql_statement(session, site_id_list)
