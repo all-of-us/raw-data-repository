@@ -88,7 +88,8 @@ class TableExporter(object):
       # No schemas in SQLite.
       sql_table = table_name
     SqlExporter(bucket_name, use_unicode=True).run_export(
-        output_path, 'SELECT * FROM {}'.format(sql_table), transformf=transformf)
+        output_path, 'SELECT * FROM {}'.format(sql_table), transformf=transformf,
+        backup=True)
     return '%s/%s' % (bucket_name, output_path)
 
   @staticmethod

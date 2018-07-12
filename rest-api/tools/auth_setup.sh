@@ -80,6 +80,13 @@ function cleanup {
 
 trap cleanup EXIT
 
+function get_backup_instance_connection_name {
+  echo "Getting replica database info..."
+  tools/install_config.sh --key db_config --instance $INSTANCE \
+      --creds_file ${CREDS_FILE} --config_output "$TMP_DB_INFO_FILE"
+  INSTANCE_CONNECTION_NAME=`grep \"backup_db_connection_name $TMP_DB_INFO_FILE | cut -d\" -f4`
+}
+
 function get_instance_connection_name {
   echo "Getting database info..."
   tools/install_config.sh --key db_config --instance $INSTANCE \
