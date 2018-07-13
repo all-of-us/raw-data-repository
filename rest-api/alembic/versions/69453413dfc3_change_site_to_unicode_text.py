@@ -1,7 +1,7 @@
 """change site to unicode text
 
 Revision ID: 69453413dfc3
-Revises: 995557d809a8
+Revises: 0a4ccc37472a
 Create Date: 2018-07-11 14:20:54.392997
 
 """
@@ -14,7 +14,7 @@ from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, O
 from participant_enums import WithdrawalStatus, SuspensionStatus
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType
 from participant_enums import MetricSetType, MetricsKey
-from model.site_enums import SiteStatus, EnrollingStatus, ObsoleteStatus
+from model.site_enums import SiteStatus, EnrollingStatus
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
