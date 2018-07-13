@@ -145,14 +145,11 @@ class HPOImporter(CsvImporter):
           self.deletion_count += 1
 
       if hpo_id_list and not dry_run:
-        # for hpo in hpo_id_list:
-        #   old_hpo = self.hpo_dao.get(hpo)
-        #   if old_hpo:
         logging.info(log_prefix + 'Marking old HPO as obsolete referenced in other table: %s',
                      old_hpo.name)
         sql = """ UPDATE HPO
             SET is_obsolete = 1
-            WHERE hpo_id in {hpo}""".format(hpo=hpo_id_list)
+            WHERE hpo_id in {hpo_id_list}""".format(hpo_id_list=hpo_id_list)
         session.execute(sql)
 
         self.hpo_dao._invalidate_cache()
@@ -221,16 +218,11 @@ class OrganizationImporter(CsvImporter):
         self.deletion_count += 1
 
       if org_id_list and not dry_run:
-        # for org in org_id_list:
-          # checking for entities again to know if we should mark them as obsolete
-          # old_org = self.org_dao.get(org)
-          # if old_org:
-            # If we weren't able to delete before due to foreign key constraint, mark as obsolete
         logging.info(log_prefix + 'Marking old Organization as obsolete referenced in other '
                                   'table: %s', old_org)
         sql = """ UPDATE organization
             SET is_obsolete = 1
-            WHERE organization_id in {org}""".format(org=org_id_list)
+            WHERE organization_id in {org_id_list}""".format(org_id_list=org_id_list)
         session.execute(sql)
 
         self.org_dao._invalidate_cache()
@@ -358,11 +350,6 @@ class SiteImporter(CsvImporter):
         self.deletion_count += 1
 
       if site_id_list and not dry_run:
-        # for site in site_id_list:
-        #   # checking for entities again to know if we should mark them as obsolete
-        #   old_site = self.site_dao.get(site)
-        #   if old_site:
-            # If we weren't able to delete before due to foreign key constraint, mark as obsolete
         sql = """SELECT site_id from site where is_obsolete = 0 and site_id in {sites}""".format(
           sites=site_id_list)
         site_id_list = session.execute(sql)
@@ -370,7 +357,7 @@ class SiteImporter(CsvImporter):
                                   'table: %s', old_site)
         sql = """ UPDATE site
             SET is_obsolete = 1
-            WHERE site_id in {site}""".format(site=site_id_list)
+            WHERE site_id in {site_id_list}""".format(site_id_list=site_id_list)
         session.execute(sql)
         self.site_dao._invalidate_cache()
         # Try to delete old sites.
