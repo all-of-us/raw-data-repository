@@ -15,7 +15,8 @@ class HPO(Base):
                             default=OrganizationType.UNSET)
   organizations = relationship('Organization', cascade='all, delete-orphan',
                                order_by='Organization.externalId')
-  isObsolete = Column('is_obsolete', Enum(ObsoleteStatus), default=0)
+  isObsolete = Column('is_obsolete', Enum(ObsoleteStatus))
+
   __table_args__ = (
     UniqueConstraint('name'),
   )

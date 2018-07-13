@@ -17,4 +17,4 @@ class Organization(Base):
   hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
   # Sites belonging to this organization.
   sites = relationship('Site', cascade='all, delete-orphan', order_by='Site.googleGroup')
-  isObsolete = Column('is_obsolete', Enum(ObsoleteStatus), default=0)
+  isObsolete = Column('is_obsolete', Enum(ObsoleteStatus))
