@@ -17,3 +17,8 @@ class DigitalSchedulingStatus(messages.Enum):
   UNSET = 0
   ACTIVE = 1
   INACTIVE = 2
+
+class ObsoleteStatus(messages.Enum):
+  """ If an organization is obsolete but referenced in other tables. """
+  ACTIVE = 0
+  OBSOLETE = 1

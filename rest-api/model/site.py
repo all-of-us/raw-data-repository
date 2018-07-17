@@ -1,6 +1,6 @@
 from model.base import Base
 from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey, UnicodeText
-from site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
+from site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 from model.utils import Enum
 
 class Site(Base):
@@ -36,3 +36,4 @@ class Site(Base):
   phoneNumber = Column('phone_number', String(80))
   adminEmails = Column('admin_emails', String(4096))
   link = Column('link', String(255))
+  isObsolete = Column('is_obsolete', Enum(ObsoleteStatus))
