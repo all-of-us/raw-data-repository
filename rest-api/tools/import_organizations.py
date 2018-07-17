@@ -142,7 +142,7 @@ class HPOImporter(CsvImporter):
         if old_hpo and old_hpo.isObsolete != ObsoleteStatus.OBSOLETE:
           hpo_id_list.append(old_hpo.hpoId)
           self.deletion_count += 1
-        elif old_hpo.isObsolete == ObsoleteStatus.OBSOLETE:
+        elif old_hpo and old_hpo.isObsolete == ObsoleteStatus.OBSOLETE:
           logging.info('Not attempting to delete hpo [%s] with existing obsolete status',
                        old_hpo.name)
 
@@ -157,10 +157,10 @@ class HPOImporter(CsvImporter):
 
         session.execute(sql)
 
-        self.hpo_dao._invalidate_cache()
         # Try to delete the old HPO's but if they are referenced in another table they are at least
         # marked as obsolete
         self.delete_sql_statement(session, str_list)
+        self.hpo_dao._invalidate_cache()
 
 
 
@@ -220,7 +220,7 @@ class OrganizationImporter(CsvImporter):
         if old_org and old_org.isObsolete != ObsoleteStatus.OBSOLETE:
           org_id_list.append(old_org.organizationId)
           self.deletion_count += 1
-        elif old_org.isObsolete == ObsoleteStatus.OBSOLETE:
+        elif old_org and old_org.isObsolete == ObsoleteStatus.OBSOLETE:
           logging.info('Not attempting to delete org [%s] with existing obsolete status',
                        old_org.displayName)
 
@@ -233,10 +233,9 @@ class OrganizationImporter(CsvImporter):
             WHERE organization_id in ({org_id_list})""".format(org_id_list=str_list)
         session.execute(sql)
 
-        self.org_dao._invalidate_cache()
-        # Try to delete old orgs.
         logging.info(log_prefix + 'Deleting old Organization no longer in Google sheet: %s', org)
         self.delete_sql_statement(session, str_list)
+        self.org_dao._invalidate_cache()
 
 
 
@@ -357,7 +356,7 @@ class SiteImporter(CsvImporter):
       if old_site and old_site.isObsolete != ObsoleteStatus.OBSOLETE:
         site_id_list.append(old_site.siteId)
         self.deletion_count += 1
-      elif old_site.isObsolete == ObsoleteStatus.OBSOLETE:
+      elif old_site and old_site.isObsolete == ObsoleteStatus.OBSOLETE:
         logging.info('Not attempting to delete site [%s] with existing obsolete status',
                      old_site.googleGroup)
 
