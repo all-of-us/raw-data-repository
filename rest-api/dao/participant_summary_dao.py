@@ -342,7 +342,8 @@ class ParticipantSummaryDao(UpdatableDao):
     # Participants that withdrew more than 48 hours ago should have fields other than
     # WITHDRAWN_PARTICIPANT_FIELDS cleared.
     if (model.withdrawalStatus == WithdrawalStatus.NO_USE and
-        model.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME):
+        (model.withdrawalTime is None or
+         model.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME)):
       result = {k: result.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
 
     result['participantId'] = to_client_participant_id(model.participantId)

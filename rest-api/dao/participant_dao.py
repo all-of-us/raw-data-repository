@@ -104,6 +104,9 @@ class ParticipantDao(UpdatableDao):
     obj.lastModified = clock.CLOCK.now()
     obj.signUpTime = existing_obj.signUpTime
     obj.biobankId = existing_obj.biobankId
+    obj.withdrawalTime = existing_obj.withdrawalTime
+    obj.suspensionTime = existing_obj.suspensionTime
+
     need_new_summary = False
     if obj.withdrawalStatus != existing_obj.withdrawalStatus:
       obj.withdrawalTime = (obj.lastModified if obj.withdrawalStatus == WithdrawalStatus.NO_USE
