@@ -147,7 +147,7 @@ class HPOImporter(CsvImporter):
                        old_hpo.name)
 
       if hpo_id_list and not dry_run:
-        logging.info(log_prefix + 'Marking old HPO as obsolete referenced in other table: %s',
+        logging.info(log_prefix + 'Marking old HPO as obsolete: %s',
                      old_hpo.name)
         str_list = ','.join([str(i) for i in hpo_id_list])
 
@@ -225,8 +225,7 @@ class OrganizationImporter(CsvImporter):
                        old_org.displayName)
 
       if org_id_list and not dry_run:
-        logging.info(log_prefix + 'Marking old Organization as obsolete referenced in other '
-                                  'table: %s', old_org)
+        logging.info(log_prefix + 'Marking old Organization as obsolete : %s', old_org)
         str_list = ','.join([str(i) for i in org_id_list])
         sql = """ UPDATE organization
             SET is_obsolete = 1
@@ -362,8 +361,7 @@ class SiteImporter(CsvImporter):
 
       if site_id_list and not dry_run:
         str_list = ','.join([str(i) for i in site_id_list])
-        logging.info(log_prefix + 'Marking old site as obsolete referenced in other '
-                                  'table: %s', old_site)
+        logging.info(log_prefix + 'Marking old site as obsolete : %s', old_site)
         sql = """ UPDATE site
             SET is_obsolete = 1
             WHERE site_id in ({site_id_list})""".format(site_id_list=str_list)
