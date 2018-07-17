@@ -187,7 +187,7 @@ class ParticipantDaoTest(SqlTestBase):
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
     self.assertEquals(expected_participant.asdict(), p2.asdict())
-    
+
   def test_update_withdraw(self):
     p = Participant()
     time = datetime.datetime(2016, 1, 1)
@@ -213,14 +213,14 @@ class ParticipantDaoTest(SqlTestBase):
     with FakeClock(time3):
       self.dao.update(p)
 
-    # Withdrawal time should get copied over.   
+    # Withdrawal time should get copied over.
     p2 = self.dao.get(1)
     expected_participant = self._participant_with_defaults(
         participantId=1, version=3, biobankId=2, lastModified=time3, signUpTime=time,
-        withdrawalStatus=WithdrawalStatus.NO_USE, withdrawalTime=time2, 
+        withdrawalStatus=WithdrawalStatus.NO_USE, withdrawalTime=time2,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
     self.assertEquals(expected_participant.asdict(), p2.asdict())
-    
+
   def test_update_suspend(self):
     p = Participant()
     time = datetime.datetime(2016, 1, 1)
@@ -246,14 +246,14 @@ class ParticipantDaoTest(SqlTestBase):
     with FakeClock(time3):
       self.dao.update(p)
 
-    # Withdrawal time should get copied over.   
+    # Withdrawal time should get copied over.
     p2 = self.dao.get(1)
     expected_participant = self._participant_with_defaults(
         participantId=1, version=3, biobankId=2, lastModified=time3, signUpTime=time,
-        suspensionStatus=SuspensionStatus.NO_CONTACT, suspensionTime=time2, 
+        suspensionStatus=SuspensionStatus.NO_CONTACT, suspensionTime=time2,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
-    self.assertEquals(expected_participant.asdict(), p2.asdict())  
-    
+    self.assertEquals(expected_participant.asdict(), p2.asdict())
+
 
   def test_update_wrong_expected_version(self):
     p = Participant()

@@ -313,7 +313,7 @@ class SiteImporter(CsvImporter):
   def delete_sql_statement(self, session, str_list):
     sql = """
           DELETE FROM site
-          WHERE site_id IN ({str_list}) 
+          WHERE site_id IN ({str_list})
           AND NOT EXISTS(
           SELECT * FROM participant WHERE site_id = site.site_id)
           AND NOT EXISTS(
@@ -333,7 +333,7 @@ class SiteImporter(CsvImporter):
           AND NOT EXISTS(
           SELECT * FROM biobank_order WHERE finalized_site_id = site.site_id
           OR source_site_id = site.site_id
-          OR collected_site_id = site.site_id 
+          OR collected_site_id = site.site_id
           OR processed_site_id = site.site_id
           )
           """.format(str_list=str_list)

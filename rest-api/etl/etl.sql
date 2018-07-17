@@ -883,7 +883,7 @@ CREATE TABLE cdm.src_race
 -- ------------------------------------------------------
 -- Map many non-standard races from src_mapped to allowed
 -- by cdm standards by 'source_to_concept_map' relation.
--- priority = 1 means more detailed racial 
+-- priority = 1 means more detailed racial
 -- information over priority = 2. So if patient provides
 -- detailed answer about his/her race, we firstly
 -- use it.
