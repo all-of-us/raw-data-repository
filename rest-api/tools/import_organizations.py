@@ -27,7 +27,7 @@ from dao.site_dao import SiteDao
 from model.hpo import HPO
 from model.organization import Organization
 from model.site import Site
-from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus
+from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 from participant_enums import OrganizationType
 from main_util import get_parser, configure_logging
 from tools.import_participants import _setup_questionnaires, import_participant
@@ -110,8 +110,7 @@ class HPOImporter(CsvImporter):
     super(HPOImporter, self)._insert_entity(entity, existing_map, session, dry_run)
 
 
-  def delete_sql_statement(self, session, hpo_id_list):
-    str_list = ','.join([str(i) for i in hpo_id_list])
+  def delete_sql_statement(self, session, str_list):
     sql = """
           DELETE FROM hpo
           WHERE hpo_id IN ({str_list})
@@ -131,6 +130,7 @@ class HPOImporter(CsvImporter):
 
   def _cleanup_old_entities(self, session, row_list, dry_run):
     self.hpo_dao = HPODao()
+    log_prefix = '(dry run) ' if dry_run else ''
     existing_hpos = set(hpo.name for hpo in self.hpo_dao.get_all())
     hpo_group_list_from_sheet = [row[HPO_AWARDEE_ID_COLUMN].upper() for row in row_list]
 
@@ -139,14 +139,29 @@ class HPOImporter(CsvImporter):
       hpo_id_list = []
       for hpo in hpos_to_remove:
         old_hpo = self.hpo_dao.get_by_name(hpo)
-        if old_hpo:
-          log_prefix = '(dry run) ' if dry_run else ''
-          logging.info(log_prefix + 'Deleting old HPO no longer in Google sheet: %s', old_hpo.name)
+        if old_hpo and old_hpo.isObsolete != ObsoleteStatus.OBSOLETE:
           hpo_id_list.append(old_hpo.hpoId)
           self.deletion_count += 1
+        elif old_hpo and old_hpo.isObsolete == ObsoleteStatus.OBSOLETE:
+          logging.info('Not attempting to delete hpo [%s] with existing obsolete status',
+                       old_hpo.name)
 
       if hpo_id_list and not dry_run:
-        self.delete_sql_statement(session, hpo_id_list)
+        logging.info(log_prefix + 'Marking old HPO as obsolete: %s',
+                     old_hpo.name)
+        str_list = ','.join([str(i) for i in hpo_id_list])
+
+        sql = """ UPDATE HPO
+            SET is_obsolete = 1
+            WHERE hpo_id in ({params})""".format(params=str_list)
+
+        session.execute(sql)
+
+        # Try to delete the old HPO's but if they are referenced in another table they are at least
+        # marked as obsolete
+        self.delete_sql_statement(session, str_list)
+        self.hpo_dao._invalidate_cache()
+
 
 
 class OrganizationImporter(CsvImporter):
@@ -174,8 +189,7 @@ class OrganizationImporter(CsvImporter):
                         displayName=row[ORGANIZATION_NAME_COLUMN],
                         hpoId=hpo.hpoId)
 
-  def delete_sql_statement(self, session, org_id_list):
-    str_list = ','.join([str(i) for i in org_id_list])
+  def delete_sql_statement(self, session, str_list):
     sql = """
           DELETE FROM organization
           WHERE organization_id IN ({str_list})
@@ -192,6 +206,7 @@ class OrganizationImporter(CsvImporter):
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list, dry_run):
+    log_prefix = '(dry run) ' if dry_run else ''
     self.org_dao = OrganizationDao()
     existing_orgs = set(str(org.externalId) for org in self.org_dao.get_all())
     org_group_list_from_sheet = [row[ORGANIZATION_ORGANIZATION_ID_COLUMN].upper()
@@ -201,14 +216,26 @@ class OrganizationImporter(CsvImporter):
     if orgs_to_remove:
       org_id_list = []
       for org in orgs_to_remove:
-        log_prefix = '(dry run) ' if dry_run else ''
-        logging.info(log_prefix + 'Deleting old Organization no longer in Google sheet: %s', org)
         old_org = self.org_dao.get_by_external_id(org)
-        org_id_list.append(old_org.organizationId)
-        self.deletion_count += 1
+        if old_org and old_org.isObsolete != ObsoleteStatus.OBSOLETE:
+          org_id_list.append(old_org.organizationId)
+          self.deletion_count += 1
+        elif old_org and old_org.isObsolete == ObsoleteStatus.OBSOLETE:
+          logging.info('Not attempting to delete org [%s] with existing obsolete status',
+                       old_org.displayName)
 
       if org_id_list and not dry_run:
-        self.delete_sql_statement(session, org_id_list)
+        logging.info(log_prefix + 'Marking old Organization as obsolete : %s', old_org)
+        str_list = ','.join([str(i) for i in org_id_list])
+        sql = """ UPDATE organization
+            SET is_obsolete = 1
+            WHERE organization_id in ({org_id_list})""".format(org_id_list=str_list)
+        session.execute(sql)
+
+        logging.info(log_prefix + 'Deleting old Organization no longer in Google sheet: %s', org)
+        self.delete_sql_statement(session, str_list)
+        self.org_dao._invalidate_cache()
+
 
 
 class SiteImporter(CsvImporter):
@@ -283,8 +310,7 @@ class SiteImporter(CsvImporter):
             self._insert_new_participants(self.new_sites_list)
 
 
-  def delete_sql_statement(self, session, site_id_list):
-    str_list = ','.join([str(i) for i in site_id_list])
+  def delete_sql_statement(self, session, str_list):
     sql = """
           DELETE FROM site
           WHERE site_id IN ({str_list}) 
@@ -315,6 +341,7 @@ class SiteImporter(CsvImporter):
     session.execute(sql)
 
   def _cleanup_old_entities(self, session, row_list, dry_run):
+    log_prefix = '(dry run) ' if dry_run else ''
     self.site_dao = SiteDao()
     existing_sites = set(site.googleGroup for site in self.site_dao.get_all())
     site_group_list_from_sheet = [str(row[SITE_SITE_ID_COLUMN].lower()) for row in row_list]
@@ -323,14 +350,28 @@ class SiteImporter(CsvImporter):
     if sites_to_remove:
       site_id_list = []
       for site in sites_to_remove:
-        log_prefix = '(dry run) ' if dry_run else ''
         logging.info(log_prefix + 'Deleting old Site no longer in Google sheet: %s', site)
         old_site = self.site_dao.get_by_google_group(site)
+      if old_site and old_site.isObsolete != ObsoleteStatus.OBSOLETE:
         site_id_list.append(old_site.siteId)
         self.deletion_count += 1
+      elif old_site and old_site.isObsolete == ObsoleteStatus.OBSOLETE:
+        logging.info('Not attempting to delete site [%s] with existing obsolete status',
+                     old_site.googleGroup)
 
       if site_id_list and not dry_run:
-        self.delete_sql_statement(session, site_id_list)
+        str_list = ','.join([str(i) for i in site_id_list])
+        logging.info(log_prefix + 'Marking old site as obsolete : %s', old_site)
+        sql = """ UPDATE site
+            SET is_obsolete = 1
+            WHERE site_id in ({site_id_list})""".format(site_id_list=str_list)
+
+        session.execute(sql)
+
+        self.site_dao._invalidate_cache()
+        # Try to delete old sites.
+        self.delete_sql_statement(session, str_list)
+
 
   def _insert_new_participants(self, entity):
     num_participants = 0

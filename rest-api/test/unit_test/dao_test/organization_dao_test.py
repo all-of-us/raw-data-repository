@@ -18,10 +18,12 @@ class OrganizationDaoTest(SqlTestBase):
     self.ps_history = ParticipantHistoryDao()
 
   def test_insert(self):
-    organization = Organization(externalId='myorg', displayName='myorg_display', hpoId=PITT_HPO_ID)
+    organization = Organization(externalId='myorg', displayName='myorg_display',
+                                hpoId=PITT_HPO_ID, isObsolete=1)
     created_organization = self.organization_dao.insert(organization)
     new_organization = self.organization_dao.get(created_organization.organizationId)
     organization.organizationId = created_organization.organizationId
+    organization.isObsolete = new_organization.isObsolete
     self.assertEquals(organization.asdict(), new_organization.asdict())
 
   def test_participant_pairing_updates_onchange(self):

@@ -1,3 +1,4 @@
+from model.site_enums import ObsoleteStatus
 from participant_enums import OrganizationType
 from model.base import Base
 from model.utils import Enum
@@ -14,6 +15,8 @@ class HPO(Base):
                             default=OrganizationType.UNSET)
   organizations = relationship('Organization', cascade='all, delete-orphan',
                                order_by='Organization.externalId')
+  isObsolete = Column('is_obsolete', Enum(ObsoleteStatus))
+
   __table_args__ = (
     UniqueConstraint('name'),
   )
