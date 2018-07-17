@@ -9,7 +9,7 @@ from dao.site_dao import SiteDao
 from model.hpo import HPO
 from model.participant import Participant
 from model.site import Site
-from participant_enums import WithdrawalStatus, UNSET_HPO_ID
+from participant_enums import WithdrawalStatus, SuspensionStatus, UNSET_HPO_ID
 from test.unit_test.unit_test_util import PITT_ORG_ID
 from unit_test_util import SqlTestBase, PITT_HPO_ID, random_ids
 from clock import FakeClock
@@ -187,6 +187,73 @@ class ParticipantDaoTest(SqlTestBase):
         participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
         hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
     self.assertEquals(expected_participant.asdict(), p2.asdict())
+    
+  def test_update_withdraw(self):
+    p = Participant()
+    time = datetime.datetime(2016, 1, 1)
+    with random_ids([1, 2]):
+      with FakeClock(time):
+        self.dao.insert(p)
+    p.version = 1
+    p.withdrawalStatus = WithdrawalStatus.NO_USE
+    time2 = datetime.datetime(2016, 1, 2)
+    with FakeClock(time2):
+      self.dao.update(p)
+
+    p2 = self.dao.get(1)
+    expected_participant = self._participant_with_defaults(
+        participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
+        withdrawalStatus=WithdrawalStatus.NO_USE, withdrawalTime=time2)
+    self.assertEquals(expected_participant.asdict(), p2.asdict())
+
+    p.version = 2
+    p.providerLink = make_primary_provider_link_for_name('PITT')
+    p.withdrawalTime = None
+    time3 = datetime.datetime(2016, 1, 3)
+    with FakeClock(time3):
+      self.dao.update(p)
+
+    # Withdrawal time should get copied over.   
+    p2 = self.dao.get(1)
+    expected_participant = self._participant_with_defaults(
+        participantId=1, version=3, biobankId=2, lastModified=time3, signUpTime=time,
+        withdrawalStatus=WithdrawalStatus.NO_USE, withdrawalTime=time2, 
+        hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
+    self.assertEquals(expected_participant.asdict(), p2.asdict())
+    
+  def test_update_suspend(self):
+    p = Participant()
+    time = datetime.datetime(2016, 1, 1)
+    with random_ids([1, 2]):
+      with FakeClock(time):
+        self.dao.insert(p)
+    p.version = 1
+    p.suspensionStatus = SuspensionStatus.NO_CONTACT
+    time2 = datetime.datetime(2016, 1, 2)
+    with FakeClock(time2):
+      self.dao.update(p)
+
+    p2 = self.dao.get(1)
+    expected_participant = self._participant_with_defaults(
+        participantId=1, version=2, biobankId=2, lastModified=time2, signUpTime=time,
+        suspensionStatus=SuspensionStatus.NO_CONTACT, suspensionTime=time2)
+    self.assertEquals(expected_participant.asdict(), p2.asdict())
+
+    p.version = 2
+    p.providerLink = make_primary_provider_link_for_name('PITT')
+    p.suspensionTime = None
+    time3 = datetime.datetime(2016, 1, 3)
+    with FakeClock(time3):
+      self.dao.update(p)
+
+    # Withdrawal time should get copied over.   
+    p2 = self.dao.get(1)
+    expected_participant = self._participant_with_defaults(
+        participantId=1, version=3, biobankId=2, lastModified=time3, signUpTime=time,
+        suspensionStatus=SuspensionStatus.NO_CONTACT, suspensionTime=time2, 
+        hpoId=PITT_HPO_ID, providerLink=p2.providerLink)
+    self.assertEquals(expected_participant.asdict(), p2.asdict())  
+    
 
   def test_update_wrong_expected_version(self):
     p = Participant()
