@@ -12,6 +12,20 @@
         "ip6": []
       }
     },
+    "awardee-pitt@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "PITT",
+      "whitelisted_ip_ranges" : {
+        "ip4": [
+          "136.142.107.245",
+          "136.142.107.246",
+          "136.142.107.247",
+          "136.142.107.248",
+          "136.142.107.249",
+          "136.142.107.250"
+        ]
+      }
+    },
     "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]
     },
