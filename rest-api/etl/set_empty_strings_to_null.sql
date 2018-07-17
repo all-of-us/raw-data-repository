@@ -4,4 +4,4 @@
 # NULL.)
 
 UPDATE voc.concept_relationship SET invalid_reason = NULL WHERE invalid_reason = '';
-UPDATE voc.concept SET invalid_reason = NULL WHERE invalid_reason = ''; 
+UPDATE voc.concept SET invalid_reason = NULL WHERE invalid_reason = '';

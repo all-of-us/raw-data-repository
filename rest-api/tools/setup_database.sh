@@ -89,7 +89,7 @@ trap finish EXIT
 
 run_cloud_sql_proxy
 if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ]
-  then  
+  then
  	echo "Updating database user passwords..."
 	randpw
 	ROOT_PASSWORD=$new_password
@@ -97,10 +97,10 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ]
 	RDR_PASSWORD=$new_password
 	randpw
 	READONLY_PASSWORD=$new_password
-  
+
   CONNECTION_STRING="mysql+mysqldb://${RDR_DB_USER}:${RDR_PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$INSTANCE_CONNECTION_NAME&charset=utf8"
   BACKUP_CONNECTION_STRING="mysql+mysqldb://${RDR_DB_USER}:${RDR_PASSWORD}@/$DB_NAME?unix_socket=/cloudsql/$BACKUP_INSTANCE_NAME&charset=utf8"
-  
+
 	echo '{"db_connection_string": "'$CONNECTION_STRING'", ' \
 	     ' "backup_db_connection_string": "'$BACKUP_CONNECTION_STRING'", '\
 	     ' "rdr_db_password": "'$RDR_PASSWORD'", ' \
@@ -111,9 +111,9 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ]
 	     ' "db_user": "'$RDR_DB_USER'", '\
 	     ' "db_name": "'$DB_NAME'" }' > $TMP_DB_INFO_FILE
 
-	echo "Setting root password..."	
+	echo "Setting root password..."
 	gcloud sql users set-password root % --instance $INSTANCE_NAME --password $ROOT_PASSWORD
-	
+
 	if [ "${UPDATE_PASSWORDS}" = "Y" ]
 	    then
 		echo "updating passwords for database"

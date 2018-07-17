@@ -36,7 +36,7 @@ class OrganizationDao(CacheAllDao):
       provider_link = make_primary_provider_link_for_id(new_hpo_id)
 
       participant_sql = """
-            UPDATE participant 
+            UPDATE participant
             SET hpo_id = :hpo_id,
                 provider_link = :provider_link
             WHERE organization_id = :org_id;
@@ -50,9 +50,9 @@ class OrganizationDao(CacheAllDao):
             """
 
       participant_history_sql = """
-            UPDATE participant_history 
+            UPDATE participant_history
             SET hpo_id = :hpo_id,
-                provider_link = :provider_link 
+                provider_link = :provider_link
             WHERE organization_id = :org_id;
             """
       params = {'hpo_id': new_hpo_id, 'provider_link': provider_link, 'org_id':
