@@ -25,7 +25,6 @@ skip_files:
 - ^(.*/)?\..*$
 - ^alembic/.*$
 - ^bin/.*$
-- ^config/.*$
 - ^data/.*$
 - ^etl/.*$
 - ^etl_test/.*$
