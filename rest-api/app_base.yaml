@@ -15,3 +15,24 @@ libraries:
   version: 1.0
 - name: MySQLdb
   version: "latest"
+
+# Patterns for files within rest-api that we do not want to deploy to AppEngine  
+skip_files:
+- ^(.*/)?#.*#$
+- ^(.*/)?.*~$
+- ^(.*/)?.*\.py[co]$
+- ^(.*/)?.*/RCS/.*$
+- ^(.*/)?\..*$
+- ^alembic/.*$
+- ^bin/.*$
+- ^config/.*$
+- ^data/.*$
+- ^etl/.*$
+- ^etl_test/.*$
+- ^test/.*$
+- ^tools/.*$
+- ^venv/.*$
+
+
+
+ 
