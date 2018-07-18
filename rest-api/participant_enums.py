@@ -37,6 +37,11 @@ class QuestionnaireStatus(messages.Enum):
   SUBMITTED_NO_CONSENT = 2
   SUBMITTED_NOT_SURE = 3
 
+class ValidQuestionnaireStatus(messages.Enum):
+  """ If a questionnaire has been determined to be invalid"""
+  VALID = 0
+  INVALID = 1
+
 class EnrollmentStatus(messages.Enum):
   """A status reflecting how fully enrolled a participant is"""
   INTERESTED = 1

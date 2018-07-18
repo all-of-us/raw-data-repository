@@ -1,5 +1,6 @@
 from model.base import Base
-from model.utils import UTCDateTime
+from model.utils import UTCDateTime, Enum
+from participant_enums import ValidQuestionnaireStatus
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, BLOB, String, ForeignKeyConstraint, Boolean
 from sqlalchemy import UniqueConstraint, ForeignKey
@@ -15,6 +16,8 @@ class QuestionnaireBase(object):
   # The JSON representation of the questionnaire provided by the client.
   # Concepts and questions can be be parsed out of this for use in querying.
   resource = Column('resource', BLOB, nullable=False)
+  isValid = Column('is_valid', Enum(ValidQuestionnaireStatus),
+                   default=ValidQuestionnaireStatus.VALID)
 
   def asdict_with_children(self):
     return self.asdict(follow={'concepts': {}, 'questions': {}})
