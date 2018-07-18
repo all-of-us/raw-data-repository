@@ -14,7 +14,7 @@ import model.utils
 ${imports if imports else ""}
 
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
-from participant_enums import WithdrawalStatus, SuspensionStatus
+from participant_enums import WithdrawalStatus, SuspensionStatus, QuestionnaireDefinitionStatus
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType
 from participant_enums import MetricSetType, MetricsKey
 from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
