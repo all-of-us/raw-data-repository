@@ -151,7 +151,7 @@ class HPOImporter(CsvImporter):
                      old_hpo.name)
         str_list = ','.join([str(i) for i in hpo_id_list])
 
-        sql = """ UPDATE HPO
+        sql = """ UPDATE hpo
             SET is_obsolete = 1
             WHERE hpo_id in ({params})""".format(params=str_list)
 
