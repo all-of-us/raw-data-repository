@@ -222,3 +222,41 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'suspensionStatus': 'NOT_SUSPENDED',
               }
     self.assertJsonResponseMatches(expected, summary)
+
+  def test_invalid_questionnaire(self):
+    from dao.questionnaire_response_dao import QuestionnaireResponseDao
+    from dao.questionnaire_dao import QuestionnaireDao
+    participant_id = self.create_participant()
+    questionnaire_id = self.create_questionnaire('questionnaire1.json')
+    qr = QuestionnaireResponseDao()
+    q = QuestionnaireDao()
+
+    sql = """UPDATE questionnaire
+              SET status = 1
+              WHERE questionnaire_id = {q_id}""".format(q_id=questionnaire_id)
+    with q.session() as session:
+      session.execute(sql)
+
+    invalid_qr = qr.get(1)
+    invalid_q = q.get(1)
+    print '===================='
+    print invalid_q.status
+
+    with open(data_path('questionnaire_response3.json')) as fd:
+      resource = json.load(fd)
+
+    self.send_consent(participant_id)
+
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    # The resource gets rewritten to include the version
+    resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/1' % questionnaire_id
+    response = self.send_post(_questionnaire_response_url(participant_id), resource)
+    resource['id'] = response['id']
+    self.assertJsonResponseMatches(resource, response)
+    # print '******************************************'
+    # print resource, "<<<< resource"
+    # print '******************************************'
+    # print dir(invalid_q), "<<<< invalid question"
+    # print invalid_q.asdict()
+    # print '************************************************'
