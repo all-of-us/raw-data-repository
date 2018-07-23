@@ -151,7 +151,7 @@ class HPOImporter(CsvImporter):
                      old_hpo.name)
         str_list = ','.join([str(i) for i in hpo_id_list])
 
-        sql = """ UPDATE hpo
+        sql = """ UPDATE HPO
             SET is_obsolete = 1
             WHERE hpo_id in ({params})""".format(params=str_list)
 
@@ -267,7 +267,7 @@ class SiteImporter(CsvImporter):
   def run(self, filename, dry_run):
     super(SiteImporter, self).run(filename, dry_run)
     insert_participants = False
-    if dry_run:
+    if not dry_run:
       if self.environment:
         if self.environment.strip() == 'STABLE' and len(self.new_sites_list) > 0:
           from googleapiclient.discovery import build
