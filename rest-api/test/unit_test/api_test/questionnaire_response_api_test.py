@@ -218,7 +218,6 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleStatus1CFD9': 'UNSET',
                 'sampleStatus1ED02': 'UNSET',
                 'sampleStatus1PXR2': 'UNSET',
-                'samplesToIsolateDNA': 'UNSET',
                 'signUpTime': TIME_1.isoformat(),
                 'withdrawalStatus': 'NOT_WITHDRAWN',
                 'suspensionStatus': 'NOT_SUSPENDED',
