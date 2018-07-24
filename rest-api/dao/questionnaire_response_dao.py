@@ -303,8 +303,8 @@ class QuestionnaireResponseDao(BaseDao):
   def _get_questionnaire(questionnaire, resource_json):
     """Retrieves the questionnaire referenced by this response; mutates the resource JSON to include
     the version if it doesn't already.
-    If a questionnaire has a history element it goes into the else block here."""
-    # if no history...
+    If a questionnaire has a history element it goes into the if block here."""
+    # if history...
     if not questionnaire.reference.startswith(_QUESTIONNAIRE_PREFIX):
       raise BadRequest('Questionnaire reference %s is invalid' % questionnaire.reference)
     questionnaire_reference = questionnaire.reference[len(_QUESTIONNAIRE_PREFIX):]
@@ -324,7 +324,7 @@ class QuestionnaireResponseDao(BaseDao):
       except ValueError:
         raise BadRequest('Questionnaire id %s is invalid' % questionnaire_reference)
     else:
-      # if questionnaire/history...
+      # if no questionnaire/history...
       try:
         questionnaire_id = int(questionnaire_reference)
         from dao.questionnaire_dao import QuestionnaireDao

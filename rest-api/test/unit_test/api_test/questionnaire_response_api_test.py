@@ -9,6 +9,8 @@ from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from model.utils import from_client_participant_id
 from model.questionnaire_response import QuestionnaireResponseAnswer
+from participant_enums import QuestionnaireDefinitionStatus
+from sqlalchemy.orm.session import make_transient
 from test.unit_test.unit_test_util import (
     FlaskTestBase,
     make_questionnaire_response_json as gen_response
@@ -224,19 +226,15 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     self.assertJsonResponseMatches(expected, summary)
 
   def test_invalid_questionnaire(self):
-    from dao.questionnaire_response_dao import QuestionnaireResponseDao
-    from dao.questionnaire_dao import QuestionnaireDao
-    from participant_enums import QuestionnaireDefinitionStatus
-    from sqlalchemy.orm.session import make_transient
     participant_id = self.create_participant()
     questionnaire_id = self.create_questionnaire('questionnaire1.json')
-    qr = QuestionnaireResponseDao()
     q = QuestionnaireDao()
     quesstionnaire = q.get(questionnaire_id)
     make_transient(quesstionnaire)
     quesstionnaire.status = QuestionnaireDefinitionStatus.INVALID
     q.update(quesstionnaire)
-    invalid_q = q.get(1)
+
+    q.get(questionnaire_id)
 
     with open(data_path('questionnaire_response3.json')) as fd:
       resource = json.load(fd)
@@ -247,5 +245,8 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
       resource['subject']['reference'].format(participant_id=participant_id)
     # The resource gets rewritten to include the version
     resource['questionnaire']['reference'] = 'Questionnaire/%s' % questionnaire_id
+    self.send_post(_questionnaire_response_url(participant_id), resource,
+                   expected_status=httplib.BAD_REQUEST)
+    resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/2' % questionnaire_id
     self.send_post(_questionnaire_response_url(participant_id), resource,
                    expected_status=httplib.BAD_REQUEST)
