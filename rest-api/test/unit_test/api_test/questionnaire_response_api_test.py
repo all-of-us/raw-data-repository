@@ -250,24 +250,3 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     self.send_post(_questionnaire_response_url(participant_id), resource,
                    expected_status=httplib.BAD_REQUEST)
 
-  def test_backfill_invalidates_consent(self):
-
-    participant_id = self.create_participant()
-    self.create_questionnaire('ehr_consent.json')
-    questionnaire_id = self.create_questionnaire('ehr_consent.json')
-    print questionnaire_id
-    q = QuestionnaireDao()
-    quesstionnaire = q.get(questionnaire_id)
-    make_transient(quesstionnaire)
-    q.get(questionnaire_id)
-    with open(data_path('consent_questionnaire_response.json')) as fd:
-      resource = json.load(fd)
-
-    self.send_consent(participant_id)
-
-    resource['subject']['reference'] = \
-      resource['subject']['reference'].format(participant_id=participant_id)
-    # The resource gets rewritten to include the version
-    resource['questionnaire']['reference'] = 'Questionnaire/%s' % questionnaire_id
-    self.send_post(_questionnaire_response_url(participant_id), resource,
-                   expected_status=httplib.BAD_REQUEST)
