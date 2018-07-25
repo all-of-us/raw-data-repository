@@ -10,6 +10,8 @@ def strip(val):
     return None
   if stripped_val.startswith('Organization/'):
     stripped_val = stripped_val[13:]
+  if stripped_val.startswith('Site/'):
+    stripped_val = stripped_val[5:]
   return stripped_val
 
 def check_prev_entry(p_map, prefix, participant_id, obj_id):
@@ -34,17 +36,21 @@ def main(args):
     sites_writer = csv.writer(sites_file)
     p_map = {}
     for row in reader:
-      participant_id = strip(row.get('participant_id'))
+      participant_id = strip(row.get('external_id'))
       if participant_id is None:
         print "Skipping line with no participant_id, continuing."
         continue
       awardee_id = strip(row.get('awardee_code'))
       org_id = strip(row.get('org_code'))
-      site_id = strip(row.get('donation_site_code'))
+      site_val = row.get('donation_site_code')
+      if site_val and not site_val.strip().startswith('Site/hpo-site'):
+        # Ignore site values that don't start with 'Site/hpo-site'
+        site_val = None
+      site_id = strip(site_val)
       if awardee_id is None and org_id is None and site_id is None:
         print "Skipping participant with no awardee, id = %s" % participant_id
         continue
-      if site_id is not None:
+      if site_id is not None:        
         if check_prev_entry(p_map, 'site:', participant_id, site_id):
           sites_writer.writerow([participant_id, site_id])
       elif org_id is not None:

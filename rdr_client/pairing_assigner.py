@@ -80,6 +80,13 @@ def main(client):
                        % (participant_id, participant['site']))
           continue
 
+      if client.args.no_awardee_change:
+        if participant.get('awardee') and participant['awardee'] != 'UNSET':
+          if not new_pairing.startswith(participant['awardee']):
+            logging.info(
+              'Skipping participant %s where pairing %s does not begin with old awardee %s'
+                         % (participant_id, new_pairing, participant['awardee']))
+            continue
       logging.info('%s %s => %s', participant_id, old_pairing, new_pairing)
       if new_pairing == 'UNSET':
         for i in pairing_list:
@@ -121,5 +128,8 @@ if __name__ == '__main__':
                           '[site|organization|awardee]', required=True)
   arg_parser.add_argument('--override_site',
                           help='Update pairings on participants that have a site pairing already',
+                          action='store_true')
+  arg_parser.add_argument('--no_awardee_change',
+                          help='Do not re-pair participants if the awardee is changing; just log that it happened',
                           action='store_true')
   main(Client(parser=arg_parser))
