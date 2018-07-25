@@ -117,5 +117,5 @@ if __name__ == '__main__':
   arg_parser.add_argument('--pairing', help='set level of pairing as one of'
                           '[site|organization|awardee]', required=True)
   arg_parser.add_argument('--override_site',
-                          help='Update pairings even on participants that have a site pairing already')
+                          help='Update pairings on participants that have a site pairing already')
   main(Client(parser=arg_parser))
