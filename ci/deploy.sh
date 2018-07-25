@@ -5,7 +5,7 @@
 
 # Assumes 'gcloud auth' has been done with an appropriate deploy account.
 
-# This script is executed by the circle.yml config when the conditions
+# This script is executed by the old_circle.yml config when the conditions
 # specified there are met, and is also used by the production admin.
 
 # The AppEngine Admin API must be activated for the project being deployed
