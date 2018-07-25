@@ -73,6 +73,12 @@ def main(client):
         logging.info('%s unchanged (already %s)', participant_id, old_pairing)
         continue
 
+      if not client.args.override_site:
+        if participant.get('site'):
+          logging.info('Skipping participant %s already paired with site %s'
+                       % (participant_id, participant['site']))
+        continue
+
       logging.info('%s %s => %s', participant_id, old_pairing, new_pairing)
       if new_pairing == 'UNSET':
         for i in pairing_list:
@@ -110,4 +116,6 @@ if __name__ == '__main__':
   arg_parser.add_argument('--dry_run', action='store_true')
   arg_parser.add_argument('--pairing', help='set level of pairing as one of'
                           '[site|organization|awardee]', required=True)
+  arg_parser.add_argument('--override_site',
+                          help='Update pairings even on participants that have a site pairing already')
   main(Client(parser=arg_parser))
