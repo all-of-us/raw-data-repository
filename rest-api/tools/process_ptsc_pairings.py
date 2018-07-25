@@ -12,9 +12,9 @@ def strip(val):
     stripped_val = stripped_val[13:]
   return stripped_val
 
-def check_prev_entry(p_map, prefix, participant_id, id):
+def check_prev_entry(p_map, prefix, participant_id, obj_id):
   prev_entry = p_map.get(participant_id)
-  new_entry = prefix + id
+  new_entry = prefix + obj_id
   if prev_entry is not None:
     if prev_entry != new_entry:
       raise "Prev entry = %s; new entry = %s" % (prev_entry, new_entry)
@@ -24,20 +24,23 @@ def check_prev_entry(p_map, prefix, participant_id, id):
     return True
 
 def main(args):
-  with open(args.file, 'r') as input_file, open('hpos.csv', 'w') as hpos_file, open('orgs.csv', 'w') as orgs_file, open('sites.csv', 'w') as sites_file:
+  with open(args.file, 'r') as input_file, \
+    open('hpos.csv', 'w') as hpos_file, \
+    open('orgs.csv', 'w') as orgs_file, \
+    open('sites.csv', 'w') as sites_file:
     reader = UnicodeDictReader(input_file)
     hpo_writer = csv.writer(hpos_file)
     orgs_writer = csv.writer(orgs_file)
     sites_writer = csv.writer(sites_file)
     p_map = {}
-    for dict in reader:
-      participant_id = strip(dict.get('participant_id'))
+    for row in reader:
+      participant_id = strip(row.get('participant_id'))
       if participant_id is None:
         print "Skipping line with no participant_id, continuing."
         continue
-      awardee_id = strip(dict.get('awardee_code'))
-      org_id = strip(dict.get('org_code'))
-      site_id = strip(dict.get('donation_site_code'))
+      awardee_id = strip(row.get('awardee_code'))
+      org_id = strip(row.get('org_code'))
+      site_id = strip(row.get('donation_site_code'))
       if awardee_id is None and org_id is None and site_id is None:
         print "Skipping participant with no awardee, id = %s" % participant_id
         continue
