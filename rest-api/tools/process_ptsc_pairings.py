@@ -50,7 +50,7 @@ def main(args):
       if awardee_id is None and org_id is None and site_id is None:
         print "Skipping participant with no awardee, id = %s" % participant_id
         continue
-      if site_id is not None:        
+      if site_id is not None:
         if check_prev_entry(p_map, 'site:', participant_id, site_id):
           sites_writer.writerow([participant_id, site_id])
       elif org_id is not None:
