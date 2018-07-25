@@ -2,7 +2,8 @@
 
 Usage:
 ./run_client.sh --project all-of-us-rdr-prod --account $USER@pmi-ops.org \
-  pairing_assigner.py participant_ids_and_hpos.csv --pairing [site|organization|awardee] [--dry_run]
+  pairing_assigner.py participant_ids_and_hpos.csv --pairing [site|organization|awardee] \
+  [--dry_run] [--override_site]
 
 Where site = google_group, organization = external_id, awardee = name.
 
@@ -74,10 +75,10 @@ def main(client):
         continue
 
       if not client.args.override_site:
-        if participant.get('site'):
+        if participant.get('site') and participant['site'] != 'UNSET':
           logging.info('Skipping participant %s already paired with site %s'
                        % (participant_id, participant['site']))
-        continue
+          continue
 
       logging.info('%s %s => %s', participant_id, old_pairing, new_pairing)
       if new_pairing == 'UNSET':
@@ -85,6 +86,8 @@ def main(client):
           participant[i] = 'UNSET'
         participant['providerLink'] = []
       else:
+        for i in pairing_list:
+          del participant[i]
         participant[pairing_key] = new_pairing
 
       if client.args.dry_run:
@@ -117,5 +120,6 @@ if __name__ == '__main__':
   arg_parser.add_argument('--pairing', help='set level of pairing as one of'
                           '[site|organization|awardee]', required=True)
   arg_parser.add_argument('--override_site',
-                          help='Update pairings on participants that have a site pairing already')
+                          help='Update pairings on participants that have a site pairing already',
+                          action='store_true')
   main(Client(parser=arg_parser))
