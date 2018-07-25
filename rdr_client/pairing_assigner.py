@@ -130,6 +130,7 @@ if __name__ == '__main__':
                           help='Update pairings on participants that have a site pairing already',
                           action='store_true')
   arg_parser.add_argument('--no_awardee_change',
-                          help='Do not re-pair participants if the awardee is changing; just log that it happened',
+                          help='Do not re-pair participants if the awardee is changing; ' +
+                               'just log that it happened',
                           action='store_true')
   main(Client(parser=arg_parser))
