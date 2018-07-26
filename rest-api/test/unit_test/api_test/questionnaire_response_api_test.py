@@ -9,6 +9,8 @@ from dao.questionnaire_dao import QuestionnaireDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from model.utils import from_client_participant_id
 from model.questionnaire_response import QuestionnaireResponseAnswer
+from participant_enums import QuestionnaireDefinitionStatus
+from sqlalchemy.orm.session import make_transient
 from test.unit_test.unit_test_util import (
     FlaskTestBase,
     make_questionnaire_response_json as gen_response
@@ -216,9 +218,35 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleStatus1CFD9': 'UNSET',
                 'sampleStatus1ED02': 'UNSET',
                 'sampleStatus1PXR2': 'UNSET',
-                'samplesToIsolateDNA': 'UNSET',
                 'signUpTime': TIME_1.isoformat(),
                 'withdrawalStatus': 'NOT_WITHDRAWN',
                 'suspensionStatus': 'NOT_SUSPENDED',
               }
     self.assertJsonResponseMatches(expected, summary)
+
+  def test_invalid_questionnaire(self):
+    participant_id = self.create_participant()
+    questionnaire_id = self.create_questionnaire('questionnaire1.json')
+    q = QuestionnaireDao()
+    quesstionnaire = q.get(questionnaire_id)
+    make_transient(quesstionnaire)
+    quesstionnaire.status = QuestionnaireDefinitionStatus.INVALID
+    q.update(quesstionnaire)
+
+    q.get(questionnaire_id)
+
+    with open(data_path('questionnaire_response3.json')) as fd:
+      resource = json.load(fd)
+
+    self.send_consent(participant_id)
+
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    # The resource gets rewritten to include the version
+    resource['questionnaire']['reference'] = 'Questionnaire/%s' % questionnaire_id
+    self.send_post(_questionnaire_response_url(participant_id), resource,
+                   expected_status=httplib.BAD_REQUEST)
+    resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/2' % questionnaire_id
+    self.send_post(_questionnaire_response_url(participant_id), resource,
+                   expected_status=httplib.BAD_REQUEST)
+
