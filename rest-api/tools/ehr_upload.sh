@@ -26,13 +26,27 @@ CREDS_ACCOUNT="${ACCOUNT}"
 #SERVICE_ACCOUNT="exporter@${PROJECT}.iam.gserviceaccount.com"
 source tools/set_path.sh
 source tools/auth_setup.sh
-CONNECTION=get_instnace_connection_name
+run_cloud_sql_proxy
+set_db_connection_string
 #gcloud auth activate-service-account --key-file ${CREDS_FILE}
 
 gsutil ls -l gs://ptc-uploads-pmi-drc-api-sandbox/Participant
 
-GET_AWARDEE_INFO=$(python tools/ehr_upload.py --awardee ${AWARDEE})
+GET_SITES_FOR_AWARDEE=$(python tools/ehr_upload.py --awardee ${AWARDEE} --sites 'true')
+GET_PARTICPANTS_WITH_SITES=$(python tools/ehr_upload.py --awardee ${AWARDEE} --participants 'true')
 echo '******************'
-echo $GET_AWARDEE_INFO
+echo $GET_SITES_FOR_AWARDEE
 echo '*******************'
+#echo $GET_PARTICPANTS_WITH_SITES
 #gsutil cp gs://ptc-uploads-pmi-drc-api-sandbox/Participant/P100/botw_emoji.jpg  gs://ptc-uploads-pmi-drc-api-sandbox/Participant/P200
+
+for site in $GET_SITES_FOR_AWARDEE;
+do
+IFS=",";
+set $site;
+echo $site;
+echo "***"
+#echo $1
+done
+### FOR EACH SITE, GET THE PID'S AND UPLOAD TO SITE FOLDER
+#gsutil -m cp -r gs://ptc-uploads-pmi-drc-api-sandbox/Participant/* gs://ptc-uploads-pmi-drc-api-sandbox/Participant/some_test_folder
