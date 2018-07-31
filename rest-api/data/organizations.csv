@@ -25,6 +25,7 @@ NE_PMC,NE_PMC_PARTNERS,Partners Healthcare
 NE_PMC,NE_PMC_BMC,Boston Medical Center
 PITT,PITT_UPMC,University of Pittsburgh Medical Center
 QTC,QTC_QTC,QTC
+QTC,QTC_QTC_NEW_MEXICO,QTC
 QUEST,QUEST_QUEST,Quest Labs
 SAN_YSIDRO,SAN_YSIDRO_SYHC,San Ysidro Health Center
 SDBB,SDBB_SDBB,DV San Diego Blood Bank 
@@ -42,6 +43,7 @@ SOUTHERN,SOUTHERN_COOPER_GREEN,Cooper Green Mercy Hospital
 SOUTHERN,SOUTHERN_LSU,Louisiana State University
 SOUTHERN,SOUTHERN_MISSISSIPPI_MC,Unversity of Mississippi Medical Center
 SOUTHERN,SOUTHERN_TULANE,Tulane Unversity
+SOUTHERN,SOUTHERN_UAB_HUNTSVILLE,University of Alabama Birmingham Huntsville
 TEST,TEST_PROD,Test Prod Organization
 TRANS_AM,TRANS_AM_HENRY_FORD,Henry Ford Health System
 TRANS_AM,TRANS_AM_SPECTRUM,Spectrum Health System
