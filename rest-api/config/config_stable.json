@@ -37,7 +37,7 @@
           "ip4": ["10.50.178.54"]
         }
     },
-    "awardee-ucirvine@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+    "awardee-ucirvine@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "CAL_PMC",
       "whitelisted_ip_ranges" : {
