@@ -23,7 +23,6 @@ def get_participants_under_sites(session, awardee, source_bucket, destination_bu
   cursor = session.execute(text(sql))
   try:
     results = cursor.fetchall()
-    results = results[:3]  # @TODO: For testing purposes
     results = [(int(i), str(k)) for i, k in results]
     if results:
       for participant, google_group in results:
