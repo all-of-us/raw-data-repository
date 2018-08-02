@@ -1,7 +1,6 @@
-"""Get site/participant info for a given awardee to fetch consent forms from a bucket
-and upload to a new awardee bucket by the same name.
-eg: tools/ehr_upload.sh --awardee AZ_TUCSON --bucket ptc-uploads-pmi-drc-api-prod
-    --account me@pmi-ops.org --project all-of-us-rdr-prod
+"""Get site/participant info for a given organization to fetch consent forms from a bucket
+and upload to a new organization bucket by the same name.
+eg: tools/ehr_upload.sh --organization AZ_TUCSON --bucket ptc-uploads-pmi-drc-api-prod
 """
 import subprocess
 from dao import database_factory
@@ -11,15 +10,17 @@ from sqlalchemy import text
 
 def main(args):
   with database_factory.get_database().session() as session:
-    get_participants_under_sites(session, args.awardee, args.source_bucket, args.destination_bucket)
+    get_participants_under_sites(
+      session, args.organization, args.source_bucket, args.destination_bucket)
 
 
-def get_participants_under_sites(session, awardee, source_bucket, destination_bucket):
+def get_participants_under_sites(session, organization, source_bucket, destination_bucket):
   sql = """ select p.participant_id, s.google_group from participant p, site s
       where  p.site_id in (
-        select site_id from site where hpo_id in (select hpo_id from hpo where name = '{}'))
+        select site_id from site where p.organization_id in (
+        select site.organization_id from organization where external_id = '{}'))
       order by s.site_name;
-      """.format(awardee)
+      """.format(organization)
   cursor = session.execute(text(sql))
   try:
     results = cursor.fetchall()
@@ -38,11 +39,13 @@ def get_participants_under_sites(session, awardee, source_bucket, destination_bu
   finally:
     cursor.close()
 
+def get_participants_without_site_pairing():
+  pass
 
 if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
-  parser.add_argument('--awardee', help='The awardee to find participants and sites for',
+  parser.add_argument('--organization', help='The organization to find participants and sites for',
                       required=True)
   parser.add_argument('--source_bucket', help='The bucket to read from in one env.'
                       ' i.e. ptc-uploads-pmi-drc-api-prod', required=True)
