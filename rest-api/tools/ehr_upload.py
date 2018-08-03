@@ -15,19 +15,17 @@ def main(args):
 
 
 def get_participants_under_sites(session, organization, source_bucket, destination_bucket):
-  sql = """ select p.participant_id, s.google_group from participant p, site s
-      where  p.site_id in (
-        select site_id from site where p.organization_id in (
-        select site.organization_id from organization where external_id = '{}'))
-      order by s.site_name;
-      """.format(organization)
+  sql = """     
+    select participant_id, google_group from participant p left join site s on p.site_id = s.site_id
+    where p.organization_id in (select organization_id from organization where external_id = '{}');
+   """.format(organization)
   cursor = session.execute(text(sql))
   try:
     results = cursor.fetchall()
     results = [(int(i), str(k)) for i, k in results]
     if results:
       for participant, google_group in results:
-        gsutil = "gsutil -m cp -r gs://" + source_bucket + "/Participant/P" + str(
+        gsutil = "gsutil -m cp -r -L -p gs://" + source_bucket + "/Participant/P" + str(
           participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
           google_group + "/P" + str(participant)
 
