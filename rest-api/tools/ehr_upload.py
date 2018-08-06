@@ -15,7 +15,7 @@ def main(args):
 
 
 def get_participants_under_sites(session, organization, source_bucket, destination_bucket):
-  sql = """     
+  sql = """
   select p.participant_id, google_group from participant p left join site s on p.site_id = s.site_id left join participant_summary summary on p.participant_id = summary.participant_id
   where p.organization_id in (select organization_id from organization where external_id = '{}')
   and summary.consent_for_electronic_health_records =1 and summary.consent_for_study_enrollment = 1;
@@ -41,7 +41,7 @@ def get_participants_under_sites(session, organization, source_bucket, destinati
 
 
 def get_participants_without_site_pairing(session, organization, source_bucket, destination_bucket):
-  sql = """     
+  sql = """
     select participant_id from participant p
     where p.site_id is NULL and p.organization_id in (
     select organization_id from organization where external_id = '{}');
