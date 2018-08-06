@@ -16,8 +16,9 @@ def main(args):
 
 def get_participants_under_sites(session, organization, source_bucket, destination_bucket):
   sql = """     
-    select participant_id, google_group from participant p left join site s on p.site_id = s.site_id
-    where p.organization_id in (select organization_id from organization where external_id = '{}');
+  select p.participant_id, google_group from participant p left join site s on p.site_id = s.site_id left join participant_summary summary on p.participant_id = summary.participant_id
+  where p.organization_id in (select organization_id from organization where external_id = '{}')
+  and summary.consent_for_electronic_health_records =1 and summary.consent_for_study_enrollment = 1;
    """.format(organization)
   cursor = session.execute(text(sql))
   try:
@@ -25,7 +26,7 @@ def get_participants_under_sites(session, organization, source_bucket, destinati
     results = [(int(i), str(k)) for i, k in results]
     if results:
       for participant, google_group in results:
-        gsutil = "gsutil -m cp -r -L -p gs://" + source_bucket + "/Participant/P" + str(
+        gsutil = "gsutil -m cp gs://" + source_bucket + "/Participant/P" + str(
           participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
           google_group + "/P" + str(participant)
 
@@ -36,29 +37,30 @@ def get_participants_under_sites(session, organization, source_bucket, destinati
           print "There was an error moving folder " + google_group + '/' + str(participant)
   finally:
     cursor.close()
-    get_participants_without_site_pairing()
+    get_participants_without_site_pairing(session, organization, source_bucket, destination_bucket)
 
 
 def get_participants_without_site_pairing(session, organization, source_bucket, destination_bucket):
   sql = """     
-    select participant_id, google_group from participant p left join site s on p.site_id = s.site_id
-    where p.organization_id in (select organization_id from organization where external_id = '{}');
+    select participant_id from participant p
+    where p.site_id is NULL and p.organization_id in (
+    select organization_id from organization where external_id = '{}');
    """.format(organization)
   cursor = session.execute(text(sql))
   try:
     results = cursor.fetchall()
-    results = [(int(i), str(k)) for i, k in results]
     if results:
-      for participant, google_group in results:
-        gsutil = "gsutil -m cp -r -L -p gs://" + source_bucket + "/Participant/P" + str(
+      results = [int(i) for i, in results]
+      for participant in results:
+        gsutil = "gsutil -m cp gs://" + source_bucket + "/Participant/P" + str(
           participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
-                 google_group + "/P" + str(participant)
+                 "no_site_pairing" + "/P" + str(participant)
 
         system_call = subprocess.call(gsutil, shell=True)
         if system_call == 0:
-          print "Successfully moved folder " + google_group + '/' + str(participant)
+          print "Successfully moved folder " + "no_site_pairing" + '/' + str(participant)
         elif system_call == 1:
-          print "There was an error moving folder " + google_group + '/' + str(participant)
+          print "There was an error moving folder " + "no_site_pairing" + '/' + str(participant)
   finally:
     cursor.close()
 
