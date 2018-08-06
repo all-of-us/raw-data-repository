@@ -30,7 +30,7 @@ source tools/set_path.sh
 source tools/auth_setup.sh
 run_cloud_sql_proxy
 set_db_connection_string
-#gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file ${CREDS_FILE}
+gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file ${CREDS_FILE}
 
 GET_SITES_FOR_ORGANIZATION=$(python tools/ehr_upload.py --organization ${ORGANIZATION} --source_bucket ${SOURCE_BUCKET} --destination_bucket ${DESTINATION_BUCKET})
 IFS=$'\n';
