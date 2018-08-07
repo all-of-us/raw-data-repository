@@ -24,7 +24,7 @@ from field_mappings import FieldType, QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODU
 from model.code import CodeType
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from participant_enums import QuestionnaireStatus, get_race
+from participant_enums import QuestionnaireStatus, get_race, QuestionnaireDefinitionStatus
 
 _QUESTIONNAIRE_PREFIX = 'Questionnaire/'
 _QUESTIONNAIRE_HISTORY_SEGMENT = '/_history/'
@@ -277,6 +277,9 @@ class QuestionnaireResponseDao(BaseDao):
       msg = "Questionnaire response subject reference does not match participant_id %r"
       raise BadRequest(msg % participant_id)
     questionnaire = self._get_questionnaire(fhir_qr.questionnaire, resource_json)
+    if questionnaire.status == QuestionnaireDefinitionStatus.INVALID:
+      raise BadRequest("Submitted questionnaire that is marked as invalid: questionnaire ID %s" %
+                       questionnaire.questionnaireId)
     qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
                                questionnaireVersion=questionnaire.version,
                                participantId=participant_id,
@@ -299,7 +302,9 @@ class QuestionnaireResponseDao(BaseDao):
   @staticmethod
   def _get_questionnaire(questionnaire, resource_json):
     """Retrieves the questionnaire referenced by this response; mutates the resource JSON to include
-    the version if it doesn't already."""
+    the version if it doesn't already.
+    If a questionnaire has a history element it goes into the if block here."""
+    # if history...
     if not questionnaire.reference.startswith(_QUESTIONNAIRE_PREFIX):
       raise BadRequest('Questionnaire reference %s is invalid' % questionnaire.reference)
     questionnaire_reference = questionnaire.reference[len(_QUESTIONNAIRE_PREFIX):]
@@ -319,6 +324,7 @@ class QuestionnaireResponseDao(BaseDao):
       except ValueError:
         raise BadRequest('Questionnaire id %s is invalid' % questionnaire_reference)
     else:
+      # if no questionnaire/history...
       try:
         questionnaire_id = int(questionnaire_reference)
         from dao.questionnaire_dao import QuestionnaireDao
