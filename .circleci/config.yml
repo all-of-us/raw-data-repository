@@ -98,6 +98,13 @@ jobs:
     - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
     - run: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key #:
         path: rest-api
+    - run:
+        working_directory: ~/all-of-us/raw-data-repository/rest-api
+        - run: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key #:
+          
+    - run:
+        working_directory: ~/all-of-us/raw-data-repository
+
     - run: ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
     - run: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com -c ~/gcloud-credentials.key
 
