@@ -100,7 +100,7 @@ jobs:
 #        path: rest-api
     - run:
         working_directory: ~/all-of-us/raw-data-repository/rest-api
-        - run: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key #:
+        command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key #:
 
     - run:
         working_directory: ~/all-of-us/raw-data-repository
