@@ -91,13 +91,9 @@ jobs:
         path: /tmp/circleci-artifacts
     - store_artifacts:
         path: /tmp/circleci-test-results
+        
     # Deploy master to the pmi-drc-api-test project whenever the tests pass
-#  deploy:
-#    steps:
-#      - checkout
     - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
-#    - run: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key #:
-#        path: rest-api
     - run:
         command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
         working_directory: ~/all-of-us/raw-data-repository/rest-api
