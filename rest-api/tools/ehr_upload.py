@@ -56,7 +56,13 @@ def get_participants_without_site_pairing(session, organization, source_bucket, 
   try:
     results = cursor.fetchall()
     if results:
-      results = [int(i) for i, in results]
+      print results
+      print '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^'
+      try:
+        results = [int(i) for i, in results]
+      except:
+        print "No participants found."
+        return
       for participant in results:
         gsutil = "gsutil -m cp gs://" + source_bucket + "/Participant/P" + str(
           participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
@@ -64,9 +70,9 @@ def get_participants_without_site_pairing(session, organization, source_bucket, 
 
         system_call = subprocess.call(gsutil, shell=True)
         if system_call == 0:
-          print "Successfully moved folder " + "no_site_pairing" + '/' + str(participant)
+          print "Successfully moved folder " + "no_site_pairing" + '/P' + str(participant)
         elif system_call == 1:
-          print "There was an error moving folder " + "no_site_pairing" + '/' + str(participant)
+          print "There was an error moving folder " + "no_site_pairing" + '/P' + str(participant)
         else:
           print "System error message: " + system_call
   finally:
