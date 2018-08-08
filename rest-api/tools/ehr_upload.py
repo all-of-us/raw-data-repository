@@ -28,12 +28,12 @@ def get_participants_under_sites(session, organization, source_bucket, destinati
   cursor = session.execute(text(sql))
   try:
     results = cursor.fetchall()
-    results = [(int(i), str(k)) for i, k in results]
     if results:
+      results = [(int(i), str(k)) for i, k in results]
       for participant, google_group in results:
         gsutil = "gsutil -m cp gs://" + source_bucket + "/Participant/P" + str(
           participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
-          google_group + "/P" + str(participant) + "/"
+                 google_group + "/P" + str(participant) + "/"
 
         system_call = subprocess.call(gsutil, shell=True)
         if system_call == 0:
@@ -42,6 +42,8 @@ def get_participants_under_sites(session, organization, source_bucket, destinati
           print "There was an error moving folder " + google_group + '/' + str(participant)
         else:
           print "System error message: " + system_call
+    else:
+      print "No participants paired with sites found for organization: " + organization
   finally:
     cursor.close()
 
@@ -49,8 +51,8 @@ def get_participants_under_sites(session, organization, source_bucket, destinati
 def get_participants_without_site_pairing(session, organization, source_bucket, destination_bucket):
   sql = """
     select participant_id from participant p
-    right join organization o on o.organization_id = p.organization_id
-    where p.site_id is NULL and o.external_id = '{}';
+    where p.site_id is NULL and p.organization_id in (
+    select organization_id from organization where external_id = '{}'); 
    """.format(organization)
   cursor = session.execute(text(sql))
   try:
@@ -69,6 +71,9 @@ def get_participants_without_site_pairing(session, organization, source_bucket, 
           print "There was an error moving folder " + "no_site_pairing" + '/P' + str(participant)
         else:
           print "System error message: " + system_call
+    else:
+      print "No participants found that are not paired with sites and paired with organization: " \
+            + organization
   finally:
     cursor.close()
 
@@ -79,7 +84,7 @@ if __name__ == '__main__':
   parser.add_argument('--organization', help='The organization to find participants and sites for',
                       required=True)
   parser.add_argument('--source_bucket', help='The bucket to read from in one env.'
-                      ' i.e. ptc-uploads-pmi-drc-api-prod', required=True)
+                      ' i.e. ptc-uploads-pmi-drc-api-sandbox', required=True)
   parser.add_argument('--destination_bucket', help='The bucket to write to in one env.'
                       'i.e. ptc-uploads-pmi-drc-api-prod', required=True)
 
