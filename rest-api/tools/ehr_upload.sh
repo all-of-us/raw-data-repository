@@ -32,7 +32,7 @@ set_db_connection_string
 gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file ${CREDS_FILE}
 
 GET_SITES_FOR_ORGANIZATION=$(python tools/ehr_upload.py --organization ${ORGANIZATION} --source_bucket ${SOURCE_BUCKET} --destination_bucket ${DESTINATION_BUCKET})
-#GET_SITES_FOR_ORGANIZATION=$(gsutil ls gs://aou185)
+#GET_SITES_FOR_ORGANIZATION=$(gsutil ls gs://ptc-uploads-pmi-drc-api-sandbox)
 IFS=$'\n';
 for message in $GET_SITES_FOR_ORGANIZATION;
 do

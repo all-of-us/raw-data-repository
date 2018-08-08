@@ -56,8 +56,6 @@ def get_participants_without_site_pairing(session, organization, source_bucket, 
   try:
     results = cursor.fetchall()
     if results:
-      print results
-      print '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^'
       try:
         results = [int(i) for i, in results]
       except:
