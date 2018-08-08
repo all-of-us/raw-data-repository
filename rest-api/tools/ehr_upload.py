@@ -58,9 +58,6 @@ def get_participants_without_site_pairing(session, organization, source_bucket, 
     if results:
       try:
         results = [int(i) for i, in results]
-      except:
-        print "No participants found."
-        return
       for participant in results:
         gsutil = "gsutil -m cp gs://" + source_bucket + "/Participant/P" + str(
           participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
