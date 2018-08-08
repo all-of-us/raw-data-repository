@@ -41,7 +41,7 @@ def get_participants_under_sites(session, organization, source_bucket, destinati
         elif system_call == 1:
           print "There was an error moving folder " + google_group + '/' + str(participant)
         else:
-            print "System error message: " + system_call
+          print "System error message: " + system_call
   finally:
     cursor.close()
 
@@ -68,7 +68,7 @@ def get_participants_without_site_pairing(session, organization, source_bucket, 
         elif system_call == 1:
           print "There was an error moving folder " + "no_site_pairing" + '/' + str(participant)
         else:
-            print "System error message: " + system_call
+          print "System error message: " + system_call
   finally:
     cursor.close()
 
