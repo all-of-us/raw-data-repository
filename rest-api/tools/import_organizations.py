@@ -296,14 +296,15 @@ class SiteImporter(CsvImporter):
                                                                         instancesId=sha)
 
                   response = delete_instance.execute()
-                  if response['done']:
-                    insert_participants = True
-                    logging.info('Reboot of instance: %s in stable complete.', instance['name'])
-                  else:
-                    logging.warn('Not able to reboot instance on server, Error: %s', response)
 
               except KeyError:
                 logging.warn('No running instance for %s', version['name'])
+
+              if response['done']:
+                insert_participants = True
+                logging.info('Reboot of instance: %s in stable complete.', instance['name'])
+              else:
+                logging.warn('Not able to reboot instance on server, Error: %s', response)
 
           if insert_participants:
             logging.info('Starting import of test participants.')
