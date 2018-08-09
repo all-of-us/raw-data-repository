@@ -3,6 +3,7 @@ and upload to a new organization bucket by the same name.
 eg: tools/ehr_upload.sh --organization AZ_TUCSON --bucket ptc-uploads-pmi-drc-api-prod
 """
 import subprocess
+import shlex
 from dao import database_factory
 from main_util import get_parser, configure_logging
 from sqlalchemy import text
@@ -35,13 +36,14 @@ def get_participants_under_sites(session, organization, source_bucket, destinati
           participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
                  google_group + "/P" + str(participant) + "/"
 
-        system_call = subprocess.call(gsutil, shell=True)
-        if system_call == 0:
-          print "Successfully moved folder " + google_group + '/' + str(participant)
-        elif system_call == 1:
-          print "There was an error moving folder " + google_group + '/' + str(participant)
+        gsutil = shlex.split(str(gsutil))
+        system_call = subprocess.Popen(gsutil)
+        system_call.communicate()[0]
+        if system_call.returncode == 0:
+          print "Successfully moved folder " + google_group + '/P' + str(participant)
         else:
-          print "System error message: " + system_call
+          print "There was an error moving folder " + google_group + '/P' + str(participant)
+          print "return code is : " + str(system_call.returncode)
     else:
       print "No participants paired with sites found for organization: " + organization
   finally:
@@ -64,13 +66,14 @@ def get_participants_without_site_pairing(session, organization, source_bucket, 
           participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
                  "no_site_pairing" + "/P" + str(participant) + "/"
 
-        system_call = subprocess.call(gsutil, shell=True)
-        if system_call == 0:
+        gsutil = shlex.split(str(gsutil))
+        system_call = subprocess.Popen(gsutil)
+        system_call.communicate()[0]
+        if system_call.returncode == 0:
           print "Successfully moved folder " + "no_site_pairing" + '/P' + str(participant)
-        elif system_call == 1:
-          print "There was an error moving folder " + "no_site_pairing" + '/P' + str(participant)
         else:
-          print "System error message: " + system_call
+          print "There was an error moving folder " + "no_site_pairing" + '/P' + str(participant)
+          print "return code is : " + str(system_call.returncode)
     else:
       print "No participants found that are not paired with sites and paired with organization: " \
             + organization
@@ -84,8 +87,8 @@ if __name__ == '__main__':
   parser.add_argument('--organization', help='The organization to find participants and sites for',
                       required=True)
   parser.add_argument('--source_bucket', help='The bucket to read from in one env.'
-                      ' i.e. ptc-uploads-pmi-drc-api-sandbox', required=True)
+                      ' i.e. ptc-uploads-pmi-drc-api-prod', required=True)
   parser.add_argument('--destination_bucket', help='The bucket to write to in one env.'
-                      'i.e. ptc-uploads-pmi-drc-api-prod', required=True)
+                      'i.e. some-other-bucket-in-prod', required=True)
 
   main(parser.parse_args())
