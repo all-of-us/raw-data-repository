@@ -57,7 +57,14 @@
         "whitelisted_ip_ranges" : {
           "ip4": ["156.145.115.47", "156.145.115.138", "156.145.115.188"]
         }
-      },
+    },
+      "awardee-ucirvine@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+        "roles": ["awardee_sa"],
+        "awardee": "CAL_PMC",
+        "whitelisted_ip_ranges" : {
+          "ip4": ["128.195.50.120"]
+        }
+    },
     "vibrent-drc-stable@vibrent-drc-stable-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"],
       "whitelisted_ip_ranges": {
