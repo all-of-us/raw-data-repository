@@ -25,13 +25,17 @@ then
 fi
 
 CREDS_ACCOUNT="${ACCOUNT}"
+SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
 source tools/set_path.sh
 source tools/auth_setup.sh
 run_cloud_sql_proxy
 set_db_connection_string
+gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file ${CREDS_FILE}
 
 GET_SITES_FOR_ORGANIZATION=$(python tools/ehr_upload.py --organization ${ORGANIZATION} --source_bucket ${SOURCE_BUCKET} --destination_bucket ${DESTINATION_BUCKET})
+
 #GET_SITES_FOR_ORGANIZATION=$(gsutil ls gs://ptc-uploads-all-of-us-rdr-prod)
+
 IFS=$'\n';
 for message in $GET_SITES_FOR_ORGANIZATION;
 do

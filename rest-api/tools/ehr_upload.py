@@ -52,9 +52,12 @@ def get_participants_under_sites(session, organization, source_bucket, destinati
 
 def get_participants_without_site_pairing(session, organization, source_bucket, destination_bucket):
   sql = """
-    select participant_id from participant p
+    select p.participant_id from participant p
+    left join participant_summary summary on p.participant_id = summary.participant_id
     where p.site_id is NULL and p.organization_id in (
-    select organization_id from organization where external_id = '{}'); 
+    select organization_id from organization where external_id = '{}')
+    and summary.consent_for_electronic_health_records = 1
+    and summary.consent_for_study_enrollment = 1;
    """.format(organization)
   cursor = session.execute(text(sql))
   try:
