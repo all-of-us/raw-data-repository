@@ -21,6 +21,9 @@ class BiobankOrder(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
 
+  # For edited/cancelled orders
+  amendedBiobankOrderId = Column('amended_biobank_order_id', String(80),
+                                 ForeignKey('BiobankOrder.biobank_order_id'))
   # For syncing new orders.
   logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'),
                          nullable=False)
@@ -49,6 +52,10 @@ class BiobankOrder(Base):
   # The username / email of the HealthPro user that finalized the order -- finalizedInfo['author']
   # in the resulting JSON.
   finalizedUsername = Column('finalized_username', String(255))
+
+  # cancelled finalized order may still be shipped to biobank for destruction
+  cancelledOrder = Column('cancelled_order', Boolean)
+  amendedReason = Column('amended_reason', UnicodeText)
 
   # Additional fields stored for future use.
   created = Column('created', UTCDateTime, nullable=False)
@@ -91,3 +98,11 @@ class BiobankOrderedSample(Base):
   collected = Column('collected', UTCDateTime)
   processed = Column('processed', UTCDateTime)
   finalized = Column('finalized', UTCDateTime)
+
+class BiobankAmendedOrder(Base):
+  """
+    Info about edited or cancelled biobank orders
+  """
+  biobankOrderId = Column(
+    'order_id', String(80), ForeignKey('biobank_order.amended_biobank_order_id'), primary_key=True)
+
