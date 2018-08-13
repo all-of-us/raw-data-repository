@@ -23,7 +23,7 @@ class BiobankOrder(Base):
 
   # For edited/cancelled orders
   amendedBiobankOrderId = Column('amended_biobank_order_id', String(80),
-                                 ForeignKey('BiobankOrder.biobank_order_id'))
+                                 ForeignKey('biobank_order.biobank_order_id'))
   # For syncing new orders.
   logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'),
                          nullable=False)
