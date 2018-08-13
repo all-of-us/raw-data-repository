@@ -55,6 +55,7 @@ class BiobankOrder(Base):
 
   # cancelled finalized order may still be shipped to biobank for destruction
   cancelledOrder = Column('cancelled_order', Boolean)
+  # a cancelled or edited order must have a reason
   amendedReason = Column('amended_reason', UnicodeText)
 
   # Additional fields stored for future use.
@@ -98,11 +99,3 @@ class BiobankOrderedSample(Base):
   collected = Column('collected', UTCDateTime)
   processed = Column('processed', UTCDateTime)
   finalized = Column('finalized', UTCDateTime)
-
-class BiobankAmendedOrder(Base):
-  """
-    Info about edited or cancelled biobank orders
-  """
-  biobankOrderId = Column(
-    'order_id', String(80), ForeignKey('biobank_order.amended_biobank_order_id'), primary_key=True)
-
