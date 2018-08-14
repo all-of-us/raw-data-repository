@@ -55,10 +55,13 @@ class BiobankOrder(Base):
   finalizedUsername = Column('finalized_username', String(255))
 
   # cancelled finalized order may still be shipped to biobank for destruction
-  orderStatus = Column('order_status', Enum(BiobankOrderStatus))
-  cancelledTime = Column('cancelled_time', UTCDateTime)
-  # a cancelled or edited order must have a reason
+  # orderstatus can be cancelled/amended/restored
+  orderStatus = Column('order_status', Enum(BiobankOrderStatus),
+                       default=BiobankOrderStatus.FINALIZED, nullable=False)
+  # a cancelled or edited order must have a reason. Set on the old row because cancelled orders
+  # don't create a new row like amended orders do.
   amendedReason = Column('amended_reason', UnicodeText)
+  lastModified = Column('last_modified', UTCDateTime)
 
   # Additional fields stored for future use.
   created = Column('created', UTCDateTime, nullable=False)
