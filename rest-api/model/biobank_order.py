@@ -2,7 +2,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, UnicodeText
 
 from model.base import Base
-from model.utils import UTCDateTime
+from model.utils import UTCDateTime, Enum
+from participant_enums import BiobankOrderStatus
 
 
 class BiobankOrder(Base):
@@ -21,7 +22,7 @@ class BiobankOrder(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
 
-  # For edited/cancelled orders
+  # For edited/cancelled orders (points from new to old)
   amendedBiobankOrderId = Column('amended_biobank_order_id', String(80),
                                  ForeignKey('biobank_order.biobank_order_id'))
   # For syncing new orders.
@@ -54,7 +55,8 @@ class BiobankOrder(Base):
   finalizedUsername = Column('finalized_username', String(255))
 
   # cancelled finalized order may still be shipped to biobank for destruction
-  cancelledOrder = Column('cancelled_order', Boolean)
+  orderStatus = Column('order_status', Enum(BiobankOrderStatus))
+  cancelledTime = Column('cancelled_time', UTCDateTime)
   # a cancelled or edited order must have a reason
   amendedReason = Column('amended_reason', UnicodeText)
 
