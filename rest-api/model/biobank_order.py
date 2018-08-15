@@ -62,6 +62,18 @@ class BiobankOrder(Base):
   amendedReason = Column('amended_reason', UnicodeText)
   lastModified = Column('last_modified', UTCDateTime)
 
+  restoredSiteId = Column('restored_site_id', Integer, ForeignKey('site.site_id'))
+  restoredUsername = Column('restored_username', String(255))
+  restoredTime = Column('restored_time', UTCDateTime)
+
+  amendedSiteId = Column('amended_site_id', Integer, ForeignKey('site.site_id'))
+  amendedUsername = Column('amended_username', String(255))
+  amendedTime = Column('amended_time', UTCDateTime)
+
+  cancelledSiteId = Column('cancelled_site_id', Integer, ForeignKey('site.site_id'))
+  cancelledUsername = Column('cancelled_username', String(255))
+  cancelledTime = Column('cancelled_time', UTCDateTime)
+
   # Additional fields stored for future use.
   created = Column('created', UTCDateTime, nullable=False)
   collectedNote = Column('collected_note', UnicodeText)
