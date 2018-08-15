@@ -64,10 +64,9 @@ class OrderStatus(messages.Enum):
 
 class BiobankOrderStatus(messages.Enum):
   """ The status of a biobank order: amended/cancelled """
-  FINALIZED = 0
+  UNSET = 0
   AMENDED = 1
   CANCELLED = 2
-  RESTORED = 3
 
 class MetricSetType(messages.Enum):
   """Type determining the schema for a metric set."""

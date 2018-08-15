@@ -56,8 +56,7 @@ class BiobankOrder(Base):
 
   # cancelled finalized order may still be shipped to biobank for destruction
   # orderstatus can be cancelled/amended/restored
-  orderStatus = Column('order_status', Enum(BiobankOrderStatus),
-                       default=BiobankOrderStatus.FINALIZED, nullable=False)
+  orderStatus = Column('order_status', Enum(BiobankOrderStatus))
   # a cancelled or edited order must have a reason. Set on the old row because cancelled orders
   # don't create a new row like amended orders do.
   amendedReason = Column('amended_reason', UnicodeText)

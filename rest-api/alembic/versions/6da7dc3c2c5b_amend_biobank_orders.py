@@ -1,8 +1,8 @@
-"""amended biobank orders
+"""amend biobank orders
 
-Revision ID: 8014dfabb067
+Revision ID: 6da7dc3c2c5b
 Revises: 075b9eee88b7
-Create Date: 2018-08-14 14:08:11.005645
+Create Date: 2018-08-15 11:05:11.820499
 
 """
 from alembic import op
@@ -18,7 +18,7 @@ from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatu
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '8014dfabb067'
+revision = '6da7dc3c2c5b'
 down_revision = '075b9eee88b7'
 branch_labels = None
 depends_on = None
@@ -38,7 +38,7 @@ def upgrade_rdr():
     op.add_column('biobank_order', sa.Column('amended_biobank_order_id', sa.String(length=80), nullable=True))
     op.add_column('biobank_order', sa.Column('amended_reason', sa.UnicodeText(), nullable=True))
     op.add_column('biobank_order', sa.Column('last_modified', model.utils.UTCDateTime(), nullable=True))
-    op.add_column('biobank_order', sa.Column('order_status', model.utils.Enum(BiobankOrderStatus), nullable=False))
+    op.add_column('biobank_order', sa.Column('order_status', model.utils.Enum(BiobankOrderStatus), nullable=True))
     op.create_foreign_key(None, 'biobank_order', 'biobank_order', ['amended_biobank_order_id'], ['biobank_order_id'])
     # ### end Alembic commands ###
 
