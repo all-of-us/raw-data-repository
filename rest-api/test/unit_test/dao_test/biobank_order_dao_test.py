@@ -4,7 +4,7 @@ from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.participant import Participant
-from participant_enums import WithdrawalStatus, BiobankOrderStatus
+from participant_enums import WithdrawalStatus
 from dao.participant_dao import ParticipantDao
 from test.test_data import load_biobank_order_json
 from unit_test_util import SqlTestBase
