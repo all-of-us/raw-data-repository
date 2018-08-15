@@ -2,7 +2,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, UnicodeText
 
 from model.base import Base
-from model.utils import UTCDateTime
+from model.utils import UTCDateTime, Enum
+from participant_enums import BiobankOrderStatus
 
 
 class BiobankOrder(Base):
@@ -21,6 +22,9 @@ class BiobankOrder(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
 
+  # For edited/cancelled orders (points from new to old)
+  amendedBiobankOrderId = Column('amended_biobank_order_id', String(80),
+                                 ForeignKey('biobank_order.biobank_order_id'))
   # For syncing new orders.
   logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'),
                          nullable=False)
@@ -49,6 +53,27 @@ class BiobankOrder(Base):
   # The username / email of the HealthPro user that finalized the order -- finalizedInfo['author']
   # in the resulting JSON.
   finalizedUsername = Column('finalized_username', String(255))
+
+  # cancelled finalized order may still be shipped to biobank for destruction
+  # orderstatus can be cancelled/amended/restored
+  # A null value == finalized (i.e. the current accepted value)
+  orderStatus = Column('order_status', Enum(BiobankOrderStatus))
+  # a cancelled or edited order must have a reason. Set on the old row because cancelled orders
+  # don't create a new row like amended orders do.
+  amendedReason = Column('amended_reason', UnicodeText)
+  lastModified = Column('last_modified', UTCDateTime)
+
+  restoredSiteId = Column('restored_site_id', Integer, ForeignKey('site.site_id'))
+  restoredUsername = Column('restored_username', String(255))
+  restoredTime = Column('restored_time', UTCDateTime)
+
+  amendedSiteId = Column('amended_site_id', Integer, ForeignKey('site.site_id'))
+  amendedUsername = Column('amended_username', String(255))
+  amendedTime = Column('amended_time', UTCDateTime)
+
+  cancelledSiteId = Column('cancelled_site_id', Integer, ForeignKey('site.site_id'))
+  cancelledUsername = Column('cancelled_username', String(255))
+  cancelledTime = Column('cancelled_time', UTCDateTime)
 
   # Additional fields stored for future use.
   created = Column('created', UTCDateTime, nullable=False)
