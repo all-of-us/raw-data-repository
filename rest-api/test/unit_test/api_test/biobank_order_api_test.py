@@ -38,7 +38,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     biobank_order_id = result['identifier'][1]['value']
     path = self.path + biobank_order_id
     result['orderStatus'] = "cancelled"
-    cancelled = self.send_get(path, biobank_order_id)
+    # cancelled = self.send_get(path, biobank_order_id)
 
   def test_insert_and_refetch(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
