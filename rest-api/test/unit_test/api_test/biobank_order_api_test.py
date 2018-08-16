@@ -35,9 +35,10 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertEquals(full_order_json, result)
 
 
-    biobank_order_id = result['identifier'][1]['value']
-    path = self.path + biobank_order_id
-    result['orderStatus'] = "cancelled"
+    # @TODO: in progress.
+    # biobank_order_id = result['identifier'][1]['value']
+    # path = self.path + biobank_order_id
+    # result['orderStatus'] = "cancelled"
     # cancelled = self.send_get(path, biobank_order_id)
 
   def test_insert_and_refetch(self):
