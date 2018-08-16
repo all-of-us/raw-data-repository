@@ -1,5 +1,5 @@
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, UnicodeText
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, UnicodeText, text
 
 from model.base import Base
 from model.utils import UTCDateTime, Enum
@@ -23,7 +23,7 @@ class BiobankOrder(Base):
                          nullable=False)
 
   # Incrementing version, starts at 1 and is incremented on each update.
-  version = Column('version', Integer, nullable=False)                                                # @TODO: IMPLEMENT THIS <<<<
+  version = Column('version', Integer, nullable=False, server_default=text("1"))
 
   # For edited/cancelled orders (points from new to old)
   amendedBiobankOrderId = Column('amended_biobank_order_id', String(80),
