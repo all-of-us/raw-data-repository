@@ -1,6 +1,8 @@
 import httplib
 
 import datetime
+
+from dao.biobank_order_dao import BiobankOrderDao
 from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import load_biobank_order_json, load_measurement_json
 from model.utils import to_client_participant_id, from_client_participant_id
@@ -17,8 +19,26 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.participant_dao = ParticipantDao()
     self.participant_dao.insert(self.participant)
     self.summary_dao = ParticipantSummaryDao()
+    self.bio_dao = BiobankOrderDao()
     self.path = (
         'Participant/%s/BiobankOrder' % to_client_participant_id(self.participant.participantId))
+
+  def test_cancel_order(self):
+    self.summary_dao.insert(self.participant_summary(self.participant))
+    order_json = load_biobank_order_json(self.participant.participantId,
+                                         filename='biobank_order_2.json')
+    result = self.send_post(self.path, order_json)
+    full_order_json = load_biobank_order_json(self.participant.participantId,
+                                              filename='biobank_order_1.json')
+    _strip_fields(result)
+    _strip_fields(full_order_json)
+    self.assertEquals(full_order_json, result)
+
+
+    biobank_order_id = result['identifier'][1]['value']
+    path = self.path + biobank_order_id
+    result['orderStatus'] = "cancelled"
+    cancelled = self.send_get(path, biobank_order_id)
 
   def test_insert_and_refetch(self):
     self.summary_dao.insert(self.participant_summary(self.participant))

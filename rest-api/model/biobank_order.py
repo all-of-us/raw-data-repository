@@ -22,6 +22,9 @@ class BiobankOrder(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
 
+  # Incrementing version, starts at 1 and is incremented on each update.
+  version = Column('version', Integer, nullable=False)                                                # @TODO: IMPLEMENT THIS <<<<
+
   # For edited/cancelled orders (points from new to old)
   amendedBiobankOrderId = Column('amended_biobank_order_id', String(80),
                                  ForeignKey('biobank_order.biobank_order_id'))

@@ -1,10 +1,10 @@
-from api.base_api import BaseApi
+from api.base_api import UpdatableApi
 from app_util import auth_required
 from api_util import HEALTHPRO, PTC_AND_HEALTHPRO
 from dao.biobank_order_dao import BiobankOrderDao
 
 
-class BiobankOrderApi(BaseApi):
+class BiobankOrderApi(UpdatableApi):
   def __init__(self):
     super(BiobankOrderApi, self).__init__(BiobankOrderDao(), get_returns_children=True)
 
@@ -15,3 +15,7 @@ class BiobankOrderApi(BaseApi):
   @auth_required(PTC_AND_HEALTHPRO)
   def get(self, p_id, bo_id=None):  # pylint: disable=unused-argument
     return super(BiobankOrderApi, self).get(bo_id)
+
+  @auth_required(HEALTHPRO)
+  def put(self, p_id, bo_id):  # pylint: disable=unused-argument
+    return super(BiobankOrderApi, self).put(bo_id)
