@@ -1,6 +1,6 @@
 import clock
 from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
-from dao.base_dao import BaseDao, FhirMixin, FhirProperty
+from dao.base_dao import UpdatableDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
@@ -70,11 +70,14 @@ class _FhirBiobankOrder(FhirMixin, DomainResource):
     FhirProperty('created_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('collected_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('processed_info', _FhirBiobankOrderHandlingInfo),
-    FhirProperty('finalized_info', _FhirBiobankOrderHandlingInfo)
+    FhirProperty('finalized_info', _FhirBiobankOrderHandlingInfo),
+    FhirProperty('cancelledInfo', _FhirBiobankOrderHandlingInfo),
+    FhirProperty('status', str, required=False),
+    FhirProperty('amendedReason', str, required=False)
   ]
 
 
-class BiobankOrderDao(BaseDao):
+class BiobankOrderDao(UpdatableDao):
   def __init__(self):
     super(BiobankOrderDao, self).__init__(BiobankOrder)
 
@@ -234,7 +237,8 @@ class BiobankOrderDao(BaseDao):
     return info
 
   # pylint: disable=unused-argument
-  def from_client_json(self, resource_json, participant_id=None, client_id=None):
+  def from_client_json(self, resource_json, id_=None, expected_version=None,
+    participant_id=None, client_id=None):
     resource = _FhirBiobankOrder(resource_json)
     if not resource.created.date:  # FHIR warns but does not error on bad date values.
       raise BadRequest('Invalid created date %r.' % resource.created.origval)
@@ -266,6 +270,9 @@ class BiobankOrderDao(BaseDao):
           % (participant_id, resource.subject, self._participant_id_to_subject(participant_id)))
     self._add_identifiers_and_main_id(order, resource)
     self._add_samples(order, resource)
+    if resource.status:
+      order.status = resource.status
+    order.version = expected_version
     return order
 
   @classmethod
@@ -341,3 +348,14 @@ class BiobankOrderDao(BaseDao):
     client_json['id'] = model.biobankOrderId
     del client_json['resourceType']
     return client_json
+
+  def _do_update(self, session, obj, existing_obj):
+    obj.lastModified = clock.CLOCK.now()
+    super(BiobankOrderDao, self)._do_update(session, obj, existing_obj)
+
+  def _validate_update(self, session, obj, existing_obj):
+    # obj.version += 1 # @TODO: UNCOMMENT AFTER MANUAL TESTING
+    super(BiobankOrderDao, self)._validate_update(session, obj, existing_obj)
+
+
+

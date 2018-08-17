@@ -54,7 +54,8 @@ class BiobankOrderDaoTest(SqlTestBase):
   def test_from_json(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     order_json = load_biobank_order_json(self.participant.participantId)
-    order = BiobankOrderDao().from_client_json(order_json, self.participant.participantId)
+    order = BiobankOrderDao().from_client_json(order_json,
+                                               participant_id=self.participant.participantId)
     self.assertEquals(1, order.sourceSiteId)
     self.assertEquals('fred@pmi-ops.org', order.sourceUsername)
     self.assertEquals(1, order.collectedSiteId)
