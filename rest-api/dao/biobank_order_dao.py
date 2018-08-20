@@ -8,7 +8,7 @@ from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrder
 from model.log_position import LogPosition
 from model.participant import Participant
 from model.utils import to_client_participant_id
-from participant_enums import OrderStatus
+from participant_enums import OrderStatus, BiobankOrderStatus
 
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models.domainresource import DomainResource
@@ -72,6 +72,7 @@ class _FhirBiobankOrder(FhirMixin, DomainResource):
     FhirProperty('processed_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('finalized_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('cancelledInfo', _FhirBiobankOrderHandlingInfo),
+    FhirProperty('restoredInfo', _FhirBiobankOrderHandlingInfo),
     FhirProperty('status', str, required=False),
     FhirProperty('amendedReason', str, required=False)
   ]
@@ -271,9 +272,38 @@ class BiobankOrderDao(UpdatableDao):
     self._add_identifiers_and_main_id(order, resource)
     self._add_samples(order, resource)
     if resource.status:
-      order.status = resource.status
+      self._handle_new_status(order, resource)
     order.version = expected_version
     return order
+
+  @classmethod
+  def _handle_new_status(cls, order, resource):
+    site_dao = SiteDao()
+    order.status = resource.status
+    if order.status.upper() == 'CANCELLED':
+      order.orderStatus = BiobankOrderStatus.CANCELLED
+      site = site_dao.get_by_google_group(resource.cancelledInfo.site.value)
+      if site:
+        order.cancelledSiteId = site.siteId
+      else:
+        print 'need site id'
+      order.cancelledUsername = resource.cancelledInfo.author.value
+      order.cancelledTime = clock.CLOCK.now()
+      order.amendedReason = resource.amendedReason
+    elif order.status.upper() == 'RESTORED':
+      print 'restored'
+      order.orderStatus = BiobankOrderStatus.UNSET
+      site = site_dao.get_by_google_group(resource.cancelledInfo.site.value)
+      if site:
+        order.restoredSiteId = site.siteId
+      else:
+        raise BadRequest('A valid google_group is required for cancelledInfo.site.value')
+      order.restoredUsername = resource.cancelledInfo.author.value
+      order.restoredTime = clock.CLOCK.now()
+      order.amendedReason = resource.amendedReason
+    else:
+      raise BadRequest('{} is not a valid status operation. Must be cancelled or restored.'.format(
+                       order.status))
 
   @classmethod
   def _add_identifiers_and_main_id(cls, order, resource):
@@ -349,13 +379,13 @@ class BiobankOrderDao(UpdatableDao):
     del client_json['resourceType']
     return client_json
 
-  def _do_update(self, session, obj, existing_obj):
-    obj.lastModified = clock.CLOCK.now()
-    super(BiobankOrderDao, self)._do_update(session, obj, existing_obj)
+  def _do_update(self, session, order, resource):
+    order.lastModified = clock.CLOCK.now()
+    super(BiobankOrderDao, self)._do_update(session, order, resource)
 
-  def _validate_update(self, session, obj, existing_obj):
+  def _validate_update(self, session, order, resource):
     # obj.version += 1 # @TODO: UNCOMMENT AFTER MANUAL TESTING
-    super(BiobankOrderDao, self)._validate_update(session, obj, existing_obj)
+    super(BiobankOrderDao, self)._validate_update(session, order, resource)
 
 
 

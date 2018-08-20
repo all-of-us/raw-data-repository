@@ -206,8 +206,10 @@ class UpdatableApi(BaseApi):
     self._do_update(m)
     return self._make_response(m)
 
+
 def _make_etag(version):
   return 'W/"%d"' % version
+
 
 def _parse_etag(etag):
   if etag.startswith('W/"') and etag.endswith('"'):
