@@ -8,7 +8,7 @@ from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrder
 from model.log_position import LogPosition
 from model.participant import Participant
 from model.utils import to_client_participant_id
-from participant_enums import OrderStatus
+from participant_enums import OrderStatus, BiobankOrderStatus
 
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models.domainresource import DomainResource
@@ -94,6 +94,8 @@ class BiobankOrderDao(BaseDao):
     return result
 
   def insert_with_session(self, session, obj):
+    obj.version = 1                                # @TODO: CHECK IF THIS IS THE BEST PLACE FOR THIS
+    obj.orderStatus = BiobankOrderStatus.UNSET
     if obj.logPosition is not None:
       raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
     obj.logPosition = LogPosition()
