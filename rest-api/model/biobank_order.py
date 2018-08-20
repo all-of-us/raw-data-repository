@@ -21,6 +21,7 @@ class BiobankOrder(Base):
 
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
+  version = Column('version', Integer, primary_key=True)
 
   # For edited/cancelled orders (points from new to old)
   amendedBiobankOrderId = Column('amended_biobank_order_id', String(80),
@@ -116,3 +117,7 @@ class BiobankOrderedSample(Base):
   collected = Column('collected', UTCDateTime)
   processed = Column('processed', UTCDateTime)
   finalized = Column('finalized', UTCDateTime)
+
+class BiobankOrderHistory(BiobankOrder, Base):
+  __tablename__ = 'biobank_history'
+  version = Column('version', Integer, primary_key=True)
