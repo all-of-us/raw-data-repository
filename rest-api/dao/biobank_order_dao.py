@@ -98,7 +98,7 @@ class BiobankOrderDao(UpdatableDao):
     return result
 
   def insert_with_session(self, session, obj):
-    if obj.version == None:
+    if obj.version is None:
       obj.version = 1
     if obj.logPosition is not None:
       raise BadRequest('%s.logPosition must be auto-generated.' % self.model_type.__name__)
