@@ -221,6 +221,7 @@ class DatabaseTest(SqlTestBase):
         participantId=p.participantId,
         created=now,
         sourceSiteId=1,
+        version=1,
         sourceUsername='bob@pmi-ops.org',
         collectedSiteId=1,
         collectedUsername='fred@pmi-ops.org',
