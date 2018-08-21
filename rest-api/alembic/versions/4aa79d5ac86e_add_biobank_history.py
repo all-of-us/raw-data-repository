@@ -1,7 +1,7 @@
 """add biobank history
 
 Revision ID: 4aa79d5ac86e
-Revises: e44e303ae759
+Revises: 0e92151ebd4a
 Create Date: 2018-08-20 10:33:58.770173
 
 """
@@ -19,7 +19,7 @@ from model.code import CodeType
 
 # revision identifiers, used by Alembic.
 revision = '4aa79d5ac86e'
-down_revision = 'e44e303ae759'
+down_revision = '0e92151ebd4a'
 branch_labels = None
 depends_on = None
 

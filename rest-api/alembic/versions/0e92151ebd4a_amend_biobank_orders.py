@@ -48,6 +48,7 @@ def upgrade_rdr():
     op.add_column('biobank_order', sa.Column('restored_site_id', sa.Integer(), nullable=True))
     op.add_column('biobank_order', sa.Column('restored_time', model.utils.UTCDateTime(), nullable=True))
     op.add_column('biobank_order', sa.Column('restored_username', sa.String(length=255), nullable=True))
+    op.add_column('biobank_order', sa.Column('version', sa.Integer(), nullable=False))
     op.create_foreign_key(None, 'biobank_order', 'site', ['amended_site_id'], ['site_id'])
     op.create_foreign_key(None, 'biobank_order', 'site', ['cancelled_site_id'], ['site_id'])
     op.create_foreign_key(None, 'biobank_order', 'site', ['restored_site_id'], ['site_id'])
@@ -74,6 +75,7 @@ def downgrade_rdr():
     op.drop_column('biobank_order', 'amended_site_id')
     op.drop_column('biobank_order', 'amended_reason')
     op.drop_column('biobank_order', 'amended_biobank_order_id')
+    op.drop_column('biobank_order', 'version')
     # ### end Alembic commands ###
 
 
