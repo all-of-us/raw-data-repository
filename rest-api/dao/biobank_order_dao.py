@@ -8,7 +8,7 @@ from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrder
 from model.log_position import LogPosition
 from model.participant import Participant
 from model.utils import to_client_participant_id
-from participant_enums import OrderStatus, BiobankOrderStatus
+from participant_enums import OrderStatus
 
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models.domainresource import DomainResource
