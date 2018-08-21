@@ -87,6 +87,7 @@ class BaseDao(object):
   def get_with_session(self, session, obj_id, for_update=False, options=None):
     """Gets an object by ID for this type using the specified session. Returns None if not found."""
     query = session.query(self.model_type)
+    print query, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
     if for_update:
       query = query.with_for_update()
     if options:

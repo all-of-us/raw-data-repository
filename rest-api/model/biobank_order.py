@@ -22,14 +22,6 @@ class BiobankOrderBase(object):
   # Incrementing version, starts at 1 and is incremented on each update.
   version = Column('version', Integer, nullable=False)
 
-  # # For edited/cancelled orders (points from new to old)
-  # amendedBiobankOrderId = Column('amended_biobank_order_id', String(80),
-  #                                ForeignKey('biobank_order.biobank_order_id'))
-  # # For syncing new orders.
-  # logPositionId = Column('log_position_id', Integer, ForeignKey('log_position.log_position_id'),
-  #                        nullable=False)
-  # logPosition = relationship('LogPosition')
-
   # The username / email of the HealthPro user that created the order -- createdInfo['author']
   # in the resulting JSON.
   sourceUsername = Column('source_username', String(255))
