@@ -110,14 +110,16 @@ jobs:
 #    - run:
 #        name: tag
 #        command: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
-    - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
-    - run: ./ci/release_notes.py all-of-us-rdr-staging
-    - run:
-        command: ./tools/upgrade_database.sh -i https://all-of-us-rdr-staging.appspot.com --creds_file ~/gcloud-credentials.key
-        working_directory: ~/all-of-us/raw-data-repository/rest-api
+    steps:
+      - checkout
+      - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
+      - run: ./ci/release_notes.py all-of-us-rdr-staging
+      - run:
+          command: ./tools/upgrade_database.sh -i https://all-of-us-rdr-staging.appspot.com --creds_file ~/gcloud-credentials.key
+          working_directory: ~/all-of-us/raw-data-repository/rest-api
 
-    - run: ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
-    - run: ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com -c ~/gcloud-credentials.key
+      - run: ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
+      - run: ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com -c ~/gcloud-credentials.key
 
     # Stable and production deployments are not done automatically but can be
     # manually executed with the test.sh and deploy.sh pair, e.g.:
