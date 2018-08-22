@@ -106,8 +106,10 @@ jobs:
     # follow AE rules (no dots).
 #    steps:
 #      # This should match _RELEASE_TAG_RE in release_notes.py.
-  staging:
-    tag: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
+  deploy_staging:
+    - run:
+        name: tag
+        command: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
     - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
     - run: ./ci/release_notes.py all-of-us-rdr-staging
     - run:
