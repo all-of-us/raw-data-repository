@@ -59,19 +59,19 @@ jobs:
     - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
     - run: pip install -I alembic==0.9.1
     # Save dependency cache
-    - save_cache:
-        key: v1-dep-{{ .Branch }}-{{ epoch }}
-        paths:
-        # This is a broad list of cache paths to include many possible development environments
-        # You can probably delete some of these entries
-        - vendor/bundle
-        - ~/virtualenvs
-        - ~/.m2
-        - ~/.ivy2
-        - ~/.bundle
-        - ~/.go_workspace
-        - ~/.gradle
-        - ~/.cache/bower
+#    - save_cache:
+#        key: v1-dep-{{ .Branch }}-{{ epoch }}
+#        paths:
+#        # This is a broad list of cache paths to include many possible development environments
+#        # You can probably delete some of these entries
+#        - vendor/bundle
+#        - ~/virtualenvs
+#        - ~/.m2
+#        - ~/.ivy2
+#        - ~/.bundle
+#        - ~/.go_workspace
+#        - ~/.gradle
+#        - ~/.cache/bower
     # Test
     #   This would typically be a build job when using workflows, possibly combined with build
     # This is based on your 1.0 configuration file or project settings
@@ -106,14 +106,16 @@ jobs:
     # follow AE rules (no dots).
 #    steps:
 #      # This should match _RELEASE_TAG_RE in release_notes.py.
-#      tag: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
-#        - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
-#        - run: ./ci/release_notes.py all-of-us-rdr-staging
-#        - run: ./tools/upgrade_database.sh -i https://all-of-us-rdr-staging.appspot.com --creds_file ~/gcloud-credentials.key:
-#            pwd:
-#              rest-api
-#        - run: ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
-#        - run: ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com -c ~/gcloud-credentials.key
+  staging:
+    tag: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
+    - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
+    - run: ./ci/release_notes.py all-of-us-rdr-staging
+    - run:
+        command: ./tools/upgrade_database.sh -i https://all-of-us-rdr-staging.appspot.com --creds_file ~/gcloud-credentials.key
+        working_directory: ~/all-of-us/raw-data-repository/rest-api
+
+    - run: ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
+    - run: ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com -c ~/gcloud-credentials.key
 
     # Stable and production deployments are not done automatically but can be
     # manually executed with the test.sh and deploy.sh pair, e.g.:
