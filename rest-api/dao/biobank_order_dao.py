@@ -285,12 +285,11 @@ class BiobankOrderDao(UpdatableDao):
       if site:
         order.cancelledSiteId = site.siteId
       else:
-        print 'need site id'
+        raise BadRequest('A valid google_group is required for cancelledInfo.site.value')
       order.cancelledUsername = resource.cancelledInfo.author.value
       order.cancelledTime = clock.CLOCK.now()
       order.amendedReason = resource.amendedReason
     elif order.status.upper() == 'RESTORED':
-      print 'restored'
       order.orderStatus = BiobankOrderStatus.UNSET
       site = site_dao.get_by_google_group(resource.cancelledInfo.site.value)
       if site:
