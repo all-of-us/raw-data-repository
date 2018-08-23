@@ -1,11 +1,3 @@
-# This configuration was automatically generated from a CircleCI 1.0 config.
-# It should include any build commands you had along with commands that CircleCI
-# inferred from your project structure. We strongly recommend you read all the
-# comments in this file to understand the structure of CircleCI 2.0, as the idiom
-# for configuration has changed substantially in 2.0 to allow arbitrary jobs rather
-# than the prescribed lifecycle of 1.0. In general, we recommend using this generated
-# configuration as a reference rather than using it in production, though in most
-# cases it should duplicate the execution of your original 1.0 config.
 version: 2
 
 defaults: &defaults
@@ -13,23 +5,30 @@ defaults: &defaults
   working_directory: ~/all-of-us/raw-data-repository
   parallelism: 1
   shell: /bin/bash --login
-  # CircleCI 2.0 does not support environment variables that refer to each other the same way as 1.0 did.
-  # If any of these refer to each other, rewrite them so that they don't or see https://circleci.com/docs/2.0/env-vars/#interpolating-environment-variables-to-set-other-environment-variables .
   environment:
     CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
     CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
-  # In CircleCI 1.0 we used a pre-configured image with a large number of languages and other packages.
-  # In CircleCI 2.0 you can now specify your own image, or use one of our pre-configured images.
-  # The following configuration line tells CircleCI to use the specified docker image as the runtime environment for you job.
-  # We have selected a pre-built image that mirrors the build environment we use on
-  # the 1.0 platform, but we recommend you choose an image more tailored to the needs
-  # of each job. For more information on choosing an image (or alternatively using a
+  # For more information on choosing an image (or alternatively using a
   # VM instead of a container) see https://circleci.com/docs/2.0/executor-types/
   # To see the list of pre-built images that CircleCI provides for most common languages see
   # https://circleci.com/docs/2.0/circleci-images/
   docker:
   - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
     command: /sbin/init
+
+filter_master: &filter_master
+  <<: *defaults
+  filters:
+    branches:
+      only: master
+
+filter_releases: &filter_releases
+  <<: *defaults
+  filters:
+    branches:
+      ignore: /.*/
+    tags:
+      only: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
 
 jobs:
   build:
@@ -65,20 +64,20 @@ jobs:
         
   deploy_test:
     <<: *defaults
-    - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
-    - run:
-        command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
-        working_directory: ~/all-of-us/raw-data-repository/rest-api
-    - run: ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
-    - run: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com -c ~/gcloud-credentials.key
+    steps:
+      - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
+      - run:
+          command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
+          working_directory: ~/all-of-us/raw-data-repository/rest-api
+      - run: ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
+      - run: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com -c ~/gcloud-credentials.key
 
     # To deploy to staging, cut a GitHub release on a green build, with tag of
     # the form v0-1-1-rc0. We use tags as AppEngine version names, so they must
     # follow AE rules (no dots).
-  #    steps:
-  #      # This should match _RELEASE_TAG_RE in release_notes.py.
+    # This should match _RELEASE_TAG_RE in release_notes.py.
   deploy_staging:
-    <<: *defaults
+    <<: *filter_releases
     steps:
     - checkout
     - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
@@ -95,32 +94,22 @@ jobs:
     # ./ci/deploy.sh all-of-us-rdr-stable config/config_stable.json <configurator key file>
     # ./ci/deploy.sh all-of-us-rdr config/config_prod.json <configurator key file>
 
-  # Deploy master to the pmi-drc-api-test project whenever the tests pass
-  filter_master: &filter_master
-    filters:
-      branches:
-        only: master
+workflows:
+  version: 2
+  build:
+    jobs:
+      -build
+  deploy_to_test:
+    jobs:
+      - deploy_test
+      <<: *filter_master
+      requires:
+      - build
 
-  filter_releases: &filter_releases
-    filters:
-      branches:
-        ignore: /.*/
-      tags:
-        only: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
-
-  workflows:
-    version: 2
-    deploy_to_test:
-      jobs:
-        - deploy_test
-          <<: *filter_master
-          requires:
-            - build
-
-    deploy_to_staging:
-      jobs:
-        - deploy_staging
-        <<: *filter_releases
-        requires:
-          - build
+  deploy_to_staging:
+    jobs:
+      - deploy_staging
+      <<: *filter_releases
+      requires:
+        - build
 
