@@ -6,7 +6,7 @@ version: 2
 defaults: &defaults
   docker:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
-#  - run: /sbin/init
+    - run: /sbin/init
   working_directory: ~/all-of-us/raw-data-repository
   parallelism: 1
   shell: /bin/bash --login
