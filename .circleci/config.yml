@@ -6,7 +6,6 @@ version: 2
 defaults: &defaults
   docker:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
-    - image: mysql:5.7
   working_directory: ~/all-of-us/raw-data-repository
   parallelism: 1
   shell: /bin/bash --login
@@ -32,9 +31,9 @@ jobs:
     steps:
       - checkout
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-#      - run:
-#          working_directory: ~/all-of-us/raw-data-repository
-#          command: 'sudo service mysql status || sudo service mysql start; '
+      - run:
+          working_directory: ~/all-of-us/raw-data-repository
+          command: 'sudo service mysql status || sudo service mysql start; '
       - restore_cache:
           keys:
           # This branch if available
