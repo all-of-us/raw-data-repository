@@ -101,15 +101,15 @@ workflows:
       - build_and_test
   deploy_to_test:
     jobs:
-      - deploy_test
-      <<: *filter_master
-      requires:
-      - build_and_test
+      - deploy_test:
+        <<: *filter_master
+        requires:
+        - build_and_test
 
   deploy_to_staging:
     jobs:
-      - deploy_staging
-      <<: *filter_releases
-      requires:
-        - build_and_test
+      - deploy_staging:
+        <<: *filter_releases
+        requires:
+          - build_and_test
 
