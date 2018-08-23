@@ -1,11 +1,9 @@
 version: 2
-
+# For more information on choosing an image (or alternatively using a
+# VM instead of a container) see https://circleci.com/docs/2.0/executor-types/
+# To see the list of pre-built images that CircleCI provides for most common languages see
+# https://circleci.com/docs/2.0/circleci-images/
 defaults: &defaults
-
-  # For more information on choosing an image (or alternatively using a
-  # VM instead of a container) see https://circleci.com/docs/2.0/executor-types/
-  # To see the list of pre-built images that CircleCI provides for most common languages see
-  # https://circleci.com/docs/2.0/circleci-images/
   docker:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
     command: /sbin/init
@@ -32,7 +30,7 @@ jobs:
   build_and_test:
     <<: *defaults
     docker:
-    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+      - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
       command: /sbin/init
     working_directory: ~/all-of-us/raw-data-repository
     parallelism: 1
@@ -113,8 +111,7 @@ workflows:
       - build_and_test
   deploy_to_test:
     jobs:
-      - build_and_test:
-        <<: *filter_master
+      - build_and_test
       - deploy_test:
         <<: *filter_master
         requires:
