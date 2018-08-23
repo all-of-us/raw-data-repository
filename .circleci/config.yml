@@ -100,11 +100,11 @@ workflows:
   build_test:
     jobs:
       - build_and_test
-#  deploy_to_test:
-#    jobs:
-#      - build_and_test
-#      - deploy_test:
-#        <<: *filter_master
+  deploy_to_test:
+    jobs:
+      - build_and_test
+      - deploy_test:
+        <<: *filter_master
 #        requires:
 #          - build_and_test
 
