@@ -17,13 +17,11 @@ defaults: &defaults
     CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
 
 filter_master: &filter_master
-  <<: *defaults
   filters:
     branches:
       only: master
 
 filter_releases: &filter_releases
-  <<: *defaults
   filters:
     branches:
       ignore: /.*/
@@ -113,13 +111,13 @@ workflows:
   build_test:
     jobs:
       - build_and_test
-  deploy_to_test:
-    jobs:
-      - build_and_test
-      - deploy_test:
-        <<: *filter_master
-        requires:
-          - build_and_test
+#  deploy_to_test:
+#    jobs:
+#      - build_and_test
+#      - deploy_test:
+#        <<: *filter_master
+#        requires:
+#          - build_and_test
 
 #  deploy_to_staging:
 #    jobs:
