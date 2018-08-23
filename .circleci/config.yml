@@ -102,13 +102,9 @@ workflows:
   deploy_to_test:
     jobs:
       - build_and_test
-      - deploy_test
-#      - deploy_test:
-#        filters:
-#          branches:
-#            only: master
-#        requires:
-#          - build_and_test
+      - deploy_test:
+        requires:
+          - build_and_test
 
 #  deploy_to_staging:
 #    jobs:
