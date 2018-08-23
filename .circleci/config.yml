@@ -13,6 +13,10 @@ defaults: &defaults
   environment:
     CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
     CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+  - run: sudo chmod o+w /opt
+  - run: pip install --upgrade pip
+  - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
+  - run: pip install -I alembic==0.9.1
 
 filter_master: &filter_master
   filters:
@@ -43,12 +47,11 @@ jobs:
           - v1-dep-master-
           # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
           - v1-dep-
-      # This is based on your 1.0 configuration file or project settings
-      - run: sudo chmod o+w /opt
-      - run: pip install --upgrade pip
-      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
-      - run: pip install -I alembic==0.9.1
-      - run: ./ci/test.sh
+#      - run: sudo chmod o+w /opt
+#      - run: pip install --upgrade pip
+#      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
+#      - run: pip install -I alembic==0.9.1
+#      - run: ./ci/test.sh
       # Save test results
       - store_test_results:
           path: /tmp/circleci-test-results
@@ -107,8 +110,8 @@ workflows:
         filters:
           branches:
             only: master
-#        requires:
-#          - build_and_test
+        requires:
+          - build_and_test
 
 #  deploy_to_staging:
 #    jobs:
