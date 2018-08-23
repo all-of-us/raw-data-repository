@@ -72,7 +72,7 @@ jobs:
         path: /tmp/circleci-test-results
         
   deploy_test:
-    <<: *defaults
+    <<: *filter_master
     steps:
       - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
       - run:
@@ -111,14 +111,12 @@ workflows:
   deploy_to_test:
     jobs:
       - deploy_test:
-        <<: *filter_master
         requires:
         - build_and_test
 
   deploy_to_staging:
     jobs:
       - deploy_staging:
-        <<: *filter_releases
         requires:
           - build_and_test
 
