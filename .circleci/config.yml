@@ -32,8 +32,8 @@ jobs:
     steps:
       - checkout
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-      - run:
-          working_directory: ~/all-of-us/raw-data-repository
+#      - run:
+#          working_directory: ~/all-of-us/raw-data-repository
 #          command: 'sudo service mysql status || sudo service mysql start; '
       - restore_cache:
           keys:
