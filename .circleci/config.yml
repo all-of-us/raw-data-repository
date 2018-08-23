@@ -13,11 +13,11 @@ defaults: &defaults
     CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
     CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
 
-#filter_master: &filter_master
-#  filters:
-#    branches:
-#      only: master
-#
+filter_master: &filter_master
+  filters:
+    branches:
+      only: master
+
 #filter_releases: &filter_releases
 #  filters:
 #    branches:
@@ -59,7 +59,6 @@ jobs:
   deploy_test:
     <<: *defaults
     steps:
-      - run: echo "Hello, world!"
       - checkout
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
       - run:
@@ -101,8 +100,10 @@ workflows:
       - build_and_test
   deploy_to_test:
     jobs:
-      - build_and_test
+      - build_and_test:
+          <<: *filter_master
       - deploy_test:
+          <<: *filter_master
           requires:
             - build_and_test
 
