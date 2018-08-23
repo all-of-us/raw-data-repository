@@ -60,7 +60,6 @@ jobs:
     <<: *defaults
     steps:
       - checkout
-      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
       - run:
           working_directory: ~/all-of-us/raw-data-repository
           command: 'sudo service mysql status || sudo service mysql start; '
@@ -84,7 +83,6 @@ jobs:
     - run:
         command: ./tools/upgrade_database.sh -i https://all-of-us-rdr-staging.appspot.com --creds_file ~/gcloud-credentials.key
         working_directory: ~/all-of-us/raw-data-repository/rest-api
-
     - run: ./ci/deploy.sh all-of-us-rdr-staging config/config_staging.json ~/gcloud-credentials.key
     - run: ./rest-api/test/test_server.sh -i https://all-of-us-rdr-staging.appspot.com -c ~/gcloud-credentials.key
 
@@ -95,7 +93,7 @@ jobs:
 
 workflows:
   version: 2
-  build_test:
+  build_and_test:
     jobs:
       - build_and_test
   deploy_to_test:
