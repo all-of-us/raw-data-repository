@@ -71,6 +71,15 @@ jobs:
         
   deploy_test:
 #    <<: *defaults
+    docker:
+    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+      command: /sbin/init
+    working_directory: ~/all-of-us/raw-data-repository
+    parallelism: 1
+    shell: /bin/bash --login
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
     steps:
       - checkout
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
@@ -90,6 +99,15 @@ jobs:
   # This should match _RELEASE_TAG_RE in release_notes.py.
   deploy_staging:
 #    <<: *defaults
+    docker:
+    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+      command: /sbin/init
+    working_directory: ~/all-of-us/raw-data-repository
+    parallelism: 1
+    shell: /bin/bash --login
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
     steps:
     - checkout
     - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
