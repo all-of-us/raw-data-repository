@@ -3,37 +3,40 @@ version: 2
 # VM instead of a container) see https://circleci.com/docs/2.0/executor-types/
 # To see the list of pre-built images that CircleCI provides for most common languages see
 # https://circleci.com/docs/2.0/circleci-images/
-defaults: &defaults
-  docker:
-    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
-#    - command: /sbin/init
-  working_directory: ~/all-of-us/raw-data-repository
-  parallelism: 1
-  shell: /bin/bash --login
-  environment:
-    CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
-    CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
-
-  - run: sudo chmod o+w /opt
-  - run: pip install --upgrade pip
-  - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
-  - run: pip install -I alembic==0.9.1
-
-filter_master: &filter_master
-  filters:
-    branches:
-      only: master
-
-filter_releases: &filter_releases
-  filters:
-    branches:
-      ignore: /.*/
-    tags:
-      only: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
+#defaults: &defaults
+#  docker:
+#    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+##    - command: /sbin/init
+#  working_directory: ~/all-of-us/raw-data-repository
+#  parallelism: 1
+#  shell: /bin/bash --login
+#  environment:
+#    CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+#    CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+#
+#filter_master: &filter_master
+#  filters:
+#    branches:
+#      only: master
+#
+#filter_releases: &filter_releases
+#  filters:
+#    branches:
+#      ignore: /.*/
+#    tags:
+#      only: /v[0-9]+(-[0-9]+)*-rc[0-9]+[a-z]*/
 
 jobs:
   build_and_test:
-    <<: *defaults
+#    <<: *defaults
+    docker:
+      - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+    working_directory: ~/all-of-us/raw-data-repository
+    parallelism: 1
+    shell: /bin/bash --login
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
     steps:
       - checkout
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
@@ -48,11 +51,11 @@ jobs:
           - v1-dep-master-
           # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
           - v1-dep-
-#      - run: sudo chmod o+w /opt
-#      - run: pip install --upgrade pip
-#      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
-#      - run: pip install -I alembic==0.9.1
-#      - run: ./ci/test.sh
+      - run: sudo chmod o+w /opt
+      - run: pip install --upgrade pip
+      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
+      - run: pip install -I alembic==0.9.1
+      - run: ./ci/test.sh
       # Save test results
       - store_test_results:
           path: /tmp/circleci-test-results
