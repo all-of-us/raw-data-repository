@@ -6,7 +6,7 @@ version: 2
 defaults: &defaults
   docker:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
-    - command: /sbin/init
+#    - command: /sbin/init
   working_directory: ~/all-of-us/raw-data-repository
   parallelism: 1
   shell: /bin/bash --login
@@ -100,13 +100,13 @@ workflows:
   build_test:
     jobs:
       - build_and_test
-  deploy_to_test:
-    jobs:
-      - build_and_test
-      - deploy_test:
-        <<: *filter_master
-        requires:
-          - build_and_test
+#  deploy_to_test:
+#    jobs:
+#      - build_and_test
+#      - deploy_test:
+#        <<: *filter_master
+#        requires:
+#          - build_and_test
 
 #  deploy_to_staging:
 #    jobs:
