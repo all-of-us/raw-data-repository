@@ -28,7 +28,7 @@ import jira
 _REPO_BASE_URL = 'https://github.com/all-of-us/raw-data-repository'
 
 # Git tags of this format denote releases. Final letter suffixes denote cherry-picks.
-# This should match circle.yml.
+# This should match config.yml.
 _RELEASE_TAG_RE = re.compile(r'v[0-9]+(?:-[0-9]+)*-rc[0-9]+[a-z]*$')
 _CHERRY_PICK_RE = re.compile(r'(.*-rc[0-9]+)([a-z]*)')
 
