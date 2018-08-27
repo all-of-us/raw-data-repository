@@ -81,7 +81,7 @@ jobs:
           working_directory: ~/all-of-us/raw-data-repository/rest-api
           command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
 
-      - run: ./ci/deploy.sh pmi-drc-api-test config/config_test.json ~/gcloud-credentials.key
+      - run: ./ci/deploy.sh pmi-drc-api-test rest-api/config/config_test.json ~/gcloud-credentials.key
       - run: ./rest-api/test/test_server.sh -i https://pmi-drc-api-test.appspot.com -c ~/gcloud-credentials.key
 
   # To deploy to staging, cut a GitHub release on a green build, with tag of
