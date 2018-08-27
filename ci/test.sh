@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 trap '[[ "$(jobs -p)" ]] && kill $(jobs -p)' EXIT
-
+source ci/setup.sh
 cd rdr_client
 
 safety check  # checks current (client) venv
@@ -14,8 +14,6 @@ safety check  # checks current (client) venv
     --include_physical_measurements --include_biobank_orders --create_biobank_samples
 # Verify that we can retrieve awardees successfully.
 ./run_client.sh get_awardees.py
-
-safety check  # checks current (client) venv
 
 cd ..
 
