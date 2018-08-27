@@ -2,7 +2,7 @@
 
 trap '[[ "$(jobs -p)" ]] && kill $(jobs -p)' EXIT
 
-cd ../rdr_client
+cd rdr_client
 
 # Verify that the simplest client script works.
 ./run_client.sh participant_create_and_get.py
