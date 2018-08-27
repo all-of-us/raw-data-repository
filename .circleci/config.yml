@@ -13,10 +13,10 @@ defaults: &defaults
     CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
     CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
 
-filter_master: &filter_master
-  filters:
-    branches:
-      only: master
+#filter_master: &filter_master
+#  filters:
+#    branches:
+#      only: master
 
 filter_releases: &filter_releases
   filters:
