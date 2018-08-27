@@ -101,9 +101,8 @@ workflows:
     jobs:
       - build_and_test
 #          <<: *filter_master
-      - deploy_test
+      - deploy_test:
 #          <<: *filter_master
-
           requires:
             - build_and_test
 
