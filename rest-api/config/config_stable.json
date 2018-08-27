@@ -37,9 +37,9 @@
           "ip4": ["10.50.178.54"]
         }
     },
-    "awardee-miami@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+    "awardee-seec@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
-      "awardee": "MIAMI",
+      "awardee": "SEEC",
       "whitelisted_ip_ranges" : {
         "ip4": ["129.171.150.187 "]
       }
