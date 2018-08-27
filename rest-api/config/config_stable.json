@@ -30,12 +30,19 @@
         ]
       }
       },
-      "awardee-illinois@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "awardee-illinois@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
         "roles": ["awardee_sa"],
         "awardee": "ILLINOIS",
         "whitelisted_ip_ranges" : {
           "ip4": ["10.50.178.54"]
         }
+    },
+    "awardee-seec@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "SEEC",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["129.171.150.187 "]
+      }
     },
     "awardee-ucirvine@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
