@@ -46,7 +46,6 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
       - run: pip install -I alembic==0.9.1
-      - run: ./ci/setup.sh
       - run: ./ci/test.sh
       # Save test results
       - store_test_results:
