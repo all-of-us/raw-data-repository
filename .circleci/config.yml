@@ -30,6 +30,11 @@ jobs:
     <<: *defaults
     steps:
       - checkout
+      - run:
+          name: Setup virtualenv
+          command: |
+            virtualenv venv
+            . venv/bin/activate
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
       - run:
           working_directory: ~/all-of-us/raw-data-repository
@@ -46,6 +51,11 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
       - run: pip install -I alembic==0.9.1
+      - run: pip freeze >> requirements.txt
+      - save_cache:
+          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          paths:
+          - "venv"
       - run: ./ci/test.sh
       # Save test results
       - store_test_results:
@@ -61,17 +71,17 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys:
-          # This branch if available
-          - v1-dep-{{ .Branch }}-
-          # Default branch if not
-          - v1-dep-master-
-          # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-          - v1-dep-
-      - run: sudo chmod o+w /opt
-      - run: pip install --upgrade pip
-      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
-      - run: pip install -I alembic==0.9.1
+          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+#          keys:
+#          # This branch if available
+#          - v1-dep-{{ .Branch }}-
+#          # Default branch if not
+#          - v1-dep-master-
+#          # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
+#          - v1-dep-
+      - run:
+          working_directory: ~/all-of-us/raw-data-repository
+          command: . venv/bin/activate
       - run:
           working_directory: ~/all-of-us/raw-data-repository
           command: 'sudo service mysql status || sudo service mysql start; '
