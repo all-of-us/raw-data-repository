@@ -4,6 +4,10 @@ trap '[[ "$(jobs -p)" ]] && kill $(jobs -p)' EXIT
 
 cd rdr_client
 
+activate_local_venv
+
+safety check  # checks current (client) venv
+
 # Verify that the simplest client script works.
 ./run_client.sh participant_create_and_get.py
 # Verify that data generation works.
