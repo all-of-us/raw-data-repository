@@ -40,6 +40,6 @@ done
 
 ./tools/install_config.sh --config=config/config_dev.json --update
 ./tools/setup_local_database.sh --nopassword --db_user ubuntu --db_name circle_test
-
+cd ..
 ./ci/check_licenses.sh
 
