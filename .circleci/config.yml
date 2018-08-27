@@ -65,9 +65,6 @@ jobs:
           command: 'sudo service mysql status || sudo service mysql start; '
       - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
       - run:
-          working_directory: ~/all-of-us/raw-data-repository/rdr_client
-          command: pip install --upgrade httplib2 jira oauth2client parallel pylint
-      - run:
           working_directory: ~/all-of-us/raw-data-repository/rest-api
           command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
 
@@ -102,7 +99,7 @@ workflows:
       - build_and_test
   deploy_to_test:
     jobs:
-      - build_and_test
+#      - build_and_test
 #          <<: *filter_master
       - deploy_test:
 #          <<: *filter_master
