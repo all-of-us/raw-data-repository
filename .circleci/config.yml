@@ -128,7 +128,7 @@ workflows:
       - build_and_test
   deploy_to_test:
     jobs:
-      - build_and_test
+      - build_and_test:
           <<: *filter_master
       - deploy_test:
           <<: *filter_master
