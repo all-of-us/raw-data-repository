@@ -72,7 +72,7 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
       - run: pip install -I alembic==0.9.1
-      - run: pip install rest-api/requirements.txt
+      - run: pip install -r rest-api/requirements.txt
       - run:
           working_directory: ~/all-of-us/raw-data-repository
           command: 'sudo service mysql status || sudo service mysql start; '
