@@ -119,8 +119,8 @@ def get_whitelisted_ips(user_info):
   if not user_info.get('whitelisted_ip_ranges'):
     return None
   return [netaddr.IPNetwork(rng)
-          for rng in user_info['whitelisted_ip_ranges']['ip6'] + \
-                     user_info['whitelisted_ip_ranges']['ip4']]
+          for rng in user_info['whitelisted_ip_ranges'].get('ip6', []) +
+          user_info['whitelisted_ip_ranges'].get('ip4', [])]
 
 
 def enforce_ip_whitelisted(request_ip, whitelisted_ips):
