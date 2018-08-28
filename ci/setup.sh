@@ -17,16 +17,3 @@ cd rest-api
 activate_local_venv
 git submodule update --init
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
-
-#dev_appserver.py \
-#  --datastore_path=/tmp/rdr_test_db \
-#  --clear_datastore=yes \
-#  test.yaml &
-#
-#until $(curl -s --fail http://localhost:8000); do
-#    printf '.'
-#    sleep .25
-#done
-#
-#./tools/install_config.sh --config=config/config_dev.json --update
-#./tools/setup_local_database.sh --nopassword --db_user ubuntu --db_name circle_test
