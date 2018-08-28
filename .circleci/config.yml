@@ -35,7 +35,7 @@ jobs:
           working_directory: ~/all-of-us/raw-data-repository
           command: 'sudo service mysql status || sudo service mysql start; '
       - restore_cache:
-          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
 #          keys: # This branch if available
 #          - v1-dep-{{ .Branch }}-
 #          # Default branch if not
@@ -46,11 +46,11 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
       - run: pip install -I alembic==0.9.1
+      - run: ./ci/test.sh
       - save_cache:
-          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
           paths:
           - "venv"
-      - run: ./ci/test.sh
       # Save test results
       - store_test_results:
           path: /tmp/circleci-test-results
@@ -68,7 +68,7 @@ jobs:
           working_directory: ~/all-of-us/raw-data-repository
           command: 'sudo service mysql status || sudo service mysql start; '
       - restore_cache:
-           key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+           key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
 #          keys:
 #          # This branch if available
 #          - v1-dep-{{ .Branch }}-
@@ -87,7 +87,8 @@ jobs:
           command: ./tools/upgrade_database.sh -i https://pmi-drc-api-test.appspot.com --creds_file ~/gcloud-credentials.key
 
       - save_cache:
-          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          working_directory: ~/all-of-us/raw-data-repository
+          key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
           paths:
           - "venv"
 
