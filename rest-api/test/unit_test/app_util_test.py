@@ -222,6 +222,26 @@ class AppUtilNdbTest(NdbTestBase):
   @patch('app_util.app_identity.get_application_id')
   @patch('app_util.get_oauth_id')
   @patch('app_util.lookup_user_info')
+  def test_no_ip6_required(self, mock_lookup_user_info, mock_get_oauth_id, mock_get_application_id,
+                           mock_request):
+    mock_get_application_id.return_value = 'appid'
+    mock_request.scheme = 'https'
+    mock_request.remote_addr = '10.0.0.1'
+    mock_request.headers = {}
+    mock_get_oauth_id.return_value = 'bob@example.com'
+    mock_lookup_user_info.return_value = {
+      'roles': ['foo'],
+      'whitelisted_ip_ranges': {'ip4': ['10.0.0.2/32']}
+    }
+
+    mock_request.remote_addr = '10.0.0.2'
+    self.assertEquals(2, foo_bar_role(1))
+
+
+  @patch('app_util.request')
+  @patch('app_util.app_identity.get_application_id')
+  @patch('app_util.get_oauth_id')
+  @patch('app_util.lookup_user_info')
   def test_auth_required_appid(self, mock_lookup_user_info,
                                mock_get_oauth_id,
                                mock_get_application_id, mock_request):
