@@ -16,7 +16,9 @@ function activate_local_venv {
 }
 
 cd rest-api
+
 activate_local_venv
+
 git submodule update --init
 
 safety check  # checks current (API) venv
@@ -41,8 +43,13 @@ done
 ./tools/install_config.sh --config=config/config_dev.json --update
 ./tools/setup_local_database.sh --nopassword --db_user ubuntu --db_name circle_test
 
-cd ../rdr_client
-activate_local_venv
+cd ..
+
+./ci/check_licenses.sh
+
+cd rdr_client
+
+safety check  # checks current (client) venv
 
 # Verify that the simplest client script works.
 ./run_client.sh participant_create_and_get.py
@@ -53,11 +60,7 @@ activate_local_venv
 # Verify that we can retrieve awardees successfully.
 ./run_client.sh get_awardees.py
 
-safety check  # checks current (client) venv
-
 cd ..
-
-./ci/check_licenses.sh
 
 cd rest-api/test
 GCLOUD_PATH=$(which gcloud)

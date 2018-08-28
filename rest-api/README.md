@@ -198,7 +198,7 @@ may make `/config` requests. Otherwise, a default
 `configurator@$APPID.iam.gserviceaccount.com` has permission.
 
 Config updates happen automatically on deploy for some environments, controlled
-by `circle.yml`. To manually update configs, download the appropriate service
+by `config.yml`. To manually update configs, download the appropriate service
 account's private key in JSON format (or generate a new key which you can revoke
 after use), and pass it to `install_config.sh`.
 
