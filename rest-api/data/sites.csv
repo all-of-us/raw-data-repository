@@ -154,7 +154,7 @@ Gracias. Un representante de Cook County Health and Hospitals System (CCHHS) se 
 ILLINOIS_NORTHWESTERN,hpo-site-NWFeinbergGalter,Northwestern Memorial Hospital (Feinberg and Galter),HPO NW Feinberg and Galter,7035702,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you, someone from Northwestern Medicine will be contacting you to schedule your All of Us Research Program enrollment appointment. To book an appointment please call us at (312-695-6077), or email us: joinallofus@northwestern.edu; https://www.yellowschedule.com/booking/joinallofus
 
 Gracias. Un representante de Northwestern Medicine se comunicará con usted para programar su cita para registrarse en el Programa Científico All of Us. También puede comunicarse con nosotros al (312) 695-4983 o joinallofus@northwestern.edu si tiene alguna pregunta.",,,,201 East Huron Street,Suite 12-160,Chicago,IL,60611,312-695-6077,charlotte.dodsworth@northwestern.edu,nm.org/joinallofus
-ILLINOIS_NORTHWESTERN,hpo-site-nwvernonhillsicc,Northwestern Medicine Vernon Hills Immediate Care Center,HPO NW Vernon Hills ICC,7036737,8/21/2018,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from Northwestern Medicine will be contacting you to schedule your All of Us Research Program enrollment appointment. To book an appointment please call us at (312-695-6077), or email us: joinallofus@northwestern.edu; https://www.yellowschedule.com/booking/joinallofus
+ILLINOIS_NORTHWESTERN,hpo-site-nwvernonhillsicc,Northwestern Medicine Vernon Hills Immediate Care Center,HPO NW Vernon Hills ICC,7036737,8/21/2018,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you, someone from Northwestern Medicine will be contacting you to schedule your All of Us Research Program enrollment appointment. To book an appointment please call us at (312-695-6077), or email us: joinallofus@northwestern.edu; https://www.yellowschedule.com/booking/joinallofus
 
 Gracias. Un representante de Northwestern Medicine se comunicará con usted para programar su cita para registrarse en el Programa Científico All of Us.  También puede comunicarse con nosotros al (312) 695-4983 o joinallofus@northwestern.edu si tiene alguna pregunta.",,,,870 Milwaukee Ave.,2nd Floor,Vernon Hills,IL,60061,312-695-6077,charlotte.dodsworth@northwestern.edu,nm.org/joinallofus
 ILLINOIS_NORTHWESTERN,hpo-site-nwdelnorhospital,Northwestern Delnor Hospital,HPO NW Delnor Hospital,7036738,7/15/2018,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Inactive,Inactive,"Thank you, someone from Northwestern Medicine will be contacting you to schedule your All of Us Research Program enrollment appointment. To book an appointment please call us at (312-695-6077), or email us: joinallofus@northwestern.edu
@@ -267,10 +267,10 @@ SEEC_MOREHOUSE,hpo-site-morehousewestview,Morehouse School of Medicine - Westvie
 Gracias, agluien de la Escuela de Medecina de Morehouse – Buggy Works se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,Morehouse School of Medicine,720 Westview Drive SW,,Atlanta,GA,30310,404-752-1120,eolorundare@msm.edu,
 SEEC_MOREHOUSE,hpo-site-morehousebuggyworks,Morehouse School of Medicine -Buggy Works,HPO Morehouse Buggy Works,7036508,8/20/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you, someone from Morehouse School of Medicine – Howell Mill Rd will be contacting you to schedule your All of Us Research Program enrollment appointment.
 
-Gracias, agluien de la Escuela de Medecina de Morehouse – Howell Mill Rd se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,Buggy Works Complex,1513 East Cleveland Avenue,Bldg. 500,East Point,GA,30344,404-752-1120,,
+Gracias, agluien de la Escuela de Medecina de Morehouse – Howell Mill Rd se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,Buggy Works Complex,1513 East Cleveland Avenue,Bldg. 500,East Point,GA,30344,404-752-1120,eolorundare@msm.edu,
 SEEC_MOREHOUSE,hpo-site-morehousehowellmillsrd,Morehouse School of Medicine - Howell Mills Rd.,HPO Morehouse Howell Mills Rd.,7036508,8/20/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you, someone from Morehouse School of Medicine - Westview will be contacting you to schedule your All of Us Research Program enrollment appointment.
 
-Gracias, agluien de la Escuela de Medecina de Morehouse - Westview se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,"Morehouse Healthcare, Howell Mill Office",1800 Howell Mill Road,Suites 275 and 550,Atlanta,GA,30318,404-752-1120,,
+Gracias, agluien de la Escuela de Medecina de Morehouse - Westview se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,"Morehouse Healthcare, Howell Mill Office",1800 Howell Mill Road,Suites 275 and 550,Atlanta,GA,30318,404-752-1120,eolorundare@msm.edu,
 SEEC_MOREHOUSE,hpo-site-morehousegrady,Morehouse School of Medicine - Grady,HPO Morehouse Grady,7036509,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from Morehouse School of Medicine - Westview will be contacting you to schedule your All of Us Research Program enrollment appointment.
 
 Gracias, agluien de la Escuela de Medecina de Morehouse - Westview se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,Morehouse School of Medicine,80 Jesse Hill Jr Drive SE,,Atlanta,GA,30303,404-752-1120,,
@@ -289,24 +289,44 @@ Gracias, alguien de UAB Medicine, Birmingham se comunicará con usted para progr
 SOUTHERN_UAB,hpo-site-uabmedicaltowers,UAB Medical Towers,HPO UAB Medical Towers,7036566,3/19/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you, someone from UAB Medicine, Birmingham will be contacting you to schedule your All of Us Research Program enrollment appointment.
 
 Gracias, alguien de UAB Medicine, Birmingham se comunicará con usted para programar su cita de registración con el Programa Científico, All of Us.",,,,1718 11th Ave S.,,Birmingham,AL,35205,,"aacemgil@uabmc.edu, coden@uabmc.edu",
-SOUTHERN_UASB,hpo-site-usafamilymedical,University of South Alabama Family Medical Center (USA) ,HPO USA Family Medical,7036567,09/01/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from University of South Alabama Health System, Mobile will be contacting you to schedule yourAll of Us Research Program enrollment appointment.
+SOUTHERN_UASB,hpo-site-usafamilymedical,University of South Alabama Family Medical Center (USA) ,HPO USA Family Medical,7036567,09/01/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,Someone from the All of Us Research Program may contact you by phone and or email to schedule an appointment and to share more information about the Program. You may already have an appointment scheduled.,,,Strada Patient Care center,1504 Springhill Ave.,Suite 1800,Mobile,AL,36604-3207,,,
+SOUTHERN_UASB,hpo-site-usaphysiciansgroup,University of South Alabama Physicians Group (USAPG),HPO USA Physicians Group,,,,Pending site If needed,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"A continuación, ofrecemos series de preguntas rápidas y un ejemplo de la pantalla con las preguntas dentro del portal del participante.
+",,,,75 South University Blvd,St. 6000-A,Mobile,AL,36608-3042,,,
+SOUTHERN_UASB,hpo-site-usastantonroad,University of South Alabama Stanton Road Clinic,HPO USA Stanton Road,,,,"Not enrolling here anymore, can be removed as a site",Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"VERY LONG TEXT
 
-Gracias, agluien del Sistema de Salud de la Universidad de Alabama Sur, Mobile se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,Strada Patient Care center,1504 Springhill Ave.,Suite 1800,Mobile,AL,36604-3207,,,
-SOUTHERN_UASB,hpo-site-usaphysiciansgroup,University of South Alabama Physicians Group (USAPG),HPO USA Physicians Group,,,,Pending site If needed,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from University of South Alabama Health System, Mobile will be contacting you to schedule yourAll of Us Research Program enrollment appointment.
+Someone from the All of Us Research Program may contact you by phone and/or email to schedule an appointment and to share more information about the Program. You may already have an appointment scheduled. To contact us directly, please call 877-268-2684 or email AllofUsAZ@email.arizona.edu. For a list of our locations, visit AllofUsAZ.org.
 
-Gracias, agluien del Sistema de Salud de la Universidad de Alabama Sur, Mobile se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,75 South University Blvd,St. 6000-A,Mobile,AL,36608-3042,,,
-SOUTHERN_UASB,hpo-site-usastantonroad,University of South Alabama Stanton Road Clinic,HPO USA Stanton Road,,,,"Not enrolling here anymore, can be removed as a site",Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from University of South Alabama Health System, Mobile will be contacting you to schedule yourAll of Us Research Program enrollment appointment.
+Cross Streets are South Dobson Road and Banner Desert. From South Dobson Road, turn West onto Banner Desert. Turn first left to stay on Banner Desert, road will curve to the right, then a slight left. Before road curves right, the 2145 Building will be at the left side of the road. Turn left in to the 2145 buildings parking lot. Or you may park in the garage that is to the east of the 2145 Building.
 
-Gracias, agluien del Sistema de Salud de la Universidad de Alabama Sur, Mobile se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,,,,,,,,
-SOUTHERN_UASB,hpo-site-usamastinclinic,University of South Alabama Mastin Clinic,HPO USA Mastin Clinic,7036567,09/01/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from University of South Alabama Health System, Mobile will be contacting you to schedule yourAll of Us Research Program enrollment appointment.
+---------------------------------------------
+SPANISH VERSION
 
-Gracias, agluien del Sistema de Salud de la Universidad de Alabama Sur, Mobile se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,Mastin Professional Building Suite 102,2451 Fillingim St.,Mastin 102,Mobile,AL,36617-2300,,,
-SOUTHERN_HUNTSVILLE,hpo-site-hhmadisonhwy72s104,Huntsville Hospital Physicians Care at Madison Hwy72 S104,HPO HH Madison Hwy72 S104,,07/01/19,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from Huntsville Hospital, Huntsville will be contacting you to schedule your All of Us Research Program enrollment appointment.
+El personal del Programa Científico All of Us se comunicará con usted por teléfono y/o correo electrónico para hacer una cita y compartir más información acerca del programa. Quizás, usted ya tiene una cita. Para comunicarse directamente con nosotros, por favor llame al 877-268-2684 o envíe un correo electrónico a AllofUsAZ@email.arizona.edu. Para ver la lista de nuestras 
+clínicas, visite AllofUsAZ.org.
 
-Gracias, alguien de Huntsville Hospital, Huntsville se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,8371 Hwy 72 W.,Suite 104,Madison,AL,35758,,,
-SOUTHERN_HUNTSVILLE,hpo-site-hhmadisonhwy72s206,Huntsville Hospital Physicians Care at Madison Hwy72 S206,HPO HH Madison Hwy72 S206,,07/01/19,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from Huntsville Hospital, Huntsville will be contacting you to schedule your All of Us Research Program enrollment appointment.
+Intersecciones son Sur de Dobson Road y Banner Desert. Desde sur de Dobson Road, gire hacia el oeste en Banner Desert. Gire a la izquierda para permanecer en Banner Desert, la calle se curvará hacia la derecha y luego a la izquierda. Antes de que la calle gire a la derecha, el edificio 2145 estará en el lado izquierdo.
+",,,,,,,,,,,
+SOUTHERN_UASB,hpo-site-usamastinclinic,University of South Alabama Mastin Clinic,HPO USA Mastin Clinic,7036567,09/01/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Someone from the <em>All of Us</em> Research Program may contact you by phone and/or
+<strong>email</strong> to <u>schedule</u> an appointment and to share more information
+about the Program. You may already have an appointment scheduled.
+To contact us directly, please call <a href=""tel:877-268-2684"">877-268-2684</a> or email
+<a href=""mailto:AllofUsAZ@email.arizona.edu"" rel=""noopener"">AllofUsAZ@email.arizona.edu</a>.
+<br>
+<p>    For a list of our locations, visit <a href=""https://allofusaz.org/"">AllofUsAZ.org</a>.
+    <br><br>
+    El personal del Programa Científico <em>All of Us</em> se comunicará con usted por
+    teléfono y/o correo electrónico para hacer una cita y compartir más información
+    acerca del programa. Quizás, usted ya tiene una cita. Para comunicarse
+    directamente con nosotros, por favor llame al <a href=""tel:877-268-2684"">877-268-2684</a>
+    o envíe un correo electrónico a
+    <a href=""mailto:AllofUsAZ@email.arizona.edu"" rel=""noopener"" target=""_blank"">AllofUsAZ@email.arizona.edu<a>.
+        <br><br>
+        Para ver la lista de nuestras clínicas, visite <a href=""https://allofusaz.org/"" target=""_blank"" rel=""noopener"" >AllofUsAZ.org</a>.",,,Mastin Professional Building Suite 102,2451 Fillingim St.,Mastin 102,Mobile,AL,36617-2300,,,
+SOUTHERN_HUNTSVILLE,hpo-site-hhmadisonhwy72s104,Huntsville Hospital Physicians Care at Madison Hwy72 S104,HPO HH Madison Hwy72 S104,,07/01/19,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"* Someone from the All of Us Research Program may contact you by phone and/or email to schedule an appointment and to share more information about the Program. You may already have an appointment scheduled. To contact us directly, please call 877-268-2684 or email AllofUsAZ@email.arizona.edu. For a list of our locations, visit AllofUsAZ.org.
 
-Gracias, alguien de Huntsville Hospital, Huntsville se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,8371 Hwy 72 W.,Suite 206,Madison,AL,35758,,,
+* El personal del Programa Científico All of Us se comunicará con usted por teléfono y/o correo electrónico para hacer una cita y compartir más información acerca del programa. Quizás, usted ya tiene una cita. Para comunicarse directamente con nosotros, por favor llame al 877-268-2684 o envíe un correo electrónico a AllofUsAZ@email.arizona.edu. Para ver la lista de nuestras clínicas, visite AllofUsAZ.org.
+",,,,8371 Hwy 72 W.,Suite 104,Madison,AL,35758,,,
+SOUTHERN_HUNTSVILLE,hpo-site-hhmadisonhwy72s206,Huntsville Hospital Physicians Care at Madison Hwy72 S206,HPO HH Madison Hwy72 S206,,07/01/19,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,123456,,,,8371 Hwy 72 W.,Suite 206,Madison,AL,35758,,,
 SOUTHERN_HUNTSVILLE,hpo-site-hhmadisonhughesrd,Huntsville Hospital Physicians Care at Madison Hughes Rd,HPO HH Madison Hughes Rd,,07/01/19,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from Huntsville Hospital, Huntsville will be contacting you to schedule your All of Us Research Program enrollment appointment.
 
 Gracias, alguien de Huntsville Hospital, Huntsville se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,44 Hughes Rd,Suite 1200,Madison,AL,35758,,,
@@ -337,21 +357,44 @@ Gracias, alguien de Huntsville Hospital, Huntsville se comunicará con usted par
 SOUTHERN_HUNTSVILLE,hpo-site-hhelkton,Huntsville Hospital Physicians Care at Elkton,HPO HH Elkton,,07/01/19,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from Huntsville Hospital, Huntsville will be contacting you to schedule your All of Us Research Program enrollment appointment.
 
 Gracias, alguien de Huntsville Hospital, Huntsville se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,1446 Bryson Rd.,,Ardmore,TN,38449,,,
-SOUTHERN_UAB_MONTGOMERY,hpo-site-uabmontgomery,University of Alabama Birmigham - Montgomery (UAB Montgomery),HPO UAB Montgomery,7037031,08/15/18,,verify Client account number,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from UAB Medicine, Birmingham will be contacting you to schedule your All of Us Research Program enrollment appointment.
+SOUTHERN_UAB_MONTGOMERY,hpo-site-uabmontgomery,University of Alabama Birmigham - Montgomery (UAB Montgomery),HPO UAB Montgomery,7037031,09/01/18,,verify Client account number,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from UAB Medicine, Birmingham will be contacting you to schedule your All of Us Research Program enrollment appointment.
 
 Gracias, alguien de Montgomery Internal Medicine, Montgomery se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,2055 E. South Blvd.,Suite 202,Montgomery,AL,36116,,,
 SOUTHERN_UMC_TUSCALOOSA,hpo-site-umctuscaloosa,University Medical Center Tuscaloosa,HPO UMC Tuscaloosa,7036645,6/18/18,,Disable data download,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you, someone from The University of Alabama, Tuscaloosa will be contacting you to schedule your All of Us Research Program enrollment appointment.
 
 Gracias, alguien de la Universidad de Alabama, Tuscaloosa se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,Northeast Medical Building,211 Peter Bryce Blvd.Tuscaloosa,,Tuscaloosa,TN,35401,,"sahulsey1@ua.edu, bsummerlin@ua.edu",
-SOUTHERN_UMC_TUSCALOOSA,hpo-site-umcnorthport,University Medical Center Northport,HPO UMC Northport,,10/08/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from The University of Alabama, Tuscaloosa will be contacting you to schedule your All of Us Research Program enrollment appointment.
+SOUTHERN_UMC_TUSCALOOSA,hpo-site-umcnorthport,University Medical Center Northport,HPO UMC Northport,,10/08/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"1.        I mostly use my cell phone to ____
+a. make phone calls or text
+b. check the internet
+c. take pictures
 
-Gracias, alguien de la Universidad de Alabama, Tuscaloosa se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,1325 McFarland Blvd,Suite 102,Northport,AL,35476,,,
-SOUTHERN_UAB_SELMA,hpo-site-uabselma,UAB Selma,HPO UAB Selma,7037032,08/15/18,,verify Client account number,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from UAB Selma Family Practice, Selma will be contacting you to schedule your All of Us Research Program enrollment appointment.
+2.        I mainly use apps for _____ on my cell phone.
+a. health, diet, or fitness
+b. music or entertainment
+c. social media
 
-Gracias, alguien de UAB Selma Family Practice, Selma se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,1023 Medical Center Parkway,Suite 200,Selma,AL,36701,,,
-SOUTHERN_COOPER_GREEN,hpo-site-coopergreen,Cooper Green Mercy Hospital,HPO Cooper Green,,08/15/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from Cooper Green Mercy Health Services, Birmingham will be contacting you to schedule your All of Us Research Program enrollment appointment.
+3.        When I don't have my cell phone, _____.
+a. I don't even notice
+b. I'm a little worried
+c. a part of me is missing 
+",,,,1325 McFarland Blvd,Suite 102,Northport,AL,35476,,,
+SOUTHERN_UAB_SELMA,hpo-site-uabselma,UAB Selma,HPO UAB Selma,7037032,09/01/18,,verify Client account number,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"<h2 title=""I'm a header"">The title Attribute</h2>
+<br>
+<p title=""I'm a tooltip"">
+Mouse over this paragraph, to display the title attribute as a tooltip.
+<p>This is a paragraph.</p>
+<p>This is another paragraph.</p>
+</p>
+<br><br>
+<h2>The href Attribute</h2>
+<p>HTML links are defined with the a tag. The link address is specified in the href attribute:</p>
 
-Gracias, alguien de Cooper Green Mercy Health Services, Birmingham se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,1477 6th Ave S.,,Birmingham,AL,35233,,,
+<a href=""https://www.w3schools.com"">This is a link</a>
+<h2>Size Attributes</h2>
+<p>Images in HTML have a set of size attributes, which specifies the width and height of the image:</p>
+
+<img src=""http://www.allofus.org/images/logo.png"" width=""100"" height=""100"">",,,,1023 Medical Center Parkway,Suite 200,Selma,AL,36701,,,
+SOUTHERN_COOPER_GREEN,hpo-site-coopergreen,Cooper Green Mercy Hospital,HPO Cooper Green,,09/01/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,Pantalla del inicio de preguntas,,,,1477 6th Ave S.,,Birmingham,AL,35233,,,
 SOUTHERN_LSU,hpo-site-lsuhcumcneworleans,"LSU Health Science Center, University Medical Center - New Orleans (LSUHC New Orleans)",HPO LSUHC UMC New Orleans,7036568,09/01/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from Louisiana State University Health Sciences Center, New Orleans will be contacting you to schedule your All of Us Research Program enrollment appointment.
 
 Gracias, alguien de Louisiana State University Health Sciences Center, New Orleans se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,2000 Canal St.,,New Orleans,LA,70112,,,
@@ -369,7 +412,7 @@ SOUTHERN_TULANE,hpo-site-tulane,Tulane Medical Center,HPO Tulane,7036655,09/01/1
 SOUTHERN_TULANE,hpo-site-tulanemobileunit,Tulane Mobile Unit,HPO Tulane Mobile Unit,,11/01/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Inactive,Inactive,Inactive,Inactive,Inactive,"Thank you, someone from Tulane Medical Center, New Orleans will be contacting you to schedule your All of Us Research Program enrollment appointment.
 
 Gracias, alguien de Tulane Medical Center, New Orleans se comunicará con usted para programar su cita de registración con el Programa Científico All of Us.",,,,,,,,,,,
-SOUTHERN_UAB_HUNTSVILLE,hpo-site-uabhuntsville,University of Alabama Birmingham Health Center Huntsville,HPO UAB Huntsville,7036874,8/18/2018,,,Active,Inactive,Inactive,Active,Inactive,Inactive,Active,Inactive,Inactive,Inactive,Inactive,Inactive,,,,,301 Governors Drive SW,,Huntsville,AL,35801,256-551-4420,,
+SOUTHERN_UAB_HUNTSVILLE,hpo-site-uabhuntsville,University of Alabama Birmingham Health Center Huntsville,HPO UAB Huntsville,7036874,9/15/2018,,,Active,Inactive,Inactive,Active,Inactive,Inactive,Active,Inactive,Inactive,Inactive,Inactive,Inactive,,,,,301 Governors Drive SW,,Huntsville,AL,35801,256-551-4420,,
 TRANS_AM_HENRY_FORD,hpo-site-HenryFord,Henry Ford Health System,HPO Henry Ford,7035894,6/6/2017,,sgilbe11@hfhs.org listed as second admin ,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you for completing the main consent and EHR consent online. To schedule your All of Us appointment online, please copy and paste the following link into your browser: https://mychart.hfhs.org/mychart. Look for the All of Us Research Program option under Schedule an Appointment or call 1-844-893-3908 (option 1) to speak with a trained staff member
 
 Gracias por completar el consentimiento principal y el consentimiento para compartir su EHR. Para programar su cita de All of Us por Internet, por favor copie y pegue el siguiente enlace en su navegador de Internet: https://mychart.hfhs.org/mychart. Busque por la opción del Programa Científico All of Us bajo Programar una Cita o llame 1-844-893-3908 (opción 1) para hablar con personal entrenado del programa.",,,Henry Ford Detroit Hospital,2799 West Grand Blvd,,Detroit,MI,48202,,rwilli30@hfhs.org,
@@ -392,75 +435,91 @@ TRANS_AM_HENRY_FORD,hpo-site-henryfordmacombsterlingheights,Sterling Heights Med
 
 Gracias por completar el consentimiento principal y el consentimiento para compartir su EHR. Para programar su cita de All of Us por Internet, por favor copie y pegue el siguiente enlace en su navegador de Internet: https://mychart.hfhs.org/mychart. Busque por la opción del Programa Científico All of Us bajo Programar una Cita o llame 1-844-893-3908 (opción 1) para hablar con personal entrenado del programa.",,,Sterling Heights Medical Center,3500 15 Mile Rd,,Sterling Heights,MI,48312,,"rwilli30@hfhs.org, sgilbe11@hfhs.org",
 TRANS_AM_BAYLOR,hpo-site-baylorheart,"Baylor, Heart and Vascular Hospital",HPO Baylor Heart,7036203,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you for completing the main consent and EHR consent online. To continue and complete enrollment in the program, you will need to come to one of our enrollment sites to get height, weight, waist circumference, blood pressure, and heart rate measures taken and to provide urine and blood or saliva.
-Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our BSWH All of Us enrollment sites online: https://www.clockwisemd.com/groups/291 
 
-OR Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our
+BSWH All of Us enrollment sites online.: https://www.clockwisemd.com/groups/291 
 
-Le agradecemos por completar el consentimiento principal y el consentimiento para obtener su registro electrónico de salud en línea. Para continuar y completar la inscripción en el programa, usted tendrá que venir a uno de nuestros sitios de inscripción para obtener la altura, el peso, la circunferencia de la cintura, presión arterial y medidas de ritmo cardíaco tomadas y para proporcionar orina y sangre o saliva.
-Por favor copie y pegue el siguiente enlace en su navegador para hacer su cita en uno de nuestros centros de Baylor Scott and White Health. 
-https://www.clockwisemd.com/groups/291 
+OR 
 
-O Llámanos a 844-4US-BSWH (844 487-2794) para hablar con un miembro del personal capacitado.  ",,,,621 North Hall Street,Suite 530,Dallas,TX,75226,,"Laura.Nnadi@BSWHealth.org, Richard.Hao@BSWHealth.org",
+Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+
+",,,,621 North Hall Street,Suite 530,Dallas,TX,75226,,"Laura.Nnadi@BSWHealth.org, Richard.Hao@BSWHealth.org",
 TRANS_AM_BAYLOR,hpo-site-baylorheartplano,"Baylor, the Heart Hospital of Plano",HPO Baylor Heart Plano,7036225,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you for completing the main consent and EHR consent online. To continue and complete enrollment in the program, you will need to come to one of our enrollment sites to get height, weight, waist circumference, blood pressure, and heart rate measures taken and to provide urine and blood or saliva.
-Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our BSWH All of Us enrollment sites online: https://www.clockwisemd.com/groups/291 
 
-OR Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our
+BSWH All of Us enrollment sites online.: https://www.clockwisemd.com/groups/291 
 
-Le agradecemos por completar el consentimiento principal y el consentimiento para obtener su registro electrónico de salud en línea. Para continuar y completar la inscripción en el programa, usted tendrá que venir a uno de nuestros sitios de inscripción para obtener la altura, el peso, la circunferencia de la cintura, presión arterial y medidas de ritmo cardíaco tomadas y para proporcionar orina y sangre o saliva.
-Por favor copie y pegue el siguiente enlace en su navegador para hacer su cita en uno de nuestros centros de Baylor Scott and White Health. 
-https://www.clockwisemd.com/groups/291 
+OR 
 
-O Llámanos a 844-4US-BSWH (844 487-2794) para hablar con un miembro del personal capacitado.  ",,,,1100 Allied Drive,5th floor,Plano,TX,75093,,"Laura.Nnadi@BSWHealth.org, Richard.Hao@BSWHealth.org",
+Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+
+",,,,1100 Allied Drive,5th floor,Plano,TX,75093,,"Laura.Nnadi@BSWHealth.org, Richard.Hao@BSWHealth.org",
 TRANS_AM_BAYLOR,hpo-site-baylorlegacy,Baylor Scott & White Legacy Heart Center,HPO Baylor Legacy,7036225,4/16/2018,,"No prior knowledge, check with NIH",Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you for completing the main consent and EHR consent online. To continue and complete enrollment in the program, you will need to come to one of our enrollment sites to get height, weight, waist circumference, blood pressure, and heart rate measures taken and to provide urine and blood or saliva.
-Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our BSWH All of Us enrollment sites online: https://www.clockwisemd.com/groups/291 
 
-OR Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our
+BSWH All of Us enrollment sites online.: https://www.clockwisemd.com/groups/291 
 
-Le agradecemos por completar el consentimiento principal y el consentimiento para obtener su registro electrónico de salud en línea. Para continuar y completar la inscripción en el programa, usted tendrá que venir a uno de nuestros sitios de inscripción para obtener la altura, el peso, la circunferencia de la cintura, presión arterial y medidas de ritmo cardíaco tomadas y para proporcionar orina y sangre o saliva.
-Por favor copie y pegue el siguiente enlace en su navegador para hacer su cita en uno de nuestros centros de Baylor Scott and White Health. 
-https://www.clockwisemd.com/groups/291 
+OR 
 
-O Llámanos a 844-4US-BSWH (844 487-2794) para hablar con un miembro del personal capacitado.  ",,,,6601 Preston Rd,#100,Plano,TX,75024,,"Laura.Nnadi@BSWHealth.org, Richard.Hao@BSWHealth.org",
+Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+
+",,,,6601 Preston Rd,#100,Plano,TX,75024,,"Laura.Nnadi@BSWHealth.org, Richard.Hao@BSWHealth.org",
 TRANS_AM_BAYLOR,hpo-site-hillcrestfhc,Baylor Hillcrest Family Health Center,HPO Hillcrest FHC,7036221,11/7/2017,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you for completing the main consent and EHR consent online. To continue and complete enrollment in the program, you will need to come to one of our enrollment sites to get height, weight, waist circumference, blood pressure, and heart rate measures taken and to provide urine and blood or saliva.
-Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our BSWH All of Us enrollment sites online: https://www.clockwisemd.com/groups/291 
 
-OR Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our
+BSWH All of Us enrollment sites online.: https://www.clockwisemd.com/groups/291 
 
-Le agradecemos por completar el consentimiento principal y el consentimiento para obtener su registro electrónico de salud en línea. Para continuar y completar la inscripción en el programa, usted tendrá que venir a uno de nuestros sitios de inscripción para obtener la altura, el peso, la circunferencia de la cintura, presión arterial y medidas de ritmo cardíaco tomadas y para proporcionar orina y sangre o saliva.
-Por favor copie y pegue el siguiente enlace en su navegador para hacer su cita en uno de nuestros centros de Baylor Scott and White Health. 
-https://www.clockwisemd.com/groups/291 
+OR 
 
-O Llámanos a 844-4US-BSWH (844 487-2794) para hablar con un miembro del personal capacitado.  ",,,,100 Hillcrest Medical Blvd,"1st Floor, Travis Room",Waco,TX,76712,,"Laura.Nnadi@BSWHealth.org, Teresa.Phan@BSWHealth.org",
+Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+
+
+",,,,100 Hillcrest Medical Blvd,"1st Floor, Travis Room",Waco,TX,76712,,"Laura.Nnadi@BSWHealth.org, Teresa.Phan@BSWHealth.org",
 TRANS_AM_BAYLOR,hpo-site-hillcrestwaco,"Baylor Scott & White Clinic, Waco",HPO Hillcrest Waco,7036221,5/14/2018,,"No prior knowledge, check with NIH",Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you for completing the main consent and EHR consent online. To continue and complete enrollment in the program, you will need to come to one of our enrollment sites to get height, weight, waist circumference, blood pressure, and heart rate measures taken and to provide urine and blood or saliva.
-Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our BSWH All of Us enrollment sites online: https://www.clockwisemd.com/groups/291 
 
-OR Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our
+BSWH All of Us enrollment sites online.: https://www.clockwisemd.com/groups/291 
 
-Le agradecemos por completar el consentimiento principal y el consentimiento para obtener su registro electrónico de salud en línea. Para continuar y completar la inscripción en el programa, usted tendrá que venir a uno de nuestros sitios de inscripción para obtener la altura, el peso, la circunferencia de la cintura, presión arterial y medidas de ritmo cardíaco tomadas y para proporcionar orina y sangre o saliva.
-Por favor copie y pegue el siguiente enlace en su navegador para hacer su cita en uno de nuestros centros de Baylor Scott and White Health. 
-https://www.clockwisemd.com/groups/291 
+OR 
 
-O Llámanos a 844-4US-BSWH (844 487-2794) para hablar con un miembro del personal capacitado.  ",,,,7700 Fish Pond Road,,Waco,TX,76710,,"Laura.Nnadi@BSWHealth.org, Teresa.Phan@BSWHealth.org",
+Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+",,,,7700 Fish Pond Road,,Waco,TX,76710,,"Laura.Nnadi@BSWHealth.org, Teresa.Phan@BSWHealth.org",
 TRANS_AM_BAYLOR,hpo-site-hillcrest,"Baylor Scott & White Medical Center, Hillcrest",HPO Hillcrest FHC,7036221,5/14/2018,,"No prior knowledge, check with NIH",Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you for completing the main consent and EHR consent online. To continue and complete enrollment in the program, you will need to come to one of our enrollment sites to get height, weight, waist circumference, blood pressure, and heart rate measures taken and to provide urine and blood or saliva.
-Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our BSWH All of Us enrollment sites online: https://www.clockwisemd.com/groups/291 
 
-OR Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our
+BSWH All of Us enrollment sites online.: https://www.clockwisemd.com/groups/291 
 
-Le agradecemos por completar el consentimiento principal y el consentimiento para obtener su registro electrónico de salud en línea. Para continuar y completar la inscripción en el programa, usted tendrá que venir a uno de nuestros sitios de inscripción para obtener la altura, el peso, la circunferencia de la cintura, presión arterial y medidas de ritmo cardíaco tomadas y para proporcionar orina y sangre o saliva.
-Por favor copie y pegue el siguiente enlace en su navegador para hacer su cita en uno de nuestros centros de Baylor Scott and White Health. 
-https://www.clockwisemd.com/groups/291 
+OR 
 
-O Llámanos a 844-4US-BSWH (844 487-2794) para hablar con un miembro del personal capacitado.  ",,,,7300 Bosque Blvd,,Waco,TX,76710,,"Laura.Nnadi@BSWHealth.org, Teresa.Phan@BSWHealth.org",
+Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+",,,,7300 Bosque Blvd,,Waco,TX,76710,,"Laura.Nnadi@BSWHealth.org, Teresa.Phan@BSWHealth.org",
 TRANS_AM_BAYLOR,hpo-site-baylortemple,"Baylor Scott & White Center for Diagnostic Medicine, Temple",HPO Baylor Temple,7036989,6/25/18,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Thank you for completing the main consent and EHR consent online. To continue and complete enrollment in the program, you will need to come to one of our enrollment sites to get height, weight, waist circumference, blood pressure, and heart rate measures taken and to provide urine and blood or saliva.
-Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our BSWH All of Us enrollment sites online: https://www.clockwisemd.com/groups/291 
 
-OR Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our
+BSWH All of Us enrollment sites online.: https://www.clockwisemd.com/groups/291 
 
-Le agradecemos por completar el consentimiento principal y el consentimiento para obtener su registro electrónico de salud en línea. Para continuar y completar la inscripción en el programa, usted tendrá que venir a uno de nuestros sitios de inscripción para obtener la altura, el peso, la circunferencia de la cintura, presión arterial y medidas de ritmo cardíaco tomadas y para proporcionar orina y sangre o saliva.
-Por favor copie y pegue el siguiente enlace en su navegador para hacer su cita en uno de nuestros centros de Baylor Scott and White Health. 
-https://www.clockwisemd.com/groups/291 
+OR 
 
-O Llámanos a 844-4US-BSWH (844 487-2794) para hablar con un miembro del personal capacitado.  ",,,Scott & White Center for Diagnostic Medicine - Temple,1605 S 31st Street,,Temple,TX,76508,254-421-3073,"Laura.Nnadi@BSWHealth.org, Teresa.Phan@BSWHealth.org",
+Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+",,,Scott & White Center for Diagnostic Medicine - Temple,1605 S 31st St,,Temple,TX,76504,254-421-3073,"Laura.Nnadi@BSWHealth.org, Teresa.Phan@BSWHealth.org",
+TRANS_AM_BAYLOR,hpo-site-baylorwellnesscenter,Baylor Scott & White Health and Wellness Center,HPO Baylor Wellness Center,7036203,9/4/2018,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Active,Inactive,"Thank you for completing the main consent and EHR consent online. To continue and complete enrollment in the program, you will need to come to one of our enrollment sites to get height, weight, waist circumference, blood pressure, and heart rate measures taken and to provide urine and blood or saliva.
+
+Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our
+BSWH All of Us enrollment sites online.: https://www.clockwisemd.com/groups/291 
+
+OR 
+
+Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+",,,Diabetes Health and Wellness Institute at Juanita J. Craft Recreation Center,4500 Spring Avenue,,Dallas,TX,75210,214-283-2532,"Laura.Nnadi@BSWHealth.org, Teresa.Phan@BSWHealth.org",
+TRANS_AM_BAYLOR,hpo-site-baylorroneybonejoint,Baylor Scott & White Roney Bone & Joint Institute,HPO Baylor Roney Bone & Joint,7036989,9/10/2018,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Active,Inactive,"Thank you for completing the main consent and EHR consent online. To continue and complete enrollment in the program, you will need to come to one of our enrollment sites to get height, weight, waist circumference, blood pressure, and heart rate measures taken and to provide urine and blood or saliva.
+
+Please copy and paste the link below into your browser to schedule your APPOINTMENT at one of our
+BSWH All of Us enrollment sites online.: https://www.clockwisemd.com/groups/291 
+
+OR 
+
+Call 844-4US-BSWH (844-487-2794) to speak with a trained staff member.
+",,,The Roney Bone & Joint Insitute,2401 S 31st Street,,Temple,TX,76508,720-940-0365,"Laura.Nnadi@BSWHealth.org, Teresa.Phan@BSWHealth.org",
 TRANS_AM_SPECTRUM,hpo-site-spectrum,Spectrum Health,HPO Spectrum,7036220,9/1/2017,,jodi.bohnhorst@spectrumhealth.org listed as a third admin,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"To schedule your biospecimen and physical measurement visit please contact the Spectrum Health All of Us Research Program staff at 1-833-564-6255 or Allofus@spectrumhealth.org.
 
 Para programar su cita y donar sus muestras biológicas y medidas físicas, por favor contáctese con el personal del Spectrum Health del Programa Científico All of Us por llamar al 1-833-564-6255 o enviar un correo electrónico a Allofus@spectrumhealth.org.",,,Butterworth Hospital,"100 Michigan St NE, Room 1471",,Grand Rapids,MI,49503,,"david.chesla@spectrumhealth.org, samuel.martin@spectrumhealth.org",
@@ -580,6 +639,9 @@ EMSI_EMSI,hpo-site-EMSIcentralRegion,EMSI Central Region,DV EMSI Central Region,
 EMSI_EMSI,hpo-site-EMSIeastRegion,EMSI East Region,DV EMSI East Region,7035735,,,,Active,Inactive,Inactive,Active,Inactive,Inactive,Active,Inactive,Inactive,Inactive,Inactive,Inactive,,,,,,,,,,,"CWagner@emsinet.com, CReifer@emsinet.com",
 EMSI_EMSI,hpo-site-EMSIsouthRegion,EMSI South Region,DV EMSI South Region,7035735,,,,Active,Inactive,Inactive,Active,Inactive,Inactive,Active,Inactive,Inactive,Inactive,Inactive,Inactive,,,,,,,,,,,"CWagner@emsinet.com, CReifer@emsinet.com",
 EMSI_EMSI,hpo-site-EMSIwestRegion,EMSI West Region,DV EMSI West Region,7035735,,,,Active,Inactive,Inactive,Active,Inactive,Inactive,Active,Inactive,Inactive,Inactive,Inactive,Inactive,,,,,,,,,,,"CWagner@emsinet.com, CReifer@emsinet.com",
+EMSI_MEA2,hpo-site-MEA2KansasCity,"Mobie Engagement Asset, Kansas City",DV MEA2 Kansas City,7035735,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,,,,,3050 Regent Blvd,Suite 100,Irving,TX,75063,214-689-3600,"CWagner@emsinet.com, CReifer@emsinet.com",
+EMSI_MEA2,hpo-site-MEA2TwinFalls,"Mobie Engagement Asset, Twin Falls",DV MEA2 Twin Falls,7035735,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,,,,,3050 Regent Blvd,Suite 100,Irving,TX,75063,214-689-3600,"CWagner@emsinet.com, CReifer@emsinet.com",
+EMSI_MEA2,hpo-site-MEA2SaltLakeCity,"Mobie Engagement Asset, Salt Lake City",DV MEA2 Salt Lake City,7035735,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Inactive,Inactive,Inactive,,,,,3050 Regent Blvd,Suite 100,Irving,TX,75063,214-689-3600,"CWagner@emsinet.com, CReifer@emsinet.com",
 QTC_QTC,hpo-site-QTCAdvanced,QTC Advanced Primary Practice Care,DV QTC Advanced,7035735,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"You are eligible to provide your physical measurements and biosamples (blood and urine). Some local doctors’ offices and clinics in your area are contracted through QTC, an All of Us partner, to conduct physical measurements and biosamples appointments. Please contact QTC at 866.356.3548 to schedule your appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
 
 Usted está eligible a proveer sus medidas físicas y muestras biológicas (sangre y orina). Se han contratado algunos consultorios y cliínicas médicos en su área a través de QTC, un colaborador de All of Us, para realizar citas para dar medidas físicas y muestras biológicas. Por favor comuníquese con QTC al 866.356.3548 para programar su cita.",,,,9267 Greenback Lane,Ste 2,Orangevale,CA,95662,,"Kevin.Mac@qtcm.com, bertha@qtcm.com",
@@ -631,16 +693,19 @@ Usted está eligible a proveer sus medidas físicas y muestras biológicas (sang
 QUEST_QUEST,hpo-site-QuestLabsArdenWay,Quest Diagnostics - Arden Way,DV Quest Sacramento Arden Way,7035735,,,located next to the pharmacy in the Arden Safeway store,Active,Active,Active,Active,Active,Active,Active,Inactive,Inactive,Inactive,Inactive,Inactive,"You are eligible to provide your physical measurements and biosamples (blood and urine). Some local doctors’ offices and clinics in your area are contracted through QTC, an All of Us partner, to conduct physical measurements and biosamples appointments. Please contact QTC at 866.356.3548 to schedule your appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
 
 Usted está eligible a proveer sus medidas físicas y muestras biológicas (sangre y orina). Se han contratado algunos consultorios y cliínicas médicos en su área a través de QTC, un colaborador de All of Us, para realizar citas para dar medidas físicas y muestras biológicas. Por favor comuníquese con QTC al 866.356.3548 para programar su cita.",,,Safeway Store,3320 Arden Way,,Sacramento,CA,95825,916-576-2380,estee.s.enos@questdiagnostics.com,
-QUEST_QUEST,hpo-site-questlabsseattleshoreline,Quest Seattle Shoreline Safeway,DV Quest Seattle Shoreline,7035735,8/6/18,,,Active,Active,Active,Active,Active,Active,Active,Active,Active,Active,Active,Active,"You are eligible to provide your physical measurements and biosamples (blood and urine). Some local doctors’ offices and clinics in your area are contracted through QTC, an All of Us partner, to conduct physical measurements and biosamples appointments. Please contact QTC at 866.356.3548 to schedule your appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
+QUEST_QUEST,hpo-site-questlabsseattleshoreline,Quest Seattle Shoreline Safeway,DV Quest Seattle Shoreline,7035735,8/6/18,,Will discontinue enrollment after 9/7 PM&B appointment,Active,Active,Active,Active,Active,Active,Active,Active,Active,Active,Inactive,Active,"You are eligible to provide your physical measurements and biosamples (blood and urine). Some local doctors’ offices and clinics in your area are contracted through QTC, an All of Us partner, to conduct physical measurements and biosamples appointments. Please contact QTC at 866.356.3548 to schedule your appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
 
 Usted está eligible a proveer sus medidas físicas y muestras biológicas (sangre y orina). Se han contratado algunos consultorios y cliínicas médicos en su área a través de QTC, un colaborador de All of Us, para realizar citas para dar medidas físicas y muestras biológicas. Por favor comuníquese con QTC al 866.356.3548 para programar su cita.",,,Shoreline Safeway,15332 Aurora Ave N,,Shoreline,WA,98133,866-697-8378,jennifer.a.doss@questdiagnostics.com,
 QUEST_QUEST,hpo-site-questlabsseattle140th,Quest Seattle 140th NE Ave Safeway,DV Quest Seattle 140th,7035735,8/6/18,,,Active,Active,Active,Active,Active,Active,Active,Active,Active,Active,Active,Active,"You are eligible to provide your physical measurements and biosamples (blood and urine). Some local doctors’ offices and clinics in your area are contracted through QTC, an All of Us partner, to conduct physical measurements and biosamples appointments. Please contact QTC at 866.356.3548 to schedule your appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
 
-Usted está eligible a proveer sus medidas físicas y muestras biológicas (sangre y orina). Se han contratado algunos consultorios y cliínicas médicos en su área a través de QTC, un colaborador de All of Us, para realizar citas para dar medidas físicas y muestras biológicas. Por favor comuníquese con QTC al 866.356.3548 para programar su cita.",,,140th NE Ave Safeway Store,1645 140Th Ne Ave,,Bellvue,WA,98005,425-372-4709,jennifer.a.doss@questdiagnostics.com,
+Usted está eligible a proveer sus medidas físicas y muestras biológicas (sangre y orina). Se han contratado algunos consultorios y cliínicas médicos en su área a través de QTC, un colaborador de All of Us, para realizar citas para dar medidas físicas y muestras biológicas. Por favor comuníquese con QTC al 866.356.3548 para programar su cita.",,,140th NE Ave Safeway Store,1645 140Th Ne Ave,,Bellevue,WA,98005,425-372-4709,jennifer.a.doss@questdiagnostics.com,
 QUEST_QUEST,hpo-site-questlabsseattlefederal,Quest Seattle Federal Way Safeway,DV Quest Seattle Federal,7035735,8/6/18,,,Active,Active,Active,Active,Active,Active,Active,Active,Active,Active,Active,Active,"You are eligible to provide your physical measurements and biosamples (blood and urine). Some local doctors’ offices and clinics in your area are contracted through QTC, an All of Us partner, to conduct physical measurements and biosamples appointments. Please contact QTC at 866.356.3548 to schedule your appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
 
 Usted está eligible a proveer sus medidas físicas y muestras biológicas (sangre y orina). Se han contratado algunos consultorios y cliínicas médicos en su área a través de QTC, un colaborador de All of Us, para realizar citas para dar medidas físicas y muestras biológicas. Por favor comuníquese con QTC al 866.356.3548 para programar su cita.",,,1207 S 320Th St,1207 S 320Th St,,Federal Way,WA,98003,253-927-8535,jennifer.a.doss@questdiagnostics.com,
-QUEST_QUEST,hpo-site-questlabsseattlerenton,Quest Seattle Renton Southwest 43rd,DV Quest Seattle Renton,7035735,7/23/18,,,Active,Active,Active,Active,Active,Active,Active,Active,Active,Inactive,Inactive,Inactive,"You are eligible to provide your physical measurements and biosamples (blood and urine). Some local doctors’ offices and clinics in your area are contracted through QTC, an All of Us partner, to conduct physical measurements and biosamples appointments. Please contact QTC at 866.356.3548 to schedule your appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
+QUEST_QUEST,hpo-site-questlabsseattlemeridian,Quest Seattle Meridian PSC Puyallup,DV Quest Seattle Meridian,7035735,,,,Active,Active,Active,Active,Active,Active,Active,Active,Active,Inactive,Inactive,Inactive,"You are eligible to provide your physical measurements and biosamples (blood and urine). Some local doctors’ offices and clinics in your area are contracted through QTC, an All of Us partner, to conduct physical measurements and biosamples appointments. Please contact QTC at 866.356.3548 to schedule your appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
+
+Usted está eligible a proveer sus medidas físicas y muestras biológicas (sangre y orina). Se han contratado algunos consultorios y cliínicas médicos en su área a través de QTC, un colaborador de All of Us, para realizar citas para dar medidas físicas y muestras biológicas. Por favor comuníquese con QTC al 866.356.3548 para programar su cita.",,,,800 S Meridian,Suite B,Puyallup,WA,98371,253-445-7959,jennifer.a.doss@questdiagnostics.com,
+QUEST_QUEST,hpo-site-questlabsseattlerenton,Quest Seattle Renton Southwest 43rd,DV Quest Seattle Renton,7035735,7/23/18,,Launch TBD; assess need at a later date as 8/24,Active,Active,Active,Active,Active,Active,Active,Active,Active,Inactive,Inactive,Inactive,"You are eligible to provide your physical measurements and biosamples (blood and urine). Some local doctors’ offices and clinics in your area are contracted through QTC, an All of Us partner, to conduct physical measurements and biosamples appointments. Please contact QTC at 866.356.3548 to schedule your appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
 
 Usted está eligible a proveer sus medidas físicas y muestras biológicas (sangre y orina). Se han contratado algunos consultorios y cliínicas médicos en su área a través de QTC, un colaborador de All of Us, para realizar citas para dar medidas físicas y muestras biológicas. Por favor comuníquese con QTC al 866.356.3548 para programar su cita.",,,1412 SW 43rd Street,1412 SW 43rd Street,Suite 101,Renton,WA,98057,425-251-6019,jennifer.a.doss@questdiagnostics.com,
 SDBB_SDBB,hpo-site-SDBBGateway,San Diego Blood Bank Gateway Donor Center (SDBB DV),DV SDBB Gateway,7035735,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Now that you have completed the basics module, please contact San Diego Blood Bank at 833-271-1388 to schedule your physical measurements and bio sample appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
@@ -655,13 +720,13 @@ Ya que usted ha completado el módulo de información basica, por favor pongase 
 SDBB_SDBB,hpo-site-cbcccarolinas,Community Blood Center of the Carolinas (CBCC DV),DV CBCC Carolinas,7035735,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Now that you have completed the basics module, please contact Community Blood Center of the Carolinas at 704-972-4701 to schedule your physical measurements and bio sample appointment.
 
 Ya que ha completado el módulo de lo básico, por favor comuníquese con el Community Blood Center of the Carolinas por llamar 704-972-4701 para programar su cita d dar sus medidas físicas y muestras biológicas.",,,"Community Blood Center of the Carolinas, Charlotte Center",4447 South Boulevard,,Charlotte,NC,28209,,"jvilla@sandiegobloodbank.org, jarandela@sandiegobloodbank.org",
-SDBB_SDBB,hpo-site-sdbbnorthcounty,San Diego Blood Bank North County Donor Center (NCDC DV),DV SDBB North County,7035735,9/10/2018,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Now that you have completed the basics module, please contact San Diego Blood Bank at 833-271-1388 to schedule your physical measurements and bio sample appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
+SDBB_SDBB,hpo-site-sdbbnorthcounty,San Diego Blood Bank North County Donor Center (NCDC DV),DV SDBB North County,7035735,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Now that you have completed the basics module, please contact San Diego Blood Bank at 833-271-1388 to schedule your physical measurements and bio sample appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
 
 Ya que usted ha completado el módulo de información basica, por favor pongase en contacto con San Diego Blood Bank por llamar 833-271-1388 para hacer una cita para donar sus mediciones físicas y muestras biológicas.",,,,358 West El Norte Parkway,Suite J,Escondido,CA,92026,,"jvilla@sandiegobloodbank.org, jarandela@sandiegobloodbank.org",
 SDBB_SDBB,hpo-site-sdbbeastcounty,San Diego Blood Bank East County Donor Center (ECDC DV),DV SDBB East County,7035735,,,,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,"Now that you have completed the basics module, please contact San Diego Blood Bank at 833-271-1388 to schedule your physical measurements and bio sample appointment. If you choose not to schedule your appointment now, you can find scheduling details under “Measurements” on the “My Data” tab.
 
 Ya que usted ha completado el módulo de información basica, por favor pongase en contacto con San Diego Blood Bank por llamar 833-271-1388 para hacer una cita para donar sus mediciones físicas y muestras biológicas.",,,,776 Arnel Ave,,El Cajone,CA,92020,,"jvilla@sandiegobloodbank.org, jarandela@sandiegobloodbank.org",
-SDBB_SDBB,hpo-site-sdbbcarmelvalley,San Diego Blood Bank Carmel Valley Donor Center (CVDC DV),DV SDBB Carmel Valley ,7035735,9/10/2018,,,Active,Inactive,Inactive,Active,Inactive,Inactive,Active,Inactive,Inactive,Inactive,Inactive,Inactive,,,,San Deigo Blood Bank,3880 Valley Centre Drive,Suite 210,San Diego,CA,92130,619-400-8144,jvilla@sandiegobloodbank.org  / jarandela@sandiegobloodbank.org,
+SDBB_SDBB,hpo-site-sdbbcarmelvalley,San Diego Blood Bank Carmel Valley Donor Center (CVDC DV),DV SDBB Carmel Valley ,7035735,8/27/2018,,,Active,Inactive,Inactive,Active,Active,Inactive,Active,Active,Inactive,Active,Active,Inactive,,,,San Deigo Blood Bank,3880 Valley Centre Drive,Suite 210,San Diego,CA,92130,619-400-8144,"jvilla@sandiegobloodbank.org, jarandela@sandiegobloodbank.org",
 WALGREENS_PHOENIX,hpo-site-walgreensphoenixdysart,Walgreens Phoenix Dysart,DV Walgreens Phoenix,7035735,,,,Active,Active,Active,Active,Active,Active,Active,Active,Active,Inactive,Active,Active,,,,Walgreens ,1451 North Dysart Rd.,,Avondale,AZ,85323,1-855 Walgreens,,
 WALGREENS_PHOENIX,hpo-site-walgreensphoenixscottsdale,Walgreens Phoenix Scottsdale,DV Walgreens Phoenix,7035735,,,,Active,Active,Active,Active,Active,Active,Active,Active,Active,Inactive,Active,Active,,,,Walgreens ,3420 N. Scottsdale Rd.,,Scottsdale,AZ,85251,1-855 Walgreens,,
 WALGREENS_PHOENIX,hpo-site-walgreensphoenixdunlap,Walgreens Phoenix Dunlap,DV Walgreens Phoenix,7035735,,,,Active,Active,Active,Active,Active,Active,Active,Active,Active,Inactive,Active,Active,,,,Walgreens ,3450 W Dunlap Ave,,Phoenix,AZ,85051,1-855 Walgreens,,
