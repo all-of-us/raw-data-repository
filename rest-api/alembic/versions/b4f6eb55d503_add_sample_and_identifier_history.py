@@ -53,7 +53,7 @@ def upgrade_rdr():
     sa.Column('version', sa.Integer(), nullable=False),
     sa.Column('order_id', sa.String(length=80), nullable=False),
     sa.ForeignKeyConstraint(['order_id'], ['biobank_order.biobank_order_id'], ),
-    sa.PrimaryKeyConstraint('test', 'version', 'order_id')
+    sa.PrimaryKeyConstraint('order_id', 'test', 'version')
     )
     # ### end Alembic commands ###
 
