@@ -413,7 +413,7 @@ class UpdatableDao(BaseDao):
   def _validate_patch_update(self, session, model, resource, expected_version):
     if expected_version != model.version:
       raise PreconditionFailed('Expected version was %s; stored version was %s' % \
-                               (obj.version, existing_obj.version))
+                               (expected_version, model.version))
 
   # pylint: disable=unused-argument
   def _do_update(self, session, obj, existing_obj):

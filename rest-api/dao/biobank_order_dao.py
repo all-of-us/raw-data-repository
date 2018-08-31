@@ -5,7 +5,8 @@ from dao.base_dao import UpdatableDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
-from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
+from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier,\
+  BiobankOrderIdentifierHistory, BiobankOrderedSampleHistory, BiobankOrderHistory
 from model.log_position import LogPosition
 from model.participant import Participant
 from model.utils import to_client_participant_id
@@ -317,6 +318,18 @@ class BiobankOrderDao(UpdatableDao):
           'No identifier for system %r, required for primary key.' % BiobankOrder._MAIN_ID_SYSTEM)
 
   @classmethod
+  def _add_identifiers_and_main_id_history(cls, order, resource):
+    found_main_id = False
+    for i in resource.identifier:
+      order.identifiers.append(BiobankOrderIdentifier(system=i.system, value=i.value))
+      if i.system == BiobankOrder._MAIN_ID_SYSTEM:
+        order.biobankOrderId = i.value
+        found_main_id = True
+    if not found_main_id:
+      raise BadRequest(
+        'No identifier for system %r, required for primary key.' % BiobankOrder._MAIN_ID_SYSTEM)
+
+  @classmethod
   def _add_samples(cls, order, resource):
     all_tests = sorted([s.test for s in resource.samples])
     if len(set(all_tests)) != len(all_tests):
@@ -396,6 +409,8 @@ class BiobankOrderDao(UpdatableDao):
       order.restoredSiteId = get_site(resource['restoredInfo'])
       order.restoredTime = clock.CLOCK.now()
       order.orderStatus = BiobankOrderStatus.UNSET
+
+    self._update_history(session, order, resource)
     super(BiobankOrderDao, self)._do_update(session, order, resource)
 
   def _validate_patch_update(self, session, model, resource, expected_version):
@@ -417,6 +432,15 @@ class BiobankOrderDao(UpdatableDao):
         raise BadRequest('author and site are required for restoredInfo')
 
     super(BiobankOrderDao, self)._validate_patch_update(session, model, resource, expected_version)
-    model.version += 1
+
+  def _update_history(self, session, order, resource):
+    # Increment the version and add a new history entry.
+    order.version += 1
+    history = BiobankOrderHistory()
+    history.fromdict(order.asdict(), allow_pk=True)
+    session.add(history)
+
+  # @TODO: add identifier and sample history
+  # @TODO: look at what should have new version ?
 
 
