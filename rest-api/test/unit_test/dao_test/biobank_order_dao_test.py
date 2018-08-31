@@ -119,3 +119,9 @@ class BiobankOrderDaoTest(SqlTestBase):
       self.dao.insert(self._make_biobank_order(
           samples=[BiobankOrderedSample(
               test='InvalidTestName', processingRequired=True, description=u'tested it')]))
+
+  def test_cancelling_an_order(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(self._make_biobank_order())
+    print '**********************'
+    print order_1.version
