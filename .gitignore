@@ -1,5 +1,6 @@
 *.pyc
 *.pyo
+**/*.iml
 **/__pycache__
 
 *.swp
