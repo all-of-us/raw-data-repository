@@ -126,11 +126,14 @@ class BiobankOrder(BiobankOrderBase, Base):
 
 class BiobankOrderIdentifierBase(object):
   @declared_attr
-  system = Column('system', String(80), primary_key=True)
+  def system(cls):
+    return Column('system', String(80), primary_key=True)
   @declared_attr
-  value = Column('value', String(80), primary_key=True)
+  def value(cls):
+    return Column('value', String(80), primary_key=True)
   @declared_attr
-  biobankOrderId = Column(
+  def biobankOrderId(cls):
+    return Column(
     'biobank_order_id', String(80), ForeignKey('biobank_order.biobank_order_id'), nullable=False)
 
 
@@ -144,24 +147,31 @@ class BiobankOrderIdentifier(BiobankOrderIdentifierBase, Base):
 
 class BiobankOrderedSampleBase(object):
   @declared_attr
-  biobankOrderId = Column(
+  def biobankOrderId(cls):
+    return Column(
     'order_id', String(80), ForeignKey('biobank_order.biobank_order_id'), primary_key=True)
 
   # Unique within an order, though the same test may be redone in another order for the participant.
   @declared_attr
-  test = Column('test', String(80), primary_key=True)
+  def test(cls):
+    return Column('test', String(80), primary_key=True)
 
   # Free text description of the sample.
   @declared_attr
-  description = Column('description', UnicodeText, nullable=False)
+  def description(cls):
+    return Column('description', UnicodeText, nullable=False)
   @declared_attr
-  processingRequired = Column('processing_required', Boolean, nullable=False)
+  def processingRequired(cls):
+    return Column('processing_required', Boolean, nullable=False)
   @declared_attr
-  collected = Column('collected', UTCDateTime)
+  def collected(cls):
+    return Column('collected', UTCDateTime)
   @declared_attr
-  processed = Column('processed', UTCDateTime)
+  def processed(cls):
+    return Column('processed', UTCDateTime)
   @declared_attr
-  finalized = Column('finalized', UTCDateTime)
+  def finalized(cls):
+    return Column('finalized', UTCDateTime)
 
 
 class BiobankOrderedSample(BiobankOrderedSampleBase, Base):
