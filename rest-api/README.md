@@ -280,7 +280,7 @@ Path|Description
 Path|Description
 ----|-----------
 [main.py](main.py)|REST API entry point; defines the endpoints exposed in our API
-[offline/main.py](offline/main.py)|Offline entry point; defines the endpoints used to start offline jobs
+[offline/main.py](offline/main.py)|Offline entry point; defines the endpoints used to start offline jobs, usually called by cron jobs
 
 ### Directories in GitHub
 Path|Description
@@ -296,7 +296,7 @@ Path|Description
 [etl/](etl)|ETL SQL and scripts used to create OMOP data in the RDR database
 [etl_test/](etl_test)|SQL that can be used to test ETL logic
 [model/](model)|SQLAlchemy model objects representing entities stored in our database
-[offline/](offline)|Offline jobs that run in a separate service
+[offline/](offline)|Offline jobs that run in a separate service; launched usually by cron jobs
 [test/](test)|Tests of REST API and offline job code
 [tools/](tools)|Command line tools used to set up development environments, update server configuration and data in our databases
 
