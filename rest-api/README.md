@@ -260,27 +260,6 @@ use Rebuild in CircleCI to retry.
 CircleCI will also open a new JIRA issue to track the release (or update an
 existing issue for cherry picks).
 
-### Tools
-
-Please see the [Tools README](tools/README.md) for more information on command line tools.
-
-# Biobank ID prefixes
-
-Biobank receives samples for participants from multiple RDR environments in its production
-environment. In order to ensure there aren't any collisions, we tack on a unique prefix to
-client biobank IDs in each environment; the values are:
-
-"A" - production (post-launch)
-"B" - dry run / stable
-"C" - production (pre-launch)
-"X" - staging
-"Y" - test
-"Z" - dev
-
-Note that these values are only present in our config and responses and Biobank reconciliation
-report. They are not actually stored in the database.
-
-
 ### Descriptions of files and directories
 
 #### YAML files
@@ -327,4 +306,25 @@ Path|Description
 [bin/](bin)|Holds cloud_sql_proxy, used to connect to the database
 [lib/](lib)|Libraries from [requirements.txt](requirements.txt)
 [lib-common/](lib-common)|Symbolic link to rdr_common; code shared with [rdr_client](../rdr_client/)
+
+### Tools
+
+Please see the [Tools README](tools/README.md) for more information on command line tools.
+
+### Biobank ID prefixes
+
+Biobank receives samples for participants from multiple RDR environments in its production
+environment. In order to ensure there aren't any collisions, we tack on a unique prefix to
+client biobank IDs in each environment; the values are:
+
+"A" - production (post-launch)
+"B" - dry run / stable
+"C" - production (pre-launch)
+"X" - staging
+"Y" - test
+"Z" - dev
+
+Note that these values are only present in our config and responses and Biobank reconciliation
+report. They are not actually stored in the database.
+
 
