@@ -22,7 +22,6 @@ class BiobankOrderBase(object):
   # Incrementing version, starts at 1 and is incremented on each update.
   version = Column('version', Integer, nullable=False)
 
-
   # The username / email of the HealthPro user that created the order -- createdInfo['author']
   # in the resulting JSON.
   sourceUsername = Column('source_username', String(255))
@@ -125,41 +124,62 @@ class BiobankOrder(BiobankOrderBase, Base):
   samples = relationship('BiobankOrderedSample', cascade='all, delete-orphan')
 
 
-class BiobankOrderIdentifier(Base):
+class BiobankOrderIdentifierBase(object):
+  system = Column('system', String(80), primary_key=True)
+  value = Column('value', String(80), primary_key=True)
+  @declared_attr
+  def biobankOrderId(cls):
+    return Column(
+    'biobank_order_id', String(80), ForeignKey('biobank_order.biobank_order_id'), nullable=False)
+
+
+class BiobankOrderIdentifier(BiobankOrderIdentifierBase, Base):
   """Arbitrary IDs for a BiobankOrder in other systems.
 
   Other clients may create these, but they must be unique within each system.
   """
   __tablename__ = 'biobank_order_identifier'
-  system = Column('system', String(80), primary_key=True)
-  value = Column('value', String(80), primary_key=True)
-  biobankOrderId = Column(
-      'biobank_order_id', String(80), ForeignKey('biobank_order.biobank_order_id'), nullable=False)
 
 
-class BiobankOrderedSample(Base):
-  """Samples listed by a Biobank order.
-
-  These are distinct from BiobankStoredSamples, which tracks received samples. The two should
-  eventually match up, but we see BiobankOrderedSamples first and track them separately.
-  """
-  __tablename__ = 'biobank_ordered_sample'
-  biobankOrderId = Column(
-      'order_id', String(80), ForeignKey('biobank_order.biobank_order_id'), primary_key=True)
+class BiobankOrderedSampleBase(object):
+  @declared_attr
+  def biobankOrderId(cls):
+    return Column(
+    'order_id', String(80), ForeignKey('biobank_order.biobank_order_id'), primary_key=True)
 
   # Unique within an order, though the same test may be redone in another order for the participant.
   test = Column('test', String(80), primary_key=True)
 
   # Free text description of the sample.
   description = Column('description', UnicodeText, nullable=False)
-
   processingRequired = Column('processing_required', Boolean, nullable=False)
   collected = Column('collected', UTCDateTime)
   processed = Column('processed', UTCDateTime)
   finalized = Column('finalized', UTCDateTime)
 
 
+class BiobankOrderedSample(BiobankOrderedSampleBase, Base):
+  """Samples listed by a Biobank order.
+
+  These are distinct from BiobankStoredSamples, which tracks received samples. The two should
+  eventually match up, but we see BiobankOrderedSamples first and track them separately.
+  """
+  __tablename__ = 'biobank_ordered_sample'
+
+
 class BiobankOrderHistory(BiobankOrderBase, Base):
   __tablename__ = 'biobank_history'
+
+  version = Column('version', Integer, primary_key=True)
+
+
+class BiobankOrderedSampleHistory(BiobankOrderedSampleBase, Base):
+  __tablename__ = 'biobank_ordered_sample_history'
+
+  version = Column('version', Integer, primary_key=True)
+
+
+class BiobankOrderIdentifierHistory(BiobankOrderIdentifierBase, Base):
+  __tablename__ = 'biobank_order_identifier_history'
 
   version = Column('version', Integer, primary_key=True)
