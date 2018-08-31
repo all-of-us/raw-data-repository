@@ -118,7 +118,7 @@ api.add_resource(BiobankOrderApi,
                  PREFIX + 'Participant/<participant_id:p_id>/BiobankOrder/<string:bo_id>',
                  PREFIX + 'Participant/<participant_id:p_id>/BiobankOrder',
                  endpoint='participant.biobank_order',
-                 methods=['POST', 'GET', 'PUT'])
+                 methods=['POST', 'GET', 'PUT', 'PATCH'])
 
 api.add_resource(AwardeeApi,
                  PREFIX + 'Awardee',

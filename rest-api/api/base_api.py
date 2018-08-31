@@ -179,6 +179,11 @@ class UpdatableApi(BaseApi):
       return self.dao.from_client_json(
           resource, id_=id_, expected_version=expected_version, client_id=app_util.get_oauth_id())
 
+  def _get_patch_model_to_update(self, resource, id_, expected_version, participant_id=None):
+    # Children of participants accept a participant_id parameter to from_client_json; others don't.
+    if participant_id is not None:
+      return self.dao.get_with_children(id_)
+
   def _make_response(self, obj):
     result = super(UpdatableApi, self)._make_response(obj)
     etag = _make_etag(obj.version)
@@ -206,6 +211,23 @@ class UpdatableApi(BaseApi):
     self._do_update(m)
     return self._make_response(m)
 
+  def patch(self, id_, participant_id=None):
+    """Handles a PATCH request; the current object must exist, and will be amended
+
+    Args:
+      id: The id of the object to update.
+      participant_id: The ancestor id (if applicable). # @TODO: REVIEW THIS <
+    """
+    resource = request.get_json(force=True)
+    expected_version = None
+    etag = request.headers.get('If-Match')
+    if not etag:
+      raise BadRequest("If-Match is missing for PUT request")
+    expected_version = _parse_etag(etag)
+    model_to_update = self._get_patch_model_to_update(resource, id_, expected_version,
+                                                      participant_id)
+    self.dao.update_with_patch(model_to_update, resource, expected_version)
+    return self._make_response(model_to_update)
 
 def _make_etag(version):
   return 'W/"%d"' % version

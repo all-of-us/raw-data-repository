@@ -410,6 +410,11 @@ class UpdatableDao(BaseDao):
                                (obj.version, existing_obj.version))
     self._validate_model(session, obj)
 
+  def _validate_patch_update(self, session, model, resource, expected_version):
+    if expected_version != model.version:
+      raise PreconditionFailed('Expected version was %s; stored version was %s' % \
+                               (obj.version, existing_obj.version))
+
   # pylint: disable=unused-argument
   def _do_update(self, session, obj, existing_obj):
     """Perform the update of the specified object. Subclasses can override to alter things."""
@@ -425,12 +430,25 @@ class UpdatableDao(BaseDao):
     self._validate_update(session, obj, existing_obj)
     self._do_update(session, obj, existing_obj)
 
+  def patch_update_with_session(self, session, model, resource, expected_version):
+    """Updates the object in the database with the specified session. Will fail if the object
+    doesn't exist already, or if obj.version does not match the version of the existing object."""
+    self._validate_patch_update(session, model, resource, expected_version)
+    self._do_update_with_patch(session, model, resource)
+
   def update(self, obj):
     """Updates the object in the database. Will fail if the object doesn't exist already, or
     if obj.version does not match the version of the existing object.
     May modify the passed in object."""
     with self.session() as session:
       return self.update_with_session(session, obj)
+
+  def update_with_patch(self, obj, resource, expected_version):
+    """creates an atomic patch request on an object. It will fail if the object
+    doesn't exist already, or if obj.version does not match the version of the existing object.
+    May modify the passed in object."""
+    with self.session() as session:
+      return self.patch_update_with_session(session, obj, resource, expected_version)
 
 def json_serial(obj):
   """JSON serializer for objects not serializable by default json code"""

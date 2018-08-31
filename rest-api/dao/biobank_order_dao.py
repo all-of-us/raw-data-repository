@@ -1,4 +1,5 @@
 import clock
+from api_util import get_site_id_by_site_value as get_site
 from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
 from dao.base_dao import UpdatableDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -381,9 +382,41 @@ class BiobankOrderDao(UpdatableDao):
     order.lastModified = clock.CLOCK.now()
     super(BiobankOrderDao, self)._do_update(session, order, resource)
 
-  def _validate_update(self, session, order, resource):
-    # obj.version += 1 # @TODO: UNCOMMENT AFTER MANUAL TESTING
-    super(BiobankOrderDao, self)._validate_update(session, order, resource)
+  def _do_update_with_patch(self, session, order, resource):
+    order.lastModified = clock.CLOCK.now()
+    if resource['status'] == 'cancelled':
+      order.amendedReason = resource['amendedReason']
+      order.cancelledUsername = resource['cancelledInfo']['author']['value']
+      order.cancelledSiteId = get_site(resource['cancelledInfo'])
+      order.cancelledTime = clock.CLOCK.now()
+      order.orderStatus = BiobankOrderStatus.CANCELLED
+    if resource['status'] == 'restored':
+      order.amendedReason = resource['amendedReason']
+      order.restoredUsername = resource['restoredInfo']['author']['value']
+      order.restoredSiteId = get_site(resource['restoredInfo'])
+      order.restoredTime = clock.CLOCK.now()
+      order.orderStatus = BiobankOrderStatus.UNSET
+    super(BiobankOrderDao, self)._do_update(session, order, resource)
 
+  def _validate_patch_update(self, session, model, resource, expected_version):
+    required_cancelled_fields = ['amendedReason', 'cancelledInfo', 'status']
+    required_restored_fields = ['amendedReason', 'restoredInfo', 'status']
+
+    if resource['status'] == 'cancelled':
+      for field in required_cancelled_fields:
+        if field not in resource:
+          raise BadRequest('%s is required for a cancelled biobank order' % field)
+      if 'author' and 'site' not in resource['cancelledInfo']:
+        raise BadRequest('author and site are required for cancelledInfo')
+
+    if resource['status'] == 'restored':
+      for field in required_restored_fields:
+        if field not in resource:
+          raise BadRequest('%s is required for a cancelled biobank order' % field)
+      if 'author' and 'site' not in resource['restoredInfo']:
+        raise BadRequest('author and site are required for restoredInfo')
+
+    super(BiobankOrderDao, self)._validate_patch_update(session, model, resource, expected_version)
+    model.version += 1
 
 
