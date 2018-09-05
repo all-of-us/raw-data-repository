@@ -114,32 +114,11 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertNotEqual(participant_paired.siteId,
                         participant_paired.physicalMeasurementsFinalizedSiteId)
 
-  # def test_cancelling_an_order(self):
-  #   ParticipantSummaryDao().insert(self.participant_summary(self.participant))
-  #   order_1 = self.dao.insert(self._make_biobank_order())
-  #   self.dao.
-  #   print '**********************'
-  #   print order_1.version
-  #   print order_1.biobankOrderId
-  #   cancelled_request = {
-  #     "amendedReason": "Its all wrong",
-  #     "cancelledInfo": {
-  #       "author": {
-  #         "system": "https://www.pmi-ops.org/healthpro-username",
-  #         "value": "fred@pmi-ops.org"
-  #       },
-  #       "site": {
-  #         "system": "https://www.pmi-ops.org/site-id",
-  #         "value": "hpo-site-monroeville"
-  #       }
-  #     },
-  #     "status": "cancelled"
-  #   }
-
   def _insert_measurements(self, now=None):
     measurements_1 = load_measurement_json(self.participant_id, now)
     path_1 = 'Participant/%s/PhysicalMeasurements' % self.participant_id
     self.send_post(path_1, measurements_1)
+
 
 def _strip_fields(order_json):
   if order_json.get('created'):

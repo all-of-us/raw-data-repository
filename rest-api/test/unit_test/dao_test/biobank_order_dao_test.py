@@ -207,22 +207,10 @@ class BiobankOrderDaoTest(SqlTestBase):
     cancelled_request = self._get_cancel_patch()
     self.dao.update_with_patch(order_1, cancelled_request, order_1.version)
 
-    self.assertEqual(order_1.version, 2)
-    self.assertEqual(order_1.cancelledUsername, 'mike@pmi-ops.org')
-    self.assertEqual(order_1.orderStatus, BiobankOrderStatus.CANCELLED)
-    self.assertEqual(order_1.amendedReason, cancelled_request['amendedReason'])
-
     restore_request = self._get_restore_patch()
     self.dao.update_with_patch(order_1, restore_request, order_1.version)
+
     self.assertEqual(order_1.version, 3)
     self.assertEqual(order_1.restoredUsername, 'mike@pmi-ops.org')
     self.assertEqual(order_1.orderStatus, BiobankOrderStatus.UNSET)
     self.assertEqual(order_1.amendedReason, restore_request['amendedReason'])
-
-
-
-
-
-
-
-
