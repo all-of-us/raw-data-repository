@@ -317,17 +317,6 @@ class BiobankOrderDao(UpdatableDao):
       raise BadRequest(
           'No identifier for system %r, required for primary key.' % BiobankOrder._MAIN_ID_SYSTEM)
 
-  @classmethod
-  def _add_identifiers_and_main_id_history(cls, order, resource):
-    found_main_id = False
-    for i in resource.identifier:
-      order.identifiers.append(BiobankOrderIdentifier(system=i.system, value=i.value))
-      if i.system == BiobankOrder._MAIN_ID_SYSTEM:
-        order.biobankOrderId = i.value
-        found_main_id = True
-    if not found_main_id:
-      raise BadRequest(
-        'No identifier for system %r, required for primary key.' % BiobankOrder._MAIN_ID_SYSTEM)
 
   @classmethod
   def _add_samples(cls, order, resource):
@@ -410,37 +399,50 @@ class BiobankOrderDao(UpdatableDao):
       order.restoredTime = clock.CLOCK.now()
       order.orderStatus = BiobankOrderStatus.UNSET
 
-    self._update_history(session, order, resource)
+    self._update_history(session, order)
+    self._update_identifier_history(session, order)
+    self._update_sample_history(session, order)
     super(BiobankOrderDao, self)._do_update(session, order, resource)
 
   def _validate_patch_update(self, session, model, resource, expected_version):
     required_cancelled_fields = ['amendedReason', 'cancelledInfo', 'status']
     required_restored_fields = ['amendedReason', 'restoredInfo', 'status']
+    if 'status' not in resource:
+      raise BadRequest('status of cancelled/restored is required')
 
     if resource['status'] == 'cancelled':
       for field in required_cancelled_fields:
         if field not in resource:
           raise BadRequest('%s is required for a cancelled biobank order' % field)
-      if 'author' and 'site' not in resource['cancelledInfo']:
+      if 'site' not in resource['cancelledInfo'] or 'author' not in resource['cancelledInfo']:
         raise BadRequest('author and site are required for cancelledInfo')
 
     if resource['status'] == 'restored':
       for field in required_restored_fields:
         if field not in resource:
           raise BadRequest('%s is required for a cancelled biobank order' % field)
-      if 'author' and 'site' not in resource['restoredInfo']:
+      if 'site' not in resource['restoredInfo'] or 'author' not in resource['restoredInfo']:
         raise BadRequest('author and site are required for restoredInfo')
 
     super(BiobankOrderDao, self)._validate_patch_update(session, model, resource, expected_version)
 
-  def _update_history(self, session, order, resource):
+  def _update_history(self, session, order):
     # Increment the version and add a new history entry.
     order.version += 1
     history = BiobankOrderHistory()
     history.fromdict(order.asdict(), allow_pk=True)
     session.add(history)
 
-  # @TODO: add identifier and sample history
-  # @TODO: look at what should have new version ?
+  def _update_identifier_history(self, session, order):
+    for id in order.identifiers:
+      history = BiobankOrderIdentifierHistory()
+      history.fromdict(id.asdict(), allow_pk=True)
+      history.version = order.version
+      session.add(history)
 
-
+  def _update_sample_history(self, session, order):
+    for sample in order.samples:
+      history = BiobankOrderedSampleHistory()
+      history.fromdict(sample.asdict(), allow_pk=True)
+      history.version = order.version
+      session.add(history)
