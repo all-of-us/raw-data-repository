@@ -42,7 +42,7 @@ if [[ $(git status --porcelain) ]]; then
 fi
 
 UPDATE_TRACKER=tools/update_release_tracker.py
-if [ "${PROJECT}" == "all-of-us-rdr-prod" ]
+if [ "${PROJECT}" == "all-of-us-rdr-prod" ] || [ "${PROJECT}" == "all-of-us-rdr-staging" ]
 then
   CONFIG="config/config_prod.json"
 elif [ "${PROJECT}" == "all-of-us-rdr-stable" ]
@@ -154,7 +154,7 @@ then
 
   if [ "$TARGET" == "app" ] || [ "$TARGET" == "all" ]
   then
-    if [ "${PROJECT}" = "all-of-us-rdr-prod" ]
+    if [ "${PROJECT}" = "all-of-us-rdr-prod" ] || [ "${PROJECT}" = "all-of-us-rdr-staging" ]
     then
       echo "Using ${BOLD}prod${NONE} app.yaml for project $PROJECT."
       APP_YAML=app_prod.yaml
