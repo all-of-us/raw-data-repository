@@ -18,6 +18,7 @@ while true; do
     --version) VERSION=$2; shift 2;;
     --deploy_as_version) DEPLOY_AS_VERSION=$2; shift 2;;
     --target) TARGET=$2; shift 2;;
+    --use_prod_yaml) USE_PROD_YAML='true'; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -42,12 +43,15 @@ if [[ $(git status --porcelain) ]]; then
 fi
 
 UPDATE_TRACKER=tools/update_release_tracker.py
-if [ "${PROJECT}" == "all-of-us-rdr-prod" ] || [ "${PROJECT}" == "all-of-us-rdr-staging" ]
+if [ "${PROJECT}" == "all-of-us-rdr-prod" ]
 then
   CONFIG="config/config_prod.json"
 elif [ "${PROJECT}" == "all-of-us-rdr-stable" ]
 then
   CONFIG="config/config_stable.json"
+elif [ "${PROJECT}" == "all-of-us-rdr-staging" ]
+then
+  CONFIG="config/config_staging.json"
 elif [ "${PROJECT}" == "all-of-us-rdr-dryrun" ]
 then
   CONFIG="config/config_dryrun.json"
@@ -154,7 +158,7 @@ then
 
   if [ "$TARGET" == "app" ] || [ "$TARGET" == "all" ]
   then
-    if [ "${PROJECT}" = "all-of-us-rdr-prod" ] || [ "${PROJECT}" = "all-of-us-rdr-staging" ]
+    if [ "${PROJECT}" = "all-of-us-rdr-prod" ] || [ "${USE_PROD_YAML}" = "true" ]
     then
       echo "Using ${BOLD}prod${NONE} app.yaml for project $PROJECT."
       APP_YAML=app_prod.yaml
