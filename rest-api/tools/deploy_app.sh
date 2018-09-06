@@ -18,7 +18,7 @@ while true; do
     --version) VERSION=$2; shift 2;;
     --deploy_as_version) DEPLOY_AS_VERSION=$2; shift 2;;
     --target) TARGET=$2; shift 2;;
-    --use_prod_yaml) USE_PROD_YAML='true'; shift 2;;
+    --use_prod_yaml) USE_PROD_YAML='true'; shift 1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
