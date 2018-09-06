@@ -378,6 +378,11 @@ class BiobankOrderDao(UpdatableDao):
     client_json = resource.as_json()  # also validates required fields
     client_json['id'] = model.biobankOrderId
     del client_json['resourceType']
+    if model.orderStatus == BiobankOrderStatus.CANCELLED:
+      client_json['status'] = 'CANCELLED'
+    ## @TODO: DO STUFF !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ## if requesting all orders, hide cancelled ones
+
     return client_json
 
   def _do_update(self, session, order, resource):

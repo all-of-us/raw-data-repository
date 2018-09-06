@@ -219,7 +219,6 @@ class UpdatableApi(BaseApi):
       participant_id: The ancestor id (if applicable). # @TODO: REVIEW THIS <
     """
     resource = request.get_json(force=True)
-    expected_version = None
     etag = request.headers.get('If-Match')
     if not etag:
       raise BadRequest("If-Match is missing for PUT request")

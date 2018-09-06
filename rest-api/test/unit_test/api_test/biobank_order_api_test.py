@@ -34,12 +34,25 @@ class BiobankOrderApiTest(FlaskTestBase):
     _strip_fields(full_order_json)
     self.assertEquals(full_order_json, result)
 
-
-    # @TODO: in progress.
-    # biobank_order_id = result['identifier'][1]['value']
-    # path = self.path + biobank_order_id
-    # result['orderStatus'] = "cancelled"
-    # cancelled = self.send_get(path, biobank_order_id)
+    biobank_order_id = result['identifier'][1]['value']
+    path = self.path + '/' + biobank_order_id
+    request_data = {
+      "amendedReason": "Its all wrong",
+      "cancelledInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/healthpro-username",
+          "value": "fred@pmi-ops.org"
+        },
+        "site": {
+          "system": "https://www.pmi-ops.org/site-id",
+          "value": "hpo-site-monroeville"
+        }
+      },
+      "status": "cancelled"
+    }
+    cancelled_order = self.send_patch(path, request_data=request_data, headers={'If-Match':'W/"1"'})
+    get_cancelled_order = self.send_get(path)
+    self.assertEqual(cancelled_order, get_cancelled_order)
 
   def test_insert_and_refetch(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
