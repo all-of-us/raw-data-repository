@@ -75,6 +75,7 @@ class _FhirBiobankOrder(FhirMixin, DomainResource):
     FhirProperty('finalized_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('cancelledInfo', _FhirBiobankOrderHandlingInfo),
     FhirProperty('restoredInfo', _FhirBiobankOrderHandlingInfo),
+    FhirProperty('amendedInfo', _FhirBiobankOrderHandlingInfo),
     FhirProperty('status', str, required=False),
     FhirProperty('amendedReason', str, required=False)
   ]
@@ -274,6 +275,10 @@ class BiobankOrderDao(UpdatableDao):
     self._add_samples(order, resource)
     if resource.status:
       self._handle_new_status(order, resource)
+    if resource.amendedReason:
+      order.amendedReason = resource.amendedReason
+    if resource.amendedInfo:
+      order.amendedUsername, order.amendedSiteId = self._parse_handling_info(resource.amendedInfo)
     order.version = expected_version
     return order
 
@@ -380,13 +385,19 @@ class BiobankOrderDao(UpdatableDao):
     del client_json['resourceType']
     if model.orderStatus == BiobankOrderStatus.CANCELLED:
       client_json['status'] = 'CANCELLED'
-    ## @TODO: DO STUFF !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ## if requesting all orders, hide cancelled ones
+      client_json['amendedReason'] = model.amendedReason
+      client_json['cancelledSiteId'] = model.cancelledSiteId
+      client_json['cancelledUsername'] = model.cancelledUsername
 
     return client_json
 
   def _do_update(self, session, order, resource):
     order.lastModified = clock.CLOCK.now()
+    # @TODO: SEE BELOW UPDATE. CHANGE VERSION/ORDER_STATUS/AMENDED FIELDS, ETC.
+    order.orderStatus = BiobankOrderStatus.UNSET
+    order.amendedBiobbankOrderId = None                   # @TODO: check <
+    order.amendedTime = clock.CLOCK.now()
+    order.version += 1
     super(BiobankOrderDao, self)._do_update(session, order, resource)
 
   def _do_update_with_patch(self, session, order, resource):

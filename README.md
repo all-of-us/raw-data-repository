@@ -620,10 +620,6 @@ BiobankOrder resource to be created. Response is the resource as stored.
 
 Read a BiobankOrder by id.
 
-#### `GET /Participant/:pid/BiobankOrder`
-
-Search for BiobankOrders about a given participant. Response body is a bundle
-of BiobankOrders (possibly empty).
 
 ## Metrics API
 
