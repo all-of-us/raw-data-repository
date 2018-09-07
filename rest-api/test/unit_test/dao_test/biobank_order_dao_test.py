@@ -82,8 +82,8 @@ class BiobankOrderDaoTest(SqlTestBase):
     }
 
   @staticmethod
-  def _get_amended_info():
-    return dict(amendedReason='I had to change something', amendedInfo={
+  def _get_amended_info(order):
+    amendment = dict(amendedReason='I had to change something', amendedInfo={
       "author": {
         "system": "https://www.pmi-ops.org/healthpro-username",
         "value": "mike@pmi-ops.org"
@@ -93,6 +93,10 @@ class BiobankOrderDaoTest(SqlTestBase):
         "value": "hpo-site-monroeville"
       }
     })
+
+    order.amendedReason = amendment['amendedReason']
+    order.amendedInfo = amendment['amendedInfo']
+    return order
 
   def test_bad_participant(self):
     with self.assertRaises(BadRequest):
@@ -231,4 +235,9 @@ class BiobankOrderDaoTest(SqlTestBase):
   def test_amending_an_order(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     order_1 = self.dao.insert(self._make_biobank_order())
-    get_amended_info = self._get_amended_info()
+    amended_info = self._get_amended_info(order_1)
+    # amended_info.sourceSiteId = 2
+    with self.dao.session() as session:
+      self.dao.from_client_json(amended_info)
+      x = self.dao._do_update(session, amended_info, order_1)
+      print x

@@ -54,6 +54,41 @@ class BiobankOrderApiTest(FlaskTestBase):
     get_cancelled_order = self.send_get(path)
     self.assertEqual(cancelled_order, get_cancelled_order)
 
+  def test_amending_an_order(self):
+    self.summary_dao.insert(self.participant_summary(self.participant))
+    order_json = load_biobank_order_json(self.participant.participantId,
+                                         filename='biobank_order_2.json')
+    result = self.send_post(self.path, order_json)
+    full_order_json = load_biobank_order_json(self.participant.participantId,
+                                              filename='biobank_order_1.json')
+
+    biobank_order_id = result['identifier'][1]['value']
+    path = self.path + '/' + biobank_order_id
+    request_data = {
+      "amendedReason": "Its all better",
+      "amendedInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/healthpro-username",
+          "value": "fred@pmi-ops.org"
+        },
+        "site": {
+          "system": "https://www.pmi-ops.org/site-id",
+          "value": "hpo-site-monroeville"
+        }
+      }
+    }
+    get_order = self.send_get(path)
+    print get_order, " << get order", " \n"
+    full_order = get_order.copy()
+    full_order.update(request_data)
+    # amended_order = self.send_put(path, request_data=full_order, headers={'If-Match':'W/"1"'})
+
+    get_amended_order = self.send_get(path)
+    # print get_amended_order, " << get amended order", '\n'
+    # print result, " << result", '\n'
+    print full_order, "<< full order"
+
+
   def test_insert_and_refetch(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
     self.create_and_verify_created_obj(
