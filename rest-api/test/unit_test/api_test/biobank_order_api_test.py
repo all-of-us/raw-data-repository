@@ -55,6 +55,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertEqual(cancelled_order, get_cancelled_order)
 
   def test_amending_an_order(self):
+    #pylint: disable=unused-variable
     self.summary_dao.insert(self.participant_summary(self.participant))
     order_json = load_biobank_order_json(self.participant.participantId,
                                          filename='biobank_order_2.json')
