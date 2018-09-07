@@ -476,6 +476,5 @@ class BiobankOrderDao(UpdatableDao):
 
     clear_fields = ['restored_username', 'restored_time', 'cancelled_username', 'cancelled_time',
                     'restored_site_id', 'cancelled_site_id']
-    for field in clear_fields:
-      #pylint: disable=unused-argument
+    for field in clear_fields: #pylint: disable=unused-argument
       order.field = None
