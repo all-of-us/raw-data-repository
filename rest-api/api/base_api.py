@@ -180,7 +180,7 @@ class UpdatableApi(BaseApi):
           resource, id_=id_, expected_version=expected_version, client_id=app_util.get_oauth_id())
 
   def _get_patch_model_to_update(self, resource, id_, expected_version, participant_id=None):
-    #pylint disable=unused-argument
+    #pylint: disable=unused-argument
     # Children of participants accept a participant_id parameter to from_client_json; others don't.
     if participant_id is not None:
       return self.dao.get_with_children(id_)
