@@ -399,7 +399,7 @@ class BiobankOrderDao(UpdatableDao):
     order.logPosition = LogPosition()
     order.logPositionId = resource.logPositionId + 1
     # Ensure that if an order was previously cancelled/restored those columns are removed.
-    self._clear_cancelled_and_restored_fields(session, order)
+    self._clear_cancelled_and_restored_fields(order)
     self._update_history(session, order)
     self._update_identifier_history(session, order)
     self._update_sample_history(session, order)
@@ -470,12 +470,12 @@ class BiobankOrderDao(UpdatableDao):
       history.biobankOrderId = order.biobankOrderId
       session.add(history)
 
-  def _clear_cancelled_and_restored_fields(self, session, order):
+  def _clear_cancelled_and_restored_fields(self, order):
     """ Just in case these fields have values, we don't want them in the most recent record,
     they will exist in history tables."""
 
     clear_fields = ['restored_username', 'restored_time', 'cancelled_username', 'cancelled_time',
                     'restored_site_id', 'cancelled_site_id']
-    #pylint: disable=unused-argument
     for field in clear_fields:
+      #pylint: disable=unused-argument
       order.field = None
