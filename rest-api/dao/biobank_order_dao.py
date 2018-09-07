@@ -396,14 +396,13 @@ class BiobankOrderDao(UpdatableDao):
     order.biobankOrderId = resource.biobankOrderId
     order.orderStatus = BiobankOrderStatus.UNSET
     order.amendedTime = clock.CLOCK.now()
-    order.version += 1
-    order.logPosition = resource.logPosition  #@TODO: CHECK HOW TO USE LOGPOSITION
-    order.logPositionId = resource.logPositionId
+    order.logPosition = LogPosition()
+    order.logPositionId = resource.logPositionId + 1 #@TODO:  check how to set id
     # Ensure that if an order was previously cancelled/restored those columns are removed.
     self._clear_cancelled_and_restored_fields(session, order)
     self._update_history(session, order)
     self._update_identifier_history(session, order)
-    self._update_sample_history(session, order)
+    self._update_sample_history(session, order)  #@TODO: FIX primary KEY ERROR / amendedID?
     super(BiobankOrderDao, self)._do_update(session, order, resource)
 
   def _do_update_with_patch(self, session, order, resource):
@@ -460,6 +459,7 @@ class BiobankOrderDao(UpdatableDao):
       history = BiobankOrderIdentifierHistory()
       history.fromdict(id.asdict(), allow_pk=True)
       history.version = order.version
+      history.biobankOrderId = order.biobankOrderId
       session.add(history)
 
   def _update_sample_history(self, session, order):
@@ -467,6 +467,7 @@ class BiobankOrderDao(UpdatableDao):
       history = BiobankOrderedSampleHistory()
       history.fromdict(sample.asdict(), allow_pk=True)
       history.version = order.version
+      history.biobankOrderId = order.biobankOrderId
       session.add(history)
 
   def _clear_cancelled_and_restored_fields(self, session, order):

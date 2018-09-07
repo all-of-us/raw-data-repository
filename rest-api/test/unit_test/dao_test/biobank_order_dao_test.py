@@ -81,6 +81,19 @@ class BiobankOrderDaoTest(SqlTestBase):
       "status": "restored"
     }
 
+  @staticmethod
+  def _get_amended_info():
+    return dict(amendedReason='I had to change something', amendedInfo={
+      "author": {
+        "system": "https://www.pmi-ops.org/healthpro-username",
+        "value": "mike@pmi-ops.org"
+      },
+      "site": {
+        "system": "https://www.pmi-ops.org/site-id",
+        "value": "hpo-site-monroeville"
+      }
+    })
+
   def test_bad_participant(self):
     with self.assertRaises(BadRequest):
       self.dao.insert(self._make_biobank_order(participantId=999))
@@ -214,3 +227,8 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.assertEqual(order_1.restoredUsername, 'mike@pmi-ops.org')
     self.assertEqual(order_1.orderStatus, BiobankOrderStatus.UNSET)
     self.assertEqual(order_1.amendedReason, restore_request['amendedReason'])
+
+  def test_amending_an_order(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(self._make_biobank_order())
+    get_amended_info = self._get_amended_info()
