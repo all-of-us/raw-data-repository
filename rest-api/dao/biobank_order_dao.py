@@ -455,9 +455,9 @@ class BiobankOrderDao(UpdatableDao):
     session.add(history)
 
   def _update_identifier_history(self, session, order):
-    for id in order.identifiers:
+    for identifier in order.identifiers:
       history = BiobankOrderIdentifierHistory()
-      history.fromdict(id.asdict(), allow_pk=True)
+      history.fromdict(identifier.asdict(), allow_pk=True)
       history.version = order.version
       history.biobankOrderId = order.biobankOrderId
       session.add(history)
@@ -476,5 +476,6 @@ class BiobankOrderDao(UpdatableDao):
 
     clear_fields = ['restored_username', 'restored_time', 'cancelled_username', 'cancelled_time',
                     'restored_site_id', 'cancelled_site_id']
+    #pylint: disable=unused-argument
     for field in clear_fields:
       order.field = None

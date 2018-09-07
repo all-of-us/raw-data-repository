@@ -410,7 +410,7 @@ class UpdatableDao(BaseDao):
                                (obj.version, existing_obj.version))
     self._validate_model(session, obj)
 
-  def _validate_patch_update(self, session, model, resource, expected_version):
+  def _validate_patch_update(self, model, expected_version):
     if expected_version != model.version:
       raise PreconditionFailed('Expected version was %s; stored version was %s' % \
                                (expected_version, model.version))
@@ -433,7 +433,7 @@ class UpdatableDao(BaseDao):
   def patch_update_with_session(self, session, model, resource, expected_version):
     """Updates the object in the database with the specified session. Will fail if the object
     doesn't exist already, or if obj.version does not match the version of the existing object."""
-    self._validate_patch_update(session, model, resource, expected_version)
+    self._validate_patch_update(model, expected_version)
     self._do_update_with_patch(session, model, resource)
 
   def update(self, obj):
