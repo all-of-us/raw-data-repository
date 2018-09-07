@@ -472,6 +472,7 @@ class BiobankOrderDao(UpdatableDao):
 
   def _clear_cancelled_and_restored_fields(self, session, order):
     #pylint: disable=unused-argument
+
     """ Just in case these fields have values, we don't want them in the most recent record,
     they will exist in history tables."""
     order.restored_username = None
