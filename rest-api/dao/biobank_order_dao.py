@@ -393,11 +393,17 @@ class BiobankOrderDao(UpdatableDao):
 
   def _do_update(self, session, order, resource):
     order.lastModified = clock.CLOCK.now()
-    # @TODO: SEE BELOW UPDATE. CHANGE VERSION/ORDER_STATUS/AMENDED FIELDS, ETC.
+    order.biobankOrderId = resource.biobankOrderId
     order.orderStatus = BiobankOrderStatus.UNSET
-    order.amendedBiobbankOrderId = None                   # @TODO: check <
     order.amendedTime = clock.CLOCK.now()
     order.version += 1
+    order.logPosition = resource.logPosition  #@TODO: CHECK HOW TO USE LOGPOSITION
+    order.logPositionId = resource.logPositionId
+    # Ensure that if an order was previously cancelled/restored those columns are removed.
+    self._clear_cancelled_and_restored_fields(session, order)
+    self._update_history(session, order)
+    self._update_identifier_history(session, order)
+    self._update_sample_history(session, order)
     super(BiobankOrderDao, self)._do_update(session, order, resource)
 
   def _do_update_with_patch(self, session, order, resource):
@@ -462,3 +468,12 @@ class BiobankOrderDao(UpdatableDao):
       history.fromdict(sample.asdict(), allow_pk=True)
       history.version = order.version
       session.add(history)
+
+  def _clear_cancelled_and_restored_fields(self, session, order):
+    """ Just in case these fields have values, we don't want them in the most recent record,
+    they will exist in history tables."""
+
+    clear_fields = ['restored_username', 'restored_time', 'cancelled_username', 'cancelled_time',
+                    'restored_site_id', 'cancelled_site_id']
+    for field in clear_fields:
+      order.field = None
