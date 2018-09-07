@@ -410,8 +410,8 @@ class UpdatableDao(BaseDao):
                                (obj.version, existing_obj.version))
     self._validate_model(session, obj)
 
-  #pylint disable=unused-argument
   def _validate_patch_update(self, session, model, resource, expected_version):
+    #pylint disable=unused-argument
     if expected_version != model.version:
       raise PreconditionFailed('Expected version was %s; stored version was %s' % \
                                (expected_version, model.version))

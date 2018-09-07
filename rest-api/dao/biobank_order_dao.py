@@ -455,9 +455,9 @@ class BiobankOrderDao(UpdatableDao):
     session.add(history)
 
   def _update_identifier_history(self, session, order):
-    for id in order.identifiers:
+    for identifier in order.identifiers:
       history = BiobankOrderIdentifierHistory()
-      history.fromdict(id.asdict(), allow_pk=True)
+      history.fromdict(identifier.asdict(), allow_pk=True)
       history.version = order.version
       history.biobankOrderId = order.biobankOrderId
       session.add(history)
@@ -470,8 +470,8 @@ class BiobankOrderDao(UpdatableDao):
       history.biobankOrderId = order.biobankOrderId
       session.add(history)
 
-  #pylint disable=unused-argument
   def _clear_cancelled_and_restored_fields(self, session, order):
+    #pylint disable=unused-argument
     """ Just in case these fields have values, we don't want them in the most recent record,
     they will exist in history tables."""
 
