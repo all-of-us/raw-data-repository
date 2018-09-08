@@ -223,7 +223,8 @@ class UpdatableApi(BaseApi):
     if not etag:
       raise BadRequest("If-Match is missing for PUT request")
     expected_version = _parse_etag(etag)
-    model_to_update = self._get_patch_model_to_update(id_, participant_id)
+    model_to_update = self._get_patch_model_to_update(resource, id_, expected_version,
+                                                      participant_id)
     self.dao.update_with_patch(model_to_update, resource, expected_version)
     return self._make_response(model_to_update)
 

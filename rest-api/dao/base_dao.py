@@ -434,7 +434,7 @@ class UpdatableDao(BaseDao):
   def patch_update_with_session(self, session, model, resource, expected_version):
     """Updates the object in the database with the specified session. Will fail if the object
     doesn't exist already, or if obj.version does not match the version of the existing object."""
-    self._validate_patch_update(model, expected_version)
+    self._validate_patch_update(session, model, resource, expected_version)
     self._do_update_with_patch(session, model, resource)
 
   def update(self, obj):
