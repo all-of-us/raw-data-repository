@@ -75,7 +75,10 @@ class _FhirBiobankOrder(FhirMixin, DomainResource):
     FhirProperty('finalized_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('cancelledInfo', _FhirBiobankOrderHandlingInfo),
     FhirProperty('restoredInfo', _FhirBiobankOrderHandlingInfo),
+    FhirProperty('restoredSiteId', int, required=False),
+    FhirProperty('restoredUsername', str, required=False),
     FhirProperty('amendedInfo', _FhirBiobankOrderHandlingInfo),
+    FhirProperty('version', int, required=False),
     FhirProperty('status', str, required=False),
     FhirProperty('amendedReason', str, required=False)
   ]
@@ -273,7 +276,7 @@ class BiobankOrderDao(UpdatableDao):
           % (participant_id, resource.subject, self._participant_id_to_subject(participant_id)))
     self._add_identifiers_and_main_id(order, resource)
     self._add_samples(order, resource)
-    if resource.status:
+    if resource.status and not resource.amendedInfo:
       self._handle_new_status(order, resource)
     if resource.amendedReason:
       order.amendedReason = resource.amendedReason
@@ -383,14 +386,23 @@ class BiobankOrderDao(UpdatableDao):
     client_json = resource.as_json()  # also validates required fields
     client_json['id'] = model.biobankOrderId
     del client_json['resourceType']
+
     if model.orderStatus == BiobankOrderStatus.CANCELLED:
       client_json['status'] = 'CANCELLED'
       client_json['amendedReason'] = model.amendedReason
       client_json['cancelledSiteId'] = model.cancelledSiteId
       client_json['cancelledUsername'] = model.cancelledUsername
+      client_json['version'] = model.version
 
-    amended_site_id = getattr(model, 'amendedSiteId')
-    if amended_site_id:
+    restored = getattr(model, 'restoredSiteId')
+    if restored:
+      client_json['status'] = 'RESTORED'
+      client_json['amendedReason'] = model.amendedReason
+      client_json['restoredSiteId'] = model.restoredSiteId
+      client_json['restoredUsername'] = model.restoredUsername
+      client_json['version'] = model.version
+
+    if model.orderStatus == BiobankOrderStatus.AMENDED:
       client_json['amendedReason'] = model.amendedReason
       client_json['amendedSiteId'] = model.amendedSiteId
       client_json['amendedUsername'] = model.amendedUsername
@@ -402,7 +414,7 @@ class BiobankOrderDao(UpdatableDao):
   def _do_update(self, session, order, resource):
     order.lastModified = clock.CLOCK.now()
     order.biobankOrderId = resource.biobankOrderId
-    order.orderStatus = BiobankOrderStatus.UNSET
+    order.orderStatus = BiobankOrderStatus.AMENDED
     order.amendedTime = clock.CLOCK.now()
     order.logPosition = LogPosition()
     order.logPositionId = resource.logPositionId   #TODO: check this
@@ -483,9 +495,10 @@ class BiobankOrderDao(UpdatableDao):
 
     """ Just in case these fields have values, we don't want them in the most recent record,
     they will exist in history tables."""
-    order.restored_username = None
-    order.restored_time = None
-    order.cancelled_username = None
-    order.cancelled_time = None
-    order.restored_site_id = None
-    order.cancelled_site_id = None
+    order.restoredUsername = None
+    order.restoredTime = None
+    order.cancelledUsername = None
+    order.cancelledTime = None
+    order.restoredSiteId = None
+    order.cancelledSiteId = None
+    order.status = BiobankOrderStatus.UNSET
