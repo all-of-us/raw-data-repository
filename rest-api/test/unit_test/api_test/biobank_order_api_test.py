@@ -176,7 +176,7 @@ class BiobankOrderApiTest(FlaskTestBase):
       "status": "cancelled"
     }
     self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"1"'})
-    cancelled_order = self.send_get(path)
+    self.send_get(path)
     request_data = {
       "amendedReason": "I didnt mean to cancel",
       "restoredInfo": {
