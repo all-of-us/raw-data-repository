@@ -389,6 +389,14 @@ class BiobankOrderDao(UpdatableDao):
       client_json['cancelledSiteId'] = model.cancelledSiteId
       client_json['cancelledUsername'] = model.cancelledUsername
 
+    amended_site_id = getattr(model, 'amendedSiteId')
+    if amended_site_id:
+      client_json['amendedReason'] = model.amendedReason
+      client_json['amendedSiteId'] = model.amendedSiteId
+      client_json['amendedUsername'] = model.amendedUsername
+      client_json['version'] = model.version
+
+
     return client_json
 
   def _do_update(self, session, order, resource):
@@ -470,7 +478,7 @@ class BiobankOrderDao(UpdatableDao):
       history.biobankOrderId = order.biobankOrderId
       session.add(history)
 
-  def _clear_cancelled_and_restored_fields(self, session, order):
+  def _clear_cancelled_and_restored_fields(self, order):
     #pylint: disable=unused-argument
 
     """ Just in case these fields have values, we don't want them in the most recent record,

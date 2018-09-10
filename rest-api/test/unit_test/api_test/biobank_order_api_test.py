@@ -60,7 +60,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     order_json = load_biobank_order_json(self.participant.participantId,
                                          filename='biobank_order_2.json')
     result = self.send_post(self.path, order_json)
-    full_order_json = load_biobank_order_json(self.participant.participantId,
+    load_biobank_order_json(self.participant.participantId,
                                               filename='biobank_order_1.json')
 
     biobank_order_id = result['identifier'][1]['value']
@@ -79,15 +79,16 @@ class BiobankOrderApiTest(FlaskTestBase):
       }
     }
     get_order = self.send_get(path)
-    print get_order, " << get order", " \n"
     full_order = get_order.copy()
     full_order.update(request_data)
-    # amended_order = self.send_put(path, request_data=full_order, headers={'If-Match':'W/"1"'})
+    self.send_put(path, request_data=full_order, headers={'If-Match':'W/"1"'})
 
     get_amended_order = self.send_get(path)
-    # print get_amended_order, " << get amended order", '\n'
-    # print result, " << result", '\n'
-    print full_order, "<< full order"
+    self.assertEqual(get_amended_order['version'], 2)
+    self.assertEqual(get_amended_order['meta'], {'versionId': 'W/"2"'})
+    self.assertEqual(get_amended_order['amendedReason'], 'Its all better')
+    self.assertEqual(get_amended_order['amendedUsername'], 'fred@pmi-ops.org')
+    self.assertEqual(get_amended_order['amendedSiteId'], 1)
 
 
   def test_insert_and_refetch(self):
