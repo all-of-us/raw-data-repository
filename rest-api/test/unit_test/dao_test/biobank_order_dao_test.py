@@ -232,12 +232,15 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.assertEqual(order_1.orderStatus, BiobankOrderStatus.UNSET)
     self.assertEqual(order_1.amendedReason, restore_request['amendedReason'])
 
-  # def test_amending_an_order(self):
-  #   ParticipantSummaryDao().insert(self.participant_summary(self.participant))
-  #   order_1 = self.dao.insert(self._make_biobank_order())
-  #   amended_info = self._get_amended_info(order_1)
-  #   # amended_info.sourceSiteId = 2
-  #   with self.dao.session() as session:
-  #     self.dao.from_client_json(amended_info)
-  #     x = self.dao._do_update(session, amended_info, order_1)
-  #     print x
+  def test_amending_an_order(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(self._make_biobank_order())
+    amended_info = self._get_amended_info(order_1)
+    amended_info.sourceSiteId = 2
+    with self.dao.session() as session:
+      self.dao._do_update(session, order_1, amended_info)
+
+    amended_order = self.dao.get(1)
+    self.assertEqual(amended_order.version, 2)
+    self.assertEqual(amended_order.orderStatus, BiobankOrderStatus.AMENDED)
+    self.assertEqual(amended_order.amendedReason, 'I had to change something')
