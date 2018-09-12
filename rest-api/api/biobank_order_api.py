@@ -22,4 +22,4 @@ class BiobankOrderApi(UpdatableApi):
 
   @auth_required(HEALTHPRO)
   def patch(self, p_id, bo_id):  # pylint: disable=unused-argument
-    return super(BiobankOrderApi, self).patch(bo_id, participant_id=p_id)
+    return super(BiobankOrderApi, self).patch(bo_id)

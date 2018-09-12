@@ -182,7 +182,7 @@ class UpdatableApi(BaseApi):
   def _get_patch_obj_with_children(self, resource, id_, expected_version, participant_id=None):
     #pylint: disable=unused-argument
     # Children of participants accept a participant_id parameter to from_client_json; others don't.
-      return self.dao.get_with_children(id_)
+    return self.dao.get_with_children(id_)
 
   def _make_response(self, obj):
     result = super(UpdatableApi, self)._make_response(obj)
@@ -210,7 +210,7 @@ class UpdatableApi(BaseApi):
     self._do_update(m)
     return self._make_response(m)
 
-  def patch(self, id_, participant_id=None):
+  def patch(self, id_):
     """Handles a PATCH request; the current object must exist, and will be amended
 
     Args:
@@ -222,7 +222,6 @@ class UpdatableApi(BaseApi):
     if not etag:
       raise BadRequest("If-Match is missing for PATCH request")
     expected_version = _parse_etag(etag)
-    # m = self._get_model_to_update(resource, id_, expected_version, participant_id)
     order = self.dao.update_with_patch(id_, resource, expected_version)
     return self._make_response(order)
 
