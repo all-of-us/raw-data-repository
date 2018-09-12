@@ -155,10 +155,15 @@ class BiobankOrderDao(UpdatableDao):
       ParticipantDao().validate_participant_reference(session, result)
     return result
 
-  def get_with_children_in_session(self, session, obj_id):
-    return (session.query(BiobankOrder)
-        .options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples))
-        .get(obj_id))
+  def get_with_children_in_session(self, session, obj_id, for_update=False):
+    query = session.query(BiobankOrder).options(subqueryload(BiobankOrder.identifiers),
+                                                 subqueryload(BiobankOrder.samples))
+
+    if for_update:
+      query = query.with_for_update()
+
+    existing_obj = query.get(obj_id)
+    return existing_obj
 
   def get_with_children(self, obj_id):
     with self.session() as session:
@@ -408,7 +413,6 @@ class BiobankOrderDao(UpdatableDao):
       client_json['amendedUsername'] = model.amendedUsername
       client_json['version'] = model.version
 
-
     return client_json
 
   def _do_update(self, session, order, resource):
@@ -417,33 +421,49 @@ class BiobankOrderDao(UpdatableDao):
     order.orderStatus = BiobankOrderStatus.AMENDED
     order.amendedTime = clock.CLOCK.now()
     order.logPosition = LogPosition()
-    order.logPositionId = resource.logPositionId   #TODO: check this
+    order.version += 1
     # Ensure that if an order was previously cancelled/restored those columns are removed.
     self._clear_cancelled_and_restored_fields(order)
+
+    super(BiobankOrderDao, self)._do_update(session, order, resource)
+    session.add(order.logPosition)
+
     self._update_history(session, order)
     self._update_identifier_history(session, order)
     self._update_sample_history(session, order)
-    super(BiobankOrderDao, self)._do_update(session, order, resource)
+
+  def update_with_patch(self, id_, resource, expected_version):
+    """creates an atomic patch request on an object. It will fail if the object
+    doesn't exist already, or if obj.version does not match the version of the existing object.
+    May modify the passed in object."""
+    with self.session() as session:
+      obj = self.get_with_children_in_session(session, id_, for_update=True)
+      return self.patch_update_with_session(session, obj, resource, expected_version)
 
   def _do_update_with_patch(self, session, order, resource):
     order.lastModified = clock.CLOCK.now()
-    if resource['status'] == 'cancelled':
+    order.logPosition = LogPosition()
+    order.version += 1
+    if resource['status'].lower() == 'cancelled':
       order.amendedReason = resource['amendedReason']
       order.cancelledUsername = resource['cancelledInfo']['author']['value']
       order.cancelledSiteId = get_site(resource['cancelledInfo'])
       order.cancelledTime = clock.CLOCK.now()
       order.orderStatus = BiobankOrderStatus.CANCELLED
-    if resource['status'] == 'restored':
+    elif resource['status'].lower() == 'restored':
       order.amendedReason = resource['amendedReason']
       order.restoredUsername = resource['restoredInfo']['author']['value']
       order.restoredSiteId = get_site(resource['restoredInfo'])
       order.restoredTime = clock.CLOCK.now()
       order.orderStatus = BiobankOrderStatus.UNSET
+    else:
+      raise BadRequest('status must be restored or cancelled for patch request.')
 
     self._update_history(session, order)
     self._update_identifier_history(session, order)
     self._update_sample_history(session, order)
     super(BiobankOrderDao, self)._do_update(session, order, resource)
+    return order
 
   def _validate_patch_update(self, session, model, resource, expected_version):
     required_cancelled_fields = ['amendedReason', 'cancelledInfo', 'status']
@@ -458,7 +478,7 @@ class BiobankOrderDao(UpdatableDao):
       if 'site' not in resource['cancelledInfo'] or 'author' not in resource['cancelledInfo']:
         raise BadRequest('author and site are required for cancelledInfo')
 
-    if resource['status'] == 'restored':
+    elif resource['status'] == 'restored':
       for field in required_restored_fields:
         if field not in resource:
           raise BadRequest('%s is required for a cancelled biobank order' % field)
@@ -467,14 +487,18 @@ class BiobankOrderDao(UpdatableDao):
 
     super(BiobankOrderDao, self)._validate_patch_update(session, model, resource, expected_version)
 
-  def _update_history(self, session, order):
+  @staticmethod
+  def _update_history(session, order):
     # Increment the version and add a new history entry.
-    order.version += 1
+    session.flush()
     history = BiobankOrderHistory()
-    history.fromdict(order.asdict(), allow_pk=True)
+    history.fromdict(order.asdict(follow=['logPosition']), allow_pk=True)
+    history.logPositionId = order.logPosition.logPositionId
     session.add(history)
 
-  def _update_identifier_history(self, session, order):
+  @staticmethod
+  def _update_identifier_history(session, order):
+    session.flush()
     for identifier in order.identifiers:
       history = BiobankOrderIdentifierHistory()
       history.fromdict(identifier.asdict(), allow_pk=True)
@@ -482,7 +506,9 @@ class BiobankOrderDao(UpdatableDao):
       history.biobankOrderId = order.biobankOrderId
       session.add(history)
 
-  def _update_sample_history(self, session, order):
+  @staticmethod
+  def _update_sample_history(session, order):
+    session.flush()
     for sample in order.samples:
       history = BiobankOrderedSampleHistory()
       history.fromdict(sample.asdict(), allow_pk=True)
@@ -490,9 +516,9 @@ class BiobankOrderDao(UpdatableDao):
       history.biobankOrderId = order.biobankOrderId
       session.add(history)
 
-  def _clear_cancelled_and_restored_fields(self, order):
+  @staticmethod
+  def _clear_cancelled_and_restored_fields(order):
     #pylint: disable=unused-argument
-
     """ Just in case these fields have values, we don't want them in the most recent record,
     they will exist in history tables."""
     order.restoredUsername = None

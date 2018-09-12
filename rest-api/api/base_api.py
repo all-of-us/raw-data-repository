@@ -179,10 +179,9 @@ class UpdatableApi(BaseApi):
       return self.dao.from_client_json(
           resource, id_=id_, expected_version=expected_version, client_id=app_util.get_oauth_id())
 
-  def _get_patch_model_to_update(self, resource, id_, expected_version, participant_id=None):
+  def _get_patch_obj_with_children(self, resource, id_, expected_version, participant_id=None):
     #pylint: disable=unused-argument
     # Children of participants accept a participant_id parameter to from_client_json; others don't.
-    if participant_id is not None:
       return self.dao.get_with_children(id_)
 
   def _make_response(self, obj):
@@ -215,18 +214,17 @@ class UpdatableApi(BaseApi):
     """Handles a PATCH request; the current object must exist, and will be amended
 
     Args:
-      id: The id of the object to update.
-      participant_id: The ancestor id (if applicable). # @TODO: REVIEW THIS <
+      id_: The id of the object to update.
+      participant_id: The ancestor id (if applicable)
     """
     resource = request.get_json(force=True)
     etag = request.headers.get('If-Match')
     if not etag:
-      raise BadRequest("If-Match is missing for PUT request")
+      raise BadRequest("If-Match is missing for PATCH request")
     expected_version = _parse_etag(etag)
-    model_to_update = self._get_patch_model_to_update(resource, id_, expected_version,
-                                                      participant_id)
-    self.dao.update_with_patch(model_to_update, resource, expected_version)
-    return self._make_response(model_to_update)
+    # m = self._get_model_to_update(resource, id_, expected_version, participant_id)
+    order = self.dao.update_with_patch(id_, resource, expected_version)
+    return self._make_response(order)
 
 def _make_etag(version):
   return 'W/"%d"' % version

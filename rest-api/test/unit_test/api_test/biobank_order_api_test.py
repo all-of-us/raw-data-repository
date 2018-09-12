@@ -59,7 +59,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertEqual(get_cancelled_order['cancelledUsername'], 'fred@pmi-ops.org')
     self.assertEqual(get_cancelled_order['cancelledSiteId'], 1)
 
-  def test_retore_an_order(self):
+  def test_restore_an_order(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
     order_json = load_biobank_order_json(self.participant.participantId,
                                          filename='biobank_order_2.json')

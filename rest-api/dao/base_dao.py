@@ -431,11 +431,12 @@ class UpdatableDao(BaseDao):
     self._validate_update(session, obj, existing_obj)
     self._do_update(session, obj, existing_obj)
 
-  def patch_update_with_session(self, session, model, resource, expected_version):
+  def patch_update_with_session(self, session, obj, resource, expected_version):
     """Updates the object in the database with the specified session. Will fail if the object
     doesn't exist already, or if obj.version does not match the version of the existing object."""
-    self._validate_patch_update(session, model, resource, expected_version)
-    self._do_update_with_patch(session, model, resource)
+    self._validate_patch_update(session, obj, resource, expected_version)
+    updated_obj = self._do_update_with_patch(session, obj, resource)
+    return updated_obj
 
   def update(self, obj):
     """Updates the object in the database. Will fail if the object doesn't exist already, or
@@ -444,12 +445,6 @@ class UpdatableDao(BaseDao):
     with self.session() as session:
       return self.update_with_session(session, obj)
 
-  def update_with_patch(self, obj, resource, expected_version):
-    """creates an atomic patch request on an object. It will fail if the object
-    doesn't exist already, or if obj.version does not match the version of the existing object.
-    May modify the passed in object."""
-    with self.session() as session:
-      return self.patch_update_with_session(session, obj, resource, expected_version)
 
 def json_serial(obj):
   """JSON serializer for objects not serializable by default json code"""
