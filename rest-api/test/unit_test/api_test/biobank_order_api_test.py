@@ -4,6 +4,7 @@ import datetime
 
 from dao.biobank_order_dao import BiobankOrderDao
 from test.unit_test.unit_test_util import FlaskTestBase
+from werkzeug.exceptions import BadRequest
 from test.test_data import load_biobank_order_json, load_measurement_json
 from model.utils import to_client_participant_id, from_client_participant_id
 from model.participant import Participant
@@ -59,6 +60,58 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertEqual(get_cancelled_order['cancelledInfo']['author']['value'], 'fred@pmi-ops.org')
     self.assertEqual(get_cancelled_order['cancelledInfo']['site']['value'], 'hpo-site-monroeville')
 
+  def test_you_can_not_cancel_a_cancelled_order(self):
+    self.summary_dao.insert(self.participant_summary(self.participant))
+    order_json = load_biobank_order_json(self.participant.participantId,
+                                         filename='biobank_order_2.json')
+    result = self.send_post(self.path, order_json)
+
+    biobank_order_id = result['identifier'][1]['value']
+    path = self.path + '/' + biobank_order_id
+    request_data = {
+      "amendedReason": "Its all wrong",
+      "cancelledInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/healthpro-username",
+          "value": "fred@pmi-ops.org"
+        },
+        "site": {
+          "system": "https://www.pmi-ops.org/site-id",
+          "value": "hpo-site-monroeville"
+        }
+      },
+      "status": "cancelled"
+    }
+    self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"1"'})
+
+    self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"2"'},
+                    expected_status=httplib.BAD_REQUEST)
+
+  def test_you_can_not_restore_a_not_cancelled_order(self):
+    self.summary_dao.insert(self.participant_summary(self.participant))
+    order_json = load_biobank_order_json(self.participant.participantId,
+                                         filename='biobank_order_2.json')
+    result = self.send_post(self.path, order_json)
+
+    biobank_order_id = result['identifier'][1]['value']
+    path = self.path + '/' + biobank_order_id
+    request_data = {
+      "amendedReason": "Its all wrong",
+      "restoredInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/healthpro-username",
+          "value": "fred@pmi-ops.org"
+        },
+        "site": {
+          "system": "https://www.pmi-ops.org/site-id",
+          "value": "hpo-site-monroeville"
+        }
+      },
+      "status": "restored"
+    }
+    self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"1"'},
+                    expected_status=httplib.BAD_REQUEST)
+
   def test_restore_an_order(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
     order_json = load_biobank_order_json(self.participant.participantId,
@@ -87,8 +140,6 @@ class BiobankOrderApiTest(FlaskTestBase):
       "status": "cancelled"
     }
     self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"1"'})
-    cancelled_order = self.send_get(path)
-    self.assertEqual(cancelled_order['version'], 2)
 
     request_data = {
       "amendedReason": "I didnt mean to cancel",
@@ -107,13 +158,9 @@ class BiobankOrderApiTest(FlaskTestBase):
 
     self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"2"'})
     restored_order = self.send_get(path)
-    print restored_order
-    print '\n'
-    print restored_order['restoredInfo']['author']['value']
     self.assertEqual(restored_order['status'], 'UNSET')
     self.assertEqual(restored_order['restoredInfo']['author']['value'], 'fred@pmi-ops.org')
     self.assertEqual(restored_order['restoredInfo']['site']['value'], 'hpo-site-monroeville')
-    self.assertEqual(restored_order['version'], 3)
     self.assertEqual(restored_order['amendedReason'], 'I didnt mean to cancel')
 
   def test_amending_an_order(self):
@@ -136,21 +183,26 @@ class BiobankOrderApiTest(FlaskTestBase):
         },
         "site": {
           "system": "https://www.pmi-ops.org/site-id",
-          "value": "hpo-site-monroeville"
+          "value": "hpo-site-bannerphoenix"
         }
       }
     }
     get_order = self.send_get(path)
     full_order = get_order.copy()
     full_order.update(request_data)
+
+    self.assertEqual(len(full_order['samples']), 16)
+    del get_order['samples'][0]
+
     self.send_put(path, request_data=full_order, headers={'If-Match': 'W/"1"'})
 
     get_amended_order = self.send_get(path)
-    self.assertEqual(get_amended_order['version'], 2)
+
+    self.assertEqual(len(get_amended_order['samples']), 15)
     self.assertEqual(get_amended_order['meta'], {'versionId': 'W/"2"'})
     self.assertEqual(get_amended_order['amendedReason'], 'Its all better')
     self.assertEqual(get_amended_order['amendedInfo']['author']['value'], 'fred@pmi-ops.org')
-    self.assertEqual(get_amended_order['amendedInfo']['site']['value'], 'hpo-site-monroeville')
+    self.assertEqual(get_amended_order['amendedInfo']['site']['value'], 'hpo-site-bannerphoenix')
 
   def test_amend_a_restored_order(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
@@ -199,10 +251,24 @@ class BiobankOrderApiTest(FlaskTestBase):
 
     request_data = {
       "amendedReason": "Its all better",
+      "samples": [{
+          "test": "1ED10",
+          "description": "EDTA 10 mL (1)",
+          "processingRequired": False,
+          "collected": "2016-01-04T09:45:49Z",
+          "finalized": "2016-01-04T10:55:41Z"
+        }, {
+          "test": "1PST8",
+          "description": "Plasma Separator 8 mL",
+          "collected": "2016-01-04T09:45:49Z",
+          "processingRequired":True,
+          "processed": "2016-01-04T10:28:50Z",
+          "finalized": "2016-01-04T10:55:41Z"
+        }],
       "amendedInfo": {
         "author": {
           "system": "https://www.pmi-ops.org/healthpro-username",
-          "value": "fred@pmi-ops.org"
+          "value": "mike@pmi-ops.org"
         },
         "site": {
           "system": "https://www.pmi-ops.org/site-id",
@@ -216,10 +282,12 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.send_put(path, request_data=full_order, headers={'If-Match': 'W/"3"'})
 
     get_amended_order = self.send_get(path)
+    self.assertEqual(len(get_amended_order['samples']), 2)
+    self.assertEqual(get_amended_order['amendedInfo']['author']['value'], 'mike@pmi-ops.org')
     self.assertEqual(get_amended_order.get('restoredSiteId'), None)
     self.assertEqual(get_amended_order.get('restoredUsername'), None)
     self.assertEqual(get_amended_order.get('restoredTime'), None)
-    self.assertEqual(get_amended_order['version'], 4)
+    self.assertEqual(get_amended_order['meta'], {'versionId': 'W/"4"'})
 
   def test_insert_and_refetch(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
@@ -305,6 +373,8 @@ def _strip_fields(order_json):
     del order_json['created']
   if order_json.get('id'):
     del order_json['id']
+  if order_json.get('version'):
+    del order_json['version']
   for sample in order_json['samples']:
     if sample.get('collected'):
       del sample['collected']
