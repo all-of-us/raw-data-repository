@@ -4,7 +4,6 @@ import datetime
 
 from dao.biobank_order_dao import BiobankOrderDao
 from test.unit_test.unit_test_util import FlaskTestBase
-from werkzeug.exceptions import BadRequest
 from test.test_data import load_biobank_order_json, load_measurement_json
 from model.utils import to_client_participant_id, from_client_participant_id
 from model.participant import Participant
