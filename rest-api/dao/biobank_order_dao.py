@@ -18,7 +18,7 @@ from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models.identifier import Identifier
 from fhirclient.models import fhirdate
 from sqlalchemy.orm import subqueryload
-from werkzeug.exceptions import BadRequest, Conflict
+from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed
 
 
 def _ToFhirDate(dt):
