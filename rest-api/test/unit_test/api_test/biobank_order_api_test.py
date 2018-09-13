@@ -56,8 +56,8 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertEqual(cancelled_order, get_cancelled_order)
     self.assertEqual(get_cancelled_order['status'], 'CANCELLED')
     self.assertEqual(get_cancelled_order['amendedReason'], 'Its all wrong')
-    self.assertEqual(get_cancelled_order['cancelledUsername'], 'fred@pmi-ops.org')
-    self.assertEqual(get_cancelled_order['cancelledSiteId'], 1)
+    self.assertEqual(get_cancelled_order['cancelledInfo']['author']['value'], 'fred@pmi-ops.org')
+    self.assertEqual(get_cancelled_order['cancelledInfo']['site']['value'], 'hpo-site-monroeville')
 
   def test_restore_an_order(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
@@ -107,9 +107,12 @@ class BiobankOrderApiTest(FlaskTestBase):
 
     self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"2"'})
     restored_order = self.send_get(path)
-    self.assertEqual(restored_order['status'], 'RESTORED')
-    self.assertEqual(restored_order['restoredUsername'], 'fred@pmi-ops.org')
-    self.assertEqual(restored_order['restoredSiteId'], 1)
+    print restored_order
+    print '\n'
+    print restored_order['restoredInfo']['author']['value']
+    self.assertEqual(restored_order['status'], 'UNSET')
+    self.assertEqual(restored_order['restoredInfo']['author']['value'], 'fred@pmi-ops.org')
+    self.assertEqual(restored_order['restoredInfo']['site']['value'], 'hpo-site-monroeville')
     self.assertEqual(restored_order['version'], 3)
     self.assertEqual(restored_order['amendedReason'], 'I didnt mean to cancel')
 
@@ -146,8 +149,8 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertEqual(get_amended_order['version'], 2)
     self.assertEqual(get_amended_order['meta'], {'versionId': 'W/"2"'})
     self.assertEqual(get_amended_order['amendedReason'], 'Its all better')
-    self.assertEqual(get_amended_order['amendedUsername'], 'fred@pmi-ops.org')
-    self.assertEqual(get_amended_order['amendedSiteId'], 1)
+    self.assertEqual(get_amended_order['amendedInfo']['author']['value'], 'fred@pmi-ops.org')
+    self.assertEqual(get_amended_order['amendedInfo']['site']['value'], 'hpo-site-monroeville')
 
   def test_amend_a_restored_order(self):
     self.summary_dao.insert(self.participant_summary(self.participant))

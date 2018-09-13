@@ -179,11 +179,6 @@ class UpdatableApi(BaseApi):
       return self.dao.from_client_json(
           resource, id_=id_, expected_version=expected_version, client_id=app_util.get_oauth_id())
 
-  def _get_patch_obj_with_children(self, resource, id_, expected_version, participant_id=None):
-    #pylint: disable=unused-argument
-    # Children of participants accept a participant_id parameter to from_client_json; others don't.
-    return self.dao.get_with_children(id_)
-
   def _make_response(self, obj):
     result = super(UpdatableApi, self)._make_response(obj)
     etag = _make_etag(obj.version)

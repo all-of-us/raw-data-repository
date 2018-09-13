@@ -386,33 +386,59 @@ class BiobankOrderDao(UpdatableDao):
     resource.processed_info = self._to_handling_info(model.processedUsername, model.processedSiteId)
     resource.finalized_info = self._to_handling_info(model.finalizedUsername, model.finalizedSiteId)
 
+    # self._add_identifiers_to_resource(resource, model)
+    # self._add_samples_to_resource(resource, model)
+    # client_json = resource.as_json()  # also validates required fields
+    # client_json['id'] = model.biobankOrderId
+    # del client_json['resourceType']
+
+    if model.orderStatus == BiobankOrderStatus.CANCELLED:
+      # client_json['status'] = str(BiobankOrderStatus.CANCELLED)
+      # client_json['amendedReason'] = model.amendedReason
+      # client_json['cancelledSiteId'] = model.cancelledSiteId
+      # client_json['cancelledUsername'] = model.cancelledUsername
+      # client_json['version'] = model.version
+      # resource.cancelledUsername = model.cancelledUsername
+      # resource.cancelledSiteId = model.cancelledSiteId
+      resource.status = str(BiobankOrderStatus.CANCELLED)
+      resource.amendedReason = model.amendedReason
+      resource.cancelledInfo = self._to_handling_info(model.cancelledUsername,
+                                                       model.cancelledSiteId)
+      resource.version = model.version
+
+    restored = getattr(model, 'restoredSiteId')
+    if restored:
+      # client_json['status'] = str(BiobankOrderStatus.UNSET)
+      # client_json['amendedReason'] = model.amendedReason
+      # client_json['restoredSiteId'] = model.restoredSiteId
+      # client_json['restoredUsername'] = model.restoredUsername
+      # resource.restoredSiteId = model.restoredSiteId
+      # resource.restoredUsername = model.restoredUsername
+      # client_json['version'] = model.version
+      resource.status = str(BiobankOrderStatus.UNSET)
+      resource.amendedReason = model.amendedReason
+      resource.restoredInfo = self._to_handling_info(model.restoredUsername,
+                                                       model.restoredSiteId)
+      resource.version = model.version
+
+    if model.orderStatus == BiobankOrderStatus.AMENDED:
+      # client_json['amendedReason'] = model.amendedReason
+      # client_json['amendedSiteId'] = model.amendedSiteId
+      # client_json['amendedUsername'] = model.amendedUsername
+      # resource.amendedSiteId = model.amendedSiteId
+      # resource.amendedUsername = model.amendedUsername
+      # client_json['version'] = model.version
+      resource.status = str(BiobankOrderStatus.AMENDED)
+      resource.amendedReason = model.amendedReason
+      resource.amendedInfo = self._to_handling_info(model.amendedUsername,
+                                                      model.amendedSiteId)
+      resource.version = model.version
+
     self._add_identifiers_to_resource(resource, model)
     self._add_samples_to_resource(resource, model)
     client_json = resource.as_json()  # also validates required fields
     client_json['id'] = model.biobankOrderId
     del client_json['resourceType']
-
-    if model.orderStatus == BiobankOrderStatus.CANCELLED:
-      client_json['status'] = 'CANCELLED'
-      client_json['amendedReason'] = model.amendedReason
-      client_json['cancelledSiteId'] = model.cancelledSiteId
-      client_json['cancelledUsername'] = model.cancelledUsername
-      client_json['version'] = model.version
-
-    restored = getattr(model, 'restoredSiteId')
-    if restored:
-      client_json['status'] = 'RESTORED'
-      client_json['amendedReason'] = model.amendedReason
-      client_json['restoredSiteId'] = model.restoredSiteId
-      client_json['restoredUsername'] = model.restoredUsername
-      client_json['version'] = model.version
-
-    if model.orderStatus == BiobankOrderStatus.AMENDED:
-      client_json['amendedReason'] = model.amendedReason
-      client_json['amendedSiteId'] = model.amendedSiteId
-      client_json['amendedUsername'] = model.amendedUsername
-      client_json['version'] = model.version
-
     return client_json
 
   def _do_update(self, session, order, resource):
@@ -438,9 +464,10 @@ class BiobankOrderDao(UpdatableDao):
     May modify the passed in object."""
     with self.session() as session:
       obj = self.get_with_children_in_session(session, id_, for_update=True)
-      return self.patch_update_with_session(session, obj, resource, expected_version)
+      return self._do_update_with_patch(session, obj, resource, expected_version)
 
-  def _do_update_with_patch(self, session, order, resource):
+  def _do_update_with_patch(self, session, order, resource, expected_version):
+    self._validate_patch_update(order, resource, expected_version)
     order.lastModified = clock.CLOCK.now()
     order.logPosition = LogPosition()
     order.version += 1
@@ -465,7 +492,10 @@ class BiobankOrderDao(UpdatableDao):
     super(BiobankOrderDao, self)._do_update(session, order, resource)
     return order
 
-  def _validate_patch_update(self, session, model, resource, expected_version):
+  def _validate_patch_update(self, model, resource, expected_version):
+    if expected_version != model.version:
+      raise PreconditionFailed('Expected version was %s; stored version was %s' % \
+                               (expected_version, model.version))
     required_cancelled_fields = ['amendedReason', 'cancelledInfo', 'status']
     required_restored_fields = ['amendedReason', 'restoredInfo', 'status']
     if 'status' not in resource:
@@ -485,7 +515,6 @@ class BiobankOrderDao(UpdatableDao):
       if 'site' not in resource['restoredInfo'] or 'author' not in resource['restoredInfo']:
         raise BadRequest('author and site are required for restoredInfo')
 
-    super(BiobankOrderDao, self)._validate_patch_update(session, model, resource, expected_version)
 
   @staticmethod
   def _update_history(session, order):
