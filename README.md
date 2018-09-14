@@ -620,6 +620,13 @@ BiobankOrder resource to be created. Response is the resource as stored.
 
 Read a BiobankOrder by id.
 
+#### `PATCH /Participant/:pid/BiobankOrder/:oid`
+
+Cancel or restore a BiobankOrder by id.
+
+#### `PUT /Participant/:pid/BiobankOrder/:oid`
+
+Amend a BiobankOrder by id.
 
 ## Metrics API
 
