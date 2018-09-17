@@ -269,16 +269,13 @@ class SiteImporter(CsvImporter):
     insert_participants = False
     if not dry_run:
       if self.environment:
-        print '******************************************'
-        print self.environment.strip()
-        print '******************************************'
-        if self.environment.strip() == 'TEST' and len(self.new_sites_list) >= 0:
+        if self.environment.strip() == 'STABLE' and len(self.new_sites_list) > 0:
           from googleapiclient.discovery import build
           os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = creds_file
           logging.info('Starting reboot of app instances to insert new test participants')
           service = build('appengine', 'v1', cache_discovery=False)
           request = service.apps().services().versions().list(appsId=ENV_STABLE,
-                                                                    servicesId='default')
+                                                              servicesId='default')
           versions = request.execute()
 
           for version in versions['versions']:
@@ -286,7 +283,8 @@ class SiteImporter(CsvImporter):
               _id = version['id']
               request = service.apps().services().versions().instances().list(
                                                                       servicesId='default',
-                                                                      versionsId=_id)
+                                                                      versionsId=_id,
+                                                                      appsId=ENV_STABLE)
               instances = request.execute()
 
               try:
