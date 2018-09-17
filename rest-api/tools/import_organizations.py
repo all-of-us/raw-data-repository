@@ -264,13 +264,18 @@ class SiteImporter(CsvImporter):
                                         ENROLLING_STATUS_COLUMN + self.environment,
                                         DIGITAL_SCHEDULING_STATUS_COLUMN + self.environment])
 
-  def run(self, filename, dry_run):
+  def run(self, filename, dry_run, creds_file):
     super(SiteImporter, self).run(filename, dry_run)
     insert_participants = False
     if not dry_run:
       if self.environment:
-        if self.environment.strip() == 'STABLE' and len(self.new_sites_list) > 0:
+        print '******************************************'
+        print self.environment.strip()
+        print '******************************************'
+        if self.environment.strip() == 'TEST' and len(self.new_sites_list) >= 0:
           from googleapiclient.discovery import build
+          import os
+          os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = creds_file
           logging.info('Starting reboot of app instances to insert new test participants')
           service = build('appengine', 'v1', cache_discovery=False)
           request = service.apps().services().versions().list(appsId=ENV_STABLE,
@@ -281,7 +286,6 @@ class SiteImporter(CsvImporter):
             if version['servingStatus'] == 'SERVING':
               _id = version['id']
               request = service.apps().services().versions().instances().list(
-                                                                      appsId=ENV_STABLE,
                                                                       servicesId='default',
                                                                       versionsId=_id)
               instances = request.execute()
@@ -584,7 +588,7 @@ def main(args):
   HPODao()._invalidate_cache()
   OrganizationImporter().run(args.organization_file, args.dry_run)
   OrganizationDao()._invalidate_cache()
-  SiteImporter().run(args.site_file, args.dry_run)
+  SiteImporter().run(args.site_file, args.dry_run, args.creds_file)
 
 
 if __name__ == '__main__':
