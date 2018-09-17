@@ -186,9 +186,23 @@ class BiobankOrderApiTest(FlaskTestBase):
         }
       }
     }
+
+    biobank_order_identifiers = {"created": "2018-02-21T16:25:12",
+                "createdInfo": {
+                   "author": {
+                     "system": "https://www.pmi-ops.org/healthpro-username",
+                     "value": "nobody@pmi-ops.org"
+                   },
+                   "site": {
+                     "system": "https://www.pmi-ops.org/site-id",
+                     "value": "hpo-site-clinic-phoenix"
+                   }
+                  }
+                 }
     get_order = self.send_get(path)
     full_order = get_order.copy()
     full_order.update(request_data)
+    full_order.update(biobank_order_identifiers)
 
     self.assertEqual(len(full_order['samples']), 16)
     del full_order['samples'][0]
@@ -202,6 +216,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertEqual(get_amended_order['amendedReason'], 'Its all better')
     self.assertEqual(get_amended_order['amendedInfo']['author']['value'], 'fred@pmi-ops.org')
     self.assertEqual(get_amended_order['amendedInfo']['site']['value'], 'hpo-site-bannerphoenix')
+    self.assertEqual(get_amended_order['createdInfo']['site']['value'], 'hpo-site-clinic-phoenix')
 
   def test_amend_a_restored_order(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
