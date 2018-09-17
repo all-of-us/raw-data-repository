@@ -274,7 +274,6 @@ class SiteImporter(CsvImporter):
         print '******************************************'
         if self.environment.strip() == 'TEST' and len(self.new_sites_list) >= 0:
           from googleapiclient.discovery import build
-          import os
           os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = creds_file
           logging.info('Starting reboot of app instances to insert new test participants')
           service = build('appengine', 'v1', cache_discovery=False)
