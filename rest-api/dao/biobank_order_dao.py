@@ -281,42 +281,12 @@ class BiobankOrderDao(UpdatableDao):
           % (participant_id, resource.subject, self._participant_id_to_subject(participant_id)))
     self._add_identifiers_and_main_id(order, resource)
     self._add_samples(order, resource)
-    if resource.status and not resource.amendedInfo:
-      self._handle_new_status(order, resource)
     if resource.amendedReason:
       order.amendedReason = resource.amendedReason
     if resource.amendedInfo:
       order.amendedUsername, order.amendedSiteId = self._parse_handling_info(resource.amendedInfo)
     order.version = expected_version
     return order
-
-  @classmethod
-  def _handle_new_status(cls, order, resource):
-    site_dao = SiteDao()
-    order.status = resource.status
-    if order.status.upper() == 'CANCELLED':
-      order.orderStatus = BiobankOrderStatus.CANCELLED
-      site = site_dao.get_by_google_group(resource.cancelledInfo.site.value)
-      if site:
-        order.cancelledSiteId = site.siteId
-      else:
-        raise BadRequest('A valid google_group is required for cancelledInfo.site.value')
-      order.cancelledUsername = resource.cancelledInfo.author.value
-      order.cancelledTime = clock.CLOCK.now()
-      order.amendedReason = resource.amendedReason
-    elif order.status.upper() == 'RESTORED':
-      order.orderStatus = BiobankOrderStatus.UNSET
-      site = site_dao.get_by_google_group(resource.cancelledInfo.site.value)
-      if site:
-        order.restoredSiteId = site.siteId
-      else:
-        raise BadRequest('A valid google_group is required for cancelledInfo.site.value')
-      order.restoredUsername = resource.cancelledInfo.author.value
-      order.restoredTime = clock.CLOCK.now()
-      order.amendedReason = resource.amendedReason
-    else:
-      raise BadRequest('{} is not a valid status operation. Must be cancelled or restored.'.format(
-                       order.status))
 
   @classmethod
   def _add_identifiers_and_main_id(cls, order, resource):

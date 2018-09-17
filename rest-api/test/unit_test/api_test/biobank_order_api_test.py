@@ -191,7 +191,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     full_order.update(request_data)
 
     self.assertEqual(len(full_order['samples']), 16)
-    del get_order['samples'][0]
+    del full_order['samples'][0]
 
     self.send_put(path, request_data=full_order, headers={'If-Match': 'W/"1"'})
 
