@@ -584,7 +584,7 @@ def main(args):
   HPODao()._invalidate_cache()
   OrganizationImporter().run(args.organization_file, args.dry_run)
   OrganizationDao()._invalidate_cache()
-  SiteImporter().run(args.site_file, args.dry_run, args.creds_file)
+  SiteImporter().run(args.site_file, args.dry_run)
 
 
 if __name__ == '__main__':
