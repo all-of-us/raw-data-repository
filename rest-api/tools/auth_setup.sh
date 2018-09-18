@@ -61,7 +61,7 @@ source ${REPO_ROOT_DIR}/tools/setup_vars.sh
 TMP_DB_INFO_FILE=${TMP_DIR}/db_info.json
 PORT=3308
 CLOUD_PROXY_PID=
-
+export "GOOGLE_APPLICATION_CREDENTIALS"=$CREDS_FILE
 
 function cleanup {
   if [ "$CLOUD_PROXY_PID" ];
