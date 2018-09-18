@@ -274,16 +274,16 @@ class SiteImporter(CsvImporter):
           logging.info('Starting reboot of app instances to insert new test participants')
           service = build('appengine', 'v1', cache_discovery=False)
           request = service.apps().services().versions().list(appsId=ENV_STABLE,
-                                                                    servicesId='default')
+                                                              servicesId='default')
           versions = request.execute()
 
           for version in versions['versions']:
             if version['servingStatus'] == 'SERVING':
               _id = version['id']
               request = service.apps().services().versions().instances().list(
-                                                                      appsId=ENV_STABLE,
                                                                       servicesId='default',
-                                                                      versionsId=_id)
+                                                                      versionsId=_id,
+                                                                      appsId=ENV_STABLE)
               instances = request.execute()
 
               try:
