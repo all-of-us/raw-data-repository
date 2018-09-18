@@ -264,7 +264,7 @@ class SiteImporter(CsvImporter):
                                         ENROLLING_STATUS_COLUMN + self.environment,
                                         DIGITAL_SCHEDULING_STATUS_COLUMN + self.environment])
 
-  def run(self, filename, dry_run, creds_file):
+  def run(self, filename, dry_run):
     super(SiteImporter, self).run(filename, dry_run)
     insert_participants = False
     if not dry_run:
