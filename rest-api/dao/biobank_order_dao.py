@@ -203,6 +203,9 @@ class BiobankOrderDao(UpdatableDao):
       raise BadRequest("Can't submit biospecimens for participant %s without consent" %
                        obj.participantId)
     raise_if_withdrawn(participant_summary)
+    self._set_participant_summary_fields(obj, participant_summary)
+
+  def _set_participant_summary_fields(self, obj, participant_summary):
     participant_summary.biospecimenStatus = OrderStatus.FINALIZED
     participant_summary.biospecimenOrderTime = obj.created
     participant_summary.biospecimenSourceSiteId = obj.sourceSiteId
@@ -215,6 +218,36 @@ class BiobankOrderDao(UpdatableDao):
       status, time = self._get_order_status_and_time(sample, obj)
       setattr(participant_summary, status_field, status)
       setattr(participant_summary, status_field + 'Time', time)
+
+  def _get_non_cancelled_biobank_orders(self, session, participantId):
+    # look up latest order without cancelled status
+    return session.query(BiobankOrder).filter(BiobankOrder.participantId ==
+                                              participantId).filter(BiobankOrder.orderStatus !=
+                                                                    BiobankOrderStatus.CANCELLED
+                                                                    ).order_by(
+      BiobankOrder.created.desc()).all()
+
+  def _refresh_participant_summary(self, session, obj):
+    # called when cancelled or amendments (maybe restore)
+    participant_summary_dao = ParticipantSummaryDao()
+    participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
+    non_cancelled_orders = self._get_non_cancelled_biobank_orders(session, obj.participantId)
+
+    if len(non_cancelled_orders) > 0:
+      for order in non_cancelled_orders:
+        self._set_participant_summary_fields(order, participant_summary)
+    else:
+      participant_summary.biospecimenStatus = OrderStatus.UNSET
+      participant_summary.biospecimenOrderTime = None
+      participant_summary.biospecimenSourceSiteId = None
+      participant_summary.biospecimenCollectedSiteId = None
+      participant_summary.biospecimenProcessedSiteId = None
+      participant_summary.biospecimenFinalizedSiteId = None
+      participant_summary.lastModified = clock.CLOCK.now()
+      for sample in obj.samples:
+        status_field = 'sampleOrderStatus' + sample.test
+        setattr(participant_summary, status_field, OrderStatus.UNSET)
+        setattr(participant_summary, status_field + 'Time', None)
 
   def _parse_handling_info(self, handling_info):
     site_id = None
@@ -393,6 +426,7 @@ class BiobankOrderDao(UpdatableDao):
     super(BiobankOrderDao, self)._do_update(session, order, existing_obj)
     session.add(order.logPosition)
 
+    self._refresh_participant_summary(session, order)
     self._update_history(session, order)
     self._update_identifier_history(session, order)
     self._update_sample_history(session, order)
@@ -429,6 +463,7 @@ class BiobankOrderDao(UpdatableDao):
     self._update_identifier_history(session, order)
     self._update_sample_history(session, order)
     super(BiobankOrderDao, self)._do_update(session, order, resource)
+    self._refresh_participant_summary(session, order)
     return order
 
   def _validate_patch_update(self, model, resource, expected_version):
@@ -454,7 +489,7 @@ class BiobankOrderDao(UpdatableDao):
         raise BadRequest('Can not restore an order that is not cancelled.')
       for field in required_restored_fields:
         if field not in resource:
-          raise BadRequest('%s is required for a cancelled biobank order' % field)
+          raise BadRequest('%s is required for a restored biobank order' % field)
       if 'site' not in resource['restoredInfo'] or 'author' not in resource['restoredInfo']:
         raise BadRequest('author and site are required for restoredInfo')
 

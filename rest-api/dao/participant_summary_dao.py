@@ -393,6 +393,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
     return decoded_vals
 
+
 def _initialize_field_type_sets():
   """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are
   used when formatting JSON from participant summaries.
