@@ -432,6 +432,7 @@ class UpdatableDao(BaseDao):
     with self.session() as session:
       return self.update_with_session(session, obj)
 
+
 def json_serial(obj):
   """JSON serializer for objects not serializable by default json code"""
   if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):

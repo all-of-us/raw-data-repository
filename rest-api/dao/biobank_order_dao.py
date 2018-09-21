@@ -1,22 +1,25 @@
 import clock
+from api_util import get_site_id_by_site_value as get_site
 from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
-from dao.base_dao import BaseDao, FhirMixin, FhirProperty
+from dao.base_dao import UpdatableDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
-from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier
+from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier,\
+  BiobankOrderIdentifierHistory, BiobankOrderedSampleHistory, BiobankOrderHistory
 from model.log_position import LogPosition
 from model.participant import Participant
 from model.utils import to_client_participant_id
-from participant_enums import OrderStatus
+from participant_enums import OrderStatus, BiobankOrderStatus
 
 from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models.identifier import Identifier
 from fhirclient.models import fhirdate
+from sqlalchemy import or_
 from sqlalchemy.orm import subqueryload
-from werkzeug.exceptions import BadRequest, Conflict
+from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed
 
 
 def _ToFhirDate(dt):
@@ -70,11 +73,19 @@ class _FhirBiobankOrder(FhirMixin, DomainResource):
     FhirProperty('created_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('collected_info', _FhirBiobankOrderHandlingInfo),
     FhirProperty('processed_info', _FhirBiobankOrderHandlingInfo),
-    FhirProperty('finalized_info', _FhirBiobankOrderHandlingInfo)
+    FhirProperty('finalized_info', _FhirBiobankOrderHandlingInfo),
+    FhirProperty('cancelledInfo', _FhirBiobankOrderHandlingInfo),
+    FhirProperty('restoredInfo', _FhirBiobankOrderHandlingInfo),
+    FhirProperty('restoredSiteId', int, required=False),
+    FhirProperty('restoredUsername', str, required=False),
+    FhirProperty('amendedInfo', _FhirBiobankOrderHandlingInfo),
+    FhirProperty('version', int, required=False),
+    FhirProperty('status', str, required=False),
+    FhirProperty('amendedReason', str, required=False)
   ]
 
 
-class BiobankOrderDao(BaseDao):
+class BiobankOrderDao(UpdatableDao):
   def __init__(self):
     super(BiobankOrderDao, self).__init__(BiobankOrder)
 
@@ -145,10 +156,15 @@ class BiobankOrderDao(BaseDao):
       ParticipantDao().validate_participant_reference(session, result)
     return result
 
-  def get_with_children_in_session(self, session, obj_id):
-    return (session.query(BiobankOrder)
-        .options(subqueryload(BiobankOrder.identifiers), subqueryload(BiobankOrder.samples))
-        .get(obj_id))
+  def get_with_children_in_session(self, session, obj_id, for_update=False):
+    query = session.query(BiobankOrder).options(subqueryload(BiobankOrder.identifiers),
+                                                 subqueryload(BiobankOrder.samples))
+
+    if for_update:
+      query = query.with_for_update()
+
+    existing_obj = query.get(obj_id)
+    return existing_obj
 
   def get_with_children(self, obj_id):
     with self.session() as session:
@@ -188,6 +204,9 @@ class BiobankOrderDao(BaseDao):
       raise BadRequest("Can't submit biospecimens for participant %s without consent" %
                        obj.participantId)
     raise_if_withdrawn(participant_summary)
+    self._set_participant_summary_fields(obj, participant_summary)
+
+  def _set_participant_summary_fields(self, obj, participant_summary):
     participant_summary.biospecimenStatus = OrderStatus.FINALIZED
     participant_summary.biospecimenOrderTime = obj.created
     participant_summary.biospecimenSourceSiteId = obj.sourceSiteId
@@ -200,6 +219,37 @@ class BiobankOrderDao(BaseDao):
       status, time = self._get_order_status_and_time(sample, obj)
       setattr(participant_summary, status_field, status)
       setattr(participant_summary, status_field + 'Time', time)
+
+  def _get_non_cancelled_biobank_orders(self, session, participantId):
+    # look up latest order without cancelled status
+    return session.query(BiobankOrder).filter(BiobankOrder.participantId ==
+                                              participantId).filter(or_(BiobankOrder.orderStatus !=
+                                                                    BiobankOrderStatus.CANCELLED,
+                                                                    BiobankOrder.orderStatus == None
+                                                                    )).order_by(
+      BiobankOrder.created).all()
+
+  def _refresh_participant_summary(self, session, obj):
+    # called when cancelled or amendments (maybe restore)
+    participant_summary_dao = ParticipantSummaryDao()
+    participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
+    non_cancelled_orders = self._get_non_cancelled_biobank_orders(session, obj.participantId)
+
+    participant_summary.biospecimenStatus = OrderStatus.UNSET
+    participant_summary.biospecimenOrderTime = None
+    participant_summary.biospecimenSourceSiteId = None
+    participant_summary.biospecimenCollectedSiteId = None
+    participant_summary.biospecimenProcessedSiteId = None
+    participant_summary.biospecimenFinalizedSiteId = None
+    participant_summary.lastModified = clock.CLOCK.now()
+    for sample in obj.samples:
+      status_field = 'sampleOrderStatus' + sample.test
+      setattr(participant_summary, status_field, OrderStatus.UNSET)
+      setattr(participant_summary, status_field + 'Time', None)
+
+    if len(non_cancelled_orders) > 0:
+      for order in non_cancelled_orders:
+        self._set_participant_summary_fields(order, participant_summary)
 
   def _parse_handling_info(self, handling_info):
     site_id = None
@@ -233,7 +283,8 @@ class BiobankOrderDao(BaseDao):
     return info
 
   # pylint: disable=unused-argument
-  def from_client_json(self, resource_json, participant_id=None, client_id=None):
+  def from_client_json(self, resource_json, id_=None, expected_version=None,
+    participant_id=None, client_id=None):
     resource = _FhirBiobankOrder(resource_json)
     if not resource.created.date:  # FHIR warns but does not error on bad date values.
       raise BadRequest('Invalid created date %r.' % resource.created.origval)
@@ -265,6 +316,11 @@ class BiobankOrderDao(BaseDao):
           % (participant_id, resource.subject, self._participant_id_to_subject(participant_id)))
     self._add_identifiers_and_main_id(order, resource)
     self._add_samples(order, resource)
+    if resource.amendedReason:
+      order.amendedReason = resource.amendedReason
+    if resource.amendedInfo:
+      order.amendedUsername, order.amendedSiteId = self._parse_handling_info(resource.amendedInfo)
+    order.version = expected_version
     return order
 
   @classmethod
@@ -278,6 +334,7 @@ class BiobankOrderDao(BaseDao):
     if not found_main_id:
       raise BadRequest(
           'No identifier for system %r, required for primary key.' % BiobankOrder._MAIN_ID_SYSTEM)
+
 
   @classmethod
   def _add_samples(cls, order, resource):
@@ -333,6 +390,23 @@ class BiobankOrderDao(BaseDao):
     resource.collected_info = self._to_handling_info(model.collectedUsername, model.collectedSiteId)
     resource.processed_info = self._to_handling_info(model.processedUsername, model.processedSiteId)
     resource.finalized_info = self._to_handling_info(model.finalizedUsername, model.finalizedSiteId)
+    resource.amendedReason = model.amendedReason
+
+    restored = getattr(model, 'restoredSiteId')
+    if model.orderStatus == BiobankOrderStatus.CANCELLED:
+      resource.status = str(BiobankOrderStatus.CANCELLED)
+      resource.cancelledInfo = self._to_handling_info(model.cancelledUsername,
+                                                       model.cancelledSiteId)
+
+    elif restored:
+      resource.status = str(BiobankOrderStatus.UNSET)
+      resource.restoredInfo = self._to_handling_info(model.restoredUsername,
+                                                       model.restoredSiteId)
+
+    elif model.orderStatus == BiobankOrderStatus.AMENDED:
+      resource.status = str(BiobankOrderStatus.AMENDED)
+      resource.amendedInfo = self._to_handling_info(model.amendedUsername,
+                                                      model.amendedSiteId)
 
     self._add_identifiers_to_resource(resource, model)
     self._add_samples_to_resource(resource, model)
@@ -340,3 +414,126 @@ class BiobankOrderDao(BaseDao):
     client_json['id'] = model.biobankOrderId
     del client_json['resourceType']
     return client_json
+
+  def _do_update(self, session, order, existing_obj):
+    order.lastModified = clock.CLOCK.now()
+    order.biobankOrderId = existing_obj.biobankOrderId
+    order.orderStatus = BiobankOrderStatus.AMENDED
+    order.amendedTime = clock.CLOCK.now()
+    order.logPosition = LogPosition()
+    order.version += 1
+    # Ensure that if an order was previously cancelled/restored those columns are removed.
+    self._clear_cancelled_and_restored_fields(order)
+
+    super(BiobankOrderDao, self)._do_update(session, order, existing_obj)
+    session.add(order.logPosition)
+
+    self._refresh_participant_summary(session, order)
+    self._update_history(session, order)
+    self._update_identifier_history(session, order)
+    self._update_sample_history(session, order)
+
+  def update_with_patch(self, id_, resource, expected_version):
+    """creates an atomic patch request on an object. It will fail if the object
+    doesn't exist already, or if obj.version does not match the version of the existing object.
+    May modify the passed in object."""
+    with self.session() as session:
+      obj = self.get_with_children_in_session(session, id_, for_update=True)
+      return self._do_update_with_patch(session, obj, resource, expected_version)
+
+  def _do_update_with_patch(self, session, order, resource, expected_version):
+    self._validate_patch_update(order, resource, expected_version)
+    order.lastModified = clock.CLOCK.now()
+    order.logPosition = LogPosition()
+    order.version += 1
+    if resource['status'].lower() == 'cancelled':
+      order.amendedReason = resource['amendedReason']
+      order.cancelledUsername = resource['cancelledInfo']['author']['value']
+      order.cancelledSiteId = get_site(resource['cancelledInfo'])
+      order.cancelledTime = clock.CLOCK.now()
+      order.orderStatus = BiobankOrderStatus.CANCELLED
+    elif resource['status'].lower() == 'restored':
+      order.amendedReason = resource['amendedReason']
+      order.restoredUsername = resource['restoredInfo']['author']['value']
+      order.restoredSiteId = get_site(resource['restoredInfo'])
+      order.restoredTime = clock.CLOCK.now()
+      order.orderStatus = BiobankOrderStatus.UNSET
+    else:
+      raise BadRequest('status must be restored or cancelled for patch request.')
+
+    super(BiobankOrderDao, self)._do_update(session, order, resource)
+    self._update_history(session, order)
+    self._update_identifier_history(session, order)
+    self._update_sample_history(session, order)
+    self._refresh_participant_summary(session, order)
+    return order
+
+  def _validate_patch_update(self, model, resource, expected_version):
+    if expected_version != model.version:
+      raise PreconditionFailed('Expected version was %s; stored version was %s' % \
+                               (expected_version, model.version))
+    required_cancelled_fields = ['amendedReason', 'cancelledInfo', 'status']
+    required_restored_fields = ['amendedReason', 'restoredInfo', 'status']
+    if 'status' not in resource:
+      raise BadRequest('status of cancelled/restored is required')
+
+    if resource['status'] == 'cancelled':
+      if model.orderStatus == BiobankOrderStatus.CANCELLED:
+        raise BadRequest('Can not cancel an order that is already cancelled.')
+      for field in required_cancelled_fields:
+        if field not in resource:
+          raise BadRequest('%s is required for a cancelled biobank order' % field)
+      if 'site' not in resource['cancelledInfo'] or 'author' not in resource['cancelledInfo']:
+        raise BadRequest('author and site are required for cancelledInfo')
+
+    elif resource['status'] == 'restored':
+      if model.orderStatus != BiobankOrderStatus.CANCELLED:
+        raise BadRequest('Can not restore an order that is not cancelled.')
+      for field in required_restored_fields:
+        if field not in resource:
+          raise BadRequest('%s is required for a restored biobank order' % field)
+      if 'site' not in resource['restoredInfo'] or 'author' not in resource['restoredInfo']:
+        raise BadRequest('author and site are required for restoredInfo')
+
+
+  @staticmethod
+  def _update_history(session, order):
+    # Increment the version and add a new history entry.
+    session.flush()
+    history = BiobankOrderHistory()
+    history.fromdict(order.asdict(follow=['logPosition']), allow_pk=True)
+    history.logPositionId = order.logPosition.logPositionId
+    session.add(history)
+
+  @staticmethod
+  def _update_identifier_history(session, order):
+    session.flush()
+    for identifier in order.identifiers:
+      history = BiobankOrderIdentifierHistory()
+      history.fromdict(identifier.asdict(), allow_pk=True)
+      history.version = order.version
+      history.biobankOrderId = order.biobankOrderId
+      session.add(history)
+
+  @staticmethod
+  def _update_sample_history(session, order):
+    session.flush()
+    for sample in order.samples:
+      history = BiobankOrderedSampleHistory()
+      history.fromdict(sample.asdict(), allow_pk=True)
+      history.version = order.version
+      history.biobankOrderId = order.biobankOrderId
+      session.add(history)
+
+  @staticmethod
+  def _clear_cancelled_and_restored_fields(order):
+    #pylint: disable=unused-argument
+    """ Just in case these fields have values, we don't want them in the most recent record for an
+    amendment, they will exist in history tables."""
+    order.restoredUsername = None
+    order.restoredTime = None
+    order.cancelledUsername = None
+    order.cancelledTime = None
+    order.restoredSiteId = None
+    order.cancelledSiteId = None
+    order.status = BiobankOrderStatus.UNSET
