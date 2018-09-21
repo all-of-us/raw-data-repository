@@ -9,7 +9,8 @@ from datetime import datetime
 
 def delete_service_account_keys():
   days_to_delete = config.getSetting(config.DAYS_TO_DELETE_KEYS)
-  service_accounts_with_long_lived_keys = config.getSettingList(config.SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS, default=[])
+  service_accounts_with_long_lived_keys = config.getSettingList(
+    config.SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS, default=[])
   app_id = app_identity.get_application_id()
   if app_id is None:
     return
@@ -23,7 +24,7 @@ def delete_service_account_keys():
 
     for account in accounts:
       if account['email'] in service_accounts_with_long_lived_keys:
-        logging.info('Skip expiration check for long lived key of Service Account {}'.format(account))
+        logging.info('Skip key expiration check for Service Account {}'.format(account))
         continue
 
       serviceaccount = project_name + '/serviceAccounts/' + account['email']
