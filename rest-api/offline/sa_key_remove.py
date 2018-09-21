@@ -9,6 +9,7 @@ from datetime import datetime
 
 def delete_service_account_keys():
   days_to_delete = config.getSetting(config.DAYS_TO_DELETE_KEYS)
+  service_account_keys = config.getSetting(config.SERVICE_ACCOUNT_KEYS)
   app_id = app_identity.get_application_id()
   if app_id is None:
     return
@@ -31,6 +32,8 @@ def delete_service_account_keys():
 
           for key in keys:
             keyname = key['name']
+            if keyname in service_account_keys:
+              continue
             startdate = datetime.strptime(key['validAfterTime'], '%Y-%m-%dT%H:%M:%SZ')
 
             key_age_days = (datetime.utcnow() - startdate).days

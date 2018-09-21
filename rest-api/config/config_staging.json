@@ -46,5 +46,9 @@
   ],
   "metrics_shards": [
     "10"
+  ],
+  "service_account_keys":[
+    "redlock-read-only-stable@all-of-us-ops-data-api-stable.iam.gserviceaccount.com",
+    "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
   ]
 }
