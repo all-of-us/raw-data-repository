@@ -221,7 +221,7 @@ class UpdatableApi(BaseApi):
     return self._make_response(order)
 
   def update_with_patch(self, id_, resource, expected_version):
-    #pylint: disable=unused_argument
+    #pylint: disable=unused-argument
     return NotImplemented
 
 
