@@ -9,7 +9,7 @@ from datetime import datetime
 
 def delete_service_account_keys():
   days_to_delete = config.getSetting(config.DAYS_TO_DELETE_KEYS)
-  service_account_keys = config.getSetting(config.SERVICE_ACCOUNT_KEYS)
+  service_accounts_with_long_lived_keys = config.getSettingList(config.SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS, default=[])
   app_id = app_identity.get_application_id()
   if app_id is None:
     return
@@ -22,32 +22,31 @@ def delete_service_account_keys():
     accounts = response['accounts']
 
     for account in accounts:
-      if 'circle-deploy' not in account['email']:
-        serviceaccount = project_name + '/serviceAccounts/' + account['email']
-        request = service.projects().serviceAccounts().keys().list(name=serviceaccount,
-                                                                   keyTypes='USER_MANAGED')
-        response = request.execute()
-        if 'keys' in response:
-          keys = response['keys']
+      if account['email'] in service_accounts_with_long_lived_keys:
+        logging.info('Skip expiration check for long lived key of Service Account {}'.format(account))
+        continue
 
-          for key in keys:
-            keyname = key['name']
-            if keyname in service_account_keys:
-              continue
-            startdate = datetime.strptime(key['validAfterTime'], '%Y-%m-%dT%H:%M:%SZ')
+      serviceaccount = project_name + '/serviceAccounts/' + account['email']
+      request = service.projects().serviceAccounts().keys().list(name=serviceaccount,
+                                                                 keyTypes='USER_MANAGED')
+      response = request.execute()
+      if 'keys' in response:
+        keys = response['keys']
 
-            key_age_days = (datetime.utcnow() - startdate).days
+        for key in keys:
+          keyname = key['name']
+          startdate = datetime.strptime(key['validAfterTime'], '%Y-%m-%dT%H:%M:%SZ')
 
-            if key_age_days >= days_to_delete:
-              logging.warning('Deleting service Account key older than {} days [{}]: {}'.format(
-                              days_to_delete, key_age_days, keyname))
+          key_age_days = (datetime.utcnow() - startdate).days
 
-              delete_request = service.projects().serviceAccounts().keys().delete(name=keyname)
-              delete_request.execute()
-            else:
-              logging.info('Service Account key is {} days old: {}'.format(key_age_days, keyname))
-      else:
-        logging.info('No user managed keys for Service Account {}'.format(account))
+          if key_age_days >= days_to_delete:
+            logging.warning('Deleting service Account key older than {} days [{}]: {}'.format(
+              days_to_delete, key_age_days, keyname))
+
+            delete_request = service.projects().serviceAccounts().keys().delete(name=keyname)
+            delete_request.execute()
+          else:
+            logging.info('Service Account key is {} days old: {}'.format(key_age_days, keyname))
 
   except KeyError:
     logging.info('No Service Accounts found in project "{}"'.format(app_id))
