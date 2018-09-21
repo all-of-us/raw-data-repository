@@ -222,7 +222,7 @@ class UpdatableApi(BaseApi):
 
   def update_with_patch(self, id_, resource, expected_version):
     #pylint: disable=unused-argument
-    return NotImplemented
+    raise NotImplementedError("update_with_patch not implemented in % s " % self.__class__)
 
 
 def _make_etag(version):
