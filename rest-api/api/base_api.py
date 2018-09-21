@@ -220,7 +220,7 @@ class UpdatableApi(BaseApi):
     order = self.dao.update_with_patch(id_, resource, expected_version)
     return self._make_response(order)
 
-  def update_with_patch(self):
+  def update_with_patch(self, id_, resource, expected_version):
     raise NotImplemented
 
 
