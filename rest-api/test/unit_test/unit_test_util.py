@@ -459,6 +459,9 @@ class FlaskTestBase(NdbTestBase):
   def send_put(self, *args, **kwargs):
     return self.send_request('PUT', *args, **kwargs)
 
+  def send_patch(self, *args, **kwargs):
+    return self.send_request('PATCH', *args, **kwargs)
+
   def send_get(self, *args, **kwargs):
     return self.send_request('GET', *args, **kwargs)
 

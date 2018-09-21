@@ -197,7 +197,6 @@ class UpdatableApi(BaseApi):
       participant_id: The ancestor id (if applicable).
     """
     resource = request.get_json(force=True)
-    expected_version = None
     etag = request.headers.get('If-Match')
     if not etag:
       raise BadRequest("If-Match is missing for PUT request")
@@ -206,8 +205,29 @@ class UpdatableApi(BaseApi):
     self._do_update(m)
     return self._make_response(m)
 
+  def patch(self, id_):
+    """Handles a PATCH request; the current object must exist, and will be amended
+
+    Args:
+      id_: The id of the object to update.
+      participant_id: The ancestor id (if applicable)
+    """
+    resource = request.get_json(force=True)
+    etag = request.headers.get('If-Match')
+    if not etag:
+      raise BadRequest("If-Match is missing for PATCH request")
+    expected_version = _parse_etag(etag)
+    order = self.dao.update_with_patch(id_, resource, expected_version)
+    return self._make_response(order)
+
+  def update_with_patch(self, id_, resource, expected_version):
+    #pylint: disable=unused-argument
+    raise NotImplementedError("update_with_patch not implemented in % s " % self.__class__)
+
+
 def _make_etag(version):
   return 'W/"%d"' % version
+
 
 def _parse_etag(etag):
   if etag.startswith('W/"') and etag.endswith('"'):

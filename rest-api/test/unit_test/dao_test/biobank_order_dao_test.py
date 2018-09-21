@@ -1,18 +1,24 @@
+import datetime
+
 import clock
 from code_constants import BIOBANK_TESTS
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.participant import Participant
-from participant_enums import WithdrawalStatus
+from participant_enums import WithdrawalStatus, BiobankOrderStatus, OrderStatus
 from dao.participant_dao import ParticipantDao
 from test.test_data import load_biobank_order_json
 from unit_test_util import SqlTestBase
 
 from werkzeug.exceptions import BadRequest, Forbidden, Conflict
 
+
 class BiobankOrderDaoTest(SqlTestBase):
   _A_TEST = BIOBANK_TESTS[0]
+  _B_TEST = BIOBANK_TESTS[1]
+  TIME_1 = datetime.datetime(2018, 9, 20, 5, 49, 11)
+  TIME_2 = datetime.datetime(2018, 9, 21, 8, 49, 37)
 
   def setUp(self):
     super(BiobankOrderDaoTest, self).setUp()
@@ -47,6 +53,57 @@ class BiobankOrderDaoTest(SqlTestBase):
         kwargs[k] = default_value
     return BiobankOrder(**kwargs)
 
+  @staticmethod
+  def _get_cancel_patch():
+    return {
+      "amendedReason": 'I messed something up :( ',
+      "cancelledInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/healthpro-username",
+          "value": "mike@pmi-ops.org"
+        },
+        "site": {
+          "system": "https://www.pmi-ops.org/site-id",
+          "value": "hpo-site-monroeville"
+        }
+      },
+      "status": "cancelled"
+    }
+
+  @staticmethod
+  def _get_restore_patch():
+    return {
+      "amendedReason": 'I didn"t mess something up :( ',
+      "restoredInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/healthpro-username",
+          "value": "mike@pmi-ops.org"
+        },
+        "site": {
+          "system": "https://www.pmi-ops.org/site-id",
+          "value": "hpo-site-monroeville"
+        }
+      },
+      "status": "restored"
+    }
+
+  @staticmethod
+  def _get_amended_info(order):
+    amendment = dict(amendedReason='I had to change something', amendedInfo={
+      "author": {
+        "system": "https://www.pmi-ops.org/healthpro-username",
+        "value": "mike@pmi-ops.org"
+      },
+      "site": {
+        "system": "https://www.pmi-ops.org/site-id",
+        "value": "hpo-site-monroeville"
+      }
+    })
+
+    order.amendedReason = amendment['amendedReason']
+    order.amendedInfo = amendment['amendedInfo']
+    return order
+
   def test_bad_participant(self):
     with self.assertRaises(BadRequest):
       self.dao.insert(self._make_biobank_order(participantId=999))
@@ -54,7 +111,8 @@ class BiobankOrderDaoTest(SqlTestBase):
   def test_from_json(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     order_json = load_biobank_order_json(self.participant.participantId)
-    order = BiobankOrderDao().from_client_json(order_json, self.participant.participantId)
+    order = BiobankOrderDao().from_client_json(order_json,
+                                               participant_id=self.participant.participantId)
     self.assertEquals(1, order.sourceSiteId)
     self.assertEquals('fred@pmi-ops.org', order.sourceUsername)
     self.assertEquals(1, order.collectedSiteId)
@@ -118,3 +176,147 @@ class BiobankOrderDaoTest(SqlTestBase):
       self.dao.insert(self._make_biobank_order(
           samples=[BiobankOrderedSample(
               test='InvalidTestName', processingRequired=True, description=u'tested it')]))
+
+  def test_cancelling_an_order(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(self._make_biobank_order())
+    cancelled_request = self._get_cancel_patch()
+    updated_order = self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request,
+                                               order_1.version)
+
+    self.assertEqual(updated_order.version, 2)
+    self.assertEqual(updated_order.cancelledUsername, 'mike@pmi-ops.org')
+    self.assertEqual(updated_order.orderStatus, BiobankOrderStatus.CANCELLED)
+    self.assertEqual(updated_order.amendedReason, cancelled_request['amendedReason'])
+
+  def test_cancelled_order_removes_from_participant_summary(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    samples = [BiobankOrderedSample(
+      test=self._B_TEST, processingRequired=True, description=u'new sample')]
+    biobank_order_id = 2
+    with clock.FakeClock(self.TIME_1):
+      order_1 = self.dao.insert(self._make_biobank_order())
+
+    with clock.FakeClock(self.TIME_2):
+      self.dao.insert(self._make_biobank_order(samples=samples,
+                                               biobankOrderId=biobank_order_id,
+                                               identifiers=[
+                                                           BiobankOrderIdentifier(system='z',
+                                                                                  value='x')]))
+    cancelled_request = self._get_cancel_patch()
+    ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
+
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10Time, self.TIME_1)
+    self.assertEqual(ps_dao.sampleOrderStatus2ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.sampleOrderStatus2ED10Time, self.TIME_2)
+
+    self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request,
+                               order_1.version)
+    ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
+
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10, None)
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10Time, None)
+    # should not remove the other order
+    self.assertEqual(ps_dao.sampleOrderStatus2ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.sampleOrderStatus2ED10Time, self.TIME_2)
+    self.assertEqual(ps_dao.biospecimenCollectedSiteId, 1)
+    self.assertEqual(ps_dao.biospecimenFinalizedSiteId, 2)
+    self.assertEqual(ps_dao.biospecimenProcessedSiteId, 1)
+    self.assertEqual(ps_dao.biospecimenStatus, OrderStatus.FINALIZED)
+
+  def test_restoring_an_order_gets_to_participant_summary(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(self._make_biobank_order())
+    cancelled_request = self._get_cancel_patch()
+    cancelled_order = self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request,
+                                                 order_1.version)
+
+    restore_request = self._get_restore_patch()
+    self.dao.update_with_patch(order_1.biobankOrderId, restore_request,
+                                                cancelled_order.version)
+    ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.CREATED)
+
+  def test_amending_order_participant_summary(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(self._make_biobank_order())
+    amended_info = self._get_amended_info(order_1)
+    amended_info.sourceSiteId = 2
+    samples = [BiobankOrderedSample(
+      test=self._B_TEST, processingRequired=True, description=u'new sample')]
+    amended_info.samples = samples
+    with self.dao.session() as session:
+      self.dao._do_update(session, order_1, amended_info)
+
+    amended_order = self.dao.get(1)
+    self.assertEqual(amended_order.version, 2)
+
+    ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertEqual(ps_dao.sampleOrderStatus2ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.CREATED)
+
+  def test_cancelling_an_order_missing_reason(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(self._make_biobank_order())
+    cancelled_request = self._get_cancel_patch()
+    del cancelled_request['amendedReason']
+    with self.assertRaises(BadRequest):
+      self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request, order_1.version)
+
+  def test_cancelling_an_order_missing_info(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(self._make_biobank_order())
+
+    # missing cancelled info
+    cancelled_request = self._get_cancel_patch()
+    del cancelled_request['cancelledInfo']
+    with self.assertRaises(BadRequest):
+      self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request, order_1.version)
+
+    # missing site
+    cancelled_request = self._get_cancel_patch()
+    del cancelled_request['cancelledInfo']['site']
+    with self.assertRaises(BadRequest):
+      self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request, order_1.version)
+
+    # missing author
+    cancelled_request = self._get_cancel_patch()
+    del cancelled_request['cancelledInfo']['author']
+    with self.assertRaises(BadRequest):
+      self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request, order_1.version)
+
+    # missing status
+    cancelled_request = self._get_cancel_patch()
+    del cancelled_request['status']
+    with self.assertRaises(BadRequest):
+      self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request, order_1.version)
+
+  def test_restoring_an_order(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(self._make_biobank_order())
+    cancelled_request = self._get_cancel_patch()
+    cancelled_order = self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request,
+                                          order_1.version)
+
+    restore_request = self._get_restore_patch()
+    restored_order = self.dao.update_with_patch(order_1.biobankOrderId, restore_request,
+                                    cancelled_order.version)
+
+    self.assertEqual(restored_order.version, 3)
+    self.assertEqual(restored_order.restoredUsername, 'mike@pmi-ops.org')
+    self.assertEqual(restored_order.orderStatus, BiobankOrderStatus.UNSET)
+    self.assertEqual(restored_order.amendedReason, restore_request['amendedReason'])
+
+  def test_amending_an_order(self):
+    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
+    order_1 = self.dao.insert(self._make_biobank_order())
+    amended_info = self._get_amended_info(order_1)
+    amended_info.sourceSiteId = 2
+    with self.dao.session() as session:
+      self.dao._do_update(session, order_1, amended_info)
+
+    amended_order = self.dao.get(1)
+    self.assertEqual(amended_order.version, 2)
+    self.assertEqual(amended_order.orderStatus, BiobankOrderStatus.AMENDED)
+    self.assertEqual(amended_order.amendedReason, 'I had to change something')

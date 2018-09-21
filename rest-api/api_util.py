@@ -105,6 +105,15 @@ def get_site_id_from_google_group(obj, site_dao):
       return site.siteId
   return None
 
+def get_site_id_by_site_value(obj):
+  if 'site' in obj:
+    from dao.site_dao import SiteDao
+    site_dao = SiteDao()
+    site = site_dao.get_by_google_group(obj['site']['value'])
+    if site is not None:
+      return site.siteId
+  return None
+
 def get_awardee_id_from_name(obj, hpo_dao):
   if 'awardee' in obj:
     awardee = hpo_dao.get_by_name(obj['awardee'])
