@@ -37,6 +37,13 @@
           "ip4": ["10.50.178.54"]
         }
     },
+      "awardee-tach@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+        "roles": ["awardee_sa"],
+        "awardee": "TRANS_AM",
+        "whitelisted_ip_ranges" : {
+          "ip4": ["66.189.127/27", "68.124.42.162/27"]
+        }
+    },
     "awardee-seec@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "SEEC",

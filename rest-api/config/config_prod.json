@@ -17,8 +17,14 @@
     },
     "exporter@all-of-us-rdr-prod.iam.gserviceaccount.com": {
       "roles": ["exporter"]
-    }
-  },
+    },
+    "awardee-tach@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "TRANS_AM",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["66.189.127/27", "68.124.42.162/27"]
+      }
+    },
   "biobank_samples_bucket_name": [
     "prod_biobank_samples_upload_bucket"
   ],
