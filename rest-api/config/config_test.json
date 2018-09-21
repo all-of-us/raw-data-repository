@@ -42,5 +42,9 @@
   ],
   "metrics_shards": [
     "10"
+  ],
+  "service_accounts_with_long_lived_keys":[
+    "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
   ]
+
 }

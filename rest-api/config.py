@@ -51,6 +51,9 @@ REQUIRED_CONFIG_KEYS = [BIOBANK_SAMPLES_BUCKET_NAME]
 
 DAYS_TO_DELETE_KEYS = "days_to_delete_keys"
 
+# service accounts exception from key deletion
+SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS = "service_accounts_with_long_lived_keys"
+
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 
