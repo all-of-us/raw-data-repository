@@ -227,7 +227,7 @@ class BiobankOrderDao(UpdatableDao):
                                                                     BiobankOrderStatus.CANCELLED,
                                                                     BiobankOrder.orderStatus == None
                                                                     )).order_by(
-      BiobankOrder.created.desc()).all()
+      BiobankOrder.created).all()
 
   def _refresh_participant_summary(self, session, obj):
     # called when cancelled or amendments (maybe restore)
@@ -392,18 +392,18 @@ class BiobankOrderDao(UpdatableDao):
     resource.finalized_info = self._to_handling_info(model.finalizedUsername, model.finalizedSiteId)
     resource.amendedReason = model.amendedReason
 
+    restored = getattr(model, 'restoredSiteId')
     if model.orderStatus == BiobankOrderStatus.CANCELLED:
       resource.status = str(BiobankOrderStatus.CANCELLED)
       resource.cancelledInfo = self._to_handling_info(model.cancelledUsername,
                                                        model.cancelledSiteId)
 
-    restored = getattr(model, 'restoredSiteId')
-    if restored:
+    elif restored:
       resource.status = str(BiobankOrderStatus.UNSET)
       resource.restoredInfo = self._to_handling_info(model.restoredUsername,
                                                        model.restoredSiteId)
 
-    if model.orderStatus == BiobankOrderStatus.AMENDED:
+    elif model.orderStatus == BiobankOrderStatus.AMENDED:
       resource.status = str(BiobankOrderStatus.AMENDED)
       resource.amendedInfo = self._to_handling_info(model.amendedUsername,
                                                       model.amendedSiteId)
@@ -461,10 +461,10 @@ class BiobankOrderDao(UpdatableDao):
     else:
       raise BadRequest('status must be restored or cancelled for patch request.')
 
+    super(BiobankOrderDao, self)._do_update(session, order, resource)
     self._update_history(session, order)
     self._update_identifier_history(session, order)
     self._update_sample_history(session, order)
-    super(BiobankOrderDao, self)._do_update(session, order, resource)
     self._refresh_participant_summary(session, order)
     return order
 
