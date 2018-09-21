@@ -17,6 +17,7 @@ from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models.identifier import Identifier
 from fhirclient.models import fhirdate
+from sqlalchemy import or_
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed
 
@@ -222,9 +223,10 @@ class BiobankOrderDao(UpdatableDao):
   def _get_non_cancelled_biobank_orders(self, session, participantId):
     # look up latest order without cancelled status
     return session.query(BiobankOrder).filter(BiobankOrder.participantId ==
-                                              participantId).filter(BiobankOrder.orderStatus !=
-                                                                    BiobankOrderStatus.CANCELLED
-                                                                    ).order_by(
+                                              participantId).filter(or_(BiobankOrder.orderStatus !=
+                                                                    BiobankOrderStatus.CANCELLED,
+                                                                    BiobankOrder.orderStatus == None
+                                                                    )).order_by(
       BiobankOrder.created.desc()).all()
 
   def _refresh_participant_summary(self, session, obj):
@@ -233,21 +235,21 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
     non_cancelled_orders = self._get_non_cancelled_biobank_orders(session, obj.participantId)
 
+    participant_summary.biospecimenStatus = OrderStatus.UNSET
+    participant_summary.biospecimenOrderTime = None
+    participant_summary.biospecimenSourceSiteId = None
+    participant_summary.biospecimenCollectedSiteId = None
+    participant_summary.biospecimenProcessedSiteId = None
+    participant_summary.biospecimenFinalizedSiteId = None
+    participant_summary.lastModified = clock.CLOCK.now()
+    for sample in obj.samples:
+      status_field = 'sampleOrderStatus' + sample.test
+      setattr(participant_summary, status_field, OrderStatus.UNSET)
+      setattr(participant_summary, status_field + 'Time', None)
+
     if len(non_cancelled_orders) > 0:
       for order in non_cancelled_orders:
         self._set_participant_summary_fields(order, participant_summary)
-    else:
-      participant_summary.biospecimenStatus = OrderStatus.UNSET
-      participant_summary.biospecimenOrderTime = None
-      participant_summary.biospecimenSourceSiteId = None
-      participant_summary.biospecimenCollectedSiteId = None
-      participant_summary.biospecimenProcessedSiteId = None
-      participant_summary.biospecimenFinalizedSiteId = None
-      participant_summary.lastModified = clock.CLOCK.now()
-      for sample in obj.samples:
-        status_field = 'sampleOrderStatus' + sample.test
-        setattr(participant_summary, status_field, OrderStatus.UNSET)
-        setattr(participant_summary, status_field + 'Time', None)
 
   def _parse_handling_info(self, handling_info):
     site_id = None

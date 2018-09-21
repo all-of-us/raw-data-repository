@@ -21,7 +21,6 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.participant = Participant(participantId=123, biobankId=555)
     ParticipantDao().insert(self.participant)
     self.dao = BiobankOrderDao()
-    # self.ps_dao = ParticipantSummaryDao()
 
   def _make_biobank_order(self, **kwargs):
     """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
@@ -202,7 +201,6 @@ class BiobankOrderDaoTest(SqlTestBase):
 
     self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.CREATED)
     self.assertEqual(ps_dao.sampleOrderStatus2ED10, OrderStatus.CREATED)
-
     self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request,
                                order_1.version)
     ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
@@ -210,6 +208,10 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.assertEqual(ps_dao.sampleOrderStatus1ED10, None)
     # should not remove the other order
     self.assertEqual(ps_dao.sampleOrderStatus2ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.biospecimenCollectedSiteId, 1)
+    self.assertEqual(ps_dao.biospecimenFinalizedSiteId, 2)
+    self.assertEqual(ps_dao.biospecimenProcessedSiteId, 1)
+    self.assertEqual(ps_dao.biospecimenStatus, OrderStatus.FINALIZED)
 
   def test_restoring_an_order_gets_to_participant_summary(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
