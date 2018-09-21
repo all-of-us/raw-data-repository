@@ -9,7 +9,7 @@ from model.utils import to_client_participant_id, from_client_participant_id
 from model.participant import Participant
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from participant_enums import UNSET_HPO_ID
+from participant_enums import UNSET_HPO_ID, OrderStatus
 
 
 class BiobankOrderApiTest(FlaskTestBase):
@@ -53,6 +53,14 @@ class BiobankOrderApiTest(FlaskTestBase):
     cancelled_order = self.send_patch(path, request_data=request_data,
                                       headers={'If-Match': 'W/"1"'})
     get_cancelled_order = self.send_get(path)
+    get_summary = self.summary_dao.get(self.participant.participantId)
+
+    self.assertEqual(get_summary.biospecimenSourceSiteId, None)
+    self.assertEqual(get_summary.biospecimenCollectedSiteId, None)
+    self.assertEqual(get_summary.biospecimenOrderTime, None)
+    self.assertEqual(get_summary.biospecimenStatus, None)
+    self.assertEqual(get_summary.biospecimenFinalizedSiteId, None)
+    self.assertEqual(get_summary.biospecimenProcessedSiteId, None)
     self.assertEqual(cancelled_order, get_cancelled_order)
     self.assertEqual(get_cancelled_order['status'], 'CANCELLED')
     self.assertEqual(get_cancelled_order['amendedReason'], 'Its all wrong')
@@ -157,6 +165,15 @@ class BiobankOrderApiTest(FlaskTestBase):
 
     self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"2"'})
     restored_order = self.send_get(path)
+    get_summary = self.summary_dao.get(self.participant.participantId)
+    self.assertEqual(get_summary.sampleOrderStatus1SST8, OrderStatus.CREATED)
+    self.assertEqual(get_summary.sampleOrderStatus2ED10, OrderStatus.CREATED)
+    self.assertEqual(get_summary.sampleOrderStatus1SAL, OrderStatus.CREATED)
+    self.assertEqual(get_summary.sampleOrderStatus1UR10, OrderStatus.CREATED)
+    self.assertEqual(get_summary.sampleOrderStatus1CFD9, OrderStatus.FINALIZED)
+    self.assertEqual(get_summary.sampleOrderStatus1ED02, OrderStatus.FINALIZED)
+    self.assertEqual(get_summary.sampleOrderStatus2SST8, OrderStatus.FINALIZED)
+    self.assertEqual(get_summary.sampleOrderStatus2PST8, OrderStatus.FINALIZED)
     self.assertEqual(restored_order['status'], 'UNSET')
     self.assertEqual(restored_order['restoredInfo']['author']['value'], 'fred@pmi-ops.org')
     self.assertEqual(restored_order['restoredInfo']['site']['value'], 'hpo-site-monroeville')
@@ -168,8 +185,6 @@ class BiobankOrderApiTest(FlaskTestBase):
     order_json = load_biobank_order_json(self.participant.participantId,
                                          filename='biobank_order_2.json')
     result = self.send_post(self.path, order_json)
-    load_biobank_order_json(self.participant.participantId,
-                            filename='biobank_order_1.json')
 
     biobank_order_id = result['identifier'][1]['value']
     path = self.path + '/' + biobank_order_id
@@ -210,7 +225,15 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.send_put(path, request_data=full_order, headers={'If-Match': 'W/"1"'})
 
     get_amended_order = self.send_get(path)
-
+    get_summary = self.summary_dao.get(self.participant.participantId)
+    self.assertEqual(get_summary.biospecimenProcessedSiteId, 1)
+    self.assertEqual(get_summary.biospecimenFinalizedSiteId, 2)
+    self.assertEqual(get_summary.biospecimenCollectedSiteId, 1)
+    self.assertEqual(get_summary.sampleOrderStatus2PST8, OrderStatus.FINALIZED)
+    self.assertEqual(get_summary.sampleOrderStatus1PS08, OrderStatus.FINALIZED)
+    self.assertEqual(get_summary.sampleOrderStatus1PST8, OrderStatus.FINALIZED)
+    self.assertEqual(get_summary.sampleOrderStatus1SST8, OrderStatus.CREATED)
+    self.assertEqual(get_summary.sampleOrderStatus2ED10, OrderStatus.CREATED)
     self.assertEqual(len(get_amended_order['samples']), 15)
     self.assertEqual(get_amended_order['meta'], {'versionId': 'W/"2"'})
     self.assertEqual(get_amended_order['amendedReason'], 'Its all better')
@@ -218,6 +241,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertEqual(get_amended_order['amendedInfo']['site']['value'], 'hpo-site-bannerphoenix')
     self.assertEqual(get_amended_order['createdInfo']['site']['value'], 'hpo-site-clinic-phoenix')
     self.assertEqual(get_amended_order['created'], "2018-02-21T16:25:12")
+    self.assertEqual(get_amended_order['status'], "AMENDED")
 
   def test_amend_a_restored_order(self):
     self.summary_dao.insert(self.participant_summary(self.participant))
