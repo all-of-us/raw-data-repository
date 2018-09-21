@@ -77,8 +77,7 @@ class QuestionnaireResponseDao(BaseDao):
     if not obj.questionnaireVersion:
       raise BadRequest('QuestionnaireResponse.questionnaireVersion is required.')
     if not obj.answers:
-      logging.error(
-          'QuestionnaireResponse model has no answers. This is harmless but probably an error.')
+      raise BadRequest('QuestionnaireResponse model has no answers.')
 
   def insert_with_session(self, session, questionnaire_response):
     questionnaire_history = (
