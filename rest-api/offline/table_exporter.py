@@ -2,7 +2,6 @@ import hashlib
 import random
 import re
 import struct
-
 from dao.database_factory import get_database
 from google.appengine.api import app_identity
 from google.appengine.ext import deferred
@@ -53,6 +52,7 @@ class TableExporter(object):
 
   @classmethod
   def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name):
+
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
 
@@ -87,6 +87,7 @@ class TableExporter(object):
     if get_database().db_type == 'sqlite':
       # No schemas in SQLite.
       sql_table = table_name
+      # maybe subclass sql exporter or change transformf
     SqlExporter(bucket_name, use_unicode=True).run_export(
         output_path, 'SELECT * FROM {}'.format(sql_table), transformf=transformf,
         backup=True)
