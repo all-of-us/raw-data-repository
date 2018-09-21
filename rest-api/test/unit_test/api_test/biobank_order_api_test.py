@@ -352,6 +352,7 @@ class BiobankOrderApiTest(FlaskTestBase):
     get_amended_order = self.send_get(path)
     self.assertEqual(len(get_amended_order['samples']), 2)
     self.assertEqual(get_amended_order['amendedInfo']['author']['value'], 'mike@pmi-ops.org')
+    self.assertEqual(get_amended_order['status'], 'AMENDED')
     self.assertEqual(get_amended_order.get('restoredSiteId'), None)
     self.assertEqual(get_amended_order.get('restoredUsername'), None)
     self.assertEqual(get_amended_order.get('restoredTime'), None)

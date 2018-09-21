@@ -1,3 +1,5 @@
+import datetime
+
 import clock
 from code_constants import BIOBANK_TESTS
 from dao.biobank_order_dao import BiobankOrderDao
@@ -15,6 +17,8 @@ from werkzeug.exceptions import BadRequest, Forbidden, Conflict
 class BiobankOrderDaoTest(SqlTestBase):
   _A_TEST = BIOBANK_TESTS[0]
   _B_TEST = BIOBANK_TESTS[1]
+  TIME_1 = datetime.datetime(2018, 9, 20, 5, 49, 11)
+  TIME_2 = datetime.datetime(2018, 9, 21, 8, 49, 37)
 
   def setUp(self):
     super(BiobankOrderDaoTest, self).setUp()
@@ -190,24 +194,32 @@ class BiobankOrderDaoTest(SqlTestBase):
     samples = [BiobankOrderedSample(
       test=self._B_TEST, processingRequired=True, description=u'new sample')]
     biobank_order_id = 2
-    order_1 = self.dao.insert(self._make_biobank_order())
-    self.dao.insert(self._make_biobank_order(samples=samples,
-                                             biobankOrderId=biobank_order_id,
-                                             identifiers=[
-                                                         BiobankOrderIdentifier(system='z',
-                                                                                value='x')]))
+    with clock.FakeClock(self.TIME_1):
+      order_1 = self.dao.insert(self._make_biobank_order())
+
+    with clock.FakeClock(self.TIME_2):
+      self.dao.insert(self._make_biobank_order(samples=samples,
+                                               biobankOrderId=biobank_order_id,
+                                               identifiers=[
+                                                           BiobankOrderIdentifier(system='z',
+                                                                                  value='x')]))
     cancelled_request = self._get_cancel_patch()
     ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
 
     self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10Time, self.TIME_1)
     self.assertEqual(ps_dao.sampleOrderStatus2ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.sampleOrderStatus2ED10Time, self.TIME_2)
+
     self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request,
                                order_1.version)
     ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
 
     self.assertEqual(ps_dao.sampleOrderStatus1ED10, None)
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10Time, None)
     # should not remove the other order
     self.assertEqual(ps_dao.sampleOrderStatus2ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.sampleOrderStatus2ED10Time, self.TIME_2)
     self.assertEqual(ps_dao.biospecimenCollectedSiteId, 1)
     self.assertEqual(ps_dao.biospecimenFinalizedSiteId, 2)
     self.assertEqual(ps_dao.biospecimenProcessedSiteId, 1)
