@@ -48,7 +48,7 @@
           "68.184.42.162/27"
         ]
       },
-      "description": "Using subnet mask these ranges cover 66.189.127.0-32 and 68.124.42.162.160-191"
+      "description": "Using subnet mask these ranges cover 66.189.127.0-32 and 68.184.42.162.160-191"
     },
     "biobank_samples_bucket_name": [
       "prod_biobank_samples_upload_bucket"
