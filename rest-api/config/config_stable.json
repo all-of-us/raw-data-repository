@@ -41,7 +41,7 @@
         "roles": ["awardee_sa"],
         "awardee": "TRANS_AM",
         "whitelisted_ip_ranges" : {
-          "ip4": ["66.189.127/27", "68.124.42.162/27"]
+          "ip4": ["66.189.127/27", "68.184.42.162/27"]
         },
         "description": "Using subnet mask these ranges cover 66.189.127.0-32 and 68.124.42.162.160-191"
     },
