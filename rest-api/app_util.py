@@ -93,7 +93,7 @@ def _is_self_request():
 def get_validated_user_info():
   """Returns a valid (user email, user info), or raises Unauthorized or Forbidden."""
   user_email = get_oauth_id()
-  # Allow clients to simulate an unauthentiated request (for testing)
+  # Allow clients to simulate an unauthenticated request (for testing)
   # becaues we haven't found another way to create an unauthenticated request
   # when using dev_appserver. When client tests are checking to ensure that an
   # unauthenticated requests gets rejected, they helpfully add this header.
