@@ -1,5 +1,6 @@
 from model.base import Base
-from model.utils import UTCDateTime
+from model.utils import UTCDateTime, Enum
+from participant_enums import PhysicalMeasurementsCancelledStatus
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Boolean, Integer, BLOB, BIGINT, ForeignKey, String, Float, Table, \
   Text
@@ -33,6 +34,8 @@ class PhysicalMeasurements(Base):
   finalizedUsername = Column('finalized_username', String(255))
   logPosition = relationship('LogPosition')
   finalized = Column('finalized', UTCDateTime)
+  cancelledStatus = Column('cancelled_status', Enum(PhysicalMeasurementsCancelledStatus),
+                           default=PhysicalMeasurementsCancelledStatus.UNSET)
   measurements = relationship('Measurement', cascade='all, delete-orphan')
 
 
