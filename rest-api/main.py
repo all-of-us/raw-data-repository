@@ -79,7 +79,7 @@ api.add_resource(PhysicalMeasurementsApi,
                  PREFIX + 'Participant/<participant_id:p_id>/PhysicalMeasurements',
                  PREFIX + 'Participant/<participant_id:p_id>/PhysicalMeasurements/<string:id_>',
                  endpoint='participant.physicalMeasurements',
-                 methods=['GET', 'POST'])
+                 methods=['GET', 'POST', 'PATCH'])
 
 api.add_resource(MetricsApi,
                  PREFIX + 'Metrics',
