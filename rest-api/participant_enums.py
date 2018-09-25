@@ -26,9 +26,11 @@ TEST_HPO_NAME = 'TEST'
 TEST_HPO_ID = 19
 
 class PhysicalMeasurementsStatus(messages.Enum):
-  """The state of the participant's physical measurements"""
+  """The state of the participant's physical measurements."""
   UNSET = 0
   COMPLETED = 1
+  CANCELLED = 2
+
 
 class QuestionnaireStatus(messages.Enum):
   """The status of a given questionnaire for this participant"""
