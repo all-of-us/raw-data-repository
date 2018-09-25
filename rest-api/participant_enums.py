@@ -26,8 +26,7 @@ TEST_HPO_NAME = 'TEST'
 TEST_HPO_ID = 19
 
 class PhysicalMeasurementsStatus(messages.Enum):
-  """The state of the participant's physical measurements.
-  Amended measurements will be null, a restored measuremnent will be UNSET."""
+  """The state of the participant's physical measurements."""
   UNSET = 0
   COMPLETED = 1
   CANCELLED = 2
