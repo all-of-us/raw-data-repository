@@ -161,36 +161,7 @@ For enumeration fields, the following values are defined:
         `HLS_AND_ONE_OTHER_RACE`, `HLS_AND_MORE_THAN_ONE_OTHER_RACE`, `MORE_THAN_ONE_RACE`,
   		`OTHER_RACE`, `PREFER_NOT_TO_SAY`
 
-`awardee`: `UNSET` , `AZ_TUCSON` , `CAL_PMC` , `CHEROKEE` , `COLUMBIA` , `COMM_HEALTH` , `EAU_CLAIRE` , `EMSI` , 
-        `HRHCARE` , `ILLINOIS` , `JACKSON` , `NE_PMC` , `PITT` , `QTC` , `QUEST` , `SAN_YSIDRO` , `SDBB` , `SEEC` , 
-        `SOUTHERN` , `TEST` , `TRANS_AM` , `VA` , `WALGREENS` , `WISCONSIN`
-
-Awardee ID  |Name
---------|-----------
-`UNSET` |No organization set
-`AZ_TUCSON`|Arizona
-`CAL_PMC`|California Precision Medicine Consortium
-`CHEROKEE`|Cherokee Health Systems
-`COLUMBIA`|New York
-`COMM_HEALTH`|Community Health Center, Inc
-`EAU_CLAIRE`|Eau Claire Cooperative Health Center
-`EMSI`|EMSI
-`HRHCARE`|Hudson River Health Care, Inc.
-`ILLINOIS`|Illinois
-`JACKSON`|Jackson-Hinds Comprehensive Health Center
-`NE_PMC`|New England Precision Medicine Consortium
-`PITT`|Pittsburgh
-`QTC`|QTC
-`QUEST`|Quest Labs
-`SAN_YSIDRO`|San Ysidro Health Center
-`SDBB`|San Diego Blood Bank
-`SEEC`|Southeast Enrollment Center
-`SOUTHERN`|Southern Consortium
-`TEST`|Test Awardee
-`TRANS_AM`|Trans-American Consortium for the Health Care Systems Research Network (TACH)
-`VA`|United States Department of Veteran Affairs
-`WALGREENS`|Walgreens
-`WISCONSIN`|Wisconsin Consortium
+`awardee`: See https://github.com/all-of-us/raw-data-repository/blob/master/rest-api/data/awardees.csv
 
 Note: 
 - hpoId maps to awardee. If awardee is set in a request, hpoId is updated and vice versa.
