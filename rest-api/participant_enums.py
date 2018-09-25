@@ -31,7 +31,7 @@ class PhysicalMeasurementsStatus(messages.Enum):
   COMPLETED = 1
 
 class PhysicalMeasurementsCancelledStatus(messages.Enum):
-  """The cancellation status of the participant's physical measurements, not required. 
+  """The cancellation status of the participant's physical measurements, not required.
   UNSET = restored"""
   UNSET = 0
   CANCELLED = 1
