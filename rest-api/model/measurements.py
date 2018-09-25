@@ -36,6 +36,7 @@ class PhysicalMeasurements(Base):
   finalized = Column('finalized', UTCDateTime)
   cancelledStatus = Column('cancelled_status', Enum(PhysicalMeasurementsStatus))
   cancelledUsername = Column('cancelled_username', String(255))
+  cancelledSiteId = Column('cancelled_site_id', Integer, ForeignKey('site.site_id'))
   cancelledTime = Column('cancelled_time', UTCDateTime)
   measurements = relationship('Measurement', cascade='all, delete-orphan')
 
