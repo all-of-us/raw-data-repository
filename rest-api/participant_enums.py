@@ -29,12 +29,8 @@ class PhysicalMeasurementsStatus(messages.Enum):
   """The state of the participant's physical measurements"""
   UNSET = 0
   COMPLETED = 1
+  CANCELLED = 2
 
-class PhysicalMeasurementsCancelledStatus(messages.Enum):
-  """The cancellation status of the participant's physical measurements, not required.
-  UNSET = restored"""
-  UNSET = 0
-  CANCELLED = 1
 
 class QuestionnaireStatus(messages.Enum):
   """The status of a given questionnaire for this participant"""

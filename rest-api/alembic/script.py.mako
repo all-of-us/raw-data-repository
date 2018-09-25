@@ -13,7 +13,7 @@ import sqlalchemy as sa
 import model.utils
 ${imports if imports else ""}
 
-from participant_enums import PhysicalMeasurementsStatus, PhysicalMeasurementsCancelledStatus, QuestionnaireStatus, OrderStatus
+from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
 from participant_enums import WithdrawalStatus, SuspensionStatus, QuestionnaireDefinitionStatus
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType, BiobankOrderStatus
 from participant_enums import MetricSetType, MetricsKey
