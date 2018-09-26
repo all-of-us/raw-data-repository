@@ -219,7 +219,6 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
       self.assertEquals(em.asdict(follow = {'measurements': {},
                                             'qualifiers': {}}), m.get(em.measurementId))
 
-
   def test_physical_measurements_sync(self):
     self.send_consent(self.participant_id)
     self.send_consent(self.participant_id_2)
@@ -253,3 +252,37 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertEquals(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
     self._insert_measurements(datetime.datetime.utcnow().isoformat())
     self.assertNotEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
+
+  def test_cancel_a_physical_measuremnet(self):
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurement)
+    path = path + '/' + response['id']
+    cancel_info = _get_cancel_info()
+    self.send_patch(path, cancel_info)
+
+    response = self.send_get(path)
+    # import pprint
+    # pprint.pprint(response)
+    # print '*****************************************************************'
+    # print '*****************************************************************'
+    # print '*****************************************************************'
+    # print response['status']
+
+
+def _get_cancel_info():
+  return {
+      "reason": 'I messed something up :( ',
+      "cancelledInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/healthpro-username",
+          "value": "mike@pmi-ops.org"
+        },
+        "site": {
+          "system": "https://www.pmi-ops.org/site-id",
+          "value": "hpo-site-monroeville"
+        }
+      },
+      "status": "cancelled"
+    }

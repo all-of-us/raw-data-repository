@@ -6,8 +6,9 @@ from api_util import parse_date
 from concepts import Concept
 import fhirclient.models.observation
 from fhirclient.models.fhirabstractbase import FHIRValidationError
+from flask import request
 from sqlalchemy.orm import subqueryload
-from dao.base_dao import BaseDao
+from dao.base_dao import UpdatableDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
@@ -31,7 +32,10 @@ _QUALIFIED_BY_RELATED_TYPE = 'qualified-by'
 _ALL_EXTENSIONS = set([_AMENDMENT_URL, _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION])
 _BYTE_LIMIT = 65535  # 65535 chars, 64KB
 
-class PhysicalMeasurementsDao(BaseDao):
+
+
+
+class PhysicalMeasurementsDao(UpdatableDao):
 
   def __init__(self):
     super(PhysicalMeasurementsDao, self).__init__(PhysicalMeasurements,
@@ -46,13 +50,18 @@ class PhysicalMeasurementsDao(BaseDao):
       ParticipantDao().validate_participant_reference(session, result)
     return result
 
-  def get_with_children(self, physical_measurements_id):
+  def get_with_children(self, physical_measurements_id, for_update=False):
     with self.session() as session:
       query = session.query(PhysicalMeasurements) \
           .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
               Measurement.measurements)) \
           .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
               Measurement.qualifiers))
+
+      if for_update:
+        query = query.with_for_update()
+        return session, query.get(physical_measurements_id)
+
       return query.get(physical_measurements_id)
 
   @staticmethod
@@ -93,6 +102,7 @@ class PhysicalMeasurementsDao(BaseDao):
     for q in m.qualifiers:
       measurement_data['qualifiers'].add(Concept(q.codeSystem,
                                                  q.codeValue))
+
   def backfill_measurements(self):
     """Updates all physical measurements rows and their children to reflect all the data parsed
     from the original resource. This is used to backfill created/finalized user and site information
@@ -284,9 +294,18 @@ class PhysicalMeasurementsDao(BaseDao):
     participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
     participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
     participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
+    if 'physicalMeasurementsStatus' in obj:
+      participant_summary.physicalMeasurementsStatus = obj.physicalMeasurementsStatus
     participant_summary.lastModified = clock.CLOCK.now()
-    if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.COMPLETED:
+
+    if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.COMPLETED and \
+            participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.CANCELLED:
+
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+      participant_summary_dao.update_enrollment_status(participant_summary)
+      session.merge(participant_summary)
+
+    if participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.CANCELLED:
       participant_summary_dao.update_enrollment_status(participant_summary)
       session.merge(participant_summary)
 
@@ -326,6 +345,34 @@ class PhysicalMeasurementsDao(BaseDao):
     amended_measurement.resource = json.dumps(amended_resource_json)
     session.merge(amended_measurement)
     obj.amendedMeasurementsId = amended_measurement_id
+
+  def update_with_patch(self, id_, resource):
+    session, measurement = self.get_with_children(id_, for_update=True)
+    return self._do_update_with_patch(session, measurement, resource)
+
+  def _do_update_with_patch(self, session, measurement, resource):
+    self._validate_patch_update(measurement, resource)
+    site_id, author = self._validate_and_get_author_and_site(resource)
+    # measurement.logPosition = LogPosition()
+    measurement.reason = resource['reason']  # @TODO: ADD REASON TO DB
+    if resource['status'].lower() == 'cancelled':
+      measurement.cancelledUsername = author
+      measurement.cancelledSiteId = site_id
+      measurement.cancelledTime = clock.CLOCK.now()
+      measurement.status = PhysicalMeasurementsStatus.CANCELLED
+    if resource['status'].lower() == 'restored':
+      measurement.cancelledUsername = None
+      measurement.cancelledSiteId = None
+      measurement.cancelledTime = None
+      measurement.status = PhysicalMeasurementsStatus.UNSET
+
+    # session.flush() #@TODO: DO WE NEED THIS ?
+    super(PhysicalMeasurementsDao, self)._do_update(session, measurement, resource)
+    self._update_participant_summary(session, measurement)
+    import pprint
+    # pprint.pprint(vars(measurement))
+    pprint.pprint(measurement.resource)
+    return measurement
 
   @staticmethod
   def make_measurement_id(physical_measurements_id, measurement_count):
@@ -386,6 +433,7 @@ class PhysicalMeasurementsDao(BaseDao):
                        valueCodeSystem=value_code_system,
                        valueCodeValue=value_code_value,
                        valueDateTime=value_date_time)
+
   @staticmethod
   def from_observation(observation, full_url, qualifier_map, first_pass):
     if first_pass:
@@ -553,3 +601,41 @@ class PhysicalMeasurementsDao(BaseDao):
                                 createdUsername=created_username, finalizedSiteId=finalized_site_id,
                                 finalizedUsername=finalized_username)
 
+  @staticmethod
+  def _validate_patch_update(measurement, resource):
+    """validates request of resource"""
+    cancelled_required_fields = ['status', 'reason', 'cancelledInfo']
+    restored_required_fields = ['status', 'reason', 'restoredInfo']
+
+    if resource['status'].lower() == 'cancelled':
+      if measurement.status == PhysicalMeasurementsStatus.CANCELLED:
+        raise BadRequest('This order is already cancelled')
+      for field in cancelled_required_fields:
+        if field not in resource:
+          raise BadRequest('%s is required in cancel request.' % field)
+
+    elif resource['status'].lower() == 'restored':
+      if measurement.status != PhysicalMeasurementsStatus.CANCELLED:
+        raise BadRequest('Can not restore an order that is not cancelled.')
+      for field in restored_required_fields:
+        if field not in resource:
+          raise BadRequest('%s is required in restore request.' % field)
+    else:
+      raise BadRequest('status is required in restore request.')
+
+  def _validate_and_get_author_and_site(self, resource):
+    """returns author and site based on resource cancelledInfo/restoredInfo"""
+    if 'cancelledInfo' in resource:
+      site_id = self.get_location_site_id(resource['cancelledInfo']['site']['value'])
+      author = self.get_author_username(resource['cancelledInfo']['author']['value'])
+    elif 'restoredInfo' in resource:
+      site_id = self.get_location_site_id(resource['restoredInfo']['site']['value'])
+      author = self.get_author_username(resource['restoredInfo']['author']['value'])
+
+    return site_id, author
+
+  def patch(self, id_, p_id):
+    #pylint: disable=unused_argument
+    resource = request.get_json(force=True)
+    order = self.update_with_patch(id_, resource)
+    return self.to_client_json(order)
