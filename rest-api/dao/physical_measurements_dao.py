@@ -347,13 +347,13 @@ class PhysicalMeasurementsDao(UpdatableDao):
     obj.amendedMeasurementsId = amended_measurement_id
 
   def update_with_patch(self, id_, resource):
+    # @TODO: measurement is full payload. Need to add to measuremnet.resource
     session, measurement = self.get_with_children(id_, for_update=True)
     return self._do_update_with_patch(session, measurement, resource)
 
   def _do_update_with_patch(self, session, measurement, resource):
     self._validate_patch_update(measurement, resource)
     site_id, author = self._validate_and_get_author_and_site(resource)
-    # measurement.logPosition = LogPosition()
     measurement.reason = resource['reason']  # @TODO: ADD REASON TO DB
     if resource['status'].lower() == 'cancelled':
       measurement.cancelledUsername = author
@@ -366,13 +366,11 @@ class PhysicalMeasurementsDao(UpdatableDao):
       measurement.cancelledTime = None
       measurement.status = PhysicalMeasurementsStatus.UNSET
 
-    # session.flush() #@TODO: DO WE NEED THIS ?
-    super(PhysicalMeasurementsDao, self)._do_update(session, measurement, resource)
-    self._update_participant_summary(session, measurement)
-    import pprint
-    # pprint.pprint(vars(measurement))
-    pprint.pprint(measurement.resource)
-    return measurement
+    payload = self.mangle_order(measurement)
+    super(PhysicalMeasurementsDao, self)._do_update(session, payload, payload)
+    self._update_participant_summary(session, payload)
+
+    return payload
 
   @staticmethod
   def make_measurement_id(physical_measurements_id, measurement_count):
@@ -392,7 +390,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
     pm_coding = None
     for coding in codeable_concept.coding:
       if pm_coding is None:
-        pm_coding = coding
+       pm_coding = coding
       elif coding.system.startswith(_PM_SYSTEM_PREFIX):
         if pm_coding.system.startswith(_PM_SYSTEM_PREFIX):
           raise BadRequest('Multiple measurement codes starting system %s' % _PM_SYSTEM_PREFIX)
@@ -639,3 +637,20 @@ class PhysicalMeasurementsDao(UpdatableDao):
     resource = request.get_json(force=True)
     order = self.update_with_patch(id_, resource)
     return self.to_client_json(order)
+
+  @staticmethod
+  def mangle_order(order):
+    order_resource = json.loads(order.resource)
+    order_resource['reason'] = order.reason
+    if order.status == PhysicalMeasurementsStatus.CANCELLED:
+      order_resource['status'] = 'cancelled'
+    if order.status == PhysicalMeasurementsStatus.UNSET:
+      order_resource['status'] = 'restored'
+
+    order_resource = json.dumps(order_resource)
+    order.resource = order_resource
+    return order
+
+
+
+

@@ -263,12 +263,12 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.send_patch(path, cancel_info)
 
     response = self.send_get(path)
-    # import pprint
-    # pprint.pprint(response)
-    # print '*****************************************************************'
-    # print '*****************************************************************'
-    # print '*****************************************************************'
-    # print response['status']
+    import pprint
+    pprint.pprint(response)
+    print '*****************************************************************'
+    print '*****************************************************************'
+    print '*****************************************************************'
+    print response['status']
 
 
 def _get_cancel_info():
