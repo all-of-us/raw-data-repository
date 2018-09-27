@@ -366,7 +366,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
       measurement.cancelledTime = None
       measurement.status = PhysicalMeasurementsStatus.UNSET
 
-    payload = self.mangle_order(measurement)
+    payload = self.add_root_fields_to_resource(measurement)
+    # @TODO: ADD LOGGING !!!
     super(PhysicalMeasurementsDao, self)._do_update(session, payload, payload)
     self._update_participant_summary(session, payload)
 
@@ -622,13 +623,22 @@ class PhysicalMeasurementsDao(UpdatableDao):
       raise BadRequest('status is required in restore request.')
 
   def _validate_and_get_author_and_site(self, resource):
-    """returns author and site based on resource cancelledInfo/restoredInfo"""
+    """returns author and site based on resource cancelledInfo/restoredInfo. Validation that
+    these exists is handled by _validate_patch_update"""
+    site_id = None
+    author = None
+
     if 'cancelledInfo' in resource:
-      site_id = self.get_location_site_id(resource['cancelledInfo']['site']['value'])
-      author = self.get_author_username(resource['cancelledInfo']['author']['value'])
+      site_id = self.get_location_site_id(_LOCATION_PREFIX + resource['cancelledInfo']['site'][
+        'value'])
+      author = self.get_author_username(_AUTHOR_PREFIX + resource['cancelledInfo']['author'][
+        'value'])
+
     elif 'restoredInfo' in resource:
-      site_id = self.get_location_site_id(resource['restoredInfo']['site']['value'])
-      author = self.get_author_username(resource['restoredInfo']['author']['value'])
+      site_id = self.get_location_site_id(_LOCATION_PREFIX + resource['restoredInfo']['site'][
+        'value'])
+      author = self.get_author_username(_AUTHOR_PREFIX + resource['restoredInfo']['author'][
+        'value'])
 
     return site_id, author
 
@@ -639,13 +649,21 @@ class PhysicalMeasurementsDao(UpdatableDao):
     return self.to_client_json(order)
 
   @staticmethod
-  def mangle_order(order):
+  def add_root_fields_to_resource(order):
+    cancelled_fields = ['cancelledUsername', 'cancelledSiteId', 'cancelledTime']
     order_resource = json.loads(order.resource)
     order_resource['reason'] = order.reason
     if order.status == PhysicalMeasurementsStatus.CANCELLED:
       order_resource['status'] = 'cancelled'
+      order_resource['cancelledUsername'] = order.cancelledUsername
+      order_resource['cancelledSiteId'] = order.cancelledSiteId
+      order_resource['cancelledTime'] = str(order.cancelledTime)
+
     if order.status == PhysicalMeasurementsStatus.UNSET:
       order_resource['status'] = 'restored'
+      for field in cancelled_fields:
+        if field in order_resource:
+          del order_resource[field]
 
     order_resource = json.dumps(order_resource)
     order.resource = order_resource

@@ -8,8 +8,10 @@ from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from model.measurements import Measurement
 from model.utils import from_client_participant_id
 from participant_enums import UNSET_HPO_ID
-from test.unit_test.unit_test_util import FlaskTestBase
+from test.unit_test.unit_test_util import FlaskTestBase, get_restore_or_cancel_info
 from test_data import load_measurement_json, load_measurement_json_amendment, data_path
+
+
 
 
 class PhysicalMeasurementsApiTest(FlaskTestBase):
@@ -259,30 +261,29 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
     response = self.send_post(path, measurement)
     path = path + '/' + response['id']
-    cancel_info = _get_cancel_info()
+    cancel_info = get_restore_or_cancel_info()
     self.send_patch(path, cancel_info)
 
     response = self.send_get(path)
-    import pprint
-    pprint.pprint(response)
-    print '*****************************************************************'
-    print '*****************************************************************'
-    print '*****************************************************************'
-    print response['status']
+    self.assertEqual(response['status'], 'cancelled')
+    self.assertEqual(response['reason'], 'a mistake was made.')
+    self.assertEqual(response['cancelledUsername'], 'mike@pmi-ops.org')
+    self.assertEqual(response['cancelledSiteId'], 1)
 
+  def test_restore_a_physical_measuremnet(self):
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurement)
+    path = path + '/' + response['id']
+    self.send_patch(path, get_restore_or_cancel_info())
+    restored_info = get_restore_or_cancel_info(reason='need to restore', status='restored',
+                                               author='me')
+    self.send_patch(path, restored_info)
 
-def _get_cancel_info():
-  return {
-      "reason": 'I messed something up :( ',
-      "cancelledInfo": {
-        "author": {
-          "system": "https://www.pmi-ops.org/healthpro-username",
-          "value": "mike@pmi-ops.org"
-        },
-        "site": {
-          "system": "https://www.pmi-ops.org/site-id",
-          "value": "hpo-site-monroeville"
-        }
-      },
-      "status": "cancelled"
-    }
+    response = self.send_get(path)
+    self.assertEqual(response['status'], 'restored')
+    self.assertEqual(response['reason'], 'need to restore')
+    self.assertTrue('cancelledUsername' not in response)
+    self.assertTrue('cancelledSiteId' not in response)
+
