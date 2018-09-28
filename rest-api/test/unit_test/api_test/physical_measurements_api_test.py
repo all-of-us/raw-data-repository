@@ -10,8 +10,7 @@ from model.utils import from_client_participant_id
 from participant_enums import UNSET_HPO_ID
 from test.unit_test.unit_test_util import FlaskTestBase, get_restore_or_cancel_info
 from test_data import load_measurement_json, load_measurement_json_amendment, data_path
-
-
+from werkzeug.exceptions import BadRequest
 
 
 class PhysicalMeasurementsApiTest(FlaskTestBase):
@@ -287,3 +286,21 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertTrue('cancelledUsername' not in response)
     self.assertTrue('cancelledSiteId' not in response)
 
+  def test_cannot_restore_a_valid_pm(self):
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurement)
+    path = path + '/' + response['id']
+    restored_info = get_restore_or_cancel_info(reason='need to restore', status='restored',
+                                               author='me')
+    self.send_patch(path, restored_info, expected_status=httplib.BAD_REQUEST)
+
+  def test_cannot_cancel_a_cancelled_pm(self):
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurement)
+    path = path + '/' + response['id']
+    self.send_patch(path, get_restore_or_cancel_info())
+    self.send_patch(path, get_restore_or_cancel_info(), expected_status=httplib.BAD_REQUEST)
