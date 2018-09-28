@@ -3,7 +3,7 @@ from model.utils import UTCDateTime, Enum
 from participant_enums import PhysicalMeasurementsStatus
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Boolean, Integer, BLOB, BIGINT, ForeignKey, String, Float, Table, \
-  Text
+  Text, UnicodeText
 
 measurement_to_qualifier = Table('measurement_to_qualifier', Base.metadata,
     Column('measurement_id', BIGINT, ForeignKey('measurement.measurement_id'), primary_key=True),
@@ -39,6 +39,7 @@ class PhysicalMeasurements(Base):
   cancelledUsername = Column('cancelled_username', String(255))
   cancelledSiteId = Column('cancelled_site_id', Integer, ForeignKey('site.site_id'))
   cancelledTime = Column('cancelled_time', UTCDateTime)
+  reason = Column('reason', UnicodeText)
   measurements = relationship('Measurement', cascade='all, delete-orphan')
 
 
