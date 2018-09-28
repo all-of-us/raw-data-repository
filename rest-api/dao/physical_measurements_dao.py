@@ -388,7 +388,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
     pm_coding = None
     for coding in codeable_concept.coding:
       if pm_coding is None:
-       pm_coding = coding
+        pm_coding = coding
       elif coding.system.startswith(_PM_SYSTEM_PREFIX):
         if pm_coding.system.startswith(_PM_SYSTEM_PREFIX):
           raise BadRequest('Multiple measurement codes starting system %s' % _PM_SYSTEM_PREFIX)
@@ -640,7 +640,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
     return site_id, author
 
   def patch(self, id_, p_id):
-    #pylint: disable=unused_argument
+    # pylint: disable=unused-argument
     resource = request.get_json(force=True)
     order = self.update_with_patch(id_, resource)
     return self.to_client_json(order)
