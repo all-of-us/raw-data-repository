@@ -10,7 +10,6 @@ from model.utils import from_client_participant_id
 from participant_enums import UNSET_HPO_ID
 from test.unit_test.unit_test_util import FlaskTestBase, get_restore_or_cancel_info
 from test_data import load_measurement_json, load_measurement_json_amendment, data_path
-from werkzeug.exceptions import BadRequest
 
 
 class PhysicalMeasurementsApiTest(FlaskTestBase):
