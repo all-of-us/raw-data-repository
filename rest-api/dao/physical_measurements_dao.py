@@ -33,8 +33,6 @@ _ALL_EXTENSIONS = set([_AMENDMENT_URL, _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EX
 _BYTE_LIMIT = 65535  # 65535 chars, 64KB
 
 
-
-
 class PhysicalMeasurementsDao(UpdatableDao):
 
   def __init__(self):
@@ -347,7 +345,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
     obj.amendedMeasurementsId = amended_measurement_id
 
   def update_with_patch(self, id_, resource):
-    # @TODO: measurement is full payload. Need to add to measuremnet.resource
     session, measurement = self.get_with_children(id_, for_update=True)
     return self._do_update_with_patch(session, measurement, resource)
 
