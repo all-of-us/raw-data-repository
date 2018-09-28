@@ -238,7 +238,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
   def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code,
                                     first_name, middle_name, last_name, zip_code,
-                                    state_code, street_address, city, sex_code,
+                                    state_code, street_address, city, sex_code, login_phone_number,
                                     sexual_orientation_code, phone_number, recontact_method_code,
                                     language_code, education_code, income_code, date_of_birth,
                                     cabor_signature_uri):
@@ -262,6 +262,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                             ("streetAddress", street_address),
                                                             ("city", city),
                                                             ("phoneNumber", phone_number),
+                                                            ("loginPhoneNumber", login_phone_number),
                                                             ("zipCode", zip_code)],
                                           date_answers = [("dateOfBirth", date_of_birth)],
                                           uri_answers = [("CABoRSignature", cabor_signature_uri)])
@@ -871,17 +872,17 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
                                        "Bob", "Q", "Jones", "78751", "PIIState_VA",
-                                       "1234 Main Street", "Austin", "male_sex",
+                                       "1234 Main Street", "Austin", "male_sex", "512-555-5555",
                                        "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
                                        datetime.date(1978, 10, 9), "signature.pdf")
     self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "female",
                                        "Mary", "Q", "Jones", "78751", None,
-                                       None, None, None, None, None, None, None, None, None,
+                                       None, None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 8), None)
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_NONE_OF_THESE_CODE, "male",
                                        "Fred", "T", "Smith", "78752", None,
-                                       None, None, None, None, None, None, None, None, None,
+                                       None, None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10), None)
     # Send a questionnaire response for the consent questionnaire for participants 2 and 3
     self._submit_consent_questionnaire_response(participant_id_2, questionnaire_id_3,
