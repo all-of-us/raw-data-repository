@@ -123,7 +123,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.first_name = self.fake.first_name()
     self.last_name = self.fake.last_name()
     self.email = self.fake.email()
-    self.login_phone_number = self.fake.login_phone_number()
+    self.login_phone_number = self.fake.phone_number()
     self.FN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
                                                  questionnaireResponseId=1,
                                                  questionId=3, valueString=self.first_name)
