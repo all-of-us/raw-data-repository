@@ -95,6 +95,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     q.questions.append(self.FN_QUESTION)
     q.questions.append(self.LN_QUESTION)
     q.questions.append(self.EMAIL_QUESTION)
+    q.questions.append(self.LOGIN_PHONE_NUMBER_QUESTION)
     return self.questionnaire_dao.insert(q)
 
   def insert_codes(self):
