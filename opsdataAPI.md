@@ -14,6 +14,10 @@ Target users:
 * System developers
 * Informatics users at Awardee Partners
 
+Endpoints:
+* stable: all-of-us-rdr-stable.appspot.com/rdr/v1
+* prod: all-of-us-rdr-prod.appspot.com/rdr/v1
+
 See https://github.com/all-of-us/raw-data-repository/blob/master/rdr_client/work_queue.py for Python examples.
 
 The recommended time frame for calling the sync link is every 5 minutes.
