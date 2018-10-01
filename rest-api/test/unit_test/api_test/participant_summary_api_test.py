@@ -872,7 +872,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
                                        "Bob", "Q", "Jones", "78751", "PIIState_VA",
-                                       "1234 Main Street", "Austin", "male_sex", "512-555-5555",
+                                       "1234 Main Street", "Austin", "male_sex", "215-222-2222",
                                        "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
                                        datetime.date(1978, 10, 9), "signature.pdf")
