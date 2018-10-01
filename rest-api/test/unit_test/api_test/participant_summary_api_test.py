@@ -967,6 +967,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1HEP4'])
     self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1UR10'])
     self.assertEquals('FINALIZED', ps_1['sampleOrderStatus1SAL'])
+    self.assertEquals('215-222-2222', ps_1['loginPhoneNumber'])
 
     # One day after participant 2 withdraws, their fields are still all populated.
     self.assertEquals(1, ps_2['numCompletedBaselinePPIModules'])
@@ -1069,6 +1070,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&zipCode=78752',
                            [[ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&loginPhoneNumber=215-222-2222',
+                           [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=PITT',
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=UNSET',

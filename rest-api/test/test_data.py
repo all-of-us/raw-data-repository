@@ -7,7 +7,8 @@ import os
 import random
 
 from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, BIOBANK_TESTS
-from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE, EMAIL_QUESTION_CODE
+from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE, EMAIL_QUESTION_CODE, \
+  LOGIN_PHONE_NUMBER_QUESTION_CODE
 from model.code import Code, CodeType
 from model.config_utils import to_client_biobank_id
 from model.utils import to_client_participant_id
@@ -26,6 +27,10 @@ def last_name_code():
 
 def email_code():
   return Code(system=PPI_SYSTEM, value=EMAIL_QUESTION_CODE,
+              mapped=True, codeType=CodeType.QUESTION)
+
+def login_phone_number_code():
+  return Code(system=PPI_SYSTEM, value=LOGIN_PHONE_NUMBER_QUESTION_CODE,
               mapped=True, codeType=CodeType.QUESTION)
 
 def data_path(filename):
