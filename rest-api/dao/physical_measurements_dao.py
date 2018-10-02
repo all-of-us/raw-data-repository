@@ -639,10 +639,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
     return site_id, author
 
-  def patch(self, id_, p_id):
+  def patch(self, id_, resource, p_id):
     # pylint: disable=unused-argument
     with self.session() as session:
-      resource = request.get_json(force=True)
+      # resource = request.get_json(force=True)
       order = self.update_with_patch(id_, session, resource)
       return self.to_client_json(order)
 
