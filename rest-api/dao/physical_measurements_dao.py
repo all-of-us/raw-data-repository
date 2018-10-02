@@ -61,6 +61,19 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
       return query.get(physical_measurements_id)
 
+  def get_with_children_with_session(self, session, physical_measurements_id, for_update=False):
+    query = session.query(PhysicalMeasurements) \
+      .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
+        Measurement.measurements)) \
+      .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
+        Measurement.qualifiers))
+
+    if for_update:
+      query = query.with_for_update()
+      return query.get(physical_measurements_id)
+
+    return query.get(physical_measurements_id)
+
   @staticmethod
   def handle_measurement(measurement_map, m):
     """Populating measurement_map with information extracted from measurement and its
@@ -341,7 +354,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
     obj.amendedMeasurementsId = amended_measurement_id
 
   def update_with_patch(self, id_, session, resource):
-    measurement = self.get_with_children(id_, for_update=True)
+    measurement = self.get_with_children_with_session(session, id_, for_update=True)
     return self._do_update_with_patch(session, measurement, resource)
 
   def _do_update_with_patch(self, session, measurement, resource):
