@@ -6,7 +6,6 @@ from api_util import parse_date
 from concepts import Concept
 import fhirclient.models.observation
 from fhirclient.models.fhirabstractbase import FHIRValidationError
-from flask import request
 from sqlalchemy.orm import subqueryload
 from dao.base_dao import UpdatableDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
