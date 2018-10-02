@@ -172,8 +172,9 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
 
     cancel = get_restore_or_cancel_info()
     with FakeClock(TIME_3):
-      update = self.dao.update_with_patch(measurements.physicalMeasurementsId,
-                                          cancel)
+      with PhysicalMeasurementsDao().session() as session:
+        update = self.dao.update_with_patch(measurements.physicalMeasurementsId, session,
+                                            cancel)
     self.assertEqual(update.status, PhysicalMeasurementsStatus.CANCELLED)
     self.assertEqual(update.reason, cancel['reason'])
     self.assertEqual(update.cancelledSiteId, 1)

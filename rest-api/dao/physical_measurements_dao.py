@@ -58,7 +58,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
       if for_update:
         query = query.with_for_update()
-        return session, query.get(physical_measurements_id)
+        return query.get(physical_measurements_id)
 
       return query.get(physical_measurements_id)
 
@@ -344,14 +344,14 @@ class PhysicalMeasurementsDao(UpdatableDao):
     session.merge(amended_measurement)
     obj.amendedMeasurementsId = amended_measurement_id
 
-  def update_with_patch(self, id_, resource):
-    session, measurement = self.get_with_children(id_, for_update=True)
+  def update_with_patch(self, id_, session, resource):
+    measurement = self.get_with_children(id_, for_update=True)
     return self._do_update_with_patch(session, measurement, resource)
 
   def _do_update_with_patch(self, session, measurement, resource):
     self._validate_patch_update(measurement, resource)
     site_id, author = self._validate_and_get_author_and_site(resource)
-    measurement.reason = resource['reason']  # @TODO: ADD REASON TO DB
+    measurement.reason = resource['reason']
     if resource['status'].lower() == 'cancelled':
       measurement.cancelledUsername = author
       measurement.cancelledSiteId = site_id
@@ -641,9 +641,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
   def patch(self, id_, p_id):
     # pylint: disable=unused-argument
-    resource = request.get_json(force=True)
-    order = self.update_with_patch(id_, resource)
-    return self.to_client_json(order)
+    with self.session() as session:
+      resource = request.get_json(force=True)
+      order = self.update_with_patch(id_, session, resource)
+      return self.to_client_json(order)
 
   @staticmethod
   def add_root_fields_to_resource(order):
