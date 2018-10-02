@@ -524,7 +524,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                 resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
     answer_3 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=6,
                                            questionnaireResponseId=2,
-                                           questionId=6, valueSystem='x', valueCodeId=5,
+                                           questionId=7, valueSystem='x', valueCodeId=5,
                                            valueDecimal=123, valueString=self.fake.last_name(),
                                            valueDate=datetime.date.today())
     qr2.answers.append(answer_3)
@@ -569,7 +569,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                 resource=QUESTIONNAIRE_RESPONSE_RESOURCE_3)
     answer_4 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=7,
                                            questionnaireResponseId=3,
-                                           questionId=6, valueSystem='z', valueCodeId=6,
+                                           questionId=7, valueSystem='z', valueCodeId=6,
                                            valueDecimal=456, valueString=self.fake.last_name(),
                                            valueDate=datetime.date.today())
     qr3.answers.append(answer_4)
