@@ -603,14 +603,14 @@ class PhysicalMeasurementsDao(UpdatableDao):
     cancelled_required_fields = ['status', 'reason', 'cancelledInfo']
     restored_required_fields = ['status', 'reason', 'restoredInfo']
 
-    if resource['status'].lower() == 'cancelled':
+    if resource.get('status').lower() == 'cancelled':
       if measurement.status == PhysicalMeasurementsStatus.CANCELLED:
         raise BadRequest('This order is already cancelled')
       for field in cancelled_required_fields:
         if field not in resource:
           raise BadRequest('%s is required in cancel request.' % field)
 
-    elif resource['status'].lower() == 'restored':
+    elif resource.get('status').lower() == 'restored':
       if measurement.status != PhysicalMeasurementsStatus.CANCELLED:
         raise BadRequest('Can not restore an order that is not cancelled.')
       for field in restored_required_fields:
