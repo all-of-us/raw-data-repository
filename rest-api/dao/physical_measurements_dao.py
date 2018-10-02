@@ -292,20 +292,17 @@ class PhysicalMeasurementsDao(UpdatableDao):
     participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
     participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
     participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
-    if 'physicalMeasurementsStatus' in obj:
-      participant_summary.physicalMeasurementsStatus = obj.physicalMeasurementsStatus
     participant_summary.lastModified = clock.CLOCK.now()
+    if 'physicalMeasurementsStatus' in obj:
+      # If this is an update it should have this field. New inserts may not.
+      participant_summary.physicalMeasurementsStatus = obj.physicalMeasurementsStatus
 
-    if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.COMPLETED and \
-            participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.CANCELLED:
-
+    if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.CANCELLED:
+      # if a PM was restored, it is complete again.
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
-      participant_summary_dao.update_enrollment_status(participant_summary)
-      session.merge(participant_summary)
 
-    if participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.CANCELLED:
-      participant_summary_dao.update_enrollment_status(participant_summary)
-      session.merge(participant_summary)
+    participant_summary_dao.update_enrollment_status(participant_summary)
+    session.merge(participant_summary)
 
     return participant_summary
 
