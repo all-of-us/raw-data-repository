@@ -22,7 +22,8 @@ from model.questionnaire import Questionnaire, QuestionnaireQuestion, Questionna
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from participant_enums import QuestionnaireStatus, WithdrawalStatus
 import test_data
-from test_data import consent_code, first_name_code, last_name_code, email_code
+from test_data import consent_code, first_name_code, last_name_code, email_code, \
+  login_phone_number_code
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json
 from clock import FakeClock
 from werkzeug.exceptions import BadRequest, Forbidden
@@ -94,6 +95,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     q.questions.append(self.FN_QUESTION)
     q.questions.append(self.LN_QUESTION)
     q.questions.append(self.EMAIL_QUESTION)
+    q.questions.append(self.LOGIN_PHONE_NUMBER_QUESTION)
     return self.questionnaire_dao.insert(q)
 
   def insert_codes(self):
@@ -109,15 +111,20 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.first_name_code_id = self.code_dao.insert(first_name_code()).codeId
     self.last_name_code_id = self.code_dao.insert(last_name_code()).codeId
     self.email_code_id = self.code_dao.insert(email_code()).codeId
+    self.login_phone_number_code_id = self.code_dao.insert(login_phone_number_code()).codeId
     self.FN_QUESTION = QuestionnaireQuestion(linkId='fn', codeId=self.first_name_code_id,
                                              repeats=False)
     self.LN_QUESTION = QuestionnaireQuestion(linkId='ln', codeId=self.last_name_code_id,
                                              repeats=False)
     self.EMAIL_QUESTION = QuestionnaireQuestion(linkId='email', codeId=self.email_code_id,
                                                 repeats=False)
+    self.LOGIN_PHONE_NUMBER_QUESTION = QuestionnaireQuestion(linkId='lpn',
+                                                             codeId=self.login_phone_number_code_id,
+                                                             repeats=False)
     self.first_name = self.fake.first_name()
     self.last_name = self.fake.last_name()
     self.email = self.fake.email()
+    self.login_phone_number = self.fake.phone_number()
     self.FN_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=3,
                                                  questionnaireResponseId=1,
                                                  questionId=3, valueString=self.first_name)
@@ -127,6 +134,11 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.EMAIL_ANSWER = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=5,
                                                     questionnaireResponseId=1,
                                                     questionId=5, valueString=self.email)
+    self.LOGIN_PHONE_NUMBER_ANSWER = QuestionnaireResponseAnswer(
+      questionnaireResponseAnswerId=6,
+      questionnaireResponseId=1,
+      questionId=6,
+      valueString=self.login_phone_number)
 
   def check_response(self, expected_qr):
     qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
@@ -134,6 +146,9 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
 
   def _names_and_email_answers(self):
     return [self.FN_ANSWER, self.LN_ANSWER, self.EMAIL_ANSWER]
+
+  def _names_and_login_phone_number_answers(self):
+    return [self.FN_ANSWER, self.LN_ANSWER, self.LOGIN_PHONE_NUMBER_ANSWER]
 
   def test_get_before_insert(self):
     self.assertIsNone(self.questionnaire_response_dao.get(1))
@@ -244,6 +259,52 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
 
+  def test_insert_login_phone_number_only(self):
+    self.insert_codes()
+    p = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(p)
+    self._setup_questionnaire()
+    qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
+    # First and last name are required.
+    with self.assertRaises(BadRequest):
+      self.questionnaire_response_dao.insert(qr)
+
+  def test_insert_both_email_and_login_phone_number_without_names(self):
+    self.insert_codes()
+    p = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(p)
+    self._setup_questionnaire()
+    qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.append(self.EMAIL_ANSWER)
+    qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
+    # First and last name are required.
+    with self.assertRaises(BadRequest):
+      self.questionnaire_response_dao.insert(qr)
+
+  def test_insert_both_names_and_login_phone_number(self):
+    self.insert_codes()
+    p = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(p)
+    self._setup_questionnaire()
+    qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.extend(self._names_and_login_phone_number_answers())
+    time = datetime.datetime(2016, 1, 1)
+    with FakeClock(time):
+      self.questionnaire_response_dao.insert(qr)
+
+    expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
+                                        questionnaireVersion=1, participantId=1,
+                                        resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
+                                        created=time)
+    expected_qr.answers.extend(self._names_and_login_phone_number_answers())
+    qr2 = self.questionnaire_response_dao.get(1)
+    self.assertEquals(expected_qr.asdict(), qr2.asdict())
+    self.check_response(expected_qr)
+
   def test_insert_both_names_and_email(self):
     self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
@@ -261,6 +322,33 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
                                         created=time)
     expected_qr.answers.extend(self._names_and_email_answers())
+    qr2 = self.questionnaire_response_dao.get(1)
+    self.assertEquals(expected_qr.asdict(), qr2.asdict())
+    self.check_response(expected_qr)
+
+  def test_insert_both_names_and_email_and_login_phone_number(self):
+    self.insert_codes()
+    p = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(p)
+    self._setup_questionnaire()
+    qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.append(self.FN_ANSWER)
+    qr.answers.append(self.LN_ANSWER)
+    qr.answers.append(self.EMAIL_ANSWER)
+    qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
+    time = datetime.datetime(2016, 1, 1)
+    with FakeClock(time):
+      self.questionnaire_response_dao.insert(qr)
+
+    expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
+                                        questionnaireVersion=1, participantId=1,
+                                        resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
+                                        created=time)
+    expected_qr.answers.append(self.FN_ANSWER)
+    expected_qr.answers.append(self.LN_ANSWER)
+    expected_qr.answers.append(self.EMAIL_ANSWER)
+    expected_qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
     qr2 = self.questionnaire_response_dao.get(1)
     self.assertEquals(expected_qr.asdict(), qr2.asdict())
     self.check_response(expected_qr)
@@ -476,7 +564,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                 resource=QUESTIONNAIRE_RESPONSE_RESOURCE_2)
     answer_3 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=6,
                                            questionnaireResponseId=2,
-                                           questionId=6, valueSystem='x', valueCodeId=5,
+                                           questionId=7, valueSystem='x', valueCodeId=5,
                                            valueDecimal=123, valueString=self.fake.last_name(),
                                            valueDate=datetime.date.today())
     qr2.answers.append(answer_3)
@@ -521,7 +609,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                 resource=QUESTIONNAIRE_RESPONSE_RESOURCE_3)
     answer_4 = QuestionnaireResponseAnswer(questionnaireResponseAnswerId=7,
                                            questionnaireResponseId=3,
-                                           questionId=6, valueSystem='z', valueCodeId=6,
+                                           questionId=7, valueSystem='z', valueCodeId=6,
                                            valueDecimal=456, valueString=self.fake.last_name(),
                                            valueDate=datetime.date.today())
     qr3.answers.append(answer_4)
