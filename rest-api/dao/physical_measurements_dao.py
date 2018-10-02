@@ -376,8 +376,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
                  measurement.physicalMeasurementsId)
     payload = self.add_root_fields_to_resource(measurement)
     super(PhysicalMeasurementsDao, self)._do_update(session, payload, payload)
-    logging.info('updating participant summary to %s for participant: %s', payload.status,
-                 payload.participantId)
     self._update_participant_summary(session, payload)
 
     return payload
