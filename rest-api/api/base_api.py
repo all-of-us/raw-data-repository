@@ -209,8 +209,7 @@ class UpdatableApi(BaseApi):
     """Handles a PATCH request; the current object must exist, and will be amended
 
     Args:
-      id_: The id of the object to update.
-      participant_id: The ancestor id (if applicable)
+      :param id_: The id of the object to update.
     """
     resource = request.get_json(force=True)
     etag = request.headers.get('If-Match')
@@ -218,6 +217,7 @@ class UpdatableApi(BaseApi):
       raise BadRequest("If-Match is missing for PATCH request")
     expected_version = _parse_etag(etag)
     order = self.dao.update_with_patch(id_, resource, expected_version)
+
     return self._make_response(order)
 
   def update_with_patch(self, id_, resource, expected_version):

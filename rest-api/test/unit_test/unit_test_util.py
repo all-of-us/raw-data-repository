@@ -643,3 +643,34 @@ def run_deferred_tasks(test):
       if task.url != '/_ah/queue/deferred':
         return
     test.taskqueue.FlushQueue("default")
+
+
+def get_restore_or_cancel_info(reason=None, author=None, site=None, status=None):
+  """get a patch request to cancel or restore an order,
+  if called with no params it defaults to a cancel order."""
+  if reason is None:
+    reason = "a mistake was made."
+  if author is None:
+    author = "mike@pmi-ops.org"
+  if site is None:
+    site = "hpo-site-monroeville"
+  if status is None:
+    status = 'cancelled'
+    info = 'cancelledInfo'
+  elif status == 'restored':
+    info = 'restoredInfo'
+
+  return {
+    "reason": reason,
+    info: {
+      "author": {
+        "system": "https://www.pmi-ops.org/healthpro-username",
+        "value": author
+      },
+      "site": {
+        "system": "https://www.pmi-ops.org/site-id",
+        "value": site
+      }
+    },
+    "status": status
+  }
