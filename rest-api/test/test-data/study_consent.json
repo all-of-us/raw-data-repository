@@ -75,6 +75,14 @@
           "display": "City"
         }]
       }, {
+        "linkId": "loginPhoneNumber",
+        "text": "What is your primary Phone Number",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "ConsentPII_VerifiedPrimaryPhoneNumber",
+          "display": "Login Phone Number"
+        }]
+      }, {
         "linkId":"phoneNumber",
         "text":"What is your phone number?",
         "concept": [{

@@ -253,12 +253,18 @@ class QuestionnaireResponseDao(BaseDao):
           count_completed_ppi_modules(participant_summary)
 
     if something_changed:
-      first_last_email = (
-          participant_summary.firstName, participant_summary.lastName, participant_summary.email)
-      if not all(first_last_email):
+      first_last = (
+        participant_summary.firstName, participant_summary.lastName)
+      email_phone = (
+        participant_summary.email, participant_summary.loginPhoneNumber)
+      if not all(first_last):
         raise BadRequest(
-            'First name (%s), last name (%s), and email address (%s) required for consenting.'
-            % tuple(['present' if part else 'missing' for part in first_last_email]))
+          'First name (%s), and last name (%s) required for consenting.'
+          % tuple(['present' if part else 'missing' for part in first_last]))
+      if not any(email_phone):
+        raise BadRequest(
+          'Email address (%s), or phone number (%s) required for consenting.'
+          % tuple(['present' if part else 'missing' for part in email_phone]))
       ParticipantSummaryDao().update_enrollment_status(participant_summary)
       participant_summary.lastModified = clock.CLOCK.now()
       session.merge(participant_summary)
