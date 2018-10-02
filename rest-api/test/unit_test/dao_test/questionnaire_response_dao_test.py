@@ -111,7 +111,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.first_name_code_id = self.code_dao.insert(first_name_code()).codeId
     self.last_name_code_id = self.code_dao.insert(last_name_code()).codeId
     self.email_code_id = self.code_dao.insert(email_code()).codeId
-    self.login_phone_number = self.code_dao.insert(login_phone_number_code()).codeId
+    self.login_phone_number_code_id = self.code_dao.insert(login_phone_number_code()).codeId
     self.FN_QUESTION = QuestionnaireQuestion(linkId='fn', codeId=self.first_name_code_id,
                                              repeats=False)
     self.LN_QUESTION = QuestionnaireQuestion(linkId='ln', codeId=self.last_name_code_id,
@@ -119,7 +119,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.EMAIL_QUESTION = QuestionnaireQuestion(linkId='email', codeId=self.email_code_id,
                                                 repeats=False)
     self.LOGIN_PHONE_NUMBER_QUESTION = QuestionnaireQuestion(linkId='lpn',
-                                                             codeId=self.login_phone_number,
+                                                             codeId=self.login_phone_number_code_id,
                                                              repeats=False)
     self.first_name = self.fake.first_name()
     self.last_name = self.fake.last_name()
@@ -135,9 +135,9 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                                     questionnaireResponseId=1,
                                                     questionId=5, valueString=self.email)
     self.LOGIN_PHONE_NUMBER_ANSWER = QuestionnaireResponseAnswer(
-      questionnaireResponseAnswerId=8,
+      questionnaireResponseAnswerId=6,
       questionnaireResponseId=1,
-      questionId=8,
+      questionId=6,
       valueString=self.login_phone_number)
 
   def check_response(self, expected_qr):
