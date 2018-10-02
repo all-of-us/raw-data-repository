@@ -11,7 +11,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from participant_enums import PhysicalMeasurementsStatus, WithdrawalStatus
 from test_data import load_measurement_json, load_measurement_json_amendment
-from unit_test_util import SqlTestBase
+from unit_test_util import SqlTestBase, get_restore_or_cancel_info
 from werkzeug.exceptions import BadRequest, Forbidden
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -162,3 +162,21 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEquals('2', amendment_json['id'])
     self.assertTrue(new_measurements.final)
     self.assertEquals(TIME_3, new_measurements.created)
+
+  def test_update_with_patch(self):
+    self._make_summary()
+    summary = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertIsNone(summary.physicalMeasurementsStatus)
+    with FakeClock(TIME_2):
+      measurements = self.dao.insert(self._make_physical_measurements())
+
+    cancel = get_restore_or_cancel_info()
+    with FakeClock(TIME_3):
+      with PhysicalMeasurementsDao().session() as session:
+        update = self.dao.update_with_patch(measurements.physicalMeasurementsId, session,
+                                            cancel)
+    self.assertEqual(update.status, PhysicalMeasurementsStatus.CANCELLED)
+    self.assertEqual(update.reason, cancel['reason'])
+    self.assertEqual(update.cancelledSiteId, 1)
+    self.assertEqual(update.cancelledTime, TIME_3)
+    self.assertEqual(update.cancelledUsername, cancel['cancelledInfo']['author']['value'])

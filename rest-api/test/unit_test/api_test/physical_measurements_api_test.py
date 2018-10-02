@@ -8,7 +8,7 @@ from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from model.measurements import Measurement
 from model.utils import from_client_participant_id
 from participant_enums import UNSET_HPO_ID
-from test.unit_test.unit_test_util import FlaskTestBase
+from test.unit_test.unit_test_util import FlaskTestBase, get_restore_or_cancel_info
 from test_data import load_measurement_json, load_measurement_json_amendment, data_path
 
 
@@ -219,7 +219,6 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
       self.assertEquals(em.asdict(follow = {'measurements': {},
                                             'qualifiers': {}}), m.get(em.measurementId))
 
-
   def test_physical_measurements_sync(self):
     self.send_consent(self.participant_id)
     self.send_consent(self.participant_id_2)
@@ -253,3 +252,73 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertEquals(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
     self._insert_measurements(datetime.datetime.utcnow().isoformat())
     self.assertNotEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
+
+  def test_cancel_a_physical_measuremnet(self):
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurement)
+    path = path + '/' + response['id']
+    cancel_info = get_restore_or_cancel_info()
+    self.send_patch(path, cancel_info)
+
+    response = self.send_get(path)
+    self.assertEqual(response['status'], 'cancelled')
+    self.assertEqual(response['reason'], 'a mistake was made.')
+    self.assertEqual(response['cancelledUsername'], 'mike@pmi-ops.org')
+    self.assertEqual(response['cancelledSiteId'], 1)
+
+  def test_restore_a_physical_measuremnet(self):
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurement)
+    path = path + '/' + response['id']
+    self.send_patch(path, get_restore_or_cancel_info())
+    restored_info = get_restore_or_cancel_info(reason='need to restore', status='restored',
+                                               author='me')
+    self.send_patch(path, restored_info)
+
+    response = self.send_get(path)
+    self.assertEqual(response['status'], 'restored')
+    self.assertEqual(response['reason'], 'need to restore')
+    # Response should not contain cancelledInfo
+    self.assertTrue('cancelledUsername' not in response)
+    self.assertTrue('cancelledSiteId' not in response)
+    self.assertTrue('cancelledTime' not in response)
+
+  def test_cannot_restore_a_valid_pm(self):
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurement)
+    path = path + '/' + response['id']
+    restored_info = get_restore_or_cancel_info(reason='need to restore', status='restored',
+                                               author='me')
+    self.send_patch(path, restored_info, expected_status=httplib.BAD_REQUEST)
+
+  def test_cannot_cancel_a_cancelled_pm(self):
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurement)
+    path = path + '/' + response['id']
+    self.send_patch(path, get_restore_or_cancel_info())
+    self.send_patch(path, get_restore_or_cancel_info(), expected_status=httplib.BAD_REQUEST)
+
+  def test_cancel_an_ammended_order(self):
+    self.send_consent(self.participant_id)
+    measurements_1 = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurements_1)
+    measurements_2 = load_measurement_json_amendment(self.participant_id, response['id'])
+    response_2 = self.send_post(path, measurements_2)
+
+    path = path + '/' + response_2['id']
+    cancel_info = get_restore_or_cancel_info()
+    self.send_patch(path, cancel_info)
+    response = self.send_get(path)
+    self.assertEqual(response['status'], 'cancelled')
+    self.assertEqual(response['reason'], 'a mistake was made.')
+    self.assertEqual(response['cancelledUsername'], 'mike@pmi-ops.org')
+    self.assertEqual(response['cancelledSiteId'], 1)

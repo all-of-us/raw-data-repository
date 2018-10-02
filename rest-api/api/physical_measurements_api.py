@@ -20,6 +20,11 @@ class PhysicalMeasurementsApi(BaseApi):
   def post(self, p_id):
     return super(PhysicalMeasurementsApi, self).post(p_id)
 
+  @app_util.auth_required(HEALTHPRO)
+  def patch(self, id_, p_id):
+    resource = request.get_json(force=True)
+    return self.dao.patch(id_, resource, p_id)
+
   def list(self, participant_id=None):
     query = Query([FieldFilter('participantId', Operator.EQUALS, participant_id)],
                   None, DEFAULT_MAX_RESULTS, request.args.get('_token'))
