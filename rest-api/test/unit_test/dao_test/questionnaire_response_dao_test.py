@@ -271,6 +271,19 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     with self.assertRaises(BadRequest):
       self.questionnaire_response_dao.insert(qr)
 
+  def test_insert_both_email_and_login_phone_number_without_names(self):
+    self.insert_codes()
+    p = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(p)
+    self._setup_questionnaire()
+    qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.append(self.EMAIL_ANSWER)
+    qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
+    # First and last name are required.
+    with self.assertRaises(BadRequest):
+      self.questionnaire_response_dao.insert(qr)
+
   def test_insert_both_names_and_login_phone_number(self):
     self.insert_codes()
     p = Participant(participantId=1, biobankId=2)
@@ -309,6 +322,33 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
                                         created=time)
     expected_qr.answers.extend(self._names_and_email_answers())
+    qr2 = self.questionnaire_response_dao.get(1)
+    self.assertEquals(expected_qr.asdict(), qr2.asdict())
+    self.check_response(expected_qr)
+
+  def test_insert_both_names_and_email_and_login_phone_number(self):
+    self.insert_codes()
+    p = Participant(participantId=1, biobankId=2)
+    self.participant_dao.insert(p)
+    self._setup_questionnaire()
+    qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1, questionnaireVersion=1,
+                               participantId=1, resource=QUESTIONNAIRE_RESPONSE_RESOURCE)
+    qr.answers.append(self.FN_ANSWER)
+    qr.answers.append(self.LN_ANSWER)
+    qr.answers.append(self.EMAIL_ANSWER)
+    qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
+    time = datetime.datetime(2016, 1, 1)
+    with FakeClock(time):
+      self.questionnaire_response_dao.insert(qr)
+
+    expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
+                                        questionnaireVersion=1, participantId=1,
+                                        resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
+                                        created=time)
+    expected_qr.answers.append(self.FN_ANSWER)
+    expected_qr.answers.append(self.LN_ANSWER)
+    expected_qr.answers.append(self.EMAIL_ANSWER)
+    expected_qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
     qr2 = self.questionnaire_response_dao.get(1)
     self.assertEquals(expected_qr.asdict(), qr2.asdict())
     self.check_response(expected_qr)
