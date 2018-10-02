@@ -48,20 +48,12 @@ class PhysicalMeasurementsDao(UpdatableDao):
     return result
 
   def get_with_children(self, physical_measurements_id, for_update=False):
+    """Make a new session and query db."""
     with self.session() as session:
-      query = session.query(PhysicalMeasurements) \
-          .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
-              Measurement.measurements)) \
-          .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
-              Measurement.qualifiers))
-
-      if for_update:
-        query = query.with_for_update()
-        return query.get(physical_measurements_id)
-
-      return query.get(physical_measurements_id)
+      return self.get_with_children_with_session(session, physical_measurements_id, for_update)
 
   def get_with_children_with_session(self, session, physical_measurements_id, for_update=False):
+    """Pass in an existing session to query db."""
     query = session.query(PhysicalMeasurements) \
       .options(subqueryload(PhysicalMeasurements.measurements).subqueryload(
         Measurement.measurements)) \
@@ -70,7 +62,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
     if for_update:
       query = query.with_for_update()
-      return query.get(physical_measurements_id)
 
     return query.get(physical_measurements_id)
 
