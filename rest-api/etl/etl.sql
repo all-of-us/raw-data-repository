@@ -1141,6 +1141,7 @@ FROM rdr.measurement meas
 INNER JOIN rdr.physical_measurements pm
     ON meas.physical_measurements_id = pm.physical_measurements_id
     AND pm.final = 1
+    AND pm.status != 2
 INNER JOIN cdm.person pe
     ON pe.person_id = pm.participant_id
 ;

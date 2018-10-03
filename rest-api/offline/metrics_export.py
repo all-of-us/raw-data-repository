@@ -27,11 +27,14 @@ _QUEUE_NAME = 'metrics-pipeline'
 _PARTICIPANT_SQL_TEMPLATE = """
 SELECT p.participant_id, ps.date_of_birth date_of_birth,
   (SELECT ISODATE[MIN(bo.created)] FROM biobank_order bo
-    WHERE bo.participant_id = p.participant_id) first_order_date,
+    WHERE bo.participant_id = p.participant_id
+    AND bo.order_status != 2) first_order_date,
   (SELECT ISODATE[MIN(bs.confirmed)] FROM biobank_stored_sample bs
     WHERE bs.biobank_id = p.biobank_id) first_samples_arrived_date,
   (SELECT ISODATE[MIN(pm.finalized)] FROM physical_measurements pm
-    WHERE pm.participant_id = p.participant_id and pm.finalized is not null) first_physical_measurements_date,
+    WHERE pm.participant_id = p.participant_id 
+    AND pm.finalized is not null
+    AND pm.status != 2) first_physical_measurements_date,
   (SELECT ISODATE[MIN(bss.confirmed)] FROM biobank_stored_sample bss
     WHERE bss.biobank_id = p.biobank_id
       AND bss.test IN {}) first_samples_to_isolate_dna_date, {}
