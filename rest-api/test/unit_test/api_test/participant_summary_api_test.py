@@ -852,6 +852,37 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('SUBMITTED_NO_CONSENT', ps_1['consentForDvElectronicHealthRecordsSharing'])
 
+  def testWithdrawThenPair(self):
+    participant_1 = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id_1 = participant_1['participantId']
+    with FakeClock(TIME_1):
+      self.send_consent(participant_id_1)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
+    self.assertEquals('PITT', ps_1['awardee'])
+    self.assertIsNone(ps_1.get('withdrawalTime'))
+
+    with FakeClock(TIME_2):
+      participant_1['withdrawalStatus'] = 'NO_USE'
+      self.send_put('Participant/%s' % participant_id_1, participant_1,
+                    headers={ 'If-Match':'W/"1"'})
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('NO_USE', ps_1['withdrawalStatus'])
+    self.assertEquals('PITT', ps_1['awardee'])
+    self.assertEquals(TIME_2.isoformat(), ps_1.get('withdrawalTime'))
+
+    with FakeClock(TIME_3):
+      participant_1['providerLink'] = [self.az_provider_link]
+      self.send_put('Participant/%s' % participant_id_1, participant_1,
+                    headers={ 'If-Match':'W/"2"'})
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('AZ_TUCSON', ps_1['awardee'])
+    self.assertEquals('NO_USE', ps_1['withdrawalStatus'])
+    self.assertEquals(TIME_2.isoformat(), ps_1.get('withdrawalTime'))
+
   def testQuery_manyParticipants(self):
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
                              "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
