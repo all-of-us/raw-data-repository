@@ -286,13 +286,11 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     #  'questionnaire_on_medications_time',
     #  'questionnaire_on_overall_health_time',
     #  'questionnaire_on_the_basics_time']]
-    # print(BUCKET_NAME, "<< bucket name")
-    print(dir(prefix + _PARTICIPANTS_CSV % 0), " <<<< prefix with particiapnt csv")
-    # print(participant_fields, "< particiapnt fileds")
+
     self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 0, [
       participant_fields,
-      # ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, '', t1, '', '', t3, '', '', t3, t2]
-        ['2', '', '', t2, '', t2, '', t1, '', '', t3, '', '', t3, t2]
+      ['2', '', '2016-01-04T09:40:21Z', t2, t3, t2, '', t1, '', '', t3, '', '', t3, t2]
+      #   ['2', '', '', t2, '', t2, '', t1, '', '', t3, '', '', t3, t2]
     ])
 
     self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1, [
