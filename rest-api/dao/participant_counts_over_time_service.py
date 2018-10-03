@@ -218,12 +218,14 @@ class ParticipantCountsOverTimeService(BaseDao):
                            CASE WHEN
                                 LEAST(
                                     COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_2ed10_time, '3000-01-01'),
                                     COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
                                     COALESCE(sample_order_status_1sal_time, '3000-01-01'),
                                     COALESCE(sample_order_status_1sal2_time, '3000-01-01')
                                     ) = '3001-01-01' THEN NULL
                                 ELSE LEAST(
                                     COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
+                                    COALESCE(sample_order_status_2ed10_time, '3000-01-01'),
                                     COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
                                     COALESCE(sample_order_status_1sal_time, '3000-01-01'),
                                     COALESCE(sample_order_status_1sal2_time, '3000-01-01')

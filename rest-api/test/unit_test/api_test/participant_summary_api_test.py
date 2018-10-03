@@ -913,6 +913,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self._store_biobank_sample(participant_1, '1ED10')
     self._store_biobank_sample(participant_1, '1SAL2')
     self._store_biobank_sample(participant_3, '1SAL')
+    self._store_biobank_sample(participant_3, '2ED10')
     # Update participant summaries based on these changes.
     ParticipantSummaryDao().update_from_biobank_stored_samples()
     # Update version for participant 3, which has changed.
@@ -937,6 +938,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('RECEIVED', ps_1['sampleStatus1ED10'])
     self.assertEquals(TIME_1.isoformat(), ps_1['sampleStatus1ED10Time'])
     self.assertEquals('UNSET', ps_1['sampleStatus1SAL'])
+    self.assertEquals('UNSET', ps_1['sampleStatus2ED10'])
     self.assertEquals('RECEIVED', ps_1['sampleStatus1SAL2'])
     self.assertEquals('RECEIVED', ps_1['samplesToIsolateDNA'])
     self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
@@ -974,6 +976,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals(0, ps_2['numBaselineSamplesArrived'])
     self.assertEquals('UNSET', ps_2['sampleStatus1ED10'])
     self.assertEquals('UNSET', ps_2['sampleStatus1SAL'])
+    self.assertEquals('UNSET', ps_2['sampleStatus2ED10'])
     self.assertEquals('UNSET', ps_2['samplesToIsolateDNA'])
     self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_2['physicalMeasurementsStatus'])
@@ -1006,10 +1009,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.assertIsNone(ps_2.get('suspensionTime'))
     self.assertEquals(3, ps_3['numCompletedBaselinePPIModules'])
-    self.assertEquals(0, ps_3['numBaselineSamplesArrived'])
+    self.assertEquals(1, ps_3['numBaselineSamplesArrived'])
     self.assertEquals('UNSET', ps_3['sampleStatus1ED10'])
     self.assertEquals('RECEIVED', ps_3['sampleStatus1SAL'])
     self.assertEquals(TIME_1.isoformat(), ps_3['sampleStatus1SALTime'])
+    self.assertEquals('RECEIVED', ps_3['sampleStatus2ED10'])
+    self.assertEquals(TIME_1.isoformat(), ps_3['sampleStatus2ED10Time'])
     self.assertEquals('RECEIVED', ps_3['samplesToIsolateDNA'])
     self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
