@@ -181,11 +181,6 @@ class ParticipantDao(UpdatableDao):
       make_transient(summary)
       make_transient(obj)
       obj.participantSummary = summary
-      # For reasons that are totally unclear, if you don't call session.merge()
-      # explicitly on the summary object, its withdrawal status (and perhaps
-      # other fields?) won't get updated properly here, even though other fields
-      # (e.g. hpoId) *do* get updated properly. See DA-692.
-      session.merge(obj.participantSummary)
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 

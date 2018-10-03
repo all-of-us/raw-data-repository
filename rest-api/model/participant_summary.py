@@ -224,15 +224,13 @@ class ParticipantSummary(Base):
   withdrawalStatus = Column(
       'withdrawal_status',
       Enum(WithdrawalStatus),
-      nullable=False,
-      onupdate=WithdrawalStatus.NOT_WITHDRAWN)
+      nullable=False)
   withdrawalTime = Column('withdrawal_time', UTCDateTime)
 
   suspensionStatus = Column(
       'suspension_status',
       Enum(SuspensionStatus),
-      nullable=False,
-      onupdate=SuspensionStatus.NOT_SUSPENDED)
+      nullable=False)
   suspensionTime = Column('suspension_time', UTCDateTime)
 
   participant = relationship("Participant", back_populates="participantSummary")
