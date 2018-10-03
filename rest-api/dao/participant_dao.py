@@ -184,7 +184,6 @@ class ParticipantDao(UpdatableDao):
     self._update_history(session, obj, existing_obj)
     super(ParticipantDao, self)._do_update(session, obj, existing_obj)
 
-
   def get_pairing_level(self, obj):
     organization_id = obj.organizationId
     site_id = obj.siteId
