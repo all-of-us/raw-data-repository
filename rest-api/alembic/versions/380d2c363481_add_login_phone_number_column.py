@@ -1,8 +1,8 @@
 """add login_phone_number column
 
-Revision ID: 1387b8d9c463
-Revises: 2b328e8e5eb8
-Create Date: 2018-09-26 17:52:50.413181
+Revision ID: 380d2c363481
+Revises: e6605d4b0dba
+Create Date: 2018-10-03 11:42:59.993435
 
 """
 from alembic import op
@@ -18,8 +18,8 @@ from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatu
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '1387b8d9c463'
-down_revision = '2b328e8e5eb8'
+revision = '380d2c363481'
+down_revision = 'e6605d4b0dba'
 branch_labels = None
 depends_on = None
 
