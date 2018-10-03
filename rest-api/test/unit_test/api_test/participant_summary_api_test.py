@@ -878,8 +878,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                     headers={ 'If-Match':'W/"2"'})
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
-    self.assertEquals('NO_USE', ps_1['withdrawalStatus'])
     self.assertEquals('AZ_TUCSON', ps_1['awardee'])
+    self.assertEquals('NO_USE', ps_1['withdrawalStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_1.get('withdrawalTime'))
 
   def testQuery_manyParticipants(self):
