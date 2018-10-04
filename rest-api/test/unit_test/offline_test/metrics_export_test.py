@@ -26,7 +26,8 @@ from offline.metrics_config import get_participant_fields, HPO_ID_FIELDS, ANSWER
 from offline.metrics_export import MetricsExport, _HPO_IDS_CSV, _PARTICIPANTS_CSV, _ANSWERS_CSV
 from offline_test.gcs_utils import assertCsvContents
 from test_data import load_biobank_order_json, load_measurement_json
-from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase
+from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase, \
+  cancel_biobank_order
 from unit_test_util import make_questionnaire_response_json, pretty, run_deferred_tasks
 from unit_test_util import PITT_HPO_ID
 
@@ -126,6 +127,11 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant_dao.insert(participant8)
       self.send_consent('P8', email='larry@gmail.com')
 
+      # Participant that has cancelled biobank order should not have order in metrics.
+      participant9 = Participant(participantId=9, biobankId=10, providerLink=pl_pitt)
+      participant_dao.insert(participant9)
+      self.send_consent('P9', email='mike@gmail.com')
+
     with FakeClock(TIME_2):
       # FIXME: The test passes, but the following "update" doesn't actually make much sense.  The
       # providerlink is not changed but the HPO ID actually is (at this point in time
@@ -166,6 +172,12 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
                                          state=None,
                                          date_of_birth=None)
 
+      self.submit_questionnaire_response('P9', questionnaire_id,
+                                         race_code=PMI_SKIP_CODE,
+                                         gender_code=PMI_SKIP_CODE,
+                                         state=None,
+                                         date_of_birth=None)
+
     with FakeClock(TIME_3):
       t3 = TIME_3.strftime(TIME_FORMAT)
       # Re-pair the original participant
@@ -181,6 +193,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
       self.send_post('Participant/P2/PhysicalMeasurements', load_measurement_json(2, t3))
       self.send_post('Participant/P2/BiobankOrder', load_biobank_order_json(2))
+
 
       self.submit_questionnaire_response('P1', questionnaire_id,
                                          race_code='black',
@@ -213,6 +226,13 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
 
       self.submit_consent_questionnaire_response('P6', questionnaire_id_3,
                                                  CONSENT_PERMISSION_YES_CODE)
+
+      path = 'Participant/P9/BiobankOrder'
+      new_order = self.send_post(path, load_biobank_order_json(9))
+      path = path + '/' + new_order['id']
+      self.send_get(path)
+      self.send_patch(path, request_data=cancel_biobank_order(),
+                      headers={'If-Match': 'W/"1"'})
 
       sample_dao = BiobankStoredSampleDao()
       sample_dao.insert(
@@ -268,6 +288,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       # See the FIXME above about this row of the CSV
       ['1', 'AZ_TUCSON_2', t2],
       ['5', 'AZ_TUCSON', t1],
+      ['9', 'PITT', t1],
     ])
 
     participant_fields = get_participant_fields()
@@ -295,7 +316,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     self.assertCsvContents(BUCKET_NAME, prefix + _PARTICIPANTS_CSV % 1, [
       participant_fields,
       ['1', '1980-01-03', '', t2, '', '', '', t1, '', '', '', '', '', '', t2],
-      ['5', '', '', '', '', '', '', t1, '', '', '', '', '', '', t2]
+      ['5', '', '', '', '', '', '', t1, '', '', '', '', '', '', t2],
+      ['9', '', '', '', '', '', '', t1, '', '', '', '', '', '', t2]
     ])
 
     self.assertCsvContents(BUCKET_NAME, prefix + _ANSWERS_CSV % 0, [
@@ -316,6 +338,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       ['1', t2, STATE_QUESTION_CODE, PMI_SKIP_CODE, ''],
       ['5', t2, GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, ''],
       ['5', t2, RACE_QUESTION_CODE, PMI_SKIP_CODE, ''],
+      ['9', t2, GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, ''],
+      ['9', t2, RACE_QUESTION_CODE, PMI_SKIP_CODE, ''],
     ])
 
     # Wait for the metrics pipeline to run, processing the CSV output.
@@ -396,33 +420,34 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
     })
     self.assertBucket(bucket_map, TIME, '', {
-        'Participant': 3,
+        'Participant': 4,
         'Participant.ageRange.26-35': 1,
-        'Participant.ageRange.UNSET': 2,
-        'Participant.biospecimen.UNSET': 3,
-        'Participant.biospecimenSamples.UNSET': 3,
-        'Participant.biospecimenSummary.UNSET': 3,
-        'Participant.censusRegion.UNSET': 3,
-        'Participant.consentForElectronicHealthRecords.UNSET': 3,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 3,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 3,
-        'Participant.enrollmentStatus.INTERESTED': 3,
-        'Participant.genderIdentity.UNSET': 3,
+        'Participant.ageRange.UNSET': 3,
+        'Participant.biospecimen.UNSET': 4,
+        'Participant.biospecimenSamples.UNSET': 4,
+        'Participant.biospecimenSummary.UNSET': 4,
+        'Participant.censusRegion.UNSET': 4,
+        'Participant.consentForElectronicHealthRecords.UNSET': 4,
+        'Participant.consentForStudyEnrollment.SUBMITTED': 4,
+        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 4,
+        'Participant.enrollmentStatus.INTERESTED': 4,
+        'Participant.genderIdentity.UNSET': 4,
         'Participant.hpoId.AZ_TUCSON': 2,
         'Participant.hpoId.UNSET': 1,
-        'Participant.numCompletedBaselinePPIModules.0': 3,
-        'Participant.physicalMeasurements.UNSET': 3,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 3,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 3,
-        'Participant.questionnaireOnLifestyle.UNSET': 3,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 3,
-        'Participant.questionnaireOnMedications.UNSET': 3,
-        'Participant.questionnaireOnOverallHealth.UNSET': 3,
-        'Participant.questionnaireOnTheBasics.UNSET': 3,
-        'Participant.race.UNSET': 3,
-        'Participant.samplesToIsolateDNA.UNSET': 3,
-        'Participant.state.UNSET': 3,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 3,
+        'Participant.hpoId.PITT': 1,
+        'Participant.numCompletedBaselinePPIModules.0': 4,
+        'Participant.physicalMeasurements.UNSET': 4,
+        'Participant.questionnaireOnFamilyHealth.UNSET': 4,
+        'Participant.questionnaireOnHealthcareAccess.UNSET': 4,
+        'Participant.questionnaireOnLifestyle.UNSET': 4,
+        'Participant.questionnaireOnMedicalHistory.UNSET': 4,
+        'Participant.questionnaireOnMedications.UNSET': 4,
+        'Participant.questionnaireOnOverallHealth.UNSET': 4,
+        'Participant.questionnaireOnTheBasics.UNSET': 4,
+        'Participant.race.UNSET': 4,
+        'Participant.samplesToIsolateDNA.UNSET': 4,
+        'Participant.state.UNSET': 4,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 4,
     })
 
     # At TIME_2, P1 is white, UNMAPPED gender; biobank samples
@@ -483,43 +508,44 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
     })
     self.assertBucket(bucket_map, TIME_2, '', {
-        'Participant': 3,
+        'Participant': 4,
         'Participant.ageRange.26-35': 1,
-        'Participant.ageRange.UNSET': 2,
-        'Participant.biospecimen.UNSET': 3,
+        'Participant.ageRange.UNSET': 3,
+        'Participant.biospecimen.UNSET': 4,
         'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
-        'Participant.biospecimenSamples.UNSET': 1,
+        'Participant.biospecimenSamples.UNSET': 2,
         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
-        'Participant.biospecimenSummary.UNSET': 1,
+        'Participant.biospecimenSummary.UNSET': 2,
         'Participant.censusRegion.PMI_Skip': 1,
-        'Participant.censusRegion.UNSET': 2,
-        'Participant.consentForElectronicHealthRecords.UNSET': 3,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 3,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 3,
-        'Participant.enrollmentStatus.INTERESTED': 3,
-        'Participant.genderIdentity.PMI_Skip': 1,
+        'Participant.censusRegion.UNSET': 3,
+        'Participant.consentForElectronicHealthRecords.UNSET': 4,
+        'Participant.consentForStudyEnrollment.SUBMITTED': 4,
+        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 4,
+        'Participant.enrollmentStatus.INTERESTED': 4,
+        'Participant.genderIdentity.PMI_Skip': 2,
         'Participant.genderIdentity.UNMAPPED': 1,
         'Participant.genderIdentity.UNSET': 1,
         'Participant.hpoId.AZ_TUCSON': 1,
         'Participant.hpoId.AZ_TUCSON_2': 1,
+        'Participant.hpoId.PITT': 1,
         'Participant.hpoId.UNSET': 1,
-        'Participant.numCompletedBaselinePPIModules.1': 3,
-        'Participant.physicalMeasurements.UNSET': 3,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 3,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 3,
-        'Participant.questionnaireOnLifestyle.UNSET': 3,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 3,
-        'Participant.questionnaireOnMedications.UNSET': 3,
-        'Participant.questionnaireOnOverallHealth.UNSET': 3,
-        'Participant.questionnaireOnTheBasics.SUBMITTED': 3,
+        'Participant.numCompletedBaselinePPIModules.1': 4,
+        'Participant.physicalMeasurements.UNSET': 4,
+        'Participant.questionnaireOnFamilyHealth.UNSET': 4,
+        'Participant.questionnaireOnHealthcareAccess.UNSET': 4,
+        'Participant.questionnaireOnLifestyle.UNSET': 4,
+        'Participant.questionnaireOnMedicalHistory.UNSET': 4,
+        'Participant.questionnaireOnMedications.UNSET': 4,
+        'Participant.questionnaireOnOverallHealth.UNSET': 4,
+        'Participant.questionnaireOnTheBasics.SUBMITTED': 4,
         'Participant.race.OTHER_RACE': 1,
-        'Participant.race.PMI_Skip': 1,
+        'Participant.race.PMI_Skip': 2,
         'Participant.race.WHITE': 1,
         'Participant.samplesToIsolateDNA.RECEIVED': 1,
-        'Participant.samplesToIsolateDNA.UNSET': 2,
+        'Participant.samplesToIsolateDNA.UNSET': 3,
         'Participant.state.PMI_Skip': 1,
-        'Participant.state.UNSET': 2,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 3,
+        'Participant.state.UNSET': 3,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 4,
     })
 
     # At TIME_3, P1 is UNSET race, UNMAPPED female gender, and now in PITT HPO;
@@ -558,71 +584,6 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
     })
 
     self.assertBucket(bucket_map, TIME_3, 'PITT', {
-        'Participant': 2,
-        'Participant.ageRange.36-45': 1,
-        'Participant.ageRange.UNSET': 1,
-        'Participant.biospecimen.UNSET': 2,
-        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
-        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
-        'Participant.censusRegion.PMI_Skip': 1,
-        'Participant.censusRegion.SOUTH': 1,
-        'Participant.consentForElectronicHealthRecords.SUBMITTED': 1,
-        'Participant.consentForElectronicHealthRecords.SUBMITTED_NO_CONSENT': 1,
-        'Participant.consentForStudyEnrollment.SUBMITTED': 2,
-        'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
-        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 1,
-        'Participant.enrollmentStatus.FULL_PARTICIPANT': 1,
-        'Participant.enrollmentStatus.INTERESTED': 1,
-        'Participant.genderIdentity.PMI_PreferNotToAnswer': 1,
-        'Participant.genderIdentity.female': 1,
-        'Participant.hpoId.PITT': 2,
-        'Participant.numCompletedBaselinePPIModules.1': 1,
-        'Participant.numCompletedBaselinePPIModules.3': 1,
-        'Participant.physicalMeasurements.COMPLETED': 1,
-        'Participant.physicalMeasurements.UNSET': 1,
-        'Participant.questionnaireOnFamilyHealth.UNSET': 2,
-        'Participant.questionnaireOnHealthcareAccess.UNSET': 2,
-        'Participant.questionnaireOnLifestyle.SUBMITTED': 1,
-        'Participant.questionnaireOnLifestyle.UNSET': 1,
-        'Participant.questionnaireOnMedicalHistory.UNSET': 2,
-        'Participant.questionnaireOnMedications.UNSET': 2,
-        'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
-        'Participant.questionnaireOnOverallHealth.UNSET': 1,
-        'Participant.questionnaireOnTheBasics.SUBMITTED': 2,
-        'Participant.race.OTHER_RACE': 1,
-        'Participant.race.UNSET': 1,
-        'Participant.samplesToIsolateDNA.RECEIVED': 1,
-        'Participant.samplesToIsolateDNA.UNSET': 1,
-        'Participant.state.PIIState_VA': 1,
-        'Participant.state.PMI_Skip': 1,
-        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 2,
-
-        'FullParticipant.ageRange.UNSET': 1,
-        'FullParticipant.biospecimen.UNSET': 1,
-        'FullParticipant.biospecimenSamples.SAMPLES_ARRIVED': 1,
-        'FullParticipant.biospecimenSummary.SAMPLES_ARRIVED': 1,
-        'FullParticipant.censusRegion.SOUTH': 1,
-        'FullParticipant.consentForElectronicHealthRecords.SUBMITTED': 1,
-        'FullParticipant.consentForStudyEnrollment.SUBMITTED': 1,
-        'FullParticipant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
-        'FullParticipant.enrollmentStatus.FULL_PARTICIPANT': 1,
-        'FullParticipant.genderIdentity.PMI_PreferNotToAnswer': 1,
-        'FullParticipant.hpoId.PITT': 1,
-        'FullParticipant.numCompletedBaselinePPIModules.3': 1,
-        'FullParticipant.physicalMeasurements.COMPLETED': 1,
-        'FullParticipant.questionnaireOnFamilyHealth.UNSET': 1,
-        'FullParticipant.questionnaireOnHealthcareAccess.UNSET': 1,
-        'FullParticipant.questionnaireOnLifestyle.SUBMITTED': 1,
-        'FullParticipant.questionnaireOnMedicalHistory.UNSET': 1,
-        'FullParticipant.questionnaireOnMedications.UNSET': 1,
-        'FullParticipant.questionnaireOnOverallHealth.SUBMITTED': 1,
-        'FullParticipant.questionnaireOnTheBasics.SUBMITTED': 1,
-        'FullParticipant.race.OTHER_RACE': 1,
-        'FullParticipant.samplesToIsolateDNA.RECEIVED': 1,
-        'FullParticipant.state.PIIState_VA': 1,
-        'FullParticipant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
-    })
-    self.assertBucket(bucket_map, TIME_3, '', {
         'Participant': 3,
         'Participant.ageRange.36-45': 1,
         'Participant.ageRange.UNSET': 2,
@@ -632,21 +593,20 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
         'Participant.biospecimenSummary.UNSET': 1,
         'Participant.censusRegion.PMI_Skip': 1,
-        'Participant.censusRegion.SOUTH': 1,
         'Participant.censusRegion.UNSET': 1,
+        'Participant.censusRegion.SOUTH': 1,
         'Participant.consentForElectronicHealthRecords.SUBMITTED': 1,
-        'Participant.consentForElectronicHealthRecords.SUBMITTED_NO_CONSENT': 1,
         'Participant.consentForElectronicHealthRecords.UNSET': 1,
+        'Participant.consentForElectronicHealthRecords.SUBMITTED_NO_CONSENT': 1,
         'Participant.consentForStudyEnrollment.SUBMITTED': 3,
         'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
         'Participant.consentForStudyEnrollmentAndEHR.UNSET': 2,
         'Participant.enrollmentStatus.FULL_PARTICIPANT': 1,
         'Participant.enrollmentStatus.INTERESTED': 2,
         'Participant.genderIdentity.PMI_PreferNotToAnswer': 1,
-        'Participant.genderIdentity.PMI_Skip': 1,
         'Participant.genderIdentity.female': 1,
-        'Participant.hpoId.AZ_TUCSON': 1,
-        'Participant.hpoId.PITT': 2,
+        'Participant.genderIdentity.PMI_Skip': 1,
+        'Participant.hpoId.PITT': 3,
         'Participant.numCompletedBaselinePPIModules.1': 2,
         'Participant.numCompletedBaselinePPIModules.3': 1,
         'Participant.physicalMeasurements.COMPLETED': 1,
@@ -695,6 +655,79 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
         'FullParticipant.state.PIIState_VA': 1,
         'FullParticipant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
     })
+    self.assertBucket(bucket_map, TIME_3, '', {
+        'Participant': 4,
+        'Participant.ageRange.36-45': 1,
+        'Participant.ageRange.UNSET': 3,
+        'Participant.biospecimen.UNSET': 4,
+        'Participant.biospecimenSamples.SAMPLES_ARRIVED': 2,
+        'Participant.biospecimenSamples.UNSET': 2,
+        'Participant.biospecimenSummary.SAMPLES_ARRIVED': 2,
+        'Participant.biospecimenSummary.UNSET': 2,
+        'Participant.censusRegion.PMI_Skip': 1,
+        'Participant.censusRegion.SOUTH': 1,
+        'Participant.censusRegion.UNSET': 2,
+        'Participant.consentForElectronicHealthRecords.SUBMITTED': 1,
+        'Participant.consentForElectronicHealthRecords.SUBMITTED_NO_CONSENT': 1,
+        'Participant.consentForElectronicHealthRecords.UNSET': 2,
+        'Participant.consentForStudyEnrollment.SUBMITTED': 4,
+        'Participant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
+        'Participant.consentForStudyEnrollmentAndEHR.UNSET': 3,
+        'Participant.enrollmentStatus.FULL_PARTICIPANT': 1,
+        'Participant.enrollmentStatus.INTERESTED': 3,
+        'Participant.genderIdentity.PMI_PreferNotToAnswer': 1,
+        'Participant.genderIdentity.PMI_Skip': 2,
+        'Participant.genderIdentity.female': 1,
+        'Participant.hpoId.AZ_TUCSON': 1,
+        'Participant.hpoId.PITT': 3,
+        'Participant.numCompletedBaselinePPIModules.1': 3,
+        'Participant.numCompletedBaselinePPIModules.3': 1,
+        'Participant.physicalMeasurements.COMPLETED': 1,
+        'Participant.physicalMeasurements.UNSET': 3,
+        'Participant.questionnaireOnFamilyHealth.UNSET': 4,
+        'Participant.questionnaireOnHealthcareAccess.UNSET': 4,
+        'Participant.questionnaireOnLifestyle.SUBMITTED': 1,
+        'Participant.questionnaireOnLifestyle.UNSET': 3,
+        'Participant.questionnaireOnMedicalHistory.UNSET': 4,
+        'Participant.questionnaireOnMedications.UNSET': 4,
+        'Participant.questionnaireOnOverallHealth.SUBMITTED': 1,
+        'Participant.questionnaireOnOverallHealth.UNSET': 3,
+        'Participant.questionnaireOnTheBasics.SUBMITTED': 4,
+        'Participant.race.OTHER_RACE': 1,
+        'Participant.race.PMI_Skip': 2,
+        'Participant.race.UNSET': 1,
+        'Participant.samplesToIsolateDNA.RECEIVED': 1,
+        'Participant.samplesToIsolateDNA.UNSET': 3,
+        'Participant.state.PIIState_VA': 1,
+        'Participant.state.PMI_Skip': 1,
+        'Participant.state.UNSET': 2,
+        'Participant.consentForDvElectronicHealthRecordsSharing.UNSET': 4,
+
+        'FullParticipant.ageRange.UNSET': 1,
+        'FullParticipant.biospecimen.UNSET': 1,
+        'FullParticipant.biospecimenSamples.SAMPLES_ARRIVED': 1,
+        'FullParticipant.biospecimenSummary.SAMPLES_ARRIVED': 1,
+        'FullParticipant.censusRegion.SOUTH': 1,
+        'FullParticipant.consentForElectronicHealthRecords.SUBMITTED': 1,
+        'FullParticipant.consentForStudyEnrollment.SUBMITTED': 1,
+        'FullParticipant.consentForStudyEnrollmentAndEHR.SUBMITTED': 1,
+        'FullParticipant.enrollmentStatus.FULL_PARTICIPANT': 1,
+        'FullParticipant.genderIdentity.PMI_PreferNotToAnswer': 1,
+        'FullParticipant.hpoId.PITT': 1,
+        'FullParticipant.numCompletedBaselinePPIModules.3': 1,
+        'FullParticipant.physicalMeasurements.COMPLETED': 1,
+        'FullParticipant.questionnaireOnFamilyHealth.UNSET': 1,
+        'FullParticipant.questionnaireOnHealthcareAccess.UNSET': 1,
+        'FullParticipant.questionnaireOnLifestyle.SUBMITTED': 1,
+        'FullParticipant.questionnaireOnMedicalHistory.UNSET': 1,
+        'FullParticipant.questionnaireOnMedications.UNSET': 1,
+        'FullParticipant.questionnaireOnOverallHealth.SUBMITTED': 1,
+        'FullParticipant.questionnaireOnTheBasics.SUBMITTED': 1,
+        'FullParticipant.race.OTHER_RACE': 1,
+        'FullParticipant.samplesToIsolateDNA.RECEIVED': 1,
+        'FullParticipant.state.PIIState_VA': 1,
+        'FullParticipant.consentForDvElectronicHealthRecordsSharing.UNSET': 1,
+    })
 
     # There is a biobank order on 1/4, but it gets ignored since it's after the run date.
     self.assertBucket(bucket_map, TIME_4, '')
@@ -707,3 +740,4 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
           pretty(metrics), pretty(json.loads(bucket.metrics)))
     else:
       self.assertIsNone(bucket)
+
