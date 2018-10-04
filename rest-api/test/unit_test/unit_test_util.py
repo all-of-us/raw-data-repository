@@ -646,7 +646,7 @@ def run_deferred_tasks(test):
 
 
 def get_restore_or_cancel_info(reason=None, author=None, site=None, status=None):
-  """get a patch request to cancel or restore an order,
+  """get a patch request to cancel or restore a PM order,
   if called with no params it defaults to a cancel order."""
   if reason is None:
     reason = "a mistake was made."
@@ -674,3 +674,21 @@ def get_restore_or_cancel_info(reason=None, author=None, site=None, status=None)
     },
     "status": status
   }
+
+
+def cancel_biobank_order():
+  return {
+    "amendedReason": "messed up",
+    "cancelledInfo": {
+      "author": {
+        "system": "https://www.pmi-ops.org/healthpro-username",
+        "value": "mike@pmi-ops.org"
+      },
+      "site": {
+        "system": "https://www.pmi-ops.org/site-id",
+        "value": "hpo-site-monroeville"
+      }
+    },
+    "status": "cancelled"
+  }
+
