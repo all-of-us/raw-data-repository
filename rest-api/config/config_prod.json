@@ -16,7 +16,7 @@
   ],
   "internal_status_email_recipients": [
     "pmi-drc-alerts+prod@googlegroups.com"
-  ]
+  ],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {
       "roles": [
@@ -64,6 +64,6 @@
         ]
       },
       "description": "Using subnet mask these ranges cover 66.189.127.0-32 and 68.184.42.162.160-191"
-    },
+    }
   }
 }
