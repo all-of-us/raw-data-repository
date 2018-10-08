@@ -181,7 +181,7 @@ def import_participant(row, client, consent_questionnaire_id_and_version,
   if reader:
     logging.info(
       '%s created: (%r %r).',
-      participant_id,  row['first_name'], row['last_name'])
+      participant_id, row['first_name'], row['last_name'])
   else:
     logging.info(
       '%s created from (%r %r).',
