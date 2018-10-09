@@ -52,7 +52,7 @@
         "exporter"
       ]
     },
-    "awardee-tach@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+    "awardee-tach@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": [
         "awardee_sa"
       ],
