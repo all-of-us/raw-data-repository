@@ -111,6 +111,7 @@ class ParticipantDao(UpdatableDao):
     if obj.withdrawalStatus != existing_obj.withdrawalStatus:
       obj.withdrawalTime = (obj.lastModified if obj.withdrawalStatus == WithdrawalStatus.NO_USE
                             else None)
+
       need_new_summary = True
     if obj.suspensionStatus != existing_obj.suspensionStatus:
       obj.suspensionTime = (obj.lastModified if obj.suspensionStatus == SuspensionStatus.NO_CONTACT

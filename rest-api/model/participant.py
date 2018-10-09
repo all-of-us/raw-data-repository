@@ -1,7 +1,7 @@
 from model.base import Base
 from model.utils import Enum, UTCDateTime
 from participant_enums import WithdrawalStatus, SuspensionStatus
-from sqlalchemy import Column, Integer, BLOB, ForeignKey, Index, String
+from sqlalchemy import Column, Integer, BLOB, ForeignKey, Index, String, UnicodeText
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -38,6 +38,8 @@ class ParticipantBase(object):
   # The time at which the participants set their withdrawal status to NO_USE.
   withdrawalTime = Column('withdrawal_time', UTCDateTime)
 
+  withdrawalReason = Column('withdrawal_reason', String(80))
+  withdrawalReasonJustification = Column('withdrawal_reason_justification', UnicodeText)
   # Suspension may be temporary, and indicates we should not contact the participant but may
   # continue using their data.
   suspensionStatus = Column('suspension_status', Enum(SuspensionStatus), nullable=False)

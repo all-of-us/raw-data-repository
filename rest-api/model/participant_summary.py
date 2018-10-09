@@ -1,6 +1,6 @@
 import datetime
 from sqlalchemy import Column, Integer, String, Date
-from sqlalchemy import ForeignKey, Index, SmallInteger
+from sqlalchemy import ForeignKey, Index, SmallInteger, UnicodeText
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -227,6 +227,8 @@ class ParticipantSummary(Base):
       Enum(WithdrawalStatus),
       nullable=False)
   withdrawalTime = Column('withdrawal_time', UTCDateTime)
+  withdrawalReason = Column('withdrawal_reason', String(80))
+  withdrawalReasonJustification = Column('withdrawal_reason_justification', UnicodeText)
 
   suspensionStatus = Column(
       'suspension_status',
