@@ -167,6 +167,13 @@ class WithdrawalStatus(messages.Enum):
   NO_USE = 2
 
 
+class WithdrawalReason(messages.Enum):
+  """Whether a participant has withdrawn from the study."""
+  FRAUDULENT = 1
+  DUPLICATE = 2
+  TEST = 3
+
+
 class SuspensionStatus(messages.Enum):
   """Whether a participant has been suspended from the study."""
   NOT_SUSPENDED = 1
