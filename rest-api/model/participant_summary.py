@@ -13,7 +13,9 @@ from participant_enums import WithdrawalStatus, SuspensionStatus
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
-WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime', 'participantId', 'hpoId',
+WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime',
+                                'withdrawalReason', 'withdrawalReasonJustification',
+                                'participantId', 'hpoId',
                                 'organizationId', 'siteId', 'biobankId', 'firstName', 'middleName',
                                 'lastName', 'dateOfBirth',
                                 'consentForStudyEnrollment', 'consentForStudyEnrollmentTime',

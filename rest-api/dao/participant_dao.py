@@ -114,11 +114,6 @@ class ParticipantDao(UpdatableDao):
 
       need_new_summary = True
 
-    # if obj.withdrawalReason != existing_obj.withdrawalReason:
-    #   obj.withdrawalReason = existing_obj.withdrawalReason
-    #   obj.withdrawalReasonJustification = existing_obj.withdrawalReasonJustification
-    #   need_new_summary = True
-
     if obj.suspensionStatus != existing_obj.suspensionStatus:
       obj.suspensionTime = (obj.lastModified if obj.suspensionStatus == SuspensionStatus.NO_CONTACT
                             else None)
@@ -181,6 +176,8 @@ class ParticipantDao(UpdatableDao):
       summary.organizationId = obj.organizationId
       summary.siteId = obj.siteId
       summary.withdrawalStatus = obj.withdrawalStatus
+      summary.withdrawalReason = obj.withdrawalReason
+      summary.withdrawalReasonJustification = obj.withdrawalReasonJustification
       summary.withdrawalTime = obj.withdrawalTime
       summary.suspensionStatus = obj.suspensionStatus
       summary.suspensionTime = obj.suspensionTime
