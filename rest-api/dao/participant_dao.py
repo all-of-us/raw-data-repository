@@ -17,8 +17,8 @@ from model.participant_summary import ParticipantSummary
 from model.participant import Participant, ParticipantHistory
 from model.utils import to_client_participant_id
 from model.config_utils import to_client_biobank_id
-from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus,\
-  make_primary_provider_link_for_id
+from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus, \
+  make_primary_provider_link_for_id, WithdrawalReason
 
 
 class ParticipantHistoryDao(BaseDao):
@@ -113,6 +113,12 @@ class ParticipantDao(UpdatableDao):
                             else None)
 
       need_new_summary = True
+
+    # if obj.withdrawalReason != existing_obj.withdrawalReason:
+    #   obj.withdrawalReason = existing_obj.withdrawalReason
+    #   obj.withdrawalReasonJustification = existing_obj.withdrawalReasonJustification
+    #   need_new_summary = True
+
     if obj.suspensionStatus != existing_obj.suspensionStatus:
       obj.suspensionTime = (obj.lastModified if obj.suspensionStatus == SuspensionStatus.NO_CONTACT
                             else None)
@@ -267,6 +273,8 @@ class ParticipantDao(UpdatableDao):
         'signUpTime': model.signUpTime.isoformat(),
         'providerLink': json.loads(model.providerLink),
         'withdrawalStatus': model.withdrawalStatus,
+        'withdrawalReason': model.withdrawalReason,
+        'withdrawalReasonJustification': model.withdrawalReasonJustification,
         'withdrawalTime': model.withdrawalTime,
         'suspensionStatus': model.suspensionStatus,
         'suspensionTime': model.suspensionTime
@@ -275,6 +283,7 @@ class ParticipantDao(UpdatableDao):
     format_json_org(client_json, self.organization_dao, 'organization'),
     format_json_site(client_json, self.site_dao, 'site'),
     format_json_enum(client_json, 'withdrawalStatus')
+    format_json_enum(client_json, 'withdrawalReason')
     format_json_enum(client_json, 'suspensionStatus')
     format_json_date(client_json, 'withdrawalTime')
     format_json_date(client_json, 'suspensionTime')
@@ -285,6 +294,7 @@ class ParticipantDao(UpdatableDao):
 
   def from_client_json(self, resource_json, id_=None, expected_version=None, client_id=None):
     parse_json_enum(resource_json, 'withdrawalStatus', WithdrawalStatus)
+    parse_json_enum(resource_json, 'withdrawalReason', WithdrawalReason)
     parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus)
     # biobankId, lastModified, signUpTime are set by DAO.
     return Participant(
@@ -293,6 +303,8 @@ class ParticipantDao(UpdatableDao):
         providerLink=json.dumps(resource_json.get('providerLink')),
         clientId=client_id,
         withdrawalStatus=resource_json.get('withdrawalStatus'),
+        withdrawalReason=resource_json.get('withdrawalReason'),
+        withdrawalReasonJustification=resource_json.get('withdrawalReasonJustification'),
         suspensionStatus=resource_json.get('suspensionStatus'),
         organizationId=get_organization_id_from_external_id(resource_json, self.organization_dao),
         hpoId=get_awardee_id_from_name(resource_json, self.hpo_dao),

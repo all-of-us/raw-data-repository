@@ -43,6 +43,8 @@ class ParticipantApiTest(FlaskTestBase):
         'signUpTime',
         'lastModified',
         'withdrawalStatus',
+        'withdrawalReason',
+        'withdrawalReasonJustification',
         'suspensionStatus'):
       del response[auto_generated]
 

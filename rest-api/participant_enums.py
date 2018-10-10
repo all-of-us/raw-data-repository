@@ -169,6 +169,7 @@ class WithdrawalStatus(messages.Enum):
 
 class WithdrawalReason(messages.Enum):
   """Whether a participant has withdrawn from the study."""
+  UNSET = 0
   FRAUDULENT = 1
   DUPLICATE = 2
   TEST = 3

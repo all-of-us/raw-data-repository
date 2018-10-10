@@ -1,42 +1,49 @@
+"""
+Used to administratively withdrawal a list of participants (all with the same withdrawal reason
+and justification. i.e. n list of participants are registered as TEST participants
+param: WithdrawalReason must be one of fraudulent | test | duplicate.
+param: WithdrawalReasonJustification is a string explanation.
+run with run_client e.g.
+$run_client.sh --project <PROJECT> --account <ACCOUNT> [--service_account <ACCOUNT>]
+admin_withdrawal.py --withdrawal_reason <fraudulent, duplicate, test> --participants <P1000, P1001>
+"""
 import logging
 import pprint
 from main_util import get_parser, configure_logging
+from client import Client, client_log
 
-from client import Client, HttpException, client_log
 
+def make_request_body(client, participant_id):
+  reason_list = ['TEST', 'FRAUDULENT', 'DUPLICATE']
 
-def get_meta_info(client, participant_id):
+  reason = client.args.withdrawal_reason
+  justify = " ".join(client.args.withdrawal_justification)
   response = client.request_json('Participant/{}'.format(participant_id))
-  etag = response['meta']
-  pprint.pprint(response)
-  return etag
 
+  if reason not in reason_list:
+    raise ValueError('withdrawalReason must be one of {}'.format(reason_list))
 
-def get_request_body():
-  request_body = {
-    "withdrawalStatus": "NO_USE"
-  }
-  return request_body
+  response['withdrawalStatus'] = 'NO_USE'
+  response['withdrawalReason'] = reason
+  response['withdrawalReasonJustification'] = justify
+
+  return response
 
 
 def main(client):
-  reason = client.args.withdrawal_reason
-  justify = client.args.withdrawal_justification
   participants = client.args.participants
-  print participants, "<<<<<<<<<<<<"
-  print type(participants), '<<< type'
-  request_body = get_request_body()
 
   for participant in participants:
     path = 'Participant/' + str(participant)
-    etag = get_meta_info(client, participant)
-    response = client.request_json(path, 'PUT', body=request_body, headers=etag)
-    logging.info(pprint.pformat(response))
-
-    participant_id = response['participantId']
-    # Fetch that participant and print it out.
-    response = client.request_json('Participant/{}'.format(participant_id))
-    logging.info(pprint.pformat(response))
+    request_body = make_request_body(client, participant)
+    pprint.pformat(request_body)
+    if not client.args.dry_run:
+      response = client.request_json(path, 'PUT', request_body,
+                                     headers={'If-Match': client.last_etag})
+      logging.info(pprint.pformat(response))
+    else:
+      logging.info('Request that would be sent for participant {}: \n {} '.format(
+                    participant, pprint.pformat(request_body)))
 
 
 if __name__ == '__main__':
