@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from api_util import format_json_enum, parse_json_enum, format_json_date, format_json_hpo, \
-  format_json_org, format_json_site, get_site_id_from_google_group, get_awardee_id_from_name,\
+  format_json_org, format_json_site, get_site_id_from_google_group, get_awardee_id_from_name, \
   get_organization_id_from_external_id
 import clock
 from dao.base_dao import BaseDao, UpdatableDao
@@ -32,6 +32,7 @@ class ParticipantHistoryDao(BaseDao):
 
   Do not use this DAO for write operations directly; instead use ParticipantDao.
   """
+
   def __init__(self):
     super(ParticipantHistoryDao, self).__init__(ParticipantHistory)
 
@@ -89,7 +90,7 @@ class ParticipantDao(UpdatableDao):
     super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
     # Once a participant marks their withdrawal status as NO_USE, it can't be changed back.
     if (existing_obj.withdrawalStatus == WithdrawalStatus.NO_USE
-        and obj.withdrawalStatus != WithdrawalStatus.NO_USE):
+      and obj.withdrawalStatus != WithdrawalStatus.NO_USE):
       raise Forbidden('Participant %d has withdrawn, cannot unwithdraw' % obj.participantId)
 
   def get_for_update(self, session, obj_id):
@@ -125,7 +126,7 @@ class ParticipantDao(UpdatableDao):
       # Prevent unpairing if /PUT is sent with no pairing levels.
       update_pairing = False
 
-    if update_pairing == True:
+    if update_pairing is True:
       has_id = False
       if obj.organizationId or obj.siteId or (obj.hpoId >= 0):
         has_id = True
@@ -140,7 +141,7 @@ class ParticipantDao(UpdatableDao):
 
       null_provider_link = obj.providerLink == 'null'
       # site,org,or awardee is sent in request: Get relationships and try to set provider link.
-      if (has_id) and (provider_link_unchanged or null_provider_link):
+      if has_id and (provider_link_unchanged or null_provider_link):
         site, organization, awardee = self.get_pairing_level(obj)
         obj.organizationId = organization
         obj.siteId = site
@@ -150,7 +151,7 @@ class ParticipantDao(UpdatableDao):
           obj.providerLink = make_primary_provider_link_for_id(awardee)
 
         need_new_summary = True
-      else: # providerLink has changed
+      else:  # providerLink has changed
         # If the provider link changes, update the HPO ID on the participant and its summary.
         if obj.hpoId is None:
           obj.hpoId = existing_obj.hpoId
@@ -176,7 +177,7 @@ class ParticipantDao(UpdatableDao):
       summary.organizationId = obj.organizationId
       summary.siteId = obj.siteId
       summary.withdrawalStatus = obj.withdrawalStatus
-      summary.withdrawalReason = obj.withdrawalReason
+      # summary.withdrawalReason = obj.withdrawalReason
       summary.withdrawalReasonJustification = obj.withdrawalReasonJustification
       summary.withdrawalTime = obj.withdrawalTime
       summary.suspensionStatus = obj.suspensionStatus
@@ -212,16 +213,16 @@ class ParticipantDao(UpdatableDao):
   @staticmethod
   def create_summary_for_participant(obj):
     return ParticipantSummary(
-        participantId=obj.participantId,
-        lastModified=obj.lastModified,
-        biobankId=obj.biobankId,
-        signUpTime=obj.signUpTime,
-        hpoId=obj.hpoId,
-        organizationId=obj.organizationId,
-        siteId=obj.siteId,
-        withdrawalStatus=obj.withdrawalStatus,
-        suspensionStatus=obj.suspensionStatus,
-        enrollmentStatus=EnrollmentStatus.INTERESTED)
+      participantId=obj.participantId,
+      lastModified=obj.lastModified,
+      biobankId=obj.biobankId,
+      signUpTime=obj.signUpTime,
+      hpoId=obj.hpoId,
+      organizationId=obj.organizationId,
+      siteId=obj.siteId,
+      withdrawalStatus=obj.withdrawalStatus,
+      suspensionStatus=obj.suspensionStatus,
+      enrollmentStatus=EnrollmentStatus.INTERESTED)
 
   @staticmethod
   def _get_hpo_id(obj):
@@ -255,26 +256,26 @@ class ParticipantDao(UpdatableDao):
 
     Used in generating fake biobank samples."""
     return (session.query(Participant.biobankId, Participant.signUpTime)
-              .filter(Participant.biobankId % 100 <= percentage * 100)
-              .yield_per(batch_size))
+            .filter(Participant.biobankId % 100 <= percentage * 100)
+            .yield_per(batch_size))
 
   def to_client_json(self, model):
     client_json = {
-        'participantId': to_client_participant_id(model.participantId),
-        'hpoId': model.hpoId,
-        'awardee': model.hpoId,
-        'organization': model.organizationId,
-        'siteId': model.siteId,
-        'biobankId': to_client_biobank_id(model.biobankId),
-        'lastModified': model.lastModified.isoformat(),
-        'signUpTime': model.signUpTime.isoformat(),
-        'providerLink': json.loads(model.providerLink),
-        'withdrawalStatus': model.withdrawalStatus,
-        'withdrawalReason': model.withdrawalReason,
-        'withdrawalReasonJustification': model.withdrawalReasonJustification,
-        'withdrawalTime': model.withdrawalTime,
-        'suspensionStatus': model.suspensionStatus,
-        'suspensionTime': model.suspensionTime
+      'participantId': to_client_participant_id(model.participantId),
+      'hpoId': model.hpoId,
+      'awardee': model.hpoId,
+      'organization': model.organizationId,
+      'siteId': model.siteId,
+      'biobankId': to_client_biobank_id(model.biobankId),
+      'lastModified': model.lastModified.isoformat(),
+      'signUpTime': model.signUpTime.isoformat(),
+      'providerLink': json.loads(model.providerLink),
+      'withdrawalStatus': model.withdrawalStatus,
+      'withdrawalReason': model.withdrawalReason,
+      'withdrawalReasonJustification': model.withdrawalReasonJustification,
+      'withdrawalTime': model.withdrawalTime,
+      'suspensionStatus': model.suspensionStatus,
+      'suspensionTime': model.suspensionTime
     }
     format_json_hpo(client_json, self.hpo_dao, 'hpoId'),
     format_json_org(client_json, self.organization_dao, 'organization'),
@@ -295,17 +296,17 @@ class ParticipantDao(UpdatableDao):
     parse_json_enum(resource_json, 'suspensionStatus', SuspensionStatus)
     # biobankId, lastModified, signUpTime are set by DAO.
     return Participant(
-        participantId=id_,
-        version=expected_version,
-        providerLink=json.dumps(resource_json.get('providerLink')),
-        clientId=client_id,
-        withdrawalStatus=resource_json.get('withdrawalStatus'),
-        withdrawalReason=resource_json.get('withdrawalReason'),
-        withdrawalReasonJustification=resource_json.get('withdrawalReasonJustification'),
-        suspensionStatus=resource_json.get('suspensionStatus'),
-        organizationId=get_organization_id_from_external_id(resource_json, self.organization_dao),
-        hpoId=get_awardee_id_from_name(resource_json, self.hpo_dao),
-        siteId=get_site_id_from_google_group(resource_json, self.site_dao))
+      participantId=id_,
+      version=expected_version,
+      providerLink=json.dumps(resource_json.get('providerLink')),
+      clientId=client_id,
+      withdrawalStatus=resource_json.get('withdrawalStatus'),
+      withdrawalReason=resource_json.get('withdrawalReason'),
+      withdrawalReasonJustification=resource_json.get('withdrawalReasonJustification'),
+      suspensionStatus=resource_json.get('suspensionStatus'),
+      organizationId=get_organization_id_from_external_id(resource_json, self.organization_dao),
+      hpoId=get_awardee_id_from_name(resource_json, self.hpo_dao),
+      siteId=get_site_id_from_google_group(resource_json, self.site_dao))
 
   def add_missing_hpo_from_site(self, session, participant_id, site_id):
     if site_id is None:
@@ -330,6 +331,7 @@ class ParticipantDao(UpdatableDao):
     participant.lastModified = clock.CLOCK.now()
     # Update the version and add history row
     self._do_update(session, participant, participant)
+
 
 def _get_primary_provider_link(participant):
   if participant.providerLink:

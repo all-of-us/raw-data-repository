@@ -866,7 +866,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     with FakeClock(TIME_2):
       participant_1['withdrawalStatus'] = 'NO_USE'
       self.send_put('Participant/%s' % participant_id_1, participant_1,
-                    headers={ 'If-Match':'W/"1"'})
+                    headers={'If-Match': 'W/"1"'})
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('NO_USE', ps_1['withdrawalStatus'])
@@ -876,7 +876,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     with FakeClock(TIME_3):
       participant_1['providerLink'] = [self.az_provider_link]
       self.send_put('Participant/%s' % participant_id_1, participant_1,
-                    headers={ 'If-Match':'W/"2"'})
+                    headers={'If-Match': 'W/"2"'})
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('AZ_TUCSON', ps_1['awardee'])
@@ -955,9 +955,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       participant_3['suspensionStatus'] = 'NO_CONTACT'
       participant_3['site'] = 'hpo-site-monroeville'
       self.send_put('Participant/%s' % participant_id_2, participant_2,
-                    headers={ 'If-Match':'W/"2"'})
+                    headers={'If-Match': 'W/"2"'})
       self.send_put('Participant/%s' % participant_id_3, participant_3,
-                     headers={ 'If-Match': participant_3['meta']['versionId'] })
+                    headers={'If-Match': participant_3['meta']['versionId']})
 
     with FakeClock(TIME_4):
       ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
