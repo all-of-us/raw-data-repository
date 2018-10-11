@@ -185,6 +185,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'ageRange': '36-45',
       'email': self.email,
       'withdrawalStatus': 'NOT_WITHDRAWN',
+      'withdrawalReason': 'UNSET',
       'suspensionStatus': 'NOT_SUSPENDED',
     })
 
@@ -273,7 +274,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
     with FakeClock(TIME_3):
       response = self.send_get('Participant/%s/Summary' % participant_id)
-      print response, '\n'
       del answers['CABoRSignature']
       # all fields available 24 hours after withdraw.
       for key in answers.keys():

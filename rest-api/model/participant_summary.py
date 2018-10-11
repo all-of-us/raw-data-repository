@@ -9,7 +9,7 @@ from model.utils import Enum
 from model.utils import UTCDateTime
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import WithdrawalStatus, SuspensionStatus
+from participant_enums import WithdrawalStatus, SuspensionStatus, WithdrawalReason
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
