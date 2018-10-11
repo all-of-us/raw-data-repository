@@ -177,7 +177,7 @@ class ParticipantDao(UpdatableDao):
       summary.organizationId = obj.organizationId
       summary.siteId = obj.siteId
       summary.withdrawalStatus = obj.withdrawalStatus
-      # summary.withdrawalReason = obj.withdrawalReason
+      summary.withdrawalReason = obj.withdrawalReason
       summary.withdrawalReasonJustification = obj.withdrawalReasonJustification
       summary.withdrawalTime = obj.withdrawalTime
       summary.suspensionStatus = obj.suspensionStatus

@@ -1,9 +1,15 @@
+import datetime
 import httplib
 
+from clock import FakeClock
 from test.unit_test.unit_test_util import FlaskTestBase
 from participant_enums import WithdrawalStatus, SuspensionStatus
 
+TIME_1 = datetime.datetime(2018, 1, 1)
+TIME_2 = datetime.datetime(2018, 1, 3)
+
 class ParticipantApiTest(FlaskTestBase):
+
 
   def setUp(self):
     super(ParticipantApiTest, self).setUp()
@@ -110,7 +116,7 @@ class ParticipantApiTest(FlaskTestBase):
 
   def test_change_pairing_for_org_then_site(self):
     participant = self.send_post('Participant', self.participant)
-    participant['providerLink'] = [ self.provider_link_2]
+    participant['providerLink'] = [self.provider_link_2]
     participant_id = participant['participantId']
     path = 'Participant/%s' % participant_id
 
@@ -131,3 +137,23 @@ class ParticipantApiTest(FlaskTestBase):
     self.assertEqual(update_4['site'], 'hpo-site-clinic-phoenix')
     self.assertEqual(update_4['organization'], 'AZ_TUCSON_BANNER_HEALTH')
     self.assertEqual(update_4['awardee'], 'AZ_TUCSON')
+
+  def test_administrative_withdrawal(self):
+    with FakeClock(TIME_1):
+      response = self.send_post('Participant', self.participant)
+      participant_id = response['participantId']
+      response['providerLink'] = [self.provider_link_2]
+      response['withdrawalStatus'] = 'NO_USE'
+      response['suspensionStatus'] = 'NO_CONTACT'
+      response['withdrawalReason'] = 'TEST'
+      response['withdrawalReasonJustification'] = 'This was a test account.'
+      path = 'Participant/%s' % participant_id
+      update_response = self.send_put(path, response, headers={'If-Match': 'W/"1"'})
+
+    with FakeClock(TIME_2):
+      response['meta']['versionId'] = 'W/"2"'
+      response['withdrawalTime'] = update_response['lastModified']
+      response['suspensionTime'] = update_response['lastModified']
+      response['awardee'] = 'PITT'
+      response['hpoId'] = 'PITT'
+      self.assertJsonResponseMatches(response, update_response)

@@ -57,7 +57,7 @@ class ParticipantTest(BaseClientTest):
     try:
       response = self.client.request_json(
           'Participant/{}'.format(participant_id), 'PUT', response,
-          headers = { 'If-Match': 'W/"12345"' })
+          headers={'If-Match': 'W/"12345"'})
       self.fail("Wrong If-Match header for update")
     except HttpException, ex:
       self.assertEqual(ex.code, 412)
