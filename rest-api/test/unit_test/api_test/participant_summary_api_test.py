@@ -281,12 +281,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     with FakeClock(TIME_5):
       response = self.send_get('Participant/%s/Summary' % participant_id)
-      # print response, '\n'
       self.assertNotIn('city', response)
       self.assertNotIn('streetAddress', response)
-      # self.assertEqual(response['withdrawalStatus'], 'NO_USE')
-      # self.assertEqual(response['withdrawalReason'], 'DUPLICATE')
-      # self.assertEqual(response['withdrawalReasonJustification'],  "IT WAS A DUPLICATE")
+      self.assertEqual(response['withdrawalStatus'], 'NO_USE')
+      self.assertEqual(response['withdrawalReason'], 'DUPLICATE')
+      self.assertEqual(response['withdrawalReasonJustification'],  "IT WAS A DUPLICATE")
 
   def testQuery_noParticipants(self):
     self.send_get('Participant/P1/Summary', expected_status=httplib.NOT_FOUND)
