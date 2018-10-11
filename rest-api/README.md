@@ -24,7 +24,8 @@ From the rest-api directory, run:
 * `sudo apt-get install mysql-server libmysqlclient-dev` (to install MySQL server and client —
 if you prefer to use docker, see note below)
 #### For Mac OS
-* `brew isntall mysql-connector-c`
+* `brew install mysql@5.7`
+* `brew install mysql-connector-c`
 * If mysql is installed via homebrew you may have to symlink the mysql client:
     * `ln -s /usr/local/opt/mysql@5.7/lib/libmysqlclient.20.dylib /usr/local/opt/mysql/lib/libmysqlclient.20.dylib`
 
