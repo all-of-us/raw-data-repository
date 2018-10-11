@@ -20,11 +20,17 @@ Make sure that you have google
 [cloud SDK](https://cloud.google.com/sdk/downloads) installed.
 
 From the rest-api directory, run:
-
+#### For Ubuntu
 * `sudo apt-get install mysql-server libmysqlclient-dev` (to install MySQL server and client —
 if you prefer to use docker, see note below)
+#### For Mac OS
+* `brew isntall mysql-connector-c`
+* If mysql is installed via homebrew you may have to symlink the mysql client:
+    * `ln -s /usr/local/opt/mysql@5.7/lib/libmysqlclient.20.dylib /usr/local/opt/mysql/lib/libmysqlclient.20.dylib`
+
+#### Then run
 * `tools/setup_env.sh` (get libs, set up git hooks)
-* `mysql -V` to ensure that you have mysql >= 5.7
+* `mysql -V` to ensure that you have mysql = 5.7.X
 * `dev_appserver.py test.yaml --require_indexes` (to run your local server)
 * `tools/setup_local_database.sh` (to create a database in MySQL, upgrade its schema,
   import the latest codebook into it, and put the config for the database in Datastore)
