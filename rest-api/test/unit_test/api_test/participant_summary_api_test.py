@@ -12,7 +12,7 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.code import CodeType
 from model.biobank_stored_sample import BiobankStoredSample
-from participant_enums import ANSWER_CODE_TO_RACE, WithdrawalReason, WithdrawalStatus
+from participant_enums import ANSWER_CODE_TO_RACE
 from test_data import load_measurement_json, load_biobank_order_json
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase
 
