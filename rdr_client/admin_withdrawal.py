@@ -42,7 +42,8 @@ def main(client):
     if not client.args.dry_run:
       response = client.request_json(path, 'PUT', request_body,
                                      headers={'If-Match': client.last_etag})
-      logging.info(pprint.pformat(response))
+      logging.info('\n Participant: {} withdrawn. New info: \n {}'.format(response['participantId'],
+                                                                   pprint.pformat(response)))
     else:
       logging.info('Request that would be sent for participant {}: \n {} '.format(
                     participant, pprint.pformat(request_body)))
