@@ -1,6 +1,6 @@
 import datetime
 from sqlalchemy import Column, Integer, String, Date
-from sqlalchemy import ForeignKey, Index, SmallInteger
+from sqlalchemy import ForeignKey, Index, SmallInteger, UnicodeText
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -9,11 +9,13 @@ from model.utils import Enum
 from model.utils import UTCDateTime
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus
 from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import WithdrawalStatus, SuspensionStatus
+from participant_enums import WithdrawalStatus, SuspensionStatus, WithdrawalReason
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
-WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime', 'participantId', 'hpoId',
+WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime',
+                                'withdrawalReason', 'withdrawalReasonJustification',
+                                'participantId', 'hpoId',
                                 'organizationId', 'siteId', 'biobankId', 'firstName', 'middleName',
                                 'lastName', 'dateOfBirth',
                                 'consentForStudyEnrollment', 'consentForStudyEnrollmentTime',
@@ -226,7 +228,11 @@ class ParticipantSummary(Base):
       'withdrawal_status',
       Enum(WithdrawalStatus),
       nullable=False)
+  withdrawalReason = Column(
+    'withdrawal_reason',
+    Enum(WithdrawalReason))
   withdrawalTime = Column('withdrawal_time', UTCDateTime)
+  withdrawalReasonJustification = Column('withdrawal_reason_justification', UnicodeText)
 
   suspensionStatus = Column(
       'suspension_status',

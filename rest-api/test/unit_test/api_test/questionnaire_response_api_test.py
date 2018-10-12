@@ -220,6 +220,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleStatus1PXR2': 'UNSET',
                 'signUpTime': TIME_1.isoformat(),
                 'withdrawalStatus': 'NOT_WITHDRAWN',
+                'withdrawalReason': 'UNSET',
                 'suspensionStatus': 'NOT_SUSPENDED',
               }
     self.assertJsonResponseMatches(expected, summary)

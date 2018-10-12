@@ -1,28 +1,27 @@
-import threading
 import datetime
-from dao.organization_dao import OrganizationDao
-from query import OrderBy, PropertyType
-from werkzeug.exceptions import BadRequest, NotFound
-from sqlalchemy import or_
+import threading
 
-from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
-  format_json_org
-from api_util import format_json_site
 import clock
 import config
+from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
+  format_json_org, format_json_site
 from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
 from dao.base_dao import UpdatableDao
-from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from dao.code_dao import CodeDao
+from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from dao.hpo_dao import HPODao
+from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
-from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS
-from model.participant_summary import WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
 from model.config_utils import to_client_biobank_id
+from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
+  WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
 from model.utils import to_client_participant_id, get_property_type
-from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus
-from participant_enums import EnrollmentStatus, SuspensionStatus, WithdrawalStatus
-from participant_enums import get_bucketed_age
+from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
+  EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age
+from query import OrderBy, PropertyType
+from sqlalchemy import or_
+from werkzeug.exceptions import BadRequest, NotFound
+
 
 # By default / secondarily order by last name, first name, DOB, and participant ID
 _ORDER_BY_ENDING = ('lastName', 'firstName', 'dateOfBirth', 'participantId')
@@ -176,7 +175,7 @@ class ParticipantSummaryDao(UpdatableDao):
   def _has_withdrawn_filter(self, query):
     for field_filter in query.field_filters:
       if (field_filter.field_name == 'withdrawalStatus' and
-          field_filter.value == WithdrawalStatus.NO_USE):
+         field_filter.value == WithdrawalStatus.NO_USE):
         return True
       if field_filter.field_name == 'withdrawalTime' and field_filter.value is not None:
         return True
