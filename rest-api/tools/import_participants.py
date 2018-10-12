@@ -180,8 +180,8 @@ def import_participant(row, client, consent_questionnaire_id_and_version,
                                      questions, answer_map)
   if reader:
     logging.info(
-      '%s created from row %d (%r %r).',
-      participant_id, reader.line_num, row['first_name'], row['last_name'])
+      '%s created: (%r %r).',
+      participant_id, row['first_name'], row['last_name'])
   else:
     logging.info(
       '%s created from (%r %r).',
