@@ -1,24 +1,23 @@
 import json
 
-from code_constants import UNSET
-from dao.organization_dao import OrganizationDao
-from sqlalchemy.orm.session import make_transient
-from sqlalchemy.orm import joinedload
-from werkzeug.exceptions import BadRequest, Forbidden
-
+import clock
 from api_util import format_json_enum, parse_json_enum, format_json_date, format_json_hpo, \
   format_json_org, format_json_site, get_site_id_from_google_group, get_awardee_id_from_name, \
   get_organization_id_from_external_id
-import clock
+from code_constants import UNSET
 from dao.base_dao import BaseDao, UpdatableDao
 from dao.hpo_dao import HPODao
+from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
-from model.participant_summary import ParticipantSummary
-from model.participant import Participant, ParticipantHistory
-from model.utils import to_client_participant_id
 from model.config_utils import to_client_biobank_id
+from model.participant import Participant, ParticipantHistory
+from model.participant_summary import ParticipantSummary
+from model.utils import to_client_participant_id
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus, \
   make_primary_provider_link_for_id, WithdrawalReason
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.session import make_transient
+from werkzeug.exceptions import BadRequest, Forbidden
 
 
 class ParticipantHistoryDao(BaseDao):
@@ -87,8 +86,12 @@ class ParticipantDao(UpdatableDao):
       raise BadRequest('missing withdrawal status in update')
     if obj.suspensionStatus is None:
       raise BadRequest('missing suspension status in update')
+    if obj.withdrawalReason != WithdrawalReason.UNSET and obj.withdrawalReason is not None and \
+       obj.withdrawalReasonJustification is None:
+      raise BadRequest('missing withdrawalReasonJustification in update')
     super(ParticipantDao, self)._validate_update(session, obj, existing_obj)
     # Once a participant marks their withdrawal status as NO_USE, it can't be changed back.
+    # TODO: Consider the future ability to un-withdraw.
     if (existing_obj.withdrawalStatus == WithdrawalStatus.NO_USE
       and obj.withdrawalStatus != WithdrawalStatus.NO_USE):
       raise Forbidden('Participant %d has withdrawn, cannot unwithdraw' % obj.participantId)
@@ -221,6 +224,8 @@ class ParticipantDao(UpdatableDao):
       organizationId=obj.organizationId,
       siteId=obj.siteId,
       withdrawalStatus=obj.withdrawalStatus,
+      withdrawalReason=obj.withdrawalReason,
+      withdrawalReasonJustification=obj.withdrawalReasonJustification,
       suspensionStatus=obj.suspensionStatus,
       enrollmentStatus=EnrollmentStatus.INTERESTED)
 

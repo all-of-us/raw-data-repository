@@ -1,8 +1,8 @@
 import datetime
 import httplib
-import main
 import threading
 
+import main
 from clock import FakeClock
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, DVEHRSHARING_CONSENT_CODE_YES,
@@ -10,8 +10,8 @@ from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from model.code import CodeType
 from model.biobank_stored_sample import BiobankStoredSample
+from model.code import CodeType
 from participant_enums import ANSWER_CODE_TO_RACE
 from test_data import load_measurement_json, load_biobank_order_json
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase
@@ -286,6 +286,48 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertEqual(response['withdrawalStatus'], 'NO_USE')
       self.assertEqual(response['withdrawalReason'], 'DUPLICATE')
       self.assertEqual(response['withdrawalReasonJustification'],  "IT WAS A DUPLICATE")
+
+  def test_no_justification_fails(self):
+    with FakeClock(TIME_1):
+      SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
+                               "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
+      participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+      participant_id = participant['participantId']
+      with FakeClock(TIME_1):
+        self.send_consent(participant_id)
+      questionnaire_id = self.create_questionnaire('questionnaire3.json')
+
+      # Populate some answers to the questionnaire
+      answers = {
+        'race': RACE_WHITE_CODE,
+        'genderIdentity': 'male',
+        'firstName': self.fake.first_name(),
+        'middleName': self.fake.first_name(),
+        'lastName': self.fake.last_name(),
+        'zipCode': '78751',
+        'state': 'PIIState_VA',
+        'streetAddress': '1234 Main Street',
+        'city': 'Austin',
+        'sex': 'male_sex',
+        'sexualOrientation': 'straight',
+        'phoneNumber': '512-555-5555',
+        'recontactMethod': 'email_code',
+        'language': 'en',
+        'education': 'highschool',
+        'income': 'lotsofmoney',
+        'dateOfBirth': datetime.date(1978, 10, 9),
+        'CABoRSignature': 'signature.pdf',
+        }
+
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
+    with FakeClock(TIME_2):
+      path = 'Participant/%s' % participant_id
+      participant['withdrawalStatus'] = "NO_USE"
+      participant['withdrawalReason'] = "DUPLICATE"
+      # no withdrawalReasonJustification should fail.
+      self.send_put(path, participant, headers={'If-Match': 'W/"1"'}, expected_status=httplib.BAD_REQUEST)
+
 
   def testQuery_noParticipants(self):
     self.send_get('Participant/P1/Summary', expected_status=httplib.NOT_FOUND)
@@ -1008,6 +1050,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     with FakeClock(TIME_3):
       participant_2['withdrawalStatus'] = 'NO_USE'
+      participant_2['withdrawalReason'] = 'DUPLICATE'
+      participant_2['withdrawalReasonJustification'] = 'Duplicate.'
       participant_3['suspensionStatus'] = 'NO_CONTACT'
       participant_3['site'] = 'hpo-site-monroeville'
       self.send_put('Participant/%s' % participant_id_2, participant_2,
@@ -1070,6 +1114,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
     self.assertEquals('UNMAPPED', ps_2['genderIdentity'])
     self.assertEquals('NO_USE', ps_2['withdrawalStatus'])
+    self.assertEquals('DUPLICATE', ps_2['withdrawalReason'])
     self.assertEquals('NOT_SUSPENDED', ps_2['suspensionStatus'])
     self.assertEquals('NO_CONTACT', ps_2['recontactMethod'])
     self.assertIsNotNone(ps_2['withdrawalTime'])

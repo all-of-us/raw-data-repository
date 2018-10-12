@@ -2,34 +2,34 @@ from __future__ import print_function
 
 import datetime
 import json
-import offline.metrics_export
 
+import offline.metrics_export
 from clock import FakeClock
-from code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE
-from code_constants import GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE
-from code_constants import RACE_QUESTION_CODE, STATE_QUESTION_CODE, RACE_WHITE_CODE
-from code_constants import RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_SKIP_CODE
-from participant_enums import WithdrawalStatus, make_primary_provider_link_for_name
+from code_constants import CONSENT_PERMISSION_YES_CODE, CONSENT_PERMISSION_NO_CODE, \
+  GENDER_IDENTITY_QUESTION_CODE, EHR_CONSENT_QUESTION_CODE, RACE_QUESTION_CODE, \
+  STATE_QUESTION_CODE, RACE_WHITE_CODE, RACE_NONE_OF_THESE_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, \
+  PMI_SKIP_CODE
+from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from dao.hpo_dao import HPODao
+from dao.metrics_dao import MetricsVersionDao, SERVING_METRICS_DATA_VERSION
+from dao.participant_dao import ParticipantDao
 from field_mappings import FIELD_TO_QUESTIONNAIRE_MODULE_CODE
 from mapreduce import test_support
 from model.biobank_stored_sample import BiobankStoredSample
 from model.code import CodeType
 from model.hpo import HPO
-from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from dao.hpo_dao import HPODao
-from dao.metrics_dao import MetricsVersionDao, SERVING_METRICS_DATA_VERSION
-from dao.participant_dao import ParticipantDao
 from model.metrics import MetricsVersion
 from model.participant import Participant
-from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE
-from offline.metrics_config import get_participant_fields, HPO_ID_FIELDS, ANSWER_FIELDS
+from offline.metrics_config import ANSWER_FIELD_TO_QUESTION_CODE, get_participant_fields, \
+  HPO_ID_FIELDS, ANSWER_FIELDS
 from offline.metrics_export import MetricsExport, _HPO_IDS_CSV, _PARTICIPANTS_CSV, _ANSWERS_CSV
 from offline_test.gcs_utils import assertCsvContents
+from participant_enums import WithdrawalStatus, make_primary_provider_link_for_name, \
+  WithdrawalReason
 from test_data import load_biobank_order_json, load_measurement_json
 from unit_test_util import FlaskTestBase, CloudStorageSqlTestBase, SqlTestBase, TestBase, \
-  cancel_biobank_order
-from unit_test_util import make_questionnaire_response_json, pretty, run_deferred_tasks
-from unit_test_util import PITT_HPO_ID
+  cancel_biobank_order, make_questionnaire_response_json, pretty, run_deferred_tasks, PITT_HPO_ID
+
 
 BUCKET_NAME = 'pmi-drc-biobank-test.appspot.com'
 TIME = datetime.datetime(2016, 1, 1)
@@ -189,6 +189,8 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
       participant_dao.update(participant7)
 
       participant8.withdrawalStatus = WithdrawalStatus.NO_USE
+      participant8.withdrawalReason = WithdrawalReason.TEST
+      participant8.withdrawalReasonJustification = 'test account'
       participant_dao.update(participant8)
 
       self.send_post('Participant/P2/PhysicalMeasurements', load_measurement_json(2, t3))

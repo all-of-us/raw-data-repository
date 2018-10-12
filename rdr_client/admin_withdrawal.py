@@ -1,15 +1,17 @@
 """
 Used to administratively withdrawal a list of participants (all with the same withdrawal reason
 and justification. i.e. n list of participants are registered as TEST participants
-param: WithdrawalReason must be one of fraudulent | test | duplicate.
-param: WithdrawalReasonJustification is a string explanation.
+param: withdrawalreason must be one of FRAUDULENT | TEST | DUPLICATE.
+param: withdrawalreasonjustification is a string explanation.
 run with run_client e.g.
 $run_client.sh --project <PROJECT> --account <ACCOUNT> [--service_account <ACCOUNT>]
-admin_withdrawal.py --withdrawal_reason <fraudulent, duplicate, test> --participants <P1000, P1001>
+admin_withdrawal.py --withdrawal_reason <FRAUDULENT, DUPLICATE, TEST> --participants <P1000, P1001>
 """
 import logging
 import pprint
+
 from main_util import get_parser, configure_logging
+
 from client import Client, client_log
 
 
@@ -55,7 +57,7 @@ if __name__ == '__main__':
                                                       'duplicate | test]', required=True)
   arg_parser.add_argument('--withdrawal_justification', help='A string justification for '
                                                              'withdrawal', required=True, nargs='+')
-  arg_parser.add_argument('--participants', help='List of participants to withdrawal, all having '
-                                                 'the same reason and justification',
-                           required=True, nargs='+')
+  arg_parser.add_argument('--participants', help='Participants to withdrawal, all having '
+                                                 'the same reason and justification. Seperated by '
+                                                 'spaces', required=True, nargs='+')
   main(Client(parser=arg_parser))
