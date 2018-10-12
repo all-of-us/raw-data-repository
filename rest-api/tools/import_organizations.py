@@ -269,11 +269,12 @@ class SiteImporter(CsvImporter):
     insert_participants = False
     if not dry_run:
       if self.environment:
+        current_env = ENV_STABLE
         if self.environment.strip() == 'STABLE' and len(self.new_sites_list) > 0:
           from googleapiclient.discovery import build
           logging.info('Starting reboot of app instances to insert new test participants')
           service = build('appengine', 'v1', cache_discovery=False)
-          request = service.apps().services().versions().list(appsId=ENV_STABLE,
+          request = service.apps().services().versions().list(appsId=current_env,
                                                               servicesId='default')
           versions = request.execute()
 
@@ -283,14 +284,14 @@ class SiteImporter(CsvImporter):
               request = service.apps().services().versions().instances().list(
                                                                       servicesId='default',
                                                                       versionsId=_id,
-                                                                      appsId=ENV_STABLE)
+                                                                      appsId=current_env)
               instances = request.execute()
 
               try:
                 for instance in instances['instances']:
                   sha = instance['name'].split('/')[-1]
                   delete_instance = service.apps().services().versions().instances().delete(
-                                                                        appsId=ENV_STABLE,
+                                                                        appsId=current_env,
                                                                         servicesId='default',
                                                                         versionsId=_id,
                                                                         instancesId=sha)
