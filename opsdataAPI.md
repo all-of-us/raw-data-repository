@@ -1,6 +1,6 @@
 ## OPS-DATA API
 
-The opsdata API offers access to the ParticipantSummary resource and represents an aggregated view of relevant
+The ops-data API offers access to the ParticipantSummary resource and represents an aggregated view of relevant
 participant details, including data from consent (name, contact information),
 from PPI modules (a status indicating whether the participant has completed
 each questionnaire), basic demographics (age, gender, race).
@@ -15,14 +15,14 @@ Target users:
 * Informatics users at Awardee Partners
 
 Endpoints:
-* stable: all-of-us-rdr-stable.appspot.com/rdr/v1
-* prod: all-of-us-rdr-prod.appspot.com/rdr/v1
+* stable: all-of-us-rdr-stable.appspot.com/rdr/v1/ParticipantSummary
+* prod: all-of-us-rdr-prod.appspot.com/rdr/v1/ParticipantSummary
 
 See https://github.com/all-of-us/raw-data-repository/blob/master/rdr_client/work_queue.py for Python examples.
 
 The recommended time frame for calling the sync link is every 5 minutes.
 
-Service Accounts must use the `awardee` parameter in request.
+**Service Accounts must use the `awardee` parameter in request.**
 
 The summary includes the following fields:
 
@@ -200,7 +200,7 @@ Participant Work Queue. Any of the above parameters can be provided as a query p
 an exact match.
 
 
-The participant summary API supports filtering and sorting on last modified time.
+The  ops-data API supports filtering and sorting on last modified time.
 The default order results are returned is...
 * last modified time
 * participant ID (ascending)
@@ -223,7 +223,7 @@ The recommended time between syncs is 5 minutes.
 
 See FHIR search prefixes below
 
-Synchronize Participant Summary last modified link.
+Synchronize ops-data last modified link.
 This allows Awardees to stay up-to-date
 with newly-arrived summaries. The return value is a FHIR History [Bundle](http://hl7.org/fhir/bundle.html)
 where each entry is a `ParticipantSummary` document.
