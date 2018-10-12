@@ -1,9 +1,5 @@
 import json
 
-from dateutil.relativedelta import relativedelta
-
-from protorpc import messages
-
 from code_constants import (
   # Internal Use Codes
   UNSET,
@@ -13,7 +9,10 @@ from code_constants import (
   # Race Codes
   RACE_AIAN_CODE, RACE_ASIAN_CODE, RACE_BLACK_CODE, RACE_MENA_CODE, RACE_NHDPI_CODE,
   RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_FREETEXT_CODE, RACE_NONE_OF_THESE_CODE
-)
+  )
+from dateutil.relativedelta import relativedelta
+from protorpc import messages
+
 
 # These are handled specially in code; others will be inserted into the database and handled
 # dynamically.
@@ -165,6 +164,15 @@ class WithdrawalStatus(messages.Enum):
   """Whether a participant has withdrawn from the study."""
   NOT_WITHDRAWN = 1
   NO_USE = 2
+
+
+class WithdrawalReason(messages.Enum):
+  """Whether a participant has been administratively withdrawn from the study.
+     If value is UNSET it mean that a participant went through the normal withdrawal process."""
+  UNSET = 0
+  FRAUDULENT = 1
+  DUPLICATE = 2
+  TEST = 3
 
 
 class SuspensionStatus(messages.Enum):
