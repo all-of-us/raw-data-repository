@@ -2,21 +2,22 @@ import datetime
 import json
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 
-from query import Query, Operator, FieldFilter, OrderBy
-
 import config
 from dao.base_dao import json_serial
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
+from model.biobank_stored_sample import BiobankStoredSample
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
-from model.biobank_stored_sample import BiobankStoredSample
-from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus
-from participant_enums import SampleStatus, QuestionnaireStatus
+from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus, SampleStatus, \
+  QuestionnaireStatus
+from query import Query, Operator, FieldFilter, OrderBy
 from unit_test_util import NdbTestBase, PITT_HPO_ID
 
+
 NUM_BASELINE_PPI_MODULES = 3
+
 
 class ParticipantSummaryDaoTest(NdbTestBase):
   def setUp(self):
@@ -216,11 +217,13 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     p_no_samples = self._insert(Participant(participantId=3, biobankId=33))
     p_unconfirmed = self._insert(Participant(participantId=4, biobankId=44))
     self.assertEquals(self.dao.get(p_baseline_samples.participantId).numBaselineSamplesArrived, 0)
+
     def get_p_baseline_last_modified():
       return self.dao.get(p_baseline_samples.participantId).lastModified
     p_baseline_last_modified1 = get_p_baseline_last_modified()
 
     sample_dao = BiobankStoredSampleDao()
+
     def add_sample(participant, test_code, sample_id):
       TIME = datetime.datetime(2018, 3, 2)
       sample_dao.insert(BiobankStoredSample(
