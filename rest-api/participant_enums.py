@@ -93,6 +93,7 @@ class Stratifications(messages.Enum):
   GENDER_IDENTITY = 3
   RACE = 4
   AGE_RANGE = 5
+  ENROLLMENT_STATUS_BY_ORDER_TIME = 6
 
 METRIC_SET_KEYS = {
   MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([

@@ -90,9 +90,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     if time_mem is not None:
       with FakeClock(time_mem):
         summary.consentForElectronicHealthRecordsTime = time_mem
+        summary.consentForElectronicHealthRecords = 1
 
     if time_fp is not None:
       with FakeClock(time_fp):
+        summary.consentForElectronicHealthRecords = 1
         summary.consentForElectronicHealthRecordsTime = time_fp
         summary.questionnaireOnTheBasicsTime = time_fp
         summary.questionnaireOnLifestyleTime = time_fp
@@ -100,6 +102,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
         summary.physicalMeasurementsFinalizedTime = time_fp
         summary.sampleOrderStatus1ED04Time = time_fp
         summary.sampleOrderStatus1SALTime = time_fp
+        summary.sampleStatus1ED04Time = time_fp
+        summary.sampleStatus1SALTime = time_fp
 
     self.ps_dao.insert(summary)
 
@@ -168,6 +172,56 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = """
       bucketSize=1
       &stratification=ENROLLMENT_STATUS
+      &startDate=2017-12-30
+      &endDate=2018-01-04
+      &awardee=AZ_TUCSON
+      """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    interested_count_day_1 = response[0]['metrics']['INTERESTED']
+    interested_count_day_2 = response[1]['metrics']['INTERESTED']
+
+    self.assertEquals(interested_count_day_1, 0)
+    self.assertEquals(interested_count_day_2, 2)
+
+  def test_get_counts_with_single_awardee_filter_by_order_time(self):
+    # Does the awardee filter work?
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
+
+    p1 = Participant(participantId=2, biobankId=5)
+    self._insert(p1, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
+
+    p1 = Participant(participantId=3, biobankId=6)
+    self._insert(p1, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
+
+    # enrollmentStatus param left blank to test we can handle it
+    qs = """
+      bucketSize=1
+      &stratification=ENROLLMENT_STATUS_BY_ORDER_TIME
+      &startDate=2017-12-30
+      &endDate=2018-01-04
+      &awardee=PITT
+      &enrollmentStatus=
+      """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    interested_count_day_1 = response[0]['metrics']['INTERESTED']
+    interested_count_day_2 = response[1]['metrics']['INTERESTED']
+
+    self.assertEquals(interested_count_day_1, 0)
+    self.assertEquals(interested_count_day_2, 1)
+
+    qs = """
+      bucketSize=1
+      &stratification=ENROLLMENT_STATUS_BY_ORDER_TIME
       &startDate=2017-12-30
       &endDate=2018-01-04
       &awardee=AZ_TUCSON
@@ -262,6 +316,37 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(interested_count_day_1, 0)
     self.assertEquals(interested_count_day_2, 3)
 
+  def test_get_counts_with_multiple_awardee_filters_by_order_time(self):
+    # Does the awardee filter work when passed more than one awardee?
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1)
+
+    qs = """
+        bucketSize=1
+        &stratification=ENROLLMENT_STATUS_BY_ORDER_TIME
+        &startDate=2017-12-30
+        &endDate=2018-01-04
+        &awardee=PITT,AZ_TUCSON
+        &enrollmentStatus=
+        """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    interested_count_day_1 = response[0]['metrics']['INTERESTED']
+    interested_count_day_2 = response[1]['metrics']['INTERESTED']
+
+    self.assertEquals(interested_count_day_1, 0)
+    self.assertEquals(interested_count_day_2, 3)
+
   def test_get_counts_with_enrollment_status_member_filter(self):
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -320,6 +405,64 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 3)
 
+  def test_get_counts_with_enrollment_status_member_filter_by_order_time(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time2)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1, time_mem=self.time3)
+
+    # awardee param intentionally left blank to test we can handle it
+    qs = """
+       bucketSize=1
+       &stratification=ENROLLMENT_STATUS_BY_ORDER_TIME
+       &startDate=2017-12-30
+       &endDate=2018-01-04
+       &awardee=
+       &enrollmentStatus=MEMBER
+       """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    member_count_day_1 = response[0]['metrics']['MEMBER']
+    member_count_day_2 = response[1]['metrics']['MEMBER']
+    member_count_day_3 = response[2]['metrics']['MEMBER']
+    member_count_day_4 = response[3]['metrics']['MEMBER']
+    interested_count_day_4 = response[1]['metrics']['INTERESTED']
+
+    self.assertEquals(member_count_day_1, 0)
+    self.assertEquals(member_count_day_2, 0)
+    self.assertEquals(member_count_day_3, 2)
+    self.assertEquals(member_count_day_4, 3)
+    self.assertEquals(interested_count_day_4, 0)
+
+    qs = """
+       bucketSize=1
+       &stratification=TOTAL
+       &startDate=2017-12-30
+       &endDate=2018-01-04
+       &enrollmentStatus=MEMBER
+       """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    total_count_day_1 = response[0]['metrics']['TOTAL']
+    total_count_day_2 = response[1]['metrics']['TOTAL']
+
+    self.assertEquals(total_count_day_1, 0)
+    self.assertEquals(total_count_day_2, 3)
+
   def test_get_counts_with_enrollment_status_full_participant_filter(self):
 
     # MEMBER @ time 1
@@ -354,6 +497,51 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
+    full_participant_count_day_1 = response[0]['metrics']['FULL_PARTICIPANT']
+    full_participant_count_day_2 = response[1]['metrics']['FULL_PARTICIPANT']
+    full_participant_count_day_3 = response[2]['metrics']['FULL_PARTICIPANT']
+    full_participant_count_day_4 = response[3]['metrics']['FULL_PARTICIPANT']
+    member_count_day_4 = response[4]['metrics']['MEMBER']
+
+    self.assertEquals(full_participant_count_day_1, 0)
+    self.assertEquals(full_participant_count_day_2, 0)
+    self.assertEquals(full_participant_count_day_3, 2)
+    self.assertEquals(full_participant_count_day_4, 3)
+    self.assertEquals(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
+
+  def test_get_counts_with_enrollment_status_full_participant_filter_by_order_time(self):
+
+    # MEMBER @ time 1
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1,
+                 time_mem=self.time1)
+
+    # FULL PARTICIPANT @ time 2
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1,
+                 time_mem=self.time1, time_fp=self.time2)
+
+    # FULL PARTICIPANT @ time 2
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1,
+                 time_mem=self.time1, time_fp=self.time2)
+
+    # FULL PARTICIPANT @ time 3
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1,
+                 time_mem=self.time1, time_fp=self.time3)
+
+    qs = """
+      bucketSize=1
+      &stratification=ENROLLMENT_STATUS_BY_ORDER_TIME
+      &startDate=2017-12-30
+      &endDate=2018-01-04
+      &enrollmentStatus=FULL_PARTICIPANT
+      """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
     full_participant_count_day_1 = response[0]['metrics']['FULL_PARTICIPANT']
     full_participant_count_day_2 = response[1]['metrics']['FULL_PARTICIPANT']
     full_participant_count_day_3 = response[2]['metrics']['FULL_PARTICIPANT']
@@ -455,6 +643,48 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     # We requested data for only MEMBERs in PITT, so no MEMBERs in AZ_TUCSON should be returned
     self.assertEquals(member_count_day_2, 1)
 
+  def test_get_counts_with_single_various_filters_by_order_time(self):
+    # Do the awardee and enrollment status filters work when passed single values?
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1,
+                 time_mem=self.time1)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1,
+                 time_mem=self.time1)
+
+    qs = """
+      bucketSize=1
+      &stratification=ENROLLMENT_STATUS_BY_ORDER_TIME
+      &startDate=2017-12-30
+      &endDate=2018-01-04
+      &awardee=PITT
+      &enrollmentStatus=MEMBER
+      """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    interested_count_day_1 = response[0]['metrics']['INTERESTED']
+    interested_count_day_2 = response[1]['metrics']['INTERESTED']
+    member_count_day_2 = response[1]['metrics']['MEMBER']
+
+    self.assertEquals(interested_count_day_1, 0)
+
+    # We requested data for only MEMBERs, so no INTERESTEDs should be returned
+    self.assertEquals(interested_count_day_2, 0)
+
+    # We requested data for only MEMBERs in PITT, so no MEMBERs in AZ_TUCSON should be returned
+    self.assertEquals(member_count_day_2, 1)
+
   def test_get_counts_with_multiple_various_filters(self):
     # Do the awardee and enrollment status filters work when passed multiple values?
 
@@ -529,6 +759,36 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = """
         bucketSize=1
         &stratification=ENROLLMENT_STATUS
+        &startDate=2017-12-30
+        &endDate=2018-01-04
+        &enrollmentStatus=MEMBER
+        """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    interested_count_day_2 = response[1]['metrics']['INTERESTED']
+    member_count_day_2 = response[1]['metrics']['MEMBER']
+
+    self.assertEquals(interested_count_day_2, 0)
+    self.assertEquals(member_count_day_2, 1)
+
+  def test_get_counts_excluding_interested_participants_by_order_time(self):
+    # When filtering only for MEMBER, no INTERESTED (neither consented nor unconsented) should be counted
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time1)
+
+    qs = """
+        bucketSize=1
+        &stratification=ENROLLMENT_STATUS_BY_ORDER_TIME
         &startDate=2017-12-30
         &endDate=2018-01-04
         &enrollmentStatus=MEMBER

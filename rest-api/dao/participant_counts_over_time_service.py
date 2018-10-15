@@ -30,12 +30,24 @@ class ParticipantCountsOverTimeService(BaseDao):
     filters_sql_ps = self.get_facets_sql(filters)
     filters_sql_p = self.get_facets_sql(filters, table_prefix='p')
 
+    # check if request stratification is for enromment status
+    query_for_enrollment_status = False
+
+    target_enrollment_statuses = []
+    if 'enrollment_statuses' in filters:
+      target_enrollment_statuses = [str(val) for val in filters['enrollment_statuses']]
+
     if str(stratification) == 'TOTAL':
       strata = ['TOTAL']
       sql = self.get_total_sql(filters_sql_ps)
     elif str(stratification) == 'ENROLLMENT_STATUS':
+      query_for_enrollment_status = True
       strata = [str(val) for val in EnrollmentStatus]
       sql = self.get_enrollment_status_sql(filters_sql_ps, filters_sql_p)
+    elif str(stratification) == 'ENROLLMENT_STATUS_BY_ORDER_TIME':
+      query_for_enrollment_status = True
+      strata = [str(val) for val in EnrollmentStatus]
+      sql = self.get_enrollment_status_by_order_time_sql(filters_sql_ps, filters_sql_p)
     else:
       raise BadRequest('Invalid stratification: %s' % stratification)
 
@@ -48,6 +60,8 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     # Iterate through each result (by date), transforming tabular SQL results
     # into expected list-of-dictionaries response format
+    # set value = 0 if request stratification is for enromment status
+    # but key is not in target_enrollment_statuses
     try:
       results = cursor.fetchall()
       for result in results:
@@ -56,7 +70,9 @@ class ParticipantCountsOverTimeService(BaseDao):
         values = result[:-1]
         for i, value in enumerate(values):
           key = strata[i]
-          if value == None:
+          if value is None or (query_for_enrollment_status
+                               and 'enrollment_statuses' in filters
+                               and key not in target_enrollment_statuses):
             value = 0
           metrics[key] = int(value)
         results_by_date.append({
@@ -176,70 +192,163 @@ class ParticipantCountsOverTimeService(BaseDao):
     # Add macros for GREATEST and LEAST, as they don't work in SQLite
     # Example: master/rest-api/dao/database_utils.py#L50
 
-    sql = """
-      SELECT
-         SUM(registered_cnt * (cnt_day <= calendar.day)) registered_participants,
-         SUM(member_cnt * (cnt_day <= calendar.day)) member_participants,
-         SUM(full_cnt * (cnt_day <= calendar.day)) full_participants,
-         calendar.day
-       FROM
-       (SELECT c2.day cnt_day,
-               registered.cnt registered_cnt,
-               member.cnt member_cnt,
-               full.cnt full_cnt
-            FROM calendar c2
-            LEFT OUTER JOIN
-            (SELECT COUNT(*) cnt,
-                (CASE WHEN (enrollment_status = 1 OR enrollment_status IS NULL) THEN
-                  DATE(p.sign_up_time)
-                  ELSE NULL END) day
+    sql_by_sample_status_time = """
+      select sum(is_register) as registered_participants,
+       sum(is_member) as member_participants,
+       sum(is_core) as full_participants,
+       z.day
+      from
+      (
+           select
+            x.participant_id,
+            case when register_day<=y.day and member_day>y.day then 1 else 0 end as is_register,
+            case when member_day<=y.day and core_day > y.day then 1 else 0 end as is_member,
+            case when core_day<=y.day then 1 else 0 end as is_core,
+            y.day
+          from
+          (select a.participant_id,a.register_day,COALESCE(b.member_day,'3000-01-01') member_day,COALESCE(b.core_day,'3000-01-01') core_day from
+                (SELECT p.participant_id,
+                       CASE
+                         WHEN (enrollment_status IS NULL or enrollment_status >= 1) THEN DATE(p.sign_up_time)
+                         ELSE Date('3000-01-01') END register_day
                 FROM participant p
-                LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
-              %(filters_p)s
-              GROUP BY day) registered
-             ON c2.day = registered.day
-           LEFT OUTER JOIN
-            (SELECT COUNT(*) cnt,
-                   (CASE WHEN enrollment_status = 2 THEN
-                    DATE(ps.consent_for_electronic_health_records_time)
-                    ELSE NULL END) day
-               FROM participant_summary ps
-              %(filters_ps)s
-           GROUP BY day) member
-             ON c2.day = member.day
-           LEFT OUTER JOIN
-            (SELECT COUNT(*) cnt,
-             DATE(CASE WHEN enrollment_status = 3 THEN
-                   GREATEST(consent_for_electronic_health_records_time,
-                            questionnaire_on_the_basics_time,
-                            questionnaire_on_lifestyle_time,
-                            questionnaire_on_overall_health_time,
-                            physical_measurements_finalized_time,
-                           CASE WHEN
-                                LEAST(
-                                    COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_2ed10_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1sal_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1sal2_time, '3000-01-01')
-                                    ) = '3001-01-01' THEN NULL
-                                ELSE LEAST(
-                                    COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_2ed10_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1sal_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1sal2_time, '3000-01-01')
-                                    )
-                           END)
-                END) day
-               FROM participant_summary ps
-              %(filters_ps)s
-           GROUP BY day) full
-             ON c2.day = full.day) day_sums, calendar
-          WHERE calendar.day >= :start_date
-            AND calendar.day <= :end_date
-          GROUP BY calendar.day
-          ORDER BY calendar.day;
-      """ % {'filters_ps': filters_sql_ps, 'filters_p': filters_sql_p}
+                       LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                %(filters_p)s) a left join
+               (select participant_id,
+                      (
+                          CASE
+                            WHEN enrollment_status>=2 and ps.consent_for_electronic_health_records = 1 THEN DATE(COALESCE(ps.consent_for_electronic_health_records_time, '3000-01-01'))
+                            ELSE Date('3000-01-01') END
+                          ) member_day,
+                       case when enrollment_status=3 then
+                       DATE(
+                         GREATEST(
+                           GREATEST(
+                             COALESCE(sign_up_time, '1000-01-01'),
+                             COALESCE(consent_for_electronic_health_records_time, '1000-01-01'),
+                             COALESCE(questionnaire_on_the_basics_time, '1000-01-01'),
+                             COALESCE(questionnaire_on_lifestyle_time, '1000-01-01'),
+                             COALESCE(questionnaire_on_overall_health_time, '1000-01-01'),
+                             COALESCE(physical_measurements_finalized_time, '1000-01-01')
+                               ),
+                           LEAST(
+                             COALESCE(sample_status_1ed04_time, '3000-01-01'),
+                             COALESCE(sample_status_2ed10_time, '3000-01-01'),
+                             COALESCE(sample_status_1ed10_time, '3000-01-01'),
+                             COALESCE(sample_status_1sal_time, '3000-01-01'),
+                             COALESCE(sample_status_1sal2_time, '3000-01-01')
+                               ))
+                       )
+                       else
+                           Date('3000-01-01')
+                       end core_day
+               from participant_summary ps
+               %(filters_ps)s) b
+               on b.participant_id=a.participant_id
+          where register_day<=:end_date or register_day='3000-01-01'
+          ) x join
+          (
+           select * from calendar
+           WHERE calendar.day >= :start_date
+           AND calendar.day <= :end_date
+          ) y
+      ) z
+      group by day;
+    """ % {'filters_ps': filters_sql_ps, 'filters_p': filters_sql_p}
 
-    return sql
+    return sql_by_sample_status_time
+
+
+  def get_enrollment_status_by_order_time_sql(self, filters_sql_ps, filters_sql_p):
+
+    # Noteworthy comments / documentation from Dan (and lightly adapted)
+    #
+    # This SQL works OK but hardcodes the baseline questionnaires and the
+    # fact that 1ED04 and 1SAL are the samples needed to be a full
+    # participant into the SQL. Previously this was done with config:
+    #
+    # rest-api/config/base_config.json#L29
+    #
+    # For the samples, MySQL doesn't make it easy to do the LEAST of N
+    # nullable values, so this is probably OK...
+    #
+    # For the baseline questionnaires, note that we might want to use the config to
+    # generate the GREATEST statement instead, but for now are hardcoding as
+    # we do with samples.
+
+    # TODO when implementing unit testing for service class:
+    # Add macros for GREATEST and LEAST, as they don't work in SQLite
+    # Example: master/rest-api/dao/database_utils.py#L50
+
+    sql_by_sample_order_status_time = """
+      select sum(is_register) as registered_participants,
+             sum(is_member) as member_participants,
+             sum(is_core) as full_participants,
+             z.day
+      from
+      (
+           select
+            x.participant_id,
+            case when register_day<=y.day and member_day>y.day then 1 else 0 end as is_register,
+            case when member_day<=y.day and core_day > y.day then 1 else 0 end as is_member,
+            case when core_day<=y.day then 1 else 0 end as is_core,
+            y.day
+          from
+          (select a.participant_id,a.register_day,COALESCE(b.member_day,'3000-01-01') member_day,COALESCE(b.core_day,'3000-01-01') core_day from
+                (SELECT p.participant_id,
+                       CASE
+                         WHEN (enrollment_status IS NULL or enrollment_status >= 1) THEN DATE(p.sign_up_time)
+                         ELSE Date('3000-01-01') END register_day
+                FROM participant p
+                       LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                %(filters_p)s) a left join
+               (select participant_id,
+                      (
+                          CASE
+                            WHEN enrollment_status>=2 and ps.consent_for_electronic_health_records = 1 THEN DATE(COALESCE(ps.consent_for_electronic_health_records_time, '3000-01-01'))
+                            ELSE Date('3000-01-01') END
+                          ) member_day,
+                       case when
+                           enrollment_status>=2
+                           and consent_for_electronic_health_records_time is not null
+                           and questionnaire_on_the_basics_time is not null
+                           and questionnaire_on_lifestyle_time is not null
+                           and questionnaire_on_overall_health_time is not null
+                           and physical_measurements_finalized_time is not null
+                           then
+                       DATE(
+                         GREATEST(
+                           GREATEST(
+                             COALESCE(sign_up_time, '1000-01-01'),
+                             COALESCE(consent_for_electronic_health_records_time, '1000-01-01'),
+                             COALESCE(questionnaire_on_the_basics_time, '1000-01-01'),
+                             COALESCE(questionnaire_on_lifestyle_time, '1000-01-01'),
+                             COALESCE(questionnaire_on_overall_health_time, '1000-01-01'),
+                             COALESCE(physical_measurements_finalized_time, '1000-01-01')
+                               ),
+                           LEAST(
+                             COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
+                             COALESCE(sample_order_status_2ed10_time, '3000-01-01'),
+                             COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
+                             COALESCE(sample_order_status_1sal_time, '3000-01-01'),
+                             COALESCE(sample_order_status_1sal2_time, '3000-01-01')
+                               ))
+                       )
+                       else
+                           Date('3000-01-01')
+                       end core_day
+               from participant_summary ps
+               %(filters_ps)s) b
+               on b.participant_id=a.participant_id
+          where register_day<=:end_date or register_day='3000-01-01'
+          ) x join
+          (
+           select * from calendar
+           WHERE calendar.day >= :start_date
+           AND calendar.day <= :end_date
+          ) y
+      ) z
+      group by day;
+    """ % {'filters_ps': filters_sql_ps, 'filters_p': filters_sql_p}
+
+    return sql_by_sample_order_status_time
