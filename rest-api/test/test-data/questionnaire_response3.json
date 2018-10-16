@@ -10,6 +10,7 @@
   "author": {
     "reference": "http://hl7.org/fhir/Practitioner/example"
   },
+  "extension":[{"url":"http://hl7.org/fhir/StructureDefinition/iso21090-ST-language","valueCode":"es"}],
   "authored": "2013-02-19T14:15:00+10:00",
   "group": {
     "linkId": "PHR",

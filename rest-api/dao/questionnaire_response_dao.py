@@ -34,6 +34,7 @@ _QUESTIONNAIRE_REFERENCE_FORMAT = (_QUESTIONNAIRE_PREFIX + "%d" +
 _SIGNED_CONSENT_EXTENSION = (
     'http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf')
 
+_LANGUAGE_EXTENSION = 'http://hl7.org/fhir/StructureDefinition/iso21090-ST-language'
 
 def count_completed_baseline_ppi_modules(participant_summary):
   baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
@@ -227,6 +228,15 @@ class QuestionnaireResponseDao(BaseDao):
       if race != participant_summary.race:
         participant_summary.race = race
         something_changed = True
+
+    # if primary language provided in the response, set the new value.
+    resource_json = json.loads(questionnaire_response.resource)
+    for extension in resource_json.get('extension', []):
+      if extension['url'] == _LANGUAGE_EXTENSION:
+        if participant_summary.primaryLanguage != extension['valueCode']:
+          participant_summary.primaryLanguage = extension['valueCode']
+          something_changed = True
+        break
 
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
     # QUESTIONNAIRE_MODULE_CODE_TO_FIELD

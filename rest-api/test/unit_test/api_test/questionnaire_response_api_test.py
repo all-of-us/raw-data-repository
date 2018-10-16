@@ -87,6 +87,11 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     get_response = self.send_get(_questionnaire_response_url(participant_id) + "/" + response['id'])
     self.assertJsonResponseMatches(resource, get_response)
 
+    # verify the primary language data is stored in participant summary
+    ps = self.send_get('Participant/%s/Summary' % participant_id)
+    primary_language = resource.get('extension',[])
+    self.assertEquals(primary_language[0]['valueCode'], ps['primaryLanguage'])
+
     code_dao = CodeDao()
 
     # Ensure we didn't create codes in the extra system
@@ -169,6 +174,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'consentForStudyEnrollment': 'SUBMITTED',
                 'consentForStudyEnrollmentTime': TIME_1.isoformat(),
                 'consentForCABoR': 'UNSET',
+                'primaryLanguage': 'en',
                 'questionnaireOnFamilyHealth': 'UNSET',
                 'questionnaireOnHealthcareAccess': 'UNSET',
                 'questionnaireOnMedicalHistory' : 'UNSET',

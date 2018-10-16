@@ -47,6 +47,7 @@ class ParticipantSummary(Base):
   phoneNumber = Column('phone_number', String(80))
   loginPhoneNumber = Column('login_phone_number', String(80))
   email = Column('email', String(255))
+  primaryLanguage = Column('primary_language', String(80))
   recontactMethodId = Column('recontact_method_id', Integer, ForeignKey('code.code_id'))
   languageId = Column('language_id', Integer, ForeignKey('code.code_id'))
   dateOfBirth = Column('date_of_birth', Date)
