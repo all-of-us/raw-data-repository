@@ -30,7 +30,7 @@ class ParticipantCountsOverTimeService(BaseDao):
     filters_sql_ps = self.get_facets_sql(filters)
     filters_sql_p = self.get_facets_sql(filters, table_prefix='p')
 
-    # check if request stratification is for enromment status
+    # check if request stratification is for enrollment status
     query_for_enrollment_status = False
 
     target_enrollment_statuses = []
@@ -60,7 +60,7 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     # Iterate through each result (by date), transforming tabular SQL results
     # into expected list-of-dictionaries response format
-    # set value = 0 if request stratification is for enromment status
+    # set value = 0 if request stratification is for enrollment status
     # but key is not in target_enrollment_statuses
     try:
       results = cursor.fetchall()
@@ -208,9 +208,7 @@ class ParticipantCountsOverTimeService(BaseDao):
           from
           (select a.participant_id,a.register_day,COALESCE(b.member_day,'3000-01-01') member_day,COALESCE(b.core_day,'3000-01-01') core_day from
                 (SELECT p.participant_id,
-                       CASE
-                         WHEN (enrollment_status IS NULL or enrollment_status >= 1) THEN DATE(p.sign_up_time)
-                         ELSE Date('3000-01-01') END register_day
+                       COALESCE(p.sign_up_time, '3000-01-01') as register_day
                 FROM participant p
                        LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
                 %(filters_p)s) a left join
@@ -296,9 +294,7 @@ class ParticipantCountsOverTimeService(BaseDao):
           from
           (select a.participant_id,a.register_day,COALESCE(b.member_day,'3000-01-01') member_day,COALESCE(b.core_day,'3000-01-01') core_day from
                 (SELECT p.participant_id,
-                       CASE
-                         WHEN (enrollment_status IS NULL or enrollment_status >= 1) THEN DATE(p.sign_up_time)
-                         ELSE Date('3000-01-01') END register_day
+                       COALESCE(p.sign_up_time, '3000-01-01') as register_day
                 FROM participant p
                        LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
                 %(filters_p)s) a left join
