@@ -14,7 +14,7 @@ from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
 from model.config_utils import to_client_biobank_id
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
-  WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
+  WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
 from model.utils import to_client_participant_id, get_property_type
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
   EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age
@@ -344,6 +344,11 @@ class ParticipantSummaryDao(UpdatableDao):
         (model.withdrawalTime is None or
          model.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME)):
       result = {k: result.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
+
+    elif model.withdrawalStatus != WithdrawalStatus.NO_USE and \
+      model.suspensionStatus == SuspensionStatus.NO_CONTACT:
+      for i in SUSPENDED_PARTICIPANT_FIELDS:
+        result[i] = UNSET
 
     result['participantId'] = to_client_participant_id(model.participantId)
     biobank_id = result.get('biobankId')

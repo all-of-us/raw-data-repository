@@ -1,15 +1,14 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Date
-from sqlalchemy import ForeignKey, Index, SmallInteger, UnicodeText
+
+from model.base import Base
+from model.utils import Enum, UTCDateTime
+from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus, \
+  PhysicalMeasurementsStatus, QuestionnaireStatus, WithdrawalStatus, SuspensionStatus, \
+  WithdrawalReason
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Index, SmallInteger, UnicodeText
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
-from model.base import Base
-from model.utils import Enum
-from model.utils import UTCDateTime
-from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus
-from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus
-from participant_enums import WithdrawalStatus, SuspensionStatus, WithdrawalReason
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
 # participants.
@@ -25,6 +24,11 @@ WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime',
 # The period of time for which withdrawn participants will still be returned in results for
 # queries that don't ask for withdrawn participants.
 WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days=2)
+
+# suspended participants don't allow contact but can still use samples. These fields
+# will not be returned when queried on suspended participant.
+SUSPENDED_PARTICIPANT_FIELDS = ['zipCode', 'city', 'streetAddress', 'phoneNumber',
+                                'loginPhoneNumber', 'email']
 
 
 class ParticipantSummary(Base):

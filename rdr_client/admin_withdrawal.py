@@ -5,7 +5,8 @@ param: withdrawalreason must be one of FRAUDULENT | TEST | DUPLICATE.
 param: withdrawalreasonjustification is a string explanation.
 run with run_client e.g.
 $run_client.sh --project <PROJECT> --account <ACCOUNT> [--service_account <ACCOUNT>]
-admin_withdrawal.py --withdrawal_reason <FRAUDULENT, DUPLICATE, TEST> --participants <P1000, P1001>
+admin_withdrawal.py --withdrawal_reason <FRAUDULENT [DUPLICATE | TEST] >
+--withdrawal_justification <a string without quotes is fine> --participants <P1000 [P1001]>
 """
 import logging
 import pprint
