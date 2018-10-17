@@ -59,6 +59,13 @@
         "ip4": ["128.195.50.120"]
       }
     },
+    "awardee-california@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "CAL_PMC",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["68.181.126.194", "104.129.198.138"]
+      }
+    },
       "awardee-wisconsin@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
         "roles": ["awardee_sa"],
         "awardee": "WISCONSIN",
