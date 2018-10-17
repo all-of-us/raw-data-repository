@@ -48,7 +48,6 @@ FIELD_TO_QUESTION_CODE = {
   "loginPhoneNumber": (LOGIN_PHONE_NUMBER_QUESTION_CODE, FieldType.STRING),
   "email": (EMAIL_QUESTION_CODE, FieldType.STRING),
   "recontactMethodId": (RECONTACT_METHOD_QUESTION_CODE, FieldType.CODE),
-  "languageId": (LANGUAGE_QUESTION_CODE, FieldType.CODE),
   "sexId": (SEX_QUESTION_CODE, FieldType.CODE),
   "sexualOrientationId": (SEXUAL_ORIENTATION_QUESTION_CODE, FieldType.CODE),
   "educationId": (EDUCATION_QUESTION_CODE, FieldType.CODE),

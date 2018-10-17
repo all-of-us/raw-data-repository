@@ -10,7 +10,7 @@ from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
 from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
-  DVEHR_SHARING_QUESTION_CODE, CONSENT_FOR_DVEHR_MODULE, DVEHRSHARING_CONSENT_CODE_NOT_SURE
+  DVEHR_SHARING_QUESTION_CODE, CONSENT_FOR_DVEHR_MODULE, DVEHRSHARING_CONSENT_CODE_NOT_SURE,LANGUAGE_OF_CONSENT
 from code_constants import EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE
 from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PPI_EXTRA_SYSTEM
 from code_constants import CABOR_SIGNATURE_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES
@@ -117,7 +117,7 @@ class QuestionnaireResponseDao(BaseDao):
     # (We need to lock both participant and participant summary because the summary row may not
     # exist yet.)
     self._update_participant_summary(
-        session, questionnaire_response, code_ids, questions, questionnaire_history)
+        session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json)
 
     super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaire_response)
     # Mark existing answers for the questions in this response given previously by this participant
@@ -146,13 +146,15 @@ class QuestionnaireResponseDao(BaseDao):
     return False
 
   def _update_participant_summary(
-      self, session, questionnaire_response, code_ids, questions, questionnaire_history):
+      self, session, questionnaire_response, code_ids, questions, questionnaire_history,
+    resource_json):
     """Updates the participant summary based on questions answered and modules completed
     in the questionnaire response.
 
     If no participant summary exists already, only a response to the study enrollment consent
     questionnaire can be submitted, and it must include first and last name and e-mail address.
     """
+
     # Block on other threads modifying the participant or participant summary.
     participant = ParticipantDao().get_for_update(session, questionnaire_response.participantId)
 
@@ -202,7 +204,6 @@ class QuestionnaireResponseDao(BaseDao):
           elif code.value == RACE_QUESTION_CODE:
             race_code_ids.append(answer.valueCodeId)
 
-
           elif code.value == DVEHR_SHARING_QUESTION_CODE:
             code = code_dao.get(answer.valueCodeId)
             if code and code.value == DVEHRSHARING_CONSENT_CODE_YES:
@@ -229,15 +230,6 @@ class QuestionnaireResponseDao(BaseDao):
         participant_summary.race = race
         something_changed = True
 
-    # if primary language provided in the response, set the new value.
-    resource_json = json.loads(questionnaire_response.resource)
-    for extension in resource_json.get('extension', []):
-      if extension['url'] == _LANGUAGE_EXTENSION:
-        if participant_summary.primaryLanguage != extension['valueCode']:
-          participant_summary.primaryLanguage = extension['valueCode']
-          something_changed = True
-        break
-
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
     # QUESTIONNAIRE_MODULE_CODE_TO_FIELD
     module_changed = False
@@ -251,6 +243,14 @@ class QuestionnaireResponseDao(BaseDao):
             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
           elif code.value == CONSENT_FOR_DVEHR_MODULE:
             new_status = dvehr_consent
+          elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
+            # set language of consent to participant summary
+            for extension in resource_json.get('extension', []):
+              if extension['url'] == _LANGUAGE_EXTENSION and extension['valueCode'] in LANGUAGE_OF_CONSENT:
+                if participant_summary.primaryLanguage != extension['valueCode']:
+                  participant_summary.primaryLanguage = extension['valueCode']
+                  something_changed = True
+                break
           if getattr(participant_summary, summary_field) != new_status:
             setattr(participant_summary, summary_field, new_status)
             setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)

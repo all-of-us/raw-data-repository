@@ -86,7 +86,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
   }
   # Some link ids relevant to the demographics questionnaire
   code_link_ids = (
-      'race', 'genderIdentity', 'state', 'sex', 'sexualOrientation', 'recontactMethod', 'language',
+      'race', 'genderIdentity', 'state', 'sex', 'sexualOrientation', 'recontactMethod',
       'education', 'income'
   )
   string_link_ids = (
@@ -257,7 +257,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'sexualOrientation': 'straight',
                    'phoneNumber': '512-555-5555',
                    'recontactMethod': 'email_code',
-                   'language': 'en',
                    'education': 'highschool',
                    'income': 'lotsofmoney',
                    'dateOfBirth': datetime.date(1978, 10, 9),
@@ -312,7 +311,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         'sexualOrientation': 'straight',
         'phoneNumber': '512-555-5555',
         'recontactMethod': 'email_code',
-        'language': 'en',
         'education': 'highschool',
         'income': 'lotsofmoney',
         'dateOfBirth': datetime.date(1978, 10, 9),
@@ -338,7 +336,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                     first_name, middle_name, last_name, zip_code,
                                     state_code, street_address, city, sex_code, login_phone_number,
                                     sexual_orientation_code, phone_number, recontact_method_code,
-                                    language_code, education_code, income_code, date_of_birth,
+                                    education_code, income_code, date_of_birth,
                                     cabor_signature_uri):
     code_answers = []
     _add_code_answer(code_answers, "race", race_code)
@@ -347,7 +345,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     _add_code_answer(code_answers, "sex", sex_code)
     _add_code_answer(code_answers, "sexualOrientation", sexual_orientation_code)
     _add_code_answer(code_answers, "recontactMethod", recontact_method_code)
-    _add_code_answer(code_answers, "language", language_code)
     _add_code_answer(code_answers, "education", education_code)
     _add_code_answer(code_answers, "income", income_code)
 
@@ -405,7 +402,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
           'sexualOrientation': PMI_SKIP_CODE,
           'phoneNumber': '512-555-5555',
           'recontactMethod': PMI_SKIP_CODE,
-          'language': PMI_SKIP_CODE,
           'education': PMI_SKIP_CODE,
           'income': PMI_SKIP_CODE,
           'dateOfBirth': datetime.date(1978, 10, 9),
@@ -581,7 +577,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         'sexualOrientation': PMI_SKIP_CODE,
         'phoneNumber': '512-555-5555',
         'recontactMethod': PMI_SKIP_CODE,
-        'language': PMI_SKIP_CODE,
         'education': PMI_SKIP_CODE,
         'income': PMI_SKIP_CODE,
         'dateOfBirth': datetime.date(1978, 10, 9),
@@ -640,7 +635,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         'sexualOrientation': PMI_SKIP_CODE,
         'phoneNumber': '512-555-5555',
         'recontactMethod': PMI_SKIP_CODE,
-        'language': PMI_SKIP_CODE,
         'education': PMI_SKIP_CODE,
         'income': PMI_SKIP_CODE,
         'dateOfBirth': datetime.date(1978, 10, 9),
@@ -696,7 +690,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'sexualOrientation': PMI_SKIP_CODE,
       'phoneNumber': '512-555-5555',
       'recontactMethod': PMI_SKIP_CODE,
-      'language': PMI_SKIP_CODE,
       'education': PMI_SKIP_CODE,
       'income': PMI_SKIP_CODE,
       'dateOfBirth': datetime.date(1978, 10, 9),
@@ -744,7 +737,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'sexualOrientation': PMI_SKIP_CODE,
       'phoneNumber': '512-555-5555',
       'recontactMethod': PMI_SKIP_CODE,
-      'language': PMI_SKIP_CODE,
       'education': PMI_SKIP_CODE,
       'income': PMI_SKIP_CODE,
       'dateOfBirth': datetime.date(1978, 10, 9),
@@ -790,7 +782,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'sexualOrientation': 'straight',
       'phoneNumber': '512-555-5555',
       'recontactMethod': 'email_code',
-      'language': 'en',
       'education': 'highschool',
       'income': 'lotsofmoney',
       'dateOfBirth': datetime.date(1978, 10, 9),
@@ -833,7 +824,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'sexualOrientation': 'straight',
       'phoneNumber': '512-555-5555',
       'recontactMethod': 'email_code',
-      'language': 'en',
       'education': 'highschool',
       'income': 'lotsofmoney',
       'dateOfBirth': datetime.date(1978, 10, 9),
@@ -1003,15 +993,15 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "Bob", "Q", "Jones", "78751", "PIIState_VA",
                                        "1234 Main Street", "Austin", "male_sex", "215-222-2222",
                                        "straight", "512-555-5555", "email_code",
-                                       "en", "highschool", "lotsofmoney",
+                                       "highschool", "lotsofmoney",
                                        datetime.date(1978, 10, 9), "signature.pdf")
     self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "female",
                                        "Mary", "Q", "Jones", "78751", None,
-                                       None, None, None, None, None, None, None, None, None, None,
+                                       None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 8), None)
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_NONE_OF_THESE_CODE, "male",
                                        "Fred", "T", "Smith", "78752", None,
-                                       None, None, None, None, None, None, None, None, None, None,
+                                       None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10), None)
     # Send a questionnaire response for the consent questionnaire for participants 2 and 3
     self._submit_consent_questionnaire_response(participant_id_2, questionnaire_id_3,
