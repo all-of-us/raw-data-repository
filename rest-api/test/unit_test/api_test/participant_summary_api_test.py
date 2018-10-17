@@ -287,6 +287,60 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertEqual(response['withdrawalReason'], 'DUPLICATE')
       self.assertEqual(response['withdrawalReasonJustification'],  "IT WAS A DUPLICATE")
 
+  def test_suspension_status_returns_right_info(self):
+    with FakeClock(TIME_1):
+      SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
+                               "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
+      participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+      participant_id = participant['participantId']
+      with FakeClock(TIME_1):
+        self.send_consent(participant_id)
+      questionnaire_id = self.create_questionnaire('questionnaire3.json')
+
+      # Populate some answers to the questionnaire
+      answers = {
+        'race': RACE_WHITE_CODE,
+        'genderIdentity': 'male',
+        'firstName': self.fake.first_name(),
+        'middleName': self.fake.first_name(),
+        'lastName': self.fake.last_name(),
+        'zipCode': '78751',
+        'state': 'PIIState_VA',
+        'streetAddress': '1234 Main Street',
+        'city': 'Austin',
+        'sex': 'male_sex',
+        'sexualOrientation': 'straight',
+        'phoneNumber': '512-555-5555',
+        'recontactMethod': 'email_code',
+        'language': 'en',
+        'education': 'highschool',
+        'income': 'lotsofmoney',
+        'dateOfBirth': datetime.date(1978, 10, 9),
+        'CABoRSignature': 'signature.pdf',
+        }
+
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
+    with FakeClock(TIME_2):
+      path = 'Participant/%s' % participant_id
+      participant['suspensionStatus'] = "NO_CONTACT"
+      self.send_put(path, participant, headers={'If-Match': 'W/"1"'})
+
+    with FakeClock(TIME_3):
+      response = self.send_get('Participant/%s/Summary' % participant_id)
+      self.assertEqual(response['email'], 'UNSET')
+      self.assertEqual(response['city'], 'UNSET')
+      self.assertEqual(response['streetAddress'], 'UNSET')
+      self.assertEqual(response['zipCode'], 'UNSET')
+      self.assertEqual(response['phoneNumber'], 'UNSET')
+      self.assertEqual(response['loginPhoneNumber'], 'UNSET')
+      self.assertEqual(response['recontactMethod'], 'NO_CONTACT')
+      self.assertEqual(response['language'], 'en')
+      self.assertEqual(response['education'], 'highschool')
+      self.assertEqual(response['income'], 'lotsofmoney')
+      self.assertEqual(response['dateOfBirth'], '1978-10-09')
+
+
   def test_no_justification_fails(self):
     with FakeClock(TIME_1):
       SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
