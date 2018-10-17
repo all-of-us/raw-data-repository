@@ -335,6 +335,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertEqual(response['phoneNumber'], 'UNSET')
       self.assertEqual(response['loginPhoneNumber'], 'UNSET')
       self.assertEqual(response['recontactMethod'], 'NO_CONTACT')
+      self.assertEqual(response['language'], 'en')
+      self.assertEqual(response['education'], 'highschool')
+      self.assertEqual(response['income'], 'lotsofmoney')
+      self.assertEqual(response['dateOfBirth'], '1978-10-09')
 
 
   def test_no_justification_fails(self):
