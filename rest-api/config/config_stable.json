@@ -49,8 +49,9 @@
       "roles": ["awardee_sa"],
       "awardee": "SEEC",
       "whitelisted_ip_ranges" : {
-        "ip4": ["129.171.150.187 "]
-      }
+        "ip4": ["129.171.150.187", "13.108.0.0/14", "66.231.80.0/20", "68.232.192.0/20", "96.43.144.0/20", "136.146.0.0/15", "198.245.80.0/20", "199.122.120.0/21", "204.14.232.0/21"]
+      },
+      "description": "Massive subnet mask. see https://precisionmedicineinitiative.atlassian.net/browse/PD-2412"
     },
     "awardee-ucirvine@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
@@ -59,7 +60,14 @@
         "ip4": ["128.195.50.120"]
       }
     },
-      "awardee-wisconsin@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+    "awardee-california@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "CAL_PMC",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["68.181.126.194", "104.129.198.138"]
+      }
+    },
+      "awardee-wisconsin@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
         "roles": ["awardee_sa"],
         "awardee": "WISCONSIN",
         "whitelisted_ip_ranges" : {
