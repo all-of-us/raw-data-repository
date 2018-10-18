@@ -151,6 +151,8 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'organization': 'UNSET',
                 'education': 'UNSET',
                 'income': 'UNSET',
+                'language': 'UNSET',
+                "primaryLanguage": "UNSET",
                 'sex': 'UNSET',
                 'sexualOrientation': 'UNSET',
                 'state': 'UNSET',
@@ -227,7 +229,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
   def test_consent_with_extension_language(self):
     with FakeClock(TIME_1):
       participant_id = self.create_participant()
-      self.send_consent(participant_id, consent_language='es')
+      self.send_consent(participant_id, language='es')
 
     participant = self.send_get('Participant/%s' % participant_id)
     summary = self.send_get('Participant/%s/Summary' % participant_id)
@@ -244,6 +246,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'organization': 'UNSET',
                 'education': 'UNSET',
                 'income': 'UNSET',
+                "language": "UNSET",
                 'sex': 'UNSET',
                 'sexualOrientation': 'UNSET',
                 'state': 'UNSET',
@@ -316,6 +319,21 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'suspensionStatus': 'NOT_SUSPENDED',
                 }
     self.assertJsonResponseMatches(expected, summary)
+
+    # verify if the response is not consent, the primary language will not change
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    with open(data_path('questionnaire_response3.json')) as f:
+      resource = json.load(f)
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    resource['questionnaire']['reference'] = \
+      resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+    with FakeClock(TIME_2):
+      self.send_post(_questionnaire_response_url(participant_id), resource)
+
+    summary = self.send_get('Participant/%s/Summary' % participant_id)
+
+    self.assertEqual(expected['primaryLanguage'], summary['primaryLanguage'])
 
   def test_invalid_questionnaire(self):
     participant_id = self.create_participant()

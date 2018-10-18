@@ -247,10 +247,10 @@ class QuestionnaireResponseDao(BaseDao):
           elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
             # set language of consent to participant summary
             for extension in resource_json.get('extension', []):
-              if extension['url'] == _LANGUAGE_EXTENSION and \
-                extension['valueCode'] in LANGUAGE_OF_CONSENT:
-                if participant_summary.primaryLanguage != extension['valueCode']:
-                  participant_summary.primaryLanguage = extension['valueCode']
+              if extension.get('url') == _LANGUAGE_EXTENSION and \
+                extension.get('valueCode') in LANGUAGE_OF_CONSENT:
+                if participant_summary.primaryLanguage != extension.get('valueCode'):
+                  participant_summary.primaryLanguage = extension.get('valueCode')
                   something_changed = True
                 break
           if getattr(participant_summary, summary_field) != new_status:

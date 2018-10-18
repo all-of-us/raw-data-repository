@@ -496,7 +496,7 @@ class FlaskTestBase(NdbTestBase):
     response = self.send_post('Participant', {})
     return response['participantId']
 
-  def send_consent(self, participant_id, email=None, consent_language=None):
+  def send_consent(self, participant_id, email=None, language=None):
     if not self._consent_questionnaire_id:
       self._consent_questionnaire_id = self.create_questionnaire('study_consent.json')
     self.first_name = self.fake.first_name()
@@ -508,7 +508,7 @@ class FlaskTestBase(NdbTestBase):
                                                string_answers=[("firstName", self.first_name),
                                                                ("lastName", self.last_name),
                                                                ("email", email)],
-                                               consent_language=consent_language)
+                                               language=language)
     self.send_post(questionnaire_response_url(participant_id), qr_json)
 
   def create_questionnaire(self, filename):
@@ -579,7 +579,7 @@ def sort_lists(obj):
 
 def make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=None,
                                 string_answers=None, date_answers=None, uri_answers=None,
-                                     consent_language=None):
+                                     language=None):
   results = []
   if code_answers:
     for answer in code_answers:
@@ -612,16 +612,23 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
                          { "valueUri": answer[1] }
                         ]
                     })
-  return {"resourceType": "QuestionnaireResponse",
+
+  response_json = {"resourceType": "QuestionnaireResponse",
           "status": "completed",
-          "subject": { "reference": "Patient/{}".format(participant_id) },
-          "extension":[{"url":"http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
-                        "valueCode":"{}".format(consent_language)}],
-          "questionnaire": { "reference": "Questionnaire/{}".format(questionnaire_id) },
+          "subject": {"reference": "Patient/{}".format(participant_id)},
+          "questionnaire": {"reference": "Questionnaire/{}".format(questionnaire_id)},
           "group": {
             "question": results
           }
       }
+  if language is not None:
+    response_json.update(
+      {"extension": [
+                      {"url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+                       "valueCode": "{}".format(language)}
+                    ]
+      })
+  return response_json
 
 def questionnaire_response_url(participant_id):
   return 'Participant/%s/QuestionnaireResponse' % participant_id
