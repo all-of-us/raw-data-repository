@@ -148,7 +148,7 @@ class QuestionnaireResponseDao(BaseDao):
 
   def _update_participant_summary(
       self, session, questionnaire_response, code_ids, questions, questionnaire_history,
-    resource_json):
+      resource_json):
     """Updates the participant summary based on questions answered and modules completed
     in the questionnaire response.
 
