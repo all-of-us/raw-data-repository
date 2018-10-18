@@ -1,7 +1,8 @@
 from model.base import Base
 from model.utils import Enum, UTCDateTime
 from participant_enums import WithdrawalStatus, SuspensionStatus, WithdrawalReason
-from sqlalchemy import Column, Integer, BLOB, ForeignKey, Index, String, UnicodeText, BigInteger
+from sqlalchemy import Column, Integer, BLOB, ForeignKey, Index, String, UnicodeText, BigInteger,\
+  UniqueConstraint
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -12,7 +13,7 @@ class ParticipantBase(object):
   # Randomly assigned internal ID. We tack 'P' on the front whenever we use this externally.
   participantId = Column('participant_id', Integer, primary_key=True, autoincrement=False)
   # Assigned ID from PTSC. Recieved in request to create a new Participant.
-  externalId = Column('external_id', BigInteger, unique=True)
+  externalId = Column('external_id', BigInteger)
 
   # Incrementing version, starts at 1 and is incremented on each update.
   version = Column('version', Integer, nullable=False)
@@ -66,6 +67,9 @@ class Participant(ParticipantBase, Base):
   __tablename__ = 'participant'
   participantSummary = relationship('ParticipantSummary', uselist=False,
                                     back_populates='participant', cascade='all, delete-orphan')
+  __table_args__ = (
+    UniqueConstraint('external_id'),
+    )
 
 
 Index('participant_biobank_id', Participant.biobankId, unique=True)
