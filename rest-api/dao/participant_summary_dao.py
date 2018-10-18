@@ -360,6 +360,9 @@ class ParticipantSummaryDao(UpdatableDao):
     else:
       result['ageRange'] = UNSET
 
+    if result.get('primaryLanguage') is None:
+      result['primaryLanguage'] = UNSET
+
     if 'organizationId' in result:
       result['organization'] = result['organizationId']
       del result['organizationId']

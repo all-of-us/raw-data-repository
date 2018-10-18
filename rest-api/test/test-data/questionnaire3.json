@@ -3,6 +3,7 @@
   "status":"published",
   "date":"2015-01-01T00:00:00-00:00",
   "publisher":"fake",
+  "extension": [{"url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language", "valueCode": "en"}],
   "group": {
     "concept": [
       {
