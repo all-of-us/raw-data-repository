@@ -253,6 +253,9 @@ class QuestionnaireResponseDao(BaseDao):
                   participant_summary.primaryLanguage = extension.get('valueCode')
                   something_changed = True
                 break
+              elif extension.get('url') == _LANGUAGE_EXTENSION and \
+                extension.get('valueCode') not in LANGUAGE_OF_CONSENT:
+                logging.warn('consent language %s not recognized.' % extension.get('valueCode'))
           if getattr(participant_summary, summary_field) != new_status:
             setattr(participant_summary, summary_field, new_status)
             setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)
