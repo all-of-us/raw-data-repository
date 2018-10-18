@@ -82,3 +82,6 @@ BIOBANK_TESTS_SET = frozenset(BIOBANK_TESTS)
 UNSET = 'UNSET'
 UNMAPPED = 'UNMAPPED'
 BASE_VALUES = [UNSET, UNMAPPED, PMI_SKIP_CODE]
+
+# English and Spanish are the only accepted languages for now
+LANGUAGE_OF_CONSENT = ['en', 'es']

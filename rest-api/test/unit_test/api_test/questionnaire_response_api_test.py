@@ -152,6 +152,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'education': 'UNSET',
                 'income': 'UNSET',
                 'language': 'UNSET',
+                "primaryLanguage": "UNSET",
                 'sex': 'UNSET',
                 'sexualOrientation': 'UNSET',
                 'state': 'UNSET',
@@ -224,6 +225,115 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'suspensionStatus': 'NOT_SUSPENDED',
               }
     self.assertJsonResponseMatches(expected, summary)
+
+  def test_consent_with_extension_language(self):
+    with FakeClock(TIME_1):
+      participant_id = self.create_participant()
+      self.send_consent(participant_id, language='es')
+
+    participant = self.send_get('Participant/%s' % participant_id)
+    summary = self.send_get('Participant/%s/Summary' % participant_id)
+
+    expected = {'ageRange': 'UNSET',
+                'genderIdentity': 'UNSET',
+                'firstName': self.first_name,
+                'lastName': self.last_name,
+                'email': self.email,
+                'race': 'UNSET',
+                'hpoId': 'UNSET',
+                'awardee': 'UNSET',
+                'site': 'UNSET',
+                'organization': 'UNSET',
+                'education': 'UNSET',
+                'income': 'UNSET',
+                "language": "UNSET",
+                'sex': 'UNSET',
+                'sexualOrientation': 'UNSET',
+                'state': 'UNSET',
+                'recontactMethod': 'UNSET',
+                'enrollmentStatus': 'INTERESTED',
+                'samplesToIsolateDNA': 'UNSET',
+                'numBaselineSamplesArrived': 0,
+                'numCompletedPPIModules': 0,
+                'numCompletedBaselinePPIModules': 0,
+                'biobankId': participant['biobankId'],
+                'participantId': participant_id,
+                'physicalMeasurementsStatus': 'UNSET',
+                'consentForDvElectronicHealthRecordsSharing': 'UNSET',
+                'consentForElectronicHealthRecords': 'UNSET',
+                'consentForStudyEnrollment': 'SUBMITTED',
+                'consentForStudyEnrollmentTime': TIME_1.isoformat(),
+                'consentForCABoR': 'UNSET',
+                'primaryLanguage': 'es',
+                'questionnaireOnFamilyHealth': 'UNSET',
+                'questionnaireOnHealthcareAccess': 'UNSET',
+                'questionnaireOnMedicalHistory' : 'UNSET',
+                'questionnaireOnMedications': 'UNSET',
+                'questionnaireOnOverallHealth': 'UNSET',
+                'questionnaireOnLifestyle': 'UNSET',
+                'questionnaireOnTheBasics': 'UNSET',
+                'biospecimenCollectedSite': 'UNSET',
+                'biospecimenFinalizedSite': 'UNSET',
+                'biospecimenProcessedSite': 'UNSET',
+                'biospecimenSourceSite': 'UNSET',
+                'physicalMeasurementsCreatedSite': 'UNSET',
+                'physicalMeasurementsFinalizedSite': 'UNSET',
+                'biospecimenStatus': 'UNSET',
+                'sampleOrderStatus1ED04': 'UNSET',
+                'sampleOrderStatus1ED10': 'UNSET',
+                'sampleOrderStatus1HEP4': 'UNSET',
+                'sampleOrderStatus1PST8': 'UNSET',
+                'sampleOrderStatus1PS08': 'UNSET',
+                'sampleOrderStatus2PST8': 'UNSET',
+                'sampleOrderStatus1SAL': 'UNSET',
+                'sampleOrderStatus1SAL2': 'UNSET',
+                'sampleOrderStatus1SST8': 'UNSET',
+                'sampleOrderStatus2SST8': 'UNSET',
+                'sampleOrderStatus1SS08': 'UNSET',
+                'sampleOrderStatus1UR10': 'UNSET',
+                'sampleOrderStatus1UR90': 'UNSET',
+                'sampleOrderStatus2ED10': 'UNSET',
+                'sampleOrderStatus1CFD9': 'UNSET',
+                'sampleOrderStatus1PXR2': 'UNSET',
+                'sampleOrderStatus1ED02': 'UNSET',
+                'sampleStatus1ED04': 'UNSET',
+                'sampleStatus1ED10': 'UNSET',
+                'sampleStatus1HEP4': 'UNSET',
+                'sampleStatus1PST8': 'UNSET',
+                'sampleStatus2PST8': 'UNSET',
+                'sampleStatus1PS08': 'UNSET',
+                'sampleStatus1SAL': 'UNSET',
+                'sampleStatus1SAL2': 'UNSET',
+                'sampleStatus1SST8': 'UNSET',
+                'sampleStatus2SST8': 'UNSET',
+                'sampleStatus1SS08': 'UNSET',
+                'sampleStatus1UR10': 'UNSET',
+                'sampleStatus1UR90': 'UNSET',
+                'sampleStatus2ED10': 'UNSET',
+                'sampleStatus1CFD9': 'UNSET',
+                'sampleStatus1ED02': 'UNSET',
+                'sampleStatus1PXR2': 'UNSET',
+                'signUpTime': TIME_1.isoformat(),
+                'withdrawalStatus': 'NOT_WITHDRAWN',
+                'withdrawalReason': 'UNSET',
+                'suspensionStatus': 'NOT_SUSPENDED',
+                }
+    self.assertJsonResponseMatches(expected, summary)
+
+    # verify if the response is not consent, the primary language will not change
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    with open(data_path('questionnaire_response3.json')) as f:
+      resource = json.load(f)
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    resource['questionnaire']['reference'] = \
+      resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+    with FakeClock(TIME_2):
+      self.send_post(_questionnaire_response_url(participant_id), resource)
+
+    summary = self.send_get('Participant/%s/Summary' % participant_id)
+
+    self.assertEqual(expected['primaryLanguage'], summary['primaryLanguage'])
 
   def test_invalid_questionnaire(self):
     participant_id = self.create_participant()

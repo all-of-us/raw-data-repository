@@ -53,25 +53,18 @@
       },
       "description": "Massive subnet mask. see https://precisionmedicineinitiative.atlassian.net/browse/PD-2412"
     },
-    "awardee-ucirvine@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
-      "roles": ["awardee_sa"],
-      "awardee": "CAL_PMC",
-      "whitelisted_ip_ranges" : {
-        "ip4": ["128.195.50.120"]
-      }
-    },
     "awardee-california@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "CAL_PMC",
       "whitelisted_ip_ranges" : {
-        "ip4": ["68.181.126.194", "104.129.198.138"]
+        "ip4": ["68.181.126.194", "104.129.198.138", "128.195.50.120"]
       }
     },
       "awardee-wisconsin@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
         "roles": ["awardee_sa"],
         "awardee": "WISCONSIN",
         "whitelisted_ip_ranges" : {
-          "ip4": ["192.236.17.40, 192.236.17.41, 192.236.17.42, 192.236.17.43, 192.236.17.44, 192.236.17.45, 192.236.17.46, 192.236.17.47, 192.236.17.48, 192.236.17.49"]
+          "ip4": ["192.236.17.40", "192.236.17.41", "192.236.17.42", "192.236.17.43", "192.236.17.44", "192.236.17.45", "192.236.17.46", "192.236.17.47", "192.236.17.48", "192.236.17.49"]
         }
     },
       "awardee-columbia@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
