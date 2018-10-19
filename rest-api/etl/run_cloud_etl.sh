@@ -50,6 +50,8 @@ then
   }
   trap delete_instance EXIT
   INSTANCE_ARGS="--instance_name ${INSTANCE_NAME}"
+else
+  get_instance_connection_name
 fi
 
 run_cloud_sql_proxy
