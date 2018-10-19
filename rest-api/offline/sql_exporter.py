@@ -56,7 +56,8 @@ class SqlExporter(object):
 
   def run_export_with_writer(self, writer, sql, query_params, backup=False, transformf=None,
     db_connection_string=None):
-    with database_factory.make_server_cursor_database(backup, db_connection_string).session() as session:
+    with database_factory.make_server_cursor_database(backup,
+                                                      db_connection_string).session() as session:
       self.run_export_with_session(writer, session, sql,
                                    query_params=query_params, transformf=transformf)
 

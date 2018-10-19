@@ -6,7 +6,8 @@
 #
 # Usage: ./run_client.sh --project <PROJECT> --account <ACCOUNT> \
 # --service_account exporter@<PROJECT>.iam.gserviceaccount.com export_tables.py \
-# --database rdr --tables code,participant --directory test_directory [--db_connection_string <DB_CONNECTION_STRING>]
+# --database rdr --tables code,participant --directory test_directory
+# [--db_connection_string <DB_CONNECTION_STRING>]
 #
 # "directory" indicates a directory inside the GCS bucket to write the files to
 #
@@ -46,5 +47,6 @@ if __name__ == '__main__':
                       required=True)
   parser.add_argument('--deidentify', help='Whether to deidentify the exports',
                       action='store_true')
-  parser.add_argument('--db_connection_string', help='Database connecton string for the instance to read data from')
+  parser.add_argument('--db_connection_string',
+                      help='Database connecton string for the instance to read data from')
   export_tables(Client(parser=parser, base_path='offline'))

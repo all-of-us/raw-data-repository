@@ -52,7 +52,8 @@ class TableExporter(object):
     return abs(struct.unpack('>q', b)[0])
 
   @classmethod
-  def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name, db_connection_string):
+  def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name,
+                  db_connection_string):
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
 
@@ -138,5 +139,5 @@ class TableExporter(object):
 
     for table_name in tables:
       deferred.defer(TableExporter._export_csv, bucket_name,
-                     database, directory, deidentify_salt, table_name)
+                     database, directory, deidentify_salt, table_name, db_connection_string)
     return {'destination': 'gs://%s/%s' % (bucket_name, directory)}
