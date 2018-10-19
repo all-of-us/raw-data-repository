@@ -30,7 +30,7 @@ DATE_WITH_TIME=`date "+%Y%m%d-%H%M%S"`
 INSTANCE_NAME=rdr-etl${DATE_WITH_TIME}
 
 INSTANCE_ARGS=""
-if [ -z "${NOCLONE}"]
+if [ -z "${NOCLONE}" ]
 then
   set -e
   echo "Creating clone instance ${INSTANCE_NAME}..."
@@ -63,7 +63,7 @@ echo "Done with ETL. Exporting ETL results..."
 
 ./export_etl_results.sh --project ${PROJECT} --account ${ACCOUNT} --directory ${INSTANCE_NAME} ${INSTANCE_ARGS}
 
-if [ -z "${NOCLONE}"]
+if [ -z "${NOCLONE}" ]
 then
   SLEEP_TIME=3600
   # TODO: do some kind of polling of task queue to determine when table export has completed.
