@@ -47,5 +47,6 @@ if __name__ == '__main__':
                       required=True)
   parser.add_argument('--deidentify', help='Whether to deidentify the exports',
                       action='store_true')
-  parser.add_argument('--instance_name', help='Name of the instance to read data from; defaults to rdrmaindb')
+  parser.add_argument('--instance_name',
+                      help='Name of the instance to read data from; defaults to rdrmaindb')
   export_tables(Client(parser=parser, base_path='offline'))
