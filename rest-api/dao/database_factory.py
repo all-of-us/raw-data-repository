@@ -13,8 +13,8 @@ SCHEMA_TRANSLATE_MAP = None
 
 
 class _SqlDatabase(Database):
-  def __init__(self, db_name, backup=False, **kwargs):
-    url = make_url(get_db_connection_string(backup))
+  def __init__(self, db_name, backup=False, db_connection_string=None, **kwargs):
+    url = make_url(db_connection_string or get_db_connection_string(backup))
     if url.drivername != "sqlite" and not url.database:
       url.database = db_name
     super(_SqlDatabase, self).__init__(url, **kwargs)
@@ -63,7 +63,7 @@ def get_db_connection_string(backup=False):
   return config.get_db_config()['db_connection_string']
 
 
-def make_server_cursor_database(backup=False):
+def make_server_cursor_database(backup=False, db_connection_string=None):
   """
   Returns a database object that uses a server-side cursor when talking to the database.
   Useful in cases where you're reading a very large amount of data.
@@ -74,4 +74,5 @@ def make_server_cursor_database(backup=False):
   else:
     if backup:
       return _BackupSqlDatabase('rdr', connect_args={'cursorclass': SSCursor})
-    return _SqlDatabase('rdr', connect_args={'cursorclass': SSCursor})
+    return _SqlDatabase('rdr', db_connection_string=db_connection_string,
+                        connect_args={'cursorclass': SSCursor})

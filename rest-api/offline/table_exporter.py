@@ -52,7 +52,7 @@ class TableExporter(object):
     return abs(struct.unpack('>q', b)[0])
 
   @classmethod
-  def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name):
+  def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name, db_connection_string):
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
 
@@ -89,11 +89,11 @@ class TableExporter(object):
       sql_table = table_name
     SqlExporter(bucket_name, use_unicode=True).run_export(
         output_path, 'SELECT * FROM {}'.format(sql_table), transformf=transformf,
-        backup=True)
+        db_connection_string=db_connection_string)
     return '%s/%s' % (bucket_name, output_path)
 
   @staticmethod
-  def export_tables(database, tables, directory, deidentify):
+  def export_tables(database, tables, directory, deidentify, db_connection_string=None):
     """
     Export the given tables from the given DB; deidentifying if requested.
 

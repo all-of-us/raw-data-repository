@@ -2,12 +2,13 @@
 
 # Exports ETL results to GCS.
 
-USAGE="etl/export_etl_results.sh [--project <PROJECT> --account <ACCOUNT>] --directory <DIRECTORY>"
+USAGE="etl/export_etl_results.sh [--project <PROJECT> --account <ACCOUNT> --db_connection_string <DB_CONNECTION_STRING>] --directory <DIRECTORY>"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
     --directory) DIRECTORY=$2; shift 2;;
+    --db_connection_string) DB_CONNECTION_STRING=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -21,7 +22,7 @@ fi
 PROJECT_AND_ACCOUNT=
 if [ "${PROJECT}" ]
 then
-  PROJECT_AND_ACCOUNT="--project ${PROJECT} --account ${ACCOUNT} --service_account exporter@${PROJECT}.iam.gserviceaccount.com"
+  PROJECT_AND_ACCOUNT="--project ${PROJECT} --account ${ACCOUNT} --db_connection_string ${DB_CONNECTION_STRING} --service_account exporter@${PROJECT}.iam.gserviceaccount.com"
 fi
 
 pushd ../rdr_client

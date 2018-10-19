@@ -44,7 +44,7 @@ set_db_connection_string
 function delete_instance {
   set +e
   echo "Deleting instance ${INSTANCE_NAME} (cleanup)..."
-  gcloud sql instances delete ${INSTANCE_NAME}
+  gcloud sql instances delete ${INSTANCE_NAME} --quiet
   set -e
   finish
 }
@@ -58,7 +58,7 @@ mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT}
 
 echo "Done with ETL. Exporting ETL results..."
 
-./export_etl_results.sh --project ${PROJECT} --account ${ACCOUNT} --directory ${INSTANCE_NAME}
+./export_etl_results.sh --project ${PROJECT} --account ${ACCOUNT} --directory ${INSTANCE_NAME} --db_connection_string ${INSTANCE_CONNECTION_NAME}
 
 SLEEP_TIME=3600
 # TODO: do some kind of polling of task queue to determine when table export has completed.
