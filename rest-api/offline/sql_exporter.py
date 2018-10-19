@@ -49,15 +49,15 @@ class SqlExporter(object):
     self._use_unicode = use_unicode
 
   def run_export(self, file_name, sql, query_params=None, backup=False, transformf=None,
-    db_connection_string=None):
+    instance_name=None):
     with self.open_writer(file_name) as writer:
       self.run_export_with_writer(writer, sql, query_params, backup=backup, transformf=transformf,
-                                  db_connection_string=db_connection_string)
+                                  instance_name=instance_name)
 
   def run_export_with_writer(self, writer, sql, query_params, backup=False, transformf=None,
-    db_connection_string=None):
+                             instance_name=None):
     with database_factory.make_server_cursor_database(backup,
-                                                      db_connection_string).session() as session:
+                                                      instance_name).session() as session:
       self.run_export_with_session(writer, session, sql,
                                    query_params=query_params, transformf=transformf)
 

@@ -53,7 +53,7 @@ class TableExporter(object):
 
   @classmethod
   def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name,
-                  db_connection_string):
+                  instance_name):
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
 
@@ -90,11 +90,11 @@ class TableExporter(object):
       sql_table = table_name
     SqlExporter(bucket_name, use_unicode=True).run_export(
         output_path, 'SELECT * FROM {}'.format(sql_table), transformf=transformf,
-        db_connection_string=db_connection_string)
+        instance_name=instance_name)
     return '%s/%s' % (bucket_name, output_path)
 
   @staticmethod
-  def export_tables(database, tables, directory, deidentify, db_connection_string=None):
+  def export_tables(database, tables, directory, deidentify, instance_name=None):
     """
     Export the given tables from the given DB; deidentifying if requested.
 
@@ -139,5 +139,5 @@ class TableExporter(object):
 
     for table_name in tables:
       deferred.defer(TableExporter._export_csv, bucket_name,
-                     database, directory, deidentify_salt, table_name, db_connection_string)
+                     database, directory, deidentify_salt, table_name, instance_name)
     return {'destination': 'gs://%s/%s' % (bucket_name, directory)}

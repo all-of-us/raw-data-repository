@@ -13,8 +13,8 @@ SCHEMA_TRANSLATE_MAP = None
 
 
 class _SqlDatabase(Database):
-  def __init__(self, db_name, backup=False, db_connection_string=None, **kwargs):
-    url = make_url(db_connection_string or get_db_connection_string(backup))
+  def __init__(self, db_name, backup=False, instance_name=None, **kwargs):
+    url = make_url(get_db_connection_string(backup, instance_name))
     if url.drivername != "sqlite" and not url.database:
       url.database = db_name
     super(_SqlDatabase, self).__init__(url, **kwargs)
@@ -50,7 +50,7 @@ def get_generic_database():
                         execution_options={'schema_translate_map': SCHEMA_TRANSLATE_MAP})
 
 
-def get_db_connection_string(backup=False):
+def get_db_connection_string(backup=False, instance_name=None):
   if DB_CONNECTION_STRING:
     return DB_CONNECTION_STRING
 
@@ -58,12 +58,17 @@ def get_db_connection_string(backup=False):
   # GAE). When running via CLI or tests, we'll have this from the environment
   # instead (above).
   import config
-  if backup:
-    return config.get_db_config()['backup_db_connection_string']
-  return config.get_db_config()['db_connection_string']
+  connection_string_key = 'backup_db_connection_string' if backup else 'db_connection_string'
+  result = config.get_db_config()[connection_string_key]
+  if instance_name:
+    if backup:
+      raise Exception("backup and instance_name should not be used together")
+    # Connect to the specified instance.
+    return result.replace('rdrmaindb', instance_name)
+  return result
 
 
-def make_server_cursor_database(backup=False, db_connection_string=None):
+def make_server_cursor_database(backup=False, instance_name=None):
   """
   Returns a database object that uses a server-side cursor when talking to the database.
   Useful in cases where you're reading a very large amount of data.
@@ -74,5 +79,5 @@ def make_server_cursor_database(backup=False, db_connection_string=None):
   else:
     if backup:
       return _BackupSqlDatabase('rdr', connect_args={'cursorclass': SSCursor})
-    return _SqlDatabase('rdr', db_connection_string=db_connection_string,
+    return _SqlDatabase('rdr', instance_name=instance_name,
                         connect_args={'cursorclass': SSCursor})

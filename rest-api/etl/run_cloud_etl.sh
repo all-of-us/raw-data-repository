@@ -58,7 +58,7 @@ mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT}
 
 echo "Done with ETL. Exporting ETL results..."
 
-./export_etl_results.sh --project ${PROJECT} --account ${ACCOUNT} --directory ${INSTANCE_NAME} --db_connection_string ${INSTANCE_CONNECTION_NAME}
+./export_etl_results.sh --project ${PROJECT} --account ${ACCOUNT} --directory ${INSTANCE_NAME} --instance_name ${INSTANCE_NAME}
 
 SLEEP_TIME=3600
 # TODO: do some kind of polling of task queue to determine when table export has completed.
