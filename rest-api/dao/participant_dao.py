@@ -302,6 +302,7 @@ class ParticipantDao(UpdatableDao):
     # biobankId, lastModified, signUpTime are set by DAO.
     return Participant(
       participantId=id_,
+      externalId=resource_json.get('externalId'),
       version=expected_version,
       providerLink=json.dumps(resource_json.get('providerLink')),
       clientId=client_id,

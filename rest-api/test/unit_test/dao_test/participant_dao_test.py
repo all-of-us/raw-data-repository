@@ -50,6 +50,28 @@ class ParticipantDaoTest(SqlTestBase):
         participantId=1, biobankId=2, lastModified=time, signUpTime=time)
     self.assertEquals(expected_ph.asdict(), ph.asdict())
 
+  def test_insert_with_external_id(self):
+    p = Participant(externalId=3)
+    time = datetime.datetime(2016, 1, 1)
+    with random_ids([1, 2]):
+      with FakeClock(time):
+        self.dao.insert(p)
+    expected_participant = self._participant_with_defaults(
+      participantId=1, externalId=3, version=1, biobankId=2, lastModified=time, signUpTime=time)
+    self.assertEquals(expected_participant.asdict(), p.asdict())
+
+    p2 = self.dao.get(1)
+    self.assertEquals(p.asdict(), p2.asdict())
+
+    # Creating a participant also creates a ParticipantHistory row, but not a ParticipantSummary row
+    ps = self.participant_summary_dao.get(1)
+    self.assertIsNone(ps)
+    ph = self.participant_history_dao.get([1, 1])
+    expected_ph = self._participant_history_with_defaults(
+      participantId=1, externalId=3, biobankId=2, lastModified=time, signUpTime=time)
+    self.assertEquals(expected_ph.asdict(), ph.asdict())
+
+
   def test_insert_duplicate_participant_id_retry(self):
     p = Participant()
     with random_ids([1, 2]):

@@ -331,6 +331,8 @@ class BaseDao(object):
         # SQLite and MySQL variants of the error message, respectively.
         if 'UNIQUE constraint failed' in e.message or 'Duplicate entry' in e.message:
           logging.warning('Failed insert with %s: %s', tried_ids, e.message)
+          if 'external_id' in e.message:
+            raise BadRequest('Can not register participant more than once {}'.format(e.message))
         else:
           raise
     # We were unable to insert a participant (unlucky). Throw an error.
