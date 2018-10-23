@@ -10,6 +10,7 @@ from offline.sql_exporter import SqlExporter
 from werkzeug.exceptions import BadRequest
 
 _TABLE_PATTERN = re.compile("^[A-Za-z0-9_]+$")
+_INSTANCE_PATTERN = re.compile("^[A-Za-z0-9_-]+$")
 
 # TODO(calbach): Factor this out into the datastore config.
 _DEIDENTIFY_DB_TABLE_WHITELIST = {
@@ -52,9 +53,12 @@ class TableExporter(object):
     return abs(struct.unpack('>q', b)[0])
 
   @classmethod
-  def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name):
+  def _export_csv(cls, bucket_name, database, directory, deidentify_salt, table_name,
+                  instance_name):
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
+    if instance_name:
+      assert _INSTANCE_PATTERN.match(instance_name)
 
     transformf = None
     if deidentify_salt:
@@ -89,11 +93,11 @@ class TableExporter(object):
       sql_table = table_name
     SqlExporter(bucket_name, use_unicode=True).run_export(
         output_path, 'SELECT * FROM {}'.format(sql_table), transformf=transformf,
-        backup=True)
+        instance_name=instance_name)
     return '%s/%s' % (bucket_name, output_path)
 
   @staticmethod
-  def export_tables(database, tables, directory, deidentify):
+  def export_tables(database, tables, directory, deidentify, instance_name=None):
     """
     Export the given tables from the given DB; deidentifying if requested.
 
@@ -117,6 +121,9 @@ class TableExporter(object):
       bucket_name = '%s-cdm' % app_id
     else:
       raise BadRequest("Invalid database: %s" % database)
+    if instance_name:
+      if not _INSTANCE_PATTERN.match(instance_name):
+        raise BadRequest("Invalid instance name: %s" % instance_name)
     for table_name in tables:
       if not _TABLE_PATTERN.match(table_name):
         raise BadRequest("Invalid table name: %s" % table_name)
@@ -138,5 +145,5 @@ class TableExporter(object):
 
     for table_name in tables:
       deferred.defer(TableExporter._export_csv, bucket_name,
-                     database, directory, deidentify_salt, table_name)
+                     database, directory, deidentify_salt, table_name, instance_name)
     return {'destination': 'gs://%s/%s' % (bucket_name, directory)}
