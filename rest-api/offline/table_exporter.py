@@ -10,6 +10,7 @@ from offline.sql_exporter import SqlExporter
 from werkzeug.exceptions import BadRequest
 
 _TABLE_PATTERN = re.compile("^[A-Za-z0-9_]+$")
+_INSTANCE_PATTERN = re.compile("^[A-Za-z0-9_-]+$")
 
 # TODO(calbach): Factor this out into the datastore config.
 _DEIDENTIFY_DB_TABLE_WHITELIST = {
@@ -56,6 +57,8 @@ class TableExporter(object):
                   instance_name):
     assert _TABLE_PATTERN.match(table_name)
     assert _TABLE_PATTERN.match(database)
+    if instance_name:
+      assert _INSTANCE_PATTERN.match(instance_name)
 
     transformf = None
     if deidentify_salt:
@@ -118,6 +121,9 @@ class TableExporter(object):
       bucket_name = '%s-cdm' % app_id
     else:
       raise BadRequest("Invalid database: %s" % database)
+    if instance_name:
+      if not _INSTANCE_PATTERN.match(instance_name):
+        raise BadRequest("Invalid instance name: %s" % instance_name)
     for table_name in tables:
       if not _TABLE_PATTERN.match(table_name):
         raise BadRequest("Invalid table name: %s" % table_name)
