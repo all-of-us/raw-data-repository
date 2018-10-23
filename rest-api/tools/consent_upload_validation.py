@@ -31,8 +31,15 @@ def read_csv(input_file):
    except UnicodeDecodeError:
      print('Decode Error')
 
-   for row in reader:
-     participant[row['pmi_id']] = row['paired_site']
+   try:
+     for row in reader:
+       if row['paired_site'] == 'NULL' or row['paired_sire'] is None:
+         # no_site_pairing is a possible bucket name in awardee bucket
+         row['paired_site'] = 'no_site_pairing'
+
+       participant[row['pmi_id']] = row['paired_site']
+   except KeyError as e:
+     print('Check csv file headers. Error: {}'.format(e))
 
    return participant
 
@@ -50,7 +57,7 @@ def get_bucket_file_info(participant_ids, bucket, p_dict=None):
       output = subprocess.check_output(gsutil_command)
       output_list.extend(output.split())
     except subprocess.CalledProcessError:
-      print 'skipping {}: File not found.'.format(_id)
+      print('Skipping participant {}: Directory does not exist.'.format(_id))
 
     participant_files[_id] = output_list
 
