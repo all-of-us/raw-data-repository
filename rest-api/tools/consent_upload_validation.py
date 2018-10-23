@@ -33,7 +33,7 @@ def read_csv(input_file):
 
    try:
      for row in reader:
-       if row['paired_site'] == 'NULL' or row['paired_sire'] is None:
+       if row['paired_site'] == 'NULL' or row['paired_site'] is None:
          # no_site_pairing is a possible bucket name in awardee bucket
          row['paired_site'] = 'no_site_pairing'
 
@@ -84,7 +84,7 @@ def get_missing_file_info(participant_files):
     files = set(files)
     missing_files = required_files.difference(files)
     participant_files[_id] = {'files_found': list(files), 'missing_files': list(missing_files)}
-    print('Missing Files for participant {}: {}'.format(_id, list(missing_files)), '\n')
+    print('Missing Files for participant {}: {}'.format(_id, list(missing_files)))
 
 
 def write_to_csv(participant_files, descriptor):
@@ -92,6 +92,7 @@ def write_to_csv(participant_files, descriptor):
   found_fields = ['pmi_id', 'files found']
   missing_filename = 'missing_files_' + descriptor + '_' + str(datetime.date.today())
   existing_filename = 'existing_files_' + descriptor + '_' + str(datetime.date.today())
+  print('Creating csv files...')
   with open(missing_filename, 'w') as missing:
     with open(existing_filename, 'w') as found:
       missing_writer = csv.writer(missing)
@@ -108,6 +109,8 @@ def write_to_csv(participant_files, descriptor):
           missing_writer.writerow(missing_files)
         if len(existing_files) > 1:
           found_writer.writerow(existing_files)
+
+  print('Created files: {} | {}'.format(missing_filename, existing_filename))
 
 
 def main(args):

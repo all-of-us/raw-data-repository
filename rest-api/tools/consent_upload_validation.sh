@@ -29,12 +29,20 @@ set_db_connection_string
 gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file ${CREDS_FILE}
 
 
-#GET_SITES_FOR_ORGANIZATION=$(python tools/ehr_upload.py --organization ${ORGANIZATION} --source_bucket ${SOURCE_BUCKET} --destination_bucket ${DESTINATION_BUCKET})
+echo "Checking files. This may take a while..."
 VALIDATE=$(python tools/consent_upload_validation.py --bucket ${BUCKET} --input ${INPUT})
 
 IFS=$'\n';
 for message in $VALIDATE;
 do
 echo ${message}
+#if [[ ${message} = missing_files_* || existing_files_* ]]; then
+#   echo "THIS IS A TEST"
+#   echo ${message}
+#   echo "above is test message"
+#
+#fi
 done
 IFS=${OIFS};
+
+echo "Done!"
