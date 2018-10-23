@@ -110,6 +110,7 @@ def export_tables():
   resource_json = json.loads(resource)
   database = resource_json.get('database')
   tables = resource_json.get('tables')
+  instance_name = resource_json.get('instance_name')
   if not database:
     raise BadRequest("database is required")
   if not tables or type(tables) is not list:
@@ -121,7 +122,8 @@ def export_tables():
   # Ensure this has a boolean value to avoid downstream issues.
   deidentify = resource_json.get('deidentify') is True
 
-  return json.dumps(TableExporter.export_tables(database, tables, directory, deidentify))
+  return json.dumps(TableExporter.export_tables(database, tables, directory, deidentify,
+                                                instance_name))
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
