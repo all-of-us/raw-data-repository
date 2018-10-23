@@ -1,5 +1,16 @@
-""" read from csv (assumes participant id column header is [pmi_id]). """
+""" read from csv (assumes participant id column header is [pmi_id] and paired site header is
+    [paired_site]).
+     Checks PTC-UPLOADS-ALL-OF-US-RDR-PROD bucket and the bucket given in args (i.e. aouXXX)
+     Compares PTC uploaded files (consent pdf's and signature png's) and files located in awardee
+     bucket. Then writes two csv files for each bucket. One for missing files and one for files
+     found in the buckets.
+     aou buckets have a different hierarchy than ptc-upload bucket. They are of the type:
+     gs://aouXXX/Participant/hpo-site-vapaloalto/Participant
+     It is assumed the paired_site csv columns are of the format [vapaloalto] without the
+     <hpo-site->
+"""
 import csv
+import datetime
 import os
 import re
 import shlex
@@ -13,7 +24,7 @@ required_files = {'ConsentPII.pdf', 'EHRConsentPII.pdf', 'ConsentPII.png', 'EHRC
 
 
 def read_csv(input_file):
- participant_list = []
+ participant = {}
  with open(input_file, 'r') as csv_file:
    try:
      reader = csv.DictReader(csv_file)
@@ -21,18 +32,20 @@ def read_csv(input_file):
      print('Decode Error')
 
    for row in reader:
-     participant_list.append(row['pmi_id'])
+     participant[row['pmi_id']] = row['paired_site']
 
-   return participant_list
+   return participant
 
 
-def get_bucket_file_info(participant_ids):
+def get_bucket_file_info(participant_ids, bucket, p_dict=None):
   participant_files = {}
   for _id in participant_ids[:3]:  #@TODO: REMOVE THE INDEXING
     output_list = []
-    print('checking Participant: {}'.format(_id))
-    gsutil_command = shlex.split(str("gsutil ls gs://" + base_bucket + '/Participant/' + _id))
-
+    if bucket == base_bucket:
+      gsutil_command = shlex.split(str("gsutil ls gs://" + bucket + '/Participant/' + _id))
+    else:
+      gsutil_command = shlex.split(str("gsutil ls gs://" + bucket + '/Participant/' +
+                                       'hpo-site-' + p_dict[_id] + '/' + _id))
     try:
       output = subprocess.check_output(gsutil_command)
       output_list.extend(output.split())
@@ -67,11 +80,13 @@ def get_missing_file_info(participant_files):
     print('Missing Files for participant {}: {}'.format(_id, list(missing_files)), '\n')
 
 
-def write_to_csv(participant_files):
+def write_to_csv(participant_files, descriptor):
   missing_fields = ['pmi_id', 'missing files']
   found_fields = ['pmi_id', 'files found']
-  with open('missing_files.csv', 'w') as missing:
-    with open('files_found.csv', 'w') as found:
+  missing_filename = 'missing_files_' + descriptor + '_' + str(datetime.date.today())
+  existing_filename = 'existing_files_' + descriptor + '_' + str(datetime.date.today())
+  with open(missing_filename, 'w') as missing:
+    with open(existing_filename, 'w') as found:
       missing_writer = csv.writer(missing)
       found_writer = csv.writer(found)
       missing_writer.writerow(missing_fields)
@@ -89,12 +104,19 @@ def write_to_csv(participant_files):
 
 
 def main(args):
-  participant_ids = read_csv(args.input)
-  participant_files = get_bucket_file_info(participant_ids)
-  remove_path_and_version_info(participant_files)
-  get_missing_file_info(participant_files)
-  write_to_csv(participant_files)
-  print participant_files
+  participant_dict = read_csv(args.input)
+  participant_ids = list(participant_dict.keys())
+
+  participant_files_base_bucket = get_bucket_file_info(participant_ids, base_bucket)
+  participant_files_awardee_bucket = get_bucket_file_info(participant_ids, args.bucket,
+                                                          participant_dict)
+
+  for files in [participant_files_base_bucket, participant_files_awardee_bucket]:
+    remove_path_and_version_info(files)
+    get_missing_file_info(files)
+
+  write_to_csv(participant_files_base_bucket, descriptor=base_bucket)
+  write_to_csv(participant_files_awardee_bucket, descriptor=args.bucket)
 
 
 if __name__ == '__main__':
