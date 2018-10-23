@@ -67,7 +67,7 @@ echo "Done with ETL. Exporting ETL results..."
 
 if [ -z "${NOCLONE}" ]
 then
-  SLEEP_TIME=3600
+  SLEEP_TIME=600
   # TODO: do some kind of polling of task queue to determine when table export has completed.
   echo "Waiting ${SLEEP_TIME} seconds for export to complete."
   sleep ${SLEEP_TIME}
