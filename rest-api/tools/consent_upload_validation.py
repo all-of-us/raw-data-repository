@@ -90,8 +90,8 @@ def get_missing_file_info(participant_files):
 def write_to_csv(participant_files, descriptor):
   missing_fields = ['pmi_id', 'missing files']
   found_fields = ['pmi_id', 'files found']
-  missing_filename = 'missing_files_' + descriptor + '_' + str(datetime.date.today())
-  existing_filename = 'existing_files_' + descriptor + '_' + str(datetime.date.today())
+  missing_filename = 'missing_files_' + descriptor + '_' + str(datetime.date.today()) + '.csv'
+  existing_filename = 'existing_files_' + descriptor + '_' + str(datetime.date.today()) + '.csv'
   print 'Creating csv files...'
   with open(missing_filename, 'w') as missing:
     with open(existing_filename, 'w') as found:

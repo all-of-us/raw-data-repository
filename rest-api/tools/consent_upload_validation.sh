@@ -36,13 +36,32 @@ IFS=$'\n';
 for message in $VALIDATE;
 do
 echo ${message}
-#if [[ ${message} = missing_files_* || existing_files_* ]]; then
-#   echo "THIS IS A TEST"
-#   echo ${message}
-#   echo "above is test message"
-#
-#fi
 done
-IFS=${OIFS};
+#IFS=${OIFS};
 
 echo "Done!"
+
+EXISTINGFILES=$(find . -maxdepth 1 -ctime -1 -type f -name "existing_files_*" | sed 's|^./||')
+MISSINGFILES=$(find . -maxdepth 1 -ctime -1 -type f -name "missing_files_*" | sed 's|^./||')
+if [[ "$EXISTINGFILES" ]];then
+  echo "Existing participant files found..."
+  for f in ${EXISTINGFILES};
+  do
+    echo "Uploading ${f}"
+    gsutil cp ${f} gs://${BUCKET}
+  done
+else
+  echo "No existing consent files found"
+fi
+
+if [[ "$MISSINGFILES" ]];then
+  echo "Missing consent files found..."
+  for f in ${MISSINGFILES};
+  do
+    echo "Uploading ${f}"
+    gsutil cp ${f} gs://${BUCKET}
+  done
+else
+  echo "No missing consent files found"
+fi
+
