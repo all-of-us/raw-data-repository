@@ -1,7 +1,7 @@
 import clock
+import config
 from api_util import get_site_id_by_site_value as get_site
-from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM,\
-  BIOBANK_DNA_TESTS
+from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
 from dao.base_dao import UpdatableDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -218,7 +218,7 @@ class BiobankOrderDao(UpdatableDao):
 
     has_dna_test = False
     for sample in obj.samples:
-      if sample.test in BIOBANK_DNA_TESTS:
+      if sample.test in config.getSettingList(config.DNA_SAMPLE_TEST_CODES):
         has_dna_test = True
       status_field = 'sampleOrderStatus' + sample.test
       status, time = self._get_order_status_and_time(sample, obj)

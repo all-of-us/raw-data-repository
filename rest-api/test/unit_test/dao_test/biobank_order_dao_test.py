@@ -1,7 +1,7 @@
 import datetime
-
+import config
 import clock
-from code_constants import BIOBANK_TESTS, BIOBANK_DNA_TESTS
+from code_constants import BIOBANK_TESTS
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
@@ -15,9 +15,10 @@ from werkzeug.exceptions import BadRequest, Forbidden, Conflict
 
 
 class BiobankOrderDaoTest(SqlTestBase):
+  config.getSettingList(config.DNA_SAMPLE_TEST_CODES)
   _A_TEST = BIOBANK_TESTS[0]
   _B_TEST = BIOBANK_TESTS[1]
-  _DNA_TEST = BIOBANK_DNA_TESTS[0]
+  _DNA_TEST = config.getSettingList(config.DNA_SAMPLE_TEST_CODES)[0]
   _NOT_DNA_TEST = BIOBANK_TESTS[3]
   TIME_1 = datetime.datetime(2018, 9, 20, 5, 49, 11)
   TIME_2 = datetime.datetime(2018, 9, 21, 8, 49, 37)
