@@ -44,7 +44,7 @@ echo "Done!"
 EXISTINGFILES=$(find . -maxdepth 1 -ctime -1 -type f -name "existing_files_*" | sed 's|^./||')
 MISSINGFILES=$(find . -maxdepth 1 -ctime -1 -type f -name "missing_files_*" | sed 's|^./||')
 if [[ "$EXISTINGFILES" ]];then
-  echo "Existing participant files found..."
+  echo "Existing consent files ..."
   for f in ${EXISTINGFILES};
   do
     echo "Uploading ${f}"
@@ -55,7 +55,7 @@ else
 fi
 
 if [[ "$MISSINGFILES" ]];then
-  echo "Missing consent files found..."
+  echo "Missing consent files ..."
   for f in ${MISSINGFILES};
   do
     echo "Uploading ${f}"
