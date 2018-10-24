@@ -1,9 +1,9 @@
 """ read from csv (assumes participant id column header is [pmi_id] and paired site header is
     [paired_site]).
-     Checks PTC-UPLOADS-ALL-OF-US-RDR-PROD bucket and the bucket given in args (i.e. aouXXX)
+     Checks PTC-UPLOADS-ALL-OF-US-RDR-PROD bucket and the bucket given in args (e.g. aouXXX)
      Compares PTC uploaded files (consent pdf's and signature png's) and files located in awardee
-     bucket. Then writes two csv files for each bucket. One for missing files and one for files
-     found in the buckets.
+     bucket, which should be identical. Then writes two csv files for each bucket. One for missing
+     files and one for files found in the buckets.
      aou buckets have a different hierarchy than ptc-upload bucket. They are of the type:
      gs://aouXXX/Participant/hpo-site-vapaloalto/Participant
      It is assumed the paired_site csv columns are of the format [vapaloalto] without the
@@ -46,7 +46,7 @@ def read_csv(input_file):
 
 def get_bucket_file_info(participant_ids, bucket, p_dict=None):
   participant_files = {}
-  for _id in participant_ids[:3]:  #@TODO: REMOVE THE INDEXING
+  for _id in participant_ids:
     output_list = []
     if bucket == base_bucket:
       gsutil_command = shlex.split(str("gsutil ls gs://" + bucket + '/Participant/' + _id))
@@ -122,6 +122,8 @@ def main(args):
                                                           participant_dict)
 
   for files in [participant_files_base_bucket, participant_files_awardee_bucket]:
+    # strip path and the [__123] version indicator from filename to facilitate comparison.
+    # @TODO[MM]: WE MAY NEED TO KEEP THE VERSION, AS THIS MIGHT MATTER IN SOME CASES.
     remove_path_and_version_info(files)
     get_missing_file_info(files)
 
@@ -132,8 +134,11 @@ def main(args):
 if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
-  parser.add_argument('--bucket', help='The source bucket to check against. i.e. aouXXX',
+  parser.add_argument('--bucket', help='The source bucket to check against. e.g. aouXXX',
                       required=True)
-  parser.add_argument('--input', help='Path to input csv', required=True)
+  parser.add_argument('--input', help='Path to input csv. The csv should at a minimum contain'
+                                      'pmi_id and paired_site as headers. pmi_id should have '
+                                      'environment indicator as follows [P12345] in column.'
+                                      , required=True)
 
   main(parser.parse_args())

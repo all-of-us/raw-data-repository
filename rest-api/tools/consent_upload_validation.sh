@@ -1,7 +1,12 @@
 #!/bin/bash -ae
 
 # Read participant ID's from csv and compare consent docs from ptc-upload-all-of-us-rdr-prod to a given
-# source bucket (i.e. aouxxx). Creates a new spreadsheet with discrepancies.
+# source bucket (e.g. aouxxx).
+# This is the bucket that awardees own for storing participant consent files (uploaded by ehr_upload script)
+# Creates new spreadsheets with discrepancies for both buckets in a missing.csv and a found.csv
+# Then uploads the new csv's to the awardees bucket for auditing.
+# NOTE: ehr_upload creates new directories for each site to enable least privilege permissions by sys-amdin team.
+# as well as a /no_site_pairing directory for the awardee. This must be considered in the associated python module.
 
 USAGE="tools/consent_upload_validation.sh --input < path to input.csv> --bucket <aouXXX> --account <ACCOUNT> --project <PROJECT>"
 while true; do
@@ -37,7 +42,6 @@ for message in $VALIDATE;
 do
 echo ${message}
 done
-#IFS=${OIFS};
 
 echo "Done!"
 
