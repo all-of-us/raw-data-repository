@@ -1,5 +1,4 @@
 import clock
-import config
 from api_util import get_site_id_by_site_value as get_site
 from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
 from dao.base_dao import UpdatableDao, FhirMixin, FhirProperty
@@ -217,6 +216,7 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.lastModified = clock.CLOCK.now()
 
     has_dna_test = False
+    import config
     for sample in obj.samples:
       if sample.test in config.getSettingList(config.DNA_SAMPLE_TEST_CODES):
         has_dna_test = True
