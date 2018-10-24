@@ -150,6 +150,48 @@ def _get_dna_isolates_sql_and_params():
       params
   )
 
+def _get_sample_status_time_sql_and_params():
+  """Gets SQL and params that to update enrollmentStatusCoreStoredSampleTime field
+  on the participant summary.
+  """
+
+  tests_sql, params = get_sql_and_params_for_array(
+    config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
+
+  confirm_value_sql = '%s' % ','.join(["""COALESCE((SELECT max(confirmed) FROM biobank_stored_sample
+          WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
+          AND biobank_stored_sample.confirmed IS NOT NULL
+          AND biobank_stored_sample.test = '%s'),'3000-01-01')""" % params[key] for key in params])
+
+  confirm_time_sql = """
+  (
+    SELECT 
+      CASE
+        WHEN stored_time='3000-01-01' THEN NULL
+        ELSE stored_time
+      END
+    FROM    
+      (SELECT
+        MIN({confirm_value_sql}) as stored_time
+      FROM
+        biobank_stored_sample
+      WHERE
+        biobank_stored_sample.biobank_id = participant_summary.biobank_id
+        AND biobank_stored_sample.confirmed IS NOT NULL
+        AND biobank_stored_sample.test IN {tests_sql}
+      ) X  
+  )
+  """.format(confirm_value_sql=confirm_value_sql, tests_sql=tests_sql)
+
+  sql = """
+    UPDATE
+      participant_summary
+    SET
+      enrollment_status_core_stored_sample_time = {confirm_time_sql}
+    """.format(confirm_time_sql=confirm_time_sql)
+
+  return sql, params
+
 class ParticipantSummaryDao(UpdatableDao):
 
   def __init__(self):
@@ -267,6 +309,8 @@ class ParticipantSummaryDao(UpdatableDao):
     baseline_tests_sql, baseline_tests_params = _get_baseline_sql_and_params()
     dna_tests_sql, dna_tests_params = _get_dna_isolates_sql_and_params()
 
+    sample_status_time_sql, sample_status_time_params = _get_sample_status_time_sql_and_params()
+
     counts_sql = """
     UPDATE
       participant_summary
@@ -301,6 +345,8 @@ class ParticipantSummaryDao(UpdatableDao):
       counts_params['participant_id'] = participant_id
       enrollment_status_sql += ' WHERE participant_id = :participant_id'
       enrollment_status_params['participant_id'] = participant_id
+      sample_status_time_sql += ' WHERE participant_id = :participant_id'
+      sample_status_time_params['participant_id'] = participant_id
 
     sample_sql = replace_null_safe_equals(sample_sql)
     counts_sql = replace_null_safe_equals(counts_sql)
@@ -308,6 +354,7 @@ class ParticipantSummaryDao(UpdatableDao):
       session.execute(sample_sql, sample_params)
       session.execute(counts_sql, counts_params)
       session.execute(enrollment_status_sql, enrollment_status_params)
+      session.execute(sample_status_time_sql, sample_status_time_params)
 
   def _get_num_baseline_ppi_modules(self):
     return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
@@ -322,6 +369,8 @@ class ParticipantSummaryDao(UpdatableDao):
                                                          summary.numCompletedBaselinePPIModules,
                                                          summary.physicalMeasurementsStatus,
                                                          summary.samplesToIsolateDNA)
+    if consent:
+      summary.enrollmentStatusMemberTime = summary.consentForElectronicHealthRecordsTime
     summary.enrollmentStatus = enrollment_status
 
   def calculate_enrollment_status(self, consent_for_study_enrollment_and_ehr,

@@ -78,6 +78,15 @@ class ParticipantSummary(Base):
 
   signUpTime = Column('sign_up_time', UTCDateTime)
 
+  # The time that this participant become a member
+  enrollmentStatusMemberTime = Column('enrollment_status_member_time', UTCDateTime)
+  # The time when we get the first stored sample
+  enrollmentStatusCoreStoredSampleTime = Column('enrollment_status_core_stored_sample_time',
+                                                UTCDateTime)
+  # The time when we get a DNA order
+  enrollmentStatusCoreOrderedSampleTime = Column('enrollment_status_core_ordered_sample_time',
+                                                 UTCDateTime)
+
   # Fields for which questionnaires have been submitted, and at what times.
   consentForStudyEnrollment = Column('consent_for_study_enrollment',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)

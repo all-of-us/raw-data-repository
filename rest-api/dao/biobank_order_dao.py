@@ -1,6 +1,7 @@
 import clock
 from api_util import get_site_id_by_site_value as get_site
-from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM
+from code_constants import BIOBANK_TESTS_SET, SITE_ID_SYSTEM, HEALTHPRO_USERNAME_SYSTEM,\
+  BIOBANK_DNA_TESTS
 from dao.base_dao import UpdatableDao, FhirMixin, FhirProperty
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -214,11 +215,21 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
     participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
     participant_summary.lastModified = clock.CLOCK.now()
+
+    has_dna_test = False
     for sample in obj.samples:
+      if sample.test in BIOBANK_DNA_TESTS:
+        has_dna_test = True
       status_field = 'sampleOrderStatus' + sample.test
       status, time = self._get_order_status_and_time(sample, obj)
       setattr(participant_summary, status_field, status)
       setattr(participant_summary, status_field + 'Time', time)
+    if has_dna_test:
+      # save the first uncancelled DNA order time to enrollmentStatusCoreOrderedSampleTime
+      if participant_summary.enrollmentStatusCoreOrderedSampleTime is None:
+        participant_summary.enrollmentStatusCoreOrderedSampleTime = obj.created
+      elif participant_summary.enrollmentStatusCoreOrderedSampleTime > obj.created:
+        participant_summary.enrollmentStatusCoreOrderedSampleTime = obj.created
 
   def _get_non_cancelled_biobank_orders(self, session, participantId):
     # look up latest order without cancelled status
@@ -241,6 +252,7 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenCollectedSiteId = None
     participant_summary.biospecimenProcessedSiteId = None
     participant_summary.biospecimenFinalizedSiteId = None
+    participant_summary.enrollmentStatusCoreOrderedSampleTime = None
     participant_summary.lastModified = clock.CLOCK.now()
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test

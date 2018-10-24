@@ -274,7 +274,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
       TIME = datetime.datetime(2018, 3, 2)
       sample_dao.insert(BiobankStoredSample(
           biobankStoredSampleId=sample_id, biobankId=participant.biobankId,
-        biobankOrderIdentifier='KIT', test=test_code, confirmed=TIME))
+          biobankOrderIdentifier='KIT', test=test_code, confirmed=TIME))
 
     add_sample(baseline_tests[0], '11111')
     add_sample(baseline_tests[1], '22223')
@@ -291,6 +291,36 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     summary = self.dao.get(participant.participantId)
     self.assertEquals(summary.numBaselineSamplesArrived, 1)
     self.assertNotEqual(init_last_modified, summary.lastModified)
+
+  def test_update_enrollment_status_core_stored_sample_time(self):
+    dna_tests = ["1ED10", "1SAL2"]
+
+    config.override_setting(config.DNA_SAMPLE_TEST_CODES, dna_tests)
+    self.dao.update_from_biobank_stored_samples()  # safe noop
+
+    p_dna_samples = self._insert(Participant(participantId=1, biobankId=11))
+
+    self.assertEquals(self.dao.get(p_dna_samples.participantId).samplesToIsolateDNA, None)
+    self.assertEquals(self.dao.get(p_dna_samples.participantId).enrollmentStatusCoreStoredSampleTime, None)
+
+    sample_dao = BiobankStoredSampleDao()
+
+    def add_sample(participant, test_code, sample_id, confirmed_time):
+      sample_dao.insert(BiobankStoredSample(
+          biobankStoredSampleId=sample_id, biobankId=participant.biobankId,
+          biobankOrderIdentifier='KIT', test=test_code, confirmed=confirmed_time))
+
+    confirmed_time_0 = datetime.datetime(2018, 3, 1)
+    confirmed_time_1 = datetime.datetime(2018, 3, 2)
+    confirmed_time_2 = datetime.datetime(2018, 3, 3)
+    add_sample(p_dna_samples, dna_tests[0], '11111', confirmed_time_0)
+    add_sample(p_dna_samples, dna_tests[0], '111111', confirmed_time_1)
+    add_sample(p_dna_samples, dna_tests[1], '22222', confirmed_time_2)
+
+    self.dao.update_from_biobank_stored_samples()
+
+    self.assertEquals(self.dao.get(p_dna_samples.participantId).samplesToIsolateDNA, SampleStatus.RECEIVED)
+    self.assertEquals(self.dao.get(p_dna_samples.participantId).enrollmentStatusCoreStoredSampleTime, confirmed_time_1)
 
   def test_calculate_enrollment_status(self):
     self.assertEquals(EnrollmentStatus.FULL_PARTICIPANT,
@@ -320,14 +350,17 @@ class ParticipantSummaryDaoTest(NdbTestBase):
                                                            SampleStatus.RECEIVED))
 
   def testUpdateEnrollmentStatus(self):
+    ehr_consent_time = datetime.datetime(2018, 3, 1)
     summary = ParticipantSummary(
         participantId=1,
         biobankId=2,
         consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
         consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
+        consentForElectronicHealthRecordsTime=ehr_consent_time,
         enrollmentStatus=EnrollmentStatus.INTERESTED)
     self.dao.update_enrollment_status(summary)
     self.assertEquals(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
+    self.assertEquals(ehr_consent_time, summary.enrollmentStatusMemberTime)
 
 
 def _with_token(query, token):

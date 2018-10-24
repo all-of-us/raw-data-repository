@@ -1006,15 +1006,18 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.send_consent(participant_id_1)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('UNSET', ps_1['consentForElectronicHealthRecords'])
+    self.assertEquals(None, ps_1.get('enrollmentStatusMemberTime'))
 
     self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id, 'NOPE')
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('SUBMITTED_NO_CONSENT', ps_1['consentForElectronicHealthRecords'])
+    self.assertEquals(None, ps_1.get('enrollmentStatusMemberTime'))
 
     self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id,
                                                 CONSENT_PERMISSION_YES_CODE)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('SUBMITTED', ps_1['consentForElectronicHealthRecords'])
+    self.assertEquals(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
 
   def _submit_dvehr_consent_questionnaire_response(self, participant_id, questionnaire_id,
                                              dvehr_consent_answer, time=TIME_1):
