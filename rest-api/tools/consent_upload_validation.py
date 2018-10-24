@@ -68,21 +68,17 @@ def _strip_path(f):
   return os.path.basename(f)
 
 
-def _sanitize_versions(f):
-  return re.sub(r'__\d+', '', f)
-
-
-def remove_path_and_version_info(participant_files):
+def remove_path(participant_files):
   for _id, files in participant_files.items():
     strip = map(_strip_path, files)
-    no_versions = map(_sanitize_versions, strip)
-    participant_files[_id] = no_versions
+    participant_files[_id] = strip
 
 
 def get_missing_file_info(participant_files):
   for _id, files in participant_files.items():
     files = set(files)
-    missing_files = required_files.difference(files)
+    no_version_list = {re.sub(r'__\d+', '', f) for f in files}
+    missing_files = required_files.difference(no_version_list)
     participant_files[_id] = {'files_found': list(files), 'missing_files': list(missing_files)}
     print 'Missing Files for participant {}: {}'.format(_id, list(missing_files))
 
@@ -123,8 +119,7 @@ def main(args):
 
   for files in [participant_files_base_bucket, participant_files_awardee_bucket]:
     # strip path and the [__123] version indicator from filename to facilitate comparison.
-    # @TODO[MM]: WE MAY NEED TO KEEP THE VERSION, AS THIS MIGHT MATTER IN SOME CASES.
-    remove_path_and_version_info(files)
+    remove_path(files)
     get_missing_file_info(files)
 
   write_to_csv(participant_files_base_bucket, descriptor=base_bucket)
