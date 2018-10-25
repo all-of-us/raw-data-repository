@@ -653,13 +653,13 @@ class PhysicalMeasurementsDao(UpdatableDao):
     order_resource = json.loads(order.resource)
     order_resource['reason'] = order.reason
     if order.status == PhysicalMeasurementsStatus.CANCELLED:
-      order_resource['status'] = 'cancelled'
+      order_resource['status'] = 'CANCELLED'
       order_resource['cancelledUsername'] = order.cancelledUsername
       order_resource['cancelledSiteId'] = order.cancelledSiteId
       order_resource['cancelledTime'] = str(order.cancelledTime)
 
     if order.status == PhysicalMeasurementsStatus.UNSET:
-      order_resource['status'] = 'restored'
+      order_resource['status'] = 'RESTORED'
       for field in cancelled_fields:
         if field in order_resource:
           del order_resource[field]
