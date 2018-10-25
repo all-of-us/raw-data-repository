@@ -263,7 +263,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.send_patch(path, cancel_info)
 
     response = self.send_get(path)
-    self.assertEqual(response['status'], 'cancelled')
+    self.assertEqual(response['status'], 'CANCELLED')
     self.assertEqual(response['reason'], 'a mistake was made.')
     self.assertEqual(response['cancelledUsername'], 'mike@pmi-ops.org')
     self.assertEqual(response['cancelledSiteId'], 1)
@@ -280,7 +280,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.send_patch(path, restored_info)
 
     response = self.send_get(path)
-    self.assertEqual(response['status'], 'restored')
+    self.assertEqual(response['status'], 'RESTORED')
     self.assertEqual(response['reason'], 'need to restore')
     # Response should not contain cancelledInfo
     self.assertTrue('cancelledUsername' not in response)
@@ -318,7 +318,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     cancel_info = get_restore_or_cancel_info()
     self.send_patch(path, cancel_info)
     response = self.send_get(path)
-    self.assertEqual(response['status'], 'cancelled')
+    self.assertEqual(response['status'], 'CANCELLED')
     self.assertEqual(response['reason'], 'a mistake was made.')
     self.assertEqual(response['cancelledUsername'], 'mike@pmi-ops.org')
     self.assertEqual(response['cancelledSiteId'], 1)
