@@ -6,7 +6,7 @@
 # for each site, iterate id's and download associated bucket files
 # upload participant files to new bucket under a directory named after the site
 
-USAGE="tools/ehr_upload.sh --organization <ORGANIZATION> --bucket <BUCKET> --account <ACCOUNT> --project <PROJECT>"
+USAGE="tools/ehr_upload.sh --organization <ORGANIZATION> --source_bucket <BUCKET> --destination_bucket <BUCKET> --account <ACCOUNT> --project <PROJECT>"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
@@ -31,7 +31,6 @@ source tools/auth_setup.sh
 run_cloud_sql_proxy
 set_db_connection_string
 gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file ${CREDS_FILE}
-
 GET_SITES_FOR_ORGANIZATION=$(python tools/ehr_upload.py --organization ${ORGANIZATION} --source_bucket ${SOURCE_BUCKET} --destination_bucket ${DESTINATION_BUCKET})
 
 #GET_SITES_FOR_ORGANIZATION=$(gsutil ls gs://ptc-uploads-all-of-us-rdr-prod)
