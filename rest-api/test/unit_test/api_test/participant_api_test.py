@@ -44,6 +44,7 @@ class ParticipantApiTest(FlaskTestBase):
     self.assertEquals(str(SuspensionStatus.NOT_SUSPENDED), response['suspensionStatus'])
     for auto_generated in (
         'participantId',
+        'externalId',
         'site',
         'organization',
         'awardee',
@@ -63,6 +64,7 @@ class ParticipantApiTest(FlaskTestBase):
     response = self.send_post('Participant', self.participant_2)
     participant_id = response['participantId']
     get_response = self.send_get('Participant/%s' % participant_id)
+    self.assertEqual(get_response['externalId'], self.participant_2['externalId'])
     self.assertEquals(response, get_response)
     self.send_post('Participant', self.participant_2, expected_status=httplib.CONFLICT)
 

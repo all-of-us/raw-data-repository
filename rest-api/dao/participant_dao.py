@@ -267,6 +267,7 @@ class ParticipantDao(UpdatableDao):
   def to_client_json(self, model):
     client_json = {
       'participantId': to_client_participant_id(model.participantId),
+      'externalId': model.externalId,
       'hpoId': model.hpoId,
       'awardee': model.hpoId,
       'organization': model.organizationId,
