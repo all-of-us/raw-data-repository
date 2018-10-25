@@ -1,8 +1,8 @@
-"""participant external id
+"""add external participant id
 
-Revision ID: 114f54ff2fdd
-Revises: 378ee128c23f
-Create Date: 2018-10-18 12:34:33.795358
+Revision ID: b141826d0f10
+Revises: 9b2ec162bfde
+Create Date: 2018-10-25 09:56:24.205850
 
 """
 from alembic import op
@@ -18,8 +18,8 @@ from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatu
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = '114f54ff2fdd'
-down_revision = '378ee128c23f'
+revision = 'b141826d0f10'
+down_revision = '9b2ec162bfde'
 branch_labels = None
 depends_on = None
 
