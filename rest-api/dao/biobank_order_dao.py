@@ -205,6 +205,7 @@ class BiobankOrderDao(UpdatableDao):
                        obj.participantId)
     raise_if_withdrawn(participant_summary)
     self._set_participant_summary_fields(obj, participant_summary)
+    participant_summary_dao.update_enrollment_status(participant_summary)
 
   def _set_participant_summary_fields(self, obj, participant_summary):
     participant_summary.biospecimenStatus = OrderStatus.FINALIZED
@@ -215,21 +216,11 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
     participant_summary.lastModified = clock.CLOCK.now()
 
-    has_dna_test = False
-    import config
     for sample in obj.samples:
-      if sample.test in config.getSettingList(config.DNA_SAMPLE_TEST_CODES):
-        has_dna_test = True
       status_field = 'sampleOrderStatus' + sample.test
       status, time = self._get_order_status_and_time(sample, obj)
       setattr(participant_summary, status_field, status)
       setattr(participant_summary, status_field + 'Time', time)
-    if has_dna_test:
-      # save the first uncancelled DNA order time to enrollmentStatusCoreOrderedSampleTime
-      if participant_summary.enrollmentStatusCoreOrderedSampleTime is None:
-        participant_summary.enrollmentStatusCoreOrderedSampleTime = obj.created
-      elif participant_summary.enrollmentStatusCoreOrderedSampleTime > obj.created:
-        participant_summary.enrollmentStatusCoreOrderedSampleTime = obj.created
 
   def _get_non_cancelled_biobank_orders(self, session, participantId):
     # look up latest order without cancelled status
@@ -252,7 +243,6 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenCollectedSiteId = None
     participant_summary.biospecimenProcessedSiteId = None
     participant_summary.biospecimenFinalizedSiteId = None
-    participant_summary.enrollmentStatusCoreOrderedSampleTime = None
     participant_summary.lastModified = clock.CLOCK.now()
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
@@ -262,6 +252,7 @@ class BiobankOrderDao(UpdatableDao):
     if len(non_cancelled_orders) > 0:
       for order in non_cancelled_orders:
         self._set_participant_summary_fields(order, participant_summary)
+    participant_summary_dao.update_enrollment_status(participant_summary)
 
   def _parse_handling_info(self, handling_info):
     site_id = None

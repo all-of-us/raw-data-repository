@@ -16,8 +16,6 @@ from werkzeug.exceptions import BadRequest, Forbidden, Conflict
 class BiobankOrderDaoTest(SqlTestBase):
   _A_TEST = BIOBANK_TESTS[0]
   _B_TEST = BIOBANK_TESTS[1]
-  _DNA_TEST = '1ED10'
-  _NOT_DNA_TEST = BIOBANK_TESTS[3]
   TIME_1 = datetime.datetime(2018, 9, 20, 5, 49, 11)
   TIME_2 = datetime.datetime(2018, 9, 21, 8, 49, 37)
 
@@ -321,40 +319,3 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.assertEqual(amended_order.version, 2)
     self.assertEqual(amended_order.orderStatus, BiobankOrderStatus.AMENDED)
     self.assertEqual(amended_order.amendedReason, 'I had to change something')
-
-  def test_update_enrollment_status_core_ordered_sampleTime(self):
-    ParticipantSummaryDao().insert(self.participant_summary(self.participant))
-
-    time_1 = datetime.datetime(2018, 9, 10, 5, 49, 11)
-    self.dao.insert(self._make_biobank_order(
-      created=time_1,
-      samples=[BiobankOrderedSample(test=self._NOT_DNA_TEST, processingRequired=True,
-                                    description=u'not dna test')]))
-
-    summary = ParticipantSummaryDao().get(self.participant.participantId)
-    # it's not an order with dns test, enrollmentStatusCoreOrderedSampleTime should be None
-    self.assertEqual(summary.enrollmentStatusCoreOrderedSampleTime, None)
-
-    time_2 = datetime.datetime(2018, 9, 15, 5, 49, 11)
-    self.dao.insert(self._make_biobank_order(
-      biobankOrderId=2,
-      created=time_2,
-      identifiers=[BiobankOrderIdentifier(system='b', value='d')],
-      samples=[BiobankOrderedSample(biobankOrderId=2, test=self._DNA_TEST, processingRequired=True,
-                                    description=u'dna test')]))
-
-    summary = ParticipantSummaryDao().get(self.participant.participantId)
-    # it's an order with dns test, enrollmentStatusCoreOrderedSampleTime should be updated
-    self.assertEqual(summary.enrollmentStatusCoreOrderedSampleTime, time_2)
-
-    time_3 = datetime.datetime(2018, 9, 18, 5, 49, 11)
-    self.dao.insert(self._make_biobank_order(
-      biobankOrderId=3,
-      created=time_3,
-      identifiers=[BiobankOrderIdentifier(system='e', value='f')],
-      samples=[BiobankOrderedSample(biobankOrderId=3, test=self._DNA_TEST, processingRequired=True,
-                                    description=u'dna test')]))
-
-    summary = ParticipantSummaryDao().get(self.participant.participantId)
-    # it stores the first dna order time, so it's should be still time_2
-    self.assertEqual(summary.enrollmentStatusCoreOrderedSampleTime, time_2)

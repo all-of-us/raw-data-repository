@@ -158,38 +158,43 @@ def _get_sample_status_time_sql_and_params():
   tests_sql, params = get_sql_and_params_for_array(
     config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
 
-  confirm_value_sql = '%s' % ','.join(["""COALESCE((SELECT max(confirmed) FROM biobank_stored_sample
-          WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
-          AND biobank_stored_sample.confirmed IS NOT NULL
-          AND biobank_stored_sample.test = '%s'),'3000-01-01')""" % params[key] for key in params])
+  status_time_sql = '%s' % ','.join(["""COALESCE(sample_status_%s_time, '3000-01-01')""" % params[key] for key in params])
 
-  confirm_time_sql = """
+  sub_sql = """
   (
     SELECT 
-      CASE
-        WHEN stored_time='3000-01-01' THEN NULL
-        ELSE stored_time
-      END
-    FROM    
-      (SELECT
-        MIN({confirm_value_sql}) as stored_time
-      FROM
-        biobank_stored_sample
-      WHERE
-        biobank_stored_sample.biobank_id = participant_summary.biobank_id
-        AND biobank_stored_sample.confirmed IS NOT NULL
-        AND biobank_stored_sample.test IN {tests_sql}
-      ) X  
+      MAX(
+        consent_for_electronic_health_records_time,
+        questionnaire_on_the_basics_time,
+        questionnaire_on_lifestyle_time,
+        questionnaire_on_overall_health_time,
+        physical_measurements_finalized_time,
+        CASE WHEN
+            MIN(
+                {status_time_sql}
+                ) = '3001-01-01' THEN NULL
+            ELSE MIN(
+                {status_time_sql}
+                )
+        END
+      )
+    FROM
+      participant_summary ps
+    WHERE
+      ps.enrollment_status = 3
+      AND ps.participant_id = participant_summary.participant_id
+      AND ps.enrollment_status_core_stored_sample_time IS NULL
   )
-  """.format(confirm_value_sql=confirm_value_sql, tests_sql=tests_sql)
+  """.format(status_time_sql=status_time_sql)
 
   sql = """
     UPDATE
       participant_summary
     SET
-      enrollment_status_core_stored_sample_time = {confirm_time_sql}
-    """.format(confirm_time_sql=confirm_time_sql)
-
+      enrollment_status_core_stored_sample_time = {sub_sql}
+    WHERE enrollment_status = 3
+    AND enrollment_status_core_stored_sample_time IS NULL
+    """.format(sub_sql=sub_sql)
   return sql, params
 
 class ParticipantSummaryDao(UpdatableDao):
@@ -345,7 +350,7 @@ class ParticipantSummaryDao(UpdatableDao):
       counts_params['participant_id'] = participant_id
       enrollment_status_sql += ' WHERE participant_id = :participant_id'
       enrollment_status_params['participant_id'] = participant_id
-      sample_status_time_sql += ' WHERE participant_id = :participant_id'
+      sample_status_time_sql += ' AND participant_id = :participant_id'
       sample_status_time_params['participant_id'] = participant_id
 
     sample_sql = replace_null_safe_equals(sample_sql)
@@ -369,8 +374,11 @@ class ParticipantSummaryDao(UpdatableDao):
                                                          summary.numCompletedBaselinePPIModules,
                                                          summary.physicalMeasurementsStatus,
                                                          summary.samplesToIsolateDNA)
-    if consent:
-      summary.enrollmentStatusMemberTime = summary.consentForElectronicHealthRecordsTime
+    summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
+    summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(
+      consent, summary)
+    summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(
+      consent, summary)
     summary.enrollmentStatus = enrollment_status
 
   def calculate_enrollment_status(self, consent_for_study_enrollment_and_ehr,
@@ -384,6 +392,67 @@ class ParticipantSummaryDao(UpdatableDao):
         return EnrollmentStatus.FULL_PARTICIPANT
       return EnrollmentStatus.MEMBER
     return EnrollmentStatus.INTERESTED
+
+  def calculate_member_time(self, consent_for_study_enrollment_and_ehr, participant_summary):
+    if consent_for_study_enrollment_and_ehr and \
+      participant_summary.enrollmentStatusMemberTime is not None:
+      return participant_summary.enrollmentStatusMemberTime
+    elif consent_for_study_enrollment_and_ehr:
+      return participant_summary.consentForElectronicHealthRecordsTime
+    else:
+      return None
+
+  def calculate_core_stored_sample_time(self, consent_for_study_enrollment_and_ehr,
+                                        participant_summary):
+    if consent_for_study_enrollment_and_ehr and \
+      participant_summary.numCompletedBaselinePPIModules == \
+      self._get_num_baseline_ppi_modules() and \
+      participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED and \
+      participant_summary.samplesToIsolateDNA == SampleStatus.RECEIVED:
+
+      keys = ['sampleStatus%sTime' % test
+              for test in config.getSettingList(config.DNA_SAMPLE_TEST_CODES)]
+      sample_stored_time_list = \
+        [v for k, v in participant_summary if k in keys and v is not None]
+
+      sample_stored_time = min(sample_stored_time_list) if sample_stored_time_list else None
+
+      if sample_stored_time is not None:
+        return max([sample_stored_time,
+                   participant_summary.consentForElectronicHealthRecordsTime,
+                   participant_summary.questionnaireOnTheBasicsTime,
+                   participant_summary.questionnaireOnLifestyleTime,
+                   participant_summary.questionnaireOnOverallHealthTime,
+                   participant_summary.physicalMeasurementsFinalizedTime])
+      else:
+        return None
+    else:
+      return None
+
+  def calculate_core_ordered_sample_time(self, consent_for_study_enrollment_and_ehr,
+                                         participant_summary):
+    if consent_for_study_enrollment_and_ehr and \
+      participant_summary.numCompletedBaselinePPIModules == \
+      self._get_num_baseline_ppi_modules() and \
+      participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED:
+      keys = ['sampleOrderStatus%sTime' % test
+              for test in config.getSettingList(config.DNA_SAMPLE_TEST_CODES)]
+      sample_ordered_time_list = \
+        [v for k, v in participant_summary if k in keys and v is not None]
+
+      sample_ordered_time = min(sample_ordered_time_list) if sample_ordered_time_list else None
+
+      if sample_ordered_time is not None:
+        return max([sample_ordered_time,
+                   participant_summary.consentForElectronicHealthRecordsTime,
+                   participant_summary.questionnaireOnTheBasicsTime,
+                   participant_summary.questionnaireOnLifestyleTime,
+                   participant_summary.questionnaireOnOverallHealthTime,
+                   participant_summary.physicalMeasurementsFinalizedTime])
+      else:
+        return None
+    else:
+      return None
 
   def to_client_json(self, model):
     result = model.asdict()
