@@ -151,14 +151,14 @@ def _get_dna_isolates_sql_and_params():
   )
 
 def _get_sample_status_time_sql_and_params():
-  """Gets SQL and params that to update enrollmentStatusCoreStoredSampleTime field
+  """Gets SQL that to update enrollmentStatusCoreStoredSampleTime field
   on the participant summary.
   """
 
-  tests_sql, params = get_sql_and_params_for_array(
-    config.getSettingList(config.DNA_SAMPLE_TEST_CODES), 'dna')
+  dns_test_list = config.getSettingList(config.DNA_SAMPLE_TEST_CODES)
 
-  status_time_sql = '%s' % ','.join(["""COALESCE(sample_status_%s_time, '3000-01-01')""" % params[key] for key in params])
+  status_time_sql = '%s' % ','.join(["""COALESCE(sample_status_%s_time, '3000-01-01')""" % item
+                                     for item in dns_test_list])
 
   sub_sql = """
   (
@@ -195,7 +195,7 @@ def _get_sample_status_time_sql_and_params():
     WHERE enrollment_status = 3
     AND enrollment_status_core_stored_sample_time IS NULL
     """.format(sub_sql=sub_sql)
-  return sql, params
+  return sql
 
 class ParticipantSummaryDao(UpdatableDao):
 
@@ -314,7 +314,8 @@ class ParticipantSummaryDao(UpdatableDao):
     baseline_tests_sql, baseline_tests_params = _get_baseline_sql_and_params()
     dna_tests_sql, dna_tests_params = _get_dna_isolates_sql_and_params()
 
-    sample_status_time_sql, sample_status_time_params = _get_sample_status_time_sql_and_params()
+    sample_status_time_sql = _get_sample_status_time_sql_and_params()
+    sample_status_time_params = {}
 
     counts_sql = """
     UPDATE
