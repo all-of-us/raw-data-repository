@@ -22,6 +22,9 @@ class ParticipantApiTest(FlaskTestBase):
     self.participant = {
         'providerLink': [provider_link]
     }
+    self.participant_2 = {
+      'externalId': 12345
+      }
     self.provider_link_2 = {
       "primary": True,
       "organization": {
@@ -41,6 +44,7 @@ class ParticipantApiTest(FlaskTestBase):
     self.assertEquals(str(SuspensionStatus.NOT_SUSPENDED), response['suspensionStatus'])
     for auto_generated in (
         'participantId',
+        'externalId',
         'site',
         'organization',
         'awardee',
@@ -55,6 +59,15 @@ class ParticipantApiTest(FlaskTestBase):
       del response[auto_generated]
 
     self.assertJsonResponseMatches(self.participant, response)
+
+  def test_insert_with_same_external_id_fails(self):
+    response = self.send_post('Participant', self.participant_2)
+    participant_id = response['participantId']
+    get_response = self.send_get('Participant/%s' % participant_id)
+    self.assertEqual(get_response['externalId'], self.participant_2['externalId'])
+    self.assertEquals(response, get_response)
+    self.send_post('Participant', self.participant_2, expected_status=httplib.CONFLICT)
+
 
   def test_update_no_ifmatch_specified(self):
     response = self.send_post('Participant', self.participant)

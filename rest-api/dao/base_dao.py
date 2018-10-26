@@ -11,7 +11,8 @@ from protorpc import messages
 from query import Operator, PropertyType, FieldFilter, Results
 from sqlalchemy import or_, and_
 from sqlalchemy.exc import IntegrityError
-from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
+from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable, \
+  Conflict
 
 import api_util
 import dao.database_factory
@@ -330,6 +331,8 @@ class BaseDao(object):
       except IntegrityError, e:
         # SQLite and MySQL variants of the error message, respectively.
         if 'UNIQUE constraint failed' in e.message or 'Duplicate entry' in e.message:
+          if 'external_id' in e.message:
+            raise Conflict('External ID already in use, error: {}'.format(e.message))
           logging.warning('Failed insert with %s: %s', tried_ids, e.message)
         else:
           raise

@@ -267,6 +267,7 @@ class ParticipantDao(UpdatableDao):
   def to_client_json(self, model):
     client_json = {
       'participantId': to_client_participant_id(model.participantId),
+      'externalId': model.externalId,
       'hpoId': model.hpoId,
       'awardee': model.hpoId,
       'organization': model.organizationId,
@@ -302,6 +303,7 @@ class ParticipantDao(UpdatableDao):
     # biobankId, lastModified, signUpTime are set by DAO.
     return Participant(
       participantId=id_,
+      externalId=resource_json.get('externalId'),
       version=expected_version,
       providerLink=json.dumps(resource_json.get('providerLink')),
       clientId=client_id,
