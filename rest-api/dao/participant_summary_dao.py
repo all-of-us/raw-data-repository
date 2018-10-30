@@ -1,6 +1,6 @@
 import datetime
 import threading
-
+import re
 import clock
 import config
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
@@ -159,16 +159,18 @@ def _get_sample_status_time_sql_and_params():
 
   status_time_sql = '%s' % ','.join(["""COALESCE(sample_status_%s_time, '3000-01-01')""" % item
                                      for item in dns_test_list])
+  baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
+
+  baseline_ppi_module_sql = '%s' % ','.join(["""%s_time""" % re.sub('(?<!^)(?=[A-Z])', '_', item)
+                                            .lower() for item in baseline_ppi_module_fields])
 
   sub_sql = """
   (
     SELECT 
       MAX(
         consent_for_electronic_health_records_time,
-        questionnaire_on_the_basics_time,
-        questionnaire_on_lifestyle_time,
-        questionnaire_on_overall_health_time,
         physical_measurements_finalized_time,
+        {baseline_ppi_module_sql},
         CASE WHEN
             MIN(
                 {status_time_sql}
@@ -181,11 +183,9 @@ def _get_sample_status_time_sql_and_params():
     FROM
       participant_summary ps
     WHERE
-      ps.enrollment_status = 3
-      AND ps.participant_id = participant_summary.participant_id
-      AND ps.enrollment_status_core_stored_sample_time IS NULL
+      ps.participant_id = participant_summary.participant_id
   )
-  """.format(status_time_sql=status_time_sql)
+  """.format(status_time_sql=status_time_sql, baseline_ppi_module_sql = baseline_ppi_module_sql)
 
   sql = """
     UPDATE
@@ -195,6 +195,7 @@ def _get_sample_status_time_sql_and_params():
     WHERE enrollment_status = 3
     AND enrollment_status_core_stored_sample_time IS NULL
     """.format(sub_sql=sub_sql)
+
   return sql
 
 class ParticipantSummaryDao(UpdatableDao):
@@ -411,22 +412,11 @@ class ParticipantSummaryDao(UpdatableDao):
       participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED and \
       participant_summary.samplesToIsolateDNA == SampleStatus.RECEIVED:
 
-      keys = ['sampleStatus%sTime' % test
-              for test in config.getSettingList(config.DNA_SAMPLE_TEST_CODES)]
-      sample_stored_time_list = \
-        [v for k, v in participant_summary if k in keys and v is not None]
+      if participant_summary.enrollmentStatusCoreStoredSampleTime:
+        return participant_summary.enrollmentStatusCoreStoredSampleTime
 
-      sample_stored_time = min(sample_stored_time_list) if sample_stored_time_list else None
-
-      if sample_stored_time is not None:
-        return max([sample_stored_time,
-                   participant_summary.consentForElectronicHealthRecordsTime,
-                   participant_summary.questionnaireOnTheBasicsTime,
-                   participant_summary.questionnaireOnLifestyleTime,
-                   participant_summary.questionnaireOnOverallHealthTime,
-                   participant_summary.physicalMeasurementsFinalizedTime])
-      else:
-        return None
+      return self.calculate_max_core_sample_time(participant_summary,
+                                                 field_name_prefix='sampleStatus')
     else:
       return None
 
@@ -436,22 +426,28 @@ class ParticipantSummaryDao(UpdatableDao):
       participant_summary.numCompletedBaselinePPIModules == \
       self._get_num_baseline_ppi_modules() and \
       participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED:
-      keys = ['sampleOrderStatus%sTime' % test
-              for test in config.getSettingList(config.DNA_SAMPLE_TEST_CODES)]
-      sample_ordered_time_list = \
-        [v for k, v in participant_summary if k in keys and v is not None]
 
-      sample_ordered_time = min(sample_ordered_time_list) if sample_ordered_time_list else None
+      return self.calculate_max_core_sample_time(participant_summary,
+                                                 field_name_prefix='sampleOrderStatus')
+    else:
+      return None
 
-      if sample_ordered_time is not None:
-        return max([sample_ordered_time,
-                   participant_summary.consentForElectronicHealthRecordsTime,
-                   participant_summary.questionnaireOnTheBasicsTime,
-                   participant_summary.questionnaireOnLifestyleTime,
-                   participant_summary.questionnaireOnOverallHealthTime,
-                   participant_summary.physicalMeasurementsFinalizedTime])
-      else:
-        return None
+  def calculate_max_core_sample_time(self, participant_summary, field_name_prefix='sampleStatus'):
+
+    keys = [field_name_prefix + '%sTime' % test
+            for test in config.getSettingList(config.DNA_SAMPLE_TEST_CODES)]
+    sample_time_list = \
+      [v for k, v in participant_summary if k in keys and v is not None]
+
+    sample_time = min(sample_time_list) if sample_time_list else None
+
+    if sample_time is not None:
+      return max([sample_time,
+                  participant_summary.consentForElectronicHealthRecordsTime,
+                  participant_summary.questionnaireOnTheBasicsTime,
+                  participant_summary.questionnaireOnLifestyleTime,
+                  participant_summary.questionnaireOnOverallHealthTime,
+                  participant_summary.physicalMeasurementsFinalizedTime])
     else:
       return None
 

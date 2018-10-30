@@ -296,9 +296,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
     participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
     participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
     participant_summary.lastModified = clock.CLOCK.now()
-    if 'physicalMeasurementsStatus' in obj:
-      # If this is an update it should have this field. New inserts may not.
-      participant_summary.physicalMeasurementsStatus = obj.physicalMeasurementsStatus
+
+    if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED:
+      # update corresponding participant summary physicalMeasurementsStatus
+      participant_summary.physicalMeasurementsStatus = obj.status
 
     if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.CANCELLED:
       # if a PM was restored, it is complete again.
