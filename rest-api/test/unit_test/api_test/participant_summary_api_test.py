@@ -8,7 +8,6 @@ from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, DVEHRSHARING_CONSENT_CODE_YES,
                             DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE)
 from concepts import Concept
-from model.participant_summary import ParticipantSummary
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
@@ -1123,7 +1122,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     measurements_1 = load_measurement_json(participant_id_1, TIME_1.isoformat())
     path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
     with FakeClock(TIME_1):
-      pm_response = self.send_post(path, measurements_1)
+      self.send_post(path, measurements_1)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
@@ -1198,7 +1197,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     measurements_1 = load_measurement_json(participant_id_1, TIME_1.isoformat())
     path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
     with FakeClock(TIME_1):
-      pm_response = self.send_post(path, measurements_1)
+      self.send_post(path, measurements_1)
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
