@@ -17,6 +17,7 @@ from offline.table_exporter import TableExporter
 from offline.metrics_export import MetricsExport
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from offline.sa_key_remove import delete_service_account_keys
+from offline.ehr_upload import sync_consents
 from api_util import EXPORTER
 from werkzeug.exceptions import BadRequest
 
@@ -131,6 +132,12 @@ def delete_old_keys():
   delete_service_account_keys()
   return '{"success": "true"}'
 
+@app_util.auth_required_cron
+def sync_consents():
+  sync_consents()
+  return '{"success": "true"}'
+
+
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
   offline_app = Flask(__name__)
@@ -163,6 +170,12 @@ def _build_pipeline_app():
     PREFIX + 'DeleteOldKeys',
     endpoint='delete_old_keys',
     view_func=delete_old_keys,
+    methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'EhrUpload',
+    endpoint='ehr_upload',
+    view_func=sync_consents,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)

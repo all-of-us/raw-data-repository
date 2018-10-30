@@ -5,17 +5,27 @@ eg: tools/ehr_upload.sh --organization AZ_TUCSON --bucket ptc-uploads-pmi-drc-ap
 import subprocess
 import shlex
 from dao import database_factory
-from main_util import get_parser, configure_logging
 from sqlalchemy import text
 
+source_bucket = 'ptc-uploads-all-of-us-rdr-prod'
+bucket_name = 'Bucket Name'
+aggregating_ord_id = 'Aggregating Org ID'
+org_id = 'Org ID'
+link = 'https://docs.google.com/spreadsheets/d/1Fm0RsnMCvR6RTxEOkRKC2IrSy4dcQPbETdDeCSKG4O8/edit' \
+       '#gid=0'
 
-def main(args):
+
+# read all hpo's report (which needs to be protected)
+# get Org ID and Bucket Name. If no Bucket Name, get it from Aggregating Org ID (sort of parent)
+
+def sync_consents(args):
   with database_factory.get_database().session() as session:
     get_participants_under_sites(
-      session, args.organization, args.source_bucket, args.destination_bucket)
+      session, args.organization, source_bucket, bucket_name)
 
     get_participants_without_site_pairing(
-        session, args.organization, args.source_bucket, args.destination_bucket)
+      session, args.organization, source_bucket, bucket_name)
+
 
 def get_participants_under_sites(session, organization, source_bucket, destination_bucket):
   sql = """
@@ -32,9 +42,10 @@ def get_participants_under_sites(session, organization, source_bucket, destinati
     if results:
       results = [(int(i), str(k)) for i, k in results]
       for participant, google_group in results:
-        gsutil = "gsutil -m cp gs://" + source_bucket + "/Participant/P" + str(
+        gsutil = "gsutil -m rsync gs://" + source_bucket + "/Participant/P" + str(
           participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
                  google_group + "/P" + str(participant) + "/"
+
         gsutil = shlex.split(str(gsutil))
         system_call = subprocess.Popen(gsutil)
         system_call.communicate()[0]
@@ -64,7 +75,7 @@ def get_participants_without_site_pairing(session, organization, source_bucket, 
     if results:
       results = [int(i) for i, in results]
       for participant in results:
-        gsutil = "gsutil -m cp gs://" + source_bucket + "/Participant/P" + str(
+        gsutil = "gsutil -m rsync gs://" + source_bucket + "/Participant/P" + str(
           participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
                  "no_site_pairing" + "/P" + str(participant) + "/"
 
@@ -81,16 +92,3 @@ def get_participants_without_site_pairing(session, organization, source_bucket, 
             + organization
   finally:
     cursor.close()
-
-
-if __name__ == '__main__':
-  configure_logging()
-  parser = get_parser()
-  parser.add_argument('--organization', help='The organization to find participants and sites for',
-                      required=True)
-  parser.add_argument('--source_bucket', help='The bucket to read from in one env.'
-                      ' i.e. ptc-uploads-pmi-drc-api-prod', required=True)
-  parser.add_argument('--destination_bucket', help='The bucket to write to in one env.'
-                      'i.e. some-other-bucket-in-prod', required=True)
-
-  main(parser.parse_args())

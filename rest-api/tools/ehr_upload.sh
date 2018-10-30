@@ -34,6 +34,7 @@ gcloud auth activate-service-account $SERVICE_ACCOUNT --key-file ${CREDS_FILE}
 GET_SITES_FOR_ORGANIZATION=$(python tools/ehr_upload.py --organization ${ORGANIZATION} --source_bucket ${SOURCE_BUCKET} --destination_bucket ${DESTINATION_BUCKET})
 
 #GET_SITES_FOR_ORGANIZATION=$(gsutil ls gs://ptc-uploads-all-of-us-rdr-prod)
+#GET_SITES_FOR_ORGANIZATION=$(gsutil ls gs://aou179/Participant/no_site_pairing)
 
 IFS=$'\n';
 for message in $GET_SITES_FOR_ORGANIZATION;
