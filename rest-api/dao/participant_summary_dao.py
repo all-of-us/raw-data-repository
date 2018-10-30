@@ -185,7 +185,7 @@ def _get_sample_status_time_sql_and_params():
     WHERE
       ps.participant_id = participant_summary.participant_id
   )
-  """.format(status_time_sql=status_time_sql, baseline_ppi_module_sql = baseline_ppi_module_sql)
+  """.format(status_time_sql=status_time_sql, baseline_ppi_module_sql=baseline_ppi_module_sql)
 
   sql = """
     UPDATE
