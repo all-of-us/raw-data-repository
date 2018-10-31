@@ -412,11 +412,13 @@ class ParticipantSummaryDao(UpdatableDao):
       participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED and \
       participant_summary.samplesToIsolateDNA == SampleStatus.RECEIVED:
 
-      if participant_summary.enrollmentStatusCoreStoredSampleTime:
-        return participant_summary.enrollmentStatusCoreStoredSampleTime
+      max_core_sample_time = self.calculate_max_core_sample_time(participant_summary,
+                                                                 field_name_prefix='sampleStatus')
 
-      return self.calculate_max_core_sample_time(participant_summary,
-                                                 field_name_prefix='sampleStatus')
+      if max_core_sample_time and participant_summary.enrollmentStatusCoreStoredSampleTime:
+        return participant_summary.enrollmentStatusCoreStoredSampleTime
+      else:
+        return max_core_sample_time
     else:
       return None
 
@@ -427,8 +429,13 @@ class ParticipantSummaryDao(UpdatableDao):
       self._get_num_baseline_ppi_modules() and \
       participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED:
 
-      return self.calculate_max_core_sample_time(participant_summary,
-                                                 field_name_prefix='sampleOrderStatus')
+      max_core_sample_time = self.calculate_max_core_sample_time(
+        participant_summary, field_name_prefix='sampleOrderStatus')
+
+      if max_core_sample_time and participant_summary.enrollmentStatusCoreOrderedSampleTime:
+        return participant_summary.enrollmentStatusCoreOrderedSampleTime
+      else:
+        return max_core_sample_time
     else:
       return None
 

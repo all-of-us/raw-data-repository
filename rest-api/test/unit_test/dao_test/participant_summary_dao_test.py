@@ -305,6 +305,8 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertEquals(self.dao.get(p_dna_samples.participantId).samplesToIsolateDNA, None)
     self.assertEquals(
       self.dao.get(p_dna_samples.participantId).enrollmentStatusCoreStoredSampleTime, None)
+    self.assertEquals(
+      self.dao.get(p_dna_samples.participantId).enrollmentStatusCoreOrderedSampleTime, None)
 
     sample_dao = BiobankStoredSampleDao()
 
@@ -323,6 +325,8 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     # only update dna sample will not update enrollmentStatusCoreStoredSampleTime
     self.assertEquals(
       self.dao.get(p_dna_samples.participantId).enrollmentStatusCoreStoredSampleTime, None)
+    self.assertEquals(
+      self.dao.get(p_dna_samples.participantId).enrollmentStatusCoreOrderedSampleTime, None)
 
   def test_calculate_enrollment_status(self):
     self.assertEquals(EnrollmentStatus.FULL_PARTICIPANT,
