@@ -3,6 +3,7 @@ import httplib
 import datetime
 
 from dao.biobank_order_dao import BiobankOrderDao
+from model.biobank_order import BiobankOrderHistory
 from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import load_biobank_order_json, load_measurement_json
 from model.utils import to_client_participant_id, from_client_participant_id
@@ -373,6 +374,16 @@ class BiobankOrderApiTest(FlaskTestBase):
     _strip_fields(result)
     _strip_fields(full_order_json)
     self.assertEquals(full_order_json, result)
+
+  def test_biobank_history_on_insert(self):
+    with self.bio_dao.session() as session:
+      self.summary_dao.insert(self.participant_summary(self.participant))
+      order_json = load_biobank_order_json(self.participant.participantId,
+                                           filename='biobank_order_2.json')
+      result = self.send_post(self.path, order_json)
+      load_biobank_order_json(self.participant.participantId, filename='biobank_order_1.json')
+      order_history = session.query(BiobankOrderHistory).first()
+      self.assertEqual(result['id'], order_history.biobankOrderId)
 
   def test_error_no_summary(self):
     order_json = load_biobank_order_json(self.participant.participantId)

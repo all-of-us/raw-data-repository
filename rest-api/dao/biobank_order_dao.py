@@ -124,6 +124,9 @@ class BiobankOrderDao(UpdatableDao):
     inserted_obj = super(BiobankOrderDao, self).insert_with_session(session, obj)
     ParticipantDao().add_missing_hpo_from_site(
         session, inserted_obj.participantId, inserted_obj.collectedSiteId)
+    self._update_history(session, obj)
+    self._update_identifier_history(session, obj)
+    self._update_sample_history(session, obj)
     return inserted_obj
 
   def _validate_model(self, session, obj):

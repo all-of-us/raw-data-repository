@@ -123,7 +123,7 @@ class BiobankOrderDaoTest(SqlTestBase):
 
   def test_to_json(self):
     order = self._make_biobank_order()
-    order_json = BiobankOrderDao().to_client_json(order)
+    order_json = self.dao.to_client_json(order)
     expected_order_json = load_biobank_order_json(self.participant.participantId)
     for key in ('createdInfo', 'collectedInfo', 'processedInfo', 'finalizedInfo'):
       self.assertEquals(expected_order_json[key], order_json.get(key))
