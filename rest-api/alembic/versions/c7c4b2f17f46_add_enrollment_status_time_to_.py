@@ -1,8 +1,8 @@
 """add enrollment status time to participant summary
 
-Revision ID: d0c23d938a34
-Revises: 9b2ec162bfde
-Create Date: 2018-10-22 10:12:47.780153
+Revision ID: c7c4b2f17f46
+Revises: 147b312fe1c1
+Create Date: 2018-10-31 11:34:00.788777
 
 """
 from alembic import op
@@ -18,8 +18,8 @@ from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatu
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = 'd0c23d938a34'
-down_revision = '9b2ec162bfde'
+revision = 'c7c4b2f17f46'
+down_revision = '147b312fe1c1'
 branch_labels = None
 depends_on = None
 
