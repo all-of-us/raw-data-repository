@@ -205,6 +205,7 @@ class BiobankOrderDao(UpdatableDao):
                        obj.participantId)
     raise_if_withdrawn(participant_summary)
     self._set_participant_summary_fields(obj, participant_summary)
+    participant_summary_dao.update_enrollment_status(participant_summary)
 
   def _set_participant_summary_fields(self, obj, participant_summary):
     participant_summary.biospecimenStatus = OrderStatus.FINALIZED
@@ -214,6 +215,7 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
     participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
     participant_summary.lastModified = clock.CLOCK.now()
+
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
       status, time = self._get_order_status_and_time(sample, obj)
@@ -250,6 +252,7 @@ class BiobankOrderDao(UpdatableDao):
     if len(non_cancelled_orders) > 0:
       for order in non_cancelled_orders:
         self._set_participant_summary_fields(order, participant_summary)
+    participant_summary_dao.update_enrollment_status(participant_summary)
 
   def _parse_handling_info(self, handling_info):
     site_id = None

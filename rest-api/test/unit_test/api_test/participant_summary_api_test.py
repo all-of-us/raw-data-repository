@@ -13,8 +13,9 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.code import CodeType
 from participant_enums import ANSWER_CODE_TO_RACE
-from test_data import load_measurement_json, load_biobank_order_json
-from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase
+from test_data import load_measurement_json, load_biobank_order_json, to_client_participant_id
+from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase,\
+  get_restore_or_cancel_info
 
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -396,7 +397,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                     state_code, street_address, city, sex_code, login_phone_number,
                                     sexual_orientation_code, phone_number, recontact_method_code,
                                     language_code, education_code, income_code, date_of_birth,
-                                    cabor_signature_uri):
+                                    cabor_signature_uri, time=TIME_1):
     code_answers = []
     _add_code_answer(code_answers, "race", race_code)
     _add_code_answer(code_answers, "genderIdentity", gender_code)
@@ -421,7 +422,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                                             ("zipCode", zip_code)],
                                           date_answers = [("dateOfBirth", date_of_birth)],
                                           uri_answers = [("CABoRSignature", cabor_signature_uri)])
-    with FakeClock(TIME_1):
+    with FakeClock(time):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
   def testQuery_noSummaries(self):
@@ -982,22 +983,22 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     with FakeClock(time):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
-  def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id):
+  def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id, time=TIME_1):
     qr = make_questionnaire_response_json(participant_id, questionnaire_id)
-    with FakeClock(TIME_1):
+    with FakeClock(time):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
-  def _send_biobank_order(self, participant_id, order):
-    with FakeClock(TIME_1):
+  def _send_biobank_order(self, participant_id, order, time=TIME_1):
+    with FakeClock(time):
       self.send_post('Participant/%s/BiobankOrder' % participant_id, order)
 
-  def _store_biobank_sample(self, participant, test_code):
+  def _store_biobank_sample(self, participant, test_code, time=TIME_1):
     BiobankStoredSampleDao().insert(BiobankStoredSample(
         biobankStoredSampleId='s' + participant['participantId'] + test_code,
         biobankId=participant['biobankId'][1:],
         test=test_code,
         biobankOrderIdentifier='KIT',
-        confirmed=TIME_1))
+        confirmed=time))
 
   def testQuery_ehrConsent(self):
     questionnaire_id = self.create_questionnaire('all_consents_questionnaire.json')
@@ -1006,15 +1007,18 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.send_consent(participant_id_1)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('UNSET', ps_1['consentForElectronicHealthRecords'])
+    self.assertEquals(None, ps_1.get('enrollmentStatusMemberTime'))
 
     self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id, 'NOPE')
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('SUBMITTED_NO_CONSENT', ps_1['consentForElectronicHealthRecords'])
+    self.assertEquals(None, ps_1.get('enrollmentStatusMemberTime'))
 
     self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id,
                                                 CONSENT_PERMISSION_YES_CODE)
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals('SUBMITTED', ps_1['consentForElectronicHealthRecords'])
+    self.assertEquals(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
 
   def _submit_dvehr_consent_questionnaire_response(self, participant_id, questionnaire_id,
                                              dvehr_consent_answer, time=TIME_1):
@@ -1086,6 +1090,260 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('NO_USE', ps_1['withdrawalStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_1.get('withdrawalTime'))
 
+  def test_member_ordered_stored_times_for_multi_biobank_order(self):
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    questionnaire_id_1 = self.create_questionnaire('all_consents_questionnaire.json')
+    questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
+    participant_1 = self.send_post('Participant', {})
+    participant_id_1 = participant_1['participantId']
+    with FakeClock(TIME_6):
+      self.send_consent(participant_id_1)
+
+    self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id_1,
+                                                CONSENT_PERMISSION_YES_CODE, time=TIME_6)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # Send a biobank order for participant 1
+    order_json = load_biobank_order_json(int(participant_id_1[1:]))
+    self._send_biobank_order(participant_id_1, order_json, time=TIME_1)
+
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_NONE_OF_THESE_CODE,
+                                       "male", "Fred", "T", "Smith", "78752", None,
+                                       None, None, None, None, None, None, None, None, None, None,
+                                       datetime.date(1978, 10, 10), None, time=TIME_2)
+    # Send an empty questionnaire response for another questionnaire for participant 1,
+    # completing the baseline PPI modules.
+    self._submit_empty_questionnaire_response(participant_id_1, questionnaire_id_2)
+    # Send physical measurements for participants 1
+    measurements_1 = load_measurement_json(participant_id_1, TIME_1.isoformat())
+    path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
+    with FakeClock(TIME_1):
+      self.send_post(path, measurements_1)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # Send another biobank order for participant 1 with a different timestamp
+    order_json2 = load_biobank_order_json(int(participant_id_1[1:]),
+                                          filename='biobank_order_3.json')
+    self._send_biobank_order(participant_id_1, order_json2, time=TIME_2)
+    # make sure enrollmentStatusCoreOrderedSampleTime is not changed
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+  def test_member_ordered_stored_times_for_biobank_order_cancel(self):
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    questionnaire_id_1 = self.create_questionnaire('all_consents_questionnaire.json')
+    questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
+    participant_1 = self.send_post('Participant', {})
+    participant_id_1 = participant_1['participantId']
+    with FakeClock(TIME_6):
+      self.send_consent(participant_id_1)
+
+    self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id_1,
+                                                CONSENT_PERMISSION_YES_CODE, time=TIME_6)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # Send a biobank order for participant 1
+    order_json = load_biobank_order_json(int(participant_id_1[1:]))
+    self._send_biobank_order(participant_id_1, order_json, time=TIME_1)
+
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_NONE_OF_THESE_CODE,
+                                       "male", "Fred", "T", "Smith", "78752", None,
+                                       None, None, None, None, None, None, None, None, None, None,
+                                       datetime.date(1978, 10, 10), None, time=TIME_2)
+    # Send an empty questionnaire response for another questionnaire for participant 1,
+    # completing the baseline PPI modules.
+    self._submit_empty_questionnaire_response(participant_id_1, questionnaire_id_2)
+    # Send physical measurements for participants 1
+    measurements_1 = load_measurement_json(participant_id_1, TIME_1.isoformat())
+    path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
+    with FakeClock(TIME_1):
+      self.send_post(path, measurements_1)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # Store samples for DNA for participants 1
+    self._store_biobank_sample(participant_1, '1SAL', time=TIME_4)
+    self._store_biobank_sample(participant_1, '2ED10', time=TIME_5)
+    # Update participant summaries based on these changes.
+    ParticipantSummaryDao().update_from_biobank_stored_samples()
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEquals(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # cancel a biobank order
+    biobank_order_id = order_json['identifier'][1]['value']
+    path = 'Participant/%s/BiobankOrder' % to_client_participant_id(int(participant_id_1[1:])) + \
+           '/' + biobank_order_id
+    request_data = {
+      "amendedReason": "Its all wrong",
+      "cancelledInfo": {
+        "author": {
+          "system": "https://www.pmi-ops.org/healthpro-username",
+          "value": "fred@pmi-ops.org"
+        },
+        "site": {
+          "system": "https://www.pmi-ops.org/site-id",
+          "value": "hpo-site-monroeville"
+        }
+      },
+      "status": "cancelled"
+    }
+    self.send_patch(path, request_data=request_data, headers={'If-Match': 'W/"1"'})
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('sampleOrderStatus2ED10Time'))
+    self.assertEquals(ps_1.get('sampleOrderStatus2ED10'), 'UNSET')
+
+  def test_member_ordered_stored_times_for_consent_withdraw(self):
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    questionnaire_id_1 = self.create_questionnaire('all_consents_questionnaire.json')
+    questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
+    participant_1 = self.send_post('Participant', {})
+    participant_id_1 = participant_1['participantId']
+    with FakeClock(TIME_6):
+      self.send_consent(participant_id_1)
+
+    self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id_1,
+                                                CONSENT_PERMISSION_YES_CODE, time=TIME_6)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # Send a biobank order for participant 1
+    order_json = load_biobank_order_json(int(participant_id_1[1:]))
+    self._send_biobank_order(participant_id_1, order_json, time=TIME_1)
+
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_NONE_OF_THESE_CODE,
+                                       "male", "Fred", "T", "Smith", "78752", None,
+                                       None, None, None, None, None, None, None, None, None, None,
+                                       datetime.date(1978, 10, 10), None, time=TIME_2)
+    # Send an empty questionnaire response for another questionnaire for participant 1,
+    # completing the baseline PPI modules.
+    self._submit_empty_questionnaire_response(participant_id_1, questionnaire_id_2)
+    # Send physical measurements for participants 1
+    measurements_1 = load_measurement_json(participant_id_1, TIME_1.isoformat())
+    path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
+    with FakeClock(TIME_1):
+      self.send_post(path, measurements_1)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # Store samples for DNA for participants 1
+    self._store_biobank_sample(participant_1, '1SAL', time=TIME_4)
+    self._store_biobank_sample(participant_1, '2ED10', time=TIME_5)
+    # Update participant summaries based on these changes.
+    ParticipantSummaryDao().update_from_biobank_stored_samples()
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEquals(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # test withdraws
+    with FakeClock(TIME_3):
+      participant_1['withdrawalStatus'] = 'NO_USE'
+      participant_1['withdrawalReason'] = 'DUPLICATE'
+      participant_1['withdrawalReasonJustification'] = 'Duplicate.'
+      self.send_put('Participant/%s' % participant_id_1, participant_1,
+                    headers={'If-Match': 'W/"2"'})
+    # one day after withdraw
+    with FakeClock(TIME_4):
+      ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEquals(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+    # two days after withdraw
+    with FakeClock(TIME_5):
+      ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertIsNone(ps_1.get('enrollmentStatusMemberTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+  def test_member_ordered_stored_times_for_physical_measurement_cancel(self):
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    questionnaire_id_1 = self.create_questionnaire('all_consents_questionnaire.json')
+    questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
+    participant_1 = self.send_post('Participant', {})
+    participant_id_1 = participant_1['participantId']
+    with FakeClock(TIME_6):
+      self.send_consent(participant_id_1)
+
+    self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id_1,
+                                                CONSENT_PERMISSION_YES_CODE, time=TIME_6)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # Send a biobank order for participant 1
+    order_json = load_biobank_order_json(int(participant_id_1[1:]))
+    self._send_biobank_order(participant_id_1, order_json, time=TIME_1)
+
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_NONE_OF_THESE_CODE,
+                                       "male", "Fred", "T", "Smith", "78752", None,
+                                       None, None, None, None, None, None, None, None, None, None,
+                                       datetime.date(1978, 10, 10), None, time=TIME_2)
+    # Send an empty questionnaire response for another questionnaire for participant 1,
+    # completing the baseline PPI modules.
+    self._submit_empty_questionnaire_response(participant_id_1, questionnaire_id_2)
+    # Send physical measurements for participants 1
+    measurements_1 = load_measurement_json(participant_id_1, TIME_1.isoformat())
+    path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
+    with FakeClock(TIME_1):
+      pm_response = self.send_post(path, measurements_1)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # Store samples for DNA for participants 1
+    self._store_biobank_sample(participant_1, '1SAL', time=TIME_4)
+    self._store_biobank_sample(participant_1, '2ED10', time=TIME_5)
+    # Update participant summaries based on these changes.
+    ParticipantSummaryDao().update_from_biobank_stored_samples()
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals(TIME_6.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEquals('2016-01-04T10:55:41', ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertEquals(TIME_4.isoformat(), ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
+    # cancel a physical measurement
+    path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
+    path = path + '/' + pm_response['id']
+    cancel_info = get_restore_or_cancel_info()
+    self.send_patch(path, cancel_info)
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('CANCELLED', ps_1.get('physicalMeasurementsStatus'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
+    self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
+
   def testQuery_manyParticipants(self):
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
                              "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
@@ -1114,8 +1372,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                                        "Mary", "Q", "Jones", "78751", None,
                                        None, None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 8), None)
-    self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_NONE_OF_THESE_CODE, "male",
-                                       "Fred", "T", "Smith", "78752", None,
+    self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_NONE_OF_THESE_CODE,
+                                       "male", "Fred", "T", "Smith", "78752", None,
                                        None, None, None, None, None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10), None)
     # Send a questionnaire response for the consent questionnaire for participants 2 and 3
