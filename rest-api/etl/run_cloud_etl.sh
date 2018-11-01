@@ -63,7 +63,7 @@ mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT}
 
 echo "Done with ETL. Exporting ETL results..."
 
-./export_etl_results.sh --project ${PROJECT} --account ${ACCOUNT} --directory ${INSTANCE_NAME} ${INSTANCE_ARGS}
+etl/export_etl_results.sh --project ${PROJECT} --account ${ACCOUNT} --directory ${INSTANCE_NAME} ${INSTANCE_ARGS}
 
 if [ -z "${NOCLONE}" ]
 then
