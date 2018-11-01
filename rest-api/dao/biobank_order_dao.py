@@ -125,8 +125,6 @@ class BiobankOrderDao(UpdatableDao):
     ParticipantDao().add_missing_hpo_from_site(
         session, inserted_obj.participantId, inserted_obj.collectedSiteId)
     self._update_history(session, obj)
-    self._update_identifier_history(session, obj)
-    self._update_sample_history(session, obj)
     return inserted_obj
 
   def _validate_model(self, session, obj):
@@ -436,8 +434,6 @@ class BiobankOrderDao(UpdatableDao):
 
     self._refresh_participant_summary(session, order)
     self._update_history(session, order)
-    self._update_identifier_history(session, order)
-    self._update_sample_history(session, order)
 
   def update_with_patch(self, id_, resource, expected_version):
     """creates an atomic patch request on an object. It will fail if the object
@@ -469,8 +465,6 @@ class BiobankOrderDao(UpdatableDao):
 
     super(BiobankOrderDao, self)._do_update(session, order, resource)
     self._update_history(session, order)
-    self._update_identifier_history(session, order)
-    self._update_sample_history(session, order)
     self._refresh_participant_summary(session, order)
     return order
 
@@ -501,15 +495,15 @@ class BiobankOrderDao(UpdatableDao):
       if 'site' not in resource['restoredInfo'] or 'author' not in resource['restoredInfo']:
         raise BadRequest('author and site are required for restoredInfo')
 
-
-  @staticmethod
-  def _update_history(session, order):
+  def _update_history(self, session, order):
     # Increment the version and add a new history entry.
     session.flush()
     history = BiobankOrderHistory()
     history.fromdict(order.asdict(follow=['logPosition']), allow_pk=True)
     history.logPositionId = order.logPosition.logPositionId
     session.add(history)
+    self._update_identifier_history(session, order)
+    self._update_sample_history(session, order)
 
   @staticmethod
   def _update_identifier_history(session, order):
