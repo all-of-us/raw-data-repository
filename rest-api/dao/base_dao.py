@@ -339,6 +339,7 @@ class BaseDao(object):
     raise ServiceUnavailable('Giving up after %d insert attempts.' % MAX_INSERT_ATTEMPTS)
 
   def handle_integrity_error(self, tried_ids, e, obj):
+    # pylint: disable=unused-argument
     # SQLite and MySQL variants of the error message, respectively.
     if 'UNIQUE constraint failed' in e.message or 'Duplicate entry' in e.message:
       return logging.warning('Failed insert with %s: %s', tried_ids, e.message)
