@@ -353,7 +353,7 @@ class ParticipantDao(UpdatableDao):
       existing_participant = self._check_if_external_id_exists(obj)
       if existing_participant:
         return existing_participant
-    return logging.warning('Failed insert with %s: %s', tried_ids, e.message)
+    return super(ParticipantDao, self).handle_integrity_error(tried_ids, e, obj)
 
 
 def _get_primary_provider_link(participant):

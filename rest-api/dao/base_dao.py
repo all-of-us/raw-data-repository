@@ -328,11 +328,9 @@ class BaseDao(object):
         with self.session() as session:
           return self.insert_with_session(session, obj)
       except IntegrityError as e:
-        errors = self.handle_integrity_error(tried_ids, e, obj)
-        if errors:
-          return errors
-        else:
-          continue
+        result = self.handle_integrity_error(tried_ids, e, obj)
+        if result:
+          return result
     # We were unable to insert a participant (unlucky). Throw an error.
     logging.warning(
         'Giving up after %d insert attempts, tried %s.' % (MAX_INSERT_ATTEMPTS, all_tried_ids))
