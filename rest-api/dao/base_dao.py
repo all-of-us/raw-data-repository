@@ -331,8 +331,8 @@ class BaseDao(object):
       except IntegrityError, e:
         # SQLite and MySQL variants of the error message, respectively.
         if 'UNIQUE constraint failed' in e.message or 'Duplicate entry' in e.message:
-          if 'external_id' in e.message:
-            raise Conflict('External ID already in use, error: {}'.format(e.message))
+          # if 'external_id' in e.message:
+          #   raise Conflict('External ID already in use, error: {}'.format(e.message))
           logging.warning('Failed insert with %s: %s', tried_ids, e.message)
         else:
           raise

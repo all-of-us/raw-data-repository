@@ -39,6 +39,7 @@ class ParticipantHistoryDao(BaseDao):
     return [obj.participantId, obj.version]
 
 
+
 class ParticipantDao(UpdatableDao):
   def __init__(self):
     super(ParticipantDao, self).__init__(Participant)
@@ -70,7 +71,18 @@ class ParticipantDao(UpdatableDao):
       assert obj.biobankId
       return super(ParticipantDao, self).insert(obj)
     assert not obj.biobankId
+    if obj.externalId:
+      existing_participant = self._check_if_external_id_exists(obj)
+      if existing_participant:
+        return existing_participant
     return self._insert_with_random_id(obj, ('participantId', 'biobankId'))
+
+  def _check_if_external_id_exists(self, obj):
+    with self.session() as session:
+      participant = session.query(Participant).filter_by(externalId=obj.externalId).first()
+      if participant:
+        return participant
+      return None
 
   def _update_history(self, session, obj, existing_obj):
     # Increment the version and add a new history entry.
