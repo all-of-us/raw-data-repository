@@ -327,16 +327,21 @@ class BaseDao(object):
       try:
         with self.session() as session:
           return self.insert_with_session(session, obj)
-      except IntegrityError, e:
-        # SQLite and MySQL variants of the error message, respectively.
-        if 'UNIQUE constraint failed' in e.message or 'Duplicate entry' in e.message:
-          logging.warning('Failed insert with %s: %s', tried_ids, e.message)
+      except IntegrityError as e:
+        errors = self.handle_integrity_error(tried_ids, e, obj)
+        if errors:
+          return errors
         else:
-          raise
+          continue
     # We were unable to insert a participant (unlucky). Throw an error.
     logging.warning(
         'Giving up after %d insert attempts, tried %s.' % (MAX_INSERT_ATTEMPTS, all_tried_ids))
     raise ServiceUnavailable('Giving up after %d insert attempts.' % MAX_INSERT_ATTEMPTS)
+
+  def handle_integrity_error(self, tried_ids, e, obj):
+    # SQLite and MySQL variants of the error message, respectively.
+    if 'UNIQUE constraint failed' in e.message or 'Duplicate entry' in e.message:
+      return logging.warning('Failed insert with %s: %s', tried_ids, e.message)
 
   def count(self):
     with self.session() as session:

@@ -1,4 +1,5 @@
 import json
+import logging
 
 import clock
 from api_util import format_json_enum, parse_json_enum, format_json_date, format_json_hpo, \
@@ -71,10 +72,6 @@ class ParticipantDao(UpdatableDao):
       assert obj.biobankId
       return super(ParticipantDao, self).insert(obj)
     assert not obj.biobankId
-    if obj.externalId:
-      existing_participant = self._check_if_external_id_exists(obj)
-      if existing_participant:
-        return existing_participant
     return self._insert_with_random_id(obj, ('participantId', 'biobankId'))
 
   def _check_if_external_id_exists(self, obj):
@@ -351,6 +348,13 @@ class ParticipantDao(UpdatableDao):
     # Update the version and add history row
     self._do_update(session, participant, participant)
 
+  def handle_integrity_error(self, tried_ids, e, obj):
+    if 'external_id' in e.message:
+      existing_participant = self._check_if_external_id_exists(obj)
+      if existing_participant:
+        return existing_participant
+    return logging.warning('Failed insert with %s: %s', tried_ids, e.message)
+
 
 def _get_primary_provider_link(participant):
   if participant.providerLink:
@@ -375,3 +379,5 @@ def _get_hpo_name_from_participant(participant):
 def raise_if_withdrawn(obj):
   if obj.withdrawalStatus == WithdrawalStatus.NO_USE:
     raise Forbidden('Participant %d has withdrawn' % obj.participantId)
+
+
