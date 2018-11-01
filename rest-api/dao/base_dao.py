@@ -11,8 +11,7 @@ from protorpc import messages
 from query import Operator, PropertyType, FieldFilter, Results
 from sqlalchemy import or_, and_
 from sqlalchemy.exc import IntegrityError
-from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable, \
-  Conflict
+from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
 import api_util
 import dao.database_factory
