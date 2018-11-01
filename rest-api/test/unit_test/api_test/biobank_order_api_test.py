@@ -4,6 +4,7 @@ import datetime
 
 from dao.biobank_order_dao import BiobankOrderDao
 from model.biobank_order import BiobankOrderHistory
+from model.biobank_order import BiobankOrderIdentifierHistory, BiobankOrderedSampleHistory
 from test.unit_test.unit_test_util import FlaskTestBase
 from test.test_data import load_biobank_order_json, load_measurement_json
 from model.utils import to_client_participant_id, from_client_participant_id
@@ -383,7 +384,66 @@ class BiobankOrderApiTest(FlaskTestBase):
       result = self.send_post(self.path, order_json)
       load_biobank_order_json(self.participant.participantId, filename='biobank_order_1.json')
       order_history = session.query(BiobankOrderHistory).first()
+      identifier_history = session.query(BiobankOrderIdentifierHistory).first()
+      sample_history = session.query(BiobankOrderedSampleHistory).first()
+
       self.assertEqual(result['id'], order_history.biobankOrderId)
+      self.assertEqual(identifier_history.biobankOrderId, result['id'])
+      self.assertEqual(sample_history.biobankOrderId, result['id'])
+      self.assertEqual(result['meta']['versionId'], 'W/"1"')
+      self.assertEqual(order_history.version, 1)
+
+      # Test history on updates...
+      biobank_order_id = result['identifier'][1]['value']
+      path = self.path + '/' + biobank_order_id
+      request_data = {
+                        "amendedReason": "Its all better",
+                        "amendedInfo": {
+                        "author": {
+                        "system": "https://www.pmi-ops.org/healthpro-username",
+                        "value": "fred@pmi-ops.org"
+                        },
+                        "site": {
+                        "system": "https://www.pmi-ops.org/site-id",
+                        "value": "hpo-site-bannerphoenix"
+                        }
+                        }
+                           }
+
+      biobank_order_identifiers = {"created": "2018-02-21T16:25:12",
+                                     "createdInfo": {
+                                     "author": {
+                                     "system": "https://www.pmi-ops.org/healthpro-username",
+                                     "value": "nobody@pmi-ops.org"
+                                     },
+                                     "site": {
+                                     "system": "https://www.pmi-ops.org/site-id",
+                                     "value": "hpo-site-clinic-phoenix"
+                                     }
+                                     }
+                                        }
+      get_order = self.send_get(path)
+      full_order = get_order.copy()
+      full_order.update(request_data)
+      full_order.update(biobank_order_identifiers)
+
+      self.assertEqual(len(full_order['samples']), 16)
+      del full_order['samples'][0]
+
+      self.send_put(path, request_data=full_order, headers={'If-Match': 'W/"1"'})
+
+      amended_order = self.send_get(path)
+      second_order_history = session.query(BiobankOrderHistory).filter_by(version=2).first()
+      second_order_samples = session.query(BiobankOrderedSampleHistory).filter_by(version=2).first()
+      second_order_identifier = session.query(BiobankOrderIdentifierHistory).filter_by(version=2)\
+                                                                                       .first()
+      self.assertEqual(second_order_history.biobankOrderId, amended_order['id'])
+      self.assertEqual(second_order_identifier.biobankOrderId, amended_order['id'])
+      self.assertEqual(second_order_samples.biobankOrderId, amended_order['id'])
+
+      # Check that original order hasn't changed in history
+      original = session.query(BiobankOrderHistory).filter_by(version=1).first()
+      self.assertEqual(original.asdict(), order_history.asdict())
 
   def test_error_no_summary(self):
     order_json = load_biobank_order_json(self.participant.participantId)
