@@ -23,9 +23,9 @@ PROJECT_AND_ACCOUNT=
 if [ "${PROJECT}" ]
 then
   PROJECT_AND_ACCOUNT="--project ${PROJECT} --account ${ACCOUNT} --service_account exporter@${PROJECT}.iam.gserviceaccount.com"
-fi
-if [ -n "${INSTANCE_NAME}" ]; then
-  PROJECT_AND_ACCOUNT="${PROJECT_AND_ACCOUNT} --instance_name ${INSTANCE_NAME}"
+  if [ -n "${INSTANCE_NAME}" ]; then
+    PROJECT_AND_ACCOUNT="${PROJECT_AND_ACCOUNT} --instance_name ${INSTANCE_NAME}"
+  fi
 fi
 
 pushd ../rdr_client
