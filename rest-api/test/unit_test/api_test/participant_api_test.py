@@ -66,7 +66,9 @@ class ParticipantApiTest(FlaskTestBase):
     get_response = self.send_get('Participant/%s' % participant_id)
     self.assertEqual(get_response['externalId'], self.participant_2['externalId'])
     self.assertEquals(response, get_response)
-    self.send_post('Participant', self.participant_2, expected_status=httplib.CONFLICT)
+    response_2 = self.send_post('Participant', self.participant_2)
+    self.assertEqual(response, response_2)
+
 
 
   def test_update_no_ifmatch_specified(self):

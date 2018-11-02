@@ -59,7 +59,7 @@ class BaseApi(Resource):
       return self.dao.from_client_json(resource, client_id=app_util.get_oauth_id())
 
   def _do_insert(self, m):
-    self.dao.insert(m)
+    return self.dao.insert(m)
 
   def post(self, participant_id=None):
     """Handles a POST (insert) request.
@@ -69,8 +69,8 @@ class BaseApi(Resource):
     """
     resource = request.get_json(force=True)
     m = self._get_model_to_insert(resource, participant_id)
-    self._do_insert(m)
-    return self._make_response(m)
+    result = self._do_insert(m)
+    return self._make_response(result)
 
   def list(self, participant_id=None):
     """Handles a list request, as the default behavior when a GET has no id provided.
