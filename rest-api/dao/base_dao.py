@@ -340,7 +340,8 @@ class BaseDao(object):
     # pylint: disable=unused-argument
     # SQLite and MySQL variants of the error message, respectively.
     if 'UNIQUE constraint failed' in e.message or 'Duplicate entry' in e.message:
-      return logging.warning('Failed insert with %s: %s', tried_ids, e.message)
+      logging.warning('Failed insert with %s: %s', tried_ids, e.message)
+      return None
 
   def count(self):
     with self.session() as session:

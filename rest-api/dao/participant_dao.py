@@ -75,10 +75,7 @@ class ParticipantDao(UpdatableDao):
 
   def _check_if_external_id_exists(self, obj):
     with self.session() as session:
-      participant = session.query(Participant).filter_by(externalId=obj.externalId).first()
-      if participant:
-        return participant
-      return None
+      return session.query(Participant).filter_by(externalId=obj.externalId).first()
 
   def _update_history(self, session, obj, existing_obj):
     # Increment the version and add a new history entry.
