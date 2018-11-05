@@ -37,8 +37,9 @@ The summary includes the following fields:
 * `streetAddress`
 * `phoneNumber`
 * `email`
+* `primaryLanguage`: indicates the language for the consent, we only have `en` or `es` for now
 * `recontactMethod`
-* `language`
+* `language`: deprecated
 * `dateOfBirth`
 * `ageRange`
 * `genderIdentity`
