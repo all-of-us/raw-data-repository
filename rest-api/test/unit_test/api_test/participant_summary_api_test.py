@@ -1344,6 +1344,39 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertIsNone(ps_1.get('enrollmentStatusCoreOrderedSampleTime'))
     self.assertIsNone(ps_1.get('enrollmentStatusCoreStoredSampleTime'))
 
+  def test_physical_measurement_status(self):
+    questionnaire_id_1 = self.create_questionnaire('all_consents_questionnaire.json')
+    participant_1 = self.send_post('Participant', {})
+    participant_id_1 = participant_1['participantId']
+    with FakeClock(TIME_6):
+      self.send_consent(participant_id_1)
+
+    self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id_1,
+                                                CONSENT_PERMISSION_YES_CODE, time=TIME_6)
+
+    measurements_1 = load_measurement_json(participant_id_1, TIME_1.isoformat())
+    measurements_2 = load_measurement_json(participant_id_1, TIME_2.isoformat())
+    path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
+    with FakeClock(TIME_1):
+      self.send_post(path, measurements_1)
+    with FakeClock(TIME_2):
+      pm_response2 = self.send_post(path, measurements_2)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('COMPLETED', ps_1.get('physicalMeasurementsStatus'))
+
+    ParticipantSummaryDao().update_from_biobank_stored_samples()
+
+    # cancel a physical measurement
+    path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
+    path = path + '/' + pm_response2['id']
+    cancel_info = get_restore_or_cancel_info()
+    self.send_patch(path, cancel_info)
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    # status should still be completed because participant has another valid PM
+    self.assertEquals('COMPLETED', ps_1.get('physicalMeasurementsStatus'))
+
   def testQuery_manyParticipants(self):
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
                              "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
