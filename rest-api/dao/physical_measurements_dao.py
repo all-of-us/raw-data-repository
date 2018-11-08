@@ -298,8 +298,9 @@ class PhysicalMeasurementsDao(UpdatableDao):
     participant_summary.lastModified = clock.CLOCK.now()
 
     if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED:
-      # update corresponding participant summary physicalMeasurementsStatus
-      participant_summary.physicalMeasurementsStatus = obj.status
+      if not self.has_uncancelled_pm(session, participant):
+        # update corresponding participant summary physicalMeasurementsStatus
+        participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
 
     if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.CANCELLED:
       # if a PM was restored, it is complete again.
@@ -309,6 +310,17 @@ class PhysicalMeasurementsDao(UpdatableDao):
     session.merge(participant_summary)
 
     return participant_summary
+
+  def has_uncancelled_pm(self, session, participant):
+    """return True if participant has at least one physical measurement that is not cancelled"""
+    query = session.query(PhysicalMeasurements.status).filter_by(
+      participantId=participant.participantId).all()
+    valid_pm = False
+    for pm in query:
+      if pm.status != PhysicalMeasurementsStatus.CANCELLED:
+        valid_pm = True
+
+    return valid_pm
 
   def insert(self, obj):
     if obj.physicalMeasurementsId:
@@ -668,6 +680,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
     order_resource = json.dumps(order_resource)
     order.resource = order_resource
     return order
+
+
 
 
 
