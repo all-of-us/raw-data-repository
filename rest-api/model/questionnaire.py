@@ -80,7 +80,7 @@ class QuestionnaireQuestion(Base):
       'questionnaire_question_id', Integer, primary_key=True)
   questionnaireId = Column('questionnaire_id', Integer)
   questionnaireVersion = Column('questionnaire_version', Integer)
-  linkId = Column('link_id', String(20))
+  linkId = Column('link_id', String(40))
   codeId = Column(
       'code_id', Integer, ForeignKey('code.code_id'), nullable=False)
   repeats = Column('repeats', Boolean, nullable=False)

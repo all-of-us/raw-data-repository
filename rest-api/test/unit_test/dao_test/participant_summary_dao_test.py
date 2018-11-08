@@ -1,7 +1,7 @@
 import datetime
 import json
 from base64 import urlsafe_b64encode, urlsafe_b64decode
-
+import time
 import config
 from dao.base_dao import json_serial
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
@@ -21,7 +21,7 @@ NUM_BASELINE_PPI_MODULES = 3
 
 class ParticipantSummaryDaoTest(NdbTestBase):
   def setUp(self):
-    super(ParticipantSummaryDaoTest, self).setUp()
+    super(ParticipantSummaryDaoTest, self).setUp(use_mysql=True)
     self.dao = ParticipantSummaryDao()
     self.participant_dao = ParticipantDao()
     self.no_filter_query = Query([], None, 2, None)
@@ -241,6 +241,8 @@ class ParticipantSummaryDaoTest(NdbTestBase):
                                           biobankId=p_unconfirmed.biobankId,
                                           biobankOrderIdentifier='KIT', test=baseline_tests[1],
                                           confirmed=None))
+    # sleep 1 sec to make lastModified different
+    time.sleep(1)
     self.dao.update_from_biobank_stored_samples()
 
     p_baseline_last_modified2 = get_p_baseline_last_modified()
@@ -254,10 +256,13 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     M_baseline_samples = self._insert(Participant(participantId=9, biobankId=99))
     add_sample(M_baseline_samples, baseline_tests[0], '999')
     M_first_update = self.dao.get(M_baseline_samples.participantId)
-
+    # sleep 1 sec to make lastModified different
+    time.sleep(1)
     self.dao.update_from_biobank_stored_samples()
     add_sample(M_baseline_samples, baseline_tests[1], '9999')
     M_second_update = self.dao.get(M_baseline_samples.participantId)
+    # sleep 1 sec to make lastModified different
+    time.sleep(1)
     self.dao.update_from_biobank_stored_samples()
 
     self.assertNotEqual(M_first_update.lastModified, M_second_update.lastModified)
@@ -284,7 +289,8 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     summary = self.dao.get(participant.participantId)
     init_last_modified = summary.lastModified
     self.assertEquals(summary.numBaselineSamplesArrived, 2)
-
+    # sleep 1 sec to make lastModified different
+    time.sleep(1)
     # Simulate removal of one of the baseline tests from config.json.
     baseline_tests.pop()
     config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, baseline_tests)

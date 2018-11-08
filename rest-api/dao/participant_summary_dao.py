@@ -165,35 +165,33 @@ def _get_sample_status_time_sql_and_params():
                                             .lower() for item in baseline_ppi_module_fields])
 
   sub_sql = """
-  (
     SELECT 
-      MAX(
+      participant_id,
+      GREATEST(
         consent_for_electronic_health_records_time,
         physical_measurements_finalized_time,
         {baseline_ppi_module_sql},
         CASE WHEN
-            MIN(
+            LEAST(
                 {status_time_sql}
                 ) = '3001-01-01' THEN NULL
-            ELSE MIN(
+            ELSE LEAST(
                 {status_time_sql}
                 )
         END
-      )
+      ) as new_core_stored_sample_time
     FROM
-      participant_summary ps
-    WHERE
-      ps.participant_id = participant_summary.participant_id
-  )
+      participant_summary
   """.format(status_time_sql=status_time_sql, baseline_ppi_module_sql=baseline_ppi_module_sql)
 
   sql = """
     UPDATE
-      participant_summary
+      participant_summary as a
+      inner join ({sub_sql}) as b on a.participant_id = b.participant_id
     SET
-      enrollment_status_core_stored_sample_time = {sub_sql}
-    WHERE enrollment_status = 3
-    AND enrollment_status_core_stored_sample_time IS NULL
+      a.enrollment_status_core_stored_sample_time = b.new_core_stored_sample_time
+    WHERE a.enrollment_status = 3
+    AND a.enrollment_status_core_stored_sample_time IS NULL
     """.format(sub_sql=sub_sql)
 
   return sql
@@ -352,7 +350,7 @@ class ParticipantSummaryDao(UpdatableDao):
       counts_params['participant_id'] = participant_id
       enrollment_status_sql += ' WHERE participant_id = :participant_id'
       enrollment_status_params['participant_id'] = participant_id
-      sample_status_time_sql += ' AND participant_id = :participant_id'
+      sample_status_time_sql += ' AND a.participant_id = :participant_id'
       sample_status_time_params['participant_id'] = participant_id
 
     sample_sql = replace_null_safe_equals(sample_sql)
