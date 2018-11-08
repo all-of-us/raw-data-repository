@@ -94,6 +94,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'firstName', 'middleName', 'lastName', 'streetAddress', 'city', 'phoneNumber', 'zipCode'
   )
 
+  def setUp(self):
+    super(ParticipantSummaryApiTest, self).setUp(use_mysql=True)
+
   def create_demographics_questionnaire(self):
     """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
     return self.create_questionnaire('questionnaire3.json')

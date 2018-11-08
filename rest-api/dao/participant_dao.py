@@ -54,7 +54,7 @@ class ParticipantDao(UpdatableDao):
   def insert_with_session(self, session, obj):
     obj.hpoId = self._get_hpo_id(obj)
     obj.version = 1
-    obj.signUpTime = clock.CLOCK.now()
+    obj.signUpTime = clock.CLOCK.now().replace(microsecond=0)
     obj.lastModified = obj.signUpTime
     if obj.withdrawalStatus is None:
       obj.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
