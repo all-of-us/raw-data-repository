@@ -39,6 +39,7 @@ class ParticipantHistoryDao(BaseDao):
     return [obj.participantId, obj.version]
 
 
+
 class ParticipantDao(UpdatableDao):
   def __init__(self):
     super(ParticipantDao, self).__init__(Participant)
@@ -53,7 +54,7 @@ class ParticipantDao(UpdatableDao):
   def insert_with_session(self, session, obj):
     obj.hpoId = self._get_hpo_id(obj)
     obj.version = 1
-    obj.signUpTime = clock.CLOCK.now()
+    obj.signUpTime = clock.CLOCK.now().replace(microsecond=0)
     obj.lastModified = obj.signUpTime
     if obj.withdrawalStatus is None:
       obj.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
@@ -71,6 +72,10 @@ class ParticipantDao(UpdatableDao):
       return super(ParticipantDao, self).insert(obj)
     assert not obj.biobankId
     return self._insert_with_random_id(obj, ('participantId', 'biobankId'))
+
+  def _check_if_external_id_exists(self, obj):
+    with self.session() as session:
+      return session.query(Participant).filter_by(externalId=obj.externalId).first()
 
   def _update_history(self, session, obj, existing_obj):
     # Increment the version and add a new history entry.
@@ -339,6 +344,13 @@ class ParticipantDao(UpdatableDao):
     # Update the version and add history row
     self._do_update(session, participant, participant)
 
+  def handle_integrity_error(self, tried_ids, e, obj):
+    if 'external_id' in e.message:
+      existing_participant = self._check_if_external_id_exists(obj)
+      if existing_participant:
+        return existing_participant
+    return super(ParticipantDao, self).handle_integrity_error(tried_ids, e, obj)
+
 
 def _get_primary_provider_link(participant):
   if participant.providerLink:
@@ -363,3 +375,5 @@ def _get_hpo_name_from_participant(participant):
 def raise_if_withdrawn(obj):
   if obj.withdrawalStatus == WithdrawalStatus.NO_USE:
     raise Forbidden('Participant %d has withdrawn' % obj.participantId)
+
+

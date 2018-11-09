@@ -11,8 +11,7 @@ from protorpc import messages
 from query import Operator, PropertyType, FieldFilter, Results
 from sqlalchemy import or_, and_
 from sqlalchemy.exc import IntegrityError
-from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable, \
-  Conflict
+from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
 import api_util
 import dao.database_factory
@@ -328,18 +327,21 @@ class BaseDao(object):
       try:
         with self.session() as session:
           return self.insert_with_session(session, obj)
-      except IntegrityError, e:
-        # SQLite and MySQL variants of the error message, respectively.
-        if 'UNIQUE constraint failed' in e.message or 'Duplicate entry' in e.message:
-          if 'external_id' in e.message:
-            raise Conflict('External ID already in use, error: {}'.format(e.message))
-          logging.warning('Failed insert with %s: %s', tried_ids, e.message)
-        else:
-          raise
+      except IntegrityError as e:
+        result = self.handle_integrity_error(tried_ids, e, obj)
+        if result:
+          return result
     # We were unable to insert a participant (unlucky). Throw an error.
     logging.warning(
         'Giving up after %d insert attempts, tried %s.' % (MAX_INSERT_ATTEMPTS, all_tried_ids))
     raise ServiceUnavailable('Giving up after %d insert attempts.' % MAX_INSERT_ATTEMPTS)
+
+  def handle_integrity_error(self, tried_ids, e, obj):
+    # pylint: disable=unused-argument
+    # SQLite and MySQL variants of the error message, respectively.
+    if 'UNIQUE constraint failed' in e.message or 'Duplicate entry' in e.message:
+      logging.warning('Failed insert with %s: %s', tried_ids, e.message)
+      return None
 
   def count(self):
     with self.session() as session:

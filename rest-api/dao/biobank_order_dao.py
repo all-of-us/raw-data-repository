@@ -124,6 +124,7 @@ class BiobankOrderDao(UpdatableDao):
     inserted_obj = super(BiobankOrderDao, self).insert_with_session(session, obj)
     ParticipantDao().add_missing_hpo_from_site(
         session, inserted_obj.participantId, inserted_obj.collectedSiteId)
+    self._update_history(session, obj)
     return inserted_obj
 
   def _validate_model(self, session, obj):
@@ -205,6 +206,7 @@ class BiobankOrderDao(UpdatableDao):
                        obj.participantId)
     raise_if_withdrawn(participant_summary)
     self._set_participant_summary_fields(obj, participant_summary)
+    participant_summary_dao.update_enrollment_status(participant_summary)
 
   def _set_participant_summary_fields(self, obj, participant_summary):
     participant_summary.biospecimenStatus = OrderStatus.FINALIZED
@@ -214,6 +216,7 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
     participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
     participant_summary.lastModified = clock.CLOCK.now()
+
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
       status, time = self._get_order_status_and_time(sample, obj)
@@ -250,6 +253,7 @@ class BiobankOrderDao(UpdatableDao):
     if len(non_cancelled_orders) > 0:
       for order in non_cancelled_orders:
         self._set_participant_summary_fields(order, participant_summary)
+    participant_summary_dao.update_enrollment_status(participant_summary)
 
   def _parse_handling_info(self, handling_info):
     site_id = None
@@ -430,8 +434,6 @@ class BiobankOrderDao(UpdatableDao):
 
     self._refresh_participant_summary(session, order)
     self._update_history(session, order)
-    self._update_identifier_history(session, order)
-    self._update_sample_history(session, order)
 
   def update_with_patch(self, id_, resource, expected_version):
     """creates an atomic patch request on an object. It will fail if the object
@@ -463,8 +465,6 @@ class BiobankOrderDao(UpdatableDao):
 
     super(BiobankOrderDao, self)._do_update(session, order, resource)
     self._update_history(session, order)
-    self._update_identifier_history(session, order)
-    self._update_sample_history(session, order)
     self._refresh_participant_summary(session, order)
     return order
 
@@ -495,15 +495,15 @@ class BiobankOrderDao(UpdatableDao):
       if 'site' not in resource['restoredInfo'] or 'author' not in resource['restoredInfo']:
         raise BadRequest('author and site are required for restoredInfo')
 
-
-  @staticmethod
-  def _update_history(session, order):
+  def _update_history(self, session, order):
     # Increment the version and add a new history entry.
     session.flush()
     history = BiobankOrderHistory()
     history.fromdict(order.asdict(follow=['logPosition']), allow_pk=True)
     history.logPositionId = order.logPosition.logPositionId
     session.add(history)
+    self._update_identifier_history(session, order)
+    self._update_sample_history(session, order)
 
   @staticmethod
   def _update_identifier_history(session, order):

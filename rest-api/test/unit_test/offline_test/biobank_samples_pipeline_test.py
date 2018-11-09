@@ -25,7 +25,7 @@ _FAKE_BUCKET = 'rdr_fake_bucket'
 
 class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
   def setUp(self):
-    super(BiobankSamplesPipelineTest, self).setUp()
+    super(BiobankSamplesPipelineTest, self).setUp(use_mysql=True)
     NdbTestBase.doSetUp(self)
     TestBase.setup_fake(self)
     config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, _BASELINE_TESTS)
