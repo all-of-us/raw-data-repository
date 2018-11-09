@@ -17,7 +17,7 @@ from offline.table_exporter import TableExporter
 from offline.metrics_export import MetricsExport
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from offline.sa_key_remove import delete_service_account_keys
-from offline.ehr_upload import sync_consents
+from offline.participant_consent_sync import sync_ehr_consents
 from api_util import EXPORTER
 from werkzeug.exceptions import BadRequest
 
@@ -134,7 +134,7 @@ def delete_old_keys():
 
 @app_util.auth_required_cron
 def sync_consents():
-  sync_consents()
+  sync_ehr_consents()
   return '{"success": "true"}'
 
 
