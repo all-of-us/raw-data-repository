@@ -133,7 +133,7 @@ def delete_old_keys():
   return '{"success": "true"}'
 
 @app_util.auth_required_cron
-def sync_consents():
+def consent_upload():
   sync_ehr_consents()
   return '{"success": "true"}'
 
@@ -173,10 +173,10 @@ def _build_pipeline_app():
     methods=['GET'])
 
   offline_app.add_url_rule(
-    PREFIX + 'EhrUpload',
-    endpoint='ehr_upload',
-    view_func=sync_consents,
-    methods=['GET'])
+    PREFIX + 'ConsentUpload',
+    endpoint='consent_upload',
+    view_func=consent_upload,
+    methods=['GET', 'POST'])
 
   offline_app.after_request(app_util.add_headers)
   offline_app.before_request(app_util.request_logging)

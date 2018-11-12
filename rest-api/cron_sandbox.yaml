@@ -16,3 +16,8 @@ cron:
   schedule: every day 01:00
   timezone: America/New_York
   target: offline
+- description: sync participant consent files
+  url: /offline/ConsentUpload
+  schedule: every day 02:00
+  timezone: America/New_York
+  target: offline
