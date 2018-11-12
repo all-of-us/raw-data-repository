@@ -82,15 +82,11 @@ SANDBOX_BUCKET = 'ptc-uploads-pmi-drc-api-sandbox'
 def sync_ehr_consents():
   import logging
   from cloudstorage import cloudstorage_api
-  bucket_stats = cloudstorage_api.listbucket('/' + SOURCE_BUCKET)
+  bucket_stats = cloudstorage_api.listbucket('/' + SANDBOX_BUCKET)
   logging.info(bucket_stats)
-  from google.cloud import storage
-  client = storage.Client()
-  bucket = client.get_bucket(SANDBOX_BUCKET)
-  blob = bucket.blob('my-test-file.txt')
-  blob.upload_from_string('this is test content!')
-  logging.info(bucket)
-  logging.info(blob)
+  for i in bucket_stats:
+    if i.filename:
+      logging.info(i.filename)
   # csv_reader = _fetch_csv_data(spreadsheet_id, 0)
   # csv_reader.next()
   # hpo_data = read_hpo_report(csv_reader)
