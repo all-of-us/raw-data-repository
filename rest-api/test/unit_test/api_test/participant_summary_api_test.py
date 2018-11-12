@@ -1109,6 +1109,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEquals(TIME_1.isoformat(), ps_1.get('enrollmentStatusMemberTime'))
+    self.assertEquals('SUBMITTED', ps_1['consentForDvElectronicHealthRecordsSharing'])
+    self.assertEquals(TIME_1.isoformat(), ps_1['consentForDvElectronicHealthRecordsSharingTime'])
 
     # submit ehr consent after dv consent at TIME_2
     self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id_2,
@@ -1979,6 +1981,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self._store_biobank_sample(participant_3, '2ED10')
     # Update participant summaries based on these changes.
     ParticipantSummaryDao().update_from_biobank_stored_samples()
+
+    ps_2 = self.send_get('Participant/%s/Summary' % participant_id_2)
+    self.assertEquals('SUBMITTED', ps_2['consentForDvElectronicHealthRecordsSharing'])
+    self.assertIsNotNone(ps_2['consentForDvElectronicHealthRecordsSharingTime'])
+
     # Update version for participant 3, which has changed.
     participant_3 = self.send_get('Participant/%s' % participant_id_3)
 
