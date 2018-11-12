@@ -11,6 +11,7 @@
 #
 #
 SOURCE_BUCKET = 'ptc-uploads-all-of-us-rdr-prod'
+SANDBOX_BUCKET = 'ptc-uploads-pmi-drc-api-sandbox'
 # BUCKET_NAME = 'Bucket Name'
 # AGGREGATING_ORG_ID = 'Aggregating Org ID'
 # ORG_ID = 'Org ID'
@@ -83,6 +84,13 @@ def sync_ehr_consents():
   from cloudstorage import cloudstorage_api
   bucket_stats = cloudstorage_api.listbucket('/' + SOURCE_BUCKET)
   logging.info(bucket_stats)
+  from google.cloud import storage
+  client = storage.Client()
+  bucket = client.get_bucket(SANDBOX_BUCKET)
+  blob = bucket.blob('my-test-file.txt')
+  blob.upload_from_string('this is test content!')
+  logging.info(bucket)
+  logging.info(blob)
   # csv_reader = _fetch_csv_data(spreadsheet_id, 0)
   # csv_reader.next()
   # hpo_data = read_hpo_report(csv_reader)
