@@ -51,22 +51,20 @@ _ENROLLMENT_STATUS_SQL = """
                    AND consent_for_electronic_health_records = :submitted
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status = :completed
-                   AND samples_to_isolate_dna = :received)
-             THEN :full_participant
-             WHEN (consent_for_study_enrollment = :submitted
+                   AND samples_to_isolate_dna = :received) OR 
+                  (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
                    AND consent_for_dv_electronic_health_records_sharing = :submitted
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status = :completed
-                   AND samples_to_isolate_dna = :received)
+                   AND samples_to_isolate_dna = :received) 
              THEN :full_participant
              WHEN (consent_for_study_enrollment = :submitted
-                   AND consent_for_electronic_health_records = :submitted)
-             THEN :member
-             WHEN (consent_for_study_enrollment = :submitted 
+                   AND consent_for_electronic_health_records = :submitted) OR 
+                  (consent_for_study_enrollment = :submitted 
                    AND consent_for_electronic_health_records = :unset
                    AND consent_for_dv_electronic_health_records_sharing = :submitted
-                  )
+                  ) 
              THEN :member
              ELSE :interested
         END
@@ -180,7 +178,7 @@ def _get_sample_status_time_sql_and_params():
     SELECT 
       participant_id,
       GREATEST(
-        CASE WHEN enrollment_status_member_time is not null then enrollment_status_member_time
+        CASE WHEN enrollment_status_member_time IS NOT NULL THEN enrollment_status_member_time
              ELSE consent_for_electronic_health_records_time
         END,
         physical_measurements_finalized_time,
@@ -193,15 +191,15 @@ def _get_sample_status_time_sql_and_params():
                 {status_time_sql}
                 )
         END
-      ) as new_core_stored_sample_time
+      ) AS new_core_stored_sample_time
     FROM
       participant_summary
   """.format(status_time_sql=status_time_sql, baseline_ppi_module_sql=baseline_ppi_module_sql)
 
   sql = """
     UPDATE
-      participant_summary as a
-      inner join ({sub_sql}) as b on a.participant_id = b.participant_id
+      participant_summary AS a
+      INNER JOIN ({sub_sql}) AS b ON a.participant_id = b.participant_id
     SET
       a.enrollment_status_core_stored_sample_time = b.new_core_stored_sample_time
     WHERE a.enrollment_status = 3

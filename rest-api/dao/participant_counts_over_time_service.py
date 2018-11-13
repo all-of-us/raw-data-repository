@@ -203,13 +203,15 @@ class ParticipantCountsOverTimeService(BaseDao):
                   (
                     CASE 
                       WHEN enrollment_status = 2 
-                          and ps.consent_for_electronic_health_records_time is null 
+                          AND ps.consent_for_electronic_health_records_time IS NULL 
                         THEN DATE(ps.consent_for_dv_electronic_health_records_sharing_time)
                       WHEN enrollment_status = 2
-                          and ps.consent_for_dv_electronic_health_records_sharing_time is null
+                          AND ps.consent_for_dv_electronic_health_records_sharing_time IS NULL
                         THEN DATE(ps.consent_for_electronic_health_records_time) 
-                      ELSE DATE(LEAST(ps.consent_for_dv_electronic_health_records_sharing_time,
+                      WHEN enrollment_status = 2 
+                        THEN DATE(LEAST(ps.consent_for_dv_electronic_health_records_sharing_time,
                                 ps.consent_for_electronic_health_records_time))
+                      ELSE NULL 
                     END
                   ) day
                FROM participant_summary ps
@@ -220,16 +222,16 @@ class ParticipantCountsOverTimeService(BaseDao):
             (SELECT COUNT(*) cnt,
              DATE(CASE WHEN enrollment_status = 3 THEN
                    GREATEST(
-                            case 
-                              when consent_for_electronic_health_records_time is null
-                                Then consent_for_dv_electronic_health_records_sharing_time
-                              when consent_for_dv_electronic_health_records_sharing_time is null
-                                Then consent_for_electronic_health_records_time
-                              else LEAST(
+                            CASE 
+                              WHEN consent_for_electronic_health_records_time IS NULL
+                                THEN consent_for_dv_electronic_health_records_sharing_time
+                              WHEN consent_for_dv_electronic_health_records_sharing_time IS NULL
+                                THEN consent_for_electronic_health_records_time
+                              ELSE LEAST(
                                           consent_for_electronic_health_records_time,
                                           consent_for_dv_electronic_health_records_sharing_time
                                         )
-                            end,
+                            END,
                             questionnaire_on_the_basics_time,
                             questionnaire_on_lifestyle_time,
                             questionnaire_on_overall_health_time,
