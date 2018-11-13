@@ -83,7 +83,6 @@ def sync_ehr_consents():
   import logging
   from cloudstorage import cloudstorage_api
   bucket_stats = cloudstorage_api.listbucket('/' + SANDBOX_BUCKET)
-  logging.info(bucket_stats)
   for i in bucket_stats:
     if i.filename:
       logging.info(i.filename)
