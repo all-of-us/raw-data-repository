@@ -180,6 +180,10 @@ class BiobankOrderDaoTest(SqlTestBase):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     order_1 = self.dao.insert(self._make_biobank_order())
     cancelled_request = self._get_cancel_patch()
+    self.assertEqual(order_1.version, 1)
+    self.assertEqual(order_1.orderStatus, None)
+
+
     updated_order = self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request,
                                                order_1.version)
 

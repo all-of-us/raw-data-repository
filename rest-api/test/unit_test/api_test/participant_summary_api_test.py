@@ -1380,6 +1380,33 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # status should still be completed because participant has another valid PM
     self.assertEquals('COMPLETED', ps_1.get('physicalMeasurementsStatus'))
 
+  def test_participant_summary_returns_latest_pm(self):
+    questionnaire_id_1 = self.create_questionnaire('all_consents_questionnaire.json')
+    participant_1 = self.send_post('Participant', {})
+    participant_id_1 = participant_1['participantId']
+    with FakeClock(TIME_6):
+      self.send_consent(participant_id_1)
+
+    self._submit_consent_questionnaire_response(participant_id_1, questionnaire_id_1,
+                                                CONSENT_PERMISSION_YES_CODE, time=TIME_6)
+
+    measurements_1 = load_measurement_json(participant_id_1, TIME_1.isoformat())
+    measurements_2 = load_measurement_json(participant_id_1, TIME_2.isoformat(), alternate=True)
+    path = 'Participant/%s/PhysicalMeasurements' % participant_id_1
+    with FakeClock(TIME_1):
+      self.send_post(path, measurements_1)
+    with FakeClock(TIME_2):
+      pm_response2 = self.send_post(path, measurements_2)
+
+    participant_summary = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEqual(participant_summary['physicalMeasurementsStatus'], 'COMPLETED')
+    self.assertEqual(participant_summary['physicalMeasurementsFinalizedTime'], TIME_2.isoformat())
+    self.assertEqual(participant_summary['physicalMeasurementsTime'], TIME_2.isoformat())
+    self.assertEqual(participant_summary['physicalMeasurementsFinalizedSite'],
+                     'hpo-site-clinic-phoenix')
+    self.assertEqual(participant_summary['physicalMeasurementsCreatedSite'],
+                     'hpo-site-bannerphoenix')
+
   def testQuery_manyParticipants(self):
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
                              "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)

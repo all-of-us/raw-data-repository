@@ -301,6 +301,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
       if not self.has_uncancelled_pm(session, participant):
         # update corresponding participant summary physicalMeasurementsStatus
         participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
+        participant_summary.physicalMeasurementsTime = None
 
     if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.CANCELLED:
       # if a PM was restored, it is complete again.
@@ -370,11 +371,18 @@ class PhysicalMeasurementsDao(UpdatableDao):
       measurement.cancelledSiteId = site_id
       measurement.cancelledTime = clock.CLOCK.now()
       measurement.status = PhysicalMeasurementsStatus.CANCELLED
+      measurement.createdSiteId = None
+      measurement.finalizedSiteId = None
+      measurement.finalized = None
     if resource['status'].lower() == 'restored':
       measurement.cancelledUsername = None
       measurement.cancelledSiteId = None
       measurement.cancelledTime = None
       measurement.status = PhysicalMeasurementsStatus.UNSET
+      measurement.createdSiteId = site_id
+      measurement.finalizedSiteId = site_id
+      measurement.finalizedUsername = author
+      measurement.finalized = clock.CLOCK.now()
 
     logging.info('%s %s physical measuremnt %s.', author, resource['status'],
                  measurement.physicalMeasurementsId)

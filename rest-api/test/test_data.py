@@ -37,9 +37,13 @@ def data_path(filename):
   return os.path.join(os.path.dirname(__file__), 'test-data', filename)
 
 
-def load_measurement_json(participant_id, now=None):
+def load_measurement_json(participant_id, now=None, alternate=False):
   """Loads a PhysicalMeasurement FHIR resource returns it as parsed JSON."""
-  with open(data_path('measurements-as-fhir.json')) as measurements_file:
+  if alternate:
+    payload = 'alternate-measurements-as-fhir.json'
+  else:
+    payload = 'measurements-as-fhir.json'
+  with open(data_path(payload)) as measurements_file:
     json_text = measurements_file.read() % {
       'participant_id': participant_id,
       'authored_time': now or datetime.datetime.now().isoformat(),
