@@ -51,10 +51,20 @@ _ENROLLMENT_STATUS_SQL = """
                    AND consent_for_electronic_health_records = :submitted
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status = :completed
-                   AND samples_to_isolate_dna = :received)
+                   AND samples_to_isolate_dna = :received) OR 
+                  (consent_for_study_enrollment = :submitted
+                   AND consent_for_electronic_health_records = :unset
+                   AND consent_for_dv_electronic_health_records_sharing = :submitted
+                   AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
+                   AND physical_measurements_status = :completed
+                   AND samples_to_isolate_dna = :received) 
              THEN :full_participant
              WHEN (consent_for_study_enrollment = :submitted
-                   AND consent_for_electronic_health_records = :submitted)
+                   AND consent_for_electronic_health_records = :submitted) OR 
+                  (consent_for_study_enrollment = :submitted 
+                   AND consent_for_electronic_health_records = :unset
+                   AND consent_for_dv_electronic_health_records_sharing = :submitted
+                  ) 
              THEN :member
              ELSE :interested
         END
@@ -168,7 +178,9 @@ def _get_sample_status_time_sql_and_params():
     SELECT 
       participant_id,
       GREATEST(
-        consent_for_electronic_health_records_time,
+        CASE WHEN enrollment_status_member_time IS NOT NULL THEN enrollment_status_member_time
+             ELSE consent_for_electronic_health_records_time
+        END,
         physical_measurements_finalized_time,
         {baseline_ppi_module_sql},
         CASE WHEN
@@ -179,15 +191,15 @@ def _get_sample_status_time_sql_and_params():
                 {status_time_sql}
                 )
         END
-      ) as new_core_stored_sample_time
+      ) AS new_core_stored_sample_time
     FROM
       participant_summary
   """.format(status_time_sql=status_time_sql, baseline_ppi_module_sql=baseline_ppi_module_sql)
 
   sql = """
     UPDATE
-      participant_summary as a
-      inner join ({sub_sql}) as b on a.participant_id = b.participant_id
+      participant_summary AS a
+      INNER JOIN ({sub_sql}) AS b ON a.participant_id = b.participant_id
     SET
       a.enrollment_status_core_stored_sample_time = b.new_core_stored_sample_time
     WHERE a.enrollment_status = 3
@@ -335,6 +347,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
     enrollment_status_sql = _ENROLLMENT_STATUS_SQL
     enrollment_status_params = {'submitted': int(QuestionnaireStatus.SUBMITTED),
+                                'unset': int(QuestionnaireStatus.UNSET),
                                 'num_baseline_ppi_modules': self._get_num_baseline_ppi_modules(),
                                 'completed': int(PhysicalMeasurementsStatus.COMPLETED),
                                 'received': int(SampleStatus.RECEIVED),
@@ -369,7 +382,11 @@ class ParticipantSummaryDao(UpdatableDao):
     the correct value based on the other fields on it. Called after
     a questionnaire response or physical measurements are submitted."""
     consent = (summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED and
-               summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED)
+               summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED) or \
+              (summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED and
+               summary.consentForElectronicHealthRecords is None and
+               summary.consentForDvElectronicHealthRecordsSharing == QuestionnaireStatus.SUBMITTED)
+
     enrollment_status = self.calculate_enrollment_status(consent,
                                                          summary.numCompletedBaselinePPIModules,
                                                          summary.physicalMeasurementsStatus,
@@ -381,11 +398,11 @@ class ParticipantSummaryDao(UpdatableDao):
       consent, summary)
     summary.enrollmentStatus = enrollment_status
 
-  def calculate_enrollment_status(self, consent_for_study_enrollment_and_ehr,
+  def calculate_enrollment_status(self, consent,
                                   num_completed_baseline_ppi_modules,
                                   physical_measurements_status,
                                   samples_to_isolate_dna):
-    if consent_for_study_enrollment_and_ehr:
+    if consent:
       if (num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules() and
           physical_measurements_status == PhysicalMeasurementsStatus.COMPLETED and
           samples_to_isolate_dna == SampleStatus.RECEIVED):
@@ -393,18 +410,20 @@ class ParticipantSummaryDao(UpdatableDao):
       return EnrollmentStatus.MEMBER
     return EnrollmentStatus.INTERESTED
 
-  def calculate_member_time(self, consent_for_study_enrollment_and_ehr, participant_summary):
-    if consent_for_study_enrollment_and_ehr and \
-      participant_summary.enrollmentStatusMemberTime is not None:
+  def calculate_member_time(self, consent, participant_summary):
+    if consent and participant_summary.enrollmentStatusMemberTime is not None:
       return participant_summary.enrollmentStatusMemberTime
-    elif consent_for_study_enrollment_and_ehr:
+    elif consent:
+      if participant_summary.consentForElectronicHealthRecords is None and \
+        participant_summary.consentForDvElectronicHealthRecordsSharing == \
+        QuestionnaireStatus.SUBMITTED:
+        return participant_summary.consentForDvElectronicHealthRecordsSharingTime
       return participant_summary.consentForElectronicHealthRecordsTime
     else:
       return None
 
-  def calculate_core_stored_sample_time(self, consent_for_study_enrollment_and_ehr,
-                                        participant_summary):
-    if consent_for_study_enrollment_and_ehr and \
+  def calculate_core_stored_sample_time(self, consent, participant_summary):
+    if consent and \
       participant_summary.numCompletedBaselinePPIModules == \
       self._get_num_baseline_ppi_modules() and \
       participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED and \
@@ -420,9 +439,8 @@ class ParticipantSummaryDao(UpdatableDao):
     else:
       return None
 
-  def calculate_core_ordered_sample_time(self, consent_for_study_enrollment_and_ehr,
-                                         participant_summary):
-    if consent_for_study_enrollment_and_ehr and \
+  def calculate_core_ordered_sample_time(self, consent, participant_summary):
+    if consent and \
       participant_summary.numCompletedBaselinePPIModules == \
       self._get_num_baseline_ppi_modules() and \
       participant_summary.physicalMeasurementsStatus == PhysicalMeasurementsStatus.COMPLETED:
@@ -448,7 +466,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
     if sample_time is not None:
       return max([sample_time,
-                  participant_summary.consentForElectronicHealthRecordsTime,
+                  participant_summary.enrollmentStatusMemberTime,
                   participant_summary.questionnaireOnTheBasicsTime,
                   participant_summary.questionnaireOnLifestyleTime,
                   participant_summary.questionnaireOnOverallHealthTime,
