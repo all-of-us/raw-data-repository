@@ -4,11 +4,13 @@ eg: tools/ehr_upload.sh --organization AZ_TUCSON --bucket ptc-uploads-pmi-drc-ap
 """
 import csv
 import logging
-import requests
 import subprocess
 import shlex
 from sqlalchemy import text
 from dao import database_factory
+import requests
+import requests_toolbelt.adapters.appengine
+requests_toolbelt.adapters.appengine.monkeypatch()
 
 
 SOURCE_BUCKET = 'ptc-uploads-all-of-us-rdr-prod'
