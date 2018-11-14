@@ -185,5 +185,5 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEqual(summary.physicalMeasurementsStatus, PhysicalMeasurementsStatus.CANCELLED)
     self.assertEqual(summary.physicalMeasurementsTime, None)
     self.assertEqual(summary.physicalMeasurementsFinalizedTime, None)
-    self.assertEqual(summary.physicalMeasurementsCreatedSiteId, None)
-    self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, None)
+    self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
+    self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, 2)

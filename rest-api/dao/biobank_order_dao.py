@@ -233,17 +233,18 @@ class BiobankOrderDao(UpdatableDao):
       BiobankOrder.created).all()
 
   def _refresh_participant_summary(self, session, obj):
-    # called when cancelled or amendments (maybe restore)
+    # called when cancelled/restored
     participant_summary_dao = ParticipantSummaryDao()
     participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
     non_cancelled_orders = self._get_non_cancelled_biobank_orders(session, obj.participantId)
+    if obj.orderStatus == BiobankOrderStatus.CANCELLED:
+      participant_summary.biospecimenStatus = OrderStatus.UNSET
+      participant_summary.biospecimenOrderTime = None
+      participant_summary.biospecimenSourceSiteId = None
+      participant_summary.biospecimenCollectedSiteId = None
+      participant_summary.biospecimenProcessedSiteId = None
+      participant_summary.biospecimenFinalizedSiteId = None
 
-    participant_summary.biospecimenStatus = OrderStatus.UNSET
-    participant_summary.biospecimenOrderTime = None
-    participant_summary.biospecimenSourceSiteId = None
-    participant_summary.biospecimenCollectedSiteId = None
-    participant_summary.biospecimenProcessedSiteId = None
-    participant_summary.biospecimenFinalizedSiteId = None
     participant_summary.lastModified = clock.CLOCK.now()
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
