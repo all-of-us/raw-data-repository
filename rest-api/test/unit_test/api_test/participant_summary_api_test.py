@@ -1396,7 +1396,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     with FakeClock(TIME_1):
       self.send_post(path, measurements_1)
     with FakeClock(TIME_2):
-      pm_response2 = self.send_post(path, measurements_2)
+      self.send_post(path, measurements_2)
 
     participant_summary = self.send_get('Participant/%s/Summary' % participant_id_1)
     self.assertEqual(participant_summary['physicalMeasurementsStatus'], 'COMPLETED')
