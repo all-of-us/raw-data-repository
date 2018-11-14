@@ -371,8 +371,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
       measurement.cancelledSiteId = site_id
       measurement.cancelledTime = clock.CLOCK.now()
       measurement.status = PhysicalMeasurementsStatus.CANCELLED
-      # measurement.createdSiteId = None
-      # measurement.finalizedSiteId = None
       measurement.finalized = None
     if resource['status'].lower() == 'restored':
       measurement.cancelledUsername = None
