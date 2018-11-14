@@ -319,3 +319,5 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.assertEqual(amended_order.version, 2)
     self.assertEqual(amended_order.orderStatus, BiobankOrderStatus.AMENDED)
     self.assertEqual(amended_order.amendedReason, 'I had to change something')
+    self.assertEqual(amended_order.amendedSiteId, 1)
+    self.assertEqual(amended_order.amendedUsername, 'mike@pmi-ops.org')
