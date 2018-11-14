@@ -28,7 +28,10 @@ from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
 from config import get_config, get_db_config
 from model.utils import ParticipantIdConverter
+import requests_toolbelt.adapters.appengine
 
+import requests
+requests_toolbelt.adapters.appengine.monkeypatch()
 
 PREFIX = '/rdr/v1/'
 

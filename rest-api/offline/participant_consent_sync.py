@@ -9,8 +9,6 @@ import shlex
 from sqlalchemy import text
 from dao import database_factory
 import requests
-import requests_toolbelt.adapters.appengine
-requests_toolbelt.adapters.appengine.monkeypatch()
 
 
 SOURCE_BUCKET = 'ptc-uploads-all-of-us-rdr-prod'
