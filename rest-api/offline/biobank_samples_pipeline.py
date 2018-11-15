@@ -21,7 +21,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from offline.sql_exporter import SqlExporter, CompositeSqlExportWriter
-from participant_enums import OrganizationType
+from participant_enums import OrganizationType, BiobankOrderStatus
 
 # Format for dates in output filenames for the reconciliation report.
 _FILENAME_DATE_FORMAT = '%Y-%m-%d'
@@ -207,31 +207,32 @@ def _get_report_paths(report_datetime):
   return [
       '%s/report_%s_%s.csv' % (
           _REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
-      for report_name in ('received', 'over_24h', 'missing', 'withdrawals')]
+      for report_name in ('received', 'missing', 'modified', 'withdrawals')]
 
 
-def _query_and_write_reports(exporter, now, path_received, path_late, path_missing,
+def _query_and_write_reports(exporter, now, path_received, path_missing, path_modified,
                              path_withdrawals):
   """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
   """
-  # Gets all sample/order pairs where everything arrived, regardless of timing.
+  # Gets all sample/order pairs where everything arrived, within the past 10 days.
   received_predicate = lambda result: (result[_RECEIVED_TEST_INDEX] and
-                                        result[_SENT_COUNT_INDEX] == result[_RECEIVED_COUNT_INDEX])
+                                       result[_SENT_COUNT_INDEX] == result[_RECEIVED_COUNT_INDEX]
+                                       and
+                                       in_past_n_days(result, now, 10))
 
-  # Gets orders for which the samples arrived, but they arrived late, within the past 7 days.
-  late_predicate = lambda result: (result[_ELAPSED_HOURS_INDEX] and
-                                    int(result[_ELAPSED_HOURS_INDEX]) >= 24 and
-                                    in_past_week(result, now))
-
-  # Gets samples or orders where something has gone missing within the past 7 days, and if an order
+  # Gets samples or orders where something has gone missing within the past 10 days, and if an order
   # was placed, it was placed at least 36 hours ago.
   missing_predicate = lambda result: ((result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
                                       (result[_SENT_FINALIZED_INDEX] and
                                       not result[_RECEIVED_TEST_INDEX])) and
-                                      in_past_week(result, now,
+                                      in_past_n_days(result, now, 10,
                                       ordered_before=now - _THIRTY_SIX_HOURS_AGO))
+
+  # Gets samples or orders where something has modified within the past 10 days.
+  modified_predicate = lambda result: (result[_EDITED_CANCELLED_RESTORED_STATUS_FLAG_INDEX] and
+                                       in_past_n_days(result, now, 10))
 
   code_dao = CodeDao()
   race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
@@ -239,11 +240,11 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
 
   # Open three files and a database session; run the reconciliation query and pipe the output
   # to the files, using per-file predicates to filter out results.
-  with exporter.open_writer(path_received, received_predicate) as received_writer, \
-       exporter.open_writer(path_late, late_predicate) as late_writer, \
-       exporter.open_writer(path_missing, missing_predicate) as missing_writer, \
+  with exporter.open_writer(path_received, received_predicate) as received_writer,\
+       exporter.open_writer(path_missing, missing_predicate) as missing_writer,\
+       exporter.open_writer(path_modified, modified_predicate) as modified_writer,\
        database_factory.get_database().session() as session:
-    writer = CompositeSqlExportWriter([received_writer, late_writer, missing_writer])
+    writer = CompositeSqlExportWriter([received_writer, missing_writer, modified_writer])
     exporter.run_export_with_session(writer, session, replace_isodate(_RECONCILIATION_REPORT_SQL),
                                      {'race_question_code_id': race_question_code.codeId,
                                       'native_american_race_code_id':
@@ -253,11 +254,11 @@ def _query_and_write_reports(exporter, now, path_received, path_late, path_missi
                                       'kit_id_system': _KIT_ID_SYSTEM,
                                       'tracking_number_system': _TRACKING_NUMBER_SYSTEM})
 
-  # Now generate the withdrawal report.
+  # Now generate the withdrawal report, within the past 10 days.
   exporter.run_export(path_withdrawals, replace_isodate(_WITHDRAWAL_REPORT_SQL),
                       {'race_question_code_id': race_question_code.codeId,
                        'native_american_race_code_id': native_american_race_code.codeId,
-                       'seven_days_ago': now - datetime.timedelta(days=7),
+                       'ten_days_ago': now - datetime.timedelta(days=10),
                        'biobank_id_prefix': get_biobank_id_prefix()})
 
 # Indexes from the SQL query below; used in predicates.
@@ -270,6 +271,7 @@ _RECEIVED_COUNT_INDEX = 17
 _RECEIVED_TIME_INDEX = 19
 _SAMPLE_FAMILY_CREATE_TIME_INDEX = 20
 _ELAPSED_HOURS_INDEX = 21
+_EDITED_CANCELLED_RESTORED_STATUS_FLAG_INDEX = 28
 
 _ORDER_JOINS = """
       biobank_order
@@ -297,6 +299,15 @@ _ORDER_JOINS = """
     LEFT OUTER JOIN
       hpo finalized_site_hpo
     ON finalized_site.hpo_id = finalized_site_hpo.hpo_id
+    LEFT OUTER JOIN
+      site restored_site
+    ON biobank_order.restored_site_id = restored_site.site_id
+    LEFT OUTER JOIN
+      site amended_site
+    ON biobank_order.amended_site_id = amended_site.site_id
+    LEFT OUTER JOIN
+      site cancelled_site
+    ON biobank_order.cancelled_site_id = cancelled_site.site_id
 """
 
 _STORED_SAMPLE_JOIN_CRITERIA = """
@@ -313,6 +324,48 @@ def _get_hpo_type_sql(hpo_alias):
     result += "WHEN %s.organization_type = %d THEN '%s' " % (hpo_alias, organization_type.number,
                                                             organization_type.name)
   result += "ELSE 'UNKNOWN' END)"
+  return result
+
+
+def _get_status_flag_sql():
+  result = """
+      CASE
+        WHEN biobank_order.order_status = {amended} THEN 'edited'
+        WHEN biobank_order.order_status = {cancelled} THEN 'cancelled'
+        WHEN biobank_order.order_status = {unset} AND biobank_order.restored_time IS NOT NULL
+          THEN 'restored'
+        ELSE NULL  
+      END edited_cancelled_restored_status_flag,
+      CASE
+        WHEN biobank_order.order_status = {amended} THEN biobank_order.amended_username
+        WHEN biobank_order.order_status = {cancelled} THEN biobank_order.cancelled_username
+        WHEN biobank_order.order_status = {unset} AND biobank_order.restored_time IS NOT NULL
+          THEN biobank_order.restored_username
+        ELSE NULL  
+      END edited_cancelled_restored_name,
+      CASE
+        WHEN biobank_order.order_status = {amended} THEN amended_site.site_name
+        WHEN biobank_order.order_status = {cancelled} THEN cancelled_site.site_name
+        WHEN biobank_order.order_status = {unset} AND biobank_order.restored_time IS NOT NULL
+          THEN restored_site.site_name
+        ELSE NULL  
+      END edited_cancelled_restored_site_name,
+      CASE
+        WHEN biobank_order.order_status = {amended} THEN biobank_order.amended_time
+        WHEN biobank_order.order_status = {cancelled} THEN biobank_order.cancelled_time
+        WHEN biobank_order.order_status = {unset} AND biobank_order.restored_time IS NOT NULL
+          THEN biobank_order.restored_time
+        ELSE NULL  
+      END edited_cancelled_restored_site_time,
+      CASE
+        WHEN biobank_order.order_status = {amended} OR biobank_order.order_status = {cancelled} OR
+             (biobank_order.order_status = {unset} AND biobank_order.restored_time IS NOT NULL)
+          THEN biobank_order.amended_reason
+        ELSE NULL  
+      END edited_cancelled_restored_site_reason
+  """.format(amended=int(BiobankOrderStatus.AMENDED), cancelled=int(BiobankOrderStatus.CANCELLED),
+             unset=int(BiobankOrderStatus.UNSET))
+
   return result
 
 # Used in the context of queries where "participant" is the table for the participant being
@@ -365,7 +418,12 @@ _RECONCILIATION_REPORT_SQL = ("""
     GROUP_CONCAT(DISTINCT is_native_american) is_native_american,
     GROUP_CONCAT(notes_collected) notes_collected,
     GROUP_CONCAT(notes_processed) notes_processed,
-    GROUP_CONCAT(notes_finalized) notes_finalized
+    GROUP_CONCAT(notes_finalized) notes_finalized,
+    GROUP_CONCAT(edited_cancelled_restored_status_flag) edited_cancelled_restored_status_flag,
+    GROUP_CONCAT(edited_cancelled_restored_name) edited_cancelled_restored_name,
+    GROUP_CONCAT(edited_cancelled_restored_site_name) edited_cancelled_restored_site_name,
+    GROUP_CONCAT(edited_cancelled_restored_site_time) edited_cancelled_restored_site_time,
+    GROUP_CONCAT(edited_cancelled_restored_site_reason) edited_cancelled_restored_site_reason
   FROM
    (SELECT
       participant.biobank_id raw_biobank_id,
@@ -393,7 +451,8 @@ _RECONCILIATION_REPORT_SQL = ("""
       tracking_number_identifier.value fedex_tracking_number, """ + _NATIVE_AMERICAN_SQL + """,
       biobank_order.collected_note notes_collected,
       biobank_order.processed_note notes_processed,
-      biobank_order.finalized_note notes_finalized
+      biobank_order.finalized_note notes_finalized,
+      """ + _get_status_flag_sql() + """
     FROM """ + _ORDER_JOINS + """
     LEFT OUTER JOIN
       biobank_stored_sample
@@ -433,7 +492,12 @@ _RECONCILIATION_REPORT_SQL = ("""
       NULL fedex_tracking_number, """ + _NATIVE_AMERICAN_SQL + """,
       NULL notes_collected,
       NULL notes_processed,
-      NULL notes_finalized
+      NULL notes_finalized,
+      NULL edited_cancelled_restored_status_flag,
+      NULL edited_cancelled_restored_name,
+      NULL edited_cancelled_restored_site_name,
+      NULL edited_cancelled_restored_site_time,
+      NULL edited_cancelled_restored_site_reason
     FROM
       biobank_stored_sample
       LEFT OUTER JOIN
@@ -452,7 +516,7 @@ _RECONCILIATION_REPORT_SQL = ("""
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id)
 """)
 
-# Generates a report on participants that have withdrawn in the past 7 days,
+# Generates a report on participants that have withdrawn in the past 10 days,
 # including their biobank ID, withdrawal time, and whether they are Native American
 # (as biobank samples for Native Americans are disposed of differently.)
 _WITHDRAWAL_REPORT_SQL = ("""
@@ -460,11 +524,10 @@ _WITHDRAWAL_REPORT_SQL = ("""
     CONCAT(:biobank_id_prefix, participant.biobank_id) biobank_id,
     ISODATE[participant.withdrawal_time] withdrawal_time,""" + _NATIVE_AMERICAN_SQL + """
     FROM participant
-   WHERE participant.withdrawal_time >= :seven_days_ago
+   WHERE participant.withdrawal_time >= :ten_days_ago
 """)
 
-
-def in_past_week(result, now, ordered_before=None):
+def in_past_n_days(result, now, n_days, ordered_before=None):
   sent_collection_time_str = result[_SENT_COLLECTION_TIME_INDEX]
   received_time_str = result[_RECEIVED_TIME_INDEX]
   max_time = None
@@ -479,5 +542,5 @@ def in_past_week(result, now, ordered_before=None):
     else:
       max_time = received_time
   if max_time:
-    return (now - max_time).days <= 7
+    return (now - max_time).days <= n_days
   return False
