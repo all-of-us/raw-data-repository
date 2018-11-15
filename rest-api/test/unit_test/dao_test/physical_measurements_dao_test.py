@@ -163,7 +163,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertTrue(new_measurements.final)
     self.assertEquals(TIME_3, new_measurements.created)
 
-  def test_update_with_patch(self):
+  def test_update_with_patch_cancel(self):
     self._make_summary()
     summary = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertIsNone(summary.physicalMeasurementsStatus)
@@ -185,5 +185,5 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEqual(summary.physicalMeasurementsStatus, PhysicalMeasurementsStatus.CANCELLED)
     self.assertEqual(summary.physicalMeasurementsTime, None)
     self.assertEqual(summary.physicalMeasurementsFinalizedTime, None)
-    self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
-    self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, 2)
+    self.assertEqual(summary.physicalMeasurementsCreatedSiteId, None)
+    self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, None)

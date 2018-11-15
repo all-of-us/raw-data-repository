@@ -253,7 +253,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self._insert_measurements(datetime.datetime.utcnow().isoformat())
     self.assertNotEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
 
-  def test_cancel_a_physical_measuremnet(self):
+  def test_cancel_a_physical_measurement(self):
     _id = self.participant_id.strip('P')
     self.send_consent(self.participant_id)
     measurement = load_measurement_json(self.participant_id)
@@ -275,7 +275,34 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
     # should be completed because of other valid PM
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsStatus'], 'COMPLETED')
-    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsCreatedSite'], 'hpo-site-monroeville')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsCreatedSite'], 'UNSET')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'], 'UNSET')
+
+  def test_make_pm_after_cancelled_pm(self):
+    _id = self.participant_id.strip('P')
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    measurement2 = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurement)
+    path = path + '/' + response['id']
+    cancel_info = get_restore_or_cancel_info()
+    self.send_patch(path, cancel_info)
+    # send another PM
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    self.send_post(path, measurement2)
+
+    path = path + '/' + response['id']
+    response = self.send_get(path)
+    self.assertEqual(response['status'], 'CANCELLED')
+    self.assertEqual(response['reason'], 'a mistake was made.')
+    self.assertEqual(response['cancelledUsername'], 'mike@pmi-ops.org')
+    self.assertEqual(response['cancelledSiteId'], 1)
+    ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
+    # should be completed because of other valid PM
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsStatus'], 'COMPLETED')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsCreatedSite'],
+                     'hpo-site-monroeville')
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],
                      'hpo-site-bannerphoenix')
 
