@@ -265,7 +265,6 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     path = path + '/' + response['id']
     cancel_info = get_restore_or_cancel_info()
     ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
-    print ps['entry']
     self.send_patch(path, cancel_info)
 
     response = self.send_get(path)
@@ -275,7 +274,6 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertEqual(response['cancelledSiteId'], 1)
     ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
     # should be completed because of other valid PM
-    # print ps['entry'][0]
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsStatus'], 'COMPLETED')
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsCreatedSite'], 'hpo-site-monroeville')
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],

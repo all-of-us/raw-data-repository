@@ -38,7 +38,10 @@ def data_path(filename):
 
 
 def load_measurement_json(participant_id, now=None, alternate=False):
-  """Loads a PhysicalMeasurement FHIR resource returns it as parsed JSON."""
+  """Loads a PhysicalMeasurement FHIR resource returns it as parsed JSON.
+     If alternate is True, loads a different measurement order. Useful for making multiple
+     orders to test against when cancelling/restoring. The alternate has less measurements and
+     different processed sites and finalized sites."""
   if alternate:
     payload = 'alternate-measurements-as-fhir.json'
   else:
