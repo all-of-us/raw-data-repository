@@ -180,9 +180,11 @@ class BiobankOrderDaoTest(SqlTestBase):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
     order_1 = self.dao.insert(self._make_biobank_order())
     cancelled_request = self._get_cancel_patch()
+    self.assertEqual(order_1.version, 1)
+    self.assertEqual(order_1.orderStatus, None)
+
     updated_order = self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request,
                                                order_1.version)
-
     self.assertEqual(updated_order.version, 2)
     self.assertEqual(updated_order.cancelledUsername, 'mike@pmi-ops.org')
     self.assertEqual(updated_order.orderStatus, BiobankOrderStatus.CANCELLED)
@@ -233,9 +235,14 @@ class BiobankOrderDaoTest(SqlTestBase):
 
     restore_request = self._get_restore_patch()
     self.dao.update_with_patch(order_1.biobankOrderId, restore_request,
-                                                cancelled_order.version)
+                               cancelled_order.version)
     ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.biospecimenStatus, OrderStatus.FINALIZED)
+    self.assertEqual(ps_dao.biospecimenSourceSiteId, 1)
+    self.assertEqual(ps_dao.biospecimenCollectedSiteId, 1)
+    self.assertEqual(ps_dao.biospecimenFinalizedSiteId, 2)
+    self.assertEqual(ps_dao.biospecimenProcessedSiteId, 1)
 
   def test_amending_order_participant_summary(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
