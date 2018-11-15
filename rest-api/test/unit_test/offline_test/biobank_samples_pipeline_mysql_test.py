@@ -80,7 +80,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     if modify_type == 'CANCELLED':
       cancelled_request = self._get_cancel_patch()
       self.order_dao.update_with_patch(order.biobankOrderId, cancelled_request, order.version)
-    elif modify_type == 'EDITED':
+    elif modify_type == 'AMENDED':
       amended_info = self._get_amended_info(order)
       amended_info.amendedSiteId = 2
       with self.order_dao.session() as session:
@@ -238,7 +238,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                                        tracking_number='t1', collected_note=u'\u2013foo',
                                        processed_note='bar', finalized_note='baz')
     # edited order with matching sample; show both in rx and modified
-    self._modify_order('EDITED', on_time_order)
+    self._modify_order('AMENDED', on_time_order)
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], 'OGoodOrder',
                          within_24_hours, within_24_hours - datetime.timedelta(hours=1))
 
@@ -279,12 +279,12 @@ class MySqlReconciliationTest(FlaskTestBase):
                          'Ounconfirmed_sample_4', two_days_ago, two_days_ago)
 
 
-    # On time order and samples from 10 days ago; should not shows up in rx or modified
+    # On time order and samples from 10 days ago; should not show up in rx or modified
     p_old_on_time = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     # Old missing samples from 10 days ago don't show up in missing or late.
     old_on_time_order = self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:3],
                                            old_order_time, kit_id='kit2')
-    self._modify_order('EDITED', old_on_time_order)
+    self._modify_order('AMENDED', old_on_time_order)
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
                          'OOldGoodOrder', old_within_24_hours,
                          old_within_24_hours - datetime.timedelta(hours=1))
@@ -306,7 +306,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                         order_time,
                         order_time - datetime.timedelta(hours=1))
 
-    # Late order and samples from 10 days ago; should not shows up in rx and missing, as it was too
+    # Late order and samples from 10 days ago; should not show up in rx and missing, as it was too
     # long ago.
     p_old_late_and_missing = self._insert_participant()
     self._insert_order(p_old_late_and_missing, 'OldSlowOrder', BIOBANK_TESTS[:2], old_order_time)
