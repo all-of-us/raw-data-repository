@@ -50,8 +50,8 @@ The summary includes the following fields:
 * `enrollmentStatus`
 * `race`
 * `physicalMeasurementsStatus`: indicates whether this participant has completed physical measurements
-* `physicalMeasurementsFinalizedTime`: indicates the first time physical measurements were finalized for the participant
-* `physicalMeasurementsTime`: indicates the first time physical measurements were submitted for the participant
+* `physicalMeasurementsFinalizedTime`: indicates the latest time physical measurements were finalized for the participant
+* `physicalMeasurementsTime`: indicates the latest time physical measurements were submitted for the participant
 * `physicalMeasurementsCreatedSite`: indicates the site where physical measurements were created for the participant
 * `physicalMeasurementsFinalizedSite`: indicates the site where physical measurements were finalized for the participant
 * `signUpTime`: the time at which the participant initially signed up for All Of Us

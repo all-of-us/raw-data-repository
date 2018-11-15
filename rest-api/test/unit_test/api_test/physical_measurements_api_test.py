@@ -254,6 +254,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertNotEqual(participant_dao.get(pid_numeric).hpoId, UNSET_HPO_ID)
 
   def test_cancel_a_physical_measuremnet(self):
+    _id = self.participant_id.strip('P')
     self.send_consent(self.participant_id)
     measurement = load_measurement_json(self.participant_id)
     measurement2 = load_measurement_json(self.participant_id)
@@ -263,6 +264,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.send_post(path, measurement2)
     path = path + '/' + response['id']
     cancel_info = get_restore_or_cancel_info()
+    ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
     self.send_patch(path, cancel_info)
 
     response = self.send_get(path)
@@ -270,10 +272,12 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertEqual(response['reason'], 'a mistake was made.')
     self.assertEqual(response['cancelledUsername'], 'mike@pmi-ops.org')
     self.assertEqual(response['cancelledSiteId'], 1)
-    _id = self.participant_id.strip('P')
     ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
     # should be completed because of other valid PM
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsStatus'], 'COMPLETED')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsCreatedSite'], 'hpo-site-monroeville')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],
+                     'hpo-site-bannerphoenix')
 
   def test_restore_a_physical_measuremnet(self):
     self.send_consent(self.participant_id)

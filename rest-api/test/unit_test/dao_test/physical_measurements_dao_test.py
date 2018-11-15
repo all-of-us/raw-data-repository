@@ -180,3 +180,10 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEqual(update.cancelledSiteId, 1)
     self.assertEqual(update.cancelledTime, TIME_3)
     self.assertEqual(update.cancelledUsername, cancel['cancelledInfo']['author']['value'])
+
+    summary = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertEqual(summary.physicalMeasurementsStatus, PhysicalMeasurementsStatus.CANCELLED)
+    self.assertEqual(summary.physicalMeasurementsTime, None)
+    self.assertEqual(summary.physicalMeasurementsFinalizedTime, None)
+    self.assertEqual(summary.physicalMeasurementsCreatedSiteId, 1)
+    self.assertEqual(summary.physicalMeasurementsFinalizedSiteId, 2)
