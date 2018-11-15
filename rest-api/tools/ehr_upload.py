@@ -98,16 +98,13 @@ from main_util import get_parser, configure_logging
 
 
 
+test_url = 'https://docs.google.com/spreadsheets/d/1Fm0RsnMCvR6RTxEOkRKC2IrSy4dcQPbETdDeCSKG4O8'
 # SOURCE_BUCKET = 'ptc-uploads-all-of-us-rdr-prod'
 SOURCE_BUCKET = 'ptc-uploads-pmi-drc-api-sandbox'
 BUCKET_NAME = 'Bucket Name'
 AGGREGATING_ORG_ID = 'Aggregating Org ID'
 ORG_ID = 'Org ID'
 ORG_STATUS = 'Org Status'
-# FILE_URL = 'https://docs.google.com/spreadsheets/d/1Fm0RsnMCvR6RTxEOkRKC2IrSy4dcQPbETdDeCSKG4O8' \
-#            '/edit' \
-#            '#gid=0?output=csv'
-# spreadsheet_id = '1Fm0RsnMCvR6RTxEOkRKC2IrSy4dcQPbETdDeCSKG4O8'
 
 
 def get_sql(organization):
@@ -132,10 +129,6 @@ def get_sql(organization):
 
 
 def _fetch_csv_data(url):
-  # url = 'https://docs.google.com/spreadsheets/d/%(id)s/export?format=csv&id=%(id)s&gid=%(gid)s' % {
-  #   'id': spreadsheet_id,
-  #   'gid': spreadsheet_gid,
-  #   }
   response = requests.get(url)
   reader = csv.DictReader(response.iter_lines())
   return reader
@@ -167,7 +160,13 @@ def read_hpo_report(csv_reader):
   return hpo_data
 
 
+def parse_url(file_url):
+  logging.info('The file url => =>: {}'.format(file_url))
+  return file_url
+
+
 def sync_ehr_consents(file_url):
+  file_url = parse_url(file_url)
   csv_reader = _fetch_csv_data(file_url)
   csv_reader.next()
   hpo_data = read_hpo_report(csv_reader)
@@ -177,7 +176,8 @@ def sync_ehr_consents(file_url):
     run_sql('fake-ehr-test-uploads/test_consent_upload', site_paired_sql, no_paired_sql)
   logging.info('finished importing data')
   logging.info('beginning gsutil sync')
-
+  logging.info('File url is : {}'.format(file_url))
+  logging.info('File url is : {}'.format(test_url))
 
 
 def run_gsutil(gsutil):
@@ -216,8 +216,5 @@ if __name__ == '__main__':
   parser = get_parser()
   parser.add_argument('--file_url', help='The url to google sheet (All HPOs report)', required=True)
   file_url = parser.parse_args()
-  print '***************************'
-  print file_url
-  print '***************************'
-
-  sync_ehr_consents(file_url)
+  sync_ehr_consents(str(file_url))
+  # sync_ehr_consents(test_url)
