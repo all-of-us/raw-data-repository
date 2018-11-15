@@ -238,7 +238,7 @@ def _query_and_write_reports(exporter, now, path_received, path_missing, path_mo
   race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
   native_american_race_code = code_dao.get_code(PPI_SYSTEM, RACE_AIAN_CODE)
 
-  # Open two files and a database session; run the reconciliation query and pipe the output
+  # Open three files and a database session; run the reconciliation query and pipe the output
   # to the files, using per-file predicates to filter out results.
   with exporter.open_writer(path_received, received_predicate) as received_writer,\
        exporter.open_writer(path_missing, missing_predicate) as missing_writer,\
