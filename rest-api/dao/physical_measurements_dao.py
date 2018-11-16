@@ -304,20 +304,31 @@ class PhysicalMeasurementsDao(UpdatableDao):
       # new PM or if a PM was restored, it is complete again.
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
       participant_summary.physicalMeasurementsTime = obj.created
-
-    # these fields set on all new measurements and cancelled measurements that don't have a
-    # previous good measurement.
-    if not (
-      not (obj.status != PhysicalMeasurementsStatus.CANCELLED) and self.has_uncancelled_pm(session,
-                                                                                      participant)):
       participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
       participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
       participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
+
+    if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and \
+       self.has_uncancelled_pm(session, participant):
+
+      get_latest_pm = self.get_latest_pm(session, participant)
+      participant_summary.physicalMeasurementsFinalizedTime = get_latest_pm.finalized
+      participant_summary.physicalMeasurementsTime = get_latest_pm.created
+      participant_summary.physicalMeasurementsCreatedSiteId = get_latest_pm.createdSiteId
+      participant_summary.physicalMeasurementsFinalizedSiteId = get_latest_pm.finalizedSiteId
+
 
     participant_summary_dao.update_enrollment_status(participant_summary)
     session.merge(participant_summary)
 
     return participant_summary
+
+  def get_latest_pm(self, session, participant):
+    query = session.query(PhysicalMeasurements).filter(PhysicalMeasurements.status.isnot(
+      PhysicalMeasurementsStatus.CANCELLED)).filter_by(
+      participantId=participant.participantId).order_by(
+      PhysicalMeasurements.finalized.desc()).first()
+    return query
 
   def has_uncancelled_pm(self, session, participant):
     """return True if participant has at least one physical measurement that is not cancelled"""

@@ -3,6 +3,7 @@ import datetime
 import json
 
 import main
+from clock import FakeClock
 from dao.participant_dao import ParticipantDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from model.measurements import Measurement
@@ -18,7 +19,8 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     super(PhysicalMeasurementsApiTest, self).setUp()
     self.participant_id = self.create_participant()
     self.participant_id_2 = self.create_participant()
-
+    self.time1 = datetime.datetime(2018, 1, 1)
+    self.time2 = datetime.datetime(2018, 2, 2)
   def _insert_measurements(self, now=None):
     measurements_1 = load_measurement_json(self.participant_id, now)
     measurements_2 = load_measurement_json(self.participant_id_2, now)
@@ -315,8 +317,10 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     measurement = load_measurement_json(self.participant_id)
     measurement2 = load_measurement_json(self.participant_id)
     path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
-    self.send_post(path, measurement)
-    response2 = self.send_post(path, measurement2)
+    with FakeClock(self.time1):
+      self.send_post(path, measurement)
+    with FakeClock(self.time2):
+      response2 = self.send_post(path, measurement2)
 
     # cancel latest PM
     path = path + '/' + response2['id']
@@ -338,6 +342,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],
                      'hpo-site-bannerphoenix')
     self.assertIsNotNone(ps['entry'][0]['resource']['physicalMeasurementsTime'])
+    self.assertEquals(ps['entry'][0]['resource']['physicalMeasurementsTime'], self.time1.isoformat())
 
   def test_cancel_single_pm_returns_cancelled_in_summary(self):
     _id = self.participant_id.strip('P')
