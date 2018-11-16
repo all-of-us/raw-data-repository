@@ -324,6 +324,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
     # should be completed because of other valid PM
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsStatus'], 'CANCELLED')
+    self.assertNotIn('physicalMeasurementsTime', ps['entry'][0]['resource'])
 
   def test_restore_a_physical_measuremnet(self):
     self.send_consent(self.participant_id)
