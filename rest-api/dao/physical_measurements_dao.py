@@ -300,7 +300,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
       participant_summary.physicalMeasurementsTime = None
 
     # These fields set on any measurement not cancelled
-    if obj.status != PhysicalMeasurementsStatus.CANCELLED:
+    elif obj.status != PhysicalMeasurementsStatus.CANCELLED:
       # new PM or if a PM was restored, it is complete again.
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
       participant_summary.physicalMeasurementsTime = obj.created
