@@ -322,7 +322,6 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertEqual(response['cancelledUsername'], 'mike@pmi-ops.org')
     self.assertEqual(response['cancelledSiteId'], 1)
     ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
-    # should be completed because of other valid PM
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsStatus'], 'CANCELLED')
     self.assertNotIn('physicalMeasurementsTime', ps['entry'][0]['resource'])
 
