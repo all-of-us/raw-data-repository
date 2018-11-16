@@ -306,6 +306,25 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],
                      'hpo-site-bannerphoenix')
 
+  def test_cancel_single_pm_returns_cancelled_in_summary(self):
+    _id = self.participant_id.strip('P')
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(path, measurement)
+    path = path + '/' + response['id']
+    cancel_info = get_restore_or_cancel_info()
+    self.send_patch(path, cancel_info)
+
+    response = self.send_get(path)
+    self.assertEqual(response['status'], 'CANCELLED')
+    self.assertEqual(response['reason'], 'a mistake was made.')
+    self.assertEqual(response['cancelledUsername'], 'mike@pmi-ops.org')
+    self.assertEqual(response['cancelledSiteId'], 1)
+    ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
+    # should be completed because of other valid PM
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsStatus'], 'CANCELLED')
+
   def test_restore_a_physical_measuremnet(self):
     self.send_consent(self.participant_id)
     measurement = load_measurement_json(self.participant_id)
