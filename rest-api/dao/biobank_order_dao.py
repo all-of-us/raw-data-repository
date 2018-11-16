@@ -423,10 +423,6 @@ class BiobankOrderDao(UpdatableDao):
     order.lastModified = clock.CLOCK.now()
     order.biobankOrderId = existing_obj.biobankOrderId
     order.orderStatus = BiobankOrderStatus.AMENDED
-    if hasattr(existing_obj, 'amendedInfo') and existing_obj.amendedInfo.get('author') is not None:
-      order.amendedUsername = existing_obj.amendedInfo.get('author').get('value')
-    if hasattr(existing_obj, 'amendedInfo'):
-      order.amendedSiteId = get_site(existing_obj.amendedInfo)
     order.amendedTime = clock.CLOCK.now()
     order.logPosition = LogPosition()
     order.version += 1

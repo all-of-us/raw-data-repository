@@ -54,12 +54,7 @@ _CSV_COLUMN_NAMES = (
   'is_native_american',
   'notes_collected',
   'notes_processed',
-  'notes_finalized',
-  'edited_cancelled_restored_status_flag',
-  'edited_cancelled_restored_name',
-  'edited_cancelled_restored_site_name',
-  'edited_cancelled_restored_site_time',
-  'edited_cancelled_restored_site_reason'
+  'notes_finalized'
 )
 
 class MySqlReconciliationTest(FlaskTestBase):
@@ -76,74 +71,6 @@ class MySqlReconciliationTest(FlaskTestBase):
       participant.withdrawalStatus = WithdrawalStatus.NO_USE
       self.participant_dao.update(participant)
 
-  def _modify_order(self, modify_type, order):
-    if modify_type == 'CANCELLED':
-      cancelled_request = self._get_cancel_patch()
-      self.order_dao.update_with_patch(order.biobankOrderId, cancelled_request, order.version)
-    elif modify_type == 'AMENDED':
-      amended_info = self._get_amended_info(order)
-      amended_info.amendedSiteId = 2
-      with self.order_dao.session() as session:
-        self.order_dao._do_update(session, order, amended_info)
-    elif modify_type == 'RESTORED':
-      cancelled_request = self._get_cancel_patch()
-      cancelled_order = self.order_dao.update_with_patch(order.biobankOrderId, cancelled_request,
-                                                         order.version)
-
-      restore_request = self._get_restore_patch()
-      self.order_dao.update_with_patch(order.biobankOrderId, restore_request,
-                                       cancelled_order.version)
-
-  @staticmethod
-  def _get_cancel_patch():
-    return {
-      "amendedReason": 'I messed something up :( ',
-      "cancelledInfo": {
-        "author": {
-          "system": "https://www.pmi-ops.org/healthpro-username",
-          "value": "mike@pmi-ops.org"
-        },
-        "site": {
-          "system": "https://www.pmi-ops.org/site-id",
-          "value": "hpo-site-monroeville"
-        }
-      },
-      "status": "cancelled"
-    }
-
-  @staticmethod
-  def _get_restore_patch():
-    return {
-      "amendedReason": 'I didn"t mess something up :( ',
-      "restoredInfo": {
-        "author": {
-          "system": "https://www.pmi-ops.org/healthpro-username",
-          "value": "mike@pmi-ops.org"
-        },
-        "site": {
-          "system": "https://www.pmi-ops.org/site-id",
-          "value": "hpo-site-monroeville"
-        }
-      },
-      "status": "restored"
-    }
-
-  @staticmethod
-  def _get_amended_info(order):
-    amendment = dict(amendedReason='I had to change something', amendedInfo={
-      "author": {
-        "system": "https://www.pmi-ops.org/healthpro-username",
-        "value": "mike@pmi-ops.org"
-      },
-      "site": {
-        "system": "https://www.pmi-ops.org/site-id",
-        "value": "hpo-site-monroeville"
-      }
-    })
-
-    order.amendedReason = amendment['amendedReason']
-    order.amendedInfo = amendment['amendedInfo']
-    return order
 
   def _insert_participant(self, race_codes=[]):
     participant = self.participant_dao.insert(Participant())
@@ -222,7 +149,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._questionnaire_id = self.create_questionnaire('questionnaire3.json')
     # MySQL and Python sub-second rounding differs, so trim micros from generated times.
     order_time = clock.CLOCK.now().replace(microsecond=0)
-    old_order_time = order_time - datetime.timedelta(days=11)
+    old_order_time = order_time - datetime.timedelta(days=10)
     within_24_hours = order_time + datetime.timedelta(hours=23)
     old_within_24_hours = old_order_time + datetime.timedelta(hours=23)
     late_time = order_time + datetime.timedelta(hours=25)
@@ -233,12 +160,9 @@ class MySqlReconciliationTest(FlaskTestBase):
     # On time, recent order and samples; shows up in rx
     p_on_time = self._insert_participant()
     # Extra samples ordered now aren't considered missing or late.
-    on_time_order = self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time,
-                                       finalized_tests=BIOBANK_TESTS[:3], kit_id='kit1',
-                                       tracking_number='t1', collected_note=u'\u2013foo',
-                                       processed_note='bar', finalized_note='baz')
-    # edited order with matching sample; show both in rx and modified
-    self._modify_order('AMENDED', on_time_order)
+    self._insert_order(p_on_time, 'GoodOrder', BIOBANK_TESTS[:4], order_time,
+                       finalized_tests=BIOBANK_TESTS[:3], kit_id='kit1', tracking_number='t1',
+                       collected_note=u'\u2013foo', processed_note='bar', finalized_note='baz')
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], 'OGoodOrder',
                          within_24_hours, within_24_hours - datetime.timedelta(hours=1))
 
@@ -279,12 +203,11 @@ class MySqlReconciliationTest(FlaskTestBase):
                          'Ounconfirmed_sample_4', two_days_ago, two_days_ago)
 
 
-    # On time order and samples from 10 days ago; should not show up in rx or modified
+    # On time order and samples from 10 days ago; shows up in rx
     p_old_on_time = self._insert_participant(race_codes=[RACE_AIAN_CODE])
     # Old missing samples from 10 days ago don't show up in missing or late.
-    old_on_time_order = self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:3],
-                                           old_order_time, kit_id='kit2')
-    self._modify_order('AMENDED', old_on_time_order)
+    self._insert_order(p_old_on_time, 'OldGoodOrder', BIOBANK_TESTS[:3],
+                       old_order_time, kit_id='kit2')
     self._insert_samples(p_old_on_time, BIOBANK_TESTS[:2], ['OldGoodSample1', 'OldGoodSample2'],
                          'OOldGoodOrder', old_within_24_hours,
                          old_within_24_hours - datetime.timedelta(hours=1))
@@ -293,7 +216,8 @@ class MySqlReconciliationTest(FlaskTestBase):
     # 36 hours since the order.)
     p_late_and_missing = self._insert_participant()
     # Extra missing sample doesn't show up as missing as it hasn't been 24 hours yet.
-    self._insert_order(p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:3], order_time)
+    o_late_and_missing = self._insert_order(
+        p_late_and_missing, 'SlowOrder', BIOBANK_TESTS[:3], order_time)
     self._insert_samples(p_late_and_missing, [BIOBANK_TESTS[0]], ['LateSample'], 'OSlowOrder',
                          late_time,
                          late_time - datetime.timedelta(minutes=59))
@@ -306,7 +230,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                         order_time,
                         order_time - datetime.timedelta(hours=1))
 
-    # Late order and samples from 10 days ago; should not show up in rx and missing, as it was too
+    # Late order and samples from 10 days ago; shows up in rx (but not missing, as it was too
     # long ago.
     p_old_late_and_missing = self._insert_participant()
     self._insert_order(p_old_late_and_missing, 'OldSlowOrder', BIOBANK_TESTS[:2], old_order_time)
@@ -332,22 +256,6 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_old_extra, [BIOBANK_TESTS[-1]], ['OldNobodyOrderedThisSample'],
                          'OOldExtrOrderNotSent',
                          old_order_time, old_order_time - datetime.timedelta(hours=1))
-
-    # cancelled/restored order with not matching sample; Does not show in rx, but should in modified
-    p_modified_on_time = self._insert_participant()
-    modified_order = self._insert_order(p_modified_on_time, 'CancelledOrder', BIOBANK_TESTS[:1],
-                                        order_time, finalized_tests=BIOBANK_TESTS[:1],
-                                        kit_id='kit6', tracking_number='t6',
-                                        collected_note=u'\u2013foo', processed_note='bar',
-                                        finalized_note='baz')
-    self._modify_order('CANCELLED', modified_order)
-
-    modified_order = self._insert_order(p_modified_on_time, 'RestoredOrder', BIOBANK_TESTS[:1],
-                                        order_time, finalized_tests=BIOBANK_TESTS[:1],
-                                        kit_id='kit7', tracking_number='t7',
-                                        collected_note=u'\u2013foo', processed_note='bar',
-                                        finalized_note='baz')
-    self._modify_order('RESTORED', modified_order)
 
     # Withdrawn participants don't show up in any reports except withdrawal report.
 
@@ -419,16 +327,16 @@ class MySqlReconciliationTest(FlaskTestBase):
             within_24_hours + datetime.timedelta(hours=repetition),
             within_24_hours + datetime.timedelta(hours=repetition - 1))
 
-    received, missing, modified, withdrawals = 'rx.csv', 'missing.csv', 'modified.csv', 'withdrawals.csv'
+    received, late, missing, withdrawals = 'rx.csv', 'late.csv', 'missing.csv', 'withdrawals.csv'
     exporter = InMemorySqlExporter(self)
     biobank_samples_pipeline._query_and_write_reports(exporter, file_time,
-                                                      received, missing, modified, withdrawals)
+                                                      received, late, missing, withdrawals)
 
-    exporter.assertFilesEqual((received, missing, modified, withdrawals))
+    exporter.assertFilesEqual((received, late, missing, withdrawals))
 
     # sent-and-received: 4 on-time, 2 late, none of the missing/extra/repeated ones;
-    # not includes orders/samples from more than 10 days ago
-    exporter.assertRowCount(received, 6)
+    # includes orders/samples from more than 7 days ago
+    exporter.assertRowCount(received, 8)
     exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
     row = exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId),
@@ -446,6 +354,16 @@ class MySqlReconciliationTest(FlaskTestBase):
         'sent_test': BIOBANK_TESTS[0],
         'received_test': BIOBANK_TESTS[0],
         'sent_order_id': 'ORepeatedOrder0'})
+    exporter.assertHasRow(late, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0],
+        'sent_order_id': 'ORepeatedOrder0'})
+    exporter.assertHasRow(late, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'sent_test': BIOBANK_TESTS[0],
+        'received_test': BIOBANK_TESTS[0],
+        'sent_order_id': 'ORepeatedOrder1'})
     exporter.assertHasRow(missing, {
         'biobank_id': to_client_biobank_id(p_not_finalized.biobankId),
         'sent_order_id': 'OUnfinalizedOrder'})
@@ -485,11 +403,29 @@ class MySqlReconciliationTest(FlaskTestBase):
         'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
         'sent_test': BIOBANK_TESTS[0]})
     exporter.assertHasRow(received, {
+        'biobank_id': to_client_biobank_id(p_old_on_time.biobankId), 'sent_test': BIOBANK_TESTS[0],
+        'is_native_american': 'Y'})
+    exporter.assertHasRow(received, {
+        'biobank_id': to_client_biobank_id(p_old_on_time.biobankId), 'sent_test': BIOBANK_TESTS[1],
+        'is_native_american': 'Y'})
+    exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_old_late_and_missing.biobankId),
         'sent_test': BIOBANK_TESTS[0],
         'is_native_american': 'N'})
 
-    # orders/samples where something went wrong; don't include orders/samples from more than 10
+    # sent-and-received: 2 late; don't include orders/samples from more than 7 days ago
+    exporter.assertRowCount(late, 3)
+    exporter.assertColumnNamesEqual(late, _CSV_COLUMN_NAMES)
+    exporter.assertHasRow(late, {
+        'biobank_id': to_client_biobank_id(p_late_and_missing.biobankId),
+        'sent_order_id': 'O%s' % o_late_and_missing.biobankOrderId,
+        'elapsed_hours': '24',
+        'is_native_american': 'N'})
+    exporter.assertHasRow(late, {
+        'biobank_id': to_client_biobank_id(p_repeated.biobankId),
+        'elapsed_hours': '46'})
+
+    # orders/samples where something went wrong; don't include orders/samples from more than 7
     # days ago, or where 24 hours hasn't elapsed yet.
     exporter.assertRowCount(missing, 8)
     exporter.assertColumnNamesEqual(missing, _CSV_COLUMN_NAMES)
@@ -527,30 +463,6 @@ class MySqlReconciliationTest(FlaskTestBase):
     self.assertItemsEqual(
         multi_sample_row['sent_order_id'].split(','),
         ['ORepeatedOrder2'])
-
-    # modified biobank orders show in modified report
-    exporter.assertRowCount(modified, 6)
-    exporter.assertHasRow(modified, {
-      'biobank_id': to_client_biobank_id(p_on_time.biobankId),
-      'edited_cancelled_restored_status_flag': 'edited',
-      'edited_cancelled_restored_name': 'mike@pmi-ops.org',
-      'edited_cancelled_restored_site_reason': 'I had to change something',
-      'edited_cancelled_restored_site_name': 'Monroeville Urgent Care Center'
-    })
-    exporter.assertHasRow(modified, {
-      'biobank_id': to_client_biobank_id(p_modified_on_time.biobankId),
-      'edited_cancelled_restored_status_flag': 'cancelled',
-      'edited_cancelled_restored_name': 'mike@pmi-ops.org',
-      'edited_cancelled_restored_site_reason': 'I messed something up :( ',
-      'edited_cancelled_restored_site_name': 'Monroeville Urgent Care Center'
-    })
-    exporter.assertHasRow(modified, {
-      'biobank_id': to_client_biobank_id(p_modified_on_time.biobankId),
-      'edited_cancelled_restored_status_flag': 'restored',
-      'edited_cancelled_restored_name': 'mike@pmi-ops.org',
-      'edited_cancelled_restored_site_reason': 'I didn"t mess something up :( ',
-      'edited_cancelled_restored_site_name': 'Monroeville Urgent Care Center'
-    })
 
     # We don't include the old withdrawal.
     exporter.assertRowCount(withdrawals, 5)
