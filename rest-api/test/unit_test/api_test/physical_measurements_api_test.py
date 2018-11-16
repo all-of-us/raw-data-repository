@@ -275,8 +275,10 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
     # should be completed because of other valid PM
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsStatus'], 'COMPLETED')
-    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsCreatedSite'], 'UNSET')
-    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'], 'UNSET')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsCreatedSite'],
+                     'hpo-site-monroeville')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],
+                     'hpo-site-bannerphoenix')
 
   def test_make_pm_after_cancelled_pm(self):
     _id = self.participant_id.strip('P')

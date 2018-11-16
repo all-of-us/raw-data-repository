@@ -291,22 +291,28 @@ class PhysicalMeasurementsDao(UpdatableDao):
       raise BadRequest("Can't submit physical measurements for participant %s without consent" %
                        participant_id)
     raise_if_withdrawn(participant_summary)
-    participant_summary.physicalMeasurementsTime = obj.created
-    participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
-    participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
-    participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
     participant_summary.lastModified = clock.CLOCK.now()
 
-    if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED:
-      if not self.has_uncancelled_pm(session, participant):
-        # update corresponding participant summary physicalMeasurementsStatus
-        participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
-        participant_summary.physicalMeasurementsTime = None
+    # These fields set on measurement that is cancelled and doesn't have a previous good measurement
+    if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and not \
+       self.has_uncancelled_pm(session, participant):
+      participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
+      participant_summary.physicalMeasurementsTime = None
 
-    if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.CANCELLED or \
-       obj.status != PhysicalMeasurementsStatus.CANCELLED:
-      # if a PM was restored, it is complete again.
+    # These fields set on any measurement not cancelled
+    if obj.status != PhysicalMeasurementsStatus.CANCELLED:
+      # new PM or if a PM was restored, it is complete again.
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+      participant_summary.physicalMeasurementsTime = obj.created
+
+    # these fields set on all new measurements and cancelled measurements that don't have a
+    # previous good measurement.
+    if obj.status != PhysicalMeasurementsStatus.CANCELLED or \
+        (obj.status == PhysicalMeasurementsStatus.CANCELLED and not
+         self.has_uncancelled_pm(session, participant)):
+      participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
+      participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
+      participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
 
     participant_summary_dao.update_enrollment_status(participant_summary)
     session.merge(participant_summary)
