@@ -307,6 +307,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                      'hpo-site-monroeville')
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],
                      'hpo-site-bannerphoenix')
+    self.assertIsNotNone(ps['entry'][0]['resource']['physicalMeasurementsTime'])
 
   def test_cancel_single_pm_returns_cancelled_in_summary(self):
     _id = self.participant_id.strip('P')
