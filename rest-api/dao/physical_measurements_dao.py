@@ -307,9 +307,9 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
     # these fields set on all new measurements and cancelled measurements that don't have a
     # previous good measurement.
-    if obj.status != PhysicalMeasurementsStatus.CANCELLED or \
-        (obj.status == PhysicalMeasurementsStatus.CANCELLED and not
-         self.has_uncancelled_pm(session, participant)):
+    if not (
+      not (obj.status != PhysicalMeasurementsStatus.CANCELLED) and self.has_uncancelled_pm(session,
+                                                                                      participant)):
       participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
       participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
       participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
