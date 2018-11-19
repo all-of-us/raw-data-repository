@@ -6,6 +6,7 @@ from api_util import parse_date
 from concepts import Concept
 import fhirclient.models.observation
 from fhirclient.models.fhirabstractbase import FHIRValidationError
+from model.participant_summary import ParticipantSummary
 from sqlalchemy.orm import subqueryload
 from dao.base_dao import UpdatableDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
@@ -317,23 +318,23 @@ class PhysicalMeasurementsDao(UpdatableDao):
       participant_summary.physicalMeasurementsCreatedSiteId = get_latest_pm.createdSiteId
       participant_summary.physicalMeasurementsFinalizedSiteId = get_latest_pm.finalizedSiteId
 
-
     participant_summary_dao.update_enrollment_status(participant_summary)
     session.merge(participant_summary)
 
     return participant_summary
 
   def get_latest_pm(self, session, participant):
-    query = session.query(PhysicalMeasurements).filter(PhysicalMeasurements.status.isnot(
-      PhysicalMeasurementsStatus.CANCELLED)).filter_by(
-      participantId=participant.participantId).order_by(
+    query = session.query(PhysicalMeasurements).filter_by(
+      participantId=participant.participantId).filter(PhysicalMeasurements.finalized !=
+                                                      None).order_by(
       PhysicalMeasurements.finalized.desc()).first()
     return query
 
   def has_uncancelled_pm(self, session, participant):
     """return True if participant has at least one physical measurement that is not cancelled"""
     query = session.query(PhysicalMeasurements.status).filter_by(
-      participantId=participant.participantId).all()
+      participantId=participant.participantId).filter(PhysicalMeasurements.finalized !=
+                                                      None).all()
     valid_pm = False
     for pm in query:
       if pm.status != PhysicalMeasurementsStatus.CANCELLED:
