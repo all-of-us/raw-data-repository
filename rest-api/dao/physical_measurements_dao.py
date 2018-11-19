@@ -324,11 +324,10 @@ class PhysicalMeasurementsDao(UpdatableDao):
     return participant_summary
 
   def get_latest_pm(self, session, participant):
-    query = session.query(PhysicalMeasurements).filter_by(
+    return session.query(PhysicalMeasurements).filter_by(
       participantId=participant.participantId).filter(PhysicalMeasurements.finalized !=
                                                       None).order_by(
-      PhysicalMeasurements.finalized.desc()).first()
-    return query
+                                                      PhysicalMeasurements.finalized.desc()).first()
 
   def has_uncancelled_pm(self, session, participant):
     """return True if participant has at least one physical measurement that is not cancelled"""
