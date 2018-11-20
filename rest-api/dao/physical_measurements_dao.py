@@ -309,7 +309,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
       participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
       participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
 
-    if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and \
+    elif obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and \
        self.has_uncancelled_pm(session, participant):
 
       get_latest_pm = self.get_latest_pm(session, participant)
