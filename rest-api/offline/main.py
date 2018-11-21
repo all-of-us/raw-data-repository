@@ -4,22 +4,22 @@ import json
 import logging
 import traceback
 
-from flask import Flask, request
-from google.appengine.api import app_identity
-from sqlalchemy.exc import DBAPIError
 import app_util
 import config
-from dao.metrics_dao import MetricsVersionDao
+from api_util import EXPORTER
 from dao.metric_set_dao import AggregateMetricsDao
+from dao.metrics_dao import MetricsVersionDao
+from flask import Flask, request
+from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
 from offline.base_pipeline import send_failure_alert
-from offline.table_exporter import TableExporter
 from offline.metrics_export import MetricsExport
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from offline.sa_key_remove import delete_service_account_keys
-from offline.participant_consent_sync import sync_ehr_consents
-from api_util import EXPORTER
+from offline.table_exporter import TableExporter
+from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
+
 
 PREFIX = '/offline/'
 
@@ -132,11 +132,6 @@ def delete_old_keys():
   delete_service_account_keys()
   return '{"success": "true"}'
 
-@app_util.auth_required_cron
-def consent_upload():
-  sync_ehr_consents()
-  return '{"success": "true"}'
-
 
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -171,12 +166,6 @@ def _build_pipeline_app():
     endpoint='delete_old_keys',
     view_func=delete_old_keys,
     methods=['GET'])
-
-  offline_app.add_url_rule(
-    PREFIX + 'ConsentUpload',
-    endpoint='consent_upload',
-    view_func=consent_upload,
-    methods=['GET', 'POST'])
 
   offline_app.after_request(app_util.add_headers)
   offline_app.before_request(app_util.request_logging)

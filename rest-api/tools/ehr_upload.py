@@ -65,7 +65,7 @@ def _ensure_buckets(hpo_data):
   """Some organizations aggregating org ID is responsible for consent verification. This is a
   parent/child relationship(not seen elsewhere in the RDR). If bucket name is blank it is safe to
   assume the parent org (aggregate org id) bucket is to be used."""
-  for org_id, _dict in hpo_data.items():
+  for _, _dict in hpo_data.items():
     if _dict['bucket'] == '':
       parent = _dict['aggregate_id']
       _dict['bucket'] = hpo_data[parent]['bucket']
