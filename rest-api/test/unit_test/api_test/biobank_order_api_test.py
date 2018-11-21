@@ -1,18 +1,28 @@
+import datetime
 import httplib
 
-import datetime
-
+from api_test.participant_summary_api_test import _add_code_answer
+from clock import FakeClock
+from code_constants import (CONSENT_PERMISSION_YES_CODE, RACE_NONE_OF_THESE_CODE)
 from dao.biobank_order_dao import BiobankOrderDao
-from model.biobank_order import BiobankOrderHistory
-from model.biobank_order import BiobankOrderIdentifierHistory, BiobankOrderedSampleHistory
-from test.unit_test.unit_test_util import FlaskTestBase
-from test.test_data import load_biobank_order_json, load_measurement_json
-from model.utils import to_client_participant_id, from_client_participant_id
-from model.participant import Participant
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
+from model.biobank_order import BiobankOrderHistory, BiobankOrderIdentifierHistory, \
+  BiobankOrderedSampleHistory
+from model.participant import Participant
+from model.utils import to_client_participant_id, from_client_participant_id
 from participant_enums import UNSET_HPO_ID, OrderStatus
+from test.test_data import load_biobank_order_json, load_measurement_json
+from test.unit_test.unit_test_util import FlaskTestBase, get_restore_or_cancel_info, \
+  make_questionnaire_response_json
 
+
+TIME_1 = datetime.datetime(2016, 1, 1)
+TIME_2 = datetime.datetime(2016, 1, 2)
+TIME_3 = datetime.datetime(2016, 1, 3)
+TIME_4 = datetime.datetime(2016, 1, 4)
+TIME_5 = datetime.datetime(2016, 1, 5, 0, 1)
+TIME_6 = datetime.datetime(2015, 1, 1)
 
 class BiobankOrderApiTest(FlaskTestBase):
   def setUp(self):
@@ -502,10 +512,68 @@ class BiobankOrderApiTest(FlaskTestBase):
     self.assertNotEqual(participant_paired.siteId,
                         participant_paired.physicalMeasurementsFinalizedSiteId)
 
+  def test_bio_after_cancelled_pm(self):
+    self.participant_id = self.create_participant()
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    measurement2 = load_measurement_json(self.participant_id)
+
+    # send both PM's
+    pm_path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    response = self.send_post(pm_path, measurement)
+    self.send_post(pm_path, measurement2)
+
+    # cancel the 1st PM
+    pm_path = pm_path + '/' + response['id']
+    cancel_info = get_restore_or_cancel_info()
+    self.send_patch(pm_path, cancel_info)
+
+    # set up questionnaires to hit the calculate_max_core_sample_time in participant summary
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    questionnaire_id_1 = self.create_questionnaire('all_consents_questionnaire.json')
+    questionnaire_id_2 = self.create_questionnaire('questionnaire4.json')
+    self._submit_consent_questionnaire_response(self.participant_id, questionnaire_id_1,
+                                                CONSENT_PERMISSION_YES_CODE, time=TIME_6)
+
+    self.submit_questionnaire_response(self.participant_id, questionnaire_id,
+                                       RACE_NONE_OF_THESE_CODE, None, None,
+                                       datetime.date(1978, 10, 10))
+
+    self._submit_empty_questionnaire_response(self.participant_id, questionnaire_id_2)
+
+    # send a biobank ordewr
+    _id = int(self.participant_id[1:])
+    self.path = (
+      'Participant/%s/BiobankOrder' % to_client_participant_id(_id))
+    pid_numeric = from_client_participant_id(self.participant_id)
+    self.send_post(self.path, load_biobank_order_json(pid_numeric))
+
+    # fetch participant summary
+    ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
+
+    self.assertTrue(ps['entry'][0]['resource']["physicalMeasurementsFinalizedTime"])
+    self.assertEquals(ps['entry'][0]['resource']["physicalMeasurementsFinalizedSite"],
+                      'hpo-site-bannerphoenix')
+    self.assertIsNotNone('biobankId', ps['entry'][0]['resource'])
+
   def _insert_measurements(self, now=None):
     measurements_1 = load_measurement_json(self.participant_id, now)
     path_1 = 'Participant/%s/PhysicalMeasurements' % self.participant_id
     self.send_post(path_1, measurements_1)
+
+  def _submit_consent_questionnaire_response(self, participant_id, questionnaire_id,
+                                             ehr_consent_answer, time=TIME_1):
+    code_answers = []
+    _add_code_answer(code_answers, "ehrConsent", ehr_consent_answer)
+    qr = make_questionnaire_response_json(participant_id, questionnaire_id,
+                                          code_answers=code_answers)
+    with FakeClock(time):
+      self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+
+  def _submit_empty_questionnaire_response(self, participant_id, questionnaire_id, time=TIME_1):
+    qr = make_questionnaire_response_json(participant_id, questionnaire_id)
+    with FakeClock(time):
+      self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
 
 def _strip_fields(order_json):

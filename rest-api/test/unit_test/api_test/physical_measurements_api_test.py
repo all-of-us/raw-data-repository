@@ -1,5 +1,5 @@
-import httplib
 import datetime
+import httplib
 import json
 
 import main
@@ -21,6 +21,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     self.participant_id_2 = self.create_participant()
     self.time1 = datetime.datetime(2018, 1, 1)
     self.time2 = datetime.datetime(2018, 2, 2)
+
   def _insert_measurements(self, now=None):
     measurements_1 = load_measurement_json(self.participant_id, now)
     measurements_2 = load_measurement_json(self.participant_id_2, now)
