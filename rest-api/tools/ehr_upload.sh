@@ -15,6 +15,12 @@ while true; do
   esac
 done
 
+if [ -z "${ACCOUNT}" ] || [ -z "${PROJECT}" ]
+then
+  echo "Usage: ${USAGE}"
+  exit 1
+fi
+
 
 CREDS_ACCOUNT="${ACCOUNT}"
 SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
