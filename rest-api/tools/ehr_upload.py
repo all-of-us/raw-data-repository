@@ -94,8 +94,7 @@ def sync_ehr_consents(spreadsheet_id):
 
 
 def run_gsutil(gsutil):
-  gsutil = shlex.split(gsutil)
-  system_call = subprocess.Popen(gsutil)
+  system_call = subprocess.Popen(shlex.split(gsutil))
   system_call.communicate()[0]
 
 
