@@ -541,7 +541,7 @@ class BiobankOrderApiTest(FlaskTestBase):
 
     self._submit_empty_questionnaire_response(self.participant_id, questionnaire_id_2)
 
-    # send a biobank ordewr
+    # send a biobank order
     _id = int(self.participant_id[1:])
     self.path = (
       'Participant/%s/BiobankOrder' % to_client_participant_id(_id))

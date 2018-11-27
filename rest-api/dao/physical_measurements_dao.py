@@ -1,20 +1,21 @@
-import clock
 import json
 import logging
 
+import clock
+import fhirclient.models.observation
 from api_util import parse_date
 from concepts import Concept
-import fhirclient.models.observation
-from fhirclient.models.fhirabstractbase import FHIRValidationError
-from sqlalchemy.orm import subqueryload
 from dao.base_dao import UpdatableDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
+from fhirclient.models.fhirabstractbase import FHIRValidationError
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements, Measurement
 from participant_enums import PhysicalMeasurementsStatus
+from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
+
 
 _AMENDMENT_URL = 'http://terminology.pmi-ops.org/StructureDefinition/amends'
 _OBSERVATION_RESOURCE_TYPE = 'Observation'
@@ -324,10 +325,9 @@ class PhysicalMeasurementsDao(UpdatableDao):
     return participant_summary
 
   def get_latest_pm(self, session, participant):
-    return session.query(PhysicalMeasurements).filter_by(
-      participantId=participant.participantId).filter(PhysicalMeasurements.finalized !=
-                                                      None).order_by(
-                                                      PhysicalMeasurements.finalized.desc()).first()
+    return session.query(PhysicalMeasurements).filter_by(participantId=participant.participantId).\
+                        filter(PhysicalMeasurements.finalized != None).order_by(
+                        PhysicalMeasurements.finalized.desc()).first()
 
   def has_uncancelled_pm(self, session, participant):
     """return True if participant has at least one physical measurement that is not cancelled"""
