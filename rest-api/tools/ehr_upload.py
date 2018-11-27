@@ -7,31 +7,20 @@ To run: tools/ehr_upload.sh --account <pmi ops account> --project all-of-us-rdr-
 import StringIO
 import csv
 import logging
-import os
 import shlex
 import subprocess
 import urllib2
 
 from dao import database_factory
-from main_util import configure_logging
+from main_util import configure_logging, get_parser
 from sqlalchemy import text
 
 
-# @TODO: This spreadsheet is confidential, cant put it in version control. Need something better
-# than an environment variable though.
-SPREADSHEET_ID = os.getenv('HPO_REPORT_SPREADSHEET_ID')
 SOURCE_BUCKET = 'ptc-uploads-all-of-us-rdr-prod'
 BUCKET_NAME = 'Bucket Name'
 AGGREGATING_ORG_ID = 'Aggregating Org ID'
 ORG_ID = 'Org ID'
 ORG_STATUS = 'Org Status'
-
-
-FILE_URL = 'https://docs.google.com/spreadsheets/d/%(id)s/export?format=csv&id=%(id)s&gid=%(' \
-      'gid)s' % {
-        'id': SPREADSHEET_ID,
-        'gid': "0",
-        }
 
 
 def get_sql(organization):
@@ -56,8 +45,8 @@ def get_sql(organization):
   return site_pairing_sql, no_site_pairing_sql
 
 
-def _fetch_csv_data():
-  response = urllib2.urlopen(FILE_URL)
+def _fetch_csv_data(file_url):
+  response = urllib2.urlopen(file_url)
   return csv.DictReader(StringIO.StringIO(response.read()))
 
 
@@ -87,8 +76,14 @@ def read_hpo_report(csv_reader):
   return hpo_data
 
 
-def sync_ehr_consents():
-  csv_reader = _fetch_csv_data()
+def sync_ehr_consents(spreadsheet_id):
+  file_url = 'https://docs.google.com/spreadsheets/d/%(id)s/export?format=csv&id=%(id)s&gid=%(' \
+             'gid)s' % {
+               'id': spreadsheet_id,
+               'gid': "0",
+               }
+
+  csv_reader = _fetch_csv_data(file_url)
   csv_reader.next()
   hpo_data = read_hpo_report(csv_reader)
   logging.info('Reading data complete, beginning sync...')
@@ -99,7 +94,7 @@ def sync_ehr_consents():
 
 
 def run_gsutil(gsutil):
-  gsutil = shlex.split(str(gsutil))
+  gsutil = shlex.split(gsutil)
   system_call = subprocess.Popen(gsutil)
   system_call.communicate()[0]
 
@@ -131,4 +126,8 @@ def run_sql(destination_bucket, site_pairing_sql, no_site_pairing_sql):
 
 if __name__ == '__main__':
   configure_logging()
-  sync_ehr_consents()
+  parser = get_parser()
+  parser.add_argument('--spreadsheet_id', help='The id of the Google Spreadsheet to use. i.e. '
+                                               'All-hpos-report', required=True)
+  args = parser.parse_args()
+  sync_ehr_consents(args.spreadsheet_id)
