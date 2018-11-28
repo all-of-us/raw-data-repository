@@ -4,11 +4,6 @@ This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import logging
 
-from flask import Flask, got_request_exception
-from flask_restful import Api
-from sqlalchemy.exc import DBAPIError
-from werkzeug.exceptions import HTTPException
-
 import app_util
 import config_api
 import version_api
@@ -17,17 +12,21 @@ from api.biobank_order_api import BiobankOrderApi
 from api.check_ppi_data_api import check_ppi_data
 from api.data_gen_api import DataGenApi
 from api.import_codebook_api import import_codebook
+from api.metric_sets_api import MetricSetsApi
 from api.metrics_api import MetricsApi
-from api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
 from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
+from api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
 from api.participant_summary_api import ParticipantSummaryApi
 from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
-from api.metric_sets_api import MetricSetsApi
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
 from config import get_config, get_db_config
+from flask import Flask, got_request_exception
+from flask_restful import Api
 from model.utils import ParticipantIdConverter
+from sqlalchemy.exc import DBAPIError
+from werkzeug.exceptions import HTTPException
 
 
 PREFIX = '/rdr/v1/'
