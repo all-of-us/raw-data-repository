@@ -1506,6 +1506,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
     # status should still be completed because participant has another valid PM
     self.assertEquals('COMPLETED', ps_1.get('physicalMeasurementsStatus'))
+    self.assertEquals(ps_1.get('physicalMeasurementsFinalizedTime'), TIME_1.isoformat())
+    self.assertEquals(ps_1.get('physicalMeasurementsTime'), TIME_1.isoformat())
+    self.assertEquals(ps_1.get('physicalMeasurementsCreatedSite'), 'hpo-site-monroeville')
+    self.assertEquals(ps_1.get('physicalMeasurementsFinalizedSite'), 'hpo-site-bannerphoenix')
 
   def test_participant_summary_returns_latest_pm(self):
     questionnaire_id_1 = self.create_questionnaire('all_consents_questionnaire.json')
