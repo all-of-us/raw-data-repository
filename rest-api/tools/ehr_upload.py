@@ -109,7 +109,6 @@ def run_sql(destination_bucket, site_pairing_sql, no_site_pairing_sql):
         participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
                google_group + "/P" + str(participant) + "/"
 
-      print gsutil
       run_gsutil(gsutil)
     cursor.close()
 
@@ -120,7 +119,7 @@ def run_sql(destination_bucket, site_pairing_sql, no_site_pairing_sql):
       gsutil = "gsutil -m rsync gs://" + SOURCE_BUCKET + "/Participant/P" + str(
         participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
                "no_site_pairing" + "/P" + str(participant) + "/"
-      print gsutil
+
       run_gsutil(gsutil)
     cursor.close()
 
