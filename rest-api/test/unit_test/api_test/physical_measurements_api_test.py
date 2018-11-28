@@ -1,8 +1,9 @@
-import httplib
 import datetime
+import httplib
 import json
 
 import main
+from clock import FakeClock
 from dao.participant_dao import ParticipantDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from model.measurements import Measurement
@@ -18,6 +19,8 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     super(PhysicalMeasurementsApiTest, self).setUp()
     self.participant_id = self.create_participant()
     self.participant_id_2 = self.create_participant()
+    self.time1 = datetime.datetime(2018, 1, 1)
+    self.time2 = datetime.datetime(2018, 2, 2)
 
   def _insert_measurements(self, now=None):
     measurements_1 = load_measurement_json(self.participant_id, now)
@@ -275,10 +278,12 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
     ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
     # should be completed because of other valid PM
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsStatus'], 'COMPLETED')
-    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsCreatedSite'], 'UNSET')
-    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'], 'UNSET')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsCreatedSite'],
+                     'hpo-site-monroeville')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],
+                     'hpo-site-bannerphoenix')
 
-  def test_make_pm_after_cancelled_pm(self):
+  def test_make_pm_after_cancel_first_pm(self):
     _id = self.participant_id.strip('P')
     self.send_consent(self.participant_id)
     measurement = load_measurement_json(self.participant_id)
@@ -305,6 +310,40 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                      'hpo-site-monroeville')
     self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],
                      'hpo-site-bannerphoenix')
+    self.assertIsNotNone(ps['entry'][0]['resource']['physicalMeasurementsTime'])
+
+  def test_make_pm_after_cancel_latest_pm(self):
+    _id = self.participant_id.strip('P')
+    self.send_consent(self.participant_id)
+    measurement = load_measurement_json(self.participant_id)
+    measurement2 = load_measurement_json(self.participant_id)
+    path = 'Participant/%s/PhysicalMeasurements' % self.participant_id
+    with FakeClock(self.time1):
+      self.send_post(path, measurement)
+    with FakeClock(self.time2):
+      response2 = self.send_post(path, measurement2)
+
+    # cancel latest PM
+    path = path + '/' + response2['id']
+    cancel_info = get_restore_or_cancel_info()
+    self.send_patch(path, cancel_info)
+
+    response = self.send_get(path)
+    self.assertEqual(response['status'], 'CANCELLED')
+    self.assertEqual(response['reason'], 'a mistake was made.')
+    self.assertEqual(response['cancelledUsername'], 'mike@pmi-ops.org')
+    self.assertEqual(response['cancelledSiteId'], 1)
+
+    ps = self.send_get('ParticipantSummary?participantId=%s' % _id)
+
+    # should still get first PM in participant summary
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsStatus'], 'COMPLETED')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsCreatedSite'],
+                     'hpo-site-monroeville')
+    self.assertEqual(ps['entry'][0]['resource']['physicalMeasurementsFinalizedSite'],
+                     'hpo-site-bannerphoenix')
+    self.assertIsNotNone(ps['entry'][0]['resource']['physicalMeasurementsTime'])
+    self.assertEquals(ps['entry'][0]['resource']['physicalMeasurementsTime'], self.time1.isoformat())
 
   def test_cancel_single_pm_returns_cancelled_in_summary(self):
     _id = self.participant_id.strip('P')
