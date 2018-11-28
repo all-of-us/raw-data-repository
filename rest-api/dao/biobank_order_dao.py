@@ -233,17 +233,17 @@ class BiobankOrderDao(UpdatableDao):
       BiobankOrder.created).all()
 
   def _refresh_participant_summary(self, session, obj):
-    # called when cancelled or amendments (maybe restore)
+    # called when cancelled/restored
     participant_summary_dao = ParticipantSummaryDao()
     participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
     non_cancelled_orders = self._get_non_cancelled_biobank_orders(session, obj.participantId)
-
     participant_summary.biospecimenStatus = OrderStatus.UNSET
     participant_summary.biospecimenOrderTime = None
     participant_summary.biospecimenSourceSiteId = None
     participant_summary.biospecimenCollectedSiteId = None
     participant_summary.biospecimenProcessedSiteId = None
     participant_summary.biospecimenFinalizedSiteId = None
+
     participant_summary.lastModified = clock.CLOCK.now()
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
@@ -423,6 +423,10 @@ class BiobankOrderDao(UpdatableDao):
     order.lastModified = clock.CLOCK.now()
     order.biobankOrderId = existing_obj.biobankOrderId
     order.orderStatus = BiobankOrderStatus.AMENDED
+    if hasattr(existing_obj, 'amendedInfo') and existing_obj.amendedInfo.get('author') is not None:
+      order.amendedUsername = existing_obj.amendedInfo.get('author').get('value')
+    if hasattr(existing_obj, 'amendedInfo'):
+      order.amendedSiteId = get_site(existing_obj.amendedInfo)
     order.amendedTime = clock.CLOCK.now()
     order.logPosition = LogPosition()
     order.version += 1

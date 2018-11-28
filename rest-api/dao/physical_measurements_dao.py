@@ -1,20 +1,21 @@
-import clock
 import json
 import logging
 
+import clock
+import fhirclient.models.observation
 from api_util import parse_date
 from concepts import Concept
-import fhirclient.models.observation
-from fhirclient.models.fhirabstractbase import FHIRValidationError
-from sqlalchemy.orm import subqueryload
 from dao.base_dao import UpdatableDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
+from fhirclient.models.fhirabstractbase import FHIRValidationError
 from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements, Measurement
 from participant_enums import PhysicalMeasurementsStatus
+from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
+
 
 _AMENDMENT_URL = 'http://terminology.pmi-ops.org/StructureDefinition/amends'
 _OBSERVATION_RESOURCE_TYPE = 'Observation'
@@ -291,30 +292,48 @@ class PhysicalMeasurementsDao(UpdatableDao):
       raise BadRequest("Can't submit physical measurements for participant %s without consent" %
                        participant_id)
     raise_if_withdrawn(participant_summary)
-    participant_summary.physicalMeasurementsTime = obj.created
-    participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
-    participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
-    participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
     participant_summary.lastModified = clock.CLOCK.now()
 
-    if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED:
-      if not self.has_uncancelled_pm(session, participant):
-        # update corresponding participant summary physicalMeasurementsStatus
-        participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
+    # These fields set on measurement that is cancelled and doesn't have a previous good measurement
+    if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and not \
+       self.has_uncancelled_pm(session, participant):
 
-    if participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.CANCELLED:
-      # if a PM was restored, it is complete again.
+      participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
+      participant_summary.physicalMeasurementsTime = None
+
+    # These fields set on any measurement not cancelled
+    elif obj.status != PhysicalMeasurementsStatus.CANCELLED:
+      # new PM or if a PM was restored, it is complete again.
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+      participant_summary.physicalMeasurementsTime = obj.created
+      participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
+      participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
+      participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
+
+    elif obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and \
+       self.has_uncancelled_pm(session, participant):
+
+      get_latest_pm = self.get_latest_pm(session, participant)
+      participant_summary.physicalMeasurementsFinalizedTime = get_latest_pm.finalized
+      participant_summary.physicalMeasurementsTime = get_latest_pm.created
+      participant_summary.physicalMeasurementsCreatedSiteId = get_latest_pm.createdSiteId
+      participant_summary.physicalMeasurementsFinalizedSiteId = get_latest_pm.finalizedSiteId
 
     participant_summary_dao.update_enrollment_status(participant_summary)
     session.merge(participant_summary)
 
     return participant_summary
 
+  def get_latest_pm(self, session, participant):
+    return session.query(PhysicalMeasurements).filter_by(participantId=participant.participantId).\
+                        filter(PhysicalMeasurements.finalized != None).order_by(
+                        PhysicalMeasurements.finalized.desc()).first()
+
   def has_uncancelled_pm(self, session, participant):
     """return True if participant has at least one physical measurement that is not cancelled"""
     query = session.query(PhysicalMeasurements.status).filter_by(
-      participantId=participant.participantId).all()
+      participantId=participant.participantId).filter(PhysicalMeasurements.finalized !=
+                                                      None).all()
     valid_pm = False
     for pm in query:
       if pm.status != PhysicalMeasurementsStatus.CANCELLED:
@@ -370,11 +389,18 @@ class PhysicalMeasurementsDao(UpdatableDao):
       measurement.cancelledSiteId = site_id
       measurement.cancelledTime = clock.CLOCK.now()
       measurement.status = PhysicalMeasurementsStatus.CANCELLED
+      measurement.createdSiteId = None
+      measurement.finalizedSiteId = None
+      measurement.finalized = None
     if resource['status'].lower() == 'restored':
       measurement.cancelledUsername = None
       measurement.cancelledSiteId = None
       measurement.cancelledTime = None
       measurement.status = PhysicalMeasurementsStatus.UNSET
+      measurement.createdSiteId = site_id
+      measurement.finalizedSiteId = site_id
+      measurement.finalizedUsername = author
+      measurement.finalized = clock.CLOCK.now()
 
     logging.info('%s %s physical measuremnt %s.', author, resource['status'],
                  measurement.physicalMeasurementsId)

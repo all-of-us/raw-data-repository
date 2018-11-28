@@ -200,9 +200,20 @@ class ParticipantCountsOverTimeService(BaseDao):
              ON c2.day = registered.day
            LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
-                   (CASE WHEN enrollment_status = 2 THEN
-                    DATE(ps.consent_for_electronic_health_records_time)
-                    ELSE NULL END) day
+                  (
+                    CASE 
+                      WHEN enrollment_status = 2 
+                          AND ps.consent_for_electronic_health_records_time IS NULL 
+                        THEN DATE(ps.consent_for_dv_electronic_health_records_sharing_time)
+                      WHEN enrollment_status = 2
+                          AND ps.consent_for_dv_electronic_health_records_sharing_time IS NULL
+                        THEN DATE(ps.consent_for_electronic_health_records_time) 
+                      WHEN enrollment_status = 2 
+                        THEN DATE(LEAST(ps.consent_for_dv_electronic_health_records_sharing_time,
+                                ps.consent_for_electronic_health_records_time))
+                      ELSE NULL 
+                    END
+                  ) day
                FROM participant_summary ps
               %(filters_ps)s
            GROUP BY day) member
@@ -210,7 +221,17 @@ class ParticipantCountsOverTimeService(BaseDao):
            LEFT OUTER JOIN
             (SELECT COUNT(*) cnt,
              DATE(CASE WHEN enrollment_status = 3 THEN
-                   GREATEST(consent_for_electronic_health_records_time,
+                   GREATEST(
+                            CASE 
+                              WHEN consent_for_electronic_health_records_time IS NULL
+                                THEN consent_for_dv_electronic_health_records_sharing_time
+                              WHEN consent_for_dv_electronic_health_records_sharing_time IS NULL
+                                THEN consent_for_electronic_health_records_time
+                              ELSE LEAST(
+                                          consent_for_electronic_health_records_time,
+                                          consent_for_dv_electronic_health_records_sharing_time
+                                        )
+                            END,
                             questionnaire_on_the_basics_time,
                             questionnaire_on_lifestyle_time,
                             questionnaire_on_overall_health_time,
