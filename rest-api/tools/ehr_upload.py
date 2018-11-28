@@ -13,7 +13,7 @@ import urllib2
 
 from dao import database_factory
 from main_util import configure_logging, get_parser
-from sqlalchemy import text
+from sqlalchemy import text, bindparam
 
 
 SOURCE_BUCKET = 'ptc-uploads-all-of-us-rdr-prod'
@@ -24,24 +24,25 @@ ORG_STATUS = 'Org Status'
 
 
 def get_sql(organization):
-  site_pairing_sql = """
+  site_pairing_sql = text("""
     select p.participant_id, google_group from participant p left join site s on
     p.site_id = s.site_id
     left join participant_summary summary on p.participant_id = summary.participant_id
-    where p.organization_id in (select organization_id from organization where external_id = '{}')
+    where p.organization_id in (select organization_id from organization where external_id = :org)
     and s.google_group is not null
     and summary.consent_for_electronic_health_records = 1
-    and summary.consent_for_study_enrollment = 1;
-     """.format(organization)
+    and summary.consent_for_study_enrollment = 1
+     """, bindparams=[bindparam('org', value=organization)])
 
-  no_site_pairing_sql = """
+  no_site_pairing_sql = text("""
       select p.participant_id from participant p
       left join participant_summary summary on p.participant_id = summary.participant_id
       where p.site_id is NULL and p.organization_id in (
-      select organization_id from organization where external_id = '{}')
+      select organization_id from organization where external_id = :org)
       and summary.consent_for_electronic_health_records = 1
       and summary.consent_for_study_enrollment = 1;
-     """.format(organization)
+     """, bindparams=[bindparam('org', value=organization)])
+
   return site_pairing_sql, no_site_pairing_sql
 
 
@@ -87,7 +88,7 @@ def sync_ehr_consents(spreadsheet_id):
   csv_reader.next()
   hpo_data = read_hpo_report(csv_reader)
   logging.info('Reading data complete, beginning sync...')
-  for org, data in hpo_data.items()[:2]:
+  for org, data in hpo_data.items():
     site_paired_sql, no_paired_sql = get_sql(org)
     logging.info('syncing participants for {}'.format(org))
     run_sql(data['bucket'], site_paired_sql, no_paired_sql)
@@ -100,7 +101,7 @@ def run_gsutil(gsutil):
 
 def run_sql(destination_bucket, site_pairing_sql, no_site_pairing_sql):
   with database_factory.make_server_cursor_database().session() as session:
-    cursor = session.execute(text(site_pairing_sql))
+    cursor = session.execute(site_pairing_sql)
     results = cursor.fetchall()
     results = [(int(i), str(k)) for i, k in results]
     for participant, google_group in results:
@@ -108,17 +109,18 @@ def run_sql(destination_bucket, site_pairing_sql, no_site_pairing_sql):
         participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
                google_group + "/P" + str(participant) + "/"
 
+      print gsutil
       run_gsutil(gsutil)
     cursor.close()
 
-    cursor = session.execute(text(no_site_pairing_sql))
+    cursor = session.execute(no_site_pairing_sql)
     results = cursor.fetchall()
     results = [int(i) for i, in results]
     for participant in results:
       gsutil = "gsutil -m rsync gs://" + SOURCE_BUCKET + "/Participant/P" + str(
         participant) + "/* " + "gs://" + destination_bucket + "/Participant/" + \
                "no_site_pairing" + "/P" + str(participant) + "/"
-
+      print gsutil
       run_gsutil(gsutil)
     cursor.close()
 
