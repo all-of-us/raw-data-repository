@@ -1,6 +1,8 @@
 #
 # Authors: Robert Abram <robert.m.abram@vumc.org>
 #
+# # !!! This file is python 3.x compliant !!!
+#
 
 # path where temporary service account credential keys are stored
 GCP_SERVICE_KEY_STORE = '~/.rdr/service-keys'

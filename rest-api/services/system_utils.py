@@ -1,8 +1,9 @@
 #
 # Authors: Robert Abram <rabram991@gmail.com>
 #
-#
 # Small helper functions for system services
+#
+# !!! This file is python 3.x compliant !!!
 #
 
 import gettext
@@ -90,6 +91,7 @@ def which(program):
   def is_exe(fpath):
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
+  # pylint: disable=W0612
   fpath, fname = os.path.split(program)
   if fpath:
     if is_exe(program):
@@ -104,7 +106,7 @@ def which(program):
   return None
 
 
-def run_external_program(args, cwd=None, env=None, shell=False, debug= False):
+def run_external_program(args, cwd=None, env=None, shell=False, debug=False):
   """
   Run an external program, arguments
   :param args: program name plus arguments in a list

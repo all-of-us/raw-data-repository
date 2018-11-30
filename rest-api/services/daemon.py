@@ -7,6 +7,8 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+# !!! This file is python 3.x compliant !!!
+#
 
 # Changes:#
 #   - Added code to demote daemon process to specified uid and gid
@@ -208,3 +210,4 @@ class Daemon(object):
     You should override this method when you subclass Daemon. It will be called after the
     process has been daemonized by start() or restart().
     """
+    pass

@@ -1,9 +1,14 @@
 #
 # Authors: Robert Abram <robert.m.abram@vumc.org>
 #
+# !!! This file is python 3.x compliant !!!
 #
 #
-#
+
+# Note: disable specific pylint checks globally here.
+# superfluous-parens
+# pylint: disable=C0325
+
 
 import argparse
 import logging
@@ -14,7 +19,6 @@ import time
 
 from system_utils import setup_logging, setup_unicode, is_valid_email, which
 from daemon import Daemon
-from gcp_config import validate_project
 from gcp_utils import gcp_set_account, gcp_activate_proxy
 
 _logger = logging.getLogger(__name__)
@@ -64,7 +68,7 @@ def run():
 
       return 0
 
-  def signal_term_handler(signal, frame):
+  def signal_term_handler(_sig, _frame):
 
     if not _daemon.stopProcessing:
       _logger.debug('received SIGTERM signal.')
@@ -77,15 +81,21 @@ def run():
 
   # Setup program arguments.
   parser = argparse.ArgumentParser(prog=progname)
+  # pylint: disable=E0602
   parser.add_argument('--debug', help=_('Enable debug output'), default=False,
                       action='store_true')  # noqa
+  # pylint: disable=E0602
   parser.add_argument('--root-only', help=_('Must run as root user'), default=False,
                       action='store_true')  # noqa
+  # pylint: disable=E0602
   parser.add_argument('--nodaemon', help=_('Do not daemonize process'), default=False,
                       action='store_true')  # noqa
+  # pylint: disable=E0602
   parser.add_argument('--account', help=_('Security account'))
+  # pylint: disable=E0602
   parser.add_argument('--enable-sandbox', help=_('Add proxy to all-of-us-rdr-sandbox'),
                                                  default=False, action='store_true')  # noqa
+  # pylint: disable=E0602
   parser.add_argument('--enable-test', help=_('Add proxy to pmi-drc-api-test'),
                       default=False, action='store_true')  # noqa
   parser.add_argument('action', choices=('start', 'stop', 'restart'), default='')  # noqa
@@ -103,7 +113,8 @@ def run():
       args.account = os.environ['RDR_ACCOUNT']
 
   if which('cloud_sql_proxy') is None:
-    _logger.error('cloud_sql_proxy executable not found, create symlink in /usr/local/bin/ directory')
+    _logger.error('cloud_sql_proxy executable not found, ' +
+                  'create symlink to cloud_sql_proxy in /usr/local/bin/ directory')
 
   # --nodaemon only valid with start action
   if args.nodaemon and args.action != 'start':

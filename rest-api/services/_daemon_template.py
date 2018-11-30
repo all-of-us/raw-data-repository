@@ -3,8 +3,15 @@
 #
 # Template for system services.
 #
+# !!! This file is python 3.x compliant !!!
+#
 # Notes: removed support for System V Init services.
 #
+
+# Note: disable specific pylint checks globally here.
+# superfluous-parens
+# pylint: disable=C0325
+
 
 import argparse
 import logging
@@ -44,7 +51,7 @@ def run():
 
       return 0
 
-  def signal_term_handler(signal, frame):
+  def signal_term_handler(_sig, _frame):
 
     if not _daemon.stopProcessing:
       _logger.debug('received SIGTERM signal.')
@@ -57,10 +64,16 @@ def run():
 
   # Setup program arguments.
   parser = argparse.ArgumentParser(prog=progname)
-  parser.add_argument('--debug', help=_('Enable debug output'), default=False, action='store_true')  # noqa
-  parser.add_argument('--root-only', help=_('Must run as root user'), default=False, action='store_true')  # noqa
+  # pylint: disable=E0602
+  parser.add_argument('--debug', help=_('Enable debug output'), default=False,
+                      action='store_true')  # noqa
+  # pylint: disable=E0602
+  parser.add_argument('--root-only', help=_('Must run as root user'), default=False,
+                      action='store_true')  # noqa
+  # pylint: disable=E0602
   parser.add_argument('--nodaemon', help=_('Do not daemonize process'), default=False,
                       action='store_true')  # noqa
+  # pylint: disable=E0602
   parser.add_argument('action', choices=('start', 'stop', 'restart'), default='')  # noqa
 
   args = parser.parse_args()

@@ -3,6 +3,7 @@
 #
 # Google Cloud Platform helpers
 #
+# !!! This file is python 3.x compliant !!!
 #
 
 import logging
@@ -33,7 +34,8 @@ def gcp_set_account(account):
   prog = which('gcloud')
 
   args = shlex.split('{0} auth login {1}'.format(prog, account))
-  pcode, so, se = run_external_program(args, )
+  # pylint: disable=W0612
+  pcode, so, se = run_external_program(args)
 
   if pcode != 0:
     _logger.error('failed to set gcp auth login account. ({0}: {1})'.format(pcode, so))
@@ -111,6 +113,7 @@ def gcp_create_iam_service_creds(account, creds_account=None):
   args = shlex.split('{0} iam service-accounts keys create "{1}" --iam-account={2} --account={3}'
                      .format(prog, sservice_key_file, account, creds_account))
 
+  # pylint: disable=W0612
   pcode, so, se = run_external_program(args)
 
   if pcode != 0:
@@ -145,6 +148,7 @@ def gcp_delete_iam_service_creds(service_key, account, creds_account=None):
   args = shlex.split('{0} iam service-accounts keys delete "{1}" --iam-account={2} --account={3}'
                      .format(prog, srv_key_file, account, creds_account))
 
+  # pylint: disable=W0612
   pcode, so, se = run_external_program(args)
 
   if pcode != 0:
