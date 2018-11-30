@@ -36,7 +36,8 @@ The summary includes the following fields:
 * `city`
 * `streetAddress`
 * `phoneNumber`
-* `email`
+* `loginPhoneNumber`: verified phone number for register, participants must provide `loginPhoneNumber` or `email` for register
+* `email`: email address for register, participants must provide `loginPhoneNumber` or `email` for register
 * `primaryLanguage`: indicates the language for the consent, we only have `en` or `es` for now
 * `recontactMethod`
 * `language`: deprecated
