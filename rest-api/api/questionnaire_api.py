@@ -1,7 +1,7 @@
 import app_util
 
 from api.base_api import UpdatableApi
-from api_util import PTC
+from api_util import PTC, PTC_AND_HEALTHPRO
 from code_constants import PPI_SYSTEM
 from dao.code_dao import CodeDao
 from dao.questionnaire_dao import QuestionnaireDao
@@ -12,7 +12,7 @@ class QuestionnaireApi(UpdatableApi):
   def __init__(self):
     super(QuestionnaireApi, self).__init__(QuestionnaireDao())
 
-  @app_util.auth_required(PTC)
+  @app_util.auth_required(PTC_AND_HEALTHPRO)
   def get(self, id_=None):
     if id_:
       return super(QuestionnaireApi, self).get(id_)
