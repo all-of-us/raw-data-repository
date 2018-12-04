@@ -206,7 +206,7 @@ def write_reconciliation_report(now, report_type='daily'):
   _query_and_write_reports(SqlExporter(bucket_name, use_unicode=True), report_type, now,
                            *_get_report_paths(now, report_type))
 
-def _get_report_paths(report_datetime, report_type):
+def _get_report_paths(report_datetime, report_type='daily'):
   """Returns a list of output filenames for samples: (received, late, missing, withdrawals)."""
 
   report_name_suffix = ('received', 'missing', 'modified', 'withdrawals')
