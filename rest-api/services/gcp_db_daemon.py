@@ -102,6 +102,11 @@ def run():
 
   args = parser.parse_args()
 
+  if args.nodaemon is False and args.action == 'start' and \
+        os.path.exists('/tmp/{0}.pid'.format(progname)):
+    print('error: service pid exists (/tmp/{0}.pid), is service already running?'.format(progname))
+    return 1
+
   if args.root_only is True and os.getuid() != 0:
     _logger.warning('daemon must be run as root')
     sys.exit(4)
@@ -122,7 +127,17 @@ def run():
     print('{0}: error: --nodaemon option not valid with stop or restart action'.format(progname))
     sys.exit(1)
 
-  _logger.info('  Account:          {0}'.format(args.account))
+  _logger.info('   account:          {0}'.format(args.account))
+
+  if args.action == 'start':
+
+    _logger.info('   tcp: 127.0.0.1:9900       -> all-of-us-rdr-prod')
+    _logger.info('   tcp: 127.0.0.1:9910       -> all-of-us-rdr-stable')
+    _logger.info('   tcp: 127.0.0.1:9920       -> all-of-us-rdr-staging')
+    if args.enable_sandbox is True:
+      _logger.info('   tcp: 127.0.0.1:9930       -> all-of-us-rdr-sandbox')
+    if args.enable_test:
+      _logger.info('   tcp: 127.0.0.1:9940       -> all-of-us-rdr-test')
 
   # Do not fork the daemon process for systemd service or debugging, run in foreground.
   if args.nodaemon is True:
@@ -156,8 +171,6 @@ def run():
     elif args.action == 'restart':
       _logger.debug('Restarting daemon.')
       _daemon.restart()
-
-  _logger.debug('done')
 
   return 0
 
