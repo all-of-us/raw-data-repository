@@ -108,7 +108,8 @@ def run():
 
   if is_valid_email(args.account) is False:
     if 'RDR_ACCOUNT' not in os.environ:
-      _logger.error('account is invalid')
+      _logger.error('account parameter is invalid and RDR_ACCOUNT shell var is not set.')
+      return 1;
     else:
       args.account = os.environ['RDR_ACCOUNT']
 

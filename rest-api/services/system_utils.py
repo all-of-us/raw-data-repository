@@ -134,6 +134,14 @@ def run_external_program(args, cwd=None, env=None, shell=False, debug=False):
 
 
 def is_valid_email(email):
+  """
+  Validate email parameter is a valid formatted email address
+  :param email: string containing email address
+  :return: True if email is valid otherwise False
+  """
+  if not email:
+    return False
+
   return bool(re.match("^.+@(\[?)[a-zA-Z0-9-.]+.([a-zA-Z]{2,3}|[0-9]{1,3})(]?)$", email))
 
 
