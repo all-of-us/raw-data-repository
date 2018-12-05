@@ -144,6 +144,7 @@ class Daemon(object):
     Start the daemon
     """
 
+    # abort if pid file exists
     if os.path.exists(self.pidfile):
       print('pidfile {0} exists. daemon already running?'.format(self.pidfile))
       return
@@ -172,6 +173,7 @@ class Daemon(object):
     Stop the daemon
     """
 
+    # abort if pid file does not exist
     if not os.path.exists(self.pidfile):
       print('pidfile {0} does not exist. daemon not running?'.format(self.pidfile))
       return
