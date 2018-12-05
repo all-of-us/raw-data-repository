@@ -15,6 +15,10 @@
 #   - Added debug logging
 #   - Re-coded for python 3.x
 
+# Note: disable specific pylint checks globally here.
+# superfluous-parens
+# pylint: disable=C0325
+
 
 import atexit
 import grp
