@@ -32,8 +32,8 @@ def gcp_set_account(account):
     return False
 
   prog = which('gcloud')
-
   args = shlex.split('{0} auth login {1}'.format(prog, account))
+
   # pylint: disable=W0612
   pcode, so, se = run_external_program(args)
 
@@ -96,14 +96,14 @@ def gcp_create_iam_service_creds(account, creds_account=None):
 
   # make sure key store directory exists
   if not os.path.exists(GCP_SERVICE_KEY_STORE):
-    os.mkdir(GCP_SERVICE_KEY_STORE)
+    os.makedirs(GCP_SERVICE_KEY_STORE)
 
   # make sure we never duplicate an existing key
   while True:
     service_key = '{0}.json'.format(''.join(choice('0123456789ABCDEF') for _ in xrange(6)))
-    sservice_key_file = os.path.join(GCP_SERVICE_KEY_STORE, service_key)
+    service_key_file = os.path.join(GCP_SERVICE_KEY_STORE, service_key)
 
-    if not os.path.exists(os.path.join(GCP_SERVICE_KEY_STORE, sservice_key_file)):
+    if not os.path.exists(os.path.join(GCP_SERVICE_KEY_STORE, service_key_file)):
       break
 
   if creds_account is None:
@@ -111,7 +111,7 @@ def gcp_create_iam_service_creds(account, creds_account=None):
 
   prog = which('gcloud')
   args = shlex.split('{0} iam service-accounts keys create "{1}" --iam-account={2} --account={3}'
-                     .format(prog, sservice_key_file, account, creds_account))
+                     .format(prog, service_key_file, account, creds_account))
 
   # pylint: disable=W0612
   pcode, so, se = run_external_program(args)

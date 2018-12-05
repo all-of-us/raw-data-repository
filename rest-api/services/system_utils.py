@@ -10,6 +10,7 @@ import gettext
 import logging
 import os
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -31,11 +32,6 @@ def setup_logging(logger, progname, debug=False, logfile=None):
   if not logger:
     return False
 
-  logdir = '/tmp/logging'
-
-  if not os.path.exists(logdir):
-    os.mkdir(logdir)
-
   # Set our logging options now that we have the program arguments.
   if debug:
     logging.basicConfig(filename=os.devnull,
@@ -54,12 +50,16 @@ def setup_logging(logger, progname, debug=False, logfile=None):
 
   logger.addHandler(handler)
 
-  if not os.path.exists(logdir):
-    os.mkdir(logdir)
-
   # Setup file logging handler
   if logfile:
-    handler = logging.FileHandler(os.path.join(logdir, logfile))
+
+    # make sure the path exists
+    logpath = os.path.dirname(os.path.abspath(os.path.expanduser(logfile)))
+
+    if not os.path.exists(logpath):
+      os.makedirs(logpath)
+
+    handler = logging.FileHandler(logfile)
     handler.setFormatter(formatter)
 
     logger.addHandler(handler)
@@ -153,9 +153,17 @@ def signal_process(name, signal_code=signal.SIGHUP):
   """
   pid = None
 
+  prog = which('pidof')
+
+  if not prog:
+    _logger.error('unable to locate "pidof" executable.')
+    return False
+
   # Get the process id
   try:
-    pid = int(subprocess.check_output(["pidof", name]).decode('utf-8').strip())
+
+    args = shlex.split('{0} {1}'.format(prog, name))
+    pid = int(subprocess.check_output(args).decode('utf-8').strip())
   except subprocess.CalledProcessError:
     _logger.error('failed to get program pid ({0})'.format(name))
 
@@ -184,14 +192,19 @@ def pid_is_running(pid):
   return True
 
 
-def write_pidfile_or_die(progname):
+def write_pidfile_or_die(progname, pidfile=None):
   """
   Attempt to write our PID to the given PID file
   :param progname: Name of this program
-  :return:
+  :param pidfile: an alternate pid file to use
+  :return: pid path and filename
   """
 
-  pidfile = '/tmp/{0}.pid'.format(progname)
+  if not pidfile:
+    if not os.path.exists('~/.local/run'):
+      os.makedirs('~/.local/run')
+
+    pidfile = '~/.local/run/{0}.pid'.format(progname)
 
   if os.path.exists(pidfile):
     pid = int(open(pidfile).read())
@@ -208,15 +221,18 @@ def write_pidfile_or_die(progname):
   return pidfile
 
 
-def remove_pidfile(progname):
+def remove_pidfile(progname, pidfile=None):
   """
   Remove the PID file for the given program
   :param progname: Name of this program
-  :return: None
+  :param pidfile: an alternate pid file to use
   """
 
-  pidfile = '/tmp/{0}.pid'.format(progname)
-  os.remove(pidfile)
+  if not pidfile:
+    pidfile = '~/.local/run/{0}.pid'.format(progname)
+
+  if os.path.exists(pidfile):
+    os.remove(pidfile)
 
 
 def json_datetime_handler(x):

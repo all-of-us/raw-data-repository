@@ -47,14 +47,14 @@ def run():
 
       # Set SIGTERM signal Handler
       signal.signal(signal.SIGTERM, signal_term_handler)
-      _logger.debug('signal handlers set.')
+      _logger.info('signal handlers set.')
 
       return 0
 
   def signal_term_handler(_sig, _frame):
 
     if not _daemon.stopProcessing:
-      _logger.debug('received SIGTERM signal.')
+      _logger.warning('received SIGTERM signal.')
     _daemon.stopProcessing = True
 
   # Set global debug value and setup application logging.
@@ -89,21 +89,35 @@ def run():
 
   # Do not fork the daemon process for systemd service or debugging, run in foreground.
   if args.nodaemon is True:
-    _logger.debug('running daemon in foreground.')
+    _logger.info('running daemon in foreground.')
     _daemon = TemplateDaemon(args=args)
     _daemon.run()
   else:
-    _logger.debug('running daemon in background.')
+    pidpath = os.path.expanduser('~/.local/run')
+    pidfile = os.path.join(pidpath, '{0}.pid'.format(progname))
+
+    logpath = os.path.expanduser('~/.local/log')
+    logfile = os.path.join(logpath, '{0}.log'.format(progname))
+
+    if args.action == 'start':
+      _logger.info('running daemon in background.')
+
     # Setup daemon object
+    # make sure PID and Logging path exist
+    if not os.path.exists(pidpath):
+      os.makedirs(pidpath)
+    if not os.path.exists(logpath):
+      os.makedirs(logpath)
+
     _daemon = TemplateDaemon(
-      procbase='/root/',
+      procbase='',
       dirmask='0o700',
-      pidfile='/tmp/{0}.pid'.format(progname),
+      pidfile=pidfile,
       uid='root',
       gid='root',
       stdin='/dev/null',
-      stdout='/tmp/{0}.log'.format(progname),
-      stderr='/tmp/{0}.log'.format(progname),
+      stdout=logfile,
+      stderr=logfile,
       args=args
     )
 
@@ -116,8 +130,6 @@ def run():
     elif args.action == 'restart':
       _logger.debug('Restarting daemon.')
       _daemon.restart()
-
-  _logger.debug('done')
 
   return 0
 

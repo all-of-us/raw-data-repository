@@ -42,6 +42,8 @@ class Daemon(object):
 
     if procbase and pidfile:
       self.pidfile = os.path.join(procbase, pidfile)
+    else:
+      self.pidfile = pidfile
 
     self.stdin = stdin
     self.stdout = stdout
@@ -142,6 +144,10 @@ class Daemon(object):
     Start the daemon
     """
 
+    if os.path.exists(self.pidfile):
+      print('pidfile {0} exists. daemon already running?'.format(self.pidfile))
+      return
+
     # Check for a pidfile to see if the daemon already runs
     pid = None
 
@@ -165,6 +171,11 @@ class Daemon(object):
     """
     Stop the daemon
     """
+
+    if not os.path.exists(self.pidfile):
+      print('pidfile {0} does not exist. daemon not running?'.format(self.pidfile))
+      return
+
     # Get the pid from the pidfile
     try:
       pf = open(self.pidfile, 'r')
