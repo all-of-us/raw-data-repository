@@ -17,3 +17,6 @@
 # Test coverage files
 .coverage
 htmlcov/
+
+# pyenv file
+.python-version
