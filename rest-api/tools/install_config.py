@@ -85,6 +85,7 @@ def _json_to_sorted_string(config):
 if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
+  parser.add_argument('--account', help='PMI Ops account to use'),
   parser.add_argument('--config',
                       help='Path to the config.  If omitted, the server config will be printed.')
   parser.add_argument('--instance',
