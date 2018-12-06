@@ -1,6 +1,4 @@
 #
-# Authors: Robert Abram <robert.m.abram@vumc.org>
-#
 # Google Cloud Platform helpers
 #
 # !!! This file is python 3.x compliant !!!

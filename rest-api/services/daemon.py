@@ -1,11 +1,6 @@
 #
-# Authors: Robert Abram <robert.abram@entpack.com>
-#
 # Original author is Sander Marechal <s.marechal@jejik.com>
 # http://www.jejik.com/articles/2007/02/a_simple_unix_linux_daemon_in_python/
-#
-# This file is subject to the terms and conditions defined in the
-# file 'LICENSE', which is part of this source code package.
 #
 # !!! This file is python 3.x compliant !!!
 #

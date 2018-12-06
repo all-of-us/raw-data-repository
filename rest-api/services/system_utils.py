@@ -1,6 +1,4 @@
 #
-# Authors: Robert Abram <rabram991@gmail.com>
-#
 # Small helper functions for system services
 #
 # !!! This file is python 3.x compliant !!!

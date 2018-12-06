@@ -1,11 +1,7 @@
 #
-# Authors: Robert Abram <rabram991@gmail.com>
-#
 # Template for system services.
 #
 # !!! This file is python 3.x compliant !!!
-#
-# Notes: removed support for System V Init services.
 #
 
 # Note: disable specific pylint checks globally here.
