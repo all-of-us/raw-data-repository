@@ -582,6 +582,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._questionnaire_id = self.create_questionnaire('questionnaire3.json')
     # MySQL and Python sub-second rounding differs, so trim micros from generated times.
     order_time = clock.CLOCK.now().replace(microsecond=0)
+    edge_order_time = order_time - datetime.timedelta(days=60)
     old_order_time = order_time - datetime.timedelta(days=61)
     within_24_hours = order_time + datetime.timedelta(hours=23)
     old_within_24_hours = old_order_time + datetime.timedelta(hours=23)
@@ -601,6 +602,18 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._modify_order('AMENDED', on_time_order)
     self._insert_samples(p_on_time, BIOBANK_TESTS[:2], ['GoodSample1', 'GoodSample2'], 'OGoodOrder',
                          within_24_hours, within_24_hours - datetime.timedelta(hours=1))
+
+    # edge_order should shows up in rx
+    p_edge_time = self._insert_participant()
+    edge_order = self._insert_order(p_edge_time, 'EdgeOrder', BIOBANK_TESTS[:4], edge_order_time,
+                                    finalized_tests=BIOBANK_TESTS[:3], kit_id='kit8',
+                                    tracking_number='t8', collected_note=u'\u2013foo',
+                                    processed_note='bar', finalized_note='baz')
+    # edited edge order with matching sample; show both in rx and modified
+    self._modify_order('AMENDED', edge_order)
+    self._insert_samples(p_edge_time, BIOBANK_TESTS[:2], ['EdgeSample1', 'EdgeSample2'],
+                         'OEdgeOrder', within_24_hours,
+                         within_24_hours - datetime.timedelta(hours=1))
 
     # On time, recent order and samples not confirmed do not show up in reports.
     p_unconfirmed_samples = self._insert_participant()
@@ -787,9 +800,9 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     exporter.assertFilesEqual((received, missing, modified, withdrawals))
 
-    # sent-and-received: 4 on-time, 2 late, none of the missing/extra/repeated ones;
+    # sent-and-received: 4 on-time, 2 late, 2 edge, none of the missing/extra/repeated ones;
     # not includes orders/samples from more than 60 days ago
-    exporter.assertRowCount(received, 6)
+    exporter.assertRowCount(received, 8)
     exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
     row = exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId),
@@ -852,7 +865,7 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # orders/samples where something went wrong; don't include orders/samples from more than 60
     # days ago, or where 24 hours hasn't elapsed yet.
-    exporter.assertRowCount(missing, 8)
+    exporter.assertRowCount(missing, 9)
     exporter.assertColumnNamesEqual(missing, _CSV_COLUMN_NAMES)
     exporter.assertHasRow(missing, {
       'biobank_id': to_client_biobank_id(p_not_finalized.biobankId),
@@ -890,7 +903,7 @@ class MySqlReconciliationTest(FlaskTestBase):
         ['ORepeatedOrder2'])
 
     # modified biobank orders show in modified report
-    exporter.assertRowCount(modified, 6)
+    exporter.assertRowCount(modified, 10)
     exporter.assertHasRow(modified, {
       'biobank_id': to_client_biobank_id(p_on_time.biobankId),
       'edited_cancelled_restored_status_flag': 'edited',
