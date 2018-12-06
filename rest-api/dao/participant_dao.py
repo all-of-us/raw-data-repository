@@ -14,7 +14,7 @@ from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.utils import to_client_participant_id
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus, \
-  make_primary_provider_link_for_id, WithdrawalReason
+  make_primary_provider_link_for_id, WithdrawalReason, TEST_HPO_NAME
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.session import make_transient
 from werkzeug.exceptions import BadRequest, Forbidden
@@ -333,6 +333,34 @@ class ParticipantDao(UpdatableDao):
 
     if participant.siteId == site.siteId:
       return
+    participant.hpoId = site.hpoId
+    participant.organizationId = site.organizationId
+    participant.siteId = site.siteId
+    participant.providerLink = make_primary_provider_link_for_id(site.hpoId)
+    if participant.participantSummary is None:
+      raise RuntimeError('No ParticipantSummary available for P%d.' % participant_id)
+    participant.participantSummary.hpoId = site.hpoId
+    participant.lastModified = clock.CLOCK.now()
+    # Update the version and add history row
+    self._do_update(session, participant, participant)
+
+  def switch_to_test_account(self, session, participant_id):
+    test_hpo = HPODao().get_by_name(TEST_HPO_NAME)
+    if test_hpo is None:
+      raise BadRequest('No test hpo found for name ' + TEST_HPO_NAME)
+
+    test_hpo_id = test_hpo.hpoId
+    site = self.site_dao.get_by_hpo_id(test_hpo_id)
+    if site is None:
+      raise BadRequest('Invalid siteId reference hpo_id %r.' % test_hpo_id)
+
+    participant = self.get_for_update(session, participant_id)
+    if participant is None:
+      raise BadRequest('No participant %r for HPO ID udpate.' % participant_id)
+
+    if participant.hpoId == test_hpo_id:
+      return
+
     participant.hpoId = site.hpoId
     participant.organizationId = site.organizationId
     participant.siteId = site.siteId

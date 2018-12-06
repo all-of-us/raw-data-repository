@@ -23,6 +23,8 @@ TEST_EMAIL_PATTERN = '%@example.com'
 # The name of the 'test' HPO that test participants are normally affiliated with.
 TEST_HPO_NAME = 'TEST'
 TEST_HPO_ID = 19
+# Test login phone number prefix
+TEST_LOGIN_PHONE_NUMBER_PREFIX = '444'
 
 class PhysicalMeasurementsStatus(messages.Enum):
   """The state of the participant's physical measurements."""
