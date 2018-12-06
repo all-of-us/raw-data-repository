@@ -6,7 +6,11 @@
 
 Starts a background GCP cloud_sql_proxy process that keeps persistent proxy tunnel connections to database instances.
 
-Notes: Can be run using Python 3.x or Python 2.7
+##### Notes: ##### 
+
+* Can be run using Python 3.x or Python 2.7.
+
+* The service log file is stored in ~/.local/log/gcp_db_daemon.log
 
 Display command line help
 ```
