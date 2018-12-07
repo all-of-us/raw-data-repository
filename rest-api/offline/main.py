@@ -104,6 +104,16 @@ def import_biobank_samples():
   logging.info('Generated reconciliation report.')
   return json.dumps({'written': written})
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def biobank_monthly_reconciliation_report():
+  # make sure this cron job is executed after import_biobank_samples
+  timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info()[2]
+
+  logging.info('Generating monthly reconciliation report.')
+  biobank_samples_pipeline.write_reconciliation_report(timestamp, 'monthly')
+  logging.info('Generated monthly reconciliation report.')
+  return json.dumps({'monthly-reconciliation-report': 'generated'})
 
 @app_util.auth_required(EXPORTER)
 def export_tables():
@@ -142,6 +152,12 @@ def _build_pipeline_app():
       endpoint='biobankSamplesImport',
       view_func=import_biobank_samples,
       methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'MonthlyReconciliationReport',
+    endpoint='monthlyReconciliationReport',
+    view_func=biobank_monthly_reconciliation_report,
+    methods=['GET'])
 
   offline_app.add_url_rule(
       PREFIX + 'MetricsRecalculate',

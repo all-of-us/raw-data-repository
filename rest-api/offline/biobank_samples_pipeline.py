@@ -57,10 +57,7 @@ class DataError(RuntimeError):
 
 
 def upsert_from_latest_csv():
-  """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
-  bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
-  csv_file, csv_filename = _open_latest_samples_file(bucket_name)
-  timestamp = _timestamp_from_filename(csv_filename)
+  csv_file, csv_filename, timestamp = get_last_biobank_sample_file_info()
 
   now = clock.CLOCK.now()
   if now - timestamp > _MAX_INPUT_AGE:
@@ -74,6 +71,13 @@ def upsert_from_latest_csv():
   ParticipantSummaryDao().update_from_biobank_stored_samples()
   return written, timestamp
 
+def get_last_biobank_sample_file_info():
+  """Finds the latest CSV & updates/inserts BiobankStoredSamples from its rows."""
+  bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
+  csv_file, csv_filename = _open_latest_samples_file(bucket_name)
+  timestamp = _timestamp_from_filename(csv_filename)
+
+  return csv_file, csv_filename, timestamp
 
 def _timestamp_from_filename(csv_filename):
   if len(csv_filename) < _INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH:
@@ -196,43 +200,55 @@ def _create_sample_from_row(row, biobank_id_prefix):
   sample.created = _parse_timestamp(row, _Columns.CREATE_DATE, sample)
   return sample
 
-def write_reconciliation_report(now):
+def write_reconciliation_report(now, report_type='daily'):
   """Writes order/sample reconciliation reports to GCS."""
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)  # raises if missing
-  _query_and_write_reports(SqlExporter(bucket_name, use_unicode=True), now, *_get_report_paths(now))
+  _query_and_write_reports(SqlExporter(bucket_name, use_unicode=True), report_type, now,
+                           *_get_report_paths(now, report_type))
 
+def _get_report_paths(report_datetime, report_type='daily'):
+  """Returns a list of output filenames for samples: (received, late, missing, withdrawals)."""
 
-def _get_report_paths(report_datetime):
-  """Returns a triple of output filenames for samples: (received, late, missing)."""
+  report_name_suffix = ('received', 'missing', 'modified', 'withdrawals')
+
+  if report_type == 'monthly':
+    report_name_suffix = ('received_monthly', 'missing_monthly', 'modified_monthly',
+                          'withdrawals_monthly')
+
   return [
       '%s/report_%s_%s.csv' % (
           _REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
-      for report_name in ('received', 'missing', 'modified', 'withdrawals')]
+      for report_name in report_name_suffix]
 
 
-def _query_and_write_reports(exporter, now, path_received, path_missing, path_modified,
+def _query_and_write_reports(exporter, now, report_type, path_received, path_missing, path_modified,
                              path_withdrawals):
   """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
   """
-  # Gets all sample/order pairs where everything arrived, within the past 10 days.
+
+  report_cover_range = 10
+  if report_type == 'monthly':
+    report_cover_range = 60
+
+  # Gets all sample/order pairs where everything arrived, within the past n days.
   received_predicate = lambda result: (result[_RECEIVED_TEST_INDEX] and
                                        result[_SENT_COUNT_INDEX] == result[_RECEIVED_COUNT_INDEX]
                                        and
-                                       in_past_n_days(result, now, 10))
+                                       in_past_n_days(result, now, report_cover_range))
 
-  # Gets samples or orders where something has gone missing within the past 10 days, and if an order
+  # Gets samples or orders where something has gone missing within the past n days, and if an order
   # was placed, it was placed at least 36 hours ago.
   missing_predicate = lambda result: ((result[_SENT_COUNT_INDEX] != result[_RECEIVED_COUNT_INDEX] or
                                       (result[_SENT_FINALIZED_INDEX] and
                                       not result[_RECEIVED_TEST_INDEX])) and
-                                      in_past_n_days(result, now, 10,
+                                      in_past_n_days(result, now, report_cover_range,
                                       ordered_before=now - _THIRTY_SIX_HOURS_AGO))
 
-  # Gets samples or orders where something has modified within the past 10 days.
+  # Gets samples or orders where something has modified within the past n days.
   modified_predicate = lambda result: (result[_EDITED_CANCELLED_RESTORED_STATUS_FLAG_INDEX] and
-                                       in_past_n_days(result, now, 10))
+                                       in_past_n_days(result, now, report_cover_range))
 
   code_dao = CodeDao()
   race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
@@ -254,11 +270,11 @@ def _query_and_write_reports(exporter, now, path_received, path_missing, path_mo
                                       'kit_id_system': _KIT_ID_SYSTEM,
                                       'tracking_number_system': _TRACKING_NUMBER_SYSTEM})
 
-  # Now generate the withdrawal report, within the past 10 days.
+  # Now generate the withdrawal report, within the past n days.
   exporter.run_export(path_withdrawals, replace_isodate(_WITHDRAWAL_REPORT_SQL),
                       {'race_question_code_id': race_question_code.codeId,
                        'native_american_race_code_id': native_american_race_code.codeId,
-                       'ten_days_ago': now - datetime.timedelta(days=10),
+                       'n_days_ago': now - datetime.timedelta(days=report_cover_range),
                        'biobank_id_prefix': get_biobank_id_prefix()})
 
 # Indexes from the SQL query below; used in predicates.
@@ -516,7 +532,7 @@ _RECONCILIATION_REPORT_SQL = ("""
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id)
 """)
 
-# Generates a report on participants that have withdrawn in the past 10 days,
+# Generates a report on participants that have withdrawn in the past n days,
 # including their biobank ID, withdrawal time, and whether they are Native American
 # (as biobank samples for Native Americans are disposed of differently.)
 _WITHDRAWAL_REPORT_SQL = ("""
@@ -524,7 +540,7 @@ _WITHDRAWAL_REPORT_SQL = ("""
     CONCAT(:biobank_id_prefix, participant.biobank_id) biobank_id,
     ISODATE[participant.withdrawal_time] withdrawal_time,""" + _NATIVE_AMERICAN_SQL + """
     FROM participant
-   WHERE participant.withdrawal_time >= :ten_days_ago
+   WHERE participant.withdrawal_time >= :n_days_ago
 """)
 
 def in_past_n_days(result, now, n_days, ordered_before=None):
