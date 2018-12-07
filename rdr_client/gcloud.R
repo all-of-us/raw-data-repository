@@ -1,7 +1,6 @@
 #!/usr/local/bin Rscript
 
-########################################## install required packages if you haven't before in your current working directory,
-########################################## uncomment the below two lines.
+########################################## install required packages if you haven't before in your current working directory, uncomment the below two lines.
 #install.packages("httr", repos = "http://cran.us.r-project.org")
 #install.packages("jsonlite", repos = "http://cran.us.r-project.org")
 
