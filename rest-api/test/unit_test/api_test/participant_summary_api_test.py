@@ -15,8 +15,6 @@ from model.biobank_stored_sample import BiobankStoredSample
 from model.code import CodeType
 from model.hpo import HPO
 from dao.hpo_dao import HPODao
-from dao.site_dao import SiteDao
-from model.site import Site
 from participant_enums import ANSWER_CODE_TO_RACE, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
 from test_data import load_measurement_json, load_biobank_order_json, to_client_participant_id
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase,\
@@ -102,14 +100,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
   def setUp(self):
     super(ParticipantSummaryApiTest, self).setUp(use_mysql=True)
     self.hpo_dao = HPODao()
-    self.site_dao = SiteDao()
 
     # Needed by test_switch_to_test_account
     self.hpo_dao.insert(HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
                             organizationType=OrganizationType.UNSET))
-    site = Site(siteName='test site', googleGroup='test_site@googlegroups.com',
-                mayolinkClientNumber=12345, hpoId=TEST_HPO_ID)
-    self.site_dao.insert(site)
 
   def create_demographics_questionnaire(self):
     """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
