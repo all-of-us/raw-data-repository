@@ -345,11 +345,7 @@ class ParticipantDao(UpdatableDao):
     self._do_update(session, participant, participant)
 
   def switch_to_test_account(self, session, participant_id):
-    test_hpo = HPODao().get_by_name(TEST_HPO_NAME)
-    if test_hpo is None:
-      raise BadRequest('No test hpo found for name ' + TEST_HPO_NAME)
-
-    test_hpo_id = test_hpo.hpoId
+    test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
 
     participant = self.get_for_update(session, participant_id)
     if participant is None:
