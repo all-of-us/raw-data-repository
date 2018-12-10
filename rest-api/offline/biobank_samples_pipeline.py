@@ -254,21 +254,45 @@ def _query_and_write_reports(exporter, now, report_type, path_received, path_mis
   race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
   native_american_race_code = code_dao.get_code(PPI_SYSTEM, RACE_AIAN_CODE)
 
-  # Open three files and a database session; run the reconciliation query and pipe the output
-  # to the files, using per-file predicates to filter out results.
-  with exporter.open_writer(path_received, received_predicate) as received_writer,\
-       exporter.open_writer(path_missing, missing_predicate) as missing_writer,\
-       exporter.open_writer(path_modified, modified_predicate) as modified_writer,\
-       database_factory.get_database().session() as session:
-    writer = CompositeSqlExportWriter([received_writer, missing_writer, modified_writer])
-    exporter.run_export_with_session(writer, session, replace_isodate(_RECONCILIATION_REPORT_SQL),
-                                     {'race_question_code_id': race_question_code.codeId,
-                                      'native_american_race_code_id':
-                                        native_american_race_code.codeId,
-                                      'biobank_id_prefix': get_biobank_id_prefix(),
-                                      'pmi_ops_system': _PMI_OPS_SYSTEM,
-                                      'kit_id_system': _KIT_ID_SYSTEM,
-                                      'tracking_number_system': _TRACKING_NUMBER_SYSTEM})
+  # break into three steps to avoid OOM issue
+  # Now generate the received report, within the past n days
+  with exporter.open_writer(path_received, received_predicate) as received_writer:
+    exporter.run_export_with_writer(received_writer, replace_isodate(_RECONCILIATION_REPORT_SQL),
+                                    {'race_question_code_id': race_question_code.codeId,
+                                     'native_american_race_code_id':
+                                       native_american_race_code.codeId,
+                                     'biobank_id_prefix': get_biobank_id_prefix(),
+                                     'pmi_ops_system': _PMI_OPS_SYSTEM,
+                                     'kit_id_system': _KIT_ID_SYSTEM,
+                                     'tracking_number_system': _TRACKING_NUMBER_SYSTEM,
+                                     'n_days_ago': now - datetime.timedelta(
+                                       days=(report_cover_range + 1))})
+
+  # Now generate the missing report, within the past n days
+  with exporter.open_writer(path_missing, missing_predicate) as missing_writer:
+    exporter.run_export_with_writer(missing_writer, replace_isodate(_RECONCILIATION_REPORT_SQL),
+                                    {'race_question_code_id': race_question_code.codeId,
+                                     'native_american_race_code_id':
+                                       native_american_race_code.codeId,
+                                     'biobank_id_prefix': get_biobank_id_prefix(),
+                                     'pmi_ops_system': _PMI_OPS_SYSTEM,
+                                     'kit_id_system': _KIT_ID_SYSTEM,
+                                     'tracking_number_system': _TRACKING_NUMBER_SYSTEM,
+                                     'n_days_ago': now - datetime.timedelta(
+                                       days=(report_cover_range + 1))})
+
+  # Now generate the modified report, within the past n days
+  with exporter.open_writer(path_modified, modified_predicate) as modified_writer:
+    exporter.run_export_with_writer(modified_writer, replace_isodate(_RECONCILIATION_REPORT_SQL),
+                                    {'race_question_code_id': race_question_code.codeId,
+                                     'native_american_race_code_id':
+                                       native_american_race_code.codeId,
+                                     'biobank_id_prefix': get_biobank_id_prefix(),
+                                     'pmi_ops_system': _PMI_OPS_SYSTEM,
+                                     'kit_id_system': _KIT_ID_SYSTEM,
+                                     'tracking_number_system': _TRACKING_NUMBER_SYSTEM,
+                                     'n_days_ago': now - datetime.timedelta(
+                                       days=(report_cover_range + 1))})
 
   # Now generate the withdrawal report, within the past n days.
   exporter.run_export(path_withdrawals, replace_isodate(_WITHDRAWAL_REPORT_SQL),
@@ -525,6 +549,10 @@ _RECONCILIATION_REPORT_SQL = ("""
        WHERE participant.biobank_id = biobank_stored_sample.biobank_id
          AND participant.withdrawal_time IS NOT NULL)
   ) reconciled
+  WHERE (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.collected >= reconciled.confirmed AND reconciled.collected >= :n_days_ago)
+  OR (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.confirmed >= reconciled.collected AND reconciled.confirmed >= :n_days_ago)
+  OR (reconciled.collected IS NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.confirmed >= :n_days_ago)
+  OR (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NULL AND reconciled.collected >= :n_days_ago)
   GROUP BY
     biobank_id, sent_order_id, order_test, test
   ORDER BY
