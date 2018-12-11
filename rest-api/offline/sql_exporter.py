@@ -29,19 +29,6 @@ class SqlExportFileWriter(object):
     if results:
       self._writer.writerows(results)
 
-class CompositeSqlExportWriter(object):
-
-  def __init__(self, writers):
-    self._writers = writers
-
-  def write_header(self, keys):
-    for writer in self._writers:
-      writer.write_header(keys)
-
-  def write_rows(self, results):
-    for writer in self._writers:
-      writer.write_rows(results)
-
 class SqlExporter(object):
   """Executes a SQL query, fetches results in batches, and writes output to a CSV in GCS."""
   def __init__(self, bucket_name, use_unicode=False):

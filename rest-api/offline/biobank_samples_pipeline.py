@@ -13,14 +13,13 @@ from cloudstorage import cloudstorage_api
 import clock
 import config
 from code_constants import RACE_QUESTION_CODE, RACE_AIAN_CODE, PPI_SYSTEM
-from dao import database_factory
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.code_dao import CodeDao
 from dao.database_utils import replace_isodate, parse_datetime
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.config_utils import from_client_biobank_id, get_biobank_id_prefix
-from offline.sql_exporter import SqlExporter, CompositeSqlExportWriter
+from offline.sql_exporter import SqlExporter
 from participant_enums import OrganizationType, BiobankOrderStatus
 
 # Format for dates in output filenames for the reconciliation report.
@@ -254,21 +253,22 @@ def _query_and_write_reports(exporter, now, report_type, path_received, path_mis
   race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
   native_american_race_code = code_dao.get_code(PPI_SYSTEM, RACE_AIAN_CODE)
 
-  # Open three files and a database session; run the reconciliation query and pipe the output
-  # to the files, using per-file predicates to filter out results.
-  with exporter.open_writer(path_received, received_predicate) as received_writer,\
-       exporter.open_writer(path_missing, missing_predicate) as missing_writer,\
-       exporter.open_writer(path_modified, modified_predicate) as modified_writer,\
-       database_factory.get_database().session() as session:
-    writer = CompositeSqlExportWriter([received_writer, missing_writer, modified_writer])
-    exporter.run_export_with_session(writer, session, replace_isodate(_RECONCILIATION_REPORT_SQL),
-                                     {'race_question_code_id': race_question_code.codeId,
-                                      'native_american_race_code_id':
-                                        native_american_race_code.codeId,
-                                      'biobank_id_prefix': get_biobank_id_prefix(),
-                                      'pmi_ops_system': _PMI_OPS_SYSTEM,
-                                      'kit_id_system': _KIT_ID_SYSTEM,
-                                      'tracking_number_system': _TRACKING_NUMBER_SYSTEM})
+  # break into three steps to avoid OOM issue
+  report_paths = [path_received, path_missing, path_modified]
+  report_predicates = [received_predicate, missing_predicate, modified_predicate]
+
+  for report_path, report_predicate in zip(report_paths, report_predicates):
+    with exporter.open_writer(report_path, report_predicate) as report_writer:
+      exporter.run_export_with_writer(report_writer, replace_isodate(_RECONCILIATION_REPORT_SQL),
+                                      {'race_question_code_id': race_question_code.codeId,
+                                       'native_american_race_code_id':
+                                         native_american_race_code.codeId,
+                                       'biobank_id_prefix': get_biobank_id_prefix(),
+                                       'pmi_ops_system': _PMI_OPS_SYSTEM,
+                                       'kit_id_system': _KIT_ID_SYSTEM,
+                                       'tracking_number_system': _TRACKING_NUMBER_SYSTEM,
+                                       'n_days_ago': now - datetime.timedelta(
+                                         days=(report_cover_range + 1))})
 
   # Now generate the withdrawal report, within the past n days.
   exporter.run_export(path_withdrawals, replace_isodate(_WITHDRAWAL_REPORT_SQL),
@@ -525,6 +525,10 @@ _RECONCILIATION_REPORT_SQL = ("""
        WHERE participant.biobank_id = biobank_stored_sample.biobank_id
          AND participant.withdrawal_time IS NOT NULL)
   ) reconciled
+  WHERE (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.collected >= reconciled.confirmed AND reconciled.collected >= :n_days_ago)
+  OR (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.confirmed >= reconciled.collected AND reconciled.confirmed >= :n_days_ago)
+  OR (reconciled.collected IS NULL AND reconciled.confirmed  IS NOT NULL AND reconciled.confirmed >= :n_days_ago)
+  OR (reconciled.collected IS NOT NULL AND reconciled.confirmed  IS NULL AND reconciled.collected >= :n_days_ago)
   GROUP BY
     biobank_id, sent_order_id, order_test, test
   ORDER BY
