@@ -2,14 +2,18 @@ import datetime
 import httplib
 
 from clock import FakeClock
-from test.unit_test.unit_test_util import FlaskTestBase
+from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
 from participant_enums import WithdrawalStatus, SuspensionStatus
+from model.hpo import HPO
+from dao.hpo_dao import HPODao
+from participant_enums import TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
+from code_constants import RACE_WHITE_CODE, PPI_SYSTEM
+from concepts import Concept
 
 TIME_1 = datetime.datetime(2018, 1, 1)
 TIME_2 = datetime.datetime(2018, 1, 3)
 
 class ParticipantApiTest(FlaskTestBase):
-
 
   def setUp(self):
     super(ParticipantApiTest, self).setUp()
@@ -32,6 +36,10 @@ class ParticipantApiTest(FlaskTestBase):
       }
     }
 
+    # Needed by test_switch_to_test_account
+    self.hpo_dao = HPODao()
+    self.hpo_dao.insert(HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
+                            organizationType=OrganizationType.UNSET))
 
   def test_insert(self):
     response = self.send_post('Participant', self.participant)
@@ -68,8 +76,6 @@ class ParticipantApiTest(FlaskTestBase):
     self.assertEquals(response, get_response)
     response_2 = self.send_post('Participant', self.participant_2)
     self.assertEqual(response, response_2)
-
-
 
   def test_update_no_ifmatch_specified(self):
     response = self.send_post('Participant', self.participant)
@@ -172,3 +178,80 @@ class ParticipantApiTest(FlaskTestBase):
       response['awardee'] = 'PITT'
       response['hpoId'] = 'PITT'
       self.assertJsonResponseMatches(response, update_response)
+
+  def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code,
+                                    first_name, middle_name, last_name, zip_code,
+                                    state_code, street_address, city, sex_code, login_phone_number,
+                                    sexual_orientation_code, phone_number, recontact_method_code,
+                                    language_code, education_code, income_code, date_of_birth,
+                                    cabor_signature_uri, time=TIME_1):
+    code_answers = []
+    _add_code_answer(code_answers, "race", race_code)
+    _add_code_answer(code_answers, "genderIdentity", gender_code)
+    _add_code_answer(code_answers, "state", state_code)
+    _add_code_answer(code_answers, "sex", sex_code)
+    _add_code_answer(code_answers, "sexualOrientation", sexual_orientation_code)
+    _add_code_answer(code_answers, "recontactMethod", recontact_method_code)
+    _add_code_answer(code_answers, "language", language_code)
+    _add_code_answer(code_answers, "education", education_code)
+    _add_code_answer(code_answers, "income", income_code)
+
+    qr = make_questionnaire_response_json(participant_id,
+                                          questionnaire_id,
+                                          code_answers = code_answers,
+                                          string_answers = [("firstName", first_name),
+                                                            ("middleName", middle_name),
+                                                            ("lastName", last_name),
+                                                            ("streetAddress", street_address),
+                                                            ("city", city),
+                                                            ("phoneNumber", phone_number),
+                                                            ("loginPhoneNumber", login_phone_number),
+                                                            ("zipCode", zip_code)],
+                                          date_answers = [("dateOfBirth", date_of_birth)],
+                                          uri_answers = [("CABoRSignature", cabor_signature_uri)])
+    with FakeClock(time):
+      self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
+
+  def test_switch_to_test_account(self):
+    with FakeClock(TIME_1):
+      participant_1 = self.send_post('Participant', {"providerLink": [self.provider_link_2]})
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    participant_id_1 = participant_1['participantId']
+    self.send_consent(participant_id_1)
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
+                                       "Bob", "Q", "Jones", "78751", "PIIState_VA",
+                                       "1234 Main Street", "Austin", "male_sex", "215-222-2222",
+                                       "straight", "512-555-5555", "email_code",
+                                       "en", "highschool", "lotsofmoney",
+                                       datetime.date(1978, 10, 9), "signature.pdf")
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('215-222-2222', ps_1['loginPhoneNumber'])
+    self.assertEquals('PITT', ps_1['hpoId'])
+
+    p_1 = self.send_get('Participant/%s' % participant_id_1)
+    self.assertEquals('PITT', p_1['hpoId'])
+    self.assertEquals(TIME_1.strftime('%Y''-''%m''-''%d''T''%X'), p_1['lastModified'])
+    self.assertEquals('W/"1"', p_1['meta']['versionId'])
+
+    # change login phone number to 444-222-2222
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
+                                       "Bob", "Q", "Jones", "78751", "PIIState_VA",
+                                       "1234 Main Street", "Austin", "male_sex", "444-222-2222",
+                                       "straight", "512-555-5555", "email_code",
+                                       "en", "highschool", "lotsofmoney",
+                                       datetime.date(1978, 10, 9), "signature.pdf", TIME_2)
+
+    ps_1_with_test_login_phone_number = self.send_get('Participant/%s/Summary' % participant_id_1)
+
+    self.assertEquals('444-222-2222', ps_1_with_test_login_phone_number['loginPhoneNumber'])
+    self.assertEquals('TEST', ps_1_with_test_login_phone_number['hpoId'])
+
+    p_1 = self.send_get('Participant/%s' % participant_id_1)
+    self.assertEquals('TEST', p_1['hpoId'])
+    self.assertEquals(TIME_2.strftime('%Y''-''%m''-''%d''T''%X'), p_1['lastModified'])
+    self.assertEquals('W/"2"', p_1['meta']['versionId'])
+
+def _add_code_answer(code_answers, link_id, code):
+  if code:
+    code_answers.append((link_id, Concept(PPI_SYSTEM, code)))

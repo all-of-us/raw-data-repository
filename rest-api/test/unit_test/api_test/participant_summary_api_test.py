@@ -13,7 +13,9 @@ from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.code import CodeType
-from participant_enums import ANSWER_CODE_TO_RACE
+from model.hpo import HPO
+from dao.hpo_dao import HPODao
+from participant_enums import ANSWER_CODE_TO_RACE, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
 from test_data import load_measurement_json, load_biobank_order_json, to_client_participant_id
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase,\
   get_restore_or_cancel_info
@@ -97,6 +99,11 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
   def setUp(self):
     super(ParticipantSummaryApiTest, self).setUp(use_mysql=True)
+    self.hpo_dao = HPODao()
+
+    # Needed by test_switch_to_test_account
+    self.hpo_dao.insert(HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
+                            organizationType=OrganizationType.UNSET))
 
   def create_demographics_questionnaire(self):
     """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
@@ -1537,6 +1544,40 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                      'hpo-site-clinic-phoenix')
     self.assertEqual(participant_summary['physicalMeasurementsCreatedSite'],
                      'hpo-site-bannerphoenix')
+
+  def test_switch_to_test_account(self):
+    SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
+                             "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
+
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    participant_1 = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id_1 = participant_1['participantId']
+    with FakeClock(TIME_1):
+      self.send_consent(participant_id_1)
+
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
+                                       "Bob", "Q", "Jones", "78751", "PIIState_VA",
+                                       "1234 Main Street", "Austin", "male_sex", "215-222-2222",
+                                       "straight", "512-555-5555", "email_code",
+                                       "en", "highschool", "lotsofmoney",
+                                       datetime.date(1978, 10, 9), "signature.pdf")
+
+    ps_1 = self.send_get('Participant/%s/Summary' % participant_id_1)
+    self.assertEquals('215-222-2222', ps_1['loginPhoneNumber'])
+    self.assertEquals('PITT', ps_1['hpoId'])
+
+    # change login phone number to 444-222-2222
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
+                                       "Bob", "Q", "Jones", "78751", "PIIState_VA",
+                                       "1234 Main Street", "Austin", "male_sex", "444-222-2222",
+                                       "straight", "512-555-5555", "email_code",
+                                       "en", "highschool", "lotsofmoney",
+                                       datetime.date(1978, 10, 9), "signature.pdf")
+
+    ps_1_with_test_login_phone_number = self.send_get('Participant/%s/Summary' % participant_id_1)
+
+    self.assertEquals('444-222-2222', ps_1_with_test_login_phone_number['loginPhoneNumber'])
+    self.assertEquals('TEST', ps_1_with_test_login_phone_number['hpoId'])
 
   def testQuery_manyParticipants(self):
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",

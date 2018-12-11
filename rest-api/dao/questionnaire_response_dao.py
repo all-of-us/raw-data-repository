@@ -25,7 +25,8 @@ from field_mappings import FieldType, QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODU
 from model.code import CodeType
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from participant_enums import QuestionnaireStatus, get_race, QuestionnaireDefinitionStatus
+from participant_enums import QuestionnaireStatus, get_race, QuestionnaireDefinitionStatus, \
+  TEST_LOGIN_PHONE_NUMBER_PREFIX
 
 _QUESTIONNAIRE_PREFIX = 'Questionnaire/'
 _QUESTIONNAIRE_HISTORY_SEGMENT = '/_history/'
@@ -200,8 +201,11 @@ class QuestionnaireResponseDao(BaseDao):
         if code:
           summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
           if summary_field:
-            something_changed = self._update_field(participant_summary, summary_field[0],
-                                                   summary_field[1], answer)
+            if something_changed:
+              self._update_field(participant_summary, summary_field[0], summary_field[1], answer)
+            else:
+              something_changed = self._update_field(participant_summary, summary_field[0],
+                                                     summary_field[1], answer)
           elif code.value == RACE_QUESTION_CODE:
             race_code_ids.append(answer.valueCodeId)
 
@@ -280,9 +284,16 @@ class QuestionnaireResponseDao(BaseDao):
         raise BadRequest(
           'Email address (%s), or phone number (%s) required for consenting.'
           % tuple(['present' if part else 'missing' for part in email_phone]))
+
       ParticipantSummaryDao().update_enrollment_status(participant_summary)
       participant_summary.lastModified = clock.CLOCK.now()
       session.merge(participant_summary)
+
+      # switch account to test account if the phone number is start with 444
+      # this is a requirement from PTSC
+      if participant_summary.loginPhoneNumber is not None and \
+        participant_summary.loginPhoneNumber.startswith(TEST_LOGIN_PHONE_NUMBER_PREFIX):
+        ParticipantDao().switch_to_test_account(session, participant_summary.participantId)
 
   def insert(self, obj):
     if obj.questionnaireResponseId:
