@@ -254,44 +254,21 @@ def _query_and_write_reports(exporter, now, report_type, path_received, path_mis
   native_american_race_code = code_dao.get_code(PPI_SYSTEM, RACE_AIAN_CODE)
 
   # break into three steps to avoid OOM issue
-  # Now generate the received report, within the past n days
-  with exporter.open_writer(path_received, received_predicate) as received_writer:
-    exporter.run_export_with_writer(received_writer, replace_isodate(_RECONCILIATION_REPORT_SQL),
-                                    {'race_question_code_id': race_question_code.codeId,
-                                     'native_american_race_code_id':
-                                       native_american_race_code.codeId,
-                                     'biobank_id_prefix': get_biobank_id_prefix(),
-                                     'pmi_ops_system': _PMI_OPS_SYSTEM,
-                                     'kit_id_system': _KIT_ID_SYSTEM,
-                                     'tracking_number_system': _TRACKING_NUMBER_SYSTEM,
-                                     'n_days_ago': now - datetime.timedelta(
-                                       days=(report_cover_range + 1))})
+  report_paths = [path_received, path_missing, path_modified]
+  report_predicates = [received_predicate, missing_predicate, modified_predicate]
 
-  # Now generate the missing report, within the past n days
-  with exporter.open_writer(path_missing, missing_predicate) as missing_writer:
-    exporter.run_export_with_writer(missing_writer, replace_isodate(_RECONCILIATION_REPORT_SQL),
-                                    {'race_question_code_id': race_question_code.codeId,
-                                     'native_american_race_code_id':
-                                       native_american_race_code.codeId,
-                                     'biobank_id_prefix': get_biobank_id_prefix(),
-                                     'pmi_ops_system': _PMI_OPS_SYSTEM,
-                                     'kit_id_system': _KIT_ID_SYSTEM,
-                                     'tracking_number_system': _TRACKING_NUMBER_SYSTEM,
-                                     'n_days_ago': now - datetime.timedelta(
-                                       days=(report_cover_range + 1))})
-
-  # Now generate the modified report, within the past n days
-  with exporter.open_writer(path_modified, modified_predicate) as modified_writer:
-    exporter.run_export_with_writer(modified_writer, replace_isodate(_RECONCILIATION_REPORT_SQL),
-                                    {'race_question_code_id': race_question_code.codeId,
-                                     'native_american_race_code_id':
-                                       native_american_race_code.codeId,
-                                     'biobank_id_prefix': get_biobank_id_prefix(),
-                                     'pmi_ops_system': _PMI_OPS_SYSTEM,
-                                     'kit_id_system': _KIT_ID_SYSTEM,
-                                     'tracking_number_system': _TRACKING_NUMBER_SYSTEM,
-                                     'n_days_ago': now - datetime.timedelta(
-                                       days=(report_cover_range + 1))})
+  for report_path, report_predicate in zip(report_paths, report_predicates):
+    with exporter.open_writer(report_path, report_predicate) as report_writer:
+      exporter.run_export_with_writer(report_writer, replace_isodate(_RECONCILIATION_REPORT_SQL),
+                                      {'race_question_code_id': race_question_code.codeId,
+                                       'native_american_race_code_id':
+                                         native_american_race_code.codeId,
+                                       'biobank_id_prefix': get_biobank_id_prefix(),
+                                       'pmi_ops_system': _PMI_OPS_SYSTEM,
+                                       'kit_id_system': _KIT_ID_SYSTEM,
+                                       'tracking_number_system': _TRACKING_NUMBER_SYSTEM,
+                                       'n_days_ago': now - datetime.timedelta(
+                                         days=(report_cover_range + 1))})
 
   # Now generate the withdrawal report, within the past n days.
   exporter.run_export(path_withdrawals, replace_isodate(_WITHDRAWAL_REPORT_SQL),
