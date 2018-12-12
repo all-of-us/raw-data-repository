@@ -375,6 +375,69 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertEquals(ehr_consent_time, summary.enrollmentStatusMemberTime)
 
 
+  def testUpdateEnrollmentStatusLastModified(self):
+    """
+    DA-631: enrollment_status update should update last_modified.
+    """
+
+    participant = self._insert(Participant(participantId=6, biobankId=66))
+    self.assertEquals(self.dao.get(participant.participantId).numBaselineSamplesArrived, 0)
+
+    ## Test Step 1: Validate that update_enrollment_status() changes the lastModified value.
+
+    # collect current modified and enrollment status
+    summary = self.dao.get(participant.participantId)
+    self.assertEquals(EnrollmentStatus.INTERESTED, summary.enrollmentStatus)
+    last_modified = summary.lastModified
+
+    # sleep 1 sec to make lastModified different
+    time.sleep(1)
+
+    tmp_summary = ParticipantSummary(
+      participantId=1,
+      biobankId=2,
+      consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+      consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
+      consentForElectronicHealthRecordsTime=datetime.datetime(2018, 3, 1),
+      enrollmentStatus=EnrollmentStatus.INTERESTED)
+
+    self.dao.update_enrollment_status(tmp_summary)
+    self.assertEquals(EnrollmentStatus.MEMBER, tmp_summary.enrollmentStatus)
+    self.assertNotEqual(last_modified, tmp_summary.lastModified)
+
+
+    ## Test Step 2: Validate update_from_biobank_stored_samples() changes lastModified.
+
+    summary.enrollmentStatus = EnrollmentStatus.FULL_PARTICIPANT
+    self.dao.update(summary)
+
+    # collect current modified and enrollment status
+    summary = self.dao.get(participant.participantId)
+    self.assertEquals(EnrollmentStatus.FULL_PARTICIPANT, summary.enrollmentStatus)
+
+    dna_tests = ["1ED10", "1SAL2"]
+    config.override_setting(config.DNA_SAMPLE_TEST_CODES, dna_tests)
+    self.dao.update_from_biobank_stored_samples()  # safe noop
+
+    sample_dao = BiobankStoredSampleDao()
+
+    def add_sample(participant, test_code, sample_id, confirmed_time):
+      sample_dao.insert(BiobankStoredSample(
+        biobankStoredSampleId=sample_id, biobankId=participant.biobankId,
+        biobankOrderIdentifier='KIT', test=test_code, confirmed=confirmed_time))
+
+    confirmed_time_0 = datetime.datetime(2018, 3, 1)
+    add_sample(participant, dna_tests[0], '11111', confirmed_time_0)
+
+    self.dao.update_from_biobank_stored_samples(participant_id=participant.participantId)
+
+    summary = self.dao.get(participant.participantId)
+    self.assertEquals(summary.samplesToIsolateDNA, SampleStatus.RECEIVED)
+    # Test that status has changed and lastModified is also different
+    self.assertEquals(EnrollmentStatus.INTERESTED, summary.enrollmentStatus)
+    self.assertNotEqual(last_modified, summary.lastModified)
+
+
 def _with_token(query, token):
   return Query(query.field_filters, query.order_by, query.max_results, token)
 
