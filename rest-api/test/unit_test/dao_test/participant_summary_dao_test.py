@@ -405,7 +405,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertEqual(last_modified, tmp_summary.lastModified)
 
     self.dao.update_enrollment_status(tmp_summary)
-    
+
     self.assertEquals(EnrollmentStatus.MEMBER, tmp_summary.enrollmentStatus)
     self.assertNotEqual(last_modified, tmp_summary.lastModified)
 
