@@ -2,11 +2,12 @@ import datetime
 import json
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 import time
+import clock
 import config
 from dao.base_dao import json_serial
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao
+from dao.participant_summary_dao import ParticipantSummaryDao, _ENROLLMENT_STATUS_SQL
 from model.biobank_stored_sample import BiobankStoredSample
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
@@ -408,12 +409,14 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
     ## Test Step 2: Validate update_from_biobank_stored_samples() changes lastModified.
 
-    summary.enrollmentStatus = EnrollmentStatus.FULL_PARTICIPANT
-    self.dao.update(summary)
+    # double check that enrollment status is still "INTERESTED".
+    self.assertEquals(EnrollmentStatus.INTERESTED, summary.enrollmentStatus)
 
-    # collect current modified and enrollment status
-    summary = self.dao.get(participant.participantId)
-    self.assertEquals(EnrollmentStatus.FULL_PARTICIPANT, summary.enrollmentStatus)
+    summary.consentForStudyEnrollment = int(QuestionnaireStatus.SUBMITTED)
+    summary.consentForElectronicHealthRecords = int(QuestionnaireStatus.SUBMITTED)
+    summary.physicalMeasurementsStatus = int(PhysicalMeasurementsStatus.COMPLETED)
+    summary.samplesToIsolateDNA = int(SampleStatus.RECEIVED)
+    self.dao.update(summary)
 
     dna_tests = ["1ED10", "1SAL2"]
     config.override_setting(config.DNA_SAMPLE_TEST_CODES, dna_tests)
@@ -433,8 +436,9 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
     summary = self.dao.get(participant.participantId)
     self.assertEquals(summary.samplesToIsolateDNA, SampleStatus.RECEIVED)
+
     # Test that status has changed and lastModified is also different
-    self.assertEquals(EnrollmentStatus.INTERESTED, summary.enrollmentStatus)
+    self.assertEquals(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
     self.assertNotEqual(last_modified, summary.lastModified)
 
 
