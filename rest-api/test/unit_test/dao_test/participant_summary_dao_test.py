@@ -397,7 +397,6 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
     ## Test Step 1: Validate update_from_biobank_stored_samples() changes lastModified.
     reset_summary()
-    summary = self.dao.get(participant.participantId)
 
     # Update and reload summary record
     self.dao.update_from_biobank_stored_samples(participant_id=participant.participantId)
