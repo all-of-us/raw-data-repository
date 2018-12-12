@@ -375,6 +375,50 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertEquals(ehr_consent_time, summary.enrollmentStatusMemberTime)
 
 
+  def testUpdateEnrollmentStatusLastModified(self):
+    """
+    DA-631: enrollment_status update should update last_modified.
+    """
+
+    participant = self._insert(Participant(participantId=6, biobankId=66))
+    # collect current modified and enrollment status
+    summary = self.dao.get(participant.participantId)
+    test_dt = datetime.datetime(2018, 11, 1)
+
+    def reset_summary():
+      # change summary so enrollment status will be changed from INTERESTED to MEMBER.
+      summary.enrollmentStatus = EnrollmentStatus.INTERESTED
+      summary.lastModified = test_dt
+      summary.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
+      summary.consentForElectronicHealthRecords = QuestionnaireStatus.SUBMITTED
+      summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+      summary.samplesToIsolateDNA = SampleStatus.RECEIVED
+      self.dao.update(summary)
+
+    ## Test Step 1: Validate update_from_biobank_stored_samples() changes lastModified.
+    reset_summary()
+
+    # Update and reload summary record
+    self.dao.update_from_biobank_stored_samples(participant_id=participant.participantId)
+    summary = self.dao.get(participant.participantId)
+
+    # Test that status has changed and lastModified is also different
+    self.assertEquals(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
+    self.assertNotEqual(test_dt, summary.lastModified)
+
+    ## Test Step 2: Validate that update_enrollment_status() changes the lastModified property.
+    reset_summary()
+    summary = self.dao.get(participant.participantId)
+
+    self.assertEqual(test_dt, summary.lastModified)
+
+    # update_enrollment_status() does not touch the db, it only modifies object properties.
+    self.dao.update_enrollment_status(summary)
+
+    self.assertEquals(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
+    self.assertNotEqual(test_dt, summary.lastModified)
+
+
 def _with_token(query, token):
   return Query(query.field_filters, query.order_by, query.max_results, token)
 
