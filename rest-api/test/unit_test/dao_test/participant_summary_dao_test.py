@@ -379,55 +379,53 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     """
     DA-631: enrollment_status update should update last_modified.
     """
+
+    ## Test Step 1: Validate update_from_biobank_stored_samples() changes lastModified.
+
     participant = self._insert(Participant(participantId=6, biobankId=66))
     self.assertEquals(self.dao.get(participant.participantId).numBaselineSamplesArrived, 0)
 
-    ## Test Step 1: Validate that update_enrollment_status() changes the lastModified value.
-
     # collect current modified and enrollment status
     summary = self.dao.get(participant.participantId)
-    self.assertEquals(EnrollmentStatus.INTERESTED, summary.enrollmentStatus)
-    last_modified = summary.lastModified
+    test_dt = datetime.datetime(2018, 11, 1)
 
-    # sleep 1 sec to make lastModified different
+    def reset_summary():
+      # change summary so enrollment status will be changed from INTERESTED to MEMBER.
+      summary.enrollmentStatus = EnrollmentStatus.INTERESTED
+      summary.lastModified = test_dt
+      summary.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
+      summary.consentForElectronicHealthRecords = QuestionnaireStatus.SUBMITTED
+      summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.COMPLETED
+      summary.samplesToIsolateDNA = SampleStatus.RECEIVED
+      self.dao.update(summary)
+
+    reset_summary()
+    summary = self.dao.get(participant.participantId)
+
+    # sleep 1 sec to make sure lastModified will be different
     time.sleep(1)
 
-    tmp_summary = ParticipantSummary (
-      participantId=1,
-      biobankId=2,
-      consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
-      consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
-      consentForElectronicHealthRecordsTime=datetime.datetime(2018, 3, 1),
-      enrollmentStatus=EnrollmentStatus.INTERESTED,
-      lastModified=last_modified
-    )
-
-    self.assertEqual(last_modified, tmp_summary.lastModified)
-
-    self.dao.update_enrollment_status(tmp_summary)
-
-    self.assertEquals(EnrollmentStatus.MEMBER, tmp_summary.enrollmentStatus)
-    self.assertNotEqual(last_modified, tmp_summary.lastModified)
-
-    ## Test Step 2: Validate update_from_biobank_stored_samples() changes lastModified.
-
-    # double check that enrollment status is still "INTERESTED".
-    self.assertEquals(EnrollmentStatus.INTERESTED, summary.enrollmentStatus)
-
-    # change data so participant enrollment status is changed to MEMBER
-    summary.consentForStudyEnrollment = int(QuestionnaireStatus.SUBMITTED)
-    summary.consentForElectronicHealthRecords = int(QuestionnaireStatus.SUBMITTED)
-    summary.physicalMeasurementsStatus = int(PhysicalMeasurementsStatus.COMPLETED)
-    summary.samplesToIsolateDNA = int(SampleStatus.RECEIVED)
-    self.dao.update(summary)
-
+    # Update and reload summary record
     self.dao.update_from_biobank_stored_samples(participant_id=participant.participantId)
-
     summary = self.dao.get(participant.participantId)
 
     # Test that status has changed and lastModified is also different
     self.assertEquals(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
-    self.assertNotEqual(last_modified, summary.lastModified)
+    self.assertNotEqual(test_dt, summary.lastModified)
+
+    ## Test Step 2: Validate that update_enrollment_status() changes the lastModified property.
+    reset_summary()
+    summary = self.dao.get(participant.participantId)
+
+    time.sleep(1)
+
+    self.assertEqual(test_dt, summary.lastModified)
+
+    # update_enrollment_status() does not touch the db, it only modifies object properties.
+    self.dao.update_enrollment_status(summary)
+
+    self.assertEquals(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
+    self.assertNotEqual(test_dt, summary.lastModified)
 
 
 def _with_token(query, token):
