@@ -380,11 +380,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     DA-631: enrollment_status update should update last_modified.
     """
 
-    ## Test Step 1: Validate update_from_biobank_stored_samples() changes lastModified.
-
     participant = self._insert(Participant(participantId=6, biobankId=66))
-    self.assertEquals(self.dao.get(participant.participantId).numBaselineSamplesArrived, 0)
-
     # collect current modified and enrollment status
     summary = self.dao.get(participant.participantId)
     test_dt = datetime.datetime(2018, 11, 1)
@@ -399,11 +395,9 @@ class ParticipantSummaryDaoTest(NdbTestBase):
       summary.samplesToIsolateDNA = SampleStatus.RECEIVED
       self.dao.update(summary)
 
+    ## Test Step 1: Validate update_from_biobank_stored_samples() changes lastModified.
     reset_summary()
     summary = self.dao.get(participant.participantId)
-
-    # sleep 1 sec to make sure lastModified will be different
-    time.sleep(1)
 
     # Update and reload summary record
     self.dao.update_from_biobank_stored_samples(participant_id=participant.participantId)
@@ -416,8 +410,6 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     ## Test Step 2: Validate that update_enrollment_status() changes the lastModified property.
     reset_summary()
     summary = self.dao.get(participant.participantId)
-
-    time.sleep(1)
 
     self.assertEqual(test_dt, summary.lastModified)
 
