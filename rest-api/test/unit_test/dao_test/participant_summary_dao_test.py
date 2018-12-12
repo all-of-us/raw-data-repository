@@ -392,15 +392,20 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     # sleep 1 sec to make lastModified different
     time.sleep(1)
 
-    tmp_summary = ParticipantSummary(
+    tmp_summary = ParticipantSummary (
       participantId=1,
       biobankId=2,
       consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
       consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
       consentForElectronicHealthRecordsTime=datetime.datetime(2018, 3, 1),
-      enrollmentStatus=EnrollmentStatus.INTERESTED)
+      enrollmentStatus=EnrollmentStatus.INTERESTED,
+      lastModified=last_modified
+    )
+
+    self.assertEqual(last_modified, tmp_summary.lastModified)
 
     self.dao.update_enrollment_status(tmp_summary)
+    
     self.assertEquals(EnrollmentStatus.MEMBER, tmp_summary.enrollmentStatus)
     self.assertNotEqual(last_modified, tmp_summary.lastModified)
 
