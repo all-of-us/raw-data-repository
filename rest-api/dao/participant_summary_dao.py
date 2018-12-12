@@ -42,11 +42,8 @@ _fields_lock = threading.RLock()
 # a Biobank samples import.
 # TODO(DA-631): This should likely be a conditional update (e.g. see
 # baseline/dna updates) which updates last modified.
-_ENROLLMENT_STATUS_SQL = """
-    UPDATE
-      participant_summary
-    SET
-      enrollment_status =
+
+_ENROLLMENT_STATUS_CASE_SQL = """
         CASE WHEN (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :submitted
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
@@ -68,7 +65,18 @@ _ENROLLMENT_STATUS_SQL = """
              THEN :member
              ELSE :interested
         END
-   """
+"""
+
+_ENROLLMENT_STATUS_SQL = """
+    UPDATE
+      participant_summary 
+    SET 
+      enrollment_status = {enrollment_status_case_sql},
+      last_modified = :now       
+    WHERE
+      enrollment_status != {enrollment_status_case_sql} 
+            
+   """.format(enrollment_status_case_sql=_ENROLLMENT_STATUS_CASE_SQL)
 
 _SAMPLE_SQL = """,
       sample_status_%(test)s =
@@ -353,7 +361,8 @@ class ParticipantSummaryDao(UpdatableDao):
                                 'received': int(SampleStatus.RECEIVED),
                                 'full_participant': int(EnrollmentStatus.FULL_PARTICIPANT),
                                 'member': int(EnrollmentStatus.MEMBER),
-                                'interested': int(EnrollmentStatus.INTERESTED)}
+                                'interested': int(EnrollmentStatus.INTERESTED),
+                                'now': now}
 
     # If participant_id is provided, add the participant ID filter to all update statements.
     if participant_id:
@@ -361,7 +370,7 @@ class ParticipantSummaryDao(UpdatableDao):
       sample_params['participant_id'] = participant_id
       counts_sql += ' AND participant_id = :participant_id'
       counts_params['participant_id'] = participant_id
-      enrollment_status_sql += ' WHERE participant_id = :participant_id'
+      enrollment_status_sql += ' AND participant_id = :participant_id'
       enrollment_status_params['participant_id'] = participant_id
       sample_status_time_sql += ' AND a.participant_id = :participant_id'
       sample_status_time_params['participant_id'] = participant_id
@@ -396,6 +405,11 @@ class ParticipantSummaryDao(UpdatableDao):
       consent, summary)
     summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(
       consent, summary)
+
+    # Update last modified date if status changes
+    if summary.enrollmentStatus != enrollment_status:
+      summary.lastModified = clock.CLOCK.now()
+
     summary.enrollmentStatus = enrollment_status
 
   def calculate_enrollment_status(self, consent,
