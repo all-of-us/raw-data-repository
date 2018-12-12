@@ -379,7 +379,6 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     """
     DA-631: enrollment_status update should update last_modified.
     """
-
     participant = self._insert(Participant(participantId=6, biobankId=66))
     self.assertEquals(self.dao.get(participant.participantId).numBaselineSamplesArrived, 0)
 
@@ -405,36 +404,21 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertEquals(EnrollmentStatus.MEMBER, tmp_summary.enrollmentStatus)
     self.assertNotEqual(last_modified, tmp_summary.lastModified)
 
-
     ## Test Step 2: Validate update_from_biobank_stored_samples() changes lastModified.
 
     # double check that enrollment status is still "INTERESTED".
     self.assertEquals(EnrollmentStatus.INTERESTED, summary.enrollmentStatus)
 
+    # change data so participant enrollment status is changed to MEMBER
     summary.consentForStudyEnrollment = int(QuestionnaireStatus.SUBMITTED)
     summary.consentForElectronicHealthRecords = int(QuestionnaireStatus.SUBMITTED)
     summary.physicalMeasurementsStatus = int(PhysicalMeasurementsStatus.COMPLETED)
     summary.samplesToIsolateDNA = int(SampleStatus.RECEIVED)
     self.dao.update(summary)
 
-    dna_tests = ["1ED10", "1SAL2"]
-    config.override_setting(config.DNA_SAMPLE_TEST_CODES, dna_tests)
-    self.dao.update_from_biobank_stored_samples()  # safe noop
-
-    sample_dao = BiobankStoredSampleDao()
-
-    def add_sample(participant, test_code, sample_id, confirmed_time):
-      sample_dao.insert(BiobankStoredSample(
-        biobankStoredSampleId=sample_id, biobankId=participant.biobankId,
-        biobankOrderIdentifier='KIT', test=test_code, confirmed=confirmed_time))
-
-    confirmed_time_0 = datetime.datetime(2018, 3, 1)
-    add_sample(participant, dna_tests[0], '11111', confirmed_time_0)
-
     self.dao.update_from_biobank_stored_samples(participant_id=participant.participantId)
 
     summary = self.dao.get(participant.participantId)
-    self.assertEquals(summary.samplesToIsolateDNA, SampleStatus.RECEIVED)
 
     # Test that status has changed and lastModified is also different
     self.assertEquals(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
