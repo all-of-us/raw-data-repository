@@ -2,12 +2,11 @@ import datetime
 import json
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 import time
-import clock
 import config
 from dao.base_dao import json_serial
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
-from dao.participant_summary_dao import ParticipantSummaryDao, _ENROLLMENT_STATUS_SQL
+from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
