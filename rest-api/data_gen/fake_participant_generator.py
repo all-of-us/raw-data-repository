@@ -133,7 +133,7 @@ class FakeParticipantGenerator(object):
     self.withdrawn_percent = withdrawn_percent
     # 5% of participants suspend their account
     self.suspended_percent = suspended_percent
-    
+
   def _days_ago(self, num_days):
     return self._now - datetime.timedelta(days=num_days)
 
@@ -707,8 +707,8 @@ class FakeParticipantGenerator(object):
   def add_pm_and_biospecimens_to_participants(self, participant_id_list):
     self._force_measurement = True
     for participant_id in participant_id_list:
-      consent_time, last_qr_time, the_basics_submission_time = (self._submit_questionnaire_responses(
-        participant_id, False, self._now))
+      _, last_qr_time, the_basics_submission_time = (self._submit_questionnaire_responses
+        (participant_id, False, self._now))
       if the_basics_submission_time is None:
         the_basics_submission_time = self._now
       last_request_time = last_qr_time

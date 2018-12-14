@@ -63,11 +63,8 @@ def _read_csv_lines(filepath):
 def generate_data_from_file(client, args):
   reader = _read_csv_lines(args.create_samples_from_file)
   request_body = [reader]
-  try:
-    print('requesting pm&b for participant')
-    client.request_json('DataGen', 'PUT', request_body)
-  except:
-    pass
+  logging.info('requesting pm&b for participant')
+  client.request_json('DataGen', 'PUT', request_body)
 
 
 
