@@ -1,5 +1,4 @@
 """Creates a participant, physical measurements, questionnaire responses, and biobank orders."""
-import clock
 import collections
 import csv
 import datetime
@@ -8,38 +7,32 @@ import logging
 import random
 import string
 
-from concepts import Concept
-from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
-from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, OVERALL_HEALTH_PPI_MODULE
-from code_constants import LIFESTYLE_PPI_MODULE, THE_BASICS_PPI_MODULE
-from code_constants import RACE_QUESTION_CODE, GENDER_IDENTITY_QUESTION_CODE
-from code_constants import FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE
-from code_constants import MIDDLE_NAME_QUESTION_CODE, ZIPCODE_QUESTION_CODE
-from code_constants import STATE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE, EMAIL_QUESTION_CODE
-from code_constants import STREET_ADDRESS_QUESTION_CODE, CITY_QUESTION_CODE
-from code_constants import PHONE_NUMBER_QUESTION_CODE, RECONTACT_METHOD_QUESTION_CODE
-from code_constants import LANGUAGE_QUESTION_CODE, SEX_QUESTION_CODE
-from code_constants import SEXUAL_ORIENTATION_QUESTION_CODE, EDUCATION_QUESTION_CODE
-from code_constants import INCOME_QUESTION_CODE, CABOR_SIGNATURE_QUESTION_CODE
-from code_constants import PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE, BIOBANK_TESTS
-from code_constants import HEALTHPRO_USERNAME_SYSTEM, SITE_ID_SYSTEM
-from field_mappings import QUESTION_CODE_TO_FIELD
-
+import clock
 from cloudstorage import cloudstorage_api
+from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
+  CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, OVERALL_HEALTH_PPI_MODULE, LIFESTYLE_PPI_MODULE, \
+  THE_BASICS_PPI_MODULE, RACE_QUESTION_CODE, GENDER_IDENTITY_QUESTION_CODE, \
+  FIRST_NAME_QUESTION_CODE, LAST_NAME_QUESTION_CODE, MIDDLE_NAME_QUESTION_CODE, \
+  ZIPCODE_QUESTION_CODE, STATE_QUESTION_CODE, DATE_OF_BIRTH_QUESTION_CODE, EMAIL_QUESTION_CODE, \
+  STREET_ADDRESS_QUESTION_CODE, CITY_QUESTION_CODE, PHONE_NUMBER_QUESTION_CODE, \
+  RECONTACT_METHOD_QUESTION_CODE, LANGUAGE_QUESTION_CODE, SEX_QUESTION_CODE, \
+  SEXUAL_ORIENTATION_QUESTION_CODE, EDUCATION_QUESTION_CODE, INCOME_QUESTION_CODE, \
+  CABOR_SIGNATURE_QUESTION_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE, BIOBANK_TESTS, \
+  HEALTHPRO_USERNAME_SYSTEM, SITE_ID_SYSTEM
+from concepts import Concept
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
-from participant_enums import make_primary_provider_link_for_hpo
-from dao.site_dao import SiteDao
+from dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION, \
+  _LOCATION_PREFIX, _AUTHORING_STEP, _CREATED_STATUS, _FINALIZED_STATUS, _AUTHOR_PREFIX
 from dao.questionnaire_dao import QuestionnaireDao
-from dao.physical_measurements_dao import _CREATED_LOC_EXTENSION, _FINALIZED_LOC_EXTENSION,\
-  _LOCATION_PREFIX
-from dao.physical_measurements_dao import _AUTHORING_STEP, _CREATED_STATUS, _FINALIZED_STATUS
-from dao.physical_measurements_dao import _AUTHOR_PREFIX
+from dao.site_dao import SiteDao
 from dateutil.parser import parse
-from model.code import CodeType
-from participant_enums import UNSET_HPO_ID
-from werkzeug.exceptions import BadRequest
+from field_mappings import QUESTION_CODE_TO_FIELD
 from google.appengine.api import app_identity
+from model.code import CodeType
+from participant_enums import make_primary_provider_link_for_hpo, UNSET_HPO_ID
+from werkzeug.exceptions import BadRequest
+
 
 _ANSWER_SPECS_BUCKET = "all-of-us-rdr-fake-data-spec"
 _ANSWER_SPECS_FILE = "answer_specs.csv"
@@ -59,10 +52,6 @@ _PHYSICAL_MEASUREMENT_ABSENT = 0.1
 _PHYSICAL_MEASURMENT_QUALIFIED = 0.2
 # 80% of consented participants have no changes to their HPO
 _NO_HPO_CHANGE = 0.8
-# 5% of participants withdraw from the study
-_WITHDRAWN_PERCENT = 0.05
-# 5% of participants suspend their account
-_SUSPENDED_PERCENT = 0.05
 # 5% of participants with biobank orders have multiple
 _MULTIPLE_BIOBANK_ORDERS = 0.05
 # 20% of participants with biobank orders have no biobank samples
@@ -125,7 +114,7 @@ _CONSTANT_CODES = [PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE]
 
 class FakeParticipantGenerator(object):
 
-  def __init__(self, client, use_local_files=None):
+  def __init__(self, client, use_local_files=None, withdrawn_percent=0.05, suspended_percent=0.05):
     self._use_local_files = use_local_files
     self._client = client
     self._hpos = HPODao().get_all()
@@ -138,7 +127,13 @@ class FakeParticipantGenerator(object):
     self._setup_questionnaires()
     self._min_birth_date = self._now - datetime.timedelta(days=_MAX_PARTICIPANT_AGE * 365)
     self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE)
+    self._force_measurement = False
 
+    # 5% of participants withdraw from the study
+    self.withdrawn_percent = withdrawn_percent
+    # 5% of participants suspend their account
+    self.suspended_percent = suspended_percent
+    
   def _days_ago(self, num_days):
     return self._now - datetime.timedelta(days=num_days)
 
@@ -528,7 +523,7 @@ class FakeParticipantGenerator(object):
 
     qualifier_set = set()
     for measurement in self._measurement_specs:
-      if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT:
+      if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT and not self._force_measurement:
         continue
       num_measurements = 1
       num_measurements_str = measurement.get('numMeasurements')
@@ -559,7 +554,7 @@ class FakeParticipantGenerator(object):
             "entry": entries}
 
   def _submit_physical_measurements(self, participant_id, consent_time):
-    if random.random() <= _NO_PHYSICAL_MEASUREMENTS:
+    if random.random() <= _NO_PHYSICAL_MEASUREMENTS and not self._force_measurement:
       return consent_time
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_BIOBANK_ORDER)
     measurements_time = consent_time + datetime.timedelta(days=days_delta)
@@ -635,7 +630,7 @@ class FakeParticipantGenerator(object):
     return created_time
 
   def _submit_biobank_data(self, participant_id, consent_time):
-    if random.random() <= _NO_BIOBANK_ORDERS:
+    if random.random() <= _NO_BIOBANK_ORDERS and not self._force_measurement:
       return consent_time
     last_request_time = self._submit_biobank_order(participant_id, consent_time)
     if random.random() <= _MULTIPLE_BIOBANK_ORDERS:
@@ -664,7 +659,7 @@ class FakeParticipantGenerator(object):
     return change_time, result
 
   def _submit_status_changes(self, participant_id, last_request_time):
-    if random.random() <= _SUSPENDED_PERCENT:
+    if random.random() <= self.suspended_percent and not self._force_measurement:
       # Fetch the participant to ensure its version is up-to-date.
       participant_response = self._client.request_json(_participant_url(participant_id),
                                                        method='GET')
@@ -674,7 +669,7 @@ class FakeParticipantGenerator(object):
       participant_response = self._update_participant(change_time, participant_response,
                                                       participant_id)
       last_request_time = change_time
-    if random.random() <= _WITHDRAWN_PERCENT:
+    if random.random() <= self.withdrawn_percent and not self._force_measurement:
       # Fetch the participant to ensure its version is up-to-date.
       participant_response = self._client.request_json(_participant_url(participant_id),
                                                        method='GET')
@@ -707,6 +702,26 @@ class FakeParticipantGenerator(object):
                                                                               participant_id,
                                                                               consent_time)
         last_request_time = max(last_request_time, last_hpo_change_time)
+      self._submit_status_changes(participant_id, last_request_time)
+
+  def add_pm_and_biospecimens_to_participants(self, participant_id_list):
+    self._force_measurement = True
+    for participant_id in participant_id_list:
+      consent_time, last_qr_time, the_basics_submission_time = (self._submit_questionnaire_responses(
+        participant_id, False, self._now))
+      if the_basics_submission_time is None:
+        the_basics_submission_time = self._now
+      last_request_time = last_qr_time
+      last_measurement_time = self._submit_physical_measurements(participant_id,
+                                                                 the_basics_submission_time)
+      if last_measurement_time is None:
+        last_measurement_time = self._now
+      last_request_time = max(last_request_time, last_measurement_time)
+      last_biobank_time = self._submit_biobank_data(participant_id, the_basics_submission_time)
+      last_request_time = max(last_request_time, last_biobank_time)
+      if last_request_time is None:
+        last_request_time = self._now
+      logging.info('submitting physical measurements and biospecimen for %s' % participant_id)
       self._submit_status_changes(participant_id, last_request_time)
 
   def _create_participant(self, hpo_name):
@@ -872,7 +887,8 @@ class FakeParticipantGenerator(object):
     return answer_map
 
   def _submit_questionnaire_responses(self, participant_id, california_hpo, start_time):
-    if random.random() <= _NO_QUESTIONNAIRES_SUBMITTED:
+    ignore_failure = self._force_measurement
+    if not self._force_measurement and random.random() <= _NO_QUESTIONNAIRES_SUBMITTED:
       return None, None, None
     submission_time = start_time
     answer_map = self._make_answer_map(california_hpo)
@@ -883,25 +899,30 @@ class FakeParticipantGenerator(object):
     # Submit the consent questionnaire always and other questionnaires at random.
     questions = self._questionnaire_to_questions[self._consent_questionnaire_id_and_version]
     self._submit_questionnaire_response(participant_id, self._consent_questionnaire_id_and_version,
-                                        questions, submission_time, answer_map)
+                                        questions, submission_time, answer_map, ignore_failure)
 
     the_basics_submission_time = None
     for questionnaire_id_and_version, questions in self._questionnaire_to_questions.iteritems():
       if (questionnaire_id_and_version != self._consent_questionnaire_id_and_version and
-          random.random() > _QUESTIONNAIRE_NOT_SUBMITTED):
+        (random.random() > _QUESTIONNAIRE_NOT_SUBMITTED or self._force_measurement)):
+
         delta = datetime.timedelta(days=random.randint(0, _MAX_DAYS_BETWEEN_SUBMISSIONS))
         submission_time = submission_time + delta
         self._submit_questionnaire_response(participant_id, questionnaire_id_and_version,
-                                            questions, submission_time, answer_map)
+                                            questions, submission_time, answer_map, ignore_failure)
         if questionnaire_id_and_version == self._the_basics_questionnaire_id_and_version:
           the_basics_submission_time = submission_time
+        elif self._force_measurement:
+          the_basics_submission_time = start_time
+    if submission_time is None and self._force_measurement:
+      submission_time = self._now
     return consent_time, submission_time, the_basics_submission_time
 
   def _create_question_answer(self, link_id, answers):
     return {"linkId": link_id, "answer": answers}
 
   def _submit_questionnaire_response(self, participant_id, q_id_and_version, questions,
-                                     submission_time, answer_map):
+                                     submission_time, answer_map, ignore_failure=False):
     questions_with_answers = []
     for question_code, link_id in questions:
       answer = answer_map.get(question_code)
@@ -909,11 +930,15 @@ class FakeParticipantGenerator(object):
         questions_with_answers.append(self._create_question_answer(link_id, answer))
     qr_json = self._create_questionnaire_response(participant_id, q_id_and_version,
                                                   questions_with_answers)
-    self._client.request_json(
-        _questionnaire_response_url(participant_id),
-        method='POST',
-        body=qr_json,
-        pretend_date=submission_time)
+    try:
+      self._client.request_json(
+          _questionnaire_response_url(participant_id),
+          method='POST',
+          body=qr_json,
+          pretend_date=submission_time)
+    except RuntimeError:
+      if not ignore_failure:
+        raise
 
   def _create_questionnaire_response(self, participant_id, q_id_and_version,
                                      questions_with_answers):
