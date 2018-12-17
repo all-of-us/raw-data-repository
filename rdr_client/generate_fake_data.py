@@ -88,7 +88,8 @@ if __name__ == '__main__':
                       help='True if biobank samples should be created')
   parser.add_argument('--create_samples_from_file',
                       help='Creates PM&B for existing participants from a csv file; requires path'
-                           ' to file')
+                           ' to file. File is expected to contain a single column of ID"s with a '
+                           'leading env. identifier. i.e. P')
   rdr_client = Client(parser=parser)
   if rdr_client.args.num_participants == 0 and not rdr_client.args.create_biobank_samples and not\
     rdr_client.args.create_samples_from_file:

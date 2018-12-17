@@ -129,9 +129,9 @@ class FakeParticipantGenerator(object):
     self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE)
     self._force_measurement = False
 
-    # 5% of participants withdraw from the study
+    # n% of participants withdraw from the study. Default is 5%
     self.withdrawn_percent = withdrawn_percent
-    # 5% of participants suspend their account
+    # n% of participants suspend their account. Default is 5%
     self.suspended_percent = suspended_percent
 
   def _days_ago(self, num_days):
