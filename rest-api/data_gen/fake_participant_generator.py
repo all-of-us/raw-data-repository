@@ -127,7 +127,6 @@ class FakeParticipantGenerator(object):
     self._setup_questionnaires()
     self._min_birth_date = self._now - datetime.timedelta(days=_MAX_PARTICIPANT_AGE * 365)
     self._max_days_for_birth_date = 365 * (_MAX_PARTICIPANT_AGE - _MIN_PARTICIPANT_AGE)
-    self._force_measurement = False
 
     # n% of participants withdraw from the study. Default is 5%
     self.withdrawn_percent = withdrawn_percent
@@ -490,7 +489,7 @@ class FakeParticipantGenerator(object):
             }
           };
 
-  def _make_physical_measurements(self, participant_id, measurements_time):
+  def _make_physical_measurements(self, participant_id, measurements_time, force_measurement=False):
     time_str = measurements_time.isoformat()
     site = random.choice(self._sites)
     entries = [{
@@ -523,7 +522,7 @@ class FakeParticipantGenerator(object):
 
     qualifier_set = set()
     for measurement in self._measurement_specs:
-      if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT and not self._force_measurement:
+      if random.random() <= _PHYSICAL_MEASUREMENT_ABSENT and not force_measurement:
         continue
       num_measurements = 1
       num_measurements_str = measurement.get('numMeasurements')
@@ -553,8 +552,8 @@ class FakeParticipantGenerator(object):
             "type": "document",
             "entry": entries}
 
-  def _submit_physical_measurements(self, participant_id, consent_time):
-    if random.random() <= _NO_PHYSICAL_MEASUREMENTS and not self._force_measurement:
+  def _submit_physical_measurements(self, participant_id, consent_time, force_measurement=False):
+    if random.random() <= _NO_PHYSICAL_MEASUREMENTS and not force_measurement:
       return consent_time
     days_delta = random.randint(0, _MAX_DAYS_BEFORE_BIOBANK_ORDER)
     measurements_time = consent_time + datetime.timedelta(days=days_delta)
@@ -629,8 +628,8 @@ class FakeParticipantGenerator(object):
         pretend_date=created_time)
     return created_time
 
-  def _submit_biobank_data(self, participant_id, consent_time):
-    if random.random() <= _NO_BIOBANK_ORDERS and not self._force_measurement:
+  def _submit_biobank_data(self, participant_id, consent_time, force_measurement=False):
+    if random.random() <= _NO_BIOBANK_ORDERS and not force_measurement:
       return consent_time
     last_request_time = self._submit_biobank_order(participant_id, consent_time)
     if random.random() <= _MULTIPLE_BIOBANK_ORDERS:
@@ -658,8 +657,8 @@ class FakeParticipantGenerator(object):
     result = self._update_participant(change_time, participant_response, participant_id)
     return change_time, result
 
-  def _submit_status_changes(self, participant_id, last_request_time):
-    if random.random() <= self.suspended_percent and not self._force_measurement:
+  def _submit_status_changes(self, participant_id, last_request_time, force_measurement=False):
+    if random.random() <= self.suspended_percent and not force_measurement:
       # Fetch the participant to ensure its version is up-to-date.
       participant_response = self._client.request_json(_participant_url(participant_id),
                                                        method='GET')
@@ -669,7 +668,7 @@ class FakeParticipantGenerator(object):
       participant_response = self._update_participant(change_time, participant_response,
                                                       participant_id)
       last_request_time = change_time
-    if random.random() <= self.withdrawn_percent and not self._force_measurement:
+    if random.random() <= self.withdrawn_percent and not force_measurement:
       # Fetch the participant to ensure its version is up-to-date.
       participant_response = self._client.request_json(_participant_url(participant_id),
                                                        method='GET')
@@ -705,24 +704,26 @@ class FakeParticipantGenerator(object):
       self._submit_status_changes(participant_id, last_request_time)
 
   def add_pm_and_biospecimens_to_participants(self, participant_id_list):
-    self._force_measurement = True
+    force_measurement = True
     for participant_id in participant_id_list:
       _, last_qr_time, the_basics_submission_time = (self._submit_questionnaire_responses
-        (participant_id, False, self._now))
+        (participant_id, False, self._now, force_measurement=True))
       if the_basics_submission_time is None:
         the_basics_submission_time = self._now
       last_request_time = last_qr_time
       last_measurement_time = self._submit_physical_measurements(participant_id,
-                                                                 the_basics_submission_time)
+                                                                 the_basics_submission_time,
+                                                                 force_measurement=True)
       if last_measurement_time is None:
         last_measurement_time = self._now
       last_request_time = max(last_request_time, last_measurement_time)
-      last_biobank_time = self._submit_biobank_data(participant_id, the_basics_submission_time)
+      last_biobank_time = self._submit_biobank_data(participant_id, the_basics_submission_time,
+                                                    force_measurement=True)
       last_request_time = max(last_request_time, last_biobank_time)
       if last_request_time is None:
         last_request_time = self._now
       logging.info('submitting physical measurements and biospecimen for %s' % participant_id)
-      self._submit_status_changes(participant_id, last_request_time)
+      self._submit_status_changes(participant_id, last_request_time, force_measurement=True)
 
   def _create_participant(self, hpo_name):
     participant_json = {}
@@ -886,9 +887,10 @@ class FakeParticipantGenerator(object):
     self._choose_answers_for_other_questions(answer_map)
     return answer_map
 
-  def _submit_questionnaire_responses(self, participant_id, california_hpo, start_time):
-    ignore_failure = self._force_measurement
-    if not self._force_measurement and random.random() <= _NO_QUESTIONNAIRES_SUBMITTED:
+  def _submit_questionnaire_responses(self, participant_id, california_hpo, start_time,
+                                      force_measurement=False):
+    ignore_failure = force_measurement
+    if not force_measurement and random.random() <= _NO_QUESTIONNAIRES_SUBMITTED:
       return None, None, None
     submission_time = start_time
     answer_map = self._make_answer_map(california_hpo)
@@ -904,7 +906,7 @@ class FakeParticipantGenerator(object):
     the_basics_submission_time = None
     for questionnaire_id_and_version, questions in self._questionnaire_to_questions.iteritems():
       if (questionnaire_id_and_version != self._consent_questionnaire_id_and_version and
-        (random.random() > _QUESTIONNAIRE_NOT_SUBMITTED or self._force_measurement)):
+        (random.random() > _QUESTIONNAIRE_NOT_SUBMITTED or force_measurement)):
 
         delta = datetime.timedelta(days=random.randint(0, _MAX_DAYS_BETWEEN_SUBMISSIONS))
         submission_time = submission_time + delta
@@ -912,9 +914,9 @@ class FakeParticipantGenerator(object):
                                             questions, submission_time, answer_map, ignore_failure)
         if questionnaire_id_and_version == self._the_basics_questionnaire_id_and_version:
           the_basics_submission_time = submission_time
-        elif self._force_measurement:
+        elif force_measurement:
           the_basics_submission_time = start_time
-    if submission_time is None and self._force_measurement:
+    if submission_time is None and force_measurement:
       submission_time = self._now
     return consent_time, submission_time, the_basics_submission_time
 
