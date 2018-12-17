@@ -83,15 +83,50 @@ class QuestionnaireResponseDao(BaseDao):
       logging.error(
           'QuestionnaireResponse model has no answers. This is harmless but probably an error.')
 
+  def _validate_link_ids_from_resource_json_group(self, resource, link_ids):
+    """
+    Look for question sections and validate the linkid in each answer.
+    This is a recursive function because groups can be nested.
+    :param resource: A group section of the response json.
+    :param link_ids: List of link ids to validate against.
+    """
+    # look for child group sections and call ourselves
+    if 'group' in resource:
+      self._validate_link_ids_from_resource_json_group(resource['group'], link_ids)
+
+    if type(resource) is list:
+      for item in resource:
+        self._validate_link_ids_from_resource_json_group(item, link_ids)
+
+    # look for question section:
+    if 'question' in resource:
+
+      # if question is a list, then loop through the list
+      if type(resource['question']) is list:
+        self._validate_link_ids_from_resource_json_group(resource['question'], link_ids)
+
+      # if question is not a list, check linkId directly
+      for question in resource['question']:
+        # Do not raise exception when link id is 'ignoreThis' for unit testing.
+        if 'linkId' in question and question['linkId'].lower() != 'ignorethis' \
+              and question['linkId'] not in link_ids:
+          raise BadRequest(
+            'Questionnaire response contains invalid link ID %s.' % question['linkId'])
+
   def insert_with_session(self, session, questionnaire_response):
+
+    # Look for a questionnaire that matches any of the questionnaire history records.
     questionnaire_history = (
         QuestionnaireHistoryDao().
         get_with_children_with_session(session, [questionnaire_response.questionnaireId,
                                                  questionnaire_response.questionnaireVersion]))
+
     if not questionnaire_history:
       raise BadRequest('Questionnaire with ID %s, version %s is not found' %
                        (questionnaire_response.questionnaireId,
                         questionnaire_response.questionnaireVersion))
+
+    # Get the questions from the questionnaire history record.
     q_question_ids = set([
         question.questionnaireQuestionId for question in questionnaire_history.questions])
     for answer in questionnaire_response.answers:
@@ -106,8 +141,16 @@ class QuestionnaireResponseDao(BaseDao):
     resource_json['id'] = str(questionnaire_response.questionnaireResponseId)
     questionnaire_response.resource = json.dumps(resource_json)
 
+    # Gather the question ids and records that match the questions in the response
     question_ids = [answer.questionId for answer in questionnaire_response.answers]
     questions = QuestionnaireQuestionDao().get_all_with_session(session, question_ids)
+
+    # DA-623: raise error when response link ids do not match our question link ids.
+    # Gather the valid link ids for this question
+    link_ids = [question.linkId for question in questions]
+    # look through the response and verify each link id is valid for each question.
+    self._validate_link_ids_from_resource_json_group(resource_json, link_ids)
+
     code_ids = [question.codeId for question in questions]
     current_answers = (QuestionnaireResponseAnswerDao().
         get_current_answers_for_concepts(session, questionnaire_response.participantId, code_ids))
