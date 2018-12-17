@@ -127,9 +127,12 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     with FakeClock(TIME_1):
       participant_id = self.create_participant()
       self.send_consent(participant_id)
-    questionnaire_id = self.create_questionnaire('questionnaire_demographics.json')
-    with open(data_path('questionnaire_response_demographics.json')) as f:
+
+    questionnaire_id = self.create_questionnaire('questionnaire_the_basics.json')
+
+    with open(data_path('questionnaire_the_basics_resp.json')) as f:
       resource = json.load(f)
+
     resource['subject']['reference'] = \
       resource['subject']['reference'].format(participant_id=participant_id)
     resource['questionnaire']['reference'] = \
@@ -321,9 +324,11 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     self.assertJsonResponseMatches(expected, summary)
 
     # verify if the response is not consent, the primary language will not change
-    questionnaire_id = self.create_questionnaire('questionnaire3.json')
-    with open(data_path('questionnaire_response3.json')) as f:
+    questionnaire_id = self.create_questionnaire('questionnaire_family_history.json')
+
+    with open(data_path('questionnaire_family_history_resp.json')) as f:
       resource = json.load(f)
+
     resource['subject']['reference'] = \
       resource['subject']['reference'].format(participant_id=participant_id)
     resource['questionnaire']['reference'] = \
@@ -361,3 +366,29 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     self.send_post(_questionnaire_response_url(participant_id), resource,
                    expected_status=httplib.BAD_REQUEST)
 
+  def test_invalid_questionnaire_linkid(self):
+    """
+    Make sure that an invalid link id in response triggers a Bad Request status
+    """
+    participant_id = self.create_participant()
+    self.send_consent(participant_id)
+
+    questionnaire_id = self.create_questionnaire('questionnaire_family_history.json')
+
+    with open(data_path('questionnaire_family_history_resp.json')) as fd:
+      resource = json.load(fd)
+
+    # update resource json to set participant and questionnaire ids.
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    resource['questionnaire']['reference'] = \
+      resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+
+    self.send_post(_questionnaire_response_url(participant_id), resource,
+                              expected_status=httplib.OK)
+
+    # Alter response to set a bad link id value
+    resource['group']['question'][0]['linkId'] = 'bad-link-id'
+
+    self.send_post(_questionnaire_response_url(participant_id), resource,
+                              expected_status=httplib.BAD_REQUEST)
