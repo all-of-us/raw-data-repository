@@ -85,8 +85,9 @@ class QuestionnaireResponseDao(BaseDao):
 
   def _validate_link_ids_from_resource_json_group(self, resource, link_ids):
     """
-    Look for question sections and validate the linkid in each answer.
-    This is a recursive function because groups can be nested.
+    Look for question sections and validate the linkid in each answer. If there is a response
+    answer link id that does not exist in the questionnaire, then raise an exception.
+    This is a recursive function because answer groups can be nested.
     :param resource: A group section of the response json.
     :param link_ids: List of link ids to validate against.
     """
