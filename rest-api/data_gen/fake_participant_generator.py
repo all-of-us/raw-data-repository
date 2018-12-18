@@ -704,7 +704,6 @@ class FakeParticipantGenerator(object):
       self._submit_status_changes(participant_id, last_request_time)
 
   def add_pm_and_biospecimens_to_participants(self, participant_id_list):
-    force_measurement = True
     for participant_id in participant_id_list:
       _, last_qr_time, the_basics_submission_time = (self._submit_questionnaire_responses
         (participant_id, False, self._now, force_measurement=True))
