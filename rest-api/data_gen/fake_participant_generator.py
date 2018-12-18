@@ -889,6 +889,9 @@ class FakeParticipantGenerator(object):
 
   def _submit_questionnaire_responses(self, participant_id, california_hpo, start_time,
                                       force_measurement=False):
+    """We may want to ignore failures in some instances. Such as when running
+    add_pm_and_biospecimens_to_participants. In this instance the existing test participant may
+    have been withdrawn and we don't want the script to fail on a large data set for that case."""
     ignore_failure = force_measurement
     if not force_measurement and random.random() <= _NO_QUESTIONNAIRES_SUBMITTED:
       return None, None, None
@@ -939,6 +942,7 @@ class FakeParticipantGenerator(object):
           body=qr_json,
           pretend_date=submission_time)
     except RuntimeError:
+      logging.warn('Questionnaire not submitted for participant %s', participant_id)
       if not ignore_failure:
         raise
 
