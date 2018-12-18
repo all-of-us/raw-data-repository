@@ -144,7 +144,7 @@ api.add_resource(version_api.VersionApi,
 api.add_resource(DataGenApi,
                  PREFIX + 'DataGen',
                  endpoint='datagen',
-                 methods=['POST'])
+                 methods=['POST', 'PUT'])
 
 #
 # Non-resource endpoints

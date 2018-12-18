@@ -1,17 +1,16 @@
 import json
 import logging
 
-from google.appengine.ext import deferred
-
 import app_util
-from app_util import nonprod, get_validated_user_info
 from api_util import HEALTHPRO
+from app_util import nonprod, get_validated_user_info
 from config_api import is_config_admin
-from data_gen.fake_participant_generator import FakeParticipantGenerator
 from data_gen.fake_biobank_samples_generator import generate_samples
+from data_gen.fake_participant_generator import FakeParticipantGenerator
 from data_gen.in_process_client import InProcessClient
 from flask import request
 from flask.ext.restful import Resource
+from google.appengine.ext import deferred
 from werkzeug.exceptions import Forbidden
 
 
@@ -54,3 +53,12 @@ class DataGenApi(Resource):
       deferred.defer(
           generate_samples,
           resource_json.get('samples_missing_fraction', _SAMPLES_MISSING_FRACTION))
+
+  @nonprod
+  def put(self):
+    resource = request.get_data()
+    resource_list = json.loads(resource)
+    participant_generator = FakeParticipantGenerator(InProcessClient(), withdrawn_percent=0,
+                                                     suspended_percent=0)
+    for p_id in resource_list:
+      participant_generator.add_pm_and_biospecimens_to_participants(p_id)
