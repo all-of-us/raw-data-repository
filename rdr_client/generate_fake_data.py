@@ -6,12 +6,13 @@ Examples:
   generate_fake_data.py --num_participants 10 [--include_*]  # create 10 new participants
   generate_fake_data.py --create_biobank_samples  # store fake sampels CSV for existing participants
 """
-
+import csv
 import logging
+from time import sleep
 
 from client import Client, HttpException
 from main_util import get_parser, configure_logging
-from time import sleep
+
 
 MAX_PARTICIPANTS_PER_REQUEST = 25
 MAX_CONSECUTIVE_ERRORS = 5
@@ -52,6 +53,21 @@ def generate_fake_data(client, args):
   logging.info('Done.')
 
 
+def _read_csv_lines(filepath):
+  with open(filepath, 'r') as f:
+    reader = csv.reader(f)
+    reader.next()
+    return [line[0].strip() for line in reader]
+
+
+def generate_data_from_file(client, args):
+  reader = _read_csv_lines(args.create_samples_from_file)
+  request_body = [reader]
+  logging.info('requesting pm&b for participant')
+  client.request_json('DataGen', 'PUT', request_body)
+
+
+
 if __name__ == '__main__':
   configure_logging()
   parser = get_parser()
@@ -70,7 +86,14 @@ if __name__ == '__main__':
   parser.add_argument('--create_biobank_samples',
                       action='store_true',
                       help='True if biobank samples should be created')
+  parser.add_argument('--create_samples_from_file',
+                      help='Creates PM&B for existing participants from a csv file; requires path'
+                           ' to file. File is expected to contain a single column of ID"s with a '
+                           'leading env. identifier. i.e. P')
   rdr_client = Client(parser=parser)
-  if rdr_client.args.num_participants == 0 and not rdr_client.args.create_biobank_samples:
+  if rdr_client.args.num_participants == 0 and not rdr_client.args.create_biobank_samples and not\
+    rdr_client.args.create_samples_from_file:
     parser.error('--num_participants must be nonzero unless --create_biobank_samples is true.')
+  if rdr_client.args.create_samples_from_file:
+    generate_data_from_file(rdr_client, rdr_client.args)
   generate_fake_data(rdr_client, rdr_client.args)
