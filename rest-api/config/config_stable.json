@@ -9,6 +9,16 @@
       "roles": ["healthpro"],
       "whitelisted_appids": ["pmi-hpo-test"]
     },
+    "awardee-newyork@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "NY_CORNELL",
+      "whitelisted_ip_ranges" : {
+        "ip4": [
+          "157.139.226.84",
+          "157.139.226.85"
+        ]
+      }
+    },
     "awardee-pitt@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "PITT",
