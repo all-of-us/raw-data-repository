@@ -91,28 +91,24 @@ class QuestionnaireResponseDao(BaseDao):
     :param resource: A group section of the response json.
     :param link_ids: List of link ids to validate against.
     """
-    # look for child group sections and call ourselves
+    # note: resource can be either a dict or a list.
+    # if this is a dict and 'group' is found, always call ourselves.
     if 'group' in resource:
       self._validate_link_ids_from_resource_json_group(resource['group'], link_ids)
 
-    if type(resource) is list:
+    if 'question' not in resource and type(resource) is list:
       for item in resource:
         self._validate_link_ids_from_resource_json_group(item, link_ids)
 
-    # look for question section:
+    # once we have a question section, iterate through list of answers.
     if 'question' in resource:
+      for section in resource['question']:
 
-      # if question is a list, then loop through the list
-      if type(resource['question']) is list:
-        self._validate_link_ids_from_resource_json_group(resource['question'], link_ids)
-
-      # if question is not a list, check linkId directly
-      for question in resource['question']:
-        # Do not raise exception when link id is 'ignoreThis' for unit testing.
-        if 'linkId' in question and question['linkId'].lower() != 'ignorethis' \
-              and question['linkId'] not in link_ids:
+        # Do not raise exception when link id is 'ignoreThis' for unit tests.
+        if 'linkId' in section and section['linkId'].lower() != 'ignorethis' \
+              and section['linkId'] not in link_ids:
           raise BadRequest(
-            'Questionnaire response contains invalid link ID %s.' % question['linkId'])
+            'Questionnaire response contains invalid link ID %s.' % resource['linkId'])
 
   def insert_with_session(self, session, questionnaire_response):
 
