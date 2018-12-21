@@ -108,7 +108,7 @@ class QuestionnaireResponseDao(BaseDao):
         if 'linkId' in section and section['linkId'].lower() != 'ignorethis' \
               and section['linkId'] not in link_ids:
           raise BadRequest(
-            'Questionnaire response contains invalid link ID %s.' % resource['linkId'])
+            'Questionnaire response contains invalid link ID %s.' % section['linkId'])
 
   def insert_with_session(self, session, questionnaire_response):
 
