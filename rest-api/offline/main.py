@@ -13,6 +13,7 @@ from flask import Flask, request
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
 from offline.base_pipeline import send_failure_alert
+from offline.generate_data import generate_data
 from offline.metrics_export import MetricsExport
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from offline.sa_key_remove import delete_service_account_keys
@@ -142,6 +143,10 @@ def delete_old_keys():
   delete_service_account_keys()
   return '{"success": "true"}'
 
+@app_util.auth_required_cron
+def generate_fake_data():
+  generate_data()
+  return '{"success": "true"}'
 
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -182,6 +187,12 @@ def _build_pipeline_app():
     endpoint='delete_old_keys',
     view_func=delete_old_keys,
     methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'GenerateFakeData',
+    endpoint='generate_fake_data',
+    view_func=generate_fake_data,
+    methods=['PUT'])
 
   offline_app.after_request(app_util.add_headers)
   offline_app.before_request(app_util.request_logging)

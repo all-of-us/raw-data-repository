@@ -56,16 +56,17 @@ def generate_fake_data(client, args):
 def _read_csv_lines(filepath):
   with open(filepath, 'r') as f:
     reader = csv.reader(f)
-    reader.next()
-    return [line[0].strip() for line in reader]
-
+    request_list = [line[0].strip() for line in reader][:15]
+    # id_list = [request_list[x:x + 5] for x in xrange(0, len(request_list), 5)]
+    return request_list
 
 def generate_data_from_file(client, args):
   reader = _read_csv_lines(args.create_samples_from_file)
+  # make a list contained within a list so request_json handles it properly.
   request_body = [reader]
   logging.info('requesting pm&b for participant')
+  print request_body
   client.request_json('DataGen', 'PUT', request_body)
-
 
 
 if __name__ == '__main__':

@@ -24,3 +24,8 @@ cron:
   schedule: every day 02:00
   timezone: America/New_York
   target: offline
+- description: Generate fake data for test participants from file.
+  url: /offline/GenerateFakeData
+  schedule: every day 02:00
+  timezone: America/New_York
+  target: offline
