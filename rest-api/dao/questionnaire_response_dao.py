@@ -86,7 +86,8 @@ class QuestionnaireResponseDao(BaseDao):
   def _validate_link_ids_from_resource_json_group(self, resource, link_ids):
     """
     Look for question sections and validate the linkid in each answer. If there is a response
-    answer link id that does not exist in the questionnaire, then raise an exception.
+    answer link id that does not exist in the questionnaire, then log a message. In
+    the future this may be changed to raising an exception.
     This is a recursive function because answer groups can be nested.
     :param resource: A group section of the response json.
     :param link_ids: List of link ids to validate against.
@@ -104,11 +105,11 @@ class QuestionnaireResponseDao(BaseDao):
     if 'question' in resource:
       for section in resource['question']:
 
-        # Do not raise exception when link id is 'ignoreThis' for unit tests.
+        # Do not log warning or raise exception when link id is 'ignoreThis' for unit tests.
         if 'linkId' in section and section['linkId'].lower() != 'ignorethis' \
               and section['linkId'] not in link_ids:
-          raise BadRequest(
-            'Questionnaire response contains invalid link ID %s.' % section['linkId'])
+          logging.error('Questionnaire response contains invalid link ID %s.' % section['linkId'])
+
 
   def insert_with_session(self, session, questionnaire_response):
 

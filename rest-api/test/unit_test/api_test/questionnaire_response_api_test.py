@@ -368,7 +368,10 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
 
   def test_invalid_questionnaire_linkid(self):
     """
-    Make sure that an invalid link id in response triggers a Bad Request status
+    DA-623 - Make sure that an invalid link id in response triggers a BadRequest status.
+    Per a PTSC group request, invalid link ids only log a message for invalid link ids.
+    In the future if questionnaires with bad link ids trigger a BadRequest, the code below
+    can be uncommented.
     """
     participant_id = self.create_participant()
     self.send_consent(participant_id)
@@ -388,7 +391,9 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                               expected_status=httplib.OK)
 
     # Alter response to set a bad link id value
-    resource['group']['question'][0]['linkId'] = 'bad-link-id'
+    # resource['group']['question'][0]['linkId'] = 'bad-link-id'
 
-    self.send_post(_questionnaire_response_url(participant_id), resource,
-                              expected_status=httplib.BAD_REQUEST)
+    # # DA-623 - Per the PTSC groups request, invalid link ids only log a message for
+    # invalid link ids.
+    # self.send_post(_questionnaire_response_url(participant_id), resource,
+    #                           expected_status=httplib.BAD_REQUEST)
