@@ -656,8 +656,17 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
         self.LN_QUESTION.linkId,
         self.EMAIL_QUESTION.linkId,
         consent_paths)
+
+    # We need to remove the unused answers in the resource so we don't trigger an unused
+    # link id exception.
+    res_len = len(resource['group']['question']) - 1
+    for idx in range(res_len, -1, -1):
+      if resource['group']['question'][idx]['linkId'].isdigit() is True:
+        del resource['group']['question'][idx]
+
     questionnaire_response = self.questionnaire_response_dao.from_client_json(
         resource, participant.participantId)
+
     return questionnaire_response
 
   @mock.patch('dao.questionnaire_response_dao._raise_if_gcloud_file_missing')
