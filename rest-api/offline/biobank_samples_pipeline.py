@@ -19,6 +19,8 @@ from dao.database_utils import replace_isodate, parse_datetime
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
 from model.config_utils import from_client_biobank_id, get_biobank_id_prefix
+from model.participant import Participant
+from dao.participant_dao import ParticipantDao
 from offline.sql_exporter import SqlExporter
 from participant_enums import OrganizationType, BiobankOrderStatus
 
@@ -145,15 +147,25 @@ def _upsert_samples_from_csv(csv_reader):
   written = 0
   try:
     samples = []
-    for row in csv_reader:
-      sample = _create_sample_from_row(row, biobank_id_prefix)
-      if sample:
-        samples.append(sample)
-        if len(samples) >= _BATCH_SIZE:
-          written += samples_dao.upsert_all(samples)
-          samples = []
-    if samples:
-      written += samples_dao.upsert_all(samples)
+    with ParticipantDao().session() as session:
+
+      for row in csv_reader:
+        sample = _create_sample_from_row(row, biobank_id_prefix)
+        # DA-601 - Ensure biobank_id exists before accepting a sample record.
+        if session.query(Participant).filter(Participant.biobankId == sample.biobankId).count() < 1:
+          logging.error('Bio bank Id ({0}) does not exist in the Participant table.'.
+                        format(sample.biobankId))
+          continue
+
+        if sample:
+          samples.append(sample)
+          if len(samples) >= _BATCH_SIZE:
+            written += samples_dao.upsert_all(samples)
+            samples = []
+
+      if samples:
+        written += samples_dao.upsert_all(samples)
+
     return written
   except ValueError, e:
     raise DataError(e)
