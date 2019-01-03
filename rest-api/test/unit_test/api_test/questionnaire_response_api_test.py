@@ -369,7 +369,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
   def test_invalid_questionnaire_linkid(self):
     """
     DA-623 - Make sure that an invalid link id in response triggers a BadRequest status.
-    Per a PTSC group request, invalid link ids only log a message for invalid link ids.
+    Per a PTSC group request, only log a message for invalid link ids.
     In the future if questionnaires with bad link ids trigger a BadRequest, the code below
     can be uncommented.
     """
