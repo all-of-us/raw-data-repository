@@ -57,8 +57,8 @@ class DataGenApi(Resource):
   @nonprod
   def put(self):
     resource = request.get_data()
-    resource_list = json.loads(resource)
+    p_id = json.loads(resource)
     participant_generator = FakeParticipantGenerator(InProcessClient(), withdrawn_percent=0,
                                                      suspended_percent=0)
-    for p_id in resource_list:
-      participant_generator.add_pm_and_biospecimens_to_participants(p_id)
+
+    participant_generator.add_pm_and_biospecimens_to_participants(p_id)
