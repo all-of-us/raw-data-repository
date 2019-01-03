@@ -703,26 +703,26 @@ class FakeParticipantGenerator(object):
         last_request_time = max(last_request_time, last_hpo_change_time)
       self._submit_status_changes(participant_id, last_request_time)
 
-  def add_pm_and_biospecimens_to_participants(self, participant_id_list):
-    for participant_id in participant_id_list:
-      _, last_qr_time, the_basics_submission_time = (self._submit_questionnaire_responses
-        (participant_id, False, self._now, force_measurement=True))
-      if the_basics_submission_time is None:
-        the_basics_submission_time = self._now
-      last_request_time = last_qr_time
-      last_measurement_time = self._submit_physical_measurements(participant_id,
-                                                                 the_basics_submission_time,
-                                                                 force_measurement=True)
-      if last_measurement_time is None:
-        last_measurement_time = self._now
-      last_request_time = max(last_request_time, last_measurement_time)
-      last_biobank_time = self._submit_biobank_data(participant_id, the_basics_submission_time,
-                                                    force_measurement=True)
-      last_request_time = max(last_request_time, last_biobank_time)
-      if last_request_time is None:
-        last_request_time = self._now
-      logging.info('submitting physical measurements and biospecimen for %s' % participant_id)
-      self._submit_status_changes(participant_id, last_request_time, force_measurement=True)
+  def add_pm_and_biospecimens_to_participants(self, participant_id):
+    logging.info("Adding PM&B for %s", participant_id)
+    _, last_qr_time, the_basics_submission_time = (self._submit_questionnaire_responses
+      (participant_id, False, self._now, force_measurement=True))
+    if the_basics_submission_time is None:
+      the_basics_submission_time = self._now
+    last_request_time = last_qr_time
+    last_measurement_time = self._submit_physical_measurements(participant_id,
+                                                               the_basics_submission_time,
+                                                               force_measurement=True)
+    if last_measurement_time is None:
+      last_measurement_time = self._now
+    last_request_time = max(last_request_time, last_measurement_time)
+    last_biobank_time = self._submit_biobank_data(participant_id, the_basics_submission_time,
+                                                  force_measurement=True)
+    last_request_time = max(last_request_time, last_biobank_time)
+    if last_request_time is None:
+      last_request_time = self._now
+    logging.info('submitting physical measurements and biospecimen for %s' % participant_id)
+    self._submit_status_changes(participant_id, last_request_time, force_measurement=True)
 
   def _create_participant(self, hpo_name):
     participant_json = {}
