@@ -56,15 +56,14 @@ def generate_fake_data(client, args):
 def _read_csv_lines(filepath):
   with open(filepath, 'r') as f:
     reader = csv.reader(f)
-    reader.next()
-    return [line[0].strip() for line in reader]
+    return [line[0].strip() for line in reader][:10]
 
 
 def generate_data_from_file(client, args):
   reader = _read_csv_lines(args.create_samples_from_file)
-  request_body = [reader]
-  logging.info('requesting pm&b for participant')
-  client.request_json('DataGen', 'PUT', request_body)
+  logging.info('Requesting pm&b for participants')
+  for i in reader:
+    client.request_json('DataGen', 'PUT', i)
 
 
 
@@ -96,4 +95,5 @@ if __name__ == '__main__':
     parser.error('--num_participants must be nonzero unless --create_biobank_samples is true.')
   if rdr_client.args.create_samples_from_file:
     generate_data_from_file(rdr_client, rdr_client.args)
-  generate_fake_data(rdr_client, rdr_client.args)
+  else:
+    generate_fake_data(rdr_client, rdr_client.args)
