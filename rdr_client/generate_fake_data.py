@@ -56,8 +56,7 @@ def generate_fake_data(client, args):
 def _read_csv_lines(filepath):
   with open(filepath, 'r') as f:
     reader = csv.reader(f)
-    return [line[0].strip() for line in reader][:10]
-
+    return [line[0].strip() for line in reader]
 
 def generate_data_from_file(client, args):
   reader = _read_csv_lines(args.create_samples_from_file)
