@@ -22,7 +22,7 @@ from model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from model.participant import Participant
 from dao.participant_dao import ParticipantDao
 from offline.sql_exporter import SqlExporter
-from participant_enums import OrganizationType, BiobankOrderStatus
+from participant_enums import OrganizationType, BiobankOrderStatus, get_sample_status_enum_value
 
 # Format for dates in output filenames for the reconciliation report.
 _FILENAME_DATE_FORMAT = '%Y-%m-%d'
@@ -131,10 +131,13 @@ class _Columns(object):
   BIOBANK_ORDER_IDENTIFIER = 'Sent Order Id'
   TEST_CODE = 'Test Code'
   CREATE_DATE = 'Sample Family Create Date'
+  STATUS = 'Sample Disposal Status'
+  DISPOSAL_DATE = 'Sample Disposed Date'
+  SAMPLE_FAMILY = 'Sample Family Id'
+
   ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID,
                    BIOBANK_ORDER_IDENTIFIER, TEST_CODE,
-                   CREATE_DATE])
-
+                   CREATE_DATE, STATUS, DISPOSAL_DATE, SAMPLE_FAMILY])
 
 def _upsert_samples_from_csv(csv_reader):
   """Inserts/updates BiobankStoredSamples from a csv.DictReader."""
@@ -207,8 +210,13 @@ def _create_sample_from_row(row, biobank_id_prefix):
   if row[_Columns.PARENT_ID]:
     # Skip child samples.
     return None
+
   sample.confirmed = _parse_timestamp(row, _Columns.CONFIRMED_DATE, sample)
   sample.created = _parse_timestamp(row, _Columns.CREATE_DATE, sample)
+  sample.status = get_sample_status_enum_value(row[_Columns.STATUS])
+  sample.disposed = _parse_timestamp(row, _Columns.DISPOSAL_DATE, sample)
+  sample.family_id = row[_Columns.SAMPLE_FAMILY]
+
   return sample
 
 def write_reconciliation_report(now, report_type='daily'):

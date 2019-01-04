@@ -56,6 +56,53 @@ class SampleStatus(messages.Enum):
   """Status of biobank samples"""
   UNSET = 0
   RECEIVED = 1
+  # DA-814 - sample disposal statuses for a good outcome.
+  DISPOSED = 10
+  CONSUMED = 11
+  UNKNOWN = 12
+  # DA-814 - sample disposal statuses for a bad outcome.
+  SAMPLE_NOT_RECEIVED = 13
+  SAMPLE_NOT_PROCESSED = 14
+  ACCESSINGING_ERROR = 15
+  LAB_ACCIDENT = 16
+  QNS_FOR_PROCESSING = 17
+  QUALITY_ISSUE = 18
+
+def get_sample_status_enum_value(status):
+  """
+  Return the SampleStatus enum value for the given status from Mayo
+  :param status: a sample status value
+  :return: SampleStatus enum value
+  """
+  if status is None:
+    return SampleStatus.UNSET
+
+  # Set Received if we have an empty status value, the sample has not been disposed of yet.
+  if not status:
+    return SampleStatus.RECEIVED
+
+  status = status.lower()
+
+  if status == 'disposed':
+    return SampleStatus.DISPOSED
+  elif status == 'consumed':
+    return SampleStatus.CONSUMED
+  elif status == 'sample not received':
+    return SampleStatus.SAMPLE_NOT_RECEIVED
+  elif status == 'sample not processed':
+    return SampleStatus.SAMPLE_NOT_PROCESSED
+  elif status == 'accessioning error':
+    return SampleStatus.ACCESSINGING_ERROR
+  elif status == 'lab accident':
+    return SampleStatus.LAB_ACCIDENT
+  elif status == 'qns for processing':
+    return SampleStatus.QNS_FOR_PROCESSING
+  elif status == 'quality issue':
+    return SampleStatus.QUALITY_ISSUE
+
+  # Set unknown for any new status values.
+  return SampleStatus.UNKNOWN
+
 
 class OrderStatus(messages.Enum):
   """Status of biobank orders and samples"""

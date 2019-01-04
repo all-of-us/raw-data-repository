@@ -78,24 +78,48 @@ _ENROLLMENT_STATUS_SQL = """
             
    """.format(enrollment_status_case_sql=_ENROLLMENT_STATUS_CASE_SQL)
 
+# DA-614 - Notes: Because there can be multiple distinct samples with the same test for a
+# participant and we can't show them all in the participant summary.  The HealthPro team
+# wants to see status and timestamp of received records over disposed records. Currently
+# this sql sets a generic disposed status instead of the specific disposal status. The
+# HealthPro team wants a new API to query biobank_stored_samples and get the specific
+# disposed status there instead from the participant summary.
 _SAMPLE_SQL = """,
       sample_status_%(test)s =
-        CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample
-                         WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
-                         AND biobank_stored_sample.test = %(sample_param_ref)s)
-             THEN :received ELSE :unset END,
+        CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample bss
+                         WHERE bss.biobank_id = ps.biobank_id
+                         AND bss.test = %(sample_param_ref)s)
+          THEN 
+              # DA-614 - Only set disposed status when ALL samples for this test are disposed of. 
+              CASE WHEN (SELECT MIN(bss.status) FROM biobank_stored_sample bss
+                       WHERE bss.biobank_id = ps.biobank_id
+                       AND bss.test = %(sample_param_ref)s) >= :disposed
+                   THEN :disposed
+              ELSE :received END               
+          ELSE :unset END,
       sample_status_%(test)s_time =
-        (SELECT MAX(confirmed) FROM biobank_stored_sample
-          WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
-          AND biobank_stored_sample.confirmed IS NOT NULL
-          AND biobank_stored_sample.test = %(sample_param_ref)s)
+        CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample bss 
+              WHERE bss.biobank_id = ps.biobank_id AND bss.test = %(sample_param_ref)s)
+          THEN
+              # DA-614 - Only use disposed datetime when ALL samples for this test are disposed of.
+              CASE WHEN (SELECT MIN(bss.status) FROM biobank_stored_sample bss
+                       WHERE bss.biobank_id = ps.biobank_id
+                       AND bss.test = %(sample_param_ref)s) >= :disposed
+                   THEN (SELECT MAX(disposed) from biobank_stored_sample bss
+                     WHERE bss.biobank_id = ps.biobank_id
+                       AND bss.test = %(sample_param_ref)s)
+              ELSE (SELECT MAX(confirmed) from biobank_stored_sample bss
+                     WHERE bss.biobank_id = ps.biobank_id and bss.status < :disposed
+                       AND bss.test = %(sample_param_ref)s)
+              END
+          ELSE NULL END
    """
 
 _WHERE_SQL = """
-not sample_status_%(test)s_time <=>
-(SELECT MAX(confirmed) FROM biobank_stored_sample
-WHERE biobank_stored_sample.biobank_id = participant_summary.biobank_id
-AND biobank_stored_sample.test = %(sample_param_ref)s)
+not ps.sample_status_%(test)s_time <=>
+(SELECT MAX(bss.confirmed) FROM biobank_stored_sample bss
+WHERE bss.biobank_id = ps.biobank_id
+AND bss.test = %(sample_param_ref)s)
 
 """
 
@@ -105,13 +129,14 @@ def _get_sample_sql_and_params(now):
   """
   sql = """
   UPDATE
-    participant_summary
+    participant_summary ps
   SET
-    last_modified = :now
+    ps.last_modified = :now
   """
   params = {
       'received': int(SampleStatus.RECEIVED),
       'unset': int(SampleStatus.UNSET),
+      'disposed': int(SampleStatus.DISPOSED),
       'now': now
   }
   where_sql = ''
