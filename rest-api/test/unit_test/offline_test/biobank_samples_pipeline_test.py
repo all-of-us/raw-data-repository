@@ -82,7 +82,9 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
   def _check_summary(self, participant_id, test, date_formatted):
     summary = ParticipantSummaryDao().get(participant_id)
     self.assertEquals(summary.numBaselineSamplesArrived, 1)
-    self.assertEquals(SampleStatus.RECEIVED, getattr(summary, 'sampleStatus' + test))
+    # DA-614 - All specific disposal statuses in biobank_stored_samples are changed to DISPOSED
+    # in the participant summary.
+    self.assertEquals(SampleStatus.DISPOSED, getattr(summary, 'sampleStatus' + test))
     sample_time = self._naive_utc_to_naive_central(getattr(summary, 'sampleStatus' + test + 'Time'))
     self.assertEquals(date_formatted, sample_time.isoformat())
 
