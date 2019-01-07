@@ -61,9 +61,9 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     biobank_samples_pipeline.upsert_from_latest_csv()
 
     self.assertEquals(dao.count(), 3)
-    self._check_summary(participant_ids[0], test1, '2016-11-29T12:19:32')
-    self._check_summary(participant_ids[1], test2, '2016-11-29T12:38:58')
-    self._check_summary(participant_ids[2], test3, '2016-11-29T12:41:26')
+    self._check_summary(participant_ids[0], test1, '2016-11-29T12:19:32', SampleStatus.DISPOSED)
+    self._check_summary(participant_ids[1], test2, '2016-11-29T12:38:58', SampleStatus.DISPOSED)
+    self._check_summary(participant_ids[2], test3, '2016-11-29T12:41:26', SampleStatus.RECEIVED)
 
   def test_old_csv_not_imported(self):
     now = clock.CLOCK.now()
@@ -79,12 +79,12 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     central_date = utc_date.astimezone(pytz.timezone('US/Central'))
     return central_date.replace(tzinfo=None)
 
-  def _check_summary(self, participant_id, test, date_formatted):
+  def _check_summary(self, participant_id, test, date_formatted, status):
     summary = ParticipantSummaryDao().get(participant_id)
     self.assertEquals(summary.numBaselineSamplesArrived, 1)
     # DA-614 - All specific disposal statuses in biobank_stored_samples are changed to DISPOSED
     # in the participant summary.
-    self.assertEquals(SampleStatus.DISPOSED, getattr(summary, 'sampleStatus' + test))
+    self.assertEquals(status, getattr(summary, 'sampleStatus' + test))
     sample_time = self._naive_utc_to_naive_central(getattr(summary, 'sampleStatus' + test + 'Time'))
     self.assertEquals(date_formatted, sample_time.isoformat())
 
