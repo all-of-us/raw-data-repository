@@ -1,6 +1,5 @@
 """Utilities for loading test data."""
 
-import StringIO
 import datetime
 import json
 import os
@@ -77,21 +76,29 @@ def load_biobank_order_json(participant_id, filename='biobank_order_1.json'):
     })
 
 
-def open_biobank_samples(
-      biobank_id1, biobank_id2, biobank_id3,
-      test1=None, test2=None, test3=None):
-  """Returns an readable stream for the biobank samples CSV."""
-  with open(data_path('biobank_samples_1.csv')) as f:
-    csv_str = f.read() % {
-      'biobank_id1': to_client_biobank_id(biobank_id1),
-      'biobank_id2': to_client_biobank_id(biobank_id2),
-      'biobank_id3': to_client_biobank_id(biobank_id3),
-      'test1': test1 or random.choice(BIOBANK_TESTS),
-      'test2': test2 or random.choice(BIOBANK_TESTS),
-      'test3': test3 or random.choice(BIOBANK_TESTS),
-    }
-  return StringIO.StringIO(csv_str)
+def open_biobank_samples(biobank_ids, tests):
+  """
+  Returns a string representing the biobank samples CSV file. The number of records returned
+  is equal to the number of biobank_ids passed.
+  :param biobank_ids: list of biobank ids.
+  :param tests: list of tests
+  :return: StringIO object
+  """
+  nids = len(biobank_ids)
+  # get the same number of sample lines as biobank_ids, plus header line.
+  lines = open(data_path('biobank_samples_1.csv')).readlines()[:nids+1]
+  csv_str = lines[0]  # include header line every time.
 
+  for x in range(0, nids):
+    # if we don't have a test code for this index, use a random one.
+    try:
+      test_code = tests[x]
+    except IndexError:
+      test_code = random.choice(BIOBANK_TESTS)
+
+    csv_str += lines[x+1].format(biobank_id=to_client_biobank_id(biobank_ids[x]), test=test_code)
+
+  return csv_str
 
 def load_questionnaire_response_with_consents(
       questionnaire_id,

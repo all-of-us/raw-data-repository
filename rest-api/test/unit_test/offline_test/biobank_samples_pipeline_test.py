@@ -3,6 +3,7 @@ import random
 import pytz
 import datetime
 import time
+import StringIO
 
 from cloudstorage import cloudstorage_api  # stubbed by testbed
 
@@ -45,25 +46,39 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     summary_dao = ParticipantSummaryDao()
     biobank_ids = []
     participant_ids = []
-    for _ in xrange(3):
+    nids = 16  # equal to the number of data rows in 'biobank_samples_1.csv'
+
+    for _ in xrange(nids):
       participant = self.participant_dao.insert(Participant())
       summary_dao.insert(self.participant_summary(participant))
       participant_ids.append(participant.participantId)
       biobank_ids.append(participant.biobankId)
       self.assertEquals(summary_dao.get(participant.participantId).numBaselineSamplesArrived, 0)
-    test1, test2, test3 = random.sample(_BASELINE_TESTS, 3)
-    samples_file = test_data.open_biobank_samples(*biobank_ids, test1=test1, test2=test2,
-                                                  test3=test3)
+
+    test_codes = random.sample(_BASELINE_TESTS, nids)
+    samples_file = test_data.open_biobank_samples(biobank_ids=biobank_ids, tests=test_codes)
+    lines = samples_file.split('\n')[1:] # remove field name line
+
     input_filename = 'cloud%s.csv' % self._naive_utc_to_naive_central(clock.CLOCK.now()).strftime(
         biobank_samples_pipeline.INPUT_CSV_TIME_FORMAT)
-    self._write_cloud_csv(input_filename, samples_file.read())
-
+    self._write_cloud_csv(input_filename, samples_file)
     biobank_samples_pipeline.upsert_from_latest_csv()
 
-    self.assertEquals(dao.count(), 3)
-    self._check_summary(participant_ids[0], test1, '2016-11-29T12:19:32', SampleStatus.DISPOSED)
-    self._check_summary(participant_ids[1], test2, '2016-11-29T12:38:58', SampleStatus.DISPOSED)
-    self._check_summary(participant_ids[2], test3, '2016-11-29T12:41:26', SampleStatus.RECEIVED)
+    self.assertEquals(dao.count(), nids)
+
+    for x in range(0, nids):
+      cols = lines[x].split('\t')
+
+      # If status is 'In Prep', then sample confirmed timestamp should be empty
+      if cols[2] == 'In Prep':
+        self.assertEquals(len(cols[11]), 0)
+      else:
+        # DA-814 - Participant Summary test status should be: Unset, Received or Disposed only.
+        # If sample is disposed, then check disposed timestamp, otherwise check confirmed timestamp.
+        status = SampleStatus.DISPOSED if cols[2] == 'Disposed' else SampleStatus.RECEIVED
+        ts_str = cols[9] if cols[2] == 'Disposed' else cols[11]
+        ts = datetime.datetime.strptime(ts_str, '%Y/%m/%d %H:%M:%S')
+        self._check_summary(participant_ids[x], test_codes[x], ts, status)
 
   def test_old_csv_not_imported(self):
     now = clock.CLOCK.now()
@@ -86,7 +101,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     # in the participant summary.
     self.assertEquals(status, getattr(summary, 'sampleStatus' + test))
     sample_time = self._naive_utc_to_naive_central(getattr(summary, 'sampleStatus' + test + 'Time'))
-    self.assertEquals(date_formatted, sample_time.isoformat())
+    self.assertEquals(date_formatted, sample_time)
 
   def test_find_latest_csv(self):
     # The cloud storage testbed does not expose an injectable time function.
@@ -104,8 +119,8 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEquals(latest_filename, '/%s/%s' % (_FAKE_BUCKET, created_last))
 
   def test_sample_from_row(self):
-    samples_file = test_data.open_biobank_samples(112, 222, 333)
-    reader = csv.DictReader(samples_file, delimiter='\t')
+    samples_file = test_data.open_biobank_samples([112, 222, 333], [])
+    reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
     row = reader.next()
     sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
     self.assertIsNotNone(sample)
@@ -124,23 +139,23 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
         row[cols.CREATE_DATE])
 
   def test_sample_from_row_wrong_prefix(self):
-    samples_file = test_data.open_biobank_samples(111, 222, 333)
-    reader = csv.DictReader(samples_file, delimiter='\t')
+    samples_file = test_data.open_biobank_samples([111, 222, 333], [])
+    reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
     row = reader.next()
     row[biobank_samples_pipeline._Columns.CONFIRMED_DATE] = '2016 11 19'
     self.assertIsNone(biobank_samples_pipeline._create_sample_from_row(row, 'Q'))
 
   def test_sample_from_row_invalid(self):
-    samples_file = test_data.open_biobank_samples(111, 222, 333)
-    reader = csv.DictReader(samples_file, delimiter='\t')
+    samples_file = test_data.open_biobank_samples([111, 222, 333], [])
+    reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
     row = reader.next()
     row[biobank_samples_pipeline._Columns.CONFIRMED_DATE] = '2016 11 19'
     with self.assertRaises(biobank_samples_pipeline.DataError):
       biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
 
   def test_sample_from_row_old_test(self):
-    samples_file = test_data.open_biobank_samples(111, 222, 333)
-    reader = csv.DictReader(samples_file, delimiter='\t')
+    samples_file = test_data.open_biobank_samples([111, 222, 333], [])
+    reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
     row = reader.next()
     row[biobank_samples_pipeline._Columns.TEST_CODE] = '2PST8'
     sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
