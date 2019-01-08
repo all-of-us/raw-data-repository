@@ -14,30 +14,63 @@ Usage: run_client.sh --account $USER@pmi-ops.org --project all-of-us-rdr-staging
     [--email cabor@example.com --email columbiany@example.com]
 """
 
-import StringIO
-import collections
 import csv
 import httplib
-import itertools
 import logging
 import urllib2
+import re
 
 from client import Client
-from code_constants import EMAIL_QUESTION_CODE
+from code_constants import EMAIL_QUESTION_CODE as EQC, PHONE_NUMBER_QUESTION_CODE as PNQC
 from main_util import get_parser, configure_logging
 
 
-def check_ppi_data(client, spreadsheet_id, spreadsheet_gid, emails):
-  csv_text = _fetch_csv_data(spreadsheet_id, spreadsheet_gid)
-  json_ppi_data = _convert_to_person_dicts(StringIO.StringIO(csv_text), emails)
+def check_ppi_data(client, args):
+  """
+  Fetch and process spreadsheet, then call CheckPpiData for results
+  :param client: Client object
+  :param args: program arguments
+  """
+  # See if we have filter criteria
+  if not args.email and not args.phone:
+    do_filter = False
+  else:
+    do_filter = True
+
+  if not args.phone:
+    args.phone = list()
+  if not args.email:
+    args.email = list()
+
+  csv_data = _fetch_csv_data(args.spreadsheet_id, args.spreadsheet_gid)
+  ppi_data = dict()
+
+  # iterate over each data column, convert them into a dict.
+  for column in range(0, len(csv_data[0]) - 1):
+    row_dict = _convert_csv_column_to_dict(csv_data, column)
+
+    if do_filter is False or (row_dict[EQC] in args.email or row_dict[PNQC] in args.phone):
+      # prioritize using email value over phone number for key
+      key = row_dict[EQC] if row_dict[EQC] else row_dict[PNQC]
+      ppi_data[key] = row_dict
+
+  if len(ppi_data) == 0:
+    logging.error("No participants matched filter criteria. aborting.")
+    return
+
   response_json = client.request_json(
       'CheckPpiData',
       method='POST',
-      body={'ppi_data': json_ppi_data})
+      body={'ppi_data': ppi_data})
   _log_ppi_results(response_json['ppi_results'])
 
-
 def _fetch_csv_data(spreadsheet_id, spreadsheet_gid):
+  """
+  Download a google doc spreadsheet in CSV format
+  :param spreadsheet_id: document id
+  :param spreadsheet_gid: gid id
+  :return: A list object with rows from spreadsheet
+  """
   url = 'https://docs.google.com/spreadsheets/d/%(id)s/export?format=csv&id=%(id)s&gid=%(gid)s' % {
     'id': spreadsheet_id,
     'gid': spreadsheet_gid,
@@ -45,59 +78,28 @@ def _fetch_csv_data(spreadsheet_id, spreadsheet_gid):
   response = urllib2.urlopen(url)
   if response.code != httplib.OK:  # urllib2 already raises urllib2.HTTPError for some of these.
     raise RuntimeError('Error fetching %r: response %s.' % (url, response.status))
-  return response.read()
 
+  # Convert csv file to a list of row data
+  csv_data = list()
+  for row in csv.reader(response):
+    csv_data.append(row)
 
-def _convert_to_person_dicts(csv_input, raw_include_emails):
-  """Converts CSV text to dicts of question/answer values per person.
+  return csv_data
 
-  Args
-    csv_input: File-like CSV text downloaded from Google spreadsheets. (See main doc.)
-    raw_include_emails: If non-empty, only include the participants ID'd by these e-mails in the
-        returned dict.
-  Returns: A nested dictionary of {email: {code: value, code: value, ...}, email: ...}.
-      See CheckPpiDataApi for request format details.
+def _convert_csv_column_to_dict(csv_data, column):
   """
-  csv_reader = csv.reader(csv_input)
-  row_number = 0
-  emails = []
-  include_emails = []
-  emails_to_codes_and_answers = collections.defaultdict(dict)
-  for row in csv_reader:
-    row_number += 1
-    if not row:
-      logging.info('Skipping empty CSV row number %d.', row_number)
-    answer_code, answer_values = row[0], row[1:]
+  Return a dictionary object with keys from the first column and values from the specified
+  column.
+  :param csv_data: File-like CSV text downloaded from Google spreadsheets. (See main doc.)
+  :return: dict of fields and values for given column
+  """
+  results = dict()
 
-    # The first row must contain emails.
-    if row_number == 1:
-      if answer_code != EMAIL_QUESTION_CODE:
-        raise ValueError('First row %r does must have values for %r.' % (row, EMAIL_QUESTION_CODE))
-      emails = answer_values
-      if raw_include_emails:
-        logging.info(
-            'Only validating %d emails (of %d found in CSV).', len(raw_include_emails), len(emails))
-        not_found_emails = set(raw_include_emails) - set(emails)
-        if not_found_emails:
-          raise ValueError(
-              'Spreadsheet had %r, cannot filter to %r (could not find %s).'
-              % (emails, raw_include_emails, list(not_found_emails)))
-        include_emails = set(raw_include_emails)
-      else:
-        include_emails = set(emails)
-      continue
+  for row in csv_data:
+    data = row[1:][column]
+    results[row[0]] = data.strip() if data else ''
 
-    # Process remaining rows assuming emails have been read in.
-    if len(answer_values) > len(emails):
-      raise ValueError(
-          'More answers on row %d than emails: %r (emails are %r).'
-          % (row_number, answer_values, emails))
-    for email, raw_answer_value in itertools.izip_longest(emails, answer_values):
-      answer_value = raw_answer_value.strip() if raw_answer_value else ''
-      if email in include_emails:
-        emails_to_codes_and_answers[email][answer_code] = answer_value
-  return dict(emails_to_codes_and_answers)
-
+  return results
 
 def _log_ppi_results(results_json):
   """Formats and logs the validation results. See CheckPpiDataApi for response format details."""
@@ -110,12 +112,15 @@ def _log_ppi_results(results_json):
     log_lines = [
         'Results for %s: %d tests, %d error%s'
         % (email, tests_count, errors_count, '' if errors_count == 1 else 's')]
-    log_lines += ['\t' + message for message in results['error_messages']]
+    for message in results['error_messages']:
+      # Convert braces and unicode indicator to quotes for better readability
+      message = re.sub("\[u'", '"', message)
+      message = re.sub("'\]", '"', message)
+      log_lines += ['\t' + message]
     logging.info('\n'.join(log_lines))
   logging.info(
       'Completed %d tests across %d participants with %d error%s.',
       tests_total, len(results_json), errors_total, '' if errors_total == 1 else 's')
-
 
 if __name__ == '__main__':
   configure_logging()
@@ -131,6 +136,10 @@ if __name__ == '__main__':
       help=('Only validate the given e-mail(s). Validate all by default.'
             ' This flag may be repeated to specify multiple e-mails.'),
       action='append')
+  parser.add_argument(
+    '--phone',
+    help=('Only validate the given phone number. '
+          ' This flag may be repeated to specify multiple phone numbers.'),
+    action='append')
   rdr_client = Client(parser=parser)
-  args = rdr_client.args
-  check_ppi_data(rdr_client, args.spreadsheet_id, args.spreadsheet_gid, args.email)
+  check_ppi_data(rdr_client, rdr_client.args)
