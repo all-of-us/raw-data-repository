@@ -40,3 +40,13 @@ class CheckPpiDataApiTest(FlaskTestBase):
     self.assertEquals(1, result.errors_count)
     self.assertEquals(1, len(result.messages))
     self.assertIn(FIRST_NAME_QUESTION_CODE, result.messages[0])
+
+    # test using phone number as lookup value in API.
+    summary.phoneNumber = '5555555555'
+    ParticipantSummaryDao().update(summary)
+    result = check_ppi_data_api._get_validation_result(
+      summary.phoneNumber, {FIRST_NAME_QUESTION_CODE: 'NotAnswered'})
+    self.assertEquals(1, result.tests_count)
+    self.assertEquals(1, result.errors_count)
+    self.assertEquals(1, len(result.messages))
+    self.assertIn(FIRST_NAME_QUESTION_CODE, result.messages[0])
