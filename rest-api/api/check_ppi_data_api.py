@@ -6,6 +6,7 @@ from api_util import PTC_AND_HEALTHPRO
 from app_util import auth_required
 from code_constants import PPI_SYSTEM, EMAIL_QUESTION_CODE
 from dao.code_dao import CodeDao
+from model.participant_summary import ParticipantSummary
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao
 from model.code import CodeType
@@ -17,12 +18,12 @@ def check_ppi_data():
 
   Typically called from rdr_client/check_ppi_data.py.
 
-  The request contains a ppi_data dict which maps test participant e-mail addresses to their
-  responses. All code and answer values are unparsed strings. Values may be empty, and multiple
-  values for one answer may be separated by | characters.
+  The request contains a ppi_data dict which maps test participant e-mail addresses/phone number
+  to their responses. All code and answer values are unparsed strings. Values may be empty,
+  and multiple values for one answer may be separated by | characters.
   {
     'ppi_data': {
-      'email@address.com': {
+      'email@address.com|5555555555': {
         'PIIName_First': 'Alex',
         'Insurance_HealthInsurance': 'HealthInsurance_Yes',
         'EmplymentWorkAddress_AddressLineOne': '',
@@ -38,7 +39,7 @@ def check_ppi_data():
   error messages.
   {
     'ppi_results': {
-      'email@address.com': {
+      'email@address.com|5555555555': {
         'tests_count': number,
         'errors_count': number,
         'error_messages' : [
@@ -52,8 +53,8 @@ def check_ppi_data():
   _sanity_check_codebook()
   ppi_results = {}
   ppi_data = request.get_json(force=True)['ppi_data']
-  for email, codes_to_answers in ppi_data.iteritems():
-    ppi_results[email] = _get_validation_result(email, codes_to_answers).to_json()
+  for key, codes_to_answers in ppi_data.iteritems():
+    ppi_results[key] = _get_validation_result(key, codes_to_answers).to_json()
   return json.dumps({'ppi_results': ppi_results})
 
 
@@ -81,15 +82,22 @@ class _ValidationResult(object):
     }
 
 
-def _get_validation_result(email, codes_to_answers):
+def _get_validation_result(key, codes_to_answers):
   result = _ValidationResult()
+  with ParticipantSummaryDao().session() as session:
+    # Get summary by email or phone
+    if '@' not in key:
+      summaries = session.query(ParticipantSummary).\
+                      filter(ParticipantSummary.phoneNumber == key).all()
+    else:
+      summaries = session.query(ParticipantSummary).\
+                      filter(ParticipantSummary.email == key).all()
 
-  summaries = ParticipantSummaryDao().get_by_email(email)
   if not summaries:
-    result.add_error('No ParticipantSummary found for %r.' % email)
+    result.add_error('No ParticipantSummary found for %r.' % key)
     return result
   if len(summaries) > 1:
-    result.add_error('%d ParticipantSummary values found for %r.' % (len(summaries), email))
+    result.add_error('%d ParticipantSummary values found for %r.' % (len(summaries), key))
     return result
   participant_id = summaries[0].participantId
 
