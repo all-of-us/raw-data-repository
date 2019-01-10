@@ -43,7 +43,7 @@ class ParticipantCountsOverTimeService(BaseDao):
       sql = self.get_total_sql(filters_sql_ps)
     elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(val) for val in EnrollmentStatus]
-      sql = self.get_enrollment_status_sql(filters_sql_ps, filters_sql_p, filter_by)
+      sql = self.get_enrollment_status_sql(filters_sql_p, filter_by)
     else:
       raise BadRequest('Invalid stratification: %s' % stratification)
 
@@ -52,7 +52,6 @@ class ParticipantCountsOverTimeService(BaseDao):
     results_by_date = []
 
     with self.session() as session:
-      print '-----' + sql
       cursor = session.execute(sql, params)
 
     # Iterate through each result (by date), transforming tabular SQL results
@@ -172,7 +171,7 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     return sql
 
-  def get_enrollment_status_sql(self, filters_sql_ps, filters_sql_p, filter_by='ORDERED'):
+  def get_enrollment_status_sql(self, filters_sql_p, filter_by='ORDERED'):
 
     # Noteworthy comments / documentation from Dan (and lightly adapted)
     #
@@ -199,54 +198,28 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     sql = """
       SELECT
-         SUM(registered_cnt * (cnt_day <= calendar.day)) registered_participants,
-         SUM(member_cnt * (cnt_day <= calendar.day)) member_participants,
-         SUM(full_cnt * (cnt_day <= calendar.day)) full_participants,
-         calendar.day
-      FROM
-         (
-            SELECT c2.day cnt_day,
-               registered.cnt registered_cnt,
-               member.cnt member_cnt,
-               core.cnt full_cnt
-            FROM calendar c2
-            LEFT OUTER JOIN
-              (SELECT COUNT(*) cnt,
-                  (
-                    CASE 
-                      WHEN (enrollment_status = 1 OR enrollment_status IS NULL) THEN
-                        DATE(p.sign_up_time)
-                    ELSE NULL 
-                    END) day
-                  FROM participant p
-                  LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
-                %(filters_p)s
-                GROUP BY day) registered
-               ON c2.day = registered.day
-            LEFT OUTER JOIN
-              (
-                SELECT COUNT(*) cnt,
-                  Date(ps.enrollment_status_member_time) day
-                FROM participant_summary ps
-                %(filters_ps)s
-                GROUP BY day
-              ) member
-              ON c2.day = member.day
-            LEFT OUTER JOIN
-              (
-                SELECT COUNT(*) cnt,
-                  Date(ps.%(core_sample_time_field_name)s) day
-                FROM participant_summary ps
-                %(filters_ps)s
-                GROUP BY day
-              ) core
-              ON c2.day = core.day
-         ) day_sums, calendar
-      WHERE calendar.day >= :start_date
-        AND calendar.day <= :end_date
-      GROUP BY calendar.day
-      ORDER BY calendar.day;
-      """ % {'filters_ps': filters_sql_ps, 'filters_p': filters_sql_p,
-             'core_sample_time_field_name': core_sample_time_field_name}
+      sum(CASE
+        WHEN day>=sign_up_time AND (enrollment_status_member_time IS NULL OR day < enrollment_status_member_time) THEN 1
+        ELSE 0
+      END) AS registered_participants,
+      sum(CASE
+        WHEN enrollment_status_member_time IS NOT NULL AND day>=enrollment_status_member_time AND (%(core_sample_time_field_name)s IS NULL OR day < %(core_sample_time_field_name)s) THEN 1
+        ELSE 0
+      END) AS member_participants,
+      sum(CASE
+        WHEN %(core_sample_time_field_name)s IS NOT NULL AND day>=%(core_sample_time_field_name)s THEN 1
+        ELSE 0
+      END) AS full_participants,
+      day
+      FROM (SELECT p.sign_up_time, ps.enrollment_status_member_time, ps.enrollment_status_core_ordered_sample_time, ps.enrollment_status_core_stored_sample_time, calendar.day
+            FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
+                 calendar
+            %(filters_p)s
+              AND calendar.day >= :start_date
+              AND calendar.day <= :end_date
+           ) a
+      GROUP BY day
+      ORDER BY day;
+      """ % {'filters_p': filters_sql_p, 'core_sample_time_field_name': core_sample_time_field_name}
 
     return sql
