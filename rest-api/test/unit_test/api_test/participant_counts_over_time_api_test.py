@@ -32,6 +32,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.time2 = datetime.datetime(2018, 1, 1)
     self.time3 = datetime.datetime(2018, 1, 2)
     self.time4 = datetime.datetime(2018, 1, 3)
+    self.time5 = datetime.datetime(2018, 1, 4)
 
     # Insert 2 weeks of dates
     curr_date = datetime.date(2017, 12, 22)
@@ -41,7 +42,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       curr_date = curr_date + datetime.timedelta(days=1)
 
   def _insert(self, participant, first_name=None, last_name=None, hpo_name=None,
-              unconsented=False, time_int=None, time_mem=None, time_fp=None):
+              unconsented=False, time_int=None, time_mem=None, time_fp=None, time_fp_stored=None):
     """
     Create a participant in a transient test database.
 
@@ -84,6 +85,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     summary.dateOfBirth = datetime.date(1978, 10, 10)
 
     summary.enrollmentStatus = enrollment_status
+
+    summary.enrollmentStatusMemberTime = time_mem
+    summary.enrollmentStatusCoreOrderedSampleTime = time_fp
+    summary.enrollmentStatusCoreStoredSampleTime = time_fp_stored
 
     summary.hpoId = self.hpo_dao.get_by_name(hpo_name).hpoId
 
@@ -320,6 +325,52 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(total_count_day_1, 0)
     self.assertEquals(total_count_day_2, 3)
 
+    # test filter by sample stored time doesn't affect MEMBER and TOTAL
+    qs = """
+          bucketSize=1
+          &stratification=ENROLLMENT_STATUS
+          &startDate=2017-12-30
+          &endDate=2018-01-04
+          &awardee=
+          &enrollmentStatus=MEMBER
+          &filterBy=STORED
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    member_count_day_1 = response[0]['metrics']['MEMBER']
+    member_count_day_2 = response[1]['metrics']['MEMBER']
+    member_count_day_3 = response[2]['metrics']['MEMBER']
+    member_count_day_4 = response[3]['metrics']['MEMBER']
+    interested_count_day_4 = response[1]['metrics']['INTERESTED']
+
+    self.assertEquals(member_count_day_1, 0)
+    self.assertEquals(member_count_day_2, 0)
+    self.assertEquals(member_count_day_3, 2)
+    self.assertEquals(member_count_day_4, 3)
+    self.assertEquals(interested_count_day_4, 0)
+
+    qs = """
+          bucketSize=1
+          &stratification=TOTAL
+          &startDate=2017-12-30
+          &endDate=2018-01-04
+          &enrollmentStatus=MEMBER
+          &filterBy=STORED
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    total_count_day_1 = response[0]['metrics']['TOTAL']
+    total_count_day_2 = response[1]['metrics']['TOTAL']
+
+    self.assertEquals(total_count_day_1, 0)
+    self.assertEquals(total_count_day_2, 3)
+
   def test_get_counts_with_enrollment_status_full_participant_filter(self):
 
     # MEMBER @ time 1
@@ -330,17 +381,17 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     # FULL PARTICIPANT @ time 2
     p2 = Participant(participantId=2, biobankId=5)
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time1,
-                 time_mem=self.time1, time_fp=self.time2)
+                 time_mem=self.time1, time_fp=self.time2, time_fp_stored=self.time2)
 
     # FULL PARTICIPANT @ time 2
     p3 = Participant(participantId=3, biobankId=6)
     self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1,
-                 time_mem=self.time1, time_fp=self.time2)
+                 time_mem=self.time1, time_fp=self.time2, time_fp_stored=self.time3)
 
     # FULL PARTICIPANT @ time 3
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Debra', 'Dinosaur', 'PITT', time_int=self.time1,
-                 time_mem=self.time1, time_fp=self.time3)
+                 time_mem=self.time1, time_fp=self.time3, time_fp_stored=self.time5)
 
     qs = """
       bucketSize=1
@@ -364,6 +415,34 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(full_participant_count_day_2, 0)
     self.assertEquals(full_participant_count_day_3, 2)
     self.assertEquals(full_participant_count_day_4, 3)
+    self.assertEquals(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
+
+    # test filter by sample stored time
+    qs = """
+          bucketSize=1
+          &stratification=ENROLLMENT_STATUS
+          &startDate=2017-12-30
+          &endDate=2018-01-05
+          &enrollmentStatus=FULL_PARTICIPANT
+          &filterBy=STORED
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    full_participant_count_day_1 = response[0]['metrics']['FULL_PARTICIPANT']
+    full_participant_count_day_2 = response[1]['metrics']['FULL_PARTICIPANT']
+    full_participant_count_day_3 = response[2]['metrics']['FULL_PARTICIPANT']
+    full_participant_count_day_4 = response[3]['metrics']['FULL_PARTICIPANT']
+    full_participant_count_day_6 = response[5]['metrics']['FULL_PARTICIPANT']
+    member_count_day_4 = response[4]['metrics']['MEMBER']
+
+    self.assertEquals(full_participant_count_day_1, 0)
+    self.assertEquals(full_participant_count_day_2, 0)
+    self.assertEquals(full_participant_count_day_3, 1)
+    self.assertEquals(full_participant_count_day_4, 2)
+    self.assertEquals(full_participant_count_day_6, 3)
     self.assertEquals(member_count_day_4, 0)  # Excluded per enrollmentStatus parameter
 
   def test_get_counts_with_total_enrollment_status_full_participant_filter(self):

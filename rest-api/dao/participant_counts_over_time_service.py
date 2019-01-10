@@ -11,12 +11,14 @@ class ParticipantCountsOverTimeService(BaseDao):
   def __init__(self):
     super(ParticipantCountsOverTimeService, self).__init__(ParticipantSummary, backup=True)
 
-  def get_filtered_results(self, start_date, end_date, filters, stratification='ENROLLMENT_STATUS'):
+  def get_filtered_results(self, start_date, end_date, filters, filter_by,
+                           stratification='ENROLLMENT_STATUS'):
     """Queries DB, returns results in format consumed by front-end
 
     :param start_date: Start date object
     :param end_date: End date object
     :param filters: Objects representing filters specified in UI
+    :param filter_by: indicate how to filter the core participant
     :param stratification: How to stratify (layer) results, as in a stacked bar chart
     :return: Filtered, stratified results by date
     """
@@ -24,18 +26,24 @@ class ParticipantCountsOverTimeService(BaseDao):
     self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
     self.test_email_pattern = TEST_EMAIL_PATTERN
 
+    # save the enrollment statuses requirements for filtering the SQL result later
+    if 'enrollment_statuses' in filters and filters['enrollment_statuses'] is not None:
+      enrollment_statuses = [str(val) for val in filters['enrollment_statuses']]
+    else:
+      enrollment_statuses = []
+
     # Filters for participant_summary (ps) and participant (p) table
     # filters_sql_ps is used in the general case when we're querying participant_summary
     # filters_sql_p is used when also LEFT OUTER JOINing p and ps
-    filters_sql_ps = self.get_facets_sql(filters)
-    filters_sql_p = self.get_facets_sql(filters, table_prefix='p')
+    filters_sql_ps = self.get_facets_sql(filters, stratification)
+    filters_sql_p = self.get_facets_sql(filters, stratification, table_prefix='p')
 
     if str(stratification) == 'TOTAL':
       strata = ['TOTAL']
       sql = self.get_total_sql(filters_sql_ps)
     elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(val) for val in EnrollmentStatus]
-      sql = self.get_enrollment_status_sql(filters_sql_ps, filters_sql_p)
+      sql = self.get_enrollment_status_sql(filters_sql_ps, filters_sql_p, filter_by)
     else:
       raise BadRequest('Invalid stratification: %s' % stratification)
 
@@ -44,6 +52,7 @@ class ParticipantCountsOverTimeService(BaseDao):
     results_by_date = []
 
     with self.session() as session:
+      print '-----' + sql
       cursor = session.execute(sql, params)
 
     # Iterate through each result (by date), transforming tabular SQL results
@@ -56,7 +65,9 @@ class ParticipantCountsOverTimeService(BaseDao):
         values = result[:-1]
         for i, value in enumerate(values):
           key = strata[i]
-          if value == None:
+          if value is None or (str(stratification) == 'ENROLLMENT_STATUS'
+                               and enrollment_statuses
+                               and key not in enrollment_statuses):
             value = 0
           metrics[key] = int(value)
         results_by_date.append({
@@ -68,21 +79,28 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     return results_by_date
 
-  def get_facets_sql(self, facets, table_prefix='ps'):
+  def get_facets_sql(self, facets, stratification, table_prefix='ps'):
     """Helper function to transform facets/filters selection into SQL
 
     :param facets: Object representing facets and filters to apply to query results
+    :param stratification: How to stratify (layer) results, as in a stacked bar chart
     :param table_prefix: Either 'ps' (for participant_summary) or 'p' (for participant)
     :return: SQL for 'WHERE' clause, reflecting filters specified in UI
     """
 
-    facets_sql = 'WHERE'
+    facets_sql = 'WHERE '
     facets_sql_list = []
 
     facet_map = {
       'awardee_ids': 'hpo_id',
       'enrollment_statuses': 'enrollment_status'
     }
+
+    # the SQL for ENROLLMENT_STATUS stratify is using the enrollment status time
+    # instead of enrollment status
+    if 'enrollment_statuses' in facets and str(stratification) == 'ENROLLMENT_STATUS':
+      del facets['enrollment_statuses']
+      del facet_map['enrollment_statuses']
 
     for facet in facets:
       filter_prefix = table_prefix
@@ -132,7 +150,6 @@ class ParticipantCountsOverTimeService(BaseDao):
     facets_sql += ' AND %(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
       'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
 
-
     return facets_sql
 
   def get_total_sql(self, filters_sql):
@@ -155,7 +172,7 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     return sql
 
-  def get_enrollment_status_sql(self, filters_sql_ps, filters_sql_p):
+  def get_enrollment_status_sql(self, filters_sql_ps, filters_sql_p, filter_by='ORDERED'):
 
     # Noteworthy comments / documentation from Dan (and lightly adapted)
     #
@@ -176,91 +193,60 @@ class ParticipantCountsOverTimeService(BaseDao):
     # Add macros for GREATEST and LEAST, as they don't work in SQLite
     # Example: master/rest-api/dao/database_utils.py#L50
 
+    core_sample_time_field_name = 'enrollment_status_core_ordered_sample_time'
+    if filter_by == 'STORED':
+      core_sample_time_field_name = 'enrollment_status_core_stored_sample_time'
+
     sql = """
       SELECT
          SUM(registered_cnt * (cnt_day <= calendar.day)) registered_participants,
          SUM(member_cnt * (cnt_day <= calendar.day)) member_participants,
          SUM(full_cnt * (cnt_day <= calendar.day)) full_participants,
          calendar.day
-       FROM
-       (SELECT c2.day cnt_day,
+      FROM
+         (
+            SELECT c2.day cnt_day,
                registered.cnt registered_cnt,
                member.cnt member_cnt,
-               full.cnt full_cnt
+               core.cnt full_cnt
             FROM calendar c2
             LEFT OUTER JOIN
-            (SELECT COUNT(*) cnt,
-                (CASE WHEN (enrollment_status = 1 OR enrollment_status IS NULL) THEN
-                  DATE(p.sign_up_time)
-                  ELSE NULL END) day
-                FROM participant p
-                LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
-              %(filters_p)s
-              GROUP BY day) registered
-             ON c2.day = registered.day
-           LEFT OUTER JOIN
-            (SELECT COUNT(*) cnt,
+              (SELECT COUNT(*) cnt,
                   (
                     CASE 
-                      WHEN enrollment_status = 2 
-                          AND ps.consent_for_electronic_health_records_time IS NULL 
-                        THEN DATE(ps.consent_for_dv_electronic_health_records_sharing_time)
-                      WHEN enrollment_status = 2
-                          AND ps.consent_for_dv_electronic_health_records_sharing_time IS NULL
-                        THEN DATE(ps.consent_for_electronic_health_records_time) 
-                      WHEN enrollment_status = 2 
-                        THEN DATE(LEAST(ps.consent_for_dv_electronic_health_records_sharing_time,
-                                ps.consent_for_electronic_health_records_time))
-                      ELSE NULL 
-                    END
-                  ) day
-               FROM participant_summary ps
-              %(filters_ps)s
-           GROUP BY day) member
-             ON c2.day = member.day
-           LEFT OUTER JOIN
-            (SELECT COUNT(*) cnt,
-             DATE(CASE WHEN enrollment_status = 3 THEN
-                   GREATEST(
-                            CASE 
-                              WHEN consent_for_electronic_health_records_time IS NULL
-                                THEN consent_for_dv_electronic_health_records_sharing_time
-                              WHEN consent_for_dv_electronic_health_records_sharing_time IS NULL
-                                THEN consent_for_electronic_health_records_time
-                              ELSE LEAST(
-                                          consent_for_electronic_health_records_time,
-                                          consent_for_dv_electronic_health_records_sharing_time
-                                        )
-                            END,
-                            questionnaire_on_the_basics_time,
-                            questionnaire_on_lifestyle_time,
-                            questionnaire_on_overall_health_time,
-                            physical_measurements_finalized_time,
-                           CASE WHEN
-                                LEAST(
-                                    COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_2ed10_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1sal_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1sal2_time, '3000-01-01')
-                                    ) = '3001-01-01' THEN NULL
-                                ELSE LEAST(
-                                    COALESCE(sample_order_status_1ed04_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_2ed10_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1ed10_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1sal_time, '3000-01-01'),
-                                    COALESCE(sample_order_status_1sal2_time, '3000-01-01')
-                                    )
-                           END)
-                END) day
-               FROM participant_summary ps
-              %(filters_ps)s
-           GROUP BY day) full
-             ON c2.day = full.day) day_sums, calendar
-          WHERE calendar.day >= :start_date
-            AND calendar.day <= :end_date
-          GROUP BY calendar.day
-          ORDER BY calendar.day;
-      """ % {'filters_ps': filters_sql_ps, 'filters_p': filters_sql_p}
+                      WHEN (enrollment_status = 1 OR enrollment_status IS NULL) THEN
+                        DATE(p.sign_up_time)
+                    ELSE NULL 
+                    END) day
+                  FROM participant p
+                  LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                %(filters_p)s
+                GROUP BY day) registered
+               ON c2.day = registered.day
+            LEFT OUTER JOIN
+              (
+                SELECT COUNT(*) cnt,
+                  Date(ps.enrollment_status_member_time) day
+                FROM participant_summary ps
+                %(filters_ps)s
+                GROUP BY day
+              ) member
+              ON c2.day = member.day
+            LEFT OUTER JOIN
+              (
+                SELECT COUNT(*) cnt,
+                  Date(ps.%(core_sample_time_field_name)s) day
+                FROM participant_summary ps
+                %(filters_ps)s
+                GROUP BY day
+              ) core
+              ON c2.day = core.day
+         ) day_sums, calendar
+      WHERE calendar.day >= :start_date
+        AND calendar.day <= :end_date
+      GROUP BY calendar.day
+      ORDER BY calendar.day;
+      """ % {'filters_ps': filters_sql_ps, 'filters_p': filters_sql_p,
+             'core_sample_time_field_name': core_sample_time_field_name}
 
     return sql
