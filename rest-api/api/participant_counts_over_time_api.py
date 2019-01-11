@@ -29,6 +29,7 @@ class ParticipantCountsOverTimeApi(Resource):
     # Withdrawn participants are currently always excluded per SQL in
     # ParticipantCountsOverTimeService; eventually want to make that filterable.
     enrollment_statuses = request.args.get('enrollmentStatus')
+    filter_by = request.args.get('filterBy')
     awardees = request.args.get('awardee')
     stratification_str = request.args.get('stratification')
     start_date_str = request.args.get('startDate')
@@ -56,7 +57,8 @@ class ParticipantCountsOverTimeApi(Resource):
     del filters['stratification']
 
     results = self.service.get_filtered_results(start_date, end_date,
-                                                filters, stratification=stratification)
+                                                filters, filter_by,
+                                                stratification=stratification)
 
     return results
 
