@@ -199,15 +199,15 @@ class ParticipantCountsOverTimeService(BaseDao):
     sql = """
       SELECT
       sum(CASE
-        WHEN day>=sign_up_time AND (enrollment_status_member_time IS NULL OR day < enrollment_status_member_time) THEN 1
+        WHEN day>=Date(sign_up_time) AND (enrollment_status_member_time IS NULL OR day < Date(enrollment_status_member_time)) THEN 1
         ELSE 0
       END) AS registered_participants,
       sum(CASE
-        WHEN enrollment_status_member_time IS NOT NULL AND day>=enrollment_status_member_time AND (%(core_sample_time_field_name)s IS NULL OR day < %(core_sample_time_field_name)s) THEN 1
+        WHEN enrollment_status_member_time IS NOT NULL AND day>=Date(enrollment_status_member_time) AND (%(core_sample_time_field_name)s IS NULL OR day < Date(%(core_sample_time_field_name)s)) THEN 1
         ELSE 0
       END) AS member_participants,
       sum(CASE
-        WHEN %(core_sample_time_field_name)s IS NOT NULL AND day>=%(core_sample_time_field_name)s THEN 1
+        WHEN %(core_sample_time_field_name)s IS NOT NULL AND day>=Date(%(core_sample_time_field_name)s) THEN 1
         ELSE 0
       END) AS full_participants,
       day
@@ -223,3 +223,4 @@ class ParticipantCountsOverTimeService(BaseDao):
       """ % {'filters_p': filters_sql_p, 'core_sample_time_field_name': core_sample_time_field_name}
 
     return sql
+
