@@ -19,7 +19,9 @@ WITHDRAWN_PARTICIPANT_FIELDS = ['withdrawalStatus', 'withdrawalTime',
                                 'lastName', 'dateOfBirth',
                                 'consentForStudyEnrollment', 'consentForStudyEnrollmentTime',
                                 'consentForElectronicHealthRecords',
-                                'consentForElectronicHealthRecordsTime']
+                                'consentForElectronicHealthRecordsTime',
+                                'consentForDvElectronicHealthRecordsSharing',
+                                'consentForDvElectronicHealthRecordsSharingTime']
 
 # The period of time for which withdrawn participants will still be returned in results for
 # queries that don't ask for withdrawn participants.

@@ -44,6 +44,9 @@ class ParticipantCountsOverTimeService(BaseDao):
     elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(val) for val in EnrollmentStatus]
       sql = self.get_enrollment_status_sql(filters_sql_p, filter_by)
+    elif str(stratification) == 'EHR_CONSENT':
+      strata = ['EHR_CONSENT']
+      sql = self.get_total_sql(filters_sql_ps, ehr_count=True)
     else:
       raise BadRequest('Invalid stratification: %s' % stratification)
 
@@ -151,14 +154,20 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     return facets_sql
 
-  def get_total_sql(self, filters_sql):
+  def get_total_sql(self, filters_sql, ehr_count=False):
+    if ehr_count:
+      # Participants with EHR Consent
+      required_count = 'ps.consent_for_electronic_health_records = 1'
+    else:
+      # All participants
+      required_count = '*'
 
     sql = """
         SELECT
             SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) registered_count,
             calendar.day start_date
         FROM calendar,
-        (SELECT COUNT(*) cnt, DATE(p.sign_up_time) day
+        (SELECT COUNT(%(count)s) cnt, DATE(p.sign_up_time) day
         FROM participant p
         LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
         %(filters)s
@@ -167,7 +176,7 @@ class ParticipantCountsOverTimeService(BaseDao):
         AND calendar.day <= :end_date
         GROUP BY calendar.day
         ORDER BY calendar.day;
-      """ % {'filters': filters_sql}
+      """ % {'filters': filters_sql, 'count': required_count}
 
     return sql
 
