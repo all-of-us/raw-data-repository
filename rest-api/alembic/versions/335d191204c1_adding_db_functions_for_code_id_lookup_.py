@@ -14,8 +14,9 @@ down_revision = '1e944af3ad04'
 branch_labels = None
 depends_on = None
 
-fn_get_code_id_from_key = ReplaceableObject("`fn_get_code_id_from_key` (code_value VARCHAR(80))",
+fn_get_code_id_from_key = ReplaceableObject("fn_get_code_id_from_key",
   """   
+  (code_value VARCHAR(80))
   RETURNS INT
   BEGIN
     # Return the record code_id for the given key from the code table.
@@ -27,8 +28,9 @@ fn_get_code_id_from_key = ReplaceableObject("`fn_get_code_id_from_key` (code_val
   """)
 
 fn_get_participant_ethnicity = \
-  ReplaceableObject("`fn_get_participant_ethnicity` (participant INT, code_id INT)",
+  ReplaceableObject("fn_get_participant_ethnicity",
     """  
+    (participant INT, code_id INT)
     RETURNS CHAR(1)
     BEGIN
       # Determine if the participant's selected ethnicity matches the given id from the code table.
@@ -85,10 +87,12 @@ def downgrade_metrics():
 def unittest_schemas():
   schemas = list()
 
-  schemas.append('CREATE OR REPLACE FUNCTION {0} {1}'.format(
+  schemas.append('DROP FUNCTION IF EXISTS `{0}`'.format(fn_get_code_id_from_key.name))
+  schemas.append('CREATE FUNCTION `{0}` {1}'.format(
                   fn_get_code_id_from_key.name, fn_get_code_id_from_key.sqltext))
 
-  schemas.append('CREATE OR REPLACE FUNCTION {0} {1}'.format(
+  schemas.append('DROP FUNCTION IF EXISTS `{0}`'.format(fn_get_participant_ethnicity.name))
+  schemas.append('CREATE FUNCTION `{0}` {1}'.format(
                   fn_get_participant_ethnicity.name, fn_get_participant_ethnicity.sqltext))
 
   return schemas

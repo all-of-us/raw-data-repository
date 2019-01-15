@@ -13,6 +13,8 @@ import os
 import re
 import unittest
 import uuid
+import warnings
+
 import dao.database_factory
 from dao.organization_dao import OrganizationDao
 
@@ -206,7 +208,6 @@ class _TestDb(object):
 
       dbf = dao.database_factory.get_database(db_name=self.__temp_db_name)
       dbf.create_schema()
-
       self._load_views_and_functions(dbf.get_engine())
 
       dao.database_factory.get_generic_database().create_metrics_schema()
@@ -230,9 +231,9 @@ class _TestDb(object):
 
   def teardown(self):
     db = dao.database_factory.get_database()
-    # if self.__use_mysql:
-    #   db.get_engine().execute('DROP DATABASE IF EXISTS %s' % self.__temp_db_name)
-    #   db.get_engine().execute('DROP DATABASE IF EXISTS %s' % self.__temp_metrics_db_name)
+    if self.__use_mysql:
+      db.get_engine().execute('DROP DATABASE IF EXISTS %s' % self.__temp_db_name)
+      db.get_engine().execute('DROP DATABASE IF EXISTS %s' % self.__temp_metrics_db_name)
     db.get_engine().dispose()
     dao.database_factory.SCHEMA_TRANSLATE_MAP = None
     # Reconnecting to in-memory SQLite (because singletons are cleared above)
@@ -291,19 +292,23 @@ class _TestDb(object):
       if n_step:
         ord_steps.append(n_step)
 
-    # Load any schemas marked with unittests in order.
-    for step in ord_steps:
-      # Skip non-unittest enabled migrations
-      if step[3] is False:
-        continue
+    # Ignore warnings from 'DROP IF EXISTS' sql statements
+    with warnings.catch_warnings():
+      warnings.simplefilter("ignore")
 
-      # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
-      filename = os.path.join(os.getcwd(), 'alembic', 'versions', step[0])
-      mod = imp.load_source(step[0].replace('.py', ''), filename)
-      items = mod.unittest_schemas()
+      # Load any schemas marked with unittests in order.
+      for step in ord_steps:
+        # Skip non-unittest enabled migrations
+        if step[3] is False:
+          continue
 
-      for item in items:
-        engine.execute(item)
+        # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
+        filename = os.path.join(os.getcwd(), 'alembic', 'versions', step[0])
+        mod = imp.load_source(step[0].replace('.py', ''), filename)
+        items = mod.unittest_schemas()
+
+        for item in items:
+          engine.execute(item)
 
   def _setup_hpos(self, org_dao=None):
     hpo_dao = HPODao()

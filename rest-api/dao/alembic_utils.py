@@ -83,26 +83,21 @@ class DropSPOp(ReversibleOp):
 
 @Operations.implementation_for(CreateViewOp)
 def create_view(operations, operation):
-  operations.execute("CREATE VIEW %s AS %s" % (
-    operation.target.name,
-    operation.target.sqltext
-  ))
+  operations.execute("CREATE VIEW `{0}` AS {1}".format(
+        operation.target.name, operation.target.sqltext))
 
 
 @Operations.implementation_for(DropViewOp)
 def drop_view(operations, operation):
-  operations.execute("DROP VIEW %s" % operation.target.name)
+  operations.execute("DROP VIEW `{0}`".format(operation.target.name))
 
 
 @Operations.implementation_for(CreateSPOp)
 def create_sp(operations, operation):
-  operations.execute(
-    "CREATE FUNCTION %s %s" % (
-      operation.target.name, operation.target.sqltext
-    )
-  )
+  operations.execute("CREATE FUNCTION `{0}` {1}".format(
+        operation.target.name, operation.target.sqltext))
 
 
 @Operations.implementation_for(DropSPOp)
 def drop_sp(operations, operation):
-  operations.execute("DROP FUNCTION %s" % operation.target.name)
+  operations.execute("DROP FUNCTION `{0}`".format(operation.target.name))
