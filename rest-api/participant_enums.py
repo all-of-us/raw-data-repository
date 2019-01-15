@@ -143,6 +143,7 @@ class Stratifications(messages.Enum):
   RACE = 4
   AGE_RANGE = 5
   EHR_CONSENT = 6
+  EHR_RATIO = 7
 
 METRIC_SET_KEYS = {
   MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([

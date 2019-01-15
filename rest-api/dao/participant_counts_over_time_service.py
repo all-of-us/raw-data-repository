@@ -47,6 +47,9 @@ class ParticipantCountsOverTimeService(BaseDao):
     elif str(stratification) == 'EHR_CONSENT':
       strata = ['EHR_CONSENT']
       sql = self.get_total_sql(filters_sql_ps, ehr_count=True)
+    elif str(stratification) == 'EHR_RATIO':
+      strata = ['EHR_RATIO']
+      sql = self.get_ratio_sql(filters_sql_ps)
     else:
       raise BadRequest('Invalid stratification: %s' % stratification)
 
@@ -177,6 +180,25 @@ class ParticipantCountsOverTimeService(BaseDao):
         GROUP BY calendar.day
         ORDER BY calendar.day;
       """ % {'filters': filters_sql, 'count': required_count}
+
+    return sql
+
+  def get_ratio_sql(self, filters_sql):
+    sql = """
+        SELECT
+            SUM(ps_sum.ratio * (ps_sum.day <= calendar.day)) ratio,
+            calendar.day start_date
+        FROM calendar,
+        (SELECT avg(ps.consent_for_electronic_health_records = 2) ratio, DATE(p.sign_up_time) day
+        FROM participant p
+        LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
+        %(filters)s
+        GROUP BY day) ps_sum
+        WHERE calendar.day >= :start_date
+        AND calendar.day <= :end_date
+        GROUP BY calendar.day
+        ORDER BY calendar.day;
+      """ % {'filters': filters_sql}
 
     return sql
 
