@@ -80,3 +80,16 @@ def upgrade_metrics():
 
 def downgrade_metrics():
   pass
+
+
+def unittest_schemas():
+  schemas = list()
+
+  schemas.append('CREATE OR REPLACE FUNCTION {0} {1}'.format(
+                  fn_get_code_id_from_key.name, fn_get_code_id_from_key.sqltext))
+
+  schemas.append('CREATE OR REPLACE FUNCTION {0} {1}'.format(
+                  fn_get_participant_ethnicity.name, fn_get_participant_ethnicity.sqltext))
+
+  return schemas
+
