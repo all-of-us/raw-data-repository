@@ -189,7 +189,8 @@ class ParticipantCountsOverTimeService(BaseDao):
             SUM(ps_sum.ratio * (ps_sum.day <= calendar.day)) ratio,
             calendar.day start_date
         FROM calendar,
-        (SELECT avg(ps.consent_for_electronic_health_records = 2) ratio, DATE(p.sign_up_time) day
+        (SELECT avg(ps.consent_for_electronic_health_records = 1) ratio,
+        DATE(p.sign_up_time) day
         FROM participant p
         LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
         %(filters)s
