@@ -44,6 +44,12 @@ class ParticipantCountsOverTimeService(BaseDao):
     elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(val) for val in EnrollmentStatus]
       sql = self.get_enrollment_status_sql(filters_sql_p, filter_by)
+    elif str(stratification) == 'EHR_CONSENT':
+      strata = ['EHR_CONSENT']
+      sql = self.get_total_sql(filters_sql_ps, ehr_count=True)
+    elif str(stratification) == 'EHR_RATIO':
+      strata = ['EHR_RATIO']
+      sql = self.get_ratio_sql(filters_sql_ps)
     else:
       raise BadRequest('Invalid stratification: %s' % stratification)
 
@@ -151,14 +157,39 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     return facets_sql
 
-  def get_total_sql(self, filters_sql):
+  def get_total_sql(self, filters_sql, ehr_count=False):
+    if ehr_count:
+      # Participants with EHR Consent
+      required_count = 'ps.consent_for_electronic_health_records = 1'
+    else:
+      # All participants
+      required_count = '*'
 
     sql = """
         SELECT
             SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) registered_count,
             calendar.day start_date
         FROM calendar,
-        (SELECT COUNT(*) cnt, DATE(p.sign_up_time) day
+        (SELECT COUNT(%(count)s) cnt, DATE(p.sign_up_time) day
+        FROM participant p
+        LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
+        %(filters)s
+        GROUP BY day) ps_sum
+        WHERE calendar.day >= :start_date
+        AND calendar.day <= :end_date
+        GROUP BY calendar.day
+        ORDER BY calendar.day;
+      """ % {'filters': filters_sql, 'count': required_count}
+
+    return sql
+
+  def get_ratio_sql(self, filters_sql):
+    sql = """
+        SELECT
+            SUM(ps_sum.ratio * (ps_sum.day <= calendar.day)) ratio,
+            calendar.day start_date
+        FROM calendar,
+        (SELECT avg(ps.consent_for_electronic_health_records = 2) ratio, DATE(p.sign_up_time) day
         FROM participant p
         LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
         %(filters)s

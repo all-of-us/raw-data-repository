@@ -27,7 +27,7 @@ class ParticipantCountsOverTimeApi(Resource):
     # TODO: After enrollment status is filterable,
     # wire in 'organization', 'site', 'withdrawalStatus', and 'bucketSize'.
     # Withdrawn participants are currently always excluded per SQL in
-    # ParticipantCountsOverTimeService; eventually want to that filterable.
+    # ParticipantCountsOverTimeService; eventually want to make that filterable.
     enrollment_statuses = request.args.get('enrollmentStatus')
     filter_by = request.args.get('filterBy')
     awardees = request.args.get('awardee')
@@ -40,7 +40,7 @@ class ParticipantCountsOverTimeApi(Resource):
       'awardees': awardees,
       'stratification': stratification_str,
       'start_date': start_date_str,
-      'end_date': end_date_str
+      'end_date': end_date_str,
     }
 
     params = self.validate_params(start_date_str, end_date_str, stratification_str,
