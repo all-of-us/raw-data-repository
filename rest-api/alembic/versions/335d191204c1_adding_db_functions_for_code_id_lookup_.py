@@ -15,9 +15,10 @@ branch_labels = None
 depends_on = None
 
 fn_get_code_id_from_key = ReplaceableObject("fn_get_code_id_from_key",
-  """   
+  """
   (code_value VARCHAR(80))
   RETURNS INT
+  READS SQL DATA
   BEGIN
     # Return the record code_id for the given key from the code table.
     DECLARE result INT;
@@ -29,9 +30,10 @@ fn_get_code_id_from_key = ReplaceableObject("fn_get_code_id_from_key",
 
 fn_get_participant_ethnicity = \
   ReplaceableObject("fn_get_participant_ethnicity",
-    """  
+    """
     (participant INT, code_id INT)
     RETURNS CHAR(1)
+    READS SQL DATA
     BEGIN
       # Determine if the participant's selected ethnicity matches the given id from the code table.
       # Use fn_get_code_id_from_key() to get the code_id value from a code table key value.
