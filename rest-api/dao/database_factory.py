@@ -26,9 +26,9 @@ class _BackupSqlDatabase(_SqlDatabase):
 
 
 
-def get_database():
+def get_database(db_name='rdr'):
   """Returns a singleton _SqlDatabase which USEs the rdr DB."""
-  return singletons.get(singletons.SQL_DATABASE_INDEX, _SqlDatabase, db_name='rdr')
+  return singletons.get(singletons.SQL_DATABASE_INDEX, _SqlDatabase, db_name=db_name)
 
 
 def get_backup_database():

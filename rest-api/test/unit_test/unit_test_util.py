@@ -3,12 +3,18 @@ import collections
 import contextlib
 import copy
 import faker
+from glob import glob
+# Python 3: change 'imp' to 'importlib'
+import imp
 import httplib
 import json
 import mock
 import os
+import re
 import unittest
 import uuid
+import warnings
+
 import dao.database_factory
 from dao.organization_dao import OrganizationDao
 
@@ -180,43 +186,129 @@ class _TestDb(object):
         password = os.getenv('MYSQL_ROOT_PASSWORD', 'root')
         # Match setup_local_database.sh which is run locally.
         mysql_login = 'root:' + password
+
       dao.database_factory.DB_CONNECTION_STRING = (
           'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
-      db = dao.database_factory.get_database()
+      db = dao.database_factory.get_database(db_name=None)
       dao.database_factory.SCHEMA_TRANSLATE_MAP = {
         'rdr': self.__temp_db_name,
         'metrics': self.__temp_metrics_db_name
       }
+
       # Keep in sync with tools/setup_local_database.sh.
       db.get_engine().execute(
-          'CREATE DATABASE %s CHARACTER SET utf8 COLLATE utf8_general_ci' % self.__temp_db_name)
+          'CREATE DATABASE {0} CHARACTER SET utf8 COLLATE utf8_general_ci'.format(self.__temp_db_name))
       db.get_engine().execute(
-          'CREATE DATABASE %s CHARACTER SET utf8 COLLATE utf8_general_ci' % self.__temp_metrics_db_name)
+          'CREATE DATABASE {0} CHARACTER SET utf8 COLLATE utf8_general_ci'.format(self.__temp_metrics_db_name))
 
       dao.database_factory.DB_CONNECTION_STRING = (
           'mysql+mysqldb://%s@localhost/%s?charset=utf8' % (mysql_login, self.__temp_db_name))
+
       singletons.reset_for_tests()
+
+      dbf = dao.database_factory.get_database(db_name=self.__temp_db_name)
+      dbf.create_schema()
+      self._load_views_and_functions(dbf.get_engine())
+
+      dao.database_factory.get_generic_database().create_metrics_schema()
+
     else:
       dao.database_factory.DB_CONNECTION_STRING = 'sqlite:///:memory:'
       dao.database_factory.SCHEMA_TRANSLATE_MAP = {
         'rdr': None,
         'metrics': None
       }
-    dao.database_factory.get_database().create_schema()
-    dao.database_factory.get_generic_database().create_metrics_schema()
+      # Use sqlalchemy to create database schema for sqlite.
+      dao.database_factory.get_database().create_schema()
+      dao.database_factory.get_generic_database().create_metrics_schema()
+
+      if with_views:
+        self._setup_sqlite_views()
+
     if with_data:
       self._setup_hpos()
-    if with_views:
-      self._setup_views()
+
 
   def teardown(self):
     db = dao.database_factory.get_database()
     if self.__use_mysql:
       db.get_engine().execute('DROP DATABASE IF EXISTS %s' % self.__temp_db_name)
+      db.get_engine().execute('DROP DATABASE IF EXISTS %s' % self.__temp_metrics_db_name)
     db.get_engine().dispose()
     dao.database_factory.SCHEMA_TRANSLATE_MAP = None
     # Reconnecting to in-memory SQLite (because singletons are cleared above)
     # effectively clears the database.
+
+  def _load_views_and_functions(self, engine):
+    """
+    Load all Views and Functions from Alembic migration files into schema.
+    Note: I was able to switch to Alembic to create the full schema, but it was
+    4 times as slow as using sqlalchemy. Loading DB Functions and Views this
+    way into the schema works much faster.
+    :param engine: Database engine object
+    """
+    alembic_path = os.path.join(os.getcwd(), 'alembic', 'versions')
+
+    if not os.path.exists(alembic_path):
+      raise OSError('alembic migrations path not found.')
+
+    migrations = glob(os.path.join(alembic_path, '*.py'))
+
+    steps = list()
+    initial = None
+
+    # Load all the migration step files into a unsorted list of tuples.
+    # ( current_step, prev_step, has unittest func )
+    for migration in migrations:
+      module = os.path.basename(migration)
+      rev = module.split('_')[0]
+      prev_rev = None
+
+      contents = open(migration).read()
+      result = re.search("^down_revision = '(.*?)'", contents, re.MULTILINE)
+      if result:
+        prev_rev = result.group(1)
+      else:
+        initial = (module, rev, None, False, 0)
+      # Look for unittest functions in migration file
+      result = re.search("^def unittest_schemas", contents, re.MULTILINE)
+
+      steps.append((module, rev, prev_rev, (not result is None)))
+
+    # Put the migration steps in order
+    ord_steps = list()
+    ord_steps.append(initial)
+
+    def _find_next_step(c):
+      for s in steps:
+        if c[1] == s[2]:
+          return s
+      return None
+
+    c_step = initial
+    while c_step:
+      n_step = _find_next_step(c_step)
+      c_step = n_step
+      if n_step:
+        ord_steps.append(n_step)
+
+    # Ignore warnings from 'DROP IF EXISTS' sql statements
+    with warnings.catch_warnings():
+      warnings.simplefilter("ignore")
+
+      # Load any schemas marked with unittests in order.
+      for step in ord_steps:
+        # Skip non-unittest enabled migrations
+        if step[3] is False:
+          continue
+
+        # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
+        filename = os.path.join(os.getcwd(), 'alembic', 'versions', step[0])
+        mod = imp.load_source(step[0].replace('.py', ''), filename)
+        items = mod.unittest_schemas()
+
+        for item in items:
+          engine.execute(item)
 
   def _setup_hpos(self, org_dao=None):
     hpo_dao = HPODao()
@@ -264,7 +356,7 @@ class _TestDb(object):
       organizationId=AZ_ORG_ID,
       hpoId=AZ_HPO_ID))
 
-  def _setup_views(self):
+  def _setup_sqlite_views(self):
     """
     Sets up operational DB views.
 
