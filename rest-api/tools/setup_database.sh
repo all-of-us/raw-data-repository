@@ -133,7 +133,7 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ]
 else
 	echo "Setting permissions for database"
 	for db_name in "rdr" "metrics"; do
-	   cat tools/grant_permissions.sql | envsubst > $UPDATE_DB_FILE
+	   cat tools/grant_permissions.sql | envsubst >> $UPDATE_DB_FILE
 	done
 	get_db_password $ROOT_DB_USER
 	mysql -u "$ROOT_DB_USER" -p"${PASSWORD}" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
