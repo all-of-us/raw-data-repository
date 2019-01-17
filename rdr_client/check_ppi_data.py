@@ -21,7 +21,7 @@ import urllib2
 import re
 
 from client import Client
-from code_constants import EMAIL_QUESTION_CODE as EQC, PHONE_NUMBER_QUESTION_CODE as PNQC
+from code_constants import EMAIL_QUESTION_CODE as EQC, LOGIN_PHONE_NUMBER_QUESTION_CODE as PNQC
 from main_util import get_parser, configure_logging
 
 
