@@ -1,4 +1,3 @@
-import os
 
 from google.cloud import bigquery
 from test.unit_test.unit_test_util import FlaskTestBase
