@@ -88,7 +88,7 @@ def _get_validation_result(key, codes_to_answers):
     # Get summary by email or phone
     if '@' not in key:
       summaries = session.query(ParticipantSummary).\
-                      filter(ParticipantSummary.phoneNumber == key).all()
+                      filter(ParticipantSummary.loginPhoneNumber == key).all()
     else:
       summaries = session.query(ParticipantSummary).\
                       filter(ParticipantSummary.email == key).all()
