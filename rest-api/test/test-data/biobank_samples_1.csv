@@ -2,6 +2,7 @@ Sample Family Id	Sample Id	Sample Storage Status	Sample Type	Parent Expected Vol
 SF161129-000713	16334002110	Disposed	Whole Blood	10 mL	10 mL	Vacutainer Tube 10m	2016/11/28 02:00:00	Sample Not Received	2016/11/29 12:19:32		2016/11/29 12:19:32	{biobank_id}	{test}	EDTA	2016/11/28 12:19:32	KIT-1
 SF161129-000767	16334002356	Disposed	Whole Blood	4 mL	4 mL	Vacutainer Tube 4mL	2016/11/28 02:00:00	Accessioning Error	2016/11/29 12:38:58		2016/11/29 12:38:58	{biobank_id}	{test}	Sodium Heparin	2016/11/28 12:38:58	KIT-2
 SF161129-000774	16334002367	In Circulation	Whole Blood	4 mL	4 mL	Vacutainer Tube 4mL	2016/11/28 02:00:00		2016/11/29 12:41:26		2016/11/29 12:41:26	{biobank_id}	{test}	EDTA	2016/11/28 12:41:26	KIT-3
+SF161129-000774	16334002368	In Circulation	Whole Blood	4 mL	4 mL	Vacutainer Tube 4mL	2016/11/28 02:00:00		2016/11/29 12:41:26	16334002367	2016/11/29 12:41:26	{biobank_id}	{test}	EDTA	2016/11/28 12:41:26	KIT-3
 SF161129-000774	16334108592	Disposed	Random Urine	10 mL	9.84 mL	Vacutainer Tube, 10m	2017/11/29 12:16:00	Sample Not Processed	2017/11/29 18:39:35		2017/11/29 16:11:20	{biobank_id}	{test}	No Additive	2017/11/29 13:27:15	KIT-4
 SF161129-000774	16334108601	Disposed	Whole Blood	11.5 mL	10.52 mL	Vacutainer Tube, 10m	2017/11/29 12:16:00	Lab Accident	2017/11/29 20:59:42		2017/11/29 16:10:17	{biobank_id}	{test}	PaxGene ccfDNA	2017/11/29 13:27:43	KIT-5
 SF171129-000774	17334103606	In Circulation	Whole Blood	9.5 mL	9.5 mL	PaxGene RNA	2017/11/29 12:16:00				2017/11/29 16:09:20	{biobank_id}	{test}	Paxgene RNA	2017/11/29 13:28:18	KIT-6
