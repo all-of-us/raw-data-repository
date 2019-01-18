@@ -154,13 +154,14 @@ def _upsert_samples_from_csv(csv_reader):
 
       for row in csv_reader:
         sample = _create_sample_from_row(row, biobank_id_prefix)
-        # DA-601 - Ensure biobank_id exists before accepting a sample record.
-        if session.query(Participant).filter(Participant.biobankId == sample.biobankId).count() < 1:
-          logging.error('Bio bank Id ({0}) does not exist in the Participant table.'.
-                        format(sample.biobankId))
-          continue
-
         if sample:
+          # DA-601 - Ensure biobank_id exists before accepting a sample record.
+          if session.query(Participant).filter(
+                      Participant.biobankId == sample.biobankId).count() < 1:
+            logging.error('Bio bank Id ({0}) does not exist in the Participant table.'.
+                          format(sample.biobankId))
+            continue
+
           samples.append(sample)
           if len(samples) >= _BATCH_SIZE:
             written += samples_dao.upsert_all(samples)

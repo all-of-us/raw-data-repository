@@ -46,7 +46,8 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     summary_dao = ParticipantSummaryDao()
     biobank_ids = []
     participant_ids = []
-    nids = 16  # equal to the number of data rows in 'biobank_samples_1.csv'
+    nids = 16  # equal to the number of parent rows in 'biobank_samples_1.csv'
+    cids = 1   # equal to the number of child rows in 'biobank_samples_1.csv'
 
     for _ in xrange(nids):
       participant = self.participant_dao.insert(Participant())
@@ -64,10 +65,13 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self._write_cloud_csv(input_filename, samples_file)
     biobank_samples_pipeline.upsert_from_latest_csv()
 
-    self.assertEquals(dao.count(), nids)
+    self.assertEquals(dao.count(), nids - cids)
 
     for x in range(0, nids):
       cols = lines[x].split('\t')
+
+      if cols[10].strip():  # skip child sample
+        continue
 
       # If status is 'In Prep', then sample confirmed timestamp should be empty
       if cols[2] == 'In Prep':
