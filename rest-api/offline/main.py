@@ -14,6 +14,7 @@ from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
 from offline.base_pipeline import send_failure_alert
 from offline.metrics_export import MetricsExport
+from offline.participant_counts_over_time import calculate_participant_metrics
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from offline.sa_key_remove import delete_service_account_keys
 from offline.table_exporter import TableExporter
@@ -142,6 +143,11 @@ def delete_old_keys():
   delete_service_account_keys()
   return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def participant_counts_over_time():
+  calculate_participant_metrics()
+  return '{"success": "true"}'
 
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
@@ -181,6 +187,12 @@ def _build_pipeline_app():
     PREFIX + 'DeleteOldKeys',
     endpoint='delete_old_keys',
     view_func=delete_old_keys,
+    methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'ParticipantCountsOverTime',
+    endpoint='participant_counts_over_time',
+    view_func=participant_counts_over_time,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)

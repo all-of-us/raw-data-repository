@@ -24,3 +24,8 @@ cron:
   schedule: every day 02:00
   timezone: America/New_York
   target: offline
+- description: 
+  url: /offline/ParticipantCountsOverTime
+  schedule: every day 00:30
+  timezone: America/New_York
+  target: offline
