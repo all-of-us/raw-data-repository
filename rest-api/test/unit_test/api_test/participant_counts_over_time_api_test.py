@@ -13,6 +13,7 @@ from model.participant import Participant
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
   WithdrawalStatus, make_primary_provider_link_for_name
+from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 
 class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
@@ -36,7 +37,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     # Insert 2 weeks of dates
     curr_date = datetime.date(2017, 12, 22)
-    for _ in xrange(0, 14):
+    for _ in xrange(0, 18):
       calendar_day = Calendar(day=curr_date )
       CalendarDao().insert(calendar_day)
       curr_date = curr_date + datetime.timedelta(days=1)
@@ -749,3 +750,88 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   # * starting or ending halfway through the data
   # * startDate = endDate
   # * missing required parameters
+
+  def test_refresh_metrics_cache_data(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
+                 time_fp_stored=self.time4)
+
+    service = ParticipantCountsOverTimeService()
+    service.refresh_metrics_cache_data()
+    results = service.get_latest_version_from_enrollment_status_cache('2018-01-01', '2018-01-08')
+
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 2L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 1L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-07', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2018-01-06', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'UNSET'}, results)
+
+  def test_get_history_enrollment_status_api(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
+                 time_fp_stored=self.time4)
+
+    service = ParticipantCountsOverTimeService()
+    service.refresh_metrics_cache_data()
+
+    qs = """
+          bucketSize=1
+          &stratification=ENROLLMENT_STATUS
+          &startDate=2018-01-01
+          &endDate=2018-01-08
+          &history=TRUE
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 2L},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 1L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-07', 'metrics': {'consented': 0L, 'core': 1L, 'registered': 1L},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'UNSET'}, response)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'UNSET'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'UNSET'}, response)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'UNSET'}, response)
+    self.assertIn({'date': '2018-01-06', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
+                   'hpo': u'UNSET'}, response)
