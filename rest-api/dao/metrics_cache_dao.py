@@ -17,12 +17,14 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
       if last_inserted_record is None:
         return None
       last_inserted_date = last_inserted_record.dateInserted
-      query = session.query(MetricsEnrollmentStatusCache).filter(MetricsEnrollmentStatusCache.dateInserted == last_inserted_date)
+      query = session.query(MetricsEnrollmentStatusCache)\
+        .filter(MetricsEnrollmentStatusCache.dateInserted == last_inserted_date)
       if start_date:
         query = query.filter(MetricsEnrollmentStatusCache.date >= start_date)
       if end_date:
         query = query.filter(MetricsEnrollmentStatusCache.date <= end_date)
-      return query.order_by(MetricsEnrollmentStatusCache.date).order_by(MetricsEnrollmentStatusCache.hpoId).all()
+      return query.order_by(MetricsEnrollmentStatusCache.date)\
+        .order_by(MetricsEnrollmentStatusCache.hpoId).all()
 
   def delete_old_records(self, n_days_ago=7):
     with self.session() as session:
