@@ -5,6 +5,8 @@ import httplib
 from dao.participant_dao import ParticipantDao
 from model.hpo import HPO
 from dao.hpo_dao import HPODao
+from model.code import Code, CodeType
+from dao.code_dao import CodeDao
 from model.calendar import Calendar
 from dao.calendar_dao import CalendarDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -24,6 +26,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.ps = ParticipantSummary()
     self.calendar_dao = CalendarDao()
     self.hpo_dao = HPODao()
+    self.code_dao = CodeDao()
 
     # Needed by ParticipantCountsOverTimeApi
     self.hpo_dao.insert(HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
@@ -43,7 +46,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       curr_date = curr_date + datetime.timedelta(days=1)
 
   def _insert(self, participant, first_name=None, last_name=None, hpo_name=None,
-              unconsented=False, time_int=None, time_mem=None, time_fp=None, time_fp_stored=None):
+              unconsented=False, time_int=None, time_mem=None, time_fp=None, time_fp_stored=None,
+              gender_id=None):
     """
     Create a participant in a transient test database.
 
@@ -82,6 +86,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       summary.firstName = first_name
     if last_name:
       summary.lastName = last_name
+
+    if gender_id:
+      summary.genderIdentityId = gender_id
 
     summary.dateOfBirth = datetime.date(1978, 10, 10)
 
@@ -751,7 +758,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
   # * startDate = endDate
   # * missing required parameters
 
-  def test_refresh_metrics_cache_data(self):
+  def test_refresh_metrics_enrollment_status_cache_data(self):
 
     p1 = Participant(participantId=1, biobankId=4)
     self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
@@ -764,7 +771,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_fp_stored=self.time4)
 
     service = ParticipantCountsOverTimeService()
-    service.refresh_metrics_cache_data()
+    service.refresh_enrollment_data_for_metrics_cache()
     results = service.get_latest_version_from_enrollment_status_cache('2018-01-01', '2018-01-08')
 
     self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 2L},
@@ -801,10 +808,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_fp_stored=self.time4)
 
     service = ParticipantCountsOverTimeService()
-    service.refresh_metrics_cache_data()
+    service.refresh_enrollment_data_for_metrics_cache()
 
     qs = """
-          bucketSize=1
           &stratification=ENROLLMENT_STATUS
           &startDate=2018-01-01
           &endDate=2018-01-08
@@ -835,3 +841,93 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                    'hpo': u'UNSET'}, response)
     self.assertIn({'date': '2018-01-06', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
                    'hpo': u'UNSET'}, response)
+
+  def test_refresh_metrics_gender_cache_data(self):
+
+    code1 = Code(codeId=354, system="a", value="a", display=u"a", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    code2 = Code(codeId=356, system="b", value="b", display=u"b", topic=u"b",
+                 codeType=CodeType.MODULE, mapped=True)
+    code3 = Code(codeId=355, system="c", value="c", display=u"c", topic=u"c",
+                 codeType=CodeType.MODULE, mapped=True)
+
+    self.code_dao.insert(code1)
+    self.code_dao.insert(code2)
+    self.code_dao.insert(code3)
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1, gender_id=354)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, gender_id=356)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, gender_id=355)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, gender_id=355)
+
+    service = ParticipantCountsOverTimeService()
+    service.refresh_gender_data_for_metrics_cache()
+    results = service.get_latest_version_from_gender_cache('2017-12-31', '2018-01-08')
+
+    self.assertIn({'date': '2017-12-31', 'metrics': {u'UNSET': 1L}, 'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2017-12-31', 'metrics': {u'Transgender': 0L, u'Man': 0L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-01', 'metrics': {u'UNSET': 1L}, 'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2018-01-01', 'metrics': {u'Transgender': 0L, u'Man': 1L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-03', 'metrics': {u'Transgender': 2L, u'Man': 1L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-08', 'metrics': {u'Transgender': 2L, u'Man': 1L},
+                   'hpo': u'AZ_TUCSON'}, results)
+
+  def test_get_history_gender_api(self):
+
+    code1 = Code(codeId=354, system="a", value="a", display=u"a", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    code2 = Code(codeId=356, system="b", value="b", display=u"b", topic=u"b",
+                 codeType=CodeType.MODULE, mapped=True)
+    code3 = Code(codeId=355, system="c", value="c", display=u"c", topic=u"c",
+                 codeType=CodeType.MODULE, mapped=True)
+
+    self.code_dao.insert(code1)
+    self.code_dao.insert(code2)
+    self.code_dao.insert(code3)
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1, gender_id=354)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, gender_id=356)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, gender_id=355)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, gender_id=355)
+
+    service = ParticipantCountsOverTimeService()
+    service.refresh_gender_data_for_metrics_cache()
+
+    qs = """
+          &stratification=GENDER
+          &startDate=2017-12-31
+          &endDate=2018-01-08
+          &history=TRUE
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({'date': '2017-12-31', 'metrics': {u'UNSET': 1L}, 'hpo': u'UNSET'}, response)
+    self.assertIn({'date': '2017-12-31', 'metrics': {u'Transgender': 0L, u'Man': 0L},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {u'UNSET': 1L}, 'hpo': u'UNSET'}, response)
+    self.assertIn({'date': '2018-01-01', 'metrics': {u'Transgender': 0L, u'Man': 1L},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-03', 'metrics': {u'Transgender': 2L, u'Man': 1L},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-08', 'metrics': {u'Transgender': 2L, u'Man': 1L},
+                   'hpo': u'AZ_TUCSON'}, response)
