@@ -30,6 +30,7 @@ class ParticipantCountsOverTimeApi(Resource):
     # ParticipantCountsOverTimeService; eventually want to make that filterable.
     enrollment_statuses = request.args.get('enrollmentStatus')
     filter_by = request.args.get('filterBy')
+    history = request.args.get('history')
     awardees = request.args.get('awardee')
     stratification_str = request.args.get('stratification')
     start_date_str = request.args.get('startDate')
@@ -57,7 +58,7 @@ class ParticipantCountsOverTimeApi(Resource):
     del filters['stratification']
 
     results = self.service.get_filtered_results(start_date, end_date,
-                                                filters, filter_by,
+                                                filters, filter_by, history,
                                                 stratification=stratification)
 
     return results

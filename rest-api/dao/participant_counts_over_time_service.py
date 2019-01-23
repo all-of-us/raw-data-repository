@@ -1,17 +1,154 @@
 from werkzeug.exceptions import BadRequest
-
+import datetime
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, TEST_HPO_NAME, TEST_EMAIL_PATTERN
 from participant_enums import WithdrawalStatus
 from dao.hpo_dao import HPODao
 from dao.base_dao import BaseDao
+from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao
+
+CACHE_START_DATE = datetime.datetime.strptime('2017-01-01', '%Y-%m-%d').date()
 
 class ParticipantCountsOverTimeService(BaseDao):
 
   def __init__(self):
     super(ParticipantCountsOverTimeService, self).__init__(ParticipantSummary, backup=True)
+    self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
+    self.test_email_pattern = TEST_EMAIL_PATTERN
 
-  def get_filtered_results(self, start_date, end_date, filters, filter_by,
+  def refresh_metrics_cache_data(self):
+    self.refresh_enrollment_data_for_metrics_cache()
+    self.refresh_gender_data_for_metrics_cache()
+
+  def refresh_enrollment_data_for_metrics_cache(self):
+    updated_time = datetime.datetime.now()
+    dao = HPODao()
+    hpo_list = dao.get_all()
+    for hpo in hpo_list:
+      self.insert_enrollment_cache_by_hpo(hpo.hpoId, updated_time)
+
+    metrics_cache_dao = MetricsEnrollmentStatusCacheDao()
+    metrics_cache_dao.delete_old_records()
+
+  def insert_enrollment_cache_by_hpo(self, hpo_id, updated_time):
+    sql = """
+      insert into metrics_enrollment_status_cache
+        SELECT
+        :date_inserted as date_inserted,
+        hpo_id,
+        name,
+        day as date,
+        sum(CASE
+          WHEN day>=sign_up_time AND (enrollment_status_member_time IS NULL OR day < enrollment_status_member_time) THEN 1
+          ELSE 0
+        END) AS registered_count,
+        sum(CASE
+          WHEN enrollment_status_member_time IS NOT NULL AND day>=enrollment_status_member_time AND (enrollment_status_core_stored_sample_time IS NULL OR day < enrollment_status_core_stored_sample_time) THEN 1
+          ELSE 0
+        END) AS consented_count,
+        sum(CASE
+          WHEN enrollment_status_core_stored_sample_time IS NOT NULL AND day>=enrollment_status_core_stored_sample_time THEN 1
+          ELSE 0
+        END) AS core_count
+        FROM (SELECT p.sign_up_time, ps.enrollment_status_member_time, ps.enrollment_status_core_ordered_sample_time, ps.enrollment_status_core_stored_sample_time, calendar.day, p.hpo_id, hpo.name
+              FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
+                   calendar,
+                   hpo
+              WHERE p.hpo_id=:hpo_id and p.hpo_id <> :test_hpo_id
+                AND p.hpo_id=hpo.hpo_id
+                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                AND p.withdrawal_status = :not_withdraw
+                AND calendar.day >= :start_date
+                AND calendar.day <= :end_date
+             ) a
+        GROUP BY day, hpo_id, name;
+    """
+
+    start_date = CACHE_START_DATE
+    end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
+
+    params = {'hpo_id': hpo_id, 'test_hpo_id': self.test_hpo_id,
+              'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN),
+              'test_email_pattern': self.test_email_pattern, 'start_date': start_date,
+              'end_date': end_date, 'date_inserted': updated_time}
+    with self.session() as session:
+      session.execute(sql, params)
+
+  def get_latest_version_from_enrollment_status_cache(self, start_date, end_date):
+    dao = MetricsEnrollmentStatusCacheDao()
+    buckets = dao.get_active_buckets(start_date, end_date)
+    if buckets is None:
+      return []
+    return [dao.to_client_json(bucket) for bucket in buckets]
+
+  def refresh_gender_data_for_metrics_cache(self):
+    updated_time = datetime.datetime.now()
+    dao = HPODao()
+    hpo_list = dao.get_all()
+    for hpo in hpo_list:
+      self.insert_gender_cache_by_hpo(hpo.hpoId, updated_time)
+
+    metrics_cache_dao = MetricsGenderCacheDao()
+    metrics_cache_dao.delete_old_records()
+
+  def insert_gender_cache_by_hpo(self, hpo_id, updated_time):
+    sql = """
+      insert into metrics_gender_cache
+        SELECT
+        :date_inserted as date_inserted,
+        hpo_id,
+        name as hpo_name,
+        day as date,
+        gender_name,
+        sum(CASE
+          WHEN day>=sign_up_time THEN 1
+          ELSE 0
+        END) AS gender_count
+        from
+        (
+            SELECT p.participant_id, p.hpo_id, hpo.name, p.sign_up_time,day,
+               CASE
+                   WHEN ps.gender_identity_id IS NULL OR ps.gender_identity_id=924 THEN 'UNSET'
+                   WHEN ps.gender_identity_id=354 THEN 'Woman'
+                   WHEN ps.gender_identity_id=356 THEN 'Man'
+                   WHEN ps.gender_identity_id=355 THEN 'Transgender'
+                   WHEN ps.gender_identity_id=930 THEN 'PMI_Skip'
+                   WHEN ps.gender_identity_id=358 THEN 'Non-Binary'
+                   WHEN ps.gender_identity_id=357 THEN 'Other/Additional Options'
+                 ELSE 'UNSET'
+               END gender_name
+            FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
+                 calendar,
+                 hpo
+            WHERE p.hpo_id=:hpo_id and p.hpo_id <> :test_hpo_id
+            AND p.hpo_id = hpo.hpo_id
+            AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+            AND p.withdrawal_status = :not_withdraw
+            AND calendar.day >= :start_date
+                AND calendar.day <= :end_date
+        ) x
+        GROUP BY day, hpo_id, hpo_name, gender_name
+        ;
+    """
+
+    start_date = CACHE_START_DATE
+    end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
+
+    params = {'hpo_id': hpo_id, 'test_hpo_id': self.test_hpo_id,
+              'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN),
+              'test_email_pattern': self.test_email_pattern, 'start_date': start_date,
+              'end_date': end_date, 'date_inserted': updated_time}
+    with self.session() as session:
+      session.execute(sql, params)
+
+  def get_latest_version_from_gender_cache(self, start_date, end_date):
+    dao = MetricsGenderCacheDao()
+    buckets = dao.get_active_buckets(start_date, end_date)
+    if buckets is None:
+      return []
+    return dao.to_client_json(buckets)
+
+  def get_filtered_results(self, start_date, end_date, filters, filter_by, history,
                            stratification='ENROLLMENT_STATUS'):
     """Queries DB, returns results in format consumed by front-end
 
@@ -19,12 +156,10 @@ class ParticipantCountsOverTimeService(BaseDao):
     :param end_date: End date object
     :param filters: Objects representing filters specified in UI
     :param filter_by: indicate how to filter the core participant
+    :param history: query for history data from metrics cache table
     :param stratification: How to stratify (layer) results, as in a stacked bar chart
     :return: Filtered, stratified results by date
     """
-
-    self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
-    self.test_email_pattern = TEST_EMAIL_PATTERN
 
     # save the enrollment statuses requirements for filtering the SQL result later
     if 'enrollment_statuses' in filters and filters['enrollment_statuses'] is not None:
@@ -41,6 +176,10 @@ class ParticipantCountsOverTimeService(BaseDao):
     if str(stratification) == 'TOTAL':
       strata = ['TOTAL']
       sql = self.get_total_sql(filters_sql_ps)
+    elif str(history) == 'TRUE' and str(stratification) == 'ENROLLMENT_STATUS':
+      return self.get_latest_version_from_enrollment_status_cache(start_date, end_date)
+    elif str(history) == 'TRUE' and str(stratification) == 'GENDER':
+      return self.get_latest_version_from_gender_cache(start_date, end_date)
     elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(val) for val in EnrollmentStatus]
       sql = self.get_enrollment_status_sql(filters_sql_p, filter_by)
@@ -255,4 +394,3 @@ class ParticipantCountsOverTimeService(BaseDao):
       """ % {'filters_p': filters_sql_p, 'core_sample_time_field_name': core_sample_time_field_name}
 
     return sql
-
