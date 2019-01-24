@@ -9,6 +9,7 @@ Apache License, Version 2.0
 BSD
 BSD License
 Simplified BSD
+3-Clause BSD License
 
 # MIT
 MIT

@@ -4,6 +4,8 @@ builtins:
 - deferred: on
 - appstats: on
 
+instance_class: F2
+
 handlers:
 - url: /_ah/queue/deferred
   script: google.appengine.ext.deferred.deferred.application
