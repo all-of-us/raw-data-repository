@@ -16,6 +16,8 @@ from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
   WithdrawalStatus, make_primary_provider_link_for_name
 from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
+from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
+  MetricsAgeCacheDao
 
 class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
@@ -47,7 +49,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
   def _insert(self, participant, first_name=None, last_name=None, hpo_name=None,
               unconsented=False, time_int=None, time_mem=None, time_fp=None, time_fp_stored=None,
-              gender_id=None):
+              gender_id=None, dob=None):
     """
     Create a participant in a transient test database.
 
@@ -89,8 +91,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     if gender_id:
       summary.genderIdentityId = gender_id
-
-    summary.dateOfBirth = datetime.date(1978, 10, 10)
+    if dob:
+      summary.dateOfBirth = dob
+    else:
+      summary.dateOfBirth = datetime.date(1978, 10, 10)
 
     summary.enrollmentStatus = enrollment_status
 
@@ -771,8 +775,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_fp_stored=self.time4)
 
     service = ParticipantCountsOverTimeService()
-    service.refresh_enrollment_data_for_metrics_cache()
-    results = service.get_latest_version_from_enrollment_status_cache('2018-01-01', '2018-01-08')
+    dao = MetricsEnrollmentStatusCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+    results = service.get_latest_version_from_cache(dao, '2018-01-01', '2018-01-08')
 
     self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 2L},
                    'hpo': u'AZ_TUCSON'}, results)
@@ -808,7 +813,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                  time_fp_stored=self.time4)
 
     service = ParticipantCountsOverTimeService()
-    service.refresh_enrollment_data_for_metrics_cache()
+    dao = MetricsEnrollmentStatusCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
 
     qs = """
           &stratification=ENROLLMENT_STATUS
@@ -856,7 +862,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code3)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1, gender_id=354)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, gender_id=354)
 
     p2 = Participant(participantId=2, biobankId=5)
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, gender_id=356)
@@ -868,19 +874,30 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, gender_id=355)
 
     service = ParticipantCountsOverTimeService()
-    service.refresh_gender_data_for_metrics_cache()
-    results = service.get_latest_version_from_gender_cache('2017-12-31', '2018-01-08')
+    dao = MetricsGenderCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+    results = service.get_latest_version_from_cache(dao, '2017-12-31', '2018-01-08')
 
-    self.assertIn({'date': '2017-12-31', 'metrics': {u'UNSET': 1L}, 'hpo': u'UNSET'}, results)
-    self.assertIn({'date': '2017-12-31', 'metrics': {u'Transgender': 0L, u'Man': 0L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-01', 'metrics': {u'UNSET': 1L}, 'hpo': u'UNSET'}, results)
-    self.assertIn({'date': '2018-01-01', 'metrics': {u'Transgender': 0L, u'Man': 1L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-03', 'metrics': {u'Transgender': 2L, u'Man': 1L},
-                   'hpo': u'AZ_TUCSON'}, results)
-    self.assertIn({'date': '2018-01-08', 'metrics': {u'Transgender': 2L, u'Man': 1L},
-                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 0L, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-03',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-08',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, results)
 
   def test_get_history_gender_api(self):
 
@@ -896,7 +913,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code3)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1, gender_id=354)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, gender_id=354)
 
     p2 = Participant(participantId=2, biobankId=5)
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, gender_id=356)
@@ -908,10 +925,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, gender_id=355)
 
     service = ParticipantCountsOverTimeService()
-    service.refresh_gender_data_for_metrics_cache()
+    service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
 
     qs = """
-          &stratification=GENDER
+          &stratification=GENDER_IDENTITY
           &startDate=2017-12-31
           &endDate=2018-01-08
           &history=TRUE
@@ -921,13 +938,122 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    self.assertIn({'date': '2017-12-31', 'metrics': {u'UNSET': 1L}, 'hpo': u'UNSET'}, response)
-    self.assertIn({'date': '2017-12-31', 'metrics': {u'Transgender': 0L, u'Man': 0L},
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'}, response)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'}, response)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 0L, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-03',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-08',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
+                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, response)
+
+  def test_refresh_metrics_age_range_cache_data(self):
+
+    dob1 = datetime.date(1978, 10, 10)
+    dob2 = datetime.date(1988, 10, 10)
+    dob3 = datetime.date(1988, 10, 10)
+    dob4 = datetime.date(1998, 10, 10)
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, dob=dob1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, dob=dob2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, dob=dob3)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, dob=dob4)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsAgeCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+    results = service.get_latest_version_from_cache(dao, '2017-12-31', '2018-01-08')
+
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 1L,
+                               '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0}, 'hpo': u'UNSET'},
+                  results)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 1L, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-06',
+                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-08',
+                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': u'AZ_TUCSON'}, results)
+
+  def test_get_history_age_range_api(self):
+
+    dob1 = datetime.date(1978, 10, 10)
+    dob2 = datetime.date(1988, 10, 10)
+    dob3 = datetime.date(1988, 10, 10)
+    dob4 = datetime.date(1998, 10, 10)
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, dob=dob1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, dob=dob2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, dob=dob3)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, dob=dob4)
+
+    service = ParticipantCountsOverTimeService()
+    service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
+
+    qs = """
+          &stratification=AGE_RANGE
+          &startDate=2017-12-31
+          &endDate=2018-01-08
+          &history=TRUE
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 1L,
+                               '26-35': 0, '66-75': 0, 'UNSET': 0, '56-65': 0}, 'hpo': u'UNSET'},
+                  response)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 1L, '66-75': 0, 'UNSET': 0, '56-65': 0},
                    'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({'date': '2018-01-01', 'metrics': {u'UNSET': 1L}, 'hpo': u'UNSET'}, response)
-    self.assertIn({'date': '2018-01-01', 'metrics': {u'Transgender': 0L, u'Man': 1L},
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
                    'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({'date': '2018-01-03', 'metrics': {u'Transgender': 2L, u'Man': 1L},
+    self.assertIn({'date': '2018-01-06',
+                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
                    'hpo': u'AZ_TUCSON'}, response)
-    self.assertIn({'date': '2018-01-08', 'metrics': {u'Transgender': 2L, u'Man': 1L},
+    self.assertIn({'date': '2018-01-08',
+                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
                    'hpo': u'AZ_TUCSON'}, response)
+
