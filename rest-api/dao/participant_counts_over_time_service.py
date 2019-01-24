@@ -41,7 +41,7 @@ class ParticipantCountsOverTimeService(BaseDao):
               'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN),
               'test_email_pattern': self.test_email_pattern, 'start_date': start_date,
               'end_date': end_date, 'date_inserted': updated_time}
-    with self.session() as session:
+    with dao.session() as session:
       session.execute(sql, params)
 
   def get_latest_version_from_cache(self, dao, start_date, end_date):
