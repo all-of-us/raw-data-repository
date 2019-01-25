@@ -1,6 +1,7 @@
 import datetime
-import threading
 import re
+import threading
+
 import clock
 import config
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
@@ -12,7 +13,7 @@ from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_e
 from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
-from model.config_utils import to_client_biobank_id
+from model.config_utils import to_client_biobank_id, from_client_biobank_id
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
   WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
 from model.utils import to_client_participant_id, get_property_type
@@ -48,20 +49,20 @@ _ENROLLMENT_STATUS_CASE_SQL = """
                    AND consent_for_electronic_health_records = :submitted
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status = :completed
-                   AND samples_to_isolate_dna = :received) OR 
+                   AND samples_to_isolate_dna = :received) OR
                   (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
                    AND consent_for_dv_electronic_health_records_sharing = :submitted
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status = :completed
-                   AND samples_to_isolate_dna = :received) 
+                   AND samples_to_isolate_dna = :received)
              THEN :full_participant
              WHEN (consent_for_study_enrollment = :submitted
-                   AND consent_for_electronic_health_records = :submitted) OR 
-                  (consent_for_study_enrollment = :submitted 
+                   AND consent_for_electronic_health_records = :submitted) OR
+                  (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
                    AND consent_for_dv_electronic_health_records_sharing = :submitted
-                  ) 
+                  )
              THEN :member
              ELSE :interested
         END
@@ -69,13 +70,12 @@ _ENROLLMENT_STATUS_CASE_SQL = """
 
 _ENROLLMENT_STATUS_SQL = """
     UPDATE
-      participant_summary 
-    SET 
+      participant_summary
+    SET
       enrollment_status = {enrollment_status_case_sql},
-      last_modified = :now       
+      last_modified = :now
     WHERE
-      enrollment_status != {enrollment_status_case_sql} 
-            
+      enrollment_status != {enrollment_status_case_sql}
    """.format(enrollment_status_case_sql=_ENROLLMENT_STATUS_CASE_SQL)
 
 # DA-614 - Notes: Because there can be multiple distinct samples with the same test for a
@@ -89,16 +89,16 @@ _SAMPLE_SQL = """,
         CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample bss
                          WHERE bss.biobank_id = ps.biobank_id
                          AND bss.test = %(sample_param_ref)s)
-          THEN 
-              # DA-614 - Only set disposed status when ALL samples for this test are disposed of. 
+          THEN
+              # DA-614 - Only set disposed status when ALL samples for this test are disposed of.
               CASE WHEN (SELECT MIN(bss.status) FROM biobank_stored_sample bss
                        WHERE bss.biobank_id = ps.biobank_id
                        AND bss.test = %(sample_param_ref)s) >= :disposed
                    THEN :disposed
-              ELSE :received END               
+              ELSE :received END
           ELSE :unset END,
       sample_status_%(test)s_time =
-        CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample bss 
+        CASE WHEN EXISTS(SELECT * FROM biobank_stored_sample bss
               WHERE bss.biobank_id = ps.biobank_id AND bss.test = %(sample_param_ref)s)
           THEN
               # DA-614 - Only use disposed datetime when ALL samples for this test are disposed of.
@@ -208,7 +208,7 @@ def _get_sample_status_time_sql_and_params():
                                             .lower() for item in baseline_ppi_module_fields])
 
   sub_sql = """
-    SELECT 
+    SELECT
       participant_id,
       GREATEST(
         CASE WHEN enrollment_status_member_time IS NOT NULL THEN enrollment_status_member_time
@@ -315,6 +315,8 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def make_query_filter(self, field_name, value):
     """Handle HPO and code values when parsing filter values."""
+    if field_name == 'biobankId':
+      value = from_client_biobank_id(value, log_exception=True)
     if field_name == 'hpoId' or field_name == 'awardee':
       hpo = self.hpo_dao.get_by_name(value)
       if not hpo:
