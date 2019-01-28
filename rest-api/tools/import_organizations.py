@@ -347,30 +347,33 @@ class SiteImporter(CsvImporter):
     site_group_list_from_sheet = [str(row[SITE_SITE_ID_COLUMN].lower()) for row in row_list]
 
     sites_to_remove = existing_sites - set(site_group_list_from_sheet)
-    if sites_to_remove:
-      site_id_list = []
-      for site in sites_to_remove:
-        logging.info(log_prefix + 'Deleting old Site no longer in Google sheet: %s', site)
-        old_site = self.site_dao.get_by_google_group(site)
+    if not sites_to_remove:
+      return
+
+    site_id_list = []
+    for site in sites_to_remove:
+      old_site = self.site_dao.get_by_google_group(site)
       if old_site and old_site.isObsolete != ObsoleteStatus.OBSOLETE:
+        logging.info(log_prefix + 'Deleting old Site no longer in Google sheet: %s', site)
         site_id_list.append(old_site.siteId)
         self.deletion_count += 1
       elif old_site and old_site.isObsolete == ObsoleteStatus.OBSOLETE:
         logging.info('Not attempting to delete site [%s] with existing obsolete status',
                      old_site.googleGroup)
 
-      if site_id_list and not dry_run:
-        str_list = ','.join([str(i) for i in site_id_list])
-        logging.info(log_prefix + 'Marking old site as obsolete : %s', old_site)
-        sql = """ UPDATE site
-            SET is_obsolete = 1
-            WHERE site_id in ({site_id_list})""".format(site_id_list=str_list)
+    if dry_run or not site_id_list:
+      return
 
-        session.execute(sql)
+    # Set obsolete first, in case the sites cannot be deleted below.
+    str_list = ','.join([str(i) for i in site_id_list])
+    sql = """ UPDATE site
+        SET is_obsolete = 1
+        WHERE site_id in ({site_id_list})""".format(site_id_list=str_list)
+    session.execute(sql)
 
-        self.site_dao._invalidate_cache()
-        # Try to delete old sites.
-        self.delete_sql_statement(session, str_list)
+    self.site_dao._invalidate_cache()
+    # Try to delete old sites, this may partially fail if there are still foreign references.
+    self.delete_sql_statement(session, str_list)
 
 
   def _insert_new_participants(self, entity):
