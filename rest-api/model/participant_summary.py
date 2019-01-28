@@ -5,7 +5,8 @@ from model.utils import Enum, UTCDateTime
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus, \
   PhysicalMeasurementsStatus, QuestionnaireStatus, WithdrawalStatus, SuspensionStatus, \
   WithdrawalReason
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, Index, SmallInteger, UnicodeText
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Index, SmallInteger, \
+  UnicodeText, Boolean
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -254,6 +255,7 @@ class ParticipantSummary(Base):
       Enum(SuspensionStatus),
       nullable=False)
   suspensionTime = Column('suspension_time', UTCDateTime)
+  isGhostId = Column('is_ghost_id', Boolean)
 
   participant = relationship("Participant", back_populates="participantSummary")
 
