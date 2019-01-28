@@ -93,7 +93,7 @@ _SAMPLE_SQL = """,
               # DA-614 - Only set disposed status when ALL samples for this test are disposed of. 
               CASE WHEN (SELECT MIN(bss.status) FROM biobank_stored_sample bss
                        WHERE bss.biobank_id = ps.biobank_id
-                       AND bss.test = %(sample_param_ref)s) >= :disposed
+                       AND bss.test = %(sample_param_ref)s) >= :disposed_bad
                    THEN :disposed
               ELSE :received END               
           ELSE :unset END,
@@ -104,12 +104,12 @@ _SAMPLE_SQL = """,
               # DA-614 - Only use disposed datetime when ALL samples for this test are disposed of.
               CASE WHEN (SELECT MIN(bss.status) FROM biobank_stored_sample bss
                        WHERE bss.biobank_id = ps.biobank_id
-                       AND bss.test = %(sample_param_ref)s) >= :disposed
+                       AND bss.test = %(sample_param_ref)s) >= :disposed_bad
                    THEN (SELECT MAX(disposed) from biobank_stored_sample bss
                      WHERE bss.biobank_id = ps.biobank_id
                        AND bss.test = %(sample_param_ref)s)
               ELSE (SELECT MAX(confirmed) from biobank_stored_sample bss
-                     WHERE bss.biobank_id = ps.biobank_id and bss.status < :disposed
+                     WHERE bss.biobank_id = ps.biobank_id and bss.status < :disposed_bad
                        AND bss.test = %(sample_param_ref)s)
               END
           ELSE NULL END
@@ -136,8 +136,9 @@ def _get_sample_sql_and_params(now):
   params = {
       'received': int(SampleStatus.RECEIVED),
       'unset': int(SampleStatus.UNSET),
-      # DA-871: Do not start with a good disposal status here, use first bad status value.
-      'disposed': int(SampleStatus.SAMPLE_NOT_RECEIVED),
+      'disposed': int(SampleStatus.DISPOSED),
+      # DA-871: use first bad disposed reason code value.
+      'disposed_bad': int(SampleStatus.SAMPLE_NOT_RECEIVED),
       'now': now
   }
   where_sql = ''
