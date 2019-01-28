@@ -136,7 +136,8 @@ def _get_sample_sql_and_params(now):
   params = {
       'received': int(SampleStatus.RECEIVED),
       'unset': int(SampleStatus.UNSET),
-      'disposed': int(SampleStatus.DISPOSED),
+      # DA-871: Do not start with a good disposal status here, use first bad status value.
+      'disposed': int(SampleStatus.SAMPLE_NOT_RECEIVED),
       'now': now
   }
   where_sql = ''
