@@ -18,7 +18,7 @@ from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, 
 from test import test_data
 from model.config_utils import to_client_biobank_id, get_biobank_id_prefix
 from model.participant import Participant
-from participant_enums import SampleStatus
+from participant_enums import SampleStatus, get_sample_status_enum_value
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
@@ -77,10 +77,15 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
       if cols[2] == 'In Prep':
         self.assertEquals(len(cols[11]), 0)
       else:
+        status = SampleStatus.RECEIVED
+        ts_str = cols[11]
         # DA-814 - Participant Summary test status should be: Unset, Received or Disposed only.
         # If sample is disposed, then check disposed timestamp, otherwise check confirmed timestamp.
-        status = SampleStatus.DISPOSED if cols[2] == 'Disposed' else SampleStatus.RECEIVED
-        ts_str = cols[9] if cols[2] == 'Disposed' else cols[11]
+        # DA-871 - Only check status is disposed when reason code is a bad disposal.
+        if cols[2] == 'Disposed' and get_sample_status_enum_value(cols[8]) > SampleStatus.UNKNOWN:
+          status = SampleStatus.DISPOSED
+          ts_str = cols[9]
+
         ts = datetime.datetime.strptime(ts_str, '%Y/%m/%d %H:%M:%S')
         self._check_summary(participant_ids[x], test_codes[x], ts, status)
 
