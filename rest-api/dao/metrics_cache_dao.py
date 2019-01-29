@@ -62,52 +62,45 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
     return client_json
 
   def get_total_interested_count(self, start_date, end_date, hpo_ids=None):
-    if hpo_ids:
-      filters_hpo = ' (' + ' OR '.join('p.hpo_id='+str(x) for x in hpo_ids) + ') AND '
-    else:
-      filters_hpo = ''
-
-    sql = """
-      SELECT
-        COUNT(*) AS registered_count,
-        day as start_date
-        FROM (SELECT p.sign_up_time, calendar.day, p.hpo_id, hpo.name
-             FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
-                  calendar,
-                  hpo
-             WHERE %(filters_hpo)s p.hpo_id <> :test_hpo_id 
-                AND p.hpo_id=hpo.hpo_id
-                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                AND p.withdrawal_status = :not_withdraw
-                AND calendar.day >= :start_date
-                AND calendar.day <= :end_date
-                AND calendar.day >= p.sign_up_time
-            ) a
-        GROUP BY day;
-        """ % {'filters_hpo': filters_hpo}
-    params = {'test_hpo_id': self.test_hpo_id,
-              'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN),
-              'test_email_pattern': self.test_email_pattern, 'start_date': start_date,
-              'end_date': end_date}
-
-    results_by_date = []
-
     with self.session() as session:
+      last_inserted_record = self.get_serving_version_with_session(session)
+      if last_inserted_record is None:
+        return []
+      last_inserted_date = last_inserted_record.dateInserted
+
+      if hpo_ids:
+        filters_hpo = ' (' + ' OR '.join('hpo_id='+str(x) for x in hpo_ids) + ') AND '
+      else:
+        filters_hpo = ''
+      sql = """
+        SELECT (SUM(registered_count) + SUM(consented_count) + SUM(core_count)) AS registered_count,
+        date AS start_date
+        FROM metrics_enrollment_status_cache
+        WHERE %(filters_hpo)s
+        date_inserted=:date_inserted
+        AND date >= :start_date
+        AND date <= :end_date
+        GROUP BY date;
+      """ % {'filters_hpo': filters_hpo}
+      params = {'start_date': start_date, 'end_date': end_date, 'date_inserted': last_inserted_date}
+
+      results_by_date = []
+
       cursor = session.execute(sql, params)
-    try:
-      results = cursor.fetchall()
-      for result in results:
-        date = result[1]
-        metrics = {'TOTAL': int(result[0])}
-        results_by_date.append({
-          'date': str(date),
-          'metrics': metrics
-        })
+      try:
+        results = cursor.fetchall()
+        for result in results:
+          date = result[1]
+          metrics = {'TOTAL': int(result[0])}
+          results_by_date.append({
+            'date': str(date),
+            'metrics': metrics
+          })
 
-    finally:
-      cursor.close()
+      finally:
+        cursor.close()
 
-    return results_by_date
+      return results_by_date
 
   def get_metrics_cache_sql(self):
     sql = """
