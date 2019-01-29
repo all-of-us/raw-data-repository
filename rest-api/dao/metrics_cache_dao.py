@@ -1,17 +1,22 @@
 from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache, MetricsAgeCache
 from dao.base_dao import BaseDao
+from dao.hpo_dao import HPODao
+from participant_enums import WithdrawalStatus
+from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN
 import datetime
 
 class MetricsEnrollmentStatusCacheDao(BaseDao):
   def __init__(self):
     super(MetricsEnrollmentStatusCacheDao, self).__init__(MetricsEnrollmentStatusCache)
+    self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
+    self.test_email_pattern = TEST_EMAIL_PATTERN
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsEnrollmentStatusCache)
             .order_by(MetricsEnrollmentStatusCache.dateInserted.desc())
             .first())
 
-  def get_active_buckets(self, start_date=None, end_date=None):
+  def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
@@ -23,8 +28,11 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
         query = query.filter(MetricsEnrollmentStatusCache.date >= start_date)
       if end_date:
         query = query.filter(MetricsEnrollmentStatusCache.date <= end_date)
-      return query.order_by(MetricsEnrollmentStatusCache.date)\
-        .order_by(MetricsEnrollmentStatusCache.hpoId).all()
+
+      if hpo_ids:
+        query = query.filter(MetricsEnrollmentStatusCache.hpoId.in_(hpo_ids))
+
+      return query.all()
 
   def delete_old_records(self, n_days_ago=7):
     with self.session() as session:
@@ -52,6 +60,56 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
       }
       client_json.append(newItem)
     return client_json
+
+  def get_total_interested_count(self, start_date, end_date, hpo_ids=None):
+    if hpo_ids:
+      filters_hpo = ' (' + ' OR '.join('p.hpo_id='+str(x) for x in hpo_ids) + ') AND '
+    else:
+      filters_hpo = ''
+
+    sql = """
+      SELECT
+        SUM(CASE
+         WHEN day>=sign_up_time THEN 1
+         ELSE 0
+        END) AS registered_count,
+        day as start_date
+        FROM (SELECT p.sign_up_time, calendar.day, p.hpo_id, hpo.name
+             FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
+                  calendar,
+                  hpo
+             WHERE %(filters_hpo)s p.hpo_id <> :test_hpo_id 
+                AND p.hpo_id=hpo.hpo_id
+                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                AND p.withdrawal_status = :not_withdraw
+                AND calendar.day >= :start_date
+                AND calendar.day <= :end_date
+            ) a
+        GROUP BY day;
+        """ % {'filters_hpo': filters_hpo}
+    params = {'test_hpo_id': self.test_hpo_id,
+              'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN),
+              'test_email_pattern': self.test_email_pattern, 'start_date': start_date,
+              'end_date': end_date}
+
+    results_by_date = []
+
+    with self.session() as session:
+      cursor = session.execute(sql, params)
+    try:
+      results = cursor.fetchall()
+      for result in results:
+        date = result[1]
+        metrics = {'TOTAL': int(result[0])}
+        results_by_date.append({
+          'date': str(date),
+          'metrics': metrics
+        })
+
+    finally:
+      cursor.close()
+
+    return results_by_date
 
   def get_metrics_cache_sql(self):
     sql = """
@@ -97,7 +155,7 @@ class MetricsGenderCacheDao(BaseDao):
             .order_by(MetricsGenderCache.dateInserted.desc())
             .first())
 
-  def get_active_buckets(self, start_date=None, end_date=None):
+  def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
@@ -109,8 +167,11 @@ class MetricsGenderCacheDao(BaseDao):
         query = query.filter(MetricsGenderCache.date >= start_date)
       if end_date:
         query = query.filter(MetricsGenderCache.date <= end_date)
-      return query.order_by(MetricsGenderCache.date)\
-        .order_by(MetricsGenderCache.hpoId).all()
+
+      if hpo_ids:
+        query = query.filter(MetricsGenderCache.hpoId.in_(hpo_ids))
+
+      return query.all()
 
   def delete_old_records(self, n_days_ago=7):
     with self.session() as session:
@@ -199,7 +260,7 @@ class MetricsAgeCacheDao(BaseDao):
             .order_by(MetricsAgeCache.dateInserted.desc())
             .first())
 
-  def get_active_buckets(self, start_date=None, end_date=None):
+  def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
@@ -211,8 +272,11 @@ class MetricsAgeCacheDao(BaseDao):
         query = query.filter(MetricsAgeCache.date >= start_date)
       if end_date:
         query = query.filter(MetricsAgeCache.date <= end_date)
-      return query.order_by(MetricsAgeCache.date)\
-        .order_by(MetricsAgeCache.hpoId).all()
+
+      if hpo_ids:
+        query = query.filter(MetricsAgeCache.hpoId.in_(hpo_ids))
+
+      return query.all()
 
   def delete_old_records(self, n_days_ago=7):
     with self.session() as session:
