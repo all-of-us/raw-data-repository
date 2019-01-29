@@ -3,19 +3,28 @@ import logging
 from cloudstorage import cloudstorage_api
 from csv import DictReader
 from offline.biobank_samples_pipeline import DataError
+from dao.participant_summary_dao import ParticipantSummaryDao
 
 
 def mark_ghost_participants():
   # read latest file from csv bucket
+  ps_dao = ParticipantSummaryDao()
   csv_file = get_latest_pid_file()
   csv_reader = DictReader(csv_file)
   # transform participant id's (if needed)
+  # @TODO: fake testing list that im using because I still don't know what the file looks like
+  csv_reader = {'participant_id': 'P123'}
+  for row in csv_reader:
+    pid = row.get('participant_id')
 
-  # write to participant_summary.is_ghost_id column
+    # write to participant_summary.is_ghost_id column
+    with ps_dao.session() as session:
+      ps_dao._update_ghost_participant(session, pid)
 
 
 def get_latest_pid_file():
   bucket = config.getSetting(config.GHOST_ID_BUCKET)
+  logging.info('bucket is %s', bucket)
   path = _find_most_recent_file(bucket)
   logging.info('Opening most recent ghost id exclusion list in %r: %r', bucket, path)
   return cloudstorage_api.open(path), path

@@ -18,7 +18,7 @@
     "pmi-drc-alerts+prod@googlegroups.com"
   ],
   "ghost_id_bucket": [
-    "ghost bucket name"
+    "all-of-us-rdr-prod-ghost-accounts"
   ],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {

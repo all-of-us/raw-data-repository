@@ -254,6 +254,21 @@ class ParticipantSummaryDao(UpdatableDao):
   def get_id(self, obj):
     return obj.participantId
 
+  def _update_ghost_participant(self, session, pid):
+    if not pid:
+      raise BadRequest('Cant update participant without id and registered date')
+
+    sql = """ UPDATE participant
+              SET is_ghost_id = 1,
+              date_added_ghost = date()
+              WHERE participant_id = {pid}
+              """.format(pid=pid)
+
+    session.execute(sql)
+
+
+
+
   def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
     """Participant summaries don't have a version value; drop it from validation logic."""
     if not existing_obj:

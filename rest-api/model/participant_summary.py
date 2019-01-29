@@ -255,9 +255,12 @@ class ParticipantSummary(Base):
       Enum(SuspensionStatus),
       nullable=False)
   suspensionTime = Column('suspension_time', UTCDateTime)
-  isGhostId = Column('is_ghost_id', Boolean)
 
   participant = relationship("Participant", back_populates="participantSummary")
+
+  @declared_attr
+  def ghostId(cls):
+    return Column('is_ghost_id', Integer, ForeignKey('participant.is_ghost_id'))
 
   @declared_attr
   def hpoId(cls):

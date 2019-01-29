@@ -35,7 +35,7 @@
     "test_biobank_samples_upload_bucket"
   ],
   "ghost_id_bucket": [
-    "ghost bucket name"
+    "all-of-us-rdr-test-ghost-accounts"
   ],
   "consent_pdf_bucket": [
     "ptc-uploads-pmi-drc-api-test"
