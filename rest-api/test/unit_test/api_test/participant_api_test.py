@@ -180,11 +180,11 @@ class ParticipantApiTest(FlaskTestBase):
       self.assertJsonResponseMatches(response, update_response)
 
   def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code,
-                                    first_name, middle_name, last_name, zip_code,
-                                    state_code, street_address, city, sex_code, login_phone_number,
-                                    sexual_orientation_code, phone_number, recontact_method_code,
-                                    language_code, education_code, income_code, date_of_birth,
-                                    cabor_signature_uri, time=TIME_1):
+                                    first_name, middle_name, last_name, zip_code, state_code,
+                                    street_address, street_address2, city, sex_code,
+                                    login_phone_number, sexual_orientation_code, phone_number,
+                                    recontact_method_code, language_code, education_code,
+                                    income_code, date_of_birth, cabor_signature_uri, time=TIME_1):
     code_answers = []
     _add_code_answer(code_answers, "race", race_code)
     _add_code_answer(code_answers, "genderIdentity", gender_code)
@@ -197,18 +197,19 @@ class ParticipantApiTest(FlaskTestBase):
     _add_code_answer(code_answers, "income", income_code)
 
     qr = make_questionnaire_response_json(participant_id,
-                                          questionnaire_id,
-                                          code_answers = code_answers,
-                                          string_answers = [("firstName", first_name),
-                                                            ("middleName", middle_name),
-                                                            ("lastName", last_name),
-                                                            ("streetAddress", street_address),
-                                                            ("city", city),
-                                                            ("phoneNumber", phone_number),
-                                                            ("loginPhoneNumber", login_phone_number),
-                                                            ("zipCode", zip_code)],
-                                          date_answers = [("dateOfBirth", date_of_birth)],
-                                          uri_answers = [("CABoRSignature", cabor_signature_uri)])
+                                        questionnaire_id,
+                                        code_answers = code_answers,
+                                        string_answers = [("firstName", first_name),
+                                                          ("middleName", middle_name),
+                                                          ("lastName", last_name),
+                                                          ("streetAddress", street_address),
+                                                          ("streetAddress2", street_address2),
+                                                          ("city", city),
+                                                          ("phoneNumber", phone_number),
+                                                          ("loginPhoneNumber", login_phone_number),
+                                                          ("zipCode", zip_code)],
+                                        date_answers = [("dateOfBirth", date_of_birth)],
+                                        uri_answers = [("CABoRSignature", cabor_signature_uri)])
     with FakeClock(time):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
@@ -220,8 +221,8 @@ class ParticipantApiTest(FlaskTestBase):
     self.send_consent(participant_id_1)
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
                                        "Bob", "Q", "Jones", "78751", "PIIState_VA",
-                                       "1234 Main Street", "Austin", "male_sex", "215-222-2222",
-                                       "straight", "512-555-5555", "email_code",
+                                       "1234 Main Street", "APT C", "Austin", "male_sex",
+                                       "215-222-2222", "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
                                        datetime.date(1978, 10, 9), "signature.pdf")
 
@@ -237,8 +238,8 @@ class ParticipantApiTest(FlaskTestBase):
     # change login phone number to 444-222-2222
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
                                        "Bob", "Q", "Jones", "78751", "PIIState_VA",
-                                       "1234 Main Street", "Austin", "male_sex", "444-222-2222",
-                                       "straight", "512-555-5555", "email_code",
+                                       "1234 Main Street", "APT C", "Austin", "male_sex",
+                                       "444-222-2222", "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
                                        datetime.date(1978, 10, 9), "signature.pdf", TIME_2)
 
@@ -246,6 +247,8 @@ class ParticipantApiTest(FlaskTestBase):
 
     self.assertEquals('444-222-2222', ps_1_with_test_login_phone_number['loginPhoneNumber'])
     self.assertEquals('TEST', ps_1_with_test_login_phone_number['hpoId'])
+    self.assertEquals('1234 Main Street', ps_1_with_test_login_phone_number['streetAddress'])
+    self.assertEquals('APT C', ps_1_with_test_login_phone_number['streetAddress2'])
 
     p_1 = self.send_get('Participant/%s' % participant_id_1)
     self.assertEquals('TEST', p_1['hpoId'])
