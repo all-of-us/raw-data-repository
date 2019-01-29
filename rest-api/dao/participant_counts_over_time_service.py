@@ -44,8 +44,8 @@ class ParticipantCountsOverTimeService(BaseDao):
     with dao.session() as session:
       session.execute(sql, params)
 
-  def get_latest_version_from_cache(self, dao, start_date, end_date):
-    buckets = dao.get_active_buckets(start_date, end_date)
+  def get_latest_version_from_cache(self, dao, start_date, end_date, hpo_ids=None):
+    buckets = dao.get_active_buckets(start_date, end_date, hpo_ids)
     if buckets is None:
       return []
     return dao.to_client_json(buckets)
@@ -69,22 +69,32 @@ class ParticipantCountsOverTimeService(BaseDao):
     else:
       enrollment_statuses = []
 
+    if 'awardee_ids' in filters and filters['awardee_ids'] is not None:
+      awardee_ids = filters['awardee_ids']
+    else:
+      awardee_ids = []
+
     # Filters for participant_summary (ps) and participant (p) table
     # filters_sql_ps is used in the general case when we're querying participant_summary
     # filters_sql_p is used when also LEFT OUTER JOINing p and ps
     filters_sql_ps = self.get_facets_sql(filters, stratification)
     filters_sql_p = self.get_facets_sql(filters, stratification, table_prefix='p')
 
-    if str(stratification) == 'TOTAL':
-      strata = ['TOTAL']
-      sql = self.get_total_sql(filters_sql_ps)
+    if str(history) == 'TRUE' and str(stratification) == 'TOTAL':
+      dao = MetricsEnrollmentStatusCacheDao()
+      return dao.get_total_interested_count(start_date, end_date, awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'ENROLLMENT_STATUS':
       return self.get_latest_version_from_cache(MetricsEnrollmentStatusCacheDao(), start_date,
-                                                end_date)
+                                                end_date, awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'GENDER_IDENTITY':
-      return self.get_latest_version_from_cache(MetricsGenderCacheDao(), start_date, end_date)
+      return self.get_latest_version_from_cache(MetricsGenderCacheDao(), start_date, end_date,
+                                                awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'AGE_RANGE':
-      return self.get_latest_version_from_cache(MetricsAgeCacheDao(), start_date, end_date)
+      return self.get_latest_version_from_cache(MetricsAgeCacheDao(), start_date, end_date,
+                                                awardee_ids)
+    elif str(stratification) == 'TOTAL':
+      strata = ['TOTAL']
+      sql = self.get_total_sql(filters_sql_ps)
     elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(val) for val in EnrollmentStatus]
       sql = self.get_enrollment_status_sql(filters_sql_p, filter_by)
@@ -274,7 +284,7 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     sql = """
       SELECT
-      sum(CASE
+      SUM(CASE
         WHEN day>=Date(sign_up_time) AND (enrollment_status_member_time IS NULL OR day < Date(enrollment_status_member_time)) THEN 1
         ELSE 0
       END) AS registered_participants,
