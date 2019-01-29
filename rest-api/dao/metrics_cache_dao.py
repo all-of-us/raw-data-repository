@@ -1,7 +1,6 @@
 from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache, MetricsAgeCache
 from dao.base_dao import BaseDao
 from dao.hpo_dao import HPODao
-from participant_enums import WithdrawalStatus
 from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN
 import datetime
 
