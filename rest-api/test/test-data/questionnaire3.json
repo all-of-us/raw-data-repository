@@ -77,6 +77,14 @@
           "display": "Street address"
         }]
       }, {
+        "linkId":"streetAddress2",
+        "text":"What is your street address2?",
+        "concept": [{
+          "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+          "code": "PIIAddress_StreetAddress2",
+          "display": "Street address2"
+        }]
+      }, {
         "linkId":"city",
         "text":"What is your city?",
         "concept": [{
