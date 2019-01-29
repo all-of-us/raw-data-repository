@@ -69,10 +69,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
 
     sql = """
       SELECT
-        SUM(CASE
-         WHEN day>=sign_up_time THEN 1
-         ELSE 0
-        END) AS registered_count,
+        COUNT(*) AS registered_count,
         day as start_date
         FROM (SELECT p.sign_up_time, calendar.day, p.hpo_id, hpo.name
              FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
@@ -84,6 +81,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                 AND p.withdrawal_status = :not_withdraw
                 AND calendar.day >= :start_date
                 AND calendar.day <= :end_date
+                AND calendar.day >= p.sign_up_time
             ) a
         GROUP BY day;
         """ % {'filters_hpo': filters_hpo}
