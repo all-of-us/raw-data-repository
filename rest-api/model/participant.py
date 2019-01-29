@@ -74,6 +74,7 @@ class Participant(ParticipantBase, Base):
 
 Index('participant_biobank_id', Participant.biobankId, unique=True)
 Index('participant_hpo_id', Participant.hpoId)
+Index('participant_sign_up_time', Participant.signUpTime)
 
 
 class ParticipantHistory(ParticipantBase, Base):
