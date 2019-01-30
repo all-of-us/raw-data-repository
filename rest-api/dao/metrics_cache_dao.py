@@ -1,4 +1,5 @@
-from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache, MetricsAgeCache
+from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache, MetricsAgeCache, \
+  MetricsRaceCache
 from dao.base_dao import BaseDao
 from dao.hpo_dao import HPODao
 from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN
@@ -125,7 +126,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
               FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
                    calendar,
                    hpo
-              WHERE p.hpo_id=:hpo_id and p.hpo_id <> :test_hpo_id
+              WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
                 AND p.hpo_id=hpo.hpo_id
                 AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
                 AND p.withdrawal_status = :not_withdraw
@@ -228,13 +229,13 @@ class MetricsGenderCacheDao(BaseDao):
                 FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
                      calendar,
                      hpo
-                WHERE p.hpo_id=:hpo_id and p.hpo_id <> :test_hpo_id
+                WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
                 AND p.hpo_id = hpo.hpo_id
                 AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
                 AND p.withdrawal_status = :not_withdraw
                 AND calendar.day >= :start_date
                 AND calendar.day <= :end_date
-                AND calendar.day >= p.sign_up_time
+                AND calendar.day >= Date(p.sign_up_time)
             ) x
             GROUP BY day, hpo_id, hpo_name, gender_name
             ;
@@ -344,17 +345,187 @@ class MetricsAgeCacheDao(BaseDao):
                     FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
                          calendar,
                          hpo
-                    WHERE p.hpo_id=:hpo_id and p.hpo_id <> :test_hpo_id
+                    WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
                     AND p.hpo_id = hpo.hpo_id
                     AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
                     AND p.withdrawal_status = :not_withdraw
                     AND calendar.day >= :start_date
                     AND calendar.day <= :end_date
-                    AND calendar.day >= p.sign_up_time
+                    AND calendar.day >= Date(p.sign_up_time)
                 ) x
 
             ) y
             GROUP BY day, hpo_id, hpo_name, age_range
             ;
+        """
+    return sql
+
+class MetricsRaceCacheDao(BaseDao):
+  def __init__(self):
+    super(MetricsRaceCacheDao, self).__init__(MetricsRaceCache)
+
+  def get_serving_version_with_session(self, session):
+    return (session.query(MetricsRaceCache)
+            .order_by(MetricsRaceCache.dateInserted.desc())
+            .first())
+
+  def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None):
+    with self.session() as session:
+      last_inserted_record = self.get_serving_version_with_session(session)
+      if last_inserted_record is None:
+        return None
+      last_inserted_date = last_inserted_record.dateInserted
+      query = session.query(MetricsRaceCache)\
+        .filter(MetricsRaceCache.dateInserted == last_inserted_date)
+      if start_date:
+        query = query.filter(MetricsRaceCache.date >= start_date)
+      if end_date:
+        query = query.filter(MetricsRaceCache.date <= end_date)
+
+      if hpo_ids:
+        query = query.filter(MetricsRaceCache.hpoId.in_(hpo_ids))
+
+      return query.all()
+
+  def delete_old_records(self, n_days_ago=7):
+    with self.session() as session:
+      last_inserted_record = self.get_serving_version_with_session(session)
+      if last_inserted_record is not None:
+        last_date_inserted = last_inserted_record.dateInserted
+        seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
+        delete_sql = """
+          delete from metrics_race_cache where date_inserted < :seven_days_ago
+        """
+        params = {'seven_days_ago': seven_days_ago}
+        session.execute(delete_sql, params)
+
+  def to_client_json(self, result_set):
+    client_json = []
+    for record in result_set:
+      new_item = {
+        'date': record.date.isoformat(),
+        'hpo': record.hpoName,
+        'metrics': {
+          'American_Indian_Alaska_Native': record.americanIndianAlaskaNative,
+          'Asian': record.asian,
+          'Black_African_American': record.blackAfricanAmerican,
+          'Middle_Eastern_North_African': record.middleEasternNorthAfrican,
+          'Native_Hawaiian_other_Pacific_Islander': record.nativeHawaiianOtherPacificIslander,
+          'White': record.white,
+          'Hispanic_Latino_Spanish': record.hispanicLatinoSpanish,
+          'None_Of_These_Fully_Describe_Me': record.noneOfTheseFullyDescribeMe,
+          'Prefer_Not_To_Answer': record.preferNotToAnswer,
+          'Multi_Ancestry': record.multiAncestry,
+          'No_Ancestry_Checked': record.noAncestryChecked
+        }
+      }
+      client_json.append(new_item)
+    return client_json
+
+  def get_metrics_cache_sql(self):
+    sql = """
+          insert into metrics_race_cache
+            SELECT
+              :date_inserted as date_inserted,
+              hpo_id,
+              name AS hpo_name,
+              day,
+              SUM(American_Indian_Alaska_Native) AS American_Indian_Alaska_Native,
+              SUM(Asian) AS Asian,
+              SUM(Black_African_American) AS Black_African_American,
+              SUM(Middle_Eastern_North_African) AS Middle_Eastern_North_African,
+              SUM(Native_Hawaiian_other_Pacific_Islander) AS Native_Hawaiian_other_Pacific_Islander,
+              SUM(White) AS White,
+              SUM(Hispanic_Latino_Spanish) AS Hispanic_Latino_Spanish,
+              SUM(None_Of_These_Fully_Describe_Me) AS None_Of_These_Fully_Describe_Me,
+              SUM(Prefer_Not_To_Answer) AS Prefer_Not_To_Answer,
+              SUM(Multi_Ancestry) AS Multi_Ancestry,
+              SUM(No_Ancestry_Checked) AS No_Ancestry_Checked
+              FROM
+              (
+                SELECT p.hpo_id,
+                       hpo.name,
+                       day,
+                       WhatRaceEthnicity_AIAN                     AS American_Indian_Alaska_Native,
+                       WhatRaceEthnicity_Asian                    AS Asian,
+                       WhatRaceEthnicity_Black                    AS Black_African_American,
+                       WhatRaceEthnicity_MENA                     AS Middle_Eastern_North_African,
+                       WhatRaceEthnicity_NHPI                     AS Native_Hawaiian_other_Pacific_Islander,
+                       WhatRaceEthnicity_White                    AS White,
+                       WhatRaceEthnicity_Hispanic                 AS Hispanic_Latino_Spanish,
+                       WhatRaceEthnicity_RaceEthnicityNoneOfThese AS None_Of_These_Fully_Describe_Me,
+                       PMI_PreferNotToAnswer                      AS Prefer_Not_To_Answer,
+                       CASE
+                         WHEN (WhatRaceEthnicity_Hispanic + WhatRaceEthnicity_Black + WhatRaceEthnicity_White + WhatRaceEthnicity_AIAN + WhatRaceEthnicity_Asian + WhatRaceEthnicity_MENA + WhatRaceEthnicity_NHPI) >
+                              1
+                           THEN 1
+                         ELSE 0
+                       END AS Multi_Ancestry,
+                       CASE
+                         WHEN PMI_Skip = 1 OR (UNSET =1 AND questionnaire_on_the_basics = 1)
+                           THEN 1
+                         ELSE 0
+                       END AS No_Ancestry_Checked
+                FROM (
+                       SELECT participant_id,
+                              hpo_id,
+                              sign_up_time,
+                              questionnaire_on_the_basics,
+                              MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
+                              MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
+                              MAX(WhatRaceEthnicity_White)                    AS WhatRaceEthnicity_White,
+                              MAX(WhatRaceEthnicity_AIAN)                     AS WhatRaceEthnicity_AIAN,
+                              MAX(UNSET)                                      AS UNSET,
+                              MAX(WhatRaceEthnicity_RaceEthnicityNoneOfThese) AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                              MAX(WhatRaceEthnicity_Asian)                    AS WhatRaceEthnicity_Asian,
+                              MAX(PMI_PreferNotToAnswer)                      AS PMI_PreferNotToAnswer,
+                              MAX(WhatRaceEthnicity_MENA)                     AS WhatRaceEthnicity_MENA,
+                              MAX(PMI_Skip)                                   AS PMI_Skip,
+                              MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI
+                       FROM (
+                              SELECT p.participant_id,
+                                     p.hpo_id,
+                                     p.sign_up_time,
+                                     ps.questionnaire_on_the_basics,
+                                     CASE WHEN q.code_id = 207 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
+                                     CASE WHEN q.code_id = 259 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
+                                     CASE WHEN q.code_id = 220 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
+                                     CASE WHEN q.code_id = 252 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_AIAN,
+                                     CASE WHEN q.code_id IS NULL THEN 1 ELSE 0 END AS UNSET,
+                                     CASE WHEN q.code_id = 235 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                                     CASE WHEN q.code_id = 194 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Asian,
+                                     CASE WHEN q.code_id = 924 THEN 1 ELSE 0 END   AS PMI_PreferNotToAnswer,
+                                     CASE WHEN q.code_id = 274 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_MENA,
+                                     CASE WHEN q.code_id = 930 THEN 1 ELSE 0 END   AS PMI_Skip,
+                                     CASE WHEN q.code_id = 237 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
+                              FROM participant p
+                                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                                     LEFT JOIN
+                                   (
+                                     SELECT qr.participant_id, c.code_id, c.value, c.display
+                                     FROM questionnaire_question qq,
+                                          questionnaire_response_answer qra,
+                                          questionnaire_response qr,
+                                          code c
+                                     WHERE qra.value_code_id = c.code_id
+                                       AND qq.questionnaire_question_id = qra.question_id
+                                       AND qq.code_id = 193
+                                       AND qra.questionnaire_response_id = qr.questionnaire_response_id
+                                   ) q ON p.participant_id = q.participant_id
+                              WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
+                                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                                AND p.withdrawal_status = :not_withdraw
+                            ) x
+                       GROUP BY participant_id, hpo_id, sign_up_time
+                     ) p,
+                     calendar,
+                     hpo
+                WHERE p.hpo_id = hpo.hpo_id
+                  AND calendar.day >= :start_date
+                  AND calendar.day <= :end_date
+                  AND calendar.day >= Date(p.sign_up_time)
+              ) y
+              GROUP BY day, hpo_id, name
+              ;
         """
     return sql
