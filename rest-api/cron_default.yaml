@@ -29,3 +29,8 @@ cron:
   schedule: every day 00:30
   timezone: America/New_York
   target: offline
+- description: 
+  url: /offline/MarkGhostParticipants
+  schedule: every day 00:10
+  timezone: America/New_York
+  target: offline

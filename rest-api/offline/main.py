@@ -13,6 +13,7 @@ from flask import Flask, request
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
 from offline.base_pipeline import send_failure_alert
+from offline.exclude_ghost_participants import mark_ghost_participants
 from offline.metrics_export import MetricsExport
 from offline.participant_counts_over_time import calculate_participant_metrics
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
@@ -149,6 +150,12 @@ def participant_counts_over_time():
   calculate_participant_metrics()
   return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def mark_ghost_participants():
+  mark_ghost_participants()
+  return '{"success": "true"}'
+
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
   offline_app = Flask(__name__)
@@ -193,6 +200,12 @@ def _build_pipeline_app():
     PREFIX + 'ParticipantCountsOverTime',
     endpoint='participant_counts_over_time',
     view_func=participant_counts_over_time,
+    methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'MarkGhostParticipants',
+    endpoint='mark_ghost_participants',
+    view_func=mark_ghost_participants,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)

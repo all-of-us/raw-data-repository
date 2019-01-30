@@ -2,7 +2,7 @@ from model.base import Base
 from model.utils import Enum, UTCDateTime
 from participant_enums import WithdrawalStatus, SuspensionStatus, WithdrawalReason
 from sqlalchemy import Column, Integer, BLOB, ForeignKey, Index, String, UnicodeText, BigInteger,\
-  UniqueConstraint
+  UniqueConstraint, Boolean
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -49,6 +49,10 @@ class ParticipantBase(object):
 
   # The time at which the participant set their suspension status to NO_CONTACT.
   suspensionTime = Column('suspension_time', UTCDateTime)
+  # If a participant is deemed to be a "ghost" i.e. not real or empty participant obj.
+  isGhostId = Column('is_ghost_id', Boolean)
+  # The date the participant was marked as ghost
+  dateAddedGhost = Column('date_added_ghost', UTCDateTime)
 
   @declared_attr
   def hpoId(cls):

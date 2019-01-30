@@ -256,6 +256,7 @@ class ParticipantSummaryDao(UpdatableDao):
   def get_id(self, obj):
     return obj.participantId
 
+
   def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
     """Participant summaries don't have a version value; drop it from validation logic."""
     if not existing_obj:
