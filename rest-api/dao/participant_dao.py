@@ -77,17 +77,15 @@ class ParticipantDao(UpdatableDao):
     if not pid:
       raise Forbidden('Can not update participant without id')
 
-    participant = self.get_for_update(sessino, pid)
+    participant = self.get_for_update(session, pid)
     if participant is None:
-      raise BadRequest('No participant [%r] to mark as ghost.' % participant_id)
+      raise BadRequest('No participant [%r] to mark as ghost.' % pid)
 
-    sql = """ UPDATE participant
-              SET 'is_ghost_id' = 1,
-              'date_added_ghost' = current_timestamp()
-              WHERE participant_id = {pid}
-              """.format(pid=pid)
+    participant.isGhostId = 1
+    participant.dateAddedGhost = clock.CLOCK.now()
 
-    session.execute(sql)
+    self._update_history(session, participant, participant)
+    super(ParticipantDao, self)._do_update(session, participant, participant)
 
   def _check_if_external_id_exists(self, obj):
     with self.session() as session:
