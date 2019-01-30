@@ -630,7 +630,32 @@ Cancel or restore a BiobankOrder by id.
 
 Amend a BiobankOrder by id.
 
-## Metrics API
+## ParticipantCountsOverTime API
+Metrics provide a high-level overview of participants counts by date and
+stratification for a variety of metrics in real time or a historical cache.
+The date range limit is 100 days for real time data (default).
+Passing in `history=true` can provide historical data for a maximum range of 600 days.
+ParticipantCountsOverTime returns a list of objects.
+
+#### `GET /rdr/v1/ParticipantCountsOverTime?startDate=:date&endDate=:date&stratification=:stratification`
+
+#### Stratifications
+Return counts for various strata between startDate and endDate.
+##### TOTAL
+Returns the total member counts
+##### ENROLLMENT_STATUS
+Returns the counts by enrollment status. i.e. registered, member, core
+##### EHR_CONSENT
+Returns the counts of members who have given consent for electronic health records.
+##### EHR_RATIO
+Returns the percentage of participants who have given consent to EHR vs. not
+##### GENDER_IDENTITY
+Returns counts of participants by gender identity
+##### AGE_RANGE
+Returns counts of participants by predefined bucketed age ranges
+
+
+## Metrics API (Deprecated in favor of ParticipantCountsOverTime/
 
 Metrics provide a high-level overview of participants counts by date for a
 variety of metrics (e.g. by race, ethnicity, or consent status). These can be
