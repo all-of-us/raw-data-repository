@@ -59,22 +59,16 @@ def gcp_activate_proxy(enable_sandbox=False, enable_test=False):
   # Set mysql proxy instances
   instances = ''
 
-  _logger.info('  Adding Proxy:     all-of-us-rdr-prod -> tcp:9900')
   instances += '{0}=tcp:9900,'.format(GCP_INSTANCES['all-of-us-rdr-prod'])
-
-  _logger.info('  Adding Proxy:     all-of-us-rdr-stable -> tcp:9910')
   instances += '{0}=tcp:9910,'.format(GCP_INSTANCES['all-of-us-rdr-stable'])
-
-  _logger.info('  Adding Proxy:     all-of-us-rdr-staging -> tcp:9920')
   instances += '{0}=tcp:9920,'.format(GCP_INSTANCES['all-of-us-rdr-staging'])
 
   if enable_sandbox is True:
-    _logger.info('  Adding Proxy:     all-of-us-rdr-sandbox -> tcp:9930')
     instances += '{0}=tcp:9930,'.format(GCP_INSTANCES['all-of-us-rdr-sandbox'])
 
   if enable_test is True:
-    _logger.info('  Adding Proxy:     pmi-drc-api-test -> tcp:9940')
     instances += '{0}=tcp:9940,'.format(GCP_INSTANCES['pmi-drc-api-test'])
+    instances += '{0}=tcp:9945,'.format(GCP_INSTANCES['pmi-drc-api-test-repl'])
 
   # remove trailing comma
   instances = instances[:-1]
