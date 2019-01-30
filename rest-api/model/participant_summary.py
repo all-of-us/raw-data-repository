@@ -260,7 +260,7 @@ class ParticipantSummary(Base):
 
   @declared_attr
   def ghostId(cls):
-    return Column('is_ghost_id', Integer, ForeignKey('participant.is_ghost_id'))
+    return Column('is_ghost_id', Integer, ForeignKey('participant.is_ghost_id'), onupdate='CASCADE')
 
   @declared_attr
   def hpoId(cls):

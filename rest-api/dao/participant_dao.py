@@ -73,6 +73,22 @@ class ParticipantDao(UpdatableDao):
     assert not obj.biobankId
     return self._insert_with_random_id(obj, ('participantId', 'biobankId'))
 
+  def update_ghost_participant(self, session, pid):
+    if not pid:
+      raise Forbidden('Can not update participant without id')
+
+    participant = self.get_for_update(sessino, pid)
+    if participant is None:
+      raise BadRequest('No participant [%r] to mark as ghost.' % participant_id)
+
+    sql = """ UPDATE participant
+              SET 'is_ghost_id' = 1,
+              'date_added_ghost' = current_timestamp()
+              WHERE participant_id = {pid}
+              """.format(pid=pid)
+
+    session.execute(sql)
+
   def _check_if_external_id_exists(self, obj):
     with self.session() as session:
       return session.query(Participant).filter_by(externalId=obj.externalId).first()
