@@ -18,7 +18,7 @@ from code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
   RECONTACT_METHOD_QUESTION_CODE, LANGUAGE_QUESTION_CODE, SEX_QUESTION_CODE, \
   SEXUAL_ORIENTATION_QUESTION_CODE, EDUCATION_QUESTION_CODE, INCOME_QUESTION_CODE, \
   CABOR_SIGNATURE_QUESTION_CODE, PMI_PREFER_NOT_TO_ANSWER_CODE, PMI_OTHER_CODE, BIOBANK_TESTS, \
-  HEALTHPRO_USERNAME_SYSTEM, SITE_ID_SYSTEM
+  HEALTHPRO_USERNAME_SYSTEM, SITE_ID_SYSTEM, STREET_ADDRESS2_QUESTION_CODE
 from concepts import Concept
 from dao.code_dao import CodeDao
 from dao.hpo_dao import HPODao
@@ -869,7 +869,14 @@ class FakeParticipantGenerator(object):
     answer_map[RACE_QUESTION_CODE] = self._choose_answer_codes(RACE_QUESTION_CODE,
                                                                _MULTIPLE_RACE_ANSWERS,
                                                                _MAX_RACE_ANSWERS)
-    answer_map[STREET_ADDRESS_QUESTION_CODE] = _string_answer(self._choose_street_address())
+
+    street_parts = [None, None]
+    street = self._choose_street_address()
+    if street:
+      street_parts = street.split('|')
+    answer_map[STREET_ADDRESS_QUESTION_CODE] = _string_answer(street_parts[0])
+    answer_map[STREET_ADDRESS2_QUESTION_CODE] = \
+          _string_answer('' if len(street_parts) < 2 else street_parts[1])
     answer_map[CITY_QUESTION_CODE] = _string_answer(self._choose_city())
     answer_map[PHONE_NUMBER_QUESTION_CODE] = _string_answer(self._choose_phone_number())
     for question_code in [GENDER_IDENTITY_QUESTION_CODE, RECONTACT_METHOD_QUESTION_CODE,

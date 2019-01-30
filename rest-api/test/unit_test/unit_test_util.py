@@ -596,11 +596,15 @@ class FlaskTestBase(NdbTestBase):
     if not email:
       self.email = self.fake.email()
       email = self.email
+    self.streetAddress = '1234 Main Street'
+    self.streetAddress2 = 'APT C'
     qr_json = make_questionnaire_response_json(participant_id, self._consent_questionnaire_id,
-                                               string_answers=[("firstName", self.first_name),
-                                                               ("lastName", self.last_name),
-                                                               ("email", email)],
-                                               language=language)
+                                         string_answers=[("firstName", self.first_name),
+                                                         ("lastName", self.last_name),
+                                                         ("email", email),
+                                                         ("streetAddress", self.streetAddress),
+                                                         ("streetAddress2", self.streetAddress2)],
+                                         language=language)
     self.send_post(questionnaire_response_url(participant_id), qr_json)
 
   def create_questionnaire(self, filename):
