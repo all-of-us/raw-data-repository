@@ -120,7 +120,7 @@ def run():
     print('{0}: error: --nodaemon option not valid with stop or restart action'.format(progname))
     sys.exit(1)
 
-  _logger.info('   account:          {0}'.format(args.account))
+  _logger.info('account:          {0}'.format(args.account))
 
   if args.action == 'start':
 
@@ -131,6 +131,7 @@ def run():
       _logger.info('   tcp: 127.0.0.1:9930       -> all-of-us-rdr-sandbox')
     if args.enable_test:
       _logger.info('   tcp: 127.0.0.1:9940       -> all-of-us-rdr-test')
+      _logger.info('   tcp: 127.0.0.1:9945       -> all-of-us-rdr-test-repl')
 
   # Do not fork the daemon process for systemd service or debugging, run in foreground.
   if args.nodaemon is True:

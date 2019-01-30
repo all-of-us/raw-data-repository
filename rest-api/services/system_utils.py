@@ -38,7 +38,7 @@ def setup_logging(logger, progname, debug=False, logfile=None):
     formatter = logging.Formatter('%(asctime)s {0}: %(levelname)s: %(message)s'.format(progname))
   else:
     logging.basicConfig(filename=os.devnull,
-                        datefmt='%Y-%m-%d %H:%M:%S', level=logging.WARNING)
+                        datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
     # Setup logging formatter
     formatter = logging.Formatter('%(levelname)s: {0}: %(message)s'.format(progname))
 
