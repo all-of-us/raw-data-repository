@@ -142,26 +142,14 @@ class Daemon(object):
     """
     Start the daemon
     """
-
-    # abort if pid file exists
+    # if pid file exists, try to stop daemon.
     if os.path.exists(self.pidfile):
-      print('pidfile {0} exists. daemon already running?'.format(self.pidfile))
-      return
-
-    # Check for a pidfile to see if the daemon already runs
-    pid = None
-
-    if os.path.isfile(self.pidfile):
-      try:
-        pf = open(self.pidfile, 'r')
-        pid = int(pf.read().strip())
-        pf.close()
-      except os.error:
-        pid = None
-
-    if pid:
-      _logger.warning('PID file already exists. daemon already running?'.format(self.pidfile))
+      print('daemon pid exists, stopping daemon.'.format(self.pidfile))
       self.stop()
+
+    if os.path.exists(self.pidfile):
+      print('PID file already exists. daemon already running?'.format(self.pidfile))
+      return
 
     # Start the daemon
     self.daemonize()

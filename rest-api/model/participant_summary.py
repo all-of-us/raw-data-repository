@@ -49,6 +49,7 @@ class ParticipantSummary(Base):
   stateId = Column('state_id', Integer, ForeignKey('code.code_id'))
   city = Column('city', String(255))
   streetAddress = Column('street_address', String(255))
+  streetAddress2 = Column('street_address2', String(255))
   phoneNumber = Column('phone_number', String(80))
   loginPhoneNumber = Column('login_phone_number', String(80))
   email = Column('email', String(255))

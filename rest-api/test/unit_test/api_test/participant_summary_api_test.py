@@ -269,6 +269,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                    'zipCode': '78751',
                    'state': 'PIIState_VA',
                    'streetAddress': '1234 Main Street',
+                   'streetAddress2': 'APT C',
                    'city': 'Austin',
                    'sex': 'male_sex',
                    'sexualOrientation': 'straight',
@@ -323,6 +324,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         'zipCode': '78751',
         'state': 'PIIState_VA',
         'streetAddress': '1234 Main Street',
+        'streetAddress2': 'APT C',
         'city': 'Austin',
         'sex': 'male_sex',
         'sexualOrientation': 'straight',
@@ -377,6 +379,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         'zipCode': '78751',
         'state': 'PIIState_VA',
         'streetAddress': '1234 Main Street',
+        'streetAddress2': 'APT C',
         'city': 'Austin',
         'sex': 'male_sex',
         'sexualOrientation': 'straight',
@@ -405,10 +408,10 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
   def submit_questionnaire_response(self, participant_id, questionnaire_id, race_code, gender_code,
                                     first_name, middle_name, last_name, zip_code,
-                                    state_code, street_address, city, sex_code, login_phone_number,
-                                    sexual_orientation_code, phone_number, recontact_method_code,
-                                    language_code, education_code, income_code, date_of_birth,
-                                    cabor_signature_uri, time=TIME_1):
+                                    state_code, street_address, street_address2, city, sex_code,
+                                    login_phone_number, sexual_orientation_code, phone_number,
+                                    recontact_method_code, language_code, education_code,
+                                    income_code, date_of_birth, cabor_signature_uri, time=TIME_1):
     code_answers = []
     _add_code_answer(code_answers, "race", race_code)
     _add_code_answer(code_answers, "genderIdentity", gender_code)
@@ -421,18 +424,19 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     _add_code_answer(code_answers, "income", income_code)
 
     qr = make_questionnaire_response_json(participant_id,
-                                          questionnaire_id,
-                                          code_answers = code_answers,
-                                          string_answers = [("firstName", first_name),
-                                                            ("middleName", middle_name),
-                                                            ("lastName", last_name),
-                                                            ("streetAddress", street_address),
-                                                            ("city", city),
-                                                            ("phoneNumber", phone_number),
-                                                            ("loginPhoneNumber", login_phone_number),
-                                                            ("zipCode", zip_code)],
-                                          date_answers = [("dateOfBirth", date_of_birth)],
-                                          uri_answers = [("CABoRSignature", cabor_signature_uri)])
+                                        questionnaire_id,
+                                        code_answers = code_answers,
+                                        string_answers = [("firstName", first_name),
+                                                          ("middleName", middle_name),
+                                                          ("lastName", last_name),
+                                                          ("streetAddress", street_address),
+                                                          ("streetAddress2", street_address2),
+                                                          ("city", city),
+                                                          ("phoneNumber", phone_number),
+                                                          ("loginPhoneNumber", login_phone_number),
+                                                          ("zipCode", zip_code)],
+                                        date_answers = [("dateOfBirth", date_of_birth)],
+                                        uri_answers = [("CABoRSignature", cabor_signature_uri)])
     with FakeClock(time):
       self.send_post('Participant/%s/QuestionnaireResponse' % participant_id, qr)
 
@@ -644,7 +648,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         'lastName': self.fake.last_name(),
         'zipCode': '78751',
         'state': PMI_SKIP_CODE,
-        'streetAddress': '1234 Main Street',
+        'streetAddress': self.streetAddress,
+        'streetAddress2': self.streetAddress2,
         'city': 'Austin',
         'sex': PMI_SKIP_CODE,
         'sexualOrientation': PMI_SKIP_CODE,
@@ -703,7 +708,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
         'lastName': self.fake.last_name(),
         'zipCode': '78751',
         'state': PMI_SKIP_CODE,
-        'streetAddress': '1234 Main Street',
+        'streetAddress': self.streetAddress,
+        'streetAddress2': self.streetAddress2,
         'city': 'Austin',
         'sex': PMI_SKIP_CODE,
         'sexualOrientation': PMI_SKIP_CODE,
@@ -759,7 +765,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'lastName': self.fake.last_name(),
       'zipCode': '78751',
       'state': PMI_SKIP_CODE,
-      'streetAddress': '1234 Main Street',
+      'streetAddress': self.streetAddress,
+      'streetAddress2': self.streetAddress2,
       'city': 'Austin',
       'sex': PMI_SKIP_CODE,
       'sexualOrientation': PMI_SKIP_CODE,
@@ -807,7 +814,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'lastName': self.fake.last_name(),
       'zipCode': '78751',
       'state': PMI_SKIP_CODE,
-      'streetAddress': '1234 Main Street',
+      'streetAddress': self.streetAddress,
+      'streetAddress2': self.streetAddress2,
       'city': 'Austin',
       'sex': PMI_SKIP_CODE,
       'sexualOrientation': PMI_SKIP_CODE,
@@ -855,7 +863,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'lastName': self.fake.last_name(),
       'zipCode': '78751',
       'state': PMI_SKIP_CODE,
-      'streetAddress': '1234 Main Street',
+      'streetAddress': self.streetAddress,
+      'streetAddress2': self.streetAddress2,
       'city': 'Austin',
       'sex': PMI_SKIP_CODE,
       'sexualOrientation': PMI_SKIP_CODE,
@@ -901,7 +910,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'lastName': self.fake.last_name(),
       'zipCode': '78751',
       'state': 'PIIState_VA',
-      'streetAddress': '1234 Main Street',
+      'streetAddress': self.streetAddress,
+      'streetAddress2': self.streetAddress2,
       'city': 'Austin',
       'sex': 'male_sex',
       'sexualOrientation': 'straight',
@@ -944,7 +954,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'lastName': self.fake.last_name(),
       'zipCode': '78751',
       'state': 'PIIState_VA',
-      'streetAddress': '1234 Main Street',
+      'streetAddress': self.streetAddress,
+      'streetAddress2': self.streetAddress2,
       'city': 'Austin',
       'sex': 'male_sex',
       'sexualOrientation': 'straight',
@@ -1201,7 +1212,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_NONE_OF_THESE_CODE,
                                        "male", "Fred", "T", "Smith", "78752", None,
-                                       None, None, None, None, None, None, None, None, None, None,
+                                       self.streetAddress, self.streetAddress2,None, None, None,
+                                       None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10), None, time=TIME_2)
     # Send an empty questionnaire response for another questionnaire for participant 1,
     # completing the baseline PPI modules.
@@ -1250,7 +1262,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_NONE_OF_THESE_CODE,
                                        "male", "Fred", "T", "Smith", "78752", None,
-                                       None, None, None, None, None, None, None, None, None, None,
+                                       self.streetAddress, self.streetAddress2,None, None, None,
+                                       None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10), None, time=TIME_2)
     # Send an empty questionnaire response for another questionnaire for participant 1,
     # completing the baseline PPI modules.
@@ -1299,7 +1312,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_NONE_OF_THESE_CODE,
                                        "male", "Fred", "T", "Smith", "78752", None,
-                                       None, None, None, None, None, None, None, None, None, None,
+                                       self.streetAddress, self.streetAddress2,None, None, None,
+                                       None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10), None, time=TIME_2)
     # Send an empty questionnaire response for another questionnaire for participant 1,
     # completing the baseline PPI modules.
@@ -1374,7 +1388,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_NONE_OF_THESE_CODE,
                                        "male", "Fred", "T", "Smith", "78752", None,
-                                       None, None, None, None, None, None, None, None, None, None,
+                                       self.streetAddress, self.streetAddress2, None, None, None,
+                                       None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10), None, time=TIME_2)
     # Send an empty questionnaire response for another questionnaire for participant 1,
     # completing the baseline PPI modules.
@@ -1444,7 +1459,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_NONE_OF_THESE_CODE,
                                        "male", "Fred", "T", "Smith", "78752", None,
-                                       None, None, None, None, None, None, None, None, None, None,
+                                       self.streetAddress, self.streetAddress2, None, None, None,
+                                       None, None, None, None, None, None,
                                        datetime.date(1978, 10, 10), None, time=TIME_2)
     # Send an empty questionnaire response for another questionnaire for participant 1,
     # completing the baseline PPI modules.
@@ -1557,8 +1573,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
                                        "Bob", "Q", "Jones", "78751", "PIIState_VA",
-                                       "1234 Main Street", "Austin", "male_sex", "215-222-2222",
-                                       "straight", "512-555-5555", "email_code",
+                                       "1234 Main Street", "APT C", "Austin", "male_sex",
+                                       "215-222-2222", "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
                                        datetime.date(1978, 10, 9), "signature.pdf")
 
@@ -1569,8 +1585,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # change login phone number to 444-222-2222
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
                                        "Bob", "Q", "Jones", "78751", "PIIState_VA",
-                                       "1234 Main Street", "Austin", "male_sex", "444-222-2222",
-                                       "straight", "512-555-5555", "email_code",
+                                       "1234 Main Street", "APT C", "Austin", "male_sex",
+                                       "444-222-2222", "straight", "512-555-5555", "email_code",
                                        "en", "highschool", "lotsofmoney",
                                        datetime.date(1978, 10, 9), "signature.pdf")
 
@@ -1598,19 +1614,21 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_consent(participant_id_3)
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
-                                       "Bob", "Q", "Jones", "78751", "PIIState_VA",
-                                       "1234 Main Street", "Austin", "male_sex", "215-222-2222",
-                                       "straight", "512-555-5555", "email_code",
-                                       "en", "highschool", "lotsofmoney",
-                                       datetime.date(1978, 10, 9), "signature.pdf")
+                                     "Bob", "Q", "Jones", "78751", "PIIState_VA",
+                                     self.streetAddress, self.streetAddress2, "Austin", "male_sex",
+                                     "215-222-2222", "straight", "512-555-5555", "email_code",
+                                     "en", "highschool", "lotsofmoney",
+                                     datetime.date(1978, 10, 9), "signature.pdf")
     self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "female",
-                                       "Mary", "Q", "Jones", "78751", None,
-                                       None, None, None, None, None, None, None, None, None, None,
-                                       datetime.date(1978, 10, 8), None)
+                                     "Mary", "Q", "Jones", "78751", None,
+                                     self.streetAddress, self.streetAddress2, None, None, None,
+                                     None, None, None, None, None, None,
+                                     datetime.date(1978, 10, 8), None)
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_NONE_OF_THESE_CODE,
-                                       "male", "Fred", "T", "Smith", "78752", None,
-                                       None, None, None, None, None, None, None, None, None, None,
-                                       datetime.date(1978, 10, 10), None)
+                                     "male", "Fred", "T", "Smith", "78752", None,
+                                     self.streetAddress, self.streetAddress2, None, None, None,
+                                     None, None, None, None, None, None,
+                                     datetime.date(1978, 10, 10), None)
     # Send a questionnaire response for the consent questionnaire for participants 2 and 3
     self._submit_consent_questionnaire_response(participant_id_2, questionnaire_id_3,
                                                 CONSENT_PERMISSION_YES_CODE)
@@ -1809,6 +1827,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=PITT',
                            [[ps_1, ps_2], [ps_3]])
+      self.assertResponses(
+          'ParticipantSummary?_count=2&streetAddress={0}'.format(self.streetAddress),
+          [[ps_1, ps_2], [ps_3]])
+      self.assertResponses(
+          'ParticipantSummary?_count=2&streetAddress2={0}'.format(self.streetAddress2),
+          [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=UNSET',
                            [[]])
       self.assertResponses('ParticipantSummary?_count=2&genderIdentity=male',
@@ -2010,19 +2034,21 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_consent(participant_id_3)
 
     self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
-                                       "Bob", "Q", "Jones", "78751", "PIIState_VA",
-                                       "1234 Main Street", "Austin", "male_sex", "215-222-2222",
-                                       "straight", "512-555-5555", "email_code",
-                                       "en", "highschool", "lotsofmoney",
-                                       datetime.date(1978, 10, 9), "signature.pdf")
+                                     "Bob", "Q", "Jones", "78751", "PIIState_VA",
+                                     self.streetAddress, self.streetAddress2, "Austin", "male_sex",
+                                     "215-222-2222", "straight", "512-555-5555", "email_code",
+                                     "en", "highschool", "lotsofmoney",
+                                     datetime.date(1978, 10, 9), "signature.pdf")
     self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "female",
-                                       "Mary", "Q", "Jones", "78751", None,
-                                       None, None, None, None, None, None, None, None, None, None,
-                                       datetime.date(1978, 10, 8), None)
+                                     "Mary", "Q", "Jones", "78751", None,
+                                     self.streetAddress, self.streetAddress2, None, None, None,
+                                     None, None, None, None, None, None,
+                                     datetime.date(1978, 10, 8), None)
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_NONE_OF_THESE_CODE,
-                                       "male", "Fred", "T", "Smith", "78752", None,
-                                       None, None, None, None, None, None, None, None, None, None,
-                                       datetime.date(1978, 10, 10), None)
+                                     "male", "Fred", "T", "Smith", "78752", None,
+                                     self.streetAddress, self.streetAddress2, None, None, None,
+                                     None, None, None, None, None, None,
+                                     datetime.date(1978, 10, 10), None)
     # Send a questionnaire response for only the dv consent questionnaire for participants 2 and 3
     self._submit_dvehr_consent_questionnaire_response(participant_id_2, questionnaire_id_3,
                                                       DVEHRSHARING_CONSENT_CODE_YES)
@@ -2214,6 +2240,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&awardee=PITT',
                            [[ps_1, ps_2], [ps_3]])
+      self.assertResponses(
+          'ParticipantSummary?_count=2&streetAddress={0}'.format(self.streetAddress),
+          [[ps_1, ps_2], [ps_3]])
+      self.assertResponses(
+          'ParticipantSummary?_count=2&streetAddress2={0}'.format(self.streetAddress2),
+          [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&organization=AZ_TUCSON_BANNER_HEALTH',
                            [])
       self.assertResponses('ParticipantSummary?_count=2&middleName=Q',
