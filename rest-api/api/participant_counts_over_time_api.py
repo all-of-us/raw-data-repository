@@ -13,7 +13,8 @@ from participant_enums import EnrollmentStatus
 from participant_enums import Stratifications
 
 DATE_FORMAT = '%Y-%m-%d'
-DAYS_LIMIT = 100  # provisional, per design doc
+DAYS_LIMIT_FOR_REALTIME_DATA = 100  # provisional, per design doc
+DAYS_LIMIT_FOR_HISTORY_DATA = 600
 
 
 class ParticipantCountsOverTimeApi(Resource):
@@ -45,7 +46,7 @@ class ParticipantCountsOverTimeApi(Resource):
     }
 
     params = self.validate_params(start_date_str, end_date_str, stratification_str,
-                                  enrollment_statuses, awardees)
+                                  enrollment_statuses, awardees, history)
 
     start_date = params['start_date']
     end_date = params['end_date']
@@ -64,7 +65,7 @@ class ParticipantCountsOverTimeApi(Resource):
     return results
 
   def validate_params(self, start_date_str, end_date_str, stratification_str,
-                      enrollment_statuses, awardees):
+                      enrollment_statuses, awardees, history):
     """Validates URL parameters, and converts human-friendly values to canonical form
 
     :param start_date_str: Start date string, e.g. '2018-01-01'
@@ -89,9 +90,13 @@ class ParticipantCountsOverTimeApi(Resource):
     except ValueError:
       raise BadRequest('Invalid end date: %s' % end_date_str)
     date_diff = abs((end_date - start_date).days)
-    if date_diff > DAYS_LIMIT:
-      raise BadRequest('Difference between start date and end date ' \
-                       'should not be greater than %s days' % DAYS_LIMIT)
+    if history != 'TRUE' and date_diff > DAYS_LIMIT_FOR_REALTIME_DATA:
+      raise BadRequest('Difference between start date and end date '
+                       'should not be greater than %s days' % DAYS_LIMIT_FOR_REALTIME_DATA)
+    if history == 'TRUE' and date_diff > DAYS_LIMIT_FOR_HISTORY_DATA:
+      raise BadRequest('Difference between start date and end date '
+                       'should not be greater than %s days' % DAYS_LIMIT_FOR_HISTORY_DATA)
+
     params['start_date'] = start_date
     params['end_date'] = end_date
 
