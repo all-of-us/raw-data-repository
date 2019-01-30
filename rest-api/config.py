@@ -33,6 +33,7 @@ BASELINE_PPI_QUESTIONNAIRE_FIELDS = 'baseline_ppi_questionnaire_fields'
 PPI_QUESTIONNAIRE_FIELDS = 'ppi_questionnaire_fields'
 BASELINE_SAMPLE_TEST_CODES = 'baseline_sample_test_codes'
 DNA_SAMPLE_TEST_CODES = 'dna_sample_test_codes'
+GHOST_ID_BUCKET = 'ghost_id_bucket'
 
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.

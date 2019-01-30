@@ -23,6 +23,9 @@
   "biobank_samples_bucket_name": [
     "app_default_bucket"
   ],
+  "ghost_id_bucket": [
+    "all-of-us-rdr-test-ghost-accounts"
+  ],
   "consent_pdf_bucket": [
     "app_default_bucket"
   ],

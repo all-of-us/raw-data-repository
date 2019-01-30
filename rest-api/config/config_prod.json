@@ -17,6 +17,9 @@
   "internal_status_email_recipients": [
     "pmi-drc-alerts+prod@googlegroups.com"
   ],
+  "ghost_id_bucket": [
+    "all-of-us-rdr-prod-ghost-accounts"
+  ],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {
       "roles": [
