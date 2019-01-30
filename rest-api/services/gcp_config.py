@@ -10,7 +10,6 @@ GCP_PROJECTS = [
   'all-of-us-rdr-stable',
   'all-of-us-rdr-staging',
   'all-of-us-rdr-sandbox',
-  'pmi-drc-api-test',
   'pmi-drc-api-test'
 ]
 
