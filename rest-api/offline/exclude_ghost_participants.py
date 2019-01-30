@@ -11,8 +11,9 @@ def mark_ghost_participants():
   bucket = config.getSetting(config.GHOST_ID_BUCKET)
   # read latest file from csv bucket
   p_dao = ParticipantDao()
-  csv_file, paths = get_latest_pid_file(bucket)
-  csv_reader = DictReader(csv_file)
+  csv_file_obj, file_name = get_latest_pid_file(bucket)
+  logging.info('Getting list of ghost accounts from %s', file_name)
+  csv_reader = DictReader(csv_file_obj)
 
   # transform participant id's (if needed)
 
