@@ -89,6 +89,6 @@ class MarkGhostParticipantsTest(CloudStorageSqlTestBase, NdbTestBase):
     created_last = 'b_lex_middle_created_last.csv'
     self._write_cloud_csv(created_last, 'any contents')
 
-    cloudstorage_obj, latest_filename = exclude_ghost_participants.get_latest_pid_file(
+    _, latest_filename = exclude_ghost_participants.get_latest_pid_file(
       _FAKE_BUCKET)
     self.assertEquals(latest_filename, '/%s/%s' % (_FAKE_BUCKET, created_last))
