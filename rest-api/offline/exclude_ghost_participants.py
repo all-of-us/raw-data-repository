@@ -1,32 +1,32 @@
-import config
 import logging
-from cloudstorage import cloudstorage_api
 from csv import DictReader
-from offline.biobank_samples_pipeline import DataError
-from dao.participant_summary_dao import ParticipantSummaryDao
+
+import config
+from cloudstorage import cloudstorage_api
 from dao.participant_dao import ParticipantDao
+from offline.biobank_samples_pipeline import DataError
 
 
 def mark_ghost_participants():
+  bucket = config.getSetting(config.GHOST_ID_BUCKET)
   # read latest file from csv bucket
-  ps_dao = ParticipantSummaryDao()
   p_dao = ParticipantDao()
-  csv_file = get_latest_pid_file()
+  csv_file, paths = get_latest_pid_file(bucket)
   csv_reader = DictReader(csv_file)
+
   # transform participant id's (if needed)
+
   for row in csv_reader:
     pid = row.get('participant_id')
 
-    # write to participant and summary
     with p_dao.session() as session:
       p_dao.update_ghost_participant(session, pid)
+      logging.info('Added ghost flag to %s ', pid)
 
 
-def get_latest_pid_file():
-  bucket = config.getSetting(config.GHOST_ID_BUCKET)
-  logging.info('bucket is %s', bucket)
+def get_latest_pid_file(bucket):
   path = _find_most_recent_file(bucket)
-  logging.info('Opening most recent ghost id exclusion list in %r: %r', bucket, path)
+  logging.info('Opening most recent ghost id exclusion list in %r: %r', path, bucket)
   return cloudstorage_api.open(path), path
 
 
@@ -39,8 +39,6 @@ def _find_most_recent_file(bucket):
   files_list = cloudstorage_api.listbucket('/' + bucket)
   if not files_list:
     raise DataError('No files in cloud bucket %r.' % bucket)
-  # GCS does not really have the concept of directories (it's just a filename convention), so all
-  # directory listings are recursive and we must filter out subdirectory contents.
   files_list = [
       s for s in files_list
       if s.filename.lower().endswith('.csv')]

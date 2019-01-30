@@ -6,7 +6,7 @@ from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus,
   PhysicalMeasurementsStatus, QuestionnaireStatus, WithdrawalStatus, SuspensionStatus, \
   WithdrawalReason
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Index, SmallInteger, \
-  UnicodeText, Boolean
+  UnicodeText
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -257,10 +257,6 @@ class ParticipantSummary(Base):
   suspensionTime = Column('suspension_time', UTCDateTime)
 
   participant = relationship("Participant", back_populates="participantSummary")
-
-  @declared_attr
-  def ghostId(cls):
-    return Column('is_ghost_id', Integer, ForeignKey('participant.is_ghost_id'), onupdate='CASCADE')
 
   @declared_attr
   def hpoId(cls):
