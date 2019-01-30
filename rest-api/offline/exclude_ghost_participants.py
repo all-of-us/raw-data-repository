@@ -15,8 +15,6 @@ def mark_ghost_participants():
   logging.info('Getting list of ghost accounts from %s', file_name)
   csv_reader = DictReader(csv_file_obj)
 
-  # transform participant id's (if needed)
-
   for row in csv_reader:
     pid = row.get('participant_id')
 
