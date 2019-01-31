@@ -10,16 +10,49 @@ from dao.code_dao import CodeDao
 from model.calendar import Calendar
 from dao.calendar_dao import CalendarDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from test.unit_test.unit_test_util import FlaskTestBase
+from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
 from model.participant import Participant
+from concepts import Concept
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
   WithdrawalStatus, make_primary_provider_link_for_name
 from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
-  MetricsAgeCacheDao
+  MetricsAgeCacheDao, MetricsRaceCacheDao
+from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_AIAN_CODE,
+                            RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, RACE_MENA_CODE)
+
+TIME_1 = datetime.datetime(2017, 12, 31)
+
+def _questionnaire_response_url(participant_id):
+  return 'Participant/%s/QuestionnaireResponse' % participant_id
 
 class ParticipantCountsOverTimeApiTest(FlaskTestBase):
+
+  provider_link = {
+    "primary": True,
+    "organization": {
+      "display": None,
+      "reference": "Organization/PITT",
+    }
+  }
+
+  az_provider_link = {
+    "primary": True,
+    "organization": {
+      "display": None,
+      "reference": "Organization/AZ_TUCSON",
+    }
+  }
+
+  code_link_ids = (
+    'race', 'genderIdentity', 'state', 'sex', 'sexualOrientation', 'recontactMethod', 'language',
+    'education', 'income'
+  )
+
+  string_link_ids = (
+    'firstName', 'middleName', 'lastName', 'streetAddress', 'city', 'phoneNumber', 'zipCode'
+  )
 
   def setUp(self):
     super(ParticipantCountsOverTimeApiTest, self).setUp(use_mysql=True)
@@ -812,6 +845,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
                  time_fp_stored=self.time4)
 
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=4, biobankId=7, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
+                 time_fp_stored=self.time4)
+
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
     service.refresh_data_for_metrics_cache(dao)
@@ -859,6 +897,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     p3 = Participant(participantId=3, biobankId=6)
     self._insert(p3, 'Chad', 'Caterpillar', 'PITT', time_int=self.time3, time_mem=self.time4,
                  time_fp_stored=self.time5)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=4, biobankId=7, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
+                 time_fp_stored=self.time4)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
@@ -920,6 +963,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, gender_id=355)
 
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, gender_id=355)
+
     service = ParticipantCountsOverTimeService()
     dao = MetricsGenderCacheDao()
     service.refresh_data_for_metrics_cache(dao)
@@ -970,6 +1017,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, gender_id=355)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, gender_id=355)
 
     service = ParticipantCountsOverTimeService()
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
@@ -1030,6 +1081,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time4, gender_id=355)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, gender_id=355)
 
     service = ParticipantCountsOverTimeService()
     service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
@@ -1093,6 +1148,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, dob=dob4)
 
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, dob=dob3)
+
     service = ParticipantCountsOverTimeService()
     dao = MetricsAgeCacheDao()
     service.refresh_data_for_metrics_cache(dao)
@@ -1137,6 +1196,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, dob=dob4)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, dob=dob3)
 
     service = ParticipantCountsOverTimeService()
     service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
@@ -1192,6 +1255,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time4, dob=dob4)
 
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, dob=dob3)
+
     service = ParticipantCountsOverTimeService()
     service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
 
@@ -1240,6 +1307,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time4,
                  time_fp_stored=self.time5)
 
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time4,
+                 time_fp_stored=self.time5)
+
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
     service.refresh_data_for_metrics_cache(dao)
@@ -1271,6 +1343,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p3, 'Chad', 'Caterpillar', 'PITT', time_int=self.time3, time_mem=self.time4,
                  time_fp_stored=self.time5)
 
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time4,
+                 time_fp_stored=self.time5)
+
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
     service.refresh_data_for_metrics_cache(dao)
@@ -1291,3 +1368,387 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({u'date': u'2018-01-02', u'metrics': {u'TOTAL': 2}}, response)
     self.assertIn({u'date': u'2018-01-07', u'metrics': {u'TOTAL': 2}}, response)
     self.assertIn({u'date': u'2018-01-08', u'metrics': {u'TOTAL': 2}}, response)
+
+  def test_refresh_metrics_race_cache_data(self):
+
+    questionnaire_id = self.create_demographics_questionnaire()
+
+    def setup_participant(when, race_code_list, providerLink=self.provider_link):
+      # Set up participant, questionnaire, and consent
+      with FakeClock(when):
+        participant = self.send_post('Participant', {"providerLink": [providerLink]})
+        participant_id = participant['participantId']
+        self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+          'race': race_code_list,
+          'genderIdentity': PMI_SKIP_CODE,
+          'firstName': self.fake.first_name(),
+          'middleName': self.fake.first_name(),
+          'lastName': self.fake.last_name(),
+          'zipCode': '78751',
+          'state': PMI_SKIP_CODE,
+          'streetAddress': '1234 Main Street',
+          'city': 'Austin',
+          'sex': PMI_SKIP_CODE,
+          'sexualOrientation': PMI_SKIP_CODE,
+          'phoneNumber': '512-555-5555',
+          'recontactMethod': PMI_SKIP_CODE,
+          'language': PMI_SKIP_CODE,
+          'education': PMI_SKIP_CODE,
+          'income': PMI_SKIP_CODE,
+          'dateOfBirth': datetime.date(1978, 10, 9),
+          'CABoRSignature': 'signature.pdf',
+        }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+      return participant
+
+    race_code_dict = {
+      'Race_WhatRaceEthnicity': 193,
+      'WhatRaceEthnicity_Hispanic': 207,
+      'WhatRaceEthnicity_Black': 259,
+      'WhatRaceEthnicity_White': 220,
+      'WhatRaceEthnicity_AIAN': 252,
+      'WhatRaceEthnicity_RaceEthnicityNoneOfThese': 235,
+      'WhatRaceEthnicity_Asian': 194,
+      'PMI_PreferNotToAnswer': 924,
+      'WhatRaceEthnicity_MENA': 274,
+      'PMI_Skip': 930,
+      'WhatRaceEthnicity_NHPI': 237
+    }
+
+    setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
+    setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
+    setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
+    setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
+    setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
+
+    setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
+    setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
+
+    code_dao = CodeDao()
+    code_list = code_dao.get_all()
+    for code in code_list:
+      if code.value in race_code_dict:
+        race_code_dict[code.value] = code.codeId
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsRaceCacheDao(race_code_dict)
+    service.refresh_data_for_metrics_cache(dao)
+
+    results = service.get_latest_version_from_cache(dao, '2017-12-31', '2018-01-08')
+
+    self.assertIn({'date': '2017-12-31', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
+                                                     'Middle_Eastern_North_African': 0L,
+                                                     'Multi_Ancestry': 1L,
+                                                     'American_Indian_Alaska_Native': 0L,
+                                                     'No_Ancestry_Checked': 0L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 1L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 1L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'PITT'}, results)
+
+    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1L,
+                                                     'Middle_Eastern_North_African': 0L,
+                                                     'Multi_Ancestry': 2L,
+                                                     'American_Indian_Alaska_Native': 1L,
+                                                     'No_Ancestry_Checked': 1L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 2L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 2L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'PITT'}, results)
+
+    self.assertIn({'date': '2018-01-01', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
+                                                     'Middle_Eastern_North_African': 0L,
+                                                     'Multi_Ancestry': 0L,
+                                                     'American_Indian_Alaska_Native': 1L,
+                                                     'No_Ancestry_Checked': 0L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 0L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 0L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'AZ_TUCSON'}, results)
+
+    self.assertIn({'date': '2018-01-08', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
+                                                     'Middle_Eastern_North_African': 1L,
+                                                     'Multi_Ancestry': 1L,
+                                                     'American_Indian_Alaska_Native': 2L,
+                                                     'No_Ancestry_Checked': 0L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 0L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 0L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'AZ_TUCSON'}, results)
+
+  def test_get_history_race_data_api(self):
+
+    questionnaire_id = self.create_demographics_questionnaire()
+
+    def setup_participant(when, race_code_list, providerLink=self.provider_link):
+      # Set up participant, questionnaire, and consent
+      with FakeClock(when):
+        participant = self.send_post('Participant', {"providerLink": [providerLink]})
+        participant_id = participant['participantId']
+        self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+          'race': race_code_list,
+          'genderIdentity': PMI_SKIP_CODE,
+          'firstName': self.fake.first_name(),
+          'middleName': self.fake.first_name(),
+          'lastName': self.fake.last_name(),
+          'zipCode': '78751',
+          'state': PMI_SKIP_CODE,
+          'streetAddress': '1234 Main Street',
+          'city': 'Austin',
+          'sex': PMI_SKIP_CODE,
+          'sexualOrientation': PMI_SKIP_CODE,
+          'phoneNumber': '512-555-5555',
+          'recontactMethod': PMI_SKIP_CODE,
+          'language': PMI_SKIP_CODE,
+          'education': PMI_SKIP_CODE,
+          'income': PMI_SKIP_CODE,
+          'dateOfBirth': datetime.date(1978, 10, 9),
+          'CABoRSignature': 'signature.pdf',
+        }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+      return participant
+
+    race_code_dict = {
+      'Race_WhatRaceEthnicity': 193,
+      'WhatRaceEthnicity_Hispanic': 207,
+      'WhatRaceEthnicity_Black': 259,
+      'WhatRaceEthnicity_White': 220,
+      'WhatRaceEthnicity_AIAN': 252,
+      'WhatRaceEthnicity_RaceEthnicityNoneOfThese': 235,
+      'WhatRaceEthnicity_Asian': 194,
+      'PMI_PreferNotToAnswer': 924,
+      'WhatRaceEthnicity_MENA': 274,
+      'PMI_Skip': 930,
+      'WhatRaceEthnicity_NHPI': 237
+    }
+
+    setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
+    setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
+    setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
+    setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
+    setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
+
+    setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
+    setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
+
+    code_dao = CodeDao()
+    code_list = code_dao.get_all()
+    for code in code_list:
+      if code.value in race_code_dict:
+        race_code_dict[code.value] = code.codeId
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsRaceCacheDao(race_code_dict)
+    service.refresh_data_for_metrics_cache(dao)
+
+    qs = """
+              &stratification=RACE
+              &startDate=2017-12-31
+              &endDate=2018-01-08
+              &history=TRUE
+              """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({'date': '2017-12-31', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
+                                                     'Middle_Eastern_North_African': 0L,
+                                                     'Multi_Ancestry': 1L,
+                                                     'American_Indian_Alaska_Native': 0L,
+                                                     'No_Ancestry_Checked': 0L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 1L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 1L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+
+    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1L,
+                                                     'Middle_Eastern_North_African': 0L,
+                                                     'Multi_Ancestry': 2L,
+                                                     'American_Indian_Alaska_Native': 1L,
+                                                     'No_Ancestry_Checked': 1L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 2L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 2L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+
+    self.assertIn({'date': '2018-01-01', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
+                                                     'Middle_Eastern_North_African': 0L,
+                                                     'Multi_Ancestry': 0L,
+                                                     'American_Indian_Alaska_Native': 1L,
+                                                     'No_Ancestry_Checked': 0L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 0L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 0L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'AZ_TUCSON'}, response)
+
+    self.assertIn({'date': '2018-01-08', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
+                                                     'Middle_Eastern_North_African': 1L,
+                                                     'Multi_Ancestry': 1L,
+                                                     'American_Indian_Alaska_Native': 2L,
+                                                     'No_Ancestry_Checked': 0L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 0L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 0L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'AZ_TUCSON'}, response)
+
+  def test_get_history_race_data_api_filter_by_awardee(self):
+
+    questionnaire_id = self.create_demographics_questionnaire()
+
+    def setup_participant(when, race_code_list, providerLink=self.provider_link):
+      # Set up participant, questionnaire, and consent
+      with FakeClock(when):
+        participant = self.send_post('Participant', {"providerLink": [providerLink]})
+        participant_id = participant['participantId']
+        self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+          'race': race_code_list,
+          'genderIdentity': PMI_SKIP_CODE,
+          'firstName': self.fake.first_name(),
+          'middleName': self.fake.first_name(),
+          'lastName': self.fake.last_name(),
+          'zipCode': '78751',
+          'state': PMI_SKIP_CODE,
+          'streetAddress': '1234 Main Street',
+          'city': 'Austin',
+          'sex': PMI_SKIP_CODE,
+          'sexualOrientation': PMI_SKIP_CODE,
+          'phoneNumber': '512-555-5555',
+          'recontactMethod': PMI_SKIP_CODE,
+          'language': PMI_SKIP_CODE,
+          'education': PMI_SKIP_CODE,
+          'income': PMI_SKIP_CODE,
+          'dateOfBirth': datetime.date(1978, 10, 9),
+          'CABoRSignature': 'signature.pdf',
+        }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+      return participant
+
+    race_code_dict = {
+      'Race_WhatRaceEthnicity': 193,
+      'WhatRaceEthnicity_Hispanic': 207,
+      'WhatRaceEthnicity_Black': 259,
+      'WhatRaceEthnicity_White': 220,
+      'WhatRaceEthnicity_AIAN': 252,
+      'WhatRaceEthnicity_RaceEthnicityNoneOfThese': 235,
+      'WhatRaceEthnicity_Asian': 194,
+      'PMI_PreferNotToAnswer': 924,
+      'WhatRaceEthnicity_MENA': 274,
+      'PMI_Skip': 930,
+      'WhatRaceEthnicity_NHPI': 237
+    }
+
+    setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
+    setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
+    setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
+    setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
+    setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
+
+    setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
+    setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
+
+    code_dao = CodeDao()
+    code_list = code_dao.get_all()
+    for code in code_list:
+      if code.value in race_code_dict:
+        race_code_dict[code.value] = code.codeId
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsRaceCacheDao(race_code_dict)
+    service.refresh_data_for_metrics_cache(dao)
+
+    qs = """
+              &stratification=RACE
+              &startDate=2017-12-31
+              &endDate=2018-01-08
+              &history=TRUE
+              &awardee=PITT
+              """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({'date': '2017-12-31', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
+                                                     'Middle_Eastern_North_African': 0L,
+                                                     'Multi_Ancestry': 1L,
+                                                     'American_Indian_Alaska_Native': 0L,
+                                                     'No_Ancestry_Checked': 0L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 1L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 1L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+
+    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1L,
+                                                     'Middle_Eastern_North_African': 0L,
+                                                     'Multi_Ancestry': 2L,
+                                                     'American_Indian_Alaska_Native': 1L,
+                                                     'No_Ancestry_Checked': 1L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 2L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 2L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+
+  def create_demographics_questionnaire(self):
+    """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
+    return self.create_questionnaire('questionnaire3.json')
+
+  def post_demographics_questionnaire(self,
+                                      participant_id,
+                                      questionnaire_id,
+                                      cabor_signature_string=False,
+                                      time=TIME_1, **kwargs):
+    """POSTs answers to the demographics questionnaire for the participant"""
+    answers = {'code_answers': [],
+               'string_answers': [],
+               'date_answers': [('dateOfBirth', kwargs.get('dateOfBirth'))]}
+    if cabor_signature_string:
+      answers['string_answers'].append(('CABoRSignature', kwargs.get('CABoRSignature')))
+    else:
+      answers['uri_answers'] = [('CABoRSignature', kwargs.get('CABoRSignature'))]
+
+    for link_id in self.code_link_ids:
+      if link_id in kwargs:
+        if link_id == 'race':
+          for race_code in kwargs[link_id]:
+            concept = Concept(PPI_SYSTEM, race_code)
+            answers['code_answers'].append((link_id, concept))
+        else:
+          concept = Concept(PPI_SYSTEM, kwargs[link_id])
+          answers['code_answers'].append((link_id, concept))
+
+    for link_id in self.string_link_ids:
+      code = kwargs.get(link_id)
+      answers['string_answers'].append((link_id, code))
+
+    response_data = make_questionnaire_response_json(participant_id, questionnaire_id, **answers)
+
+    with FakeClock(time):
+      url = 'Participant/%s/QuestionnaireResponse' % participant_id
+      return self.send_post(url, request_data=response_data)

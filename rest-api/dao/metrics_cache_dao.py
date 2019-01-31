@@ -49,7 +49,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
   def to_client_json(self, result_set):
     client_json = []
     for record in result_set:
-      newItem = {
+      new_item = {
         'date': record.date.isoformat(),
         'hpo': record.hpoName,
         'metrics': {
@@ -58,7 +58,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
           'core': record.coreCount,
         }
       }
-      client_json.append(newItem)
+      client_json.append(new_item)
     return client_json
 
   def get_total_interested_count(self, start_date, end_date, hpo_ids=None):
@@ -104,37 +104,71 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
 
   def get_metrics_cache_sql(self):
     sql = """
-      insert into metrics_enrollment_status_cache
-        SELECT
-        :date_inserted as date_inserted,
-        hpo_id,
-        name,
-        day as date,
-        sum(CASE
-          WHEN day>=sign_up_time AND (enrollment_status_member_time IS NULL OR day < enrollment_status_member_time) THEN 1
-          ELSE 0
-        END) AS registered_count,
-        sum(CASE
-          WHEN enrollment_status_member_time IS NOT NULL AND day>=enrollment_status_member_time AND (enrollment_status_core_stored_sample_time IS NULL OR day < enrollment_status_core_stored_sample_time) THEN 1
-          ELSE 0
-        END) AS consented_count,
-        sum(CASE
-          WHEN enrollment_status_core_stored_sample_time IS NOT NULL AND day>=enrollment_status_core_stored_sample_time THEN 1
-          ELSE 0
-        END) AS core_count
-        FROM (SELECT p.sign_up_time, ps.enrollment_status_member_time, ps.enrollment_status_core_ordered_sample_time, ps.enrollment_status_core_stored_sample_time, calendar.day, p.hpo_id, hpo.name
-              FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
-                   calendar,
-                   hpo
-              WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
-                AND p.hpo_id=hpo.hpo_id
-                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                AND p.withdrawal_status = :not_withdraw
-                AND calendar.day >= :start_date
-                AND calendar.day <= :end_date
-             ) a
-        GROUP BY day, hpo_id, name;
+            insert into metrics_enrollment_status_cache
+              SELECT
+                :date_inserted AS date_inserted,
+                :hpo_id AS hpo_id,
+                (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS name,
+                c.day AS date,
+                IFNULL((
+                  SELECT SUM(results.enrollment_count)
+                  FROM
+                  (
+                    SELECT DATE(p.sign_up_time) AS sign_up_time,
+                           DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                           DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                           count(*) enrollment_count
+                    FROM participant p
+                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                      AND p.is_ghost_id IS NOT TRUE
+                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                      AND p.withdrawal_status = :not_withdraw
+                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                  ) AS results
+                  WHERE c.day>=DATE(sign_up_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+                ),0) AS registered_count,
+                IFNULL((
+                  SELECT SUM(results.enrollment_count)
+                  FROM
+                  (
+                    SELECT DATE(p.sign_up_time) AS sign_up_time,
+                           DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                           DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                           count(*) enrollment_count
+                    FROM participant p
+                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                      AND p.is_ghost_id IS NOT TRUE
+                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                      AND p.withdrawal_status = :not_withdraw
+                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                  ) AS results
+                  WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (enrollment_status_core_stored_sample_time IS NULL OR day < DATE(enrollment_status_core_stored_sample_time))
+                ),0) AS consented_count,
+                IFNULL((
+                  SELECT SUM(results.enrollment_count)
+                  FROM
+                  (
+                    SELECT DATE(p.sign_up_time) AS sign_up_time,
+                           DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                           DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                           count(*) enrollment_count
+                    FROM participant p
+                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                      AND p.is_ghost_id IS NOT TRUE
+                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                      AND p.withdrawal_status = :not_withdraw
+                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                  ) AS results
+                  WHERE enrollment_status_core_stored_sample_time IS NOT NULL AND day>=DATE(enrollment_status_core_stored_sample_time)
+                ),0) AS core_count
+              FROM calendar c
+              WHERE c.day BETWEEN :start_date AND :end_date
+              ;
     """
+
     return sql
 
 class MetricsGenderCacheDao(BaseDao):
@@ -204,42 +238,52 @@ class MetricsGenderCacheDao(BaseDao):
     return client_json
 
   def get_metrics_cache_sql(self):
-    sql = """
-          insert into metrics_gender_cache
-            SELECT
-            :date_inserted as date_inserted,
-            hpo_id,
-            name as hpo_name,
-            day as date,
-            gender_name,
-            COUNT(*) AS gender_count
-            from
-            (
-                SELECT p.participant_id, p.hpo_id, hpo.name, p.sign_up_time,day,
-                   CASE
-                       WHEN ps.gender_identity_id IS NULL OR ps.gender_identity_id=924 THEN 'UNSET'
-                       WHEN ps.gender_identity_id=354 THEN 'Woman'
-                       WHEN ps.gender_identity_id=356 THEN 'Man'
-                       WHEN ps.gender_identity_id=355 THEN 'Transgender'
-                       WHEN ps.gender_identity_id=930 THEN 'PMI_Skip'
-                       WHEN ps.gender_identity_id=358 THEN 'Non-Binary'
-                       WHEN ps.gender_identity_id=357 THEN 'Other/Additional Options'
-                     ELSE 'UNSET'
-                   END gender_name
-                FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
-                     calendar,
-                     hpo
-                WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
-                AND p.hpo_id = hpo.hpo_id
-                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                AND p.withdrawal_status = :not_withdraw
-                AND calendar.day >= :start_date
-                AND calendar.day <= :end_date
-                AND calendar.day >= Date(p.sign_up_time)
-            ) x
-            GROUP BY day, hpo_id, hpo_name, gender_name
-            ;
-        """
+    sql = """insert into metrics_gender_cache """
+    gender_names = ['UNSET', 'Woman', 'Man', 'Transgender', 'PMI_Skip', 'Non-Binary', 'Other/Additional Options']
+    gender_conditions = [
+      ' (ps.gender_identity_id IS NULL OR ps.gender_identity_id=924) ',
+      ' ps.gender_identity_id=354 ',
+      ' ps.gender_identity_id=356 ',
+      ' ps.gender_identity_id=355 ',
+      ' ps.gender_identity_id=930 ',
+      ' ps.gender_identity_id=358 ',
+      ' ps.gender_identity_id=357 '
+    ]
+    sub_queries = []
+    sql_template = """
+      SELECT
+        :date_inserted AS date_inserted,
+        :hpo_id AS hpo_id,
+        (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+        c.day AS date,
+        '{0}' AS gender_name,  
+        IFNULL((
+          SELECT SUM(results.gender_count)
+          FROM
+          (
+            SELECT DATE(p.sign_up_time) as day,
+                   COUNT(*) gender_count
+            FROM participant p
+                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                   LEFT JOIN hpo ON p.hpo_id=hpo.hpo_id
+            WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+              AND p.is_ghost_id IS NOT TRUE
+              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+              AND p.withdrawal_status = :not_withdraw
+              AND {1}
+            GROUP BY DATE(p.sign_up_time)
+          ) AS results
+          WHERE results.day <= c.day
+        ),0) AS gender_count
+      FROM calendar c
+      WHERE c.day BETWEEN :start_date AND :end_date
+    """
+    for gender_name, gender_condition in zip(gender_names, gender_conditions):
+      sub_query = sql_template.format(gender_name, gender_condition)
+      sub_queries.append(sub_query)
+
+    sql += ' union '.join(sub_queries)
+
     return sql
 
 class MetricsAgeCacheDao(BaseDao):
@@ -312,57 +356,116 @@ class MetricsAgeCacheDao(BaseDao):
 
   def get_metrics_cache_sql(self):
     sql = """
-          insert into metrics_age_cache
-            SELECT
-            :date_inserted as date_inserted,
-            hpo_id,
-            name as hpo_name,
-            day as date,
-            age_range,
-            COUNT(*) AS age_count
-            from
+      insert into metrics_age_cache 
+        SELECT
+          :date_inserted AS date_inserted,
+          :hpo_id AS hpo_id,
+          (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+          c.day AS date,
+          'UNSET' AS age_range,
+          IFNULL((
+            SELECT SUM(results.age_count)
+            FROM
             (
-                SELECT hpo_id, name, sign_up_time, day,
-                   CASE
-                       WHEN age IS NULL THEN 'UNSET'
-                       WHEN age>=0 and age<=17 THEN '0-17'
-                       WHEN age>=18 and age<=25 THEN '18-25'
-                       WHEN age>=26 and age<=35 THEN '26-35'
-                       WHEN age>=36 and age<=45 THEN '36-45'
-                       WHEN age>=46 and age<=55 THEN '46-55'
-                       WHEN age>=56 and age<=65 THEN '56-65'
-                       WHEN age>=66 and age<=75 THEN '66-75'
-                       WHEN age>=76 and age<=85 THEN '76-85'
-                       WHEN age>=86 THEN '86-'
-                   end age_range
-                from
-                (
-                    SELECT p.participant_id, p.hpo_id, hpo.name, p.sign_up_time,day,ps.date_of_birth,
-                       CASE
-                         WHEN ps.date_of_birth IS NOT NULL THEN Date_format(From_Days( To_Days(day) - To_Days(ps.date_of_birth) ), '%Y' ) + 0
-                         ELSE NULL
-                       END age
-                    FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
-                         calendar,
-                         hpo
-                    WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
-                    AND p.hpo_id = hpo.hpo_id
-                    AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-                    AND p.withdrawal_status = :not_withdraw
-                    AND calendar.day >= :start_date
-                    AND calendar.day <= :end_date
-                    AND calendar.day >= Date(p.sign_up_time)
-                ) x
+              SELECT DATE(p.sign_up_time) AS day,
+                     count(*) age_count
+              FROM participant p
+                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                     LEFT JOIN hpo ON p.hpo_id=hpo.hpo_id
+              WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                AND p.is_ghost_id IS NOT TRUE
+                AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                AND p.withdrawal_status = :not_withdraw
+                AND ps.date_of_birth IS NULL
+              GROUP BY DATE(p.sign_up_time)
+            ) AS results
+            WHERE results.day <= c.day
+          ),0) AS age_count
+        FROM calendar c
+        WHERE c.day BETWEEN :start_date AND :end_date
+        UNION
+    """
+    age_ranges = ['0-17', '18-25', '26-35', '36-45', '46-55', '56-65', '66-75', '76-85', '86-']
+    age_ranges_conditions = [
+      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 0 \
+      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 17 ',
+      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 18 \
+      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 25 ',
+      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 26 \
+      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 35 ',
+      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 36 \
+      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 45 ',
+      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 46 \
+      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 55 ',
+      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 56 \
+      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 65 ',
+      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 66 \
+      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 75 ',
+      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 76 \
+      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 85 ',
+      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 86 '
+    ]
+    sub_queries = []
+    sql_template = """
+      SELECT
+        :date_inserted AS date_inserted,
+        :hpo_id AS hpo_id,
+        (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+        c.day as date,
+        '{0}' AS age_range,
+        IFNULL((
+          SELECT SUM(results.age_count)
+          FROM
+          (
+            SELECT DATE(p.sign_up_time) AS day,
+                   DATE(ps.date_of_birth) AS dob,
+                   count(*) age_count
+            FROM participant p
+                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                   LEFT JOIN hpo ON p.hpo_id=hpo.hpo_id
+            WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+              AND p.is_ghost_id IS NOT TRUE
+              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+              AND p.withdrawal_status = :not_withdraw
+              AND ps.date_of_birth IS NOT NULL
+            GROUP BY DATE(p.sign_up_time), DATE(ps.date_of_birth)
+          ) AS results
+          WHERE results.day <= c.day {1}
+        ),0) AS age_count
+      FROM calendar c
+      WHERE c.day BETWEEN :start_date AND :end_date
+    """
 
-            ) y
-            GROUP BY day, hpo_id, hpo_name, age_range
-            ;
-        """
+    for age_range, age_range_condition in zip(age_ranges, age_ranges_conditions):
+      sub_query = sql_template.format(age_range, age_range_condition)
+      sub_queries.append(sub_query)
+
+    sql += ' union '.join(sub_queries)
+
     return sql
 
 class MetricsRaceCacheDao(BaseDao):
-  def __init__(self):
+
+  # race code dict for prod env
+  # hard code race code id for good performance
+  race_code_dict = {
+    'Race_WhatRaceEthnicity': 193,
+    'WhatRaceEthnicity_Hispanic': 207,
+    'WhatRaceEthnicity_Black': 259,
+    'WhatRaceEthnicity_White': 220,
+    'WhatRaceEthnicity_AIAN': 252,
+    'WhatRaceEthnicity_RaceEthnicityNoneOfThese': 235,
+    'WhatRaceEthnicity_Asian': 194,
+    'PMI_PreferNotToAnswer': 924,
+    'WhatRaceEthnicity_MENA': 274,
+    'PMI_Skip': 930,
+    'WhatRaceEthnicity_NHPI': 237
+  }
+
+  def __init__(self, race_code_dict=None):
     super(MetricsRaceCacheDao, self).__init__(MetricsRaceCache)
+    if race_code_dict is not None:
+      self.race_code_dict = race_code_dict
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsRaceCache)
@@ -462,7 +565,7 @@ class MetricsRaceCacheDao(BaseDao):
                          ELSE 0
                        END AS Multi_Ancestry,
                        CASE
-                         WHEN PMI_Skip = 1 OR (UNSET =1 AND questionnaire_on_the_basics = 1)
+                         WHEN PMI_Skip = 1 OR UNSET =1
                            THEN 1
                          ELSE 0
                        END AS No_Ancestry_Checked
@@ -470,7 +573,6 @@ class MetricsRaceCacheDao(BaseDao):
                        SELECT participant_id,
                               hpo_id,
                               sign_up_time,
-                              questionnaire_on_the_basics,
                               MAX(WhatRaceEthnicity_Hispanic)                 AS WhatRaceEthnicity_Hispanic,
                               MAX(WhatRaceEthnicity_Black)                    AS WhatRaceEthnicity_Black,
                               MAX(WhatRaceEthnicity_White)                    AS WhatRaceEthnicity_White,
@@ -486,35 +588,34 @@ class MetricsRaceCacheDao(BaseDao):
                               SELECT p.participant_id,
                                      p.hpo_id,
                                      p.sign_up_time,
-                                     ps.questionnaire_on_the_basics,
-                                     CASE WHEN q.code_id = 207 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
-                                     CASE WHEN q.code_id = 259 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
-                                     CASE WHEN q.code_id = 220 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
-                                     CASE WHEN q.code_id = 252 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_AIAN,
+                                     CASE WHEN q.code_id = {1} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Hispanic,
+                                     CASE WHEN q.code_id = {2} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Black,
+                                     CASE WHEN q.code_id = {3} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_White,
+                                     CASE WHEN q.code_id = {4} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_AIAN,
                                      CASE WHEN q.code_id IS NULL THEN 1 ELSE 0 END AS UNSET,
-                                     CASE WHEN q.code_id = 235 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
-                                     CASE WHEN q.code_id = 194 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Asian,
-                                     CASE WHEN q.code_id = 924 THEN 1 ELSE 0 END   AS PMI_PreferNotToAnswer,
-                                     CASE WHEN q.code_id = 274 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_MENA,
-                                     CASE WHEN q.code_id = 930 THEN 1 ELSE 0 END   AS PMI_Skip,
-                                     CASE WHEN q.code_id = 237 THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
+                                     CASE WHEN q.code_id = {5} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_RaceEthnicityNoneOfThese,
+                                     CASE WHEN q.code_id = {6} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_Asian,
+                                     CASE WHEN q.code_id = {7} THEN 1 ELSE 0 END   AS PMI_PreferNotToAnswer,
+                                     CASE WHEN q.code_id = {8} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_MENA,
+                                     CASE WHEN q.code_id = {9} THEN 1 ELSE 0 END   AS PMI_Skip,
+                                     CASE WHEN q.code_id = {10} THEN 1 ELSE 0 END   AS WhatRaceEthnicity_NHPI
                               FROM participant p
-                                     LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                                     INNER JOIN participant_summary ps ON p.participant_id = ps.participant_id
                                      LEFT JOIN
                                    (
-                                     SELECT qr.participant_id, c.code_id, c.value, c.display
+                                     SELECT qr.participant_id, qra.value_code_id as code_id
                                      FROM questionnaire_question qq,
                                           questionnaire_response_answer qra,
-                                          questionnaire_response qr,
-                                          code c
-                                     WHERE qra.value_code_id = c.code_id
-                                       AND qq.questionnaire_question_id = qra.question_id
-                                       AND qq.code_id = 193
+                                          questionnaire_response qr
+                                     WHERE qq.questionnaire_question_id = qra.question_id
+                                       AND qq.code_id = {0}
                                        AND qra.questionnaire_response_id = qr.questionnaire_response_id
                                    ) q ON p.participant_id = q.participant_id
                               WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
                                 AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
                                 AND p.withdrawal_status = :not_withdraw
+                                AND p.is_ghost_id IS NOT TRUE
+                                AND ps.questionnaire_on_the_basics = 1
                             ) x
                        GROUP BY participant_id, hpo_id, sign_up_time
                      ) p,
@@ -527,5 +628,15 @@ class MetricsRaceCacheDao(BaseDao):
               ) y
               GROUP BY day, hpo_id, name
               ;
-        """
+        """.format(self.race_code_dict['Race_WhatRaceEthnicity'],
+                   self.race_code_dict['WhatRaceEthnicity_Hispanic'],
+                   self.race_code_dict['WhatRaceEthnicity_Black'],
+                   self.race_code_dict['WhatRaceEthnicity_White'],
+                   self.race_code_dict['WhatRaceEthnicity_AIAN'],
+                   self.race_code_dict['WhatRaceEthnicity_RaceEthnicityNoneOfThese'],
+                   self.race_code_dict['WhatRaceEthnicity_Asian'],
+                   self.race_code_dict['PMI_PreferNotToAnswer'],
+                   self.race_code_dict['WhatRaceEthnicity_MENA'],
+                   self.race_code_dict['PMI_Skip'],
+                   self.race_code_dict['WhatRaceEthnicity_NHPI'])
     return sql
