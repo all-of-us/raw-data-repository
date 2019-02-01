@@ -212,6 +212,7 @@ class ParticipantCountsOverTimeService(BaseDao):
       'test_email_pattern': self.test_email_pattern}
     facets_sql += ' AND %(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
       'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
+    facets_sql += ' AND p.is_ghost_id IS NOT TRUE '
 
     return facets_sql
 

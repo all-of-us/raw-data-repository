@@ -2,7 +2,9 @@ from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache
   MetricsRaceCache
 from dao.base_dao import BaseDao
 from dao.hpo_dao import HPODao
+from dao.code_dao import CodeDao
 from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN
+from code_constants import PPI_SYSTEM
 import datetime
 
 class MetricsEnrollmentStatusCacheDao(BaseDao):
@@ -447,26 +449,8 @@ class MetricsAgeCacheDao(BaseDao):
 
 class MetricsRaceCacheDao(BaseDao):
 
-  # race code dict for prod env
-  # hard code race code id for good performance
-  race_code_dict = {
-    'Race_WhatRaceEthnicity': 193,
-    'WhatRaceEthnicity_Hispanic': 207,
-    'WhatRaceEthnicity_Black': 259,
-    'WhatRaceEthnicity_White': 220,
-    'WhatRaceEthnicity_AIAN': 252,
-    'WhatRaceEthnicity_RaceEthnicityNoneOfThese': 235,
-    'WhatRaceEthnicity_Asian': 194,
-    'PMI_PreferNotToAnswer': 924,
-    'WhatRaceEthnicity_MENA': 274,
-    'PMI_Skip': 930,
-    'WhatRaceEthnicity_NHPI': 237
-  }
-
-  def __init__(self, race_code_dict=None):
+  def __init__(self):
     super(MetricsRaceCacheDao, self).__init__(MetricsRaceCache)
-    if race_code_dict is not None:
-      self.race_code_dict = race_code_dict
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsRaceCache)
@@ -527,6 +511,26 @@ class MetricsRaceCacheDao(BaseDao):
     return client_json
 
   def get_metrics_cache_sql(self):
+
+    race_code_dict = {
+      'Race_WhatRaceEthnicity': 193,
+      'WhatRaceEthnicity_Hispanic': 207,
+      'WhatRaceEthnicity_Black': 259,
+      'WhatRaceEthnicity_White': 220,
+      'WhatRaceEthnicity_AIAN': 252,
+      'WhatRaceEthnicity_RaceEthnicityNoneOfThese': 235,
+      'WhatRaceEthnicity_Asian': 194,
+      'PMI_PreferNotToAnswer': 924,
+      'WhatRaceEthnicity_MENA': 274,
+      'PMI_Skip': 930,
+      'WhatRaceEthnicity_NHPI': 237
+    }
+
+    for k, v in race_code_dict.items():
+      code = CodeDao().get_code(PPI_SYSTEM, k)
+      if code is not None:
+        race_code_dict[k] = code.codeId
+
     sql = """
           insert into metrics_race_cache
             SELECT
@@ -629,15 +633,15 @@ class MetricsRaceCacheDao(BaseDao):
               ) y
               GROUP BY day, hpo_id, name
               ;
-        """.format(self.race_code_dict['Race_WhatRaceEthnicity'],
-                   self.race_code_dict['WhatRaceEthnicity_Hispanic'],
-                   self.race_code_dict['WhatRaceEthnicity_Black'],
-                   self.race_code_dict['WhatRaceEthnicity_White'],
-                   self.race_code_dict['WhatRaceEthnicity_AIAN'],
-                   self.race_code_dict['WhatRaceEthnicity_RaceEthnicityNoneOfThese'],
-                   self.race_code_dict['WhatRaceEthnicity_Asian'],
-                   self.race_code_dict['PMI_PreferNotToAnswer'],
-                   self.race_code_dict['WhatRaceEthnicity_MENA'],
-                   self.race_code_dict['PMI_Skip'],
-                   self.race_code_dict['WhatRaceEthnicity_NHPI'])
+        """.format(race_code_dict['Race_WhatRaceEthnicity'],
+                   race_code_dict['WhatRaceEthnicity_Hispanic'],
+                   race_code_dict['WhatRaceEthnicity_Black'],
+                   race_code_dict['WhatRaceEthnicity_White'],
+                   race_code_dict['WhatRaceEthnicity_AIAN'],
+                   race_code_dict['WhatRaceEthnicity_RaceEthnicityNoneOfThese'],
+                   race_code_dict['WhatRaceEthnicity_Asian'],
+                   race_code_dict['PMI_PreferNotToAnswer'],
+                   race_code_dict['WhatRaceEthnicity_MENA'],
+                   race_code_dict['PMI_Skip'],
+                   race_code_dict['WhatRaceEthnicity_NHPI'])
     return sql

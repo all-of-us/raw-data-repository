@@ -1403,20 +1403,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
       return participant
 
-    race_code_dict = {
-      'Race_WhatRaceEthnicity': 193,
-      'WhatRaceEthnicity_Hispanic': 207,
-      'WhatRaceEthnicity_Black': 259,
-      'WhatRaceEthnicity_White': 220,
-      'WhatRaceEthnicity_AIAN': 252,
-      'WhatRaceEthnicity_RaceEthnicityNoneOfThese': 235,
-      'WhatRaceEthnicity_Asian': 194,
-      'PMI_PreferNotToAnswer': 924,
-      'WhatRaceEthnicity_MENA': 274,
-      'PMI_Skip': 930,
-      'WhatRaceEthnicity_NHPI': 237
-    }
-
     setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
     setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
     setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
@@ -1426,14 +1412,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
     setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
-    code_dao = CodeDao()
-    code_list = code_dao.get_all()
-    for code in code_list:
-      if code.value in race_code_dict:
-        race_code_dict[code.value] = code.codeId
-
     service = ParticipantCountsOverTimeService()
-    dao = MetricsRaceCacheDao(race_code_dict)
+    dao = MetricsRaceCacheDao()
     service.refresh_data_for_metrics_cache(dao)
 
     results = service.get_latest_version_from_cache(dao, '2017-12-31', '2018-01-08')
@@ -1520,20 +1500,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
       return participant
 
-    race_code_dict = {
-      'Race_WhatRaceEthnicity': 193,
-      'WhatRaceEthnicity_Hispanic': 207,
-      'WhatRaceEthnicity_Black': 259,
-      'WhatRaceEthnicity_White': 220,
-      'WhatRaceEthnicity_AIAN': 252,
-      'WhatRaceEthnicity_RaceEthnicityNoneOfThese': 235,
-      'WhatRaceEthnicity_Asian': 194,
-      'PMI_PreferNotToAnswer': 924,
-      'WhatRaceEthnicity_MENA': 274,
-      'PMI_Skip': 930,
-      'WhatRaceEthnicity_NHPI': 237
-    }
-
     setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
     setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
     setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
@@ -1543,14 +1509,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
     setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
-    code_dao = CodeDao()
-    code_list = code_dao.get_all()
-    for code in code_list:
-      if code.value in race_code_dict:
-        race_code_dict[code.value] = code.codeId
-
     service = ParticipantCountsOverTimeService()
-    dao = MetricsRaceCacheDao(race_code_dict)
+    dao = MetricsRaceCacheDao()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
@@ -1646,20 +1606,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
       return participant
 
-    race_code_dict = {
-      'Race_WhatRaceEthnicity': 193,
-      'WhatRaceEthnicity_Hispanic': 207,
-      'WhatRaceEthnicity_Black': 259,
-      'WhatRaceEthnicity_White': 220,
-      'WhatRaceEthnicity_AIAN': 252,
-      'WhatRaceEthnicity_RaceEthnicityNoneOfThese': 235,
-      'WhatRaceEthnicity_Asian': 194,
-      'PMI_PreferNotToAnswer': 924,
-      'WhatRaceEthnicity_MENA': 274,
-      'PMI_Skip': 930,
-      'WhatRaceEthnicity_NHPI': 237
-    }
-
     setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
     setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
     setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
@@ -1669,14 +1615,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
     setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
-    code_dao = CodeDao()
-    code_list = code_dao.get_all()
-    for code in code_list:
-      if code.value in race_code_dict:
-        race_code_dict[code.value] = code.codeId
-
     service = ParticipantCountsOverTimeService()
-    dao = MetricsRaceCacheDao(race_code_dict)
+    dao = MetricsRaceCacheDao()
     service.refresh_data_for_metrics_cache(dao)
 
     qs = """
