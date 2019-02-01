@@ -6,7 +6,7 @@ from participant_enums import WithdrawalStatus
 from dao.hpo_dao import HPODao
 from dao.base_dao import BaseDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
-  MetricsAgeCacheDao
+  MetricsAgeCacheDao, MetricsRaceCacheDao
 
 CACHE_START_DATE = datetime.datetime.strptime('2017-01-01', '%Y-%m-%d').date()
 
@@ -22,6 +22,7 @@ class ParticipantCountsOverTimeService(BaseDao):
     self.refresh_data_for_metrics_cache(MetricsEnrollmentStatusCacheDao())
     self.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
     self.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsRaceCacheDao())
 
   def refresh_data_for_metrics_cache(self, dao):
     updated_time = datetime.datetime.now()
@@ -91,6 +92,9 @@ class ParticipantCountsOverTimeService(BaseDao):
                                                 awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'AGE_RANGE':
       return self.get_latest_version_from_cache(MetricsAgeCacheDao(), start_date, end_date,
+                                                awardee_ids)
+    elif str(history) == 'TRUE' and str(stratification) == 'RACE':
+      return self.get_latest_version_from_cache(MetricsRaceCacheDao(), start_date, end_date,
                                                 awardee_ids)
     elif str(stratification) == 'TOTAL':
       strata = ['TOTAL']
@@ -208,6 +212,7 @@ class ParticipantCountsOverTimeService(BaseDao):
       'test_email_pattern': self.test_email_pattern}
     facets_sql += ' AND %(table_prefix)s.withdrawal_status = %(not_withdrawn)i' % {
       'table_prefix': table_prefix, 'not_withdrawn': WithdrawalStatus.NOT_WITHDRAWN}
+    facets_sql += ' AND p.is_ghost_id IS NOT TRUE '
 
     return facets_sql
 

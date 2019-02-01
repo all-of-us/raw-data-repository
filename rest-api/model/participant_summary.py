@@ -297,9 +297,3 @@ Index('participant_summary_hpo_withdrawal_status_time', ParticipantSummary.hpoId
       ParticipantSummary.withdrawalStatus, ParticipantSummary.withdrawalTime)
 Index('participant_summary_last_modified', ParticipantSummary.hpoId,
       ParticipantSummary.lastModified)
-Index('participant_summary_sign_up_time', ParticipantSummary.signUpTime)
-Index('participant_summary_member_time', ParticipantSummary.enrollmentStatusMemberTime)
-Index('participant_summary_core_ordered_time',
-      ParticipantSummary.enrollmentStatusCoreOrderedSampleTime)
-Index('participant_summary_core_stored_time',
-      ParticipantSummary.enrollmentStatusCoreStoredSampleTime)
