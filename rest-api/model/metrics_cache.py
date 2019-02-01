@@ -26,8 +26,18 @@ class MetricsRaceCache(Base):
   hpoId = Column('hpo_id', String(20), primary_key=True)
   hpoName = Column('hpo_name', String(255), primary_key=True)
   date = Column('date', Date, nullable=False, primary_key=True)
-  raceName = Column('race_name', String(255), primary_key=True)
-  raceCount = Column('race_count', Integer, nullable=False)
+  americanIndianAlaskaNative = Column('american_indian_alaska_native', Integer, nullable=False)
+  asian = Column('asian', Integer, nullable=False)
+  blackAfricanAmerican = Column('black_african_american', Integer, nullable=False)
+  middleEasternNorthAfrican = Column('middle_eastern_north_african', Integer, nullable=False)
+  nativeHawaiianOtherPacificIslander = Column('native_hawaiian_other_pacific_islander', Integer,
+                                              nullable=False)
+  white = Column('white', Integer, nullable=False)
+  hispanicLatinoSpanish = Column('hispanic_latino_spanish', Integer, nullable=False)
+  noneOfTheseFullyDescribeMe = Column('none_of_these_fully_describe_me', Integer, nullable=False)
+  preferNotToAnswer = Column('prefer_not_to_answer', Integer, nullable=False)
+  multiAncestry = Column('multi_ancestry', Integer, nullable=False)
+  noAncestryChecked = Column('no_ancestry_checked', Integer, nullable=False)
 
 class MetricsGenderCache(Base):
   """Contains gender metrics data grouped by HPO ID and date.
