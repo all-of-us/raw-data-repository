@@ -25,4 +25,3 @@ parameterized>=0.6.1
 googlemaps>=2.5.1
 google-api-python-client==1.6.6
 backoff
-google-cloud-bigquery
