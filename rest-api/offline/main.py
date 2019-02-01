@@ -152,7 +152,7 @@ def participant_counts_over_time():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def mark_ghost_participants():
+def exclude_ghosts():
   mark_ghost_participants()
   return '{"success": "true"}'
 
@@ -204,8 +204,8 @@ def _build_pipeline_app():
 
   offline_app.add_url_rule(
     PREFIX + 'MarkGhostParticipants',
-    endpoint='mark_ghost_participants',
-    view_func=mark_ghost_participants,
+    endpoint='exclude_ghosts',
+    view_func=exclude_ghosts,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)
