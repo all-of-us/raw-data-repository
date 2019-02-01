@@ -526,7 +526,7 @@ class MetricsRaceCacheDao(BaseDao):
       'WhatRaceEthnicity_NHPI': 237
     }
 
-    for k, v in race_code_dict.items():
+    for k in race_code_dict:
       code = CodeDao().get_code(PPI_SYSTEM, k)
       if code is not None:
         race_code_dict[k] = code.codeId
