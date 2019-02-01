@@ -239,7 +239,8 @@ class MetricsGenderCacheDao(BaseDao):
 
   def get_metrics_cache_sql(self):
     sql = """insert into metrics_gender_cache """
-    gender_names = ['UNSET', 'Woman', 'Man', 'Transgender', 'PMI_Skip', 'Non-Binary', 'Other/Additional Options']
+    gender_names = ['UNSET', 'Woman', 'Man', 'Transgender', 'PMI_Skip', 'Non-Binary',
+                    'Other/Additional Options']
     gender_conditions = [
       ' (ps.gender_identity_id IS NULL OR ps.gender_identity_id=924) ',
       ' ps.gender_identity_id=354 ',
