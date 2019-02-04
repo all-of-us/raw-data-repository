@@ -18,9 +18,6 @@
   "biobank_samples_bucket_name": [
     "sandbox_biobank_samples_upload_bucket"
   ],
-  "ghost_id_bucket": [
-    "all-of-us-rdr-sandbox-ghost-accounts"
-  ],
   "consent_pdf_bucket": [
     "ptc-uploads-pmi-drc-api-sandbox"
   ],
