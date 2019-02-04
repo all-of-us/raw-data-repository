@@ -21,6 +21,19 @@ activate_local_venv
 
 git submodule update --init
 
+GCLOUD=`which gcloud`
+GCP_BIN=`dirname $GCLOUD`
+SDK_ROOT=`dirname $GCP_BIN`
+echo "Cloud SDK Root: $SDK_ROOT"
+$GCLOUD components install app-engine-python app-engine-python-extras cloud-datastore-emulator
+
+GCP_SDK_ROOT=$SDK_ROOT/platform/google_appengine
+GCP_SDK_YAML=`find $GCP_SDK_ROOT -type d | grep "yaml-.*[0-9]$"`
+echo "Cloud SDK Yaml: $GCP_SDK_YAML"
+
+export sdk_dir=$GCP_SDK_ROOT
+export PYTHONPATH="$PYTHONPATH:$GCP_SDK_ROOT:$GCP_SDK_ROOT/lib:$GCP_SDK_YAML"
+
 safety check  # checks current (API) venv
 
 # Make sure JSON files are well-formed (but don't bother printing them).
