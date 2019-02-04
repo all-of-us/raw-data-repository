@@ -123,6 +123,9 @@
   "biobank_samples_bucket_name": [
     "stable_biobank_samples_upload_bucket"
   ],
+  "ghost_id_bucket": [
+    "all-of-us-rdr-stable-ghost-accounts"
+  ],
   "consent_pdf_bucket": [
     "ptc-uploads-all-of-us-rdr-stable"
   ],
