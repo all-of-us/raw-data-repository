@@ -16,6 +16,7 @@ CONFIG_SINGLETON_KEY = 'current_config'
 
 # Key that the database configuration is stored under
 DB_CONFIG_KEY = 'db_config'
+AES_KEY = 'aes_key'
 
 LAST_MODIFIED_BUFFER_SECONDS = 60
 CONFIG_CACHE_TTL_SECONDS = 60
