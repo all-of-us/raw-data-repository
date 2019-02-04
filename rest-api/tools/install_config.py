@@ -9,6 +9,8 @@ import httplib
 import json
 import logging
 import re
+import random
+import string
 
 from client import Client, HttpException
 from main_util import get_parser, configure_logging
@@ -56,9 +58,15 @@ def main(args):
     else:
       combined_config = config_file
     comparable_file = _json_to_sorted_string(combined_config)
+    # Don't compare 'aes_key' values because it is always changed when updating.
+    comparable_file = re.sub(r'\n.*?"aes_key".*?\n', '\n', comparable_file)
+    formatted_server_config = re.sub(r'\n.*?"aes_key".*?\n', '\n', formatted_server_config)
     configs_match = _compare_configs(comparable_file, formatted_server_config, args.config_output)
 
     if not configs_match and args.update:
+      # replace 'aes_key' with a new random 16-digit string.
+      new_key = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(16))
+      combined_config['aes_key'] = new_key
       logging.info('-------------- Updating Server -------------------')
       method = 'POST' if args.key else 'PUT'
       client.request_json(config_path, method, combined_config)

@@ -1,9 +1,11 @@
-from base64 import urlsafe_b64decode, urlsafe_b64encode
 import collections
 import json
 import logging
 import datetime
 import random
+from Crypto.Cipher import AES
+import config
+import urllib
 
 from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirabstractbase import FHIRValidationError
@@ -182,8 +184,13 @@ class BaseDao(object):
 
   def _make_pagination_token(self, item_dict, field_names):
     vals = [item_dict.get(field_name) for field_name in field_names]
-    vals_json = json.dumps(vals, default=json_serial)
-    return urlsafe_b64encode(vals_json)
+    vals_json = json.dumps(vals, default=json_serial).encode('ascii')
+    # Python3: The AES encoder does not like UTF-8 strings.
+    # Python3: use Fernet encryption, swap out pycrypto lib for cryptography lib.
+    key = config.getSettingJson(config.AES_KEY, False)
+    enc = AES.new(key, AES.MODE_CFB, '8sk3K#AfegK34OP1')
+    cypher = urllib.quote(enc.encrypt(vals_json))
+    return cypher
 
   def _initialize_query(self, session, query_def):
     """Creates the initial query, before the filters, order by, and limit portions are added
@@ -268,9 +275,12 @@ class BaseDao(object):
     return query.filter(or_(*or_clauses))
 
   def _decode_token(self, query_def, fields):
-    pagination_token = query_def.pagination_token
+    pagination_token = urllib.unquote(query_def.pagination_token.encode("ascii"))
     try:
-      decoded_vals = json.loads(urlsafe_b64decode(pagination_token.encode("ascii")))
+      # Python3: use Fernet encryption, swap out pycrypto lib for cryptography lib.
+      key = config.getSettingJson(config.AES_KEY, False)
+      enc = AES.new(key, AES.MODE_CFB, '8sk3K#AfegK34OP1')
+      decoded_vals = json.loads(enc.decrypt(pagination_token))
     except:
       raise BadRequest('Invalid pagination token: %r.' % pagination_token)
     if not type(decoded_vals) is list or len(decoded_vals) != len(fields):

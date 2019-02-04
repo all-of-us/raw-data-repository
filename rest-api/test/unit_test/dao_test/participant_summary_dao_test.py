@@ -1,6 +1,8 @@
 import datetime
 import json
-from base64 import urlsafe_b64encode, urlsafe_b64decode
+from Crypto.Cipher import AES
+import config
+import urllib
 import time
 import config
 from dao.base_dao import json_serial
@@ -424,9 +426,16 @@ def _with_token(query, token):
 
 def _make_pagination_token(vals):
   vals_json = json.dumps(vals, default=json_serial)
-  return urlsafe_b64encode(vals_json)
+  key = config.getSettingJson(config.AES_KEY, False)
+  enc = AES.new(key, AES.MODE_CFB, '8sk3K#AfegK34OP1')
+  cypher = urllib.quote(enc.encrypt(vals_json))
+  return cypher
 
 def _decode_token(token):
   if token is None:
     return None
-  return json.loads(urlsafe_b64decode(token))
+  key = config.getSettingJson(config.AES_KEY, False)
+  enc = AES.new(key, AES.MODE_CFB, '8sk3K#AfegK34OP1')
+  tmp = enc.decrypt(urllib.unquote(token.encode("ascii")))
+  decoded_vals = json.loads(tmp)
+  return decoded_vals
