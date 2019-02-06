@@ -6,6 +6,7 @@ from mock import patch
 import config
 from clock import FakeClock
 from test.unit_test.unit_test_util import FlaskTestBase
+from main_util import update_aes_key
 
 
 class TestConfig(FlaskTestBase):
@@ -80,3 +81,36 @@ class TestConfig(FlaskTestBase):
   def test_POST_does_not_validate_random_config(self):
     rando_config = {'not_required': 'not a list'}
     self.send_post('Config/rando_config', request_data=rando_config)
+
+  def test_update_aes_key(self):
+
+    cur_key = 'digit-16-aes-key'
+
+    self.assertEquals(len(cur_key), 16)
+
+    new_key = update_aes_key(cur_key)
+    self.assertNotEquals(cur_key, new_key)
+    self.assertEquals(len(new_key), 16)
+
+    with FakeClock(datetime.datetime(2018, 1, 1)):
+      cur_key = '1'
+      new_key = update_aes_key(cur_key)
+      self.assertEquals(cur_key, new_key)
+
+    with FakeClock(datetime.datetime(2018, 7, 1)):
+      cur_key = '1'
+      new_key = update_aes_key(cur_key)
+      self.assertNotEquals(cur_key, new_key)
+
+    with FakeClock(datetime.datetime(2018, 7, 1)):
+      cur_key = '7'
+      new_key = update_aes_key(cur_key)
+      self.assertEquals(cur_key, new_key)
+
+    with FakeClock(datetime.datetime(2018, 1, 1)):
+      cur_key = '7'
+      new_key = update_aes_key(cur_key)
+      self.assertNotEquals(cur_key, new_key)
+
+
+

@@ -9,11 +9,9 @@ import httplib
 import json
 import logging
 import re
-import random
-import string
 
 from client import Client, HttpException
-from main_util import get_parser, configure_logging
+from main_util import get_parser, configure_logging, update_aes_key
 
 BASE_CONFIG_FILE = 'config/base_config.json'
 
@@ -32,12 +30,14 @@ def _log_and_write_config_lines(raw_config_lines, output_path):
       output_file.write('\n'.join(raw_config_lines))
     logging.info('Unredacted config output written to %r.', output_path)
 
-
 def main(args):
   client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
   config_path = 'Config/%s' % args.key if args.key else 'Config'
+  cur_key = None
   try:
     config_server = client.request_json(config_path, 'GET')
+    if 'aes_key' in config_server:
+      cur_key = config_server['aes_key']
     formatted_server_config = _json_to_sorted_string(config_server)
   except HttpException as e:
     if e.code == httplib.NOT_FOUND:
@@ -58,15 +58,13 @@ def main(args):
     else:
       combined_config = config_file
     comparable_file = _json_to_sorted_string(combined_config)
-    # Don't compare 'aes_key' values because it is always changed when updating.
+    # Don't compare 'aes_key' values because it is always different.
     comparable_file = re.sub(r'\n.*?"aes_key".*?\n', '\n', comparable_file)
     formatted_server_config = re.sub(r'\n.*?"aes_key".*?\n', '\n', formatted_server_config)
     configs_match = _compare_configs(comparable_file, formatted_server_config, args.config_output)
 
     if not configs_match and args.update:
-      # replace 'aes_key' with a new random 16-digit string.
-      new_key = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(16))
-      combined_config['aes_key'] = new_key
+      combined_config['aes_key'] = update_aes_key(cur_key)
       logging.info('-------------- Updating Server -------------------')
       method = 'POST' if args.key else 'PUT'
       client.request_json(config_path, method, combined_config)

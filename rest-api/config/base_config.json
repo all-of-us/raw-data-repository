@@ -48,5 +48,5 @@
   "days_to_delete_keys": [
     3
   ],
-  "aes_key": "16-digit-aes-key"
+  "aes_key": "digit-16-aes-key"
 }
