@@ -973,23 +973,23 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results = service.get_latest_version_from_cache(dao, '2017-12-31', '2018-01-08')
 
     self.assertIn({'date': '2017-12-31',
-                   'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                   'metrics': {'Prefer not to say': 0L, 'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
                                'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'}, results)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                   'metrics': {'Prefer not to say': 0L, 'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
                                'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'}, results)
     self.assertIn({'date': '2018-01-01',
-                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                   'metrics': {'Prefer not to say': 0L, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0L, 'Non-Binary': 0,
                                'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, results)
     self.assertIn({'date': '2018-01-03',
-                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                   'metrics': {'Prefer not to say': 0L, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
                                'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, results)
     self.assertIn({'date': '2018-01-08',
-                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                   'metrics': {'Prefer not to say': 0L, 'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
                                'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, results)
 
@@ -1039,23 +1039,28 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({'date': '2017-12-31',
                    'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'}, response)
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'},
+                  response)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'}, response)
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'},
+                  response)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0L, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, response)
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'},
+                  response)
     self.assertIn({'date': '2018-01-03',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, response)
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'},
+                  response)
     self.assertIn({'date': '2018-01-08',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 2L, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, response)
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'},
+                  response)
 
   def test_get_history_gender_api_filtered_by_awardee(self):
 
@@ -1104,31 +1109,38 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertNotIn({'date': '2017-12-31',
                       'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                   'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
-                                  'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'}, response)
+                                  'Prefer not to say': 0, 'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'},
+                     response)
     self.assertNotIn({'date': '2018-01-01',
                       'metrics': {'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                   'Other/Additional Options': 0, 'Transgender': 0, 'Non-Binary': 0,
-                                  'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'}, response)
+                                  'Prefer not to say': 0, 'UNSET': 0, 'Man': 0}, 'hpo': u'UNSET'},
+                     response)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 0L, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, response)
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'},
+                  response)
     self.assertIn({'date': '2018-01-03',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 1L, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, response)
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'},
+                  response)
     self.assertIn({'date': '2018-01-08',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
                                'Other/Additional Options': 0, 'Transgender': 1L, 'Non-Binary': 0,
-                               'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'}, response)
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'},
+                  response)
     self.assertIn({'date': '2018-01-03',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'Other/Additional Options': 0,
-                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 1, 'UNSET': 0,
-                               'Man': 0}, 'hpo': 'PITT'}, response)
+                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 1,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 0}, 'hpo': 'PITT'},
+                  response)
     self.assertIn({'date': '2018-01-08',
                    'metrics': {'Woman': 0, 'PMI_Skip': 0, 'Other/Additional Options': 0,
-                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 1, 'UNSET': 0,
-                               'Man': 0}, 'hpo': 'PITT'}, response)
+                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 1,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 0}, 'hpo': 'PITT'},
+                  response)
 
   def test_refresh_metrics_age_range_cache_data(self):
 
@@ -1424,9 +1436,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                      'American_Indian_Alaska_Native': 0L,
                                                      'No_Ancestry_Checked': 0L,
                                                      'Black_African_American': 0L,
-                                                     'White': 1L,
+                                                     'White': 0L,
                                                      'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 1L,
+                                                     'Hispanic_Latino_Spanish': 0L,
                                                      'Native_Hawaiian_other_Pacific_Islander': 0L,
                                                      'Asian': 0L}, 'hpo': u'PITT'}, results)
 
@@ -1436,9 +1448,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                      'American_Indian_Alaska_Native': 1L,
                                                      'No_Ancestry_Checked': 1L,
                                                      'Black_African_American': 0L,
-                                                     'White': 2L,
+                                                     'White': 0L,
                                                      'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 2L,
+                                                     'Hispanic_Latino_Spanish': 0L,
                                                      'Native_Hawaiian_other_Pacific_Islander': 0L,
                                                      'Asian': 0L}, 'hpo': u'PITT'}, results)
 
@@ -1455,9 +1467,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                      'Asian': 0L}, 'hpo': u'AZ_TUCSON'}, results)
 
     self.assertIn({'date': '2018-01-08', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
-                                                     'Middle_Eastern_North_African': 1L,
+                                                     'Middle_Eastern_North_African': 0L,
                                                      'Multi_Ancestry': 1L,
-                                                     'American_Indian_Alaska_Native': 2L,
+                                                     'American_Indian_Alaska_Native': 1L,
                                                      'No_Ancestry_Checked': 0L,
                                                      'Black_African_American': 0L,
                                                      'White': 0L,
@@ -1530,9 +1542,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                      'American_Indian_Alaska_Native': 0L,
                                                      'No_Ancestry_Checked': 0L,
                                                      'Black_African_American': 0L,
-                                                     'White': 1L,
+                                                     'White': 0L,
                                                      'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 1L,
+                                                     'Hispanic_Latino_Spanish': 0L,
                                                      'Native_Hawaiian_other_Pacific_Islander': 0L,
                                                      'Asian': 0L}, 'hpo': u'PITT'}, response)
 
@@ -1542,9 +1554,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                      'American_Indian_Alaska_Native': 1L,
                                                      'No_Ancestry_Checked': 1L,
                                                      'Black_African_American': 0L,
-                                                     'White': 2L,
+                                                     'White': 0L,
                                                      'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 2L,
+                                                     'Hispanic_Latino_Spanish': 0L,
                                                      'Native_Hawaiian_other_Pacific_Islander': 0L,
                                                      'Asian': 0L}, 'hpo': u'PITT'}, response)
 
@@ -1561,9 +1573,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                      'Asian': 0L}, 'hpo': u'AZ_TUCSON'}, response)
 
     self.assertIn({'date': '2018-01-08', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
-                                                     'Middle_Eastern_North_African': 1L,
+                                                     'Middle_Eastern_North_African': 0L,
                                                      'Multi_Ancestry': 1L,
-                                                     'American_Indian_Alaska_Native': 2L,
+                                                     'American_Indian_Alaska_Native': 1L,
                                                      'No_Ancestry_Checked': 0L,
                                                      'Black_African_American': 0L,
                                                      'White': 0L,
@@ -1637,9 +1649,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                      'American_Indian_Alaska_Native': 0L,
                                                      'No_Ancestry_Checked': 0L,
                                                      'Black_African_American': 0L,
-                                                     'White': 1L,
+                                                     'White': 0L,
                                                      'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 1L,
+                                                     'Hispanic_Latino_Spanish': 0L,
                                                      'Native_Hawaiian_other_Pacific_Islander': 0L,
                                                      'Asian': 0L}, 'hpo': u'PITT'}, response)
 
@@ -1649,9 +1661,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                      'American_Indian_Alaska_Native': 1L,
                                                      'No_Ancestry_Checked': 1L,
                                                      'Black_African_American': 0L,
-                                                     'White': 2L,
+                                                     'White': 0L,
                                                      'Prefer_Not_To_Answer': 0L,
-                                                     'Hispanic_Latino_Spanish': 2L,
+                                                     'Hispanic_Latino_Spanish': 0L,
                                                      'Native_Hawaiian_other_Pacific_Islander': 0L,
                                                      'Asian': 0L}, 'hpo': u'PITT'}, response)
 
