@@ -49,6 +49,8 @@ def generate_samples(fraction_missing):
   with cloudstorage_api.open(file_name, mode='w') as dest:
     writer = csv.writer(dest, delimiter="\t")
     writer.writerow(CsvColumns.ALL)
+
+    # Generate orders that we were expecting.
     biobank_order_dao = BiobankOrderDao()
     with biobank_order_dao.session() as session:
       rows = biobank_order_dao.get_ordered_samples_sample(session,
@@ -64,16 +66,19 @@ def generate_samples(fraction_missing):
         confirmed_time = collected_time + datetime.timedelta(minutes=minutes_delta)
         writer.writerow(_new_row(sample_id, biobank_id, test, confirmed_time))
         num_rows += 1
+
+    # Generate some orders that we weren't expecting.
     participant_dao = ParticipantDao()
     with participant_dao.session() as session:
       rows = participant_dao.get_biobank_ids_sample(session,
                                                     _PARTICIPANTS_WITH_ORPHAN_SAMPLES,
                                                     _BATCH_SIZE)
       for biobank_id, sign_up_time in rows:
+        minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_PARTICIPANT_CREATED_AND_CONFIRMED)
+        confirmed_time = sign_up_time + datetime.timedelta(minutes=minutes_delta)
         tests = random.sample(BIOBANK_TESTS, random.randint(1, len(BIOBANK_TESTS)))
         for test in tests:
-          minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_PARTICIPANT_CREATED_AND_CONFIRMED)
-          confirmed_time = sign_up_time + datetime.timedelta(minutes=minutes_delta)
+          sample_id = sample_id_start + num_rows
           writer.writerow(_new_row(sample_id, biobank_id, test, confirmed_time))
           num_rows += 1
 

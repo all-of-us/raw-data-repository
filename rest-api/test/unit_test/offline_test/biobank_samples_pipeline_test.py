@@ -129,7 +129,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
     self.assertIsNotNone(sample)
 
-    cols = biobank_samples_pipeline._Columns
+    cols = biobank_samples_pipeline.CsvColumns
     self.assertEquals(sample.biobankStoredSampleId, row[cols.SAMPLE_ID])
     self.assertEquals(to_client_biobank_id(sample.biobankId), row[cols.EXTERNAL_PARTICIPANT_ID])
     self.assertEquals(sample.test, row[cols.TEST_CODE])
@@ -146,14 +146,14 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     samples_file = test_data.open_biobank_samples([111, 222, 333], [])
     reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
     row = reader.next()
-    row[biobank_samples_pipeline._Columns.CONFIRMED_DATE] = '2016 11 19'
+    row[biobank_samples_pipeline.CsvColumns.CONFIRMED_DATE] = '2016 11 19'
     self.assertIsNone(biobank_samples_pipeline._create_sample_from_row(row, 'Q'))
 
   def test_sample_from_row_invalid(self):
     samples_file = test_data.open_biobank_samples([111, 222, 333], [])
     reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
     row = reader.next()
-    row[biobank_samples_pipeline._Columns.CONFIRMED_DATE] = '2016 11 19'
+    row[biobank_samples_pipeline.CsvColumns.CONFIRMED_DATE] = '2016 11 19'
     with self.assertRaises(biobank_samples_pipeline.DataError):
       biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
 
@@ -161,10 +161,10 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     samples_file = test_data.open_biobank_samples([111, 222, 333], [])
     reader = csv.DictReader(StringIO.StringIO(samples_file), delimiter='\t')
     row = reader.next()
-    row[biobank_samples_pipeline._Columns.TEST_CODE] = '2PST8'
+    row[biobank_samples_pipeline.CsvColumns.TEST_CODE] = '2PST8'
     sample = biobank_samples_pipeline._create_sample_from_row(row, get_biobank_id_prefix())
     self.assertIsNotNone(sample)
-    cols = biobank_samples_pipeline._Columns
+    cols = biobank_samples_pipeline.CsvColumns
     self.assertEquals(sample.biobankStoredSampleId, row[cols.SAMPLE_ID])
     self.assertEquals(sample.test, row[cols.TEST_CODE])
 
