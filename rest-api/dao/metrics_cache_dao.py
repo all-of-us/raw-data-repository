@@ -232,6 +232,7 @@ class MetricsGenderCacheDao(BaseDao):
             'PMI_Skip': 0,
             'Non-Binary': 0,
             'Other/Additional Options': 0,
+            'Prefer not to say': 0,
             'UNMAPPED': 0
           }
         }
@@ -240,17 +241,34 @@ class MetricsGenderCacheDao(BaseDao):
     return client_json
 
   def get_metrics_cache_sql(self):
+
+    gender_code_dict = {
+      'GenderIdentity_Woman': 354,
+      'GenderIdentity_Man': 356,
+      'GenderIdentity_Transgender': 355,
+      'PMI_Skip': 930,
+      'GenderIdentity_NonBinary': 358,
+      'GenderIdentity_AdditionalOptions': 357,
+      'PMI_PreferNotToAnswer': 924
+    }
+
+    for k in gender_code_dict:
+      code = CodeDao().get_code(PPI_SYSTEM, k)
+      if code is not None:
+        gender_code_dict[k] = code.codeId
+
     sql = """insert into metrics_gender_cache """
     gender_names = ['UNSET', 'Woman', 'Man', 'Transgender', 'PMI_Skip', 'Non-Binary',
-                    'Other/Additional Options']
+                    'Other/Additional Options', 'Prefer not to say']
     gender_conditions = [
-      ' (ps.gender_identity_id IS NULL OR ps.gender_identity_id=924) ',
-      ' ps.gender_identity_id=354 ',
-      ' ps.gender_identity_id=356 ',
-      ' ps.gender_identity_id=355 ',
-      ' ps.gender_identity_id=930 ',
-      ' ps.gender_identity_id=358 ',
-      ' ps.gender_identity_id=357 '
+      ' ps.gender_identity_id IS NULL ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_Woman']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_Man']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_Transgender']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['PMI_Skip']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_NonBinary']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_AdditionalOptions']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['PMI_PreferNotToAnswer']) + ' ',
     ]
     sub_queries = []
     sql_template = """
@@ -554,15 +572,15 @@ class MetricsRaceCacheDao(BaseDao):
                 SELECT p.hpo_id,
                        hpo.name,
                        day,
-                       WhatRaceEthnicity_AIAN                     AS American_Indian_Alaska_Native,
-                       WhatRaceEthnicity_Asian                    AS Asian,
-                       WhatRaceEthnicity_Black                    AS Black_African_American,
-                       WhatRaceEthnicity_MENA                     AS Middle_Eastern_North_African,
-                       WhatRaceEthnicity_NHPI                     AS Native_Hawaiian_other_Pacific_Islander,
-                       WhatRaceEthnicity_White                    AS White,
-                       WhatRaceEthnicity_Hispanic                 AS Hispanic_Latino_Spanish,
-                       WhatRaceEthnicity_RaceEthnicityNoneOfThese AS None_Of_These_Fully_Describe_Me,
-                       PMI_PreferNotToAnswer                      AS Prefer_Not_To_Answer,
+                       CASE WHEN WhatRaceEthnicity_AIAN=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS American_Indian_Alaska_Native,
+                       CASE WHEN WhatRaceEthnicity_Asian=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Asian,
+                       CASE WHEN WhatRaceEthnicity_Black=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Black_African_American,
+                       CASE WHEN WhatRaceEthnicity_MENA=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Middle_Eastern_North_African,
+                       CASE WHEN WhatRaceEthnicity_NHPI=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Native_Hawaiian_other_Pacific_Islander,
+                       CASE WHEN WhatRaceEthnicity_White=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS White,
+                       CASE WHEN WhatRaceEthnicity_Hispanic=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Hispanic_Latino_Spanish,
+                       CASE WHEN WhatRaceEthnicity_RaceEthnicityNoneOfThese=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS None_Of_These_Fully_Describe_Me,
+                       CASE WHEN PMI_PreferNotToAnswer=1 AND Number_of_Answer=1 THEN 1 ELSE 0 END AS Prefer_Not_To_Answer,
                        CASE
                          WHEN (WhatRaceEthnicity_Hispanic + WhatRaceEthnicity_Black + WhatRaceEthnicity_White + WhatRaceEthnicity_AIAN + WhatRaceEthnicity_Asian + WhatRaceEthnicity_MENA + WhatRaceEthnicity_NHPI) >
                               1
@@ -570,7 +588,7 @@ class MetricsRaceCacheDao(BaseDao):
                          ELSE 0
                        END AS Multi_Ancestry,
                        CASE
-                         WHEN PMI_Skip = 1 OR UNSET =1
+                         WHEN (PMI_Skip = 1 AND Number_of_Answer=1) OR UNSET = 1
                            THEN 1
                          ELSE 0
                        END AS No_Ancestry_Checked
@@ -588,7 +606,8 @@ class MetricsRaceCacheDao(BaseDao):
                               MAX(PMI_PreferNotToAnswer)                      AS PMI_PreferNotToAnswer,
                               MAX(WhatRaceEthnicity_MENA)                     AS WhatRaceEthnicity_MENA,
                               MAX(PMI_Skip)                                   AS PMI_Skip,
-                              MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI
+                              MAX(WhatRaceEthnicity_NHPI)                     AS WhatRaceEthnicity_NHPI,
+                              COUNT(*) as Number_of_Answer
                        FROM (
                               SELECT p.participant_id,
                                      p.hpo_id,
