@@ -10,12 +10,14 @@ from code_constants import BIOBANK_TESTS
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_dao import ParticipantDao
 from model.config_utils import to_client_biobank_id
-from offline.biobank_samples_pipeline import INPUT_CSV_TIME_FORMAT
+from offline.biobank_samples_pipeline import INPUT_CSV_TIME_FORMAT, CsvColumns
 
 # 1% of participants have samples with no associated order
 _PARTICIPANTS_WITH_ORPHAN_SAMPLES = 0.01
 # Max amount of time between collected ordered samples and confirmed biobank stored samples.
 _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED = 72 * 60
+# Max amount of time between confirmed samples and disposal.
+_MAX_MINUTES_BETWEEN_SAMPLE_CONFIRMED_AND_DISPOSED = 72 * 60
 # Max amount of time between creating a participant and orphaned biobank samples
 _MAX_MINUTES_BETWEEN_PARTICIPANT_CREATED_AND_CONFIRMED = 30 * 24 * 60
 
@@ -31,16 +33,6 @@ _TIME_FORMAT = "%Y/%m/%d %H:%M:%S"
 
 _BATCH_SIZE = 1000
 
-_HEADERS = (
-    'Sample Id',
-    'Parent Sample Id',
-    'Sample Confirmed Date',
-    'External Participant Id',
-    'Test Code',
-    'Sample Family Create Date',
-    'Sent Order Id'
-)
-
 def generate_samples(fraction_missing):
   """Creates fake sample CSV data in GCS.
 
@@ -53,9 +45,10 @@ def generate_samples(fraction_missing):
   file_name = '/%s/fake_%s.csv' % (bucket_name, now.strftime(INPUT_CSV_TIME_FORMAT))
   num_rows = 0
   sample_id_start = random.randint(1000000, 10000000)
+
   with cloudstorage_api.open(file_name, mode='w') as dest:
     writer = csv.writer(dest, delimiter="\t")
-    writer.writerow(_HEADERS)
+    writer.writerow(CsvColumns.ALL)
     biobank_order_dao = BiobankOrderDao()
     with biobank_order_dao.session() as session:
       rows = biobank_order_dao.get_ordered_samples_sample(session,
@@ -66,15 +59,10 @@ def generate_samples(fraction_missing):
           logging.warning(
              'biobank_id=%s test=%s skipped (collected=%s)', biobank_id, test, collected_time)
           continue
+        sample_id = sample_id_start + num_rows
         minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_COLLECTED_AND_CONFIRMED)
         confirmed_time = collected_time + datetime.timedelta(minutes=minutes_delta)
-        writer.writerow([
-            sample_id_start + num_rows,
-            None,  # no parent
-            confirmed_time.strftime(_TIME_FORMAT),
-            to_client_biobank_id(biobank_id),
-            test,
-            confirmed_time.strftime(_TIME_FORMAT), 'KIT'])  # reuse confirmed time as created time
+        writer.writerow(_new_row(sample_id, biobank_id, test, confirmed_time))
         num_rows += 1
     participant_dao = ParticipantDao()
     with participant_dao.session() as session:
@@ -82,13 +70,42 @@ def generate_samples(fraction_missing):
                                                     _PARTICIPANTS_WITH_ORPHAN_SAMPLES,
                                                     _BATCH_SIZE)
       for biobank_id, sign_up_time in rows:
-        minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_PARTICIPANT_CREATED_AND_CONFIRMED)
-        confirmed_time = sign_up_time + datetime.timedelta(minutes=minutes_delta)
         tests = random.sample(BIOBANK_TESTS, random.randint(1, len(BIOBANK_TESTS)))
         for test in tests:
-          writer.writerow([sample_id_start + num_rows, None,
-                           confirmed_time.strftime(_TIME_FORMAT),
-                           to_client_biobank_id(biobank_id), test,
-                           confirmed_time.strftime(_TIME_FORMAT), 'KIT'])
+          minutes_delta = random.randint(0, _MAX_MINUTES_BETWEEN_PARTICIPANT_CREATED_AND_CONFIRMED)
+          confirmed_time = sign_up_time + datetime.timedelta(minutes=minutes_delta)
+          writer.writerow(_new_row(sample_id, biobank_id, test, confirmed_time))
           num_rows += 1
+
   logging.info("Generated %d samples in %s.", num_rows, file_name)
+
+def _new_row(sample_id, biobank_id, test, confirmed_time):
+  row = []
+  disposed_time = confirmed_time + datetime.timedelta(
+      minutes=random.randint(0, _MAX_MINUTES_BETWEEN_SAMPLE_CONFIRMED_AND_DISPOSED))
+  for col in CsvColumns.ALL:
+    if col == CsvColumns.SAMPLE_ID:
+      row.append(sample_id)
+    elif col == CsvColumns.PARENT_ID:
+      row.append(None)
+    elif col == CsvColumns.CONFIRMED_DATE:
+      row.append(confirmed_time.strftime(_TIME_FORMAT))
+    elif col == CsvColumns.EXTERNAL_PARTICIPANT_ID:
+      row.append(to_client_biobank_id(biobank_id))
+    elif col == CsvColumns.BIOBANK_ORDER_IDENTIFIER:
+      row.append('KIT')
+    elif col == CsvColumns.TEST_CODE:
+      row.append(test)
+    elif col == CsvColumns.CREATE_DATE:
+      row.append(confirmed_time.strftime(_TIME_FORMAT))
+    elif col == CsvColumns.STATUS:
+      # TODO: Do we want a distribution of statuses here?
+      row.append('consumed')
+    elif col == CsvColumns.DISPOSAL_DATE:
+      row.append(disposed_time.strftime(_TIME_FORMAT))
+    elif col == CsvColumns.SAMPLE_FAMILY:
+      # TODO: Is there a need for a more realistic value here?
+      row.append('family_id')
+    else:
+      raise ValueError("unsupported biobank CSV column: '{}'".format(col))
+  return row

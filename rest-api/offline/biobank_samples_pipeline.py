@@ -122,7 +122,7 @@ def _find_latest_samples_csv(cloud_bucket_name):
   return bucket_stat_list[-1].filename
 
 
-class _Columns(object):
+class CsvColumns(object):
   """Names of CSV columns that we read from the Biobank samples upload."""
   SAMPLE_ID = 'Sample Id'
   PARENT_ID = 'Parent Sample Id'
@@ -135,13 +135,14 @@ class _Columns(object):
   DISPOSAL_DATE = 'Sample Disposed Date'
   SAMPLE_FAMILY = 'Sample Family Id'
 
-  ALL = frozenset([SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID,
-                   BIOBANK_ORDER_IDENTIFIER, TEST_CODE,
-                   CREATE_DATE, STATUS, DISPOSAL_DATE, SAMPLE_FAMILY])
+  # Note: Please ensure changes to the CSV format are reflected in fake_biobanks_sample_generator.
+  ALL = (SAMPLE_ID, PARENT_ID, CONFIRMED_DATE, EXTERNAL_PARTICIPANT_ID,
+         BIOBANK_ORDER_IDENTIFIER, TEST_CODE,
+         CREATE_DATE, STATUS, DISPOSAL_DATE, SAMPLE_FAMILY)
 
 def _upsert_samples_from_csv(csv_reader):
   """Inserts/updates BiobankStoredSamples from a csv.DictReader."""
-  missing_cols = _Columns.ALL - set(csv_reader.fieldnames)
+  missing_cols = set(CsvColumns.ALL) - set(csv_reader.fieldnames)
   if missing_cols:
     raise DataError(
         'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
@@ -196,27 +197,27 @@ def _create_sample_from_row(row, biobank_id_prefix):
   Returns:
     A new BiobankStoredSample, or None if the row should be skipped.
   """
-  biobank_id_str = row[_Columns.EXTERNAL_PARTICIPANT_ID]
+  biobank_id_str = row[CsvColumns.EXTERNAL_PARTICIPANT_ID]
   if not biobank_id_str.startswith(biobank_id_prefix):
     # This is a biobank sample for another environment. Ignore it.
     return None
-  if _Columns.BIOBANK_ORDER_IDENTIFIER not in row:
+  if CsvColumns.BIOBANK_ORDER_IDENTIFIER not in row:
     return None
   biobank_id = from_client_biobank_id(biobank_id_str)
   sample = BiobankStoredSample(
-      biobankStoredSampleId=row[_Columns.SAMPLE_ID],
+      biobankStoredSampleId=row[CsvColumns.SAMPLE_ID],
       biobankId=biobank_id,
-      biobankOrderIdentifier=row[_Columns.BIOBANK_ORDER_IDENTIFIER],
-      test=row[_Columns.TEST_CODE])
-  if row[_Columns.PARENT_ID]:
+      biobankOrderIdentifier=row[CsvColumns.BIOBANK_ORDER_IDENTIFIER],
+      test=row[CsvColumns.TEST_CODE])
+  if row[CsvColumns.PARENT_ID]:
     # Skip child samples.
     return None
 
-  sample.confirmed = _parse_timestamp(row, _Columns.CONFIRMED_DATE, sample)
-  sample.created = _parse_timestamp(row, _Columns.CREATE_DATE, sample)
-  sample.status = get_sample_status_enum_value(row[_Columns.STATUS])
-  sample.disposed = _parse_timestamp(row, _Columns.DISPOSAL_DATE, sample)
-  sample.family_id = row[_Columns.SAMPLE_FAMILY]
+  sample.confirmed = _parse_timestamp(row, CsvColumns.CONFIRMED_DATE, sample)
+  sample.created = _parse_timestamp(row, CsvColumns.CREATE_DATE, sample)
+  sample.status = get_sample_status_enum_value(row[CsvColumns.STATUS])
+  sample.disposed = _parse_timestamp(row, CsvColumns.DISPOSAL_DATE, sample)
+  sample.family_id = row[CsvColumns.SAMPLE_FAMILY]
 
   return sample
 
