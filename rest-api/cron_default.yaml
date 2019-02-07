@@ -24,12 +24,12 @@ cron:
   schedule: every day 02:00
   timezone: America/New_York
   target: offline
-- description: 
+- description: Participant count metrics 
   url: /offline/ParticipantCountsOverTime
   schedule: every day 00:30
   timezone: America/New_York
   target: offline
-- description: 
+- description: Flag ghost participants
   url: /offline/MarkGhostParticipants
   schedule: every day 00:10
   timezone: America/New_York
