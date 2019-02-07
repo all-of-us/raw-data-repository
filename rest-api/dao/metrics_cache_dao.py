@@ -241,18 +241,34 @@ class MetricsGenderCacheDao(BaseDao):
     return client_json
 
   def get_metrics_cache_sql(self):
+
+    gender_code_dict = {
+      'GenderIdentity_Woman': 354,
+      'GenderIdentity_Man': 356,
+      'GenderIdentity_Transgender': 355,
+      'PMI_Skip': 930,
+      'GenderIdentity_NonBinary': 358,
+      'GenderIdentity_AdditionalOptions': 357,
+      'PMI_PreferNotToAnswer': 924
+    }
+
+    for k in gender_code_dict:
+      code = CodeDao().get_code(PPI_SYSTEM, k)
+      if code is not None:
+        gender_code_dict[k] = code.codeId
+
     sql = """insert into metrics_gender_cache """
     gender_names = ['UNSET', 'Woman', 'Man', 'Transgender', 'PMI_Skip', 'Non-Binary',
                     'Other/Additional Options', 'Prefer not to say']
     gender_conditions = [
       ' ps.gender_identity_id IS NULL ',
-      ' ps.gender_identity_id=354 ',
-      ' ps.gender_identity_id=356 ',
-      ' ps.gender_identity_id=355 ',
-      ' ps.gender_identity_id=930 ',
-      ' ps.gender_identity_id=358 ',
-      ' ps.gender_identity_id=357 ',
-      ' ps.gender_identity_id=924 '
+      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_Woman']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_Man']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_Transgender']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['PMI_Skip']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_NonBinary']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_AdditionalOptions']) + ' ',
+      ' ps.gender_identity_id=' + str(gender_code_dict['PMI_PreferNotToAnswer']) + ' ',
     ]
     sub_queries = []
     sql_template = """
