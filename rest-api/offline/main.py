@@ -19,6 +19,7 @@ from offline.participant_counts_over_time import calculate_participant_metrics
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from offline.sa_key_remove import delete_service_account_keys
 from offline.table_exporter import TableExporter
+import offline.sync_consent_files
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
@@ -156,6 +157,12 @@ def exclude_ghosts():
   mark_ghost_participants()
   return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def sync_consent_files():
+  offline.sync_consent_files.do_sync_consent_files()
+  return '{"success": "true"}'
+
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
   offline_app = Flask(__name__)
@@ -206,6 +213,12 @@ def _build_pipeline_app():
     PREFIX + 'MarkGhostParticipants',
     endpoint='exclude_ghosts',
     view_func=exclude_ghosts,
+    methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'SyncConsentFiles',
+    endpoint='sync_consent_files',
+    view_func=sync_consent_files,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)
