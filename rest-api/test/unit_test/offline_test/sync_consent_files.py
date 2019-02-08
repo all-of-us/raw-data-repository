@@ -143,7 +143,7 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
 
   @mock.patch('cloudstorage.listbucket')
   @mock.patch('cloudstorage.copy2')
-  def test_cloudstorage_copy_objects(self, mock_copy2, mock_listbucket):
+  def test_cloudstorage_copy_objects_api_calls(self, mock_copy2, mock_listbucket):
     """Makes the proper google cloudstorage API calls
     """
     mock_listbucket.return_value = [
@@ -180,3 +180,34 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
         '/fake_bucket2/prefix2/bar'
       ),
     ])
+
+  @staticmethod
+  def _write_cloud_object(cloud_filename, contents_str):
+    with cloudstorage.cloudstorage_api.open(cloud_filename, mode='w') as cloud_file:
+      cloud_file.write(contents_str.encode('utf-8'))
+
+  def test_cloudstorage_copy_objects_actual(self):
+    self._write_cloud_object('/fake_bucket1/prefix/x1/foo.txt', 'foo')
+    self._write_cloud_object('/fake_bucket1/prefix/x1/bar.txt', 'bar')
+    self._write_cloud_object('/fake_bucket1/prefix/x1/y1/foo.txt', 'foo')
+    with cloudstorage.cloudstorage_api.open('/fake_bucket1/prefix/x1/foo.txt', mode='r') as f:
+      self.assertEqual(f.read(), 'foo', 'Wrote to cloud storage')
+    sync_consent_files.cloudstorage_copy_objects(
+      '/fake_bucket1/prefix/x1/',
+      '/fake_bucket2/prefix/z/x1/'
+    )
+    self.assertEqual(
+      [
+        file_stat.filename
+        for file_stat
+        in cloudstorage.cloudstorage_api.listbucket('/fake_bucket2/prefix/z/x1/')
+      ],
+      [
+        '/fake_bucket2/prefix/z/x1/bar.txt',
+        '/fake_bucket2/prefix/z/x1/foo.txt',
+        '/fake_bucket2/prefix/z/x1/y1/foo.txt',
+      ],
+      "copied all objects"
+    )
+    with cloudstorage.cloudstorage_api.open('/fake_bucket2/prefix/z/x1/foo.txt', mode='r') as f:
+      self.assertEqual(f.read(), 'foo', 'copied contents')
