@@ -896,5 +896,64 @@ class MetricsLifecycleCacheDao(BaseDao):
 
   def get_metrics_cache_sql(self):
     sql = """
-    
+      insert into metrics_lifecycle_cache
+        select
+          :date_inserted AS date_inserted,
+          p.hpo_id,
+          (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+          day,
+          SUM(CASE WHEN DATE(p.sign_up_time) <= calendar.day THEN 1 ELSE 0 END) AS registered,
+          SUM(CASE WHEN DATE(ps.consent_for_study_enrollment_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_enrollment,
+          SUM(CASE WHEN DATE(ps.enrollment_status_member_time) <= calendar.day THEN 1 ELSE 0 END) AS consent_complete,
+          SUM(CASE
+            WHEN
+              DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+              DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+            THEN 1 ELSE 0
+          END) AS ppi_basics,
+          SUM(CASE
+            WHEN
+              DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
+              DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+            THEN 1 ELSE 0
+          END) AS ppi_overall_health,
+          SUM(CASE
+            WHEN
+              DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
+              DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+            THEN 1 ELSE 0
+          END) AS ppi_lifestyle,
+          SUM(CASE
+            WHEN
+              DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND
+              DATE(ps.questionnaire_on_overall_health_time) <= calendar.day AND
+              DATE(ps.questionnaire_on_the_basics_time) <= calendar.day AND
+              DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+            THEN 1 ELSE 0
+          END) AS ppi_complete,
+          SUM(CASE
+            WHEN
+              DATE(ps.physical_measurements_time) <= calendar.day AND
+              DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+            THEN 1 ELSE 0
+          END) AS physical_measurement,
+          SUM(CASE
+            WHEN
+              DATE(ps.sample_status_1ed10_time) <= calendar.day OR
+              DATE(ps.sample_status_2ed10_time) <= calendar.day OR
+              DATE(ps.sample_status_1ed04_time) <= calendar.day OR
+              DATE(ps.sample_status_1sal_time) <= calendar.day OR
+              DATE(ps.sample_status_1sal2_time) <= calendar.day
+            THEN 1 ELSE 0
+          END) AS sample_received,
+          SUM(CASE WHEN DATE(ps.enrollment_status_core_stored_sample_time) <= calendar.day THEN 1 ELSE 0 END) AS core_participant
+        from participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
+             calendar
+        WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+          AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+          AND p.withdrawal_status = :not_withdraw
+          AND p.is_ghost_id IS NOT TRUE
+          AND calendar.day BETWEEN :start_date AND :end_date
+        GROUP BY day, p.hpo_id;
     """
+    return sql

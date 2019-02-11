@@ -810,7 +810,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
     service.refresh_data_for_metrics_cache(dao)
-    results = service.get_latest_version_from_cache(dao, '2018-01-01', '2018-01-08')
+    results = dao.get_latest_version_from_cache('2018-01-01', '2018-01-08')
 
     self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 2L},
                    'hpo': u'AZ_TUCSON'}, results)
@@ -970,7 +970,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     service = ParticipantCountsOverTimeService()
     dao = MetricsGenderCacheDao()
     service.refresh_data_for_metrics_cache(dao)
-    results = service.get_latest_version_from_cache(dao, '2017-12-31', '2018-01-08')
+    results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
 
     self.assertIn({'date': '2017-12-31',
                    'metrics': {'Prefer not to say': 0L, 'Woman': 1L, 'PMI_Skip': 0, 'UNMAPPED': 0,
@@ -1167,7 +1167,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     service = ParticipantCountsOverTimeService()
     dao = MetricsAgeCacheDao()
     service.refresh_data_for_metrics_cache(dao)
-    results = service.get_latest_version_from_cache(dao, '2017-12-31', '2018-01-08')
+    results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
 
     self.assertIn({'date': '2017-12-31',
                    'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 1L,
@@ -1428,7 +1428,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     dao = MetricsRaceCacheDao()
     service.refresh_data_for_metrics_cache(dao)
 
-    results = service.get_latest_version_from_cache(dao, '2017-12-31', '2018-01-08')
+    results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
 
     self.assertIn({'date': '2017-12-31', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
                                                      'Middle_Eastern_North_African': 0L,

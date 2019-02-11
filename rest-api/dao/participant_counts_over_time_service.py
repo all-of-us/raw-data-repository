@@ -6,7 +6,7 @@ from participant_enums import WithdrawalStatus
 from dao.hpo_dao import HPODao
 from dao.base_dao import BaseDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
-  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao
+  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao
 
 CACHE_START_DATE = datetime.datetime.strptime('2017-01-01', '%Y-%m-%d').date()
 
@@ -24,6 +24,7 @@ class ParticipantCountsOverTimeService(BaseDao):
     self.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
     self.refresh_data_for_metrics_cache(MetricsRaceCacheDao())
     self.refresh_data_for_metrics_cache(MetricsRegionCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao())
 
   def refresh_data_for_metrics_cache(self, dao):
     updated_time = datetime.datetime.now()
@@ -94,6 +95,9 @@ class ParticipantCountsOverTimeService(BaseDao):
     elif str(history) == 'TRUE' and str(stratification) in ['FULL_STATE', 'FULL_CENSUS',
                                                             'FULL_AWARDEE']:
       dao = MetricsRegionCacheDao()
+      return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids)
+    elif str(history) == 'TRUE' and str(stratification) == 'LIFECYCLE':
+      dao = MetricsLifecycleCacheDao()
       return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids)
     elif str(stratification) == 'TOTAL':
       strata = ['TOTAL']
