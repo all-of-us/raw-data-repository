@@ -211,3 +211,18 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
     )
     with cloudstorage.cloudstorage_api.open('/fake_bucket2/prefix/z/x1/foo.txt', mode='r') as f:
       self.assertEqual(f.read(), 'foo', 'copied contents')
+
+  @mock.patch('cloudstorage.copy2')
+  def test_cloudstorage_copy_objects_only_new_and_changed(self, copy2):
+    self._write_cloud_object('/fake_bucket1/prefix/x1/foo.txt', 'foo')
+    self._write_cloud_object('/fake_bucket1/prefix/x1/bar.txt', 'bar')
+    self._write_cloud_object('/fake_bucket2/prefix/z/x1/foo.txt', 'foo')
+    self._write_cloud_object('/fake_bucket2/prefix/z/x1/bar.txt', 'baz')
+    sync_consent_files.cloudstorage_copy_objects(
+      '/fake_bucket1/prefix/x1/',
+      '/fake_bucket2/prefix/z/x1/'
+    )
+    copy2.assert_called_once_with(
+      '/fake_bucket1/prefix/x1/bar.txt',
+      '/fake_bucket2/prefix/z/x1/bar.txt'
+    )

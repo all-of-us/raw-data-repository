@@ -144,8 +144,15 @@ def cloudstorage_copy_objects(source, destination):
 
   Both source and destination use the following format: /bucket/prefix/
   """
-  for file_stat in cloudstorage.listbucket(source):
-    cloudstorage.copy2(
-      file_stat.filename,
-      destination + file_stat.filename[len(source):]
-    )
+  for source_file_stat in cloudstorage.listbucket(source):
+    destination_filename = destination + source_file_stat.filename[len(source):]
+    if _should_copy_object(source_file_stat, destination_filename):
+      cloudstorage.copy2(source_file_stat.filename, destination_filename)
+
+
+def _should_copy_object(source_file_stat, destination):
+  try:
+    dest_file_stat = cloudstorage.stat(destination)
+  except cloudstorage.NotFoundError:
+    return True
+  return source_file_stat.etag != dest_file_stat.etag
