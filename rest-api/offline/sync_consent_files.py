@@ -128,8 +128,10 @@ left join site
   on participant.site_id = site.site_id
 left join participant_summary summary
   on participant.participant_id = summary.participant_id
-where summary.consent_for_electronic_health_records = 1
+where participant.is_ghost_id = 0
+  and summary.consent_for_electronic_health_records = 1
   and summary.consent_for_study_enrollment = 1
+  and summary.email not like '%@example.com'
 """)
 
 

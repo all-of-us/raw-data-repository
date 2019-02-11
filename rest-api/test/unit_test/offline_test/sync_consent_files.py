@@ -103,7 +103,8 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
       participantId=id_,
       biobankId=id_,
       organizationId=org_id,
-      siteId=site_id
+      siteId=site_id,
+      isGhostId=False
     )
     self.participant_dao.insert(participant)
     summary = self.participant_summary(participant)
