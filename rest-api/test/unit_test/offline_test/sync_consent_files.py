@@ -98,19 +98,21 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
     self.site_dao.insert(site)
     return site
 
-  def _create_participant(self, id_, org_id, site_id, consents=False):
+  def _create_participant(self, id_, org_id, site_id, consents=False, ghost=None, email=None):
     participant = Participant(
       participantId=id_,
       biobankId=id_,
       organizationId=org_id,
       siteId=site_id,
-      isGhostId=False
+      isGhostId=ghost
     )
     self.participant_dao.insert(participant)
     summary = self.participant_summary(participant)
     if consents:
       summary.consentForElectronicHealthRecords = 1
       summary.consentForStudyEnrollment = 1
+    if email:
+      summary.email = email
     self.summary_dao.insert(summary)
     return participant
 
@@ -126,11 +128,13 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
     site2 = self._create_site(1002, 'group2')
     self._create_participant(1, org1.organizationId, site1.siteId, consents=True)
     self._create_participant(2, org2.organizationId, site2.siteId)
-    self._create_participant(3, org1.organizationId, None, consents=True)
+    self._create_participant(3, org1.organizationId, None, consents=True, ghost=False)
+    self._create_participant(4, org1.organizationId, None, consents=True, ghost=True)
+    self._create_participant(5, org1.organizationId, None, consents=True, email='foo@example.com')
     participant_data_list = list(sync_consent_files._iter_participants_data())
     participant_ids = [d.participant_id for d in participant_data_list]
-    self.assertEqual(len(participant_ids), 2)
-    self.assertEqual(participant_ids, [1, 3])
+    self.assertEqual(len(participant_ids), 2, "finds correct number of results")
+    self.assertEqual(participant_ids, [1, 3], "finds valid participants")
     self.assertEqual(
       participant_data_list[0].google_group,
       'group1',
