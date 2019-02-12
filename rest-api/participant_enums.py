@@ -144,6 +144,10 @@ class Stratifications(messages.Enum):
   AGE_RANGE = 5
   EHR_CONSENT = 6
   EHR_RATIO = 7
+  FULL_STATE = 8
+  FULL_CENSUS = 9
+  FULL_AWARDEE = 10
+  LIFECYCLE = 11
 
 METRIC_SET_KEYS = {
   MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([

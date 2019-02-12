@@ -62,3 +62,35 @@ class MetricsAgeCache(Base):
   date = Column('date', Date, nullable=False, primary_key=True)
   ageRange = Column('age_range', String(255), primary_key=True)
   ageCount = Column('age_count', Integer, nullable=False)
+
+class MetricsRegionCache(Base):
+  """Contains region metrics data grouped by HPO and date.
+  """
+  __tablename__ = 'metrics_region_cache'
+  dateInserted = Column('date_inserted', UTCDateTime, default=clock.CLOCK.now,
+                        nullable=False, primary_key=True)
+  hpoId = Column('hpo_id', String(20), primary_key=True)
+  hpoName = Column('hpo_name', String(255), primary_key=True)
+  date = Column('date', Date, nullable=False, primary_key=True)
+  stateName = Column('state_name', String(255), primary_key=True)
+  stateCount = Column('state_count', Integer, nullable=False)
+
+class MetricsLifecycleCache(Base):
+  """Contains lifecycle metrics data grouped by HPO and date.
+    """
+  __tablename__ = 'metrics_lifecycle_cache'
+  dateInserted = Column('date_inserted', UTCDateTime, default=clock.CLOCK.now,
+                        nullable=False, primary_key=True)
+  hpoId = Column('hpo_id', String(20), primary_key=True)
+  hpoName = Column('hpo_name', String(255), primary_key=True)
+  date = Column('date', Date, nullable=False, primary_key=True)
+  registered = Column('registered', Integer, nullable=False)
+  consentEnrollment = Column('consent_enrollment', Integer, nullable=False)
+  consentComplete = Column('consent_complete', Integer, nullable=False)
+  ppiBasics = Column('ppi_basics', Integer, nullable=False)
+  ppiOverallHealth = Column('ppi_overall_health', Integer, nullable=False)
+  ppiLifestyle = Column('ppi_lifestyle', Integer, nullable=False)
+  ppiBaselineComplete = Column('ppi_baseline_complete', Integer, nullable=False)
+  physicalMeasurement = Column('physical_measurement', Integer, nullable=False)
+  sampleReceived = Column('sample_received', Integer, nullable=False)
+  fullParticipant = Column('full_participant', Integer, nullable=False)
