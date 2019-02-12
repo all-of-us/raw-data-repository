@@ -182,13 +182,15 @@ class _TestDb(object):
       if 'CIRCLECI' in os.environ:
         # Default no-pw login, according to https://circleci.com/docs/1.0/manually/#databases .
         mysql_login = 'ubuntu'
+        mysql_host = 'localhost'
       else:
         password = os.getenv('MYSQL_ROOT_PASSWORD', 'root')
+        mysql_host = os.getenv('MYSQL_HOST', 'localhost')
         # Match setup_local_database.sh which is run locally.
         mysql_login = 'root:' + password
 
       dao.database_factory.DB_CONNECTION_STRING = (
-          'mysql+mysqldb://%s@localhost/?charset=utf8' % mysql_login)
+          'mysql+mysqldb://%s@%s/?charset=utf8' % (mysql_login, mysql_host))
       db = dao.database_factory.get_database(db_name=None)
       dao.database_factory.SCHEMA_TRANSLATE_MAP = {
         'rdr': self.__temp_db_name,
@@ -202,7 +204,7 @@ class _TestDb(object):
           'CREATE DATABASE {0} CHARACTER SET utf8 COLLATE utf8_general_ci'.format(self.__temp_metrics_db_name))
 
       dao.database_factory.DB_CONNECTION_STRING = (
-          'mysql+mysqldb://%s@localhost/%s?charset=utf8' % (mysql_login, self.__temp_db_name))
+          'mysql+mysqldb://%s@%s/%s?charset=utf8' % (mysql_login, mysql_host, self.__temp_db_name))
 
       singletons.reset_for_tests()
 
