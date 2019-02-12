@@ -6,7 +6,7 @@
 # If the databases already exist, drop them prior to running this.
 # Note: this takes a while. Go get some coffee while it's running!
 
-USAGE="tools/setup_database_for_etl.sh --project <PROJECT> --account <ACCOUNT> --src-folder <FOLDER> "
+USAGE="setup_database_for_etl.sh --project <PROJECT> --account <ACCOUNT> --src-folder <FOLDER> "
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;

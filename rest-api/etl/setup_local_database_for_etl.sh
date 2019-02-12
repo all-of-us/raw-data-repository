@@ -23,7 +23,7 @@ DB_CONNECTION_NAME=
 CSV_DIR=/var/lib/mysql-files/rdr-csv
 OUTPUT_DIR=/tmp/rdr-sql-dump
 
-USAGE="tools/setup_local_database_for_etl.sh --account <ACCOUNT> --src-bucket <BUCKET/FOLDER> [--generate_sql_dump <FOLDER>] [--db_user <ROOT_DB_USER>] [--nopassword]"
+USAGE="setup_local_database_for_etl.sh --account <ACCOUNT> --src-bucket <BUCKET/FOLDER> [--generate_sql_dump <FOLDER>] [--db_user <ROOT_DB_USER>] [--nopassword]"
 ROOT_PASSWORD_ARGS="-p${ROOT_PASSWORD}"
 while true; do
   case "$1" in

@@ -1,6 +1,6 @@
 # Runs the ETL SQL on a Cloud database.
 
-USAGE="tools/run_cloud_etl.sh --project <PROJECT> --account <ACCOUNT> [--noclone]"
+USAGE="run_cloud_etl.sh --project <PROJECT> --account <ACCOUNT> [--noclone]"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
