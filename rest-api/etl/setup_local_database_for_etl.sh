@@ -37,12 +37,6 @@ while true; do
   esac
 done
 
-DSTBUCKET="all-of-us-rdr-vocabulary/${DSTFOLDER}"
-
-echo ""
-echo "  source bucket:       ${SRCBUCKET}"
-echo "  destination bucket:  ${DSTBUCKET}"
-
 if [ -z "${ACCOUNT}" ] || [ -z "${SRCBUCKET}" ] ; then
   echo "Usage: $USAGE"
   exit 1
@@ -52,6 +46,12 @@ if [ "${MYSQL_ROOT_PASSWORD}" ] && [ -z "${DSTFOLDER}" ]; then
     echo "Usage: $USAGE"
   exit 1
 fi
+
+DSTBUCKET="all-of-us-rdr-vocabulary/${DSTFOLDER}"
+
+echo ""
+echo "  source bucket:       ${SRCBUCKET}"
+echo "  destination bucket:  ${DSTBUCKET}"
 
 echo
 while true; do
