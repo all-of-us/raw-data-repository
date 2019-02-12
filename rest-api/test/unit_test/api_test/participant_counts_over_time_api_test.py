@@ -141,11 +141,14 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     if time_mem is not None:
       with FakeClock(time_mem):
+        summary.consentForElectronicHealthRecords = 1
         summary.consentForElectronicHealthRecordsTime = time_mem
 
     if time_fp is not None:
       with FakeClock(time_fp):
-        summary.consentForElectronicHealthRecordsTime = time_fp
+        if not summary.consentForElectronicHealthRecords:
+          summary.consentForElectronicHealthRecords = 1
+          summary.consentForElectronicHealthRecordsTime = time_fp
         summary.questionnaireOnTheBasicsTime = time_fp
         summary.questionnaireOnLifestyleTime = time_fp
         summary.questionnaireOnOverallHealthTime = time_fp
@@ -1707,31 +1710,52 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       url = 'Participant/%s/QuestionnaireResponse' % participant_id
       return self.send_post(url, request_data=response_data)
 
-  def test_stratification_EHR_CONSENT(self):
+  def test_stratification_TOTAL(self):
 
     p1 = Participant(participantId=1, biobankId=4)
-    p1_summary = self._insert(
+    self._insert(
       p1, 'Alice', 'Aardvark', 'PITT',
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
       time_fp=datetime.datetime(2018, 1, 4)
     )
-    p1_date_consent_revoked = datetime.datetime(2018, 1, 5)
-    with FakeClock(p1_date_consent_revoked):
-      p1_summary.consentForElectronicHealthRecords = 0
-      p1_summary.consentForElectronicHealthRecordsTime = p1_date_consent_revoked
-      self.ps_dao.update(p1_summary)
 
     qs = urllib.urlencode([
-      ('stratification', 'EHR_CONSENT'),
+      ('stratification', 'TOTAL'),
       ('startDate', '2018-01-01'),
-      ('endDate', '2018-01-07')
+      ('endDate', '2018-01-05')
     ])
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    #import pprint
-    #pprint.pprint(response)
+    counts_by_date = {
+      day['date']: day['metrics']['TOTAL']
+      for day in response
+    }
+
+    self.assertEqual(counts_by_date['2018-01-01'], 0)
+    self.assertEqual(counts_by_date['2018-01-02'], 1)
+    self.assertEqual(counts_by_date['2018-01-03'], 1)
+    self.assertEqual(counts_by_date['2018-01-04'], 1)
+    self.assertEqual(counts_by_date['2018-01-05'], 1)
+
+  def test_stratification_EHR_CONSENT(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(
+      p1, 'Alice', 'Aardvark', 'PITT',
+      time_int=datetime.datetime(2018, 1, 2),
+      time_mem=datetime.datetime(2018, 1, 3),
+      time_fp=datetime.datetime(2018, 1, 4)
+    )
+
+    qs = urllib.urlencode([
+      ('stratification', 'EHR_CONSENT'),
+      ('startDate', '2018-01-01'),
+      ('endDate', '2018-01-05')
+    ])
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
     counts_by_date = {
       day['date']: day['metrics']['EHR_CONSENT']
@@ -1739,49 +1763,48 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     }
 
     self.assertEqual(counts_by_date['2018-01-01'], 0)
-    self.assertEqual(counts_by_date['2018-01-02'], 1)
+    self.assertEqual(counts_by_date['2018-01-02'], 0)
     self.assertEqual(counts_by_date['2018-01-03'], 1)
     self.assertEqual(counts_by_date['2018-01-04'], 1)
-    self.assertEqual(counts_by_date['2018-01-05'], 0)
-    self.assertEqual(counts_by_date['2018-01-06'], 0)
-    self.assertEqual(counts_by_date['2018-01-07'], 0)
+    self.assertEqual(counts_by_date['2018-01-05'], 1)
 
 
   def test_stratification_EHR_RATIO(self):
 
     p1 = Participant(participantId=1, biobankId=4)
-    p1_summary = self._insert(
+    self._insert(
       p1, 'Alice', 'Aardvark', 'PITT',
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
       time_fp=datetime.datetime(2018, 1, 4)
     )
-    p1_date_consent_revoked = datetime.datetime(2018, 1, 5)
-    with FakeClock(p1_date_consent_revoked):
-      p1_summary.consentForElectronicHealthRecords = 0
-      p1_summary.consentForElectronicHealthRecordsTime = p1_date_consent_revoked
-      self.ps_dao.update(p1_summary)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(
+      p2, 'Bob', 'Builder', 'AZ_TUCSON',
+      time_int=datetime.datetime(2018, 1, 4),
+      time_mem=datetime.datetime(2018, 1, 5),
+      time_fp=datetime.datetime(2018, 1, 6)
+    )
 
     qs = urllib.urlencode([
       ('stratification', 'EHR_RATIO'),
       ('startDate', '2018-01-01'),
-      ('endDate', '2018-01-07')
+      ('endDate', '2018-01-06')
     ])
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
 
-    #import pprint
-    #pprint.pprint(response)
+    self.assertEqual(len(response), 6)
 
-    counts_by_date = {
+    ratios_by_date = {
       day['date']: day['metrics']['EHR_RATIO']
       for day in response
     }
 
-    self.assertEqual(counts_by_date['2018-01-01'], 0)
-    self.assertEqual(counts_by_date['2018-01-02'], 1)
-    self.assertEqual(counts_by_date['2018-01-03'], 1)
-    self.assertEqual(counts_by_date['2018-01-04'], 1)
-    self.assertEqual(counts_by_date['2018-01-05'], 0)
-    self.assertEqual(counts_by_date['2018-01-06'], 0)
-    self.assertEqual(counts_by_date['2018-01-07'], 0)
+    self.assertEqual(ratios_by_date['2018-01-01'], 0)
+    self.assertEqual(ratios_by_date['2018-01-02'], 0/1.0)
+    self.assertEqual(ratios_by_date['2018-01-03'], 1/1.0)
+    self.assertEqual(ratios_by_date['2018-01-04'], 1/2.0)
+    self.assertEqual(ratios_by_date['2018-01-05'], 2/2.0)
+    self.assertEqual(ratios_by_date['2018-01-06'], 2/2.0)
