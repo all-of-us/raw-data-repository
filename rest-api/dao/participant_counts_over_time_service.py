@@ -6,7 +6,7 @@ from participant_enums import WithdrawalStatus
 from dao.hpo_dao import HPODao
 from dao.base_dao import BaseDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
-  MetricsAgeCacheDao, MetricsRaceCacheDao
+  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao
 
 CACHE_START_DATE = datetime.datetime.strptime('2017-01-01', '%Y-%m-%d').date()
 
@@ -23,6 +23,8 @@ class ParticipantCountsOverTimeService(BaseDao):
     self.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
     self.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
     self.refresh_data_for_metrics_cache(MetricsRaceCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsRegionCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao())
 
   def refresh_data_for_metrics_cache(self, dao):
     updated_time = datetime.datetime.now()
@@ -44,12 +46,6 @@ class ParticipantCountsOverTimeService(BaseDao):
               'end_date': end_date, 'date_inserted': updated_time}
     with dao.session() as session:
       session.execute(sql, params)
-
-  def get_latest_version_from_cache(self, dao, start_date, end_date, hpo_ids=None):
-    buckets = dao.get_active_buckets(start_date, end_date, hpo_ids)
-    if buckets is None:
-      return []
-    return dao.to_client_json(buckets)
 
   def get_filtered_results(self, start_date, end_date, filters, filter_by, history,
                            stratification='ENROLLMENT_STATUS'):
@@ -85,17 +81,24 @@ class ParticipantCountsOverTimeService(BaseDao):
       dao = MetricsEnrollmentStatusCacheDao()
       return dao.get_total_interested_count(start_date, end_date, awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'ENROLLMENT_STATUS':
-      return self.get_latest_version_from_cache(MetricsEnrollmentStatusCacheDao(), start_date,
-                                                end_date, awardee_ids)
+      dao = MetricsEnrollmentStatusCacheDao()
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'GENDER_IDENTITY':
-      return self.get_latest_version_from_cache(MetricsGenderCacheDao(), start_date, end_date,
-                                                awardee_ids)
+      dao = MetricsGenderCacheDao()
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'AGE_RANGE':
-      return self.get_latest_version_from_cache(MetricsAgeCacheDao(), start_date, end_date,
-                                                awardee_ids)
+      dao = MetricsAgeCacheDao()
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'RACE':
-      return self.get_latest_version_from_cache(MetricsRaceCacheDao(), start_date, end_date,
-                                                awardee_ids)
+      dao = MetricsRaceCacheDao()
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
+    elif str(history) == 'TRUE' and str(stratification) in ['FULL_STATE', 'FULL_CENSUS',
+                                                            'FULL_AWARDEE']:
+      dao = MetricsRegionCacheDao()
+      return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids)
+    elif str(history) == 'TRUE' and str(stratification) == 'LIFECYCLE':
+      dao = MetricsLifecycleCacheDao()
+      return dao.get_latest_version_from_cache(end_date, awardee_ids)
     elif str(stratification) == 'TOTAL':
       strata = ['TOTAL']
       sql = self.get_total_sql(filters_sql_ps)
