@@ -147,6 +147,7 @@ class Stratifications(messages.Enum):
   FULL_STATE = 8
   FULL_CENSUS = 9
   FULL_AWARDEE = 10
+  LIFECYCLE = 11
 
 METRIC_SET_KEYS = {
   MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([

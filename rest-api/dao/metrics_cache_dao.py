@@ -233,6 +233,8 @@ class MetricsGenderCacheDao(BaseDao):
         if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
           item['metrics'][record.genderName] = record.genderCount
           is_exist = True
+          break
+
       if not is_exist:
         new_item = {
           'date': record.date.isoformat(),
@@ -373,6 +375,8 @@ class MetricsAgeCacheDao(BaseDao):
         if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
           item['metrics'][record.ageRange] = record.ageCount
           is_exist = True
+          break
+
       if not is_exist:
         new_item = {
           'date': record.date.isoformat(),
@@ -752,8 +756,10 @@ class MetricsRegionCacheDao(BaseDao):
         if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
           item['metrics'][state_name] = record.stateCount
           is_exist = True
+          break
+
       if not is_exist:
-        metrics = {stateName: 0 for stateName in census_regions.key()}
+        metrics = {stateName: 0 for stateName in census_regions.keys()}
         new_item = {
           'date': record.date.isoformat(),
           'hpo': record.hpoName,
@@ -772,6 +778,8 @@ class MetricsRegionCacheDao(BaseDao):
         if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
           item['metrics'][census_name] += record.stateCount
           is_exist = True
+          break
+
       if not is_exist:
         new_item = {
           'date': record.date.isoformat(),
@@ -795,6 +803,8 @@ class MetricsRegionCacheDao(BaseDao):
         if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
           item['count'] += record.stateCount
           is_exist = True
+          break
+
       if not is_exist:
         new_item = {
           'date': record.date.isoformat(),
@@ -822,7 +832,7 @@ class MetricsRegionCacheDao(BaseDao):
         AND p.withdrawal_status = :not_withdraw
         AND p.is_ghost_id IS NOT TRUE
         AND ps.enrollment_status_core_stored_sample_time IS NOT NULL
-        AND DATE(p.enrollment_status_core_stored_sample_time) <= c.day
+        AND DATE(ps.enrollment_status_core_stored_sample_time) <= c.day
         AND c.day BETWEEN :start_date AND :end_date
         GROUP BY c.day, p.hpo_id ,ps.value;
     """
@@ -879,16 +889,30 @@ class MetricsLifecycleCacheDao(BaseDao):
         'date': record.date.isoformat(),
         'hpo': record.hpoName,
         'metrics': {
-          'Registered': record.registered,
-          'Consent_Enrollment': record.consentEnrollment,
-          'Consent_Complete': record.consentComplete,
-          'PPI_Module_The_Basics': record.ppiBasics,
-          'PPI_Module_Overall_Health': record.ppiOverallHealth,
-          'PPI_Module_Lifestyle': record.ppiLifestyle,
-          'Baseline_PPI_Modules_Complete': record.ppiBaselineComplete,
-          'Physical_Measurements': record.physicalMeasurement,
-          'Samples_Received': record.sampleReceived,
-          'Full_Participant': record.fullParticipant
+          'completed': {
+            'Registered': record.registered,
+            'Consent_Enrollment': record.consentEnrollment,
+            'Consent_Complete': record.consentComplete,
+            'PPI_Module_The_Basics': record.ppiBasics,
+            'PPI_Module_Overall_Health': record.ppiOverallHealth,
+            'PPI_Module_Lifestyle': record.ppiLifestyle,
+            'Baseline_PPI_Modules_Complete': record.ppiBaselineComplete,
+            'Physical_Measurements': record.physicalMeasurement,
+            'Samples_Received': record.sampleReceived,
+            'Full_Participant': record.fullParticipant
+          },
+          'not_completed': {
+            'Registered': 0,
+            'Consent_Enrollment': record.registered - record.consentEnrollment,
+            'Consent_Complete': record.consentEnrollment - record.consentComplete,
+            'PPI_Module_The_Basics': record.consentEnrollment - record.ppiBasics,
+            'PPI_Module_Overall_Health': record.consentEnrollment - record.ppiOverallHealth,
+            'PPI_Module_Lifestyle': record.consentEnrollment - record.ppiLifestyle,
+            'Baseline_PPI_Modules_Complete': record.consentEnrollment - record.ppiBaselineComplete,
+            'Physical_Measurements': record.consentEnrollment - record.physicalMeasurement,
+            'Samples_Received': record.consentEnrollment - record.sampleReceived,
+            'Full_Participant': record.consentEnrollment - record.fullParticipant
+          }
         }
       }
       client_json.append(new_item)
