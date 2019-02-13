@@ -45,7 +45,7 @@ def fixup_paths(path):
   sys.path.insert(0, path)
 
 
-def main(sdk_path, test_path, test_pattern):
+def main(sdk_path, test_path, test_pattern, test_names=None):
   # If the SDK path points to a Google Cloud SDK installation
   # then we should alter it to point to the GAE platform location.
   if os.path.exists(os.path.join(sdk_path, 'platform/google_appengine')):
@@ -68,7 +68,10 @@ def main(sdk_path, test_path, test_pattern):
     print 'Note: unable to import appengine_config.'
 
   # Discover and run tests.
-  suite = unittest.loader.TestLoader().discover(test_path, test_pattern)
+  if test_names:
+    suite = unittest.loader.TestLoader().loadTestsFromNames(test_names)
+  else:
+    suite = unittest.loader.TestLoader().discover(test_path, test_pattern)
   return unittest.TextTestRunner(verbosity=2).run(suite)
 
 
@@ -98,6 +101,12 @@ if __name__ == '__main__':
     action='store_false',
     help='Turn off the coverage report'
   )
+  parser.add_argument(
+    '--test-names',
+    dest='test_names',
+    nargs='+',
+    help='List of tests to run explicitly. Overrides --test-path & --test-pattern.'
+  )
 
   args = parser.parse_args()
 
@@ -112,7 +121,7 @@ if __name__ == '__main__':
     ])
     cov.start()
 
-  result = main(args.sdk_path, args.test_path, args.test_pattern)
+  result = main(args.sdk_path, args.test_path, args.test_pattern, test_names=args.test_names)
 
   if args.coverage:
     cov.stop()
