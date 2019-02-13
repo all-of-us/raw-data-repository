@@ -131,7 +131,10 @@ left join participant_summary summary
 where participant.is_ghost_id is not true
   and summary.consent_for_electronic_health_records = 1
   and summary.consent_for_study_enrollment = 1
-  and summary.email not like '%@example.com'
+  and (
+    summary.email is null
+    or summary.email not like '%@example.com'
+  )
 """)
 
 

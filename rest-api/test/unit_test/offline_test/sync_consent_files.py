@@ -98,7 +98,7 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
     self.site_dao.insert(site)
     return site
 
-  def _create_participant(self, id_, org_id, site_id, consents=False, ghost=None, email=None):
+  def _create_participant(self, id_, org_id, site_id, consents=False, ghost=None, email=None, null_email=False):
     participant = Participant(
       participantId=id_,
       biobankId=id_,
@@ -113,6 +113,8 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
       summary.consentForStudyEnrollment = 1
     if email:
       summary.email = email
+    if null_email:
+      summary.email = None
     self.summary_dao.insert(summary)
     return participant
 
@@ -126,7 +128,7 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
     org2 = self._create_org(2)
     site1 = self._create_site(1001, 'group1')
     site2 = self._create_site(1002, 'group2')
-    self._create_participant(1, org1.organizationId, site1.siteId, consents=True)
+    self._create_participant(1, org1.organizationId, site1.siteId, consents=True, null_email=True)
     self._create_participant(2, org2.organizationId, site2.siteId)
     self._create_participant(3, org1.organizationId, None, consents=True, ghost=False)
     self._create_participant(4, org1.organizationId, None, consents=True, ghost=True)
