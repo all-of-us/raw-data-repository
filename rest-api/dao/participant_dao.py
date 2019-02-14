@@ -1,4 +1,5 @@
 import json
+import logging
 
 import clock
 from api_util import format_json_enum, parse_json_enum, format_json_date, format_json_hpo, \
@@ -79,13 +80,13 @@ class ParticipantDao(UpdatableDao):
 
     participant = self.get_for_update(session, pid)
     if participant is None:
-      raise BadRequest('No participant [%r] to mark as ghost.' % pid)
-
-    participant.isGhostId = 1
-    participant.dateAddedGhost = clock.CLOCK.now()
-
-    self._update_history(session, participant, participant)
-    super(ParticipantDao, self)._do_update(session, participant, participant)
+      logging.warn('Tried to mark participant with id: [%r] as ghost but participant does not'
+                   'exist. Wrong environment?' % pid)
+    else:
+      participant.isGhostId = 1
+      participant.dateAddedGhost = clock.CLOCK.now()
+      self._update_history(session, participant, participant)
+      super(ParticipantDao, self)._do_update(session, participant, participant)
 
   def _check_if_external_id_exists(self, obj):
     with self.session() as session:
