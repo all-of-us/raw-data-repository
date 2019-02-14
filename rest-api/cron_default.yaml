@@ -26,7 +26,7 @@ cron:
   target: offline
 - description: Participant count metrics 
   url: /offline/ParticipantCountsOverTime
-  schedule: every day 00:30
+  schedule: every day 04:30
   timezone: America/New_York
   target: offline
 - description: Flag ghost participants
