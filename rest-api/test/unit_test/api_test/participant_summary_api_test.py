@@ -237,6 +237,55 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       url = 'Participant/%s/QuestionnaireResponse' % participant_id
       return self.send_post(url, request_data=response_data)
 
+
+  def test_modified_api(self):
+
+    participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id = participant['participantId']
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    with FakeClock(TIME_1):
+      self.send_consent(participant_id)
+    # Populate some answers to the questionnaire
+    answers = {
+      'race': RACE_WHITE_CODE,
+      'genderIdentity': PMI_SKIP_CODE,
+      'firstName': self.fake.first_name(),
+      'middleName': self.fake.first_name(),
+      'lastName': self.fake.last_name(),
+      'zipCode': '78751',
+      'state': PMI_SKIP_CODE,
+      'streetAddress': self.streetAddress,
+      'streetAddress2': self.streetAddress2,
+      'city': 'Austin',
+      'sex': PMI_SKIP_CODE,
+      'sexualOrientation': PMI_SKIP_CODE,
+      'phoneNumber': '512-555-5555',
+      'recontactMethod': PMI_SKIP_CODE,
+      'language': PMI_SKIP_CODE,
+      'education': PMI_SKIP_CODE,
+      'income': PMI_SKIP_CODE,
+      'dateOfBirth': datetime.date(1978, 10, 9),
+      'CABoRSignature': 'signature.pdf',
+    }
+    self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
+    summary = self.send_get('Participant/{0}/Summary'.format(participant_id))
+    last_modified = summary['lastModified']
+
+    results = self.send_get('ParticipantSummary/Modified')
+    self.assertEquals(len(results), 1)
+
+    rec = results[0]
+    self.assertEquals(participant_id, rec['participantId'])
+    self.assertEquals(last_modified, rec['lastModified'])
+
+    results = self.send_get('ParticipantSummary/Modified?awardee=PITT')
+
+    rec = results[0]
+    self.assertEquals(participant_id, rec['participantId'])
+    self.assertEquals(last_modified, rec['lastModified'])
+
+
   def test_pairing_summary(self):
     participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
     participant_id = participant['participantId']
@@ -567,6 +616,12 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       '%Y''-''%m''-''%d''T''%X'))
     self.assertEqual(response2['entry'][4]['resource']['lastModified'], t3.strftime(
       '%Y''-''%m''-''%d''T''%X'))
+
+    # verify adding '_backfill=false' returns no records.
+    url2 = sync_url[index:].replace('_sync=true', '_backfill=false&_sync=true')
+    response2A = self.send_get(url2)
+    self.assertEqual(len(response2A['entry']), 0)
+
     # Create a second batch
     second_batch = [setup_participant(t4) for _ in range(10)]
     response3 = self.send_get(sync_url[index:])
