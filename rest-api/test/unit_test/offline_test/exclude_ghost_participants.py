@@ -43,11 +43,15 @@ class MarkGhostParticipantsTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(self.participant2.isGhostId, None)
     self.assertEqual(self.participant2.dateAddedGhost, None)
 
-  def _setup_file(self):
+  def _setup_file(self, wrong_pid=False):
     # mock up a ghost pid csv
     header = 'participant_id, regisered_date'
-    row1 = str(self.participant1.participantId) + ',' + str(TIME)
-    row2 = str(self.participant2.participantId) + ',' + str(TIME_2)
+    if not wrong_pid:
+      row1 = str(self.participant1.participantId) + ',' + str(TIME)
+      row2 = str(self.participant2.participantId) + ',' + str(TIME_2)
+    else:
+      row1 = 'P12345'
+      row2 = 'P67890'
     csv_contents = '\n'.join([header, row1, row2])
     self._write_cloud_csv('ghost_pids.csv', csv_contents)
 
@@ -92,3 +96,11 @@ class MarkGhostParticipantsTest(CloudStorageSqlTestBase, NdbTestBase):
     _, latest_filename = exclude_ghost_participants.get_latest_pid_file(
       _FAKE_BUCKET)
     self.assertEquals(latest_filename, '/%s/%s' % (_FAKE_BUCKET, created_last))
+
+  def test_no_participant_to_mark(self):
+    # make sure a csv with bad PIDS doesn't blow up.
+    self._setup_participants()
+    self._setup_file(wrong_pid=True)
+
+    with FakeClock(TIME_3):
+      exclude_ghost_participants.mark_ghost_participants()
