@@ -23,27 +23,48 @@ DB_CONNECTION_NAME=
 CSV_DIR=/var/lib/mysql-files/rdr-csv
 OUTPUT_DIR=/tmp/rdr-sql-dump
 
-USAGE="tools/setup_local_database_for_etl.sh --account <ACCOUNT> [--generate_sql_dump] [--db_user <ROOT_DB_USER>] [--nopassword]"
+USAGE="etl/setup_local_database_for_etl.sh --account <ACCOUNT> --src-bucket <BUCKET/FOLDER> [--generate_sql_dump <FOLDER>] [--db_user <ROOT_DB_USER>] [--nopassword]"
 ROOT_PASSWORD_ARGS="-p${ROOT_PASSWORD}"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
+    --src-bucket) SRCBUCKET=$2; shift 2;;
     --nopassword) ROOT_PASSWORD=; ROOT_PASSWORD_ARGS=; shift 1;;
     --db_user) ROOT_DB_USER=$2; shift 2;;
-    --generate_sql_dump) GENERATE_SQL_DUMP="Y"; shift 1;;
+    --generate_sql_dump) GENERATE_SQL_DUMP="Y"; DSTFOLDER=$2; shift 2;;
     -- ) shift; break ;;
     * ) break ;;
   esac
 done
 
-if [ -z "${ACCOUNT}" ]
-then
+if [ -z "${ACCOUNT}" ] || [ -z "${SRCBUCKET}" ] ; then
   echo "Usage: $USAGE"
   exit 1
 fi
 
-if [ "${MYSQL_ROOT_PASSWORD}" ]
-then
+if [ "${MYSQL_ROOT_PASSWORD}" ] && [ -z "${DSTFOLDER}" ]; then
+    echo "Usage: $USAGE"
+  exit 1
+fi
+
+DSTBUCKET="all-of-us-rdr-vocabulary/${DSTFOLDER}"
+
+echo ""
+echo "  source bucket:       ${SRCBUCKET}"
+echo "  destination bucket:  ${DSTBUCKET}"
+
+echo
+while true; do
+    read -p "Is this source and destination correct? (y/n) " yn
+    case $yn in
+        [Yy]* ) break;;
+        [Nn]* ) exit;;
+        * ) echo "Please answer y or n.";;
+    esac
+done
+echo "running..."
+
+if [ "${MYSQL_ROOT_PASSWORD}" ]; then
   ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD}"
   ROOT_PASSWORD_ARGS='-p"${ROOT_PASSWORD}"'
 else
@@ -95,8 +116,8 @@ CREDS_ACCOUNT="${ACCOUNT}"
 source tools/auth_setup.sh
 
 echo "Copying vocabulary files from GCS..."
-gsutil cp -r gs://aou-res-curation-test-vocab-22-dec-17/CONCEPT.csv ${CSV_DIR}/voc
-gsutil cp -r gs://aou-res-curation-test-vocab-22-dec-17/CONCEPT_RELATIONSHIP.csv ${CSV_DIR}/voc
+gsutil cp -r gs://${SRCBUCKET}/CONCEPT.csv ${CSV_DIR}/voc
+gsutil cp -r gs://${SRCBUCKET}/CONCEPT_RELATIONSHIP.csv ${CSV_DIR}/voc
 
 # Strip concept relationships to "Maps to" as those are the only ones we use in the ETL
 grep "Maps to" ${CSV_DIR}/voc/CONCEPT_RELATIONSHIP.csv > ${CSV_DIR}/voc/rel.csv
@@ -111,12 +132,12 @@ for i in ${CSV_DIR}/voc/*; do mv $i `echo $i | tr [:upper:] [:lower:]`; done
 chmod -R 0777 ${CSV_DIR}
 
 echo "Importing source_to_concept_map.csv..."
-mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --fields-terminated-by=\| cdm ${CSV_DIR}/source_to_concept_map.csv
+mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --local --fields-terminated-by=\| cdm ${CSV_DIR}/source_to_concept_map.csv
 
 for file in ${CSV_DIR}/voc/*.csv
 do
     echo "Importing ${file}..."
-    mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --ignore-lines=1 voc ${file}
+    mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --local --ignore-lines=1 voc ${file}
 done
 
 echo "Nulling out empty string fields..."
@@ -126,12 +147,12 @@ if [ "${GENERATE_SQL_DUMP}" ]
 then
     echo "Generating dump for cdm database.."
     mysqldump --databases cdm -h 127.0.0.1 -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --hex-blob \
-      --skip-triggers --set-gtid-purged=OFF --default-character-set=utf8 > ${OUTPUT_DIR}/cdm.sql
+      --skip-triggers --default-character-set=utf8 > ${OUTPUT_DIR}/cdm.sql
     echo "Generating dump for voc database.."
     mysqldump --databases voc -h 127.0.0.1 -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --hex-blob \
-      --skip-triggers --set-gtid-purged=OFF --default-character-set=utf8 > ${OUTPUT_DIR}/voc.sql
-    echo "Copying SQL dumps to GCS..."
-    gsutil cp -r ${OUTPUT_DIR}/*.sql gs://all-of-us-rdr-vocabulary/vocabularies-2017-11-27
+      --skip-triggers --default-character-set=utf8 > ${OUTPUT_DIR}/voc.sql
+    echo "Copying SQL dumps to gs://${DSTBUCKET}..."
+    gsutil cp -r ${OUTPUT_DIR}/*.sql gs://${DSTBUCKET}
 fi
 
 echo "Done."
