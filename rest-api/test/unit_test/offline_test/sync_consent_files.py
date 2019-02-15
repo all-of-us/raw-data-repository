@@ -3,6 +3,7 @@ import json
 import mock
 import cloudstorage.common
 
+import config
 from dao.organization_dao import OrganizationDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -74,10 +75,15 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
     super(SyncConsentFilesTest, self).setUp(use_mysql=True, **kwargs)
     NdbTestBase.doSetUp(self)
     TestBase.setup_fake(self)
+    config.override_setting(config.HPO_REPORT_GOOGLE_SHEET_ID, ['foo'])
     self.org_dao = OrganizationDao()
     self.site_dao = SiteDao()
     self.participant_dao = ParticipantDao()
     self.summary_dao = ParticipantSummaryDao()
+
+  def tearDown(self):
+    super(SyncConsentFilesTest, self).tearDown()
+    config.clear_override_setting(config.HPO_REPORT_GOOGLE_SHEET_ID)
 
   def _create_org(self, id_):
     org = Organization(
@@ -118,8 +124,9 @@ class SyncConsentFilesTest(CloudStorageSqlTestBase, NdbTestBase):
     self.summary_dao.insert(summary)
     return participant
 
-  def tearDown(self):
-    super(SyncConsentFilesTest, self).tearDown()
+  def test_config_access(self):
+    sheet_id = sync_consent_files._get_sheet_id()
+    self.assertEqual(sheet_id, 'foo')
 
   def test_iter_participants_data(self):
     """should list consenting participants

@@ -5,13 +5,13 @@ Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
 import collections
 import csv
-import os
 import StringIO
 
 import sqlalchemy
 
 from google.appengine.ext import deferred
 import cloudstorage
+import config
 import requests
 
 from dao import database_factory
@@ -46,10 +46,7 @@ def do_sync_consent_files():
   """
   entrypoint
   """
-  # TODO: pull sheet ID from config instead of environment
-  sheet_id = os.environ.get('HPO_GOOGLE_SHEET_ID')
-  if sheet_id is None:
-    raise ValueError("Missing HPO_GOOGLE_SHEET_ID")
+  sheet_id = _get_sheet_id()
   org_data_map = _load_org_data_map(sheet_id)
   for participant_data in _iter_participants_data():
     kwargs = {
@@ -63,6 +60,13 @@ def do_sync_consent_files():
       '/{source_bucket}/Participant/P{participant_id}/'.format(**kwargs),
       '/{destination_bucket}/Participant/{google_group}/P{participant_id}/'.format(**kwargs)
     )
+
+
+def _get_sheet_id():
+  sheet_id = config.getSetting(config.HPO_REPORT_GOOGLE_SHEET_ID)
+  if sheet_id is None:
+    raise ValueError("Missing config value: hpo_report_google_sheet_id")
+  return sheet_id
 
 
 class GoogleSheetCSVReader(csv.DictReader):
