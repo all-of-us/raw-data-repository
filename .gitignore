@@ -20,3 +20,6 @@ htmlcov/
 
 # pyenv file
 .python-version
+
+# sequestered config files
+/rest-api/config/sequestered-config-mixins/

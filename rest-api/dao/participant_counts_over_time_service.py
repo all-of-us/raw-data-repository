@@ -6,7 +6,7 @@ from participant_enums import WithdrawalStatus
 from dao.hpo_dao import HPODao
 from dao.base_dao import BaseDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
-  MetricsAgeCacheDao, MetricsRaceCacheDao
+  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao
 
 CACHE_START_DATE = datetime.datetime.strptime('2017-01-01', '%Y-%m-%d').date()
 
@@ -23,6 +23,8 @@ class ParticipantCountsOverTimeService(BaseDao):
     self.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
     self.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
     self.refresh_data_for_metrics_cache(MetricsRaceCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsRegionCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao())
 
   def refresh_data_for_metrics_cache(self, dao):
     updated_time = datetime.datetime.now()
@@ -44,12 +46,6 @@ class ParticipantCountsOverTimeService(BaseDao):
               'end_date': end_date, 'date_inserted': updated_time}
     with dao.session() as session:
       session.execute(sql, params)
-
-  def get_latest_version_from_cache(self, dao, start_date, end_date, hpo_ids=None):
-    buckets = dao.get_active_buckets(start_date, end_date, hpo_ids)
-    if buckets is None:
-      return []
-    return dao.to_client_json(buckets)
 
   def get_filtered_results(self, start_date, end_date, filters, filter_by, history,
                            stratification='ENROLLMENT_STATUS'):
@@ -85,17 +81,24 @@ class ParticipantCountsOverTimeService(BaseDao):
       dao = MetricsEnrollmentStatusCacheDao()
       return dao.get_total_interested_count(start_date, end_date, awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'ENROLLMENT_STATUS':
-      return self.get_latest_version_from_cache(MetricsEnrollmentStatusCacheDao(), start_date,
-                                                end_date, awardee_ids)
+      dao = MetricsEnrollmentStatusCacheDao()
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'GENDER_IDENTITY':
-      return self.get_latest_version_from_cache(MetricsGenderCacheDao(), start_date, end_date,
-                                                awardee_ids)
+      dao = MetricsGenderCacheDao()
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'AGE_RANGE':
-      return self.get_latest_version_from_cache(MetricsAgeCacheDao(), start_date, end_date,
-                                                awardee_ids)
+      dao = MetricsAgeCacheDao()
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
     elif str(history) == 'TRUE' and str(stratification) == 'RACE':
-      return self.get_latest_version_from_cache(MetricsRaceCacheDao(), start_date, end_date,
-                                                awardee_ids)
+      dao = MetricsRaceCacheDao()
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
+    elif str(history) == 'TRUE' and str(stratification) in ['FULL_STATE', 'FULL_CENSUS',
+                                                            'FULL_AWARDEE']:
+      dao = MetricsRegionCacheDao()
+      return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids)
+    elif str(history) == 'TRUE' and str(stratification) == 'LIFECYCLE':
+      dao = MetricsLifecycleCacheDao()
+      return dao.get_latest_version_from_cache(end_date, awardee_ids)
     elif str(stratification) == 'TOTAL':
       strata = ['TOTAL']
       sql = self.get_total_sql(filters_sql_ps)
@@ -132,7 +135,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                                and enrollment_statuses
                                and key not in enrollment_statuses):
             value = 0
-          metrics[key] = int(value)
+          metrics[key] = float(value) if str(stratification) == 'EHR_RATIO' else int(value)
         results_by_date.append({
           'date': str(date),
           'metrics': metrics
@@ -216,51 +219,64 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     return facets_sql
 
-  def get_total_sql(self, filters_sql, ehr_count=False):
+  @staticmethod
+  def get_total_sql(filters_sql, ehr_count=False):
     if ehr_count:
-      # Participants with EHR Consent
-      required_count = 'ps.consent_for_electronic_health_records = 1'
+      # date consented
+      date_field = 'ps.consent_for_electronic_health_records_time'
     else:
-      # All participants
-      required_count = '*'
+      # date joined
+      date_field = 'p.sign_up_time'
 
-    sql = """
+    return """
         SELECT
-            SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) registered_count,
-            calendar.day start_date
+          SUM(ps_sum.cnt * (ps_sum.day <= calendar.day)) registered_count,
+          calendar.day start_date
         FROM calendar,
-        (SELECT COUNT(%(count)s) cnt, DATE(p.sign_up_time) day
-        FROM participant p
-        LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
-        %(filters)s
-        GROUP BY day) ps_sum
+        (
+          SELECT
+            COUNT(*) cnt,
+            DATE(%(date_field)s) day
+          FROM participant p
+          LEFT OUTER JOIN participant_summary ps
+            ON p.participant_id = ps.participant_id
+          %(filters)s
+          GROUP BY day
+        ) ps_sum
         WHERE calendar.day >= :start_date
         AND calendar.day <= :end_date
         GROUP BY calendar.day
         ORDER BY calendar.day;
-      """ % {'filters': filters_sql, 'count': required_count}
+      """ % {'filters': filters_sql, 'date_field': date_field}
 
-    return sql
-
-  def get_ratio_sql(self, filters_sql):
-    sql = """
-        SELECT
-            SUM(ps_sum.ratio * (ps_sum.day <= calendar.day)) ratio,
-            calendar.day start_date
-        FROM calendar,
-        (SELECT avg(ps.consent_for_electronic_health_records = 1) ratio,
-        DATE(p.sign_up_time) day
-        FROM participant p
-        LEFT OUTER JOIN participant_summary ps ON p.participant_id = ps.participant_id
-        %(filters)s
-        GROUP BY day) ps_sum
-        WHERE calendar.day >= :start_date
-        AND calendar.day <= :end_date
-        GROUP BY calendar.day
-        ORDER BY calendar.day;
-      """ % {'filters': filters_sql}
-
-    return sql
+  @staticmethod
+  def get_ratio_sql(filters_sql):
+    return """
+      select
+        ifnull(
+          (
+            select count(*)
+            from participant p
+            LEFT OUTER JOIN participant_summary ps
+              ON p.participant_id = ps.participant_id
+            %(filters)s
+              and ps.consent_for_electronic_health_records_time <= calendar.day
+          ) / (
+            select count(*)
+            from participant p
+            LEFT OUTER JOIN participant_summary ps
+              ON p.participant_id = ps.participant_id
+            %(filters)s
+              and p.sign_up_time <= calendar.day
+          ),
+          0
+        ) ratio,
+        calendar.day start_date
+      from calendar
+      where calendar.day >= :start_date
+        and calendar.day <= :end_date
+      order by calendar.day;
+    """ % {'filters': filters_sql}
 
   def get_enrollment_status_sql(self, filters_sql_p, filter_by='ORDERED'):
 

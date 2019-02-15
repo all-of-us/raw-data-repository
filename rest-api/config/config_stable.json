@@ -111,7 +111,10 @@
     },
     "pentest@all-of-us-rdr-stable.iam.gserviceaccount.com": {
       "comment": "Penetration testing for Coalfire, PD-334.",
-      "roles": ["ptc", "healthpro"]
+      "roles": ["ptc", "healthpro"],
+      "whitelisted_ip_ranges": {
+        "ip4": ["96.90.174.100", "96.90.174.101", "96.90.174.109", "192.81.133.103", "74.207.236.177"]
+      }
     },
     "exporter@all-of-us-rdr-stable.iam.gserviceaccount.com": {
       "roles": ["exporter"]
