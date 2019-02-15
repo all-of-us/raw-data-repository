@@ -37,8 +37,8 @@ def _log_and_write_config_lines(raw_config_lines, output_path):
 
 
 def main(args):
-  _download_sequestered_configs_from_gcs()
   client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
+  _download_sequestered_configs_from_gcs()
   config_path = 'Config/%s' % args.key if args.key else 'Config'
   try:
     config_server = client.request_json(config_path, 'GET')
