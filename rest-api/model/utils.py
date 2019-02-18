@@ -1,6 +1,7 @@
 from dateutil.tz import tzutc
 from query import PropertyType
 from sqlalchemy.types import SmallInteger, TypeDecorator, DateTime
+from sqlalchemy.dialects.mysql import DATETIME
 from werkzeug.exceptions import BadRequest
 from werkzeug.routing import BaseConverter, ValidationError
 
@@ -9,6 +10,7 @@ _PROPERTY_TYPE_MAP = {
   'Date': PropertyType.DATE,
   'DateTime': PropertyType.DATETIME,
   'UTCDateTime': PropertyType.DATETIME,
+  'UTCDateTime6': PropertyType.DATETIME,
   'Enum': PropertyType.ENUM,
   'Integer': PropertyType.INTEGER,
   'SmallInteger': PropertyType.INTEGER
@@ -33,6 +35,15 @@ class Enum(TypeDecorator):
 
 class UTCDateTime(TypeDecorator):
   impl = DateTime
+
+  def process_bind_param(self, value, engine):
+    #pylint: disable=unused-argument
+    if value is not None and value.tzinfo:
+      return value.astimezone(tzutc()).replace(tzinfo=None)
+    return value
+
+class UTCDateTime6(TypeDecorator):
+  impl = DATETIME(fsp=6)
 
   def process_bind_param(self, value, engine):
     #pylint: disable=unused-argument
