@@ -28,6 +28,20 @@ class BaseApi(Resource):
     self.dao = dao
     self._get_returns_children = get_returns_children
 
+  def _get_request_arg_bool(self, key, default=False):
+    """
+    Return boolean value for the given request parameter key.
+    :param key: key name
+    :param default: default to use when key does not exist in arguments.
+    :return: if key exists return value, otherwise return default.
+    """
+    if isinstance(default, bool) is False:
+      raise ValueError('invalid value for default parameter')
+
+    if key not in request.args:
+      return default
+    return request.args.get(key).lower() == 'true'
+
   def get(self, id_=None, participant_id=None):
     """Handle a GET request.
 

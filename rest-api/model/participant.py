@@ -1,5 +1,5 @@
 from model.base import Base
-from model.utils import Enum, UTCDateTime
+from model.utils import Enum, UTCDateTime, UTCDateTime6
 from participant_enums import WithdrawalStatus, SuspensionStatus, WithdrawalReason
 from sqlalchemy import Column, Integer, BLOB, ForeignKey, Index, String, UnicodeText, BigInteger,\
   UniqueConstraint, Boolean
@@ -21,7 +21,7 @@ class ParticipantBase(object):
   # Randomly assigned ID used with Biobank. Prefixed with 'B' whenever we use this externally.
   biobankId = Column('biobank_id', Integer, nullable=False)
 
-  lastModified = Column('last_modified', UTCDateTime, nullable=False)
+  lastModified = Column('last_modified', UTCDateTime6, nullable=False)
   signUpTime = Column('sign_up_time', UTCDateTime, nullable=False)
 
   # One or more HPO IDs in FHIR JSON. (The primary link is separately stored as hpoId.)
