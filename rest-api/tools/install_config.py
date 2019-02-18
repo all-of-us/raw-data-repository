@@ -5,20 +5,15 @@ See "Config Updates" in the README for usage and permissions details.
 
 import copy
 import difflib
-import errno
 import httplib
 import json
 import logging
-import os
 import re
-import subprocess
 
 from client import Client, HttpException
 from main_util import get_parser, configure_logging
 
 BASE_CONFIG_FILE = 'config/base_config.json'
-SEQUESTERED_CONFIG_GCS_PATH = 'gs://all-of-us-rdr-sequestered-config-test/'
-SEQUESTERED_CONFIG_LOCAL_PATH = 'config/sequestered-config-mixins/'
 
 
 def _log_and_write_config_lines(raw_config_lines, output_path):
@@ -37,7 +32,6 @@ def _log_and_write_config_lines(raw_config_lines, output_path):
 
 
 def main(args):
-  _download_sequestered_configs_from_gcs()
   client = Client(parse_cli=False, creds_file=args.creds_file, default_instance=args.instance)
   config_path = 'Config/%s' % args.key if args.key else 'Config'
   try:
@@ -58,9 +52,6 @@ def main(args):
     if not args.key or args.key == 'current_config':
       with open(BASE_CONFIG_FILE) as base_config_file:
         combined_config = json.load(base_config_file)
-      for mixin_filename in _iter_sequestered_config_mixin_filenames():
-        with open(mixin_filename, 'r') as mixin_file:
-          combined_config.update(json.load(mixin_file))
       combined_config.update(config_file)
     else:
       combined_config = config_file
@@ -71,21 +62,6 @@ def main(args):
       logging.info('-------------- Updating Server -------------------')
       method = 'POST' if args.key else 'PUT'
       client.request_json(config_path, method, combined_config)
-
-def _download_sequestered_configs_from_gcs():
-  try:
-    os.makedirs(SEQUESTERED_CONFIG_LOCAL_PATH)
-  except OSError as e:
-    if e.errno != errno.EEXIST:
-      raise
-  rsync_cmd = ['gsutil', '-m', 'rsync', SEQUESTERED_CONFIG_GCS_PATH, SEQUESTERED_CONFIG_LOCAL_PATH]
-  subprocess.check_call(rsync_cmd, stderr=subprocess.STDOUT)
-
-def _iter_sequestered_config_mixin_filenames():
-  for filename in os.listdir(SEQUESTERED_CONFIG_LOCAL_PATH):
-    filepath = os.path.join(SEQUESTERED_CONFIG_LOCAL_PATH, filename)
-    if filename.endswith('.json') and os.path.isfile(filepath):
-      yield filepath
 
 def _compare_configs(comparable_file, comparable_server, diff_output_path):
   if comparable_file == comparable_server:
