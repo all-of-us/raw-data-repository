@@ -34,7 +34,6 @@ PPI_QUESTIONNAIRE_FIELDS = 'ppi_questionnaire_fields'
 BASELINE_SAMPLE_TEST_CODES = 'baseline_sample_test_codes'
 DNA_SAMPLE_TEST_CODES = 'dna_sample_test_codes'
 GHOST_ID_BUCKET = 'ghost_id_bucket'
-HPO_REPORT_GOOGLE_SHEET_ID = 'hpo_report_google_sheet_id'
 
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.
@@ -62,9 +61,6 @@ CONFIG_OVERRIDES = {}
 def override_setting(key, value):
   """Overrides a config setting. Used in tests."""
   CONFIG_OVERRIDES[key] = value
-
-def clear_override_setting(key):
-  del CONFIG_OVERRIDES[key]
 
 def store_current_config(config_json):
   conf_ndb_key = ndb.Key(Configuration, CONFIG_SINGLETON_KEY)

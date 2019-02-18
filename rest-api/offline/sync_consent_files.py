@@ -5,17 +5,19 @@ Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
 import collections
 import csv
+import json
 import StringIO
 
 import sqlalchemy
 
 from google.appengine.ext import deferred
 import cloudstorage
-import config
 import requests
 
 from dao import database_factory
 
+
+HPO_REPORT_CONFIG_GCS_PATH = '/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json'
 
 SOURCE_BUCKET = 'ptc-uploads-all-of-us-rdr-prod'
 
@@ -63,7 +65,9 @@ def do_sync_consent_files():
 
 
 def _get_sheet_id():
-  sheet_id = config.getSetting(config.HPO_REPORT_GOOGLE_SHEET_ID)
+  with cloudstorage.open(HPO_REPORT_CONFIG_GCS_PATH, 'r') as handle:
+    hpo_config = json.load(handle)
+  sheet_id = hpo_config.get('hpo_report_google_sheet_id')
   if sheet_id is None:
     raise ValueError("Missing config value: hpo_report_google_sheet_id")
   return sheet_id
