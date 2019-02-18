@@ -180,6 +180,12 @@ def _build_pipeline_app():
     methods=['GET'])
 
   offline_app.add_url_rule(
+    PREFIX + 'SkewDuplicates',
+    endpoint='skew_duplicates',
+    view_func=skew_duplicates,
+    methods=['GET'])
+
+  offline_app.add_url_rule(
       PREFIX + 'MetricsRecalculate',
       endpoint='metrics_recalc',
       view_func=recalculate_metrics,
@@ -213,12 +219,6 @@ def _build_pipeline_app():
     PREFIX + 'MarkGhostParticipants',
     endpoint='exclude_ghosts',
     view_func=exclude_ghosts,
-    methods=['GET'])
-
-  offline_app.add_url_rule(
-    PREFIX + 'SkewDuplicates',
-    endpoint='skew_duplicates',
-    view_func=skew_duplicates,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)
