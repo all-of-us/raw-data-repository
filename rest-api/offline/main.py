@@ -12,6 +12,7 @@ from dao.metrics_dao import MetricsVersionDao
 from flask import Flask, request
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
+from offline.participant_maint import skew_duplicate_last_modified
 from offline.base_pipeline import send_failure_alert
 from offline.exclude_ghost_participants import mark_ghost_participants
 from offline.metrics_export import MetricsExport
@@ -19,7 +20,6 @@ from offline.participant_counts_over_time import calculate_participant_metrics
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from offline.sa_key_remove import delete_service_account_keys
 from offline.table_exporter import TableExporter
-from offline.participant_maint import skew_duplicate_last_modified
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
