@@ -141,6 +141,12 @@ def export_tables():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def skew_duplicates():
+  skew_duplicate_last_modified()
+  return '{"success": "true"}'
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def delete_old_keys():
   delete_service_account_keys()
   return '{"success": "true"}'
@@ -155,12 +161,6 @@ def participant_counts_over_time():
 @_alert_on_exceptions
 def exclude_ghosts():
   mark_ghost_participants()
-  return '{"success": "true"}'
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def skew_duplicates():
-  skew_duplicate_last_modified()
   return '{"success": "true"}'
 
 def _build_pipeline_app():
