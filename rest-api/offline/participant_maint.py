@@ -28,7 +28,7 @@ def skew_duplicate_last_modified():
         sql = """
           update participant_summary set last_modified =
                 date_add(date_format(last_modified, '%Y-%m-%d %H:%i:%S'), 
-                         INTERVAL (FLOOR(RAND() * 1000000) + 100) MICROSECOND)
+                         INTERVAL (FLOOR(RAND() * 999998) + 1) MICROSECOND)
              where last_modified = :ts
           """
 
