@@ -399,20 +399,6 @@ backfill behavior may be disabled by adding the '_backfill=false' parameter.
 It is possible to get the same participant data back in multiple sync responses.
 The recommended time between syncs is 5 minutes.
 
-#### `GET /ParticipantSummary/Modified`
-
-As an alternate method of synchronizing participant summary records, you can use this API call
-to return 'participantId' and 'lastModified' values for all records.  This allows you to see 
-which records are new and which have changed if you are storing these records in your system.
-
-    GET /ParticipantSummary/Modified
-    
-For service accounts access, the awardee parameter is required. Only records matching the
-awardee will be returned.
-
-    GET /ParticipantSummary/Modified?awardee=PITT
-
-
 See FHIR search prefixes below
 
 Synchronize Participant Summary last modified link.
@@ -431,6 +417,19 @@ Example response:
             "url": "GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=WzM1XQ%3D%3D"
         }
 ```
+
+#### `GET /ParticipantSummary/Modified`
+
+As an alternate method of synchronizing participant summary records, you can use this API call
+to return 'participantId' and 'lastModified' values for all records.  This allows you to see 
+which records are new and which have changed if you are storing these records in your system.
+
+    GET /ParticipantSummary/Modified
+    
+For service accounts access, the awardee parameter is required. Only records matching the
+awardee will be returned.
+
+    GET /ParticipantSummary/Modified?awardee=PITT
 
 ##### Service Accounts
 * Each awardee partner is issued one service account.
