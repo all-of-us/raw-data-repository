@@ -389,9 +389,29 @@ Example sync:
 Pagination is provided with a token i.e.
 
     GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=<token string>
+    
+By default when the '_sync' parameter is passed, records modified 60 seconds before the 
+last record in a batch of record will be included in the next batch of records. This 
+backfill behavior may be disabled by adding the '_backfill=false' parameter.
+
+    GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_sync=true&_backfill=false
 
 It is possible to get the same participant data back in multiple sync responses.
 The recommended time between syncs is 5 minutes.
+
+#### `GET /ParticipantSummary/Modified`
+
+As an alternate method of synchronizing participant summary records, you can use this API call
+to return 'participantId' and 'lastModified' values for all records.  This allows you to see 
+which records are new and which have changed if you are storing these records in your system.
+
+    GET /ParticipantSummary/Modified
+    
+For service accounts access, the awardee parameter is required. Only records matching the
+awardee will be returned.
+
+    GET /ParticipantSummary/Modified?awardee=PITT
+
 
 See FHIR search prefixes below
 

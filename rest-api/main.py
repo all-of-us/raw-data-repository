@@ -17,7 +17,7 @@ from api.metrics_api import MetricsApi
 from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
 from api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
-from api.participant_summary_api import ParticipantSummaryApi
+from api.participant_summary_api import ParticipantSummaryApi, ParticipantSummaryModifiedApi
 from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi
@@ -72,6 +72,11 @@ api.add_resource(ParticipantSummaryApi,
                  PREFIX + 'Participant/<participant_id:p_id>/Summary',
                  PREFIX + 'ParticipantSummary',
                  endpoint='participant.summary',
+                 methods=['GET'])
+
+api.add_resource(ParticipantSummaryModifiedApi,
+                 PREFIX + 'ParticipantSummary/Modified',
+                 endpoint='participant.summary.modified',
                  methods=['GET'])
 
 api.add_resource(PhysicalMeasurementsApi,
