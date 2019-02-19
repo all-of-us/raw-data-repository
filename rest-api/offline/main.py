@@ -12,6 +12,7 @@ from dao.metrics_dao import MetricsVersionDao
 from flask import Flask, request
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
+from offline.participant_maint import skew_duplicate_last_modified
 from offline.base_pipeline import send_failure_alert
 from offline.exclude_ghost_participants import mark_ghost_participants
 from offline.metrics_export import MetricsExport
@@ -141,6 +142,12 @@ def export_tables():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def skew_duplicates():
+  skew_duplicate_last_modified()
+  return '{"success": "true"}'
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def delete_old_keys():
   delete_service_account_keys()
   return '{"success": "true"}'
@@ -177,6 +184,12 @@ def _build_pipeline_app():
     PREFIX + 'MonthlyReconciliationReport',
     endpoint='monthlyReconciliationReport',
     view_func=biobank_monthly_reconciliation_report,
+    methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'SkewDuplicates',
+    endpoint='skew_duplicates',
+    view_func=skew_duplicates,
     methods=['GET'])
 
   offline_app.add_url_rule(
