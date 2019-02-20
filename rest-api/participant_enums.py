@@ -148,6 +148,9 @@ class Stratifications(messages.Enum):
   FULL_CENSUS = 9
   FULL_AWARDEE = 10
   LIFECYCLE = 11
+  GEO_STATE = 12
+  GEO_CENSUS = 13
+  GEO_AWARDEE = 14
 
 METRIC_SET_KEYS = {
   MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([

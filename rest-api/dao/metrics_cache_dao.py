@@ -7,6 +7,8 @@ from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN
 from code_constants import PPI_SYSTEM
 from census_regions import census_regions
 import datetime
+from sqlalchemy import or_
+from participant_enums import Stratifications
 
 class MetricsEnrollmentStatusCacheDao(BaseDao):
   def __init__(self):
@@ -704,7 +706,7 @@ class MetricsRegionCacheDao(BaseDao):
             .order_by(MetricsRegionCache.dateInserted.desc())
             .first())
 
-  def get_active_buckets(self, cutoff, hpo_ids=None):
+  def get_active_buckets(self, cutoff, stratification, hpo_ids=None):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
@@ -713,22 +715,30 @@ class MetricsRegionCacheDao(BaseDao):
       query = session.query(MetricsRegionCache)\
         .filter(MetricsRegionCache.dateInserted == last_inserted_date)
       query = query.filter(MetricsRegionCache.date == cutoff)
-
+      if stratification in [Stratifications.FULL_STATE, Stratifications.FULL_CENSUS,
+                            Stratifications.FULL_AWARDEE]:
+        query = query.filter(or_(MetricsRegionCache.enrollmentStatus == 'core',
+                                 MetricsRegionCache.enrollmentStatus == None))
       if hpo_ids:
         query = query.filter(MetricsRegionCache.hpoId.in_(hpo_ids))
 
       return query.all()
 
   def get_latest_version_from_cache(self, cutoff, stratification, hpo_ids=None):
-    buckets = self.get_active_buckets(cutoff, hpo_ids)
+    stratification = Stratifications(str(stratification))
+    operation_funcs = {
+      Stratifications.FULL_STATE: self.to_full_state_client_json,
+      Stratifications.FULL_CENSUS: self.to_full_census_client_json,
+      Stratifications.FULL_AWARDEE: self.to_full_awardee_client_json,
+      Stratifications.GEO_STATE: self.to_state_client_json,
+      Stratifications.GEO_CENSUS: self.to_census_client_json,
+      Stratifications.GEO_AWARDEE: self.to_awardee_client_json
+    }
+
+    buckets = self.get_active_buckets(cutoff, stratification, hpo_ids)
     if buckets is None:
       return []
-    if str(stratification) == 'FULL_STATE':
-      return self.to_client_json(buckets)
-    elif str(stratification) == 'FULL_CENSUS':
-      return self.to_census_client_json(buckets)
-    elif str(stratification) == 'FULL_AWARDEE':
-      return self.to_awardee_client_json(buckets)
+    return operation_funcs[stratification](buckets)
 
   def delete_old_records(self, n_days_ago=7):
     with self.session() as session:
@@ -747,10 +757,93 @@ class MetricsRegionCacheDao(BaseDao):
       return text[len(prefix):]
     return text
 
-  def to_client_json(self, result_set):
+  def to_state_client_json(self, result_set):
     client_json = []
     for record in result_set:
       state_name = self.remove_prefix(record.stateName, 'PIIState_')
+      if state_name not in census_regions:
+        continue
+      is_exist = False
+      for item in client_json:
+        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName and \
+          item['enrollment_status'] == record.enrollmentStatus:
+          item['metrics'][state_name] = record.stateCount
+          is_exist = True
+          break
+
+      if not is_exist:
+        metrics = {stateName: 0 for stateName in census_regions.keys()}
+        new_item = {
+          'date': record.date.isoformat(),
+          'hpo': record.hpoName,
+          'enrollment_status': record.enrollmentStatus,
+          'metrics': metrics
+        }
+        new_item['metrics'][state_name] = record.stateCount
+        client_json.append(new_item)
+    return client_json
+
+  def to_census_client_json(self, result_set):
+    client_json = []
+    for record in result_set:
+      state_name = self.remove_prefix(record.stateName, 'PIIState_')
+      if state_name in census_regions:
+        census_name = census_regions[state_name]
+      else:
+        continue
+      is_exist = False
+      for item in client_json:
+        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName and \
+          item['enrollment_status'] == record.enrollmentStatus:
+          item['metrics'][census_name] += record.stateCount
+          is_exist = True
+          break
+
+      if not is_exist:
+        new_item = {
+          'date': record.date.isoformat(),
+          'hpo': record.hpoName,
+          'enrollment_status': record.enrollmentStatus,
+          'metrics': {
+            'NORTHEAST': 0,
+            'MIDWEST': 0,
+            'SOUTH': 0,
+            'WEST': 0
+          }
+        }
+        new_item['metrics'][census_name] = record.stateCount
+        client_json.append(new_item)
+    return client_json
+
+  def to_awardee_client_json(self, result_set):
+    client_json = []
+    for record in result_set:
+      is_exist = False
+      for item in client_json:
+        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName and \
+          item['enrollment_status'] == record.enrollmentStatus:
+          item['count'] += record.stateCount
+          is_exist = True
+          break
+
+      if not is_exist:
+        new_item = {
+          'date': record.date.isoformat(),
+          'hpo': record.hpoName,
+          'enrollment_status': record.enrollmentStatus,
+          'count': record.stateCount
+        }
+        client_json.append(new_item)
+    return client_json
+
+  # keep this for the compatibility with healthPro dashboard
+  # will remove this after healthPro move to new API
+  def to_full_state_client_json(self, result_set):
+    client_json = []
+    for record in result_set:
+      state_name = self.remove_prefix(record.stateName, 'PIIState_')
+      if state_name not in census_regions:
+        continue
       is_exist = False
       for item in client_json:
         if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
@@ -769,10 +862,16 @@ class MetricsRegionCacheDao(BaseDao):
         client_json.append(new_item)
     return client_json
 
-  def to_census_client_json(self, result_set):
+  # keep this for the compatibility with healthPro dashboard
+  # will remove this after healthPro move to new API
+  def to_full_census_client_json(self, result_set):
     client_json = []
     for record in result_set:
-      census_name = census_regions[self.remove_prefix(record.stateName, 'PIIState_')]
+      state_name = self.remove_prefix(record.stateName, 'PIIState_')
+      if state_name in census_regions:
+        census_name = census_regions[state_name]
+      else:
+        continue
       is_exist = False
       for item in client_json:
         if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
@@ -795,7 +894,9 @@ class MetricsRegionCacheDao(BaseDao):
         client_json.append(new_item)
     return client_json
 
-  def to_awardee_client_json(self, result_set):
+  # keep this for the compatibility with healthPro dashboard
+  # will remove this after healthPro move to new API
+  def to_full_awardee_client_json(self, result_set):
     client_json = []
     for record in result_set:
       is_exist = False
@@ -819,6 +920,7 @@ class MetricsRegionCacheDao(BaseDao):
       INSERT INTO metrics_region_cache
         SELECT
           :date_inserted AS date_inserted,
+          'core' as enrollment_status,
           :hpo_id AS hpo_id,
           (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
           c.day,
@@ -834,7 +936,50 @@ class MetricsRegionCacheDao(BaseDao):
         AND ps.enrollment_status_core_stored_sample_time IS NOT NULL
         AND DATE(ps.enrollment_status_core_stored_sample_time) <= c.day
         AND c.day BETWEEN :start_date AND :end_date
-        GROUP BY c.day, p.hpo_id ,ps.value;
+        GROUP BY c.day, p.hpo_id ,ps.value
+        union 
+        SELECT
+          :date_inserted AS date_inserted,
+          'registered' as enrollment_status,
+          :hpo_id AS hpo_id,
+          (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+          c.day,
+          IFNULL(ps.value,'UNSET') AS state_name,
+          count(p.participant_id) AS state_count
+        FROM participant p INNER JOIN
+          (SELECT participant_id, email, value, sign_up_time, enrollment_status_member_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
+          calendar c
+        WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
+        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+        AND p.withdrawal_status = :not_withdraw
+        AND p.is_ghost_id IS NOT TRUE
+        AND ps.sign_up_time IS NOT NULL
+        AND DATE(ps.sign_up_time) <= c.day
+        AND (ps.enrollment_status_member_time is null or DATE(ps.enrollment_status_member_time)>c.day)
+        AND c.day BETWEEN :start_date AND :end_date
+        GROUP BY c.day, p.hpo_id ,ps.value
+        union 
+        SELECT
+          :date_inserted AS date_inserted,
+          'consented' as enrollment_status,
+          :hpo_id AS hpo_id,
+          (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+          c.day,
+          IFNULL(ps.value,'UNSET') AS state_name,
+          count(p.participant_id) AS state_count
+        FROM participant p INNER JOIN
+          (SELECT participant_id, email, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
+          calendar c
+        WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
+        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+        AND p.withdrawal_status = :not_withdraw
+        AND p.is_ghost_id IS NOT TRUE
+        AND ps.enrollment_status_member_time IS NOT NULL
+        AND DATE(ps.enrollment_status_member_time) <= c.day
+        AND (ps.enrollment_status_core_stored_sample_time is null or DATE(ps.enrollment_status_core_stored_sample_time)>c.day)
+        AND c.day BETWEEN :start_date AND :end_date
+        GROUP BY c.day, p.hpo_id ,ps.value
+        ;
     """
 
     return sql

@@ -1695,28 +1695,28 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code3)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_fp=self.time1,
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_mem=self.time1,
                  time_fp_stored=self.time1, state_id=1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_fp=self.time2,
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time2,
                  time_fp_stored=self.time2, state_id=2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_fp=self.time3,
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time3,
                  time_fp_stored=self.time3, state_id=3)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_fp=self.time3,
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_mem=self.time3,
                  time_fp_stored=self.time3, state_id=2)
 
-    p4 = Participant(participantId=6, biobankId=9)
-    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_fp=self.time3,
+    p5 = Participant(participantId=6, biobankId=9)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_mem=self.time2,
                  time_fp_stored=self.time3, state_id=2)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_fp=self.time1,
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time1,
                  time_fp_stored=self.time1, state_id=1)
 
     service = ParticipantCountsOverTimeService()
@@ -1787,6 +1787,98 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}])
 
+    results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_STATE')
+    results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_STATE')
+    results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_STATE')
+    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                                              'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2017-12-31', 'enrollment_status': u'registered',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                                              'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                                              'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'FULL_CENSUS')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'FULL_CENSUS')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'FULL_CENSUS')
@@ -1809,6 +1901,42 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
                                   'hpo': u'AZ_TUCSON'}])
 
+    results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_CENSUS')
+    results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_CENSUS')
+    results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_CENSUS')
+    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2017-12-31', 'enrollment_status': u'registered',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  }])
+    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  }])
+    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  }])
+
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'FULL_AWARDEE')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'FULL_AWARDEE')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'FULL_AWARDEE')
@@ -1818,6 +1946,29 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(results3, [{'date': '2018-01-02', 'count': 1L, 'hpo': u'UNSET'},
                                  {'date': '2018-01-02', 'count': 2L, 'hpo': u'PITT'},
                                  {'date': '2018-01-02', 'count': 2L, 'hpo': u'AZ_TUCSON'}])
+
+    results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_AWARDEE')
+    results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_AWARDEE')
+    results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_AWARDEE')
+    self.assertEquals(results1, [{'date': '2017-12-31',
+                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2017-12-31',
+                                  'enrollment_status': u'registered', 'hpo': u'PITT', 'count': 1L}
+                                 ])
+    self.assertEquals(results2, [{'date': '2018-01-01',
+                                  'enrollment_status': u'consented', 'hpo': u'PITT', 'count': 1L},
+                                 {'date': '2018-01-01',
+                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2018-01-01',
+                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 1L}
+                                 ])
+    self.assertEquals(results3, [{'date': '2018-01-02',
+                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2018-01-02',
+                                  'enrollment_status': u'core', 'hpo': u'PITT', 'count': 2L},
+                                 {'date': '2018-01-02',
+                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 2L}
+                                 ])
 
   def test_get_metrics_region_data_api(self):
 
@@ -1833,23 +1984,23 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code3)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_fp=self.time1,
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_mem=self.time1,
                  time_fp_stored=self.time1, state_id=1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_fp=self.time2,
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time2,
                  time_fp_stored=self.time2, state_id=2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_fp=self.time3,
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time3,
                  time_fp_stored=self.time3, state_id=3)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_fp=self.time3,
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_mem=self.time3,
                  time_fp_stored=self.time3, state_id=2)
 
-    p4 = Participant(participantId=6, biobankId=9)
-    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_fp=self.time3,
+    p5 = Participant(participantId=6, biobankId=9)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_mem=self.time2,
                  time_fp_stored=self.time3, state_id=2)
 
     # ghost participant should be filtered out
@@ -1952,6 +2103,124 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}])
 
     qs1 = """
+                      &stratification=GEO_STATE
+                      &endDate=2017-12-31
+                      &history=TRUE
+                      """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                          &stratification=GEO_STATE
+                          &endDate=2018-01-01
+                          &history=TRUE
+                          """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                              &stratification=GEO_STATE
+                              &endDate=2018-01-02
+                              &history=TRUE
+                              """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                                              'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2017-12-31', 'enrollment_status': u'registered',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                                              'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                                              'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+
+    qs1 = """
                       &stratification=FULL_CENSUS
                       &endDate=2017-12-31
                       &history=TRUE
@@ -2000,6 +2269,68 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                   'hpo': u'AZ_TUCSON'}])
 
     qs1 = """
+                          &stratification=GEO_CENSUS
+                          &endDate=2017-12-31
+                          &history=TRUE
+                          """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                              &stratification=GEO_CENSUS
+                              &endDate=2018-01-01
+                              &history=TRUE
+                              """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                                  &stratification=GEO_CENSUS
+                                  &endDate=2018-01-02
+                                  &history=TRUE
+                                  """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2017-12-31', 'enrollment_status': u'registered',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  }])
+    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  }])
+    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'UNSET',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  }])
+
+    qs1 = """
                           &stratification=FULL_AWARDEE
                           &endDate=2017-12-31
                           &history=TRUE
@@ -2035,6 +2366,55 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                  {'date': '2018-01-02', 'count': 2L, 'hpo': u'PITT'},
                                  {'date': '2018-01-02', 'count': 2L, 'hpo': u'AZ_TUCSON'}])
 
+    qs1 = """
+                              &stratification=GEO_AWARDEE
+                              &endDate=2017-12-31
+                              &history=TRUE
+                              """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                                  &stratification=GEO_AWARDEE
+                                  &endDate=2018-01-01
+                                  &history=TRUE
+                                  """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                                      &stratification=GEO_AWARDEE
+                                      &endDate=2018-01-02
+                                      &history=TRUE
+                                      """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertEquals(results1, [{'date': '2017-12-31',
+                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2017-12-31',
+                                  'enrollment_status': u'registered', 'hpo': u'PITT', 'count': 1L}
+                                 ])
+    self.assertEquals(results2, [{'date': '2018-01-01',
+                                  'enrollment_status': u'consented', 'hpo': u'PITT', 'count': 1L},
+                                 {'date': '2018-01-01',
+                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2018-01-01',
+                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 1L}
+                                 ])
+    self.assertEquals(results3, [{'date': '2018-01-02',
+                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2018-01-02',
+                                  'enrollment_status': u'core', 'hpo': u'PITT', 'count': 2L},
+                                 {'date': '2018-01-02',
+                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 2L}
+                                 ])
+
   def test_get_metrics_region_data_api_filter_by_awardee(self):
 
     code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
@@ -2049,23 +2429,23 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code3)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_fp=self.time1,
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_mem=self.time1,
                  time_fp_stored=self.time1, state_id=1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_fp=self.time2,
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time2,
                  time_fp_stored=self.time2, state_id=2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_fp=self.time3,
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time3,
                  time_fp_stored=self.time3, state_id=3)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_fp=self.time3,
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_mem=self.time3,
                  time_fp_stored=self.time3, state_id=2)
 
-    p4 = Participant(participantId=6, biobankId=9)
-    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_fp=self.time3,
+    p5 = Participant(participantId=6, biobankId=9)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_mem=self.time2,
                  time_fp_stored=self.time3, state_id=2)
 
     # ghost participant should be filtered out
@@ -2142,6 +2522,94 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}])
 
     qs1 = """
+                          &stratification=GEO_STATE
+                          &endDate=2017-12-31
+                          &history=TRUE
+                          &awardee=PITT,AZ_TUCSON
+                          """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                              &stratification=GEO_STATE
+                              &endDate=2018-01-01
+                              &history=TRUE
+                              &awardee=PITT,AZ_TUCSON
+                              """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                                  &stratification=GEO_STATE
+                                  &endDate=2018-01-02
+                                  &history=TRUE
+                                  &awardee=PITT,AZ_TUCSON
+                                  """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'registered',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}},
+                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+
+    qs1 = """
                       &stratification=FULL_CENSUS
                       &endDate=2017-12-31
                       &history=TRUE
@@ -2185,6 +2653,59 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                   'hpo': u'AZ_TUCSON'}])
 
     qs1 = """
+                              &stratification=GEO_CENSUS
+                              &endDate=2017-12-31
+                              &history=TRUE
+                              &awardee=PITT,AZ_TUCSON
+                              """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                                  &stratification=GEO_CENSUS
+                                  &endDate=2018-01-01
+                                  &history=TRUE
+                                  &awardee=PITT,AZ_TUCSON
+                                  """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                                      &stratification=GEO_CENSUS
+                                      &endDate=2018-01-02
+                                      &history=TRUE
+                                      &awardee=PITT,AZ_TUCSON
+                                      """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'registered',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  }])
+    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  }])
+    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                                  },
+                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                  'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  }])
+
+    qs1 = """
                           &stratification=FULL_AWARDEE
                           &endDate=2017-12-31
                           &history=TRUE
@@ -2220,6 +2741,108 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertEquals(results2, [{'date': '2018-01-01', 'count': 1L, 'hpo': u'AZ_TUCSON'}])
     self.assertEquals(results3, [{'date': '2018-01-02', 'count': 2L, 'hpo': u'PITT'},
                                  {'date': '2018-01-02', 'count': 2L, 'hpo': u'AZ_TUCSON'}])
+
+    qs1 = """
+                                  &stratification=GEO_AWARDEE
+                                  &endDate=2017-12-31
+                                  &history=TRUE
+                                  &awardee=PITT,AZ_TUCSON
+                                  """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                                      &stratification=GEO_AWARDEE
+                                      &endDate=2018-01-01
+                                      &history=TRUE
+                                      &awardee=PITT,AZ_TUCSON
+                                      """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                                          &stratification=GEO_AWARDEE
+                                          &endDate=2018-01-02
+                                          &history=TRUE
+                                          &awardee=PITT,AZ_TUCSON
+                                          """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertEquals(results1, [{'date': '2017-12-31',
+                                  'enrollment_status': u'registered', 'hpo': u'PITT', 'count': 1L}
+                                 ])
+    self.assertEquals(results2, [{'date': '2018-01-01',
+                                  'enrollment_status': u'consented', 'hpo': u'PITT', 'count': 1L},
+                                 {'date': '2018-01-01',
+                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 1L}
+                                 ])
+    self.assertEquals(results3, [{'date': '2018-01-02',
+                                  'enrollment_status': u'core', 'hpo': u'PITT', 'count': 2L},
+                                 {'date': '2018-01-02',
+                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 2L}
+                                 ])
+
+  def test_unrecognized_state_value(self):
+    # PW is not in the state list
+    code1 = Code(codeId=1, system="a", value="PIIState_PW", display=u"PIIState_PW", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+                 codeType=CodeType.MODULE, mapped=True)
+
+    self.code_dao.insert(code1)
+    self.code_dao.insert(code2)
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1, time_mem=self.time1,
+                 time_fp_stored=self.time1, state_id=1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time2,
+                 time_fp_stored=self.time2, state_id=2)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsRegionCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+
+    results1 = dao.get_latest_version_from_cache('2018-01-01', 'FULL_STATE')
+    results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_STATE')
+    results3 = dao.get_latest_version_from_cache('2018-01-01', 'FULL_CENSUS')
+    results4 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_CENSUS')
+
+    self.assertEquals(results1, [{'date': '2018-01-01',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}])
+    self.assertEquals(results2, [{'date': '2018-01-01',
+                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+    self.assertEquals(results3, [{'date': '2018-01-01',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
+                                  'hpo': u'AZ_TUCSON'}])
+    self.assertEquals(results4, [{'date': '2018-01-01',
+                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L,
+                                              'SOUTH': 0}}])
 
   def test_refresh_metrics_lifecycle_cache_data(self):
 
