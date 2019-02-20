@@ -58,6 +58,7 @@ class ParticipantSummaryModifiedApi(BaseApi):
   def __init__(self):
     super(ParticipantSummaryModifiedApi, self).__init__(ParticipantSummaryDao())
 
+  @auth_required(PTC_HEALTHPRO_AWARDEE)
   def get(self):
     """
     Return participant_id and last_modified for all records or a subset based
