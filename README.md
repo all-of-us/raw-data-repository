@@ -235,16 +235,12 @@ The summary includes the following fields:
 * `awardee`: An awardee a participant is paired with or "unset" if none.
 * `organization`: An organization a participant is paired with or "unset" if none.
 * `site`: A physical location a participant is paired with or "unset" if none.
-* `consentForStudyEnrollment`:  indicates whether enrollment consent has been received (`UNSET` or `SUBMITTED`)
+* `consentForStudyEnrollment`:  indicates whether enrollment consent has been received (`UNSET`, `SUBMITTED`, `SUBMITTED_NO_CONSENT`, `SUBMITTED_NOT_SURE`, `SUBMITTED_INVALID`)
 * `consentForStudyEnrollmentTime`: indicates the time at which enrollment consent has been received (ISO-8601 time)
-* `consentForElectronicHealthRecords`
+* `consentForElectronicHealthRecords`:  indicates whether electronic health recode (EHR) consent has been received (`UNSET`, `SUBMITTED`, `SUBMITTED_NO_CONSENT`, `SUBMITTED_NOT_SURE`, `SUBMITTED_INVALID`)
 * `consentForElectronicHealthRecordsTime`
 * `questionnaireOnOverallHealth`: indicates status for Overall Health PPI module
 * `questionnaireOnOverallHealthTime`
-* `questionnaireOnPersonalHabits`
-* `questionnaireOnPersonalHabitsTime`
-* `questionnaireOnSociodemographics`
-* `questionnaireOnSociodemographicsTime`
 * `questionnaireOnHealthcareAccess`
 * `questionnaireOnHealthcareAccessTime`
 * `questionnaireOnMedicalHistory`
@@ -320,15 +316,26 @@ For enumeration fields, the following values are defined:
 
 `ageRange`: `0-17`, `18-25`, `26-35`, `36-45`, `46-55`, `56-65`, `66-75`, `76-85`, `86-`
 
-`physicalMeasurementsStatus`: `UNSET`, `SCHEDULED`, `COMPLETED`, `RESULT_READY`
+`physicalMeasurementsStatus`: `UNSET`, `COMPLETED`, `CANCELLED`
 
-`questionnaireOn[x]`: `UNSET`, `SUBMITTED`
+`questionnaireOn[x]`: `UNSET`, `SUBMITTED`, `SUBMITTED_NO_CONSENT`, `SUBMITTED_NOT_SURE`, `SUBMITTED_INVALID`
 
-`biospecimenStatus`: `UNSET`, `FINALIZED`
+`biospecimenStatus`: `UNSET`, `FINALIZED`, `CREATED`, `COLLECTED`, `PROCESSED`
 
 `sampleOrderStatus[x]`: `UNSET`, `CREATED`, `COLLECTED`, `PROCESSED`, `FINALIZED`
 
-`sampleStatus[x]` and `samplesToIsolateDNA`: `UNSET`, `RECEIVED`
+`sampleStatus[x]` and `samplesToIsolateDNA`:
+  `UNSET = 0
+  RECEIVED = 1
+  DISPOSED = 10
+  CONSUMED = 11
+  UNKNOWN = 12
+  SAMPLE_NOT_RECEIVED = 13
+  SAMPLE_NOT_PROCESSED = 14
+  ACCESSINGING_ERROR = 15
+  LAB_ACCIDENT = 16
+  QNS_FOR_PROCESSING = 17
+  QUALITY_ISSUE = 18`
 
 `withdrawalStatus`: `NOT_WITHDRAWN`, `NO_USE`
 
