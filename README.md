@@ -235,24 +235,24 @@ The summary includes the following fields:
 * `awardee`: An awardee a participant is paired with or "unset" if none.
 * `organization`: An organization a participant is paired with or "unset" if none.
 * `site`: A physical location a participant is paired with or "unset" if none.
-* `consentForStudyEnrollment`:  indicates whether enrollment consent has been received (`UNSET` or `SUBMITTED`)
+* `consentForStudyEnrollment`:  indicates whether enrollment consent has been received (`UNSET`, `SUBMITTED`, `SUBMITTED_NO_CONSENT`, `SUBMITTED_NOT_SURE`, `SUBMITTED_INVALID`)
 * `consentForStudyEnrollmentTime`: indicates the time at which enrollment consent has been received (ISO-8601 time)
-* `consentForElectronicHealthRecords`
+* `consentForElectronicHealthRecords`:  indicates whether electronic health recode (EHR) consent has been received (`UNSET`, `SUBMITTED`, `SUBMITTED_NO_CONSENT`, `SUBMITTED_NOT_SURE`, `SUBMITTED_INVALID`)
 * `consentForElectronicHealthRecordsTime`
 * `questionnaireOnOverallHealth`: indicates status for Overall Health PPI module
 * `questionnaireOnOverallHealthTime`
-* `questionnaireOnPersonalHabits`
-* `questionnaireOnPersonalHabitsTime`
-* `questionnaireOnSociodemographics`
-* `questionnaireOnSociodemographicsTime`
 * `questionnaireOnHealthcareAccess`
 * `questionnaireOnHealthcareAccessTime`
+* `questionnaireOnlifestyle`
+* `questionnaireOnlifestyleTime`
 * `questionnaireOnMedicalHistory`
 * `questionnaireOnMedicalHistoryTime`
 * `questionnaireOnMedications`
 * `questionnaireOnMedicationsTime`
 * `questionnaireOnFamilyHealth`
 * `questionnaireOnFamilyHealthTime`
+* `questionnaireOnTheBasics`
+* `questionnaireOnTheBasicsTime`
 * `biospecimenStatus`: whether biospecimens have been finalized for the participant
 * `biospecimenOrderTime`: the first time at which biospecimens were finalized
 * `biospecimenSourceSite`: the site where biospecimens were initially created for the participant
@@ -263,6 +263,8 @@ The summary includes the following fields:
 * `sampleOrderStatus1SST8Time`
 * `sampleOrderStatus1PST8`
 * `sampleOrderStatus1PST8Time`
+* `sampleOrderStatus1PS08`
+* `sampleOrderStatus1PS08Time`
 * `sampleOrderStatus1HEP4`
 * `sampleOrderStatus1HEP4Time`
 * `sampleOrderStatus1ED04`
@@ -283,10 +285,16 @@ The summary includes the following fields:
 * `sampleOrderStatus1PXR2Time`
 * `sampleOrderStatus1SAL`
 * `sampleOrderStatus1SALTime`
+* `sampleOrderStatus1SAL2`
+* `sampleOrderStatus1SAL2Time`
+* `sampleStatus1SS08`
+* `sampleStatus1SS08Time`
 * `sampleStatus1SST8`
 * `sampleStatus1SST8Time`
-* `sampleStatus1PST8`
-* `sampleStatus1PST8Time`
+* `sampleStatus2SST8`
+* `sampleStatus2SST8Time`
+* `sampleStatus2PST8`
+* `sampleStatus2PST8Time`
 * `sampleStatus1HEP4`
 * `sampleStatus1HEP4Time`
 * `sampleStatus1ED04`
@@ -320,15 +328,26 @@ For enumeration fields, the following values are defined:
 
 `ageRange`: `0-17`, `18-25`, `26-35`, `36-45`, `46-55`, `56-65`, `66-75`, `76-85`, `86-`
 
-`physicalMeasurementsStatus`: `UNSET`, `SCHEDULED`, `COMPLETED`, `RESULT_READY`
+`physicalMeasurementsStatus`: `UNSET`, `COMPLETED`, `CANCELLED`
 
-`questionnaireOn[x]`: `UNSET`, `SUBMITTED`
+`questionnaireOn[x]`: `UNSET`, `SUBMITTED`, `SUBMITTED_NO_CONSENT`, `SUBMITTED_NOT_SURE`, `SUBMITTED_INVALID`
 
-`biospecimenStatus`: `UNSET`, `FINALIZED`
+`biospecimenStatus`: `UNSET`, `FINALIZED`, `CREATED`, `COLLECTED`, `PROCESSED`
 
 `sampleOrderStatus[x]`: `UNSET`, `CREATED`, `COLLECTED`, `PROCESSED`, `FINALIZED`
 
-`sampleStatus[x]` and `samplesToIsolateDNA`: `UNSET`, `RECEIVED`
+`sampleStatus[x]` and `samplesToIsolateDNA`:
+  `UNSET = 0
+  RECEIVED = 1
+  DISPOSED = 10
+  CONSUMED = 11
+  UNKNOWN = 12
+  SAMPLE_NOT_RECEIVED = 13
+  SAMPLE_NOT_PROCESSED = 14
+  ACCESSINGING_ERROR = 15
+  LAB_ACCIDENT = 16
+  QNS_FOR_PROCESSING = 17
+  QUALITY_ISSUE = 18`
 
 `withdrawalStatus`: `NOT_WITHDRAWN`, `NO_USE`
 
