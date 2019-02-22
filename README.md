@@ -243,12 +243,16 @@ The summary includes the following fields:
 * `questionnaireOnOverallHealthTime`
 * `questionnaireOnHealthcareAccess`
 * `questionnaireOnHealthcareAccessTime`
+* `questionnaireOnlifestyle`
+* `questionnaireOnlifestyleTime`
 * `questionnaireOnMedicalHistory`
 * `questionnaireOnMedicalHistoryTime`
 * `questionnaireOnMedications`
 * `questionnaireOnMedicationsTime`
 * `questionnaireOnFamilyHealth`
 * `questionnaireOnFamilyHealthTime`
+* `questionnaireOnTheBasics`
+* `questionnaireOnTheBasicsTime`
 * `biospecimenStatus`: whether biospecimens have been finalized for the participant
 * `biospecimenOrderTime`: the first time at which biospecimens were finalized
 * `biospecimenSourceSite`: the site where biospecimens were initially created for the participant
@@ -259,6 +263,8 @@ The summary includes the following fields:
 * `sampleOrderStatus1SST8Time`
 * `sampleOrderStatus1PST8`
 * `sampleOrderStatus1PST8Time`
+* `sampleOrderStatus1PS08`
+* `sampleOrderStatus1PS08Time`
 * `sampleOrderStatus1HEP4`
 * `sampleOrderStatus1HEP4Time`
 * `sampleOrderStatus1ED04`
@@ -279,10 +285,16 @@ The summary includes the following fields:
 * `sampleOrderStatus1PXR2Time`
 * `sampleOrderStatus1SAL`
 * `sampleOrderStatus1SALTime`
+* `sampleOrderStatus1SAL2`
+* `sampleOrderStatus1SAL2Time`
+* `sampleStatus1SS08`
+* `sampleStatus1SS08Time`
 * `sampleStatus1SST8`
 * `sampleStatus1SST8Time`
-* `sampleStatus1PST8`
-* `sampleStatus1PST8Time`
+* `sampleStatus2SST8`
+* `sampleStatus2SST8Time`
+* `sampleStatus2PST8`
+* `sampleStatus2PST8Time`
 * `sampleStatus1HEP4`
 * `sampleStatus1HEP4Time`
 * `sampleStatus1ED04`
