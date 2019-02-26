@@ -437,9 +437,12 @@ class MetricsAgeCacheDao(BaseDao):
     for age_range in self.age_ranges:
       age_borders = filter(None, age_range.split('-'))
       if len(age_borders) == 2:
-        age_ranges_conditions.append(' AND (Date_format(From_Days(To_Days(c.day) - To_Days(dob)), \'%Y\') + 0) BETWEEN ' + age_borders[0] + ' AND ' + age_borders[1],)
+        age_ranges_conditions.append(' AND (Date_format(From_Days(To_Days(c.day) - To_Days(dob)), '
+                                     '\'%Y\') + 0) BETWEEN ' + age_borders[0] + ' AND '
+                                     + age_borders[1],)
       else:
-        age_ranges_conditions.append(' AND (Date_format(From_Days(To_Days(c.day) - To_Days(dob)), \'%Y\') + 0) >= ' + age_borders[0])
+        age_ranges_conditions.append(' AND (Date_format(From_Days(To_Days(c.day) - To_Days(dob)), '
+                                     '\'%Y\') + 0) >= ' + age_borders[0])
 
     sub_queries = []
     sql_template = """
