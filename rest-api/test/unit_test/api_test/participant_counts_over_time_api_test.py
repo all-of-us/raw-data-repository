@@ -17,7 +17,7 @@ from model.participant import Participant
 from concepts import Concept
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
-  WithdrawalStatus, make_primary_provider_link_for_name
+  WithdrawalStatus, make_primary_provider_link_for_name, MetricsCacheType
 from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
   MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao
@@ -1202,6 +1202,28 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({'date': '2018-01-08',
                    'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
                                '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': u'AZ_TUCSON'}, results)
+
+    # test public metrics export cache
+    dao = MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.refresh_data_for_metrics_cache(dao)
+    results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
+
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'50-59': 0L, '60-69': 0L, '30-39': 1L, '40-49': 0L, 'UNSET': 0L,
+                               '80-89': 0L, '90-': 0L, '18-29': 0L, '70-79': 0L}, 'hpo': u'UNSET'},
+                  results)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'50-59': 0L, '60-69': 0L, '30-39': 0L, '40-49': 0L, 'UNSET': 0L,
+                               '80-89': 0L, '90-': 0L, '18-29': 1L, '70-79': 0L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {'50-59': 0L, '60-69': 0L, '30-39': 0L, '40-49': 0L, 'UNSET': 0L,
+                               '80-89': 0L, '90-': 0L, '18-29': 2L, '70-79': 0L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-03',
+                   'metrics': {'50-59': 0L, '60-69': 0L, '30-39': 0L, '40-49': 0L, 'UNSET': 0L,
+                               '80-89': 0L, '90-': 0L, '18-29': 3L, '70-79': 0L},
                    'hpo': u'AZ_TUCSON'}, results)
 
   def test_get_history_age_range_api(self):
