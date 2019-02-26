@@ -424,12 +424,13 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertNotEqual(test_dt, summary.lastModified)
 
   def testBiobankOrder(self):
-    participant = self._insert(Participant(participantId=7, biobankId=77))
+    self.participant = self._insert(Participant(participantId=7, biobankId=77))
     #order1 = self.order_dao.insert(self._make_biobank_order())
     self.order_dao.insert(self._make_biobank_order())
-    summary = self.dao.get(participant.participantId)
+    summary = self.dao.get(self.participant.participantId)
     print '#############################################'
     print summary.numberDistinctVisits
+    print self.participant.participantId
     print '#############################################'
 
 
@@ -441,7 +442,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     for k, default_value in (
         ('biobankOrderId', '1'),
         ('created', clock.CLOCK.now()),
-        ('participantId', 7),
+        ('participantId', self.participant.participantId),
         ('sourceSiteId', 1),
         ('sourceUsername', 'fred@pmi-ops.org'),
         ('collectedSiteId', 1),
