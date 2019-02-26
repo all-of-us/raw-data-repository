@@ -216,7 +216,8 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
     participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
     participant_summary.lastModified = clock.CLOCK.now()
-    participant_summary.numberDistinctVisits += 1
+    if obj.orderStatus != BiobankOrderStatus.AMENDED:
+      participant_summary.numberDistinctVisits += 1
 
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
@@ -244,10 +245,9 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenCollectedSiteId = None
     participant_summary.biospecimenProcessedSiteId = None
     participant_summary.biospecimenFinalizedSiteId = None
-    if obj.orderStatus == BiobankOrderStatus.CANCELLED:
+    if obj.orderStatus == BiobankOrderStatus.CANCELLED and \
+      participant_summary.numberDistinctVisits > 0:
       participant_summary.numberDistinctVisits -= 1
-    else:
-      participant_summary.numberDistinctVisits += 1
 
     participant_summary.lastModified = clock.CLOCK.now()
     for sample in obj.samples:

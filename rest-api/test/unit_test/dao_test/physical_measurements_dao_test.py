@@ -162,6 +162,8 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertEquals('2', amendment_json['id'])
     self.assertTrue(new_measurements.final)
     self.assertEquals(TIME_3, new_measurements.created)
+    ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertEqual(ps_dao.numberDistinctVisits, 1)
 
   def test_update_with_patch_cancel(self):
     self._make_summary()

@@ -311,7 +311,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
       participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
       participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
       participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
-      participant_summary.numberDistinctVisits += 1
+      if obj.status != PhysicalMeasurementsStatus.UNSET and obj.amendedMeasurementsId is None:
+        participant_summary.numberDistinctVisits += 1
 
     elif obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and \
        self.has_uncancelled_pm(session, participant):
