@@ -14,6 +14,7 @@ from api.data_gen_api import DataGenApi
 from api.import_codebook_api import import_codebook
 from api.metric_sets_api import MetricSetsApi
 from api.metrics_api import MetricsApi
+from api.metrics_ehr_api import MetricsEhrApi
 from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
 from api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
@@ -99,6 +100,11 @@ api.add_resource(MetricSetsApi,
                  PREFIX + 'MetricSets',
                  PREFIX + 'MetricSets/<string:ms_id>/Metrics',
                  endpoint='metric_sets',
+                 methods=['GET'])
+
+api.add_resource(MetricsEhrApi,
+                 PREFIX + 'MetricsEHR',
+                 endpoint='metrics_ehr',
                  methods=['GET'])
 
 api.add_resource(QuestionnaireApi,

@@ -68,6 +68,11 @@ class SampleStatus(messages.Enum):
   QNS_FOR_PROCESSING = 17
   QUALITY_ISSUE = 18
 
+class EhrStatus(messages.Enum):
+  """Status of EHRs"""
+  MISSING = 0
+  PRESENT = 1
+
 def get_sample_status_enum_value(status):
   """
   Return the SampleStatus enum value for the given status from Mayo

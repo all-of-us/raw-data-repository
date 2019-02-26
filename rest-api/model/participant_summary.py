@@ -4,7 +4,7 @@ from model.base import Base
 from model.utils import Enum, UTCDateTime
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus, \
   PhysicalMeasurementsStatus, QuestionnaireStatus, WithdrawalStatus, SuspensionStatus, \
-  WithdrawalReason
+  WithdrawalReason, EhrStatus
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Index, SmallInteger, \
   UnicodeText
 from sqlalchemy.ext.declarative import declared_attr
@@ -239,6 +239,11 @@ class ParticipantSummary(Base):
                                       ForeignKey('site.site_id'))
   biospecimenFinalizedSiteId = Column('biospecimen_finalized_site_id', Integer,
                                       ForeignKey('site.site_id'))
+
+  # EHR status related columns
+  ehrStatus = Column('ehr_status', Enum(EhrStatus), default=EhrStatus.MISSING)
+  ehrReceiptTime = Column('ehr_receipt_time', UTCDateTime)
+  ehrUpdateTime = Column('ehr_update_time', UTCDateTime)
 
   # Withdrawal from the study of the participant's own accord.
   withdrawalStatus = Column(
