@@ -300,6 +300,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
       participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
       participant_summary.physicalMeasurementsTime = None
+      if participant_summary.numberDistinctVisits > 0:
+        participant_summary.numberDistinctVisits -= 1
 
     # These fields set on any measurement not cancelled
     elif obj.status != PhysicalMeasurementsStatus.CANCELLED:
@@ -309,6 +311,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
       participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
       participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
       participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
+      participant_summary.numberDistinctVisits += 1
 
     elif obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and \
        self.has_uncancelled_pm(session, participant):
@@ -318,6 +321,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
       participant_summary.physicalMeasurementsTime = get_latest_pm.created
       participant_summary.physicalMeasurementsCreatedSiteId = get_latest_pm.createdSiteId
       participant_summary.physicalMeasurementsFinalizedSiteId = get_latest_pm.finalizedSiteId
+      participant_summary.numberDistinctVisits -= 1
 
     participant_summary_dao.update_enrollment_status(participant_summary)
     session.merge(participant_summary)

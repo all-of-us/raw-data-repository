@@ -77,7 +77,7 @@ class ParticipantSummary(Base):
                                              ForeignKey('site.site_id'))
   physicalMeasurementsFinalizedSiteId = Column('physical_measurements_finalized_site_id', Integer,
                                                ForeignKey('site.site_id'))
-
+  numberDistinctVisits = Column('number_distinct_visits', Integer, default=0)
   signUpTime = Column('sign_up_time', UTCDateTime)
 
   # The time that this participant become a member

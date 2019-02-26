@@ -1,13 +1,17 @@
+import clock
 import datetime
 import json
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 import time
 import config
+from code_constants import BIOBANK_TESTS
 from dao.base_dao import json_serial
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_stored_sample import BiobankStoredSample
+from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus, SampleStatus, \
@@ -23,6 +27,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
   def setUp(self):
     super(ParticipantSummaryDaoTest, self).setUp(use_mysql=True)
     self.dao = ParticipantSummaryDao()
+    self.order_dao = BiobankOrderDao()
     self.participant_dao = ParticipantDao()
     self.no_filter_query = Query([], None, 2, None)
     self.one_filter_query = Query([FieldFilter("participantId", Operator.EQUALS, 1)],
@@ -418,6 +423,42 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertEquals(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
     self.assertNotEqual(test_dt, summary.lastModified)
 
+  def testBiobankOrder(self):
+    participant = self._insert(Participant(participantId=7, biobankId=77))
+    #order1 = self.order_dao.insert(self._make_biobank_order())
+    self.order_dao.insert(self._make_biobank_order())
+    summary = self.dao.get(participant.participantId)
+    print '#############################################'
+    print summary.numberDistinctVisits
+    print '#############################################'
+
+
+  def _make_biobank_order(self, **kwargs):
+    """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
+
+    Kwargs pass through to BiobankOrder constructor, overriding defaults.
+    """
+    for k, default_value in (
+        ('biobankOrderId', '1'),
+        ('created', clock.CLOCK.now()),
+        ('participantId', 7),
+        ('sourceSiteId', 1),
+        ('sourceUsername', 'fred@pmi-ops.org'),
+        ('collectedSiteId', 1),
+        ('collectedUsername', 'joe@pmi-ops.org'),
+        ('processedSiteId', 1),
+        ('processedUsername', 'sue@pmi-ops.org'),
+        ('finalizedSiteId', 2),
+        ('finalizedUsername', 'bob@pmi-ops.org'),
+        ('identifiers', [BiobankOrderIdentifier(system='a', value='c')]),
+        ('samples', [BiobankOrderedSample(
+            biobankOrderId='1',
+            test=BIOBANK_TESTS[0],
+            description='description',
+            processingRequired=True)])):
+      if k not in kwargs:
+        kwargs[k] = default_value
+    return BiobankOrder(**kwargs)
 
 def _with_token(query, token):
   return Query(query.field_filters, query.order_by, query.max_results, token)
