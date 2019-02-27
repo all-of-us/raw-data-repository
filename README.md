@@ -675,22 +675,55 @@ The date range limit is 100 days for real time data (default).
 Passing in `history=true` can provide historical data for a maximum range of 600 days.
 ParticipantCountsOverTime returns a list of objects.
 
-#### `GET /rdr/v1/ParticipantCountsOverTime?startDate=:date&endDate=:date&stratification=:stratification`
+#### `GET /rdr/v1/ParticipantCountsOverTime`
 
-#### Stratifications
-Return counts for various strata between startDate and endDate.
-##### TOTAL
-Returns the total member counts
-##### ENROLLMENT_STATUS
-Returns the counts by enrollment status. i.e. registered, member, core
-##### EHR_CONSENT
-Returns the counts of members who have given consent for electronic health records.
-##### EHR_RATIO
-Returns the percentage of participants who have given consent to EHR vs. not
-##### GENDER_IDENTITY
-Returns counts of participants by gender identity
-##### AGE_RANGE
-Returns counts of participants by predefined bucketed age ranges
+## Parameters
+
+These are passed as `GET` parameters to the endpoint.
+
+### `startDate` (required for certain stratifications)
+
+Passed as a string. Date is in `YYYY-MM-DD` format, e.g. `2019-02-12`.
+
+### `endDate` (required)
+
+Passed as a string. Date is in `YYYY-MM-DD` format, e.g. `2019-02-19`.
+
+### `stratification` (required)
+
+Passed as a string. Can be one of the values from the table below.
+
+| Stratification    | Description                                              |
+| ----------------- | -------------------------------------------------------- |
+| TOTAL             | Awardee `TOTAL` count by date.                           |
+| ENROLLMENT_STATUS | Enrollment status count by date.                         |
+| GENDER_IDENTITY   | Gender identity count by date.                           |
+| AGE_RANGE         | Age range bucket counts by date.                         |
+| RACE              | Race classification counts by date.                      |
+| EHR_CONSENT       | Count of EHR consented participants.                     |
+| EHR_RATIO         | Percentage of eligible that have provided EHR consent.   |
+| GEO_STATE         | Participant count by US state code.                      |
+| GEO_CENSUS        | Participant count by census region.                      |
+| GEO_AWARDEE       | Participant count by awardee.                            |
+| LIFECYCLE         | Participant count by lifecycle phase.                    |
+
+### `awardee` (optional)
+
+Passed as a string. Comma-separated list of valid awardee codes, e.g. `PITT,VA`.
+
+### `enrollmentStatus` (optional)
+
+Passed as a string. Comma-separated list of valid enrollment statuses, e.g. `FULL_PARTICIPANT,INTERESTED`
+
+| Enrollment Status  | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| INTERESTED         | Correlates to the `registered` tier.                    |
+| MEMBER             | Correlates to the `consented` tier.                     |
+| FULL_PARTICIPANT   | Correlates to the `core` participant tier.              |
+
+### `history` (optional)
+
+Passed as a boolean. Defaults to `TRUE`. Determines whether the counts returned are historical or "real-time."
 
 
 ## Metrics API (Deprecated in favor of ParticipantCountsOverTime/
