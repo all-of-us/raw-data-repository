@@ -14,7 +14,7 @@ from participant_enums import EhrStatus
 
 # revision identifiers, used by Alembic.
 revision = '671f14f9e358'
-down_revision = 'fac398dd2426'
+down_revision = '014053444333'
 branch_labels = None
 depends_on = None
 
