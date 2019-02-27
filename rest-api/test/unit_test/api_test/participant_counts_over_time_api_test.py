@@ -1812,7 +1812,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_STATE')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_STATE')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_STATE')
-    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'core',
+    self.assertEquals(results1, [{'date': '2017-12-31',
                                   'hpo': u'UNSET',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -1823,7 +1823,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2017-12-31', 'enrollment_status': u'registered',
+                                 {'date': '2017-12-31',
                                   'hpo': u'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -1834,7 +1834,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}}])
-    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+    self.assertEquals(results2, [{'date': '2018-01-01',
                                   'hpo': u'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -1845,7 +1845,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                 {'date': '2018-01-01',
                                   'hpo': u'UNSET',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -1856,7 +1856,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                 {'date': '2018-01-01',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -1867,7 +1867,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}}])
-    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+    self.assertEquals(results3, [{'date': '2018-01-02',
                                   'hpo': u'UNSET',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -1878,7 +1878,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                 {'date': '2018-01-02',
                                   'hpo': u'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -1889,7 +1889,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                 {'date': '2018-01-02',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -1926,35 +1926,35 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_CENSUS')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_CENSUS')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_CENSUS')
-    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'core',
+    self.assertEquals(results1, [{'date': '2017-12-31',
                                   'hpo': u'UNSET',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   },
-                                 {'date': '2017-12-31', 'enrollment_status': u'registered',
+                                 {'date': '2017-12-31',
                                   'hpo': u'PITT',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   }])
-    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+    self.assertEquals(results2, [{'date': '2018-01-01',
                                   'hpo': u'PITT',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   },
-                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                 {'date': '2018-01-01',
                                   'hpo': u'UNSET',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   },
-                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                 {'date': '2018-01-01',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   }])
-    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+    self.assertEquals(results3, [{'date': '2018-01-02',
                                   'hpo': u'UNSET',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   },
-                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                 {'date': '2018-01-02',
                                   'hpo': u'PITT',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
                                   },
-                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                 {'date': '2018-01-02',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   }])
@@ -1972,24 +1972,16 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_AWARDEE')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_AWARDEE')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_AWARDEE')
-    self.assertEquals(results1, [{'date': '2017-12-31',
-                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
-                                 {'date': '2017-12-31',
-                                  'enrollment_status': u'registered', 'hpo': u'PITT', 'count': 1L}
+    self.assertEquals(results1, [{'date': '2017-12-31', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}
                                  ])
-    self.assertEquals(results2, [{'date': '2018-01-01',
-                                  'enrollment_status': u'consented', 'hpo': u'PITT', 'count': 1L},
-                                 {'date': '2018-01-01',
-                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
-                                 {'date': '2018-01-01',
-                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 1L}
+    self.assertEquals(results2, [{'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L},
+                                 {'date': '2018-01-01', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2018-01-01', 'hpo': u'AZ_TUCSON', 'count': 1L}
                                  ])
-    self.assertEquals(results3, [{'date': '2018-01-02',
-                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
-                                 {'date': '2018-01-02',
-                                  'enrollment_status': u'core', 'hpo': u'PITT', 'count': 2L},
-                                 {'date': '2018-01-02',
-                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 2L}
+    self.assertEquals(results3, [{'date': '2018-01-02', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L},
+                                 {'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}
                                  ])
 
   def test_get_metrics_region_data_api(self):
@@ -2128,6 +2120,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                       &stratification=GEO_STATE
                       &endDate=2017-12-31
                       &history=TRUE
+                      &enrollmentStatus=INTERESTED,FULL_PARTICIPANT
                       """
 
     qs1 = ''.join(qs1.split())
@@ -2153,7 +2146,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'core',
+    self.assertEquals(results1, [{'date': '2017-12-31',
                                   'hpo': u'UNSET',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2164,7 +2157,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2017-12-31', 'enrollment_status': u'registered',
+                                 {'date': '2017-12-31',
                                   'hpo': u'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2175,7 +2168,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}}])
-    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+    self.assertEquals(results2, [{'date': '2018-01-01',
                                   'hpo': u'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2186,7 +2179,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                 {'date': '2018-01-01',
                                   'hpo': u'UNSET',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2197,7 +2190,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                 {'date': '2018-01-01',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2208,7 +2201,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}}])
-    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+    self.assertEquals(results3, [{'date': '2018-01-02',
                                   'hpo': u'UNSET',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2219,7 +2212,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                 {'date': '2018-01-02',
                                   'hpo': u'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2230,7 +2223,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                 {'date': '2018-01-02',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2319,35 +2312,35 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'core',
+    self.assertEquals(results1, [{'date': '2017-12-31',
                                   'hpo': u'UNSET',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   },
-                                 {'date': '2017-12-31', 'enrollment_status': u'registered',
+                                 {'date': '2017-12-31',
                                   'hpo': u'PITT',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   }])
-    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+    self.assertEquals(results2, [{'date': '2018-01-01',
                                   'hpo': u'PITT',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   },
-                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                 {'date': '2018-01-01',
                                   'hpo': u'UNSET',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   },
-                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                 {'date': '2018-01-01',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   }])
-    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+    self.assertEquals(results3, [{'date': '2018-01-02',
                                   'hpo': u'UNSET',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   },
-                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                 {'date': '2018-01-02',
                                   'hpo': u'PITT',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
                                   },
-                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                 {'date': '2018-01-02',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   }])
@@ -2417,24 +2410,16 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31',
-                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
-                                 {'date': '2017-12-31',
-                                  'enrollment_status': u'registered', 'hpo': u'PITT', 'count': 1L}
+    self.assertEquals(results1, [{'date': '2017-12-31', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}
                                  ])
-    self.assertEquals(results2, [{'date': '2018-01-01',
-                                  'enrollment_status': u'consented', 'hpo': u'PITT', 'count': 1L},
-                                 {'date': '2018-01-01',
-                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
-                                 {'date': '2018-01-01',
-                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 1L}
+    self.assertEquals(results2, [{'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L},
+                                 {'date': '2018-01-01', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2018-01-01', 'hpo': u'AZ_TUCSON', 'count': 1L}
                                  ])
-    self.assertEquals(results3, [{'date': '2018-01-02',
-                                  'enrollment_status': u'core', 'hpo': u'UNSET', 'count': 1L},
-                                 {'date': '2018-01-02',
-                                  'enrollment_status': u'core', 'hpo': u'PITT', 'count': 2L},
-                                 {'date': '2018-01-02',
-                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 2L}
+    self.assertEquals(results3, [{'date': '2018-01-02', 'hpo': u'UNSET', 'count': 1L},
+                                 {'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L},
+                                 {'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}
                                  ])
 
   def test_get_metrics_region_data_api_filter_by_awardee(self):
@@ -2575,7 +2560,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'registered',
+    self.assertEquals(results1, [{'date': '2017-12-31',
                                   'hpo': u'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2586,7 +2571,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}}])
-    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+    self.assertEquals(results2, [{'date': '2018-01-01',
                                   'hpo': u'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2597,7 +2582,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                 {'date': '2018-01-01',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2608,7 +2593,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}}])
-    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+    self.assertEquals(results3, [{'date': '2018-01-02',
                                   'hpo': u'PITT',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2619,7 +2604,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}},
-                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                 {'date': '2018-01-02',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
@@ -2706,23 +2691,23 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31', 'enrollment_status': u'registered',
+    self.assertEquals(results1, [{'date': '2017-12-31',
                                   'hpo': u'PITT',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   }])
-    self.assertEquals(results2, [{'date': '2018-01-01', 'enrollment_status': u'consented',
+    self.assertEquals(results2, [{'date': '2018-01-01',
                                   'hpo': u'PITT',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   },
-                                 {'date': '2018-01-01', 'enrollment_status': u'core',
+                                 {'date': '2018-01-01',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   }])
-    self.assertEquals(results3, [{'date': '2018-01-02', 'enrollment_status': u'core',
+    self.assertEquals(results3, [{'date': '2018-01-02',
                                   'hpo': u'PITT',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
                                   },
-                                 {'date': '2018-01-02', 'enrollment_status': u'core',
+                                 {'date': '2018-01-02',
                                   'hpo': u'AZ_TUCSON',
                                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
                                   }])
@@ -2796,18 +2781,13 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
 
-    self.assertEquals(results1, [{'date': '2017-12-31',
-                                  'enrollment_status': u'registered', 'hpo': u'PITT', 'count': 1L}
+    self.assertEquals(results1, [{'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}
                                  ])
-    self.assertEquals(results2, [{'date': '2018-01-01',
-                                  'enrollment_status': u'consented', 'hpo': u'PITT', 'count': 1L},
-                                 {'date': '2018-01-01',
-                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 1L}
+    self.assertEquals(results2, [{'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L},
+                                 {'date': '2018-01-01',  'hpo': u'AZ_TUCSON', 'count': 1L}
                                  ])
-    self.assertEquals(results3, [{'date': '2018-01-02',
-                                  'enrollment_status': u'core', 'hpo': u'PITT', 'count': 2L},
-                                 {'date': '2018-01-02',
-                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON', 'count': 2L}
+    self.assertEquals(results3, [{'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L},
+                                 {'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}
                                  ])
 
   def test_unrecognized_state_value(self):
@@ -2843,26 +2823,25 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}, 'hpo': u'AZ_TUCSON'}])
     self.assertEquals(results2, [{'date': '2018-01-01',
-                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON',
+                                  'hpo': u'AZ_TUCSON',
                                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
                                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
                                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
                                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
                                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
-                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
                                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
                                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
                                               'KY': 0, 'OR': 0, 'SD': 0}}])
     self.assertEquals(results3, [{'date': '2018-01-01',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0},
                                   'hpo': u'AZ_TUCSON'}])
-    self.assertEquals(results4, [{'date': '2018-01-01',
-                                  'enrollment_status': u'core', 'hpo': u'AZ_TUCSON',
+    self.assertEquals(results4, [{'date': '2018-01-01',  'hpo': u'AZ_TUCSON',
                                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L,
                                               'SOUTH': 0}}])
 
