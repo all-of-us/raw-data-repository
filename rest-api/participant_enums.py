@@ -70,7 +70,7 @@ class SampleStatus(messages.Enum):
 
 class EhrStatus(messages.Enum):
   """Status of EHRs"""
-  MISSING = 0
+  NOT_PRESENT = 0
   PRESENT = 1
 
 def get_sample_status_enum_value(status):

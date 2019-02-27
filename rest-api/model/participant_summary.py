@@ -241,7 +241,7 @@ class ParticipantSummary(Base):
                                       ForeignKey('site.site_id'))
 
   # EHR status related columns
-  ehrStatus = Column('ehr_status', Enum(EhrStatus), default=EhrStatus.MISSING)
+  ehrStatus = Column('ehr_status', Enum(EhrStatus), default=EhrStatus.NOT_PRESENT)
   ehrReceiptTime = Column('ehr_receipt_time', UTCDateTime)
   ehrUpdateTime = Column('ehr_update_time', UTCDateTime)
 

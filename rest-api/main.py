@@ -25,6 +25,7 @@ from api.questionnaire_response_api import QuestionnaireResponseApi
 from config import get_config, get_db_config
 from flask import Flask, got_request_exception
 from flask_restful import Api
+from json_encoder import RdrJsonEncoder
 from model.utils import ParticipantIdConverter
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException
@@ -34,6 +35,9 @@ PREFIX = '/rdr/v1/'
 
 app = Flask(__name__)
 app.url_map.converters['participant_id'] = ParticipantIdConverter
+app.config.setdefault('RESTFUL_JSON', {
+  'cls': RdrJsonEncoder
+})
 
 
 def _warmup():

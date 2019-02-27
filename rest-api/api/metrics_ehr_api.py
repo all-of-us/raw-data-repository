@@ -1,4 +1,3 @@
-import datetime
 import functools
 
 from dao.metrics_ehr_service import INTERVALS, MetricsEhrService
@@ -7,7 +6,7 @@ from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
 
-from api_util import HEALTHPRO
+from api_util import HEALTHPRO, parse_date
 import app_util
 
 
@@ -25,7 +24,7 @@ class MetricsEhrApi(Resource):
       'interval': functools.partial(self._parse_choice, INTERVALS)
     }
     params = self._parse_input(validators, request.get_json())
-    return MetricsEhrService().get_metrics_over_time(**params)
+    return MetricsEhrService().get_metrics(**params)
 
   @staticmethod
   def _parse_input(validators, params):
@@ -38,7 +37,7 @@ class MetricsEhrApi(Resource):
   @staticmethod
   def _parse_date(params, key):
     try:
-      return datetime.datetime.strptime(params[key], DATE_FORMAT).date()
+      return parse_date(params[key])
     except ValueError:
       raise BadRequest('Invalid {key} date: {value}'.format(
         key=key,
