@@ -12,6 +12,7 @@ from dao.metrics_dao import MetricsVersionDao
 from flask import Flask, request
 from google.appengine.api import app_identity
 from offline import biobank_samples_pipeline
+from offline.participant_maint import skew_duplicate_last_modified
 from offline.base_pipeline import send_failure_alert
 from offline.exclude_ghost_participants import mark_ghost_participants
 from offline.metrics_export import MetricsExport
@@ -19,6 +20,7 @@ from offline.participant_counts_over_time import calculate_participant_metrics
 from offline.public_metrics_export import PublicMetricsExport, LIVE_METRIC_SET_ID
 from offline.sa_key_remove import delete_service_account_keys
 from offline.table_exporter import TableExporter
+import offline.sync_consent_files
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
@@ -140,6 +142,12 @@ def export_tables():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def skew_duplicates():
+  skew_duplicate_last_modified()
+  return '{"success": "true"}'
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def delete_old_keys():
   delete_service_account_keys()
   return '{"success": "true"}'
@@ -156,6 +164,12 @@ def exclude_ghosts():
   mark_ghost_participants()
   return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def sync_consent_files():
+  offline.sync_consent_files.do_sync_consent_files()
+  return '{"success": "true"}'
+
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
   offline_app = Flask(__name__)
@@ -170,6 +184,12 @@ def _build_pipeline_app():
     PREFIX + 'MonthlyReconciliationReport',
     endpoint='monthlyReconciliationReport',
     view_func=biobank_monthly_reconciliation_report,
+    methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'SkewDuplicates',
+    endpoint='skew_duplicates',
+    view_func=skew_duplicates,
     methods=['GET'])
 
   offline_app.add_url_rule(
@@ -206,6 +226,12 @@ def _build_pipeline_app():
     PREFIX + 'MarkGhostParticipants',
     endpoint='exclude_ghosts',
     view_func=exclude_ghosts,
+    methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'SyncConsentFiles',
+    endpoint='sync_consent_files',
+    view_func=sync_consent_files,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)

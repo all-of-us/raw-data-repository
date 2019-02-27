@@ -86,7 +86,9 @@ class ParticipantCountsOverTimeApi(Resource):
       raise BadRequest('Invalid stratification: %s' % stratification_str)
 
     if params['stratification'] in [Stratifications.FULL_STATE, Stratifications.FULL_CENSUS,
-                                    Stratifications.FULL_AWARDEE, Stratifications.LIFECYCLE]:
+                                    Stratifications.FULL_AWARDEE, Stratifications.GEO_STATE,
+                                    Stratifications.GEO_CENSUS, Stratifications.GEO_AWARDEE,
+                                    Stratifications.LIFECYCLE]:
       # Validate dates
       if not end_date_str:
         raise BadRequest('end date should not be empty')

@@ -235,24 +235,24 @@ The summary includes the following fields:
 * `awardee`: An awardee a participant is paired with or "unset" if none.
 * `organization`: An organization a participant is paired with or "unset" if none.
 * `site`: A physical location a participant is paired with or "unset" if none.
-* `consentForStudyEnrollment`:  indicates whether enrollment consent has been received (`UNSET` or `SUBMITTED`)
+* `consentForStudyEnrollment`:  indicates whether enrollment consent has been received (`UNSET`, `SUBMITTED`, `SUBMITTED_NO_CONSENT`, `SUBMITTED_NOT_SURE`, `SUBMITTED_INVALID`)
 * `consentForStudyEnrollmentTime`: indicates the time at which enrollment consent has been received (ISO-8601 time)
-* `consentForElectronicHealthRecords`
+* `consentForElectronicHealthRecords`:  indicates whether electronic health recode (EHR) consent has been received (`UNSET`, `SUBMITTED`, `SUBMITTED_NO_CONSENT`, `SUBMITTED_NOT_SURE`, `SUBMITTED_INVALID`)
 * `consentForElectronicHealthRecordsTime`
 * `questionnaireOnOverallHealth`: indicates status for Overall Health PPI module
 * `questionnaireOnOverallHealthTime`
-* `questionnaireOnPersonalHabits`
-* `questionnaireOnPersonalHabitsTime`
-* `questionnaireOnSociodemographics`
-* `questionnaireOnSociodemographicsTime`
 * `questionnaireOnHealthcareAccess`
 * `questionnaireOnHealthcareAccessTime`
+* `questionnaireOnlifestyle`
+* `questionnaireOnlifestyleTime`
 * `questionnaireOnMedicalHistory`
 * `questionnaireOnMedicalHistoryTime`
 * `questionnaireOnMedications`
 * `questionnaireOnMedicationsTime`
 * `questionnaireOnFamilyHealth`
 * `questionnaireOnFamilyHealthTime`
+* `questionnaireOnTheBasics`
+* `questionnaireOnTheBasicsTime`
 * `biospecimenStatus`: whether biospecimens have been finalized for the participant
 * `biospecimenOrderTime`: the first time at which biospecimens were finalized
 * `biospecimenSourceSite`: the site where biospecimens were initially created for the participant
@@ -263,6 +263,8 @@ The summary includes the following fields:
 * `sampleOrderStatus1SST8Time`
 * `sampleOrderStatus1PST8`
 * `sampleOrderStatus1PST8Time`
+* `sampleOrderStatus1PS08`
+* `sampleOrderStatus1PS08Time`
 * `sampleOrderStatus1HEP4`
 * `sampleOrderStatus1HEP4Time`
 * `sampleOrderStatus1ED04`
@@ -283,10 +285,16 @@ The summary includes the following fields:
 * `sampleOrderStatus1PXR2Time`
 * `sampleOrderStatus1SAL`
 * `sampleOrderStatus1SALTime`
+* `sampleOrderStatus1SAL2`
+* `sampleOrderStatus1SAL2Time`
+* `sampleStatus1SS08`
+* `sampleStatus1SS08Time`
 * `sampleStatus1SST8`
 * `sampleStatus1SST8Time`
-* `sampleStatus1PST8`
-* `sampleStatus1PST8Time`
+* `sampleStatus2SST8`
+* `sampleStatus2SST8Time`
+* `sampleStatus2PST8`
+* `sampleStatus2PST8Time`
 * `sampleStatus1HEP4`
 * `sampleStatus1HEP4Time`
 * `sampleStatus1ED04`
@@ -320,15 +328,26 @@ For enumeration fields, the following values are defined:
 
 `ageRange`: `0-17`, `18-25`, `26-35`, `36-45`, `46-55`, `56-65`, `66-75`, `76-85`, `86-`
 
-`physicalMeasurementsStatus`: `UNSET`, `SCHEDULED`, `COMPLETED`, `RESULT_READY`
+`physicalMeasurementsStatus`: `UNSET`, `COMPLETED`, `CANCELLED`
 
-`questionnaireOn[x]`: `UNSET`, `SUBMITTED`
+`questionnaireOn[x]`: `UNSET`, `SUBMITTED`, `SUBMITTED_NO_CONSENT`, `SUBMITTED_NOT_SURE`, `SUBMITTED_INVALID`
 
-`biospecimenStatus`: `UNSET`, `FINALIZED`
+`biospecimenStatus`: `UNSET`, `FINALIZED`, `CREATED`, `COLLECTED`, `PROCESSED`
 
 `sampleOrderStatus[x]`: `UNSET`, `CREATED`, `COLLECTED`, `PROCESSED`, `FINALIZED`
 
-`sampleStatus[x]` and `samplesToIsolateDNA`: `UNSET`, `RECEIVED`
+`sampleStatus[x]` and `samplesToIsolateDNA`:
+  `UNSET = 0
+  RECEIVED = 1
+  DISPOSED = 10
+  CONSUMED = 11
+  UNKNOWN = 12
+  SAMPLE_NOT_RECEIVED = 13
+  SAMPLE_NOT_PROCESSED = 14
+  ACCESSINGING_ERROR = 15
+  LAB_ACCIDENT = 16
+  QNS_FOR_PROCESSING = 17
+  QUALITY_ISSUE = 18`
 
 `withdrawalStatus`: `NOT_WITHDRAWN`, `NO_USE`
 
@@ -389,6 +408,12 @@ Example sync:
 Pagination is provided with a token i.e.
 
     GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=<token string>
+    
+By default when the '_sync' parameter is passed, records modified 60 seconds before the 
+last record in a batch of record will be included in the next batch of records. This 
+backfill behavior may be disabled by adding the '_backfill=false' parameter.
+
+    GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_sync=true&_backfill=false
 
 It is possible to get the same participant data back in multiple sync responses.
 The recommended time between syncs is 5 minutes.
@@ -411,6 +436,19 @@ Example response:
             "url": "GET /ParticipantSummary?awardee=PITT&_sort=lastModified&_token=WzM1XQ%3D%3D"
         }
 ```
+
+#### `GET /ParticipantSummary/Modified`
+
+As an alternate method of synchronizing participant summary records, you can use this API call
+to return 'participantId' and 'lastModified' values for all records.  This allows you to see 
+which records are new and which have changed if you are storing these records in your system.
+
+    GET /ParticipantSummary/Modified
+    
+For service accounts access, the awardee parameter is required. Only records matching the
+awardee will be returned.
+
+    GET /ParticipantSummary/Modified?awardee=PITT
 
 ##### Service Accounts
 * Each awardee partner is issued one service account.
@@ -637,22 +675,55 @@ The date range limit is 100 days for real time data (default).
 Passing in `history=true` can provide historical data for a maximum range of 600 days.
 ParticipantCountsOverTime returns a list of objects.
 
-#### `GET /rdr/v1/ParticipantCountsOverTime?startDate=:date&endDate=:date&stratification=:stratification`
+#### `GET /rdr/v1/ParticipantCountsOverTime`
 
-#### Stratifications
-Return counts for various strata between startDate and endDate.
-##### TOTAL
-Returns the total member counts
-##### ENROLLMENT_STATUS
-Returns the counts by enrollment status. i.e. registered, member, core
-##### EHR_CONSENT
-Returns the counts of members who have given consent for electronic health records.
-##### EHR_RATIO
-Returns the percentage of participants who have given consent to EHR vs. not
-##### GENDER_IDENTITY
-Returns counts of participants by gender identity
-##### AGE_RANGE
-Returns counts of participants by predefined bucketed age ranges
+## Parameters
+
+These are passed as `GET` parameters to the endpoint.
+
+### `startDate` (required for certain stratifications)
+
+Passed as a string. Date is in `YYYY-MM-DD` format, e.g. `2019-02-12`.
+
+### `endDate` (required)
+
+Passed as a string. Date is in `YYYY-MM-DD` format, e.g. `2019-02-19`.
+
+### `stratification` (required)
+
+Passed as a string. Can be one of the values from the table below.
+
+| Stratification    | Description                                              |
+| ----------------- | -------------------------------------------------------- |
+| TOTAL             | Awardee `TOTAL` count by date.                           |
+| ENROLLMENT_STATUS | Enrollment status count by date.                         |
+| GENDER_IDENTITY   | Gender identity count by date.                           |
+| AGE_RANGE         | Age range bucket counts by date.                         |
+| RACE              | Race classification counts by date.                      |
+| EHR_CONSENT       | Count of EHR consented participants.                     |
+| EHR_RATIO         | Percentage of eligible that have provided EHR consent.   |
+| GEO_STATE         | Participant count by US state code.                      |
+| GEO_CENSUS        | Participant count by census region.                      |
+| GEO_AWARDEE       | Participant count by awardee.                            |
+| LIFECYCLE         | Participant count by lifecycle phase.                    |
+
+### `awardee` (optional)
+
+Passed as a string. Comma-separated list of valid awardee codes, e.g. `PITT,VA`.
+
+### `enrollmentStatus` (optional)
+
+Passed as a string. Comma-separated list of valid enrollment statuses, e.g. `FULL_PARTICIPANT,INTERESTED`
+
+| Enrollment Status  | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| INTERESTED         | Correlates to the `registered` tier.                    |
+| MEMBER             | Correlates to the `consented` tier.                     |
+| FULL_PARTICIPANT   | Correlates to the `core` participant tier.              |
+
+### `history` (optional)
+
+Passed as a boolean. Defaults to `TRUE`. Determines whether the counts returned are historical or "real-time."
 
 
 ## Metrics API (Deprecated in favor of ParticipantCountsOverTime/

@@ -38,7 +38,7 @@ jobs:
           key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
       - run: sudo chmod o+w /opt
       - run: pip install --upgrade pip
-      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
+      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint isort==4.3.8
       - run: pip install -I alembic==0.9.1
       - run: ./ci/test.sh
       - save_cache:
@@ -65,7 +65,7 @@ jobs:
            key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
       - run: sudo chmod o+w /opt
       - run: pip install --upgrade pip
-      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
+      - run: pip install --upgrade httplib2 jira oauth2client parallel pylint isort==4.3.8
       - run: pip install -I alembic==0.9.1
       - run: ./ci/setup.sh
       - run: ./ci/activate_creds.sh ~/gcloud-credentials.key
@@ -95,7 +95,7 @@ jobs:
         key: deps-{{ .Branch }}-{{ checksum "rest-api/requirements.txt" }}
     - run: sudo chmod o+w /opt
     - run: pip install --upgrade pip
-    - run: pip install --upgrade httplib2 jira oauth2client parallel pylint
+    - run: pip install --upgrade httplib2 jira oauth2client parallel pylint isort==4.3.8
     - run: pip install -I alembic==0.9.1
     - run: ./ci/setup.sh
     - run: ./ci/activate_creds.sh ~/gcloud-credentials.key

@@ -572,12 +572,11 @@ class ParticipantSummaryDao(UpdatableDao):
     seconds. Duplicate participants returned should be handled on the client side."""
     decoded_vals = super(ParticipantSummaryDao, self)._decode_token(query_def, fields)
     if query_def.order_by and (query_def.order_by.field_name == 'lastModified' and
-                                            query_def.always_return_token == True):
+         query_def.always_return_token is True and query_def.backfill_sync is True):
       decoded_vals[0] = decoded_vals[0] - datetime.timedelta(
                                           seconds=config.LAST_MODIFIED_BUFFER_SECONDS)
 
     return decoded_vals
-
 
 def _initialize_field_type_sets():
   """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are

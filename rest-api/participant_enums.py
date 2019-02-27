@@ -153,6 +153,9 @@ class Stratifications(messages.Enum):
   FULL_CENSUS = 9
   FULL_AWARDEE = 10
   LIFECYCLE = 11
+  GEO_STATE = 12
+  GEO_CENSUS = 13
+  GEO_AWARDEE = 14
 
 METRIC_SET_KEYS = {
   MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([
@@ -239,6 +242,19 @@ class SuspensionStatus(messages.Enum):
   """Whether a participant has been suspended from the study."""
   NOT_SUSPENDED = 1
   NO_CONTACT = 2
+
+
+class MetricsCacheType(messages.Enum):
+  """Types of metrics cache"""
+  METRICS_V2_API = 0
+  PUBLIC_METRICS_EXPORT_API = 1
+
+
+# M2API age buckets
+AGE_BUCKETS_METRICS_V2_API = ['0-17', '18-25', '26-35', '36-45', '46-55', '56-65', '66-75', '76-85',
+                              '86-']
+AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API = ['18-29', '30-39', '40-49', '50-59', '60-69', '70-79',
+                                         '80-89', '90-']
 
 
 # The lower bounds of the age buckets.
