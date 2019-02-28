@@ -183,3 +183,33 @@ CREATE TABLE cdm.source_to_concept_map
     priority                    int
 );
 
+-- -----------------------------------------------
+-- combined_question_filter
+-- -----------------------------------------------
+DROP TABLE IF EXISTS combined_question_filter;
+
+CREATE TABLE combined_question_filter
+(
+    question_ppi_code           varchar(80)
+);
+
+-- -------------------------------------------------------------------
+-- create indexes for table: combined_question_filter
+-- -------------------------------------------------------------------
+ALTER TABLE combined_question_filter ADD PRIMARY KEY (question_ppi_code);
+
+
+-- -----------------------------------------------
+-- combined_survey_filter
+-- -----------------------------------------------
+DROP TABLE IF EXISTS combined_survey_filter;
+
+CREATE TABLE combined_survey_filter
+(
+    survey_name                 varchar(80)
+);
+
+-- -------------------------------------------------------------------
+-- create indexes for table: combined_survey_filter
+-- -------------------------------------------------------------------
+ALTER TABLE combined_survey_filter ADD PRIMARY KEY (survey_name);
