@@ -8,7 +8,7 @@ from code_constants import PPI_SYSTEM
 from census_regions import census_regions
 import datetime
 import json
-from sqlalchemy import or_
+from sqlalchemy import func
 from participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
   AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType
 
@@ -700,36 +700,49 @@ class MetricsRegionCacheDao(BaseDao):
             .order_by(MetricsRegionCache.dateInserted.desc())
             .first())
 
-  def get_active_buckets(self, cutoff, stratification, hpo_ids=None):
+  def get_active_buckets(self, cutoff, stratification, hpo_ids=None, enrollment_statuses=None):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
         return None
       last_inserted_date = last_inserted_record.dateInserted
-      query = session.query(MetricsRegionCache)\
-        .filter(MetricsRegionCache.dateInserted == last_inserted_date)
+      query = session.query(MetricsRegionCache.date, MetricsRegionCache.hpoName,
+                            MetricsRegionCache.stateName,
+                            func.sum(MetricsRegionCache.stateCount).label('total'))
+      query.filter(MetricsRegionCache.dateInserted == last_inserted_date)
       query = query.filter(MetricsRegionCache.date == cutoff)
       if stratification in [Stratifications.FULL_STATE, Stratifications.FULL_CENSUS,
                             Stratifications.FULL_AWARDEE]:
-        query = query.filter(or_(MetricsRegionCache.enrollmentStatus == 'core',
-                                 MetricsRegionCache.enrollmentStatus == None))
+        query = query.filter(MetricsRegionCache.enrollmentStatus == 'core')
       if hpo_ids:
         query = query.filter(MetricsRegionCache.hpoId.in_(hpo_ids))
+      if enrollment_statuses:
+        status_filter_list = []
+        for status in enrollment_statuses:
+          if status == 'INTERESTED':
+            status_filter_list.append('registered')
+          if status == 'MEMBER':
+            status_filter_list.append('consented')
+          if status == 'FULL_PARTICIPANT':
+            status_filter_list.append('core')
+        query = query.filter(MetricsRegionCache.enrollmentStatus.in_(status_filter_list))
 
-      return query.all()
+      return query.group_by(MetricsRegionCache.date, MetricsRegionCache.hpoName,
+                            MetricsRegionCache.stateName).all()
 
-  def get_latest_version_from_cache(self, cutoff, stratification, hpo_ids=None):
+  def get_latest_version_from_cache(self, cutoff, stratification, hpo_ids=None,
+                                    enrollment_statuses=None):
     stratification = Stratifications(str(stratification))
     operation_funcs = {
-      Stratifications.FULL_STATE: self.to_full_state_client_json,
-      Stratifications.FULL_CENSUS: self.to_full_census_client_json,
-      Stratifications.FULL_AWARDEE: self.to_full_awardee_client_json,
+      Stratifications.FULL_STATE: self.to_state_client_json,
+      Stratifications.FULL_CENSUS: self.to_census_client_json,
+      Stratifications.FULL_AWARDEE: self.to_awardee_client_json,
       Stratifications.GEO_STATE: self.to_state_client_json,
       Stratifications.GEO_CENSUS: self.to_census_client_json,
       Stratifications.GEO_AWARDEE: self.to_awardee_client_json
     }
 
-    buckets = self.get_active_buckets(cutoff, stratification, hpo_ids)
+    buckets = self.get_active_buckets(cutoff, stratification, hpo_ids, enrollment_statuses)
     if buckets is None:
       return []
     return operation_funcs[stratification](buckets)
@@ -759,9 +772,8 @@ class MetricsRegionCacheDao(BaseDao):
         continue
       is_exist = False
       for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName and \
-          item['enrollment_status'] == record.enrollmentStatus:
-          item['metrics'][state_name] = record.stateCount
+        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
+          item['metrics'][state_name] = int(record.total)
           is_exist = True
           break
 
@@ -770,10 +782,9 @@ class MetricsRegionCacheDao(BaseDao):
         new_item = {
           'date': record.date.isoformat(),
           'hpo': record.hpoName,
-          'enrollment_status': record.enrollmentStatus,
           'metrics': metrics
         }
-        new_item['metrics'][state_name] = record.stateCount
+        new_item['metrics'][state_name] = int(record.total)
         client_json.append(new_item)
     return client_json
 
@@ -787,9 +798,8 @@ class MetricsRegionCacheDao(BaseDao):
         continue
       is_exist = False
       for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName and \
-          item['enrollment_status'] == record.enrollmentStatus:
-          item['metrics'][census_name] += record.stateCount
+        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
+          item['metrics'][census_name] += int(record.total)
           is_exist = True
           break
 
@@ -797,7 +807,6 @@ class MetricsRegionCacheDao(BaseDao):
         new_item = {
           'date': record.date.isoformat(),
           'hpo': record.hpoName,
-          'enrollment_status': record.enrollmentStatus,
           'metrics': {
             'NORTHEAST': 0,
             'MIDWEST': 0,
@@ -805,7 +814,7 @@ class MetricsRegionCacheDao(BaseDao):
             'WEST': 0
           }
         }
-        new_item['metrics'][census_name] = record.stateCount
+        new_item['metrics'][census_name] = int(record.total)
         client_json.append(new_item)
     return client_json
 
@@ -814,62 +823,8 @@ class MetricsRegionCacheDao(BaseDao):
     for record in result_set:
       is_exist = False
       for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName and \
-          item['enrollment_status'] == record.enrollmentStatus:
-          item['count'] += record.stateCount
-          is_exist = True
-          break
-
-      if not is_exist:
-        new_item = {
-          'date': record.date.isoformat(),
-          'hpo': record.hpoName,
-          'enrollment_status': record.enrollmentStatus,
-          'count': record.stateCount
-        }
-        client_json.append(new_item)
-    return client_json
-
-  # keep this for the compatibility with healthPro dashboard
-  # will remove this after healthPro move to new API
-  def to_full_state_client_json(self, result_set):
-    client_json = []
-    for record in result_set:
-      state_name = self.remove_prefix(record.stateName, 'PIIState_')
-      if state_name not in census_regions:
-        continue
-      is_exist = False
-      for item in client_json:
         if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
-          item['metrics'][state_name] = record.stateCount
-          is_exist = True
-          break
-
-      if not is_exist:
-        metrics = {stateName: 0 for stateName in census_regions.keys()}
-        new_item = {
-          'date': record.date.isoformat(),
-          'hpo': record.hpoName,
-          'metrics': metrics
-        }
-        new_item['metrics'][state_name] = record.stateCount
-        client_json.append(new_item)
-    return client_json
-
-  # keep this for the compatibility with healthPro dashboard
-  # will remove this after healthPro move to new API
-  def to_full_census_client_json(self, result_set):
-    client_json = []
-    for record in result_set:
-      state_name = self.remove_prefix(record.stateName, 'PIIState_')
-      if state_name in census_regions:
-        census_name = census_regions[state_name]
-      else:
-        continue
-      is_exist = False
-      for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
-          item['metrics'][census_name] += record.stateCount
+          item['count'] += int(record.total)
           is_exist = True
           break
 
@@ -877,34 +832,7 @@ class MetricsRegionCacheDao(BaseDao):
         new_item = {
           'date': record.date.isoformat(),
           'hpo': record.hpoName,
-          'metrics': {
-            'NORTHEAST': 0,
-            'MIDWEST': 0,
-            'SOUTH': 0,
-            'WEST': 0
-          }
-        }
-        new_item['metrics'][census_name] = record.stateCount
-        client_json.append(new_item)
-    return client_json
-
-  # keep this for the compatibility with healthPro dashboard
-  # will remove this after healthPro move to new API
-  def to_full_awardee_client_json(self, result_set):
-    client_json = []
-    for record in result_set:
-      is_exist = False
-      for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
-          item['count'] += record.stateCount
-          is_exist = True
-          break
-
-      if not is_exist:
-        new_item = {
-          'date': record.date.isoformat(),
-          'hpo': record.hpoName,
-          'count': record.stateCount
+          'count': int(record.total)
         }
         client_json.append(new_item)
     return client_json

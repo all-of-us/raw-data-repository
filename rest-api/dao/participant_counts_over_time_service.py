@@ -98,7 +98,8 @@ class ParticipantCountsOverTimeService(BaseDao):
                                                             'FULL_AWARDEE', 'GEO_STATE',
                                                             'GEO_CENSUS', 'GEO_AWARDEE']:
       dao = MetricsRegionCacheDao()
-      return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids)
+      return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids,
+                                               enrollment_statuses)
     elif str(history) == 'TRUE' and str(stratification) == 'LIFECYCLE':
       dao = MetricsLifecycleCacheDao()
       return dao.get_latest_version_from_cache(end_date, awardee_ids)
