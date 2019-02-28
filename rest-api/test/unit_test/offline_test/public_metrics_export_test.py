@@ -29,7 +29,7 @@ class PublicMetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
   """Test the public metrics recalculation."""
 
   def setUp(self):
-    super(PublicMetricsExportTest, self).setUp()
+    super(PublicMetricsExportTest, self).setUp(use_mysql=True)
     FlaskTestBase.doSetUp(self)
     TestBase.setup_fake(self)
     self.maxDiff = None

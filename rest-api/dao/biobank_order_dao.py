@@ -205,10 +205,10 @@ class BiobankOrderDao(UpdatableDao):
       raise BadRequest("Can't submit biospecimens for participant %s without consent" %
                        obj.participantId)
     raise_if_withdrawn(participant_summary)
-    self._set_participant_summary_fields(obj, participant_summary)
+    self._set_participant_summary_fields(session, obj, participant_summary)
     participant_summary_dao.update_enrollment_status(participant_summary)
 
-  def _set_participant_summary_fields(self, obj, participant_summary):
+  def _set_participant_summary_fields(self, session, obj, participant_summary):
     participant_summary.biospecimenStatus = OrderStatus.FINALIZED
     participant_summary.biospecimenOrderTime = obj.created
     participant_summary.biospecimenSourceSiteId = obj.sourceSiteId
@@ -216,7 +216,10 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenProcessedSiteId = obj.processedSiteId
     participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
     participant_summary.lastModified = clock.CLOCK.now()
-    if obj.orderStatus != BiobankOrderStatus.AMENDED:
+    is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(session,
+                                                participant_summary.participantId, obj)
+
+    if obj.orderStatus != BiobankOrderStatus.AMENDED and is_distinct_visit:
       participant_summary.numberDistinctVisits += 1
 
     for sample in obj.samples:
@@ -245,9 +248,12 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenCollectedSiteId = None
     participant_summary.biospecimenProcessedSiteId = None
     participant_summary.biospecimenFinalizedSiteId = None
+    is_distinct_visit = participant_summary_dao.calculate_distinct_visits(session,
+                                                participant_summary.participantId, obj)
+
     if obj.orderStatus == BiobankOrderStatus.CANCELLED and \
-      participant_summary.numberDistinctVisits > 0:
-      participant_summary.numberDistinctVisits -= 1
+                          participant_summary.numberDistinctVisits > 0 and is_distinct_visit:
+                          participant_summary.numberDistinctVisits -= 1
 
     participant_summary.lastModified = clock.CLOCK.now()
     for sample in obj.samples:
@@ -257,7 +263,7 @@ class BiobankOrderDao(UpdatableDao):
 
     if len(non_cancelled_orders) > 0:
       for order in non_cancelled_orders:
-        self._set_participant_summary_fields(order, participant_summary)
+        self._set_participant_summary_fields(order, session, participant_summary)
     participant_summary_dao.update_enrollment_status(participant_summary)
 
   def _parse_handling_info(self, handling_info):

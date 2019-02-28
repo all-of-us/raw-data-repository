@@ -93,6 +93,7 @@ class TestBase(unittest.TestCase):
       'numCompletedPPIModules': 0,
       'numCompletedBaselinePPIModules': 0,
       'numBaselineSamplesArrived': 0,
+      'numberDistinctVisits': 0,
       'withdrawalStatus': WithdrawalStatus.NOT_WITHDRAWN,
       'suspensionStatus': SuspensionStatus.NOT_SUSPENDED,
       'enrollmentStatus': EnrollmentStatus.INTERESTED

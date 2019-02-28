@@ -29,7 +29,7 @@ NUM_BASELINE_PPI_MODULES = 3
 
 TIME_1 = datetime.datetime(2019, 2, 24)
 TIME_2 = datetime.datetime(2019, 2, 25)
-TIME_3 = datetime.datetime(2019, 2, 26)
+TIME_3 = datetime.datetime(2019, 2, 27)
 
 class ParticipantSummaryDaoTest(NdbTestBase):
   def setUp(self):
@@ -434,32 +434,58 @@ class ParticipantSummaryDaoTest(NdbTestBase):
 
   def testNumberDistinctVisitsCounts(self):
     self.participant = self._insert(Participant(participantId=7, biobankId=77))
+    # insert biobank order
     order = self.order_dao.insert(self._make_biobank_order())
     summary = self.dao.get(self.participant.participantId)
     self.assertEquals(summary.numberDistinctVisits, 1)
     cancel_request = cancel_biobank_order()
+    # cancel biobank order
     self.order_dao.update_with_patch(order.biobankOrderId, cancel_request, order.version)
     summary = self.dao.get(self.participant.participantId)
+    # distinct count should be 0
     self.assertEquals(summary.numberDistinctVisits, 0)
 
     self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
                                                              TIME_1.isoformat()))
+    # insert physical measurement
     measurement = self.measurement_dao.insert(self._make_physical_measurements())
     summary = self.dao.get(self.participant.participantId)
+    # count should be 1
     self.assertEquals(summary.numberDistinctVisits, 1)
 
+    # cancel the measurement
     cancel_measurement = get_restore_or_cancel_info()
     with self.measurement_dao.session() as session:
       self.measurement_dao.update_with_patch(measurement.physicalMeasurementsId, session,
                                              cancel_measurement)
 
     summary = self.dao.get(self.participant.participantId)
+    # count should be 0
     self.assertEquals(summary.numberDistinctVisits, 0)
 
-    self.order_dao.insert(self._make_biobank_order(biobankOrderId=78, identifiers=[BiobankOrderIdentifier(system='b', value='d')]))
-    self.measurement_dao.insert(self._make_physical_measurements(physicalMeasurementsId=2))
-    summary = self.dao.get(self.participant.participantId)
-    self.assertEquals(summary.numberDistinctVisits, 2)
+  def testNumberDistinctVisitsSameDay(self):
+    self.participant = self._insert(Participant(participantId=7, biobankId=77))
+    self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
+                                                             TIME_3.isoformat()))
+    with FakeClock(TIME_2):
+      # insert a biobank order and measurement
+      self.order_dao.insert(self._make_biobank_order(biobankOrderId=78, created=TIME_2,
+                                identifiers=[
+                                BiobankOrderIdentifier(system='b', value='d')]))
+
+      self.measurement_dao.insert(self._make_physical_measurements(physicalMeasurementsId=2))
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 1)
+
+    with FakeClock(TIME_3):
+      # insert a biobank order and measurement
+      self.order_dao.insert(self._make_biobank_order(biobankOrderId=79, created=TIME_3,
+                                                     identifiers=[
+                                                       BiobankOrderIdentifier(system='c', value='e')]))
+
+      self.measurement_dao.insert(self._make_physical_measurements(physicalMeasurementsId=2))
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 2)
 
   def _make_biobank_order(self, **kwargs):
     """Makes a new BiobankOrder (same values every time) with valid/complete defaults.

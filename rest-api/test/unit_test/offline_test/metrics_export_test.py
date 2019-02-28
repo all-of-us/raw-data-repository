@@ -47,7 +47,7 @@ class MetricsExportTest(CloudStorageSqlTestBase, FlaskTestBase):
   assertCsvContents = assertCsvContents
 
   def setUp(self):
-    super(MetricsExportTest, self).setUp()
+    super(MetricsExportTest, self).setUp(use_mysql=True)
     FlaskTestBase.doSetUp(self)
     TestBase.setup_fake(self)
     offline.metrics_export._QUEUE_NAME = 'default'

@@ -13,14 +13,16 @@ from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_e
 from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
+from model.biobank_order import BiobankOrder
 from model.config_utils import to_client_biobank_id, from_client_biobank_id
+from model.measurements import PhysicalMeasurements
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
   WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
 from model.utils import to_client_participant_id, get_property_type
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
   EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age
 from query import OrderBy, PropertyType
-from sqlalchemy import or_
+from sqlalchemy import or_, bindparam, text
 from werkzeug.exceptions import BadRequest, NotFound
 
 
@@ -513,6 +515,43 @@ class ParticipantSummaryDao(UpdatableDao):
                   participant_summary.physicalMeasurementsFinalizedTime])
     else:
       return None
+
+  def calculate_distinct_visits(self, session, pid, obj):
+    """ Participants may get PM or biobank samples on same day. This should be considered as
+    a single visit in terms of program payment to participant.
+    return Boolean: true if there has not been an order on same date (site timezone)."""
+    sql = text("""select CURDATE() as realdate , pm.created, bo.created,
+                case
+               when (pm.created is not null and
+                 datediff(convert_tz(CURDATE(), '+00:00', '+5:00'), 
+                 convert_tz(pm.created, '+00:00','+5:00')) > 1)
+               or (bo.created is not null and
+                 datediff(convert_tz(CURDATE(), '+00:00', '+5:00'),
+                 convert_tz(bo.created, '+00:00', '+5:00')) > 1)
+                 then true
+               when pm.created is null and bo.created is null
+                 then true
+               else false
+            end as distinct_visit
+            from participant p
+               left outer join site s on p.site_id = s.site_id
+               left outer join (select p.participant_id, a.created
+                        from physical_measurements a, participant p
+                        where a.participant_id = p.participant_id
+                        order by created desc
+                        limit 1) as pm ON p.participant_id = pm.participant_id
+               left outer join (select p.participant_id, b.created
+                        from biobank_order b, participant p
+                        where b.participant_id = p.participant_id
+                        order by created desc
+                        limit 1) as bo ON p.participant_id = bo.participant_id
+               where p.participant_id = :pid
+    """, bindparams=[bindparam('pid', value=pid)])
+
+    result = session.execute(sql)
+    for row in result:
+      return row[0]
+
 
   def to_client_json(self, model):
     result = model.asdict()

@@ -21,7 +21,7 @@ TIME_3 = datetime.datetime(2016, 1, 3)
 
 class PhysicalMeasurementsDaoTest(SqlTestBase):
   def setUp(self):
-    super(PhysicalMeasurementsDaoTest, self).setUp()
+    super(PhysicalMeasurementsDaoTest, self).setUp(use_mysql=True)
     self.participant = Participant(participantId=1, biobankId=2)
     ParticipantDao().insert(self.participant)
     self.dao = PhysicalMeasurementsDao()
@@ -163,6 +163,7 @@ class PhysicalMeasurementsDaoTest(SqlTestBase):
     self.assertTrue(new_measurements.final)
     self.assertEquals(TIME_3, new_measurements.created)
     ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
+    # An amendment should not add a distinct visit count to summary
     self.assertEqual(ps_dao.numberDistinctVisits, 1)
 
   def test_update_with_patch_cancel(self):
