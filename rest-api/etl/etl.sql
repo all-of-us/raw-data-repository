@@ -497,24 +497,7 @@ CREATE TABLE cdm.dose_era
 -- table: src_clean
 -- Contains persons observations
 -- -------------------------------------------------------------------
-
-DROP TABLE IF EXISTS cdm.src_clean;
-CREATE TABLE cdm.src_clean
-(
-    participant_id              bigint,
-    date_of_survey              datetime,
-    question_ppi_code           varchar(200),
-    question_code_id            bigint,
-    value_ppi_code              varchar(200),
-    topic_value                 varchar(200),
-    value_code_id               bigint,
-    value_number                decimal(20,6),
-    value_boolean               tinyint,
-    value_date                  datetime,
-    value_string                varchar(1024),
-    questionnaire_response_id   bigint,
-    unit_id                     varchar(50)
-);
+DROP VIEW IF EXISTS cdm.src_clean;
 
 -- -------------------------------------------------------------------
 -- Rules all together
@@ -522,7 +505,7 @@ CREATE TABLE cdm.src_clean
 -- and Q&A from quiestionnaire's.
 -- -------------------------------------------------------------------
 
-INSERT INTO cdm.src_clean
+CREATE VIEW cdm.src_clean AS
 SELECT
     pa.participant_id               AS participant_id,
     qr.created                      AS date_of_survey,
@@ -570,8 +553,17 @@ JOIN rdr.code co_q
 LEFT JOIN rdr.code co_a
     ON  qra.value_code_id = co_a.code_id
 WHERE
-    pa.withdrawal_status != 2
+    -- Filter out specific survey questions.
+    co_q.short_value not in (
+        SELECT cqf.question_ppi_code FROM cdm.combined_question_filter cqf
+    )
+    -- Filter out specific surveys.
+    AND rdr.fn_get_code_module(co_q.short_value) NOT IN (
+        SELECT csf.survey_name FROM cdm.combined_survey_filter csf
+    )
+    AND pa.withdrawal_status != 2
     AND hp.name != 'TEST'
+    AND (pa.is_ghost_id is null OR pa.is_ghost_id = 0)
     AND
     (
         (qra.value_code_id IS NOT NULL AND co_a.code_id IS NOT NULL)
@@ -581,11 +573,8 @@ WHERE
         OR qra.value_date IS NOT NULL
         OR qra.value_datetime IS NOT NULL
         OR qra.value_string IS NOT NULL
-    )
-;
+);
 
-
-ALTER TABLE cdm.src_clean ADD KEY (participant_id);
 
 -- -------------------------------------------------------------------
 -- source_file: src/src_mapped.sql
