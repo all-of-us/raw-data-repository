@@ -20,7 +20,7 @@ class BiobankOrderDaoTest(SqlTestBase):
   TIME_2 = datetime.datetime(2018, 9, 21, 8, 49, 37)
 
   def setUp(self):
-    super(BiobankOrderDaoTest, self).setUp()
+    super(BiobankOrderDaoTest, self).setUp(use_mysql=True)
     self.participant = Participant(participantId=123, biobankId=555)
     ParticipantDao().insert(self.participant)
     self.dao = BiobankOrderDao()
@@ -130,8 +130,8 @@ class BiobankOrderDaoTest(SqlTestBase):
 
   def test_duplicate_insert_ok(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
-    order_1 = self.dao.insert(self._make_biobank_order())
-    order_2 = self.dao.insert(self._make_biobank_order())
+    order_1 = self.dao.insert(self._make_biobank_order(created=self.TIME_1))
+    order_2 = self.dao.insert(self._make_biobank_order(created=self.TIME_1))
     self.assertEquals(order_1.asdict(), order_2.asdict())
 
   def test_same_id_different_identifier_not_ok(self):
