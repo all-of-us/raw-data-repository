@@ -13,9 +13,7 @@ from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_e
 from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
-from model.biobank_order import BiobankOrder
 from model.config_utils import to_client_biobank_id, from_client_biobank_id
-from model.measurements import PhysicalMeasurements
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
   WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
 from model.utils import to_client_participant_id, get_property_type
@@ -516,7 +514,7 @@ class ParticipantSummaryDao(UpdatableDao):
     else:
       return None
 
-  def calculate_distinct_visits(self, session, pid, obj):
+  def calculate_distinct_visits(self, session, pid):
     """ Participants may get PM or biobank samples on same day. This should be considered as
     a single visit in terms of program payment to participant.
     return Boolean: true if there has not been an order on same date (site timezone)."""
