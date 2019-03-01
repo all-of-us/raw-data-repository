@@ -2,7 +2,7 @@ from werkzeug.exceptions import BadRequest
 import datetime
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, TEST_HPO_NAME, TEST_EMAIL_PATTERN
-from participant_enums import WithdrawalStatus
+from participant_enums import WithdrawalStatus, MetricsCacheType
 from dao.hpo_dao import HPODao
 from dao.base_dao import BaseDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
@@ -21,7 +21,9 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     self.refresh_data_for_metrics_cache(MetricsEnrollmentStatusCacheDao())
     self.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
-    self.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsAgeCacheDao(MetricsCacheType.METRICS_V2_API))
+    self.refresh_data_for_metrics_cache(MetricsAgeCacheDao(
+      MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
     self.refresh_data_for_metrics_cache(MetricsRaceCacheDao())
     self.refresh_data_for_metrics_cache(MetricsRegionCacheDao())
     self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao())
@@ -96,7 +98,8 @@ class ParticipantCountsOverTimeService(BaseDao):
                                                             'FULL_AWARDEE', 'GEO_STATE',
                                                             'GEO_CENSUS', 'GEO_AWARDEE']:
       dao = MetricsRegionCacheDao()
-      return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids)
+      return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids,
+                                               enrollment_statuses)
     elif str(history) == 'TRUE' and str(stratification) == 'LIFECYCLE':
       dao = MetricsLifecycleCacheDao()
       return dao.get_latest_version_from_cache(end_date, awardee_ids)

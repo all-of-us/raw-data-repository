@@ -57,6 +57,7 @@ class MetricsAgeCache(Base):
   __tablename__ = 'metrics_age_cache'
   dateInserted = Column('date_inserted', UTCDateTime, default=clock.CLOCK.now,
                         nullable=False, primary_key=True)
+  type = Column('type', String(50), primary_key=True)
   hpoId = Column('hpo_id', String(20), primary_key=True)
   hpoName = Column('hpo_name', String(255), primary_key=True)
   date = Column('date', Date, nullable=False, primary_key=True)

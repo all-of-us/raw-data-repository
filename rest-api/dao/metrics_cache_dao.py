@@ -7,8 +7,10 @@ from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN
 from code_constants import PPI_SYSTEM
 from census_regions import census_regions
 import datetime
-from sqlalchemy import or_
-from participant_enums import Stratifications
+import json
+from sqlalchemy import func
+from participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
+  AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType
 
 class MetricsEnrollmentStatusCacheDao(BaseDao):
   def __init__(self):
@@ -195,19 +197,32 @@ class MetricsGenderCacheDao(BaseDao):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
-        return None
+        return []
       last_inserted_date = last_inserted_record.dateInserted
-      query = session.query(MetricsGenderCache)\
-        .filter(MetricsGenderCache.dateInserted == last_inserted_date)
-      if start_date:
-        query = query.filter(MetricsGenderCache.date >= start_date)
-      if end_date:
-        query = query.filter(MetricsGenderCache.date <= end_date)
 
       if hpo_ids:
-        query = query.filter(MetricsGenderCache.hpoId.in_(hpo_ids))
+        filters_hpo = ' (' + ' OR '.join('hpo_id=' + str(x) for x in hpo_ids) + ') AND '
+      else:
+        filters_hpo = ''
+      sql = """
+        SELECT date_inserted, hpo_id, hpo_name, date, CONCAT('{',group_concat(result),'}') AS json_result FROM
+        (
+          SELECT date_inserted, hpo_id, hpo_name, date, CONCAT('"',gender_name, '":', gender_count) AS result FROM metrics_gender_cache
+          WHERE %(filters_hpo)s
+          date_inserted=:date_inserted
+          AND date BETWEEN :start_date AND :end_date
+        ) a
+        GROUP BY date_inserted, hpo_id, hpo_name, date
+      """ % {'filters_hpo': filters_hpo}
+      params = {'start_date': start_date, 'end_date': end_date, 'date_inserted': last_inserted_date}
 
-      return query.all()
+      cursor = session.execute(sql, params)
+      try:
+        results = cursor.fetchall()
+      finally:
+        cursor.close()
+
+      return results
 
   def get_latest_version_from_cache(self, start_date, end_date, hpo_ids=None):
     buckets = self.get_active_buckets(start_date, end_date, hpo_ids)
@@ -230,31 +245,14 @@ class MetricsGenderCacheDao(BaseDao):
   def to_client_json(self, result_set):
     client_json = []
     for record in result_set:
-      is_exist = False
-      for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
-          item['metrics'][record.genderName] = record.genderCount
-          is_exist = True
-          break
-
-      if not is_exist:
-        new_item = {
-          'date': record.date.isoformat(),
-          'hpo': record.hpoName,
-          'metrics': {
-            'UNSET': 0,
-            'Woman': 0,
-            'Man': 0,
-            'Transgender': 0,
-            'PMI_Skip': 0,
-            'Non-Binary': 0,
-            'Other/Additional Options': 0,
-            'Prefer not to say': 0,
-            'UNMAPPED': 0
-          }
-        }
-        new_item['metrics'][record.genderName] = record.genderCount
-        client_json.append(new_item)
+      new_item = {
+        'date': record.date.isoformat(),
+        'hpo': record.hpo_name,
+        'metrics': json.loads(record.json_result)
+      }
+      if 'UNMAPPED' not in new_item['metrics']:
+        new_item['metrics']['UNMAPPED'] = 0
+      client_json.append(new_item)
     return client_json
 
   def get_metrics_cache_sql(self):
@@ -325,11 +323,18 @@ class MetricsGenderCacheDao(BaseDao):
     return sql
 
 class MetricsAgeCacheDao(BaseDao):
-  def __init__(self):
+
+  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
     super(MetricsAgeCacheDao, self).__init__(MetricsAgeCache)
+    self.cache_type = str(cache_type)
+    if cache_type == MetricsCacheType.PUBLIC_METRICS_EXPORT_API:
+      self.age_ranges = AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API
+    else:
+      self.age_ranges = AGE_BUCKETS_METRICS_V2_API
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsAgeCache)
+            .filter(MetricsAgeCache.type == self.cache_type)
             .order_by(MetricsAgeCache.dateInserted.desc())
             .first())
 
@@ -337,19 +342,34 @@ class MetricsAgeCacheDao(BaseDao):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
-        return None
+        return []
       last_inserted_date = last_inserted_record.dateInserted
-      query = session.query(MetricsAgeCache)\
-        .filter(MetricsAgeCache.dateInserted == last_inserted_date)
-      if start_date:
-        query = query.filter(MetricsAgeCache.date >= start_date)
-      if end_date:
-        query = query.filter(MetricsAgeCache.date <= end_date)
 
       if hpo_ids:
-        query = query.filter(MetricsAgeCache.hpoId.in_(hpo_ids))
+        filters_hpo = ' (' + ' OR '.join('hpo_id='+str(x) for x in hpo_ids) + ') AND '
+      else:
+        filters_hpo = ''
+      sql = """
+        SELECT date_inserted, hpo_id, hpo_name, date, CONCAT('{',group_concat(result),'}') AS json_result FROM
+        (
+          SELECT date_inserted, hpo_id, hpo_name, date, CONCAT('"',age_range, '":', age_count) AS result FROM metrics_age_cache
+          WHERE %(filters_hpo)s
+          date_inserted=:date_inserted
+          AND date BETWEEN :start_date AND :end_date
+          AND type=:cache_type
+        ) a
+        GROUP BY date_inserted, hpo_id, hpo_name, date
+      """ % {'filters_hpo': filters_hpo}
+      params = {'start_date': start_date, 'end_date': end_date, 'date_inserted': last_inserted_date,
+                'cache_type': self.cache_type}
 
-      return query.all()
+      cursor = session.execute(sql, params)
+      try:
+        results = cursor.fetchall()
+      finally:
+        cursor.close()
+
+      return results
 
   def get_latest_version_from_cache(self, start_date, end_date, hpo_ids=None):
     buckets = self.get_active_buckets(start_date, end_date, hpo_ids)
@@ -372,32 +392,12 @@ class MetricsAgeCacheDao(BaseDao):
   def to_client_json(self, result_set):
     client_json = []
     for record in result_set:
-      is_exist = False
-      for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
-          item['metrics'][record.ageRange] = record.ageCount
-          is_exist = True
-          break
-
-      if not is_exist:
-        new_item = {
-          'date': record.date.isoformat(),
-          'hpo': record.hpoName,
-          'metrics': {
-            'UNSET': 0,
-            '0-17': 0,
-            '18-25': 0,
-            '26-35': 0,
-            '36-45': 0,
-            '46-55': 0,
-            '56-65': 0,
-            '66-75': 0,
-            '76-85': 0,
-            '86-': 0
-          }
-        }
-        new_item['metrics'][record.ageRange] = record.ageCount
-        client_json.append(new_item)
+      new_item = {
+        'date': record.date.isoformat(),
+        'hpo': record.hpo_name,
+        'metrics': json.loads(record.json_result)
+      }
+      client_json.append(new_item)
     return client_json
 
   def get_metrics_cache_sql(self):
@@ -405,6 +405,7 @@ class MetricsAgeCacheDao(BaseDao):
       insert into metrics_age_cache 
         SELECT
           :date_inserted AS date_inserted,
+          '""" + self.cache_type + """' as type,
           :hpo_id AS hpo_id,
           (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
           c.day AS date,
@@ -431,30 +432,23 @@ class MetricsAgeCacheDao(BaseDao):
         WHERE c.day BETWEEN :start_date AND :end_date
         UNION
     """
-    age_ranges = ['0-17', '18-25', '26-35', '36-45', '46-55', '56-65', '66-75', '76-85', '86-']
-    age_ranges_conditions = [
-      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 0 \
-      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 17 ',
-      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 18 \
-      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 25 ',
-      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 26 \
-      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 35 ',
-      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 36 \
-      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 45 ',
-      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 46 \
-      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 55 ',
-      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 56 \
-      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 65 ',
-      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 66 \
-      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 75 ',
-      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 76 \
-      AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) <= 85 ',
-      ' AND (Date_format(From_Days( To_Days(c.day) - To_Days(dob) ), \'%Y\' ) + 0) >= 86 '
-    ]
+
+    age_ranges_conditions = []
+    for age_range in self.age_ranges:
+      age_borders = filter(None, age_range.split('-'))
+      if len(age_borders) == 2:
+        age_ranges_conditions.append(' AND (Date_format(From_Days(To_Days(c.day) - To_Days(dob)), '
+                                     '\'%Y\') + 0) BETWEEN ' + age_borders[0] + ' AND '
+                                     + age_borders[1],)
+      else:
+        age_ranges_conditions.append(' AND (Date_format(From_Days(To_Days(c.day) - To_Days(dob)), '
+                                     '\'%Y\') + 0) >= ' + age_borders[0])
+
     sub_queries = []
     sql_template = """
       SELECT
         :date_inserted AS date_inserted,
+        '""" + self.cache_type + """' as type,
         :hpo_id AS hpo_id,
         (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
         c.day as date,
@@ -482,7 +476,7 @@ class MetricsAgeCacheDao(BaseDao):
       WHERE c.day BETWEEN :start_date AND :end_date
     """
 
-    for age_range, age_range_condition in zip(age_ranges, age_ranges_conditions):
+    for age_range, age_range_condition in zip(self.age_ranges, age_ranges_conditions):
       sub_query = sql_template.format(age_range, age_range_condition)
       sub_queries.append(sub_query)
 
@@ -706,36 +700,49 @@ class MetricsRegionCacheDao(BaseDao):
             .order_by(MetricsRegionCache.dateInserted.desc())
             .first())
 
-  def get_active_buckets(self, cutoff, stratification, hpo_ids=None):
+  def get_active_buckets(self, cutoff, stratification, hpo_ids=None, enrollment_statuses=None):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
         return None
       last_inserted_date = last_inserted_record.dateInserted
-      query = session.query(MetricsRegionCache)\
-        .filter(MetricsRegionCache.dateInserted == last_inserted_date)
+      query = session.query(MetricsRegionCache.date, MetricsRegionCache.hpoName,
+                            MetricsRegionCache.stateName,
+                            func.sum(MetricsRegionCache.stateCount).label('total'))
+      query.filter(MetricsRegionCache.dateInserted == last_inserted_date)
       query = query.filter(MetricsRegionCache.date == cutoff)
       if stratification in [Stratifications.FULL_STATE, Stratifications.FULL_CENSUS,
                             Stratifications.FULL_AWARDEE]:
-        query = query.filter(or_(MetricsRegionCache.enrollmentStatus == 'core',
-                                 MetricsRegionCache.enrollmentStatus == None))
+        query = query.filter(MetricsRegionCache.enrollmentStatus == 'core')
       if hpo_ids:
         query = query.filter(MetricsRegionCache.hpoId.in_(hpo_ids))
+      if enrollment_statuses:
+        status_filter_list = []
+        for status in enrollment_statuses:
+          if status == 'INTERESTED':
+            status_filter_list.append('registered')
+          if status == 'MEMBER':
+            status_filter_list.append('consented')
+          if status == 'FULL_PARTICIPANT':
+            status_filter_list.append('core')
+        query = query.filter(MetricsRegionCache.enrollmentStatus.in_(status_filter_list))
 
-      return query.all()
+      return query.group_by(MetricsRegionCache.date, MetricsRegionCache.hpoName,
+                            MetricsRegionCache.stateName).all()
 
-  def get_latest_version_from_cache(self, cutoff, stratification, hpo_ids=None):
+  def get_latest_version_from_cache(self, cutoff, stratification, hpo_ids=None,
+                                    enrollment_statuses=None):
     stratification = Stratifications(str(stratification))
     operation_funcs = {
-      Stratifications.FULL_STATE: self.to_full_state_client_json,
-      Stratifications.FULL_CENSUS: self.to_full_census_client_json,
-      Stratifications.FULL_AWARDEE: self.to_full_awardee_client_json,
+      Stratifications.FULL_STATE: self.to_state_client_json,
+      Stratifications.FULL_CENSUS: self.to_census_client_json,
+      Stratifications.FULL_AWARDEE: self.to_awardee_client_json,
       Stratifications.GEO_STATE: self.to_state_client_json,
       Stratifications.GEO_CENSUS: self.to_census_client_json,
       Stratifications.GEO_AWARDEE: self.to_awardee_client_json
     }
 
-    buckets = self.get_active_buckets(cutoff, stratification, hpo_ids)
+    buckets = self.get_active_buckets(cutoff, stratification, hpo_ids, enrollment_statuses)
     if buckets is None:
       return []
     return operation_funcs[stratification](buckets)
@@ -765,9 +772,8 @@ class MetricsRegionCacheDao(BaseDao):
         continue
       is_exist = False
       for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName and \
-          item['enrollment_status'] == record.enrollmentStatus:
-          item['metrics'][state_name] = record.stateCount
+        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
+          item['metrics'][state_name] = int(record.total)
           is_exist = True
           break
 
@@ -776,10 +782,9 @@ class MetricsRegionCacheDao(BaseDao):
         new_item = {
           'date': record.date.isoformat(),
           'hpo': record.hpoName,
-          'enrollment_status': record.enrollmentStatus,
           'metrics': metrics
         }
-        new_item['metrics'][state_name] = record.stateCount
+        new_item['metrics'][state_name] = int(record.total)
         client_json.append(new_item)
     return client_json
 
@@ -793,9 +798,8 @@ class MetricsRegionCacheDao(BaseDao):
         continue
       is_exist = False
       for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName and \
-          item['enrollment_status'] == record.enrollmentStatus:
-          item['metrics'][census_name] += record.stateCount
+        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
+          item['metrics'][census_name] += int(record.total)
           is_exist = True
           break
 
@@ -803,7 +807,6 @@ class MetricsRegionCacheDao(BaseDao):
         new_item = {
           'date': record.date.isoformat(),
           'hpo': record.hpoName,
-          'enrollment_status': record.enrollmentStatus,
           'metrics': {
             'NORTHEAST': 0,
             'MIDWEST': 0,
@@ -811,7 +814,7 @@ class MetricsRegionCacheDao(BaseDao):
             'WEST': 0
           }
         }
-        new_item['metrics'][census_name] = record.stateCount
+        new_item['metrics'][census_name] = int(record.total)
         client_json.append(new_item)
     return client_json
 
@@ -820,62 +823,8 @@ class MetricsRegionCacheDao(BaseDao):
     for record in result_set:
       is_exist = False
       for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName and \
-          item['enrollment_status'] == record.enrollmentStatus:
-          item['count'] += record.stateCount
-          is_exist = True
-          break
-
-      if not is_exist:
-        new_item = {
-          'date': record.date.isoformat(),
-          'hpo': record.hpoName,
-          'enrollment_status': record.enrollmentStatus,
-          'count': record.stateCount
-        }
-        client_json.append(new_item)
-    return client_json
-
-  # keep this for the compatibility with healthPro dashboard
-  # will remove this after healthPro move to new API
-  def to_full_state_client_json(self, result_set):
-    client_json = []
-    for record in result_set:
-      state_name = self.remove_prefix(record.stateName, 'PIIState_')
-      if state_name not in census_regions:
-        continue
-      is_exist = False
-      for item in client_json:
         if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
-          item['metrics'][state_name] = record.stateCount
-          is_exist = True
-          break
-
-      if not is_exist:
-        metrics = {stateName: 0 for stateName in census_regions.keys()}
-        new_item = {
-          'date': record.date.isoformat(),
-          'hpo': record.hpoName,
-          'metrics': metrics
-        }
-        new_item['metrics'][state_name] = record.stateCount
-        client_json.append(new_item)
-    return client_json
-
-  # keep this for the compatibility with healthPro dashboard
-  # will remove this after healthPro move to new API
-  def to_full_census_client_json(self, result_set):
-    client_json = []
-    for record in result_set:
-      state_name = self.remove_prefix(record.stateName, 'PIIState_')
-      if state_name in census_regions:
-        census_name = census_regions[state_name]
-      else:
-        continue
-      is_exist = False
-      for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
-          item['metrics'][census_name] += record.stateCount
+          item['count'] += int(record.total)
           is_exist = True
           break
 
@@ -883,34 +832,7 @@ class MetricsRegionCacheDao(BaseDao):
         new_item = {
           'date': record.date.isoformat(),
           'hpo': record.hpoName,
-          'metrics': {
-            'NORTHEAST': 0,
-            'MIDWEST': 0,
-            'SOUTH': 0,
-            'WEST': 0
-          }
-        }
-        new_item['metrics'][census_name] = record.stateCount
-        client_json.append(new_item)
-    return client_json
-
-  # keep this for the compatibility with healthPro dashboard
-  # will remove this after healthPro move to new API
-  def to_full_awardee_client_json(self, result_set):
-    client_json = []
-    for record in result_set:
-      is_exist = False
-      for item in client_json:
-        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
-          item['count'] += record.stateCount
-          is_exist = True
-          break
-
-      if not is_exist:
-        new_item = {
-          'date': record.date.isoformat(),
-          'hpo': record.hpoName,
-          'count': record.stateCount
+          'count': int(record.total)
         }
         client_json.append(new_item)
     return client_json
