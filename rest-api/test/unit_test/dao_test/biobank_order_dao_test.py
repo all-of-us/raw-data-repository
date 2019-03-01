@@ -20,7 +20,7 @@ class BiobankOrderDaoTest(SqlTestBase):
   TIME_2 = datetime.datetime(2018, 9, 21, 8, 49, 37)
 
   def setUp(self):
-    super(BiobankOrderDaoTest, self).setUp()
+    super(BiobankOrderDaoTest, self).setUp(use_mysql=True)
     self.participant = Participant(participantId=123, biobankId=555)
     ParticipantDao().insert(self.participant)
     self.dao = BiobankOrderDao()
@@ -130,8 +130,8 @@ class BiobankOrderDaoTest(SqlTestBase):
 
   def test_duplicate_insert_ok(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
-    order_1 = self.dao.insert(self._make_biobank_order())
-    order_2 = self.dao.insert(self._make_biobank_order())
+    order_1 = self.dao.insert(self._make_biobank_order(created=self.TIME_1))
+    order_2 = self.dao.insert(self._make_biobank_order(created=self.TIME_1))
     self.assertEquals(order_1.asdict(), order_2.asdict())
 
   def test_same_id_different_identifier_not_ok(self):
@@ -261,6 +261,7 @@ class BiobankOrderDaoTest(SqlTestBase):
     ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertEqual(ps_dao.sampleOrderStatus2ED10, OrderStatus.CREATED)
     self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.numberDistinctVisits, 1)
 
   def test_cancelling_an_order_missing_reason(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))
@@ -305,6 +306,8 @@ class BiobankOrderDaoTest(SqlTestBase):
     cancelled_order = self.dao.update_with_patch(order_1.biobankOrderId, cancelled_request,
                                           order_1.version)
 
+    ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertEqual(ps_dao.numberDistinctVisits, 0)
     restore_request = self._get_restore_patch()
     restored_order = self.dao.update_with_patch(order_1.biobankOrderId, restore_request,
                                     cancelled_order.version)
@@ -313,6 +316,8 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.assertEqual(restored_order.restoredUsername, 'mike@pmi-ops.org')
     self.assertEqual(restored_order.orderStatus, BiobankOrderStatus.UNSET)
     self.assertEqual(restored_order.amendedReason, restore_request['amendedReason'])
+    ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
+    self.assertEqual(ps_dao.numberDistinctVisits, 1)
 
   def test_amending_an_order(self):
     ParticipantSummaryDao().insert(self.participant_summary(self.participant))

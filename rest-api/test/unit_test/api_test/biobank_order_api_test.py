@@ -26,7 +26,7 @@ TIME_6 = datetime.datetime(2015, 1, 1)
 
 class BiobankOrderApiTest(FlaskTestBase):
   def setUp(self):
-    super(BiobankOrderApiTest, self).setUp()
+    super(BiobankOrderApiTest, self).setUp(use_mysql=True)
     self.participant = Participant(participantId=123, biobankId=555)
     self.participant_dao = ParticipantDao()
     self.participant_dao.insert(self.participant)
@@ -442,18 +442,19 @@ class BiobankOrderApiTest(FlaskTestBase):
 
       self.send_put(path, request_data=full_order, headers={'If-Match': 'W/"1"'})
 
-      amended_order = self.send_get(path)
-      second_order_history = session.query(BiobankOrderHistory).filter_by(version=2).first()
-      second_order_samples = session.query(BiobankOrderedSampleHistory).filter_by(version=2).first()
-      second_order_identifier = session.query(BiobankOrderIdentifierHistory).filter_by(version=2)\
-                                                                                       .first()
-      self.assertEqual(second_order_history.biobankOrderId, amended_order['id'])
-      self.assertEqual(second_order_identifier.biobankOrderId, amended_order['id'])
-      self.assertEqual(second_order_samples.biobankOrderId, amended_order['id'])
+      with self.bio_dao.session() as session:
+        amended_order = self.send_get(path)
+        second_order_history = session.query(BiobankOrderHistory).filter_by(version=2).first()
+        second_order_samples = session.query(BiobankOrderedSampleHistory).filter_by(version=2).first()
+        second_order_identifier = session.query(BiobankOrderIdentifierHistory).filter_by(version=2)\
+                                                                                         .first()
+        self.assertEqual(second_order_history.biobankOrderId, amended_order['id'])
+        self.assertEqual(second_order_identifier.biobankOrderId, amended_order['id'])
+        self.assertEqual(second_order_samples.biobankOrderId, amended_order['id'])
 
-      # Check that original order hasn't changed in history
-      original = session.query(BiobankOrderHistory).filter_by(version=1).first()
-      self.assertEqual(original.asdict(), order_history.asdict())
+        # Check that original order hasn't changed in history
+        original = session.query(BiobankOrderHistory).filter_by(version=1).first()
+        self.assertEqual(original.asdict(), order_history.asdict())
 
   def test_error_no_summary(self):
     order_json = load_biobank_order_json(self.participant.participantId)
