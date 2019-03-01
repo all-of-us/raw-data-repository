@@ -253,7 +253,7 @@ class BiobankOrderDao(UpdatableDao):
                                                 participant_summary.participantId, obj)
 
     if obj.orderStatus == BiobankOrderStatus.CANCELLED and \
-                          participant_summary.numberDistinctVisits > 0 and is_distinct_visit:
+      participant_summary.numberDistinctVisits > 0 and is_distinct_visit:
                           participant_summary.numberDistinctVisits -= 1
 
     participant_summary.lastModified = clock.CLOCK.now()
