@@ -521,11 +521,11 @@ class ParticipantSummaryDao(UpdatableDao):
     sql = text("""select CURDATE() as realdate , pm.created, bo.created,
                 case
                when (pm.created is not null and
-                 datediff(convert_tz(CURDATE(), '+00:00', '+5:00'), 
-                 convert_tz(pm.created, '+00:00','+5:00')) > 1)
+                 datediff(convert_tz(CURDATE(), '+00:00', '-5:00'), 
+                 convert_tz(pm.created, '+00:00','-5:00')) > 1)
                or (bo.created is not null and
-                 datediff(convert_tz(CURDATE(), '+00:00', '+5:00'),
-                 convert_tz(bo.created, '+00:00', '+5:00')) > 1)
+                 datediff(convert_tz(CURDATE(), '+00:00', '-5:00'),
+                 convert_tz(bo.created, '+00:00', '-5:00')) > 1)
                  then true
                when pm.created is null and bo.created is null
                  then true
