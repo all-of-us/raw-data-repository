@@ -294,7 +294,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
     raise_if_withdrawn(participant_summary)
     participant_summary.lastModified = clock.CLOCK.now()
     is_distinct_visit = participant_summary_dao.calculate_distinct_visits(session,
-                                                                          participant_id, obj)
+                                                                          participant_id)
     if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and is_distinct_visit \
        and not is_amendment:
       participant_summary.numberDistinctVisits -= 1
