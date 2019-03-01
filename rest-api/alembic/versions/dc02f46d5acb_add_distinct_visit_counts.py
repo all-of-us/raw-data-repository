@@ -1,8 +1,8 @@
-"""add number distinct visits
+"""add distinct visit counts
 
-Revision ID: a155db39cc8b
-Revises: 5aa0142f9bcb
-Create Date: 2019-02-25 13:15:41.123630
+Revision ID: dc02f46d5acb
+Revises: 014053444333
+Create Date: 2019-03-01 10:21:34.804486
 
 """
 from alembic import op
@@ -18,8 +18,8 @@ from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatu
 from model.code import CodeType
 
 # revision identifiers, used by Alembic.
-revision = 'a155db39cc8b'
-down_revision = '5aa0142f9bcb'
+revision = 'dc02f46d5acb'
+down_revision = '014053444333'
 branch_labels = None
 depends_on = None
 

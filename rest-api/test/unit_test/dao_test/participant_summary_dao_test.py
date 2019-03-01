@@ -20,7 +20,7 @@ from model.measurements import PhysicalMeasurements
 from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus, SampleStatus, \
   QuestionnaireStatus
 from query import Query, Operator, FieldFilter, OrderBy
-from test_data import load_measurement_json, load_measurement_json_amendment
+from test_data import load_measurement_json
 from unit_test_util import NdbTestBase, PITT_HPO_ID, cancel_biobank_order, \
   get_restore_or_cancel_info
 
@@ -476,16 +476,6 @@ class ParticipantSummaryDaoTest(NdbTestBase):
       self.measurement_dao.insert(self._make_physical_measurements(physicalMeasurementsId=2))
       summary = self.dao.get(self.participant.participantId)
       self.assertEquals(summary.numberDistinctVisits, 1)
-
-    with FakeClock(TIME_3):
-      # insert a biobank order and measurement
-      self.order_dao.insert(self._make_biobank_order(biobankOrderId=79, created=TIME_3,
-                                                     identifiers=[
-                                                       BiobankOrderIdentifier(system='c', value='e')]))
-
-      self.measurement_dao.insert(self._make_physical_measurements(physicalMeasurementsId=2))
-      summary = self.dao.get(self.participant.participantId)
-      self.assertEquals(summary.numberDistinctVisits, 2)
 
   def _make_biobank_order(self, **kwargs):
     """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
