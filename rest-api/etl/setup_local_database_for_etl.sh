@@ -47,11 +47,11 @@ if [ "${MYSQL_ROOT_PASSWORD}" ] && [ -z "${DSTFOLDER}" ]; then
   exit 1
 fi
 
-DSTBUCKET="all-of-us-rdr-vocabulary/${DSTFOLDER}"
+DSTBUCKET="all-of-us-rdr-vocabulary"
 
 echo ""
 echo "  source bucket:       ${SRCBUCKET}"
-echo "  destination bucket:  ${DSTBUCKET}"
+echo "  destination bucket:  ${DSTBUCKET}/${DSTFOLDER}"
 
 echo
 while true; do
@@ -103,6 +103,7 @@ rm -rf ${CSV_DIR}
 mkdir -p ${CSV_DIR}
 mkdir -p ${CSV_DIR}/cdm
 mkdir -p ${CSV_DIR}/voc
+mkdir -p ${CSV_DIR}/filters
 if [ "${GENERATE_SQL_DUMP}" ]
 then
   mkdir -p ${OUTPUT_DIR}
@@ -118,6 +119,8 @@ source tools/auth_setup.sh
 echo "Copying vocabulary files from GCS..."
 gsutil cp -r gs://${SRCBUCKET}/CONCEPT.csv ${CSV_DIR}/voc
 gsutil cp -r gs://${SRCBUCKET}/CONCEPT_RELATIONSHIP.csv ${CSV_DIR}/voc
+echo "Copying filter files from GCS..."
+gsutil cp -r gs://${DSTBUCKET}/etl-filters/*.csv ${CSV_DIR}/filters
 
 # Strip concept relationships to "Maps to" as those are the only ones we use in the ETL
 grep "Maps to" ${CSV_DIR}/voc/CONCEPT_RELATIONSHIP.csv > ${CSV_DIR}/voc/rel.csv
@@ -130,6 +133,11 @@ for i in ${CSV_DIR}/voc/*; do mv $i `echo $i | tr [:upper:] [:lower:]`; done
 
 # Give read permission for MySQL to read the files we're trying to import.
 chmod -R 0777 ${CSV_DIR}
+
+echo "Importing filters..."
+mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --local --fields-terminated-by=\| cdm \
+    ${CSV_DIR}/filters/combined_question_filter.csv \
+    ${CSV_DIR}/filters/combined_survey_filter.csv
 
 echo "Importing source_to_concept_map.csv..."
 mysqlimport -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --local --fields-terminated-by=\| cdm ${CSV_DIR}/source_to_concept_map.csv
@@ -151,8 +159,8 @@ then
     echo "Generating dump for voc database.."
     mysqldump --databases voc -h 127.0.0.1 -u ${ROOT_DB_USER} -p${ROOT_PASSWORD} --hex-blob \
       --skip-triggers --default-character-set=utf8 > ${OUTPUT_DIR}/voc.sql
-    echo "Copying SQL dumps to gs://${DSTBUCKET}..."
-    gsutil cp -r ${OUTPUT_DIR}/*.sql gs://${DSTBUCKET}
+    echo "Copying SQL dumps to gs://${DSTBUCKET}/${DSTFOLDER}..."
+    gsutil cp -r ${OUTPUT_DIR}/*.sql gs://${DSTBUCKET}/${DSTFOLDER}
 fi
 
 echo "Done."
