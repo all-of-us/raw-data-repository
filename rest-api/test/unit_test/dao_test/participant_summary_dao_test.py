@@ -1,5 +1,4 @@
 import clock
-from clock import FakeClock
 import datetime
 import json
 from base64 import urlsafe_b64encode, urlsafe_b64decode
