@@ -252,7 +252,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         self._update_amended(obj, extension, url, session)
         is_amendment = True
         break
-    participant_summary = self._update_participant_summary(session, obj)
+    participant_summary = self._update_participant_summary(session, obj, is_amendment)
     existing_measurements = (session.query(PhysicalMeasurements)
                              .filter(PhysicalMeasurements.participantId == obj.participantId)
                              .all())
@@ -278,7 +278,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
     obj.resource = json.dumps(resource_json)
     return obj
 
-  def _update_participant_summary(self, session, obj):
+  def _update_participant_summary(self, session, obj, is_amendment=False):
     participant_id = obj.participantId
     if participant_id is None:
       raise BadRequest('participantId is required')
@@ -293,6 +293,12 @@ class PhysicalMeasurementsDao(UpdatableDao):
                        participant_id)
     raise_if_withdrawn(participant_summary)
     participant_summary.lastModified = clock.CLOCK.now()
+    is_distinct_visit = participant_summary_dao.calculate_distinct_visits(session,
+                                                                          participant_id)
+    if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and is_distinct_visit \
+       and not is_amendment:
+      participant_summary.numberDistinctVisits -= 1
+
 
     # These fields set on measurement that is cancelled and doesn't have a previous good measurement
     if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and not \
@@ -309,6 +315,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
       participant_summary.physicalMeasurementsFinalizedTime = obj.finalized
       participant_summary.physicalMeasurementsCreatedSiteId = obj.createdSiteId
       participant_summary.physicalMeasurementsFinalizedSiteId = obj.finalizedSiteId
+      if is_distinct_visit and not is_amendment:
+        participant_summary.numberDistinctVisits += 1
 
     elif obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and \
        self.has_uncancelled_pm(session, participant):

@@ -204,6 +204,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'withdrawalStatus': 'NOT_WITHDRAWN',
       'withdrawalReason': 'UNSET',
       'suspensionStatus': 'NOT_SUSPENDED',
+      'numberDistinctVisits': 0,
       'ehrStatus': 'UNSET',
     })
 

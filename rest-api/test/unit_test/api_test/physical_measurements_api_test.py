@@ -16,7 +16,7 @@ from test_data import load_measurement_json, load_measurement_json_amendment, da
 class PhysicalMeasurementsApiTest(FlaskTestBase):
 
   def setUp(self):
-    super(PhysicalMeasurementsApiTest, self).setUp()
+    super(PhysicalMeasurementsApiTest, self).setUp(use_mysql=True)
     self.participant_id = self.create_participant()
     self.participant_id_2 = self.create_participant()
     self.time1 = datetime.datetime(2018, 1, 1)
@@ -38,7 +38,8 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
   def test_insert(self):
     self.send_consent(self.participant_id)
     self.send_consent(self.participant_id_2)
-    now = datetime.datetime.now()
+    # now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = self.time1
     self._insert_measurements(now.isoformat())
 
     response = self.send_get('Participant/%s/PhysicalMeasurements' % self.participant_id)
@@ -106,7 +107,8 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
 
   def test_insert_with_qualifiers(self):
     self.send_consent(self.participant_id)
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = self.time2
     with open(data_path('physical_measurements_2.json')) as measurements_file:
       json_text = measurements_file.read() % {
         'participant_id': self.participant_id,
@@ -214,6 +216,7 @@ class PhysicalMeasurementsApiTest(FlaskTestBase):
                       valueDecimal=30.1,
                       valueUnit="kg",
                       qualifiers=[q2])
+
     m = {measurement.measurementId:measurement.asdict(follow = {'measurements': {},
                                                                 'qualifiers': {}}) for measurement
          in physical_measurements.measurements}

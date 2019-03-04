@@ -203,8 +203,6 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleOrderStatus1SS08': 'UNSET',
                 'sampleOrderStatus1UR10': 'UNSET',
                 'sampleOrderStatus1UR90': 'UNSET',
-                'sampleOrderStatus2ED10': 'UNSET',
-                'sampleOrderStatus1CFD9': 'UNSET',
                 'sampleOrderStatus1PXR2': 'UNSET',
                 'sampleOrderStatus1ED02': 'UNSET',
                 'sampleStatus1ED04': 'UNSET',
@@ -228,6 +226,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'withdrawalStatus': 'NOT_WITHDRAWN',
                 'withdrawalReason': 'UNSET',
                 'suspensionStatus': 'NOT_SUSPENDED',
+                'numberDistinctVisits': 0,
                 'ehrStatus': 'UNSET',
               }
     self.assertJsonResponseMatches(expected, summary)
@@ -325,6 +324,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'withdrawalStatus': 'NOT_WITHDRAWN',
                 'withdrawalReason': 'UNSET',
                 'suspensionStatus': 'NOT_SUSPENDED',
+                'numberDistinctVisits': 0,
                 'ehrStatus': 'UNSET',
                 }
     self.assertJsonResponseMatches(expected, summary)

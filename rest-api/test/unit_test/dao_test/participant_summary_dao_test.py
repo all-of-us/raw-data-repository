@@ -1,28 +1,41 @@
+import clock
 import datetime
 import json
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 import time
 import config
+from code_constants import BIOBANK_TESTS
 from dao.base_dao import json_serial
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
+from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
+from dao.physical_measurements_dao import PhysicalMeasurementsDao
 from model.biobank_stored_sample import BiobankStoredSample
+from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
+from model.measurements import PhysicalMeasurements
 from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus, SampleStatus, \
   QuestionnaireStatus
 from query import Query, Operator, FieldFilter, OrderBy
-from unit_test_util import NdbTestBase, PITT_HPO_ID
+from test_data import load_measurement_json
+from unit_test_util import NdbTestBase, PITT_HPO_ID, cancel_biobank_order, \
+  get_restore_or_cancel_info
 
 
 NUM_BASELINE_PPI_MODULES = 3
 
+TIME_1 = datetime.datetime(2019, 2, 24)
+TIME_2 = datetime.datetime(2019, 2, 25)
+TIME_3 = datetime.datetime(2019, 2, 27)
 
 class ParticipantSummaryDaoTest(NdbTestBase):
   def setUp(self):
     super(ParticipantSummaryDaoTest, self).setUp(use_mysql=True)
     self.dao = ParticipantSummaryDao()
+    self.order_dao = BiobankOrderDao()
+    self.measurement_dao = PhysicalMeasurementsDao()
     self.participant_dao = ParticipantDao()
     self.no_filter_query = Query([], None, 2, None)
     self.one_filter_query = Query([FieldFilter("participantId", Operator.EQUALS, 1)],
@@ -418,6 +431,78 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     self.assertEquals(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
     self.assertNotEqual(test_dt, summary.lastModified)
 
+  def testNumberDistinctVisitsCounts(self):
+    self.participant = self._insert(Participant(participantId=7, biobankId=77))
+    # insert biobank order
+    order = self.order_dao.insert(self._make_biobank_order())
+    summary = self.dao.get(self.participant.participantId)
+    self.assertEquals(summary.numberDistinctVisits, 1)
+    cancel_request = cancel_biobank_order()
+    # cancel biobank order
+    self.order_dao.update_with_patch(order.biobankOrderId, cancel_request, order.version)
+    summary = self.dao.get(self.participant.participantId)
+    # distinct count should be 0
+    self.assertEquals(summary.numberDistinctVisits, 0)
+
+    self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId,
+                                                             TIME_1.isoformat()))
+    # insert physical measurement
+    measurement = self.measurement_dao.insert(self._make_physical_measurements())
+    summary = self.dao.get(self.participant.participantId)
+    # count should be 1
+    self.assertEquals(summary.numberDistinctVisits, 1)
+
+    # cancel the measurement
+    cancel_measurement = get_restore_or_cancel_info()
+    with self.measurement_dao.session() as session:
+      self.measurement_dao.update_with_patch(measurement.physicalMeasurementsId, session,
+                                             cancel_measurement)
+
+    summary = self.dao.get(self.participant.participantId)
+    # count should be 0
+    self.assertEquals(summary.numberDistinctVisits, 0)
+
+  def _make_biobank_order(self, **kwargs):
+    """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
+
+    Kwargs pass through to BiobankOrder constructor, overriding defaults.
+    """
+    for k, default_value in (
+        ('biobankOrderId', '1'),
+        ('created', clock.CLOCK.now()),
+        ('participantId', self.participant.participantId),
+        ('sourceSiteId', 1),
+        ('sourceUsername', 'fred@pmi-ops.org'),
+        ('collectedSiteId', 1),
+        ('collectedUsername', 'joe@pmi-ops.org'),
+        ('processedSiteId', 1),
+        ('processedUsername', 'sue@pmi-ops.org'),
+        ('finalizedSiteId', 2),
+        ('finalizedUsername', 'bob@pmi-ops.org'),
+        ('identifiers', [BiobankOrderIdentifier(system='a', value='c')]),
+        ('samples', [BiobankOrderedSample(
+            biobankOrderId='1',
+            test=BIOBANK_TESTS[0],
+            description='description',
+            processingRequired=True)])):
+      if k not in kwargs:
+        kwargs[k] = default_value
+    return BiobankOrder(**kwargs)
+
+  def _make_physical_measurements(self, **kwargs):
+    """Makes a new PhysicalMeasurements (same values every time) with valid/complete defaults.
+
+    Kwargs pass through to PM constructor, overriding defaults.
+    """
+    for k, default_value in (
+        ('physicalMeasurementsId', 1),
+        ('participantId', self.participant.participantId),
+        ('resource', self.measurement_json),
+        ('createdSiteId', 1),
+        ('finalizedSiteId', 2)):
+      if k not in kwargs:
+        kwargs[k] = default_value
+    return PhysicalMeasurements(**kwargs)
 
 def _with_token(query, token):
   return Query(query.field_filters, query.order_by, query.max_results, token)
