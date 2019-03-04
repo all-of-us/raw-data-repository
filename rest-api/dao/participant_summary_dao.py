@@ -14,11 +14,12 @@ from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
 from model.config_utils import to_client_biobank_id, from_client_biobank_id
+from model.ehr import EhrReceipt
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
   WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
 from model.utils import to_client_participant_id, get_property_type
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
-  EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age
+  EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age, EhrStatus
 from query import OrderBy, PropertyType
 from sqlalchemy import or_
 from werkzeug.exceptions import BadRequest, NotFound
@@ -577,6 +578,18 @@ class ParticipantSummaryDao(UpdatableDao):
                                           seconds=config.LAST_MODIFIED_BUFFER_SECONDS)
 
     return decoded_vals
+
+  @staticmethod
+  def update_with_new_ehr(participant_summary, recorded_time, received_time=None):
+    participant_summary.ehrStatus = EhrStatus.PRESENT
+    participant_summary.ehrReceiptTime = participant_summary.ehrReceiptTime or recorded_time
+    participant_summary.ehrUpdateTime = received_time
+    return EhrReceipt(
+      recordedTime=recorded_time,
+      receivedTime=received_time or clock.CLOCK.now(),
+      participantId=participant_summary.participantId,
+      siteId=participant_summary.siteId
+    )
 
 def _initialize_field_type_sets():
   """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are

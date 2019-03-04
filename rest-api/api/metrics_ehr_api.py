@@ -1,6 +1,7 @@
 import functools
 
-from dao.metrics_ehr_service import INTERVALS, MetricsEhrService
+from dao.calendar_dao import INTERVALS
+from dao.metrics_ehr_service import MetricsEhrService
 
 from flask import request
 from flask_restful import Resource

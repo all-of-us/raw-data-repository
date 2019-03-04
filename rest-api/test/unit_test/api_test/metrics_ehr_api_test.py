@@ -2,6 +2,7 @@ import datetime
 
 from clock import FakeClock
 from dao.calendar_dao import CalendarDao
+from dao.ehr_dao import EhrReceiptDao
 from dao.hpo_dao import HPODao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -41,6 +42,7 @@ class MetricsEhrApiTestBase(FlaskTestBase):
     super(MetricsEhrApiTestBase, self).setUp(use_mysql=True, **kwargs)
     self.dao = ParticipantDao()
     self.ps_dao = ParticipantSummaryDao()
+    self.ehr_receipt_dao = EhrReceiptDao()
     self.ps = ParticipantSummary()
     self.calendar_dao = CalendarDao()
     self.site_dao = SiteDao()
@@ -145,129 +147,10 @@ class MetricsEhrApiTestBase(FlaskTestBase):
     return summary
 
   def _update_ehr(self, participant_summary, receipt_time, update_time):
-    participant_summary.ehrStatus = EhrStatus.PRESENT
-    participant_summary.ehrReceiptTime = receipt_time
-    participant_summary.ehrUpdateTime = update_time
+    self.ehr_receipt_dao.insert(
+      self.ps_dao.update_with_new_ehr(participant_summary, receipt_time, update_time)
+    )
     self.ps_dao.update(participant_summary)
-
-
-class MetricsEhrApiIntervalTest(MetricsEhrApiTestBase):
-
-  def test_interval_day(self):
-    # Insert Calendar data surrounding the testing time period
-    for date in iter_dates(
-      datetime.date(2017, 12, 1),
-      datetime.date(2018, 2, 1)
-    ):
-      calendar_day = Calendar(day=date)
-      CalendarDao().insert(calendar_day)
-
-    response = self.send_get('MetricsEHR', request_data={
-      'start_date': '2018-01-01',
-      'end_date': '2018-01-04',
-      'interval': 'day'
-    })['metrics_over_time']
-    self.assertEqual(len(response), 4)
-    self.assertEqual([m['date'] for m in response], [
-      "2018-01-01",
-      "2018-01-02",
-      "2018-01-03",
-      "2018-01-04"
-    ])
-    self.assertEqual([m['until'] for m in response], [
-      "2018-01-02",
-      "2018-01-03",
-      "2018-01-04",
-      "2018-01-05"
-    ])
-
-  def test_interval_week(self):
-    # Insert Calendar data surrounding the testing time period
-    for date in iter_dates(
-      datetime.date(2017, 12, 1),
-      datetime.date(2018, 3, 1)
-    ):
-      calendar_day = Calendar(day=date)
-      CalendarDao().insert(calendar_day)
-
-    response = self.send_get('MetricsEHR', request_data={
-      'start_date': '2018-01-01',
-      'end_date': '2018-02-01',
-      'interval': 'week'
-    })['metrics_over_time']
-    self.assertEqual(len(response), 4)
-    self.assertEqual([m['date'] for m in response], [
-      "2018-01-07",
-      "2018-01-14",
-      "2018-01-21",
-      "2018-01-28"
-    ])
-    self.assertEqual([m['until'] for m in response], [
-      "2018-01-14",
-      "2018-01-21",
-      "2018-01-28",
-      "2018-02-04"
-    ])
-
-  def test_interval_month(self):
-    # Insert Calendar data surrounding the testing time period
-    for date in iter_dates(
-      datetime.date(2017, 11, 1),
-      datetime.date(2018, 8, 1)
-    ):
-      calendar_day = Calendar(day=date)
-      CalendarDao().insert(calendar_day)
-
-    response = self.send_get('MetricsEHR', request_data={
-      'start_date': '2018-01-01',
-      'end_date': '2018-06-01',
-      'interval': 'month'
-    })['metrics_over_time']
-    self.assertEqual(len(response), 6)
-    self.assertEqual([m['date'] for m in response], [
-      "2018-01-01",
-      "2018-02-01",
-      "2018-03-01",
-      "2018-04-01",
-      "2018-05-01",
-      "2018-06-01",
-    ])
-    self.assertEqual([m['until'] for m in response], [
-      "2018-02-01",
-      "2018-03-01",
-      "2018-04-01",
-      "2018-05-01",
-      "2018-06-01",
-      "2018-07-01"
-    ])
-
-  def test_interval_quarter(self):
-    # Insert Calendar data surrounding the testing time period
-    for date in iter_dates(
-      datetime.date(2017, 01, 1),
-      datetime.date(2019, 01, 1)
-    ):
-      calendar_day = Calendar(day=date)
-      CalendarDao().insert(calendar_day)
-
-    response = self.send_get('MetricsEHR', request_data={
-      'start_date': '2018-01-01',
-      'end_date': '2018-12-20',
-      'interval': 'quarter'
-    })['metrics_over_time']
-    self.assertEqual(len(response), 4)
-    self.assertEqual([m['date'] for m in response], [
-      "2018-01-01",
-      "2018-04-01",
-      "2018-07-01",
-      "2018-10-01",
-    ])
-    self.assertEqual([m['until'] for m in response], [
-      "2018-04-01",
-      "2018-07-01",
-      "2018-10-01",
-      "2019-01-01"
-    ])
 
 
 class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
@@ -333,7 +216,8 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       participant_1, 'Alice', 'Aardvark', 'PITT',
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4)
+      time_fp=datetime.datetime(2018, 1, 4),
+      site_id=1
     )
     self._update_ehr(
       summary_1,
@@ -347,7 +231,8 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       participant_2, 'Bo', 'Badger', 'AZ_TUCSON',
       time_int=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5)
+      time_fp=datetime.datetime(2018, 1, 5),
+      site_id=2
     )
     self._update_ehr(
       summary_2,
@@ -391,7 +276,8 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       participant_1, 'A', 'Aardvark', 'PITT',
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4)
+      time_fp=datetime.datetime(2018, 1, 4),
+      site_id=1
     )
     self._update_ehr(
       summary_1,
@@ -405,7 +291,8 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       participant_2, 'B', 'Badger', 'PITT',
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4)
+      time_fp=datetime.datetime(2018, 1, 4),
+      site_id=1
     )
     self._update_ehr(
       summary_2,
@@ -419,7 +306,8 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       participant_3, 'C', 'Chicken', 'PITT',
       time_int=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5)
+      time_fp=datetime.datetime(2018, 1, 5),
+      site_id=1
     )
     self._update_ehr(
       summary_3,
@@ -433,7 +321,8 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       participant_4, 'D', 'Dog', 'AZ_TUCSON',
       time_int=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5)
+      time_fp=datetime.datetime(2018, 1, 5),
+      site_id=2
     )
     self._update_ehr(
       summary_4,
@@ -452,6 +341,28 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       'end_date': '2018-01-08',
       'interval': 'day'
     })['metrics_over_time']
+
+    #import pprint
+    #pprint.pprint(response)
+
+    self.assertEqual(
+      [row['date'] for row in response],
+      [
+        '2018-01-01',
+        '2018-01-02',
+        '2018-01-03',
+        '2018-01-04',
+        '2018-01-05',
+        '2018-01-06',
+        '2018-01-07',
+        '2018-01-08',
+      ]
+    )
+
+    self.assertEqual(
+      [row['metrics']['SITES_ACTIVE'] for row in response],
+      [0, 0, 0, 0, 1, 2, 1, 0]
+    )
 
     counts_by_date = {
       day['date']: day['metrics']['SITES_ACTIVE']
