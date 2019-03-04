@@ -1,11 +1,10 @@
 import datetime
 
-from dao.calendar_dao import CalendarDao, INTERVAL_WEEK, INTERVAL_DAY
+from dao.calendar_dao import CalendarDao, INTERVAL_DAY
 from dao.ehr_dao import EhrReceiptDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
-from dateutil.tz import tzutc
 from model.calendar import Calendar
 from model.participant import Participant
 from test.unit_test.unit_test_util import SqlTestBase

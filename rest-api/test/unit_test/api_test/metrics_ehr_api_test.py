@@ -13,7 +13,7 @@ from model.participant import Participant
 from model.participant_summary import ParticipantSummary
 from model.site import Site
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID, \
-  make_primary_provider_link_for_name, EhrStatus, QuestionnaireStatus
+  make_primary_provider_link_for_name, QuestionnaireStatus
 from test.unit_test.unit_test_util import FlaskTestBase
 
 
