@@ -1,5 +1,5 @@
 from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache, MetricsAgeCache, \
-  MetricsRaceCache, MetricsRegionCache, MetricsLifecycleCache
+  MetricsRaceCache, MetricsRegionCache, MetricsLifecycleCache, MetricsLanguageCache
 from dao.base_dao import BaseDao
 from dao.hpo_dao import HPODao
 from dao.code_dao import CodeDao
@@ -1048,3 +1048,44 @@ class MetricsLifecycleCacheDao(BaseDao):
         GROUP BY day, p.hpo_id;
     """
     return sql
+
+class MetricsLanguageCacheDao(BaseDao):
+
+  def __init__(self):
+    super(MetricsLanguageCache, self).__init__(MetricsLanguageCache)
+
+  def get_serving_version_with_session(self, session):
+    return (session.query(MetricsLanguageCache)
+            .order_by(MetricsLanguageCache.dateInserted.desc())
+            .first())
+
+  def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None, enrollment_statuses=None):
+    with self.session() as session:
+      last_inserted_record = self.get_serving_version_with_session(session)
+      if last_inserted_record is None:
+        return None
+      last_inserted_date = last_inserted_record.dateInserted
+      query = session.query(MetricsLanguageCache.date, MetricsLanguageCache.hpoName,
+                            MetricsLanguageCache.languageName,
+                            func.sum(MetricsLanguageCache.languageCount).label('total'))
+      query.filter(MetricsLanguageCache.dateInserted == last_inserted_date)
+      if start_date:
+        query = query.filter(MetricsLanguageCache.date >= start_date)
+      if end_date:
+        query = query.filter(MetricsLanguageCache.date <= end_date)
+
+      if hpo_ids:
+        query = query.filter(MetricsLanguageCache.hpoId.in_(hpo_ids))
+      if enrollment_statuses:
+        status_filter_list = []
+        for status in enrollment_statuses:
+          if status == 'INTERESTED':
+            status_filter_list.append('registered')
+          if status == 'MEMBER':
+            status_filter_list.append('consented')
+          if status == 'FULL_PARTICIPANT':
+            status_filter_list.append('core')
+        query = query.filter(MetricsLanguageCache.enrollmentStatus.in_(status_filter_list))
+
+      return query.group_by(MetricsLanguageCache.date, MetricsLanguageCache.hpoName,
+                            MetricsLanguageCache.languageName).all()
