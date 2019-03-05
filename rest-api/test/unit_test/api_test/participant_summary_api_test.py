@@ -186,6 +186,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'sampleStatus1CFD9': 'UNSET',
       'sampleStatus1ED02': 'UNSET',
       'sampleStatus1PXR2': 'UNSET',
+      'sampleStatusDV1SAL2': 'UNSET',
       'consentForElectronicHealthRecords': 'UNSET',
       'consentForCABoR': 'SUBMITTED',
       'consentForCABoRTime': TIME_1.isoformat(),
