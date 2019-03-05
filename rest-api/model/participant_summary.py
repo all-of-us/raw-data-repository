@@ -169,6 +169,10 @@ class ParticipantSummary(Base):
                                Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatusDV1SAL2Time = Column('sample_status_dv_1sal2_time', UTCDateTime)
 
+  sampleOrderStatusDV1SAL2 = Column('sample_order_status_dv_1sal2', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatusDV1SAL2Time = Column('sample_order_status_dv_1sal2_time', UTCDateTime)
+
   # Fields for which samples have been ordered, and at what times.
   sampleOrderStatus1SST8 = Column('sample_order_status_1sst8', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
