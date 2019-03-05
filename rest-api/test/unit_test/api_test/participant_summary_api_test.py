@@ -169,6 +169,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       'sampleOrderStatus1CFD9': 'UNSET',
       'sampleOrderStatus1PXR2': 'UNSET',
       'sampleOrderStatus1ED02': 'UNSET',
+      'sampleOrderStatusDV1SAL2': 'UNSET',
       'sampleStatus1ED04': 'UNSET',
       'sampleStatus1ED10': 'UNSET',
       'sampleStatus1HEP4': 'UNSET',
