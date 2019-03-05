@@ -6,7 +6,8 @@ from participant_enums import WithdrawalStatus, MetricsCacheType
 from dao.hpo_dao import HPODao
 from dao.base_dao import BaseDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
-  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao
+  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
+  MetricsLanguageCacheDao
 
 CACHE_START_DATE = datetime.datetime.strptime('2017-01-01', '%Y-%m-%d').date()
 
@@ -26,6 +27,7 @@ class ParticipantCountsOverTimeService(BaseDao):
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
     self.refresh_data_for_metrics_cache(MetricsRaceCacheDao())
     self.refresh_data_for_metrics_cache(MetricsRegionCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsLanguageCacheDao())
     self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao())
 
   def refresh_data_for_metrics_cache(self, dao):
@@ -99,6 +101,10 @@ class ParticipantCountsOverTimeService(BaseDao):
                                                             'GEO_CENSUS', 'GEO_AWARDEE']:
       dao = MetricsRegionCacheDao()
       return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids,
+                                               enrollment_statuses)
+    elif str(history) == 'TRUE' and str(stratification) == 'LANGUAGE':
+      dao = MetricsLanguageCacheDao()
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
                                                enrollment_statuses)
     elif str(history) == 'TRUE' and str(stratification) == 'LIFECYCLE':
       dao = MetricsLifecycleCacheDao()

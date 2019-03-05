@@ -1052,7 +1052,7 @@ class MetricsLifecycleCacheDao(BaseDao):
 class MetricsLanguageCacheDao(BaseDao):
 
   def __init__(self):
-    super(MetricsLanguageCache, self).__init__(MetricsLanguageCache)
+    super(MetricsLanguageCacheDao, self).__init__(MetricsLanguageCache)
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsLanguageCache)
@@ -1160,11 +1160,11 @@ class MetricsLanguageCacheDao(BaseDao):
     sql_template = """
       select
       :date_inserted AS date_inserted,
-      {0} as enrollment_status,
+      '{0}' as enrollment_status,
       :hpo_id AS hpo_id,
       (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
       c.day,
-      {1} AS language_name,
+      '{1}' AS language_name,
       IFNULL((
           SELECT SUM(results.count)
           FROM
@@ -1178,7 +1178,7 @@ class MetricsLanguageCacheDao(BaseDao):
             WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
               AND p.is_ghost_id IS NOT TRUE
               AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
-              AND p.withdrawal_status = 1
+              AND p.withdrawal_status = :not_withdraw
               {2}
             GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
           ) AS results
