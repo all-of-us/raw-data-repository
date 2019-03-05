@@ -228,7 +228,8 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'withdrawalStatus': 'NOT_WITHDRAWN',
                 'withdrawalReason': 'UNSET',
                 'suspensionStatus': 'NOT_SUSPENDED',
-                'numberDistinctVisits': 0
+                'numberDistinctVisits': 0,
+                'ehrStatus': 'UNSET',
               }
     self.assertJsonResponseMatches(expected, summary)
 
@@ -325,7 +326,8 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'withdrawalStatus': 'NOT_WITHDRAWN',
                 'withdrawalReason': 'UNSET',
                 'suspensionStatus': 'NOT_SUSPENDED',
-                'numberDistinctVisits': 0
+                'numberDistinctVisits': 0,
+                'ehrStatus': 'UNSET',
                 }
     self.assertJsonResponseMatches(expected, summary)
 
