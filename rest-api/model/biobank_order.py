@@ -1,5 +1,5 @@
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, UnicodeText
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, UnicodeText, UniqueConstraint
 from sqlalchemy.ext.declarative import declared_attr
 
 from model.base import Base
@@ -183,3 +183,29 @@ class BiobankOrderIdentifierHistory(BiobankOrderIdentifierBase, Base):
   __tablename__ = 'biobank_order_identifier_history'
 
   version = Column('version', Integer, primary_key=True)
+
+
+class BiobankOrderMailingAddress(Base):
+  """
+  Store the mailing address for a biobank order kit
+  """
+
+  __tablename__ = 'biobank_order_mailing_address'
+
+  mailingAddressId = Column('mailing_address_id', Integer, primary_key=True, autoincrement=True,
+                            nullable=False)
+  biobankOrderId = Column('biobank_order_id', String(80),
+                          ForeignKey('biobank_order.biobank_order_id'), nullable=False)
+  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
+                          nullable=False)
+
+  zipCode = Column('zip_code', String(10))
+  stateId = Column('state_id', Integer, ForeignKey('code.code_id'))
+  city = Column('city', String(255))
+  streetAddress1 = Column('street_address_1', String(255))
+  streetAddress2 = Column('street_address_2', String(255))
+
+  __table_args__ = (
+    UniqueConstraint('participant_id', 'biobank_order_id',
+                     name='uidx_participant_id_biobank_order'),
+  )
