@@ -20,6 +20,8 @@ from model.log_position import LogPosition
 from model.measurements import PhysicalMeasurements, Measurement
 from model.metric_set import AggregateMetrics, MetricSet
 from model.metrics import MetricsVersion, MetricsBucket
+from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsAgeCache, MetricsRaceCache, \
+  MetricsRegionCache, MetricsGenderCache, MetricsLanguageCache, MetricsLifecycleCache
 from model.organization import Organization
 from model.questionnaire import Questionnaire, QuestionnaireHistory, QuestionnaireQuestion
 from model.questionnaire import QuestionnaireConcept

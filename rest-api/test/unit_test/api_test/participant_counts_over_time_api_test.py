@@ -20,7 +20,8 @@ from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME,
   WithdrawalStatus, make_primary_provider_link_for_name, MetricsCacheType
 from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
-  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao
+  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
+  MetricsLanguageCacheDao
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_AIAN_CODE,
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, RACE_MENA_CODE)
 
@@ -84,7 +85,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
   def _insert(self, participant, first_name=None, last_name=None, hpo_name=None,
               unconsented=False, time_int=None, time_study=None, time_mem=None, time_fp=None,
-              time_fp_stored=None, gender_id=None, dob=None, state_id=None):
+              time_fp_stored=None, gender_id=None, dob=None, state_id=None, primary_language=None):
     """
     Create a participant in a transient test database.
 
@@ -132,6 +133,9 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
       summary.dateOfBirth = datetime.date(1978, 10, 10)
     if state_id:
       summary.stateId = state_id
+
+    if primary_language:
+      summary.primaryLanguage = primary_language
 
     summary.enrollmentStatus = enrollment_status
 
@@ -3264,6 +3268,130 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                     u'Physical_Measurements': 2,
                                                     u'Samples_Received': 2}}, u'hpo': u'AZ_TUCSON'}
                        ])
+
+  def test_refresh_metrics_language_cache_data(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1,
+                 primary_language='en')
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, primary_language='es')
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
+                 time_fp_stored=self.time4, primary_language='en')
+
+    p4 = Participant(participantId=5, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time2,
+                 time_fp_stored=self.time4)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsLanguageCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+    results = dao.get_latest_version_from_cache('2017-12-30', '2018-01-03')
+
+    self.assertIn({'date': '2017-12-30',
+                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2017-12-30',
+                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 1}, 'hpo': u'AZ_TUCSON'}, results)
+
+  def test_metrics_language_cache_api(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1,
+                 primary_language='en')
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, primary_language='es')
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
+                 time_fp_stored=self.time4, primary_language='en')
+
+    p4 = Participant(participantId=5, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time2,
+                 time_fp_stored=self.time4)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsLanguageCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+
+    # test API without awardee and enrollmentStatus parameters
+    qs1 = """
+              &stratification=LANGUAGE
+              &startDate=2017-12-30
+              &endDate=2018-01-05
+              &history=TRUE
+              """
+
+    qs1 = ''.join(qs1.split())  # Remove all whitespace
+
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    self.assertIn({'date': '2017-12-30',
+                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'UNSET'}, results1)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': u'UNSET'}, results1)
+    self.assertIn({'date': '2017-12-30',
+                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results1)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results1)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 1}, 'hpo': u'AZ_TUCSON'}, results1)
+
+    # test API with awardee parameters
+    qs2 = """
+                  &stratification=LANGUAGE
+                  &startDate=2017-12-30
+                  &endDate=2018-01-05
+                  &history=TRUE
+                  &awardee=AZ_TUCSON
+                  """
+
+    qs2 = ''.join(qs2.split())  # Remove all whitespace
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    self.assertNotIn({'date': '2017-12-30',
+                      'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'UNSET'}, results2)
+    self.assertNotIn({'date': '2017-12-31',
+                      'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': u'UNSET'}, results2)
+    self.assertIn({'date': '2017-12-30',
+                   'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results2)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 0}, 'hpo': u'AZ_TUCSON'}, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'EN': 1, 'UNSET': 1, 'ES': 1}, 'hpo': u'AZ_TUCSON'}, results2)
+
+    # test API with enrollmentStatus parameters
+    qs3 = """
+                      &stratification=LANGUAGE
+                      &startDate=2017-12-30
+                      &endDate=2018-01-05
+                      &history=TRUE
+                      &enrollmentStatus=MEMBER,FULL_PARTICIPANT
+                      """
+
+    qs3 = ''.join(qs3.split())  # Remove all whitespace
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertNotIn({'date': '2017-12-31',
+                      'metrics': {'EN': 0, 'UNSET': 1, 'ES': 0}, 'hpo': u'UNSET'}, results3)
+    self.assertIn({u'date': u'2018-01-02',
+                   u'metrics': {u'EN': 0, u'ES': 0, u'UNSET': 0}, u'hpo': u'UNSET'}, results3)
+    self.assertIn({u'date': u'2018-01-01',
+                   u'metrics': {u'EN': 0, u'ES': 0, u'UNSET': 1}, u'hpo': u'AZ_TUCSON'}, results3)
+    self.assertIn({u'date': u'2018-01-02',
+                   u'metrics': {u'EN': 1, u'ES': 0, u'UNSET': 1}, u'hpo': u'AZ_TUCSON'}, results3)
+
 
   def create_demographics_questionnaire(self):
     """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
