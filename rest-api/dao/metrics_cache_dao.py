@@ -1059,7 +1059,8 @@ class MetricsLanguageCacheDao(BaseDao):
             .order_by(MetricsLanguageCache.dateInserted.desc())
             .first())
 
-  def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None, enrollment_statuses=None):
+  def get_active_buckets(self, start_date=None, end_date=None, hpo_ids=None,
+                         enrollment_statuses=None):
     with self.session() as session:
       last_inserted_record = self.get_serving_version_with_session(session)
       if last_inserted_record is None:
@@ -1089,3 +1090,112 @@ class MetricsLanguageCacheDao(BaseDao):
 
       return query.group_by(MetricsLanguageCache.date, MetricsLanguageCache.hpoName,
                             MetricsLanguageCache.languageName).all()
+
+  def get_latest_version_from_cache(self, start_date, end_date, hpo_ids=None,
+                                    enrollment_statuses=None):
+
+    buckets = self.get_active_buckets(start_date, end_date, hpo_ids, enrollment_statuses)
+    if buckets is None:
+      return []
+    return self.to_client_json(buckets)
+
+  def delete_old_records(self, n_days_ago=7):
+    with self.session() as session:
+      last_inserted_record = self.get_serving_version_with_session(session)
+      if last_inserted_record is not None:
+        last_date_inserted = last_inserted_record.dateInserted
+        seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
+        delete_sql = """
+          delete from metrics_language_cache where date_inserted < :seven_days_ago
+        """
+        params = {'seven_days_ago': seven_days_ago}
+        session.execute(delete_sql, params)
+
+  def to_client_json(self, result_set):
+    client_json = []
+    for record in result_set:
+      language_name = record.languageName
+      is_exist = False
+      for item in client_json:
+        if item['date'] == record.date.isoformat() and item['hpo'] == record.hpoName:
+          item['metrics'][language_name] = int(record.total)
+          is_exist = True
+          break
+
+      if not is_exist:
+        new_item = {
+          'date': record.date.isoformat(),
+          'hpo': record.hpoName,
+          'metrics': {
+            'EN': 0,
+            'ES': 0,
+            'UNSET': 0
+          }
+        }
+        new_item['metrics'][language_name] = int(record.total)
+        client_json.append(new_item)
+    return client_json
+
+  def get_metrics_cache_sql(self):
+    sql = """
+      insert into metrics_language_cache 
+    """
+
+    enrollment_status_and_criteria_list = [
+      ['registered', ' c.day>=DATE(sign_up_time) AND (enrollment_status_member_time IS NULL '
+                     'OR c.day < DATE(enrollment_status_member_time)) '],
+      ['consented', ' enrollment_status_member_time IS NOT NULL '
+                    'AND day>=DATE(enrollment_status_member_time) '
+                    'AND (enrollment_status_core_stored_sample_time IS NULL '
+                    'OR day < DATE(enrollment_status_core_stored_sample_time)) '],
+      ['core', ' enrollment_status_core_stored_sample_time IS NOT NULL '
+               'AND day>=DATE(enrollment_status_core_stored_sample_time) ']
+    ]
+    language_and_criteria_list = [
+      ['EN', ' AND ps.primary_language like \'%en%\' '],
+      ['ES', ' AND ps.primary_language like \'%es%\' '],
+      ['UNSET', ' AND ps.primary_language is NULL ']
+    ]
+
+    sql_template = """
+      select
+      :date_inserted AS date_inserted,
+      {0} as enrollment_status,
+      :hpo_id AS hpo_id,
+      (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+      c.day,
+      {1} AS language_name,
+      IFNULL((
+          SELECT SUM(results.count)
+          FROM
+          (
+            SELECT DATE(p.sign_up_time) AS sign_up_time,
+                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                   DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                   count(*) count
+            FROM participant p
+                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+            WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+              AND p.is_ghost_id IS NOT TRUE
+              AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+              AND p.withdrawal_status = 1
+              {2}
+            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+          ) AS results
+          WHERE {3}
+        ),0) AS language_count
+      FROM calendar c
+      WHERE c.day BETWEEN :start_date AND :end_date
+    """
+
+    sub_queries = []
+
+    for status_pairs in enrollment_status_and_criteria_list:
+      for language_pairs in language_and_criteria_list:
+        sub_query = sql_template.format(status_pairs[0], language_pairs[0], language_pairs[1],
+                                        status_pairs[1])
+        sub_queries.append(sub_query)
+
+    sql = sql + ' UNION '.join(sub_queries)
+
+    return sql
