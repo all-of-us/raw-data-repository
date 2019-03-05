@@ -11,6 +11,7 @@ from api.awardee_api import AwardeeApi
 from api.biobank_order_api import BiobankOrderApi
 from api.check_ppi_data_api import check_ppi_data
 from api.data_gen_api import DataGenApi
+from api.dv_order_api import DvOrderApi
 from api.import_codebook_api import import_codebook
 from api.metric_sets_api import MetricSetsApi
 from api.metrics_api import MetricsApi
@@ -123,6 +124,12 @@ api.add_resource(BiobankOrderApi,
                  PREFIX + 'Participant/<participant_id:p_id>/BiobankOrder',
                  endpoint='participant.biobank_order',
                  methods=['POST', 'GET', 'PUT', 'PATCH'])
+
+api.add_resource(DvOrderApi,
+                 PREFIX + 'Participant/<participant_id:p_id>/DvOrder/<string:bo_id>',
+                 PREFIX + 'Participant/<participant_id:p_id>/DvOrder',
+                 endpoint='participant.dv_order',
+                 methods=['POST', 'GET', 'PUT'])
 
 api.add_resource(AwardeeApi,
                  PREFIX + 'Awardee',

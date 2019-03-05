@@ -26,3 +26,4 @@ google-auth-httplib2
 googlemaps>=2.5.1
 google-api-python-client==1.6.6
 backoff
+lxml==4.3.2
