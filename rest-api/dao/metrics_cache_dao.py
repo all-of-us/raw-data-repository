@@ -935,7 +935,7 @@ class MetricsLifecycleCacheDao(BaseDao):
     buckets = self.get_active_buckets(cutoff, hpo_ids)
     if buckets is None:
       return []
-    return self.to_client_json(buckets)
+    return self.to_metrics_client_json(buckets)
 
   def delete_old_records(self, n_days_ago=7):
     with self.session() as session:
@@ -949,7 +949,7 @@ class MetricsLifecycleCacheDao(BaseDao):
         params = {'seven_days_ago': seven_days_ago}
         session.execute(delete_sql, params)
 
-  def to_client_json(self, result_set):
+  def to_metrics_client_json(self, result_set):
     client_json = []
     for record in result_set:
       new_item = {
@@ -975,6 +975,49 @@ class MetricsLifecycleCacheDao(BaseDao):
             'PPI_Module_The_Basics': record.consentEnrollment - record.ppiBasics,
             'PPI_Module_Overall_Health': record.consentEnrollment - record.ppiOverallHealth,
             'PPI_Module_Lifestyle': record.consentEnrollment - record.ppiLifestyle,
+            'Baseline_PPI_Modules_Complete': record.consentEnrollment - record.ppiBaselineComplete,
+            'Physical_Measurements': record.consentEnrollment - record.physicalMeasurement,
+            'Samples_Received': record.consentEnrollment - record.sampleReceived,
+            'Full_Participant': record.consentEnrollment - record.fullParticipant
+          }
+        }
+      }
+      client_json.append(new_item)
+    return client_json
+
+  def to_public_metrics_client_json(self, result_set):
+    client_json = []
+    for record in result_set:
+      new_item = {
+        'date': record.date.isoformat(),
+        'metrics': {
+          'completed': {
+            'Registered': record.registered,
+            'Consent_Enrollment': record.consentEnrollment,
+            'Consent_Complete': record.consentComplete,
+            'PPI_Module_The_Basics': record.ppiBasics,
+            'PPI_Module_Overall_Health': record.ppiOverallHealth,
+            'PPI_Module_Lifestyle': record.ppiLifestyle,
+            'PPI_Module_Healthcare_Access': record.ppiHealthcareAccess,
+            'PPI_Module_Medical_History': record.ppiMedicalHistory,
+            'PPI_Module_Medications': record.ppiMedications,
+            'PPI_Module_Family_Health': record.ppiFamilyHealth,
+            'Baseline_PPI_Modules_Complete': record.ppiBaselineComplete,
+            'Physical_Measurements': record.physicalMeasurement,
+            'Samples_Received': record.sampleReceived,
+            'Full_Participant': record.fullParticipant
+          },
+          'not_completed': {
+            'Registered': 0,
+            'Consent_Enrollment': record.registered - record.consentEnrollment,
+            'Consent_Complete': record.consentEnrollment - record.consentComplete,
+            'PPI_Module_The_Basics': record.consentEnrollment - record.ppiBasics,
+            'PPI_Module_Overall_Health': record.consentEnrollment - record.ppiOverallHealth,
+            'PPI_Module_Lifestyle': record.consentEnrollment - record.ppiLifestyle,
+            'PPI_Module_Healthcare_Access': record.consentEnrollment - record.ppiHealthcareAccess,
+            'PPI_Module_Medical_History': record.consentEnrollment - record.ppiMedicalHistory,
+            'PPI_Module_Medications': record.consentEnrollment - record.ppiMedications,
+            'PPI_Module_Family_Health': record.consentEnrollment - record.ppiFamilyHealth,
             'Baseline_PPI_Modules_Complete': record.consentEnrollment - record.ppiBaselineComplete,
             'Physical_Measurements': record.consentEnrollment - record.physicalMeasurement,
             'Samples_Received': record.consentEnrollment - record.sampleReceived,
@@ -1014,6 +1057,30 @@ class MetricsLifecycleCacheDao(BaseDao):
               DATE(ps.consent_for_study_enrollment_time) <= calendar.day
             THEN 1 ELSE 0
           END) AS ppi_lifestyle,
+          SUM(CASE
+            WHEN
+              DATE(ps.questionnaire_on_healthcare_access_time) <= calendar.day AND
+              DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+            THEN 1 ELSE 0
+          END) AS ppi_healthcare_access,
+          SUM(CASE
+            WHEN
+              DATE(ps.questionnaire_on_medical_history_time) <= calendar.day AND
+              DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+            THEN 1 ELSE 0
+          END) AS ppi_medical_history,
+          SUM(CASE
+            WHEN
+              DATE(ps.questionnaire_on_medications_time) <= calendar.day AND
+              DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+            THEN 1 ELSE 0
+          END) AS ppi_medications,
+          SUM(CASE
+            WHEN
+              DATE(ps.questionnaire_on_family_health_time) <= calendar.day AND
+              DATE(ps.consent_for_study_enrollment_time) <= calendar.day
+            THEN 1 ELSE 0
+          END) AS ppi_family_health,
           SUM(CASE
             WHEN
               DATE(ps.questionnaire_on_lifestyle_time) <= calendar.day AND

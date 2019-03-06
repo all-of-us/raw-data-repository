@@ -257,6 +257,19 @@ AGE_BUCKETS_METRICS_V2_API = ['0-17', '18-25', '26-35', '36-45', '46-55', '56-65
 AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API = ['18-29', '30-39', '40-49', '50-59', '60-69', '70-79',
                                          '80-89', '90-']
 
+PPI_BUCKETS_METRICS_V2_API = ['Registered', 'Consent_Enrollment', 'Consent_Complete',
+                              'PPI_Module_The_Basics', 'PPI_Module_Overall_Health',
+                              'PPI_Module_Lifestyle', 'Baseline_PPI_Modules_Complete',
+                              'Physical_Measurements', 'Samples_Received', 'Full_Participant']
+
+PPI_BUCKETS_PUBLIC_METRICS_EXPORT_API = ['Registered', 'Consent_Enrollment', 'Consent_Complete',
+                                         'PPI_Module_The_Basics', 'PPI_Module_Overall_Health',
+                                         'PPI_Module_Lifestyle', 'PPI_Module_Healthcare_Access',
+                                         'Baseline_PPI_Modules_Complete',
+                                         'PPI_Module_Medical_History', 'PPI_Module_Medications',
+                                         'PPI_Module_Family_Health', 'Physical_Measurements',
+                                         'Samples_Received', 'Full_Participant']
+
 
 # The lower bounds of the age buckets.
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
