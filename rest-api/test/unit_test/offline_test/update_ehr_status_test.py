@@ -85,6 +85,3 @@ class UpdateEhrStatusTest(CloudStorageSqlTestBase, FlaskTestBase):
     self.assertEqual(receipts[1].participantId, participant.participantId)
     self.assertEqual(receipts[1].recordedTime, time_2)  # NOTE: address this when fixed upstream
     self.assertEqual(receipts[1].receivedTime, time_2)
-
-
-#TODO: test querying BigQuery, this might belong in a different test file

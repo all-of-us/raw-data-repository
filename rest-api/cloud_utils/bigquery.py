@@ -10,7 +10,7 @@ def create_service():
   return build('bigquery', 'v2')
 
 
-def query(
+def bigquery(
   q, app_id=None, dataset_id=None,
   use_legacy_sql=False,
   destination_dataset_id=None, destination_table_id=None,

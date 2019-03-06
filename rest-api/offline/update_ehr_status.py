@@ -1,5 +1,5 @@
 import clock
-import cloud_utils.curation
+import cloud_utils.bigquery
 import config
 from dao.ehr_dao import EhrReceiptDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -19,12 +19,12 @@ def update_ehr_status():
 
 
 def _query_ehr_upload_pids():
-  query_string = 'select * from `{project}`.`{dataset}`.`{view}` limit 1'.format(
+  query_string = 'select * from `{project}.{dataset}.{view}` limit 1'.format(
     project=config.getSetting(config.CURATION_BIGQUERY_PROJECT),
     dataset='operations_analytics',
     view='ehr_upload_pids'
   )
-  return cloud_utils.curation.query(query_string)
+  return cloud_utils.bigquery.bigquery(query_string)
 
 
 def _do_update(
