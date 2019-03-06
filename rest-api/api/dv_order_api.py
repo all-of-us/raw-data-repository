@@ -22,12 +22,11 @@ class DvOrderApi(UpdatableApi):
   def put(self, p_id, bo_id):  # pylint: disable=unused-argument
     resource = request.get_json(force=True)
     # update table with resource
-
+    # @TODO: update model in dao (should probably compare resource w/ existing model)
     if resource['extension'][0]['url'] == VIBRENT_BARCODE_URL:
       # send to mayolink
-      barcode = resource['extension'][0]['valueString']
+      self.dao._send_order(resource)
 
-    print resource
 
     # m = self._get_model_to_update(resource, id_, expected_version, participant_id)
     # self._do_update(m)

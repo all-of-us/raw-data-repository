@@ -1,17 +1,14 @@
 import email.utils
 import logging
-import pytz
 import time
-import netaddr
-
-from google.appengine.api import app_identity
-from google.appengine.api import oauth
-
-from flask import request
-from werkzeug.exceptions import Forbidden, Unauthorized
 
 import clock
 import config
+import netaddr
+import pytz
+from flask import request
+from google.appengine.api import app_identity, oauth
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 
 _GMT = pytz.timezone('GMT')
