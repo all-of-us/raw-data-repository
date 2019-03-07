@@ -46,6 +46,6 @@
   "service_accounts_with_long_lived_keys":[
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
   ],
-  "mayolink_creds": "rdr-mayolink-creds-test.json",
-  "mayolink_endpoint": "https://test.orders.mayomedicallaboratories.com/api/orders.xml"
+  "mayolink_creds": ["rdr-mayolink-creds-test.json"],
+  "mayolink_endpoint": ["https://test.orders.mayomedicallaboratories.com/api/orders.xml"]
 }

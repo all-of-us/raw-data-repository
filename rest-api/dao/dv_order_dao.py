@@ -1,3 +1,4 @@
+from api.mayolink_api import MayoLinkApi
 from api_util import format_json_code
 from dao.base_dao import FhirMixin, FhirProperty, UpdatableDao
 from dao.code_dao import CodeDao
@@ -83,11 +84,12 @@ class DvOrderDao(UpdatableDao):
   def _send_order(self, resource):
     barcode = resource['extension'][0]['valueString']
     order = self._filter_order_fields(resource)
-    print resource
+    m = MayoLinkApi()
+    m.post(order)
 
   def _filter_order_fields(self, resource):
     # @TODO: WHERE TO PUT BARCODE ?
-    # @TODO: add loop to check for pid incase it's not in element 2
+    # @TODO: add check for pid in case it's not in 2nd index
     summary = None
     if resource['contained'][2]['resourceType'] == 'Patient':
       summary = ParticipantSummaryDao().get(resource['contained'][2]['identifier'][0]['value'])
@@ -99,7 +101,7 @@ class DvOrderDao(UpdatableDao):
     format_json_code(code_dict, code_dao, 'stateId')
 
     order = {'collected': resource['authoredOn'],
-             'account': '',  # @TODO: add rdr account in configs
+             'account': '',  # @TODO: add rdr account in mayolink api
              'number': '',  # @TODO: add order id (biobank_order_identifier.value)
              'report_notes': resource['extension'][1]['valueString'],
              'comments': 'Salivary Kit Order, direct from participant',

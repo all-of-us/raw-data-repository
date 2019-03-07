@@ -35,7 +35,7 @@ DNA_SAMPLE_TEST_CODES = 'dna_sample_test_codes'
 GHOST_ID_BUCKET = 'ghost_id_bucket'
 MAYOLINK_CREDS = 'mayolink_creds'
 MAYOLINK_ENDPOINT = 'mayolink_endpoint'
-CONFIG_BUCKET = 'config_bucket'
+CONFIG_BUCKET = 'all-of-us-rdr-sequestered-config-test'
 
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.
