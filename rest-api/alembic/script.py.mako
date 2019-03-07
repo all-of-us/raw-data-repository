@@ -18,8 +18,9 @@ from participant_enums import WithdrawalStatus, WithdrawalReason, SuspensionStat
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType, BiobankOrderStatus
 from participant_enums import OrderShipmentTrackingStatus, OrderShipmentStatus
 from participant_enums import MetricSetType, MetricsKey
-from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
+from model.base import add_table_history_table, drop_table_history_table
 from model.code import CodeType
+from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
 revision = ${repr(up_revision)}

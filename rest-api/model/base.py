@@ -48,11 +48,7 @@ def add_table_history_table(table, op):
         ADD INDEX idx_revision (revision_id),
         CHANGE COLUMN `revision_id` `revision_id` INT(6) NOT NULL AUTO_INCREMENT,
         ADD PRIMARY KEY (`id`, revision_id);
-
-      # DROP TRIGGER IF EXISTS {0}__ai;
-      # DROP TRIGGER IF EXISTS {0}__au;
-      # DROP TRIGGER IF EXISTS {0}__bd;
-
+      
       CREATE TRIGGER {0}__ai AFTER INSERT ON {0} FOR EACH ROW
           INSERT INTO {0}_history SELECT 'insert', NULL, NOW(6), d.*
           FROM {0} AS d WHERE d.id = NEW.id;
@@ -65,5 +61,22 @@ def add_table_history_table(table, op):
           INSERT INTO {0}_history SELECT 'delete', NULL, NOW(6), d.*
           FROM {0} AS d WHERE d.id = OLD.id;
       """.format(table)
+
+  op.execute(sql)
+
+
+def drop_table_history_table(table, op):
+  """
+  Drop the history table associated with given table
+  :param table: table name associated with history table
+  :param op: sqlalchemy op object
+  """
+
+  sql = """
+      DROP TRIGGER IF EXISTS {0}__ai;
+      DROP TRIGGER IF EXISTS {0}__au;
+      DROP TRIGGER IF EXISTS {0}__bd;
+      DROP TABLE {0}_history;
+  """.format(table)
 
   op.execute(sql)
