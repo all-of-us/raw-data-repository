@@ -1,4 +1,6 @@
+from api_util import format_json_code
 from dao.base_dao import FhirMixin, FhirProperty, UpdatableDao
+from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from fhirclient.models import fhirdate
 from fhirclient.models.backboneelement import BackboneElement
@@ -6,6 +8,7 @@ from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models.identifier import Identifier
 from model.biobank_order import BiobankOrder
+from werkzeug.exceptions import BadRequest
 
 
 def _ToFhirDate(dt):
@@ -85,39 +88,45 @@ class DvOrderDao(UpdatableDao):
   def _filter_order_fields(self, resource):
     # @TODO: WHERE TO PUT BARCODE ?
     # @TODO: add loop to check for pid incase it's not in element 2
-    # @TODO: catch no summary
-    summary = ParticipantSummaryDao().get(resource['contained'][2]['identifier'][0]['value'])
-    order = {}
-    # @TODO: do we need to add identifier
+    summary = None
+    if resource['contained'][2]['resourceType'] == 'Patient':
+      summary = ParticipantSummaryDao().get(resource['contained'][2]['identifier'][0]['value'])
+    if not summary:
+      raise BadRequest('No summary for particpant id: {}'.format(summary.participantId))
+    code_dao = CodeDao()
+    code_dict = summary.asdict()
+    format_json_code(code_dict, code_dao, 'genderIdentityId')
+    format_json_code(code_dict, code_dao, 'stateId')
 
-    order['collected'] = resource['authoredOn']
-    order['account'] = ''  # @TODO: this is the mayolink client # for a site, what here?
-    order['number'] = ''  # @TODO: the WEB... number (biobank order id? )
-    order['report_notes'] = resource['extension'][1]['valueString']
-    order['comments'] = 'Salivary Kit Order, direct from participant'
-    order['patient'] = {'medical_record_number': '',  # @TODO: what here ?
-                        'first_name': summary.firstName,
-                        'last_name': summary.lastName,
-                        'middle_name': summary.middleName,
-                        'birth_date': summary.dateOfBirth,
-                        'gender': '',  # @todo: convert genderIdentityId
-                        'address1': summary.streetAdress,
-                        'address2': summary.streetAdress2,
-                        'city': summary.city,
-                        'state': '',  # @todo: convert stateId
-                        'postal_code': summary.zipCode,
-                        'phone': summary.phoneNumber,
-                        'account_number': '',  # @todo: what is this ?
-                        'race': summary.race,
-                        'ethnic_group': ''  # @todo: dont have this
-                        }
-    order['physician'] = {'name': None,
-                          'phone': None,
-                          'npi': None
-                          }
-    order['tests'] = {'test': {'code': '1SAL2',
-                               'name': 'Salivary Kit',
-                               'comments': None
-                               }
-                      }
+    order = {'collected': resource['authoredOn'],
+             'account': '',  # @TODO: add rdr account in configs
+             'number': '',  # @TODO: add order id (biobank_order_identifier.value)
+             'report_notes': resource['extension'][1]['valueString'],
+             'comments': 'Salivary Kit Order, direct from participant',
+             'patient': {'medical_record_number': summary.biobankId,
+                         'first_name': summary.firstName,
+                         'last_name': summary.lastName,
+                         'middle_name': summary.middleName,
+                         'birth_date': summary.dateOfBirth,
+                         'gender': code_dict['genderIdentity'],
+                         'address1': summary.streetAddress,
+                         'address2': summary.streetAddress2,
+                         'city': summary.city,
+                         'state': code_dict['state'],
+                         'postal_code': summary.zipCode,
+                         'phone': summary.phoneNumber,
+                         'account_number': None,
+                         'race': summary.race,
+                         'ethnic_group': None
+                         },
+             'physician': {'name': None,
+                           'phone': None,
+                           'npi': None
+                           },
+             'tests': {'test': {'code': '1SAL2',
+                                'name': 'PMI Saliva, FDA Kit',
+                                'comments': None
+                                }
+                       }
+             }
     return {'orders': order}

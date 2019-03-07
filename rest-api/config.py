@@ -4,11 +4,10 @@ Contains things such as the accounts allowed access to the system.
 """
 import logging
 
-from google.appengine.ext import ndb
-from werkzeug.exceptions import NotFound
-
 import clock
 import singletons
+from google.appengine.ext import ndb
+from werkzeug.exceptions import NotFound
 
 
 # Key that the main server configuration is stored under
@@ -34,6 +33,9 @@ PPI_QUESTIONNAIRE_FIELDS = 'ppi_questionnaire_fields'
 BASELINE_SAMPLE_TEST_CODES = 'baseline_sample_test_codes'
 DNA_SAMPLE_TEST_CODES = 'dna_sample_test_codes'
 GHOST_ID_BUCKET = 'ghost_id_bucket'
+MAYOLINK_CREDS = 'mayolink_creds'
+MAYOLINK_ENDPOINT = 'mayolink_endpoint'
+CONFIG_BUCKET = 'config_bucket'
 
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.

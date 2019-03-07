@@ -47,5 +47,6 @@
   ],
   "days_to_delete_keys": [
     3
-  ]
+  ],
+  "config_bucket": "all-of-us-rdr-sequestered-config-test"
 }
