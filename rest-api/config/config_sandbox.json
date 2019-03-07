@@ -8,7 +8,7 @@
   ],
   "user_info": {
     "configurator@all-of-us-rdr-sandbox.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"]
+      "roles": ["ptc", "healthpro", "rdr"]
     },
     "exporter@all-of-us-rdr-sandbox.iam.gserviceaccount.com": {
       "roles": ["exporter"]

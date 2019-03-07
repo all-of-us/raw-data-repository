@@ -29,7 +29,7 @@
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"]
+      "roles": ["ptc", "healthpro", "rdr"]
     },
     "exporter@all-of-us-rdr-staging.iam.gserviceaccount.com": {
       "roles": ["exporter"]
@@ -54,6 +54,6 @@
     "redlock-read-only-stable@all-of-us-ops-data-api-stable.iam.gserviceaccount.com",
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
   ],
-  "mayolink_creds": "rdr-mayolink-creds-test.json",
-  "mayolink_endpoint": "https://test.orders.mayomedicallaboratories.com/api/orders.xml"
+  "mayolink_creds": ["rdr-mayolink-creds-test.json"],
+  "mayolink_endpoint": ["https://test.orders.mayomedicallaboratories.com/api/orders.xml"]
 }
