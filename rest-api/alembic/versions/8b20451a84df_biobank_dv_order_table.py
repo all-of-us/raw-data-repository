@@ -80,7 +80,7 @@ def upgrade_rdr():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('participant_id', 'order_id', name='uidx_partic_id_order_id')
     )
-
+    op.execute('ALTER TABLE biobank_dv_order CHANGE COLUMN `created` `default` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6);')
     op.execute('ALTER TABLE biobank_dv_order CHANGE COLUMN `modified` `modified` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6);')
     # ### end Alembic commands ###
 

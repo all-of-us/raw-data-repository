@@ -1,9 +1,8 @@
 from model.base import Base
 from model.utils import UTCDateTime6, Enum
 from participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
-from sqlalchemy import Column, Integer, String, ForeignKey, Date, UniqueConstraint, Text
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, Date, UniqueConstraint, Text
 from sqlalchemy.sql import func
-from sqlalchemy.dialects.mysql import DATETIME
 
 
 class BiobankDVOrder(Base):
@@ -15,9 +14,9 @@ class BiobankDVOrder(Base):
   # Primary Key
   id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
   # have mysql set the creation data for each new order
-  created = Column('created', DATETIME(fsp=6), nullable=False, server_default=func.now())
+  created = Column('created', DateTime, nullable=False, server_default=func.now())
   # have mysql always update the modified data when the record is changed
-  modified = Column('modified', DATETIME(fsp=6), nullable=False, server_default=func.now())
+  modified = Column('modified', DateTime, nullable=False, server_default=func.now())
 
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
