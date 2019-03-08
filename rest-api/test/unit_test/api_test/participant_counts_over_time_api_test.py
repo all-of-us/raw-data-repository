@@ -3269,6 +3269,43 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                                     u'Samples_Received': 2}}, u'hpo': u'AZ_TUCSON'}
                        ])
 
+  def test_refresh_metrics_lifecycle_cache_data_for_public_metrics_api(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
+                 time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
+                 time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
+
+    p4 = Participant(participantId=6, biobankId=9)
+    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
+                 time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
+    service.refresh_data_for_metrics_cache(dao)
+
+    results = dao.get_latest_version_from_cache('2018-01-03')
+    print str(results)
+
+    results2 = dao.get_latest_version_from_cache('2018-01-08')
+    print str(results2)
+
   def test_refresh_metrics_language_cache_data(self):
 
     p1 = Participant(participantId=1, biobankId=4)

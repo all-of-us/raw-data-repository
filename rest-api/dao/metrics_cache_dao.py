@@ -908,8 +908,9 @@ class MetricsRegionCacheDao(BaseDao):
 
 class MetricsLifecycleCacheDao(BaseDao):
 
-  def __init__(self):
+  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
     super(MetricsLifecycleCacheDao, self).__init__(MetricsLifecycleCache)
+    self.cache_type = cache_type
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsLifecycleCache)
@@ -922,20 +923,63 @@ class MetricsLifecycleCacheDao(BaseDao):
       if last_inserted_record is None:
         return None
       last_inserted_date = last_inserted_record.dateInserted
-      query = session.query(MetricsLifecycleCache)\
-        .filter(MetricsLifecycleCache.dateInserted == last_inserted_date)
-      query = query.filter(MetricsLifecycleCache.date == cutoff)
+      if self.cache_type == MetricsCacheType.PUBLIC_METRICS_EXPORT_API:
+        query = session.query(MetricsLifecycleCache.date,
+                              func.sum(MetricsLifecycleCache.registered)
+                              .label('registered'),
+                              func.sum(MetricsLifecycleCache.consentEnrollment)
+                              .label('consentEnrollment'),
+                              func.sum(MetricsLifecycleCache.consentComplete)
+                              .label('consentComplete'),
+                              func.sum(MetricsLifecycleCache.ppiBasics)
+                              .label('ppiBasics'),
+                              func.sum(MetricsLifecycleCache.ppiOverallHealth)
+                              .label('ppiOverallHealth'),
+                              func.sum(MetricsLifecycleCache.ppiLifestyle)
+                              .label('ppiLifestyle'),
+                              func.sum(MetricsLifecycleCache.ppiHealthcareAccess)
+                              .label('ppiHealthcareAccess'),
+                              func.sum(MetricsLifecycleCache.ppiMedicalHistory)
+                              .label('ppiMedicalHistory'),
+                              func.sum(MetricsLifecycleCache.ppiMedications)
+                              .label('ppiMedications'),
+                              func.sum(MetricsLifecycleCache.ppiFamilyHealth)
+                              .label('ppiFamilyHealth'),
+                              func.sum(MetricsLifecycleCache.ppiBaselineComplete)
+                              .label('ppiBaselineComplete'),
+                              func.sum(MetricsLifecycleCache.physicalMeasurement)
+                              .label('physicalMeasurement'),
+                              func.sum(MetricsLifecycleCache.sampleReceived)
+                              .label('sampleReceived'),
+                              func.sum(MetricsLifecycleCache.fullParticipant)
+                              .label('fullParticipant')
+                              )
+        query.filter(MetricsLifecycleCache.dateInserted == last_inserted_date)
+        query = query.filter(MetricsLifecycleCache.date == cutoff)
 
-      if hpo_ids:
-        query = query.filter(MetricsLifecycleCache.hpoId.in_(hpo_ids))
+        if hpo_ids:
+          query = query.filter(MetricsLifecycleCache.hpoId.in_(hpo_ids))
 
-      return query.all()
+        return query.group_by(MetricsLifecycleCache.date).all()
+      else:
+        query = session.query(MetricsLifecycleCache) \
+          .filter(MetricsLifecycleCache.dateInserted == last_inserted_date)
+        query = query.filter(MetricsLifecycleCache.date == cutoff)
+
+        if hpo_ids:
+          query = query.filter(MetricsLifecycleCache.hpoId.in_(hpo_ids))
+
+        return query.all()
 
   def get_latest_version_from_cache(self, cutoff, hpo_ids=None):
     buckets = self.get_active_buckets(cutoff, hpo_ids)
     if buckets is None:
       return []
-    return self.to_metrics_client_json(buckets)
+    operation_funcs = {
+      MetricsCacheType.PUBLIC_METRICS_EXPORT_API: self.to_public_metrics_client_json,
+      MetricsCacheType.METRICS_V2_API: self.to_metrics_client_json
+    }
+    return operation_funcs[self.cache_type](buckets)
 
   def delete_old_records(self, n_days_ago=7):
     with self.session() as session:
