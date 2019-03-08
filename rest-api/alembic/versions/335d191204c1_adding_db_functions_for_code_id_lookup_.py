@@ -14,7 +14,7 @@ down_revision = '1e944af3ad04'
 branch_labels = None
 depends_on = None
 
-fn_get_code_id_from_key = ReplaceableObject("fn_get_code_id_from_key",
+fn_get_code_id_from_key = ReplaceableObject('fn_get_code_id_from_key',
   """
   (code_value VARCHAR(80))
   RETURNS INT
@@ -28,8 +28,7 @@ fn_get_code_id_from_key = ReplaceableObject("fn_get_code_id_from_key",
   END
   """)
 
-fn_get_participant_ethnicity = \
-  ReplaceableObject("fn_get_participant_ethnicity",
+fn_get_participant_ethnicity = ReplaceableObject('fn_get_participant_ethnicity',
     """
     (participant INT, code_id INT)
     RETURNS CHAR(1)
@@ -69,13 +68,13 @@ def downgrade(engine_name):
 
 
 def upgrade_rdr():
-  op.create_sp(fn_get_code_id_from_key)
-  op.create_sp(fn_get_participant_ethnicity)
+  op.create_fn(fn_get_code_id_from_key)
+  op.create_fn(fn_get_participant_ethnicity)
 
 
 def downgrade_rdr():
-  op.drop_sp(fn_get_code_id_from_key)
-  op.drop_sp(fn_get_participant_ethnicity)
+  op.drop_fn(fn_get_code_id_from_key)
+  op.drop_fn(fn_get_participant_ethnicity)
 
 
 def upgrade_metrics():
