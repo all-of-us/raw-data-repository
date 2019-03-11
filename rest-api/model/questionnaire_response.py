@@ -2,7 +2,7 @@ from model.base import Base
 from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, Date, BLOB, ForeignKey, String, Boolean
-from sqlalchemy import ForeignKeyConstraint, Float, Text, text
+from sqlalchemy import ForeignKeyConstraint, Float, Text
 
 
 class QuestionnaireResponse(Base):
