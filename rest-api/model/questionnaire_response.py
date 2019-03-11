@@ -2,7 +2,7 @@ from model.base import Base
 from model.utils import UTCDateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, Date, BLOB, ForeignKey, String, Boolean
-from sqlalchemy import ForeignKeyConstraint, Float, Text
+from sqlalchemy import ForeignKeyConstraint, Float, Text, text
 
 
 class QuestionnaireResponse(Base):
@@ -16,6 +16,7 @@ class QuestionnaireResponse(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)
   created = Column('created', UTCDateTime, nullable=False)
+  authored = Column('authored', UTCDateTime, nullable=True)
   resource = Column('resource', BLOB, nullable=False)
   answers = relationship('QuestionnaireResponseAnswer', cascade='all, delete-orphan')
   __table_args__ = (

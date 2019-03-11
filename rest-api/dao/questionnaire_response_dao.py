@@ -133,6 +133,8 @@ class QuestionnaireResponseDao(BaseDao):
                          answer.questionId)
 
     questionnaire_response.created = clock.CLOCK.now()
+    if not questionnaire_response.authored:
+      questionnaire_response.authored = questionnaire_response.created
 
     # Put the ID into the resource.
     resource_json = json.loads(questionnaire_response.resource)
@@ -265,7 +267,7 @@ class QuestionnaireResponseDao(BaseDao):
               # TODO: validate the URI? [DA-326]
               if not participant_summary.consentForCABoR:
                 participant_summary.consentForCABoR = True
-                participant_summary.consentForCABoRTime = questionnaire_response.created
+                participant_summary.consentForCABoRTime = questionnaire_response.authored
                 something_changed = True
 
     # If race was provided in the response in one or more answers, set the new value.
@@ -303,7 +305,7 @@ class QuestionnaireResponseDao(BaseDao):
                 logging.warn('consent language %s not recognized.' % extension.get('valueCode'))
           if getattr(participant_summary, summary_field) != new_status:
             setattr(participant_summary, summary_field, new_status)
-            setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)
+            setattr(participant_summary, summary_field + 'Time', questionnaire_response.authored)
             something_changed = True
             module_changed = True
     if module_changed:
@@ -353,9 +355,14 @@ class QuestionnaireResponseDao(BaseDao):
     if questionnaire.status == QuestionnaireDefinitionStatus.INVALID:
       raise BadRequest("Submitted questionnaire that is marked as invalid: questionnaire ID %s" %
                        questionnaire.questionnaireId)
+    authored = None
+    if fhir_qr.authored and fhir_qr.authored.date:
+      authored = fhir_qr.authored.date
+
     qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
                                questionnaireVersion=questionnaire.version,
                                participantId=participant_id,
+                               authored=authored,
                                resource=json.dumps(resource_json))
 
     # Extract a code map and answers from the questionnaire response.
