@@ -80,12 +80,22 @@ class DropSPOp(ReversibleOp):
   def reverse(self):
     return CreateSPOp(self.target)
 
+@Operations.register_operation("create_fn", "invoke_for_target")
+@Operations.register_operation("replace_fn", "replace")
+class CreateFNOp(ReversibleOp):
+  def reverse(self):
+    return DropFNOp(self.target)
+
+@Operations.register_operation("drop_fn", "invoke_for_target")
+class DropFNOp(ReversibleOp):
+  def reverse(self):
+    return CreateFNOp(self.target)
+
 
 @Operations.implementation_for(CreateViewOp)
 def create_view(operations, operation):
   operations.execute("CREATE VIEW `{0}` AS {1}".format(
         operation.target.name, operation.target.sqltext))
-
 
 @Operations.implementation_for(DropViewOp)
 def drop_view(operations, operation):
@@ -94,10 +104,19 @@ def drop_view(operations, operation):
 
 @Operations.implementation_for(CreateSPOp)
 def create_sp(operations, operation):
-  operations.execute("CREATE FUNCTION `{0}` {1}".format(
+  operations.execute("CREATE PROCEDURE `{0}` {1}".format(
         operation.target.name, operation.target.sqltext))
-
 
 @Operations.implementation_for(DropSPOp)
 def drop_sp(operations, operation):
+  operations.execute("DROP PROCEDURE `{0}`".format(operation.target.name))
+
+
+@Operations.implementation_for(CreateFNOp)
+def create_fn(operations, operation):
+  operations.execute("CREATE FUNCTION `{0}` {1}".format(
+        operation.target.name, operation.target.sqltext))
+
+@Operations.implementation_for(DropFNOp)
+def drop_fn(operations, operation):
   operations.execute("DROP FUNCTION `{0}`".format(operation.target.name))
