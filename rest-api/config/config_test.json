@@ -47,5 +47,5 @@
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
   ],
   "mayolink_creds": ["rdr-mayolink-creds-test.json"],
-  "mayolink_endpoint": ["https://test.orders.mayomedicallaboratories.com/api/orders.xml"]
+  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"]
 }

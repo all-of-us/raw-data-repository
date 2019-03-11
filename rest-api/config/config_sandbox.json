@@ -2,7 +2,7 @@
   "allow_nonprod_requests": true,
   "biobank_id_prefix": ["S"],
   "mayolink_creds": ["rdr-mayolink-creds-test.json"],
-  "mayolink_endpoint": ["https://test.orders.mayomedicallaboratories.com/api/orders.xml"],
+  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"]
   "biobank_samples_shards": [
     "2"
   ],

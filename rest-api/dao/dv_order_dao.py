@@ -75,16 +75,15 @@ class _FhirBiobankOrder(FhirMixin, DomainResource):
     ]
 
 
-
-
 class DvOrderDao(UpdatableDao):
-  def __init__(self):
-    super(DvOrderDao, self).__init__(BiobankOrder) # @TODO: change to new model in init
 
-  def _send_order(self, resource):
-    barcode = resource['extension'][0]['valueString']
-    order = self._filter_order_fields(resource)
+  def __init__(self):
+    super(DvOrderDao, self).__init__(BiobankOrder)  # @TODO: change to new model in init
+
+  def send_order(self, resource):
+    # barcode = resource['extension'][0]['valueString']
     m = MayoLinkApi()
+    order = self._filter_order_fields(resource)
     m.post(order)
 
   def _filter_order_fields(self, resource):
@@ -99,36 +98,39 @@ class DvOrderDao(UpdatableDao):
     code_dict = summary.asdict()
     format_json_code(code_dict, code_dao, 'genderIdentityId')
     format_json_code(code_dict, code_dao, 'stateId')
+    # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
+    order = {
+      'order': {
+        'collected': resource['authoredOn'],
+        'account': '',
+        'number': '123',  # @TODO: add kit order id (biobank_order_identifier.value)
+        'patient': {'medical_record_number': str(summary.biobankId),
+                    'first_name': '*',
+                    'last_name': str(summary.biobankId),
+                    'middle_name': '',
+                    'birth_date': '3/3/1933',
+                    'gender': code_dict['genderIdentity'],
+                    'address1': summary.streetAddress,
+                    'address2': summary.streetAddress2,
+                    'city': summary.city,
+                    'state': code_dict['state'],
+                    'postal_code': str(summary.zipCode),
+                    'phone': str(summary.phoneNumber),
+                    'account_number': None,
+                    'race': summary.race,
+                    'ethnic_group': None
+                    },
+        'physician': {'name': None,
+                      'phone': None,
+                      'npi': None
+                      },
+        'report_notes': resource['extension'][1]['valueString'],
+        'tests': {'test': {'code': '1SAL2',
+                           'name': 'PMI Saliva, FDA Kit',
+                           'comments': None
+                           }
+                  },
+        'comments': 'Salivary Kit Order, direct from participant'
+       }}
+    return order
 
-    order = {'collected': resource['authoredOn'],
-             'account': '',  # @TODO: add rdr account in mayolink api
-             'number': '',  # @TODO: add order id (biobank_order_identifier.value)
-             'report_notes': resource['extension'][1]['valueString'],
-             'comments': 'Salivary Kit Order, direct from participant',
-             'patient': {'medical_record_number': summary.biobankId,
-                         'first_name': summary.firstName,
-                         'last_name': summary.lastName,
-                         'middle_name': summary.middleName,
-                         'birth_date': summary.dateOfBirth,
-                         'gender': code_dict['genderIdentity'],
-                         'address1': summary.streetAddress,
-                         'address2': summary.streetAddress2,
-                         'city': summary.city,
-                         'state': code_dict['state'],
-                         'postal_code': summary.zipCode,
-                         'phone': summary.phoneNumber,
-                         'account_number': None,
-                         'race': summary.race,
-                         'ethnic_group': None
-                         },
-             'physician': {'name': None,
-                           'phone': None,
-                           'npi': None
-                           },
-             'tests': {'test': {'code': '1SAL2',
-                                'name': 'PMI Saliva, FDA Kit',
-                                'comments': None
-                                }
-                       }
-             }
-    return {'orders': order}

@@ -25,17 +25,4 @@ class DvOrderApi(UpdatableApi):
     # @TODO: update model in dao (should probably compare resource w/ existing model)
     if resource['extension'][0]['url'] == VIBRENT_BARCODE_URL:
       # send to mayolink
-      self.dao._send_order(resource)
-
-
-    # m = self._get_model_to_update(resource, id_, expected_version, participant_id)
-    # self._do_update(m)
-    # return self._make_response(m)
-
-  # look for barcode
-  # get obj from table
-  # convert to xml
-  # send to mayolink api
-  # add try/except add in some backup (i.e. cron ?)
-  # catch time out ? add a "queued" to response to PTSC
-
+      self.dao.send_order(resource)

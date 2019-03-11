@@ -12,7 +12,7 @@
     "10"
   ],
   "mayolink_creds": ["rdr-mayolink-creds-prod.json"],
-  "mayolink_endpoint": ["https://orders.mayomedicallaboratories.com/api/orders.xml"],
+  "mayolink_endpoint": ["https://orders.mayocliniclabs.com/orders/create.xml"],
   "biobank_status_mail_recipients": [
     "pmi-drc-alerts+prod@googlegroups.com"
   ],
