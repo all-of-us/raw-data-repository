@@ -12,6 +12,7 @@ from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from model.biobank_dv_order import BiobankDVOrder
 from model.code import CodeBook, Code, CodeHistory
 from model.calendar import Calendar
 from model.ehr import EhrReceipt
