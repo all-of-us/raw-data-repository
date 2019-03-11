@@ -117,6 +117,21 @@ class OrderStatus(messages.Enum):
   PROCESSED = 3
   FINALIZED = 4
 
+class OrderShipmentStatus(messages.Enum):
+  """Shipment Status of biobank order for mail-in orders"""
+  UNSET = 0
+  PENDING = 1
+  QUEUED = 2
+  FULFILLMENT = 3
+  SHIPPED = 4
+  ERROR = 5
+
+class OrderShipmentTrackingStatus(messages.Enum):
+  """ Shipment tracking status of biobank order for mail-in orders"""
+  UNSET = 0
+  ENROUTE = 1
+  DELIVERED = 2
+
 class BiobankOrderStatus(messages.Enum):
   """ The status of a biobank order: amended/cancelled """
   UNSET = 0
