@@ -93,7 +93,7 @@ class BiobankDVOrder(Base):
   # Mayolink API response
   #
   biobankOrderId = Column('biobank_order_id', String(80),
-                          ForeignKey('biobank_order.biobank_order_id'), nullable=True)
+                          ForeignKey('biobank_order.biobank_order_id'), unique=True, nullable=True)
 
   biobankReference = Column('biobank_reference', String(80), nullable=True)
   biobankStatus = Column('biobank_status', String(30), nullable=True)

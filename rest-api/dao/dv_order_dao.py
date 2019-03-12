@@ -8,7 +8,7 @@ from fhirclient.models.backboneelement import BackboneElement
 from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models.identifier import Identifier
-from model.biobank_order import BiobankOrder
+from model.biobank_dv_order import BiobankDVOrder
 from werkzeug.exceptions import BadRequest
 
 
@@ -78,13 +78,16 @@ class _FhirBiobankOrder(FhirMixin, DomainResource):
 class DvOrderDao(UpdatableDao):
 
   def __init__(self):
-    super(DvOrderDao, self).__init__(BiobankOrder)  # @TODO: change to new model in init
+    super(DvOrderDao, self).__init__(BiobankDVOrder)
+    # BiobankDVOrder
 
   def send_order(self, resource):
     # barcode = resource['extension'][0]['valueString']
     m = MayoLinkApi()
     order = self._filter_order_fields(resource)
     m.post(order)
+    # @TODO: Don't resend if you've sent it once !!!!!
+    self.to_client_json(BiobankDVOrder)
 
   def _filter_order_fields(self, resource):
     # @TODO: WHERE TO PUT BARCODE ?
@@ -103,7 +106,7 @@ class DvOrderDao(UpdatableDao):
       'order': {
         'collected': resource['authoredOn'],
         'account': '',
-        'number': '123',  # @TODO: add kit order id (biobank_order_identifier.value)
+        'number': resource['extension'][0]['valueString'],
         'patient': {'medical_record_number': str(summary.biobankId),
                     'first_name': '*',
                     'last_name': str(summary.biobankId),
@@ -133,4 +136,8 @@ class DvOrderDao(UpdatableDao):
         'comments': 'Salivary Kit Order, direct from participant'
        }}
     return order
+
+  def to_client_json(self, model):
+    import json
+    return json.dumps("SUCCESS !!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
