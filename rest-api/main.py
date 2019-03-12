@@ -15,6 +15,7 @@ from api.dv_order_api import DvOrderApi
 from api.import_codebook_api import import_codebook
 from api.metric_sets_api import MetricSetsApi
 from api.metrics_api import MetricsApi
+from api.metrics_ehr_api import MetricsEhrApi
 from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
 from api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
@@ -25,6 +26,7 @@ from api.questionnaire_response_api import QuestionnaireResponseApi
 from config import get_config, get_db_config
 from flask import Flask, got_request_exception
 from flask_restful import Api
+from json_encoder import RdrJsonEncoder
 from model.utils import ParticipantIdConverter
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException
@@ -34,6 +36,9 @@ PREFIX = '/rdr/v1/'
 
 app = Flask(__name__)
 app.url_map.converters['participant_id'] = ParticipantIdConverter
+app.config.setdefault('RESTFUL_JSON', {
+  'cls': RdrJsonEncoder
+})
 
 
 def _warmup():
@@ -105,6 +110,11 @@ api.add_resource(MetricSetsApi,
                  PREFIX + 'MetricSets',
                  PREFIX + 'MetricSets/<string:ms_id>/Metrics',
                  endpoint='metric_sets',
+                 methods=['GET'])
+
+api.add_resource(MetricsEhrApi,
+                 PREFIX + 'MetricsEHR',
+                 endpoint='metrics_ehr',
                  methods=['GET'])
 
 api.add_resource(QuestionnaireApi,

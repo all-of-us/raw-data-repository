@@ -207,6 +207,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleOrderStatus1CFD9': 'UNSET',
                 'sampleOrderStatus1PXR2': 'UNSET',
                 'sampleOrderStatus1ED02': 'UNSET',
+                'sampleOrderStatusDV1SAL2': 'UNSET',
                 'sampleStatus1ED04': 'UNSET',
                 'sampleStatus1ED10': 'UNSET',
                 'sampleStatus1HEP4': 'UNSET',
@@ -224,11 +225,13 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleStatus1CFD9': 'UNSET',
                 'sampleStatus1ED02': 'UNSET',
                 'sampleStatus1PXR2': 'UNSET',
+                'sampleStatusDV1SAL2': 'UNSET',
                 'signUpTime': TIME_1.isoformat(),
                 'withdrawalStatus': 'NOT_WITHDRAWN',
                 'withdrawalReason': 'UNSET',
                 'suspensionStatus': 'NOT_SUSPENDED',
-                'numberDistinctVisits': 0
+                'numberDistinctVisits': 0,
+                'ehrStatus': 'UNSET',
               }
     self.assertJsonResponseMatches(expected, summary)
 
@@ -304,6 +307,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleOrderStatus1CFD9': 'UNSET',
                 'sampleOrderStatus1PXR2': 'UNSET',
                 'sampleOrderStatus1ED02': 'UNSET',
+                'sampleOrderStatusDV1SAL2': 'UNSET',
                 'sampleStatus1ED04': 'UNSET',
                 'sampleStatus1ED10': 'UNSET',
                 'sampleStatus1HEP4': 'UNSET',
@@ -321,11 +325,13 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleStatus1CFD9': 'UNSET',
                 'sampleStatus1ED02': 'UNSET',
                 'sampleStatus1PXR2': 'UNSET',
+                'sampleStatusDV1SAL2': 'UNSET',
                 'signUpTime': TIME_1.isoformat(),
                 'withdrawalStatus': 'NOT_WITHDRAWN',
                 'withdrawalReason': 'UNSET',
                 'suspensionStatus': 'NOT_SUSPENDED',
-                'numberDistinctVisits': 0
+                'numberDistinctVisits': 0,
+                'ehrStatus': 'UNSET',
                 }
     self.assertJsonResponseMatches(expected, summary)
 

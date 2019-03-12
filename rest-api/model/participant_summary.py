@@ -4,7 +4,7 @@ from model.base import Base
 from model.utils import Enum, UTCDateTime, UTCDateTime6
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus, \
   PhysicalMeasurementsStatus, QuestionnaireStatus, WithdrawalStatus, SuspensionStatus, \
-  WithdrawalReason
+  WithdrawalReason, EhrStatus
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Index, SmallInteger, \
   UnicodeText
 from sqlalchemy.ext.declarative import declared_attr
@@ -164,6 +164,15 @@ class ParticipantSummary(Base):
   sampleStatus1PXR2 = Column('sample_status_1pxr2', Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatus1PXR2Time = Column('sample_status_1pxr2_time', UTCDateTime)
 
+  # Sample fields for Direct Volunteers
+  sampleStatusDV1SAL2 = Column('sample_status_dv_1sal2',
+                               Enum(SampleStatus), default=SampleStatus.UNSET)
+  sampleStatusDV1SAL2Time = Column('sample_status_dv_1sal2_time', UTCDateTime)
+
+  sampleOrderStatusDV1SAL2 = Column('sample_order_status_dv_1sal2', Enum(OrderStatus),
+                                  default=OrderStatus.UNSET)
+  sampleOrderStatusDV1SAL2Time = Column('sample_order_status_dv_1sal2_time', UTCDateTime)
+
   # Fields for which samples have been ordered, and at what times.
   sampleOrderStatus1SST8 = Column('sample_order_status_1sst8', Enum(OrderStatus),
                                   default=OrderStatus.UNSET)
@@ -239,6 +248,11 @@ class ParticipantSummary(Base):
                                       ForeignKey('site.site_id'))
   biospecimenFinalizedSiteId = Column('biospecimen_finalized_site_id', Integer,
                                       ForeignKey('site.site_id'))
+
+  # EHR status related columns
+  ehrStatus = Column('ehr_status', Enum(EhrStatus), default=EhrStatus.NOT_PRESENT)
+  ehrReceiptTime = Column('ehr_receipt_time', UTCDateTime)
+  ehrUpdateTime = Column('ehr_update_time', UTCDateTime)
 
   # Withdrawal from the study of the participant's own accord.
   withdrawalStatus = Column(

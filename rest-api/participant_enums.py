@@ -68,6 +68,11 @@ class SampleStatus(messages.Enum):
   QNS_FOR_PROCESSING = 17
   QUALITY_ISSUE = 18
 
+class EhrStatus(messages.Enum):
+  """Status of EHRs"""
+  NOT_PRESENT = 0
+  PRESENT = 1
+
 def get_sample_status_enum_value(status):
   """
   Return the SampleStatus enum value for the given status from Mayo
@@ -112,6 +117,21 @@ class OrderStatus(messages.Enum):
   PROCESSED = 3
   FINALIZED = 4
 
+class OrderShipmentStatus(messages.Enum):
+  """Shipment Status of biobank order for mail-in orders"""
+  UNSET = 0
+  PENDING = 1
+  QUEUED = 2
+  FULFILLMENT = 3
+  SHIPPED = 4
+  ERROR = 5
+
+class OrderShipmentTrackingStatus(messages.Enum):
+  """ Shipment tracking status of biobank order for mail-in orders"""
+  UNSET = 0
+  ENROUTE = 1
+  DELIVERED = 2
+
 class BiobankOrderStatus(messages.Enum):
   """ The status of a biobank order: amended/cancelled """
   UNSET = 0
@@ -151,6 +171,7 @@ class Stratifications(messages.Enum):
   GEO_STATE = 12
   GEO_CENSUS = 13
   GEO_AWARDEE = 14
+  LANGUAGE = 15
 
 METRIC_SET_KEYS = {
   MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([
