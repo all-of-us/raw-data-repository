@@ -17,7 +17,10 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
     super(MetricsEnrollmentStatusCacheDao, self).__init__(MetricsEnrollmentStatusCache)
     self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
     self.test_email_pattern = TEST_EMAIL_PATTERN
-    self.cache_type = cache_type
+    try:
+      self.cache_type = MetricsCacheType(str(cache_type))
+    except TypeError:
+      raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsEnrollmentStatusCache)
@@ -227,7 +230,10 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
 class MetricsGenderCacheDao(BaseDao):
   def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
     super(MetricsGenderCacheDao, self).__init__(MetricsGenderCache)
-    self.cache_type = cache_type
+    try:
+      self.cache_type = MetricsCacheType(str(cache_type))
+    except TypeError:
+      raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsGenderCache)
@@ -402,7 +408,11 @@ class MetricsAgeCacheDao(BaseDao):
 
   def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
     super(MetricsAgeCacheDao, self).__init__(MetricsAgeCache)
-    self.cache_type = cache_type
+    try:
+      self.cache_type = MetricsCacheType(str(cache_type))
+    except TypeError:
+      raise TypeError("Invalid metrics cache type")
+
     if cache_type == MetricsCacheType.PUBLIC_METRICS_EXPORT_API:
       self.age_ranges = AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API
     else:
@@ -599,7 +609,10 @@ class MetricsRaceCacheDao(BaseDao):
 
   def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
     super(MetricsRaceCacheDao, self).__init__(MetricsRaceCache)
-    self.cache_type = cache_type
+    try:
+      self.cache_type = MetricsCacheType(str(cache_type))
+    except TypeError:
+      raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsRaceCache)
@@ -867,7 +880,10 @@ class MetricsRegionCacheDao(BaseDao):
 
   def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
     super(MetricsRegionCacheDao, self).__init__(MetricsRegionCache)
-    self.cache_type = cache_type
+    try:
+      self.cache_type = MetricsCacheType(str(cache_type))
+    except TypeError:
+      raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsRegionCache)
@@ -1158,7 +1174,10 @@ class MetricsLifecycleCacheDao(BaseDao):
 
   def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
     super(MetricsLifecycleCacheDao, self).__init__(MetricsLifecycleCache)
-    self.cache_type = cache_type
+    try:
+      self.cache_type = MetricsCacheType(str(cache_type))
+    except TypeError:
+      raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsLifecycleCache)
@@ -1414,7 +1433,10 @@ class MetricsLanguageCacheDao(BaseDao):
 
   def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
     super(MetricsLanguageCacheDao, self).__init__(MetricsLanguageCache)
-    self.cache_type = cache_type
+    try:
+      self.cache_type = MetricsCacheType(str(cache_type))
+    except TypeError:
+      raise TypeError("Invalid metrics cache type")
 
   def get_serving_version_with_session(self, session):
     return (session.query(MetricsLanguageCache)
