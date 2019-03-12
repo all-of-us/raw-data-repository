@@ -3,7 +3,6 @@ import datetime
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, TEST_HPO_NAME, TEST_EMAIL_PATTERN
 from participant_enums import WithdrawalStatus, MetricsCacheType
-from participant_enums import Stratifications
 from dao.hpo_dao import HPODao
 from dao.base_dao import BaseDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
@@ -76,47 +75,44 @@ class ParticipantCountsOverTimeService(BaseDao):
     filters_sql_ps = self.get_facets_sql(facets, stratification)
     filters_sql_p = self.get_facets_sql(facets, stratification, table_prefix='p')
 
-    if str(history) == 'TRUE' and stratification == Stratifications.TOTAL:
+    if str(history) == 'TRUE' and str(stratification) == 'TOTAL':
       dao = MetricsEnrollmentStatusCacheDao()
       return dao.get_total_interested_count(start_date, end_date, awardee_ids)
-    elif str(history) == 'TRUE' and stratification == Stratifications.ENROLLMENT_STATUS:
+    elif str(history) == 'TRUE' and str(stratification) == 'ENROLLMENT_STATUS':
       dao = MetricsEnrollmentStatusCacheDao()
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
-    elif str(history) == 'TRUE' and stratification == Stratifications.GENDER_IDENTITY:
+    elif str(history) == 'TRUE' and str(stratification) == 'GENDER_IDENTITY':
       dao = MetricsGenderCacheDao()
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
-    elif str(history) == 'TRUE' and stratification == Stratifications.AGE_RANGE:
+    elif str(history) == 'TRUE' and str(stratification) == 'AGE_RANGE':
       dao = MetricsAgeCacheDao()
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
-    elif str(history) == 'TRUE' and stratification == Stratifications.RACE:
+    elif str(history) == 'TRUE' and str(stratification) == 'RACE':
       dao = MetricsRaceCacheDao()
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
-    elif str(history) == 'TRUE' and stratification in [Stratifications.FULL_STATE,
-                                                       Stratifications.FULL_CENSUS,
-                                                       Stratifications.FULL_AWARDEE,
-                                                       Stratifications.GEO_STATE,
-                                                       Stratifications.GEO_CENSUS,
-                                                       Stratifications.GEO_AWARDEE]:
+    elif str(history) == 'TRUE' and str(stratification) in ['FULL_STATE', 'FULL_CENSUS',
+                                                            'FULL_AWARDEE', 'GEO_STATE',
+                                                            'GEO_CENSUS', 'GEO_AWARDEE']:
       dao = MetricsRegionCacheDao()
       return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids,
                                                enrollment_statuses)
-    elif str(history) == 'TRUE' and stratification == Stratifications.LANGUAGE:
+    elif str(history) == 'TRUE' and str(stratification) == 'LANGUAGE':
       dao = MetricsLanguageCacheDao()
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
                                                enrollment_statuses)
-    elif str(history) == 'TRUE' and stratification == Stratifications.LIFECYCLE:
+    elif str(history) == 'TRUE' and str(stratification) == 'LIFECYCLE':
       dao = MetricsLifecycleCacheDao()
       return dao.get_latest_version_from_cache(end_date, awardee_ids)
-    elif stratification == Stratifications.TOTAL:
+    elif str(stratification) == 'TOTAL':
       strata = ['TOTAL']
       sql = self.get_total_sql(filters_sql_ps)
-    elif stratification == Stratifications.ENROLLMENT_STATUS:
+    elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(val) for val in EnrollmentStatus]
       sql = self.get_enrollment_status_sql(filters_sql_p, sample_time_def)
-    elif stratification == Stratifications.EHR_CONSENT:
+    elif str(stratification) == 'EHR_CONSENT':
       strata = ['EHR_CONSENT']
       sql = self.get_total_sql(filters_sql_ps, ehr_count=True)
-    elif stratification == Stratifications.EHR_RATIO:
+    elif str(stratification) == 'EHR_RATIO':
       strata = ['EHR_RATIO']
       sql = self.get_ratio_sql(filters_sql_ps)
     else:
@@ -139,11 +135,11 @@ class ParticipantCountsOverTimeService(BaseDao):
         values = result[:-1]
         for i, value in enumerate(values):
           key = strata[i]
-          if value is None or (stratification == Stratifications.ENROLLMENT_STATUS
+          if value is None or (str(stratification) == 'ENROLLMENT_STATUS'
                                and enrollment_statuses
                                and key not in enrollment_statuses):
             value = 0
-          metrics[key] = float(value) if stratification == Stratifications.EHR_RATIO else int(value)
+          metrics[key] = float(value) if str(stratification) == 'EHR_RATIO' else int(value)
         results_by_date.append({
           'date': str(date),
           'metrics': metrics
@@ -172,7 +168,7 @@ class ParticipantCountsOverTimeService(BaseDao):
 
     # the SQL for ENROLLMENT_STATUS stratify is using the enrollment status time
     # instead of enrollment status
-    if 'enrollment_statuses' in facets and stratification == Stratifications.ENROLLMENT_STATUS:
+    if 'enrollment_statuses' in facets and str(stratification) == 'ENROLLMENT_STATUS':
       del facets['enrollment_statuses']
       del facet_map['enrollment_statuses']
 
