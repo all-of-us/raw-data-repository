@@ -2193,22 +2193,22 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_STATE')
     results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_CENSUS')
     results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_AWARDEE')
-    self.assertEquals(results1, [{'date': '2017-12-31',
-                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
-                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
-                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
-                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
-                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
-                                              'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
-                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
-                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
-                                              'KY': 0, 'OR': 0, 'SD': 0}}])
-    self.assertEquals(results2, [{'date': '2018-01-01',
-                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 3,
-                                              'SOUTH': 0}}])
-    self.assertEquals(results3, [{'date': '2018-01-02', 'count': 1, 'hpo': u'UNSET'},
-                                 {'date': '2018-01-02', 'count': 2, 'hpo': u'PITT'},
-                                 {'date': '2018-01-02', 'count': 2, 'hpo': u'AZ_TUCSON'}])
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1, 'GA': 0,
+                               'IN': 1, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results1)
+    self.assertIn({'date': '2018-01-01',
+                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 3,
+                              'SOUTH': 0}}, results2)
+    self.assertIn({'date': '2018-01-02', 'count': 1, 'hpo': u'UNSET'}, results3)
+    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': u'PITT'}, results3)
+    self.assertIn({'date': '2018-01-02', 'count': 2, 'hpo': u'AZ_TUCSON'}, results3)
 
   def test_get_metrics_region_data_api(self):
 
