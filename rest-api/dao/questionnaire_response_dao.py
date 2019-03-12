@@ -267,7 +267,7 @@ class QuestionnaireResponseDao(BaseDao):
               # TODO: validate the URI? [DA-326]
               if not participant_summary.consentForCABoR:
                 participant_summary.consentForCABoR = True
-                participant_summary.consentForCABoRTime = questionnaire_response.authored
+                participant_summary.consentForCABoRTime = questionnaire_response.created
                 something_changed = True
 
     # If race was provided in the response in one or more answers, set the new value.
@@ -305,7 +305,7 @@ class QuestionnaireResponseDao(BaseDao):
                 logging.warn('consent language %s not recognized.' % extension.get('valueCode'))
           if getattr(participant_summary, summary_field) != new_status:
             setattr(participant_summary, summary_field, new_status)
-            setattr(participant_summary, summary_field + 'Time', questionnaire_response.authored)
+            setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)
             something_changed = True
             module_changed = True
     if module_changed:
