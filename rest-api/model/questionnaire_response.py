@@ -17,6 +17,7 @@ class QuestionnaireResponse(Base):
                          nullable=False)
   created = Column('created', UTCDateTime, nullable=False)
   authored = Column('authored', UTCDateTime, nullable=True)
+  language = Column('language', String(2), nullable=True)
   resource = Column('resource', BLOB, nullable=False)
   answers = relationship('QuestionnaireResponseAnswer', cascade='all, delete-orphan')
   __table_args__ = (
