@@ -19,7 +19,7 @@ from model.code import CodeType
 
 # revision identifiers, used by Alembic.
 revision = '648d99c5c414'
-down_revision = '80d36c1e37e2'
+down_revision = 'dd408c868dc6'
 branch_labels = None
 depends_on = None
 
