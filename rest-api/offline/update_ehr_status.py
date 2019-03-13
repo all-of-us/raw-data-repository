@@ -12,10 +12,12 @@ from dao.hpo_dao import HPODao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from google.appengine.ext import deferred
 from model.ehr import EhrReceipt
-from participant_enums import EhrStatus
 
 
 def update_ehr_status():
+  """
+  Executed as a cron job
+  """
   bucket_name = _get_curation_bucket_name()
   now = clock.CLOCK.now()
   cutoff_date = (now - datetime.timedelta(days=1)).date()
@@ -104,6 +106,9 @@ def _get_hpos_updated_from_file_stat_list_since_datetime(bucket_stat_list, cutof
 
 
 def _parse_hpo_id_and_date_from_person_filename(person_file_path):
+  """
+  Read a `person.csv` file path and determine the HPO string id and the Date
+  """
   try:
     _, hpo_id_string, _, submission_name, _ = person_file_path.lstrip('/').split('/')
     submission_date = _parse_date_from_submission_name(submission_name)
@@ -115,6 +120,7 @@ def _parse_hpo_id_and_date_from_person_filename(person_file_path):
 def _parse_date_from_submission_name(submission):
   """The modified time of the item cannot be trusted so we must rely on the filename date
   a submission directory is named manually by the uploaders so it does not have one universal format
+  NOTE: any unparsable dates will be ignored
   """
   date_pattern = re.compile(r'(\d{4}[-_]?\d{1,2}[-_]?\d{1,2})')
   date_format_options = [
@@ -146,6 +152,9 @@ def _get_participant_ids_from_person_file(person_file):
 
 
 def _do_update_hpo(hpo_id_string=None, person_file=None, updated_date=None):
+  """
+  Read a specific `person.csv` file and update relevant participant summaries and create EhrReceipts
+  """
   updated_datetime = datetime.datetime.combine(updated_date, datetime.datetime.min.time())
 
   hpo_dao = HPODao()
@@ -159,7 +168,5 @@ def _do_update_hpo(hpo_id_string=None, person_file=None, updated_date=None):
 
   for participant_id in _get_participant_ids_from_person_file(person_file):
     summary = summary_dao.get(participant_id)
-    summary.ehrStatus = EhrStatus.PRESENT
-    if not summary.ehrReceiptTime:
-      summary.ehrReceiptTime = updated_datetime
-    summary.ehrUpdateTime = updated_datetime
+    summary_dao.update_ehr_status(summary, updated_datetime)
+    summary_dao.update(summary)

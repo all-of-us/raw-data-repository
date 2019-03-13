@@ -8,6 +8,7 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
 from model.calendar import Calendar
+from model.ehr import EhrReceipt
 from model.hpo import HPO
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
@@ -146,10 +147,10 @@ class MetricsEhrApiTestBase(FlaskTestBase):
 
     return summary
 
-  def _update_ehr(self, participant_summary, receipt_time, update_time):
-    self.ehr_receipt_dao.insert(
-      self.ps_dao.update_with_new_ehr(participant_summary, receipt_time, update_time)
-    )
+  def _update_ehr(self, participant_summary, update_time):
+    receipt = EhrReceipt(hpoId=participant_summary.hpoId, receiptTime=update_time)
+    self.ehr_receipt_dao.insert(receipt)
+    self.ps_dao.update_ehr_status(participant_summary, update_time)
     self.ps_dao.update(participant_summary)
 
 
@@ -221,7 +222,6 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_1,
-      receipt_time=datetime.datetime(2018, 1, 5),
       update_time=datetime.datetime(2018, 1, 5)
     )
 
@@ -236,8 +236,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_2,
-      receipt_time=datetime.datetime(2018, 1, 6),
-      update_time=datetime.datetime(2018, 1, 7)
+      update_time=datetime.datetime(2018, 1, 6)
     )
 
     # Begin testing
@@ -281,8 +280,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_1,
-      receipt_time=datetime.datetime(2018, 1, 5),
-      update_time=datetime.datetime(2018, 1, 6)
+      update_time=datetime.datetime(2018, 1, 5)
     )
 
     # noinspection PyArgumentList
@@ -296,8 +294,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_2,
-      receipt_time=datetime.datetime(2018, 1, 5),
-      update_time=datetime.datetime(2018, 1, 6)
+      update_time=datetime.datetime(2018, 1, 5)
     )
 
     # noinspection PyArgumentList
@@ -311,8 +308,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_3,
-      receipt_time=datetime.datetime(2018, 1, 6),
-      update_time=datetime.datetime(2018, 1, 7)
+      update_time=datetime.datetime(2018, 1, 6)
     )
 
     # noinspection PyArgumentList
@@ -326,13 +322,11 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_4,
-      receipt_time=datetime.datetime(2018, 1, 6),
-      update_time=datetime.datetime(2018, 1, 7)
+      update_time=datetime.datetime(2018, 1, 6)
     )
     self._update_ehr(
       summary_4,
-      receipt_time=datetime.datetime(2018, 1, 7),
-      update_time=datetime.datetime(2018, 1, 8)
+      update_time=datetime.datetime(2018, 1, 7)
     )
 
     # Begin testing
@@ -408,8 +402,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_1,
-      receipt_time=datetime.datetime(2018, 1, 5),
-      update_time=datetime.datetime(2018, 1, 6),
+      update_time=datetime.datetime(2018, 1, 5),
     )
 
     # noinspection PyArgumentList
@@ -424,8 +417,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_2,
-      receipt_time=datetime.datetime(2018, 1, 6),
-      update_time=datetime.datetime(2018, 1, 7),
+      update_time=datetime.datetime(2018, 1, 6),
     )
 
     # Begin testing
@@ -444,9 +436,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
         u'total_ehr_consented': 0,
         u'total_core_participants': 0,
         u'total_ehr_data_received': 0,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
     self.assertEqual(
@@ -478,9 +468,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
         u'total_ehr_consented': 0,
         u'total_core_participants': 0,
         u'total_ehr_data_received': 0,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
 
@@ -499,9 +487,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
         u'total_ehr_consented': 1,
         u'total_core_participants': 0,
         u'total_ehr_data_received': 0,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
 
@@ -520,9 +506,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
         u'total_ehr_consented': 2,
         u'total_core_participants': 1,
         u'total_ehr_data_received': 0,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
 
@@ -541,9 +525,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
         u'total_ehr_consented': 2,
         u'total_core_participants': 2,
         u'total_ehr_data_received': 1,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
 
@@ -562,8 +544,6 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
         u'total_ehr_consented': 2,
         u'total_core_participants': 2,
         u'total_ehr_data_received': 2,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )

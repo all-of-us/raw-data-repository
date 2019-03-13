@@ -1,4 +1,3 @@
-import os
 import unittest
 
 import cloud_utils.bigquery
@@ -10,12 +9,13 @@ class BigQueryTest(CloudStorageSqlTestBase):
   This test suite tests querying against real BigQuery datasets.
   """
 
-  def test_query_shakespeare(self):
+  @unittest.skip("Authentication to actual BigQuery not properly set up for tests")
+  def test_query(self):
     """
     Test that the `bigquery` helper method returns results in the expected format.
     """
 
-    query = 'select * from `bigquery-public-data.samples.shakespeare` limit 3'
+    query = 'select * from ehr_upload_pids limit 3'
     response = cloud_utils.bigquery.bigquery(
       query,
       app_id='all-of-us-rdr-sandbox',
@@ -23,6 +23,7 @@ class BigQueryTest(CloudStorageSqlTestBase):
     )
     self.assertEqual(response['totalRows'], u'3')
 
+  @unittest.skip("Authentication to actual BigQuery not properly set up for tests")
   def test_response_transformation(self):
     """
     Test the transformation function to make bigquery responses easier to use practically.

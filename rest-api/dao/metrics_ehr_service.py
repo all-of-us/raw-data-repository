@@ -10,7 +10,6 @@ from model.site import Site
 from participant_enums import WithdrawalStatus, QuestionnaireStatus, EhrStatus
 
 
-
 class MetricsEhrService(BaseDao):
 
   def __init__(self):

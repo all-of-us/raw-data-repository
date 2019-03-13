@@ -3,6 +3,7 @@ import calendar
 import collections
 import csv
 import datetime
+import sqlalchemy
 import unittest
 
 import cloudstorage
@@ -16,7 +17,8 @@ from model.ehr import EhrReceipt
 import offline.update_ehr_status
 from model.hpo import HPO
 from participant_enums import EhrStatus
-from test.unit_test.unit_test_util import FlaskTestBase, run_deferred_tasks, CloudStorageSqlTestBase, TestBase
+from test.unit_test.unit_test_util import FlaskTestBase, run_deferred_tasks, \
+  CloudStorageSqlTestBase, TestBase
 
 
 class UpdateEhrStatusTest(CloudStorageSqlTestBase, FlaskTestBase):
@@ -189,35 +191,11 @@ class UpdateEhrStatusFullExecutionTest(CloudStorageSqlTestBase, FlaskTestBase):
     )
     self.config_bucket_name_patcher.start()
     self.addCleanup(self.config_bucket_name_patcher.stop)
-    self.setup_initial_data()
+    self._setup_initial_data()
 
-  def setup_initial_data(self):
-    self._write_csv('/fake_bucket/hpo_foo/foo/2019-01-01/person.csv', [
-      ['pid', 'foo'],
-      ['11', 'bar'],
-      ['12', 'baz'],
-    ])
-    self._write_csv('/fake_bucket/hpo_bar/foo/2019-01-02/person.csv', [
-      ['pid', 'foo'],
-      ['13', 'bar'],
-      ['14', 'baz'],
-    ])
-
-    self.hpo_foo = self._make_hpo(int_id=10, string_id='hpo_foo')
-    self.hpo_bar = self._make_hpo(int_id=11, string_id='hpo_bar')
-
-    self.participants = {
-      participant.participantId: {
-        'participant': participant,
-        'summary': summary,
-      }
-      for participant, summary in [
-        self._make_participant(hpo=self.hpo_foo, int_id=11),
-        self._make_participant(hpo=self.hpo_foo, int_id=12),
-        self._make_participant(hpo=self.hpo_bar, int_id=13),
-        self._make_participant(hpo=self.hpo_bar, int_id=14),
-      ]
-    }
+  def tearDown(self):
+    super(UpdateEhrStatusFullExecutionTest, self).tearDown()
+    FlaskTestBase.doTearDown(self)
 
   @staticmethod
   def _write_csv(filename, iterable):
@@ -241,28 +219,139 @@ class UpdateEhrStatusFullExecutionTest(CloudStorageSqlTestBase, FlaskTestBase):
     self.summary_dao.insert(summary)
     return participant, summary
 
+  def _setup_initial_data(self):
+    self.hpo_foo = self._make_hpo(int_id=10, string_id='hpo_foo')
+    self.hpo_bar = self._make_hpo(int_id=11, string_id='hpo_bar')
+
+    self._make_participant(hpo=self.hpo_foo, int_id=11)
+    self._make_participant(hpo=self.hpo_foo, int_id=12)
+    self._make_participant(hpo=self.hpo_bar, int_id=13)
+    self._make_participant(hpo=self.hpo_bar, int_id=14)
+
+  def test_initial_update_participant_summaries(self):
+    self._write_csv('/fake_bucket/hpo_foo/foo/2019-01-01/person.csv', [
+      ['pid', 'foo'],
+      ['11', 'bar'],
+      ['12', 'baz'],
+    ])
+
+    with FakeClock(datetime.datetime(2019, 1, 1)):
+      offline.update_ehr_status.update_ehr_status()
+      run_deferred_tasks(self)
+
+    summary = self.summary_dao.get(11)
+    self.assertEqual(summary.ehrStatus, EhrStatus.PRESENT)
+    self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019,1,1))
+    self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019,1,1))
+
+    summary = self.summary_dao.get(12)
+    self.assertEqual(summary.ehrStatus, EhrStatus.PRESENT)
+    self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019,1,1))
+    self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019,1,1))
+
   def test_updates_participant_summaries(self):
-    for participant_id in [11,12,13,14]:
-      summary = self.summary_dao.get(participant_id)
-      print summary, summary.ehrStatus
-      self.assertEqual(summary.ehrStatus, EhrStatus.NOT_PRESENT)
+    self._write_csv('/fake_bucket/hpo_foo/foo/2019-01-01/person.csv', [
+      ['pid', 'foo'],
+      ['11', 'bar'],
+    ])
+
+    with FakeClock(datetime.datetime(2019, 1, 1)):
+      offline.update_ehr_status.update_ehr_status()
+      run_deferred_tasks(self)
+
+    self._write_csv('/fake_bucket/hpo_foo/foo/2019-01-02/person.csv', [
+      ['pid', 'foo'],
+      ['11', 'bar'],
+      ['12', 'baz'],
+    ])
 
     with FakeClock(datetime.datetime(2019, 1, 2)):
       offline.update_ehr_status.update_ehr_status()
       run_deferred_tasks(self)
 
     summary = self.summary_dao.get(11)
-    self.assertEqual(summary.ehrStatus, EhrStatus.NOT_PRESENT)
+    self.assertEqual(summary.ehrStatus, EhrStatus.PRESENT)
+    self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019,1,1))
+    self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019,1,2))
 
     summary = self.summary_dao.get(12)
-    self.assertEqual(summary.ehrStatus, EhrStatus.NOT_PRESENT)
-
-    summary = self.summary_dao.get(13)
     self.assertEqual(summary.ehrStatus, EhrStatus.PRESENT)
     self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019,1,2))
     self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019,1,2))
 
-    summary = self.summary_dao.get(14)
+  def _get_all_ehr_receipts(self):
+    with self.ehr_receipt_dao.session() as session:
+      cursor = session.execute(sqlalchemy.select([EhrReceipt]))
+      return [dict(zip(cursor.keys(), row)) for row in cursor]
+
+  def test_creates_receipts(self):
+    # round 1
+    self._write_csv('/fake_bucket/hpo_foo/foo/2019-01-01/person.csv', [
+      ['pid', 'foo'],
+      ['11', 'bar'],
+      ['12', 'baz'],
+    ])
+
+    with FakeClock(datetime.datetime(2019, 1, 1)):
+      offline.update_ehr_status.update_ehr_status()
+      run_deferred_tasks(self)
+
+    receipts = self._get_all_ehr_receipts()
+    self.assertEqual(len(receipts), 1)
+    self.assertEqual(receipts[0]['hpo_id'], self.hpo_foo.hpoId)
+    self.assertEqual(receipts[0]['receipt_time'], datetime.datetime(2019, 1, 1))
+
+    # round 2
+    self._write_csv('/fake_bucket/hpo_foo/foo/2019-01-03/person.csv', [
+      ['pid', 'foo'],
+      ['11', 'bar'],
+      ['12', 'baz'],
+    ])
+    with FakeClock(datetime.datetime(2019, 1, 3)):
+      offline.update_ehr_status.update_ehr_status()
+      run_deferred_tasks(self)
+    self._write_csv('/fake_bucket/hpo_bar/foo/2019-01-05/person.csv', [
+      ['pid', 'foo'],
+      ['13', 'bar'],
+      ['14', 'baz'],
+    ])
+    with FakeClock(datetime.datetime(2019, 1, 5)):
+      offline.update_ehr_status.update_ehr_status()
+      run_deferred_tasks(self)
+
+    receipts = self._get_all_ehr_receipts()
+    self.assertEqual(len(receipts), 3)
+    self.assertEqual(receipts[0]['hpo_id'], self.hpo_foo.hpoId)
+    self.assertEqual(receipts[0]['receipt_time'], datetime.datetime(2019, 1, 1))
+    self.assertEqual(receipts[1]['hpo_id'], self.hpo_foo.hpoId)
+    self.assertEqual(receipts[1]['receipt_time'], datetime.datetime(2019, 1, 3))
+    self.assertEqual(receipts[2]['hpo_id'], self.hpo_bar.hpoId)
+    self.assertEqual(receipts[2]['receipt_time'], datetime.datetime(2019, 1, 5))
+
+  def test_ignores_bad_files(self):
+    self._write_csv('/fake_bucket/hpo_foo/foo/2019-01-01/person.csv', [
+      ['pid', 'foo'],
+      ['11', 'bar'],
+    ])
+
+    with FakeClock(datetime.datetime(2019, 1, 1)):
+      offline.update_ehr_status.update_ehr_status()
+      run_deferred_tasks(self)
+
+    self._write_csv('/fake_bucket/hpo_foo/foo/fuzz/person.csv', [
+      ['pid', 'foo'],
+      ['11', 'bar'],
+      ['12', 'baz'],
+    ])
+
+    with FakeClock(datetime.datetime(2019, 1, 3)):
+      offline.update_ehr_status.update_ehr_status()
+      run_deferred_tasks(self)
+
+    summary = self.summary_dao.get(11)
     self.assertEqual(summary.ehrStatus, EhrStatus.PRESENT)
-    self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019,1,2))
-    self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019,1,2))
+    self.assertEqual(summary.ehrReceiptTime, datetime.datetime(2019,1,1))
+    self.assertEqual(summary.ehrUpdateTime, datetime.datetime(2019,1,1))
+
+    summary = self.summary_dao.get(12)
+    self.assertEqual(summary.ehrStatus, None)
