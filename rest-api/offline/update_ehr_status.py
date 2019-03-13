@@ -4,7 +4,6 @@ import datetime
 import re
 
 import clock
-import cloud_utils.bigquery
 import config
 from cloudstorage import cloudstorage_api
 from dao.ehr_dao import EhrReceiptDao
@@ -33,24 +32,6 @@ def update_ehr_status():
 
 def _get_curation_bucket_name():
   return config.getSetting(config.CURATION_BUCKET_NAME)
-
-
-def _query_ehr_upload_pids():
-  query_string = 'select * from `{project}.{dataset}.{view}` limit 1'.format(
-    project=config.getSetting(config.CURATION_BIGQUERY_PROJECT),
-    dataset='operations_analytics',
-    view='ehr_upload_pids'
-  )
-  return cloud_utils.bigquery.bigquery(query_string)
-
-
-def _query_hpo_counts():
-  query_string = 'select * from `{project}.{dataset}.{view}` limit 1'.format(
-    project=config.getSetting(config.CURATION_BIGQUERY_PROJECT),
-    dataset='operations_analytics',
-    view='table_counts_with_upload_timestamp_for_hpo_sites'
-  )
-  return cloud_utils.bigquery.bigquery(query_string)
 
 
 def _get_hpos_updated_from_file_stat_list_since_datetime(bucket_stat_list, cutoff_date):
