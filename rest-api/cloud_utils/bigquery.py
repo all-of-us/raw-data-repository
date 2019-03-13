@@ -1,3 +1,5 @@
+import collections
+
 from googleapiclient.discovery import build
 from google.appengine.api import app_identity
 
@@ -78,3 +80,21 @@ def bigquery(
         .query(projectId=app_id, body=job_body)
         .execute(num_retries=retry_count)
     )
+
+
+def get_row_dicts_from_bigquery_response(response):
+  """
+  Make a `list` of `OrderedDict` objects representing the bigquery response dict structure.
+  This list allows for cleaner usage of common result access patterns.
+
+  :param response: Response `dict` structure from a call to `bigquery()`
+  :rtype: list
+  """
+  return [
+    collections.OrderedDict(
+      (field['name'], row['f'][i]['v'])
+      for i, field
+      in enumerate(response['schema']['fields'])
+    )
+    for row in response['rows']
+  ]

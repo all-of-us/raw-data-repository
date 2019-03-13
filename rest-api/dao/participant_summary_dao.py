@@ -616,17 +616,6 @@ class ParticipantSummaryDao(UpdatableDao):
 
     return decoded_vals
 
-  @staticmethod
-  def update_with_new_ehr(participant_summary, recorded_time, received_time=None):
-    participant_summary.ehrStatus = EhrStatus.PRESENT
-    participant_summary.ehrReceiptTime = participant_summary.ehrReceiptTime or recorded_time
-    participant_summary.ehrUpdateTime = received_time
-    return EhrReceipt(
-      recordedTime=recorded_time,
-      receivedTime=received_time or clock.CLOCK.now(),
-      participantId=participant_summary.participantId,
-      siteId=participant_summary.siteId
-    )
 
 def _initialize_field_type_sets():
   """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are
