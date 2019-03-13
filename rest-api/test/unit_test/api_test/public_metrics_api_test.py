@@ -1,9 +1,5 @@
 import datetime
-import urllib
-
 from clock import FakeClock
-import httplib
-
 from dao.participant_dao import ParticipantDao
 from model.hpo import HPO
 from dao.hpo_dao import HPODao
