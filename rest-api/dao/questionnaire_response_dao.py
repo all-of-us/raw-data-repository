@@ -133,6 +133,8 @@ class QuestionnaireResponseDao(BaseDao):
                          answer.questionId)
 
     questionnaire_response.created = clock.CLOCK.now()
+    if not questionnaire_response.authored:
+      questionnaire_response.authored = questionnaire_response.created
 
     # Put the ID into the resource.
     resource_json = json.loads(questionnaire_response.resource)
@@ -353,9 +355,21 @@ class QuestionnaireResponseDao(BaseDao):
     if questionnaire.status == QuestionnaireDefinitionStatus.INVALID:
       raise BadRequest("Submitted questionnaire that is marked as invalid: questionnaire ID %s" %
                        questionnaire.questionnaireId)
+    authored = None
+    if fhir_qr.authored and fhir_qr.authored.date:
+      authored = fhir_qr.authored.date
+
+    language = None
+    if fhir_qr.extension:
+      for ext in fhir_qr.extension:
+        if 'iso21090-ST-language' in ext.url:
+          language = ext.valueCode[:2]
+
     qr = QuestionnaireResponse(questionnaireId=questionnaire.questionnaireId,
                                questionnaireVersion=questionnaire.version,
                                participantId=participant_id,
+                               authored=authored,
+                               language=language,
                                resource=json.dumps(resource_json))
 
     # Extract a code map and answers from the questionnaire response.
