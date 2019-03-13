@@ -294,12 +294,14 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     qr.answers.extend(self._names_and_login_phone_number_answers())
     time = datetime.datetime(2016, 1, 1)
     with FakeClock(time):
+      qr.authored = time
       self.questionnaire_response_dao.insert(qr)
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
-                                        created=time)
+                                        created=time,
+                                        authored=time)
     expected_qr.answers.extend(self._names_and_login_phone_number_answers())
     qr2 = self.questionnaire_response_dao.get(1)
     self.assertEquals(expected_qr.asdict(), qr2.asdict())
@@ -315,12 +317,14 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     qr.answers.extend(self._names_and_email_answers())
     time = datetime.datetime(2016, 1, 1)
     with FakeClock(time):
+      qr.authored = time
       self.questionnaire_response_dao.insert(qr)
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
-                                        created=time)
+                                        created=time,
+                                        authored=time)
     expected_qr.answers.extend(self._names_and_email_answers())
     qr2 = self.questionnaire_response_dao.get(1)
     self.assertEquals(expected_qr.asdict(), qr2.asdict())
@@ -339,12 +343,14 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
     time = datetime.datetime(2016, 1, 1)
     with FakeClock(time):
+      qr.authored = time
       self.questionnaire_response_dao.insert(qr)
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
-                                        created=time)
+                                        created=time,
+                                        authored=time)
     expected_qr.answers.append(self.FN_ANSWER)
     expected_qr.answers.append(self.LN_ANSWER)
     expected_qr.answers.append(self.EMAIL_ANSWER)
@@ -404,7 +410,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
-                                        created=TIME_2)
+                                        created=TIME_2,
+                                        authored=TIME_2)
 
     qr2 = self.questionnaire_response_dao.get(1)
     self.assertEquals(expected_qr.asdict(), qr2.asdict())
@@ -490,7 +497,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
-                                        created=TIME_2)
+                                        created=TIME_2,
+                                        authored=TIME_2)
     qr2 = self.questionnaire_response_dao.get(1)
     self.assertEquals(expected_qr.asdict(), qr2.asdict())
 
@@ -569,12 +577,14 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                            valueDate=datetime.date.today())
     qr2.answers.append(answer_3)
     with FakeClock(TIME_3):
+      qr2.authored = TIME_3
       self.questionnaire_response_dao.insert(qr2)
 
     expected_qr = QuestionnaireResponse(questionnaireResponseId=1, questionnaireId=1,
                                         questionnaireVersion=1, participantId=1,
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE, 1),
-                                        created=TIME_2)
+                                        created=TIME_2,
+                                        authored=TIME_2)
     # Answer one on the original response should be marked as ended, since a question with
     # the same concept was answered. Answer two should be left alone.
     answer_1.endTime = TIME_3
@@ -587,7 +597,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_qr2 = QuestionnaireResponse(questionnaireResponseId=2, questionnaireId=2,
                                          questionnaireVersion=1, participantId=1,
                                          resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE_2, 2),
-                                         created=TIME_3)
+                                         created=TIME_3,
+                                         authored=TIME_3)
     expected_qr2.answers.append(answer_3)
     self.check_response(expected_qr2)
 
@@ -614,6 +625,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
                                            valueDate=datetime.date.today())
     qr3.answers.append(answer_4)
     with FakeClock(TIME_4):
+      qr3.authored = TIME_4
       self.questionnaire_response_dao.insert(qr3)
 
     # The first questionnaire response hasn't changed.
@@ -627,7 +639,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     expected_qr3 = QuestionnaireResponse(questionnaireResponseId=3, questionnaireId=2,
                                         questionnaireVersion=1, participantId=1,
                                         resource=with_id(QUESTIONNAIRE_RESPONSE_RESOURCE_3, 3),
-                                        created=TIME_4)
+                                        created=TIME_4,
+                                        authored=TIME_4)
     expected_qr3.answers.append(answer_4)
     self.check_response(expected_qr3)
 

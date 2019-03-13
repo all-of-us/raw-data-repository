@@ -99,7 +99,7 @@ def create_view(operations, operation):
 
 @Operations.implementation_for(DropViewOp)
 def drop_view(operations, operation):
-  operations.execute("DROP VIEW `{0}`".format(operation.target.name))
+  operations.execute("DROP VIEW IF EXISTS `{0}`".format(operation.target.name))
 
 
 @Operations.implementation_for(CreateSPOp)
@@ -109,7 +109,7 @@ def create_sp(operations, operation):
 
 @Operations.implementation_for(DropSPOp)
 def drop_sp(operations, operation):
-  operations.execute("DROP PROCEDURE `{0}`".format(operation.target.name))
+  operations.execute("DROP PROCEDURE IF EXISTS `{0}`".format(operation.target.name))
 
 
 @Operations.implementation_for(CreateFNOp)
@@ -119,4 +119,4 @@ def create_fn(operations, operation):
 
 @Operations.implementation_for(DropFNOp)
 def drop_fn(operations, operation):
-  operations.execute("DROP FUNCTION `{0}`".format(operation.target.name))
+  operations.execute("DROP FUNCTION IF EXISTS `{0}`".format(operation.target.name))
