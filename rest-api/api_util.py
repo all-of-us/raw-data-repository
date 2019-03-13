@@ -42,6 +42,9 @@ def parse_date(date_str, date_format=None, date_only=False):
         raise BadRequest('Date contains non zero time fields')
     return date_obj
 
+def convert_to_datetime(date):
+  return datetime.datetime.combine(date, datetime.datetime.min.time())
+
 def format_json_date(obj, field_name, date_format=None):
   """Converts a field of a dictionary from a datetime to a string."""
   if field_name in obj:
