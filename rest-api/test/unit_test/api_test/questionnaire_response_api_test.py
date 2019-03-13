@@ -137,7 +137,9 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
       resource['subject']['reference'].format(participant_id=participant_id)
     resource['questionnaire']['reference'] = \
       resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+
     with FakeClock(TIME_2):
+      resource['authored'] = TIME_2.isoformat()
       self.send_post(_questionnaire_response_url(participant_id), resource)
 
     participant = self.send_get('Participant/%s' % participant_id)
@@ -207,6 +209,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleOrderStatus1CFD9': 'UNSET',
                 'sampleOrderStatus1PXR2': 'UNSET',
                 'sampleOrderStatus1ED02': 'UNSET',
+                'sampleOrderStatusDV1SAL2': 'UNSET',
                 'sampleStatus1ED04': 'UNSET',
                 'sampleStatus1ED10': 'UNSET',
                 'sampleStatus1HEP4': 'UNSET',
@@ -224,6 +227,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleStatus1CFD9': 'UNSET',
                 'sampleStatus1ED02': 'UNSET',
                 'sampleStatus1PXR2': 'UNSET',
+                'sampleStatusDV1SAL2': 'UNSET',
                 'signUpTime': TIME_1.isoformat(),
                 'withdrawalStatus': 'NOT_WITHDRAWN',
                 'withdrawalReason': 'UNSET',
@@ -305,6 +309,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleOrderStatus1CFD9': 'UNSET',
                 'sampleOrderStatus1PXR2': 'UNSET',
                 'sampleOrderStatus1ED02': 'UNSET',
+                'sampleOrderStatusDV1SAL2': 'UNSET',
                 'sampleStatus1ED04': 'UNSET',
                 'sampleStatus1ED10': 'UNSET',
                 'sampleStatus1HEP4': 'UNSET',
@@ -322,6 +327,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'sampleStatus1CFD9': 'UNSET',
                 'sampleStatus1ED02': 'UNSET',
                 'sampleStatus1PXR2': 'UNSET',
+                'sampleStatusDV1SAL2': 'UNSET',
                 'signUpTime': TIME_1.isoformat(),
                 'withdrawalStatus': 'NOT_WITHDRAWN',
                 'withdrawalReason': 'UNSET',

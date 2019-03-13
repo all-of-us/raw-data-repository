@@ -6,7 +6,8 @@ from participant_enums import WithdrawalStatus, MetricsCacheType
 from dao.hpo_dao import HPODao
 from dao.base_dao import BaseDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
-  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao
+  MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
+  MetricsLanguageCacheDao
 
 CACHE_START_DATE = datetime.datetime.strptime('2017-01-01', '%Y-%m-%d').date()
 
@@ -26,6 +27,7 @@ class ParticipantCountsOverTimeService(BaseDao):
       MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
     self.refresh_data_for_metrics_cache(MetricsRaceCacheDao())
     self.refresh_data_for_metrics_cache(MetricsRegionCacheDao())
+    self.refresh_data_for_metrics_cache(MetricsLanguageCacheDao())
     self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao())
 
   def refresh_data_for_metrics_cache(self, dao):
@@ -49,35 +51,29 @@ class ParticipantCountsOverTimeService(BaseDao):
     with dao.session() as session:
       session.execute(sql, params)
 
-  def get_filtered_results(self, start_date, end_date, filters, filter_by, history,
-                           stratification='ENROLLMENT_STATUS'):
+  def get_filtered_results(self, stratification, start_date, end_date, history, awardee_ids,
+                           enrollment_statuses, sample_time_def):
     """Queries DB, returns results in format consumed by front-end
 
     :param start_date: Start date object
     :param end_date: End date object
-    :param filters: Objects representing filters specified in UI
-    :param filter_by: indicate how to filter the core participant
+    :param awardee_ids: indicate awardee ids
+    :param enrollment_statuses: indicate the enrollment status
+    :param sample_time_def: indicate how to filter the core participant
     :param history: query for history data from metrics cache table
     :param stratification: How to stratify (layer) results, as in a stacked bar chart
     :return: Filtered, stratified results by date
     """
 
-    # save the enrollment statuses requirements for filtering the SQL result later
-    if 'enrollment_statuses' in filters and filters['enrollment_statuses'] is not None:
-      enrollment_statuses = [str(val) for val in filters['enrollment_statuses']]
-    else:
-      enrollment_statuses = []
-
-    if 'awardee_ids' in filters and filters['awardee_ids'] is not None:
-      awardee_ids = filters['awardee_ids']
-    else:
-      awardee_ids = []
-
     # Filters for participant_summary (ps) and participant (p) table
     # filters_sql_ps is used in the general case when we're querying participant_summary
     # filters_sql_p is used when also LEFT OUTER JOINing p and ps
-    filters_sql_ps = self.get_facets_sql(filters, stratification)
-    filters_sql_p = self.get_facets_sql(filters, stratification, table_prefix='p')
+    facets = {
+      'enrollment_statuses': [EnrollmentStatus(val) for val in enrollment_statuses],
+      'awardee_ids': awardee_ids
+    }
+    filters_sql_ps = self.get_facets_sql(facets, stratification)
+    filters_sql_p = self.get_facets_sql(facets, stratification, table_prefix='p')
 
     if str(history) == 'TRUE' and str(stratification) == 'TOTAL':
       dao = MetricsEnrollmentStatusCacheDao()
@@ -100,6 +96,10 @@ class ParticipantCountsOverTimeService(BaseDao):
       dao = MetricsRegionCacheDao()
       return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids,
                                                enrollment_statuses)
+    elif str(history) == 'TRUE' and str(stratification) == 'LANGUAGE':
+      dao = MetricsLanguageCacheDao()
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
+                                               enrollment_statuses)
     elif str(history) == 'TRUE' and str(stratification) == 'LIFECYCLE':
       dao = MetricsLifecycleCacheDao()
       return dao.get_latest_version_from_cache(end_date, awardee_ids)
@@ -108,7 +108,7 @@ class ParticipantCountsOverTimeService(BaseDao):
       sql = self.get_total_sql(filters_sql_ps)
     elif str(stratification) == 'ENROLLMENT_STATUS':
       strata = [str(val) for val in EnrollmentStatus]
-      sql = self.get_enrollment_status_sql(filters_sql_p, filter_by)
+      sql = self.get_enrollment_status_sql(filters_sql_p, sample_time_def)
     elif str(stratification) == 'EHR_CONSENT':
       strata = ['EHR_CONSENT']
       sql = self.get_total_sql(filters_sql_ps, ehr_count=True)
@@ -284,53 +284,60 @@ class ParticipantCountsOverTimeService(BaseDao):
 
   def get_enrollment_status_sql(self, filters_sql_p, filter_by='ORDERED'):
 
-    # Noteworthy comments / documentation from Dan (and lightly adapted)
-    #
-    # This SQL works OK but hardcodes the baseline questionnaires and the
-    # fact that 1ED04 and 1SAL are the samples needed to be a full
-    # participant into the SQL. Previously this was done with config:
-    #
-    # rest-api/config/base_config.json#L29
-    #
-    # For the samples, MySQL doesn't make it easy to do the LEAST of N
-    # nullable values, so this is probably OK...
-    #
-    # For the baseline questionnaires, note that we might want to use the config to
-    # generate the GREATEST statement instead, but for now are hardcoding as
-    # we do with samples.
-
-    # TODO when implementing unit testing for service class:
-    # Add macros for GREATEST and LEAST, as they don't work in SQLite
-    # Example: master/rest-api/dao/database_utils.py#L50
-
     core_sample_time_field_name = 'enrollment_status_core_ordered_sample_time'
     if filter_by == 'STORED':
       core_sample_time_field_name = 'enrollment_status_core_stored_sample_time'
 
     sql = """
       SELECT
-      SUM(CASE
-        WHEN day>=Date(sign_up_time) AND (enrollment_status_member_time IS NULL OR day < Date(enrollment_status_member_time)) THEN 1
-        ELSE 0
-      END) AS registered_participants,
-      sum(CASE
-        WHEN enrollment_status_member_time IS NOT NULL AND day>=Date(enrollment_status_member_time) AND (%(core_sample_time_field_name)s IS NULL OR day < Date(%(core_sample_time_field_name)s)) THEN 1
-        ELSE 0
-      END) AS member_participants,
-      sum(CASE
-        WHEN %(core_sample_time_field_name)s IS NOT NULL AND day>=Date(%(core_sample_time_field_name)s) THEN 1
-        ELSE 0
-      END) AS full_participants,
+      IFNULL((
+        SELECT SUM(results.enrollment_count)
+        FROM
+        (
+          SELECT DATE(p.sign_up_time) AS sign_up_time,
+                 DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                 DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
+                 count(*) enrollment_count
+          FROM participant p
+                 LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+          %(filters_p)s
+          GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+        ) AS results
+        WHERE c.day>=DATE(sign_up_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+      ),0) AS registered_participants,
+      IFNULL((
+        SELECT SUM(results.enrollment_count)
+        FROM
+        (
+          SELECT DATE(p.sign_up_time) AS sign_up_time,
+                 DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                 DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
+                 count(*) enrollment_count
+          FROM participant p
+                 LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+          %(filters_p)s
+          GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+        ) AS results
+        WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (%(core_sample_time_field_name)s IS NULL OR day < DATE(%(core_sample_time_field_name)s))
+      ),0) AS member_participants,
+      IFNULL((
+        SELECT SUM(results.enrollment_count)
+        FROM
+        (
+          SELECT DATE(p.sign_up_time) AS sign_up_time,
+                 DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                 DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
+                 count(*) enrollment_count
+          FROM participant p
+                 LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+          %(filters_p)s
+          GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+        ) AS results
+        WHERE %(core_sample_time_field_name)s IS NOT NULL AND day>=DATE(%(core_sample_time_field_name)s)
+      ),0) AS full_participants,
       day
-      FROM (SELECT p.sign_up_time, ps.enrollment_status_member_time, ps.enrollment_status_core_ordered_sample_time, ps.enrollment_status_core_stored_sample_time, calendar.day
-            FROM participant p LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id,
-                 calendar
-            %(filters_p)s
-              AND calendar.day >= :start_date
-              AND calendar.day <= :end_date
-           ) a
-      GROUP BY day
-      ORDER BY day;
+      FROM calendar c
+      WHERE c.day BETWEEN :start_date AND :end_date
       """ % {'filters_p': filters_sql_p, 'core_sample_time_field_name': core_sample_time_field_name}
 
     return sql

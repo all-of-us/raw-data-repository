@@ -941,6 +941,17 @@ class FakeParticipantGenerator(object):
         questions_with_answers.append(self._create_question_answer(link_id, answer))
     qr_json = self._create_questionnaire_response(participant_id, q_id_and_version,
                                                   questions_with_answers)
+    # Generate an authored time that has a nine in ten chance of being different than the
+    # create datetime value.
+    delta = datetime.timedelta(seconds=random.randint(0, 9) * random.randint(1, 30))
+    qr_json['authored'] = (submission_time - delta).isoformat()
+
+    extensions = list()
+    extensions.append({'url': 'http://hl7.org/fhir/StructureDefinition/iso21090-ST-language',
+                            'valueCode': random.choice(
+                              ['en', 'en', 'en', 'en', 'en', 'es', ])})
+    qr_json['extension'] = extensions
+
     try:
       self._client.request_json(
           _questionnaire_response_url(participant_id),

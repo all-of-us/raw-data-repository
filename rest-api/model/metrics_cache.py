@@ -77,6 +77,19 @@ class MetricsRegionCache(Base):
   stateName = Column('state_name', String(255), primary_key=True)
   stateCount = Column('state_count', Integer, nullable=False)
 
+class MetricsLanguageCache(Base):
+  """Contains language metrics data grouped by HPO and date.
+  """
+  __tablename__ = 'metrics_language_cache'
+  dateInserted = Column('date_inserted', UTCDateTime, default=clock.CLOCK.now,
+                        nullable=False, primary_key=True)
+  enrollmentStatus = Column('enrollment_status', String(50), primary_key=True, default='')
+  hpoId = Column('hpo_id', String(20), primary_key=True)
+  hpoName = Column('hpo_name', String(255), primary_key=True)
+  date = Column('date', Date, nullable=False, primary_key=True)
+  languageName = Column('language_name', String(50), primary_key=True)
+  languageCount = Column('language_count', Integer, nullable=False)
+
 
 class MetricsLifecycleCache(Base):
   """Contains lifecycle metrics data grouped by HPO and date.
@@ -93,6 +106,10 @@ class MetricsLifecycleCache(Base):
   ppiBasics = Column('ppi_basics', Integer, nullable=False)
   ppiOverallHealth = Column('ppi_overall_health', Integer, nullable=False)
   ppiLifestyle = Column('ppi_lifestyle', Integer, nullable=False)
+  ppiHealthcareAccess = Column('ppi_healthcare_access', Integer, nullable=False)
+  ppiMedicalHistory = Column('ppi_medical_history', Integer, nullable=False)
+  ppiMedications = Column('ppi_medications', Integer, nullable=False)
+  ppiFamilyHealth = Column('ppi_family_health', Integer, nullable=False)
   ppiBaselineComplete = Column('ppi_baseline_complete', Integer, nullable=False)
   physicalMeasurement = Column('physical_measurement', Integer, nullable=False)
   sampleReceived = Column('sample_received', Integer, nullable=False)

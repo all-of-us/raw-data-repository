@@ -700,8 +700,6 @@ Passed as a string. Can be one of the values from the table below.
 | GENDER_IDENTITY   | Gender identity count by date.                           |
 | AGE_RANGE         | Age range bucket counts by date.                         |
 | RACE              | Race classification counts by date.                      |
-| EHR_CONSENT       | Count of EHR consented participants.                     |
-| EHR_RATIO         | Percentage of eligible that have provided EHR consent.   |
 | GEO_STATE         | Participant count by US state code.                      |
 | GEO_CENSUS        | Participant count by census region.                      |
 | GEO_AWARDEE       | Participant count by awardee.                            |
