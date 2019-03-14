@@ -848,10 +848,41 @@ class PublicMetricsApiTest(FlaskTestBase):
     qs = ''.join(qs.split())  # Remove all whitespace
 
     results = self.send_get('PublicMetrics', query_string=qs)
-    self.assertIn({u'date': u'2017-12-31', u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 1}}, results)
-    self.assertIn({u'date': u'2018-01-02', u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 2}}, results)
-    self.assertIn({u'date': u'2018-01-03', u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 4}}, results)
-    self.assertIn({u'date': u'2018-01-06', u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 5}}, results)
+    self.assertIn({u'date': u'2017-12-31',
+                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 1}},
+                  results)
+    self.assertIn({u'date': u'2018-01-02',
+                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 2}},
+                  results)
+    self.assertIn({u'date': u'2018-01-03',
+                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 4}},
+                  results)
+    self.assertIn({u'date': u'2018-01-06',
+                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 5}},
+                  results)
+
+    qs = """
+                &stratification=EHR_METRICS
+                &startDate=2017-12-31
+                &endDate=2018-01-08
+                &awardee=AZ_TUCSON,PITT
+                """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    results = self.send_get('PublicMetrics', query_string=qs)
+    self.assertIn({u'date': u'2017-12-31',
+                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 0}},
+                  results)
+    self.assertIn({u'date': u'2018-01-02',
+                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 1}},
+                  results)
+    self.assertIn({u'date': u'2018-01-03',
+                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 3}},
+                  results)
+    self.assertIn({u'date': u'2018-01-06',
+                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 4}},
+                  results)
 
   def create_demographics_questionnaire(self):
     """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
