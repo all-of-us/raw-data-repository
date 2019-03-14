@@ -64,13 +64,13 @@ class MetricsEhrService(BaseDao):
     ]
 
   @staticmethod
-  def _get_metrics_over_time_query(interval_query, site_ids=None):
+  def _get_metrics_over_time_query(interval_query, hpo_ids=None):
     common_subquery_where_arg = (
       (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN)
       & Participant.isGhostId.isnot(True)
     )
-    if site_ids:
-      common_subquery_where_arg &= ParticipantSummary.siteId.in_(site_ids)
+    if hpo_ids:
+      common_subquery_where_arg &= ParticipantSummary.hpoId.in_(hpo_ids)
 
     base_subquery = (
       sqlalchemy.select([sqlalchemy.func.count()])
@@ -169,8 +169,8 @@ class MetricsEhrService(BaseDao):
       sqlalchemy.func.date(sqlalchemy.func.max(ParticipantSummary.ehrUpdateTime))
         .label('last_ehr_submission_date'),
     ]
-    sites_with_participants_and_summaries = sqlalchemy.outerjoin(
-      sqlalchemy.outerjoin(
+    sites_with_participants_and_summaries = sqlalchemy.join(
+      sqlalchemy.join(
         HPO,
         ParticipantSummary,
         ParticipantSummary.hpoId == HPO.hpoId
@@ -178,6 +178,7 @@ class MetricsEhrService(BaseDao):
       Participant,
       Participant.participantId == ParticipantSummary.participantId
     )
+
     query = (
       sqlalchemy.select(fields)
         .select_from(sites_with_participants_and_summaries)
