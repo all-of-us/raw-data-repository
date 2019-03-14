@@ -8,6 +8,7 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
 from model.calendar import Calendar
+from model.ehr import EhrReceipt
 from model.hpo import HPO
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
@@ -146,10 +147,10 @@ class MetricsEhrApiTestBase(FlaskTestBase):
 
     return summary
 
-  def _update_ehr(self, participant_summary, receipt_time, update_time):
-    self.ehr_receipt_dao.insert(
-      self.ps_dao.update_with_new_ehr(participant_summary, receipt_time, update_time)
-    )
+  def _update_ehr(self, participant_summary, update_time):
+    receipt = EhrReceipt(hpoId=participant_summary.hpoId, receiptTime=update_time)
+    self.ehr_receipt_dao.insert(receipt)
+    self.ps_dao.update_ehr_status(participant_summary, update_time)
     self.ps_dao.update(participant_summary)
 
 
@@ -221,7 +222,6 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_1,
-      receipt_time=datetime.datetime(2018, 1, 5),
       update_time=datetime.datetime(2018, 1, 5)
     )
 
@@ -236,8 +236,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_2,
-      receipt_time=datetime.datetime(2018, 1, 6),
-      update_time=datetime.datetime(2018, 1, 7)
+      update_time=datetime.datetime(2018, 1, 6)
     )
 
     # Begin testing
@@ -281,8 +280,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_1,
-      receipt_time=datetime.datetime(2018, 1, 5),
-      update_time=datetime.datetime(2018, 1, 6)
+      update_time=datetime.datetime(2018, 1, 5)
     )
 
     # noinspection PyArgumentList
@@ -296,8 +294,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_2,
-      receipt_time=datetime.datetime(2018, 1, 5),
-      update_time=datetime.datetime(2018, 1, 6)
+      update_time=datetime.datetime(2018, 1, 5)
     )
 
     # noinspection PyArgumentList
@@ -311,8 +308,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_3,
-      receipt_time=datetime.datetime(2018, 1, 6),
-      update_time=datetime.datetime(2018, 1, 7)
+      update_time=datetime.datetime(2018, 1, 6)
     )
 
     # noinspection PyArgumentList
@@ -326,13 +322,11 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
     self._update_ehr(
       summary_4,
-      receipt_time=datetime.datetime(2018, 1, 6),
-      update_time=datetime.datetime(2018, 1, 7)
+      update_time=datetime.datetime(2018, 1, 6)
     )
     self._update_ehr(
       summary_4,
-      receipt_time=datetime.datetime(2018, 1, 7),
-      update_time=datetime.datetime(2018, 1, 8)
+      update_time=datetime.datetime(2018, 1, 7)
     )
 
     # Begin testing
@@ -393,8 +387,8 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
 
   def test_cutoff_date_filtering(self):
     # Set up test data
-    site_1 = self._make_site(10, 'Site A', 'group_a', 'PITT')
-    site_2 = self._make_site(11, 'Site B', 'group_b', 'AZ_TUCSON')
+    hpo_a = self.hpo_dao.get_by_name('PITT')
+    hpo_b = self.hpo_dao.get_by_name('AZ_TUCSON')
 
     # noinspection PyArgumentList
     participant_1 = Participant(participantId=1, biobankId=4)
@@ -403,13 +397,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       time_int=datetime.datetime(2018, 1, 1),
       time_study=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4),
-      site_id=site_1.siteId
-    )
-    self._update_ehr(
-      summary_1,
-      receipt_time=datetime.datetime(2018, 1, 5),
-      update_time=datetime.datetime(2018, 1, 6),
+      time_fp=datetime.datetime(2018, 1, 4)
     )
 
     # noinspection PyArgumentList
@@ -419,14 +407,24 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       time_int=datetime.datetime(2018, 1, 2),
       time_study=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5),
-      site_id=site_1.siteId
+      time_fp=datetime.datetime(2018, 1, 5)
     )
-    self._update_ehr(
-      summary_2,
-      receipt_time=datetime.datetime(2018, 1, 6),
-      update_time=datetime.datetime(2018, 1, 7),
+
+    # noinspection PyArgumentList
+    participant_3 = Participant(participantId=3, biobankId=6)
+    summary_3 = self._make_participant(
+      participant_3, 'C', 'Chicken', 'AZ_TUCSON',
+      time_int=datetime.datetime(2018, 1, 2),
+      time_study=datetime.datetime(2018, 1, 3),
+      time_mem=datetime.datetime(2018, 1, 4),
+      time_fp=datetime.datetime(2018, 1, 5)
     )
+
+    for summary in [summary_1]:
+      self._update_ehr(summary, update_time=datetime.datetime(2018, 1, 5))
+
+    for summary in [summary_2, summary_3]:
+      self._update_ehr(summary, update_time=datetime.datetime(2018, 1, 6))
 
     # Begin testing
     response = self.send_get('MetricsEHR', request_data={
@@ -435,31 +433,31 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': long(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 1,
         u'total_primary_consented': 0,
         u'total_ehr_consented': 0,
         u'total_core_participants': 0,
         u'total_ehr_data_received': 0,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
     self.assertEqual(
-      response['site_metrics'][str(site_2.siteId)],
+      response['site_metrics'][str(hpo_b.hpoId)],
       {
-        u'site_id': site_2.siteId,
-        u'site_name': unicode(site_2.siteName),
+        u'hpo_id': long(hpo_b.hpoId),
+        u'hpo_name': unicode(hpo_b.name),
+        u'hpo_display_name': unicode(hpo_b.displayName),
         u'total_participants': 0,
         u'total_primary_consented': 0,
         u'total_ehr_consented': 0,
         u'total_core_participants': 0,
         u'total_ehr_data_received': 0,
-        u'last_ehr_submission_date': None,
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
 
@@ -469,18 +467,17 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': long(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 1,
         u'total_ehr_consented': 0,
         u'total_core_participants': 0,
         u'total_ehr_data_received': 0,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
 
@@ -490,18 +487,17 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': long(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 1,
         u'total_core_participants': 0,
         u'total_ehr_data_received': 0,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
 
@@ -511,18 +507,17 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': long(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 2,
         u'total_core_participants': 1,
         u'total_ehr_data_received': 0,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
 
@@ -532,18 +527,17 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': int(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 2,
         u'total_core_participants': 2,
         u'total_ehr_data_received': 1,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
 
@@ -553,17 +547,16 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': long(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 2,
         u'total_core_participants': 2,
         u'total_ehr_data_received': 2,
-        # NOTE: The last_ehr_submission_date is incorrect but as accurate as we can get with
-        #       the current data structure.
-        u'last_ehr_submission_date': u'2018-01-07',
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )

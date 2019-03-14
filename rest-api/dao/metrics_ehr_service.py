@@ -4,11 +4,10 @@ import sqlalchemy
 from dao.base_dao import BaseDao
 from dao.calendar_dao import INTERVAL_WEEK, CalendarDao
 from dao.ehr_dao import EhrReceiptDao
+from model.hpo import HPO
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
-from model.site import Site
 from participant_enums import WithdrawalStatus, QuestionnaireStatus, EhrStatus
-
 
 
 class MetricsEhrService(BaseDao):
@@ -34,9 +33,9 @@ class MetricsEhrService(BaseDao):
       'site_metrics': self._get_site_metrics_data(end_date, site_ids),
     }
 
-  def _get_metrics_over_time_data(self, start_date, end_date, interval, site_ids=None):
+  def _get_metrics_over_time_data(self, start_date, end_date, interval, hpo_ids=None):
     active_site_counts = self.ehr_receipt_dao.get_active_site_counts_in_interval(
-      start_date, end_date, interval, site_ids)
+      start_date, end_date, interval, hpo_ids)
     active_site_counts_by_interval_start = {
       result['start_date']: result['active_site_count']
       for result in active_site_counts
@@ -46,7 +45,7 @@ class MetricsEhrService(BaseDao):
       end=end_date,
       interval_key=interval
     )
-    ehr_query = self._get_metrics_over_time_query(interval_query, site_ids)
+    ehr_query = self._get_metrics_over_time_query(interval_query, hpo_ids)
     #import sqlparse
     #print sqlparse.format(str(q), reindent=True)
     with self.session() as session:
@@ -106,7 +105,7 @@ class MetricsEhrService(BaseDao):
     with self.session() as session:
       cursor = session.execute(q)
     return {
-      row_dict['site_id']: row_dict
+      row_dict['hpo_id']: row_dict
       for row_dict
       in [
         dict(zip(cursor.keys(), row))
@@ -116,7 +115,7 @@ class MetricsEhrService(BaseDao):
     }
 
   @staticmethod
-  def _get_site_metrics_query(cutoff_date, site_ids=None):
+  def _get_site_metrics_query(cutoff_date, hpo_ids=None):
     def make_sum_bool_field(condition_expression):
       return sqlalchemy.func.cast(
         sqlalchemy.func.sum(
@@ -159,25 +158,22 @@ class MetricsEhrService(BaseDao):
 
     # build query
     fields = [
-      Site.siteId.label('site_id'),
-      Site.siteName.label('site_name'),
+      HPO.hpoId.label('hpo_id'),
+      HPO.name.label('hpo_name'),
+      HPO.displayName.label('hpo_display_name'),
       make_sum_bool_field(was_participant).label('total_participants'),
       make_sum_bool_field(was_primary).label('total_primary_consented'),
       make_sum_bool_field(was_ehr_consented).label('total_ehr_consented'),
       make_sum_bool_field(was_core).label('total_core_participants'),
-
-      # NOTE: The following fields should be restructured if/when we log individual ehr receipts.
-      #       In their current form, a participant site change will alter the output.
-      make_sum_bool_field(was_core & had_ehr)
-        .label('total_ehr_data_received'),
+      make_sum_bool_field(was_core & had_ehr).label('total_ehr_data_received'),
       sqlalchemy.func.date(sqlalchemy.func.max(ParticipantSummary.ehrUpdateTime))
         .label('last_ehr_submission_date'),
     ]
     sites_with_participants_and_summaries = sqlalchemy.outerjoin(
       sqlalchemy.outerjoin(
-        Site,
+        HPO,
         ParticipantSummary,
-        ParticipantSummary.siteId == Site.siteId
+        ParticipantSummary.hpoId == HPO.hpoId
       ),
       Participant,
       Participant.participantId == ParticipantSummary.participantId
@@ -185,10 +181,8 @@ class MetricsEhrService(BaseDao):
     query = (
       sqlalchemy.select(fields)
         .select_from(sites_with_participants_and_summaries)
-        .group_by(Site.siteId)
+        .group_by(HPO.hpoId)
     )
-    if site_ids:
-      query = query.where(Site.siteId.in_(site_ids))
-    #import sqlparse
-    #print sqlparse.format(str(query), reindent=True)
+    if hpo_ids:
+      query = query.where(HPO.hpoId.in_(hpo_ids))
     return query
