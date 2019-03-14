@@ -72,6 +72,9 @@ class MetricsEhrApiTestBase(FlaskTestBase):
     :return: Participant object
     """
 
+    participant.hpoId = self.hpo_dao.get_by_name(hpo_name).hpoId
+
+
     if unconsented is True:
       enrollment_status = None
     elif time_mem is None:
@@ -113,7 +116,7 @@ class MetricsEhrApiTestBase(FlaskTestBase):
     summary.enrollmentStatusCoreOrderedSampleTime = time_fp
     summary.enrollmentStatusCoreStoredSampleTime = time_fp_stored
 
-    summary.hpoId = self.hpo_dao.get_by_name(hpo_name).hpoId
+    summary.hpoId = participant.hpoId
     summary.siteId = site_id
 
     if time_study is not None:
@@ -188,19 +191,40 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       'start_date': '2018-01-01',
       'end_date': '2018-01-06',
       'interval': 'day'
-    })['metrics_over_time']
-
+    })
     counts_by_date = {
       day['date']: day['metrics']['EHR_CONSENTED']
-      for day in response
+      for day in response['metrics_over_time']
     }
+    self.assertEqual(counts_by_date, {
+      u'2018-01-01': 0,
+      u'2018-01-02': 0,
+      u'2018-01-03': 1,
+      u'2018-01-04': 2,
+      u'2018-01-05': 2,
+      u'2018-01-06': 2,
+    })
 
-    self.assertEqual(counts_by_date['2018-01-01'], 0)
-    self.assertEqual(counts_by_date['2018-01-02'], 0)
-    self.assertEqual(counts_by_date['2018-01-03'], 1)
-    self.assertEqual(counts_by_date['2018-01-04'], 2)
-    self.assertEqual(counts_by_date['2018-01-05'], 2)
-    self.assertEqual(counts_by_date['2018-01-05'], 2)
+    # test with site filtering
+    response = self.send_get('MetricsEHR', request_data={
+      'start_date': '2018-01-01',
+      'end_date': '2018-01-06',
+      'interval': 'day',
+      'site_ids': [participant_1.hpoId],
+    })
+    counts_by_date = {
+      day['date']: day['metrics']['EHR_CONSENTED']
+      for day in response['metrics_over_time']
+    }
+    self.assertEqual(counts_by_date, {
+      u'2018-01-01': 0,
+      u'2018-01-02': 0,
+      u'2018-01-03': 1,
+      u'2018-01-04': 1,
+      u'2018-01-05': 1,
+      u'2018-01-06': 1,
+    })
+
 
   def test_received_counts(self):
     # Set up data
@@ -220,11 +244,6 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       time_fp=datetime.datetime(2018, 1, 4),
       site_id=1
     )
-    self._update_ehr(
-      summary_1,
-      update_time=datetime.datetime(2018, 1, 5)
-    )
-
     # noinspection PyArgumentList
     participant_2 = Participant(participantId=2, biobankId=5)
     summary_2 = self._make_participant(
@@ -234,31 +253,81 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       time_fp=datetime.datetime(2018, 1, 5),
       site_id=2
     )
+
+
+    # Begin testing
+
+    self._update_ehr(
+      summary_1,
+      update_time=datetime.datetime(2018, 1, 5)
+    )
+
+    response = self.send_get('MetricsEHR', request_data={
+      'start_date': '2018-01-01',
+      'end_date': '2018-01-08',
+      'interval': 'day'
+    })
+    counts_by_date = {
+      day['date']: day['metrics']['EHR_RECEIVED']
+      for day in response['metrics_over_time']
+    }
+    self.assertEqual(counts_by_date, {
+      u'2018-01-01': 0,
+      u'2018-01-02': 0,
+      u'2018-01-03': 0,
+      u'2018-01-04': 0,
+      u'2018-01-05': 1,
+      u'2018-01-06': 1,
+      u'2018-01-07': 1,
+      u'2018-01-08': 1,
+    })
+
     self._update_ehr(
       summary_2,
       update_time=datetime.datetime(2018, 1, 6)
     )
 
-    # Begin testing
     response = self.send_get('MetricsEHR', request_data={
       'start_date': '2018-01-01',
       'end_date': '2018-01-08',
       'interval': 'day'
-    })['metrics_over_time']
-
+    })
     counts_by_date = {
       day['date']: day['metrics']['EHR_RECEIVED']
-      for day in response
+      for day in response['metrics_over_time']
     }
+    self.assertEqual(counts_by_date, {
+      u'2018-01-01': 0,
+      u'2018-01-02': 0,
+      u'2018-01-03': 0,
+      u'2018-01-04': 0,
+      u'2018-01-05': 1,
+      u'2018-01-06': 2,
+      u'2018-01-07': 2,
+      u'2018-01-08': 2,
+    })
 
-    self.assertEqual(counts_by_date['2018-01-01'], 0)
-    self.assertEqual(counts_by_date['2018-01-02'], 0)
-    self.assertEqual(counts_by_date['2018-01-03'], 0)
-    self.assertEqual(counts_by_date['2018-01-04'], 0)
-    self.assertEqual(counts_by_date['2018-01-05'], 1)
-    self.assertEqual(counts_by_date['2018-01-06'], 2)
-    self.assertEqual(counts_by_date['2018-01-07'], 2)
-    self.assertEqual(counts_by_date['2018-01-08'], 2)
+    # test with site filtering
+    response = self.send_get('MetricsEHR', request_data={
+      'start_date': '2018-01-01',
+      'end_date': '2018-01-08',
+      'interval': 'day',
+      'site_ids': [participant_1.hpoId],
+    })
+    counts_by_date = {
+      day['date']: day['metrics']['EHR_RECEIVED']
+      for day in response['metrics_over_time']
+    }
+    self.assertEqual(counts_by_date, {
+      u'2018-01-01': 0,
+      u'2018-01-02': 0,
+      u'2018-01-03': 0,
+      u'2018-01-04': 0,
+      u'2018-01-05': 1,
+      u'2018-01-06': 1,
+      u'2018-01-07': 1,
+      u'2018-01-08': 1,
+    })
 
   def test_site_counts(self):
     # Set up data
@@ -334,43 +403,43 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       'start_date': '2018-01-01',
       'end_date': '2018-01-08',
       'interval': 'day'
-    })['metrics_over_time']
-
-    #import pprint
-    #pprint.pprint(response)
-
-    self.assertEqual(
-      [row['date'] for row in response],
-      [
-        '2018-01-01',
-        '2018-01-02',
-        '2018-01-03',
-        '2018-01-04',
-        '2018-01-05',
-        '2018-01-06',
-        '2018-01-07',
-        '2018-01-08',
-      ]
-    )
-
-    self.assertEqual(
-      [row['metrics']['SITES_ACTIVE'] for row in response],
-      [0, 0, 0, 0, 1, 2, 1, 0]
-    )
-
+    })
     counts_by_date = {
       day['date']: day['metrics']['SITES_ACTIVE']
-      for day in response
+      for day in response['metrics_over_time']
     }
+    self.assertEqual(counts_by_date, {
+      u'2018-01-01': 0,
+      u'2018-01-02': 0,
+      u'2018-01-03': 0,
+      u'2018-01-04': 0,
+      u'2018-01-05': 1,
+      u'2018-01-06': 2,
+      u'2018-01-07': 1,
+      u'2018-01-08': 0,
+    })
 
-    self.assertEqual(counts_by_date['2018-01-01'], 0)
-    self.assertEqual(counts_by_date['2018-01-02'], 0)
-    self.assertEqual(counts_by_date['2018-01-03'], 0)
-    self.assertEqual(counts_by_date['2018-01-04'], 0)
-    self.assertEqual(counts_by_date['2018-01-05'], 1)
-    self.assertEqual(counts_by_date['2018-01-06'], 2)
-    self.assertEqual(counts_by_date['2018-01-07'], 1)
-    self.assertEqual(counts_by_date['2018-01-08'], 0)
+    # test with site filtering
+    response = self.send_get('MetricsEHR', request_data={
+      'start_date': '2018-01-01',
+      'end_date': '2018-01-08',
+      'interval': 'day',
+      'site_ids': [participant_1.hpoId],
+    })
+    counts_by_date = {
+      day['date']: day['metrics']['SITES_ACTIVE']
+      for day in response['metrics_over_time']
+    }
+    self.assertEqual(counts_by_date, {
+      u'2018-01-01': 0,
+      u'2018-01-02': 0,
+      u'2018-01-03': 0,
+      u'2018-01-04': 0,
+      u'2018-01-05': 1,
+      u'2018-01-06': 1,
+      u'2018-01-07': 0,
+      u'2018-01-08': 0,
+    })
 
 
 class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
