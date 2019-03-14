@@ -387,8 +387,8 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
 
   def test_cutoff_date_filtering(self):
     # Set up test data
-    site_1 = self._make_site(10, 'Site A', 'group_a', 'PITT')
-    site_2 = self._make_site(11, 'Site B', 'group_b', 'AZ_TUCSON')
+    hpo_a = self.hpo_dao.get_by_name('PITT')
+    hpo_b = self.hpo_dao.get_by_name('AZ_TUCSON')
 
     # noinspection PyArgumentList
     participant_1 = Participant(participantId=1, biobankId=4)
@@ -397,12 +397,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       time_int=datetime.datetime(2018, 1, 1),
       time_study=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4),
-      site_id=site_1.siteId
-    )
-    self._update_ehr(
-      summary_1,
-      update_time=datetime.datetime(2018, 1, 5),
+      time_fp=datetime.datetime(2018, 1, 4)
     )
 
     # noinspection PyArgumentList
@@ -412,13 +407,24 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       time_int=datetime.datetime(2018, 1, 2),
       time_study=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5),
-      site_id=site_1.siteId
+      time_fp=datetime.datetime(2018, 1, 5)
     )
-    self._update_ehr(
-      summary_2,
-      update_time=datetime.datetime(2018, 1, 6),
+
+    # noinspection PyArgumentList
+    participant_3 = Participant(participantId=3, biobankId=6)
+    summary_3 = self._make_participant(
+      participant_3, 'C', 'Chicken', 'AZ_TUCSON',
+      time_int=datetime.datetime(2018, 1, 2),
+      time_study=datetime.datetime(2018, 1, 3),
+      time_mem=datetime.datetime(2018, 1, 4),
+      time_fp=datetime.datetime(2018, 1, 5)
     )
+
+    for summary in [summary_1]:
+      self._update_ehr(summary, update_time=datetime.datetime(2018, 1, 5))
+
+    for summary in [summary_2, summary_3]:
+      self._update_ehr(summary, update_time=datetime.datetime(2018, 1, 6))
 
     # Begin testing
     response = self.send_get('MetricsEHR', request_data={
@@ -427,10 +433,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': long(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 1,
         u'total_primary_consented': 0,
         u'total_ehr_consented': 0,
@@ -440,16 +447,17 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
     self.assertEqual(
-      response['site_metrics'][str(site_2.siteId)],
+      response['site_metrics'][str(hpo_b.hpoId)],
       {
-        u'site_id': site_2.siteId,
-        u'site_name': unicode(site_2.siteName),
+        u'hpo_id': long(hpo_b.hpoId),
+        u'hpo_name': unicode(hpo_b.name),
+        u'hpo_display_name': unicode(hpo_b.displayName),
         u'total_participants': 0,
         u'total_primary_consented': 0,
         u'total_ehr_consented': 0,
         u'total_core_participants': 0,
         u'total_ehr_data_received': 0,
-        u'last_ehr_submission_date': None,
+        u'last_ehr_submission_date': u'2018-01-06',
       }
     )
 
@@ -459,10 +467,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': long(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 1,
         u'total_ehr_consented': 0,
@@ -478,10 +487,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': long(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 1,
@@ -497,10 +507,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': long(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 2,
@@ -516,10 +527,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': int(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 2,
@@ -535,10 +547,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       'interval': 'day'
     })
     self.assertEqual(
-      response['site_metrics'][str(site_1.siteId)],
+      response['site_metrics'][str(hpo_a.hpoId)],
       {
-        u'site_id': site_1.siteId,
-        u'site_name': unicode(site_1.siteName),
+        u'hpo_id': long(hpo_a.hpoId),
+        u'hpo_name': unicode(hpo_a.name),
+        u'hpo_display_name': unicode(hpo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 2,
