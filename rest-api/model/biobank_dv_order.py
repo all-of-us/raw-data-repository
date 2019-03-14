@@ -16,6 +16,8 @@ class BiobankDVOrder(Base):
   created = Column('created', DateTime, nullable=False)
   # have mysql always update the modified data when the record is changed
   modified = Column('modified', DateTime, nullable=False)
+  # Incrementing version, starts at 1 and is incremented on each update.
+  version = Column('version', Integer, nullable=False)
 
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
                          nullable=False)

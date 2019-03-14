@@ -129,3 +129,17 @@ def get_organization_id_from_external_id(obj, organization_dao):
     if organization is not None:
       return organization.organizationId
   return None
+
+def get_code_id(obj, code_dao, field, prefix):
+  """ Gets a code id based on the value in ppi questionnaire
+  i.e. prefix = State_ and field = state and obj[state] = VA
+  will return the code_id for State_VA"""
+  system = 'http://terminology.pmi-ops.org/CodeSystem/ppi'
+  field_with_id = field + 'Id'
+  if field_with_id is not None:
+    code_value = prefix + obj[field]
+    code = code_dao.get_code(system, code_value)
+    if code:
+      return code.codeId
+  else:
+    return UNSET

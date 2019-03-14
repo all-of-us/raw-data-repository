@@ -12,6 +12,7 @@ class DvOrderApi(UpdatableApi):
 
   @auth_required(PTC)
   def post(self, p_id):
+    request.get_json(force=True)
     return super(DvOrderApi, self).post(participant_id=p_id)
 
   @auth_required(PTC_AND_HEALTHPRO)
@@ -25,3 +26,4 @@ class DvOrderApi(UpdatableApi):
     if resource['extension'][0]['url'] == VIBRENT_BARCODE_URL:
       # send order to mayolink api
       self.dao.send_order(resource)
+      self.dao.insert_biobank_order(p_id, resource)

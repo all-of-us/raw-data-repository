@@ -1,106 +1,39 @@
+import datetime
+
 from api.mayolink_api import MayoLinkApi
-from api_util import format_json_code
-from dao.base_dao import FhirMixin, FhirProperty, UpdatableDao
+from api_util import format_json_code, get_code_id, format_json_enum
+from dao.base_dao import UpdatableDao
 from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from fhirclient.models import fhirdate
-from fhirclient.models.backboneelement import BackboneElement
-from fhirclient.models.domainresource import DomainResource
-from fhirclient.models.fhirdate import FHIRDate
-from fhirclient.models.identifier import Identifier
 from model.biobank_dv_order import BiobankDVOrder
 from werkzeug.exceptions import BadRequest
-
-
-def _ToFhirDate(dt):
-  if not dt:
-    return None
-  return FHIRDate.with_json(dt.isoformat())
-
-
-class _FhirBiobankOrderNotes(FhirMixin, BackboneElement):
-  """Notes sub-element."""
-  resource_name = "BiobankOrderNotes"
-  _PROPERTIES = [
-    FhirProperty('collected', str),
-    FhirProperty('processed', str),
-    FhirProperty('finalized', str),
-    ]
-
-
-class _FhirBiobankOrderedSample(FhirMixin, BackboneElement):
-  """Sample sub-element."""
-  resource_name = "BiobankOrderedSample"
-  _PROPERTIES = [
-    FhirProperty('test', str, required=True),
-    FhirProperty('description', str, required=True),
-    FhirProperty('processing_required', bool, required=True),
-    FhirProperty('collected', fhirdate.FHIRDate),
-    FhirProperty('processed', fhirdate.FHIRDate),
-    FhirProperty('finalized', fhirdate.FHIRDate),
-    ]
-
-
-class _FhirBiobankOrderHandlingInfo(FhirMixin, BackboneElement):
-  """Information about what user and site handled an order."""
-  resource_name = "BiobankOrderHandlingInfo"
-  _PROPERTIES = [
-    FhirProperty('author', Identifier),
-    FhirProperty('site', Identifier),
-    ]
-
-
-class _FhirBiobankOrder(FhirMixin, DomainResource):
-  """FHIR client definition of the expected JSON structure for a BiobankOrder resource."""
-  resource_name = 'BiobankOrder'
-  _PROPERTIES = [
-    FhirProperty('subject', str, required=True),
-    FhirProperty('identifier', Identifier, is_list=True, required=True),
-    FhirProperty('created', fhirdate.FHIRDate, required=True),
-    FhirProperty('samples', _FhirBiobankOrderedSample, is_list=True, required=True),
-    FhirProperty('notes', _FhirBiobankOrderNotes),
-
-    FhirProperty('created_info', _FhirBiobankOrderHandlingInfo),
-    FhirProperty('collected_info', _FhirBiobankOrderHandlingInfo),
-    FhirProperty('processed_info', _FhirBiobankOrderHandlingInfo),
-    FhirProperty('finalized_info', _FhirBiobankOrderHandlingInfo),
-    FhirProperty('cancelledInfo', _FhirBiobankOrderHandlingInfo),
-    FhirProperty('restoredInfo', _FhirBiobankOrderHandlingInfo),
-    FhirProperty('restoredSiteId', int, required=False),
-    FhirProperty('restoredUsername', str, required=False),
-    FhirProperty('amendedInfo', _FhirBiobankOrderHandlingInfo),
-    FhirProperty('version', int, required=False),
-    FhirProperty('status', str, required=False),
-    FhirProperty('amendedReason', str, required=False)
-    ]
 
 
 class DvOrderDao(UpdatableDao):
 
   def __init__(self):
+    self.code_dao = CodeDao()
     super(DvOrderDao, self).__init__(BiobankDVOrder)
-    # BiobankDVOrder
 
   def send_order(self, resource):
     # barcode = resource['extension'][0]['valueString']
+    # @TODO: Don't resend if you've sent it once !!!!!
     m = MayoLinkApi()
     order = self._filter_order_fields(resource)
     m.post(order)
-    # @TODO: Don't resend if you've sent it once !!!!!
     self.to_client_json(BiobankDVOrder)
 
   def _filter_order_fields(self, resource):
-    # @TODO: WHERE TO PUT BARCODE ?
     # @TODO: add check for pid in case it's not in 2nd index
+    # @TODO: confirm that a summary is actually required for this pilot
     summary = None
     if resource['contained'][2]['resourceType'] == 'Patient':
       summary = ParticipantSummaryDao().get(resource['contained'][2]['identifier'][0]['value'])
     if not summary:
       raise BadRequest('No summary for particpant id: {}'.format(summary.participantId))
-    code_dao = CodeDao()
     code_dict = summary.asdict()
-    format_json_code(code_dict, code_dao, 'genderIdentityId')
-    format_json_code(code_dict, code_dao, 'stateId')
+    format_json_code(code_dict, self.code_dao, 'genderIdentityId')
+    format_json_code(code_dict, self.code_dao, 'stateId')
     # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
     order = {
       'order': {
@@ -138,6 +71,50 @@ class DvOrderDao(UpdatableDao):
     return order
 
   def to_client_json(self, model):
-    import json
-    return json.dumps("SUCCESS !!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    result = model.asdict()
+    result['orderStatus'] = format_json_enum(result, 'orderStatus')
+    result['shipmentStatus'] = format_json_enum(result, 'shipmentStatus')
+    format_json_code(result, self.code_dao, 'stateId')
+    result['state'] = result['state'][-2:] # Get the abbreviation
+    result = {k: v for k, v in result.iteritems() if v is not None}
+    del result['id'] #PK for model
+    return result
 
+
+  def from_client_json(self, resource_json, id_=None, expected_version=None,
+                       participant_id=None, client_id=None):
+    """Initial loading of the DV order table does not include all attributes."""
+    # resource = _FhirDVOrder(resource_json)
+    resource = resource_json
+    try:
+      order = BiobankDVOrder(participantId=participant_id)
+      order.version = 1
+      order.created = datetime.datetime.now()
+      order.modified = datetime.datetime.now()
+      order.order_id = resource['identifier'][0]['code']  # @TODO: confirm with PTSC
+      order.order_date = resource['authoredOn']
+      order.supplier = resource['contained'][0]['id']
+      order.supplierStatus = resource['status']  # @TODO: confirm right status
+      order.itemName = resource['contained'][1]['deviceName'][0]['name']
+      order.itemSKUCode = resource['contained'][1]['identifier'][0]['code']
+      order.itemSNOMEDCode = resource['contained'][1]['identifier'][1]['code']
+      order.itemQuantity = resource['quantity']['value']
+      order.streetAddress1 = resource['contained'][2]['address'][0]['line'][0]
+      # This is an assumption...
+      if len(resource['contained'][2]['address'][0]['line']) > 1:
+        order.streetAddress2 = resource['contained'][2]['address'][0]['line'][1]
+      order.city = resource['contained'][2]['address'][0]['city']
+      order.stateId = get_code_id(resource['contained'][2]['address'][0], self.code_dao, 'state',
+                                  'State_')
+      order.zipCode = resource['contained'][2]['address'][0]['postalCode']
+      order.orderType = resource['extension'][0]['valueString']
+
+      return order
+
+    except AttributeError as e:
+      print e, '<<<<<<<<<< ERROR'
+
+
+
+  def insert_biobank_order(self, pid, resource):
+    print resource, pid
