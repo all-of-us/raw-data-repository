@@ -31,5 +31,11 @@
   ],
   "metrics_shards": [
     "10"
+  ],
+  "curation_bigquery_project": [
+    "all-of-us-rdr-sandbox"
+  ],
+  "curation_bucket_name": [
+    "aou-rdr-sandbox-mock-data"
   ]
 }

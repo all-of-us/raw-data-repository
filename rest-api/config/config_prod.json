@@ -20,6 +20,12 @@
   "ghost_id_bucket": [
     "all-of-us-rdr-prod-ghost-accounts"
   ],
+  "curation_bigquery_project": [
+    "aou-res-curation-prod"
+  ],
+  "curation_bucket_name": [
+    "drc-curation-internal"
+  ],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {
       "roles": [
