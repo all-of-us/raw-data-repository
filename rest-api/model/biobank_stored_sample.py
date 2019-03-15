@@ -49,7 +49,7 @@ class BiobankStoredSample(Base):
   biobankOrderIdentifier = Column('biobank_order_identifier', String(80), nullable=False)
   # Which test was performed to produce this sample (ex: "1UR10" for blood draw). Rarely, the same
   # test may be performed multiple times for the same participant.
-  test = Column('test', String(80), nullable=False)
+  test = Column('test', String(80), nullable=False, index=True)
 
   # Timestamp when Biobank finished receiving/preparing the sample (status changed from "In Prep"
   # to "In Circulation" in Mayo). This is the end time used for order-to-sample latency measurement.

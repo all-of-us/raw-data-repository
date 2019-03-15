@@ -6,7 +6,7 @@ import clock
 import config
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
   format_json_org, format_json_site
-from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
+from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS, BIOBANK_DV_TESTS
 from dao.base_dao import UpdatableDao
 from dao.code_dao import CodeDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -403,11 +403,52 @@ class ParticipantSummaryDao(UpdatableDao):
 
     sample_sql = replace_null_safe_equals(sample_sql)
     counts_sql = replace_null_safe_equals(counts_sql)
+
+
     with self.session() as session:
       session.execute(sample_sql, sample_params)
       session.execute(counts_sql, counts_params)
       session.execute(enrollment_status_sql, enrollment_status_params)
+      # TODO: Change this to the optimized sql in _update_dv_stored_samples()
       session.execute(sample_status_time_sql, sample_status_time_params)
+
+    self._update_dv_stored_samples()
+
+  def _update_dv_stored_samples(self):
+    """
+    For DV biobank orders, loop through each biobank stored data and update participant
+    summary fields from biobank_stored_sample table.
+    """
+    # SQLAlchemy does not support Updates with joins.  I was able to recreate the
+    # inner select using SQLAlchemy, but not the outer Update Join Select clause.
+    base_sql = """
+      UPDATE participant_summary ps
+       INNER JOIN (
+           SELECT
+              bss.biobank_id,
+              bss.status,
+              COALESCE(bss.disposed, bss.confirmed, bss.created) AS ts
+           FROM biobank_stored_sample bss INNER JOIN participant_summary ps ON
+                bss.biobank_id = ps.biobank_id
+           WHERE bss.test = "{0}"
+           ORDER BY bss.created DESC LIMIT 1) src
+        ON ps.biobank_id = src.biobank_id
+      SET
+          sample_status_dv_{1} = src.status,
+          sample_status_dv_{1}_time = src.ts
+      WHERE
+          ps.biobank_id = src.biobank_id AND
+          EXISTS(SELECT bdvo.participant_id 
+            FROM biobank_dv_order bdvo 
+            WHERE bdvo.participant_id = ps.participant_id) AND
+          NOT ps.sample_status_dv_{1}_time <=> src.ts;
+    """
+
+    with self.session() as session:
+      for test in BIOBANK_DV_TESTS:
+
+        sql = base_sql.format(test, test.lower())
+        session.execute(sql)
 
   def _get_num_baseline_ppi_modules(self):
     return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
