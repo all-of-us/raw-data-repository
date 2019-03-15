@@ -56,9 +56,9 @@ class ParticipantCountsOverTimeApi(Resource):
       # Validate dates
       if not params['end_date']:
         raise BadRequest('end date should not be empty')
-      start_date = datetime.datetime.strptime('2017-01-01', DATE_FORMAT).date()
       try:
         end_date = datetime.datetime.strptime(params['end_date'], DATE_FORMAT).date()
+        start_date = end_date
       except ValueError:
         raise BadRequest('Invalid end date: %s' % params['end_date'])
 
