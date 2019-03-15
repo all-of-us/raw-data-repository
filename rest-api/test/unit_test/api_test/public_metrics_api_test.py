@@ -188,13 +188,11 @@ class PublicMetricsApiTest(FlaskTestBase):
     dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
     service.refresh_data_for_metrics_cache(dao)
 
-    qs = """
-          &stratification=ENROLLMENT_STATUS
-          &startDate=2018-01-01
-          &endDate=2018-01-08
-          """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=ENROLLMENT_STATUS'
+          '&startDate=2018-01-01'
+          '&endDate=2018-01-08'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0, 'registered': 3}},
@@ -204,14 +202,12 @@ class PublicMetricsApiTest(FlaskTestBase):
     self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 0, 'core': 1, 'registered': 2}},
                   results)
 
-    qs = """
-          &stratification=ENROLLMENT_STATUS
-          &startDate=2018-01-01
-          &endDate=2018-01-08
-          &awardee=AZ_TUCSON
-          """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=ENROLLMENT_STATUS'
+          '&startDate=2018-01-01'
+          '&endDate=2018-01-08'
+          '&awardee=AZ_TUCSON'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0, 'core': 0, 'registered': 2}},
@@ -254,13 +250,11 @@ class PublicMetricsApiTest(FlaskTestBase):
     dao = MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
     service.refresh_data_for_metrics_cache(dao)
 
-    qs = """
-          &stratification=GENDER_IDENTITY
-          &startDate=2017-12-31
-          &endDate=2018-01-08
-          """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=GENDER_IDENTITY'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({'date': '2017-12-31',
@@ -280,14 +274,12 @@ class PublicMetricsApiTest(FlaskTestBase):
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
                                u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1}}, results)
 
-    qs = """
-          &stratification=GENDER_IDENTITY
-          &startDate=2017-12-31
-          &endDate=2018-01-08
-          &awardee=AZ_TUCSON
-          """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=GENDER_IDENTITY'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          '&awardee=AZ_TUCSON'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({'date': '2017-12-31',
@@ -333,13 +325,11 @@ class PublicMetricsApiTest(FlaskTestBase):
     dao = MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
     service.refresh_data_for_metrics_cache(dao)
 
-    qs = """
-          &stratification=AGE_RANGE
-          &startDate=2017-12-31
-          &endDate=2018-01-08
-          """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=AGE_RANGE'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
 
@@ -356,14 +346,12 @@ class PublicMetricsApiTest(FlaskTestBase):
                    'metrics': {u'50-59': 0, u'60-69': 0, u'30-39': 1, u'40-49': 0, u'18-29': 3,
                                u'80-89': 0, u'70-79': 0, u'UNSET': 0, u'90-': 0}}, results)
 
-    qs = """
-          &stratification=AGE_RANGE
-          &startDate=2017-12-31
-          &endDate=2018-01-08
-          &awardee=AZ_TUCSON
-          """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=AGE_RANGE'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          '&awardee=AZ_TUCSON'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
 
@@ -401,13 +389,11 @@ class PublicMetricsApiTest(FlaskTestBase):
     dao = MetricsEnrollmentStatusCacheDao()
     service.refresh_data_for_metrics_cache(dao)
 
-    qs = """
-          &stratification=TOTAL
-          &startDate=2018-01-01
-          &endDate=2018-01-08
-          """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=TOTAL'
+          '&startDate=2018-01-01'
+          '&endDate=2018-01-08'
+          )
 
     response = self.send_get('PublicMetrics', query_string=qs)
 
@@ -416,14 +402,12 @@ class PublicMetricsApiTest(FlaskTestBase):
     self.assertIn({u'date': u'2018-01-07', u'metrics': {u'TOTAL': 3}}, response)
     self.assertIn({u'date': u'2018-01-08', u'metrics': {u'TOTAL': 3}}, response)
 
-    qs = """
-              &stratification=TOTAL
-              &startDate=2018-01-01
-              &endDate=2018-01-08
-              &awardee=AZ_TUCSON
-              """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=TOTAL'
+          '&startDate=2018-01-01'
+          '&endDate=2018-01-08'
+          '&awardee=AZ_TUCSON'
+          )
 
     response = self.send_get('PublicMetrics', query_string=qs)
 
@@ -479,13 +463,11 @@ class PublicMetricsApiTest(FlaskTestBase):
     dao = MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
     service.refresh_data_for_metrics_cache(dao)
 
-    qs = """
-          &stratification=RACE
-          &startDate=2017-12-31
-          &endDate=2018-01-08
-          """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=RACE'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({'date': '2017-12-31',
@@ -525,14 +507,12 @@ class PublicMetricsApiTest(FlaskTestBase):
                                'Native_Hawaiian_other_Pacific_Islander': 0,
                                'Asian': 0}}, results)
 
-    qs = """
-              &stratification=RACE
-              &startDate=2017-12-31
-              &endDate=2018-01-08
-              &awardee=AZ_TUCSON
-              """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=RACE'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          '&awardee=AZ_TUCSON'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({'date': '2018-01-01',
@@ -602,28 +582,25 @@ class PublicMetricsApiTest(FlaskTestBase):
     dao = MetricsRegionCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
     service.refresh_data_for_metrics_cache(dao)
 
-    qs1 = """
-            &stratification=GEO_STATE
-            &endDate=2017-12-31
-            """
+    qs1 = (
+            '&stratification=GEO_STATE'
+            '&endDate=2017-12-31'
+            )
 
-    qs1 = ''.join(qs1.split())
     results1 = self.send_get('PublicMetrics', query_string=qs1)
 
-    qs2 = """
-                &stratification=GEO_CENSUS
-                &endDate=2018-01-01
-                """
+    qs2 = (
+            '&stratification=GEO_CENSUS'
+            '&endDate=2018-01-01'
+            )
 
-    qs2 = ''.join(qs2.split())
     results2 = self.send_get('PublicMetrics', query_string=qs2)
 
-    qs3 = """
-                    &stratification=GEO_AWARDEE
-                    &endDate=2018-01-02
-                    """
+    qs3 = (
+            '&stratification=GEO_AWARDEE'
+            '&endDate=2018-01-02'
+            )
 
-    qs3 = ''.join(qs3.split())
     results3 = self.send_get('PublicMetrics', query_string=qs3)
 
     self.assertIn({'date': '2017-12-31',
@@ -674,12 +651,10 @@ class PublicMetricsApiTest(FlaskTestBase):
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
     service.refresh_data_for_metrics_cache(dao)
 
-    qs1 = """
-            &stratification=LIFECYCLE
-            &endDate=2018-01-03
-            """
-
-    qs1 = ''.join(qs1.split())  # Remove all whitespace
+    qs1 = (
+            '&stratification=LIFECYCLE'
+            '&endDate=2018-01-03'
+            )
 
     results1 = self.send_get('PublicMetrics', query_string=qs1)
     self.assertEquals(results1, [{'date': '2018-01-03',
@@ -703,12 +678,10 @@ class PublicMetricsApiTest(FlaskTestBase):
                                    }
                                  }])
 
-    qs2 = """
-            &stratification=LIFECYCLE
-            &endDate=2018-01-08
-            """
-
-    qs2 = ''.join(qs2.split())  # Remove all whitespace
+    qs2 = (
+            '&stratification=LIFECYCLE'
+            '&endDate=2018-01-08'
+            )
 
     results2 = self.send_get('PublicMetrics', query_string=qs2)
     self.assertEquals(results2, [{'date': '2018-01-08',
@@ -752,12 +725,11 @@ class PublicMetricsApiTest(FlaskTestBase):
     service = ParticipantCountsOverTimeService()
     dao = MetricsLanguageCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
     service.refresh_data_for_metrics_cache(dao)
-    qs = """
-          &stratification=LANGUAGE
-          &startDate=2017-12-30
-          &endDate=2018-01-03
-          """
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=LANGUAGE'
+          '&startDate=2017-12-30'
+          '&endDate=2018-01-03'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({'date': '2017-12-30', 'metrics': {'EN': 0, 'UNSET': 0, 'ES': 0}}, results)
@@ -795,13 +767,11 @@ class PublicMetricsApiTest(FlaskTestBase):
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
     service.refresh_data_for_metrics_cache(dao)
 
-    qs = """
-            &stratification=PRIMARY_CONSENT
-            &startDate=2017-12-31
-            &endDate=2018-01-08
-            """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=PRIMARY_CONSENT'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({u'date': u'2017-12-31', u'metrics': {u'Primary_Consent': 1}}, results)
@@ -839,13 +809,11 @@ class PublicMetricsApiTest(FlaskTestBase):
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
     service.refresh_data_for_metrics_cache(dao)
 
-    qs = """
-            &stratification=EHR_METRICS
-            &startDate=2017-12-31
-            &endDate=2018-01-08
-            """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=EHR_METRICS'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({u'date': u'2017-12-31',
@@ -861,14 +829,12 @@ class PublicMetricsApiTest(FlaskTestBase):
                    u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 5}},
                   results)
 
-    qs = """
-                &stratification=EHR_METRICS
-                &startDate=2017-12-31
-                &endDate=2018-01-08
-                &awardee=AZ_TUCSON,PITT
-                """
-
-    qs = ''.join(qs.split())  # Remove all whitespace
+    qs = (
+          '&stratification=EHR_METRICS'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          '&awardee=AZ_TUCSON,PITT'
+          )
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({u'date': u'2017-12-31',
