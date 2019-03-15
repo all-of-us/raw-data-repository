@@ -650,7 +650,7 @@ class MetricsRaceCacheDao(BaseDao):
                               func.sum(MetricsRaceCache.noAncestryChecked)
                               .label('noAncestryChecked')
                               )
-        query.filter(MetricsRaceCache.dateInserted == last_inserted_date)
+        query = query.filter(MetricsRaceCache.dateInserted == last_inserted_date)
 
         if start_date:
           query = query.filter(MetricsRaceCache.date >= start_date)
@@ -900,7 +900,7 @@ class MetricsRegionCacheDao(BaseDao):
         and stratification not in [Stratifications.FULL_AWARDEE, Stratifications.GEO_AWARDEE]:
         query = session.query(MetricsRegionCache.date, MetricsRegionCache.stateName,
                               func.sum(MetricsRegionCache.stateCount).label('total'))
-        query.filter(MetricsRegionCache.dateInserted == last_inserted_date)
+        query = query.filter(MetricsRegionCache.dateInserted == last_inserted_date)
         query = query.filter(MetricsRegionCache.date == cutoff)
         if stratification in [Stratifications.FULL_STATE, Stratifications.FULL_CENSUS,
                               Stratifications.FULL_AWARDEE]:
@@ -923,7 +923,7 @@ class MetricsRegionCacheDao(BaseDao):
         query = session.query(MetricsRegionCache.date, MetricsRegionCache.hpoName,
                               MetricsRegionCache.stateName,
                               func.sum(MetricsRegionCache.stateCount).label('total'))
-        query.filter(MetricsRegionCache.dateInserted == last_inserted_date)
+        query = query.filter(MetricsRegionCache.dateInserted == last_inserted_date)
         query = query.filter(MetricsRegionCache.date == cutoff)
         if stratification in [Stratifications.FULL_STATE, Stratifications.FULL_CENSUS,
                               Stratifications.FULL_AWARDEE]:
@@ -1221,7 +1221,7 @@ class MetricsLifecycleCacheDao(BaseDao):
                               func.sum(MetricsLifecycleCache.fullParticipant)
                               .label('fullParticipant')
                               )
-        query.filter(MetricsLifecycleCache.dateInserted == last_inserted_date)
+        query = query.filter(MetricsLifecycleCache.dateInserted == last_inserted_date)
         query = query.filter(MetricsLifecycleCache.date == cutoff)
 
         if hpo_ids:
@@ -1237,6 +1237,34 @@ class MetricsLifecycleCacheDao(BaseDao):
           query = query.filter(MetricsLifecycleCache.hpoId.in_(hpo_ids))
 
         return query.all()
+
+  def get_primary_consent_count_over_time(self, start_date, end_date, hpo_ids=None):
+    with self.session() as session:
+      last_inserted_record = self.get_serving_version_with_session(session)
+      if last_inserted_record is None:
+        return None
+      last_inserted_date = last_inserted_record.dateInserted
+      query = session.query(MetricsLifecycleCache.date,
+                            func.sum(MetricsLifecycleCache.consentEnrollment)
+                            .label('primaryConsent'))
+      query = query.filter(MetricsLifecycleCache.dateInserted == last_inserted_date)
+      query = query.filter(MetricsLifecycleCache.date >= start_date)
+      query = query.filter(MetricsLifecycleCache.date <= end_date)
+
+      if hpo_ids:
+        query = query.filter(MetricsLifecycleCache.hpoId.in_(hpo_ids))
+
+      result_set = query.group_by(MetricsLifecycleCache.date).all()
+      client_json = []
+      for record in result_set:
+        new_item = {
+          'date': record.date.isoformat(),
+          'metrics': {
+            'Primary_Consent': int(record.primaryConsent)
+          }
+        }
+        client_json.append(new_item)
+      return client_json
 
   def get_latest_version_from_cache(self, cutoff, hpo_ids=None):
     buckets = self.get_active_buckets(cutoff, hpo_ids)
@@ -1457,7 +1485,7 @@ class MetricsLanguageCacheDao(BaseDao):
         query = session.query(MetricsLanguageCache.date, MetricsLanguageCache.hpoName,
                               MetricsLanguageCache.languageName,
                               func.sum(MetricsLanguageCache.languageCount).label('total'))
-      query.filter(MetricsLanguageCache.dateInserted == last_inserted_date)
+      query = query.filter(MetricsLanguageCache.dateInserted == last_inserted_date)
       if start_date:
         query = query.filter(MetricsLanguageCache.date >= start_date)
       if end_date:
