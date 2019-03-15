@@ -122,6 +122,7 @@ class BiobankOrder(BiobankOrderBase, Base):
   logPosition = relationship('LogPosition')
   identifiers = relationship('BiobankOrderIdentifier', cascade='all, delete-orphan')
   samples = relationship('BiobankOrderedSample', cascade='all, delete-orphan')
+  dvOrders = relationship('BiobankDVOrder', cascade='all, delete-orphan')
 
 
 class BiobankOrderIdentifierBase(object):
