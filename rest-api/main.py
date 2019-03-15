@@ -136,8 +136,8 @@ api.add_resource(BiobankOrderApi,
                  methods=['POST', 'GET', 'PUT', 'PATCH'])
 
 api.add_resource(DvOrderApi,
-                 PREFIX + 'Participant/<participant_id:p_id>/DvOrder/<string:bo_id>',
-                 PREFIX + 'Participant/<participant_id:p_id>/DvOrder',
+                 PREFIX + 'SupplyRequest/<string:bo_id>',
+                 PREFIX + 'SupplyRequest',
                  endpoint='participant.dv_order',
                  methods=['POST', 'GET', 'PUT'])
 

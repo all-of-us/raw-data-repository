@@ -1,12 +1,12 @@
 import logging
 
 import app_util
-
-from query import OrderBy, Query
 from flask import request, jsonify, url_for
 from flask.ext.restful import Resource
 from model.utils import to_client_participant_id
+from query import OrderBy, Query
 from werkzeug.exceptions import BadRequest, NotFound
+
 
 DEFAULT_MAX_RESULTS = 100
 MAX_MAX_RESULTS = 10000
@@ -202,7 +202,7 @@ class UpdatableApi(BaseApi):
   def _do_update(self, m):
     self.dao.update(m)
 
-  def put(self, id_, participant_id=None):
+  def put(self, id_, participant_id=None, skip_etag=False):
     """Handles a PUT (replace) request; the current object must exist, and will be replaced
     completely.
 
@@ -211,10 +211,13 @@ class UpdatableApi(BaseApi):
       participant_id: The ancestor id (if applicable).
     """
     resource = request.get_json(force=True)
-    etag = request.headers.get('If-Match')
-    if not etag:
-      raise BadRequest("If-Match is missing for PUT request")
-    expected_version = _parse_etag(etag)
+    if skip_etag:
+      expected_version = self.dao.get_etag(id_, participant_id)
+    else:
+      etag = request.headers.get('If-Match')
+      if not etag:
+        raise BadRequest("If-Match is missing for PUT request")
+      expected_version = _parse_etag(etag)
     m = self._get_model_to_update(resource, id_, expected_version, participant_id)
     self._do_update(m)
     return self._make_response(m)

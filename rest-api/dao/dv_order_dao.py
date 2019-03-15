@@ -15,13 +15,20 @@ class DvOrderDao(UpdatableDao):
     self.code_dao = CodeDao()
     super(DvOrderDao, self).__init__(BiobankDVOrder)
 
+  def get_id(self, obj):
+    with self.session() as session:
+      query = session.query(BiobankDVOrder.id).filter_by(
+        participantId=obj.participant_id).filter_by(
+        order_id=obj.order_id)
+      return query.first()
+
   def send_order(self, resource):
     # barcode = resource['extension'][0]['valueString']
     # @TODO: Don't resend if you've sent it once !!!!!
     m = MayoLinkApi()
     order = self._filter_order_fields(resource)
-    m.post(order)
-    self.to_client_json(BiobankDVOrder)
+    response = m.post(order)
+    self.to_client_json(response, for_update=True)
 
   def _filter_order_fields(self, resource):
     # @TODO: add check for pid in case it's not in 2nd index
@@ -70,28 +77,43 @@ class DvOrderDao(UpdatableDao):
        }}
     return order
 
-  def to_client_json(self, model):
-    result = model.asdict()
-    result['orderStatus'] = format_json_enum(result, 'orderStatus')
-    result['shipmentStatus'] = format_json_enum(result, 'shipmentStatus')
-    format_json_code(result, self.code_dao, 'stateId')
-    result['state'] = result['state'][-2:] # Get the abbreviation
+  def to_client_json(self, model, for_update=False):
+    if for_update:
+      result = dict()
+      reduced_model = model['orders']['order']
+      result['status'] = reduced_model['status']
+      result['barcode'] = reduced_model['reference_number']
+      result['received'] = reduced_model['received']
+      result['biobank_order_id'] = reduced_model['number']
+      result['biobank_id'] = reduced_model['patient']['medical_record_number']
+    else:
+      result = model.asdict()
+      result['orderStatus'] = format_json_enum(result, 'orderStatus')
+      result['shipmentStatus'] = format_json_enum(result, 'shipmentStatus')
+      format_json_code(result, self.code_dao, 'stateId')
+      result['state'] = result['state'][-2:] # Get the abbreviation
+      del result['id'] #PK for model
+
     result = {k: v for k, v in result.iteritems() if v is not None}
-    del result['id'] #PK for model
     return result
 
 
   def from_client_json(self, resource_json, id_=None, expected_version=None,
                        participant_id=None, client_id=None):
     """Initial loading of the DV order table does not include all attributes."""
-    # resource = _FhirDVOrder(resource_json)
-    resource = resource_json
-    try:
+    if resource_json['resourceType'] == 'SupplyRequest':
+      resource = resource_json
       order = BiobankDVOrder(participantId=participant_id)
-      order.version = 1
-      order.created = datetime.datetime.now()
+      if id_ is None:
+        order.version = 1
+        order.created = datetime.datetime.now()
+      else:
+        order.created = self._get_created_date(participant_id, id_)
+        order.version = expected_version
+
+      order.participant_id = participant_id
       order.modified = datetime.datetime.now()
-      order.order_id = resource['identifier'][0]['code']  # @TODO: confirm with PTSC
+      order.order_id = resource['identifier'][0]['code']
       order.order_date = resource['authoredOn']
       order.supplier = resource['contained'][0]['id']
       order.supplierStatus = resource['status']  # @TODO: confirm right status
@@ -100,7 +122,6 @@ class DvOrderDao(UpdatableDao):
       order.itemSNOMEDCode = resource['contained'][1]['identifier'][1]['code']
       order.itemQuantity = resource['quantity']['value']
       order.streetAddress1 = resource['contained'][2]['address'][0]['line'][0]
-      # This is an assumption...
       if len(resource['contained'][2]['address'][0]['line']) > 1:
         order.streetAddress2 = resource['contained'][2]['address'][0]['line'][1]
       order.city = resource['contained'][2]['address'][0]['city']
@@ -108,13 +129,30 @@ class DvOrderDao(UpdatableDao):
                                   'State_')
       order.zipCode = resource['contained'][2]['address'][0]['postalCode']
       order.orderType = resource['extension'][0]['valueString']
+      order.id = self.get_id(order)[0]
 
-      return order
-
-    except AttributeError as e:
-      print e, '<<<<<<<<<< ERROR'
+    return order
 
 
 
   def insert_biobank_order(self, pid, resource):
+    # @TODO: implement in DA-953
     print resource, pid
+
+  def _get_created_date(self, pid, id_):
+    with self.session() as session:
+      query = session.query(BiobankDVOrder.created).filter_by(
+        participantId=pid).filter_by(
+        order_id=id_)
+      return query.first()[0]
+
+  def get_etag(self, id_, pid):
+    with self.session() as session:
+      query = session.query(BiobankDVOrder.version).filter_by(
+        participantId=pid).filter_by(
+        order_id=id_)
+      return query.first()[0]
+
+  def _do_update(self, session, obj, existing_obj):
+    obj.version += 1
+    session.merge(obj)
