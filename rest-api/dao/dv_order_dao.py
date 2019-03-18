@@ -123,7 +123,6 @@ class DvOrderDao(UpdatableDao):
         order.barcode = resource['barcode']
         # @TODO: foreign key to biobank order.biobank order id. implement in DA-953
         # order.biobankOrderId = resource['biobank_order_id']
-        order.biobankReference = resource['barcode']  # @TODO: remove from model
         order.biobankStatus = resource['status']
         order.biobankReceived = parse_date(resource['received'])
     return order

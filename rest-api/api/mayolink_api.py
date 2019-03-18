@@ -5,14 +5,15 @@ import xml.etree.cElementTree as etree
 import cloudstorage
 import config
 import httplib2
+import xmltodict
+from api.base_api import UpdatableApi
 from api_util import RDR
 from app_util import auth_required
 
 
-class MayoLinkApi:
+class MayoLinkApi(UpdatableApi):
 
   def __init__(self):
-    # super(MayoLinkApi, self).__init__(DvOrderDao())
     self.namespace = 'http://orders.mayomedicallaboratories.com'
     self.config_bucket = config.CONFIG_BUCKET
     self.config = config.getSetting(config.MAYOLINK_CREDS)
@@ -24,11 +25,10 @@ class MayoLinkApi:
       self.pw = self.creds.get('password')
       self.account = self.creds.get('account')
 
-
   @auth_required(RDR)
   def post(self, order):
     xml = self.__dict_to_mayo_xml__(order)
-    self.__post__(xml)
+    return self.__post__(xml)
 
   def __post__(self, xml):
     http = httplib2.Http()
@@ -39,9 +39,11 @@ class MayoLinkApi:
                                      headers={'Content-type': 'application/xml'},
                                      body=xml)
 
+    result = self._xml_to_dict(content)
     if response['status'] == 201:  # created
-      # save content to db
+      # merge into db
       pass
+    return result
 
   def __dict_to_mayo_xml__(self, order):
     base_dir = os.path.abspath(os.path.dirname(__file__)[:-3])
@@ -78,3 +80,8 @@ class MayoLinkApi:
 
     request = etree.tostring(root)
     return request
+
+  def _xml_to_dict(self, content):
+    result = xmltodict.parse(content)
+    return result
+

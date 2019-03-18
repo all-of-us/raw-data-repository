@@ -97,7 +97,6 @@ class BiobankDVOrder(Base):
   biobankOrderId = Column('biobank_order_id', String(80),
                           ForeignKey('biobank_order.biobank_order_id'), unique=True, nullable=True)
 
-  biobankReference = Column('biobank_reference', String(80), nullable=True)
   biobankStatus = Column('biobank_status', String(30), nullable=True)
   biobankReceived = Column('biobank_received', UTCDateTime6, nullable=True)
   biobankRequisition = Column('biobank_requisition', Text, nullable=True)
