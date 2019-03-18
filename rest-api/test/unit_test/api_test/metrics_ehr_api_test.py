@@ -1,4 +1,5 @@
 import datetime
+import urllib
 
 from clock import FakeClock
 from dao.calendar_dao import CalendarDao
@@ -187,11 +188,11 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
 
     # Begin testing
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-06',
       'interval': 'day'
-    })
+    }))
     counts_by_date = {
       day['date']: day['metrics']['EHR_CONSENTED']
       for day in response['metrics_over_time']
@@ -206,12 +207,12 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     })
 
     # test with site filtering
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-06',
       'interval': 'day',
-      'site_ids': [participant_1.hpoId],
-    })
+      'awardee': 'PITT',
+    }))
     counts_by_date = {
       day['date']: day['metrics']['EHR_CONSENTED']
       for day in response['metrics_over_time']
@@ -262,11 +263,11 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       update_time=datetime.datetime(2018, 1, 5)
     )
 
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-08',
       'interval': 'day'
-    })
+    }))
     counts_by_date = {
       day['date']: day['metrics']['EHR_RECEIVED']
       for day in response['metrics_over_time']
@@ -287,11 +288,11 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       update_time=datetime.datetime(2018, 1, 6)
     )
 
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-08',
       'interval': 'day'
-    })
+    }))
     counts_by_date = {
       day['date']: day['metrics']['EHR_RECEIVED']
       for day in response['metrics_over_time']
@@ -308,12 +309,12 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     })
 
     # test with site filtering
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-08',
       'interval': 'day',
-      'site_ids': [participant_1.hpoId],
-    })
+      'awardee': 'PITT',
+    }))
     counts_by_date = {
       day['date']: day['metrics']['EHR_RECEIVED']
       for day in response['metrics_over_time']
@@ -399,11 +400,11 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
 
     # Begin testing
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-08',
       'interval': 'day'
-    })
+    }))
     counts_by_date = {
       day['date']: day['metrics']['SITES_ACTIVE']
       for day in response['metrics_over_time']
@@ -420,12 +421,12 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     })
 
     # test with site filtering
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-08',
       'interval': 'day',
-      'site_ids': [participant_1.hpoId],
-    })
+      'awardee': 'PITT',
+    }))
     counts_by_date = {
       day['date']: day['metrics']['SITES_ACTIVE']
       for day in response['metrics_over_time']
@@ -438,6 +439,28 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       u'2018-01-05': 1,
       u'2018-01-06': 1,
       u'2018-01-07': 0,
+      u'2018-01-08': 0,
+    })
+
+    # test site filter multiple
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
+      'start_date': '2018-01-01',
+      'end_date': '2018-01-08',
+      'interval': 'day',
+      'awardee': 'PITT,AZ_TUCSON',
+    }))
+    counts_by_date = {
+      day['date']: day['metrics']['SITES_ACTIVE']
+      for day in response['metrics_over_time']
+    }
+    self.assertEqual(counts_by_date, {
+      u'2018-01-01': 0,
+      u'2018-01-02': 0,
+      u'2018-01-03': 0,
+      u'2018-01-04': 0,
+      u'2018-01-05': 1,
+      u'2018-01-06': 2,
+      u'2018-01-07': 1,
       u'2018-01-08': 0,
     })
 
@@ -496,11 +519,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       self._update_ehr(summary, update_time=datetime.datetime(2018, 1, 6))
 
     # Begin testing
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-01',
       'interval': 'day'
-    })
+    }))
     self.assertEqual(
       response['site_metrics'][str(hpo_a.hpoId)],
       {
@@ -530,11 +553,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
 
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-02',
       'end_date': '2018-01-02',
       'interval': 'day'
-    })
+    }))
     self.assertEqual(
       response['site_metrics'][str(hpo_a.hpoId)],
       {
@@ -550,11 +573,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
 
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-03',
       'end_date': '2018-01-03',
       'interval': 'day'
-    })
+    }))
     self.assertEqual(
       response['site_metrics'][str(hpo_a.hpoId)],
       {
@@ -570,11 +593,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
 
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-04',
       'end_date': '2018-01-04',
       'interval': 'day'
-    })
+    }))
     self.assertEqual(
       response['site_metrics'][str(hpo_a.hpoId)],
       {
@@ -590,11 +613,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
 
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-05',
       'end_date': '2018-01-05',
       'interval': 'day'
-    })
+    }))
     self.assertEqual(
       response['site_metrics'][str(hpo_a.hpoId)],
       {
@@ -610,11 +633,11 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
 
-    response = self.send_get('MetricsEHR', request_data={
+    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-06',
       'end_date': '2018-01-06',
       'interval': 'day'
-    })
+    }))
     self.assertEqual(
       response['site_metrics'][str(hpo_a.hpoId)],
       {

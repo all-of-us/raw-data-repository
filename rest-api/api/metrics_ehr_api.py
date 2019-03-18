@@ -1,6 +1,7 @@
 import functools
 
 from dao.calendar_dao import INTERVALS
+from dao.hpo_dao import HPODao
 from dao.metrics_ehr_service import MetricsEhrService
 
 from flask import request
@@ -21,11 +22,21 @@ class MetricsEhrApi(Resource):
     validators = {
       'start_date': self._parse_date,
       'end_date': self._parse_date,
-      'site_ids': self._parse_list,
+      'awardee_names': self._parse_comma_separated,
       'interval': functools.partial(self._parse_choice, INTERVALS)
     }
-    params = self._parse_input(validators, request.get_json())
-    return MetricsEhrService().get_metrics(**params)
+    valid_arguments = self._parse_input(validators, {
+      'start_date': request.args.get('start_date'),
+      'end_date': request.args.get('end_date'),
+      'awardee_names': request.args.get('awardee'),  # NOTE: non-ideal name to match existing APIs
+      'interval': request.args.get('interval'),
+    })
+    return MetricsEhrService().get_metrics(
+      start_date=valid_arguments['start_date'],
+      end_date=valid_arguments['end_date'],
+      interval=valid_arguments['interval'],
+      hpo_ids=self._get_hpo_ids_from_awardee_names(valid_arguments['awardee_names']),
+    )
 
   @staticmethod
   def _parse_input(validators, params):
@@ -48,10 +59,10 @@ class MetricsEhrApi(Resource):
       raise BadRequest('Missing {key}'.format(key=key))
 
   @staticmethod
-  def _parse_list(params, key):
+  def _parse_comma_separated(params, key):
     try:
-      return list(params[key]) if isinstance(params[key], (list, tuple)) else [params[key]]
-    except KeyError:
+      return params[key].split(',')
+    except (KeyError, AttributeError):
       return []
 
   @staticmethod
@@ -65,3 +76,14 @@ class MetricsEhrApi(Resource):
       ))
     except KeyError:
       raise BadRequest('Missing {key}'.format(key=key))
+
+  @staticmethod
+  def _get_hpo_ids_from_awardee_names(awardee_names):
+    dao = HPODao()
+    try:
+      return [
+        dao.get_by_name(name).hpoId
+        for name in awardee_names
+      ]
+    except AttributeError:
+      raise BadRequest('Invalid awardees {value}'.format(value=','.join(awardee_names)))

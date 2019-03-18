@@ -20,7 +20,7 @@ class MetricsEhrService(BaseDao):
     self,
     start_date,
     end_date,
-    site_ids=None,
+    hpo_ids=None,
     interval=INTERVAL_WEEK
   ):
     return {
@@ -28,9 +28,9 @@ class MetricsEhrService(BaseDao):
         start_date,
         end_date,
         interval,
-        site_ids
+        hpo_ids
       ),
-      'site_metrics': self._get_site_metrics_data(end_date, site_ids),
+      'site_metrics': self._get_site_metrics_data(end_date, hpo_ids),
     }
 
   def _get_metrics_over_time_data(self, start_date, end_date, interval, hpo_ids=None):
