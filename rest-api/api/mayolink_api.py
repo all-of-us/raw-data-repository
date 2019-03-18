@@ -38,6 +38,8 @@ class MayoLinkApi(UpdatableApi):
                                      method="POST",
                                      headers={'Content-type': 'application/xml'},
                                      body=xml)
+    if response['status'] != 201:
+      pass
 
     result = self._xml_to_dict(content)
     return result

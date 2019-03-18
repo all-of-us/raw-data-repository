@@ -52,7 +52,7 @@ class DvOrderApi(UpdatableApi):
         self.dao.insert_biobank_order(p_id, merged_resource)
 
     if merged_resource:
-        response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True,
+      response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True,
                                                resource=merged_resource)
     else:
       response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)

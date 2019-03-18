@@ -88,7 +88,7 @@ class DvOrderDao(UpdatableDao):
     return result
 
   def from_client_json(self, resource_json, id_=None, expected_version=None,
-                       participant_id=None, client_id=None):
+                       participant_id=None, client_id=None): #pylint: disable=unused-argument
     """Initial loading of the DV order table does not include all attributes."""
     if resource_json['resourceType'] == 'SupplyRequest':
       resource = resource_json
@@ -145,7 +145,7 @@ class DvOrderDao(UpdatableDao):
         order_id=id_)
       return query.first()[0]
 
-  def _do_update(self, session, obj, existing_obj):
+  def _do_update(self, session, obj, existing_obj): #pylint: disable=unused-argument
     obj.version += 1
     session.merge(obj)
 
