@@ -35,7 +35,7 @@ class MetricsEhrApi(Resource):
       start_date=valid_arguments['start_date'],
       end_date=valid_arguments['end_date'],
       interval=valid_arguments['interval'],
-      hpo_ids=self._get_hpo_ids_from_awardee_names(valid_arguments['awardee_names']),
+      site_ids=self._get_hpo_ids_from_awardee_names(valid_arguments['awardee_names']),
     )
 
   @staticmethod
