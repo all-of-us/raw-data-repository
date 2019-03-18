@@ -58,11 +58,11 @@ class BiobankDVOrder(Base):
   #
   # biobank ship-to address
   #
-  bioBankStreetAddress1 = Column('biobank_street_address_1', String(255))
-  bioBankStreetAddress2 = Column('biobank_street_address_2', String(255))
-  bioBankCity = Column('biobank_city', String(255))
-  bioBankStateId = Column('biobank_state_id', Integer, ForeignKey('code.code_id'))
-  bioBankZipCode = Column('biobank_zip_code', String(10))
+  biobankStreetAddress1 = Column('biobank_street_address_1', String(255))
+  biobankStreetAddress2 = Column('biobank_street_address_2', String(255))
+  biobankCity = Column('biobank_city', String(255))
+  biobankStateId = Column('biobank_state_id', Integer, ForeignKey('code.code_id'))
+  biobankZipCode = Column('biobank_zip_code', String(10))
 
   # occurenceDateTime
   shipmentLastUpdate = Column('shipment_last_update', Date, nullable=True)
@@ -70,7 +70,7 @@ class BiobankDVOrder(Base):
   # To participant tracking id. identifier/code (system=trackingId).
   trackingId = Column('tracking_id', String(80), nullable=True)
   # To biobank tracking id. partOf/identifier/code (system=trackingId).
-  bioBankTrackingId = Column('biobank_tracking_id', String(80), nullable=True)
+  biobankTrackingId = Column('biobank_tracking_id', String(80), nullable=True)
 
   #
   # PTSC extensions

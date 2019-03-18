@@ -1,7 +1,7 @@
 import datetime
 
 from api.mayolink_api import MayoLinkApi
-from api_util import format_json_code, get_code_id, format_json_enum
+from api_util import format_json_code, get_code_id, format_json_enum, parse_date
 from dao.base_dao import UpdatableDao
 from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -15,20 +15,11 @@ class DvOrderDao(UpdatableDao):
     self.code_dao = CodeDao()
     super(DvOrderDao, self).__init__(BiobankDVOrder)
 
-  def get_id(self, obj):
-    with self.session() as session:
-      query = session.query(BiobankDVOrder.id).filter_by(
-        participantId=obj.participant_id).filter_by(
-        order_id=obj.order_id)
-      return query.first()
-
   def send_order(self, resource):
-    # barcode = resource['extension'][0]['valueString']
-    # @TODO: Don't resend if you've sent it once !!!!!
     m = MayoLinkApi()
     order = self._filter_order_fields(resource)
     response = m.post(order)
-    self.to_client_json(response, for_update=True)
+    return self.to_client_json(response, for_update=True)
 
   def _filter_order_fields(self, resource):
     # @TODO: add check for pid in case it's not in 2nd index
@@ -91,12 +82,11 @@ class DvOrderDao(UpdatableDao):
       result['orderStatus'] = format_json_enum(result, 'orderStatus')
       result['shipmentStatus'] = format_json_enum(result, 'shipmentStatus')
       format_json_code(result, self.code_dao, 'stateId')
-      result['state'] = result['state'][-2:] # Get the abbreviation
-      del result['id'] #PK for model
+      result['state'] = result['state'][-2:]  # Get the abbreviation
+      del result['id']  # PK for model
 
-    result = {k: v for k, v in result.iteritems() if v is not None}
+    result = {k: v for k, v in result.items() if v is not None}
     return result
-
 
   def from_client_json(self, resource_json, id_=None, expected_version=None,
                        participant_id=None, client_id=None):
@@ -104,12 +94,6 @@ class DvOrderDao(UpdatableDao):
     if resource_json['resourceType'] == 'SupplyRequest':
       resource = resource_json
       order = BiobankDVOrder(participantId=participant_id)
-      if id_ is None:
-        order.version = 1
-        order.created = datetime.datetime.now()
-      else:
-        order.created = self._get_created_date(participant_id, id_)
-        order.version = expected_version
 
       order.participant_id = participant_id
       order.modified = datetime.datetime.now()
@@ -129,11 +113,21 @@ class DvOrderDao(UpdatableDao):
                                   'State_')
       order.zipCode = resource['contained'][2]['address'][0]['postalCode']
       order.orderType = resource['extension'][0]['valueString']
-      order.id = self.get_id(order)[0]
-
+      if id_ is None:
+        order.version = 1
+        order.created = datetime.datetime.now()
+      else:
+        # A put request may add new attributes
+        order.id = self.get_id(order)[0]
+        order.created = self._get_created_date(participant_id, id_)
+        order.version = expected_version
+        order.barcode = resource['barcode']
+        # @TODO: foreign key to biobank order.biobank order id. implement in DA-953
+        # order.biobankOrderId = resource['biobank_order_id']
+        order.biobankReference = resource['barcode']  # @TODO: remove from model
+        order.biobankStatus = resource['status']
+        order.biobankReceived = parse_date(resource['received'])
     return order
-
-
 
   def insert_biobank_order(self, pid, resource):
     # @TODO: implement in DA-953
@@ -156,3 +150,11 @@ class DvOrderDao(UpdatableDao):
   def _do_update(self, session, obj, existing_obj):
     obj.version += 1
     session.merge(obj)
+
+  def get_id(self, obj):
+    with self.session() as session:
+      query = session.query(BiobankDVOrder.id).filter_by(
+        participantId=obj.participant_id).filter_by(
+        order_id=obj.order_id)
+      return query.first()
+
