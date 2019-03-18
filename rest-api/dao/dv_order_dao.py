@@ -22,7 +22,6 @@ class DvOrderDao(UpdatableDao):
     return self.to_client_json(response, for_update=True)
 
   def _filter_order_fields(self, resource):
-    # @TODO: add check for pid in case it's not in 2nd index
     # @TODO: confirm that a summary is actually required for this pilot
     summary = None
     if resource['contained'][2]['resourceType'] == 'Patient':
