@@ -40,9 +40,6 @@ class MayoLinkApi(UpdatableApi):
                                      body=xml)
 
     result = self._xml_to_dict(content)
-    if response['status'] == 201:  # created
-      # merge into db
-      pass
     return result
 
   def __dict_to_mayo_xml__(self, order):
