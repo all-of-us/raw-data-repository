@@ -16,6 +16,7 @@ from api.import_codebook_api import import_codebook
 from api.metric_sets_api import MetricSetsApi
 from api.metrics_api import MetricsApi
 from api.metrics_ehr_api import MetricsEhrApi
+from api.public_metrics_api import PublicMetricsApi
 from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
 from api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
@@ -115,6 +116,11 @@ api.add_resource(MetricSetsApi,
 api.add_resource(MetricsEhrApi,
                  PREFIX + 'MetricsEHR',
                  endpoint='metrics_ehr',
+                 methods=['GET'])
+
+api.add_resource(PublicMetricsApi,
+                 PREFIX + 'PublicMetrics',
+                 endpoint='public_metrics',
                  methods=['GET'])
 
 api.add_resource(QuestionnaireApi,

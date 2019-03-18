@@ -36,6 +36,8 @@ GHOST_ID_BUCKET = 'ghost_id_bucket'
 MAYOLINK_CREDS = 'mayolink_creds'
 MAYOLINK_ENDPOINT = 'mayolink_endpoint'
 CONFIG_BUCKET = 'all-of-us-rdr-sequestered-config-test'
+CURATION_BIGQUERY_PROJECT = 'curation_bigquery_project'
+CURATION_BUCKET_NAME = 'curation_bucket_name'
 
 # Allow requests which are never permitted in production. These include fake
 # timestamps for reuqests, unauthenticated requests to create fake data, etc.

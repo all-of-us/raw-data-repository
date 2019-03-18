@@ -15,7 +15,7 @@ from model.participant import Participant, ParticipantHistory
 from model.participant_summary import ParticipantSummary
 from model.utils import to_client_participant_id
 from participant_enums import UNSET_HPO_ID, WithdrawalStatus, SuspensionStatus, EnrollmentStatus, \
-  make_primary_provider_link_for_id, WithdrawalReason, TEST_HPO_NAME
+  make_primary_provider_link_for_id, WithdrawalReason, TEST_HPO_NAME, EhrStatus
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.session import make_transient
 from werkzeug.exceptions import BadRequest, Forbidden
@@ -247,7 +247,8 @@ class ParticipantDao(UpdatableDao):
       withdrawalReason=obj.withdrawalReason,
       withdrawalReasonJustification=obj.withdrawalReasonJustification,
       suspensionStatus=obj.suspensionStatus,
-      enrollmentStatus=EnrollmentStatus.INTERESTED)
+      enrollmentStatus=EnrollmentStatus.INTERESTED,
+      ehrStatus=EhrStatus.NOT_PRESENT)
 
   @staticmethod
   def _get_hpo_id(obj):

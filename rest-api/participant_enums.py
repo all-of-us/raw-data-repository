@@ -172,6 +172,8 @@ class Stratifications(messages.Enum):
   GEO_CENSUS = 13
   GEO_AWARDEE = 14
   LANGUAGE = 15
+  PRIMARY_CONSENT = 16
+  EHR_METRICS = 17
 
 METRIC_SET_KEYS = {
   MetricSetType.PUBLIC_PARTICIPANT_AGGREGATIONS: set([

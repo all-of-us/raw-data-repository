@@ -10,6 +10,7 @@ from cloudstorage import cloudstorage_api  # stubbed by testbed
 import clock
 import config
 from code_constants import BIOBANK_TESTS
+from dao.biobank_order_dao import BiobankOrderDao
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -18,6 +19,12 @@ from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, 
 from test import test_data
 from model.config_utils import to_client_biobank_id, get_biobank_id_prefix
 from model.participant import Participant
+
+from model.biobank_stored_sample import BiobankStoredSample
+from model.biobank_dv_order import BiobankDVOrder
+from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+
+
 from participant_enums import SampleStatus, get_sample_status_enum_value
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
@@ -33,10 +40,95 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     # Everything is stored as a list, so override bucket name as a 1-element list.
     config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BUCKET])
     self.participant_dao = ParticipantDao()
+    self.summary_dao = ParticipantSummaryDao()
 
   def _write_cloud_csv(self, file_name, contents_str):
     with cloudstorage_api.open('/%s/%s' % (_FAKE_BUCKET, file_name), mode='w') as cloud_file:
       cloud_file.write(contents_str.encode('utf-8'))
+
+  def _make_biobank_order(self, **kwargs):
+    """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
+
+    Kwargs pass through to BiobankOrder constructor, overriding defaults.
+    """
+    participantId = kwargs['participantId']
+
+    for k, default_value in (
+        ('biobankOrderId', u'1'),
+        ('created', clock.CLOCK.now()),
+        # ('participantId', self.participant.participantId),
+        ('sourceSiteId', 1),
+        ('sourceUsername', u'fred@pmi-ops.org'),
+        ('collectedSiteId', 1),
+        ('collectedUsername', u'joe@pmi-ops.org'),
+        ('processedSiteId', 1),
+        ('processedUsername', u'sue@pmi-ops.org'),
+        ('finalizedSiteId', 2),
+        ('finalizedUsername', u'bob@pmi-ops.org'),
+        ('version', 1),
+        ('identifiers', [BiobankOrderIdentifier(system=u'a', value=u'c')]),
+        ('samples', [BiobankOrderedSample(
+            test=u'1SAL2',
+            description=u'description',
+            processingRequired=True)]),
+        ('dvOrders', [BiobankDVOrder(
+          participantId=participantId
+        )])):
+      if k not in kwargs:
+        kwargs[k] = default_value
+    return BiobankOrder(**kwargs)
+
+  def test_dv_order_sample_update(self):
+    """
+    Test Biobank Direct Volunteer order
+    """
+    participant = self.participant_dao.insert(Participant())
+    self.summary_dao.insert(self.participant_summary(participant))
+
+    created_ts = datetime.datetime(2019, 03, 22, 18, 30, 45)
+    confirmed_ts = datetime.datetime(2019, 03, 23, 12, 13, 00)
+    disposed_ts = datetime.datetime(2019, 03, 24, 15, 59, 30)
+
+    bo = self._make_biobank_order(participantId=participant.participantId)
+    BiobankOrderDao().insert(bo)
+
+    boi = bo.identifiers[0]
+
+    bss = BiobankStoredSample(
+      biobankStoredSampleId=u'23523523', biobankId=participant.biobankId, test=u'1SAL2',
+      created=created_ts, biobankOrderIdentifier=boi.value)
+
+    with self.participant_dao.session() as session:
+      session.add(bss)
+
+    ps = self.summary_dao.get(participant.participantId)
+    self.assertIsNone(ps.sampleStatusDV1SAL2)
+    self.assertIsNone(ps.sampleStatusDV1SAL2Time)
+
+    self.summary_dao._update_dv_stored_samples()
+    ps = self.summary_dao.get(participant.participantId)
+    self.assertEqual(ps.sampleStatusDV1SAL2, SampleStatus.RECEIVED)
+    self.assertEqual(ps.sampleStatusDV1SAL2Time, created_ts)
+
+    with self.participant_dao.session() as session:
+      bss.confirmed = confirmed_ts
+      session.add(bss)
+
+    self.summary_dao._update_dv_stored_samples()
+    ps = self.summary_dao.get(participant.participantId)
+    self.assertEqual(ps.sampleStatusDV1SAL2Time, confirmed_ts)
+
+    with self.participant_dao.session() as session:
+      bss.disposed = disposed_ts
+      bss.status = SampleStatus.ACCESSINGING_ERROR
+      session.add(bss)
+
+    self.summary_dao._update_dv_stored_samples()
+    ps = self.summary_dao.get(participant.participantId)
+    self.assertEqual(ps.sampleStatusDV1SAL2, SampleStatus.ACCESSINGING_ERROR)
+    self.assertEqual(ps.sampleStatusDV1SAL2Time, disposed_ts)
+
+
 
   def test_end_to_end(self):
     dao = BiobankStoredSampleDao()

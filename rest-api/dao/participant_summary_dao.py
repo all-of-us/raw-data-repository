@@ -6,7 +6,7 @@ import clock
 import config
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
   format_json_org, format_json_site
-from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
+from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS, BIOBANK_DV_TESTS
 from dao.base_dao import UpdatableDao
 from dao.code_dao import CodeDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -14,7 +14,6 @@ from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
 from dao.site_dao import SiteDao
 from model.config_utils import to_client_biobank_id, from_client_biobank_id
-from model.ehr import EhrReceipt
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
   WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
 from model.utils import to_client_participant_id, get_property_type
@@ -404,11 +403,52 @@ class ParticipantSummaryDao(UpdatableDao):
 
     sample_sql = replace_null_safe_equals(sample_sql)
     counts_sql = replace_null_safe_equals(counts_sql)
+
+
     with self.session() as session:
       session.execute(sample_sql, sample_params)
       session.execute(counts_sql, counts_params)
       session.execute(enrollment_status_sql, enrollment_status_params)
+      # TODO: Change this to the optimized sql in _update_dv_stored_samples()
       session.execute(sample_status_time_sql, sample_status_time_params)
+
+    self._update_dv_stored_samples()
+
+  def _update_dv_stored_samples(self):
+    """
+    For DV biobank orders, loop through each biobank stored data and update participant
+    summary fields from biobank_stored_sample table.
+    """
+    # SQLAlchemy does not support Updates with joins.  I was able to recreate the
+    # inner select using SQLAlchemy, but not the outer Update Join Select clause.
+    base_sql = """
+      UPDATE participant_summary ps
+       INNER JOIN (
+           SELECT
+              bss.biobank_id,
+              bss.status,
+              COALESCE(bss.disposed, bss.confirmed, bss.created) AS ts
+           FROM biobank_stored_sample bss INNER JOIN participant_summary ps ON
+                bss.biobank_id = ps.biobank_id
+           WHERE bss.test = "{0}"
+           ORDER BY bss.created DESC LIMIT 1) src
+        ON ps.biobank_id = src.biobank_id
+      SET
+          sample_status_dv_{1} = src.status,
+          sample_status_dv_{1}_time = src.ts
+      WHERE
+          ps.biobank_id = src.biobank_id AND
+          EXISTS(SELECT bdvo.participant_id 
+            FROM biobank_dv_order bdvo 
+            WHERE bdvo.participant_id = ps.participant_id) AND
+          NOT ps.sample_status_dv_{1}_time <=> src.ts;
+    """
+
+    with self.session() as session:
+      for test in BIOBANK_DV_TESTS:
+
+        sql = base_sql.format(test, test.lower())
+        session.execute(sql)
 
   def _get_num_baseline_ppi_modules(self):
     return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
@@ -617,16 +657,13 @@ class ParticipantSummaryDao(UpdatableDao):
     return decoded_vals
 
   @staticmethod
-  def update_with_new_ehr(participant_summary, recorded_time, received_time=None):
-    participant_summary.ehrStatus = EhrStatus.PRESENT
-    participant_summary.ehrReceiptTime = participant_summary.ehrReceiptTime or recorded_time
-    participant_summary.ehrUpdateTime = received_time
-    return EhrReceipt(
-      recordedTime=recorded_time,
-      receivedTime=received_time or clock.CLOCK.now(),
-      participantId=participant_summary.participantId,
-      siteId=participant_summary.siteId
-    )
+  def update_ehr_status(summary, update_time):
+    summary.ehrStatus = EhrStatus.PRESENT
+    if not summary.ehrReceiptTime:
+      summary.ehrReceiptTime = update_time
+    summary.ehrUpdateTime = update_time
+    return summary
+
 
 def _initialize_field_type_sets():
   """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are
