@@ -30,24 +30,68 @@ class MetricsEhrService(BaseDao):
         interval,
         site_ids
       ),
-      'site_metrics': self._get_site_metrics_data(end_date, site_ids),
+      'site_metrics': self.get_site_metrics_data(end_date, site_ids),
     }
 
   def _get_metrics_over_time_data(self, start_date, end_date, interval, hpo_ids=None):
+    """
+    combines `Active Site Counts Over Time` and `EHR Consented vs EHR Received Over Time`
+    """
+    active_site_metrics = self.get_sites_active_over_time_data(
+      start_date, end_date, interval, hpo_ids)
+    active_site_metrics_by_date = {
+      result['date']: result['metrics']
+      for result in active_site_metrics
+    }
+    participant_ehr_metrics = self.get_participant_ehr_metrics_over_time_data(
+      start_date, end_date, interval, hpo_ids)
+    participant_ehr_metrics_by_date = {
+      result['date']: result['metrics']
+      for result in participant_ehr_metrics
+    }
+    return [
+      {
+        'date': date_key,
+        'metrics': dict(
+          active_site_metrics_by_date[date_key],
+          **participant_ehr_metrics_by_date[date_key]
+        )
+      }
+      for date_key in active_site_metrics_by_date.keys()
+    ]
+
+  def get_sites_active_over_time_data(self, start_date, end_date, interval, hpo_ids=None):
+    """
+    Count of sites that have uploaded EHR over time
+    """
     active_site_counts = self.ehr_receipt_dao.get_active_site_counts_in_interval(
       start_date, end_date, interval, hpo_ids)
-    active_site_counts_by_interval_start = {
-      result['start_date']: result['active_site_count']
+    return [
+      {
+        'date': result['start_date'],
+        'metrics': {
+          'SITES_ACTIVE': result['active_site_count'],
+        }
+      }
       for result in active_site_counts
-    }
+    ]
+
+  def get_participant_ehr_metrics_over_time_data(
+    self,
+    start_date,
+    end_date,
+    interval,
+    hpo_ids=None
+  ):
+    """
+    EHR Consented vs EHR Received over time
+    """
     interval_query = CalendarDao.get_interval_query(
       start=start_date,
       end=end_date,
       interval_key=interval
     )
-    ehr_query = self._get_metrics_over_time_query(interval_query, hpo_ids)
-    #import sqlparse
-    #print sqlparse.format(str(q), reindent=True)
+    ehr_query = self._get_participant_ehr_metrics_over_time_query(interval_query, hpo_ids)
     with self.session() as session:
       ehr_cursor = session.execute(ehr_query)
     return [
@@ -56,7 +100,6 @@ class MetricsEhrService(BaseDao):
         'metrics': {
           'EHR_CONSENTED': row_dict['consented_count'],
           'EHR_RECEIVED': row_dict['received_count'],
-          'SITES_ACTIVE': active_site_counts_by_interval_start[row_dict['start_date']],
         }
       }
       for row_dict
@@ -64,7 +107,7 @@ class MetricsEhrService(BaseDao):
     ]
 
   @staticmethod
-  def _get_metrics_over_time_query(interval_query, hpo_ids=None):
+  def _get_participant_ehr_metrics_over_time_query(interval_query, hpo_ids=None):
     common_subquery_where_arg = (
       (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN)
       & Participant.isGhostId.isnot(True)
@@ -100,8 +143,11 @@ class MetricsEhrService(BaseDao):
       .order_by(interval_query.c.start_date)
     )
 
-  def _get_site_metrics_data(self, end_date, site_ids=None):
-    q = self._get_site_metrics_query(end_date, site_ids)
+  def get_site_metrics_data(self, end_date, hpo_ids=None):
+    """
+    Get site participant status metrics as of end_date
+    """
+    q = self._get_site_metrics_query(end_date, hpo_ids)
     with self.session() as session:
       cursor = session.execute(q)
     return {
