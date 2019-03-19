@@ -23,5 +23,8 @@
   ],
   "metrics_shards": [
     "10"
+  ],
+  "curation_bucket_name": [
+    "aou-rdr-sandbox-mock-data"
   ]
 }

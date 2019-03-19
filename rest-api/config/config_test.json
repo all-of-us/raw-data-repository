@@ -45,6 +45,8 @@
   ],
   "service_accounts_with_long_lived_keys":[
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
+  ],
+  "curation_bucket_name": [
+    "aou-rdr-sandbox-mock-data"
   ]
-
 }
