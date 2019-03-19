@@ -11,6 +11,8 @@
   "metrics_shards": [
     "10"
   ],
+  "mayolink_creds": ["rdr-mayolink-creds-prod.json"],
+  "mayolink_endpoint": ["https://orders.mayocliniclabs.com/orders/create.xml"],
   "biobank_status_mail_recipients": [
     "pmi-drc-alerts+prod@googlegroups.com"
   ],
@@ -53,7 +55,8 @@
     "configurator@all-of-us-rdr-prod.iam.gserviceaccount.com": {
       "roles": [
         "ptc",
-        "healthpro"
+        "healthpro",
+        "rdr"
       ]
     },
     "exporter@all-of-us-rdr-prod.iam.gserviceaccount.com": {

@@ -5,19 +5,13 @@ Revises: 80d36c1e37e2
 Create Date: 2019-03-07 08:41:20.962729
 
 """
-from alembic import op
-import sqlalchemy as sa
 import model.utils
+import sqlalchemy as sa
+from alembic import op
+from model.base import add_table_history_table, drop_table_history_table
+from participant_enums import OrderShipmentTrackingStatus, OrderShipmentStatus
 from sqlalchemy.dialects import mysql
 
-from participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
-from participant_enums import WithdrawalStatus, WithdrawalReason, SuspensionStatus, QuestionnaireDefinitionStatus
-from participant_enums import EnrollmentStatus, Race, SampleStatus, OrganizationType, BiobankOrderStatus
-from participant_enums import OrderShipmentTrackingStatus, OrderShipmentStatus
-from participant_enums import MetricSetType, MetricsKey
-from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
-from model.code import CodeType
-from model.base import add_table_history_table, drop_table_history_table
 
 # revision identifiers, used by Alembic.
 revision = '8b20451a84df'
@@ -81,7 +75,7 @@ def upgrade_rdr():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('participant_id', 'order_id', name='uidx_partic_id_order_id')
     )
-    op.execute('ALTER TABLE biobank_dv_order CHANGE COLUMN `created` `default` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6);')
+    op.execute('ALTER TABLE biobank_dv_order CHANGE COLUMN `created` `created` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6);')
     op.execute('ALTER TABLE biobank_dv_order CHANGE COLUMN `modified` `modified` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6);')
     # ### end Alembic commands ###
 
