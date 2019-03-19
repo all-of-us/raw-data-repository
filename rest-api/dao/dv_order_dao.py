@@ -75,7 +75,7 @@ class DvOrderDao(UpdatableDao):
       result['barcode'] = reduced_model['reference_number']
       result['received'] = reduced_model['received']
       result['biobank_order_id'] = reduced_model['number']
-      result['biobank_id'] = reduced_model['patient']['medical_record_number']
+      result['biobank_id'] = reduced_model['patient']['medical_record_number'] # biobank order id
     else:
       result = model.asdict()
       result['orderStatus'] = format_json_enum(result, 'orderStatus')

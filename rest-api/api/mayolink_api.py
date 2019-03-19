@@ -9,6 +9,7 @@ import xmltodict
 from api.base_api import UpdatableApi
 from api_util import RDR
 from app_util import auth_required
+from werkzeug.exceptions import ImATeapot
 
 
 class MayoLinkApi(UpdatableApi):
@@ -19,6 +20,8 @@ class MayoLinkApi(UpdatableApi):
     self.config = config.getSetting(config.MAYOLINK_CREDS)
     self.path = '/' + self.config_bucket + '/' + self.config
     self.endpoint = config.getSetting(config.MAYOLINK_ENDPOINT)
+    # For now I can not figure out how to use cloudstorage on dev_appserver, comment out the
+    # below and manually add self.username, etc.
     with cloudstorage.open(self.path, 'r') as file_path:
       self.creds = json.load(file_path)
       self.username = self.creds.get('username')
@@ -39,7 +42,7 @@ class MayoLinkApi(UpdatableApi):
                                      headers={'Content-type': 'application/xml'},
                                      body=xml)
     if response['status'] != 201:
-      pass
+      raise ImATeapot('Mayolink service unavailable, please re-try later')
 
     result = self._xml_to_dict(content)
     return result

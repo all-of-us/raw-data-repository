@@ -203,12 +203,14 @@ class UpdatableApi(BaseApi):
     self.dao.update(m)
 
   def put(self, id_, participant_id=None, skip_etag=False, resource=None):
-    """Handles a PUT (replace) request; the current object must exist, and will be replaced
-    completely.
-
-    Args:
-      id_: The id of the object to update.
-      participant_id: The ancestor id (if applicable).
+    """
+    Replace resource with new values. if skip_etag, version is not required in request.
+    If resource, do not fetch original request.
+    :param id_:
+    :param participant_id:
+    :param skip_etag:
+    :param resource:
+    :return: make_response
     """
     if not resource:
       resource = request.get_json(force=True)
