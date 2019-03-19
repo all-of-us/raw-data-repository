@@ -1,17 +1,14 @@
 import email.utils
 import logging
-import pytz
 import time
-import netaddr
-
-from google.appengine.api import app_identity
-from google.appengine.api import oauth
-
-from flask import request
-from werkzeug.exceptions import Forbidden, Unauthorized
 
 import clock
 import config
+import netaddr
+import pytz
+from flask import request
+from google.appengine.api import app_identity, oauth
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 
 _GMT = pytz.timezone('GMT')
@@ -224,3 +221,28 @@ def get_validated_user_info():
 
   logging.info('User %r NOT ALLOWED' % user_email)
   raise Forbidden()
+
+
+class ObjectView(object):
+  """access dict attributes as an object"""
+  def __init__(self, d):
+    self.__dict__ = d
+
+
+class ObjDict(dict):
+  """Subclass dict to treat new dicts like objects"""
+  def __getattr__(self, name):
+    if name in self:
+      return self[name]
+    else:
+      raise AttributeError("No such attribute: " + name)
+
+  def __setattr__(self, name, value):
+    self[name] = value
+
+  def __delattr__(self, name):
+    if name in self:
+      del self[name]
+    else:
+      raise AttributeError("No such attribute: " + name)
+

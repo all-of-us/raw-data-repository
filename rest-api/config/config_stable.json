@@ -112,7 +112,7 @@
       }
     },
     "configurator@all-of-us-rdr-stable.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"]
+      "roles": ["ptc", "healthpro", "rdr"]
     },
     "security-testing@pmi-hpo-test.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro"]
@@ -142,5 +142,7 @@
   ],
   "metrics_shards": [
     "10"
-  ]
+  ],
+  "mayolink_creds": ["rdr-mayolink-creds-qa.json"],
+  "mayolink_endpoint": ["https://qa.orders.mayocliniclabs.com/orders/create.xml"]
 }

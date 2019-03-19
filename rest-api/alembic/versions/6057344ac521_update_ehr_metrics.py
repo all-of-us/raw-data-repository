@@ -72,8 +72,6 @@ def upgrade_rdr():
     sa.Column('note_upload_time', model.utils.UTCDateTime(), nullable=True),
     sa.PrimaryKeyConstraint('report_run_time', 'hpo_id')
     )
-    op.add_column('biobank_dv_order', sa.Column('created', sa.DateTime(), nullable=False))
-    op.drop_column('biobank_dv_order', 'default')
     op.add_column('ehr_receipt', sa.Column('hpo_id', sa.Integer(), nullable=False))
     op.add_column('ehr_receipt', sa.Column('receipt_time', model.utils.UTCDateTime(), nullable=False))
     op.create_index(op.f('ix_ehr_receipt_receipt_time'), 'ehr_receipt', ['receipt_time'], unique=False)
@@ -101,8 +99,6 @@ def downgrade_rdr():
     op.drop_index(op.f('ix_ehr_receipt_receipt_time'), table_name='ehr_receipt')
     op.drop_column('ehr_receipt', 'receipt_time')
     op.drop_column('ehr_receipt', 'hpo_id')
-    op.add_column('biobank_dv_order', sa.Column('default', mysql.DATETIME(fsp=6), server_default=sa.text(u'CURRENT_TIMESTAMP(6)'), nullable=False))
-    op.drop_column('biobank_dv_order', 'created')
     op.drop_table('hpo_counts_report')
     # ### end Alembic commands ###
 
