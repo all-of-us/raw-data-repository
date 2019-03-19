@@ -15,7 +15,7 @@ from api.dv_order_api import DvOrderApi
 from api.import_codebook_api import import_codebook
 from api.metric_sets_api import MetricSetsApi
 from api.metrics_api import MetricsApi
-from api.metrics_ehr_api import MetricsEhrApi
+from api import metrics_ehr_api
 from api.public_metrics_api import PublicMetricsApi
 from api.metrics_fields_api import MetricsFieldsApi
 from api.participant_api import ParticipantApi
@@ -113,9 +113,24 @@ api.add_resource(MetricSetsApi,
                  endpoint='metric_sets',
                  methods=['GET'])
 
-api.add_resource(MetricsEhrApi,
+api.add_resource(metrics_ehr_api.MetricsEhrApi,
                  PREFIX + 'MetricsEHR',
                  endpoint='metrics_ehr',
+                 methods=['GET'])
+
+api.add_resource(metrics_ehr_api.ParticipantEhrMetricsOverTimeApi,
+                 PREFIX + 'MetricsEHR/ParticipantsOverTime',
+                 endpoint='metrics_ehr.participants_over_time',
+                 methods=['GET'])
+
+api.add_resource(metrics_ehr_api.SitesActiveMetricsOverTimeApi,
+                 PREFIX + 'MetricsEHR/SitesActiveOverTime',
+                 endpoint='metrics_ehr.sites_active_over_time',
+                 methods=['GET'])
+
+api.add_resource(metrics_ehr_api.SiteMetricsApi,
+                 PREFIX + 'MetricsEHR/Sites',
+                 endpoint='metrics_ehr.sites',
                  methods=['GET'])
 
 api.add_resource(PublicMetricsApi,
