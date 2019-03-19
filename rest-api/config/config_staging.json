@@ -29,7 +29,7 @@
       }
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"]
+      "roles": ["ptc", "healthpro", "rdr"]
     },
     "exporter@all-of-us-rdr-staging.iam.gserviceaccount.com": {
       "roles": ["exporter"]
@@ -56,5 +56,7 @@
   ],
   "curation_bucket_name": [
     "aou-rdr-sandbox-mock-data"
-  ]
+  ],
+  "mayolink_creds": ["rdr-mayolink-creds-test.json"],
+  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"]
 }

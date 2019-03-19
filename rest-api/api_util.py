@@ -1,15 +1,15 @@
 """Utilities used by the API definition, and authentication/authorization/roles."""
 import datetime
 
+from code_constants import UNSET, UNMAPPED
 from dateutil.parser import parse
 from werkzeug.exceptions import BadRequest
-
-from code_constants import UNSET, UNMAPPED
 
 
 # Role constants
 PTC = "ptc"
 HEALTHPRO = "healthpro"
+RDR = "rdr"
 AWARDEE = "awardee_sa"
 STOREFRONT = "storefront"
 EXPORTER = "exporter"
@@ -17,7 +17,9 @@ DEV_MAIL = "example@example.com"
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
 PTC_HEALTHPRO_AWARDEE = [PTC, HEALTHPRO, AWARDEE]
 ALL_ROLES = [PTC, HEALTHPRO, STOREFRONT, EXPORTER]
-
+VIBRENT_BARCODE_URL = 'http://vibrenthealth.com/fhir/barcode'
+VIBRENT_ORDER_URL = 'http://vibrenthealth.com/fhir/order-type'
+VIBRENT_FULLFILMENT_URL = 'http://vibrenthealth.com/fhir/fullfilment-status'
 
 def parse_date(date_str, date_format=None, date_only=False):
   """Parses JSON dates.
@@ -130,3 +132,17 @@ def get_organization_id_from_external_id(obj, organization_dao):
     if organization is not None:
       return organization.organizationId
   return None
+
+def get_code_id(obj, code_dao, field, prefix):
+  """ Gets a code id based on the value in ppi questionnaire
+  i.e. prefix = State_ and field = state and obj[state] = VA
+  will return the code_id for State_VA"""
+  system = 'http://terminology.pmi-ops.org/CodeSystem/ppi'
+  field_with_id = field + 'Id'
+  if field_with_id is not None:
+    code_value = prefix + obj[field]
+    code = code_dao.get_code(system, code_value)
+    if code:
+      return code.codeId
+  else:
+    return UNSET

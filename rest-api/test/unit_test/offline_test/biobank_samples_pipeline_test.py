@@ -1,31 +1,28 @@
-import csv
-import random
-import pytz
-import datetime
-import time
 import StringIO
-
-from cloudstorage import cloudstorage_api  # stubbed by testbed
+import csv
+import datetime
+import random
+import time
 
 import clock
 import config
+import pytz
+from cloudstorage import cloudstorage_api  # stubbed by testbed
 from code_constants import BIOBANK_TESTS
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from offline import biobank_samples_pipeline
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
-from test import test_data
-from model.config_utils import to_client_biobank_id, get_biobank_id_prefix
-from model.participant import Participant
-
-from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_dv_order import BiobankDVOrder
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
-
-
+from model.biobank_stored_sample import BiobankStoredSample
+from model.config_utils import to_client_biobank_id, get_biobank_id_prefix
+from model.participant import Participant
+from offline import biobank_samples_pipeline
 from participant_enums import SampleStatus, get_sample_status_enum_value
+from test import test_data
+from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
+
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
@@ -52,6 +49,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     Kwargs pass through to BiobankOrder constructor, overriding defaults.
     """
     participantId = kwargs['participantId']
+    modified = datetime.datetime(2019, 03, 25, 15, 59, 30)
 
     for k, default_value in (
         ('biobankOrderId', u'1'),
@@ -72,7 +70,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
             description=u'description',
             processingRequired=True)]),
         ('dvOrders', [BiobankDVOrder(
-          participantId=participantId
+          participantId=participantId, modified=modified, version=1
         )])):
       if k not in kwargs:
         kwargs[k] = default_value
