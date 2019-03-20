@@ -1,11 +1,16 @@
+import copy
 import datetime
 
 from api.mayolink_api import MayoLinkApi
 from api_util import format_json_code, get_code_id, format_json_enum, parse_date
+from app_util import ObjectView
 from dao.base_dao import UpdatableDao
+from dao.biobank_order_dao import BiobankOrderDao
 from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.biobank_dv_order import BiobankDVOrder
+from model.biobank_order import BiobankOrderedSample, BiobankOrderIdentifier
+from participant_enums import BiobankOrderStatus
 from werkzeug.exceptions import BadRequest
 
 
@@ -74,8 +79,8 @@ class DvOrderDao(UpdatableDao):
       result['status'] = reduced_model['status']
       result['barcode'] = reduced_model['reference_number']
       result['received'] = reduced_model['received']
-      result['biobank_order_id'] = reduced_model['number']
-      result['biobank_id'] = reduced_model['patient']['medical_record_number'] # biobank order id
+      result['biobankOrderId'] = reduced_model['number']
+      result['biobankId'] = reduced_model['patient']['medical_record_number'] # biobank order id
     else:
       result = model.asdict()
       result['orderStatus'] = format_json_enum(result, 'orderStatus')
@@ -94,10 +99,10 @@ class DvOrderDao(UpdatableDao):
       resource = resource_json
       order = BiobankDVOrder(participantId=participant_id)
 
-      order.participant_id = participant_id
+      order.participantId = participant_id
       order.modified = datetime.datetime.now()
-      order.order_id = resource['identifier'][0]['code']
-      order.order_date = resource['authoredOn']
+      order.orderId = resource['identifier'][0]['code']
+      order.orderDate = resource['authoredOn']
       order.supplier = resource['contained'][0]['id']
       order.supplierStatus = resource['status']  # @TODO: confirm right status
       order.itemName = resource['contained'][1]['deviceName'][0]['name']
@@ -122,14 +127,42 @@ class DvOrderDao(UpdatableDao):
         order.version = expected_version
         order.barcode = resource['barcode']
         # @TODO: foreign key to biobank order.biobank order id. implement in DA-953
-        # order.biobankOrderId = resource['biobank_order_id']
+        order.biobankOrderId = resource['biobankOrderId']
         order.biobankStatus = resource['status']
         order.biobankReceived = parse_date(resource['received'])
     return order
 
   def insert_biobank_order(self, pid, resource):
-    # @TODO: implement in DA-953
-    print resource, pid
+    obj = ObjectView(resource)
+    obj.logPosition = None
+    obj.participantId = pid
+    obj.created = obj.received
+    obj.orderStatus = BiobankOrderStatus.UNSET
+    obj.lastModified = datetime.datetime.now()
+    obj.created = datetime.datetime.now()  # @todo: confirm not ptsc created time
+
+    bod = BiobankOrderDao()
+    obj_copy = copy.deepcopy(obj)
+    obj_copy.samples = [BiobankOrderedSample(
+      test='1SAL2', processingRequired=False, description=u'salivary pilot kit')]
+    bod._add_samples_to_resource(obj, obj_copy)
+    self._add_identifiers_and_main_id(obj, obj_copy)
+    bod.insert(obj)
+
+  def _add_identifiers_and_main_id(self, order, resource):
+    order.identifiers = []
+    for i in resource.identifier:
+      try:
+        if i['system'] == 'orderId':
+          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM,
+                                                          value=i['code']))
+        if i['system'] == 'fulfillmentId':
+          order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM
+                                                          + '/fulfillmentId', value=i['code']))
+      except AttributeError:
+        raise BadRequest(
+          'No identifier for system %r, required for primary key.' %
+            BiobankDVOrder._VIBRENT_ID_SYSTEM)
 
   def _get_created_date(self, pid, id_):
     with self.session() as session:
