@@ -46,6 +46,9 @@
   "service_accounts_with_long_lived_keys":[
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
   ],
+  "curation_bucket_name": [
+    "aou-rdr-sandbox-mock-data"
+  ],
   "mayolink_creds": ["rdr-mayolink-creds-test.json"],
   "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"]
 }
