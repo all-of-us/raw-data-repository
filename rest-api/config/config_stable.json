@@ -45,7 +45,7 @@
       "roles": ["awardee_sa"],
       "awardee": "ILLINOIS",
       "whitelisted_ip_ranges" : {
-        "ip4": ["10.50.178.54", "165.124.250.40", "165.124.250.41"]
+        "ip4": ["10.50.178.54", "165.124.250.40", "165.124.250.41", "131.193.169.188"]
       }
     },
       "awardee-tach@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
