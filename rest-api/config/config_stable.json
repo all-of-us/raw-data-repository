@@ -143,6 +143,9 @@
   "metrics_shards": [
     "10"
   ],
+  "curation_bucket_name": [
+    "aou-rdr-sandbox-mock-data"
+  ],
   "mayolink_creds": ["rdr-mayolink-creds-qa.json"],
   "mayolink_endpoint": ["https://qa.orders.mayocliniclabs.com/orders/create.xml"]
 }
