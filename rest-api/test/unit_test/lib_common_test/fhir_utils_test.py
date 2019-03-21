@@ -137,6 +137,7 @@ class SimpleFhirR4ReaderBasicTestCase(unittest.TestCase):
   def test_list_key_lookup(self):
     fhir = SimpleFhirR4Reader(['foo', 'bar', 'baz'])
     self.assertEqual(fhir[1], 'bar')
+    self.assertEqual(fhir[-1], 'baz')
 
   def test_list_key_range(self):
     fhir = SimpleFhirR4Reader(['foo', 'bar', 'baz'])
@@ -162,6 +163,8 @@ class SimpleFhirR4ReaderBasicTestCase(unittest.TestCase):
     with self.assertRaises(KeyError):
       fhir[0]
     with self.assertRaises(KeyError):
+      fhir[-1]
+    with self.assertRaises(TypeError):
       fhir[1:]
 
   def test_list_exceptions(self):

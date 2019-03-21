@@ -28,8 +28,10 @@ class SimpleFhirR4Reader(object):
       raise AttributeError("{!r} can't be found in {!r}".format(item, self._obj))
 
   def __getitem__(self, item):
-    if isinstance(item, slice) and isinstance(self._obj, list):
-      return self._obj[item]
+    if isinstance(item, slice):
+      if isinstance(self._obj, list):
+        return self._obj[item]
+      raise TypeError("{!r} can't be found in {!r}".format(item, self._obj))
     try:
       return self.get(item)
     except ValueError:
