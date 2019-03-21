@@ -822,7 +822,7 @@ class MySqlReconciliationTest(FlaskTestBase):
       'received_count': '1',
       'sent_test': '',
       'received_test': BIOBANK_TESTS[0]})
-    
+
     # p_repeated has 2 received and 2 late.
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_repeated.biobankId),
