@@ -272,9 +272,9 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_unconfirmed_samples_3, BIOBANK_TESTS[:5], ['Unconfirmed_sample_4',
                                                                       'Unconfirmed_sample_5'],
                          'Ounconfirmed_sample_3', None, old_order_time)
-    # insert a sample without an order for two days ago, should not be in reports
+    # insert a sample without an order for two days ago, should be in received reports
     p_unconfirmed_samples_4 = self._insert_participant()
-    self._insert_samples(p_unconfirmed_samples_4, BIOBANK_TESTS[5], ['Unconfirmed_sample_6',
+    self._insert_samples(p_unconfirmed_samples_4, BIOBANK_TESTS[:5], ['Unconfirmed_sample_6',
                                                                       'Unconfirmed_sample_7'],
                          'Ounconfirmed_sample_4', two_days_ago, two_days_ago)
 
@@ -298,7 +298,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                          late_time,
                          late_time - datetime.timedelta(minutes=59))
 
-    # ordered sample not finalized with stored sample should be in missing.
+    # ordered sample not finalized with stored sample should be in missing and received.
     p_not_finalized = self._insert_participant()
     self._insert_order(p_not_finalized, 'UnfinalizedOrder', BIOBANK_TESTS[:2],
                       order_time, finalized_tests=BIOBANK_TESTS[:1])
@@ -321,7 +321,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_order(p_two_days_missing, 'TwoDaysMissingOrder', BIOBANK_TESTS[:3],
                        two_days_ago, finalized_tests=BIOBANK_TESTS[:2])
 
-    # Recent samples with no matching order; shows up in missing.
+    # Recent samples with no matching order; shows up in missing and received.
     p_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
     self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], ['NobodyOrderedThisSample'],
                          'OExtraOrderNotSent',
@@ -428,12 +428,19 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # sent-and-received: 4 on-time, 2 late, none of the missing/extra/repeated ones;
     # not includes orders/samples from more than 10 days ago
-    exporter.assertRowCount(received, 6)
+    exporter.assertRowCount(received, 10)
     exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
     row = exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId),
         'sent_test': BIOBANK_TESTS[0],
         'received_test': BIOBANK_TESTS[0]})
+
+    # sent count=0, received count=1 should in received report
+    exporter.assertHasRow(received, {
+      'sent_count': '0',
+      'received_count': '1',
+      'sent_test': '',
+      'received_test': BIOBANK_TESTS[0]})
 
     # p_repeated has 2 received and 2 late.
     exporter.assertHasRow(received, {
@@ -645,9 +652,9 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_samples(p_unconfirmed_samples_3, BIOBANK_TESTS[:5], ['Unconfirmed_sample_4',
                                                                       'Unconfirmed_sample_5'],
                          'Ounconfirmed_sample_3', None, old_order_time)
-    # insert a sample without an order for two days ago, should not be in reports
+    # insert a sample without an order for two days ago, should be in received reports
     p_unconfirmed_samples_4 = self._insert_participant()
-    self._insert_samples(p_unconfirmed_samples_4, BIOBANK_TESTS[5], ['Unconfirmed_sample_6',
+    self._insert_samples(p_unconfirmed_samples_4, BIOBANK_TESTS[:5], ['Unconfirmed_sample_6',
                                                                       'Unconfirmed_sample_7'],
                          'Ounconfirmed_sample_4', two_days_ago, two_days_ago)
 
@@ -671,7 +678,7 @@ class MySqlReconciliationTest(FlaskTestBase):
                          late_time,
                          late_time - datetime.timedelta(minutes=59))
 
-    # ordered sample not finalized with stored sample should be in missing.
+    # ordered sample not finalized with stored sample should be in missing and received.
     p_not_finalized = self._insert_participant()
     self._insert_order(p_not_finalized, 'UnfinalizedOrder', BIOBANK_TESTS[:2],
                       order_time, finalized_tests=BIOBANK_TESTS[:1])
@@ -694,7 +701,7 @@ class MySqlReconciliationTest(FlaskTestBase):
     self._insert_order(p_two_days_missing, 'TwoDaysMissingOrder', BIOBANK_TESTS[:3],
                        two_days_ago, finalized_tests=BIOBANK_TESTS[:2])
 
-    # Recent samples with no matching order; shows up in missing.
+    # Recent samples with no matching order; shows up in missing and received.
     p_extra = self._insert_participant(race_codes=[RACE_WHITE_CODE])
     self._insert_samples(p_extra, [BIOBANK_TESTS[-1]], ['NobodyOrderedThisSample'],
                          'OExtraOrderNotSent',
@@ -802,13 +809,20 @@ class MySqlReconciliationTest(FlaskTestBase):
 
     # sent-and-received: 4 on-time, 2 late, 2 edge, none of the missing/extra/repeated ones;
     # not includes orders/samples from more than 60 days ago
-    exporter.assertRowCount(received, 8)
+    exporter.assertRowCount(received, 12)
     exporter.assertColumnNamesEqual(received, _CSV_COLUMN_NAMES)
     row = exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_on_time.biobankId),
         'sent_test': BIOBANK_TESTS[0],
         'received_test': BIOBANK_TESTS[0]})
 
+    # sent count=0, received count=1 should in received report
+    exporter.assertHasRow(received, {
+      'sent_count': '0',
+      'received_count': '1',
+      'sent_test': '',
+      'received_test': BIOBANK_TESTS[0]})
+    
     # p_repeated has 2 received and 2 late.
     exporter.assertHasRow(received, {
         'biobank_id': to_client_biobank_id(p_repeated.biobankId),
