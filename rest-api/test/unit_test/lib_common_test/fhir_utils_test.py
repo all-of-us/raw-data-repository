@@ -124,6 +124,58 @@ class SimpleFhirR4ReaderBasicTestCase(unittest.TestCase):
     })
     self.assertEqual(fhir.foo.bar.baz, 123)
 
+  def test_list_item_at_index(self):
+    fhir = SimpleFhirR4Reader({
+      'a': [2, 4, 6, 8]
+    })
+    self.assertEqual(fhir.get('a', 1), 4)
+
+  def test_dict_key_lookup(self):
+    fhir = SimpleFhirR4Reader({'a': 'foo'})
+    self.assertEqual(fhir['a'], 'foo')
+
+  def test_list_key_lookup(self):
+    fhir = SimpleFhirR4Reader(['foo', 'bar', 'baz'])
+    self.assertEqual(fhir[1], 'bar')
+    self.assertEqual(fhir[-1], 'baz')
+
+  def test_list_key_range(self):
+    fhir = SimpleFhirR4Reader(['foo', 'bar', 'baz'])
+    self.assertEqual(fhir[1:], ['bar', 'baz'])
+    self.assertEqual(fhir[:-1], ['foo', 'bar'])
+
+  def test_list_filter_function_key(self):
+    fhir = SimpleFhirR4Reader(list(range(10)))
+    odds_only_filter = lambda x: x % 2
+    self.assertEqual(list(fhir.get(odds_only_filter)), [1,3,5,7,9])
+
+  def test_dict_filter_function_key(self):
+    fhir = SimpleFhirR4Reader({'a': 0, 'b': 1, 'c': 2, 'd': 3})
+    odd_values_only_filter = lambda x: x[1] % 2
+    self.assertEqual(list(fhir.get(odd_values_only_filter)), [('b', 1), ('d', 3)])
+
+  def test_dict_exceptions(self):
+    fhir = SimpleFhirR4Reader({'a': 'foo'})
+    with self.assertRaises(AttributeError):
+      fhir.b
+    with self.assertRaises(KeyError):
+      fhir['b']
+    with self.assertRaises(KeyError):
+      fhir[0]
+    with self.assertRaises(KeyError):
+      fhir[-1]
+    with self.assertRaises(TypeError):
+      fhir[1:]
+
+  def test_list_exceptions(self):
+    fhir = SimpleFhirR4Reader([0,1])
+    with self.assertRaises(AttributeError):
+      fhir.foo
+    with self.assertRaises(IndexError):
+      fhir[2]
+    with self.assertRaises(IndexError):
+      fhir['b']
+
 
 class SimpleFhirR4ReaderSupplyRequestTestCase(unittest.TestCase):
 
