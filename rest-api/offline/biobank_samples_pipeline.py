@@ -255,7 +255,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received, path_mis
 
   # Gets all sample/order pairs where everything arrived, within the past n days.
   received_predicate = lambda result: (result[_RECEIVED_TEST_INDEX] and
-                                       result[_SENT_COUNT_INDEX] == result[_RECEIVED_COUNT_INDEX]
+                                       result[_SENT_COUNT_INDEX] <= result[_RECEIVED_COUNT_INDEX]
                                        and
                                        in_past_n_days(result, now, report_cover_range))
 
