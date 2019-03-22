@@ -93,6 +93,9 @@ class BiobankOrderDao(UpdatableDao):
 
   def _order_as_dict(self, order):
     result = order.asdict(follow={'identifiers': {}, 'samples': {}})
+    result['version'] = int(result['version'])
+    if result['orderStatus'] is None:
+      result['orderStatus'] = BiobankOrderStatus.UNSET
     del result['created']
     del result['logPositionId']
     for identifier in result.get('identifiers', []):
@@ -121,7 +124,8 @@ class BiobankOrderDao(UpdatableDao):
         raise Conflict('Order with ID %s already exists' % obj.biobankOrderId)
     self._update_participant_summary(session, obj)
     inserted_obj = super(BiobankOrderDao, self).insert_with_session(session, obj)
-    ParticipantDao().add_missing_hpo_from_site(
+    if inserted_obj.collectedSiteId is not None:
+      ParticipantDao().add_missing_hpo_from_site(
         session, inserted_obj.participantId, inserted_obj.collectedSiteId)
     self._update_history(session, obj)
     return inserted_obj

@@ -3,6 +3,7 @@ from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_BARCODE_URL
 from app_util import auth_required, ObjDict
 from dao.dv_order_dao import DvOrderDao
 from flask import request
+from model.utils import from_client_participant_id
 from werkzeug.exceptions import BadRequest
 
 
@@ -14,12 +15,15 @@ class DvOrderApi(UpdatableApi):
   @auth_required(PTC)
   def post(self):
     resource = request.get_json(force=True)
-    p_id = resource['contained'][2]['identifier'][0]['value']
-    if not p_id:
-      raise BadRequest('Request must include participant id and must be of type integer')
+    if resource['resourceType'] == 'SupplyRequest':
+      p_id = from_client_participant_id(resource['contained'][0]['identifier'][0]['value'])
+    if resource['resourceType'] == 'SupplyDelivery':
+      # @todo: do something with delivery
+      p_id = from_client_participant_id(resource['patient']['identifier'][0]['value'])
     response = super(DvOrderApi, self).post(participant_id=p_id)
-    order_id = resource['identifier'][0]['code']
+    order_id = resource['identifier'][0]['value']
     response[2]['Location'] = '/rdr/v1/SupplyRequest/{}'.format(order_id)
+    # @todo: return a 201
     return response
 
   @auth_required(PTC_AND_HEALTHPRO)
@@ -36,19 +40,21 @@ class DvOrderApi(UpdatableApi):
   def put(self, bo_id):  # pylint: disable=unused-argument
     resource = request.get_json(force=True)
     barcode_url = resource.get('extension')[0].get('url', "No barcode url")
-    p_id = resource['contained'][2]['identifier'][0]['value']
+    # @todo: add a cancel request
+    p_id = from_client_participant_id(resource['contained'][0]['identifier'][0]['value'])
     merged_resource = None
     if not p_id:
       raise BadRequest('Request must include participant id and must be of type int')
     if barcode_url == VIBRENT_BARCODE_URL:
       # send order to mayolink api
-      # If these fail we don't need to return that in response, RDR will capture and try to resend.
-      _id = self.dao.get_id(ObjDict({'participant_id': p_id, 'order_id': bo_id}))
+      _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
       ex_obj = self.dao.get(_id)
       if not ex_obj.barcode:
         # Send to mayolink and create internal biobank order
-        response = self.dao.send_order(resource)
+        response = self.dao.send_order(resource, p_id)
         merged_resource = merge_dicts(response, resource)
+        id = int(_id[0])
+        merged_resource['id'] = _id
         self.dao.insert_biobank_order(p_id, merged_resource)
 
     if merged_resource:
