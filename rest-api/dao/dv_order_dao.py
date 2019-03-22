@@ -5,6 +5,7 @@ from api_util import format_json_code, get_code_id, format_json_enum, parse_date
 from dao.base_dao import UpdatableDao
 from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
+from fhir_utils import SimpleFhirR4Reader
 from model.biobank_dv_order import BiobankDVOrder
 from werkzeug.exceptions import BadRequest
 
@@ -91,27 +92,33 @@ class DvOrderDao(UpdatableDao):
                        participant_id=None, client_id=None): #pylint: disable=unused-argument
     """Initial loading of the DV order table does not include all attributes."""
     if resource_json['resourceType'] == 'SupplyRequest':
-      resource = resource_json
+      fhir_resource = SimpleFhirR4Reader(resource_json)
       order = BiobankDVOrder(participantId=participant_id)
 
       order.participant_id = participant_id
       order.modified = datetime.datetime.now()
-      order.order_id = resource['identifier'][0]['code']
-      order.order_date = resource['authoredOn']
-      order.supplier = resource['contained'][0]['id']
-      order.supplierStatus = resource['status']  # @TODO: confirm right status
-      order.itemName = resource['contained'][1]['deviceName'][0]['name']
-      order.itemSKUCode = resource['contained'][1]['identifier'][0]['code']
-      order.itemSNOMEDCode = resource['contained'][1]['identifier'][1]['code']
-      order.itemQuantity = resource['quantity']['value']
-      order.streetAddress1 = resource['contained'][2]['address'][0]['line'][0]
-      if len(resource['contained'][2]['address'][0]['line']) > 1:
-        order.streetAddress2 = resource['contained'][2]['address'][0]['line'][1]
-      order.city = resource['contained'][2]['address'][0]['city']
-      order.stateId = get_code_id(resource['contained'][2]['address'][0], self.code_dao, 'state',
-                                  'State_')
-      order.zipCode = resource['contained'][2]['address'][0]['postalCode']
-      order.orderType = resource['extension'][0]['valueString']
+      order.order_id = fhir_resource.identifier.get(system='orderId').code
+      order.order_date = fhir_resource.authoredOn
+      order.supplier = fhir_resource.contained.get(resourceType='Organization').id
+      order.supplierStatus = fhir_resource.status  # @TODO: confirm right status
+
+      fhir_device = fhir_resource.contained.get(resourceType='Device')
+      order.itemName = fhir_device.deviceName.get(type='manufacturer-name').name
+      order.itemSKUCode = fhir_device.identifier.get(system='SKU').code
+      order.itemSNOMEDCode = fhir_device.identifier.get(system='SNOMED').code
+      order.itemQuantity = fhir_resource.quantity.value
+
+      fhir_patient = fhir_resource.contained.get(resourceType='Patient')
+      fhir_address = fhir_patient.address[0]
+      order.streetAddress1 = fhir_address.line[0]
+      order.streetAddress2 = '\n'.join(fhir_address.line[1:])
+      order.city = fhir_address.city
+      order.stateId = get_code_id(fhir_address, self.code_dao, 'state', 'State_')
+      order.zipCode = fhir_address.postalCode
+
+      order.orderType = fhir_resource.extension.get(
+        url="http://vibrenthealth.com/fhir/order-type"
+      ).valueString
       if id_ is None:
         order.version = 1
         order.created = datetime.datetime.now()
@@ -120,11 +127,11 @@ class DvOrderDao(UpdatableDao):
         order.id = self.get_id(order)[0]
         order.created = self._get_created_date(participant_id, id_)
         order.version = expected_version
-        order.barcode = resource['barcode']
+        order.barcode = fhir_resource.barcode  # NOTE: not in the FHIR spec
         # @TODO: foreign key to biobank order.biobank order id. implement in DA-953
         # order.biobankOrderId = resource['biobank_order_id']
-        order.biobankStatus = resource['status']
-        order.biobankReceived = parse_date(resource['received'])
+        order.biobankStatus = fhir_resource.status
+        order.biobankReceived = parse_date(fhir_resource.received)  # NOTE: not in the FHIR spec
     return order
 
   def insert_biobank_order(self, pid, resource):
