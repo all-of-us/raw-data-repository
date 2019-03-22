@@ -14,6 +14,7 @@ from model.biobank_dv_order import BiobankDVOrder
 from model.biobank_order import BiobankOrderedSample, BiobankOrderIdentifier, BiobankOrder
 from participant_enums import BiobankOrderStatus
 from werkzeug.exceptions import BadRequest
+from sqlalchemy.orm import load_only
 
 
 class DvOrderDao(UpdatableDao):
@@ -101,15 +102,15 @@ class DvOrderDao(UpdatableDao):
       # @todo: don't assume indexes
       order.participantId = participant_id
       order.modified = datetime.datetime.now()
-      order.order_id = fhir_resource.identifier.get(system='orderId').code
+      order.order_id = fhir_resource.identifier.get(system='orderId').value
       order.order_date = fhir_resource.authoredOn
       order.supplier = fhir_resource.contained.get(resourceType='Organization').id
       order.supplierStatus = fhir_resource.status  # @TODO: confirm right status
 
       fhir_device = fhir_resource.contained.get(resourceType='Device')
       order.itemName = fhir_device.deviceName.get(type='manufacturer-name').name
-      order.itemSKUCode = fhir_device.identifier.get(system='SKU').code
-      order.itemSNOMEDCode = fhir_device.identifier.get(system='SNOMED').code
+      order.itemSKUCode = fhir_device.identifier.get(system='SKU').value
+      order.itemSNOMEDCode = fhir_device.identifier.get(system='SNOMED').value
       order.itemQuantity = fhir_resource.quantity.value
 
       fhir_patient = fhir_resource.contained.get(resourceType='Patient')
@@ -131,11 +132,15 @@ class DvOrderDao(UpdatableDao):
         order.id = self.get_id(order)[0]
         order.created = self._get_created_date(participant_id, id_)
         order.version = expected_version
-        order.barcode = fhir_resource.barcode  # NOTE: not in the FHIR spec
+        bio_info = self.get_biobank_info(order)
+        print '**************************************************'
+        print bio_info.barcode
+        print '**************************************************'
+        order.barcode = bio_info.barcode
         # @TODO: foreign key to biobank order.biobank order id. implement in DA-953
-        # order.biobankOrderId = resource['biobank_order_id']
-        order.biobankStatus = fhir_resource.status
-        order.biobankReceived = parse_date(fhir_resource.received)  # NOTE: not in the FHIR spec
+        order.biobankOrderId = bio_info.biobankOrderId
+        order.biobankStatus = bio_info.biobankStatus
+        order.biobankReceived = bio_info.biobankReceived
     return order
 
   def insert_biobank_order(self, pid, resource):
@@ -196,4 +201,18 @@ class DvOrderDao(UpdatableDao):
         participantId=obj.participantId).filter_by(
         order_id=obj.order_id)
       return query.first()
+
+  def get_biobank_info(self, order):
+    with self.session() as session:
+      query = session.query(BiobankDVOrder).options(load_only("barcode", "biobankOrderId", "biobankStatus", "biobankReceived")).filter_by(participantId=order.participantId)\
+                                                   .filter_by(order_id=order.order_id)
+      return query.first()
+
+
+#session.query(User).options(load_only("name", "fullname"))
+
+
+
+
+
 
