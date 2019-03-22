@@ -158,6 +158,82 @@ class MetricsEhrApiTestBase(FlaskTestBase):
     self.ps_dao.update(participant_summary)
 
 
+class MetricsEhrMultiEndpointTest(MetricsEhrApiTestBase):
+  """
+  NOTE: as of 2019-03-19, This API's logic is tested through the `combined` endpoint.
+  This test case confirms that the `combined` matches the sub-part endpoints.
+  """
+
+  def setUp(self, **kwargs):
+    super(MetricsEhrMultiEndpointTest, self).setUp(**kwargs)
+
+    #
+    # insert some test data
+    #
+    for date in iter_dates(
+      datetime.date(2017, 12, 30),
+      datetime.date(2018, 2, 1)
+    ):
+      calendar_day = Calendar(day=date)
+      CalendarDao().insert(calendar_day)
+    # noinspection PyArgumentList
+    participant_1 = Participant(participantId=1, biobankId=4)
+    summary_1 = self._make_participant(
+      participant_1, 'Alice', 'Aardvark', 'PITT',
+      time_int=datetime.datetime(2018, 1, 2),
+      time_mem=datetime.datetime(2018, 1, 3),
+      time_fp=datetime.datetime(2018, 1, 4),
+      site_id=1
+    )
+    # noinspection PyArgumentList
+    participant_2 = Participant(participantId=2, biobankId=5)
+    summary_2 = self._make_participant(
+      participant_2, 'Bo', 'Badger', 'AZ_TUCSON',
+      time_int=datetime.datetime(2018, 1, 3),
+      time_mem=datetime.datetime(2018, 1, 4),
+      time_fp=datetime.datetime(2018, 1, 5),
+      site_id=2
+    )
+    self._update_ehr(
+      summary_1,
+      update_time=datetime.datetime(2018, 1, 5)
+    )
+    self._update_ehr(
+      summary_2,
+      update_time=datetime.datetime(2018, 1, 6)
+    )
+
+  def test_combined_endpoint_matches_parts(self):
+    query_string = urllib.urlencode({
+      'start_date': '2018-01-01',
+      'end_date': '2018-01-06',
+      'interval': 'day'
+    })
+    combined_response = self.send_get('MetricsEHR', query_string=query_string)
+    participants_over_time_response = self.send_get(
+      'MetricsEHR/ParticipantsOverTime',
+      query_string=query_string
+    )
+    sites_active_over_time_response = self.send_get(
+      'MetricsEHR/SitesActiveOverTime',
+      query_string=query_string
+    )
+    sites_response = self.send_get(
+      'MetricsEHR/Sites',
+      query_string=query_string
+    )
+
+    self.assertEqual(combined_response['site_metrics'], sites_response)
+    for combined_row, participants_row, sites_active_row in zip(
+      combined_response['metrics_over_time'],
+      participants_over_time_response,
+      sites_active_over_time_response
+    ):
+      for other_row in (participants_row, sites_active_row):
+        for key, value in other_row['metrics'].items():
+          self.assertEqual(combined_row['metrics'][key], value)
+
+
 class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
 
   def test_consented_counts(self):
