@@ -1,4 +1,3 @@
-import copy
 import datetime
 
 import clock
@@ -6,15 +5,15 @@ from api.mayolink_api import MayoLinkApi
 from api_util import format_json_code, get_code_id, format_json_enum, parse_date
 from app_util import ObjectView
 from dao.base_dao import UpdatableDao
-from dao.biobank_order_dao import BiobankOrderDao, _FhirBiobankOrderedSample, _ToFhirDate
+from dao.biobank_order_dao import BiobankOrderDao
 from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from fhir_utils import SimpleFhirR4Reader
 from model.biobank_dv_order import BiobankDVOrder
 from model.biobank_order import BiobankOrderedSample, BiobankOrderIdentifier, BiobankOrder
 from participant_enums import BiobankOrderStatus
-from werkzeug.exceptions import BadRequest
 from sqlalchemy.orm import load_only
+from werkzeug.exceptions import BadRequest
 
 
 class DvOrderDao(UpdatableDao):
@@ -30,7 +29,6 @@ class DvOrderDao(UpdatableDao):
     return self.to_client_json(response, for_update=True)
 
   def _filter_order_fields(self, resource, pid):
-    # @TODO: confirm that a summary is actually required for this pilot
     summary = ParticipantSummaryDao().get(pid)
     if not summary:
       raise BadRequest('No summary for particpant id: {}'.format(pid))
@@ -99,18 +97,18 @@ class DvOrderDao(UpdatableDao):
     if resource_json['resourceType'] == 'SupplyRequest':
       fhir_resource = SimpleFhirR4Reader(resource_json)
       order = BiobankDVOrder(participantId=participant_id)
-      # @todo: don't assume indexes
       order.participantId = participant_id
       order.modified = datetime.datetime.now()
-      order.order_id = fhir_resource.identifier.get(system='orderId').value
-      order.order_date = fhir_resource.authoredOn
+      order.order_id = fhir_resource.identifier.get(
+                       system='http://joinallofus.org/fhir/orderId').value
+      order.order_date = parse_date(fhir_resource.authoredOn)
       order.supplier = fhir_resource.contained.get(resourceType='Organization').id
       order.supplierStatus = fhir_resource.status  # @TODO: confirm right status
 
       fhir_device = fhir_resource.contained.get(resourceType='Device')
       order.itemName = fhir_device.deviceName.get(type='manufacturer-name').name
-      order.itemSKUCode = fhir_device.identifier.get(system='SKU').value
-      order.itemSNOMEDCode = fhir_device.identifier.get(system='SNOMED').value
+      order.itemSKUCode = fhir_device.identifier.get(
+                          system='http://joinallofus.org/fhir/SKU').value
       order.itemQuantity = fhir_resource.quantity.value
 
       fhir_patient = fhir_resource.contained.get(resourceType='Patient')
@@ -122,7 +120,7 @@ class DvOrderDao(UpdatableDao):
       order.zipCode = fhir_address.postalCode
 
       order.orderType = fhir_resource.extension.get(
-        url="http://vibrenthealth.com/fhir/order-type"
+        url="http://joinallofus.org/fhir/order-type"
       ).valueString
       if id_ is None:
         order.version = 1
@@ -133,11 +131,7 @@ class DvOrderDao(UpdatableDao):
         order.created = self._get_created_date(participant_id, id_)
         order.version = expected_version
         bio_info = self.get_biobank_info(order)
-        print '**************************************************'
-        print bio_info.barcode
-        print '**************************************************'
         order.barcode = bio_info.barcode
-        # @TODO: foreign key to biobank order.biobank order id. implement in DA-953
         order.biobankOrderId = bio_info.biobankOrderId
         order.biobankStatus = bio_info.biobankStatus
         order.biobankReceived = bio_info.biobankReceived
@@ -147,17 +141,15 @@ class DvOrderDao(UpdatableDao):
     obj = BiobankOrder()
     obj.participantId = long(pid)
     obj.created = clock.CLOCK.now()
-    # obj.created = datetime.datetime.now()  # @todo: confirm not ptsc created time
+    obj.created = datetime.datetime.now()
     obj.orderStatus = BiobankOrderStatus.UNSET
     obj.biobankOrderId = resource['biobankOrderId']
-    # obj.dvOrders = modeldvorder pass in dvorder model
-    # obj.lastModified = clock.CLOCK.now()
+    test = self.get(resource['id'])
+    obj.dvOrders = [test]
 
     bod = BiobankOrderDao()
-    model = copy.deepcopy(obj)
     obj.samples = [BiobankOrderedSample(
       test='1SAL2', processingRequired=False, description=u'salivary pilot kit')]
-    # bod._add_samples_to_resource(obj, model)
     self._add_identifiers_and_main_id(obj, ObjectView(resource))
     inserted_obj = bod.insert(obj)
 
@@ -204,15 +196,8 @@ class DvOrderDao(UpdatableDao):
 
   def get_biobank_info(self, order):
     with self.session() as session:
-      query = session.query(BiobankDVOrder).options(load_only("barcode", "biobankOrderId", "biobankStatus", "biobankReceived")).filter_by(participantId=order.participantId)\
-                                                   .filter_by(order_id=order.order_id)
+      query = session.query(BiobankDVOrder).options(
+        load_only("barcode", "biobankOrderId", "biobankStatus", "biobankReceived"))\
+                                       .filter_by(participantId=order.participantId)\
+                                                 .filter_by(order_id=order.order_id)
       return query.first()
-
-
-#session.query(User).options(load_only("name", "fullname"))
-
-
-
-
-
-
