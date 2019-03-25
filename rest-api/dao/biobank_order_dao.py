@@ -221,9 +221,10 @@ class BiobankOrderDao(UpdatableDao):
       participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
 
     participant_summary.lastModified = clock.CLOCK.now()
-    with self.session() as session:
-      is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(session,
-                                                participant_summary.participantId)
+    if not hasattr(obj, 'barcode'): #barcode means a DV order, they have no distinct visits
+      with self.session() as session:
+        is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(session,
+                                                  participant_summary.participantId)
 
     if obj.orderStatus != BiobankOrderStatus.AMENDED and is_distinct_visit:
       participant_summary.numberDistinctVisits += 1
