@@ -11,7 +11,7 @@ import shlex
 import subprocess
 
 from system_utils import run_external_program, which
-from gcp_config import GCP_INSTANCES, GCP_SERVICE_KEY_STORE
+from gcp_config import GCP_INSTANCES, GCP_REPLICA_INSTANCES, GCP_SERVICE_KEY_STORE
 
 _logger = logging.getLogger(__name__)
 
@@ -46,37 +46,33 @@ def gcp_set_account(account):
 
 # TODO: Create gcp_set_project function
 
-def gcp_activate_proxy(enable_sandbox=False, enable_test=False):
+def gcp_format_sql_instance(project, port=3320, replica=False):
   """
-  Launch GCP sql proxy
-  :param enable_sandbox: add proxy instance for sandbox
-  :param enable_test: add proxy instance for test
-  :return: Popen object
+  Use the project and port to craft a cloud_sql_proxy instance string
+  :param project: project name
+  :param port: local tcp port
+  :param replica: use replica instance
+  :return: instance string
   """
+  name = GCP_INSTANCES[project] if not replica else GCP_REPLICA_INSTANCES[project]
+  instance = '{0}=tcp:{1}'.format(name, port)
 
+  return instance
+
+def gcp_activate_sql_proxy(instances):
+  """
+  Call cloud_sql_proxy to make a connection to the given instance.
+  :param instances: full instance information, format "name:location:database=tcp:PORT, ...".
+  :return: popen object
+  """
   prog = which('cloud_sql_proxy')
 
-  # Set mysql proxy instances
-  instances = ''
-
-  instances += '{0}=tcp:9900,'.format(GCP_INSTANCES['all-of-us-rdr-prod'])
-  instances += '{0}=tcp:9910,'.format(GCP_INSTANCES['all-of-us-rdr-stable'])
-  instances += '{0}=tcp:9920,'.format(GCP_INSTANCES['all-of-us-rdr-staging'])
-
-  if enable_sandbox is True:
-    instances += '{0}=tcp:9930,'.format(GCP_INSTANCES['all-of-us-rdr-sandbox'])
-
-  if enable_test is True:
-    instances += '{0}=tcp:9940,'.format(GCP_INSTANCES['pmi-drc-api-test'])
-    instances += '{0}=tcp:9945,'.format(GCP_INSTANCES['pmi-drc-api-test-repl'])
-
-  # remove trailing comma
-  instances = instances[:-1]
+  if not prog:
+    raise IOError('cloud_sql_proxy executable not found')
 
   p = subprocess.Popen(shlex.split('{0} -instances={1}'.format(prog, instances)))
 
   return p
-
 
 def gcp_create_iam_service_creds(account, creds_account=None):
   """
