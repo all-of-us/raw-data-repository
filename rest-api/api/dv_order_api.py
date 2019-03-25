@@ -18,8 +18,9 @@ class DvOrderApi(UpdatableApi):
     resource = request.get_json(force=True)
     fhir_resource = SimpleFhirR4Reader(resource)
     if resource['resourceType'] == 'SupplyRequest':
-      p_id = from_client_participant_id(fhir_resource.contained.get(resourceType='Patient').identifier.get(
-        system='http://joinallofus.org/fhir/participantId').value)
+      p_id = from_client_participant_id(fhir_resource.contained.get(resourceType='Patient').
+                                        identifier.get(
+                                  system='http://joinallofus.org/fhir/participantId').value)
     if resource['resourceType'] == 'SupplyDelivery':
       # @todo: do something with delivery
       p_id = from_client_participant_id(resource['patient']['identifier'][0]['value'])

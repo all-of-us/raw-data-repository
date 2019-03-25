@@ -151,7 +151,7 @@ class DvOrderDao(UpdatableDao):
     obj.samples = [BiobankOrderedSample(
       test='1SAL2', processingRequired=False, description=u'salivary pilot kit')]
     self._add_identifiers_and_main_id(obj, ObjectView(resource))
-    inserted_obj = bod.insert(obj)
+    bod.insert(obj)
 
   def _add_identifiers_and_main_id(self, order, resource):
     order.identifiers = []
