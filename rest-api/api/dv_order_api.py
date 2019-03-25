@@ -2,7 +2,9 @@ from api.base_api import UpdatableApi
 from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_BARCODE_URL
 from app_util import auth_required, ObjDict
 from dao.dv_order_dao import DvOrderDao
+from fhir_utils import SimpleFhirR4Reader
 from flask import request
+from model.utils import from_client_participant_id
 from werkzeug.exceptions import BadRequest
 
 
@@ -14,12 +16,18 @@ class DvOrderApi(UpdatableApi):
   @auth_required(PTC)
   def post(self):
     resource = request.get_json(force=True)
-    p_id = resource['contained'][2]['identifier'][0]['value']
-    if not p_id:
-      raise BadRequest('Request must include participant id and must be of type integer')
+    fhir_resource = SimpleFhirR4Reader(resource)
+    if resource['resourceType'] == 'SupplyRequest':
+      p_id = from_client_participant_id(fhir_resource.contained.get(resourceType='Patient').
+                                        identifier.get(
+                                  system='http://joinallofus.org/fhir/participantId').value)
+    if resource['resourceType'] == 'SupplyDelivery':
+      # @todo: do something with delivery
+      p_id = from_client_participant_id(resource['patient']['identifier'][0]['value'])
     response = super(DvOrderApi, self).post(participant_id=p_id)
-    order_id = resource['identifier'][0]['code']
+    order_id = resource['identifier'][0]['value']
     response[2]['Location'] = '/rdr/v1/SupplyRequest/{}'.format(order_id)
+    # @todo: return a 201
     return response
 
   @auth_required(PTC_AND_HEALTHPRO)
@@ -36,24 +44,26 @@ class DvOrderApi(UpdatableApi):
   def put(self, bo_id):  # pylint: disable=unused-argument
     resource = request.get_json(force=True)
     barcode_url = resource.get('extension')[0].get('url', "No barcode url")
-    p_id = resource['contained'][2]['identifier'][0]['value']
+    # @todo: add a cancel request
+    fhir_resource = SimpleFhirR4Reader(resource)
+    p_id = from_client_participant_id(fhir_resource.contained.get(
+      resourceType='Patient').identifier.get(system='http://joinallofus.org/fhir/participantId'))
     merged_resource = None
     if not p_id:
       raise BadRequest('Request must include participant id and must be of type int')
     if barcode_url == VIBRENT_BARCODE_URL:
-      # send order to mayolink api
-      # If these fail we don't need to return that in response, RDR will capture and try to resend.
-      _id = self.dao.get_id(ObjDict({'participant_id': p_id, 'order_id': bo_id}))
+      _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
       ex_obj = self.dao.get(_id)
       if not ex_obj.barcode:
         # Send to mayolink and create internal biobank order
-        response = self.dao.send_order(resource)
+        response = self.dao.send_order(resource, p_id)
         merged_resource = merge_dicts(response, resource)
+        merged_resource['id'] = _id
         self.dao.insert_biobank_order(p_id, merged_resource)
 
     if merged_resource:
       response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True,
-                                               resource=merged_resource)
+                                             resource=merged_resource)
     else:
       response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
 

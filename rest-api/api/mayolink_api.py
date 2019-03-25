@@ -1,15 +1,13 @@
-import json
 import os
 import xml.etree.cElementTree as etree
 
-import cloudstorage
 import config
 import httplib2
 import xmltodict
 from api.base_api import UpdatableApi
 from api_util import RDR
 from app_util import auth_required
-from werkzeug.exceptions import ImATeapot
+from werkzeug.exceptions import ServiceUnavailable
 
 
 class MayoLinkApi(UpdatableApi):
@@ -22,11 +20,15 @@ class MayoLinkApi(UpdatableApi):
     self.endpoint = config.getSetting(config.MAYOLINK_ENDPOINT)
     # For now I can not figure out how to use cloudstorage on dev_appserver, comment out the
     # below and manually add self.username, etc.
-    with cloudstorage.open(self.path, 'r') as file_path:
-      self.creds = json.load(file_path)
-      self.username = self.creds.get('username')
-      self.pw = self.creds.get('password')
-      self.account = self.creds.get('account')
+#    with cloudstorage.open(self.path, 'r') as file_path:
+#      self.creds = json.load(file_path)
+#      self.username = self.creds.get('username')
+#      self.pw = self.creds.get('password')
+#      self.account = self.creds.get('account')
+    self.username = 'biobank_rdr_test'
+    self.pw = 'DhXaoMcpVIMo5MlI'
+    self.account = 7035500
+
 
   @auth_required(RDR)
   def post(self, order):
@@ -41,8 +43,9 @@ class MayoLinkApi(UpdatableApi):
                                      method="POST",
                                      headers={'Content-type': 'application/xml'},
                                      body=xml)
-    if response['status'] != 201:
-      raise ImATeapot('Mayolink service unavailable, please re-try later')
+
+    if response['status'] != '201':
+      raise ServiceUnavailable('Mayolink service unavailable, please re-try later')
 
     result = self._xml_to_dict(content)
     return result
