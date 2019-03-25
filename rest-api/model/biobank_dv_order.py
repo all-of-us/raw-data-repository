@@ -8,6 +8,7 @@ class BiobankDVOrder(Base):
   """
   Direct Volunteer kit order shipment record
   """
+  _VIBRENT_ID_SYSTEM = 'http://vibrenthealth.com'
   __tablename__ = 'biobank_dv_order'
 
   # Primary Key
