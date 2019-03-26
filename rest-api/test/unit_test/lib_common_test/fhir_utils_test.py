@@ -176,7 +176,7 @@ class SimpleFhirR4ReaderBasicTestCase(unittest.TestCase):
     with self.assertRaises(IndexError):
       fhir['b']
 
-  def test_looks_up_references(self):
+  def test_looks_up_top_level_references(self):
     fhir = SimpleFhirR4Reader({
       'contained': [
         {'id': 'some-foo', 'value': 123}
@@ -186,6 +186,19 @@ class SimpleFhirR4ReaderBasicTestCase(unittest.TestCase):
       }
     })
     self.assertEqual(fhir.foo.value, 123)
+
+  def test_looks_up_deep_references(self):
+    fhir = SimpleFhirR4Reader({
+      'contained': [
+        {'id': 'some-foo', 'value': 123}
+      ],
+      'bar': {
+        'foo': {
+          'reference': '#some-foo'
+        }
+      }
+    })
+    self.assertEqual(fhir.bar.foo.value, 123)
 
 
 class SimpleFhirR4ReaderSupplyRequestTestCase(unittest.TestCase):

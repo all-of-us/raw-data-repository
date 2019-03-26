@@ -9,7 +9,7 @@ class SimpleFhirR4Reader(object):
   """
 
   def __init__(self, fhir_data_structure, root=None):
-    self._root = self
+    self._root = root or self
     self._obj = fhir_data_structure
 
   def get(self, *lookup_path, **dict_lookup_keys):
