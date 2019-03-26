@@ -176,6 +176,17 @@ class SimpleFhirR4ReaderBasicTestCase(unittest.TestCase):
     with self.assertRaises(IndexError):
       fhir['b']
 
+  def test_looks_up_references(self):
+    fhir = SimpleFhirR4Reader({
+      'contained': [
+        {'id': 'some-foo', 'value': 123}
+      ],
+      'foo': {
+        'reference': '#some-foo'
+      }
+    })
+    self.assertEqual(fhir.foo.value, 123)
+
 
 class SimpleFhirR4ReaderSupplyRequestTestCase(unittest.TestCase):
 
@@ -187,3 +198,7 @@ class SimpleFhirR4ReaderSupplyRequestTestCase(unittest.TestCase):
       self.fhir.contained.get(resourceType='Patient').identifier.get(system='participantId').value,
       'P748018940'
     )
+
+  def test_lookup_reference(self):
+    self.assertEqual(self.fhir.deliverTo.id, 'patient-1')
+    self.assertEqual(self.fhir.itemReference.id, 'device-1')
