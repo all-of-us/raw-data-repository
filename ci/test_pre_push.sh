@@ -34,3 +34,5 @@ echo "`date -u` Linting test files..."
 FILES_TEST=`git ls-files | grep '.py$' | grep -v -e 'alembic/versions/'`
 pylint $PYLINT_OPTS $ENABLE_FOR_TESTS $FILES_TEST
 echo "`date -u` No lint errors!"
+
+ci/check_alembic_integrity.py
