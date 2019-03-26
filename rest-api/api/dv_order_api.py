@@ -5,7 +5,9 @@ from dao.dv_order_dao import DvOrderDao
 from fhir_utils import SimpleFhirR4Reader
 from flask import request
 from model.utils import from_client_participant_id
-from werkzeug.exceptions import BadRequest
+from participant_enums import OrderShipmentTrackingStatus
+from werkzeug.exceptions import BadRequest, MethodNotAllowed
+import dateutil
 
 
 class DvOrderApi(UpdatableApi):
@@ -13,19 +15,33 @@ class DvOrderApi(UpdatableApi):
   def __init__(self):
     super(DvOrderApi, self).__init__(DvOrderDao())
 
+  @staticmethod
+  def _lookup_resource_type_method(resource_type_method_map, raw_resource):
+    try:
+      resource_type = raw_resource['resourceType']
+    except KeyError:
+      raise BadRequest("payload is missing resourceType")
+    try:
+      return resource_type_method_map[resource_type]
+    except KeyError:
+      raise MethodNotAllowed("Method not allowed for resource type {}".format(resource_type))
+
   @auth_required(PTC)
   def post(self):
     resource = request.get_json(force=True)
+    method = self._lookup_resource_type_method(
+      {'SupplyRequest': self._post_supply_request},
+      resource
+    )
+    return method(resource)
+
+  def _post_supply_request(self, resource):
     fhir_resource = SimpleFhirR4Reader(resource)
-    if resource['resourceType'] == 'SupplyRequest':
-      p_id = from_client_participant_id(fhir_resource.contained.get(resourceType='Patient').
-                                        identifier.get(
-                                  system='http://joinallofus.org/fhir/participantId').value)
-    if resource['resourceType'] == 'SupplyDelivery':
-      # @todo: do something with delivery
-      p_id = from_client_participant_id(resource['patient']['identifier'][0]['value'])
+    patient = fhir_resource.contained.get(resourceType='Patient')
+    p_id = from_client_participant_id(patient.identifier.get(
+      system='http://joinallofus.org/fhir/participantId').value)
     response = super(DvOrderApi, self).post(participant_id=p_id)
-    order_id = resource['identifier'][0]['value']
+    order_id = fhir_resource.identifier.get(system='orderId').value
     response[2]['Location'] = '/rdr/v1/SupplyRequest/{}'.format(order_id)
     # @todo: return a 201
     return response
@@ -43,6 +59,16 @@ class DvOrderApi(UpdatableApi):
   @auth_required(PTC)
   def put(self, bo_id):  # pylint: disable=unused-argument
     resource = request.get_json(force=True)
+    method = self._lookup_resource_type_method(
+      {
+        'SupplyRequest': self._put_supply_request,
+        'SupplyDelivery': self._put_supply_delivery
+      },
+      resource
+    )
+    return method(resource, bo_id)
+
+  def _put_supply_request(self, resource, bo_id):
     barcode_url = resource.get('extension')[0].get('url', "No barcode url")
     # @todo: add a cancel request
     fhir_resource = SimpleFhirR4Reader(resource)
@@ -68,6 +94,34 @@ class DvOrderApi(UpdatableApi):
       response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
 
     return response
+
+  def _put_supply_delivery(self, resource, bo_id):
+    fhir = SimpleFhirR4Reader(resource)
+    participant_id = fhir.patient.identifier.value.lstrip('P')
+    update_time = dateutil.parser.parse(fhir.occurrenceDateTime)
+    carrier_name = fhir.extension.get(url='http://joinallofus.org/fhir/carrier').valueString
+    eta = dateutil.parser.parse(fhir.extension.get(
+      url="http://joinallofus.org/fhir/expected-delivery-date").valueDateTime)
+    tracking_status = fhir.extension.get(
+      url='http://joinallofus.org/fhir/tracking-status').valueString
+    tracking_status_enum = getattr(
+      OrderShipmentTrackingStatus,
+      tracking_status.upper(),
+      OrderShipmentTrackingStatus.UNSET
+    )
+
+    biobank_dv_order_id = self.dao.get_id(ObjDict({
+      'participantId': participant_id,
+      'order_id': int(bo_id)
+    }))
+    order = self.dao.get(biobank_dv_order_id)
+    order.shipmentLastUpdate = update_time.date()
+    order.shipmentCarrier = carrier_name
+    order.shipmentEstArrival = eta.date()
+    order.shipmentStatus = tracking_status_enum
+
+    self._do_update(order)
+    return self._make_response(order)
 
 
 def merge_dicts(dict_a, dict_b):
