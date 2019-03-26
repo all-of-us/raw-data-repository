@@ -8,7 +8,8 @@ class SimpleFhirR4Reader(object):
   When performing list lookups, return the first item in the list that matches the given parameters.
   """
 
-  def __init__(self, fhir_data_structure):
+  def __init__(self, fhir_data_structure, root=None):
+    self._root = root or self
     self._obj = fhir_data_structure
 
   def get(self, *lookup_path, **dict_lookup_keys):
@@ -16,9 +17,11 @@ class SimpleFhirR4Reader(object):
     if dict_lookup_keys:
       lookup_path = lookup_path + (dict_lookup_keys,)
     for key in lookup_path:
-      obj = _lookup_obj_key(obj, key)
+      obj = self._lookup_obj_key(obj, key)
+      if self.is_reference(obj):
+        obj = self._resolve_reference(obj)
     if isinstance(obj, (list, dict)):
-      return SimpleFhirR4Reader(obj)
+      return SimpleFhirR4Reader(obj, root=self)
     return obj
 
   def __getattr__(self, item):
@@ -39,22 +42,38 @@ class SimpleFhirR4Reader(object):
         raise IndexError("{!r} can't be found in {!r}".format(item, self._obj))
       raise KeyError("{!r} can't be found in {!r}".format(item, self._obj))
 
+  @staticmethod
+  def is_reference(obj):
+    return isinstance(obj, dict) and obj.keys() == ['reference']
 
-def _lookup_obj_key(obj, key):
-  if isinstance(obj, dict):
-    if callable(key):
-      return filter(key, obj.items())
-    return obj[key]
-  if isinstance(obj, list):
-    if isinstance(key, dict):  # dict key based lookup
-      for x in obj:
-        if _dict_has_values(x, **key):
-          return x
-    if isinstance(key, int):
+  def _resolve_reference(self, obj):
+    reference_parts = obj['reference'].split('/')
+    reference_type = None
+    try:
+      reference_type, reference_id = reference_parts
+    except ValueError:
+      reference_id = reference_parts[0]
+    reference_id = reference_id.lstrip('#')
+    if reference_type:
+      return self._root.contained.get(id=reference_id, resourceType=reference_type)
+    return self._root.contained.get(id=reference_id)
+
+  @staticmethod
+  def _lookup_obj_key(obj, key):
+    if isinstance(obj, dict):
+      if callable(key):
+        return filter(key, obj.items())
       return obj[key]
-    if callable(key):
-      return filter(key, obj)
-  raise ValueError("could not lookup '{!r}' from {!r}".format(key, obj))
+    if isinstance(obj, list):
+      if isinstance(key, dict):  # dict key based lookup
+        for x in obj:
+          if _dict_has_values(x, **key):
+            return x
+      if isinstance(key, int):
+        return obj[key]
+      if callable(key):
+        return filter(key, obj)
+    raise ValueError("could not lookup '{!r}' from {!r}".format(key, obj))
 
 
 def _dict_has_values(obj, **queries):
