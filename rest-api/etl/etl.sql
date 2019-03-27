@@ -505,6 +505,9 @@ DROP VIEW IF EXISTS cdm.src_clean;
 -- and Q&A from quiestionnaire's.
 -- -------------------------------------------------------------------
 
+-- Do not set locks, allow dirty reads.
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
 CREATE VIEW cdm.src_clean AS
 SELECT
     pa.participant_id               AS participant_id,
@@ -575,6 +578,8 @@ WHERE
         OR qra.value_string IS NOT NULL
 );
 
+-- Reset ISOLATION level to previous setting
+COMMIT;
 
 -- -------------------------------------------------------------------
 -- source_file: src/src_mapped.sql
