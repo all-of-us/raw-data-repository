@@ -38,8 +38,9 @@ class DvOrderApi(UpdatableApi):
   def _post_supply_request(self, resource):
     fhir_resource = SimpleFhirR4Reader(resource)
     patient = fhir_resource.contained.get(resourceType='Patient')
-    p_id = from_client_participant_id(patient.identifier.get(
+    pid = from_client_participant_id(patient.identifier.get(
       system='http://joinallofus.org/fhir/participantId').value)
+    p_id = from_client_participant_id(pid.value)
     response = super(DvOrderApi, self).post(participant_id=p_id)
     order_id = fhir_resource.identifier.get(system='orderId').value
     response[2]['Location'] = '/rdr/v1/SupplyRequest/{}'.format(order_id)
@@ -72,8 +73,9 @@ class DvOrderApi(UpdatableApi):
     barcode_url = resource.get('extension')[0].get('url', "No barcode url")
     # @todo: add a cancel request
     fhir_resource = SimpleFhirR4Reader(resource)
-    p_id = from_client_participant_id(fhir_resource.contained.get(
-      resourceType='Patient').identifier.get(system='http://joinallofus.org/fhir/participantId'))
+    pid = fhir_resource.contained.get(
+      resourceType='Patient').identifier.get(system='http://joinallofus.org/fhir/participantId')
+    p_id = from_client_participant_id(pid.value)
     merged_resource = None
     if not p_id:
       raise BadRequest('Request must include participant id and must be of type int')
