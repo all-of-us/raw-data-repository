@@ -221,7 +221,7 @@ def _get_sample_status_time_sql_and_params():
         CASE WHEN
             LEAST(
                 {status_time_sql}
-                ) = '3001-01-01' THEN NULL
+                ) = '3000-01-01' THEN NULL
             ELSE LEAST(
                 {status_time_sql}
                 )
