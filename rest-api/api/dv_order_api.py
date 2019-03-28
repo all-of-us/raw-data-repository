@@ -1,3 +1,4 @@
+import dateutil
 from api.base_api import UpdatableApi
 from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_BARCODE_URL
 from app_util import auth_required, ObjDict
@@ -7,7 +8,6 @@ from flask import request
 from model.utils import from_client_participant_id
 from participant_enums import OrderShipmentTrackingStatus
 from werkzeug.exceptions import BadRequest, MethodNotAllowed
-import dateutil
 
 
 class DvOrderApi(UpdatableApi):
@@ -30,22 +30,34 @@ class DvOrderApi(UpdatableApi):
   def post(self):
     resource = request.get_json(force=True)
     method = self._lookup_resource_type_method(
-      {'SupplyRequest': self._post_supply_request},
+      {
+       'SupplyRequest': self._post_supply_request,
+       'SupplyDelivery': self._post_supply_delivery
+      },
       resource
     )
     return method(resource)
 
+  def _post_supply_delivery(self, resource):
+    fhir_resource = SimpleFhirR4Reader(resource)
+    patient = fhir_resource.patient
+    pid = patient.identifier
+    p_id = from_client_participant_id(pid.value)
+    bo_id = fhir_resource.basedOn[0].identifier.value
+    response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
+    response[2]['Location'] = '/rdr/v1/SupplyDelivery/{}'.format(bo_id)
+    return response
+
   def _post_supply_request(self, resource):
     fhir_resource = SimpleFhirR4Reader(resource)
     patient = fhir_resource.contained.get(resourceType='Patient')
-    pid = from_client_participant_id(patient.identifier.get(
-      system='http://joinallofus.org/fhir/participantId').value)
-    p_id = from_client_participant_id(pid.value)
+    pid = patient.identifier.get(
+      system='http://joinallofus.org/fhir/participantId').value
+    p_id = from_client_participant_id(pid)
     response = super(DvOrderApi, self).post(participant_id=p_id)
-    order_id = fhir_resource.identifier.get(system='orderId').value
+    order_id = fhir_resource.identifier.get(system='http://joinallofus.org/fhir/orderId').value
     response[2]['Location'] = '/rdr/v1/SupplyRequest/{}'.format(order_id)
-    # @todo: return a 201
-    return response
+    return response, 201
 
   @auth_required(PTC_AND_HEALTHPRO)
   def get(self, p_id, order_id):  # pylint: disable=unused-argument
@@ -70,16 +82,15 @@ class DvOrderApi(UpdatableApi):
     return method(resource, bo_id)
 
   def _put_supply_request(self, resource, bo_id):
-    barcode_url = resource.get('extension')[0].get('url', "No barcode url")
-    # @todo: add a cancel request
     fhir_resource = SimpleFhirR4Reader(resource)
+    barcode_url = fhir_resource.extension.get(url='http://joinallofus.org/fhir/barcode').url
     pid = fhir_resource.contained.get(
-      resourceType='Patient').identifier.get(system='http://joinallofus.org/fhir/participantId')
+      resourceType='Patient').identifier.get(system='participantId')
     p_id = from_client_participant_id(pid.value)
     merged_resource = None
     if not p_id:
       raise BadRequest('Request must include participant id and must be of type int')
-    if barcode_url == VIBRENT_BARCODE_URL:
+    if str(barcode_url) == VIBRENT_BARCODE_URL:
       _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
       ex_obj = self.dao.get(_id)
       if not ex_obj.barcode:
@@ -144,3 +155,10 @@ def merge_dicts(dict_a, dict_b):
         yield (key, b[key])
 
   return dict(_merge_dicts_(dict_a, dict_b))
+
+
+def _make_response(self, obj):
+  result = super(DvOrderApi, self)._make_response(obj)
+  etag = super(DvOrderApi, self)._make_etag(obj.version)
+  return result, 201, {'ETag': etag}
+

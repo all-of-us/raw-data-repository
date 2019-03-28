@@ -17,9 +17,9 @@ DEV_MAIL = "example@example.com"
 PTC_AND_HEALTHPRO = [PTC, HEALTHPRO]
 PTC_HEALTHPRO_AWARDEE = [PTC, HEALTHPRO, AWARDEE]
 ALL_ROLES = [PTC, HEALTHPRO, STOREFRONT, EXPORTER]
-VIBRENT_BARCODE_URL = 'http://vibrenthealth.com/fhir/barcode'
-VIBRENT_ORDER_URL = 'http://vibrenthealth.com/fhir/order-type'
-VIBRENT_FULLFILMENT_URL = 'http://vibrenthealth.com/fhir/fullfilment-status'
+VIBRENT_BARCODE_URL = 'http://joinallofus.org/fhir/barcode'
+VIBRENT_ORDER_URL = 'http://joinallofus.org/fhir/order-type'
+VIBRENT_FULLFILMENT_URL = 'http://joinallofus.org/fhir/fullfilment-status'
 
 def parse_date(date_str, date_format=None, date_only=False):
   """Parses JSON dates.

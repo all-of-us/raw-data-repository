@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 import clock
 from api.mayolink_api import MayoLinkApi
@@ -11,7 +12,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from fhir_utils import SimpleFhirR4Reader
 from model.biobank_dv_order import BiobankDVOrder
 from model.biobank_order import BiobankOrderedSample, BiobankOrderIdentifier, BiobankOrder
-from participant_enums import BiobankOrderStatus
+from participant_enums import BiobankOrderStatus, OrderShipmentTrackingStatus
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import BadRequest
 
@@ -29,6 +30,7 @@ class DvOrderDao(UpdatableDao):
     return self.to_client_json(response, for_update=True)
 
   def _filter_order_fields(self, resource, pid):
+    fhir_resource = SimpleFhirR4Reader(resource)
     summary = ParticipantSummaryDao().get(pid)
     if not summary:
       raise BadRequest('No summary for particpant id: {}'.format(pid))
@@ -38,9 +40,9 @@ class DvOrderDao(UpdatableDao):
     # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
     order = {
       'order': {
-        'collected': resource['authoredOn'],
+        'collected': fhir_resource.authoredOn,
         'account': '',
-        'number': resource['extension'][0]['valueString'],
+        'number': fhir_resource.extension(url='http://joinallofus.org/fhir/barcode').valueString,
         'patient': {'medical_record_number': str(summary.biobankId),
                     'first_name': '*',
                     'last_name': str(summary.biobankId),
@@ -61,7 +63,8 @@ class DvOrderDao(UpdatableDao):
                       'phone': None,
                       'npi': None
                       },
-        'report_notes': resource['extension'][1]['valueString'],
+        'report_notes': fhir_resource.extension(
+          url='http://joinallofus.org/fhir/order-type').valueString,
         'tests': {'test': {'code': '1SAL2',
                            'name': 'PMI Saliva, FDA Kit',
                            'comments': None
@@ -94,16 +97,60 @@ class DvOrderDao(UpdatableDao):
   def from_client_json(self, resource_json, id_=None, expected_version=None,
                        participant_id=None, client_id=None): #pylint: disable=unused-argument
     """Initial loading of the DV order table does not include all attributes."""
+    fhir_resource = SimpleFhirR4Reader(resource_json)
+    order = BiobankDVOrder(participantId=participant_id)
+    order.participantId = participant_id
+    order.modified = datetime.datetime.now()
+    if resource_json['resourceType'] == 'SupplyDelivery':
+      order.order_id = int(fhir_resource.basedOn[0].identifier.value)
+      existing_obj = self.get(self.get_id(order))
+      existing_obj.shipmentStatus = fhir_resource.extension.get(
+        url='http://joinallofus.org/fhir/tracking-status').valueString
+      existing_obj.shipmentCarrier = fhir_resource.extension.get(
+        url='http://joinallofus.org/fhir/carrier').valueString
+      existing_obj.shipmentEstArrival = parse_date(fhir_resource.extension.get(
+        url='http://joinallofus.org/fhir/expected-delivery-date').valueDateTime)
+      existing_obj.trackingId = fhir_resource.identifier.get(
+        system='http://joinallofus.org/fhir/trackingId').value
+      # USPS status
+      existing_obj.shipmentStatus = self._enumerate_order_shipment_tracking_status(
+                                    fhir_resource.status)
+      # USPS status time
+      existing_obj.shipmentLastUpdate = parse_date(fhir_resource.occurrenceDateTime)
+      order_address = fhir_resource.contained.get(resourceType='Location').get('address')
+      order_address.stateId = get_code_id(order_address, self.code_dao, 'state', 'State_')
+      existing_obj.address = {'city': existing_obj.city,
+                              'state': existing_obj.stateId, 'postalCode': existing_obj.zipCode,
+                              'line': [existing_obj.streetAddress1]}
+
+      if existing_obj.streetAddress2 is not None and existing_obj.streetAddress2 != '':
+        existing_obj.address['line'].append(existing_obj.streetAddress2)
+
+      address = {'city': order_address.city, 'state': order_address.stateId,
+                 'postalCode': order_address.postalCode, 'line': order_address.line}
+
+      if existing_obj.address != address:
+        logging.warn('Address change detected: Using new address ({}) for participant ({})'.format(
+                      order_address, order.participantId))
+
+        existing_obj.city = address['city']
+        existing_obj.stateId = address['state']
+        existing_obj.streetAddress1 = address['line'][0]
+        try:
+          existing_obj.streetAddress2 = address['line'][1]
+        except IndexError:
+          pass
+
+        existing_obj.zipCode = address['postalCode']
+
+      return existing_obj
+
     if resource_json['resourceType'] == 'SupplyRequest':
-      fhir_resource = SimpleFhirR4Reader(resource_json)
-      order = BiobankDVOrder(participantId=participant_id)
-      order.participantId = participant_id
-      order.modified = datetime.datetime.now()
       order.order_id = fhir_resource.identifier.get(
                        system='http://joinallofus.org/fhir/orderId').value
       order.order_date = parse_date(fhir_resource.authoredOn)
       order.supplier = fhir_resource.contained.get(resourceType='Organization').id
-      order.supplierStatus = fhir_resource.status  # @TODO: confirm right status
+      order.supplierStatus = fhir_resource.status
 
       fhir_device = fhir_resource.contained.get(resourceType='Device')
       order.itemName = fhir_device.deviceName.get(type='manufacturer-name').name
@@ -130,11 +177,13 @@ class DvOrderDao(UpdatableDao):
         order.id = self.get_id(order)[0]
         order.created = self._get_created_date(participant_id, id_)
         order.version = expected_version
-        bio_info = self.get_biobank_info(order)
-        order.barcode = bio_info.barcode
-        order.biobankOrderId = bio_info.biobankOrderId
-        order.biobankStatus = bio_info.biobankStatus
-        order.biobankReceived = bio_info.biobankReceived
+        order.biobankStatus = fhir_resource.status
+        if hasattr(fhir_resource, 'barcode'):
+          order.barcode = fhir_resource.barcode
+          order.biobankTrackingId = fhir_resource.biobankId
+          order.biobankOrderId = fhir_resource.biobankOrderId
+          order.biobankReceived = parse_date(fhir_resource.received)
+
     return order
 
   def insert_biobank_order(self, pid, resource):
@@ -183,8 +232,7 @@ class DvOrderDao(UpdatableDao):
       return query.first()[0]
 
   def _do_update(self, session, obj, existing_obj): #pylint: disable=unused-argument
-    # obj.version += 1
-    session.flush()
+    obj.version += 1
     session.merge(obj)
 
   def get_id(self, obj):
@@ -201,3 +249,9 @@ class DvOrderDao(UpdatableDao):
                                        .filter_by(participantId=order.participantId)\
                                                  .filter_by(order_id=order.order_id)
       return query.first()
+
+  def _enumerate_order_shipment_tracking_status(self, status):
+    # @TODO: Get all possible status from PTSC
+    if status.lower() == 'in progress':
+      return OrderShipmentTrackingStatus.ENROUTE
+

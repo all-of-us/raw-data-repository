@@ -1,7 +1,7 @@
 from model.base import Base
 from model.utils import UTCDateTime6, Enum
 from participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
-from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, Date, UniqueConstraint, Text
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, UniqueConstraint, Text
 
 
 class BiobankDVOrder(Base):
@@ -26,7 +26,7 @@ class BiobankDVOrder(Base):
   # identifier/code (system=OrderId)
   order_id = Column('order_id', Integer)
   # authored: date supplier was requested to send item.
-  order_date = Column('order_date', Date)
+  order_date = Column('order_date', DateTime)
 
   #
   # Supplier info
@@ -66,7 +66,7 @@ class BiobankDVOrder(Base):
   biobankZipCode = Column('biobank_zip_code', String(10))
 
   # occurenceDateTime
-  shipmentLastUpdate = Column('shipment_last_update', Date, nullable=True)
+  shipmentLastUpdate = Column('shipment_last_update', DateTime, nullable=True)
 
   # To participant tracking id. identifier/code (system=trackingId).
   trackingId = Column('tracking_id', String(80), nullable=True)
@@ -84,7 +84,7 @@ class BiobankDVOrder(Base):
   # carrier
   shipmentCarrier = Column('shipment_carrier', String(80), nullable=True)
   # expected-delivery-date
-  shipmentEstArrival = Column('shipment_est_arrival', Date, nullable=True)
+  shipmentEstArrival = Column('shipment_est_arrival', DateTime, nullable=True)
   # tracking-status
   shipmentStatus = Column('shipment_status', Enum(OrderShipmentTrackingStatus),
                           default=OrderShipmentTrackingStatus.UNSET)
