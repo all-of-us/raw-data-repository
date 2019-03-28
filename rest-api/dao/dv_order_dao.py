@@ -135,9 +135,10 @@ class DvOrderDao(UpdatableDao):
 
         existing_obj.city = address['city']
         existing_obj.stateId = address['state']
-        existing_obj.streetAddress1 = address['line'][0]
-        if len(address['line']) > 1:
-          existing_obj.streetAddress2 = address['line'][1]
+        existing_obj.streetAddress1 = address['line'][0][0]
+        if len(address['line'][0]) > 1:
+          if address['line'][0][1] != u'':
+            existing_obj.streetAddress2 = address['line'][0][1]
 
         existing_obj.zipCode = address['postalCode']
 

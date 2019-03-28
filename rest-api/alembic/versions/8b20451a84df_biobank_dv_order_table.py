@@ -77,6 +77,9 @@ def upgrade_rdr():
     )
     op.execute('ALTER TABLE biobank_dv_order CHANGE COLUMN `created` `created` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6);')
     op.execute('ALTER TABLE biobank_dv_order CHANGE COLUMN `modified` `modified` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6);')
+    op.execute('ALTER TABLE biobank_dv_order CHANGE COLUMN `shipment_est_arrival` `shipment_est_arrival` DATETIME(6);')
+    op.execute('ALTER TABLE biobank_dv_order CHANGE COLUMN `shipment_last_update` `shipment_last_update` DATETIME(6);')
+    op.execute('ALTER TABLE biobank_dv_order CHANGE COLUMN `order_date` `order_date` DATETIME(6);')
     # ### end Alembic commands ###
 
     # Create a history table for 'biobank_dv_order'.

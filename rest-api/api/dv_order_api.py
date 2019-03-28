@@ -55,7 +55,7 @@ class DvOrderApi(UpdatableApi):
       system='http://joinallofus.org/fhir/participantId').value
     p_id = from_client_participant_id(pid)
     response = super(DvOrderApi, self).post(participant_id=p_id)
-    order_id = fhir_resource.identifier.get(system='orderId').value
+    order_id = fhir_resource.identifier.get(system='http://joinallofus.org/fhir/orderId').value
     response[2]['Location'] = '/rdr/v1/SupplyRequest/{}'.format(order_id)
     return response
 
@@ -87,7 +87,7 @@ class DvOrderApi(UpdatableApi):
     # @todo: add a cancel request
     fhir_resource = SimpleFhirR4Reader(resource)
     pid = fhir_resource.contained.get(
-      resourceType='Patient').identifier.get(system='http://joinallofus.org/fhir/participantId')
+      resourceType='Patient').identifier.get(system='participantId')
     p_id = from_client_participant_id(pid.value)
     merged_resource = None
     if not p_id:
