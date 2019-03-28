@@ -23,10 +23,10 @@ class MayoLinkApi(UpdatableApi):
     # For now I can not figure out how to use cloudstorage on dev_appserver, comment out the
     # below and manually add self.username, etc.
     with cloudstorage.open(self.path, 'r') as file_path:
-     self.creds = json.load(file_path)
-     self.username = self.creds.get('username')
-     self.pw = self.creds.get('password')
-     self.account = self.creds.get('account')
+      self.creds = json.load(file_path)
+      self.username = self.creds.get('username')
+      self.pw = self.creds.get('password')
+      self.account = self.creds.get('account')
 
   @auth_required(RDR)
   def post(self, order):
