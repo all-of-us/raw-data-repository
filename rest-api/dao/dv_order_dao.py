@@ -106,15 +106,15 @@ class DvOrderDao(UpdatableDao):
         url='http://joinallofus.org/fhir/tracking-status').valueString
       existing_obj.shipmentCarrier = fhir_resource.extension.get(
         url='http://joinallofus.org/fhir/carrier').valueString
-      # existing_obj.shipmentEstArrival = fhir_resource.extension.get(
-      #   url='http://joinallofus.org/fhir/expected-delivery-date').valueDateTime
+      existing_obj.shipmentEstArrival = fhir_resource.extension.get(
+        url='http://joinallofus.org/fhir/expected-delivery-date').valueDateTime
       existing_obj.trackingId = fhir_resource.identifier.get(
         system='http://joinallofus.org/fhir/trackingId').value
       # USPS status
       existing_obj.shipmentStatus = self._enumerate_order_shipment_tracking_status(
                                     fhir_resource.status)
       # USPS status time
-      # existing_obj.shipmentLastUpdate = fhir_resource.occurrenceDateTime
+      existing_obj.shipmentLastUpdate = fhir_resource.occurrenceDateTime
       # @TODO: version
       # existing_obj.version = existing_obj.version + 1
       order_address = fhir_resource.contained.get(resourceType='Location').get('address')
@@ -127,7 +127,7 @@ class DvOrderDao(UpdatableDao):
         existing_obj.address['line'].append(existing_obj.streetAddress2)
 
       address = {'city': order_address.city, 'state': order_address.stateId,
-                 'postalCode': order_address.postalCode, 'line': [order_address.line]}
+                 'postalCode': order_address.postalCode, 'line': order_address.line}
 
       if existing_obj.address != address:
         logging.warn('Address change detected: Using new address ({}) for participant ({})'.format(
@@ -135,10 +135,11 @@ class DvOrderDao(UpdatableDao):
 
         existing_obj.city = address['city']
         existing_obj.stateId = address['state']
-        existing_obj.streetAddress1 = address['line'][0][0]
-        if len(address['line'][0]) > 1:
-          if address['line'][0][1] != u'':
-            existing_obj.streetAddress2 = address['line'][0][1]
+        existing_obj.streetAddress1 = address['line'][0]
+        try:
+          existing_obj.streetAddress2 = address['line'][1]
+        except IndexError:
+          pass
 
         existing_obj.zipCode = address['postalCode']
 
