@@ -93,7 +93,7 @@ class MetricsEhrApi(MetricsEhrApiBaseResource):
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
-    org_ids=self._get_organization_ids_from_organizations(valid_arguments['organizations'])
+    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
     return MetricsEhrService().get_metrics(
       start_date=valid_arguments['start_date'],
       end_date=valid_arguments['end_date'],
@@ -110,7 +110,7 @@ class ParticipantEhrMetricsOverTimeApi(MetricsEhrApiBaseResource):
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
-    org_ids=self._get_organization_ids_from_organizations(valid_arguments['organizations'])
+    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
     return MetricsEhrService().get_participant_ehr_metrics_over_time_data(
       start_date=valid_arguments['start_date'],
       end_date=valid_arguments['end_date'],
@@ -127,7 +127,7 @@ class OrganizationsActiveMetricsOverTimeApi(MetricsEhrApiBaseResource):
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
-    org_ids=self._get_organization_ids_from_organizations(valid_arguments['organizations'])
+    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
     return MetricsEhrService().get_organizations_active_over_time_data(
       start_date=valid_arguments['start_date'],
       end_date=valid_arguments['end_date'],
@@ -144,7 +144,7 @@ class OrganizationMetricsApi(MetricsEhrApiBaseResource):
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
-    org_ids=self._get_organization_ids_from_organizations(valid_arguments['organizations'])
+    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
     return MetricsEhrService().get_organization_metrics_data(
       end_date=valid_arguments['end_date'],
       organization_ids=org_ids
