@@ -4,16 +4,13 @@ Sync Consent Files
 Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
 import collections
-import csv
 import json
-import StringIO
 
+import cloudstorage
+from google.appengine.ext import deferred
 import sqlalchemy
 
-from google.appengine.ext import deferred
-import cloudstorage
-import requests
-
+from cloud_utils.google_sheets import GoogleSheetCSVReader
 from dao import database_factory
 
 
@@ -71,27 +68,6 @@ def _get_sheet_id():
   if sheet_id is None:
     raise ValueError("Missing config value: hpo_report_google_sheet_id")
   return sheet_id
-
-
-class GoogleSheetCSVReader(csv.DictReader):
-
-  def __init__(self, sheet_id, gid=0, *args, **kwds):
-    self._sheet_id = sheet_id
-    self._gid = gid
-    response = requests.get(self._get_sheet_url(self._sheet_id, self._gid))
-    csv.DictReader.__init__(self, StringIO.StringIO(response.text), *args, **kwds)
-
-  @staticmethod
-  def _get_sheet_url(sheet_id, gid):
-    return (
-      "https://docs.google.com/spreadsheets/d/{id}/export"
-      "?format=csv"
-      "&id={id}"
-      "&gid={gid}"
-    ).format(
-      id=sheet_id,
-      gid=gid
-    )
 
 
 def _load_org_data_map(sheet_id):

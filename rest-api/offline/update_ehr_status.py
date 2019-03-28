@@ -1,105 +1,151 @@
 import calendar
+import collections
 import csv
 import datetime
+import json
 import re
+
+import cloudstorage
+from cloudstorage import cloudstorage_api
 
 import clock
 import config
-from cloudstorage import cloudstorage_api
+from cloud_utils.google_sheets import GoogleSheetCSVReader
 from dao.ehr_dao import EhrReceiptDao
-from dao.hpo_dao import HPODao
+from dao.organization_dao import OrganizationDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from google.appengine.ext import deferred
 from model.ehr import EhrReceipt
 
 
+HPO_REPORT_CONFIG_GCS_PATH = '/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json'
+
+COLUMN_BUCKET_NAME = 'Bucket Name'
+COLUMN_ORG_EXTERNAL_ID = 'Org ID'
+
+
+SubmissionInfo = collections.namedtuple('SubmissionInfo', ('bucket_name', 'date', 'person_file'))
+OrganizationInfo = collections.namedtuple('OrganizationInfo',
+                                          ('id', 'submission_date', 'person_file'))
+
+
 def update_ehr_status():
   """
-  Executed as a cron job
+  Entrypoint, executed as a cron job
   """
-  bucket_name = _get_curation_bucket_name()
   now = clock.CLOCK.now()
   cutoff_date = (now - datetime.timedelta(days=1)).date()
-  for hpo_info_dict in _get_hpos_updated_from_file_stat_list_since_datetime(
+  bucket_name = _get_curation_bucket_name()
+  organization_info_list = _get_organization_info_list(
     cloudstorage_api.listbucket('/' + bucket_name),
     cutoff_date
-  ):
-    deferred.defer(
-      _do_update_hpo,
-      **hpo_info_dict
-    )
+  )
+  for org_info in organization_info_list:
+    deferred.defer(_do_update_for_organization, *org_info)
+
+
+def _do_update_for_organization(organization_id, submission_date, person_file):
+  """
+  deferred task: creates EhrReceipt and updates ParticipantSummary objects from a person.csv file
+  """
+  updated_datetime = datetime.datetime.combine(submission_date, datetime.datetime.min.time())
+
+  org_dao = OrganizationDao()
+  summary_dao = ParticipantSummaryDao()
+  receipt_dao = EhrReceiptDao()
+
+  org = org_dao.get_by_external_id(organization_id.upper())
+
+  receipt = EhrReceipt(organizationId=org.organizationId, receiptTime=updated_datetime)
+  receipt_dao.insert(receipt)
+
+  for participant_id in _get_participant_ids_from_person_file(person_file):
+    summary = summary_dao.get(participant_id)
+    summary_dao.update_ehr_status(summary, updated_datetime)
+    summary_dao.update(summary)
 
 
 def _get_curation_bucket_name():
+  """
+  Get the name of the bucket to read from
+  """
   return config.getSetting(config.CURATION_BUCKET_NAME)
 
 
-def _get_hpos_updated_from_file_stat_list_since_datetime(bucket_stat_list, cutoff_date):
+def _get_sheet_id():
   """
-  gets a list of most recent `person.csv` files uploaded by HPOs.
-  designed to work on curation internal bucket
-
-  :param bucket_stat_list: output from `cloudstorage_api.listbucket()`
-  :param cutoff_date: earliest date that should be included in the results
-  :return: list of hpo_info_dicts {'hpo_id_string', 'filename', 'updated_date'}
+  Get the google sheet id for the bucket-name-to-organization-external-id mapping
   """
-  cutoff_ctime = calendar.timegm(cutoff_date.timetuple())
-
-  def reduce_newest_info_to_dict(accumulator, x):
-    """
-    reduces a list of hpo_info_dicts to a dict of [hpo_id_string]=hpo_info_dict
-    keeps only the newest hpo_info_dict for each hpo_id_string
-    """
-    key = x['hpo_id_string']
-    existing = accumulator.get(key)
-    if existing:
-      if existing['updated_date'] > x['updated_date']:
-        return accumulator
-      if (
-        existing['updated_date'] == x['updated_date']
-        and existing['person_file'] > x['person_file']
-      ):
-        return accumulator
-    return dict(accumulator, **{key: x})
-
-  newest_hpo_info_dict = reduce(
-    reduce_newest_info_to_dict,
-    [
-      {
-        'hpo_id_string': hpo_id_string,
-        'person_file': file_stat.filename,
-        'updated_date': updated_date,
-      }
-      for file_stat, hpo_id_string, updated_date
-      in [
-        (stat,) + _parse_hpo_id_and_date_from_person_filename(stat.filename)
-        for stat
-        in bucket_stat_list
-        if stat.filename.lower().endswith('person.csv')
-        and stat.st_ctime >= cutoff_ctime  # initial filtering from creation time
-      ]
-      if updated_date and updated_date >= cutoff_date  # real filtering based on date in name
-    ],
-    {}  # initial
-  )
-
-  return newest_hpo_info_dict.values()
+  with cloudstorage.open(HPO_REPORT_CONFIG_GCS_PATH, 'r') as handle:
+    hpo_config = json.load(handle)
+  sheet_id = hpo_config.get('hpo_report_google_sheet_id')
+  if sheet_id is None:
+    raise ValueError("Missing config value: hpo_report_google_sheet_id")
+  return sheet_id
 
 
-def _parse_hpo_id_and_date_from_person_filename(person_file_path):
+def _get_org_id_by_bucket_name_map():
   """
-  Read a `person.csv` file path and determine the HPO string id and the Date
+  Create a dictionary mapping of bucket-name-to-organization-external-id
+  """
+  return {
+    row.get(COLUMN_BUCKET_NAME): row.get(COLUMN_ORG_EXTERNAL_ID)
+    for row in GoogleSheetCSVReader(_get_sheet_id())
+  }
+
+
+def _get_organization_info_list(bucket_stat_list, cutoff_date):
+  """
+  Create a list of OrganizationInfo objects representing the latest person.csv submission
+  for each organization in the provided bucket listing.
+  Only include submissions after the cutoff_date.
+  """
+  def _iter_submission_infos():
+    cutoff_ctime = calendar.timegm(cutoff_date.timetuple())
+    for stat in bucket_stat_list:
+      if stat.st_ctime < cutoff_ctime:
+        continue
+      if not stat.filename.endswith('person.csv'):
+        continue
+      info_obj = _get_submission_info_from_filename(stat.filename)
+      if info_obj and info_obj.date and info_obj.date > cutoff_date:
+        yield info_obj
+
+  def keep_latest_reducer(accumulator, next_info_obj):
+    existing_info = accumulator.get(next_info_obj.bucket_name)
+    if not existing_info or existing_info.date < next_info_obj.date:
+      accumulator[next_info_obj.bucket_name] = next_info_obj
+    return accumulator
+
+  org_id_by_bucket_name_map = _get_org_id_by_bucket_name_map()
+  submission_info_by_bucket_map = reduce(keep_latest_reducer, _iter_submission_infos(), {})
+  organization_info_list = [
+    OrganizationInfo(
+      org_id_by_bucket_name_map.get(submission_info.bucket_name),
+      submission_info.date,
+      submission_info.person_file
+    )
+    for submission_info
+    in submission_info_by_bucket_map.values()
+  ]
+  return filter(lambda o: o.id is not None, organization_info_list)
+
+
+def _get_submission_info_from_filename(person_filename):
+  """
+  create a SubmissionInfo object from a person.csv file's full GCS filename
   """
   try:
-    _, hpo_id_string, _, submission_name, _ = person_file_path.lstrip('/').split('/')
+    _, _, upload_bucket_name, submission_name, _ = person_filename.lstrip('/').split('/')
     submission_date = _parse_date_from_submission_name(submission_name)
   except ValueError:
-    return None, None
-  return hpo_id_string, submission_date
+    return None
+  return SubmissionInfo(upload_bucket_name, submission_date, person_filename)
 
 
 def _parse_date_from_submission_name(submission):
-  """The modified time of the item cannot be trusted so we must rely on the filename date
+  """
+  The modified time of the item cannot be trusted so we must rely on the filename date
   a submission directory is named manually by the uploaders so it does not have one universal format
   NOTE: any unparsable dates will be ignored
   """
@@ -130,24 +176,3 @@ def _get_participant_ids_from_person_file(person_file):
 
   with cloudstorage_api.open(person_file) as gcs_file:
     return filter(bool, map(parse_pid, csv.reader(gcs_file)))
-
-
-def _do_update_hpo(hpo_id_string=None, person_file=None, updated_date=None):
-  """
-  Read a specific `person.csv` file and update relevant participant summaries and create EhrReceipts
-  """
-  updated_datetime = datetime.datetime.combine(updated_date, datetime.datetime.min.time())
-
-  hpo_dao = HPODao()
-  summary_dao = ParticipantSummaryDao()
-  receipt_dao = EhrReceiptDao()
-
-  hpo = hpo_dao.get_by_name(hpo_id_string)  # TODO: confirm this lookup is valid
-
-  receipt = EhrReceipt(hpoId=hpo.hpoId, receiptTime=updated_datetime)
-  receipt_dao.insert(receipt)
-
-  for participant_id in _get_participant_ids_from_person_file(person_file):
-    summary = summary_dao.get(participant_id)
-    summary_dao.update_ehr_status(summary, updated_datetime)
-    summary_dao.update(summary)

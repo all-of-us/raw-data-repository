@@ -12,14 +12,14 @@ class EhrReceiptDao(BaseDao):
   def get_id(self, obj):
     return obj.ehrReceiptId
 
-  def get_active_site_counts_in_interval(self, start_date, end_date, interval, hpo_ids=None):
+  def get_active_org_counts_in_interval(self, start_date, end_date, interval, org_ids=None):
     """
-    Get number of receipts per HPO received in specific time intervals
+    Get number of receipts per organization received in specific time intervals
 
     :param start_date: query min date
     :param end_date: query max date
     :param interval: time interval (one of the INTERVAL constants)
-    :param hpo_ids: (optional) filter results to matching sites
+    :param org_ids: (optional) filter results to matching organizations
     :return: dictionary of siteId:list(dict(date=X, count=Y), ...)
     :rtype: dict
     """
@@ -33,8 +33,8 @@ class EhrReceiptDao(BaseDao):
       (EhrReceipt.receiptTime >= interval_query.c.start_date)
       & (EhrReceipt.receiptTime < interval_query.c.end_date)
     )
-    if hpo_ids:
-      active_site_count_conditions &= EhrReceipt.hpoId.in_(hpo_ids)
+    if org_ids:
+      active_site_count_conditions &= EhrReceipt.organizationId.in_(org_ids)
     active_site_count_query = (
       select([func.count(EhrReceipt.hpoId.distinct())])
         .where(active_site_count_conditions)

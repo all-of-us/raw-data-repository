@@ -8,5 +8,7 @@ class EhrReceipt(Base):
   """
   __tablename__ = 'ehr_receipt'
   ehrReceiptId = Column('ehr_receipt_id', Integer, primary_key=True)
-  hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id', ondelete='CASCADE'), nullable=False)
+  organizationId = Column('organization_id', Integer,
+                          ForeignKey('organization.organization_id', ondelete='CASCADE'),
+                          nullable=False)
   receiptTime = Column('receipt_time', UTCDateTime, nullable=False, index=True)

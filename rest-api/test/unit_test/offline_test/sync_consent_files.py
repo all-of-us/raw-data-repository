@@ -1,5 +1,3 @@
-import json
-
 import mock
 import cloudstorage.common
 
@@ -13,21 +11,6 @@ from model.site import Site
 from offline import sync_consent_files
 from participant_enums import UNSET_HPO_ID
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, TestBase, NdbTestBase
-
-
-class GoogleSheetCSVReaderTest(TestBase):
-  EXAMPLE_SHEET_ID = '1ZY6KMtnMZ_5-dv8cqRgVWHOH9j23GcMZTC61UMXisuE'  # https://docs.google.com/spreadsheets/d/1ZY6KMtnMZ_5-dv8cqRgVWHOH9j23GcMZTC61UMXisuE/edit?usp=sharing
-
-  def test_reads_google_sheet_by_id(self):
-    """should behave like a csv.DictReader"""
-    reader = sync_consent_files.GoogleSheetCSVReader(self.EXAMPLE_SHEET_ID)
-    rows = list(reader)
-    self.assertEqual(len(rows), 3)
-    self.assertEqual(
-      json.dumps(rows[0], sort_keys=True),
-      json.dumps({'A': '0', 'B': '1', 'C': '2'}, sort_keys=True),
-      "should behave like csv.DictReader"
-    )
 
 
 class TransformationTests(TestBase):
