@@ -1,5 +1,5 @@
 import csv
-from StringIO import StringIO
+import StringIO
 
 import requests
 
