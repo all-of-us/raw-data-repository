@@ -30,6 +30,7 @@ class DvOrderDao(UpdatableDao):
     return self.to_client_json(response, for_update=True)
 
   def _filter_order_fields(self, resource, pid):
+    fhir_resource = SimpleFhirR4Reader(resource)
     summary = ParticipantSummaryDao().get(pid)
     if not summary:
       raise BadRequest('No summary for particpant id: {}'.format(pid))
@@ -39,9 +40,9 @@ class DvOrderDao(UpdatableDao):
     # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
     order = {
       'order': {
-        'collected': resource['authoredOn'],
+        'collected': fhir_resource.authoredOn,
         'account': '',
-        'number': resource['extension'][0]['valueString'],
+        'number': fhir_resource.extension(url='http://joinallofus.org/fhir/barcode').valueString,
         'patient': {'medical_record_number': str(summary.biobankId),
                     'first_name': '*',
                     'last_name': str(summary.biobankId),
@@ -62,7 +63,8 @@ class DvOrderDao(UpdatableDao):
                       'phone': None,
                       'npi': None
                       },
-        'report_notes': resource['extension'][1]['valueString'],
+        'report_notes': fhir_resource.extension(
+          url='http://joinallofus.org/fhir/order-type').valueString,
         'tests': {'test': {'code': '1SAL2',
                            'name': 'PMI Saliva, FDA Kit',
                            'comments': None
@@ -115,8 +117,6 @@ class DvOrderDao(UpdatableDao):
                                     fhir_resource.status)
       # USPS status time
       existing_obj.shipmentLastUpdate = parse_date(fhir_resource.occurrenceDateTime)
-      # @TODO: version
-      # existing_obj.version = existing_obj.version + 1
       order_address = fhir_resource.contained.get(resourceType='Location').get('address')
       order_address.stateId = get_code_id(order_address, self.code_dao, 'state', 'State_')
       existing_obj.address = {'city': existing_obj.city,
@@ -150,7 +150,7 @@ class DvOrderDao(UpdatableDao):
                        system='http://joinallofus.org/fhir/orderId').value
       order.order_date = parse_date(fhir_resource.authoredOn)
       order.supplier = fhir_resource.contained.get(resourceType='Organization').id
-      order.supplierStatus = fhir_resource.status  # @TODO: confirm right status
+      order.supplierStatus = fhir_resource.status
 
       fhir_device = fhir_resource.contained.get(resourceType='Device')
       order.itemName = fhir_device.deviceName.get(type='manufacturer-name').name
@@ -177,11 +177,13 @@ class DvOrderDao(UpdatableDao):
         order.id = self.get_id(order)[0]
         order.created = self._get_created_date(participant_id, id_)
         order.version = expected_version
-        bio_info = self.get_biobank_info(order)
-        order.barcode = bio_info.barcode
-        order.biobankOrderId = bio_info.biobankOrderId
-        order.biobankStatus = bio_info.biobankStatus
-        order.biobankReceived = bio_info.biobankReceived
+        order.biobankStatus = fhir_resource.status
+        if hasattr(fhir_resource, 'barcode'):
+          order.barcode = fhir_resource.barcode
+          order.biobankTrackingId = fhir_resource.biobankId
+          order.biobankOrderId = fhir_resource.biobankOrderId
+          order.biobankReceived = parse_date(fhir_resource.received)
+
     return order
 
   def insert_biobank_order(self, pid, resource):
