@@ -107,16 +107,14 @@ class DvOrderDao(UpdatableDao):
       existing_obj.shipmentCarrier = fhir_resource.extension.get(
         url='http://joinallofus.org/fhir/carrier').valueString
       existing_obj.shipmentEstArrival = parse_date(fhir_resource.extension.get(
-        url='http://joinallofus.org/fhir/expected-delivery-date').valueDateTime,
-                                                   '%Y-%m-%dT%H:%M:%S+00:00')
+        url='http://joinallofus.org/fhir/expected-delivery-date').valueDateTime)
       existing_obj.trackingId = fhir_resource.identifier.get(
         system='http://joinallofus.org/fhir/trackingId').value
       # USPS status
       existing_obj.shipmentStatus = self._enumerate_order_shipment_tracking_status(
                                     fhir_resource.status)
       # USPS status time
-      existing_obj.shipmentLastUpdate = parse_date(fhir_resource.occurrenceDateTime,
-                                                   '%Y-%m-%dT%H:%M:%S+00:00')
+      existing_obj.shipmentLastUpdate = parse_date(fhir_resource.occurrenceDateTime)
       # @TODO: version
       # existing_obj.version = existing_obj.version + 1
       order_address = fhir_resource.contained.get(resourceType='Location').get('address')
