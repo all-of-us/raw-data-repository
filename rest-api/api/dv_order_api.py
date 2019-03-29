@@ -1,6 +1,7 @@
 import dateutil
 from api.base_api import UpdatableApi
-from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_BARCODE_URL
+from api_util import PTC, PTC_AND_HEALTHPRO,VIBRENT_FHIR_URL, VIBRENT_BARCODE_URL,\
+  VIBRENT_FULLFILMENT_URL
 from app_util import auth_required, ObjDict
 from dao.dv_order_dao import DvOrderDao
 from fhir_utils import SimpleFhirR4Reader
@@ -46,18 +47,26 @@ class DvOrderApi(UpdatableApi):
     bo_id = fhir_resource.basedOn[0].identifier.value
     response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
     response[2]['Location'] = '/rdr/v1/SupplyDelivery/{}'.format(bo_id)
+    if response[1] == 200:
+      created_response = list(response)
+      created_response[1] = 201
+      return tuple(created_response)
     return response
 
   def _post_supply_request(self, resource):
     fhir_resource = SimpleFhirR4Reader(resource)
     patient = fhir_resource.contained.get(resourceType='Patient')
     pid = patient.identifier.get(
-      system='http://joinallofus.org/fhir/participantId').value
+      system=VIBRENT_FHIR_URL + 'participantId').value
     p_id = from_client_participant_id(pid)
     response = super(DvOrderApi, self).post(participant_id=p_id)
-    order_id = fhir_resource.identifier.get(system='http://joinallofus.org/fhir/orderId').value
+    order_id = fhir_resource.identifier.get(system=VIBRENT_FHIR_URL + 'orderId').value
     response[2]['Location'] = '/rdr/v1/SupplyRequest/{}'.format(order_id)
-    return response, 201
+    if response[1] == 200:
+      created_response = list(response)
+      created_response[1] = 201
+      return tuple(created_response)
+    return response
 
   @auth_required(PTC_AND_HEALTHPRO)
   def get(self, p_id, order_id):  # pylint: disable=unused-argument
@@ -83,9 +92,11 @@ class DvOrderApi(UpdatableApi):
 
   def _put_supply_request(self, resource, bo_id):
     fhir_resource = SimpleFhirR4Reader(resource)
-    barcode_url = fhir_resource.extension.get(url='http://joinallofus.org/fhir/barcode').url
+    barcode_url = None
+    if fhir_resource.extension.get(url=VIBRENT_FULLFILMENT_URL).valueString == 'shipped':
+      barcode_url = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).url
     pid = fhir_resource.contained.get(
-      resourceType='Patient').identifier.get(system='participantId')
+      resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
     p_id = from_client_participant_id(pid.value)
     merged_resource = None
     if not p_id:
@@ -112,11 +123,11 @@ class DvOrderApi(UpdatableApi):
     fhir = SimpleFhirR4Reader(resource)
     participant_id = fhir.patient.identifier.value.lstrip('P')
     update_time = dateutil.parser.parse(fhir.occurrenceDateTime)
-    carrier_name = fhir.extension.get(url='http://joinallofus.org/fhir/carrier').valueString
+    carrier_name = fhir.extension.get(url=VIBRENT_FHIR_URL + 'carrier').valueString
     eta = dateutil.parser.parse(fhir.extension.get(
-      url="http://joinallofus.org/fhir/expected-delivery-date").valueDateTime)
+      url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
     tracking_status = fhir.extension.get(
-      url='http://joinallofus.org/fhir/tracking-status').valueString
+      url=VIBRENT_FHIR_URL + 'tracking-status').valueString
     tracking_status_enum = getattr(
       OrderShipmentTrackingStatus,
       tracking_status.upper(),
@@ -133,8 +144,9 @@ class DvOrderApi(UpdatableApi):
     order.shipmentEstArrival = eta.date()
     order.shipmentStatus = tracking_status_enum
 
-    self._do_update(order)
-    return self._make_response(order)
+    # self._do_update(order)
+    # return self._make_response(order)
+    return order
 
 
 def merge_dicts(dict_a, dict_b):
