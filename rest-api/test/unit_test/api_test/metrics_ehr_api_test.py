@@ -5,15 +5,16 @@ from clock import FakeClock
 from dao.calendar_dao import CalendarDao
 from dao.ehr_dao import EhrReceiptDao
 from dao.hpo_dao import HPODao
+from dao.organization_dao import OrganizationDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.site_dao import SiteDao
 from model.calendar import Calendar
 from model.ehr import EhrReceipt
 from model.hpo import HPO
+from model.organization import Organization
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
-from model.site import Site
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID, \
   make_primary_provider_link_for_name, QuestionnaireStatus
 from test.unit_test.unit_test_util import FlaskTestBase
@@ -49,14 +50,41 @@ class MetricsEhrApiTestBase(FlaskTestBase):
     self.calendar_dao = CalendarDao()
     self.site_dao = SiteDao()
     self.hpo_dao = HPODao()
-    self.hpo_dao.insert(HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
-                            organizationType=OrganizationType.UNSET))
+    self.org_dao = OrganizationDao()
+
+    self.hpo_test = self._make_hpo(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
+                                   organizationType=OrganizationType.UNSET)
+
+    self.hpo_foo = self._make_hpo(hpoId=10, name='FOO', displayName='Foo')
+    self.hpo_bar = self._make_hpo(hpoId=11, name='BAR', displayName='Bar')
+
+    self.org_foo_a = self._make_org(
+      organizationId=10,
+      externalId='FOO_A',
+      displayName='Foo A',
+      hpoId=self.hpo_foo.hpoId
+    )
+    self.org_bar_a = self._make_org(
+      organizationId=11,
+      externalId='BAR_A',
+      displayName='Bar A',
+      hpoId=self.hpo_bar.hpoId
+    )
+
+  def _make_hpo(self, **kwargs):
+    hpo = HPO(**kwargs)
+    self.hpo_dao.insert(hpo)
+    return hpo
+
+  def _make_org(self, **kwargs):
+    org = Organization(**kwargs)
+    self.org_dao.insert(org)
+    return org
 
   def _make_participant(
-    self, participant, first_name=None, last_name=None, hpo_name=None,
+    self, participant, first_name=None, last_name=None, hpo=None, organization=None,
     unconsented=False, time_int=None, time_study=None, time_mem=None, time_fp=None,
-    time_fp_stored=None, gender_id=None, dob=None, state_id=None,
-    site_id=None
+    time_fp_stored=None, gender_id=None, dob=None, state_id=None
   ):
     """
     Create a participant in a transient test database.
@@ -66,15 +94,14 @@ class MetricsEhrApiTestBase(FlaskTestBase):
     :param participant: Participant object
     :param first_name: First name
     :param last_name: Last name
-    :param hpo_name: HPO name (one of PITT or AZ_TUCSON)
     :param time_int: Time that participant fulfilled INTERESTED criteria
     :param time_mem: Time that participant fulfilled MEMBER criteria
     :param time_fp: Time that participant fulfilled FULL_PARTICIPANT criteria
     :return: Participant object
     """
 
-    participant.hpoId = self.hpo_dao.get_by_name(hpo_name).hpoId
-
+    participant.hpoId = hpo.hpoId
+    participant.organizationId = organization.organizationId
 
     if unconsented is True:
       enrollment_status = None
@@ -88,7 +115,7 @@ class MetricsEhrApiTestBase(FlaskTestBase):
     with FakeClock(time_int):
       self.dao.insert(participant)
 
-    participant.providerLink = make_primary_provider_link_for_name(hpo_name)
+    participant.providerLink = make_primary_provider_link_for_name(hpo.name)
     with FakeClock(time_mem):
       self.dao.update(participant)
 
@@ -117,8 +144,8 @@ class MetricsEhrApiTestBase(FlaskTestBase):
     summary.enrollmentStatusCoreOrderedSampleTime = time_fp
     summary.enrollmentStatusCoreStoredSampleTime = time_fp_stored
 
-    summary.hpoId = participant.hpoId
-    summary.siteId = site_id
+    summary.hpoId = hpo.hpoId
+    summary.organizationId = organization.organizationId
 
     if time_study is not None:
       with FakeClock(time_mem):
@@ -152,7 +179,8 @@ class MetricsEhrApiTestBase(FlaskTestBase):
     return summary
 
   def _update_ehr(self, participant_summary, update_time):
-    receipt = EhrReceipt(hpoId=participant_summary.hpoId, receiptTime=update_time)
+    receipt = EhrReceipt(organizationId=participant_summary.organizationId,
+                         receiptTime=update_time)
     self.ehr_receipt_dao.insert(receipt)
     self.ps_dao.update_ehr_status(participant_summary, update_time)
     self.ps_dao.update(participant_summary)
@@ -179,20 +207,18 @@ class MetricsEhrMultiEndpointTest(MetricsEhrApiTestBase):
     # noinspection PyArgumentList
     participant_1 = Participant(participantId=1, biobankId=4)
     summary_1 = self._make_participant(
-      participant_1, 'Alice', 'Aardvark', 'PITT',
+      participant_1, 'Alice', 'Aardvark', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4),
-      site_id=1
+      time_fp=datetime.datetime(2018, 1, 4)
     )
     # noinspection PyArgumentList
     participant_2 = Participant(participantId=2, biobankId=5)
     summary_2 = self._make_participant(
-      participant_2, 'Bo', 'Badger', 'AZ_TUCSON',
+      participant_2, 'Bo', 'Badger', self.hpo_bar, self.org_bar_a,
       time_int=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5),
-      site_id=2
+      time_fp=datetime.datetime(2018, 1, 5)
     )
     self._update_ehr(
       summary_1,
@@ -214,22 +240,22 @@ class MetricsEhrMultiEndpointTest(MetricsEhrApiTestBase):
       'MetricsEHR/ParticipantsOverTime',
       query_string=query_string
     )
-    sites_active_over_time_response = self.send_get(
-      'MetricsEHR/SitesActiveOverTime',
+    organizations_active_over_time_response = self.send_get(
+      'MetricsEHR/OrganizationsActiveOverTime',
       query_string=query_string
     )
-    sites_response = self.send_get(
-      'MetricsEHR/Sites',
+    organizations_response = self.send_get(
+      'MetricsEHR/Organizations',
       query_string=query_string
     )
 
-    self.assertEqual(combined_response['site_metrics'], sites_response)
-    for combined_row, participants_row, sites_active_row in zip(
+    self.assertEqual(combined_response['organization_metrics'], organizations_response)
+    for combined_row, participants_row, organizations_active_row in zip(
       combined_response['metrics_over_time'],
       participants_over_time_response,
-      sites_active_over_time_response
+      organizations_active_over_time_response
     ):
-      for other_row in (participants_row, sites_active_row):
+      for other_row in (participants_row, organizations_active_row):
         for key, value in other_row['metrics'].items():
           self.assertEqual(combined_row['metrics'][key], value)
 
@@ -248,16 +274,16 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     # noinspection PyArgumentList
     participant_1 = Participant(participantId=1, biobankId=4)
     self._make_participant(
-      participant_1, 'Alice', 'Aardvark', 'PITT',
+      participant_1, 'Alice', 'Aardvark', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4)
+      time_fp=datetime.datetime(2018, 1, 4),
     )
 
     # noinspection PyArgumentList
     participant_2 = Participant(participantId=2, biobankId=5)
     self._make_participant(
-      participant_2, 'Bo', 'Badger', 'AZ_TUCSON',
+      participant_2, 'Bo', 'Badger', self.hpo_bar, self.org_bar_a,
       time_int=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
       time_fp=datetime.datetime(2018, 1, 5)
@@ -282,12 +308,12 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       u'2018-01-06': 2,
     })
 
-    # test with site filtering
+    # test with organization filtering
     response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-06',
       'interval': 'day',
-      'awardee': 'PITT',
+      'organization': 'foo_a',
     }))
     counts_by_date = {
       day['date']: day['metrics']['EHR_CONSENTED']
@@ -315,21 +341,21 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     # noinspection PyArgumentList
     participant_1 = Participant(participantId=1, biobankId=4)
     summary_1 = self._make_participant(
-      participant_1, 'Alice', 'Aardvark', 'PITT',
+      participant_1, 'Alice', 'Aardvark', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4),
-      site_id=1
+      time_fp=datetime.datetime(2018, 1, 4)
     )
+
     # noinspection PyArgumentList
     participant_2 = Participant(participantId=2, biobankId=5)
     summary_2 = self._make_participant(
-      participant_2, 'Bo', 'Badger', 'AZ_TUCSON',
+      participant_2, 'Bo', 'Badger', self.hpo_bar, self.org_bar_a,
       time_int=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5),
-      site_id=2
+      time_fp=datetime.datetime(2018, 1, 5)
     )
+
 
 
     # Begin testing
@@ -384,12 +410,12 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       u'2018-01-08': 2,
     })
 
-    # test with site filtering
+    # test with organization filtering
     response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-08',
       'interval': 'day',
-      'awardee': 'PITT',
+      'organization': 'FOO_A',
     }))
     counts_by_date = {
       day['date']: day['metrics']['EHR_RECEIVED']
@@ -406,7 +432,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       u'2018-01-08': 1,
     })
 
-  def test_site_counts(self):
+  def test_organization_counts(self):
     # Set up data
     for date in iter_dates(
       datetime.date(2017, 12, 30),
@@ -418,11 +444,10 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     # noinspection PyArgumentList
     participant_1 = Participant(participantId=1, biobankId=4)
     summary_1 = self._make_participant(
-      participant_1, 'A', 'Aardvark', 'PITT',
+      participant_1, 'A', 'Aardvark', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4),
-      site_id=1
+      time_fp=datetime.datetime(2018, 1, 4)
     )
     self._update_ehr(
       summary_1,
@@ -432,11 +457,10 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     # noinspection PyArgumentList
     participant_2 = Participant(participantId=2, biobankId=5)
     summary_2 = self._make_participant(
-      participant_2, 'B', 'Badger', 'PITT',
+      participant_2, 'B', 'Badger', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4),
-      site_id=1
+      time_fp=datetime.datetime(2018, 1, 4)
     )
     self._update_ehr(
       summary_2,
@@ -446,11 +470,10 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     # noinspection PyArgumentList
     participant_3 = Participant(participantId=3, biobankId=6)
     summary_3 = self._make_participant(
-      participant_3, 'C', 'Chicken', 'PITT',
+      participant_3, 'C', 'Chicken', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5),
-      site_id=1
+      time_fp=datetime.datetime(2018, 1, 5)
     )
     self._update_ehr(
       summary_3,
@@ -460,11 +483,10 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     # noinspection PyArgumentList
     participant_4 = Participant(participantId=4, biobankId=7)
     summary_4 = self._make_participant(
-      participant_4, 'D', 'Dog', 'AZ_TUCSON',
+      participant_4, 'D', 'Dog', self.hpo_bar, self.org_bar_a,
       time_int=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5),
-      site_id=2
+      time_fp=datetime.datetime(2018, 1, 5)
     )
     self._update_ehr(
       summary_4,
@@ -482,7 +504,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       'interval': 'day'
     }))
     counts_by_date = {
-      day['date']: day['metrics']['SITES_ACTIVE']
+      day['date']: day['metrics']['ORGANIZATIONS_ACTIVE']
       for day in response['metrics_over_time']
     }
     self.assertEqual(counts_by_date, {
@@ -496,15 +518,15 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       u'2018-01-08': 0,
     })
 
-    # test with site filtering
+    # test with organization filtering
     response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-08',
       'interval': 'day',
-      'awardee': 'PITT',
+      'organization': 'FOO_A',
     }))
     counts_by_date = {
-      day['date']: day['metrics']['SITES_ACTIVE']
+      day['date']: day['metrics']['ORGANIZATIONS_ACTIVE']
       for day in response['metrics_over_time']
     }
     self.assertEqual(counts_by_date, {
@@ -518,15 +540,15 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       u'2018-01-08': 0,
     })
 
-    # test site filter multiple
+    # test organization filter multiple
     response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-08',
       'interval': 'day',
-      'awardee': 'PITT,AZ_TUCSON',
+      'organization': 'FOO_A,BAR_A',
     }))
     counts_by_date = {
-      day['date']: day['metrics']['SITES_ACTIVE']
+      day['date']: day['metrics']['ORGANIZATIONS_ACTIVE']
       for day in response['metrics_over_time']
     }
     self.assertEqual(counts_by_date, {
@@ -541,27 +563,14 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     })
 
 
-class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
+class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):
 
-  def setUp(self, **kwargs):
-    super(MetricsEhrApiSiteTest, self).setUp()
-    self.site_dao = SiteDao()
-
-  def _make_site(self, id_, name, google_group, hpo_name):
-    site = Site(siteId=id_, siteName=name, googleGroup=google_group,
-                hpoId=self.hpo_dao.get_by_name(hpo_name).hpoId)
-    self.site_dao.insert(site)
-    return site
 
   def test_cutoff_date_filtering(self):
-    # Set up test data
-    hpo_a = self.hpo_dao.get_by_name('PITT')
-    hpo_b = self.hpo_dao.get_by_name('AZ_TUCSON')
-
     # noinspection PyArgumentList
     participant_1 = Participant(participantId=1, biobankId=4)
     summary_1 = self._make_participant(
-      participant_1, 'A', 'Aardvark', 'PITT',
+      participant_1, 'A', 'Aardvark', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 1),
       time_study=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
@@ -571,7 +580,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
     # noinspection PyArgumentList
     participant_2 = Participant(participantId=2, biobankId=5)
     summary_2 = self._make_participant(
-      participant_2, 'B', 'Badger', 'PITT',
+      participant_2, 'B', 'Badger', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 2),
       time_study=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
@@ -581,7 +590,7 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
     # noinspection PyArgumentList
     participant_3 = Participant(participantId=3, biobankId=6)
     summary_3 = self._make_participant(
-      participant_3, 'C', 'Chicken', 'AZ_TUCSON',
+      participant_3, 'C', 'Chicken', self.hpo_bar, self.org_bar_a,
       time_int=datetime.datetime(2018, 1, 2),
       time_study=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
@@ -595,17 +604,16 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       self._update_ehr(summary, update_time=datetime.datetime(2018, 1, 6))
 
     # Begin testing
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
       'start_date': '2018-01-01',
       'end_date': '2018-01-01',
       'interval': 'day'
     }))
     self.assertEqual(
-      response['site_metrics'][str(hpo_a.hpoId)],
+      response[str(self.org_foo_a.externalId)],
       {
-        u'hpo_id': long(hpo_a.hpoId),
-        u'hpo_name': unicode(hpo_a.name),
-        u'hpo_display_name': unicode(hpo_a.displayName),
+        u'organization_id': self.org_foo_a.externalId,
+        u'organization_name': unicode(self.org_foo_a.displayName),
         u'total_participants': 1,
         u'total_primary_consented': 0,
         u'total_ehr_consented': 0,
@@ -615,11 +623,10 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
     self.assertEqual(
-      response['site_metrics'][str(hpo_b.hpoId)],
+      response[str(self.org_bar_a.externalId)],
       {
-        u'hpo_id': long(hpo_b.hpoId),
-        u'hpo_name': unicode(hpo_b.name),
-        u'hpo_display_name': unicode(hpo_b.displayName),
+        u'organization_id': self.org_bar_a.externalId,
+        u'organization_name': unicode(self.org_bar_a.displayName),
         u'total_participants': 0,
         u'total_primary_consented': 0,
         u'total_ehr_consented': 0,
@@ -629,17 +636,16 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
 
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
       'start_date': '2018-01-02',
       'end_date': '2018-01-02',
       'interval': 'day'
     }))
     self.assertEqual(
-      response['site_metrics'][str(hpo_a.hpoId)],
+      response[str(self.org_foo_a.externalId)],
       {
-        u'hpo_id': long(hpo_a.hpoId),
-        u'hpo_name': unicode(hpo_a.name),
-        u'hpo_display_name': unicode(hpo_a.displayName),
+        u'organization_id': self.org_foo_a.externalId,
+        u'organization_name': unicode(self.org_foo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 1,
         u'total_ehr_consented': 0,
@@ -649,17 +655,16 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
 
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
       'start_date': '2018-01-03',
       'end_date': '2018-01-03',
       'interval': 'day'
     }))
     self.assertEqual(
-      response['site_metrics'][str(hpo_a.hpoId)],
+      response[str(self.org_foo_a.externalId)],
       {
-        u'hpo_id': long(hpo_a.hpoId),
-        u'hpo_name': unicode(hpo_a.name),
-        u'hpo_display_name': unicode(hpo_a.displayName),
+        u'organization_id': self.org_foo_a.externalId,
+        u'organization_name': unicode(self.org_foo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 1,
@@ -669,17 +674,16 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
 
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
       'start_date': '2018-01-04',
       'end_date': '2018-01-04',
       'interval': 'day'
     }))
     self.assertEqual(
-      response['site_metrics'][str(hpo_a.hpoId)],
+      response[str(self.org_foo_a.externalId)],
       {
-        u'hpo_id': long(hpo_a.hpoId),
-        u'hpo_name': unicode(hpo_a.name),
-        u'hpo_display_name': unicode(hpo_a.displayName),
+        u'organization_id': self.org_foo_a.externalId,
+        u'organization_name': unicode(self.org_foo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 2,
@@ -689,17 +693,16 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
 
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
       'start_date': '2018-01-05',
       'end_date': '2018-01-05',
       'interval': 'day'
     }))
     self.assertEqual(
-      response['site_metrics'][str(hpo_a.hpoId)],
+      response[str(self.org_foo_a.externalId)],
       {
-        u'hpo_id': int(hpo_a.hpoId),
-        u'hpo_name': unicode(hpo_a.name),
-        u'hpo_display_name': unicode(hpo_a.displayName),
+        u'organization_id': self.org_foo_a.externalId,
+        u'organization_name': unicode(self.org_foo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 2,
@@ -709,17 +712,16 @@ class MetricsEhrApiSiteTest(MetricsEhrApiTestBase):
       }
     )
 
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
+    response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
       'start_date': '2018-01-06',
       'end_date': '2018-01-06',
       'interval': 'day'
     }))
     self.assertEqual(
-      response['site_metrics'][str(hpo_a.hpoId)],
+      response[str(self.org_foo_a.externalId)],
       {
-        u'hpo_id': long(hpo_a.hpoId),
-        u'hpo_name': unicode(hpo_a.name),
-        u'hpo_display_name': unicode(hpo_a.displayName),
+        u'organization_id': self.org_foo_a.externalId,
+        u'organization_name': unicode(self.org_foo_a.displayName),
         u'total_participants': 2,
         u'total_primary_consented': 2,
         u'total_ehr_consented': 2,

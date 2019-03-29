@@ -4,7 +4,7 @@ import sqlalchemy
 from dao.base_dao import BaseDao
 from dao.calendar_dao import INTERVAL_WEEK, CalendarDao
 from dao.ehr_dao import EhrReceiptDao
-from model.hpo import HPO
+from model.organization import Organization
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
 from participant_enums import WithdrawalStatus, QuestionnaireStatus, EhrStatus
@@ -16,35 +16,47 @@ class MetricsEhrService(BaseDao):
     super(MetricsEhrService, self).__init__(ParticipantSummary, backup=True)
     self.ehr_receipt_dao = EhrReceiptDao()
 
+  def _get_organization_ids_from_hpo_ids(self, hpo_ids):
+    query = (
+      sqlalchemy.select([Organization.organizationId])
+      .where(Organization.hpoId.in_(hpo_ids))
+    )
+    with self.session() as session:
+      result = session.execute(query)
+    return list(row[0] for row in result)
+
   def get_metrics(
     self,
     start_date,
     end_date,
-    site_ids=None,
+    organization_ids=None,
+    hpo_ids=None,
     interval=INTERVAL_WEEK
   ):
+    if organization_ids is None and hpo_ids is not None:
+      organization_ids = self._get_organization_ids_from_hpo_ids(hpo_ids)
     return {
       'metrics_over_time': self._get_metrics_over_time_data(
         start_date,
         end_date,
         interval,
-        site_ids
+        organization_ids
       ),
-      'site_metrics': self.get_site_metrics_data(end_date, site_ids),
+      'organization_metrics': self.get_organization_metrics_data(end_date, organization_ids),
     }
 
-  def _get_metrics_over_time_data(self, start_date, end_date, interval, hpo_ids=None):
+  def _get_metrics_over_time_data(self, start_date, end_date, interval, organization_ids=None):
     """
-    combines `Active Site Counts Over Time` and `EHR Consented vs EHR Received Over Time`
+    combines `Active Organization Counts Over Time` and `EHR Consented vs EHR Received Over Time`
     """
-    active_site_metrics = self.get_sites_active_over_time_data(
-      start_date, end_date, interval, hpo_ids)
-    active_site_metrics_by_date = {
+    active_organization_metrics = self.get_organizations_active_over_time_data(
+      start_date, end_date, interval, organization_ids)
+    active_organization_metrics_by_date = {
       result['date']: result['metrics']
-      for result in active_site_metrics
+      for result in active_organization_metrics
     }
     participant_ehr_metrics = self.get_participant_ehr_metrics_over_time_data(
-      start_date, end_date, interval, hpo_ids)
+      start_date, end_date, interval, organization_ids)
     participant_ehr_metrics_by_date = {
       result['date']: result['metrics']
       for result in participant_ehr_metrics
@@ -53,27 +65,33 @@ class MetricsEhrService(BaseDao):
       {
         'date': date_key,
         'metrics': dict(
-          active_site_metrics_by_date[date_key],
+          active_organization_metrics_by_date[date_key],
           **participant_ehr_metrics_by_date[date_key]
         )
       }
-      for date_key in active_site_metrics_by_date.keys()
+      for date_key in active_organization_metrics_by_date.keys()
     ]
 
-  def get_sites_active_over_time_data(self, start_date, end_date, interval, hpo_ids=None):
+  def get_organizations_active_over_time_data(
+    self,
+    start_date,
+    end_date,
+    interval,
+    organization_ids=None
+  ):
     """
-    Count of sites that have uploaded EHR over time
+    Count of organizations that have uploaded EHR over time
     """
-    active_site_counts = self.ehr_receipt_dao.get_active_site_counts_in_interval(
-      start_date, end_date, interval, hpo_ids)
+    active_organization_counts = self.ehr_receipt_dao.get_active_organization_counts_in_interval(
+      start_date, end_date, interval, organization_ids)
     return [
       {
         'date': result['start_date'],
         'metrics': {
-          'SITES_ACTIVE': result['active_site_count'],
+          'ORGANIZATIONS_ACTIVE': result['active_organization_count'],
         }
       }
-      for result in active_site_counts
+      for result in active_organization_counts
     ]
 
   def get_participant_ehr_metrics_over_time_data(
@@ -81,7 +99,7 @@ class MetricsEhrService(BaseDao):
     start_date,
     end_date,
     interval,
-    hpo_ids=None
+    organization_ids=None
   ):
     """
     EHR Consented vs EHR Received over time
@@ -91,7 +109,7 @@ class MetricsEhrService(BaseDao):
       end=end_date,
       interval_key=interval
     )
-    ehr_query = self._get_participant_ehr_metrics_over_time_query(interval_query, hpo_ids)
+    ehr_query = self._get_participant_ehr_metrics_over_time_query(interval_query, organization_ids)
     with self.session() as session:
       ehr_cursor = session.execute(ehr_query)
     return [
@@ -107,13 +125,13 @@ class MetricsEhrService(BaseDao):
     ]
 
   @staticmethod
-  def _get_participant_ehr_metrics_over_time_query(interval_query, hpo_ids=None):
+  def _get_participant_ehr_metrics_over_time_query(interval_query, organization_ids=None):
     common_subquery_where_arg = (
       (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN)
       & Participant.isGhostId.isnot(True)
     )
-    if hpo_ids:
-      common_subquery_where_arg &= ParticipantSummary.hpoId.in_(hpo_ids)
+    if organization_ids:
+      common_subquery_where_arg &= ParticipantSummary.organizationId.in_(organization_ids)
 
     base_subquery = (
       sqlalchemy.select([sqlalchemy.func.count()])
@@ -143,15 +161,15 @@ class MetricsEhrService(BaseDao):
       .order_by(interval_query.c.start_date)
     )
 
-  def get_site_metrics_data(self, end_date, hpo_ids=None):
+  def get_organization_metrics_data(self, end_date, organization_ids=None):
     """
-    Get site participant status metrics as of end_date
+    Get organization participant status metrics as of end_date
     """
-    q = self._get_site_metrics_query(end_date, hpo_ids)
+    q = self._get_organization_metrics_query(end_date, organization_ids)
     with self.session() as session:
       cursor = session.execute(q)
     return {
-      row_dict['hpo_id']: row_dict
+      row_dict['organization_id']: row_dict
       for row_dict
       in [
         dict(zip(cursor.keys(), row))
@@ -161,7 +179,7 @@ class MetricsEhrService(BaseDao):
     }
 
   @staticmethod
-  def _get_site_metrics_query(cutoff_date, hpo_ids=None):
+  def _get_organization_metrics_query(cutoff_date, organization_ids=None):
     def make_sum_bool_field(condition_expression):
       return sqlalchemy.func.cast(
         sqlalchemy.func.sum(
@@ -204,9 +222,8 @@ class MetricsEhrService(BaseDao):
 
     # build query
     fields = [
-      HPO.hpoId.label('hpo_id'),
-      HPO.name.label('hpo_name'),
-      HPO.displayName.label('hpo_display_name'),
+      Organization.externalId.label('organization_id'),
+      Organization.displayName.label('organization_name'),
       make_sum_bool_field(was_participant).label('total_participants'),
       make_sum_bool_field(was_primary).label('total_primary_consented'),
       make_sum_bool_field(was_ehr_consented).label('total_ehr_consented'),
@@ -215,11 +232,11 @@ class MetricsEhrService(BaseDao):
       sqlalchemy.func.date(sqlalchemy.func.max(ParticipantSummary.ehrUpdateTime))
         .label('last_ehr_submission_date'),
     ]
-    sites_with_participants_and_summaries = sqlalchemy.join(
+    orgs_with_participants_and_summaries = sqlalchemy.join(
       sqlalchemy.join(
-        HPO,
+        Organization,
         ParticipantSummary,
-        ParticipantSummary.hpoId == HPO.hpoId
+        ParticipantSummary.organizationId == Organization.organizationId
       ),
       Participant,
       Participant.participantId == ParticipantSummary.participantId
@@ -227,9 +244,9 @@ class MetricsEhrService(BaseDao):
 
     query = (
       sqlalchemy.select(fields)
-        .select_from(sites_with_participants_and_summaries)
-        .group_by(HPO.hpoId)
+        .select_from(orgs_with_participants_and_summaries)
+        .group_by(Organization.organizationId)
     )
-    if hpo_ids:
-      query = query.where(HPO.hpoId.in_(hpo_ids))
+    if organization_ids:
+      query = query.where(Organization.organizationId.in_(organization_ids))
     return query
