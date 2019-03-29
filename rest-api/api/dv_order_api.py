@@ -144,8 +144,6 @@ class DvOrderApi(UpdatableApi):
     order.shipmentEstArrival = eta.date()
     order.shipmentStatus = tracking_status_enum
 
-    # self._do_update(order)
-    # return self._make_response(order)
     return order
 
 
