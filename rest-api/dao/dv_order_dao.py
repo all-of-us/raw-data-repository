@@ -3,7 +3,8 @@ import logging
 
 import clock
 from api.mayolink_api import MayoLinkApi
-from api_util import format_json_code, get_code_id, format_json_enum, parse_date
+from api_util import format_json_code, get_code_id, format_json_enum, parse_date, \
+  VIBRENT_BARCODE_URL, VIBRENT_FHIR_URL, VIBRENT_ORDER_URL
 from app_util import ObjectView
 from dao.base_dao import UpdatableDao
 from dao.biobank_order_dao import BiobankOrderDao
@@ -42,7 +43,7 @@ class DvOrderDao(UpdatableDao):
       'order': {
         'collected': fhir_resource.authoredOn,
         'account': '',
-        'number': fhir_resource.extension(url='http://joinallofus.org/fhir/barcode').valueString,
+        'number': fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString,
         'patient': {'medical_record_number': str(summary.biobankId),
                     'first_name': '*',
                     'last_name': str(summary.biobankId),
@@ -63,8 +64,8 @@ class DvOrderDao(UpdatableDao):
                       'phone': None,
                       'npi': None
                       },
-        'report_notes': fhir_resource.extension(
-          url='http://joinallofus.org/fhir/order-type').valueString,
+        'report_notes': fhir_resource.extension.get(
+          url=VIBRENT_ORDER_URL).valueString,
         'tests': {'test': {'code': '1SAL2',
                            'name': 'PMI Saliva, FDA Kit',
                            'comments': None
@@ -105,13 +106,13 @@ class DvOrderDao(UpdatableDao):
       order.order_id = int(fhir_resource.basedOn[0].identifier.value)
       existing_obj = self.get(self.get_id(order))
       existing_obj.shipmentStatus = fhir_resource.extension.get(
-        url='http://joinallofus.org/fhir/tracking-status').valueString
+        url=VIBRENT_FHIR_URL + 'tracking-status').valueString
       existing_obj.shipmentCarrier = fhir_resource.extension.get(
-        url='http://joinallofus.org/fhir/carrier').valueString
+        url=VIBRENT_FHIR_URL + 'carrier').valueString
       existing_obj.shipmentEstArrival = parse_date(fhir_resource.extension.get(
-        url='http://joinallofus.org/fhir/expected-delivery-date').valueDateTime)
+        url=VIBRENT_FHIR_URL + 'expected-delivery-date').valueDateTime)
       existing_obj.trackingId = fhir_resource.identifier.get(
-        system='http://joinallofus.org/fhir/trackingId').value
+        system=VIBRENT_FHIR_URL + 'trackingId').value
       # USPS status
       existing_obj.shipmentStatus = self._enumerate_order_shipment_tracking_status(
                                     fhir_resource.status)
@@ -147,7 +148,7 @@ class DvOrderDao(UpdatableDao):
 
     if resource_json['resourceType'] == 'SupplyRequest':
       order.order_id = fhir_resource.identifier.get(
-                       system='http://joinallofus.org/fhir/orderId').value
+                       system=VIBRENT_FHIR_URL + 'orderId').value
       order.order_date = parse_date(fhir_resource.authoredOn)
       order.supplier = fhir_resource.contained.get(resourceType='Organization').id
       order.supplierStatus = fhir_resource.status
@@ -155,7 +156,7 @@ class DvOrderDao(UpdatableDao):
       fhir_device = fhir_resource.contained.get(resourceType='Device')
       order.itemName = fhir_device.deviceName.get(type='manufacturer-name').name
       order.itemSKUCode = fhir_device.identifier.get(
-                          system='http://joinallofus.org/fhir/SKU').value
+                          system=VIBRENT_FHIR_URL + 'SKU').value
       order.itemQuantity = fhir_resource.quantity.value
 
       fhir_patient = fhir_resource.contained.get(resourceType='Patient')
@@ -167,8 +168,7 @@ class DvOrderDao(UpdatableDao):
       order.zipCode = fhir_address.postalCode
 
       order.orderType = fhir_resource.extension.get(
-        url="http://joinallofus.org/fhir/order-type"
-      ).valueString
+        url=VIBRENT_ORDER_URL).valueString
       if id_ is None:
         order.version = 1
         order.created = datetime.datetime.now()
