@@ -1,5 +1,6 @@
 import datetime
 from clock import FakeClock
+from dao.organization_dao import OrganizationDao
 from dao.participant_dao import ParticipantDao
 from model.hpo import HPO
 from dao.hpo_dao import HPODao
@@ -60,6 +61,7 @@ class PublicMetricsApiTest(FlaskTestBase):
     self.ps = ParticipantSummary()
     self.calendar_dao = CalendarDao()
     self.hpo_dao = HPODao()
+    self.org_dao = OrganizationDao()
     self.code_dao = CodeDao()
 
     self.hpo_dao.insert(HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName='Test',
@@ -78,7 +80,7 @@ class PublicMetricsApiTest(FlaskTestBase):
       CalendarDao().insert(calendar_day)
       curr_date = curr_date + datetime.timedelta(days=1)
 
-  def _insert(self, participant, first_name=None, last_name=None, hpo_name=None,
+  def _insert(self, participant, first_name=None, last_name=None, hpo_name=None, org_name=None,
               unconsented=False, time_int=None, time_study=None, time_mem=None, time_fp=None,
               time_fp_stored=None, gender_id=None, dob=None, state_id=None, primary_language=None):
     """
@@ -88,6 +90,7 @@ class PublicMetricsApiTest(FlaskTestBase):
     :param first_name: First name
     :param last_name: Last name
     :param hpo_name: HPO name (one of PITT or AZ_TUCSON)
+    :param org_name: Org external_id (one of PITT_BANNER_HEALTH or AZ_TUCSON_BANNER_HEALTH)
     :param time_int: Time that participant fulfilled INTERESTED criteria
     :param time_mem: Time that participant fulfilled MEMBER criteria
     :param time_fp: Time that participant fulfilled FULL_PARTICIPANT criteria
@@ -139,6 +142,8 @@ class PublicMetricsApiTest(FlaskTestBase):
     summary.enrollmentStatusCoreStoredSampleTime = time_fp_stored
 
     summary.hpoId = self.hpo_dao.get_by_name(hpo_name).hpoId
+    if org_name:
+      summary.organizationId = self.org_dao.get_by_external_id(org_name).organizationId
 
     if time_study is not None:
       with FakeClock(time_mem):
@@ -178,11 +183,11 @@ class PublicMetricsApiTest(FlaskTestBase):
     self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
-                 time_fp_stored=self.time4)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time1, time_mem=self.time3, time_fp_stored=self.time4)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -234,17 +239,21 @@ class PublicMetricsApiTest(FlaskTestBase):
     self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, gender_id=354)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, gender_id=356)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
+                 gender_id=356)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, gender_id=355)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time3, gender_id=355)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, gender_id=355)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time4, gender_id=355)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, gender_id=355)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time1, gender_id=355)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -309,17 +318,21 @@ class PublicMetricsApiTest(FlaskTestBase):
     self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, dob=dob1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, dob=dob2)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
+                 dob=dob2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, dob=dob3)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time3, dob=dob3)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time4, dob=dob4)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time4, dob=dob4)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, dob=dob3)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time1,
+                 dob=dob3)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -374,16 +387,16 @@ class PublicMetricsApiTest(FlaskTestBase):
     self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time4,
-                 time_fp_stored=self.time5)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time3, time_mem=self.time4, time_fp_stored=self.time5)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time4,
-                 time_fp_stored=self.time5)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time1,
+                 time_mem=self.time4, time_fp_stored=self.time5)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
@@ -558,25 +571,25 @@ class PublicMetricsApiTest(FlaskTestBase):
                  time_fp_stored=self.time1, state_id=1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time2,
-                 time_fp_stored=self.time2, state_id=2)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
+                 time_mem=self.time2, time_fp_stored=self.time2, state_id=2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=3)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time3, time_mem=self.time3, time_fp_stored=self.time3, state_id=3)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', 'PITT_BANNER_HEALTH', time_int=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=2)
 
     p5 = Participant(participantId=6, biobankId=9)
-    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_mem=self.time2,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', 'PITT_BANNER_HEALTH', time_int=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time3, state_id=2)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -627,25 +640,30 @@ class PublicMetricsApiTest(FlaskTestBase):
                  time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
-                 time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
+                 time_study=self.time2, time_mem=self.time2, time_fp=self.time3,
+                 time_fp_stored=self.time3)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
-                 time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time3, time_study=self.time4, time_mem=self.time4,
+                 time_fp=self.time5, time_fp_stored=self.time5)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
-                 time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', 'PITT_BANNER_HEALTH', time_int=self.time3,
+                 time_study=self.time4, time_mem=self.time5, time_fp=self.time5,
+                 time_fp_stored=self.time5)
 
     p4 = Participant(participantId=6, biobankId=9)
-    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
-                 time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
+    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', 'PITT_BANNER_HEALTH', time_int=self.time3,
+                 time_study=self.time4, time_mem=self.time4, time_fp=self.time4,
+                 time_fp_stored=self.time5)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
-                 time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time1,
+                 time_study=self.time1, time_mem=self.time1, time_fp=self.time1,
+                 time_fp_stored=self.time1)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -712,15 +730,17 @@ class PublicMetricsApiTest(FlaskTestBase):
                  primary_language='en')
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, primary_language='es')
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
+                 primary_language='es')
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
-                 time_fp_stored=self.time4, primary_language='en')
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time1, time_mem=self.time3, time_fp_stored=self.time4,
+                 primary_language='en')
 
     p4 = Participant(participantId=5, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time2,
-                 time_fp_stored=self.time4)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time1, time_mem=self.time2, time_fp_stored=self.time4)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLanguageCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -743,25 +763,30 @@ class PublicMetricsApiTest(FlaskTestBase):
                  time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
-                 time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
+                 time_study=self.time2, time_mem=self.time2, time_fp=self.time3,
+                 time_fp_stored=self.time3)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
-                 time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time3, time_study=self.time4, time_mem=self.time4,
+                 time_fp=self.time5, time_fp_stored=self.time5)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
-                 time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', 'PITT_BANNER_HEALTH', time_int=self.time3,
+                 time_study=self.time4, time_mem=self.time5, time_fp=self.time5,
+                 time_fp_stored=self.time5)
 
     p4 = Participant(participantId=6, biobankId=9)
-    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
-                 time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
+    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', 'PITT_BANNER_HEALTH', time_int=self.time3,
+                 time_study=self.time4, time_mem=self.time4, time_fp=self.time4,
+                 time_fp_stored=self.time5)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
-                 time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time1,
+                 time_study=self.time1, time_mem=self.time1, time_fp=self.time1,
+                 time_fp_stored=self.time1)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -785,25 +810,30 @@ class PublicMetricsApiTest(FlaskTestBase):
                  time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
-                 time_mem=self.time2, time_fp=self.time3, time_fp_stored=self.time3)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
+                 time_study=self.time2, time_mem=self.time2, time_fp=self.time3,
+                 time_fp_stored=self.time3)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time4,
-                 time_mem=self.time4, time_fp=self.time5, time_fp_stored=self.time5)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time3, time_study=self.time4, time_mem=self.time4,
+                 time_fp=self.time5, time_fp_stored=self.time5)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time4,
-                 time_mem=self.time5, time_fp=self.time5, time_fp_stored=self.time5)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', 'PITT_BANNER_HEALTH', time_int=self.time3,
+                 time_study=self.time4, time_mem=self.time5, time_fp=self.time5,
+                 time_fp_stored=self.time5)
 
     p4 = Participant(participantId=6, biobankId=9)
-    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time3, time_study=self.time4,
-                 time_mem=self.time4, time_fp=self.time4, time_fp_stored=self.time5)
+    self._insert(p4, 'Chad3', 'Caterpillar3', 'PITT', 'PITT_BANNER_HEALTH', time_int=self.time3,
+                 time_study=self.time4, time_mem=self.time4, time_fp=self.time4,
+                 time_fp_stored=self.time5)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
-                 time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time1,
+                 time_study=self.time1, time_mem=self.time1, time_fp=self.time1,
+                 time_fp_stored=self.time1)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -817,16 +847,16 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({u'date': u'2017-12-31',
-                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 1}},
+                   u'metrics': {u'ORGANIZATIONS_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 1}},
                   results)
     self.assertIn({u'date': u'2018-01-02',
-                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 2}},
+                   u'metrics': {u'ORGANIZATIONS_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 2}},
                   results)
     self.assertIn({u'date': u'2018-01-03',
-                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 4}},
+                   u'metrics': {u'ORGANIZATIONS_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 4}},
                   results)
     self.assertIn({u'date': u'2018-01-06',
-                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 5}},
+                   u'metrics': {u'ORGANIZATIONS_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 5}},
                   results)
 
     qs = (
@@ -838,16 +868,16 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     results = self.send_get('PublicMetrics', query_string=qs)
     self.assertIn({u'date': u'2017-12-31',
-                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 0}},
+                   u'metrics': {u'ORGANIZATIONS_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 0}},
                   results)
     self.assertIn({u'date': u'2018-01-02',
-                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 1}},
+                   u'metrics': {u'ORGANIZATIONS_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 1}},
                   results)
     self.assertIn({u'date': u'2018-01-03',
-                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 3}},
+                   u'metrics': {u'ORGANIZATIONS_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 3}},
                   results)
     self.assertIn({u'date': u'2018-01-06',
-                   u'metrics': {u'SITES_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 4}},
+                   u'metrics': {u'ORGANIZATIONS_ACTIVE': 0, u'EHR_RECEIVED': 0, u'EHR_CONSENTED': 4}},
                   results)
 
   def create_demographics_questionnaire(self):

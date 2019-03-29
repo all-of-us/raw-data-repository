@@ -1,8 +1,8 @@
 import functools
 
 from dao.calendar_dao import INTERVALS
-from dao.hpo_dao import HPODao
 from dao.metrics_ehr_service import MetricsEhrService
+from dao.organization_dao import OrganizationDao
 
 from flask import request
 from flask_restful import Resource
@@ -21,13 +21,13 @@ class MetricsEhrApiBaseResource(Resource):
     validators = {
       'start_date': self._parse_date,
       'end_date': self._parse_date,
-      'awardee_names': self._parse_comma_separated,
+      'organizations': self._parse_comma_separated,
       'interval': functools.partial(self._parse_choice, INTERVALS)
     }
     return self._parse_input(validators, {
       'start_date': request.args.get('start_date'),
       'end_date': request.args.get('end_date'),
-      'awardee_names': request.args.get('awardee'),  # NOTE: non-ideal name to match existing APIs
+      'organizations': request.args.get('organization'),
       'interval': request.args.get('interval'),
     })
 
@@ -54,7 +54,7 @@ class MetricsEhrApiBaseResource(Resource):
   @staticmethod
   def _parse_comma_separated(params, key):
     try:
-      return params[key].split(',')
+      return params[key].upper().split(',')
     except (KeyError, AttributeError):
       return []
 
@@ -71,33 +71,34 @@ class MetricsEhrApiBaseResource(Resource):
       raise BadRequest('Missing {key}'.format(key=key))
 
   @staticmethod
-  def _get_hpo_ids_from_awardee_names(awardee_names):
-    dao = HPODao()
+  def _get_organization_ids_from_organizations(organizations):
+    dao = OrganizationDao()
     try:
       return [
-        dao.get_by_name(name).hpoId
-        for name in awardee_names
+        dao.get_by_external_id(name).organizationId
+        for name in organizations
       ]
     except AttributeError:
-      raise BadRequest('Invalid awardees {value}'.format(value=','.join(awardee_names)))
+      raise BadRequest('Invalid organization {value}'.format(value=','.join(organizations)))
 
 
 class MetricsEhrApi(MetricsEhrApiBaseResource):
   """
   A combined view of:
   - Participant EHR Consented vs EHR Received Over Time
-  - Sites Active Over Time
-  - Site Participant Status Counts At Specific Time (end_date)
+  - Organizations Active Over Time
+  - Organization Participant Status Counts At Specific Time (end_date)
   """
 
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
+    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
     return MetricsEhrService().get_metrics(
       start_date=valid_arguments['start_date'],
       end_date=valid_arguments['end_date'],
       interval=valid_arguments['interval'],
-      site_ids=self._get_hpo_ids_from_awardee_names(valid_arguments['awardee_names']),
+      organization_ids=org_ids
     )
 
 
@@ -109,39 +110,42 @@ class ParticipantEhrMetricsOverTimeApi(MetricsEhrApiBaseResource):
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
+    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
     return MetricsEhrService().get_participant_ehr_metrics_over_time_data(
       start_date=valid_arguments['start_date'],
       end_date=valid_arguments['end_date'],
       interval=valid_arguments['interval'],
-      hpo_ids=self._get_hpo_ids_from_awardee_names(valid_arguments['awardee_names']),
+      organization_ids=org_ids
     )
 
 
-class SitesActiveMetricsOverTimeApi(MetricsEhrApiBaseResource):
+class OrganizationsActiveMetricsOverTimeApi(MetricsEhrApiBaseResource):
   """
-  Sites Active Over Time
+  Organizations Active Over Time
   """
 
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
-    return MetricsEhrService().get_sites_active_over_time_data(
+    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
+    return MetricsEhrService().get_organizations_active_over_time_data(
       start_date=valid_arguments['start_date'],
       end_date=valid_arguments['end_date'],
       interval=valid_arguments['interval'],
-      hpo_ids=self._get_hpo_ids_from_awardee_names(valid_arguments['awardee_names']),
+      organization_ids=org_ids
     )
 
 
-class SiteMetricsApi(MetricsEhrApiBaseResource):
+class OrganizationMetricsApi(MetricsEhrApiBaseResource):
   """
-  Site Participant Status Counts At Specific Time (end_date)
+  Organization Participant Status Counts At Specific Time (end_date)
   """
 
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
-    return MetricsEhrService().get_site_metrics_data(
+    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
+    return MetricsEhrService().get_organization_metrics_data(
       end_date=valid_arguments['end_date'],
-      hpo_ids=self._get_hpo_ids_from_awardee_names(valid_arguments['awardee_names']),
+      organization_ids=org_ids
     )
