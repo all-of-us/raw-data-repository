@@ -16,13 +16,25 @@ class MetricsEhrService(BaseDao):
     super(MetricsEhrService, self).__init__(ParticipantSummary, backup=True)
     self.ehr_receipt_dao = EhrReceiptDao()
 
+  def _get_organization_ids_from_hpo_ids(self, hpo_ids):
+    query = (
+      sqlalchemy.select([Organization.organizationId])
+      .where(Organization.hpoId.in_(hpo_ids))
+    )
+    with self.session() as session:
+      result = session.execute(query)
+    return list(row[0] for row in result)
+
   def get_metrics(
     self,
     start_date,
     end_date,
     organization_ids=None,
+    hpo_ids=None,
     interval=INTERVAL_WEEK
   ):
+    if organization_ids is None and hpo_ids is not None:
+      organization_ids = self._get_organization_ids_from_hpo_ids(hpo_ids)
     return {
       'metrics_over_time': self._get_metrics_over_time_data(
         start_date,

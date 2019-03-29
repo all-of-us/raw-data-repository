@@ -83,7 +83,7 @@ class PublicMetricsApi(Resource):
       params = {
         'start_date': convert_to_datetime(start_date),
         'end_date': convert_to_datetime(end_date),
-        'site_ids': awardee_ids,
+        'hpo_ids': awardee_ids,
         'interval': INTERVAL_DAY
       }
       result_set = MetricsEhrService().get_metrics(**params)
