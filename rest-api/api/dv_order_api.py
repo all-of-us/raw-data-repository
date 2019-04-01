@@ -1,7 +1,7 @@
 import dateutil
 from api.base_api import UpdatableApi
 from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_FHIR_URL, VIBRENT_BARCODE_URL,\
-  VIBRENT_FULLFILMENT_URL
+  VIBRENT_FULFILLMENT_URL
 from app_util import auth_required, ObjDict
 from dao.dv_order_dao import DvOrderDao
 from fhir_utils import SimpleFhirR4Reader
@@ -93,7 +93,7 @@ class DvOrderApi(UpdatableApi):
   def _put_supply_request(self, resource, bo_id):
     fhir_resource = SimpleFhirR4Reader(resource)
     barcode_url = None
-    if fhir_resource.extension.get(url=VIBRENT_FULLFILMENT_URL).valueString == 'shipped':
+    if fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString == 'shipped':
       barcode_url = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).url
     pid = fhir_resource.contained.get(
       resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')

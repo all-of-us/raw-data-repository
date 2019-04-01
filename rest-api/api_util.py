@@ -20,7 +20,7 @@ ALL_ROLES = [PTC, HEALTHPRO, STOREFRONT, EXPORTER]
 VIBRENT_FHIR_URL = 'http://joinallofus.org/fhir/'
 VIBRENT_BARCODE_URL = VIBRENT_FHIR_URL + 'barcode'
 VIBRENT_ORDER_URL = VIBRENT_FHIR_URL + 'order-type'
-VIBRENT_FULLFILMENT_URL = VIBRENT_FHIR_URL + 'fullfilment-status'
+VIBRENT_FULFILLMENT_URL = VIBRENT_FHIR_URL + 'fulfillment-status'
 
 def parse_date(date_str, date_format=None, date_only=False):
   """Parses JSON dates.
