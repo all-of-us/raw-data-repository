@@ -585,6 +585,8 @@ class FlaskTestBase(NdbTestBase):
                       (expected_response_headers, response.headers))
     if expected_status == httplib.OK:
       return json.loads(response.data)
+    if expected_status == httplib.CREATED:
+      return response
     return None
 
   def create_participant(self):
