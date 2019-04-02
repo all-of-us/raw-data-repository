@@ -124,3 +124,8 @@ def load_questionnaire_response_with_consents(
       'valueString': path,
     })
   return resource
+
+
+def load_test_data_json(filename):
+  with open(data_path(filename)) as handle:
+    return json.load(handle)
