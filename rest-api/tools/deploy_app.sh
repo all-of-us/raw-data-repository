@@ -145,12 +145,7 @@ then
   declare -a tmp_files
 
   # Deploy cron/queue in all cases.
-  CRON_YAML=cron_default.yaml
-  if [ "${PROJECT}" = "all-of-us-rdr-sandbox" ]
-  then
-    CRON_YAML=cron_sandbox.yaml
-  fi
-  cp "${CRON_YAML}" cron.yaml
+  tools/build_cron_yaml.py --project ${PROJECT} > cron.yaml
   yamls+=( cron.yaml queue.yaml )
   tmp_files+=( cron.yaml )
   before_comment="Updating cron/queue configuration in ${PROJECT}."
