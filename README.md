@@ -935,6 +935,33 @@ resources. Once these are created, a client can query for available samples:
 
 #### TODO `GET /Participant/:pid/BiobankSamples`
 
+
+## Direct Volunteer Biospample Shipments
+
+### SupplyRequest/SupplyDelivery
+
+Allows for Biobank sample orders to be shipped directly to DV participants.
+Uses FHIR R4 spec. See spec [here](https://www.hl7.org/fhir/)
+
+#### `POST /SupplyRequest`
+Create a new DV BiobankOrder for a given participant. Request body is a
+FHIR SupplyRequest resource to be created. Response is 201 CREATED and header contains location of resource with orderId for future `PUT` requests
+
+#### `PUT /SupplyRequest/:orderId`
+Update an existing SupplyRequest with supplier updates.
+`PUT` should contain a barcode-url, this is used as the Biobank order id.
+The RDR sends a `POST` request to Biobank through the MayoLink API, informing the Biobank that a biosample has been shipped to Participant.
+
+#### `POST /SupplyDelivery`
+A FHIR protocol "update" for an existing SupplyRequest.
+Captures delivery information for a previous `SupplyRequest`
+
+#### `PUT /SupplyDelivery/:orderId`
+Update SupplyDelivery with shipment information to Participant and Biobank.
+
+#### Example payloads
+[payloads](rest-api/test/test-data)
+
 ## Organization API
 
 Retrieves metadata about awardees / organizations / sites.
