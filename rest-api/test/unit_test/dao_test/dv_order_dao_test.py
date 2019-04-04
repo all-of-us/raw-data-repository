@@ -1,4 +1,3 @@
-import datetime
 import httplib
 import json
 import mock
