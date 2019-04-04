@@ -950,7 +950,9 @@ FHIR SupplyRequest resource to be created. Response is 201 CREATED and header co
 #### `PUT /SupplyRequest/:orderId`
 Update an existing SupplyRequest with supplier updates.
 `PUT` should contain a barcode-url, this is used as the Biobank order id.
-The RDR sends a `POST` request to Biobank through the MayoLink API, informing the Biobank that a biosample has been shipped to Participant.
+The RDR sends a `POST` request to Biobank through the MayoLink API, 
+informing the Biobank that a biosample has been shipped to Participant.
+Update should contain fulfillment status.
 
 #### `POST /SupplyDelivery`
 A FHIR protocol "update" for an existing SupplyRequest.
