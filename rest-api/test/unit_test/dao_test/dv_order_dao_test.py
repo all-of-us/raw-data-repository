@@ -49,8 +49,6 @@ class DvOrderDaoTestBase(FlaskTestBase):
     post_response = json.loads(payload.response[0])
     location = payload.location.rsplit('/', 1)[-1]
     put_response = self.send_put('SupplyRequest/{}'.format(location), request_data=self.put_request)
-    print post_response, '<<< post response', '\n'
-    print put_response, '<<< put response', '\n'
     self.assertEquals(post_response['version'], 1)
     self.assertEquals(put_response['version'], 2)
     self.assertEquals(put_response['barcode'], 'barcode')

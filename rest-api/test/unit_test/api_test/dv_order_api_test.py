@@ -91,7 +91,12 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     )
     orders = self.get_orders()
     self.assertEqual(1, len(orders))
-    # TODO: confirm updated fields
+    for i in orders:
+      self.assertEqual(i.barcode, 'somebarcodenumber')
+      self.assertEqual(i.id, long(1))
+      self.assertEqual(i.order_id, long(999999))
+      self.assertEqual(i.biobankOrderId, 'WEB1ABCD1234')
+      self.assertEqual(i.biobankStatus, 'Delivered')
 
   def test_missing_authoredOn_works(self):
     """authoredOn may not be sent in payload."""
