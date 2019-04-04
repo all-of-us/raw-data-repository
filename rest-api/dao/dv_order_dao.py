@@ -13,6 +13,7 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from fhir_utils import SimpleFhirR4Reader
 from model.biobank_dv_order import BiobankDVOrder
 from model.biobank_order import BiobankOrderedSample, BiobankOrderIdentifier, BiobankOrder
+from model.utils import to_client_participant_id
 from participant_enums import BiobankOrderStatus, OrderShipmentTrackingStatus
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import BadRequest
@@ -93,6 +94,8 @@ class DvOrderDao(UpdatableDao):
       del result['id']  # PK for model
 
     result = {k: v for k, v in result.items() if v is not None}
+    if 'participantId' in result:
+      result['participantId'] = to_client_participant_id(result['participantId'])
     return result
 
   def from_client_json(self, resource_json, id_=None, expected_version=None,
@@ -149,7 +152,9 @@ class DvOrderDao(UpdatableDao):
     if resource_json['resourceType'] == 'SupplyRequest':
       order.order_id = fhir_resource.identifier.get(
                        system=VIBRENT_FHIR_URL + 'orderId').value
-      order.order_date = parse_date(fhir_resource.authoredOn)
+      if hasattr(fhir_resource, 'authoredOn'):
+        order.order_date = parse_date(fhir_resource.authoredOn)
+
       order.supplier = fhir_resource.contained.get(resourceType='Organization').id
       order.supplierStatus = fhir_resource.status
 
