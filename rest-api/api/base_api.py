@@ -2,7 +2,7 @@ import logging
 
 import app_util
 from flask import request, jsonify, url_for
-from flask.ext.restful import Resource
+from flask_restful import Resource
 from model.utils import to_client_participant_id
 from query import OrderBy, Query
 from werkzeug.exceptions import BadRequest, NotFound

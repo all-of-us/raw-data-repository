@@ -5,7 +5,7 @@ import json
 from api_util import HEALTHPRO
 from dao.metrics_dao import MetricsBucketDao
 from flask import request
-from flask.ext.restful import Resource
+from flask_restful import Resource
 from werkzeug.exceptions import BadRequest
 
 DATE_FORMAT = '%Y-%m-%d'
