@@ -1,6 +1,10 @@
 # Daily metrics are omitted for sandbox due to large synthetic dataset.
 # See https://groups.google.com/forum/#!msg/pmi-drc-alerts/ifY__zLf5k8/TlCMREA4CwAJ
 cron:
+- description: Daily metrics
+- description: Monthly reconciliation report
+- description: Participant count metrics
+- description: Flag ghost participants
 - description: Daily public metrics
   url: /offline/PublicMetricsRecalculate
   schedule: every day 05:00
