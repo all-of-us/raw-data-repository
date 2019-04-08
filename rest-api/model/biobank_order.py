@@ -123,6 +123,7 @@ class BiobankOrder(BiobankOrderBase, Base):
   identifiers = relationship('BiobankOrderIdentifier', cascade='all, delete-orphan')
   samples = relationship('BiobankOrderedSample', cascade='all, delete-orphan')
   dvOrders = relationship('BiobankDVOrder', cascade='all, delete-orphan')
+  genomicSetMember = relationship('GenomicSetMember', cascade='all, delete-orphan')
 
 
 class BiobankOrderIdentifierBase(object):
