@@ -48,10 +48,12 @@ def check_ppi_data(client, args):
   # iterate over each data column, convert them into a dict.
   for column in range(0, len(csv_data[0]) - 1):
     row_dict = _convert_csv_column_to_dict(csv_data, column)
+    email = row_dict[EQC] if EQC in row_dict else None
+    phone_no = row_dict[PNQC] if PNQC in row_dict else None
 
-    if do_filter is False or (row_dict[EQC] in args.email or row_dict[PNQC] in args.phone):
+    if do_filter is False or (email in args.email or phone_no in args.phone):
       # prioritize using email value over phone number for key
-      key = row_dict[EQC] if row_dict[EQC] else row_dict[PNQC]
+      key = email if email else phone_no
       ppi_data[key] = row_dict
 
   if len(ppi_data) == 0:
@@ -96,8 +98,15 @@ def _convert_csv_column_to_dict(csv_data, column):
   results = dict()
 
   for row in csv_data:
+    key = row[0]
     data = row[1:][column]
-    results[row[0]] = data.strip() if data else ''
+
+    if data:
+      if key not in results:
+        results[key] = data.strip() if data else ''
+      else:
+        # append multiple choice questions
+        results[key] += '|{0}'.format(data.strip())
 
   return results
 
