@@ -129,7 +129,12 @@ class Client(object):
       # This adds a header that we can use to reject 'unauthenticated' requests.  What this
       # is really testing is that the auth_required annotation is in all the right places.
       headers['unauthenticated'] = 'Yes'
-      resp, content = httplib2.Http().request(url, method, headers=headers, body=body)
+      try:
+        resp, content = httplib2.Http().request(url, method, headers=headers, body=body)
+      except Exception as e:
+        if e.message == 'WWW-Authenticate':
+          resp, content = httplib2.Http().request(url, method, body=body)
+          resp.status = httplib.UNAUTHORIZED
 
     client_log.info('%s for %s to %s', resp.status, method, url)
     details_level = (
