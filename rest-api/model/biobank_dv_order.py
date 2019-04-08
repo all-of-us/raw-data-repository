@@ -16,7 +16,7 @@ class BiobankDVOrder(Base):
   # have mysql set the creation data for each new order
   created = Column('created', DateTime, nullable=True)
   # have mysql always update the modified data when the record is changed
-  modified = Column('modified', DateTime, nullable=False)
+  modified = Column('modified', DateTime, nullable=True)
   # Incrementing version, starts at 1 and is incremented on each update.
   version = Column('version', Integer, nullable=False)
 
