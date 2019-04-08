@@ -8,7 +8,6 @@ import pprint
 
 from oauth2client.service_account import ServiceAccountCredentials
 from httplib2 import MalformedHeader
-from werkzeug.exceptions import Unauthorized
 
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
