@@ -7,6 +7,7 @@ import logging
 import pprint
 
 from oauth2client.service_account import ServiceAccountCredentials
+from httplib2 import MalformedHeader
 
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
@@ -129,7 +130,13 @@ class Client(object):
       # This adds a header that we can use to reject 'unauthenticated' requests.  What this
       # is really testing is that the auth_required annotation is in all the right places.
       headers['unauthenticated'] = 'Yes'
-      resp, content = httplib2.Http().request(url, method, headers=headers, body=body)
+      try:
+        resp, content = httplib2.Http().request(url, method, headers=headers, body=body)
+      except MalformedHeader as m:
+        # fix for "unauthenticated requests" where we're not really sending creds on dev_appserver.
+        if m.message == 'WWW-Authenticate':
+          resp, content = httplib2.Http().request(url, method, body=body)
+          resp.status = httplib.UNAUTHORIZED
 
     client_log.info('%s for %s to %s', resp.status, method, url)
     details_level = (

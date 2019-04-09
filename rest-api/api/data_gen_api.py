@@ -9,7 +9,7 @@ from data_gen.fake_biobank_samples_generator import generate_samples
 from data_gen.fake_participant_generator import FakeParticipantGenerator
 from data_gen.in_process_client import InProcessClient
 from flask import request
-from flask.ext.restful import Resource
+from flask_restful import Resource
 from google.appengine.ext import deferred
 from werkzeug.exceptions import Forbidden
 

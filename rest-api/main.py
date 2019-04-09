@@ -213,7 +213,7 @@ app.add_url_rule(PREFIX + 'ImportCodebook',
 app.add_url_rule('/_ah/warmup',
                  endpoint='warmup',
                  view_func=_warmup,
-                 methods='GET')
+                 methods=['GET'])
 
 app.after_request(app_util.add_headers)
 app.before_request(app_util.request_logging)
