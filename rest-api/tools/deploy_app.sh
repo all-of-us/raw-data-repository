@@ -52,9 +52,12 @@ then
 elif [ "${PROJECT}" == "all-of-us-rdr-staging" ]
 then
   CONFIG="config/config_staging.json"
-elif [ "${PROJECT}" == "all-of-us-rdr-dryrun" ]
+elif [ "${PROJECT}" == "pmi-drc-api-test" ]
 then
-  CONFIG="config/config_dryrun.json"
+  CONFIG="config/config_test.json"
+  echo "Skipping JIRA tracker updates for Sandbox."
+  UPDATE_TRACKER=echo
+
 elif [ "${PROJECT}" == "all-of-us-rdr-sandbox" ]
 then
   CONFIG="config/config_sandbox.json"
