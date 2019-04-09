@@ -9,7 +9,7 @@ api_version: 1
 
 libraries:
 - name: ssl
-  version: latest
+  version: "latest"
 - name: pycrypto
   version: 2.6
 - name: protorpc
