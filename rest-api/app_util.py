@@ -190,7 +190,7 @@ def auth_required(role_whitelist):
       # are allowed through (when enabled).
       if not _is_self_request():
         if request.scheme.lower() != 'https' and appid not in ('None', 'testbed-test', 'testapp'):
-          raise Unauthorized('HTTPS is required for %r' % appid)
+          raise Unauthorized('HTTPS is required for %r' % appid, www_authenticate='Bearer realm="rdr"')
         check_auth(role_whitelist)
       return func(*args, **kwargs)
     return wrapped
