@@ -29,6 +29,8 @@ def get_column_name(model_type, field_name):
 def add_table_history_table(table, op):
   """
   Create a history table and add triggers so we automatically capture record changes.
+  Note: !!! Remember to drop all unique indexes (not primary key) on the new history table. !!!
+        !!! Ex: "call sp_drop_index_if_exists('xxxxx_history', 'idx_unique_index_name')" !!!
   :param table: table name
   :param op: sqlalchemy op object
   """

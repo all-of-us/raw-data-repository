@@ -28,6 +28,7 @@ from model.questionnaire import Questionnaire, QuestionnaireHistory, Questionnai
 from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from model.site import Site
+from model.genomics import GenomicSet, GenomicSetMember
 
 RETRY_CONNECTION_LIMIT = 10
 
