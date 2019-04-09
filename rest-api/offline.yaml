@@ -38,3 +38,5 @@ libraries:
   version: 1.0
 - name: MySQLdb
   version: "latest"
+- name: ssl
+  version: "2.7.11"
