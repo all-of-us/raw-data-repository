@@ -56,8 +56,7 @@ cp cron_default.yaml cron.yaml
 
 echo "Deploying RDR to ${PROJECT_ID}"
 cat app_base.yaml app_nonprod.yaml > app.yaml
-cat app.yaml
-gcloud app deploy app.yaml cron.yaml index.yaml offline.yaml queue.yaml --project=${PROJECT_ID} --version=${VERSION}
+gcloud app deploy app.yaml cron.yaml index.yaml offline.yaml queue.yaml --project=${PROJECT_ID} --version=${VERSION} --verbosity=info
 rm app.yaml cron.yaml
 
 ENDPOINT="https://${PROJECT_ID}.appspot.com"
