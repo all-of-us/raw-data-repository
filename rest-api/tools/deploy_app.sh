@@ -55,6 +55,9 @@ then
 elif [ "${PROJECT}" == "pmi-drc-api-test" ]
 then
   CONFIG="config/config_test.json"
+  echo "Skipping JIRA tracker updates for Sandbox."
+  UPDATE_TRACKER=echo
+
 elif [ "${PROJECT}" == "all-of-us-rdr-sandbox" ]
 then
   CONFIG="config/config_sandbox.json"
