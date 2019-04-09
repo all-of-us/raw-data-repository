@@ -2,7 +2,7 @@ import app_util
 import offline.metrics_config
 
 from api_util import HEALTHPRO
-from flask.ext.restful import Resource
+from flask_restful import Resource
 
 class MetricsFieldsApi(Resource):
   """API that returns the names and valid values for metric fields."""

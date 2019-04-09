@@ -1,6 +1,6 @@
 import datetime
 
-from flask.ext.restful import Resource
+from flask_restful import Resource
 from flask import request
 from werkzeug.exceptions import BadRequest
 from participant_enums import MetricsCacheType

@@ -2,7 +2,7 @@ import app_util
 
 from api_util import STOREFRONT
 from flask import request
-from flask.ext.restful import Resource
+from flask_restful import Resource
 from participant_enums import MetricsKey, METRIC_SET_KEYS
 from dao.metric_set_dao import MetricSetDao, AggregateMetricsDao
 from werkzeug import exceptions
