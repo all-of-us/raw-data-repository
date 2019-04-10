@@ -462,6 +462,14 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     # count should be 0
     self.assertEquals(summary.numberDistinctVisits, 0)
 
+    with clock.FakeClock(TIME_1):
+      order = self.order_dao.insert(self._make_biobank_order(biobankOrderId='2'))
+      measurement = self.measurement_dao.insert(self._make_physical_measurements())
+      summary = self.dao.get(self.participant.participantId)
+      # count should be 1 if visits on same day
+      self.assertEquals(summary.numberDistinctVisits, 1)
+
+
   def _make_biobank_order(self, **kwargs):
     """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
 
