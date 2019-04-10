@@ -2,6 +2,8 @@
 
 # Starts Cloud SQL proxy, connected to the Cloud SQL instance for a particular environment,
 # and runs mysql to connect to it.
+# use --mycli option to use the mycli db client, which is clearly superior to mysql client and if
+# you're not using it, you should be. see https://www.mycli.net/
 
 USAGE="tools/connect_to_database.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>] \
   [--user <USER> --password <PASSWORD>] [--command <COMMAND> [--output <OUTPUT_FILE>]]"
@@ -13,6 +15,7 @@ while true; do
     --user) CONNECT_USER=$2; shift 2;;
     --command) COMMAND=$2; shift 2;;
     --output_csv) OUTPUT=$2; shift 2;;
+    --mycli) MYCLI=mycli; shift 1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -53,7 +56,12 @@ then
   SUFFIX2=" | sed 's/\t/\",\"/g;s/^/\"/;s/$/\"/;s/\n//g' > ${OUTPUT}"
 fi
 
-MYSQL_COMMAND="mysql -u \"${CONNECT_USER}\" -p\"${CONNECT_PASSWORD}\" -h 127.0.0.1 --port ${PORT} -D \"${DB_NAME}\" ${SUFFIX} ${SUFFIX2}"
-eval ${MYSQL_COMMAND}
+mysql=mysql
+if [ "${MYCLI}" ]
+then
+  mysql="${MYCLI}"
+fi
 
+MYSQL_COMMAND="${mysql} -u \"${CONNECT_USER}\" -p\"${CONNECT_PASSWORD}\" -h 127.0.0.1 --port ${PORT} -D \"${DB_NAME}\" ${SUFFIX} ${SUFFIX2}"
+eval ${MYSQL_COMMAND}
 
