@@ -13,7 +13,7 @@ class RequestsTest(BaseClientTest):
         body='{}',
         authenticated=False,
         check_status=False)
-    self.assertEquals(response.status, httplib.UNAUTHORIZED)
+    self.assertEquals(response.status, httplib.BAD_REQUEST)
 
   def test_header_values(self):
     response, _ = self.client.request('Participant', method='POST', body='{}')
