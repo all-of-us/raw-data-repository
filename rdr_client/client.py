@@ -7,7 +7,6 @@ import logging
 import pprint
 
 from oauth2client.service_account import ServiceAccountCredentials
-from httplib2 import MalformedHeader
 
 
 SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
