@@ -221,3 +221,5 @@ def create_genomic_set_status_result_file(genomic_set_id):
 def _create_and_upload_result_file(genomic_set):
   member_dao = GenomicSetMemberDao()
   members = member_dao.get_all_by_genomic_set_id(genomic_set.id)
+
+  return members
