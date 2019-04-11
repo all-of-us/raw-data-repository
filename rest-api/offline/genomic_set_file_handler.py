@@ -11,7 +11,7 @@ from cloudstorage import cloudstorage_api
 import clock
 import config
 from dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus
+from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
 
 _INPUT_TIMESTAMP_FORMAT = '%Y/%m/%d %H:%M:%S'  # like 2016/11/30 14:32:18
 _US_CENTRAL = pytz.timezone('US/Central')
@@ -28,19 +28,17 @@ class DataError(RuntimeError):
 
   Args:
     msg: Passed through to superclass.
-    external: If True, this error should be reported to external partners (Biobank). Externally
-        reported DataErrors are only reported if biobank recipients are in the config.
+    external: If True, this error should be reported to external partners (Analyst).
   """
   def __init__(self, msg, external=False):
     super(DataError, self).__init__(msg)
     self.external = external
 
-
 def read_genomic_set_from_bucket():
   csv_file, csv_filename, timestamp = get_last_genomic_set_file_info()
   if _is_filename_exist(csv_filename):
     raise DataError(
-      'This file %s is already exist.' % csv_filename, external=True)
+      'This file %s has already been processed' % csv_filename, external=True)
   now = clock.CLOCK.now()
   if now - timestamp > _MAX_INPUT_AGE:
     raise DataError(
@@ -49,10 +47,9 @@ def read_genomic_set_from_bucket():
         external=True)
 
   csv_reader = csv.DictReader(csv_file, delimiter=',')
-  # written = _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp)
-  _test_save_genomic_set_from_csv(csv_reader, csv_filename, timestamp)
+  written = _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp)
 
-  # return written, timestamp
+  return written, timestamp
 
 def get_last_genomic_set_file_info():
   """Finds the latest CSV & updates/inserts relevant genomic tables from its rows."""
@@ -114,7 +111,7 @@ class CsvColumns(object):
   STATUS = 'status'
   INVALID_REASON = 'invalid_reason'
 
-  # Note: Please ensure changes to the CSV format are reflected in fake_genomic set_generator.
+  # Note: Please ensure changes to the CSV format are reflected in test data.
   ALL = (GENOMIC_SET_NAME, GENOMIC_SET_CRITERIA, PID, BIOBANK_ORDER_ID, NY_FLAG, SEX_AT_BIRTH,
          GENOME_TYPE, STATUS, INVALID_REASON)
 
@@ -132,46 +129,28 @@ def _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp):
     raise DataError(
         'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
   member_dao = GenomicSetMemberDao()
-  set_dao = GenomicSetDao()
   written = 0
   try:
     members = []
     rows = list(csv_reader)
     for i, row in enumerate(rows):
-      if i == 0 and row[CsvColumns.GENOMIC_SET_NAME] and row[CsvColumns.GENOMIC_SET_CRITERIA]:
-        genomic_set = _create_genomic_set_from_row(row, csv_filename, timestamp)
-        genomic_set_id = set_dao.insert(genomic_set)
-      else:
-        raise DataError('CSV is missing columns genomic_set_name or genomic_set_criteria')
-      member = _create_genomic_set_member_from_row(genomic_set_id, row)
-      if member:
-        members.append(member)
-        if len(members) >= _BATCH_SIZE:
-          written += member_dao.insert_all(members)
-          members = []
+      if i == 0:
+        if row[CsvColumns.GENOMIC_SET_NAME] and row[CsvColumns.GENOMIC_SET_CRITERIA]:
+          genomic_set = _insert_genomic_set_from_row(row, csv_filename, timestamp)
+        else:
+          raise DataError('CSV is missing columns genomic_set_name or genomic_set_criteria')
+      member = _create_genomic_set_member_from_row(genomic_set.id, row)
+      members.append(member)
+      if len(members) >= _BATCH_SIZE:
+        written += member_dao.upsert_all(members)
+        members = []
 
     if members:
-      written += member_dao.insert_all(members)
+      written += member_dao.upsert_all(members)
 
     return written
   except ValueError, e:
     raise DataError(e)
-
-
-def _test_save_genomic_set_from_csv(csv_reader, csv_filename, timestamp):
-  print '---- csv_filename' + str(csv_filename)
-  print '---- timestamp' + str(timestamp)
-  missing_cols = set(CsvColumns.ALL) - set(csv_reader.fieldnames)
-  if missing_cols:
-    raise DataError(
-        'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
-
-  rows = list(csv_reader)
-  for i, row in enumerate(rows):
-    if row[CsvColumns.GENOMIC_SET_NAME] and row[CsvColumns.GENOMIC_SET_CRITERIA]:
-      print("Row %d:%s,%s" % (i, row[CsvColumns.GENOMIC_SET_NAME], row[CsvColumns.GENOMIC_SET_CRITERIA]))
-    else:
-      print("Row %d:%s,%s" % (i, row[CsvColumns.BIOBANK_ORDER_ID], row[CsvColumns.GENOME_TYPE]))
 
 def _parse_timestamp(row, key, sample):
   str_val = row[key]
@@ -187,7 +166,7 @@ def _parse_timestamp(row, key, sample):
     return _US_CENTRAL.localize(naive).astimezone(pytz.utc).replace(tzinfo=None)
   return None
 
-def _create_genomic_set_from_row(row, csv_filename, timestamp):
+def _insert_genomic_set_from_row(row, csv_filename, timestamp):
   """Creates a new GenomicSet object from a CSV row.
 
   Raises:
@@ -195,6 +174,7 @@ def _create_genomic_set_from_row(row, csv_filename, timestamp):
   Returns:
     A new GenomicSet.
   """
+  now = clock.CLOCK.now()
   genomic_set = GenomicSet()
   genomic_set.genomicSetName = row[CsvColumns.GENOMIC_SET_NAME]
   genomic_set.genomicSetCriteria = row[CsvColumns.GENOMIC_SET_CRITERIA]
@@ -203,11 +183,11 @@ def _create_genomic_set_from_row(row, csv_filename, timestamp):
   genomic_set.genomicSetStatus = GenomicSetStatus.UNSET
 
   set_dao = GenomicSetDao()
-  genomic_set.genomicSetVersion = set_dao.get_new_version_number()
-  now = clock.CLOCK.now()
+  genomic_set.genomicSetVersion = set_dao.get_new_version_number(genomic_set.genomicSetName)
   genomic_set.created = now
   genomic_set.modified = now
 
+  set_dao.insert(genomic_set)
 
   return genomic_set
 
@@ -219,7 +199,17 @@ def _create_genomic_set_member_from_row(genomic_set_id, row):
   Returns:
     A new GenomicSetMember.
   """
+  now = clock.CLOCK.now()
   genomic_set_member = GenomicSetMember()
+  genomic_set_member.genomicSetId = genomic_set_id
+  genomic_set_member.created = now
+  genomic_set_member.modified = now
+  genomic_set_member.validationStatus = GenomicValidationStatus.UNSET
+  genomic_set_member.participantId = row[CsvColumns.PID]
+  genomic_set_member.sexAtBirth = row[CsvColumns.SEX_AT_BIRTH]
+  genomic_set_member.genomeType = row[CsvColumns.GENOME_TYPE]
+  genomic_set_member.nyFlag = 1 if row[CsvColumns.NY_FLAG] == 'Y' else 0
+  genomic_set_member.biobankOrderId = row[CsvColumns.BIOBANK_ORDER_ID]
 
   return genomic_set_member
 

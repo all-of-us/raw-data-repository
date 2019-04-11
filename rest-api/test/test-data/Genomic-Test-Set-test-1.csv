@@ -1,4 +1,4 @@
 genomic_set_name,genomic_set_criteria,pid,biobank_order_id,ny_flag,sex_at_birth,genome_type,status,invalid_reason
-name_xxx,criteria_xxx,12345678,1234,Y,M,aou_wgs,,
-,,12345679,1235,N,F,aou_array,,
-,,12345680,1236,N,M,aou_array,,
+name_xxx,criteria_xxx,123,123,Y,M,aou_wgs,,
+,,124,124,N,F,aou_array,,
+,,125,125,N,M,aou_array,,
