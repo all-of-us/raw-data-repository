@@ -89,6 +89,14 @@
           "136.142.111.122"
         ]
       }
+    },
+    "awardee-ne@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "NE_PMC",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["170.223.207.49/28", "170.223.207.64"]
+      },
+        "description": "/28 mask covers 170.223.207.48-63"
     }
   }
 }
