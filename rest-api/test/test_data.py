@@ -108,8 +108,8 @@ def open_genomic_set_file():
 
   lines = open(data_path('Genomic-Test-Set-test-1.csv')).readlines()
   csv_str = ''
-  for str in lines:
-    csv_str += str
+  for line in lines:
+    csv_str += line
 
   return csv_str
 
