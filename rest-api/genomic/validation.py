@@ -61,15 +61,13 @@ def _get_validation_status(row, dob_cutoff):
   """
   if row.existing_valid_genomic_count != 0:
     return GenomicValidationStatus.INVALID_DUP_PARTICIPANT
-  if row.consent_time < GENOMIC_VALID_CONSENT_CUTOFF:
+  if not row.consent_time or row.consent_time < GENOMIC_VALID_CONSENT_CUTOFF:
     return GenomicValidationStatus.INVALID_CONSENT
-  if row.existing_valid_genomic_count != 0:
-    return GenomicValidationStatus.INVALID_DUP_PARTICIPANT
   if row.withdrawal_status != WithdrawalStatus.NOT_WITHDRAWN:
     return GenomicValidationStatus.INVALID_WITHDRAW_STATUS
   if row.sex_at_birth not in GENOMIC_VALID_SEX_AT_BIRTH_VALUES:
     return GenomicValidationStatus.INVALID_SEX_AT_BIRTH
-  if row.birth_date > dob_cutoff:
+  if not row.birth_date or row.birth_date > dob_cutoff:
     return GenomicValidationStatus.INVALID_AGE
   if not all(map(
     functools.partial(operator.contains, GENOMIC_VALID_SAMPLE_STATUSES),

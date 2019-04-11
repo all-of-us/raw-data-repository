@@ -133,6 +133,18 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
+  def test_consen_null(self):
+    participant = self.make_participant()
+    self.make_summary(participant, consentForStudyEnrollmentTime=None)
+    genomic_set = self.make_genomic_set()
+    member = self.make_genomic_member(genomic_set, participant)
+    validate_and_update_genomic_set_by_id(genomic_set.id)
+    current_member = self.genomic_member_dao.get(member.id)
+    self.assertEqual(current_member.validationStatus,
+                     GenomicValidationStatus.INVALID_CONSENT)
+    current_set = self.genomic_set_dao.get(genomic_set.id)
+    self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
+
   def test_withdrawn(self):
     participant = self.make_participant(withdrawalStatus=WithdrawalStatus.NO_USE)
     self.make_summary(participant)
