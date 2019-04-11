@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import collections
 import datetime
 import functools
@@ -22,29 +20,33 @@ def validate_and_update_genomic_set_by_id(genomic_set_id, dao=None):
   dob_cutoff = datetime.date(year=now.year - GENOMIC_VALID_AGE, month=now.month, day=now.day)
   dao = dao or GenomicSetDao()
 
-  MemberUpdateTask = collections.namedtuple('MemberUpdateTask', [
+  MemberIdStatusPair = collections.namedtuple('MemberIdStatusPair', [
     'member_id',
-    'new_status',
+    'status',
   ])
   update_queue = collections.deque()
 
-  for row in dao.iter_validation_data_for_genomic_set_id(genomic_set_id):
-    update_queue.append(MemberUpdateTask(
-      row.id,
-      _get_validation_status(row, dob_cutoff),
-    ))
+  with dao.member_dao.session() as session:
+    try:
+      for row in dao.iter_validation_data_for_genomic_set_id_with_session(session, genomic_set_id):
+        update_queue.append(MemberIdStatusPair(
+          row.id,
+          _get_validation_status(row, dob_cutoff),
+        ))
 
-  genomic_set = dao.get(genomic_set_id)
-  for task in update_queue:  # TODO: replace with single query batch update
-    member = dao.member_dao.get(task.member_id)
-    member.validationStatus = task.new_status
-    member.validationTime = now
-    dao.member_dao.update(member)
-    if member.validationStatus != GenomicValidationStatus.VALID:
-      genomic_set.genomicSetStatus = GenomicSetStatus.INVALID
-  if genomic_set.genomicSetStatus != GenomicSetStatus.INVALID:
-    genomic_set.genomicSetStatus = GenomicSetStatus.VALID
-  dao.update(genomic_set)
+      dao.member_dao.bulk_update_validation_status_with_session(session, update_queue)
+
+      genomic_set = dao.get_with_session(session, genomic_set_id)
+      for task in update_queue:
+        if task.status != GenomicValidationStatus.VALID:
+          genomic_set.genomicSetStatus = GenomicSetStatus.INVALID
+      if genomic_set.genomicSetStatus != GenomicSetStatus.INVALID:
+        genomic_set.genomicSetStatus = GenomicSetStatus.VALID
+        genomic_set.validatedTime = now
+      dao.update_with_session(session, genomic_set)
+    except Exception:
+      session.rollback()
+      raise
 
 
 def _get_validation_status(row, dob_cutoff):
@@ -74,6 +76,6 @@ def _get_validation_status(row, dob_cutoff):
     [row.sample_status_1ED04, row.sample_status_1SAL2]
   )):
     return GenomicValidationStatus.INVALID_BIOBANK_ORDER
-  if row.ny_flag and not row.zip_code:
+  if not row.zip_code:
     return GenomicValidationStatus.INVALID_NY_ZIPCODE
   return GenomicValidationStatus.VALID

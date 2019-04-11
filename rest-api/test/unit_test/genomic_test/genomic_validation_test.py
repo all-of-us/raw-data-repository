@@ -1,6 +1,8 @@
 import datetime
 import itertools
 
+import mock
+
 import clock
 from dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
 from dao.participant_dao import ParticipantDao
@@ -52,6 +54,7 @@ class GenomicSetValidationBaseTestCase(SqlTestBase):
       dateOfBirth=datetime.datetime(2000, 1, 1),
       firstName='foo',
       lastName='bar',
+      zipCode='12345',
       sampleStatus1ED04=SampleStatus.RECEIVED,
       sampleStatus1SAL2=SampleStatus.RECEIVED,
       consentForStudyEnrollmentTime=datetime.datetime(2019, 1, 1)
@@ -227,22 +230,65 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
 
   def test_ny_zip_code(self):
     participant_a = self.make_participant()
-    self.make_summary(participant_a)
+    self.make_summary(participant_a, zipCode=None)
     participant_b = self.make_participant()
-    self.make_summary(participant_b)
+    self.make_summary(participant_b, zipCode='')
     participant_c = self.make_participant()
     self.make_summary(participant_c, zipCode='12345')
     genomic_set = self.make_genomic_set()
     member_a = self.make_genomic_member(genomic_set, participant_a)
-    member_b = self.make_genomic_member(genomic_set, participant_b, nyFlag=1)
-    member_c = self.make_genomic_member(genomic_set, participant_c, nyFlag=1)
+    member_b = self.make_genomic_member(genomic_set, participant_b)
+    member_c = self.make_genomic_member(genomic_set, participant_c)
     with clock.FakeClock(datetime.datetime(2019, 1, 1)):
       validate_and_update_genomic_set_by_id(genomic_set.id)
     current_member_a = self.genomic_member_dao.get(member_a.id)
     current_member_b = self.genomic_member_dao.get(member_b.id)
     current_member_c = self.genomic_member_dao.get(member_c.id)
-    self.assertEqual(current_member_a.validationStatus, GenomicValidationStatus.VALID)
+    self.assertEqual(current_member_a.validationStatus, GenomicValidationStatus.INVALID_NY_ZIPCODE)
     self.assertEqual(current_member_b.validationStatus, GenomicValidationStatus.INVALID_NY_ZIPCODE)
     self.assertEqual(current_member_c.validationStatus, GenomicValidationStatus.VALID)
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
+
+
+class GenomicSetValidationSafetyTestCase(GenomicSetValidationBaseTestCase):
+
+  def test_transaction(self):
+    participant = self.make_participant()
+    self.make_summary(participant)
+    genomic_set = self.make_genomic_set()
+    member = self.make_genomic_member(genomic_set, participant)
+    with mock.patch('genomic.validation.GenomicSetDao.update_with_session') as mocked_set_update:
+      mocked_set_update.side_effect = Exception('baz')
+      with clock.FakeClock(datetime.datetime(2019, 1, 1)):
+        with self.assertRaises(Exception):
+          validate_and_update_genomic_set_by_id(genomic_set.id)
+    current_member = self.genomic_member_dao.get(member.id)
+    self.assertEqual(current_member.validationStatus, None)
+    current_set = self.genomic_set_dao.get(genomic_set.id)
+    self.assertEqual(current_set.genomicSetStatus, None)
+
+  def test_invalid_does_not_update_validated_time(self):
+    participant = self.make_participant(withdrawalStatus=WithdrawalStatus.NO_USE)
+    self.make_summary(participant)
+    genomic_set = self.make_genomic_set()
+    member = self.make_genomic_member(genomic_set, participant)
+    validate_and_update_genomic_set_by_id(genomic_set.id)
+    current_member = self.genomic_member_dao.get(member.id)
+    self.assertEqual(current_member.validatedTime, None)
+    current_set = self.genomic_set_dao.get(genomic_set.id)
+    self.assertEqual(current_set.validatedTime, None)
+
+  def test_valid_does_update_validated_time(self):
+    participant = self.make_participant()
+    self.make_summary(participant)
+    genomic_set = self.make_genomic_set()
+    member = self.make_genomic_member(genomic_set, participant)
+    now = datetime.datetime(2019, 1, 1)
+    with clock.FakeClock(now):
+      validate_and_update_genomic_set_by_id(genomic_set.id)
+    current_member = self.genomic_member_dao.get(member.id)
+    self.assertEqual(current_member.validatedTime, now)
+    current_set = self.genomic_set_dao.get(genomic_set.id)
+    self.assertEqual(current_set.validatedTime, now)
+

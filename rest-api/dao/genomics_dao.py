@@ -1,8 +1,10 @@
 import collections
 
 import sqlalchemy
+
+import clock
 from dao.base_dao import UpdatableDao
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus
+from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
 from query import Query, Operator, FieldFilter, OrderBy
@@ -33,59 +35,62 @@ class GenomicSetDao(UpdatableDao):
 
   def iter_validation_data_for_genomic_set_id(self, genomic_set_id):
     with self.session() as session:
-      query = self._get_validation_data_query_for_genomic_set_id(genomic_set_id)
-      cursor = session.execute(query)
-      Row = collections.namedtuple('Row', cursor.keys())
-      for row in cursor:
-        yield Row(*row)
+      return self.iter_validation_data_for_genomic_set_id_with_session(genomic_set_id, session)
+
+  def iter_validation_data_for_genomic_set_id_with_session(self, session, genomic_set_id):
+    query = self._get_validation_data_query_for_genomic_set_id(genomic_set_id)
+    cursor = session.execute(query)
+    Row = collections.namedtuple('Row', cursor.keys())
+    for row in cursor:
+      yield Row(*row)
 
   def _get_validation_data_query_for_genomic_set_id(self, genomic_set_id):
     existing_valid_query = (
       sqlalchemy
         .select([
-        sqlalchemy.func.count().label('existing_count'),
-      ])
+          sqlalchemy.func.count().label('existing_count'),
+        ])
         .select_from(
-        sqlalchemy.join(
-          GenomicSet, GenomicSetMember,
-          GenomicSetMember.genomicSetId == GenomicSet.id
+          sqlalchemy.join(
+            GenomicSet, GenomicSetMember,
+            GenomicSetMember.genomicSetId == GenomicSet.id
+          )
         )
-      )
         .where(
-        (GenomicSet.genomicSetStatus == GenomicSetStatus.VALID)
-        & (GenomicSetMember.participantId == Participant.participantId)
-      )
+          (GenomicSet.genomicSetStatus == GenomicSetStatus.VALID)
+          & (GenomicSetMember.participantId == Participant.participantId)
+        )
     )
 
     return(
       sqlalchemy
         .select([
-        GenomicSetMember,
-        Participant.withdrawalStatus.label('withdrawal_status'),
-        ParticipantSummary.dateOfBirth.label('birth_date'),
-        ParticipantSummary.consentForStudyEnrollmentTime.label('consent_time'),
-        ParticipantSummary.sampleStatus1ED04.label('sample_status_1ED04'),
-        ParticipantSummary.sampleStatus1SAL2.label('sample_status_1SAL2'),
-        ParticipantSummary.zipCode.label('zip_code'),
-        existing_valid_query.label('existing_valid_genomic_count'),
-      ])
+          GenomicSetMember,
+          Participant.withdrawalStatus.label('withdrawal_status'),
+          ParticipantSummary.dateOfBirth.label('birth_date'),
+          ParticipantSummary.consentForStudyEnrollmentTime.label('consent_time'),
+          ParticipantSummary.sampleStatus1ED04.label('sample_status_1ED04'),
+          ParticipantSummary.sampleStatus1SAL2.label('sample_status_1SAL2'),
+          ParticipantSummary.zipCode.label('zip_code'),
+          existing_valid_query.label('existing_valid_genomic_count'),
+        ])
         .select_from(
-        sqlalchemy.join(
           sqlalchemy.join(
             sqlalchemy.join(
-              GenomicSet, GenomicSetMember,
-              GenomicSetMember.genomicSetId == GenomicSet.id
+              sqlalchemy.join(
+                GenomicSet, GenomicSetMember,
+                GenomicSetMember.genomicSetId == GenomicSet.id
+              ),
+              Participant,
+              Participant.participantId == GenomicSetMember.participantId
             ),
-            Participant,
-            Participant.participantId == GenomicSetMember.participantId
-          ),
-          ParticipantSummary,
-          ParticipantSummary.participantId == Participant.participantId
+            ParticipantSummary,
+            ParticipantSummary.participantId == Participant.participantId
+          )
         )
-      )
-        .where(
-        (GenomicSet.id == genomic_set_id)
-      )
+          .where(
+          (GenomicSet.id == genomic_set_id)
+        )
     )
 
 
@@ -109,3 +114,33 @@ class GenomicSetMemberDao(UpdatableDao):
         written += 1
       return written
     return self._database.autoretry(upsert)
+
+  def bulk_update_validation_status(self, member_id_status_pair_iterable):
+    with self.session() as session:
+      self.bulk_update_validation_status_with_session(member_id_status_pair_iterable, session)
+
+  def bulk_update_validation_status_with_session(self, session, member_id_status_pair_iterable):
+    now = clock.CLOCK.now()
+    status_case = sqlalchemy.case(
+      {int(GenomicValidationStatus.VALID): now},
+      value=sqlalchemy.bindparam('status'),
+      else_=None
+    )
+    query = (
+      sqlalchemy
+        .update(GenomicSetMember)
+        .where(GenomicSetMember.id == sqlalchemy.bindparam('member_id'))
+        .values({
+          GenomicSetMember.validationStatus.name: sqlalchemy.bindparam('status'),
+          GenomicSetMember.validatedTime.name: status_case
+        })
+    )
+    parameter_sets = [
+      {
+        'member_id': member_id,
+        'status': int(status),
+        'time': now if status == GenomicValidationStatus.VALID else None,
+      }
+      for member_id, status in member_id_status_pair_iterable
+    ]
+    session.execute(query, parameter_sets)
