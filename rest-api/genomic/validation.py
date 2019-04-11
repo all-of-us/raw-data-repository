@@ -2,15 +2,20 @@ from __future__ import print_function
 
 import collections
 import datetime
+import functools
+import operator
 
 import clock
 from dao.genomics_dao import GenomicSetDao
 from model.genomics import GenomicValidationStatus, GenomicSetStatus
 from participant_enums import WithdrawalStatus, SampleStatus
 
+
 GENOMIC_VALID_SEX_AT_BIRTH_VALUES = ['F', 'M']
 GENOMIC_VALID_AGE = 18
 GENOMIC_VALID_CONSENT_CUTOFF = datetime.datetime(2018, 4, 24)
+GENOMIC_VALID_SAMPLE_STATUSES = [SampleStatus.RECEIVED]
+
 
 def validate_and_update_genomic_set_by_id(genomic_set_id, dao=None):
   now = clock.CLOCK.now()
@@ -66,12 +71,11 @@ def _get_validation_status(row, dob_cutoff):
     return GenomicValidationStatus.INVALID_SEX_AT_BIRTH
   if row.birth_date > dob_cutoff:
     return GenomicValidationStatus.INVALID_AGE
-  if not all(map(_get_is_valid_sample_status, [row.sample_status_1ED04, row.sample_status_1SAL2])):
+  if not all(map(
+    functools.partial(operator.contains, GENOMIC_VALID_SAMPLE_STATUSES),
+    [row.sample_status_1ED04, row.sample_status_1SAL2]
+  )):
     return GenomicValidationStatus.INVALID_BIOBANK_ORDER
   if row.ny_flag and not row.zip_code:
     return GenomicValidationStatus.INVALID_NY_ZIPCODE
   return GenomicValidationStatus.VALID
-
-
-def _get_is_valid_sample_status(status):
-  return status == SampleStatus.RECEIVED
