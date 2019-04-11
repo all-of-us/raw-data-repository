@@ -213,6 +213,11 @@ def _create_genomic_set_member_from_row(genomic_set_id, row):
 
   return genomic_set_member
 
-# def update_genomic_set_status_to_bucket_file(genomic_set_id):
-#
-#   #TODO
+def create_genomic_set_status_result_file(genomic_set_id):
+  set_dao = GenomicSetDao()
+  genomic_set = set_dao.get(genomic_set_id)
+  _create_and_upload_result_file(genomic_set)
+
+def _create_and_upload_result_file(genomic_set):
+  member_dao = GenomicSetMemberDao()
+  members = member_dao.get_all_by_genomic_set_id(genomic_set.id)

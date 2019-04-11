@@ -38,3 +38,8 @@ class GenomicSetMemberDao(UpdatableDao):
         written += 1
       return written
     return self._database.autoretry(upsert)
+
+  def get_all_by_genomic_set_id(self, genomic_set_id):
+    return super(GenomicSetMemberDao, self) \
+      .query(Query([FieldFilter('genomicSetId', Operator.EQUALS, genomic_set_id)],
+                   None, None, None)).items
