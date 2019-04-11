@@ -1,8 +1,4 @@
-import StringIO
-import csv
 import datetime
-import random
-import time
 
 import clock
 import config
@@ -19,7 +15,6 @@ from model.biobank_dv_order import BiobankDVOrder
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from model.genomics import GenomicSet
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
