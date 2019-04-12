@@ -16,8 +16,17 @@ GENOMIC_VALID_SAMPLE_STATUSES = [SampleStatus.RECEIVED]
 
 
 def validate_and_update_genomic_set_by_id(genomic_set_id, dao=None):
+  """
+  Determine and write validation statuses and times for the specified GenomicSet and all of it's
+  GenomicSetMembers in a single transaction.
+
+  :param genomic_set_id: The id of the GenomicSet to validate
+  :param dao: (optional)
+  :type dao: GenomicSetDao or None
+  """
   now = clock.CLOCK.now()
-  dob_cutoff = datetime.date(year=now.year - GENOMIC_VALID_AGE, month=now.month, day=now.day)
+  date_of_birth_cutoff = datetime.date(year=now.year - GENOMIC_VALID_AGE, month=now.month,
+                                       day=now.day)
   dao = dao or GenomicSetDao()
 
   MemberIdStatusPair = collections.namedtuple('MemberIdStatusPair', [
@@ -31,7 +40,7 @@ def validate_and_update_genomic_set_by_id(genomic_set_id, dao=None):
       for row in dao.iter_validation_data_for_genomic_set_id_with_session(session, genomic_set_id):
         update_queue.append(MemberIdStatusPair(
           row.id,
-          _get_validation_status(row, dob_cutoff),
+          _get_validation_status(row, date_of_birth_cutoff),
         ))
 
       dao.member_dao.bulk_update_validation_status_with_session(session, update_queue)
@@ -49,8 +58,10 @@ def validate_and_update_genomic_set_by_id(genomic_set_id, dao=None):
       raise
 
 
-def _get_validation_status(row, dob_cutoff):
+def _get_validation_status(row, date_of_birth_cutoff):
   """
+  Get the correct GenomicValidationStatus for the given row.
+
   invalid if ANY of the following fail
   - Previous consent (prior to 3/1/18)
   - Withdrawn(withdraw date populated)
@@ -59,6 +70,10 @@ def _get_validation_status(row, dob_cutoff):
   - Missing test order (1ED04 or 1SAL2)
   - Missing zip code
 
+  :param row: a Row from GenomicSet.iter_validation_data_for_genomic_set_id_with_session().
+              Rows contain all fields of GenomicSetMember along with any calculated fields necessary
+              for this validation.
+  :param date_of_birth_cutoff: any birth date before dob_cutoff will be invalid
   :rtype: GenomicValidationStatus
   """
   if row.existing_valid_genomic_count != 0:
@@ -69,7 +84,7 @@ def _get_validation_status(row, dob_cutoff):
     return GenomicValidationStatus.INVALID_WITHDRAW_STATUS
   if row.sex_at_birth not in GENOMIC_VALID_SEX_AT_BIRTH_VALUES:
     return GenomicValidationStatus.INVALID_SEX_AT_BIRTH
-  if not row.birth_date or row.birth_date > dob_cutoff:
+  if not row.birth_date or row.birth_date > date_of_birth_cutoff:
     return GenomicValidationStatus.INVALID_AGE
   if not all(map(
     functools.partial(operator.contains, GENOMIC_VALID_SAMPLE_STATUSES),

@@ -13,6 +13,8 @@ from query import Query, Operator, FieldFilter, OrderBy
 class GenomicSetDao(UpdatableDao):
   """ Stub for GenomicSet model """
 
+  validate_version_match = False
+
   def __init__(self):
     super(GenomicSetDao, self).__init__(GenomicSet, order_by_ending=['id'])
     self.member_dao = GenomicSetMemberDao()
@@ -34,10 +36,23 @@ class GenomicSetDao(UpdatableDao):
       return 1
 
   def iter_validation_data_for_genomic_set_id(self, genomic_set_id):
+    """
+    Iterate over validation data rows.
+
+    :type genomic_set_id: int
+    :rtype: collections.Iterable
+    """
     with self.session() as session:
-      return self.iter_validation_data_for_genomic_set_id_with_session(genomic_set_id, session)
+      return self.iter_validation_data_for_genomic_set_id_with_session(session, genomic_set_id)
 
   def iter_validation_data_for_genomic_set_id_with_session(self, session, genomic_set_id):
+    """
+    Iterate over validation data rows using the given session.
+
+    :param session: sqlalchemy session
+    :type genomic_set_id: int
+    :rtype: collections.Iterable
+    """
     query = self._get_validation_data_query_for_genomic_set_id(genomic_set_id)
     cursor = session.execute(query)
     Row = collections.namedtuple('Row', cursor.keys())
@@ -45,6 +60,12 @@ class GenomicSetDao(UpdatableDao):
       yield Row(*row)
 
   def _get_validation_data_query_for_genomic_set_id(self, genomic_set_id):
+    """
+    Build a sqlalchemy query for validation data.
+
+    :type genomic_set_id: int
+    :return: sqlalchemy query
+    """
     existing_valid_query = (
       sqlalchemy
         .select([
@@ -97,6 +118,8 @@ class GenomicSetDao(UpdatableDao):
 class GenomicSetMemberDao(UpdatableDao):
   """ Stub for GenomicSetMember model """
 
+  validate_version_match = False
+
   def __init__(self):
     super(GenomicSetMemberDao, self).__init__(GenomicSetMember, order_by_ending=['id'])
 
@@ -116,10 +139,28 @@ class GenomicSetMemberDao(UpdatableDao):
     return self._database.autoretry(upsert)
 
   def bulk_update_validation_status(self, member_id_status_pair_iterable):
+    """
+    Perform a bulk update of validation statuses.
+
+    :param member_id_status_pair_iterable: pairs of GenomicSetMember.id and GenomicValidationStatus
+                                           to include in this update
+    :type member_id_status_pair_iterable: collections.Iterable of (int, GenomicValidationStatus)
+    :rtype: sqlalchemy.engine.ResultProxy
+    """
     with self.session() as session:
-      self.bulk_update_validation_status_with_session(member_id_status_pair_iterable, session)
+      return self.bulk_update_validation_status_with_session(session,
+                                                             member_id_status_pair_iterable)
 
   def bulk_update_validation_status_with_session(self, session, member_id_status_pair_iterable):
+    """
+    Perform a bulk update of validation statuses in a given session.
+
+    :param session: sqlalchemy session
+    :param member_id_status_pair_iterable: pairs of GenomicSetMember.id and GenomicValidationStatus
+                                           to include in this update
+    :type member_id_status_pair_iterable: collections.Iterable of (int, GenomicValidationStatus)
+    :rtype: sqlalchemy.engine.ResultProxy
+    """
     now = clock.CLOCK.now()
     status_case = sqlalchemy.case(
       {int(GenomicValidationStatus.VALID): now},
@@ -143,4 +184,4 @@ class GenomicSetMemberDao(UpdatableDao):
       }
       for member_id, status in member_id_status_pair_iterable
     ]
-    session.execute(query, parameter_sets)
+    return session.execute(query, parameter_sets)
