@@ -108,6 +108,8 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
       self.assertIn(item.nyFlag, [0, 1])
       self.assertIn(item.sexAtBirth, ['F', 'M'])
 
+    genomic_set_file_handler.create_genomic_set_status_result_file(obj.id)
+
   def _naive_utc_to_naive_central(self, naive_utc_date):
     utc_date = pytz.utc.localize(naive_utc_date)
     central_date = utc_date.astimezone(pytz.timezone('US/Central'))

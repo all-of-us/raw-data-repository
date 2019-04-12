@@ -10,6 +10,7 @@ import pytz
 from cloudstorage import cloudstorage_api
 import clock
 import config
+from offline.sql_exporter import SqlExporter
 from dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
 from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
 
@@ -76,8 +77,9 @@ def _timestamp_from_filename(csv_filename):
 def _open_latest_genomic_set_file(cloud_bucket_name):
   """Returns an open stream for the most recently created CSV in the given bucket."""
   path = _find_latest_genomic_set_csv(cloud_bucket_name)
+  filename = path.replace('/' + cloud_bucket_name + '/', '')
   logging.info('Opening latest samples CSV in %r: %r.', cloud_bucket_name, path)
-  return cloudstorage_api.open(path), path
+  return cloudstorage_api.open(path), filename
 
 
 def _find_latest_genomic_set_csv(cloud_bucket_name):
@@ -219,7 +221,50 @@ def create_genomic_set_status_result_file(genomic_set_id):
   _create_and_upload_result_file(genomic_set)
 
 def _create_and_upload_result_file(genomic_set):
-  member_dao = GenomicSetMemberDao()
-  members = member_dao.get_all_by_genomic_set_id(genomic_set.id)
+  result_filename = genomic_set.genomicSetFile.replace('.', '-Validation-Result.')
+  bucket_name = config.getSetting(config.GENOMIC_SET_BUCKET_NAME)
+  exporter = SqlExporter(bucket_name)
+  export_sql = """
+    SELECT 
+      :genomic_set_name AS genomic_set_name,
+      :genomic_set_criteria AS genomic_set_criteria,
+      participant_id AS pid,
+      biobank_order_id,
+      ny_flag,
+      sex_at_birth,
+      genome_type,
+      CASE
+        WHEN validation_status=1 THEN 'valid' ELSE 'invalid'
+      END AS status,
+      CASE
+        WHEN validation_status=0 OR validation_status IS NULL THEN '{0}'
+        WHEN validation_status=1 THEN '{1}'
+        WHEN validation_status=2 THEN '{2}'
+        WHEN validation_status=3 THEN '{3}'
+        WHEN validation_status=4 THEN '{4}'
+        WHEN validation_status=5 THEN '{5}'
+        WHEN validation_status=6 THEN '{6}'
+        WHEN validation_status=7 THEN '{7}'
+        WHEN validation_status=8 THEN '{8}'
+        WHEN validation_status=9 THEN '{9}'
+        ELSE '{10}'
+      END AS invalid_reason
+    FROM genomic_set_member
+    WHERE genomic_set_id=:genomic_set_id
+    ORDER BY id
+  """.format(str(GenomicValidationStatus.UNSET),
+             '',
+             str(GenomicValidationStatus.INVALID_BIOBANK_ORDER),
+             str(GenomicValidationStatus.INVALID_NY_ZIPCODE),
+             str(GenomicValidationStatus.INVALID_SEX_AT_BIRTH),
+             str(GenomicValidationStatus.INVALID_GENOME_TYPE),
+             str(GenomicValidationStatus.INVALID_CONSENT),
+             str(GenomicValidationStatus.INVALID_WITHDRAW_STATUS),
+             str(GenomicValidationStatus.INVALID_AGE),
+             str(GenomicValidationStatus.INVALID_DUP_PARTICIPANT),
+             'UNKNOWN')
+  query_params = {'genomic_set_name':genomic_set.genomicSetName,
+                  'genomic_set_criteria':genomic_set.genomicSetCriteria,
+                  'genomic_set_id':genomic_set.id}
+  exporter.run_export(result_filename, export_sql, query_params)
 
-  return members
