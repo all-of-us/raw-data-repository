@@ -228,9 +228,8 @@ class BiobankOrderDao(UpdatableDao):
       participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
 
     participant_summary.lastModified = clock.CLOCK.now()
-    with self.session() as session:
-      is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(
-        participant_summary.participantId, obj.created, obj.biobankOrderId)
+    is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(
+      participant_summary.participantId, obj.created, obj.biobankOrderId)
 
     if obj.orderStatus != BiobankOrderStatus.AMENDED and is_distinct_visit:
       participant_summary.numberDistinctVisits += 1
@@ -264,9 +263,12 @@ class BiobankOrderDao(UpdatableDao):
     is_distinct_visit = participant_summary_dao.calculate_distinct_visits(
       participant_summary.participantId, obj.created, obj.biobankOrderId)
 
-    if obj.orderStatus == BiobankOrderStatus.CANCELLED and \
-       participant_summary.numberDistinctVisits > 0 and is_distinct_visit:
-       participant_summary.numberDistinctVisits -= 1
+    if (
+      obj.orderStatus == BiobankOrderStatus.CANCELLED
+      and participant_summary.numberDistinctVisits > 0
+      and is_distinct_visit
+     ):
+      participant_summary.numberDistinctVisits -= 1
 
     participant_summary.lastModified = clock.CLOCK.now()
     for sample in obj.samples:
