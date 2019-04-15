@@ -14,7 +14,6 @@ from offline.sql_exporter import SqlExporter
 from dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
 from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
 
-_INPUT_TIMESTAMP_FORMAT = '%Y/%m/%d %H:%M:%S'  # like 2016/11/30 14:32:18
 _US_CENTRAL = pytz.timezone('US/Central')
 _BATCH_SIZE = 1000
 # The timestamp found at the end of input CSV files.
