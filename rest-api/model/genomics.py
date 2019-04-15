@@ -40,7 +40,6 @@ class GenomicSet(Base):
   # have mysql always update the modified data when the record is changed
   modified = Column('modified', DateTime, nullable=True)
 
-
   genomicSetName = Column('genomic_set_name', String(80), nullable=False)
   genomicSetCriteria = Column('genomic_set_criteria', String(80), nullable=False)
   genomicSetVersion = Column('genomic_set_version', Integer, nullable=False)

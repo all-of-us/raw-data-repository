@@ -400,8 +400,15 @@ class UpdatableDao(BaseDao):
 
   Extend from UpdatableDao if entities can be updated after being inserted.
 
-  All model objects using this DAO must define a "version" field.
+  All model objects using this DAO should define a "version" field in order to allow version
+  checking during update validation.
+
+  To bypass version checking in a subclass, you must override the `validate_version_match`
+  subclass property.
   """
+
+  validate_version_match = True
+
   def _validate_update(self, session, obj, existing_obj):
     """Validates that an update is OK before performing it. (Not applied on insert.)
 
@@ -410,7 +417,7 @@ class UpdatableDao(BaseDao):
     """
     if not existing_obj:
       raise NotFound('%s with id %s does not exist' % (self.model_type.__name__, id))
-    if existing_obj.version != obj.version:
+    if self.validate_version_match and existing_obj.version != obj.version:
       raise PreconditionFailed('Expected version was %s; stored version was %s' % \
                                (obj.version, existing_obj.version))
     self._validate_model(session, obj)
