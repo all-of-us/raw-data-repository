@@ -174,6 +174,13 @@ class BiobankOrderDao(UpdatableDao):
     with self.session() as session:
       return self.get_with_children_in_session(session, obj_id)
 
+  def get_biobank_orders_for_participant(self, pid):
+    """Retrieves all ordered samples for a participant."""
+    with self.session() as session:
+      return (session.query(BiobankOrder)
+              .filter(BiobankOrder.participantId == pid)
+              .all())
+
   def get_ordered_samples_for_participant(self, participant_id):
     """Retrieves all ordered samples for a participant."""
     with self.session() as session:
@@ -221,9 +228,8 @@ class BiobankOrderDao(UpdatableDao):
       participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
 
     participant_summary.lastModified = clock.CLOCK.now()
-    with self.session() as session:
-      is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(session,
-                                                participant_summary.participantId)
+    is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(
+      participant_summary.participantId, obj.created, obj.biobankOrderId)
 
     if obj.orderStatus != BiobankOrderStatus.AMENDED and is_distinct_visit:
       participant_summary.numberDistinctVisits += 1
@@ -254,11 +260,14 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenCollectedSiteId = None
     participant_summary.biospecimenProcessedSiteId = None
     participant_summary.biospecimenFinalizedSiteId = None
-    is_distinct_visit = participant_summary_dao.calculate_distinct_visits(session,
-                                                participant_summary.participantId)
+    is_distinct_visit = participant_summary_dao.calculate_distinct_visits(
+      participant_summary.participantId, obj.created, obj.biobankOrderId)
 
-    if obj.orderStatus == BiobankOrderStatus.CANCELLED and \
-       participant_summary.numberDistinctVisits > 0 and is_distinct_visit:
+    if (
+      obj.orderStatus == BiobankOrderStatus.CANCELLED
+      and participant_summary.numberDistinctVisits > 0
+      and is_distinct_visit
+     ):
       participant_summary.numberDistinctVisits -= 1
 
     participant_summary.lastModified = clock.CLOCK.now()

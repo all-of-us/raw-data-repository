@@ -18,9 +18,10 @@ from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_
   WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
 from model.utils import to_client_participant_id, get_property_type
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
-  EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age, EhrStatus
+  EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age, EhrStatus, \
+  BiobankOrderStatus
 from query import OrderBy, PropertyType
-from sqlalchemy import or_, bindparam, text
+from sqlalchemy import or_
 from werkzeug.exceptions import BadRequest, NotFound
 
 
@@ -555,42 +556,29 @@ class ParticipantSummaryDao(UpdatableDao):
     else:
       return None
 
-  def calculate_distinct_visits(self, session, pid):
+  def calculate_distinct_visits(self, pid, created, id_):
     """ Participants may get PM or biobank samples on same day. This should be considered as
     a single visit in terms of program payment to participant.
-    return Boolean: true if there has not been an order on same date (site timezone)."""
-    sql = text("""select CURDATE() as realdate , pm.created, bo.created,
-                case
-               when (pm.created is not null and
-                 datediff(convert_tz(CURDATE(), '+00:00', '-5:00'), 
-                 convert_tz(pm.created, '+00:00','-5:00')) > 1)
-               or (bo.created is not null and
-                 datediff(convert_tz(CURDATE(), '+00:00', '-5:00'),
-                 convert_tz(bo.created, '+00:00', '-5:00')) > 1)
-                 then true
-               when pm.created is null and bo.created is null
-                 then true
-               else false
-            end as distinct_visit
-            from participant p
-               left outer join site s on p.site_id = s.site_id
-               left outer join (select p.participant_id, a.created
-                        from physical_measurements a, participant p
-                        where a.participant_id = p.participant_id
-                        order by created desc
-                        limit 1) as pm ON p.participant_id = pm.participant_id
-               left outer join (select p.participant_id, b.created
-                        from biobank_order b, participant p
-                        where b.participant_id = p.participant_id
-                        order by created desc
-                        limit 1) as bo ON p.participant_id = bo.participant_id
-               where p.participant_id = :pid
-    """, bindparams=[bindparam('pid', value=pid)])
+    return Boolean: true if there has not been an order on same date."""
+    from dao.biobank_order_dao import BiobankOrderDao
+    from dao.physical_measurements_dao import PhysicalMeasurementsDao
 
-    result = session.execute(sql)
-    for row in result:
-      return row[0]
+    day_has_order, day_has_measurement = False, False
+    existing_orders = BiobankOrderDao().get_biobank_orders_for_participant(pid)
+    if existing_orders:
+      for order in existing_orders:
+        if order.created.date() == created.date() and order.biobankOrderId != id_ and \
+          order.orderStatus != BiobankOrderStatus.CANCELLED:
+          day_has_order = True
 
+    existing_measurements = PhysicalMeasurementsDao().get_measuremnets_for_participant(pid)
+    if existing_measurements:
+      for measurement in existing_measurements:
+        if measurement.created.date() == created.date() and measurement.physicalMeasurementsId\
+          != id_:
+          day_has_measurement = True
+    is_distinct_visit = not (day_has_order or day_has_measurement)
+    return is_distinct_visit
 
   def to_client_json(self, model):
     result = model.asdict()
