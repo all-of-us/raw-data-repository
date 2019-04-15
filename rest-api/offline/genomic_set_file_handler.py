@@ -151,20 +151,6 @@ def _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp):
   except ValueError, e:
     raise DataError(e)
 
-def _parse_timestamp(row, key, sample):
-  str_val = row[key]
-  if str_val:
-    try:
-      naive = datetime.datetime.strptime(str_val, _INPUT_TIMESTAMP_FORMAT)
-    except ValueError, e:
-      raise DataError(
-          'Sample %r for %r has bad timestamp %r: %s'
-          % (sample.biobankStoredSampleId, sample.biobankId, str_val, e.message))
-    # Assume incoming times are in Central time (CST or CDT). Convert to UTC for storage, but drop
-    # tzinfo since storage is naive anyway (to make stored/fetched values consistent).
-    return _US_CENTRAL.localize(naive).astimezone(pytz.utc).replace(tzinfo=None)
-  return None
-
 def _insert_genomic_set_from_row(row, csv_filename, timestamp):
   """Creates a new GenomicSet object from a CSV row.
 
