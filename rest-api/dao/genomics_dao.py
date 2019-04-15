@@ -113,19 +113,6 @@ class GenomicSetDao(UpdatableDao):
         )
     )
 
-  def get_one_by_file_name(self, filename):
-    return super(GenomicSetDao, self) \
-      .query(Query([FieldFilter('genomicSetFile', Operator.EQUALS, filename)], None, 1, None)).items
-
-  def get_new_version_number(self, genomic_set_name):
-    genomic_sets = super(GenomicSetDao, self)\
-      .query(Query([FieldFilter('genomicSetName', Operator.EQUALS, genomic_set_name)],
-                   OrderBy('genomicSetVersion', False), 1, None)).items
-    if genomic_sets:
-      return genomic_sets[0].genomicSetVersion + 1
-    else:
-      return 1
-
 class GenomicSetMemberDao(UpdatableDao):
   """ Stub for GenomicSetMember model """
 
