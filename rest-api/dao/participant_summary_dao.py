@@ -564,7 +564,7 @@ class ParticipantSummaryDao(UpdatableDao):
     from dao.physical_measurements_dao import PhysicalMeasurementsDao
 
     day_has_order, day_has_measurement = False, False
-    existing_orders = BiobankOrderDao().get_biobank_order_for_participant(pid)
+    existing_orders = BiobankOrderDao().get_biobank_orders_for_participant(pid)
     if existing_orders:
       for order in existing_orders:
         if order.created.date() == created.date() and order.biobankOrderId != id_ and \
@@ -579,10 +579,6 @@ class ParticipantSummaryDao(UpdatableDao):
           day_has_measurement = True
     is_distinct_visit = not (day_has_order or day_has_measurement)
     return is_distinct_visit
-    # if day_has_order or day_has_measurement:
-    #   # not a distinct visit.
-    #   return False
-    # return True
 
   def to_client_json(self, model):
     result = model.asdict()

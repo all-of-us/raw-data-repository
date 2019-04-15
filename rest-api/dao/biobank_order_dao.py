@@ -174,7 +174,7 @@ class BiobankOrderDao(UpdatableDao):
     with self.session() as session:
       return self.get_with_children_in_session(session, obj_id)
 
-  def get_biobank_order_for_participant(self, pid):
+  def get_biobank_orders_for_participant(self, pid):
     """Retrieves all ordered samples for a participant."""
     with self.session() as session:
       return (session.query(BiobankOrder)
