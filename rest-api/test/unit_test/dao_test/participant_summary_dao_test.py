@@ -488,6 +488,15 @@ class ParticipantSummaryDaoTest(NdbTestBase):
       self.measurement_dao.insert(self._make_physical_measurements(
         physicalMeasurementsId=6))
       summary = self.dao.get(self.participant.participantId)
+
+      # another biobank order on the same day should also not add a distinct visit
+      self.order_dao.insert(self._make_biobank_order(biobankOrderId='7', identifiers=[
+        BiobankOrderIdentifier(system='x', value='x')], samples=[BiobankOrderedSample(
+        biobankOrderId = '7',
+        test=BIOBANK_TESTS[1],
+        description='another description',
+        processingRequired=False)]))
+
       self.assertEquals(summary.numberDistinctVisits, 3)
 
   def _make_biobank_order(self, **kwargs):

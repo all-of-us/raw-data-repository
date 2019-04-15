@@ -13,7 +13,6 @@ from fhirclient.models.identifier import Identifier
 from model.biobank_order import BiobankOrder, BiobankOrderedSample, BiobankOrderIdentifier, \
   BiobankOrderIdentifierHistory, BiobankOrderedSampleHistory, BiobankOrderHistory
 from model.log_position import LogPosition
-from model.measurements import PhysicalMeasurements
 from model.participant import Participant
 from model.utils import to_client_participant_id
 from participant_enums import OrderStatus, BiobankOrderStatus
@@ -230,9 +229,8 @@ class BiobankOrderDao(UpdatableDao):
 
     participant_summary.lastModified = clock.CLOCK.now()
     with self.session() as session:
-      is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(session,
-                                                participant_summary.participantId, obj.created,
-                                                                            obj.biobankOrderId)
+      is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(
+        participant_summary.participantId, obj.created, obj.biobankOrderId)
 
     if obj.orderStatus != BiobankOrderStatus.AMENDED and is_distinct_visit:
       participant_summary.numberDistinctVisits += 1
@@ -263,21 +261,11 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenCollectedSiteId = None
     participant_summary.biospecimenProcessedSiteId = None
     participant_summary.biospecimenFinalizedSiteId = None
-    is_distinct_visit = participant_summary_dao.calculate_distinct_visits(session,
-                                                participant_summary.participantId, obj.created,
-                                                                          obj.biobankOrderId)
+    is_distinct_visit = participant_summary_dao.calculate_distinct_visits(
+      participant_summary.participantId, obj.created, obj.biobankOrderId)
 
     if obj.orderStatus == BiobankOrderStatus.CANCELLED and \
-       participant_summary.numberDistinctVisits > 0: # and is_distinct_visit:
-
-       existing_measurements = (session.query(PhysicalMeasurements)
-                             .filter(PhysicalMeasurements.participantId == obj.participantId)
-                             .all())
-       if existing_measurements:
-         for e in existing_measurements:
-           print e, "<<<<<<<<<<<<<<<<<<< measurement"
-           print e.finalized, '\n'
-
+       participant_summary.numberDistinctVisits > 0 and is_distinct_visit:
        participant_summary.numberDistinctVisits -= 1
 
     participant_summary.lastModified = clock.CLOCK.now()

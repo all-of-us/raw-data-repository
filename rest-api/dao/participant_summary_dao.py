@@ -18,7 +18,8 @@ from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_
   WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
 from model.utils import to_client_participant_id, get_property_type
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
-  EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age, EhrStatus
+  EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age, EhrStatus, \
+  BiobankOrderStatus
 from query import OrderBy, PropertyType
 from sqlalchemy import or_
 from werkzeug.exceptions import BadRequest, NotFound
@@ -555,31 +556,33 @@ class ParticipantSummaryDao(UpdatableDao):
     else:
       return None
 
-  def calculate_distinct_visits(self, session, pid, created, order_id):
+  def calculate_distinct_visits(self, pid, created, id_):
     """ Participants may get PM or biobank samples on same day. This should be considered as
     a single visit in terms of program payment to participant.
     return Boolean: true if there has not been an order on same date."""
     from dao.biobank_order_dao import BiobankOrderDao
     from dao.physical_measurements_dao import PhysicalMeasurementsDao
 
-    order_match, measure_match = False, False
+    day_has_order, day_has_measurement = False, False
     existing_orders = BiobankOrderDao().get_biobank_order_for_participant(pid)
     if existing_orders:
       for order in existing_orders:
-        if order.created.date() == created.date() and int(order.biobankOrderId) != int(order_id):
-          order_match = True
+        if order.created.date() == created.date() and order.biobankOrderId != id_ and \
+          order.orderStatus != BiobankOrderStatus.CANCELLED:
+          day_has_order = True
 
-    existing_measurements = PhysicalMeasurementsDao().get_measuremnets_for_participant(session, pid)
+    existing_measurements = PhysicalMeasurementsDao().get_measuremnets_for_participant(pid)
     if existing_measurements:
       for measurement in existing_measurements:
-        if measurement.created.date() == created.date() and int(
-          measurement.physicalMeasurementsId) != int(order_id):
-          measure_match = True
-
-    if order_match or measure_match:
-      # not a distinct visit.
-      return False
-    return True
+        if measurement.created.date() == created.date() and measurement.physicalMeasurementsId\
+          != id_:
+          day_has_measurement = True
+    is_distinct_visit = not (day_has_order or day_has_measurement)
+    return is_distinct_visit
+    # if day_has_order or day_has_measurement:
+    #   # not a distinct visit.
+    #   return False
+    # return True
 
   def to_client_json(self, model):
     result = model.asdict()
