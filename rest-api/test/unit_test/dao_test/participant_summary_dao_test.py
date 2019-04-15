@@ -1,21 +1,22 @@
-import clock
 import datetime
 import json
-from base64 import urlsafe_b64encode, urlsafe_b64decode
 import time
+from base64 import urlsafe_b64encode, urlsafe_b64decode
+
+import clock
 import config
 from code_constants import BIOBANK_TESTS
 from dao.base_dao import json_serial
-from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.biobank_order_dao import BiobankOrderDao
+from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from dao.physical_measurements_dao import PhysicalMeasurementsDao
-from model.biobank_stored_sample import BiobankStoredSample
 from model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
+from model.biobank_stored_sample import BiobankStoredSample
+from model.measurements import PhysicalMeasurements
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
-from model.measurements import PhysicalMeasurements
 from participant_enums import EnrollmentStatus, PhysicalMeasurementsStatus, SampleStatus, \
   QuestionnaireStatus
 from query import Query, Operator, FieldFilter, OrderBy
@@ -461,6 +462,42 @@ class ParticipantSummaryDaoTest(NdbTestBase):
     summary = self.dao.get(self.participant.participantId)
     # count should be 0
     self.assertEquals(summary.numberDistinctVisits, 0)
+
+    with clock.FakeClock(TIME_1):
+      self.order_dao.insert(self._make_biobank_order(biobankOrderId='2', identifiers=[
+        BiobankOrderIdentifier(system='b', value='d')], samples=[BiobankOrderedSample(
+                                                        biobankOrderId = '2',
+                                                        test=BIOBANK_TESTS[0],
+                                                        description='description',
+                                                        processingRequired=True)]))
+    with clock.FakeClock(TIME_2):
+      self.measurement_dao.insert(self._make_physical_measurements(
+        physicalMeasurementsId=2))
+      summary = self.dao.get(self.participant.participantId)
+      self.assertEquals(summary.numberDistinctVisits, 2)
+
+    with clock.FakeClock(TIME_3):
+      self.order_dao.insert(self._make_biobank_order(biobankOrderId='3', identifiers=[
+        BiobankOrderIdentifier(system='s', value='s')], samples=[BiobankOrderedSample(
+        biobankOrderId = '3',
+        test=BIOBANK_TESTS[1],
+        description='another description',
+        processingRequired=False)]))
+
+      # a physical measurement on same day as biobank order does not add distinct visit.
+      self.measurement_dao.insert(self._make_physical_measurements(
+        physicalMeasurementsId=6))
+      summary = self.dao.get(self.participant.participantId)
+
+      # another biobank order on the same day should also not add a distinct visit
+      self.order_dao.insert(self._make_biobank_order(biobankOrderId='7', identifiers=[
+        BiobankOrderIdentifier(system='x', value='x')], samples=[BiobankOrderedSample(
+        biobankOrderId = '7',
+        test=BIOBANK_TESTS[1],
+        description='another description',
+        processingRequired=False)]))
+
+      self.assertEquals(summary.numberDistinctVisits, 3)
 
   def _make_biobank_order(self, **kwargs):
     """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
