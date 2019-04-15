@@ -66,6 +66,12 @@ class PhysicalMeasurementsDao(UpdatableDao):
 
     return query.get(physical_measurements_id)
 
+  def get_measuremnets_for_participant(self, session, pid):
+    query = session.query(PhysicalMeasurements).filter(
+      PhysicalMeasurements.participantId == pid).all()
+
+    return query
+
   @staticmethod
   def handle_measurement(measurement_map, m):
     """Populating measurement_map with information extracted from measurement and its
@@ -294,7 +300,8 @@ class PhysicalMeasurementsDao(UpdatableDao):
     raise_if_withdrawn(participant_summary)
     participant_summary.lastModified = clock.CLOCK.now()
     is_distinct_visit = participant_summary_dao.calculate_distinct_visits(session,
-                                                                          participant_id)
+                                                                          participant_id,
+                                                                          obj.created, obj.physicalMeasurementsId)
     if obj.status and obj.status == PhysicalMeasurementsStatus.CANCELLED and is_distinct_visit \
        and not is_amendment:
       participant_summary.numberDistinctVisits -= 1
