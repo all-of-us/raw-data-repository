@@ -42,10 +42,9 @@ def read_genomic_set_from_bucket():
       'This file %s has already been processed' % csv_filename, external=True)
   now = clock.CLOCK.now()
   if now - timestamp > _MAX_INPUT_AGE:
-    raise DataError(
-        'Input %r (timestamp %s UTC) is > 24h old (relative to %s UTC), not importing.'
-        % (csv_filename, timestamp, now),
-        external=True)
+    logging.info('Input %r (timestamp %s UTC) is > %s h old (relative to %s UTC), not importing.'
+                 % (_MAX_INPUT_AGE, csv_filename, timestamp, now))
+    return
 
   csv_reader = csv.DictReader(csv_file, delimiter=',')
   written = _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp)
@@ -110,12 +109,10 @@ class CsvColumns(object):
   NY_FLAG = 'ny_flag'
   SEX_AT_BIRTH = 'sex_at_birth'
   GENOME_TYPE = 'genome_type'
-  STATUS = 'status'
-  INVALID_REASON = 'invalid_reason'
 
   # Note: Please ensure changes to the CSV format are reflected in test data.
   ALL = (GENOMIC_SET_NAME, GENOMIC_SET_CRITERIA, PID, BIOBANK_ORDER_ID, NY_FLAG, SEX_AT_BIRTH,
-         GENOME_TYPE, STATUS, INVALID_REASON)
+         GENOME_TYPE)
 
 def _is_filename_exist(csv_filename):
   set_dao = GenomicSetDao()
