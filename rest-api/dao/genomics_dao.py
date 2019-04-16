@@ -9,7 +9,6 @@ from model.participant import Participant
 from model.participant_summary import ParticipantSummary
 from query import Query, Operator, FieldFilter, OrderBy
 
-
 class GenomicSetDao(UpdatableDao):
   """ Stub for GenomicSet model """
 
@@ -113,7 +112,6 @@ class GenomicSetDao(UpdatableDao):
           (GenomicSet.id == genomic_set_id)
         )
     )
-
 
 class GenomicSetMemberDao(UpdatableDao):
   """ Stub for GenomicSetMember model """
