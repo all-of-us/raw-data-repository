@@ -8,6 +8,9 @@
   "genomic_set_bucket_name": [
     "prod_genomic_set_upload"
   ],
+  "genomic_biobank_manifest_folder_name": [
+    "genomic_water_line_test"
+  ],
   "consent_pdf_bucket": [
     "ptc-uploads-all-of-us-rdr-prod"
   ],
