@@ -159,18 +159,22 @@ def _insert_genomic_set_from_row(row, csv_filename, timestamp):
     A new GenomicSet.
   """
   now = clock.CLOCK.now()
-  genomic_set = GenomicSet()
-  genomic_set.genomicSetName = row[CsvColumns.GENOMIC_SET_NAME]
-  genomic_set.genomicSetCriteria = row[CsvColumns.GENOMIC_SET_CRITERIA]
-  genomic_set.genomicSetFile = csv_filename
-  genomic_set.genomicSetFileTime = timestamp
-  genomic_set.genomicSetStatus = GenomicSetStatus.UNSET
+  genomic_set_name = row[CsvColumns.GENOMIC_SET_NAME],
 
   set_dao = GenomicSetDao()
-  genomic_set.genomicSetVersion = set_dao.get_new_version_number(genomic_set.genomicSetName)
-  genomic_set.created = now
-  genomic_set.modified = now
+  genomic_set_version = set_dao.get_new_version_number(genomic_set_name)
+  kwargs = dict(
+    genomicSetName=genomic_set_name,
+    genomicSetCriteria=row[CsvColumns.GENOMIC_SET_CRITERIA],
+    genomicSetFile=csv_filename,
+    genomicSetFileTime=timestamp,
+    genomicSetStatus=GenomicSetStatus.UNSET,
+    genomicSetVersion=genomic_set_version,
+    created=now,
+    modified=now
+  )
 
+  genomic_set = GenomicSet(**kwargs)
   set_dao.insert(genomic_set)
 
   return genomic_set
@@ -184,16 +188,20 @@ def _create_genomic_set_member_from_row(genomic_set_id, row):
     A new GenomicSetMember.
   """
   now = clock.CLOCK.now()
-  genomic_set_member = GenomicSetMember()
-  genomic_set_member.genomicSetId = genomic_set_id
-  genomic_set_member.created = now
-  genomic_set_member.modified = now
-  genomic_set_member.validationStatus = GenomicValidationStatus.UNSET
-  genomic_set_member.participantId = row[CsvColumns.PID]
-  genomic_set_member.sexAtBirth = row[CsvColumns.SEX_AT_BIRTH]
-  genomic_set_member.genomeType = row[CsvColumns.GENOME_TYPE]
-  genomic_set_member.nyFlag = 1 if row[CsvColumns.NY_FLAG] == 'Y' else 0
-  genomic_set_member.biobankOrderId = row[CsvColumns.BIOBANK_ORDER_ID]
+
+  kwargs = dict(
+    genomicSetId=genomic_set_id,
+    created=now,
+    modified=now,
+    validationStatus=GenomicValidationStatus.UNSET,
+    participantId=row[CsvColumns.PID],
+    sexAtBirth=row[CsvColumns.SEX_AT_BIRTH],
+    genomeType=row[CsvColumns.GENOME_TYPE],
+    nyFlag=1 if row[CsvColumns.NY_FLAG] == 'Y' else 0,
+    biobankOrderId=row[CsvColumns.BIOBANK_ORDER_ID]
+  )
+
+  genomic_set_member = GenomicSetMember(**kwargs)
 
   return genomic_set_member
 
@@ -219,34 +227,39 @@ def _create_and_upload_result_file(genomic_set):
         WHEN validation_status=1 THEN 'valid' ELSE 'invalid'
       END AS status,
       CASE
-        WHEN validation_status=0 OR validation_status IS NULL THEN '{0}'
-        WHEN validation_status=1 THEN '{1}'
-        WHEN validation_status=2 THEN '{2}'
-        WHEN validation_status=3 THEN '{3}'
-        WHEN validation_status=4 THEN '{4}'
-        WHEN validation_status=5 THEN '{5}'
-        WHEN validation_status=6 THEN '{6}'
-        WHEN validation_status=7 THEN '{7}'
-        WHEN validation_status=8 THEN '{8}'
-        WHEN validation_status=9 THEN '{9}'
-        ELSE '{10}'
+        WHEN validation_status=0 OR validation_status IS NULL THEN :status_unset
+        WHEN validation_status=1 THEN :status_valid
+        WHEN validation_status=2 THEN :status_invalid_biobank_order
+        WHEN validation_status=3 THEN :status_invalid_ny_zipcode
+        WHEN validation_status=4 THEN :status_invalid_sex_at_birth
+        WHEN validation_status=5 THEN :status_invalid_genome_type
+        WHEN validation_status=6 THEN :status_invalid_consent
+        WHEN validation_status=7 THEN :status_invalid_withdraw_status
+        WHEN validation_status=8 THEN :status_invalid_age
+        WHEN validation_status=9 THEN :status_invalid_dup_participant
+        ELSE :status_unknown
       END AS invalid_reason
     FROM genomic_set_member
     WHERE genomic_set_id=:genomic_set_id
     ORDER BY id
-  """.format(str(GenomicValidationStatus.UNSET),
-             '',
-             str(GenomicValidationStatus.INVALID_BIOBANK_ORDER),
-             str(GenomicValidationStatus.INVALID_NY_ZIPCODE),
-             str(GenomicValidationStatus.INVALID_SEX_AT_BIRTH),
-             str(GenomicValidationStatus.INVALID_GENOME_TYPE),
-             str(GenomicValidationStatus.INVALID_CONSENT),
-             str(GenomicValidationStatus.INVALID_WITHDRAW_STATUS),
-             str(GenomicValidationStatus.INVALID_AGE),
-             str(GenomicValidationStatus.INVALID_DUP_PARTICIPANT),
-             'UNKNOWN')
-  query_params = {'genomic_set_name':genomic_set.genomicSetName,
-                  'genomic_set_criteria':genomic_set.genomicSetCriteria,
-                  'genomic_set_id':genomic_set.id}
+  """
+  query_params = {'genomic_set_name': genomic_set.genomicSetName,
+                  'genomic_set_criteria': genomic_set.genomicSetCriteria,
+                  'genomic_set_id': genomic_set.id,
+                  'status_unset': str(GenomicValidationStatus.UNSET),
+                  'status_valid': '',
+                  'status_invalid_biobank_order':
+                    str(GenomicValidationStatus.INVALID_BIOBANK_ORDER),
+                  'status_invalid_ny_zipcode': str(GenomicValidationStatus.INVALID_NY_ZIPCODE),
+                  'status_invalid_sex_at_birth': str(GenomicValidationStatus.INVALID_SEX_AT_BIRTH),
+                  'status_invalid_genome_type': str(GenomicValidationStatus.INVALID_GENOME_TYPE),
+                  'status_invalid_consent': str(GenomicValidationStatus.INVALID_CONSENT),
+                  'status_invalid_withdraw_status':
+                    str(GenomicValidationStatus.INVALID_WITHDRAW_STATUS),
+                  'status_invalid_age': str(GenomicValidationStatus.INVALID_AGE),
+                  'status_invalid_dup_participant':
+                    str(GenomicValidationStatus.INVALID_DUP_PARTICIPANT),
+                  'status_unknown': 'UNKNOWN'
+                  }
   exporter.run_export(result_filename, export_sql, query_params)
 
