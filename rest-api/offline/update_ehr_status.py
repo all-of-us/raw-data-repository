@@ -3,6 +3,7 @@ import collections
 import csv
 import datetime
 import json
+import logging
 import re
 
 import cloudstorage
@@ -18,7 +19,8 @@ from google.appengine.ext import deferred
 from model.ehr import EhrReceipt
 
 
-HPO_REPORT_CONFIG_GCS_PATH = '/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json'
+LOG = logging.getLogger(__name__)
+
 
 COLUMN_BUCKET_NAME = 'Bucket Name'
 COLUMN_ORG_EXTERNAL_ID = 'Org ID'
@@ -36,10 +38,14 @@ def update_ehr_status():
   now = clock.CLOCK.now()
   cutoff_date = (now - datetime.timedelta(days=1)).date()
   bucket_name = _get_curation_bucket_name()
-  organization_info_list = _get_organization_info_list(
-    cloudstorage_api.listbucket('/' + bucket_name),
-    cutoff_date
-  )
+  try:
+    organization_info_list = _get_organization_info_list(
+      cloudstorage_api.listbucket('/' + bucket_name),
+      cutoff_date
+    )
+  except config.MissingConfigException as e:
+    LOG.info(str(e))
+    return
   for org_info in organization_info_list:
     deferred.defer(_do_update_for_organization, *org_info)
 
@@ -54,13 +60,19 @@ def _do_update_for_organization(organization_id, submission_date, person_file):
   summary_dao = ParticipantSummaryDao()
   receipt_dao = EhrReceiptDao()
 
-  org = org_dao.get_by_external_id(organization_id.upper())
+  org_external_id = organization_id.upper()
+  org = org_dao.get_by_external_id(org_external_id)
+  if org is None:
+    LOG.info("Organization not found with external_id: {}".format(org_external_id))
 
   receipt = EhrReceipt(organizationId=org.organizationId, receiptTime=updated_datetime)
   receipt_dao.insert(receipt)
 
   for participant_id in _get_participant_ids_from_person_file(person_file):
     summary = summary_dao.get(participant_id)
+    if summary is None:
+      LOG.info("Participant not found with participant_id: {}".format(participant_id))
+      continue
     summary_dao.update_ehr_status(summary, updated_datetime)
     summary_dao.update(summary)
 
@@ -76,7 +88,8 @@ def _get_sheet_id():
   """
   Get the google sheet id for the bucket-name-to-organization-external-id mapping
   """
-  with cloudstorage.open(HPO_REPORT_CONFIG_GCS_PATH, 'r') as handle:
+  hpo_report_config_mixin_path = config.getSetting(config.HPO_REPORT_CONFIG_MIXIN_PATH)
+  with cloudstorage.open(hpo_report_config_mixin_path, 'r') as handle:
     hpo_config = json.load(handle)
   sheet_id = hpo_config.get('hpo_report_google_sheet_id')
   if sheet_id is None:
@@ -119,16 +132,22 @@ def _get_organization_info_list(bucket_stat_list, cutoff_date):
 
   org_id_by_bucket_name_map = _get_org_id_by_bucket_name_map()
   submission_info_by_bucket_map = reduce(keep_latest_reducer, _iter_submission_infos(), {})
-  organization_info_list = [
-    OrganizationInfo(
-      org_id_by_bucket_name_map.get(submission_info.bucket_name),
-      submission_info.date,
-      submission_info.person_file
-    )
-    for submission_info
-    in submission_info_by_bucket_map.values()
-  ]
-  return filter(lambda o: o.id is not None, organization_info_list)
+
+  def iter_org_infos():
+    for submission_info in submission_info_by_bucket_map.values():
+      org_info = OrganizationInfo(
+        org_id_by_bucket_name_map.get(submission_info.bucket_name),
+        submission_info.date,
+        submission_info.person_file
+      )
+      if org_info.id is None:
+        LOG.info("No organization external id found for bucket: {}".format(
+          submission_info.bucket_name
+        ))
+        continue
+      yield org_info
+
+  return list(iter_org_infos())
 
 
 def _get_submission_info_from_filename(person_filename):

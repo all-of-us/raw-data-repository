@@ -28,6 +28,9 @@
   "curation_bucket_name": [
     "drc-curation-internal"
   ],
+  "hpo_report_config_mixin_path": [
+    "/all-of-us-rdr-sequestered-config-test/hpo-report-config-mixin.json"
+  ],
   "user_info": {
     "healthpro-prod@appspot.gserviceaccount.com": {
       "roles": [
