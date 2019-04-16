@@ -5,6 +5,9 @@
   "biobank_samples_bucket_name": [
     "prod_biobank_samples_upload_bucket"
   ],
+  "genomic_set_bucket_name": [
+    "prod_genomic_set_upload"
+  ],
   "consent_pdf_bucket": [
     "ptc-uploads-all-of-us-rdr-prod"
   ],
