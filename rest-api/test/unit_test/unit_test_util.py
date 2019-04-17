@@ -1,3 +1,4 @@
+import datetime
 import StringIO
 import collections
 import contextlib
@@ -23,6 +24,7 @@ from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 from mock import patch
+from model.code import CodeType
 from model.organization import Organization
 from testlib import testutil
 
@@ -229,6 +231,7 @@ class _TestDb(object):
         self._setup_sqlite_views()
 
     if with_data:
+      self._setup_codebook()
       self._setup_hpos()
 
 
@@ -241,6 +244,54 @@ class _TestDb(object):
     dao.database_factory.SCHEMA_TRANSLATE_MAP = None
     # Reconnecting to in-memory SQLite (because singletons are cleared above)
     # effectively clears the database.
+
+  def _setup_codebook(self):
+    """
+    Setup Codebook entries in the Code table. Matches 'test_data/study_consent.json`.
+    """
+    def create_code(topic, name, code_type, parent):
+      code = Code(system=PPI_SYSTEM, topic=topic, value=name, display=name, codeType=code_type,
+                  mapped=True, shortValue=name, created=datetime.datetime.utcnow())
+      if parent:
+        parent.children.append(code)
+
+      return code
+
+    with CodeDao().session() as session:
+      module = create_code(u'Module Name', u'ConsentPII', CodeType.MODULE, None)
+      session.add(module)
+
+      topic = create_code(u'Language', u'ConsentPII_Language', CodeType.TOPIC, module)
+      session.add(topic)
+
+      qn = create_code(u'Language', u'Language_SpokenWrittenLanguage', CodeType.QUESTION, topic)
+      session.add(qn)
+      session.add(create_code(u'Language', u'SpokenWrittenLanguage_English', CodeType.ANSWER, qn))
+      session.add(create_code(u'Language', u'SpokenWrittenLanguage_ChineseChina', CodeType.ANSWER, qn))
+      session.add(create_code(u'Language', u'SpokenWrittenLanguage_French', CodeType.ANSWER, qn))
+
+      topic = create_code(u'Address', u'ConsentPII_PIIAddress', CodeType.TOPIC, module)
+      session.add(topic)
+
+      session.add(create_code(u'Address', u'PIIAddress_StreetAddress', CodeType.QUESTION, topic))
+      session.add(create_code(u'Address', u'PIIAddress_StreetAddress2', CodeType.QUESTION, topic))
+
+      topic = create_code(u'Name', u'ConsentPII_PIIName', CodeType.TOPIC, module)
+      session.add(topic)
+
+      session.add(create_code(u'Name', u'PIIName_First', CodeType.QUESTION, topic))
+      session.add(create_code(u'Name', u'PIIName_Middle', CodeType.QUESTION, topic))
+      session.add(create_code(u'Name', u'PIIName_Last', CodeType.QUESTION, topic))
+
+      session.add(create_code(u'Email Address', u'ConsentPII_EmailAddress', CodeType.QUESTION, module))
+
+      topic = create_code(u'Extra Consent Items', u'ConsentPII_ExtraConsent', CodeType.TOPIC, module)
+      session.add(create_code(u'Extra Consent Items', u'ExtraConsent_CABoRSignature', CodeType.QUESTION, topic))
+
+      module = create_code(u'Module Name', u'OverallHealth', CodeType.MODULE, None)
+      session.add(module)
+
+      session.commit()
 
   def _load_views_and_functions(self, engine):
     """
@@ -593,7 +644,7 @@ class FlaskTestBase(NdbTestBase):
     response = self.send_post('Participant', {})
     return response['participantId']
 
-  def send_consent(self, participant_id, email=None, language=None):
+  def send_consent(self, participant_id, email=None, language=None, code_values=None):
     if not self._consent_questionnaire_id:
       self._consent_questionnaire_id = self.create_questionnaire('study_consent.json')
     self.first_name = self.fake.first_name()
@@ -609,7 +660,7 @@ class FlaskTestBase(NdbTestBase):
                                                          ("email", email),
                                                          ("streetAddress", self.streetAddress),
                                                          ("streetAddress2", self.streetAddress2)],
-                                         language=language)
+                                         language=language, code_answers=code_values)
     self.send_post(questionnaire_response_url(participant_id), qr_json)
 
   def create_questionnaire(self, filename):
