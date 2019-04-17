@@ -23,7 +23,7 @@ from api.participant_summary_api import ParticipantSummaryApi, ParticipantSummar
 from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
 from api.public_metrics_api import PublicMetricsApi
 from api.questionnaire_api import QuestionnaireApi
-from api.questionnaire_response_api import QuestionnaireResponseApi
+from api.questionnaire_response_api import QuestionnaireResponseApi, ParticipantQuestionnaireAnswers
 from config import get_config, get_db_config
 from flask import Flask, got_request_exception
 from flask_restful import Api
@@ -149,6 +149,11 @@ api.add_resource(QuestionnaireResponseApi,
                  PREFIX + 'Participant/<participant_id:p_id>/QuestionnaireResponse',
                  endpoint='participant.questionnaire_response',
                  methods=['POST', 'GET'])
+
+api.add_resource(ParticipantQuestionnaireAnswers,
+                 PREFIX + 'Participant/<participant_id:p_id>/QuestionnaireAnswers/<string:module>',
+                 endpoint='participant.questionnaire_answers',
+                 methods=['GET'])
 
 api.add_resource(BiobankOrderApi,
                  PREFIX + 'Participant/<participant_id:p_id>/BiobankOrder/<string:bo_id>',
