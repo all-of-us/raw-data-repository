@@ -24,6 +24,9 @@ class DvOrderDao(UpdatableDao):
   def __init__(self):
     self.code_dao = CodeDao()
     super(DvOrderDao, self).__init__(BiobankDVOrder)
+    self.biobank_address = {'city': "Rochester", 'state': "MN",
+                'postalCode': "55901", 'line': ["3050 Superior Drive NW"]}
+
 
   def send_order(self, resource, pid):
     m = MayoLinkApi()
@@ -133,19 +136,24 @@ class DvOrderDao(UpdatableDao):
       address = {'city': order_address.city, 'state': order_address.stateId,
                  'postalCode': order_address.postalCode, 'line': order_address.line}
 
-      if existing_obj.address != address:
+      if existing_obj.address != address and address != self.biobank_address:
         logging.warn('Address change detected: Using new address ({}) for participant ({})'.format(
                       order_address, order.participantId))
 
         existing_obj.city = address['city']
         existing_obj.stateId = address['state']
         existing_obj.streetAddress1 = address['line'][0]
+        existing_obj.zipCode = address['postalCode']
         try:
           existing_obj.streetAddress2 = address['line'][1]
         except IndexError:
           pass
-
-        existing_obj.zipCode = address['postalCode']
+      elif address == self.biobank_address:
+          existing_obj.biobankCity = self.biobank_address['city']
+          existing_obj.biobankStateId = get_code_id(self.biobank_address, self.code_dao,
+                                                    'state', 'State_')
+          existing_obj.biobankStreetAddress1 = self.biobank_address['line'][0]
+          existing_obj.biobankZipCode = self.biobank_address['postalCode']
 
       return existing_obj
 
