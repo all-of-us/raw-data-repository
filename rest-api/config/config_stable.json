@@ -137,6 +137,9 @@
   "genomic_set_bucket_name": [
     "stable_genomic_set_upload"
   ],
+  "genomic_biobank_manifest_folder_name": [
+    "genomic_water_line_test"
+  ],
   "ghost_id_bucket": [
     "all-of-us-rdr-stable-ghost-accounts"
   ],
