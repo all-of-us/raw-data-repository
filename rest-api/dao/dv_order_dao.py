@@ -149,11 +149,11 @@ class DvOrderDao(UpdatableDao):
         except IndexError:
           pass
       elif address == self.biobank_address:
-          existing_obj.biobankCity = self.biobank_address['city']
-          existing_obj.biobankStateId = get_code_id(self.biobank_address, self.code_dao,
-                                                    'state', 'State_')
-          existing_obj.biobankStreetAddress1 = self.biobank_address['line'][0]
-          existing_obj.biobankZipCode = self.biobank_address['postalCode']
+        existing_obj.biobankCity = self.biobank_address['city']
+        existing_obj.biobankStateId = get_code_id(self.biobank_address, self.code_dao,
+                                                  'state', 'State_')
+        existing_obj.biobankStreetAddress1 = self.biobank_address['line'][0]
+        existing_obj.biobankZipCode = self.biobank_address['postalCode']
 
       return existing_obj
 
