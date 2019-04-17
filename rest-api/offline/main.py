@@ -22,6 +22,7 @@ from offline.sa_key_remove import delete_service_account_keys
 from offline.table_exporter import TableExporter
 import offline.sync_consent_files
 import offline.update_ehr_status
+import offline.genomic_pipeline
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
@@ -177,6 +178,12 @@ def update_ehr_status():
   offline.update_ehr_status.update_ehr_status()
   return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_pipeline():
+  offline.genomic_pipeline.process_genomic_water_line()
+  return '{"success": "true"}'
+
 def _build_pipeline_app():
   """Configure and return the app with non-resource pipeline-triggering endpoints."""
   offline_app = Flask(__name__)
@@ -245,6 +252,12 @@ def _build_pipeline_app():
     PREFIX + 'UpdateEhrStatus',
     endpoint='update_ehr_status',
     view_func=update_ehr_status,
+    methods=['GET'])
+
+  offline_app.add_url_rule(
+    PREFIX + 'GenomicPipeline',
+    endpoint='genomic_pipeline',
+    view_func=genomic_pipeline,
     methods=['GET'])
 
   offline_app.after_request(app_util.add_headers)
