@@ -4,9 +4,9 @@ import config
 import pytz
 import csv
 from cloudstorage import cloudstorage_api  # stubbed by testbed
-from code_constants import BIOBANK_TESTS, GENOME_TYPE
+from code_constants import BIOBANK_TESTS
 from model.participant import Participant
-from genomic import genomic_set_file_handler, genomic_biobank_menifest_handler
+from genomic import genomic_set_file_handler
 from test import test_data
 from test.unit_test.unit_test_util import CloudStorageSqlTestBase, NdbTestBase, TestBase
 from dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
@@ -17,7 +17,7 @@ from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
 from offline import genomic_pipeline
-from participant_enums import WithdrawalStatus, SampleStatus
+from participant_enums import SampleStatus
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
