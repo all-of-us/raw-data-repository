@@ -54,6 +54,9 @@ class Database(object):
   def get_engine(self):
     return self._engine
 
+  def raw_connection(self):
+    return self._engine.raw_connection()
+
   def create_schema(self):
     Base.metadata.create_all(self._engine)
 

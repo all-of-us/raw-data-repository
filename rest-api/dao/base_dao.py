@@ -4,6 +4,7 @@ import json
 import logging
 import datetime
 import random
+from contextlib import closing
 
 from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirabstractbase import FHIRValidationError
@@ -58,6 +59,90 @@ class BaseDao(object):
 
   def session(self):
     return self._database.session()
+
+  def raw_connection(self):
+    """
+    Return a raw connection object. Used for calling stored procedures.
+    https://docs.sqlalchemy.org/en/13/core/connections.html#calling-stored-procedures
+    :return: raw connection object from engine.
+    """
+    return self._database.raw_connection()
+
+  def call_proc(self, proc, args=None, filters=None, skip_null=False):
+    """
+    Call a Stored Procedure with parameters. Always returns last set if query
+    returns multiple data sets.
+    :param proc: stored procedure name
+    :param args: list of argument values
+    :param filters: string of columns to return
+    :param skip_null: do not return columns with null values
+    :return: list of dicts objects
+    """
+    if not proc or not isinstance(proc, str):
+      raise ValueError('stored procedure name is invalid')
+
+    if args is None:
+      args = list()
+    if not isinstance(args, list):
+      raise ValueError('args value is invalid')
+
+    sets = list()
+    data = list()
+    conn = self.raw_connection()
+
+    try:
+      with closing(conn.cursor()) as cursor:
+        cursor.callproc(proc, args)
+        # capture the result set fields and data. cursor.fetchall() needs to be first.
+        sets.append({'data': list(cursor.fetchall()), 'fields': list(cursor.description)})
+
+        # if multiple sets are returned, capture them as well.
+        while cursor.nextset():
+          try:
+            sets.append({'data': list(cursor.fetchall()), 'fields': list(cursor.description)})
+          # pylint: disable=broad-except
+          except Exception:
+            pass
+    except:
+      raise
+    finally:
+      conn.close()
+
+    # reverse the set list, return the first set.
+    sets.reverse()
+    for item in sets:
+
+      if not item['fields'] or len(item['fields']) == 0:
+        continue
+
+      fields = item['fields']
+      results = item['data']
+
+      for row in results:
+        od = collections.OrderedDict()
+
+        for x in range(0, len(fields)):
+          field = fields[x][0]
+          value = row[x]
+
+          if skip_null is True and value is None:
+            continue
+          if filters and field.lower() not in filters.lower():
+            continue
+
+          if isinstance(value, (datetime.datetime, datetime.date)):
+            od[field] = value.isoformat()
+          elif field == 'participant_id':
+            od[field] = 'P{0}'.format(value)
+          else:
+            od[field] = value
+
+        data.append(od)
+
+      # skip other sets.
+      break
+
+    return data
 
   def _validate_model(self, session, obj):
     """Override to validate a model before any db write (insert or update)."""
