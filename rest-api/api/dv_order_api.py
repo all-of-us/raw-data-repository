@@ -121,7 +121,6 @@ class DvOrderApi(UpdatableApi):
 
   def _put_supply_delivery(self, resource, bo_id):
     fhir = SimpleFhirR4Reader(resource)
-    # @todo: use from_client_participant_id
     participant_id = fhir.patient.identifier.value
     p_id = from_client_participant_id(participant_id)
     update_time = dateutil.parser.parse(fhir.occurrenceDateTime)
