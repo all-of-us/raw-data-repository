@@ -8,7 +8,7 @@ from fhir_utils import SimpleFhirR4Reader
 from flask import request
 from model.utils import from_client_participant_id
 from participant_enums import OrderShipmentTrackingStatus
-from werkzeug.exceptions import BadRequest, MethodNotAllowed
+from werkzeug.exceptions import BadRequest, MethodNotAllowed, Conflict
 
 
 class DvOrderApi(UpdatableApi):
@@ -45,6 +45,11 @@ class DvOrderApi(UpdatableApi):
     pid = patient.identifier
     p_id = from_client_participant_id(pid.value)
     bo_id = fhir_resource.basedOn[0].identifier.value
+    pk = {'participantId': p_id, 'order_id': bo_id}
+    obj = ObjDict(pk)
+    if not self.dao.get_id(obj):
+      raise Conflict('Existing SupplyRequest for order required for SupplyDelivery')
+
     response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
     response[2]['Location'] = '/rdr/v1/SupplyDelivery/{}'.format(bo_id)
     if response[1] == 200:

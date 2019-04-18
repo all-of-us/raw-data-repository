@@ -111,3 +111,56 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     self.assertEquals(1, len(order))
     self.assertEquals(post_response._status_code, 201)
 
+class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
+
+  def test_supply_delivery_fails_without_supply_request(self):
+    self.send_post(
+      'SupplyDelivery',
+      request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
+      expected_status=httplib.CONFLICT
+    )
+
+  def test_delivery_pass_after_supply_request(self):
+    response = self.send_post(
+      'SupplyRequest',
+      request_data=self.get_payload('dv_order_api_post_supply_request.json'),
+      expected_status=httplib.CREATED
+    )
+
+    self.send_post(
+      'SupplyDelivery',
+      request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
+      expected_status=httplib.CREATED
+    )
+
+    orders = self.get_orders()
+    self.assertEqual(1, len(orders))
+
+  def test_biobank_address_received(self):
+    self.send_post(
+      'SupplyRequest',
+      request_data=self.get_payload('dv_order_api_post_supply_request.json'),
+      expected_status=httplib.CREATED
+    )
+
+    response = self.send_post(
+      'SupplyDelivery',
+      request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
+      expected_status=httplib.CREATED
+    )
+
+    request = self.get_payload('dv_order_api_put_supply_delivery.json')
+    biobank_address = self.dv_order_dao.biobank_address
+    biobank_address['type'] = 'postal'
+    biobank_address['use'] = 'home'
+    request['contained'][0]['address'] = [biobank_address]
+    location_id = response.location.rsplit('/', 1)[-1]
+
+    self.send_put(
+      'SupplyDelivery/{}'.format(location_id),
+      request_data=request,
+      expected_status=httplib.CREATED
+    )
+
+    order = self.get_orders()
+
