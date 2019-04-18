@@ -72,6 +72,10 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
         kwargs[k] = default_value
     return BiobankOrder(**kwargs)
 
+  def test_no_file_found(self):
+    # If no file found, it will not raise any error
+    self.assertIsNone(genomic_set_file_handler.read_genomic_set_from_bucket())
+
   def test_read_from_csv_file(self):
     participant = self.participant_dao.insert(Participant(participantId=123, biobankId=123))
     self.summary_dao.insert(self.participant_summary(participant))
@@ -91,7 +95,7 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
                                    identifiers=[BiobankOrderIdentifier(system=u'c', value=u'e')])
     BiobankOrderDao().insert(bo3)
 
-    samples_file = test_data.open_genomic_set_file()
+    samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-1.csv')
 
     input_filename = 'cloud%s.csv' % self._naive_utc_to_naive_central(clock.CLOCK.now()).strftime(
         genomic_set_file_handler.INPUT_CSV_TIME_FORMAT)
