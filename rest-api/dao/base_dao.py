@@ -100,8 +100,7 @@ class BaseDao(object):
         while cursor.nextset():
           try:
             sets.append({'data': list(cursor.fetchall()), 'fields': list(cursor.description)})
-          # pylint: disable=broad-except
-          except Exception:
+          except TypeError:
             pass
     except:
       raise
