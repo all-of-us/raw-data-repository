@@ -126,7 +126,8 @@ class DvOrderApi(UpdatableApi):
 
   def _put_supply_delivery(self, resource, bo_id):
     fhir = SimpleFhirR4Reader(resource)
-    participant_id = fhir.patient.identifier.value.lstrip('P')
+    participant_id = fhir.patient.identifier.value
+    p_id = from_client_participant_id(participant_id)
     update_time = dateutil.parser.parse(fhir.occurrenceDateTime)
     carrier_name = fhir.extension.get(url=VIBRENT_FHIR_URL + 'carrier').valueString
     eta = dateutil.parser.parse(fhir.extension.get(
@@ -140,7 +141,7 @@ class DvOrderApi(UpdatableApi):
     )
 
     biobank_dv_order_id = self.dao.get_id(ObjDict({
-      'participantId': participant_id,
+      'participantId': p_id,
       'order_id': int(bo_id)
     }))
     order = self.dao.get(biobank_dv_order_id)
@@ -149,7 +150,8 @@ class DvOrderApi(UpdatableApi):
     order.shipmentEstArrival = eta.date()
     order.shipmentStatus = tracking_status_enum
 
-    return order
+    response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
+    return response
 
 
 def merge_dicts(dict_a, dict_b):

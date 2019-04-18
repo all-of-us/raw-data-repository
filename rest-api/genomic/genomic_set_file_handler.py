@@ -34,8 +34,22 @@ class DataError(RuntimeError):
     super(DataError, self).__init__(msg)
     self.external = external
 
+class FileNotFoundError(RuntimeError):
+  """genomic set file not found during import.
+
+  Args:
+    msg: Passed through to superclass.
+  """
+  def __init__(self, msg):
+    super(FileNotFoundError, self).__init__(msg)
+
+
 def read_genomic_set_from_bucket():
-  csv_file, csv_filename, timestamp = get_last_genomic_set_file_info()
+  try:
+    csv_file, csv_filename, timestamp = get_last_genomic_set_file_info()
+  except FileNotFoundError, e:
+    logging.info(e.message)
+    return None
   if _is_filename_exist(csv_filename):
     raise DataError(
       'This file %s has already been processed' % csv_filename, external=True)
@@ -43,12 +57,12 @@ def read_genomic_set_from_bucket():
   if now - timestamp > _MAX_INPUT_AGE:
     logging.info('Input %r (timestamp %s UTC) is > %s h old (relative to %s UTC), not importing.'
                  % (_MAX_INPUT_AGE, csv_filename, timestamp, now))
-    return
+    return None
 
   csv_reader = csv.DictReader(csv_file, delimiter=',')
-  written = _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp)
+  genomic_set_id = _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp)
 
-  return written, timestamp
+  return genomic_set_id
 
 def get_last_genomic_set_file_info():
   """Finds the latest CSV & updates/inserts relevant genomic tables from its rows."""
@@ -88,13 +102,13 @@ def _find_latest_genomic_set_csv(cloud_bucket_name):
   """
   bucket_stat_list = cloudstorage_api.listbucket('/' + cloud_bucket_name)
   if not bucket_stat_list:
-    raise DataError('No files in cloud bucket %r.' % cloud_bucket_name)
+    raise FileNotFoundError('No files in cloud bucket %r.' % cloud_bucket_name)
   # GCS does not really have the concept of directories (it's just a filename convention), so all
   # directory listings are recursive and we must filter out subdirectory contents.
   bucket_stat_list = [s for s in bucket_stat_list if s.filename.lower().endswith('.csv')]
   if not bucket_stat_list:
-    raise DataError(
-        'No CSVs in cloud bucket %r (all files: %s).' % (cloud_bucket_name, bucket_stat_list))
+    raise FileNotFoundError(
+      'No CSVs in cloud bucket %r (all files: %s).' % (cloud_bucket_name, bucket_stat_list))
   bucket_stat_list.sort(key=lambda s: s.st_ctime)
   return bucket_stat_list[-1].filename
 
@@ -127,7 +141,7 @@ def _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp):
     raise DataError(
         'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
   member_dao = GenomicSetMemberDao()
-  written = 0
+  genomic_set_id = None
   try:
     members = []
     rows = list(csv_reader)
@@ -135,18 +149,19 @@ def _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp):
       if i == 0:
         if row[CsvColumns.GENOMIC_SET_NAME] and row[CsvColumns.GENOMIC_SET_CRITERIA]:
           genomic_set = _insert_genomic_set_from_row(row, csv_filename, timestamp)
+          genomic_set_id = genomic_set.id
         else:
           raise DataError('CSV is missing columns genomic_set_name or genomic_set_criteria')
-      member = _create_genomic_set_member_from_row(genomic_set.id, row)
+      member = _create_genomic_set_member_from_row(genomic_set_id, row)
       members.append(member)
       if len(members) >= _BATCH_SIZE:
-        written += member_dao.upsert_all(members)
+        member_dao.upsert_all(members)
         members = []
 
     if members:
-      written += member_dao.upsert_all(members)
+      member_dao.upsert_all(members)
 
-    return written
+    return genomic_set_id
   except ValueError, e:
     raise DataError(e)
 

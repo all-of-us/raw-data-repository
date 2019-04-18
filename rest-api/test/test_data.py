@@ -100,13 +100,13 @@ def open_biobank_samples(biobank_ids, tests):
 
   return csv_str
 
-def open_genomic_set_file():
+def open_genomic_set_file(test_filename):
   """
   Returns a string representing the genomic set CSV file.
   :return: StringIO object
   """
 
-  lines = open(data_path('Genomic-Test-Set-test-1.csv')).readlines()
+  lines = open(data_path(test_filename)).readlines()
   csv_str = ''
   for line in lines:
     csv_str += line

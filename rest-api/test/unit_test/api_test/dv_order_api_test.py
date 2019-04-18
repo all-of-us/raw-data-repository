@@ -1,7 +1,6 @@
 import httplib
 
 import mock
-
 from dao.dv_order_dao import DvOrderDao
 from dao.hpo_dao import HPODao
 from dao.participant_dao import ParticipantDao
@@ -164,3 +163,18 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
 
     order = self.get_orders()
 
+    self.assertTrue(response.location.endswith('/SupplyDelivery/999999'))
+    orders = self.get_orders()
+    self.assertEqual(1, len(orders))
+    location_id = response.location.rsplit('/', 1)[-1]
+    self.assertEqual(location_id, '999999')
+    # change of address
+    self.send_put(
+      'SupplyDelivery/{}'.format(location_id),
+      request_data=self.get_payload('dv_order_api_put_supply_delivery.json'),
+      )
+    orders = self.get_orders()
+    self.assertEqual(1, len(orders))
+    for i in orders:
+      self.assertEqual(i.id, long(1))
+      self.assertEqual(i.order_id, long(999999))

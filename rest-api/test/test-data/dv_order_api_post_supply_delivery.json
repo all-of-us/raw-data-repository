@@ -31,12 +31,12 @@
     },
     {
       "address": {
-        "city": "FakeVille",
+        "city": "Fairfax",
         "line": [
-          "123 Fake St",
+          "4114 Legato Rd",
           "test line 2"
         ],
-        "postalCode": "12345",
+        "postalCode": "22033",
         "state": "VA",
         "type": "postal",
         "use": "home"

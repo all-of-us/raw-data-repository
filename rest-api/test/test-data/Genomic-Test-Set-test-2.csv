@@ -1,0 +1,4 @@
+genomic_set_name,genomic_set_criteria,pid,biobank_order_id,ny_flag,sex_at_birth,genome_type
+name_xxx,criteria_xxx,1,1,Y,M,aou_wgs
+,,2,2,N,F,aou_array
+,,3,3,N,M,aou_array
