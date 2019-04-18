@@ -152,29 +152,21 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
     biobank_address = self.dv_order_dao.biobank_address
     biobank_address['type'] = 'postal'
     biobank_address['use'] = 'home'
-    request['contained'][0]['address'] = [biobank_address]
+    request['contained'][0]['address'] = biobank_address
+
     location_id = response.location.rsplit('/', 1)[-1]
 
     self.send_put(
       'SupplyDelivery/{}'.format(location_id),
-      request_data=request,
-      expected_status=httplib.CREATED
+      request_data=request
     )
 
     order = self.get_orders()
+    # @TODO: check biobank address
 
     self.assertTrue(response.location.endswith('/SupplyDelivery/999999'))
-    orders = self.get_orders()
-    self.assertEqual(1, len(orders))
-    location_id = response.location.rsplit('/', 1)[-1]
-    self.assertEqual(location_id, '999999')
-    # change of address
-    self.send_put(
-      'SupplyDelivery/{}'.format(location_id),
-      request_data=self.get_payload('dv_order_api_put_supply_delivery.json'),
-      )
-    orders = self.get_orders()
-    self.assertEqual(1, len(orders))
-    for i in orders:
+    self.assertEqual(1, len(order))
+    self.assertEqual(1, len(order))
+    for i in order:
       self.assertEqual(i.id, long(1))
       self.assertEqual(i.order_id, long(999999))
