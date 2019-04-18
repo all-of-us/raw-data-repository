@@ -179,7 +179,7 @@ class _TestDb(object):
       self.__temp_db_name = 'unittestdb' + uid
       self.__temp_metrics_db_name = 'unittestdb_metrics' + uid
 
-  def setup(self, with_data=True, with_views=False):
+  def setup(self, with_data=True, with_views=False, with_consent_codes=False):
     singletons.reset_for_tests()  # Clear the db connection cache.
     if self.__use_mysql:
       if 'CIRCLECI' in os.environ:
@@ -231,9 +231,10 @@ class _TestDb(object):
         self._setup_sqlite_views()
 
     if with_data:
-      self._setup_codebook()
       self._setup_hpos()
 
+    if with_consent_codes:
+      self._setup_consent_codes()
 
   def teardown(self):
     db = dao.database_factory.get_database()
@@ -245,9 +246,10 @@ class _TestDb(object):
     # Reconnecting to in-memory SQLite (because singletons are cleared above)
     # effectively clears the database.
 
-  def _setup_codebook(self):
+  def _setup_consent_codes(self):
     """
-    Setup Codebook entries in the Code table. Matches 'test_data/study_consent.json`.
+    Proactively setup Codebook entries in the Code table so parent/child relationship is
+    created. Matches 'test_data/study_consent.json`.
     """
     def create_code(topic, name, code_type, parent):
       code = Code(system=PPI_SYSTEM, topic=topic, value=name, display=name, codeType=code_type,
@@ -433,10 +435,10 @@ CREATE VIEW ppi_participant_view AS
 
 class SqlTestBase(TestbedTestBase):
   """Base class for unit tests that use the SQL database."""
-  def setUp(self, with_data=True, use_mysql=False):
+  def setUp(self, with_data=True, use_mysql=False, with_consent_codes=False):
     super(SqlTestBase, self).setUp()
     self._test_db = _TestDb(use_mysql=use_mysql)
-    self._test_db.setup(with_data=with_data)
+    self._test_db.setup(with_data=with_data, with_consent_codes=with_consent_codes)
     self.database = dao.database_factory.get_database()
 
   def tearDown(self):
@@ -529,8 +531,8 @@ class NdbTestBase(SqlTestBase):
     },
   }
 
-  def setUp(self, use_mysql=False, with_data=True):
-    super(NdbTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data)
+  def setUp(self, use_mysql=False, with_data=True, with_consent_codes=False):
+    super(NdbTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data, with_consent_codes=with_consent_codes)
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
     ndb.get_context().clear_cache()

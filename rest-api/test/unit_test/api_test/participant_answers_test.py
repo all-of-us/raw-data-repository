@@ -7,8 +7,9 @@ from test.unit_test.unit_test_util import FlaskTestBase
 
 class QuestionnaireAnswersApiTest(FlaskTestBase):
 
-  def setUp(self, use_mysql=True, with_data=True):
-    super(QuestionnaireAnswersApiTest, self).setUp(use_mysql=use_mysql, with_data=with_data)
+  def setUp(self, use_mysql=True, with_data=True, with_consent_codes=True):
+    super(QuestionnaireAnswersApiTest, self).setUp(
+            use_mysql=use_mysql, with_data=with_data, with_consent_codes=with_consent_codes)
 
   def _answers_url(self, p_id, module):
     return 'Participant/{0}/QuestionnaireAnswers/{1}'.format(p_id, module)
