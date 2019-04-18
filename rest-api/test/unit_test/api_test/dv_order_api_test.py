@@ -1,7 +1,6 @@
 import httplib
 
 import mock
-
 from dao.dv_order_dao import DvOrderDao
 from dao.hpo_dao import HPODao
 from dao.participant_dao import ParticipantDao
@@ -111,3 +110,39 @@ class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
     self.assertEquals(1, len(order))
     self.assertEquals(post_response._status_code, 201)
 
+
+class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
+
+  def test_supply_delivery(self):
+
+    # create as supply request
+    response = self.send_post(
+      'SupplyRequest',
+      request_data=self.get_payload('dv_order_api_post_supply_request.json'),
+      expected_status=httplib.CREATED
+      )
+    self.assertTrue(response.location.endswith('/SupplyRequest/999999'))
+    orders = self.get_orders()
+    self.assertEqual(1, len(orders))
+
+    # SupplyDelivery relies on existing SupplyRequest
+    response = self.send_post(
+      'SupplyDelivery',
+      request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
+      expected_status=httplib.CREATED
+      )
+    self.assertTrue(response.location.endswith('/SupplyDelivery/999999'))
+    orders = self.get_orders()
+    self.assertEqual(1, len(orders))
+    location_id = response.location.rsplit('/', 1)[-1]
+    self.assertEqual(location_id, '999999')
+    # change of address
+    self.send_put(
+      'SupplyDelivery/{}'.format(location_id),
+      request_data=self.get_payload('dv_order_api_put_supply_delivery.json'),
+      )
+    orders = self.get_orders()
+    self.assertEqual(1, len(orders))
+    for i in orders:
+      self.assertEqual(i.id, long(1))
+      self.assertEqual(i.order_id, long(999999))
