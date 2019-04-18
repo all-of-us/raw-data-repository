@@ -552,7 +552,51 @@ QuestionnaireResponse resource which must include:
 Example query:
 
     GET /Participant/P123456789/Questionnaire/810572271
+    
+#### `GET /Participant/:pid/QuestionnaireAnswers/:module`
 
+Return the participant's answers for the given Codebook module name. Response will include
+multiple sets of answers if the participant has completed the module questionnaire multiple
+times. The most recent questionnaire will be first.
+
+Multiple choice answers will be combined into one response column separated by commas, 
+see example below. 
+
+Returns a Http 404 error if the participant has not yet submitted the questionnaire. 
+
+Additional parameters
+
+* `skip_null` If true, do not return answers with null values.
+
+* `fields` A comma separated list of questionnaire answers to return. 
+
+Example queries:
+
+    Get /Participant/P123456789/QuestionnaireAnswers/TheBasics
+    
+    Get /Participant/P123456789/QuestionnaireAnswers/ConsentPII?skip_null=true
+    
+    GET /Participant/P123456789/QuestionnaireAnswers/TheBasics?fields=Race_WhatRaceEthnicity,Gender_CloserGenderDescription
+   
+Example response:
+
+    GET /Participant/P123456789/QuestionnaireAnswers/TheBasics?fields=Race_WhatRaceEthnicity,Gender_CloserGenderDescription
+
+    [
+      {
+        "questionnaire_id": 2,
+        "questionnaire_response_id": 012345678,
+        "created": "2019-02-14T22:34:16",
+        "code_id": 1,
+        "version": 1,
+        "authored": "2019-02-14T22:33:40",
+        "language": "en",
+        "participant_id": "P123456789",
+        "module": "TheBasics",
+        "Gender_CloserGenderDescription": null,
+        "Race_WhatRaceEthnicity": "WhatRaceEthnicity_Black,WhatRaceEthnicity_White"
+      }
+    ]
 
 ## PhysicalMeasurements API
 

@@ -1,3 +1,4 @@
+import datetime
 import StringIO
 import collections
 import contextlib
@@ -23,6 +24,7 @@ from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 from mock import patch
+from model.code import CodeType
 from model.organization import Organization
 from testlib import testutil
 
@@ -177,7 +179,7 @@ class _TestDb(object):
       self.__temp_db_name = 'unittestdb' + uid
       self.__temp_metrics_db_name = 'unittestdb_metrics' + uid
 
-  def setup(self, with_data=True, with_views=False):
+  def setup(self, with_data=True, with_views=False, with_consent_codes=False):
     singletons.reset_for_tests()  # Clear the db connection cache.
     if self.__use_mysql:
       if 'CIRCLECI' in os.environ:
@@ -231,6 +233,8 @@ class _TestDb(object):
     if with_data:
       self._setup_hpos()
 
+    if with_consent_codes:
+      self._setup_consent_codes()
 
   def teardown(self):
     db = dao.database_factory.get_database()
@@ -241,6 +245,55 @@ class _TestDb(object):
     dao.database_factory.SCHEMA_TRANSLATE_MAP = None
     # Reconnecting to in-memory SQLite (because singletons are cleared above)
     # effectively clears the database.
+
+  def _setup_consent_codes(self):
+    """
+    Proactively setup Codebook entries in the Code table so parent/child relationship is
+    created. Matches 'test_data/study_consent.json`.
+    """
+    def create_code(topic, name, code_type, parent):
+      code = Code(system=PPI_SYSTEM, topic=topic, value=name, display=name, codeType=code_type,
+                  mapped=True, shortValue=name, created=datetime.datetime.utcnow())
+      if parent:
+        parent.children.append(code)
+
+      return code
+
+    with CodeDao().session() as session:
+      module = create_code(u'Module Name', u'ConsentPII', CodeType.MODULE, None)
+      session.add(module)
+
+      topic = create_code(u'Language', u'ConsentPII_Language', CodeType.TOPIC, module)
+      session.add(topic)
+
+      qn = create_code(u'Language', u'Language_SpokenWrittenLanguage', CodeType.QUESTION, topic)
+      session.add(qn)
+      session.add(create_code(u'Language', u'SpokenWrittenLanguage_English', CodeType.ANSWER, qn))
+      session.add(create_code(u'Language', u'SpokenWrittenLanguage_ChineseChina', CodeType.ANSWER, qn))
+      session.add(create_code(u'Language', u'SpokenWrittenLanguage_French', CodeType.ANSWER, qn))
+
+      topic = create_code(u'Address', u'ConsentPII_PIIAddress', CodeType.TOPIC, module)
+      session.add(topic)
+
+      session.add(create_code(u'Address', u'PIIAddress_StreetAddress', CodeType.QUESTION, topic))
+      session.add(create_code(u'Address', u'PIIAddress_StreetAddress2', CodeType.QUESTION, topic))
+
+      topic = create_code(u'Name', u'ConsentPII_PIIName', CodeType.TOPIC, module)
+      session.add(topic)
+
+      session.add(create_code(u'Name', u'PIIName_First', CodeType.QUESTION, topic))
+      session.add(create_code(u'Name', u'PIIName_Middle', CodeType.QUESTION, topic))
+      session.add(create_code(u'Name', u'PIIName_Last', CodeType.QUESTION, topic))
+
+      session.add(create_code(u'Email Address', u'ConsentPII_EmailAddress', CodeType.QUESTION, module))
+
+      topic = create_code(u'Extra Consent Items', u'ConsentPII_ExtraConsent', CodeType.TOPIC, module)
+      session.add(create_code(u'Extra Consent Items', u'ExtraConsent_CABoRSignature', CodeType.QUESTION, topic))
+
+      module = create_code(u'Module Name', u'OverallHealth', CodeType.MODULE, None)
+      session.add(module)
+
+      session.commit()
 
   def _load_views_and_functions(self, engine):
     """
@@ -382,10 +435,10 @@ CREATE VIEW ppi_participant_view AS
 
 class SqlTestBase(TestbedTestBase):
   """Base class for unit tests that use the SQL database."""
-  def setUp(self, with_data=True, use_mysql=False):
+  def setUp(self, with_data=True, use_mysql=False, with_consent_codes=False):
     super(SqlTestBase, self).setUp()
     self._test_db = _TestDb(use_mysql=use_mysql)
-    self._test_db.setup(with_data=with_data)
+    self._test_db.setup(with_data=with_data, with_consent_codes=with_consent_codes)
     self.database = dao.database_factory.get_database()
 
   def tearDown(self):
@@ -478,8 +531,8 @@ class NdbTestBase(SqlTestBase):
     },
   }
 
-  def setUp(self, use_mysql=False, with_data=True):
-    super(NdbTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data)
+  def setUp(self, use_mysql=False, with_data=True, with_consent_codes=False):
+    super(NdbTestBase, self).setUp(use_mysql=use_mysql, with_data=with_data, with_consent_codes=with_consent_codes)
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
     ndb.get_context().clear_cache()
@@ -593,7 +646,7 @@ class FlaskTestBase(NdbTestBase):
     response = self.send_post('Participant', {})
     return response['participantId']
 
-  def send_consent(self, participant_id, email=None, language=None):
+  def send_consent(self, participant_id, email=None, language=None, code_values=None):
     if not self._consent_questionnaire_id:
       self._consent_questionnaire_id = self.create_questionnaire('study_consent.json')
     self.first_name = self.fake.first_name()
@@ -609,7 +662,7 @@ class FlaskTestBase(NdbTestBase):
                                                          ("email", email),
                                                          ("streetAddress", self.streetAddress),
                                                          ("streetAddress2", self.streetAddress2)],
-                                         language=language)
+                                         language=language, code_answers=code_values)
     self.send_post(questionnaire_response_url(participant_id), qr_json)
 
   def create_questionnaire(self, filename):
