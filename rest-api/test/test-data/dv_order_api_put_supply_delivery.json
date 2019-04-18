@@ -1,0 +1,100 @@
+{
+"basedOn": [
+  {
+    "identifier": {
+      "system": "http://joinallofus.org/fhir/orderId",
+      "value": "999999"
+    }
+  }
+],
+"contained": [
+  {
+    "address": {
+      "city": "Fairfax",
+      "line": [
+	"4114 Legato Rd",
+	"test line 2"
+      ],
+      "postalCode": "22033",
+      "state": "VA",
+      "type": "postal",
+      "use": "home"
+    },
+    "id": "location-1",
+    "resourceType": "Location"
+  },
+  {
+    "deviceName": [
+      {
+	"name": "OGD-500.015",
+	"type": "manufacturer-name"
+      }
+    ],
+    "id": "device-1",
+    "identifier": [
+      {
+	"system": "http://joinallofus.org/fhir/SKU",
+	"value": "4081"
+      }
+    ],
+    "resourceType": "Device"
+  },
+  {
+    "id": "supplier-1",
+    "name": "GenoTek",
+    "resourceType": "Organization"
+  }
+],
+"destination": {
+  "reference": "#location-1"
+},
+"extension": [
+  {
+    "url": "http://joinallofus.org/fhir/tracking-status",
+    "valueString": "enroute"
+  },
+  {
+    "url": "http://joinallofus.org/fhir/expected-delivery-date",
+    "valueDateTime": "2019-04-01T00:00:00+00:00"
+  },
+  {
+    "url": "http://joinallofus.org/fhir/order-type",
+    "valueString": "Salivary Pilot"
+  },
+  {
+    "url": "http://joinallofus.org/fhir/carrier",
+    "valueString": "sample carrier"
+  }
+],
+"id": "123",
+"identifier": [
+  {
+    "system": "http://joinallofus.org/fhir/trackingId",
+    "value": "P12435464423"
+  }
+],
+"occurrenceDateTime": "2019-03-01T00:00:00+00:00",
+"patient": {
+  "identifier": {
+    "system": "http://joinallofus.org/fhir/participantId",
+    "value": "P123456789"
+  }
+},
+"resourceType": "SupplyDelivery",
+"status": "in-progress",
+"suppliedItem": {
+  "itemReference": {
+    "reference": "#device-1"
+  },
+  "quantity": {
+    "value": 1
+  }
+},
+"supplier": {
+  "reference": "#supplier-1"
+},
+"text": {
+  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">default narrative text</div>",
+  "status": "generated"
+}
+}
