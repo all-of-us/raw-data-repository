@@ -1,7 +1,7 @@
 """make order id bigint
 
 Revision ID: f2677216ec91
-Revises: 3adfe155c68b
+Revises: a43f72b7c848
 Create Date: 2019-04-18 09:33:46.976986
 
 """
@@ -21,7 +21,7 @@ from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatu
 
 # revision identifiers, used by Alembic.
 revision = 'f2677216ec91'
-down_revision = '3adfe155c68b'
+down_revision = 'a43f72b7c848'
 branch_labels = None
 depends_on = None
 
