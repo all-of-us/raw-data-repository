@@ -123,7 +123,7 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
     )
 
   def test_delivery_pass_after_supply_request(self):
-    response = self.send_post(
+    self.send_post(
       'SupplyRequest',
       request_data=self.get_payload('dv_order_api_post_supply_request.json'),
       expected_status=httplib.CREATED
