@@ -1,7 +1,8 @@
 from model.base import Base
 from model.utils import UTCDateTime6, Enum
 from participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
-from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, UniqueConstraint, Text
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, UniqueConstraint, Text,\
+  BigInteger
 
 
 class BiobankDVOrder(Base):
@@ -24,7 +25,7 @@ class BiobankDVOrder(Base):
                          nullable=False)
 
   # identifier/code (system=OrderId)
-  order_id = Column('order_id', Integer)
+  order_id = Column('order_id', BigInteger)
   # authored: date supplier was requested to send item.
   order_date = Column('order_date', DateTime)
 
