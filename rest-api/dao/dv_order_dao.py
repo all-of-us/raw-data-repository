@@ -26,6 +26,8 @@ class DvOrderDao(UpdatableDao):
     super(DvOrderDao, self).__init__(BiobankDVOrder)
     self.biobank_address = {'city': "Rochester", 'state': "MN",
                 'postalCode': "55901", 'line': ["3050 Superior Drive NW"]}
+    self.biobank_address['state'] = get_code_id(self.biobank_address, self.code_dao, 'state',
+                                                'State_')
 
 
   def send_order(self, resource, pid):
@@ -135,6 +137,10 @@ class DvOrderDao(UpdatableDao):
 
       address = {'city': order_address.city, 'state': order_address.stateId,
                  'postalCode': order_address.postalCode, 'line': order_address.line}
+      address = order_address._obj
+      del address['type']
+      del address['use']
+      address['state'] = get_code_id(order_address, self.code_dao, 'state', 'State_')
 
       if existing_obj.address != address and address != self.biobank_address:
         logging.warn('Address change detected: Using new address ({}) for participant ({})'.format(
