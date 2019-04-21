@@ -94,8 +94,7 @@ def run_migrations_offline():
                         target_metadata=target_metadata.get(name),
                         literal_binds=True,
                         include_schemas=True,
-                        include_object=include_object_fn(name),
-                        compare_type=True)
+                        include_object=include_object_fn(name))
       with context.begin_transaction():
         context.run_migrations(engine_name=name)
 
@@ -164,8 +163,7 @@ def run_migrations_online():
           downgrade_token="%s_downgrades" % name,
           target_metadata=target_metadata.get(name),
           include_schemas=True,
-          include_object=include_object_fn(name),
-          compare_type=True)
+          include_object=include_object_fn(name))
       context.run_migrations(engine_name=name)
 
     if USE_TWOPHASE:
