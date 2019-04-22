@@ -16,7 +16,7 @@ from model.biobank_order import BiobankOrderedSample, BiobankOrderIdentifier, Bi
 from model.utils import to_client_participant_id
 from participant_enums import BiobankOrderStatus, OrderShipmentTrackingStatus
 from sqlalchemy.orm import load_only
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import Conflict, NotFound, BadRequest
 
 
 class DvOrderDao(UpdatableDao):
@@ -109,10 +109,13 @@ class DvOrderDao(UpdatableDao):
     fhir_resource = SimpleFhirR4Reader(resource_json)
     order = BiobankDVOrder(participantId=participant_id)
     order.participantId = participant_id
-    order.modified = datetime.datetime.now()
+
     if resource_json['resourceType'] == 'SupplyDelivery':
       order.order_id = int(fhir_resource.basedOn[0].identifier.value)
       existing_obj = self.get(self.get_id(order))
+      if not existing_obj:
+        raise NotFound('existing order record not found')
+
       existing_obj.shipmentStatus = fhir_resource.extension.get(
         url=VIBRENT_FHIR_URL + 'tracking-status').valueString
       existing_obj.shipmentCarrier = fhir_resource.extension.get(
@@ -164,8 +167,11 @@ class DvOrderDao(UpdatableDao):
       return existing_obj
 
     if resource_json['resourceType'] == 'SupplyRequest':
-      order.order_id = fhir_resource.identifier.get(
-                       system=VIBRENT_FHIR_URL + 'orderId').value
+      order.order_id = int(fhir_resource.identifier.get(
+                          system=VIBRENT_FHIR_URL + 'orderId').value)
+      if id_ and int(id_) != order.order_id:
+        raise Conflict('url order id param does not match document order id')
+
       if hasattr(fhir_resource, 'authoredOn'):
         order.order_date = parse_date(fhir_resource.authoredOn)
 
@@ -190,11 +196,13 @@ class DvOrderDao(UpdatableDao):
         url=VIBRENT_ORDER_URL).valueString
       if id_ is None:
         order.version = 1
-        order.created = datetime.datetime.now()
       else:
         # A put request may add new attributes
-        order.id = self.get_id(order)[0]
-        order.created = self._get_created_date(participant_id, id_)
+        existing_obj = self.get(self.get_id(order))
+        if not existing_obj:
+          raise NotFound('existing order record not found')
+
+        order.id = existing_obj.id
         order.version = expected_version
         order.biobankStatus = fhir_resource.status
         if hasattr(fhir_resource, 'barcode'):
@@ -236,19 +244,16 @@ class DvOrderDao(UpdatableDao):
           'No identifier for system %r, required for primary key.' %
             BiobankDVOrder._VIBRENT_ID_SYSTEM)
 
-  def _get_created_date(self, pid, id_):
-    with self.session() as session:
-      query = session.query(BiobankDVOrder.created).filter_by(
-        participantId=pid).filter_by(
-        order_id=id_)
-      return query.first()[0]
-
   def get_etag(self, id_, pid):
     with self.session() as session:
       query = session.query(BiobankDVOrder.version).filter_by(
         participantId=pid).filter_by(
         order_id=id_)
-      return query.first()[0]
+      result = query.first()
+      if result:
+        return result[0]
+
+    return None
 
   def _do_update(self, session, obj, existing_obj): #pylint: disable=unused-argument
     obj.version += 1

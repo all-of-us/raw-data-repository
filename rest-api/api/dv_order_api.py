@@ -18,6 +18,8 @@ class DvOrderApi(UpdatableApi):
 
   @staticmethod
   def _lookup_resource_type_method(resource_type_method_map, raw_resource):
+    if not isinstance(raw_resource, dict):
+      raise BadRequest('invalid FHIR resource')
     try:
       resource_type = raw_resource['resourceType']
     except KeyError:
@@ -29,7 +31,11 @@ class DvOrderApi(UpdatableApi):
 
   @auth_required(PTC)
   def post(self):
-    resource = request.get_json(force=True)
+    try:
+      resource = request.get_json(force=True)
+    except BadRequest:
+      raise BadRequest('missing FHIR resource')
+
     method = self._lookup_resource_type_method(
       {
        'SupplyRequest': self._post_supply_request,
@@ -74,18 +80,29 @@ class DvOrderApi(UpdatableApi):
     return response
 
   @auth_required(PTC_AND_HEALTHPRO)
-  def get(self, p_id, order_id):  # pylint: disable=unused-argument
-    if order_id:
-      pk = {'participant_id': p_id, 'order_id': order_id}
-      obj = ObjDict(pk)
-      id_ = self.dao.get_id(obj)[0]
-    else:
-      raise BadRequest('Must include order ID to retrieve DV orders.')
+  def get(self, p_id=None, order_id=None):  # pylint: disable=unused-argument
+
+    if not p_id:
+      raise BadRequest('invalid participant id')
+    if not order_id:
+      raise BadRequest('must include order ID to retrieve DV orders.')
+
+    pk = {'participant_id': p_id, 'order_id': order_id}
+    obj = ObjDict(pk)
+    id_ = self.dao.get_id(obj)[0]
+
     return super(DvOrderApi, self).get(id_=id_, participant_id=p_id)
 
   @auth_required(PTC)
-  def put(self, bo_id):  # pylint: disable=unused-argument
-    resource = request.get_json(force=True)
+  def put(self, bo_id=None):  # pylint: disable=unused-argument
+
+    if bo_id is None:
+      raise BadRequest('invalid order id')
+    try:
+      resource = request.get_json(force=True)
+    except BadRequest:
+      raise BadRequest('missing FHIR order document')
+
     method = self._lookup_resource_type_method(
       {
         'SupplyRequest': self._put_supply_request,
@@ -96,13 +113,21 @@ class DvOrderApi(UpdatableApi):
     return method(resource, bo_id)
 
   def _put_supply_request(self, resource, bo_id):
-    fhir_resource = SimpleFhirR4Reader(resource)
-    barcode_url = None
-    if fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString == 'shipped':
-      barcode_url = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).url
-    pid = fhir_resource.contained.get(
-      resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
-    p_id = from_client_participant_id(pid.value)
+
+    # handle invalid FHIR documents
+    try:
+      fhir_resource = SimpleFhirR4Reader(resource)
+      barcode_url = None
+      if fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString == 'shipped':
+        barcode_url = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).url
+      pid = fhir_resource.contained.get(
+        resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
+      p_id = from_client_participant_id(pid.value)
+    except AttributeError as e:
+      raise BadRequest(e.message)
+    except Exception as e:
+      raise BadRequest(e.message)
+
     merged_resource = None
     if not p_id:
       raise BadRequest('Request must include participant id and must be of type int')
@@ -125,15 +150,23 @@ class DvOrderApi(UpdatableApi):
     return response
 
   def _put_supply_delivery(self, resource, bo_id):
-    fhir = SimpleFhirR4Reader(resource)
-    participant_id = fhir.patient.identifier.value
-    p_id = from_client_participant_id(participant_id)
-    update_time = dateutil.parser.parse(fhir.occurrenceDateTime)
-    carrier_name = fhir.extension.get(url=VIBRENT_FHIR_URL + 'carrier').valueString
-    eta = dateutil.parser.parse(fhir.extension.get(
-      url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
-    tracking_status = fhir.extension.get(
-      url=VIBRENT_FHIR_URL + 'tracking-status').valueString
+
+    # handle invalid FHIR documents
+    try:
+      fhir = SimpleFhirR4Reader(resource)
+      participant_id = fhir.patient.identifier.value
+      p_id = from_client_participant_id(participant_id)
+      update_time = dateutil.parser.parse(fhir.occurrenceDateTime)
+      carrier_name = fhir.extension.get(url=VIBRENT_FHIR_URL + 'carrier').valueString
+      eta = dateutil.parser.parse(fhir.extension.get(
+        url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
+      tracking_status = fhir.extension.get(
+        url=VIBRENT_FHIR_URL + 'tracking-status').valueString
+    except AttributeError as e:
+      raise BadRequest(e.message)
+    except Exception as e:
+      raise BadRequest(e.message)
+
     tracking_status_enum = getattr(
       OrderShipmentTrackingStatus,
       tracking_status.upper(),
