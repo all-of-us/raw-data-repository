@@ -41,6 +41,12 @@
   "biobank_samples_bucket_name": [
     "staging_biobank_samples_upload_bucket"
   ],
+  "genomic_set_bucket_name": [
+    "staging_genomic_set_upload"
+  ],
+  "genomic_biobank_manifest_folder_name": [
+    "genomic_water_line_test"
+  ],
   "ghost_id_bucket": [
     "all-of-us-rdr-staging-ghost-accounts"
   ],
