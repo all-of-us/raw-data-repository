@@ -123,8 +123,10 @@ class DvOrderApi(UpdatableApi):
       pid = fhir_resource.contained.get(
         resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
       p_id = from_client_participant_id(pid.value)
-    except AttributeError:
-      raise BadRequest('invalid FHIR resource')
+    except AttributeError as e:
+      raise BadRequest(e.message)
+    except Exception as e:
+      raise BadRequest(e.message)
 
     merged_resource = None
     if not p_id:
@@ -160,8 +162,10 @@ class DvOrderApi(UpdatableApi):
         url=VIBRENT_FHIR_URL + "expected-delivery-date").valueDateTime)
       tracking_status = fhir.extension.get(
         url=VIBRENT_FHIR_URL + 'tracking-status').valueString
-    except AttributeError:
-      raise BadRequest('invalid FHIR resource')
+    except AttributeError as e:
+      raise BadRequest(e.message)
+    except Exception as e:
+      raise BadRequest(e.message)
 
     tracking_status_enum = getattr(
       OrderShipmentTrackingStatus,
