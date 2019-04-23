@@ -85,7 +85,6 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
     created_ts = datetime.datetime(2019, 03, 22, 18, 30, 45)
     confirmed_ts = datetime.datetime(2019, 03, 23, 12, 13, 00)
-    disposed_ts = datetime.datetime(2019, 03, 24, 15, 59, 30)
 
     bo = self._make_biobank_order(participantId=participant.participantId)
     BiobankOrderDao().insert(bo)
