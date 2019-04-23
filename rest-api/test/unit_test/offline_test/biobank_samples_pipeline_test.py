@@ -94,7 +94,7 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
     bss = BiobankStoredSample(
       biobankStoredSampleId=u'23523523', biobankId=participant.biobankId, test=u'1SAL2',
-      created=created_ts, biobankOrderIdentifier=boi.value)
+      created=created_ts, biobankOrderIdentifier=boi.value, confirmed=confirmed_ts)
 
     with self.participant_dao.session() as session:
       session.add(bss)
@@ -103,30 +103,10 @@ class BiobankSamplesPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertIsNone(ps.sampleStatusDV1SAL2)
     self.assertIsNone(ps.sampleStatusDV1SAL2Time)
 
-    self.summary_dao._update_dv_stored_samples()
+    self.summary_dao.update_from_biobank_stored_samples()
     ps = self.summary_dao.get(participant.participantId)
-    self.assertEqual(ps.sampleStatusDV1SAL2, SampleStatus.RECEIVED)
-    self.assertEqual(ps.sampleStatusDV1SAL2Time, created_ts)
-
-    with self.participant_dao.session() as session:
-      bss.confirmed = confirmed_ts
-      session.add(bss)
-
-    self.summary_dao._update_dv_stored_samples()
-    ps = self.summary_dao.get(participant.participantId)
-    self.assertEqual(ps.sampleStatusDV1SAL2Time, confirmed_ts)
-
-    with self.participant_dao.session() as session:
-      bss.disposed = disposed_ts
-      bss.status = SampleStatus.ACCESSINGING_ERROR
-      session.add(bss)
-
-    self.summary_dao._update_dv_stored_samples()
-    ps = self.summary_dao.get(participant.participantId)
-    self.assertEqual(ps.sampleStatusDV1SAL2, SampleStatus.ACCESSINGING_ERROR)
-    self.assertEqual(ps.sampleStatusDV1SAL2Time, disposed_ts)
-
-
+    self.assertEqual(ps.sampleStatus1SAL2, SampleStatus.RECEIVED)
+    self.assertEqual(ps.sampleStatus1SAL2Time, confirmed_ts)
 
   def test_end_to_end(self):
     dao = BiobankStoredSampleDao()

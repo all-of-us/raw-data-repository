@@ -413,44 +413,6 @@ class ParticipantSummaryDao(UpdatableDao):
       # TODO: Change this to the optimized sql in _update_dv_stored_samples()
       session.execute(sample_status_time_sql, sample_status_time_params)
 
-    self._update_dv_stored_samples()
-
-  def _update_dv_stored_samples(self):
-    """
-    For DV biobank orders, loop through each biobank stored data and update participant
-    summary fields from biobank_stored_sample table.
-    """
-    # SQLAlchemy does not support Updates with joins.  I was able to recreate the
-    # inner select using SQLAlchemy, but not the outer Update Join Select clause.
-    base_sql = """
-      UPDATE participant_summary ps
-       INNER JOIN (
-           SELECT
-              bss.biobank_id,
-              bss.status,
-              COALESCE(bss.disposed, bss.confirmed, bss.created) AS ts
-           FROM biobank_stored_sample bss INNER JOIN participant_summary ps ON
-                bss.biobank_id = ps.biobank_id
-           WHERE bss.test = "{0}"
-           ORDER BY bss.created DESC LIMIT 1) src
-        ON ps.biobank_id = src.biobank_id
-      SET
-          sample_status_dv_{1} = src.status,
-          sample_status_dv_{1}_time = src.ts
-      WHERE
-          ps.biobank_id = src.biobank_id AND
-          EXISTS(SELECT bdvo.participant_id 
-            FROM biobank_dv_order bdvo 
-            WHERE bdvo.participant_id = ps.participant_id) AND
-          NOT ps.sample_status_dv_{1}_time <=> src.ts;
-    """
-
-    with self.session() as session:
-      for test in BIOBANK_DV_TESTS:
-
-        sql = base_sql.format(test, test.lower())
-        session.execute(sql)
-
   def _get_num_baseline_ppi_modules(self):
     return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
 
