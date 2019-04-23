@@ -165,6 +165,7 @@ class ParticipantSummary(Base):
   sampleStatus1PXR2Time = Column('sample_status_1pxr2_time', UTCDateTime)
 
   # Sample fields for Direct Volunteers
+  # These are deprecated in favor of using the standard samplestatus2sal2, etc.
   sampleStatusDV1SAL2 = Column('sample_status_dv_1sal2',
                                Enum(SampleStatus), default=SampleStatus.UNSET)
   sampleStatusDV1SAL2Time = Column('sample_status_dv_1sal2_time', UTCDateTime)
