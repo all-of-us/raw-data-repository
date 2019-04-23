@@ -6,7 +6,7 @@ import clock
 import config
 from api_util import format_json_date, format_json_enum, format_json_code, format_json_hpo, \
   format_json_org, format_json_site
-from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS, BIOBANK_DV_TESTS
+from code_constants import PPI_SYSTEM, UNSET, BIOBANK_TESTS
 from dao.base_dao import UpdatableDao
 from dao.code_dao import CodeDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
