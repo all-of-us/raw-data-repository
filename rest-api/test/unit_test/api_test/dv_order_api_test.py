@@ -137,7 +137,6 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
 
     orders = self.get_orders()
     self.assertEqual(1, len(orders))
-
   @mock.patch('dao.dv_order_dao.get_code_id')
   def test_biobank_address_received(self, patched_code_id):
     patched_code_id.return_value = 1
@@ -187,3 +186,25 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
       self.assertEqual(i.id, long(1))
       self.assertEqual(i.order_id, long(999999))
 
+class DvOrderApiTestPutSupplyDelivery(DvOrderApiTestBase):
+  def test_supply_delivery_put(self):
+    self.send_post(
+      'SupplyRequest',
+      request_data=self.get_payload('dv_order_api_post_supply_request.json'),
+      expected_status=httplib.CREATED
+    )
+
+    response = self.send_post(
+      'SupplyDelivery',
+      request_data=self.get_payload('dv_order_api_post_supply_delivery.json'),
+      expected_status=httplib.CREATED
+    )
+
+    location_id = response.location.rsplit('/', 1)[-1]
+    self.send_put(
+      'SupplyDelivery/{}'.format(location_id),
+      request_data=self.get_payload('dv_order_api_put_supply_delivery.json')
+    )
+
+    orders = self.get_orders()
+    self.assertEqual(1, len(orders))
