@@ -190,7 +190,13 @@ class MetricsEhrService(BaseDao):
 
     ppi_baseline_module_count = len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
 
+    can_be_included = (
+      (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN)
+      & Participant.isGhostId.isnot(True)
+    )
+
     # condition expression components
+    was_signed_up = Participant.signUpTime <= cutoff_date
     had_consented_for_study = (
       (ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED)
       & (ParticipantSummary.consentForStudyEnrollmentTime <= cutoff_date)
@@ -204,13 +210,13 @@ class MetricsEhrService(BaseDao):
     )
     had_physical_measurements = ParticipantSummary.physicalMeasurementsFinalizedTime <= cutoff_date
     had_biosample = ParticipantSummary.biospecimenOrderTime <= cutoff_date
-    had_ehr = (
+    had_ehr_receipt = (
       (ParticipantSummary.ehrStatus == EhrStatus.PRESENT)
       & (ParticipantSummary.ehrReceiptTime <= cutoff_date)
     )
 
     # condition expressions
-    was_participant = Participant.signUpTime <= cutoff_date
+    was_participant = can_be_included & was_signed_up
     was_primary = was_participant & had_consented_for_study
     was_ehr_consented = was_primary & had_consented_for_ehr
     was_core = (
@@ -219,6 +225,7 @@ class MetricsEhrService(BaseDao):
       & had_physical_measurements
       & had_biosample
     )
+    had_ehr_data = was_primary & had_ehr_receipt
 
     # build query
     fields = [
@@ -228,7 +235,7 @@ class MetricsEhrService(BaseDao):
       make_sum_bool_field(was_primary).label('total_primary_consented'),
       make_sum_bool_field(was_ehr_consented).label('total_ehr_consented'),
       make_sum_bool_field(was_core).label('total_core_participants'),
-      make_sum_bool_field(was_core & had_ehr).label('total_ehr_data_received'),
+      make_sum_bool_field(had_ehr_data).label('total_ehr_data_received'),
       sqlalchemy.func.date(sqlalchemy.func.max(ParticipantSummary.ehrUpdateTime))
         .label('last_ehr_submission_date'),
     ]
