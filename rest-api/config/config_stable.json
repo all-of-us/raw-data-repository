@@ -33,6 +33,13 @@
         ]
       }
     },
+    "awardee-arizona@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "arizona",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["206.213.43.100"]
+      }
+    },
     "awardee-ne@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "NE_PMC",
