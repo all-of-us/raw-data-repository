@@ -1143,7 +1143,8 @@ class MetricsRaceCacheDao(BaseDao):
                    WhatRaceEthnicity_Black=race_code_dict['WhatRaceEthnicity_Black'],
                    WhatRaceEthnicity_White=race_code_dict['WhatRaceEthnicity_White'],
                    WhatRaceEthnicity_AIAN=race_code_dict['WhatRaceEthnicity_AIAN'],
-                   WhatRaceEthnicity_RaceEthnicityNoneOfThese=race_code_dict['WhatRaceEthnicity_RaceEthnicityNoneOfThese'],
+                   WhatRaceEthnicity_RaceEthnicityNoneOfThese=
+                             race_code_dict['WhatRaceEthnicity_RaceEthnicityNoneOfThese'],
                    WhatRaceEthnicity_Asian=race_code_dict['WhatRaceEthnicity_Asian'],
                    PMI_PreferNotToAnswer=race_code_dict['PMI_PreferNotToAnswer'],
                    WhatRaceEthnicity_MENA=race_code_dict['WhatRaceEthnicity_MENA'],
