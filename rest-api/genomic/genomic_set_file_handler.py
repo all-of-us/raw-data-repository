@@ -173,7 +173,6 @@ def _insert_genomic_set_from_row(row, csv_filename, timestamp):
   Returns:
     A new GenomicSet.
   """
-  now = clock.CLOCK.now()
   genomic_set_name = row[CsvColumns.GENOMIC_SET_NAME],
 
   set_dao = GenomicSetDao()
@@ -185,8 +184,6 @@ def _insert_genomic_set_from_row(row, csv_filename, timestamp):
     genomicSetFileTime=timestamp,
     genomicSetStatus=GenomicSetStatus.UNSET,
     genomicSetVersion=genomic_set_version,
-    created=now,
-    modified=now
   )
 
   genomic_set = GenomicSet(**kwargs)
@@ -202,12 +199,8 @@ def _create_genomic_set_member_from_row(genomic_set_id, row):
   Returns:
     A new GenomicSetMember.
   """
-  now = clock.CLOCK.now()
-
   kwargs = dict(
     genomicSetId=genomic_set_id,
-    created=now,
-    modified=now,
     validationStatus=GenomicValidationStatus.UNSET,
     participantId=row[CsvColumns.PID],
     sexAtBirth=row[CsvColumns.SEX_AT_BIRTH],

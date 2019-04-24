@@ -64,7 +64,6 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     Kwargs pass through to BiobankOrder constructor, overriding defaults.
     """
     participant_id = kwargs['participantId']
-    modified = datetime.datetime(2019, 03, 25, 15, 59, 30)
 
     for k, default_value in (
         ('biobankOrderId', u'1'),
@@ -84,7 +83,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
             description=u'description',
             processingRequired=True)]),
         ('dvOrders', [BiobankDVOrder(
-          participantId=participant_id, modified=modified, version=1)])):
+          participantId=participant_id, version=1)])):
       if k not in kwargs:
         kwargs[k] = default_value
 
@@ -347,8 +346,6 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
     set_dao = GenomicSetDao()
     genomic_set.genomicSetVersion = set_dao.get_new_version_number(genomic_set.genomicSetName)
-    genomic_set.created = now
-    genomic_set.modified = now
 
     set_dao.insert(genomic_set)
 
@@ -357,11 +354,8 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
   def _create_fake_genomic_member(self, genomic_set_id, participant_id, biobank_order_id,
                                   validation_status=GenomicValidationStatus.VALID,
                                   sex_at_birth='F', genome_type='aou_array', ny_flag='Y'):
-    now = clock.CLOCK.now()
     genomic_set_member = GenomicSetMember()
     genomic_set_member.genomicSetId = genomic_set_id
-    genomic_set_member.created = now
-    genomic_set_member.modified = now
     genomic_set_member.validationStatus = validation_status
     genomic_set_member.participantId = participant_id
     genomic_set_member.sexAtBirth = sex_at_birth
