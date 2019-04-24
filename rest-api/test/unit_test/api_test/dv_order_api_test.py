@@ -157,8 +157,6 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
 
     request = self.get_payload('dv_order_api_put_supply_delivery.json')
     biobank_address = self.dv_order_dao.biobank_address
-    biobank_address['type'] = 'postal'
-    biobank_address['use'] = 'home'
     request['contained'][0]['address'] = biobank_address
 
     location_id = response.location.rsplit('/', 1)[-1]
