@@ -57,13 +57,16 @@ class PublicMetricsApi(Resource):
       return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
     elif stratification == Stratifications.GENDER_IDENTITY:
       dao = MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
+                                               enrollment_statuses)
     elif stratification == Stratifications.AGE_RANGE:
       dao = MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
+                                               enrollment_statuses)
     elif stratification == Stratifications.RACE:
       dao = MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids)
+      return dao.get_latest_version_from_cache(start_date, end_date, awardee_ids,
+                                               enrollment_statuses)
     elif stratification in [Stratifications.GEO_STATE, Stratifications.GEO_CENSUS,
                             Stratifications.GEO_AWARDEE]:
       dao = MetricsRegionCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
