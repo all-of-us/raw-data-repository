@@ -191,8 +191,6 @@ class DvOrderDao(UpdatableDao):
         url=VIBRENT_ORDER_URL).valueString
       if id_ is None:
         order.version = 1
-        order.modified = clock.CLOCK.now()
-        order.created = clock.CLOCK.now()
       else:
         # A put request may add new attributes
         existing_obj = self.get(self.get_id(order))
