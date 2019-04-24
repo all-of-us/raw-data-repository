@@ -1,6 +1,6 @@
 """Defines the declarative base. Import this and extend from Base for all rdr
 tables. Extend MetricsBase for all metrics tables."""
-
+import clock
 from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from dictalchemy import DictableModel
@@ -22,6 +22,18 @@ Base = declarative_base(cls=DictableModel)
 # MetricsBase is the parent for all models in the "metrics" DB. These are
 # collected separately for DB migration purposes.
 MetricsBase = declarative_base(cls=DictableModel, metadata=MetaData(schema='metrics'))
+
+# pylint: disable=unused-argument
+def model_insert_listener(mapper, connection, target):
+  """ On insert auto set `created` and `modified` column values """
+  now = clock.CLOCK.now()
+  target.created = now
+  target.modified = now
+
+# pylint: disable=unused-argument
+def model_update_listener(mapper, connection, target):
+  """ On update auto set `modified` column value """
+  target.modified = clock.CLOCK.now()
 
 def get_column_name(model_type, field_name):
   return getattr(model_type, field_name).property.columns[0].name
