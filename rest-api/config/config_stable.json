@@ -33,6 +33,13 @@
         ]
       }
     },
+    "awardee-arizona@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "arizona",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["206.213.43.100"]
+      }
+    },
     "awardee-ne@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "NE_PMC",
@@ -45,7 +52,7 @@
       "roles": ["awardee_sa"],
       "awardee": "ILLINOIS",
       "whitelisted_ip_ranges" : {
-        "ip4": ["10.50.178.54", "165.124.250.40", "165.124.250.41", "131.193.169.188"]
+        "ip4": ["10.50.178.54", "165.124.250.40", "165.124.250.41", "131.193.169.188", "165.124.199.1/28"]
       }
     },
       "awardee-tach@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
@@ -79,7 +86,7 @@
       "roles": ["awardee_sa"],
       "awardee": "SEEC",
       "whitelisted_ip_ranges" : {
-        "ip4": ["129.171.150.187", "13.108.0.0/14", "66.231.80.0/20", "68.232.192.0/20", "96.43.144.0/20", "136.146.0.0/15", "198.245.80.0/20", "199.122.120.0/21", "204.14.232.0/21"]
+        "ip4": ["129.171.150.187", "129.171.150.141", "13.108.0.0/14", "66.231.80.0/20", "68.232.192.0/20", "96.43.144.0/20", "136.146.0.0/15", "198.245.80.0/20", "199.122.120.0/21", "204.14.232.0/21"]
       },
       "description": "Massive subnet mask. see https://precisionmedicineinitiative.atlassian.net/browse/PD-2412"
     },
