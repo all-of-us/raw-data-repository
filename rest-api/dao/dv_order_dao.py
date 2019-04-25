@@ -1,5 +1,4 @@
 import datetime
-import logging
 
 import clock
 from api.mayolink_api import MayoLinkApi
@@ -24,10 +23,9 @@ class DvOrderDao(UpdatableDao):
   def __init__(self):
     self.code_dao = CodeDao()
     super(DvOrderDao, self).__init__(BiobankDVOrder)
+    # used for testing
     self.biobank_address = {'city': "Rochester", 'state': "MN",
-                'postalCode': "55901", 'line': ["3050 Superior Drive NW"]}
-    self.biobank_address['state'] = get_code_id(self.biobank_address, self.code_dao, 'state',
-                                                'State_')
+                            'postalCode': "55901", 'line': ["3050 Superior Drive NW"], 'type': 'postal', 'use': 'work'}
 
 
   def send_order(self, resource, pid):
@@ -130,6 +128,7 @@ class DvOrderDao(UpdatableDao):
       # USPS status time
       existing_obj.shipmentLastUpdate = parse_date(fhir_resource.occurrenceDateTime)
       order_address = fhir_resource.contained.get(resourceType='Location').get('address')
+      address_use = fhir_resource.contained.get(resourceType='Location').get('address').get('use')
       order_address.stateId = get_code_id(order_address, self.code_dao, 'state', 'State_')
       existing_obj.address = {'city': existing_obj.city,
                               'state': existing_obj.stateId, 'postalCode': existing_obj.zipCode,
@@ -138,31 +137,23 @@ class DvOrderDao(UpdatableDao):
       if existing_obj.streetAddress2 is not None and existing_obj.streetAddress2 != '':
         existing_obj.address['line'].append(existing_obj.streetAddress2)
 
-      address = {'city': order_address.city, 'state': order_address.stateId,
-                 'postalCode': order_address.postalCode, 'line': order_address.line}
-      address = order_address._obj
-      del address['type']
-      del address['use']
-      address['state'] = get_code_id(order_address, self.code_dao, 'state', 'State_')
+      if address_use == 'home':
+        existing_obj.city = order_address.city
+        existing_obj.stateId = order_address.stateId
+        existing_obj.streetAddress1 = order_address.line[0]
+        existing_obj.zipCode = order_address.postalCode
 
-      if existing_obj.address != address and address != self.biobank_address:
-        logging.warn('Address change detected: Using new address ({}) for participant ({})'.format(
-                      order_address, order.participantId))
+        if len(order_address._obj['line'][0]) > 1:
+          try:
+            existing_obj.streetAddress2 = order_address._obj['line'][1]
+          except IndexError:
+            pass
 
-        existing_obj.city = address['city']
-        existing_obj.stateId = address['state']
-        existing_obj.streetAddress1 = address['line'][0]
-        existing_obj.zipCode = address['postalCode']
-        try:
-          existing_obj.streetAddress2 = address['line'][1]
-        except IndexError:
-          pass
-      elif address == self.biobank_address:
-        existing_obj.biobankCity = self.biobank_address['city']
-        existing_obj.biobankStateId = get_code_id(self.biobank_address, self.code_dao,
-                                                  'state', 'State_')
-        existing_obj.biobankStreetAddress1 = self.biobank_address['line'][0]
-        existing_obj.biobankZipCode = self.biobank_address['postalCode']
+      elif address_use == 'work':
+        existing_obj.biobankCity = order_address.city
+        existing_obj.biobankStateId = order_address.stateId
+        existing_obj.biobankStreetAddress1 = order_address.line[0]
+        existing_obj.biobankZipCode = order_address.postalCode
 
       return existing_obj
 
@@ -176,6 +167,7 @@ class DvOrderDao(UpdatableDao):
         order.order_date = parse_date(fhir_resource.authoredOn)
 
       order.supplier = fhir_resource.contained.get(resourceType='Organization').id
+      order.created = clock.CLOCK.now()
       order.supplierStatus = fhir_resource.status
 
       fhir_device = fhir_resource.contained.get(resourceType='Device')
