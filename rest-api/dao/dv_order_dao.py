@@ -149,7 +149,7 @@ class DvOrderDao(UpdatableDao):
           except IndexError:
             pass
 
-      elif order_address == 'work':
+      elif address_use == 'work':
         existing_obj.biobankCity = order_address.city
         existing_obj.biobankStateId = order_address.stateId
         existing_obj.biobankStreetAddress1 = order_address.line[0]
