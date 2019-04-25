@@ -903,7 +903,7 @@ class MetricsRaceCacheDao(BaseDao):
           param_list = []
           for status in enrollment_statuses:
             if status == 'INTERESTED':
-              param_list.append(MetricsRaceCache.registerdFlag == 1)
+              param_list.append(MetricsRaceCache.registeredFlag == 1)
             elif status == 'MEMBER':
               param_list.append(MetricsRaceCache.consentedFlag == 1)
             elif status == 'FULL_PARTICIPANT':
@@ -925,7 +925,7 @@ class MetricsRaceCacheDao(BaseDao):
           param_list = []
           for status in enrollment_statuses:
             if status == 'INTERESTED':
-              param_list.append(MetricsRaceCache.registerdFlag == 1)
+              param_list.append(MetricsRaceCache.registeredFlag == 1)
             elif status == 'MEMBER':
               param_list.append(MetricsRaceCache.consentedFlag == 1)
             elif status == 'FULL_PARTICIPANT':

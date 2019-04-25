@@ -23,7 +23,7 @@ class MetricsRaceCache(Base):
   __tablename__ = 'metrics_race_cache'
   dateInserted = Column('date_inserted', UTCDateTime, default=clock.CLOCK.now,
                         nullable=False, primary_key=True)
-  registerdFlag = Column('registerd_flag', Boolean, nullable=False, primary_key=True)
+  registeredFlag = Column('registered_flag', Boolean, nullable=False, primary_key=True)
   consentedFlag = Column('consent_flag', Boolean, nullable=False, primary_key=True)
   coreFlag = Column('core_flag', Boolean, nullable=False, primary_key=True)
   hpoId = Column('hpo_id', String(20), primary_key=True)
