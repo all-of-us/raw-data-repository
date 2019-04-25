@@ -1,5 +1,4 @@
 import datetime
-import logging
 
 import clock
 from api.mayolink_api import MayoLinkApi
