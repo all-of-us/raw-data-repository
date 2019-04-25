@@ -61,7 +61,6 @@ class DvOrderApiTestPostSupplyRequest(DvOrderApiTestBase):
     self.assertTrue(response.location.endswith('/SupplyRequest/999999'))
     orders = self.get_orders()
     self.assertEqual(1, len(orders))
-    # TODO: confirm parsed correct information from payload
 
 
 class DvOrderApiTestPutSupplyRequest(DvOrderApiTestBase):
@@ -158,8 +157,6 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
 
     request = self.get_payload('dv_order_api_put_supply_delivery.json')
     biobank_address = self.dv_order_dao.biobank_address
-    biobank_address['type'] = 'postal'
-    biobank_address['use'] = 'home'
     request['contained'][0]['address'] = biobank_address
 
     location_id = response.location.rsplit('/', 1)[-1]
@@ -181,6 +178,46 @@ class DvOrderApiTestPostSupplyDelivery(DvOrderApiTestBase):
 
     self.assertTrue(response.location.endswith('/SupplyDelivery/999999'))
     self.assertEqual(1, len(order))
+    for i in order:
+      self.assertEqual(i.id, long(1))
+      self.assertEqual(i.order_id, long(999999))
+
+  @mock.patch('dao.dv_order_dao.get_code_id')
+  def test_biobank_address_received_alt_json(self, patched_code_id):
+    patched_code_id.return_value = 1
+
+    code = Code(system="a", value="b", display=u"c", topic=u"d",
+                codeType=CodeType.MODULE, mapped=True)
+    self.code_dao.insert(code)
+    self.send_post(
+      'SupplyRequest',
+      request_data=self.get_payload('dv_order_api_post_supply_request.json'),
+      expected_status=httplib.CREATED
+    )
+
+    response = self.send_post(
+      'SupplyDelivery',
+      request_data=self.get_payload('dv_order_api_post_supply_delivery_alt.json'),
+      expected_status=httplib.CREATED
+    )
+
+    request = self.get_payload('dv_order_api_put_supply_delivery.json')
+    biobank_address = self.dv_order_dao.biobank_address
+    request['contained'][0]['address'] = biobank_address
+
+    location_id = response.location.rsplit('/', 1)[-1]
+    self.send_put(
+      'SupplyDelivery/{}'.format(location_id),
+      request_data=request
+    )
+
+    order = self.get_orders()
+    self.assertEquals(order[0].biobankCity, 'Rochester')
+    self.assertEquals(order[0].biobankStreetAddress1, '3050 Superior Drive NW')
+    self.assertEquals(order[0].biobankStateId, 1)
+    self.assertEquals(order[0].biobankZipCode, '55901')
+
+    self.assertTrue(response.location.endswith('/SupplyDelivery/999999'))
     self.assertEqual(1, len(order))
     for i in order:
       self.assertEqual(i.id, long(1))
