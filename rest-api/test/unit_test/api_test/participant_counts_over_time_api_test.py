@@ -177,6 +177,56 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     return summary
 
+  def update_participant_summary(self, participant_id, time_mem=None, time_fp=None,
+                                 time_fp_stored=None, time_study=None):
+
+    participant = self.dao.get(participant_id)
+    summary = self.participant_summary(participant)
+    if time_mem is None:
+      enrollment_status = EnrollmentStatus.INTERESTED
+    elif time_fp is None:
+      enrollment_status = EnrollmentStatus.MEMBER
+    else:
+      enrollment_status = EnrollmentStatus.FULL_PARTICIPANT
+
+    summary.enrollmentStatus = enrollment_status
+
+    summary.enrollmentStatusMemberTime = time_mem
+    summary.enrollmentStatusCoreOrderedSampleTime = time_fp
+    summary.enrollmentStatusCoreStoredSampleTime = time_fp_stored
+
+    if time_study is not None:
+      with FakeClock(time_mem):
+        summary.consentForStudyEnrollmentTime = time_study
+
+    if time_mem is not None:
+      with FakeClock(time_mem):
+        summary.consentForElectronicHealthRecords = 1
+        summary.consentForElectronicHealthRecordsTime = time_mem
+
+    if time_fp is not None:
+      with FakeClock(time_fp):
+        if not summary.consentForElectronicHealthRecords:
+          summary.consentForElectronicHealthRecords = 1
+          summary.consentForElectronicHealthRecordsTime = time_fp
+        summary.questionnaireOnTheBasicsTime = time_fp
+        summary.questionnaireOnLifestyleTime = time_fp
+        summary.questionnaireOnOverallHealthTime = time_fp
+        summary.questionnaireOnHealthcareAccessTime = time_fp
+        summary.questionnaireOnMedicalHistoryTime = time_fp
+        summary.questionnaireOnMedicationsTime = time_fp
+        summary.questionnaireOnFamilyHealthTime = time_fp
+        summary.physicalMeasurementsFinalizedTime = time_fp
+        summary.physicalMeasurementsTime = time_fp
+        summary.sampleOrderStatus1ED04Time = time_fp
+        summary.sampleOrderStatus1SALTime = time_fp
+        summary.sampleStatus1ED04Time = time_fp
+        summary.sampleStatus1SALTime = time_fp
+
+    self.ps_dao.update(summary)
+
+    return summary
+
   def test_get_counts_with_default_parameters(self):
     # The most basic test in this class
 
@@ -1237,6 +1287,85 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                                'Prefer not to say': 0, 'UNSET': 0, 'Man': 0}, 'hpo': 'PITT'},
                   response)
 
+  def test_get_history_gender_api_filtered_by_awardee_and_enrollment_status(self):
+
+    code1 = Code(codeId=354, system="a", value="a", display=u"a", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    code2 = Code(codeId=356, system="b", value="b", display=u"b", topic=u"b",
+                 codeType=CodeType.MODULE, mapped=True)
+    code3 = Code(codeId=355, system="c", value="c", display=u"c", topic=u"c",
+                 codeType=CodeType.MODULE, mapped=True)
+
+    self.code_dao.insert(code1)
+    self.code_dao.insert(code2)
+    self.code_dao.insert(code3)
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, gender_id=354)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time3,
+                 gender_id=356)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time4,
+                 gender_id=355)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time4, time_mem=self.time5,
+                 gender_id=355)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, gender_id=355)
+
+    service = ParticipantCountsOverTimeService()
+    service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
+
+    qs = """
+          &stratification=GENDER_IDENTITY
+          &startDate=2017-12-31
+          &endDate=2018-01-08
+          &history=TRUE
+          &awardee=AZ_TUCSON,PITT
+          &enrollmentStatus=MEMBER
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 0L, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'},
+                  response)
+    self.assertIn({'date': '2018-01-03',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 1L, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'},
+                  response)
+    self.assertIn({'date': '2018-01-08',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'UNMAPPED': 0,
+                               'Other/Additional Options': 0, 'Transgender': 1L, 'Non-Binary': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 1L}, 'hpo': u'AZ_TUCSON'},
+                  response)
+    self.assertIn({'date': '2018-01-03',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'Other/Additional Options': 0,
+                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 0,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 0}, 'hpo': 'PITT'},
+                  response)
+    self.assertIn({'date': '2018-01-04',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'Other/Additional Options': 0,
+                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 1,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 0}, 'hpo': 'PITT'},
+                  response)
+    self.assertIn({'date': '2018-01-08',
+                   'metrics': {'Woman': 0, 'PMI_Skip': 0, 'Other/Additional Options': 0,
+                               'Non-Binary': 0, 'UNMAPPED': 0, 'Transgender': 1,
+                               'Prefer not to say': 0, 'UNSET': 0, 'Man': 0}, 'hpo': 'PITT'},
+                  response)
+
   def test_refresh_metrics_age_range_cache_data(self):
 
     dob1 = datetime.date(1978, 10, 10)
@@ -1410,6 +1539,65 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({'date': '2018-01-02',
                    'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
                                '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-06',
+                   'metrics': {'0-17': 0, '18-25': 0L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 2L, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-08',
+                   'metrics': {'0-17': 0, '18-25': 1L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 0L, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': u'PITT'}, response)
+
+  def test_get_history_age_range_api_filtered_by_awardee_and_enrollment_status(self):
+
+    dob1 = datetime.date(1978, 10, 10)
+    dob2 = datetime.date(1988, 10, 10)
+    dob3 = datetime.date(1988, 10, 10)
+    dob4 = datetime.date(1998, 10, 10)
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, dob=dob1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time3,
+                 dob=dob2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time4,
+                 dob=dob3)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time4, time_mem=self.time5,
+                 dob=dob4)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, dob=dob3)
+
+    service = ParticipantCountsOverTimeService()
+    service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
+
+    qs = """
+          &stratification=AGE_RANGE
+          &startDate=2017-12-31
+          &endDate=2018-01-08
+          &history=TRUE
+          &awardee=AZ_TUCSON,PITT
+          &enrollmentStatus=MEMBER
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 0L, '66-75': 0, 'UNSET': 0, '56-65': 0},
+                   'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {'0-17': 0, '18-25': 0, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
+                               '26-35': 1L, '66-75': 0, 'UNSET': 0, '56-65': 0},
                    'hpo': u'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-06',
                    'metrics': {'0-17': 0, '18-25': 0L, '46-55': 0, '86-': 0, '76-85': 0, '36-45': 0,
@@ -1856,6 +2044,97 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1L,
                                                      'Middle_Eastern_North_African': 0L,
                                                      'Multi_Ancestry': 2L,
+                                                     'American_Indian_Alaska_Native': 1L,
+                                                     'No_Ancestry_Checked': 1L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 0L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 0L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+
+  def test_get_history_race_data_api_filter_by_enrollment_status(self):
+
+    questionnaire_id = self.create_demographics_questionnaire()
+
+    def setup_participant(when, race_code_list, providerLink=self.provider_link):
+      # Set up participant, questionnaire, and consent
+      with FakeClock(when):
+        participant = self.send_post('Participant', {"providerLink": [providerLink]})
+        participant_id = participant['participantId']
+        self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+          'race': race_code_list,
+          'genderIdentity': PMI_SKIP_CODE,
+          'firstName': self.fake.first_name(),
+          'middleName': self.fake.first_name(),
+          'lastName': self.fake.last_name(),
+          'zipCode': '78751',
+          'state': PMI_SKIP_CODE,
+          'streetAddress': '1234 Main Street',
+          'city': 'Austin',
+          'sex': PMI_SKIP_CODE,
+          'sexualOrientation': PMI_SKIP_CODE,
+          'phoneNumber': '512-555-5555',
+          'recontactMethod': PMI_SKIP_CODE,
+          'language': PMI_SKIP_CODE,
+          'education': PMI_SKIP_CODE,
+          'income': PMI_SKIP_CODE,
+          'dateOfBirth': datetime.date(1978, 10, 9),
+          'CABoRSignature': 'signature.pdf',
+        }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+      return participant
+
+    p1 = setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
+    self.update_participant_summary(p1['participantId'][1:], time_mem=self.time2)
+    p2 = setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
+    self.update_participant_summary(p2['participantId'][1:], time_mem=self.time3,
+                                    time_fp_stored=self.time5)
+    p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
+    self.update_participant_summary(p3['participantId'][1:], time_mem=self.time4)
+    p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
+    self.update_participant_summary(p4['participantId'][1:], time_mem=self.time5)
+    p5 = setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
+    self.update_participant_summary(p5['participantId'][1:], time_mem=self.time4,
+                                    time_fp_stored=self.time5)
+
+    setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
+    setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsRaceCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+
+    qs = """
+              &stratification=RACE
+              &startDate=2017-12-31
+              &endDate=2018-01-08
+              &history=TRUE
+              &awardee=PITT
+              &enrollmentStatus=MEMBER
+              """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({'date': '2018-01-03', 'metrics': {'None_Of_These_Fully_Describe_Me': 1L,
+                                                     'Middle_Eastern_North_African': 0L,
+                                                     'Multi_Ancestry': 2L,
+                                                     'American_Indian_Alaska_Native': 1L,
+                                                     'No_Ancestry_Checked': 0L,
+                                                     'Black_African_American': 0L,
+                                                     'White': 0L,
+                                                     'Prefer_Not_To_Answer': 0L,
+                                                     'Hispanic_Latino_Spanish': 0L,
+                                                     'Native_Hawaiian_other_Pacific_Islander': 0L,
+                                                     'Asian': 0L}, 'hpo': u'PITT'}, response)
+
+    self.assertIn({'date': '2018-01-04', 'metrics': {'None_Of_These_Fully_Describe_Me': 0L,
+                                                     'Middle_Eastern_North_African': 0L,
+                                                     'Multi_Ancestry': 1L,
                                                      'American_Indian_Alaska_Native': 1L,
                                                      'No_Ancestry_Checked': 1L,
                                                      'Black_African_American': 0L,

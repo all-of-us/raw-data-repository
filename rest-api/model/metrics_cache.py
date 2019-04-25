@@ -2,7 +2,7 @@ import clock
 
 from model.base import Base
 from model.utils import UTCDateTime
-from sqlalchemy import Column, Integer, Date, String
+from sqlalchemy import Column, Integer, Date, String, Boolean
 
 class MetricsEnrollmentStatusCache(Base):
   """Contains enrollment status metrics data grouped by HPO ID and date.
@@ -23,6 +23,9 @@ class MetricsRaceCache(Base):
   __tablename__ = 'metrics_race_cache'
   dateInserted = Column('date_inserted', UTCDateTime, default=clock.CLOCK.now,
                         nullable=False, primary_key=True)
+  registeredFlag = Column('registered_flag', Boolean, nullable=False, primary_key=True)
+  consentedFlag = Column('consent_flag', Boolean, nullable=False, primary_key=True)
+  coreFlag = Column('core_flag', Boolean, nullable=False, primary_key=True)
   hpoId = Column('hpo_id', String(20), primary_key=True)
   hpoName = Column('hpo_name', String(255), primary_key=True)
   date = Column('date', Date, nullable=False, primary_key=True)
@@ -45,6 +48,7 @@ class MetricsGenderCache(Base):
   __tablename__ = 'metrics_gender_cache'
   dateInserted = Column('date_inserted', UTCDateTime, default=clock.CLOCK.now,
                         nullable=False, primary_key=True)
+  enrollment_status = Column('enrollment_status', String(50), primary_key=True, default='')
   hpoId = Column('hpo_id', String(20), primary_key=True)
   hpoName = Column('hpo_name', String(255), primary_key=True)
   date = Column('date', Date, nullable=False, primary_key=True)
@@ -57,6 +61,7 @@ class MetricsAgeCache(Base):
   __tablename__ = 'metrics_age_cache'
   dateInserted = Column('date_inserted', UTCDateTime, default=clock.CLOCK.now,
                         nullable=False, primary_key=True)
+  enrollment_status = Column('enrollment_status', String(50), primary_key=True, default='')
   type = Column('type', String(50), primary_key=True)
   hpoId = Column('hpo_id', String(20), primary_key=True)
   hpoName = Column('hpo_name', String(255), primary_key=True)
