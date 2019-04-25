@@ -142,12 +142,13 @@ class MetricsEhrService(BaseDao):
         .where(common_subquery_where_arg)
     )
     subquery_consented_count = base_subquery.where(
-      ParticipantSummary.consentForElectronicHealthRecordsTime <= interval_query.c.start_date
+      (ParticipantSummary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED)
+      & (ParticipantSummary.consentForElectronicHealthRecordsTime <= interval_query.c.start_date)
     )
     subquery_received_count = (
       base_subquery
         .where(
-          ParticipantSummary.ehrReceiptTime.isnot(None)
+          (ParticipantSummary.ehrStatus == EhrStatus.PRESENT)
           & (ParticipantSummary.ehrReceiptTime <= interval_query.c.start_date)
         )
     )
