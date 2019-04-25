@@ -1,7 +1,7 @@
-from model.base import Base
+from model.base import Base, model_insert_listener, model_update_listener
 from model.utils import Enum
 from protorpc import messages
-from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, UniqueConstraint, event
 from sqlalchemy.orm import relationship
 
 
@@ -56,6 +56,8 @@ class GenomicSet(Base):
     UniqueConstraint('genomic_set_name', 'genomic_set_version', name='uidx_genomic_name_version'),
   )
 
+event.listen(GenomicSet, 'before_insert', model_insert_listener)
+event.listen(GenomicSet, 'before_update', model_update_listener)
 
 class GenomicSetMember(Base):
   """
@@ -86,3 +88,6 @@ class GenomicSetMember(Base):
                             default=GenomicValidationStatus.UNSET)
 
   validatedTime = Column('validated_time', DateTime, nullable=True)
+
+event.listen(GenomicSetMember, 'before_insert', model_insert_listener)
+event.listen(GenomicSetMember, 'before_update', model_update_listener)

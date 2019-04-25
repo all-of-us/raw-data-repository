@@ -1,8 +1,8 @@
-from model.base import Base
+from model.base import Base, model_insert_listener, model_update_listener
 from model.utils import UTCDateTime6, Enum
 from participant_enums import OrderShipmentStatus, OrderShipmentTrackingStatus
 from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, UniqueConstraint, Text,\
-  BigInteger
+  BigInteger, event
 
 
 class BiobankDVOrder(Base):
@@ -106,3 +106,6 @@ class BiobankDVOrder(Base):
   __table_args__ = (
     UniqueConstraint('participant_id', 'order_id', name='uidx_partic_id_order_id'),
   )
+
+event.listen(BiobankDVOrder, 'before_insert', model_insert_listener)
+event.listen(BiobankDVOrder, 'before_update', model_update_listener)
