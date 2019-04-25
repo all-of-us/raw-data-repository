@@ -129,6 +129,7 @@ class DvOrderDao(UpdatableDao):
       # USPS status time
       existing_obj.shipmentLastUpdate = parse_date(fhir_resource.occurrenceDateTime)
       order_address = fhir_resource.contained.get(resourceType='Location').get('address')
+      address_use = fhir_resource.contained.get(resourceType='Location').get('address').get('use')
       order_address.stateId = get_code_id(order_address, self.code_dao, 'state', 'State_')
       existing_obj.address = {'city': existing_obj.city,
                               'state': existing_obj.stateId, 'postalCode': existing_obj.zipCode,
@@ -137,10 +138,7 @@ class DvOrderDao(UpdatableDao):
       if existing_obj.streetAddress2 is not None and existing_obj.streetAddress2 != '':
         existing_obj.address['line'].append(existing_obj.streetAddress2)
 
-      if order_address._obj['use'] == 'home':
-        logging.warn('Address change detected: Using new address ({}) for participant ({})'.format(
-                      order_address, order.participantId))
-
+      if address_use == 'home':
         existing_obj.city = order_address.city
         existing_obj.stateId = order_address.stateId
         existing_obj.streetAddress1 = order_address.line[0]
@@ -152,7 +150,7 @@ class DvOrderDao(UpdatableDao):
           except IndexError:
             pass
 
-      elif order_address['use'] == 'work':
+      elif order_address == 'work':
         existing_obj.biobankCity = order_address.city
         existing_obj.biobankStateId = order_address.stateId
         existing_obj.biobankStreetAddress1 = order_address.line[0]
