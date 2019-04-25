@@ -6,6 +6,8 @@
 *.swp
 *.bak
 
+*.log
+
 **/lib
 **/bin
 **/venv
