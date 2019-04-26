@@ -93,40 +93,50 @@ class ParticipantSummary(Base):
   consentForStudyEnrollment = Column('consent_for_study_enrollment',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   consentForStudyEnrollmentTime = Column('consent_for_study_enrollment_time', UTCDateTime)
+  consentForStudyEnrollmentAuthored = Column('consent_for_study_enrollment_authored', UTCDateTime)
   consentForElectronicHealthRecords = Column('consent_for_electronic_health_records',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  consentForElectronicHealthRecordsTime = Column('consent_for_electronic_health_records_time',
-                                                 UTCDateTime)
+  consentForElectronicHealthRecordsTime = Column('consent_for_electronic_health_records_time', UTCDateTime)
+  consentForElectronicHealthRecordsAuthored = Column('consent_for_electronic_health_records_authored', UTCDateTime)
   consentForDvElectronicHealthRecordsSharing = Column(
     'consent_for_dv_electronic_health_records_sharing', Enum(QuestionnaireStatus),
     default=QuestionnaireStatus.UNSET)
   consentForDvElectronicHealthRecordsSharingTime = Column(
     'consent_for_dv_electronic_health_records_sharing_time', UTCDateTime)
+  consentForDvElectronicHealthRecordsSharingAuthored = Column(
+    'consent_for_dv_electronic_health_records_sharing_authored', UTCDateTime)
   consentForCABoR = Column('consent_for_cabor',
                            Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   consentForCABoRTime = Column('consent_for_cabor_time', UTCDateTime)
+  consentForCABoRAuthored = Column('consent_for_cabor_authored', UTCDateTime)
   questionnaireOnOverallHealth = Column('questionnaire_on_overall_health',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnOverallHealthTime = Column('questionnaire_on_overall_health_time', UTCDateTime)
+  questionnaireOnOverallHealthAuthored = Column('questionnaire_on_overall_health_authored', UTCDateTime)
   questionnaireOnLifestyle = Column('questionnaire_on_lifestyle',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnLifestyleTime = Column('questionnaire_on_lifestyle_time', UTCDateTime)
+  questionnaireOnLifestyleAuthored = Column('questionnaire_on_lifestyle_authored', UTCDateTime)
   questionnaireOnTheBasics = Column('questionnaire_on_the_basics',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnTheBasicsTime = Column('questionnaire_on_the_basics_time', UTCDateTime)
+  questionnaireOnTheBasicsAuthored = Column('questionnaire_on_the_basics_authored', UTCDateTime)
   questionnaireOnHealthcareAccess = Column('questionnaire_on_healthcare_access',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
-  questionnaireOnHealthcareAccessTime = Column('questionnaire_on_healthcare_access_time',
-                                               UTCDateTime)
+  questionnaireOnHealthcareAccessTime = Column('questionnaire_on_healthcare_access_time', UTCDateTime)
+  questionnaireOnHealthcareAccessAuthored = Column('questionnaire_on_healthcare_access_authored', UTCDateTime)
   questionnaireOnMedicalHistory = Column('questionnaire_on_medical_history',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnMedicalHistoryTime = Column('questionnaire_on_medical_history_time', UTCDateTime)
+  questionnaireOnMedicalHistoryAuthored = Column('questionnaire_on_medical_history_authored', UTCDateTime)
   questionnaireOnMedications = Column('questionnaire_on_medications',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnMedicationsTime = Column('questionnaire_on_medications_time', UTCDateTime)
+  questionnaireOnMedicationsAuthored = Column('questionnaire_on_medications_authored', UTCDateTime)
   questionnaireOnFamilyHealth = Column('questionnaire_on_family_health',
       Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET)
   questionnaireOnFamilyHealthTime = Column('questionnaire_on_family_health_time', UTCDateTime)
+  questionnaireOnFamilyHealthAuthored = Column('questionnaire_on_family_health_authored', UTCDateTime)
 
   # Fields for which samples have been received, and at what times.
   sampleStatus1SST8 = Column('sample_status_1sst8', Enum(SampleStatus), default=SampleStatus.UNSET)
