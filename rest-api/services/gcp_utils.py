@@ -438,7 +438,9 @@ def gcp_delete_iam_service_key(service_key_id, creds_account=None):
   pcode, so, se = gcp_gcloud_command('iam', args, flags)
 
   if pcode != 0:
-    _logger.error('failed to delete iam service account key. ({0}: {1})'.format(pcode, se))
+    _logger.warning('failed to delete iam service account key. ({0}: {1})'.format(pcode, se))
+    if 'NOT_FOUND' in se:
+      os.remove(service_key_path)
     return False
 
   os.remove(service_key_path)
