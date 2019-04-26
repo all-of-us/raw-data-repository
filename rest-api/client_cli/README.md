@@ -146,8 +146,6 @@ book.
 
 *_BIOOrder*: Create BioBank order, one sample test ID per line.
 
-*_BIOSample*: Create Biobank sample, one sample test ID per line.
-
 *_PPIModule*: Create answers to questionnaire, one module name per line. 
 
 
@@ -161,7 +159,6 @@ book.
 | _HPOSite          |                    | hpo-site-tester    |
 | _BIOOrder         | 1SAL2              | 1SAL2              |
 | _BIOOrder         | 1ED04              | 1ED04              |
-| _BIOSample        | 1ED04              |                    |
 | _PPIModule        | ConsentPII         | ConsentPII         |
 | _PPIModule        | TheBasics          | TheBasics          |
 | _PM               | yes                | no                 |
