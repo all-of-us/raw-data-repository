@@ -268,6 +268,7 @@ class QuestionnaireResponseDao(BaseDao):
               if not participant_summary.consentForCABoR:
                 participant_summary.consentForCABoR = True
                 participant_summary.consentForCABoRTime = questionnaire_response.created
+                participant_summary.consentForCABoRAuthored = questionnaire_response.authored
                 something_changed = True
 
     # If race was provided in the response in one or more answers, set the new value.
@@ -306,6 +307,7 @@ class QuestionnaireResponseDao(BaseDao):
           if getattr(participant_summary, summary_field) != new_status:
             setattr(participant_summary, summary_field, new_status)
             setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)
+            setattr(participant_summary, summary_field + 'Authored', questionnaire_response.authored)
             something_changed = True
             module_changed = True
     if module_changed:
