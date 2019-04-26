@@ -52,8 +52,8 @@ SOUTHERN,SOUTHERN_UMC_TUSCALOOSA,University Medical Center Tuscaloosa
 SOUTHERN,SOUTHERN_UAB_SELMA,University of Alabama Birmingham Selma
 SOUTHERN,SOUTHERN_COOPER_GREEN,Cooper Green Mercy Hospital
 SOUTHERN,SOUTHERN_LSU,Louisiana State University
-SOUTHERN,SOUTHERN_MISSISSIPPI_MC,Unversity of Mississippi Medical Center
-SOUTHERN,SOUTHERN_TULANE,Tulane Unversity
+SOUTHERN,SOUTHERN_MISSISSIPPI_MC,University of Mississippi Medical Center
+SOUTHERN,SOUTHERN_TULANE,Tulane University
 SOUTHERN,SOUTHERN_UAB_HUNTSVILLE,University of Alabama Birmingham Huntsville
 TEST,TEST_PROD,Test Prod Organization
 TEST,TEST_VH,VH Test Organization
@@ -73,6 +73,7 @@ VA,VA_MILWAUKEE_VAMC,VA Clement J. Zablocki Medical Center
 VA,VA_MINNEAPOLIS_VAMC,VA Minneapolis Healthcare System
 VA,VA_PHOENIX_VAMC,VA Phoenix Healthcare System
 VA,VA_SAN_DIEGO_VAMC,VA San Diego Healthcare System
+VA,VA_EVENT,VA Event 
 WALGREENS,WALGREENS_HOUSTON,Walgreens Houston
 WALGREENS,WALGREENS_MEMPHIS,Walgreens Memphis
 WALGREENS,WALGREENS_PHOENIX,Walgreens Phoenix
