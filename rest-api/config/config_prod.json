@@ -106,6 +106,13 @@
         "ip4": ["170.223.207.49/28", "170.223.207.64"]
       },
         "description": "/28 mask covers 170.223.207.48-63"
+    },
+    "awardee-california@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "CAL_PMC",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["128.195.50.121"]
+      }
     }
   }
 }
