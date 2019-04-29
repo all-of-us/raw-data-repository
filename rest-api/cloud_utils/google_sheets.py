@@ -1,6 +1,7 @@
 import csv
-import httplib2
 import StringIO
+
+from google.appengine.api import urlfetch
 
 
 class HttpException(Exception):
@@ -30,13 +31,11 @@ class GoogleSheetCSVReader(csv.DictReader):
 
   @staticmethod
   def _get_response_body(url):
-    http = httplib2.Http()
-    response, content = http.request(url, "GET")
-    if response.status != 200:
+    response = urlfetch.fetch(url)
+    if response.status_code != 200:
       raise HttpException(' '.join([
         'Could not retreive response:',
-        response.status,
-        response.reason,
-        content
+        response.status_code,
+        response.contents
       ]))
-    return content
+    return response.content
