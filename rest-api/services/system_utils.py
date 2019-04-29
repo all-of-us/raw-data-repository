@@ -319,7 +319,7 @@ def make_api_request(host, api_path, headers=None, cookies=None, timeout=60, req
       except ValueError:
         pass
     else:
-      resp_data = 'api request returned bad status code: {0}'.format(rq.status_code)
+      resp_data = '{0}: {1} ({2})'.format(rq.status_code, rq.reason, rq.text)
       _logger.debug(resp_data)
 
   return resp_code, resp_data

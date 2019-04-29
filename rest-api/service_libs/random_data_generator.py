@@ -13,7 +13,9 @@ from time import sleep
 import traceback
 
 import argparse
-from services.gcp_utils import gcp_initialize, gcp_get_app_host_name, gcp_get_app_access_token, gcp_cleanup
+from services.gcp_utils import gcp_initialize, gcp_get_app_host_name, gcp_get_app_access_token, \
+          gcp_cleanup, gcp_make_auth_header
+
 from services.system_utils import setup_logging, setup_unicode, write_pidfile_or_die, remove_pidfile
 from services.system_utils import make_api_request
 
@@ -47,18 +49,6 @@ class RandomGeneratorClass(object):
       if host not in ['127.0.0.1', 'localhost']:
         self._oauth_token = gcp_get_app_access_token()
 
-  def _make_request_header(self):
-    """
-    make a request headers
-    :return: dict
-    """
-    headers = None
-    if self._oauth_token:
-      headers = dict()
-      headers['Authorization'] = 'Bearer {0}'.format(self._oauth_token)
-
-    return headers
-
   def generate_fake_data(self):
     total_participants_created = 0
 
@@ -74,7 +64,7 @@ class RandomGeneratorClass(object):
       num_consecutive_errors = 0
       while num_consecutive_errors <= self.MAX_CONSECUTIVE_ERRORS:
         code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=request_body,
-                                  headers=self._make_request_header())
+                                  headers=gcp_make_auth_header())
         if code == 200:
           break
         _logger.error('Error generating data: [{0}: {1}]'.format(code, resp))
@@ -89,7 +79,7 @@ class RandomGeneratorClass(object):
       _logger.info('Requesting Biobank sample generation.')
       code, resp = make_api_request(self._host, self._gen_url, req_type='post',
                                     json_data={'create_biobank_samples': True},
-                                    headers=self._make_request_header())
+                                    headers=gcp_make_auth_header())
       if code != 200:
         _logger.error('request to generate biobank samples failed.')
       else:
@@ -108,7 +98,7 @@ class RandomGeneratorClass(object):
     for item in reader:
       # pylint: disable=unused-variable
       code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=item,
-                                    headers=self._make_request_header())
+                                    headers=gcp_make_auth_header())
       if code != 200:
         _logger.error('request failed')
 

@@ -21,7 +21,7 @@ from data_gen.generators import ParticipantGen, BioBankOrderGen, QuestionnaireGe
   PhysicalMeasurementsGen, CodeBook
 from data_gen.generators.hpo import HPOGen
 from services.gcp_utils import gcp_get_app_host_name
-from services.gcp_utils import gcp_initialize, gcp_cleanup, gcp_get_app_access_token
+from services.gcp_utils import gcp_initialize, gcp_cleanup, gcp_get_app_access_token, gcp_make_auth_header
 from services.system_utils import make_api_request
 from services.system_utils import setup_logging, setup_unicode, write_pidfile_or_die, remove_pidfile
 
@@ -56,18 +56,6 @@ class DataGeneratorClass(object):
 
       if host not in ['127.0.0.1', 'localhost']:
         self._oauth_token = gcp_get_app_access_token()
-
-  def _make_request_header(self):
-    """
-    make a request headers
-    :return: dict
-    """
-    headers = None
-    if self._oauth_token:
-      headers = dict()
-      headers['Authorization'] = 'Bearer {0}'.format(self._oauth_token)
-
-    return headers
 
   def _gdoc_csv_data(self, doc_id):
     """
@@ -231,7 +219,7 @@ class DataGeneratorClass(object):
     data['timestamp'] = clock.CLOCK.now().isoformat()
 
     code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=data,
-                                  headers=self._make_request_header())
+                                  headers=gcp_make_auth_header())
     if code == 200 and resp:
       p_obj.update(resp)
       return p_obj, hpo_site
@@ -257,7 +245,7 @@ class DataGeneratorClass(object):
     data['timestamp'] = clock.CLOCK.now().isoformat()
 
     code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=data,
-                                  headers=self._make_request_header())
+                                  headers=gcp_make_auth_header())
 
     if code == 200:
       pm_obj.update(resp)
@@ -290,7 +278,7 @@ class DataGeneratorClass(object):
     data['mayolink'] = to_mayo
 
     code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=data,
-                                  headers=self._make_request_header())
+                                  headers=gcp_make_auth_header())
     if code == 200:
       bio_obj.update(resp)
       return bio_obj
@@ -324,7 +312,7 @@ class DataGeneratorClass(object):
     data['timestamp'] = clock.CLOCK.now().isoformat()
 
     code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=data,
-                                  headers=self._make_request_header())
+                                  headers=gcp_make_auth_header())
     if code == 200:
       qn_obj.update(resp)
       return qn_obj

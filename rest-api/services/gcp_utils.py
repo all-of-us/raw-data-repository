@@ -345,6 +345,15 @@ def gcp_get_app_access_token():
 
   return so.strip()
 
+def gcp_make_auth_header():
+    """
+    Make an oauth authentication header
+    :return: dict
+    """
+    headers = dict()
+    headers['Authorization'] = 'Bearer {0}'.format(gcp_get_app_access_token())
+    return headers
+
 def gcp_get_private_key_id(service_key_path):
   """
   Return the private key id for the given key file.
