@@ -1,12 +1,16 @@
 import json
 
-from test.unit_test.unit_test_util import TestBase
+from test.unit_test.unit_test_util import TestbedTestBase
 
 from cloud_utils.google_sheets import GoogleSheetCSVReader
 
 
-class GoogleSheetCSVReaderTest(TestBase):
+class GoogleSheetCSVReaderTest(TestbedTestBase):
   EXAMPLE_SHEET_ID = '1ZY6KMtnMZ_5-dv8cqRgVWHOH9j23GcMZTC61UMXisuE' # https://docs.google.com/spreadsheets/d/1ZY6KMtnMZ_5-dv8cqRgVWHOH9j23GcMZTC61UMXisuE/edit?usp=sharing
+
+  def setUp(self):
+    super(GoogleSheetCSVReaderTest, self).setUp()
+    self.testbed.init_urlfetch_stub()
 
   def test_reads_google_sheet_by_id(self):
     """should behave like a csv.DictReader"""
