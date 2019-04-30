@@ -28,6 +28,7 @@ from participant_enums import OrganizationType, BiobankOrderStatus, get_sample_s
 _FILENAME_DATE_FORMAT = '%Y-%m-%d'
 # The output of the reconciliation report goes into this subdirectory within the upload bucket.
 _REPORT_SUBDIR = 'reconciliation'
+_GENOMIC_SUBDIR_PREFIX = 'genomic_water_line_test'
 _BATCH_SIZE = 1000
 
 # Biobank provides timestamps without time zone info, which should be in central time (see DA-235).
@@ -114,7 +115,8 @@ def _find_latest_samples_csv(cloud_bucket_name):
   # directory listings are recursive and we must filter out subdirectory contents.
   bucket_stat_list = [
       s for s in bucket_stat_list
-      if s.filename.lower().endswith('.csv') and '/%s/' % _REPORT_SUBDIR not in s.filename]
+      if s.filename.lower().endswith('.csv') and '/%s/' % _REPORT_SUBDIR not in s.filename
+         and '/%s' % _GENOMIC_SUBDIR_PREFIX not in s.filename]
   if not bucket_stat_list:
     raise DataError(
         'No CSVs in cloud bucket %r (all files: %s).' % (cloud_bucket_name, bucket_stat_list))
