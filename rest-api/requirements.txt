@@ -28,3 +28,6 @@ googlemaps>=2.5.1
 google-api-python-client==1.6.6
 backoff
 xmltodict==0.12
+# https://cloud.google.com/appengine/docs/standard/python/issue-requests#issuing_an_http_request
+requests
+requests_toolbelt
