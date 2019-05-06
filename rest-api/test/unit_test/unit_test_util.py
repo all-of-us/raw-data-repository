@@ -646,7 +646,7 @@ class FlaskTestBase(NdbTestBase):
     response = self.send_post('Participant', {})
     return response['participantId']
 
-  def send_consent(self, participant_id, email=None, language=None, code_values=None):
+  def send_consent(self, participant_id, email=None, language=None, code_values=None, authored=None):
     if not self._consent_questionnaire_id:
       self._consent_questionnaire_id = self.create_questionnaire('study_consent.json')
     self.first_name = self.fake.first_name()
@@ -662,7 +662,8 @@ class FlaskTestBase(NdbTestBase):
                                                          ("email", email),
                                                          ("streetAddress", self.streetAddress),
                                                          ("streetAddress2", self.streetAddress2)],
-                                         language=language, code_answers=code_values)
+                                         language=language, code_answers=code_values,
+                                         authored=authored)
     self.send_post(questionnaire_response_url(participant_id), qr_json)
 
   def create_questionnaire(self, filename):
@@ -733,7 +734,7 @@ def sort_lists(obj):
 
 def make_questionnaire_response_json(participant_id, questionnaire_id, code_answers=None,
                                 string_answers=None, date_answers=None, uri_answers=None,
-                                     language=None):
+                                     language=None, authored=None):
   results = []
   if code_answers:
     for answer in code_answers:
@@ -782,6 +783,8 @@ def make_questionnaire_response_json(participant_id, questionnaire_id, code_answ
                        "valueCode": "{}".format(language)}
                     ]
       })
+  if authored is not None:
+    response_json.update({"authored": authored.isoformat()})
   return response_json
 
 def questionnaire_response_url(participant_id):
