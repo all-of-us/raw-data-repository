@@ -66,7 +66,7 @@
             "161.249.150.128/26"
           ]
         },
-        "description": "Using subnet mask these ranges cover 66.189.127.0-32, 68.184.42.162.160-191, 216.70.11.254 and 208.72.48.248 – 208.72.51.254"
+        "description": "Using subnet mask range to cover 161.249.241.64-127 and 161.249.150.128-191"
     },
     "awardee-seec@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
