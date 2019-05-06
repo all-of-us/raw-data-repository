@@ -120,6 +120,7 @@
     },
     "awardee-broad@all-of-us-rdr-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
+      "awardee": "Broad",
       "whitelisted_ip_ranges" : {
         "ip4": ["69.173.70.24", "69.173.64.125"]
       }
