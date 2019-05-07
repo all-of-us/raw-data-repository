@@ -80,11 +80,13 @@
       "awardee": "TRANS_AM",
       "whitelisted_ip_ranges": {
         "ip4": [
-          "66.189.127/27",
-          "68.184.42.162/27"
+          "161.249.83.116",
+          "161.249.147.132",
+          "161.249.241.64/26",
+          "161.249.150.128/26"
         ]
       },
-      "description": "Using subnet mask these ranges cover 66.189.127.0-32 and 68.184.42.162.160-191"
+      "description": "Using subnet mask range to cover 161.249.241.64-127 and 161.249.150.128-191"
     },
     "awardee-pitt@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": [
