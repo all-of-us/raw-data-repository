@@ -497,7 +497,26 @@ CREATE TABLE cdm.dose_era
 -- table: src_clean
 -- Contains persons observations
 -- -------------------------------------------------------------------
-DROP VIEW IF EXISTS cdm.src_clean;
+
+DROP TABLE IF EXISTS cdm.src_clean;
+
+CREATE TABLE cdm.src_clean (
+    participant_id              bigint,
+    survey_name                 varchar(200),
+    date_of_survey              datetime,
+    question_ppi_code           varchar(200),
+    question_code_id            bigint,
+    value_ppi_code              varchar(200),
+    topic_value                 varchar(200),
+    value_code_id               bigint,
+    value_number                decimal(20,6),
+    value_boolean               tinyint,
+    value_date                  datetime,
+    value_string                varchar(1024),
+    questionnaire_response_id   bigint,
+    unit_id                     varchar(50),
+    filter                      smallint
+);
 
 -- -------------------------------------------------------------------
 -- Rules all together
@@ -508,9 +527,10 @@ DROP VIEW IF EXISTS cdm.src_clean;
 -- Do not set locks, allow dirty reads.
 SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 
-CREATE VIEW cdm.src_clean AS
+INSERT INTO cdm.src_clean
 SELECT
     pa.participant_id               AS participant_id,
+    co_b.value                      AS survey_name,
     qr.created                      AS date_of_survey,
     co_q.short_value                AS question_ppi_code,
     qq.code_id                      AS question_code_id,
@@ -540,13 +560,16 @@ SELECT
             WHEN qra.value_datetime IS NOT NULL THEN 'dtime'
             WHEN qra.value_string IS NOT NULL THEN 'str'
             ELSE ''
-        END)                        AS unit_id
+        END)                        AS unit_id,
+    0                               AS filter
 
 FROM rdr.participant pa
 JOIN rdr.hpo hp
     ON  pa.hpo_id = hp.hpo_id
 JOIN rdr.questionnaire_response qr
     ON  qr.participant_id = pa.participant_id
+JOIN rdr.questionnaire_concept qc
+    ON qr.questionnaire_id = qc.questionnaire_id
 JOIN rdr.questionnaire_response_answer qra
     ON  qra.questionnaire_response_id = qr.questionnaire_response_id
 JOIN rdr.questionnaire_question qq
@@ -555,18 +578,11 @@ JOIN rdr.code co_q
     ON  qq.code_id = co_q.code_id
 LEFT JOIN rdr.code co_a
     ON  qra.value_code_id = co_a.code_id
+LEFT JOIN rdr.code co_b
+    ON qc.code_id = co_b.code_id
 WHERE
-    -- Filter out specific survey questions.
-    co_q.short_value not in (
-        SELECT cqf.question_ppi_code FROM cdm.combined_question_filter cqf
-    )
-    -- Filter out specific surveys.
-    AND rdr.fn_get_code_module(co_q.short_value) NOT IN (
-        SELECT csf.survey_name FROM cdm.combined_survey_filter csf
-    )
-    AND pa.withdrawal_status != 2
+    pa.withdrawal_status != 2
     AND hp.name != 'TEST'
-    AND (pa.is_ghost_id is null OR pa.is_ghost_id = 0)
     AND
     (
         (qra.value_code_id IS NOT NULL AND co_a.code_id IS NOT NULL)
@@ -576,10 +592,37 @@ WHERE
         OR qra.value_date IS NOT NULL
         OR qra.value_datetime IS NOT NULL
         OR qra.value_string IS NOT NULL
-);
+    )
+;
 
 -- Reset ISOLATION level to previous setting
 COMMIT;
+
+
+ALTER TABLE cdm.src_clean ADD KEY (participant_id);
+
+-- -------------------------------------------------------------------
+-- Update cdm.src_clean to filter specific surveys.
+-- -------------------------------------------------------------------
+UPDATE combined_survey_filter SET survey_name = REPLACE(survey_name, '\r', '');
+
+UPDATE cdm.src_clean
+    INNER JOIN cdm.combined_survey_filter ON
+        cdm.src_clean.survey_name = cdm.combined_survey_filter.survey_name
+SET cdm.src_clean.filter = 1
+WHERE TRUE;
+
+-- -------------------------------------------------------------------
+-- Update cdm.src_clean to filter specific survey questions.
+-- -------------------------------------------------------------------
+
+UPDATE combined_question_filter SET question_ppi_code = REPLACE(question_ppi_code, '\r', '');
+
+UPDATE cdm.src_clean
+    INNER JOIN cdm.combined_question_filter ON
+        cdm.src_clean.question_ppi_code = cdm.combined_question_filter.question_ppi_code
+SET cdm.src_clean.filter = 1
+WHERE TRUE;
 
 -- -------------------------------------------------------------------
 -- source_file: src/src_mapped.sql
@@ -718,6 +761,7 @@ LEFT JOIN voc.concept vc4
     ON  vcr2.concept_id_2 = vc4.concept_id
     AND vc4.standard_concept = 'S'
     AND vc4.invalid_reason IS NULL
+WHERE src_c.filter = 0
 ;
 
 ALTER TABLE cdm.src_mapped ADD KEY (question_ppi_code);
