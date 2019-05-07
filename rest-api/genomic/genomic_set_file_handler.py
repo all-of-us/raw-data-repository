@@ -229,7 +229,9 @@ def _create_and_upload_result_file(genomic_set):
       :genomic_set_criteria AS genomic_set_criteria,
       participant_id AS pid,
       biobank_order_id,
-      ny_flag,
+      CASE
+        WHEN ny_flag IS TRUE THEN 'Y' ELSE 'N'
+      END AS ny_flag,
       sex_at_birth,
       genome_type,
       CASE
