@@ -15,9 +15,9 @@ from services.system_utils import setup_logging, setup_unicode, write_pidfile_or
 
 _logger = logging.getLogger('rdr_logger')
 
-# group name is required.
-group = 'template'
-group_desc = 'put program description here for help'
+# mod_cmd and mod_desc name are required.
+mod_cmd = 'template'
+mod_desc = 'put program description here for help'
 
 
 class ProgramTemplateClass(object):
@@ -30,18 +30,19 @@ class ProgramTemplateClass(object):
     Main program process
     :return: Exit code value
     """
-    # TODO: write program main process here after setting 'group' and 'group_desc'...
+    # TODO: write program main process here after setting 'mod_cmd' and 'mod_desc'...
     return 0
 
 
 def run():
   # Set global debug value and setup application logging.
-  setup_logging(_logger, group, '--debug' in sys.argv, '{0}.log'.format(group) if '--log-file' in sys.argv else None)
+  setup_logging(_logger, mod_cmd,
+                '--debug' in sys.argv, '{0}.log'.format(mod_cmd) if '--log-file' in sys.argv else None)
   setup_unicode()
   exit_code = 1
 
   # Setup program arguments.
-  parser = argparse.ArgumentParser(prog=group, description=group_desc)
+  parser = argparse.ArgumentParser(prog=mod_cmd, description=mod_desc)
   parser.add_argument('--debug', help='Enable debug output', default=False, action='store_true')  # noqa
   parser.add_argument('--log-file', help='write output to a log file', default=False, action='store_true')  # noqa
   parser.add_argument('--project', help='gcp project name', default='localhost')  # noqa
@@ -50,11 +51,11 @@ def run():
   args = parser.parse_args()
 
   # Ensure only one copy of the program is running at the same time
-  write_pidfile_or_die(group)
+  write_pidfile_or_die(mod_cmd)
   # initialize gcp environment.
   env = gcp_initialize(args.project, args.account, args.service_account)
   if not env:
-    remove_pidfile(group)
+    remove_pidfile(mod_cmd)
     exit(exit_code)
 
   try:
@@ -67,7 +68,7 @@ def run():
     _logger.error('program encountered an unexpected error, quitting.')
   finally:
     gcp_cleanup(args.account)
-    remove_pidfile(group)
+    remove_pidfile(mod_cmd)
 
   _logger.info('done')
   exit(exit_code)
