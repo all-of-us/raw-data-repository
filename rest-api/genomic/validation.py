@@ -78,19 +78,23 @@ def _get_validation_status(row, date_of_birth_cutoff):
   """
   if row.existing_valid_genomic_count != 0:
     return GenomicValidationStatus.INVALID_DUP_PARTICIPANT
-  if not row.consent_time or row.consent_time < GENOMIC_VALID_CONSENT_CUTOFF:
+  elif not row.consent_time or row.consent_time < GENOMIC_VALID_CONSENT_CUTOFF:
     return GenomicValidationStatus.INVALID_CONSENT
-  if row.withdrawal_status != WithdrawalStatus.NOT_WITHDRAWN:
+  elif row.withdrawal_status != WithdrawalStatus.NOT_WITHDRAWN:
     return GenomicValidationStatus.INVALID_WITHDRAW_STATUS
-  if row.sex_at_birth not in GENOMIC_VALID_SEX_AT_BIRTH_VALUES:
+  elif row.sex_at_birth not in GENOMIC_VALID_SEX_AT_BIRTH_VALUES:
     return GenomicValidationStatus.INVALID_SEX_AT_BIRTH
-  if not row.birth_date or row.birth_date > date_of_birth_cutoff:
+  elif not row.birth_date or row.birth_date > date_of_birth_cutoff:
     return GenomicValidationStatus.INVALID_AGE
-  if not all(map(
-    functools.partial(operator.contains, GENOMIC_VALID_SAMPLE_STATUSES),
-    [row.sample_status_1ED04, row.sample_status_1SAL2]
-  )):
+  elif not (
+    row.samples_to_isolate_dna in GENOMIC_VALID_SAMPLE_STATUSES
+    and any(map(
+      functools.partial(operator.contains, GENOMIC_VALID_SAMPLE_STATUSES),
+      [row.sample_status_1ED04, row.sample_status_1SAL2]
+    ))
+  ):
     return GenomicValidationStatus.INVALID_BIOBANK_ORDER
-  if not row.zip_code:
+  elif not row.zip_code:
     return GenomicValidationStatus.INVALID_NY_ZIPCODE
-  return GenomicValidationStatus.VALID
+  else:
+    return GenomicValidationStatus.VALID
