@@ -141,6 +141,9 @@ def gcp_cleanup(account):
   Clean up items to do at the program's completion.
   """
   # activate the pmi-ops account so we can delete.
+  # Use the account and service_account parameters if set, otherwise try the environment var.
+  account = account if account else \
+    (os.environ['RDR_ACCOUNT'] if 'RDR_ACCOUNT' in os.environ else None)
   if account:
     gcp_activate_account(account)
 
@@ -331,7 +334,7 @@ def gcp_get_app_host_name(project=None):
 
 def gcp_get_app_access_token():
   """
-  Get the OAuth2 access token for active gcp account.
+  Get the OAuth2 access token for active gcp account or service account.
   :return: access token string
   """
   args = 'print-access-token'
@@ -417,11 +420,11 @@ def gcp_create_iam_service_key(service_account, account=None):
 
   return service_key_id
 
-def gcp_delete_iam_service_key(service_key_id, creds_account=None):
+def gcp_delete_iam_service_key(service_key_id, service_account=None):
   """
   # Note: Untested
   :param service_key_id: local service key file ID
-  :param creds_account: authenticated account if needed
+  :param service_account: authenticated account if needed
   :return: True if successful else False
   """
   _logger.debug('deleting iam service key [{0}].'.format(service_key_id))
@@ -441,8 +444,8 @@ def gcp_delete_iam_service_key(service_key_id, creds_account=None):
   # Ex: 'gcloud iam service-accounts keys delete "private key id" ...'
   args = 'service-accounts keys delete "{0}"'.format(pkid)
   flags = '--quiet --iam-account={0}'.format(service_account)
-  if creds_account:
-    flags += ' --account={0}'.format(creds_account)
+  if service_account:
+    flags += ' --account={0}'.format(service_account)
 
   pcode, so, se = gcp_gcloud_command('iam', args, flags)
 
@@ -462,6 +465,7 @@ def gcp_activate_iam_service_key(service_key_id, flags=None):
   """
   Activate the service account key
   :param service_key_id: local service key file ID
+  :param flags: additional gcloud command flags
   :return: True if successful else False
   """
   _logger.debug('activating iam service key [{0}].'.format(service_key_id))
