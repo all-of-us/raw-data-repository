@@ -68,8 +68,7 @@ def run():
       if mod_cmd == command:
         mod_name = os.path.basename(lib).split('.')[0]
         mod = importlib.import_module('{0}.{1}'.format(import_path, mod_name))
-        mod.run()
-        break
+        return mod.run()
 
   if show_usage:
     print('\nusage: rdr.py command [-h|--help] [args]\n\navailable commands:')
