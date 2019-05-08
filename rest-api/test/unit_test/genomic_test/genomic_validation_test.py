@@ -1,5 +1,4 @@
 import datetime
-import itertools
 
 import mock
 
@@ -57,6 +56,7 @@ class GenomicSetValidationBaseTestCase(SqlTestBase):
       zipCode='12345',
       sampleStatus1ED04=SampleStatus.RECEIVED,
       sampleStatus1SAL2=SampleStatus.RECEIVED,
+      samplesToIsolateDNA=SampleStatus.RECEIVED,
       consentForStudyEnrollmentTime=datetime.datetime(2019, 1, 1)
     )
     kwargs = dict(valid_kwargs, **override_kwargs)
@@ -136,7 +136,7 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
-  def test_consen_null(self):
+  def test_consent_null(self):
     participant = self.make_participant()
     self.make_summary(participant, consentForStudyEnrollmentTime=None)
     genomic_set = self.make_genomic_set()
@@ -192,29 +192,71 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
   def test_biobank_status(self):
-    sample_names = ['1ED04', '1SAL2']
-    valid_sample_statuses = {SampleStatus.RECEIVED,}
     def make_member(genomic_set, **summary_kwargs):
       participant = self.make_participant()
       self.make_summary(participant, **summary_kwargs)
       return self.make_genomic_member(genomic_set, participant)
 
+    kwargs_and_expected_statuses = [
+      (
+        {
+          'sampleStatus1ED04': SampleStatus.UNSET,
+          'sampleStatus1SAL2': SampleStatus.UNSET,
+          'samplesToIsolateDNA': SampleStatus.UNSET,
+        },
+        GenomicValidationStatus.INVALID_BIOBANK_ORDER
+      ),
+      (
+        {
+          'sampleStatus1ED04': SampleStatus.RECEIVED,
+          'sampleStatus1SAL2': SampleStatus.UNSET,
+          'samplesToIsolateDNA': SampleStatus.UNSET,
+        },
+        GenomicValidationStatus.INVALID_BIOBANK_ORDER
+      ),
+      (
+        {
+          'sampleStatus1ED04': SampleStatus.UNSET,
+          'sampleStatus1SAL2': SampleStatus.RECEIVED,
+          'samplesToIsolateDNA': SampleStatus.UNSET,
+        },
+        GenomicValidationStatus.INVALID_BIOBANK_ORDER
+      ),
+      (
+        {
+          'sampleStatus1ED04': SampleStatus.UNSET,
+          'sampleStatus1SAL2': SampleStatus.UNSET,
+          'samplesToIsolateDNA': SampleStatus.RECEIVED,
+        },
+        GenomicValidationStatus.INVALID_BIOBANK_ORDER
+      ),
+      (
+        {
+          'sampleStatus1ED04': SampleStatus.RECEIVED,
+          'sampleStatus1SAL2': SampleStatus.UNSET,
+          'samplesToIsolateDNA': SampleStatus.RECEIVED,
+        },
+        GenomicValidationStatus.VALID
+      ),
+      (
+        {
+          'sampleStatus1ED04': SampleStatus.UNSET,
+          'sampleStatus1SAL2': SampleStatus.RECEIVED,
+          'samplesToIsolateDNA': SampleStatus.RECEIVED,
+        },
+        GenomicValidationStatus.VALID
+      ),
+    ]
+
     genomic_set = self.make_genomic_set()
-    members_kwargs_and_statuses = [
+    members_kwargs_and_expected_statuses = [
       (make_member(genomic_set, **kwargs), kwargs, status)
       for kwargs, status
-      in (
-        (
-          {'sampleStatus' + sample_name: status},
-          GenomicValidationStatus.VALID if status in valid_sample_statuses else
-          GenomicValidationStatus.INVALID_BIOBANK_ORDER
-        )
-        for sample_name, status
-        in itertools.product(sample_names, SampleStatus)
-      )
+      in kwargs_and_expected_statuses
     ]
+
     validate_and_update_genomic_set_by_id(genomic_set.id)
-    for member, kwargs, expected_validation_status in members_kwargs_and_statuses:
+    for member, kwargs, expected_validation_status in members_kwargs_and_expected_statuses:
       current_member = self.genomic_member_dao.get(member.id)
       self.assertEqual(
         current_member.validationStatus,
