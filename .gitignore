@@ -20,3 +20,8 @@ htmlcov/
 
 # pyenv file
 .python-version
+
+# Local cache files
+/data/awardees.csv
+/data/organizations.csv
+/data/sites.csv
