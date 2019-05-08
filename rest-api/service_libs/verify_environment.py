@@ -8,13 +8,11 @@
 import importlib
 import logging
 import sys
-import traceback
 
 import argparse
-from services.gcp_utils import gcp_initialize, \
-  gcp_cleanup, gcp_get_app_host_name, gcp_get_app_access_token
-from services.system_utils import setup_logging, setup_unicode, write_pidfile_or_die, \
-  remove_pidfile, make_api_request
+from service_libs import GCPProcessContext
+from services.gcp_utils import gcp_get_app_host_name, gcp_get_app_access_token
+from services.system_utils import setup_logging, setup_unicode, make_api_request
 
 _logger = logging.getLogger('rdr_logger')
 
@@ -91,7 +89,6 @@ def run():
   setup_logging(_logger, mod_cmd,
                 '--debug' in sys.argv, '{0}.log'.format(mod_cmd) if '--log-file' in sys.argv else None)
   setup_unicode()
-  exit_code = 1
 
   # Setup program arguments.
   parser = argparse.ArgumentParser(prog=mod_cmd, description=mod_desc)
@@ -102,32 +99,10 @@ def run():
   parser.add_argument('--service-account', help='gcp service account', default=None)  # noqa
   args = parser.parse_args()
 
-  # Ensure only one copy of the program is running at the same time.
-  write_pidfile_or_die(mod_cmd)
-  # initialize gcp environment.
-  env = gcp_initialize(args.project, args.account, args.service_account)
-  if not env:
-    remove_pidfile(mod_cmd)
-    exit(exit_code)
-
-  try:
+  with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account):
     process = Verify(args)
     exit_code = process.run()
-  except IOError:
-    _logger.error('io error')
-  except Exception:
-    print(traceback.format_exc())
-    _logger.error('program encountered an unexpected error, quitting.')
-    exit_code = 1
-  finally:
-    gcp_cleanup(args.account)
-    remove_pidfile(mod_cmd)
-
-  if exit_code != 0:
-    _logger.warning('errors in the local environment have been detected, please fix.')
-  _logger.info('done')
-  exit(exit_code)
-
+    return exit_code
 
 # --- Main Program Call ---
 if __name__ == '__main__':
