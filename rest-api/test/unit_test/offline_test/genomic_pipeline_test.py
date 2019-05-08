@@ -105,6 +105,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
       zipCode='12345',
       sampleStatus1ED04=SampleStatus.RECEIVED,
       sampleStatus1SAL2=SampleStatus.RECEIVED,
+      samplesToIsolateDNA=SampleStatus.RECEIVED,
       consentForStudyEnrollmentTime=datetime.datetime(2019, 1, 1)
     )
     kwargs = dict(valid_kwargs, **override_kwargs)
