@@ -1,5 +1,6 @@
 import json
 import logging
+from dateutil.parser import parse
 
 import app_util
 from api_util import HEALTHPRO
@@ -11,8 +12,7 @@ from data_gen.in_process_client import InProcessClient
 from flask import request
 from flask_restful import Resource
 from google.appengine.ext import deferred
-from werkzeug.exceptions import Forbidden
-
+from werkzeug.exceptions import Forbidden, BadRequest
 
 # 10% of individual stored samples are missing by default.
 _SAMPLES_MISSING_FRACTION = 0.1
@@ -62,3 +62,46 @@ class DataGenApi(Resource):
                                                      suspended_percent=0)
 
     participant_generator.add_pm_and_biospecimens_to_participants(p_id)
+
+
+class SpecDataGenApi(Resource):
+  """
+  API for creating specific fake participant data. Only works with one fake
+  participant at a time.
+  """
+  @nonprod
+  def post(self):
+
+    req = json.loads(request.get_data())
+
+    target = req.get('api', None)
+    data = req.get('data', None)
+    timestamp = req.get('timestamp', None)
+    if timestamp:
+      timestamp = parse(timestamp)
+
+    if not target:
+      raise BadRequest({'status': 'error', 'error': 'target api invalid'})
+
+    result = InProcessClient().request_json(target, 'POST', body=data, pretend_date=timestamp)
+    return result
+
+  def put(self):
+
+    req = json.loads(request.get_data())
+
+    target = req.get('api', None)  # this value will usually have the participant_id in it
+    data = req.get('data', None)
+    timestamp = req.get('timestamp', None)
+    if timestamp:
+      timestamp = parse(timestamp)
+
+    if not target:
+      raise BadRequest({'status': 'error', 'error': 'target api invalid'})
+
+    result = InProcessClient().request_json(target, 'POST', body=data, pretend_date=timestamp)
+    return result
+
+  def _process_request(self, method):
+
+    pass

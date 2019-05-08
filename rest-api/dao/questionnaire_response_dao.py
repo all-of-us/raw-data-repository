@@ -2,8 +2,10 @@ import clock
 import config
 import json
 import logging
+import pytz
 import os
 
+from datetime import datetime
 from cloudstorage import cloudstorage_api
 import fhirclient.models.questionnaireresponse
 from sqlalchemy.orm import subqueryload
@@ -209,6 +211,12 @@ class QuestionnaireResponseDao(BaseDao):
 
     participant_summary = participant.participantSummary
 
+    authored = questionnaire_response.authored
+    # If authored is a datetime and has tzinfo, convert to utc and remove tzinfo.
+    # The authored timestamps in the participant summary will already be in utc, but lack tzinfo.
+    if authored and isinstance(authored, datetime) and authored.tzinfo:
+      authored = authored.astimezone(pytz.utc).replace(tzinfo=None)
+
     code_ids.extend([concept.codeId for concept in questionnaire_history.concepts])
 
     code_dao = CodeDao()
@@ -268,7 +276,7 @@ class QuestionnaireResponseDao(BaseDao):
               if not participant_summary.consentForCABoR:
                 participant_summary.consentForCABoR = True
                 participant_summary.consentForCABoRTime = questionnaire_response.created
-                participant_summary.consentForCABoRAuthored = questionnaire_response.authored
+                participant_summary.consentForCABoRAuthored = authored
                 something_changed = True
 
     # If race was provided in the response in one or more answers, set the new value.
@@ -288,6 +296,7 @@ class QuestionnaireResponseDao(BaseDao):
         summary_field = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(code.value)
         if summary_field:
           new_status = QuestionnaireStatus.SUBMITTED
+          setattr(participant_summary, summary_field + 'Authored', authored)
           if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE and not ehr_consent:
             new_status = QuestionnaireStatus.SUBMITTED_NO_CONSENT
           elif code.value == CONSENT_FOR_DVEHR_MODULE:
@@ -307,9 +316,9 @@ class QuestionnaireResponseDao(BaseDao):
           if getattr(participant_summary, summary_field) != new_status:
             setattr(participant_summary, summary_field, new_status)
             setattr(participant_summary, summary_field + 'Time', questionnaire_response.created)
-            setattr(participant_summary, summary_field + 'Authored', questionnaire_response.authored)
             something_changed = True
             module_changed = True
+
     if module_changed:
       participant_summary.numCompletedBaselinePPIModules = \
           count_completed_baseline_ppi_modules(participant_summary)

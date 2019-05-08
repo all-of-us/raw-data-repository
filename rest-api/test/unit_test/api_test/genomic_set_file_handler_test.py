@@ -186,7 +186,7 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[0][ResultCsvColumns.INVALID_REASON], '')
     self.assertEqual(rows[0][ResultCsvColumns.PID], '123')
     self.assertEqual(rows[0][ResultCsvColumns.BIOBANK_ORDER_ID], '123')
-    self.assertEqual(rows[0][ResultCsvColumns.NY_FLAG], '1')
+    self.assertEqual(rows[0][ResultCsvColumns.NY_FLAG], 'Y')
     self.assertEqual(rows[0][ResultCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[0][ResultCsvColumns.SEX_AT_BIRTH], 'F')
 
@@ -196,7 +196,7 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[1][ResultCsvColumns.INVALID_REASON], 'INVALID_AGE')
     self.assertEqual(rows[1][ResultCsvColumns.PID], '124')
     self.assertEqual(rows[1][ResultCsvColumns.BIOBANK_ORDER_ID], '124')
-    self.assertEqual(rows[1][ResultCsvColumns.NY_FLAG], '0')
+    self.assertEqual(rows[1][ResultCsvColumns.NY_FLAG], 'N')
     self.assertEqual(rows[1][ResultCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[1][ResultCsvColumns.SEX_AT_BIRTH], 'M')
 
@@ -206,7 +206,7 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[2][ResultCsvColumns.INVALID_REASON], 'INVALID_CONSENT')
     self.assertEqual(rows[2][ResultCsvColumns.PID], '125')
     self.assertEqual(rows[2][ResultCsvColumns.BIOBANK_ORDER_ID], '125')
-    self.assertEqual(rows[2][ResultCsvColumns.NY_FLAG], '1')
+    self.assertEqual(rows[2][ResultCsvColumns.NY_FLAG], 'Y')
     self.assertEqual(rows[2][ResultCsvColumns.GENOME_TYPE], 'aou_wgs')
     self.assertEqual(rows[2][ResultCsvColumns.SEX_AT_BIRTH], 'F')
 
@@ -289,11 +289,11 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ORDER_ID], '123')
     self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
     self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
-    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], '1')
+    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'Y')
     self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ORDER_ID], '124')
     self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[1][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
-    self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], '0')
+    self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], 'N')
 
     # for genome type aou_wgs
     expected_result_filename = 'rdr_fake_sub_folder/Genomic-Manifest-AoU_WGS-1-v1' + \
@@ -308,7 +308,7 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ORDER_ID], '125')
     self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
     self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_wgs')
-    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], '1')
+    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'Y')
 
   def _create_fake_genomic_set(self, genomic_set_name, genomic_set_criteria, genomic_set_filename):
     now = clock.CLOCK.now()

@@ -20,7 +20,7 @@ _BATCH_SIZE = 1000
 INPUT_CSV_TIME_FORMAT = '%Y-%m-%d-%H-%M-%S'
 _INPUT_CSV_TIME_FORMAT_LENGTH = 18
 _CSV_SUFFIX_LENGTH = 4
-
+_RESULT_FILE_SUFFIX = 'Validation-Result'
 _MAX_INPUT_AGE = datetime.timedelta(hours=24)
 
 class DataError(RuntimeError):
@@ -105,7 +105,8 @@ def _find_latest_genomic_set_csv(cloud_bucket_name):
     raise FileNotFoundError('No files in cloud bucket %r.' % cloud_bucket_name)
   # GCS does not really have the concept of directories (it's just a filename convention), so all
   # directory listings are recursive and we must filter out subdirectory contents.
-  bucket_stat_list = [s for s in bucket_stat_list if s.filename.lower().endswith('.csv')]
+  bucket_stat_list = [s for s in bucket_stat_list if s.filename.lower().endswith('.csv')
+                      and '%s' % _RESULT_FILE_SUFFIX not in s.filename]
   if not bucket_stat_list:
     raise FileNotFoundError(
       'No CSVs in cloud bucket %r (all files: %s).' % (cloud_bucket_name, bucket_stat_list))
@@ -219,7 +220,7 @@ def create_genomic_set_status_result_file(genomic_set_id):
   _create_and_upload_result_file(genomic_set)
 
 def _create_and_upload_result_file(genomic_set):
-  result_filename = genomic_set.genomicSetFile.replace('.', '-Validation-Result.')
+  result_filename = genomic_set.genomicSetFile.replace('.', '-'+_RESULT_FILE_SUFFIX+'.')
   bucket_name = config.getSetting(config.GENOMIC_SET_BUCKET_NAME)
   exporter = SqlExporter(bucket_name)
   export_sql = """
@@ -228,7 +229,9 @@ def _create_and_upload_result_file(genomic_set):
       :genomic_set_criteria AS genomic_set_criteria,
       participant_id AS pid,
       biobank_order_id,
-      ny_flag,
+      CASE
+        WHEN ny_flag IS TRUE THEN 'Y' ELSE 'N'
+      END AS ny_flag,
       sex_at_birth,
       genome_type,
       CASE

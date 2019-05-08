@@ -17,9 +17,9 @@ import time
 
 from system_utils import setup_logging, setup_unicode, is_valid_email, which
 from daemon import Daemon
-from gcp_utils import gcp_set_account, gcp_format_sql_instance, gcp_activate_sql_proxy
+from gcp_utils import gcp_activate_account, gcp_format_sql_instance, gcp_activate_sql_proxy
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger('rdr_logger')
 
 progname = 'gcp-db-daemon'
 
@@ -105,7 +105,7 @@ def run():
       signal.signal(signal.SIGTERM, signal_term_handler)
       _logger.debug('signal handlers set.')
 
-      result = gcp_set_account(args.account)
+      result = gcp_activate_account(args.account)
       if result is not True:
         _logger.error('failed to set authentication account, aborting.')
         return 1

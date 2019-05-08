@@ -105,6 +105,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
       zipCode='12345',
       sampleStatus1ED04=SampleStatus.RECEIVED,
       sampleStatus1SAL2=SampleStatus.RECEIVED,
+      samplesToIsolateDNA=SampleStatus.RECEIVED,
       consentForStudyEnrollmentTime=datetime.datetime(2019, 1, 1)
     )
     kwargs = dict(valid_kwargs, **override_kwargs)
@@ -172,7 +173,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[0][ResultCsvColumns.INVALID_REASON], '')
     self.assertEqual(rows[0][ResultCsvColumns.PID], '1')
     self.assertEqual(rows[0][ResultCsvColumns.BIOBANK_ORDER_ID], '1')
-    self.assertEqual(rows[0][ResultCsvColumns.NY_FLAG], '1')
+    self.assertEqual(rows[0][ResultCsvColumns.NY_FLAG], 'Y')
     self.assertEqual(rows[0][ResultCsvColumns.GENOME_TYPE], 'aou_wgs')
     self.assertEqual(rows[0][ResultCsvColumns.SEX_AT_BIRTH], 'M')
 
@@ -182,7 +183,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[1][ResultCsvColumns.INVALID_REASON], '')
     self.assertEqual(rows[1][ResultCsvColumns.PID], '2')
     self.assertEqual(rows[1][ResultCsvColumns.BIOBANK_ORDER_ID], '2')
-    self.assertEqual(rows[1][ResultCsvColumns.NY_FLAG], '0')
+    self.assertEqual(rows[1][ResultCsvColumns.NY_FLAG], 'N')
     self.assertEqual(rows[1][ResultCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[1][ResultCsvColumns.SEX_AT_BIRTH], 'F')
 
@@ -192,7 +193,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[2][ResultCsvColumns.INVALID_REASON], '')
     self.assertEqual(rows[2][ResultCsvColumns.PID], '3')
     self.assertEqual(rows[2][ResultCsvColumns.BIOBANK_ORDER_ID], '3')
-    self.assertEqual(rows[2][ResultCsvColumns.NY_FLAG], '0')
+    self.assertEqual(rows[2][ResultCsvColumns.NY_FLAG], 'N')
     self.assertEqual(rows[2][ResultCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[2][ResultCsvColumns.SEX_AT_BIRTH], 'M')
 
@@ -232,11 +233,11 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ORDER_ID], '2')
     self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
     self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
-    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], '0')
+    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'N')
     self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ORDER_ID], '3')
     self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[1][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
-    self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], '0')
+    self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], 'N')
 
     # for genome type aou_wgs
     path = self._find_latest_genomic_set_csv(bucket_name, 'AoU_WGS')
@@ -249,7 +250,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ORDER_ID], '1')
     self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_wgs')
-    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], '1')
+    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'Y')
 
   def test_end_to_end_invalid_case(self):
     participant = self._make_participant()
@@ -311,7 +312,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[0][ResultCsvColumns.INVALID_REASON], 'INVALID_AGE')
     self.assertEqual(rows[0][ResultCsvColumns.PID], '1')
     self.assertEqual(rows[0][ResultCsvColumns.BIOBANK_ORDER_ID], '1')
-    self.assertEqual(rows[0][ResultCsvColumns.NY_FLAG], '1')
+    self.assertEqual(rows[0][ResultCsvColumns.NY_FLAG], 'Y')
     self.assertEqual(rows[0][ResultCsvColumns.GENOME_TYPE], 'aou_wgs')
     self.assertEqual(rows[0][ResultCsvColumns.SEX_AT_BIRTH], 'M')
 
@@ -321,7 +322,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[1][ResultCsvColumns.INVALID_REASON], 'INVALID_CONSENT')
     self.assertEqual(rows[1][ResultCsvColumns.PID], '2')
     self.assertEqual(rows[1][ResultCsvColumns.BIOBANK_ORDER_ID], '2')
-    self.assertEqual(rows[1][ResultCsvColumns.NY_FLAG], '0')
+    self.assertEqual(rows[1][ResultCsvColumns.NY_FLAG], 'N')
     self.assertEqual(rows[1][ResultCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[1][ResultCsvColumns.SEX_AT_BIRTH], 'F')
 
@@ -331,7 +332,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[2][ResultCsvColumns.INVALID_REASON], 'INVALID_NY_ZIPCODE')
     self.assertEqual(rows[2][ResultCsvColumns.PID], '3')
     self.assertEqual(rows[2][ResultCsvColumns.BIOBANK_ORDER_ID], '3')
-    self.assertEqual(rows[2][ResultCsvColumns.NY_FLAG], '0')
+    self.assertEqual(rows[2][ResultCsvColumns.NY_FLAG], 'N')
     self.assertEqual(rows[2][ResultCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[2][ResultCsvColumns.SEX_AT_BIRTH], 'M')
 

@@ -91,6 +91,7 @@ class GenomicSetDao(UpdatableDao):
           ParticipantSummary.consentForStudyEnrollmentTime.label('consent_time'),
           ParticipantSummary.sampleStatus1ED04.label('sample_status_1ED04'),
           ParticipantSummary.sampleStatus1SAL2.label('sample_status_1SAL2'),
+          ParticipantSummary.samplesToIsolateDNA.label('samples_to_isolate_dna'),
           ParticipantSummary.zipCode.label('zip_code'),
           existing_valid_query.label('existing_valid_genomic_count'),
         ])

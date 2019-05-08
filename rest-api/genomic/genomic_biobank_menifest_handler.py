@@ -24,7 +24,9 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, genome_type,
         biobank_order_id,
         sex_at_birth,
         genome_type,
-        ny_flag,
+        CASE
+          WHEN ny_flag IS TRUE THEN 'Y' ELSE 'N'
+        END AS ny_flag,
         '' AS request_id,
         '' AS sample_storage_retrival_status,
         '' AS sample_storage_retrival_timestamp,
