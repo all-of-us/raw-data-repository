@@ -17,7 +17,7 @@ libraries:
 - name: MySQLdb
   version: "latest"
 
-# Patterns for files within rest-api that we do not want to deploy to AppEngine  
+# Patterns for files within rest-api that we do not want to deploy to AppEngine
 skip_files:
 - ^(.*/)?#.*#$
 - ^(.*/)?.*~$
@@ -33,5 +33,6 @@ skip_files:
 - ^tools/.*$
 - ^venv/.*$
 - ^services/.*$
-
+- ^client_cli/.*$
+- ^services_libs/.*$
 

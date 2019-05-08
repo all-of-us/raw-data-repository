@@ -3,6 +3,9 @@
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
 import logging
+# pylint: disable=unused-import
+import requests
+import requests_toolbelt.adapters.appengine
 
 import app_util
 import config_api
@@ -11,7 +14,7 @@ from api import metrics_ehr_api
 from api.awardee_api import AwardeeApi
 from api.biobank_order_api import BiobankOrderApi
 from api.check_ppi_data_api import check_ppi_data
-from api.data_gen_api import DataGenApi
+from api.data_gen_api import DataGenApi, SpecDataGenApi
 from api.dv_order_api import DvOrderApi
 from api.import_codebook_api import import_codebook
 from api.metric_sets_api import MetricSetsApi
@@ -32,6 +35,9 @@ from model.utils import ParticipantIdConverter
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException
 
+
+# Use the App Engine Requests adapter. This makes sure that Requests uses URLFetch.
+requests_toolbelt.adapters.appengine.monkeypatch()
 
 PREFIX = '/rdr/v1/'
 
@@ -194,6 +200,12 @@ api.add_resource(version_api.VersionApi,
 api.add_resource(DataGenApi,
                  PREFIX + 'DataGen',
                  endpoint='datagen',
+                 methods=['POST', 'PUT'])
+
+# Data generator API used to load specific fake data into the database.
+api.add_resource(SpecDataGenApi,
+                 PREFIX + 'SpecDataGen',
+                 endpoint='specdatagen',
                  methods=['POST', 'PUT'])
 
 #

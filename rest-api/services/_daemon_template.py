@@ -19,7 +19,7 @@ import sys
 from system_utils import setup_logging, setup_unicode
 from daemon import Daemon
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger('rdr_logger')
 
 
 progname = 'XXXXX-daemon'

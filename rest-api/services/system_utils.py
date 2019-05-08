@@ -14,7 +14,14 @@ import subprocess
 import sys
 from datetime import datetime
 
-_logger = logging.getLogger(__name__)
+try:
+  import requests
+  import urllib3
+  urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+except ImportError:
+  pass
+
+_logger = logging.getLogger('rdr_logger')
 
 
 def setup_logging(logger, progname, debug=False, logfile=None):
@@ -26,7 +33,6 @@ def setup_logging(logger, progname, debug=False, logfile=None):
   :param logfile: Path and filename to log file to output to
   :return: Nothing
   """
-
   if not logger:
     return False
 
@@ -44,6 +50,7 @@ def setup_logging(logger, progname, debug=False, logfile=None):
 
   # Setup stream logging handler
   handler = logging.StreamHandler(sys.stdout)
+  handler.flush = sys.stdout.flush
   handler.setFormatter(formatter)
 
   logger.addHandler(handler)
@@ -78,6 +85,7 @@ def which(program):
   """
   Find the path for a given program
   http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
+  :param program: name of executable file to find
   """
 
   try:
@@ -124,7 +132,8 @@ def run_external_program(args, cwd=None, env=None, shell=False, debug=False):
 
   _logger.debug('external: {0}'.format(os.path.basename(args[0])))
 
-  p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, env=env, shell=shell)
+  p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       env=env, shell=shell)
   stdoutdata, stderrdata = p.communicate()
   p.wait()
 
@@ -190,47 +199,51 @@ def pid_is_running(pid):
   return True
 
 
-def write_pidfile_or_die(progname, pidfile=None):
+def write_pidfile_or_die(progname, pid_file=None):
   """
-  Attempt to write our PID to the given PID file
+  Attempt to write our PID to the given PID file or raise an exception.
   :param progname: Name of this program
-  :param pidfile: an alternate pid file to use
+  :param pid_file: an alternate path and pid file to use
   :return: pid path and filename
   """
+  if not pid_file:
+    home = os.path.expanduser('~')
+    pid_path = os.path.join(home, '.local/run')
+    pid_file = os.path.join(pid_path, '{0}.pid'.format(progname))
+  else:
+    pid_path = os.path.dirname(pid_file)
 
-  if not pidfile:
-    if not os.path.exists('~/.local/run'):
-      os.makedirs('~/.local/run')
+  if not os.path.exists(pid_path):
+    os.makedirs(pid_path)
 
-    pidfile = '~/.local/run/{0}.pid'.format(progname)
-
-  if os.path.exists(pidfile):
-    pid = int(open(pidfile).read())
+  if os.path.exists(pid_file):
+    pid = int(open(pid_file).read())
 
     if pid_is_running(pid):
       _logger.warning('program is already running, aborting.')
       raise SystemExit
 
     else:
-      os.remove(pidfile)
+      os.remove(pid_file)
 
-  open(pidfile, 'w').write(str(os.getpid()))
+  open(pid_file, 'w').write(str(os.getpid()))
 
-  return pidfile
+  return pid_file
 
 
-def remove_pidfile(progname, pidfile=None):
+def remove_pidfile(progname, pid_file=None):
   """
   Remove the PID file for the given program
   :param progname: Name of this program
   :param pidfile: an alternate pid file to use
   """
+  if not pid_file:
+    home = os.path.expanduser('~')
+    pid_path = os.path.join(home, '.local/run')
+    pid_file = os.path.join(pid_path, '{0}.pid'.format(progname))
 
-  if not pidfile:
-    pidfile = '~/.local/run/{0}.pid'.format(progname)
-
-  if os.path.exists(pidfile):
-    os.remove(pidfile)
+  if os.path.exists(pid_file):
+    os.remove(pid_file)
 
 
 def json_datetime_handler(x):
@@ -238,3 +251,75 @@ def json_datetime_handler(x):
   if isinstance(x, datetime):
     return x.isoformat()
   raise TypeError("Unknown type")
+
+
+def make_api_request(host, api_path, headers=None, cookies=None, timeout=60, req_type='get',
+                     json_data=None, ret_type='json'):
+  """
+  contact the primary and check for updated records
+  :param host: host name or ip address
+  :param api_path: url path
+  :param headers: list of headers
+  :param cookies: list of cookies
+  :param timeout: request timeout in seconds
+  :param req_type: request type
+  :param json_data: json data to pass with a POST, PUT, PATCH request type
+  :param ret_type: expected return data type from request, default 'json'.
+  :return: response code, response data
+  """
+  resp_data = None
+
+  if api_path.startswith('/'):
+    api_path = api_path[1:]
+
+  # Do not use https for local system requests
+  protocol = 'http' if '127.0.0.1' in host or 'localhost' in host else 'https'
+  url = '{0}://{1}/{2}'.format(protocol, host, api_path)
+
+  try:
+
+    if req_type.lower() == 'get':
+      rq = requests.get(url, timeout=timeout, headers=headers, cookies=cookies, verify=False)
+    elif req_type.lower() == 'post':
+      rq = requests.post(url, json=json_data, timeout=timeout, headers=headers, cookies=cookies,
+                         verify=False)
+    elif req_type.lower() == 'put':
+      rq = requests.put(url, json=json_data, timeout=timeout, headers=headers, cookies=cookies,
+                        verify=False)
+    elif req_type.lower() == 'patch':
+      rq = requests.patch(url, json=json_data, timeout=timeout, headers=headers, cookies=cookies,
+                          verify=False)
+    elif req_type.lower() == 'delete':
+      rq = requests.delete(url, timeout=timeout, headers=headers, cookies=cookies, verify=False)
+    else:
+      return -1, None
+
+  except requests.Timeout:
+    resp_code = requests.codes.request_timeout
+    resp_data = 'remote api request timed out.'
+    _logger.error(resp_data)
+  except requests.ConnectionError:
+    resp_code = requests.codes.service_unavailable
+    resp_data = 'remote connection error.'
+    _logger.error(resp_data)
+  except requests.RequestException:
+    resp_code = requests.codes.service_unavailable
+    resp_data = 'remote api request failed.'
+    _logger.error(resp_data)
+  else:
+
+    resp_code = rq.status_code
+
+    if rq.status_code == requests.codes.ok or rq.status_code == requests.codes.created:
+      try:
+        if ret_type == 'json':
+          resp_data = rq.json()
+        else:
+          resp_data = rq.text
+      except ValueError:
+        pass
+    else:
+      resp_data = '{0}: {1} ({2})'.format(rq.status_code, rq.reason, rq.text)
+      _logger.debug(resp_data)
+
+  return resp_code, resp_data
