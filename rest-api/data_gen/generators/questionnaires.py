@@ -33,6 +33,7 @@ class QuestionnaireGen(BaseGen):
 
   _github_host = 'raw.githubusercontent.com'
   _github_url = 'all-of-us-terminology/api-payloads/master/questionnaire_payloads'
+  _gen_url = 'rdr/v1/SpecDataGen'
   _codebook = None  # stores the CodeBook object
 
   _module = None
@@ -137,7 +138,7 @@ class QuestionnaireGen(BaseGen):
     q_resp = QuestionnaireResponse()
     q_resp.authored = FHIRDate(clock.CLOCK.now().isoformat())
     q_resp.status = 'completed'
-    q_resp.subject = FHIRReference({'reference': 'Patient/P{0}'.format(self._participant_id)})
+    q_resp.subject = FHIRReference({'reference': 'Patient/{0}'.format(self._participant_id)})
     q_resp.questionnaire = FHIRReference({'reference':
       'Questionnaire/{0}/_history/{1}'.format(self._module_questions.id, self._module_questions.version)})
 
@@ -738,8 +739,13 @@ class QuestionnaireGen(BaseGen):
     :param module: questionnaire module name
     :return: fhir questionnaire object
     """
-    url = '/rdr/v1/Questionnaire?concept={0}'.format(module)
-    code, resp = make_api_request(self._rdr_host, url, headers=gcp_make_auth_header())
+    data = dict()
+    data['api'] = 'Questionnaire?concept={0}'.format(module)
+    data['timestamp'] = clock.CLOCK.now().isoformat()
+    data['method'] = 'GET'
+
+    code, resp = make_api_request(
+                    self._rdr_host, self._gen_url, req_type='POST', json_data=data, headers=gcp_make_auth_header())
 
     if code != 200:
       _logger.error('failed to get module questionnaire [Http {0}: {1}.'.format(code, resp))
