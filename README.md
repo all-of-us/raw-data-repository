@@ -212,7 +212,7 @@ The summary includes the following fields:
 * `streetAddress`: The street address the participant lives at.
 * `phoneNumber`: The phone number of the participant.
 * `loginPhoneNumber`: verified phone number for register, participants must provide `loginPhoneNumber` or `email` for register
-* `email`: email address for register, participants must provide `loginPhoneNumber` or `email` for register
+* `email`: email address to register a participant. Participants must provide `loginPhoneNumber` or `email` for registration.
 * `primaryLanguage`: indicates the language for the consent, we only have `en` or `es` for now
 * `recontactMethod`: Which method the participant would like used for contact. i.e. phone or email.
 * `language`: deprecated
