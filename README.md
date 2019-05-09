@@ -222,7 +222,7 @@ The summary includes the following fields:
 * `sex`: Assigned sex at birth.
 * `sexualOrientation`: A person's sexual identity in relation to the gender to which they are attracted.
 * `education`: The highest level of education the participant has received.
-* `income`: The participants income
+* `income`: The participants income. Income is defined as a persons salary in a given year.
 * `enrollmentStatus`: `INTERESTED`, `MEMBER`, `FULL_PARTICIPANT` depending on a number of factors including questionnaires and biobank samples completed.
 * `race`: A race is a grouping of humans based on shared physical or social qualities into categories generally viewed as distinct by society. First used to refer to speakers of a common language and then to denote national affiliations, by the 17th century the term race began to refer to physical (phenotypical) traits.
 * `physicalMeasurementsStatus`: indicates whether this participant has completed physical measurements
