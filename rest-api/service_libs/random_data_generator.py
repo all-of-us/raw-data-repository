@@ -9,20 +9,20 @@ import csv
 import logging
 import os
 import sys
-from time import sleep
 import traceback
+from time import sleep
 
 import argparse
+from service_libs import GCPProcessContext
 from services.gcp_utils import gcp_initialize, gcp_get_app_host_name, gcp_get_app_access_token, \
-          gcp_cleanup, gcp_make_auth_header
-
-from services.system_utils import setup_logging, setup_unicode, write_pidfile_or_die, remove_pidfile
+  gcp_cleanup, gcp_make_auth_header
 from services.system_utils import make_api_request
+from services.system_utils import setup_logging, setup_unicode, write_pidfile_or_die, remove_pidfile
 
 _logger = logging.getLogger('rdr_logger')
 
-group = 'random-gen'
-group_desc = 'random participant data generator'
+mod_cmd = 'random-gen'
+mod_group = 'random participant data generator'
 
 
 class RandomGeneratorClass(object):
@@ -39,14 +39,14 @@ class RandomGeneratorClass(object):
     self.args = args
 
     if args:
-      host = gcp_get_app_host_name(self.args.project)
+      self._host = gcp_get_app_host_name(self.args.project)
       if self.args.port:
-        self._host = '{0}:{1}'.format(host, self.args.port)
+        self._host = '{0}:{1}'.format(self._host, self.args.port)
       else:
-        if host in ['127.0.0.1', 'localhost']:
-          self._host = '{0}:{1}'.format(host, 8080)
+        if self._host in ['127.0.0.1', 'localhost']:
+          self._host = '{0}:{1}'.format(self._host, 8080)
 
-      if host not in ['127.0.0.1', 'localhost']:
+      if self._host not in ['127.0.0.1', 'localhost']:
         self._oauth_token = gcp_get_app_access_token()
 
   def generate_fake_data(self):
@@ -60,24 +60,24 @@ class RandomGeneratorClass(object):
                       'include_biobank_orders': self.args.include_biobank_orders}
       if self.args.hpo:
         request_body['hpo'] = self.args.hpo
-      _logger.info('Generating batch of [{0}] participants.'.format(participants_for_batch))
+      _logger.info('generating batch of [{0}] participants.'.format(participants_for_batch))
       num_consecutive_errors = 0
       while num_consecutive_errors <= self.MAX_CONSECUTIVE_ERRORS:
-        code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=request_body,
+        code, resp = make_api_request(self._host, self._gen_url, req_type='POST', json_data=request_body,
                                   headers=gcp_make_auth_header())
         if code == 200:
           break
-        _logger.error('Error generating data: [{0}: {1}]'.format(code, resp))
+        _logger.error('{0} [{1}]'.format(code, resp))
         num_consecutive_errors += 1
         sleep(self.SLEEP_TIME_AFTER_ERROR_SECONDS)
       if num_consecutive_errors > self.MAX_CONSECUTIVE_ERRORS:
-        raise "More than {0} consecutive errors; bailing out.".format(self.MAX_CONSECUTIVE_ERRORS)
+        raise IOError("more than {0} consecutive errors; bailing out.".format(self.MAX_CONSECUTIVE_ERRORS))
 
       total_participants_created += participants_for_batch
-      _logger.info('Total participants created: [{0}].'.format(total_participants_created))
+      _logger.info('total participants created: [{0}].'.format(total_participants_created))
     if self.args.create_biobank_samples:
-      _logger.info('Requesting Biobank sample generation.')
-      code, resp = make_api_request(self._host, self._gen_url, req_type='post',
+      _logger.info('requesting Biobank sample generation.')
+      code, resp = make_api_request(self._host, self._gen_url, req_type='POST',
                                     json_data={'create_biobank_samples': True},
                                     headers=gcp_make_auth_header())
       if code != 200:
@@ -97,7 +97,7 @@ class RandomGeneratorClass(object):
     _logger.info('requesting pm&b for participants')
     for item in reader:
       # pylint: disable=unused-variable
-      code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=item,
+      code, resp = make_api_request(self._host, self._gen_url, req_type='POST', json_data=item,
                                     headers=gcp_make_auth_header())
       if code != 200:
         _logger.error('request failed')
@@ -117,12 +117,12 @@ class RandomGeneratorClass(object):
 
 def run():
   # Set global debug value and setup application logging.
-  setup_logging(_logger, group, '--debug' in sys.argv, '{0}.log'.format(group) if '--log-file' in sys.argv else None)
+  setup_logging(_logger, mod_cmd, '--debug' in sys.argv, '{0}.log'.format(mod_cmd) if '--log-file' in sys.argv else None)
   setup_unicode()
   exit_code = 1
 
   # Setup program arguments.
-  parser = argparse.ArgumentParser(prog=group, description=group_desc)
+  parser = argparse.ArgumentParser(prog=mod_cmd, description=mod_group)
   parser.add_argument('--debug', help='Enable debug output', default=False, action='store_true')  # noqa
   parser.add_argument('--log-file', help='write output to a log file', default=False, action='store_true')  # noqa
   parser.add_argument('--project', help='gcp project name', default='localhost')  # noqa
@@ -148,33 +148,15 @@ def run():
     parser.error('--num_participants must be nonzero unless --create_biobank_samples is true.')
     exit(exit_code)
 
-  # Use the account parameter if set, otherwise try the environment var.
-  args.account = args.account if args.account else (
-                  os.environ['RDR_ACCOUNT'] if 'RDR_ACCOUNT' in os.environ else None)
+  with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account) as env:
+    # verify we're not getting pointed to production.
+    if env['project'] == 'all-of-us-rdr-prod':
+      _logger.error('using spec generator in production is not allowed.')
+      return 1
 
-  # Ensure only one copy of the program is running at the same time
-  write_pidfile_or_die(group)
-
-  # Verify environment is good, set account and project.
-  if args.project is not 'localhost' and not gcp_initialize(args.project, args.account, args.service_account):
-    remove_pidfile(group)
-    exit(exit_code)
-
-  try:
     process = RandomGeneratorClass(args)
     exit_code = process.run()
-  except IOError:
-    _logger.error('io error')
-  # pylint:
-  except Exception:
-    print(traceback.format_exc())
-    _logger.error('program encountered an unexpected error, quitting.')
-  finally:
-    gcp_cleanup(args.account)
-    remove_pidfile(group)
-
-  _logger.info('done')
-  return exit_code
+    return exit_code
 
 # --- Main Program Call ---
 if __name__ == '__main__':

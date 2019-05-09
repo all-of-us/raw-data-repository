@@ -12,7 +12,6 @@ import os
 import random
 import sys
 import time
-import traceback
 import urllib2
 
 import argparse
@@ -20,15 +19,16 @@ import clock
 from data_gen.generators import ParticipantGen, BioBankOrderGen, QuestionnaireGen, \
   PhysicalMeasurementsGen, CodeBook
 from data_gen.generators.hpo import HPOGen
+from service_libs import GCPProcessContext
+from services.gcp_utils import gcp_get_app_access_token, gcp_make_auth_header
 from services.gcp_utils import gcp_get_app_host_name
-from services.gcp_utils import gcp_initialize, gcp_cleanup, gcp_get_app_access_token, gcp_make_auth_header
 from services.system_utils import make_api_request
-from services.system_utils import setup_logging, setup_unicode, write_pidfile_or_die, remove_pidfile
+from services.system_utils import setup_logging, setup_unicode
 
 _logger = logging.getLogger('rdr_logger')
 
-group = 'spec-gen'
-group_desc = 'specific participant data generator'
+mod_cmd = 'spec-gen'
+mod_desc = 'specific participant data generator'
 
 
 class DataGeneratorClass(object):
@@ -47,14 +47,14 @@ class DataGeneratorClass(object):
     self.args = args
 
     if args:
-      host = gcp_get_app_host_name(self.args.project)
+      self._host = gcp_get_app_host_name(self.args.project)
       if self.args.port:
-        self._host = '{0}:{1}'.format(host, self.args.port)
+        self._host = '{0}:{1}'.format(self._host, self.args.port)
       else:
-        if host in ['127.0.0.1', 'localhost']:
-          self._host = '{0}:{1}'.format(host, 8080)
+        if self._host in ['127.0.0.1', 'localhost']:
+          self._host = '{0}:{1}'.format(self._host, 8080)
 
-      if host not in ['127.0.0.1', 'localhost']:
+      if self._host not in ['127.0.0.1', 'localhost']:
         self._oauth_token = gcp_get_app_access_token()
 
   def _gdoc_csv_data(self, doc_id):
@@ -218,7 +218,7 @@ class DataGeneratorClass(object):
     data['data'] = p_obj.to_dict()
     data['timestamp'] = clock.CLOCK.now().isoformat()
 
-    code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=data,
+    code, resp = make_api_request(self._host, self._gen_url, req_type='POST', json_data=data,
                                   headers=gcp_make_auth_header())
     if code == 200 and resp:
       p_obj.update(resp)
@@ -244,7 +244,7 @@ class DataGeneratorClass(object):
     # make the submit time a little later than the authored timestamp.
     data['timestamp'] = clock.CLOCK.now().isoformat()
 
-    code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=data,
+    code, resp = make_api_request(self._host, self._gen_url, req_type='POST', json_data=data,
                                   headers=gcp_make_auth_header())
 
     if code == 200:
@@ -277,7 +277,7 @@ class DataGeneratorClass(object):
     data['timestamp'] = self._increment_date(finalized, minute_range=15).isoformat()
     data['mayolink'] = to_mayo
 
-    code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=data,
+    code, resp = make_api_request(self._host, self._gen_url, req_type='POST', json_data=data,
                                   headers=gcp_make_auth_header())
     if code == 200:
       bio_obj.update(resp)
@@ -311,7 +311,7 @@ class DataGeneratorClass(object):
     # make the submit time a little later than the authored timestamp.
     data['timestamp'] = clock.CLOCK.now().isoformat()
 
-    code, resp = make_api_request(self._host, self._gen_url, req_type='post', json_data=data,
+    code, resp = make_api_request(self._host, self._gen_url, req_type='POST', json_data=data,
                                   headers=gcp_make_auth_header())
     if code == 200:
       qn_obj.update(resp)
@@ -352,15 +352,15 @@ class DataGeneratorClass(object):
       # Create a new participant
       #
       count += 1
-      _logger.info('Participant [{0}]'.format(count))
+      _logger.info('participant [{0}].'.format(count))
       with clock.FakeClock(start_dt):
         p_obj, hpo_site = self.create_participant(site_id=site_id, hpo_id=hpo)
 
         if not p_obj or 'participantId' not in p_obj.__dict__:
-          _logger.error('failed to create participant')
+          _logger.error('failed to create participant.')
           continue
 
-        _logger.info('  Created [{0}]'.format(p_obj.participantId))
+        _logger.info('  created [{0}].'.format(p_obj.participantId))
       #
       # process any questionnaire modules
       #
@@ -375,9 +375,9 @@ class DataGeneratorClass(object):
           with clock.FakeClock(mod_dt):
             mod_obj = self.submit_module_response(module, p_obj.participantId, p_data.items())
             if mod_obj:
-              _logger.info('  Module: [{0}]: submitted.'.format(module))
+              _logger.info('  module: [{0}]: submitted.'.format(module))
             else:
-              _logger.info('  Module: [{0}]: failed.'.format(module))
+              _logger.info('  module: [{0}]: failed.'.format(module))
           #
           # see if we need to submit physical measurements.
           #
@@ -387,9 +387,9 @@ class DataGeneratorClass(object):
             with clock.FakeClock(mod_dt):
               pm_obj = self.submit_physical_measurements(p_obj.participantId, hpo_site)
               if pm_obj:
-                _logger.info('  PM: submitted.')
+                _logger.info('  pm: submitted.')
               else:
-                _logger.info('  PM: failed.')
+                _logger.info('  pm: failed.')
           # choose a new random date between mod_dt and mod_dt + 15 days.
           mod_dt = self._random_date(mod_dt, datetime.timedelta(days=15))
       #
@@ -403,12 +403,11 @@ class DataGeneratorClass(object):
           with clock.FakeClock(sample_dt):
             bio_obj = self.submit_biobank_order(p_obj.participantId, sample, hpo_site)
             if bio_obj:
-              _logger.info('  BioBank Order: [{0}] submitted.'.format(sample))
+              _logger.info('  biobank order: [{0}] submitted.'.format(sample))
             else:
-              _logger.info('  BioBank Order: [{0}] failed.'.format(sample))
+              _logger.info('  biobank order: [{0}] failed.'.format(sample))
 
           sample_dt = self._random_date(sample_dt, datetime.timedelta(days=30))
-
       #
       # process biobank samples that also need to be sent to Mayolink.
       #
@@ -420,23 +419,24 @@ class DataGeneratorClass(object):
           with clock.FakeClock(sample_dt):
             bio_obj = self.submit_biobank_order(p_obj.participantId, sample, hpo_site, to_mayo=True)
             if bio_obj:
-              _logger.info('  BioBank Order w/Mayo: {0} submitted.'.format(sample))
+              _logger.info('  biobank order w/mayo: {0} submitted.'.format(sample))
             else:
-              _logger.info('  BioBank Order w/Mayo: {0} failed.'.format(sample))
+              _logger.info('  biobank order w/mayo: {0} failed.'.format(sample))
 
           sample_dt = self._random_date(sample_dt, datetime.timedelta(days=30))
+
+        # TODO: Add code for sending orders to mayo here, in a new ticket.
 
     return 0
 
 
 def run():
   # Set global debug value and setup application logging.
-  setup_logging(_logger, group, '--debug' in sys.argv, '{0}.log'.format(group) if '--log-file' in sys.argv else None)
+  setup_logging(_logger, mod_cmd, '--debug' in sys.argv, '{0}.log'.format(mod_cmd) if '--log-file' in sys.argv else None)
   setup_unicode()
-  exit_code = 1
 
   # Setup program arguments.
-  parser = argparse.ArgumentParser(prog=group, description=group_desc)
+  parser = argparse.ArgumentParser(prog=mod_cmd, description=mod_desc)
   parser.add_argument('--debug', help='Enable debug output', default=False, action='store_true')  # noqa
   parser.add_argument('--log-file', help='write output to a log file', default=False, action='store_true')  # noqa
   parser.add_argument('--project', help='gcp project name', default='localhost')  # noqa
@@ -446,34 +446,15 @@ def run():
   parser.add_argument('--src-csv', help='participant list csv (file/google doc id)', required=True)  # noqa
   args = parser.parse_args()
 
-  # Ensure only one copy of the program is running at the same time
-  write_pidfile_or_die(group)
-  # initialize gcp environment.
-  env = gcp_initialize(args.project, args.account, args.service_account)
-  if not env:
-    remove_pidfile(group)
-    exit(exit_code)
-  # verify we're not getting pointed to production.
-  if env['project'] == 'all-of-us-rdr-prod':
-    _logger.error('using spec generator in production is not allowed.')
-    remove_pidfile(group)
-    exit(exit_code)
+  with GCPProcessContext(mod_cmd, args.project, args.account, args.service_account) as env:
+    # verify we're not getting pointed to production.
+    if env['project'] == 'all-of-us-rdr-prod':
+      _logger.error('using spec generator in production is not allowed.')
+      return 1
 
-  try:
     process = DataGeneratorClass(args)
     exit_code = process.run()
-  except IOError:
-    _logger.error('io error')
-  except Exception:
-    print(traceback.format_exc())
-    _logger.error('program encountered an unexpected error, quitting.')
-  finally:
-    gcp_cleanup(args.account)
-    remove_pidfile(group)
-
-  _logger.info('done')
-  exit(exit_code)
-
+    return exit_code
 
 # --- Main Program Call ---
 if __name__ == '__main__':
