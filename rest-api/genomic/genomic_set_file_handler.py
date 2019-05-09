@@ -50,14 +50,16 @@ def read_genomic_set_from_bucket():
   except FileNotFoundError, e:
     logging.info(e.message)
     return None
-  if _is_filename_exist(csv_filename):
-    raise DataError(
-      'This file %s has already been processed' % csv_filename, external=True)
+
   now = clock.CLOCK.now()
   if now - timestamp > _MAX_INPUT_AGE:
     logging.info('Input %r (timestamp %s UTC) is > %s h old (relative to %s UTC), not importing.'
                  % (_MAX_INPUT_AGE, csv_filename, timestamp, now))
     return None
+
+  if _is_filename_exist(csv_filename):
+    raise DataError(
+      'This file %s has already been processed' % csv_filename, external=True)
 
   csv_reader = csv.DictReader(csv_file, delimiter=',')
   genomic_set_id = _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp)
