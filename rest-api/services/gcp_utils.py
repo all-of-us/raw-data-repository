@@ -132,7 +132,7 @@ def gcp_initialize(project, account=None, service_account=None):
       return None
 
   for key, value in env.items():
-    _logger.info('{0}: [{1}]'.format(key, value))
+    _logger.info('{0}: [{1}].'.format(key, value))
 
   return env
 
@@ -153,7 +153,7 @@ def gcp_cleanup(account):
 
   for filename in files:
     service_key_id = os.path.basename(filename).split('.')[0]
-    gcp_delete_iam_service_key(service_key_id)
+    gcp_delete_iam_service_key(service_key_id, account)
 
 
 def gcp_gcloud_command(group, args, flags=None):
@@ -222,7 +222,7 @@ def gcp_set_config(prop, value, flags=None):
   _logger.debug('successfully set gcp config property.')
 
   if prop.lower() == 'project':
-    _logger.info('The current project is now [{0}].'.format(value))
+    _logger.info('the current project is now [{0}].'.format(value))
   else:
     _logger.info('config: [{0}] is now [{1}].'.format(prop, value))
 
@@ -409,22 +409,22 @@ def gcp_create_iam_service_key(service_account, account=None):
   pcode, so, se = gcp_gcloud_command('iam', args, flags)
 
   if pcode != 0:
-    _logger.error('failed to create iam service account key. ({0}: {1})'.format(pcode, se))
+    _logger.error('failed to create iam service account key. ({0}: {1}).'.format(pcode, se))
     return None
 
   os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = service_key_path
 
   pkid, sa = gcp_get_private_key_id(service_key_path)
 
-  _logger.info('created key file [{0}] with id [{1}]'.format(service_key_id, pkid))
+  _logger.info('created key file [{0}] with id [{1}].'.format(service_key_id, pkid))
 
   return service_key_id
 
-def gcp_delete_iam_service_key(service_key_id, service_account=None):
+def gcp_delete_iam_service_key(service_key_id, account=None):
   """
   # Note: Untested
   :param service_key_id: local service key file ID
-  :param service_account: authenticated account if needed
+  :param account: pmi-ops account if needed
   :return: True if successful else False
   """
   _logger.debug('deleting iam service key [{0}].'.format(service_key_id))
@@ -433,7 +433,7 @@ def gcp_delete_iam_service_key(service_key_id, service_account=None):
   service_key_path = os.path.join(GCP_SERVICE_KEY_STORE, service_key_file)
 
   if not os.path.exists(service_key_path):
-    _logger.error('service key file does not exist ({0})'.format(service_key_id))
+    _logger.error('service key file does not exist ({0}).'.format(service_key_id))
     return False
 
   # Get the private key value so we can delete the key
@@ -444,20 +444,20 @@ def gcp_delete_iam_service_key(service_key_id, service_account=None):
   # Ex: 'gcloud iam service-accounts keys delete "private key id" ...'
   args = 'service-accounts keys delete "{0}"'.format(pkid)
   flags = '--quiet --iam-account={0}'.format(service_account)
-  if service_account:
-    flags += ' --account={0}'.format(service_account)
+  if account:
+    flags += ' --account={0}'.format(account)
 
   pcode, so, se = gcp_gcloud_command('iam', args, flags)
 
   if pcode != 0:
-    _logger.warning('failed to delete iam service account key. ({0}: {1})'.format(pcode, se))
+    _logger.warning('failed to delete iam service account key. ({0}: {1}).'.format(pcode, se))
     if 'NOT_FOUND' in se:
       os.remove(service_key_path)
     return False
 
   os.remove(service_key_path)
 
-  _logger.info('deleted service account key [{0}] with id [{1}]'.format(service_key_id, pkid))
+  _logger.info('deleted service account key [{0}] with id [{1}].'.format(service_key_id, pkid))
 
   return True
 
@@ -474,7 +474,7 @@ def gcp_activate_iam_service_key(service_key_id, flags=None):
   service_key_path = os.path.join(GCP_SERVICE_KEY_STORE, service_key_file)
 
   if not os.path.exists(service_key_path):
-    _logger.error('service key file does not exist ({0})'.format(service_key_id))
+    _logger.error('service key file does not exist ({0}).'.format(service_key_id))
     return False
 
   # Get the private key value so we can delete the key
@@ -486,7 +486,7 @@ def gcp_activate_iam_service_key(service_key_id, flags=None):
   pcode, so, se = gcp_gcloud_command('auth', args, flags)
 
   if pcode != 0:
-    _logger.error('failed to activate iam service account key. ({0}: {1})'.format(pcode, se))
+    _logger.error('failed to activate iam service account key. ({0}: {1}).'.format(pcode, se))
     return False
 
   _logger.info('activated iam service key [{0}] with id [{1}].'.format(service_key_id, pkid))
