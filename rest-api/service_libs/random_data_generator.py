@@ -7,17 +7,15 @@
 # pylint: disable=broad-except
 import csv
 import logging
-import os
 import sys
-import traceback
 from time import sleep
 
 import argparse
 from service_libs import GCPProcessContext
-from services.gcp_utils import gcp_initialize, gcp_get_app_host_name, gcp_get_app_access_token, \
-  gcp_cleanup, gcp_make_auth_header
+from services.gcp_utils import gcp_get_app_host_name, gcp_get_app_access_token, \
+  gcp_make_auth_header
 from services.system_utils import make_api_request
-from services.system_utils import setup_logging, setup_unicode, write_pidfile_or_die, remove_pidfile
+from services.system_utils import setup_logging, setup_unicode
 
 _logger = logging.getLogger('rdr_logger')
 
@@ -117,7 +115,8 @@ class RandomGeneratorClass(object):
 
 def run():
   # Set global debug value and setup application logging.
-  setup_logging(_logger, mod_cmd, '--debug' in sys.argv, '{0}.log'.format(mod_cmd) if '--log-file' in sys.argv else None)
+  setup_logging(_logger, mod_cmd,
+                  '--debug' in sys.argv, '{0}.log'.format(mod_cmd) if '--log-file' in sys.argv else None)
   setup_unicode()
   exit_code = 1
 

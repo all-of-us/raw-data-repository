@@ -432,7 +432,8 @@ class DataGeneratorClass(object):
 
 def run():
   # Set global debug value and setup application logging.
-  setup_logging(_logger, mod_cmd, '--debug' in sys.argv, '{0}.log'.format(mod_cmd) if '--log-file' in sys.argv else None)
+  setup_logging(_logger, mod_cmd,
+                '--debug' in sys.argv, '{0}.log'.format(mod_cmd) if '--log-file' in sys.argv else None)
   setup_unicode()
 
   # Setup program arguments.
