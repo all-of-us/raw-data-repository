@@ -36,17 +36,16 @@ def setup_logging(logger, progname, debug=False, logfile=None):
   if not logger:
     return False
 
-  # Set our logging options now that we have the program arguments.
+  # Set our logging options and formatter now that we have the program arguments.
   if debug:
     logging.basicConfig(filename=os.devnull,
                         datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
-    # Setup logging formatter
     formatter = logging.Formatter('%(asctime)s {0}: %(levelname)s: %(message)s'.format(progname))
   else:
     logging.basicConfig(filename=os.devnull,
                         datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
-    # Setup logging formatter
-    formatter = logging.Formatter('%(levelname)s: {0}: %(message)s'.format(progname))
+    # formatter = logging.Formatter('%(levelname)s: {0}: %(message)s'.format(progname))
+    formatter = logging.Formatter('%(message)s')
 
   # Setup stream logging handler
   handler = logging.StreamHandler(sys.stdout)
@@ -253,7 +252,7 @@ def json_datetime_handler(x):
   raise TypeError("Unknown type")
 
 
-def make_api_request(host, api_path, headers=None, cookies=None, timeout=60, req_type='get',
+def make_api_request(host, api_path, headers=None, cookies=None, timeout=60, req_type='GET',
                      json_data=None, ret_type='json'):
   """
   contact the primary and check for updated records
@@ -319,7 +318,7 @@ def make_api_request(host, api_path, headers=None, cookies=None, timeout=60, req
       except ValueError:
         pass
     else:
-      resp_data = '{0}: {1} ({2})'.format(rq.status_code, rq.reason, rq.text)
+      resp_data = '{0} [{1}]'.format(rq.reason, rq.text.strip())
       _logger.debug(resp_data)
 
   return resp_code, resp_data

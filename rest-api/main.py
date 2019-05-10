@@ -206,7 +206,7 @@ api.add_resource(DataGenApi,
 api.add_resource(SpecDataGenApi,
                  PREFIX + 'SpecDataGen',
                  endpoint='specdatagen',
-                 methods=['POST', 'PUT'])
+                 methods=['POST'])
 
 #
 # Non-resource endpoints

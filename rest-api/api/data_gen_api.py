@@ -71,37 +71,19 @@ class SpecDataGenApi(Resource):
   """
   @nonprod
   def post(self):
-
     req = json.loads(request.get_data())
 
     target = req.get('api', None)
     data = req.get('data', None)
     timestamp = req.get('timestamp', None)
+    method = req.get('method', 'POST')
+
+    if method not in ['POST', 'PUT', 'GET', 'PATCH']:
+      raise BadRequest({'status': 'error', 'error': 'target method invalid'})
     if timestamp:
       timestamp = parse(timestamp)
-
     if not target:
       raise BadRequest({'status': 'error', 'error': 'target api invalid'})
 
-    result = InProcessClient().request_json(target, 'POST', body=data, pretend_date=timestamp)
+    result = InProcessClient().request_json(target, method, body=data, pretend_date=timestamp)
     return result
-
-  def put(self):
-
-    req = json.loads(request.get_data())
-
-    target = req.get('api', None)  # this value will usually have the participant_id in it
-    data = req.get('data', None)
-    timestamp = req.get('timestamp', None)
-    if timestamp:
-      timestamp = parse(timestamp)
-
-    if not target:
-      raise BadRequest({'status': 'error', 'error': 'target api invalid'})
-
-    result = InProcessClient().request_json(target, 'POST', body=data, pretend_date=timestamp)
-    return result
-
-  def _process_request(self, method):
-
-    pass
