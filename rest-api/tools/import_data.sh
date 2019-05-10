@@ -4,7 +4,11 @@
 # Expected arguments are --account and --project, passed along to sub-scripts.
 
 echo "Importing organizations..."
-tools/import_organizations.sh $@
+if [[ ${IS_AUTOMATED_TESTING_ENVIRONMENT} = true ]];
+then tools/import_organizations.sh --use_fixture_data $@;
+else tools/import_organizations.sh $@;
+fi
+
 echo "Importing codebook..."
 ../rdr_client/run_client.sh $@ import_codebook.py
 echo "Importing questionnaires..."
