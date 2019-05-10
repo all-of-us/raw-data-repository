@@ -23,7 +23,7 @@ htmlcov/
 # pyenv file
 .python-version
 
-# Local cache files
+# Local working cache files
 /rest-api/data/awardees.csv
 /rest-api/data/organizations.csv
 /rest-api/data/sites.csv
