@@ -9,6 +9,7 @@ while true; do
     --account) ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
     --dry_run) DRY_RUN=--dry_run; shift 1;;
+    --use_fixture_data) USE_FIXTURES=true; shift 1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -60,8 +61,16 @@ fi
 
 source tools/set_path.sh
 
-python tools/import_organizations.py --awardee_file data/awardees.csv \
-  --organization_file data/organizations.csv --site_file data/sites.csv $EXTRA_ARGS $DRY_RUN $GEOCODE_FLAG
+if [[ ${USE_FIXTURES} = true ]];
+then DATA_DIR=test/test-data/fixtures;
+else DATA_DIR=data;
+fi
+
+python tools/import_organizations.py \
+  --awardee_file ${DATA_DIR}/awardees.csv \
+  --organization_file ${DATA_DIR}/organizations.csv \
+  --site_file ${DATA_DIR}/sites.csv \
+  $EXTRA_ARGS $DRY_RUN $GEOCODE_FLAG
 
 function finish {
   cleanup
