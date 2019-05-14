@@ -37,7 +37,7 @@ else
   fi
 fi
 
-QUESTIONNAIRE_FILES=(base_consent.json basics.json ehr_consent.json lifestyle.json overall_health.json)
+QUESTIONNAIRE_FILES=(base_consent.json basics.json ehr_consent.json lifestyle.json overall_health.json family_history.json post_pmb_feedback.json general_feedback.json)
 QUESTIONNAIRE_TMP_DIR=/tmp/rdr-questionnaires/
 echo "Fetching questionnaires from github..."
 mkdir -p ${QUESTIONNAIRE_TMP_DIR}
