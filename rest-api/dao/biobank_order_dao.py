@@ -242,7 +242,6 @@ class BiobankOrderDao(UpdatableDao):
       participant_summary.biospecimenFinalizedSiteId = obj.finalizedSiteId
 
     participant_summary.lastModified = clock.CLOCK.now()
-    finalized_time = self.get_random_sample_finalized_time(obj)
 
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
