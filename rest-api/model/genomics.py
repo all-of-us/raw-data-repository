@@ -23,7 +23,7 @@ class GenomicValidationStatus(messages.Enum):
   INVALID_WITHDRAW_STATUS = 7
   INVALID_AGE = 8
   INVALID_DUP_PARTICIPANT = 9
-
+  INVALID_BIOBANK_ORDER_CLIENT_ID = 10
 
 class GenomicSet(Base):
   """
@@ -83,6 +83,12 @@ class GenomicSetMember(Base):
 
   biobankOrderId = Column('biobank_order_id', String(80),
                           ForeignKey('biobank_order.biobank_order_id'), unique=False, nullable=True)
+
+  biobankId = Column('biobank_id', String(80), nullable=True)
+
+  biobankOrderClientId = Column('biobank_order_client_Id', String(80), nullable=True)
+
+  packageId = Column('package_id', String(250), nullable=True)
 
   validationStatus = Column('validation_status', Enum(GenomicValidationStatus),
                             default=GenomicValidationStatus.UNSET)

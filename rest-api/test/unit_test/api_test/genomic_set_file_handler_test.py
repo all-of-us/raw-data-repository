@@ -77,22 +77,25 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertIsNone(genomic_set_file_handler.read_genomic_set_from_bucket())
 
   def test_read_from_csv_file(self):
-    participant = self.participant_dao.insert(Participant(participantId=123, biobankId=123))
+    participant = self.participant_dao.insert(Participant(participantId=123, biobankId=1234))
     self.summary_dao.insert(self.participant_summary(participant))
     bo = self._make_biobank_order(participantId=participant.participantId, biobankOrderId='123',
-                                  identifiers=[BiobankOrderIdentifier(system=u'a', value=u'c')])
+                                  identifiers=[BiobankOrderIdentifier(
+                                    system=u'https://www.pmi-ops.org', value=u'12345678')])
     BiobankOrderDao().insert(bo)
 
-    participant2 = self.participant_dao.insert(Participant(participantId=124, biobankId=124))
+    participant2 = self.participant_dao.insert(Participant(participantId=124, biobankId=1235))
     self.summary_dao.insert(self.participant_summary(participant2))
     bo2 = self._make_biobank_order(participantId=participant2.participantId, biobankOrderId='124',
-                                   identifiers=[BiobankOrderIdentifier(system=u'b', value=u'd')])
+                                   identifiers=[BiobankOrderIdentifier(
+                                     system=u'https://www.pmi-ops.org', value=u'12345679')])
     BiobankOrderDao().insert(bo2)
 
-    participant3 = self.participant_dao.insert(Participant(participantId=125, biobankId=125))
+    participant3 = self.participant_dao.insert(Participant(participantId=125, biobankId=1236))
     self.summary_dao.insert(self.participant_summary(participant3))
     bo3 = self._make_biobank_order(participantId=participant3.participantId, biobankOrderId='125',
-                                   identifiers=[BiobankOrderIdentifier(system=u'c', value=u'e')])
+                                   identifiers=[BiobankOrderIdentifier(
+                                     system=u'https://www.pmi-ops.org', value=u'12345680')])
     BiobankOrderDao().insert(bo3)
 
     samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-1.csv')
@@ -114,6 +117,8 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     for item in items:
       self.assertIn(item.participantId, [123, 124, 125])
       self.assertIn(item.biobankOrderId, ['123', '124', '125'])
+      self.assertIn(item.biobankId, ['1234', '1235', '1236'])
+      self.assertIn(item.biobankOrderClientId, ['12345678', '12345679', '12345680'])
       self.assertEqual(item.genomicSetId, 1)
       self.assertIn(item.genomeType, ['aou_wgs', 'aou_array'])
       self.assertIn(item.nyFlag, [0, 1])
@@ -123,33 +128,39 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     participant = self.participant_dao.insert(Participant(participantId=123, biobankId=123))
     self.summary_dao.insert(self.participant_summary(participant))
     bo = self._make_biobank_order(participantId=participant.participantId, biobankOrderId='123',
-                                  identifiers=[BiobankOrderIdentifier(system=u'a', value=u'c')])
+                                  identifiers=[BiobankOrderIdentifier(
+                                    system=u'https://www.pmi-ops.org', value=u'12345678')])
     BiobankOrderDao().insert(bo)
 
     participant2 = self.participant_dao.insert(Participant(participantId=124, biobankId=124))
     self.summary_dao.insert(self.participant_summary(participant2))
     bo2 = self._make_biobank_order(participantId=participant2.participantId, biobankOrderId='124',
-                                   identifiers=[BiobankOrderIdentifier(system=u'b', value=u'd')])
+                                   identifiers=[BiobankOrderIdentifier(
+                                     system=u'https://www.pmi-ops.org', value=u'12345679')])
     BiobankOrderDao().insert(bo2)
 
     participant3 = self.participant_dao.insert(Participant(participantId=125, biobankId=125))
     self.summary_dao.insert(self.participant_summary(participant3))
     bo3 = self._make_biobank_order(participantId=participant3.participantId, biobankOrderId='125',
-                                   identifiers=[BiobankOrderIdentifier(system=u'c', value=u'e')])
+                                   identifiers=[BiobankOrderIdentifier(
+                                     system=u'https://www.pmi-ops.org', value=u'12345680')])
     BiobankOrderDao().insert(bo3)
 
     genomic_set = self._create_fake_genomic_set('fake_genomic_set_name',
                                                 'fake_genomic_set_criteria',
                                                 'Genomic-Test-Set-v12019-04-05-00-30-10.CSV')
     self._create_fake_genomic_member(genomic_set.id, participant.participantId, bo.biobankOrderId,
+                                     participant.biobankId, bo.identifiers[0].value,
                                      validation_status=GenomicValidationStatus.VALID,
                                      sex_at_birth='F', genome_type='aou_array', ny_flag='Y')
 
     self._create_fake_genomic_member(genomic_set.id, participant2.participantId, bo2.biobankOrderId,
+                                     participant2.biobankId, bo2.identifiers[0].value,
                                      validation_status=GenomicValidationStatus.INVALID_AGE,
                                      sex_at_birth='M', genome_type='aou_array', ny_flag='N')
 
     self._create_fake_genomic_member(genomic_set.id, participant3.participantId, bo3.biobankOrderId,
+                                     participant3.biobankId, bo3.identifiers[0].value,
                                      validation_status=GenomicValidationStatus.INVALID_CONSENT,
                                      sex_at_birth='F', genome_type='aou_wgs', ny_flag='Y')
 
@@ -214,40 +225,45 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     participant = self.participant_dao.insert(Participant(participantId=123, biobankId=123))
     self.summary_dao.insert(self.participant_summary(participant))
     bo = self._make_biobank_order(participantId=participant.participantId, biobankOrderId='123',
-                                  identifiers=[BiobankOrderIdentifier(system=u'a', value=u'c')])
+                                  identifiers=[BiobankOrderIdentifier(
+                                    system=u'https://www.pmi-ops.org', value=u'12345678')])
     BiobankOrderDao().insert(bo)
 
     participant2 = self.participant_dao.insert(Participant(participantId=124, biobankId=124))
     self.summary_dao.insert(self.participant_summary(participant2))
     bo2 = self._make_biobank_order(participantId=participant2.participantId, biobankOrderId='124',
-                                   identifiers=[BiobankOrderIdentifier(system=u'b', value=u'd')])
+                                   identifiers=[BiobankOrderIdentifier(
+                                     system=u'https://www.pmi-ops.org', value=u'12345679')])
     BiobankOrderDao().insert(bo2)
 
     participant3 = self.participant_dao.insert(Participant(participantId=125, biobankId=125))
     self.summary_dao.insert(self.participant_summary(participant3))
     bo3 = self._make_biobank_order(participantId=participant3.participantId, biobankOrderId='125',
-                                   identifiers=[BiobankOrderIdentifier(system=u'c', value=u'e')])
+                                   identifiers=[BiobankOrderIdentifier(
+                                     system=u'https://www.pmi-ops.org', value=u'12345680')])
     BiobankOrderDao().insert(bo3)
 
     genomic_set = self._create_fake_genomic_set('fake_genomic_set_name',
                                                 'fake_genomic_set_criteria',
                                                 'Genomic-Test-Set-v12019-04-05-00-30-10.CSV')
     self._create_fake_genomic_member(genomic_set.id, participant.participantId, bo.biobankOrderId,
+                                     participant.biobankId, bo.identifiers[0].value,
                                      validation_status=GenomicValidationStatus.VALID,
                                      sex_at_birth='F', genome_type='aou_array', ny_flag='Y')
 
     self._create_fake_genomic_member(genomic_set.id, participant2.participantId, bo2.biobankOrderId,
+                                     participant2.biobankId, bo2.identifiers[0].value,
                                      validation_status=GenomicValidationStatus.INVALID_AGE,
                                      sex_at_birth='M', genome_type='aou_array', ny_flag='N')
 
     self._create_fake_genomic_member(genomic_set.id, participant3.participantId, bo3.biobankOrderId,
+                                     participant3.biobankId, bo3.identifiers[0].value,
                                      validation_status=GenomicValidationStatus.INVALID_CONSENT,
                                      sex_at_birth='F', genome_type='aou_wgs', ny_flag='Y')
 
     now = clock.CLOCK.now()
-    for genome_type in GENOME_TYPE:
-      genomic_biobank_menifest_handler\
-        .create_and_upload_genomic_biobank_manifest_file(genomic_set.id, genome_type, now)
+    genomic_biobank_menifest_handler\
+      .create_and_upload_genomic_biobank_manifest_file(genomic_set.id, now)
 
     bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     # convert UTC to CDT
@@ -255,29 +271,17 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
       .strftime(_OUTPUT_CSV_TIME_FORMAT)
 
     class ExpectedCsvColumns(object):
-      BIOBANK_ORDER_ID = 'biobank_order_id'
+      VALUE = 'value'
+      BIOBANK_ID = 'biobank_id'
       SEX_AT_BIRTH = 'sex_at_birth'
       GENOME_TYPE = 'genome_type'
       NY_FLAG = 'ny_flag'
       REQUEST_ID = 'request_id'
-      SAMPLE_STORAGE_RETRIVAL_STATUS = 'sample_storage_retrival_status'
-      SAMPLE_STORAGE_RETRIVAL_TIMESTAMP = 'sample_storage_retrival_timestamp'
-      SAMPLE_STORAGE_RETRIVAL_COMMENT = 'sample_storage_retrival_comment'
-      SAMPLE_SUITABILITY_STATUS = 'sample_suitability_status'
-      SAMPLE_SUITABILITY_TIMESTAMP = 'sample_suitability_timestamp'
-      SAMPLE_SUITABILITY_COMMENT = 'sample_suitability_comment'
-      SAMPLE_PLATED_STATUS = 'sample_plated_status'
-      SAMPLE_PLATED_TIMESTAMP = 'sample_plated_timestamp'
-      SAMPLE_PLATED_COMMENT = 'sample_plated_comment'
+      PACKAGE_ID = 'package_id'
 
-      ALL = (BIOBANK_ORDER_ID, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID,
-             SAMPLE_STORAGE_RETRIVAL_STATUS, SAMPLE_STORAGE_RETRIVAL_TIMESTAMP,
-             SAMPLE_STORAGE_RETRIVAL_COMMENT, SAMPLE_SUITABILITY_STATUS,
-             SAMPLE_SUITABILITY_TIMESTAMP, SAMPLE_SUITABILITY_COMMENT,
-             SAMPLE_PLATED_STATUS, SAMPLE_PLATED_TIMESTAMP, SAMPLE_PLATED_COMMENT)
+      ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
 
-    # for genome type aou_array
-    expected_result_filename = 'rdr_fake_sub_folder/Genomic-Manifest-AoU_Array-1-v1' + \
+    expected_result_filename = 'rdr_fake_sub_folder/Genomic-Manifest-AoU-1-v1' + \
                                now_cdt_str + '.CSV'
     path = '/' + bucket_name + '/' + expected_result_filename
     csv_file = cloudstorage_api.open(path)
@@ -286,29 +290,21 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
     self.assertEqual(len(missing_cols), 0)
     rows = list(csv_reader)
-    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ORDER_ID], '123')
+    self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], '12345678')
+    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ID], '123')
     self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
     self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'Y')
-    self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ORDER_ID], '124')
+    self.assertEqual(rows[1][ExpectedCsvColumns.VALUE], '12345679')
+    self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ID], '124')
     self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[1][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], 'N')
-
-    # for genome type aou_wgs
-    expected_result_filename = 'rdr_fake_sub_folder/Genomic-Manifest-AoU_WGS-1-v1' + \
-                               now_cdt_str + '.CSV'
-    path = '/' + bucket_name + '/' + expected_result_filename
-    csv_file = cloudstorage_api.open(path)
-    csv_reader = csv.DictReader(csv_file, delimiter=',')
-
-    missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
-    self.assertEqual(len(missing_cols), 0)
-    rows = list(csv_reader)
-    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ORDER_ID], '125')
-    self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
-    self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_wgs')
-    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'Y')
+    self.assertEqual(rows[2][ExpectedCsvColumns.VALUE], '12345680')
+    self.assertEqual(rows[2][ExpectedCsvColumns.BIOBANK_ID], '125')
+    self.assertEqual(rows[2][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
+    self.assertEqual(rows[2][ExpectedCsvColumns.GENOME_TYPE], 'aou_wgs')
+    self.assertEqual(rows[2][ExpectedCsvColumns.NY_FLAG], 'Y')
 
   def _create_fake_genomic_set(self, genomic_set_name, genomic_set_criteria, genomic_set_filename):
     now = clock.CLOCK.now()
@@ -329,6 +325,7 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     return genomic_set
 
   def _create_fake_genomic_member(self, genomic_set_id, participant_id, biobank_order_id,
+                                  biobank_id, biobank_order_client_id,
                                   validation_status=GenomicValidationStatus.VALID,
                                   sex_at_birth='F', genome_type='aou_array', ny_flag='Y'):
     now = clock.CLOCK.now()
@@ -342,6 +339,8 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     genomic_set_member.genomeType = genome_type
     genomic_set_member.nyFlag = 1 if ny_flag == 'Y' else 0
     genomic_set_member.biobankOrderId = biobank_order_id
+    genomic_set_member.biobankId = biobank_id
+    genomic_set_member.biobankOrderClientId = biobank_order_client_id
 
     member_dao = GenomicSetMemberDao()
     member_dao.insert(genomic_set_member)

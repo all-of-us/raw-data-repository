@@ -15,9 +15,8 @@ def process_genomic_water_line():
     validation.validate_and_update_genomic_set_by_id(genomic_set_id, dao)
     genomic_set = dao.get(genomic_set_id)
     if genomic_set.genomicSetStatus == GenomicSetStatus.VALID:
-      for genome_type in GENOME_TYPE:
-        genomic_biobank_menifest_handler\
-          .create_and_upload_genomic_biobank_manifest_file(genomic_set_id, genome_type)
+      genomic_biobank_menifest_handler\
+        .create_and_upload_genomic_biobank_manifest_file(genomic_set_id)
       logging.info('Validation passed, generate biobank manifest file successfully.')
     else:
       logging.info('Validation failed.')

@@ -201,53 +201,33 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
 
     class ExpectedCsvColumns(object):
-      BIOBANK_ORDER_ID = 'biobank_order_id'
+      VALUE = 'value'
+      BIOBANK_ID = 'biobank_id'
       SEX_AT_BIRTH = 'sex_at_birth'
       GENOME_TYPE = 'genome_type'
       NY_FLAG = 'ny_flag'
       REQUEST_ID = 'request_id'
-      SAMPLE_STORAGE_RETRIVAL_STATUS = 'sample_storage_retrival_status'
-      SAMPLE_STORAGE_RETRIVAL_TIMESTAMP = 'sample_storage_retrival_timestamp'
-      SAMPLE_STORAGE_RETRIVAL_COMMENT = 'sample_storage_retrival_comment'
-      SAMPLE_SUITABILITY_STATUS = 'sample_suitability_status'
-      SAMPLE_SUITABILITY_TIMESTAMP = 'sample_suitability_timestamp'
-      SAMPLE_SUITABILITY_COMMENT = 'sample_suitability_comment'
-      SAMPLE_PLATED_STATUS = 'sample_plated_status'
-      SAMPLE_PLATED_TIMESTAMP = 'sample_plated_timestamp'
-      SAMPLE_PLATED_COMMENT = 'sample_plated_comment'
+      PACKAGE_ID = 'package_id'
 
-      ALL = (BIOBANK_ORDER_ID, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID,
-             SAMPLE_STORAGE_RETRIVAL_STATUS, SAMPLE_STORAGE_RETRIVAL_TIMESTAMP,
-             SAMPLE_STORAGE_RETRIVAL_COMMENT, SAMPLE_SUITABILITY_STATUS,
-             SAMPLE_SUITABILITY_TIMESTAMP, SAMPLE_SUITABILITY_COMMENT,
-             SAMPLE_PLATED_STATUS, SAMPLE_PLATED_TIMESTAMP, SAMPLE_PLATED_COMMENT)
+      ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
 
     # for genome type aou_array
-    path = self._find_latest_genomic_set_csv(bucket_name, 'AoU_Array')
+    path = self._find_latest_genomic_set_csv(bucket_name, 'Manifest')
     csv_file = cloudstorage_api.open(path)
     csv_reader = csv.DictReader(csv_file, delimiter=',')
 
     missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
     self.assertEqual(len(missing_cols), 0)
     rows = list(csv_reader)
-    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ORDER_ID], '2')
+    self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], '2')
     self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
     self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'N')
-    self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ORDER_ID], '3')
+    self.assertEqual(rows[1][ExpectedCsvColumns.VALUE], '3')
     self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[1][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], 'N')
-
-    # for genome type aou_wgs
-    path = self._find_latest_genomic_set_csv(bucket_name, 'AoU_WGS')
-    csv_file = cloudstorage_api.open(path)
-    csv_reader = csv.DictReader(csv_file, delimiter=',')
-
-    missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
-    self.assertEqual(len(missing_cols), 0)
-    rows = list(csv_reader)
-    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ORDER_ID], '1')
+    self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], '1')
     self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_wgs')
     self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'Y')
