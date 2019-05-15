@@ -601,7 +601,6 @@ class ParticipantSummaryDaoTest(NdbTestBase):
         order.samples[0].finalized = TIME_9
         self.order_dao._do_update(session, order, existing_order)
 
-      amended_order = self.order_dao.get(order.biobankOrderId)
       summary = self.dao.get(self.participant.participantId)
       # distinct count should be 2
       self.assertEquals(summary.numberDistinctVisits, 2)
