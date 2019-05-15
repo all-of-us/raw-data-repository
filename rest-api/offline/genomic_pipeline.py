@@ -2,7 +2,6 @@ import logging
 from genomic import genomic_set_file_handler, validation, genomic_biobank_menifest_handler
 from dao.genomics_dao import GenomicSetDao
 from model.genomics import GenomicSetStatus
-from code_constants import GENOME_TYPE
 
 def process_genomic_water_line():
   """

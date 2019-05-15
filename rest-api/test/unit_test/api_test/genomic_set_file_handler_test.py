@@ -5,7 +5,7 @@ import config
 import pytz
 import csv
 from cloudstorage import cloudstorage_api  # stubbed by testbed
-from code_constants import BIOBANK_TESTS, GENOME_TYPE
+from code_constants import BIOBANK_TESTS
 from model.participant import Participant
 from genomic import genomic_set_file_handler, genomic_biobank_menifest_handler
 from test import test_data

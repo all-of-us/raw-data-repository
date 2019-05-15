@@ -7,7 +7,7 @@ from dao.base_dao import UpdatableDao
 from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
-from model.biobank_order import BiobankOrderIdentifier
+# from model.biobank_order import BiobankOrderIdentifier
 from query import Query, Operator, FieldFilter, OrderBy
 
 class GenomicSetDao(UpdatableDao):
@@ -146,8 +146,11 @@ class GenomicSetMemberDao(UpdatableDao):
     query = """
       UPDATE genomic_set_member
       SET
-        genomic_set_member.biobank_id = (select biobank_id from participant where genomic_set_member.participant_id = participant.participant_id limit 1),
-        genomic_set_member.biobank_order_client_Id = (select value from biobank_order_identifier where genomic_set_member.biobank_order_id = biobank_order_identifier.biobank_order_id and biobank_order_identifier.system = 'https://www.pmi-ops.org' limit 1)
+        genomic_set_member.biobank_id = (select biobank_id from participant 
+        where genomic_set_member.participant_id = participant.participant_id limit 1),
+        genomic_set_member.biobank_order_client_Id = (select value from biobank_order_identifier 
+        where genomic_set_member.biobank_order_id = biobank_order_identifier.biobank_order_id 
+        and biobank_order_identifier.system = 'https://www.pmi-ops.org' limit 1)
       WHERE
         genomic_set_id=:genomic_set_id_param
     """
