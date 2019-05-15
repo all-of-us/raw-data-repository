@@ -552,7 +552,6 @@ class ParticipantSummaryDao(UpdatableDao):
           != id_:
           day_has_measurement = True
 
-    #import ipdb; ipdb.set_trace()
     is_distinct_visit = not (day_has_order or day_has_measurement)
     return is_distinct_visit
 

@@ -209,6 +209,7 @@ class BiobankOrderDao(UpdatableDao):
     return (OrderStatus.CREATED, order.created)
 
   def _update_participant_summary(self, session, obj):
+    """ called on insert"""
     participant_summary_dao = ParticipantSummaryDao()
     participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
     if not participant_summary:
@@ -217,6 +218,13 @@ class BiobankOrderDao(UpdatableDao):
     raise_if_withdrawn(participant_summary)
     self._set_participant_summary_fields(obj, participant_summary)
     participant_summary_dao.update_enrollment_status(participant_summary)
+
+    finalized_time = self.get_random_sample_finalized_time(obj)
+    is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(
+        participant_summary.participantId, finalized_time, obj.biobankOrderId)
+
+    if is_distinct_visit:
+      participant_summary.numberDistinctVisits += 1
 
   def get_random_sample_finalized_time(self, obj):
     """all samples are set to same finalized time in an order, we only need one."""
@@ -236,12 +244,6 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.lastModified = clock.CLOCK.now()
     finalized_time = self.get_random_sample_finalized_time(obj)
 
-    is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(
-        participant_summary.participantId, finalized_time, obj.biobankOrderId)
-
-    if obj.orderStatus != BiobankOrderStatus.AMENDED and is_distinct_visit:
-      participant_summary.numberDistinctVisits += 1
-
     for sample in obj.samples:
       status_field = 'sampleOrderStatus' + sample.test
       status, time = self._get_order_status_and_time(sample, obj)
@@ -258,7 +260,7 @@ class BiobankOrderDao(UpdatableDao):
       BiobankOrder.created).all()
 
   def _refresh_participant_summary(self, session, obj):
-    # called when cancelled/restored
+    # called when cancelled/restored/amended
     participant_summary_dao = ParticipantSummaryDao()
     participant_summary = participant_summary_dao.get_for_update(session, obj.participantId)
     non_cancelled_orders = self._get_non_cancelled_biobank_orders(session, obj.participantId)
@@ -268,9 +270,13 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenCollectedSiteId = None
     participant_summary.biospecimenProcessedSiteId = None
     participant_summary.biospecimenFinalizedSiteId = None
+
     finalized_time = self.get_random_sample_finalized_time(obj)
-    is_distinct_visit = participant_summary_dao.calculate_distinct_visits(
-      participant_summary.participantId, finalized_time, obj.biobankOrderId)
+    is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(
+        participant_summary.participantId, finalized_time, obj.biobankOrderId)
+
+    if is_distinct_visit and obj.orderStatus != BiobankOrderStatus.CANCELLED:
+      participant_summary.numberDistinctVisits += 1
 
     if (
       obj.orderStatus == BiobankOrderStatus.CANCELLED
