@@ -518,7 +518,7 @@ class ParticipantSummaryDao(UpdatableDao):
     else:
       return None
 
-  def calculate_distinct_visits(self, pid, created, id_):
+  def calculate_distinct_visits(self, pid, finalized_time, id_):
     """ Participants may get PM or biobank samples on same day. This should be considered as
     a single visit in terms of program payment to participant.
     return Boolean: true if there has not been an order on same date."""
@@ -527,18 +527,32 @@ class ParticipantSummaryDao(UpdatableDao):
 
     day_has_order, day_has_measurement = False, False
     existing_orders = BiobankOrderDao().get_biobank_orders_for_participant(pid)
-    if existing_orders:
+    ordered_samples = BiobankOrderDao().get_ordered_samples_for_participant(pid)
+    existing_measurements = PhysicalMeasurementsDao().get_measuremnets_for_participant(pid)
+
+    order_id_to_finalized_date = {
+      sample.biobankOrderId: sample.finalized.date()
+      for sample in ordered_samples
+      if sample.finalized
+    }
+
+    if existing_orders and finalized_time:
       for order in existing_orders:
-        if order.created.date() == created.date() and order.biobankOrderId != id_ and \
+        order_finalized_date = order_id_to_finalized_date.get(order.biobankOrderId)
+        if order_finalized_date == finalized_time.date() and order.biobankOrderId != id_ and \
           order.orderStatus != BiobankOrderStatus.CANCELLED:
           day_has_order = True
 
-    existing_measurements = PhysicalMeasurementsDao().get_measuremnets_for_participant(pid)
-    if existing_measurements:
+
+    if existing_measurements and finalized_time:
       for measurement in existing_measurements:
-        if measurement.created.date() == created.date() and measurement.physicalMeasurementsId\
+        if not measurement.finalized:
+          continue
+        if measurement.finalized.date() == finalized_time.date() and measurement.physicalMeasurementsId\
           != id_:
           day_has_measurement = True
+
+    #import ipdb; ipdb.set_trace()
     is_distinct_visit = not (day_has_order or day_has_measurement)
     return is_distinct_visit
 
