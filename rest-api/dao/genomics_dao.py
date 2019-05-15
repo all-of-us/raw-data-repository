@@ -159,8 +159,17 @@ class GenomicSetMemberDao(UpdatableDao):
     #     .update(GenomicSetMember)
     #     .where(GenomicSetMember.id == sqlalchemy.bindparam('genomic_set_id_param'))
     #     .values({
-    #     GenomicSetMember.biobankId.name: sqlalchemy.select([Participant.biobankId]).where(Participant.participantId == GenomicSetMember.participantId).limit(1),
-    #     GenomicSetMember.biobankOrderClientId.name: sqlalchemy.select([BiobankOrderIdentifier.value]).where((BiobankOrderIdentifier.biobankOrderId == GenomicSetMember.biobankOrderId) & (BiobankOrderIdentifier.system == 'https://www.pmi-ops.org')).limit(1),
+    #     GenomicSetMember.biobankId.name:
+    #       sqlalchemy.select([Participant.biobankId])
+    #         .where(Participant.participantId == GenomicSetMember.participantId)
+    #         .limit(1),
+    #     GenomicSetMember.biobankOrderClientId.name:
+    #       sqlalchemy.select([BiobankOrderIdentifier.value])
+    #         .where(
+    #         (BiobankOrderIdentifier.biobankOrderId == GenomicSetMember.biobankOrderId) &
+    #         (BiobankOrderIdentifier.system == 'https://www.pmi-ops.org')
+    #       )
+    #         .limit(1)
     #   })
     # )
 
