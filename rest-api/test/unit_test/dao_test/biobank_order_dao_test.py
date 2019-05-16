@@ -254,7 +254,6 @@ class BiobankOrderDaoTest(SqlTestBase):
       test=self._B_TEST, processingRequired=True, description=u'new sample')]
     amended_info.samples = samples
     with self.dao.session() as session:
-      import ipdb; ipdb.set_trace()
       self.dao._do_update(session, amended_info, order_1)
 
     amended_order = self.dao.get(1)
