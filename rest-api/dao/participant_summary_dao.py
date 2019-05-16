@@ -518,7 +518,7 @@ class ParticipantSummaryDao(UpdatableDao):
     else:
       return None
 
-  def calculate_distinct_visits(self, pid, finalized_time, id_):
+  def calculate_distinct_visits(self, pid, finalized_time, id_, amendment=False):
     """ Participants may get PM or biobank samples on same day. This should be considered as
     a single visit in terms of program payment to participant.
     return Boolean: true if there has not been an order on same date."""
@@ -542,6 +542,10 @@ class ParticipantSummaryDao(UpdatableDao):
         if order_finalized_date == finalized_time.date() and order.biobankOrderId != id_ and \
           order.orderStatus != BiobankOrderStatus.CANCELLED:
           day_has_order = True
+        elif order.biobankOrderId == id_ and order.orderStatus == BiobankOrderStatus.AMENDED:
+          day_has_order = True
+    elif not finalized_time and amendment:
+      day_has_order = True
 
 
     if existing_measurements and finalized_time:

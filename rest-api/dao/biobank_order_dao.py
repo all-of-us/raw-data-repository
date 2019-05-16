@@ -271,8 +271,11 @@ class BiobankOrderDao(UpdatableDao):
     participant_summary.biospecimenFinalizedSiteId = None
 
     finalized_time = self.get_random_sample_finalized_time(obj)
+    amendment = False
+    if not finalized_time:
+      amendment = True
     is_distinct_visit = ParticipantSummaryDao().calculate_distinct_visits(
-        participant_summary.participantId, finalized_time, obj.biobankOrderId)
+        participant_summary.participantId, finalized_time, obj.biobankOrderId, amendment)
 
     if is_distinct_visit and obj.orderStatus != BiobankOrderStatus.CANCELLED:
       participant_summary.numberDistinctVisits += 1

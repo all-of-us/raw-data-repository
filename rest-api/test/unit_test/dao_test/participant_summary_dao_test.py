@@ -605,11 +605,21 @@ class ParticipantSummaryDaoTest(NdbTestBase):
       # distinct count should be 2
       self.assertEquals(summary.numberDistinctVisits, 2)
 
+     # change test, should not change count.
+      with self.order_dao.session() as session:
+        existing_order = copy.deepcopy(order)
+        order.samples[0].test = BIOBANK_TESTS[0]
+        self.order_dao._do_update(session, order, existing_order)
+
+      summary = self.dao.get(self.participant.participantId)
+      # distinct count should be 2
+      self.assertEquals(summary.numberDistinctVisits, 2)
+
     # test scenario 5
     with clock.FakeClock(TIME_12):
       self.participant = self._insert(Participant(participantId=3000, biobankId=2019))
 
-      order = self.order_dao.insert(self._make_biobank_order(biobankOrderId='700', identifiers=[
+      self.order_dao.insert(self._make_biobank_order(biobankOrderId='700', identifiers=[
           BiobankOrderIdentifier(system='n', value='s')], samples=[BiobankOrderedSample(
               biobankOrderId='700',
               finalized=TIME_10,
@@ -620,7 +630,7 @@ class ParticipantSummaryDaoTest(NdbTestBase):
       # distinct count should be 1
       self.assertEquals(summary.numberDistinctVisits, 1)
 
-      order = self.order_dao.insert(self._make_biobank_order(biobankOrderId='701', identifiers=[
+      self.order_dao.insert(self._make_biobank_order(biobankOrderId='701', identifiers=[
           BiobankOrderIdentifier(system='n', value='t')], samples=[BiobankOrderedSample(
               biobankOrderId='701',
               finalized=TIME_11,
