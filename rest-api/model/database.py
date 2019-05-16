@@ -29,6 +29,7 @@ from model.questionnaire import QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from model.site import Site
 from model.genomics import GenomicSet, GenomicSetMember
+from model.patient_status import PatientStatus
 
 RETRY_CONNECTION_LIMIT = 10
 

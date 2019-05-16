@@ -26,6 +26,13 @@ TEST_HPO_ID = 19
 # Test login phone number prefix
 TEST_LOGIN_PHONE_NUMBER_PREFIX = '444'
 
+class PatientStatusFlag(messages.Enum):
+  """Site patient status"""
+  NO = 0
+  YES = 1
+  NO_ACCESS = 2
+  UNKNOWN = 3
+
 class PhysicalMeasurementsStatus(messages.Enum):
   """The state of the participant's physical measurements."""
   UNSET = 0
