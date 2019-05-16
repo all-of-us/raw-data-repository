@@ -118,19 +118,22 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self._make_summary(participant)
     self._make_biobank_order(participantId=participant.participantId,
                              biobankOrderId=participant.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'a', value=u'c')])
+                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
+                                                                 value=u'12345678')])
 
     participant2 = self._make_participant()
     self._make_summary(participant2)
     self._make_biobank_order(participantId=participant2.participantId,
                              biobankOrderId=participant2.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'b', value=u'd')])
+                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
+                                                                 value=u'12345679')])
 
     participant3 = self._make_participant()
     self._make_summary(participant3)
     self._make_biobank_order(participantId=participant3.participantId,
                              biobankOrderId=participant3.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'c', value=u'e')])
+                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
+                                                                 value=u'12345680')])
 
     samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-2.csv')
 
@@ -219,39 +222,51 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
     self.assertEqual(len(missing_cols), 0)
     rows = list(csv_reader)
-    self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], '2')
-    self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
-    self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
-    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'N')
-    self.assertEqual(rows[1][ExpectedCsvColumns.VALUE], '3')
-    self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
-    self.assertEqual(rows[1][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
-    self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], 'N')
-    self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], '1')
+    self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], '12345678')
+    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ID], '1')
     self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_wgs')
     self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'Y')
+    self.assertEqual(rows[1][ExpectedCsvColumns.VALUE], '12345679')
+    self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ID], '2')
+    self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
+    self.assertEqual(rows[1][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
+    self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], 'N')
+    self.assertEqual(rows[2][ExpectedCsvColumns.VALUE], '12345680')
+    self.assertEqual(rows[2][ExpectedCsvColumns.BIOBANK_ID], '3')
+    self.assertEqual(rows[2][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
+    self.assertEqual(rows[2][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
+    self.assertEqual(rows[2][ExpectedCsvColumns.NY_FLAG], 'N')
 
   def test_end_to_end_invalid_case(self):
     participant = self._make_participant()
     self._make_summary(participant, dateOfBirth='2018-02-14')
     self._make_biobank_order(participantId=participant.participantId,
                              biobankOrderId=participant.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'a', value=u'c')])
+                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
+                                                                 value=u'12345678')])
 
     participant2 = self._make_participant()
     self._make_summary(participant2, consentForStudyEnrollmentTime=datetime.datetime(1990, 1, 1))
     self._make_biobank_order(participantId=participant2.participantId,
                              biobankOrderId=participant2.participantId,
-                             identifiers=[BiobankOrderIdentifier(system=u'b', value=u'd')])
+                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
+                                                                 value=u'12345679')])
 
     participant3 = self._make_participant()
     self._make_summary(participant3, zipCode='')
     self._make_biobank_order(participantId=participant3.participantId,
                              biobankOrderId=participant3.participantId,
+                             identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
+                                                                 value=u'12345680')])
+
+    participant4 = self._make_participant()
+    self._make_summary(participant4)
+    self._make_biobank_order(participantId=participant4.participantId,
+                             biobankOrderId=participant4.participantId,
                              identifiers=[BiobankOrderIdentifier(system=u'c', value=u'e')])
 
-    samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-2.csv')
+    samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-3.csv')
 
     input_filename = 'Genomic-Test-Set-v1%s.csv' % self\
       ._naive_utc_to_naive_central(clock.CLOCK.now())\
@@ -285,7 +300,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     missing_cols = set(ResultCsvColumns.ALL) - set(csv_reader.fieldnames)
     self.assertEqual(len(missing_cols), 0)
     rows = list(csv_reader)
-    self.assertEqual(len(rows), 3)
+    self.assertEqual(len(rows), 4)
     self.assertEqual(rows[0][ResultCsvColumns.GENOMIC_SET_NAME], 'name_xxx')
     self.assertEqual(rows[0][ResultCsvColumns.GENOMIC_SET_CRITERIA], 'criteria_xxx')
     self.assertEqual(rows[0][ResultCsvColumns.STATUS], 'invalid')
@@ -315,6 +330,16 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[2][ResultCsvColumns.NY_FLAG], 'N')
     self.assertEqual(rows[2][ResultCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[2][ResultCsvColumns.SEX_AT_BIRTH], 'M')
+
+    self.assertEqual(rows[3][ResultCsvColumns.GENOMIC_SET_NAME], 'name_xxx')
+    self.assertEqual(rows[3][ResultCsvColumns.GENOMIC_SET_CRITERIA], 'criteria_xxx')
+    self.assertEqual(rows[3][ResultCsvColumns.STATUS], 'invalid')
+    self.assertEqual(rows[3][ResultCsvColumns.INVALID_REASON], 'INVALID_BIOBANK_ORDER_CLIENT_ID')
+    self.assertEqual(rows[3][ResultCsvColumns.PID], '4')
+    self.assertEqual(rows[3][ResultCsvColumns.BIOBANK_ORDER_ID], '4')
+    self.assertEqual(rows[3][ResultCsvColumns.NY_FLAG], 'Y')
+    self.assertEqual(rows[3][ResultCsvColumns.GENOME_TYPE], 'aou_wgs')
+    self.assertEqual(rows[3][ResultCsvColumns.SEX_AT_BIRTH], 'F')
 
   def _create_fake_genomic_set(self, genomic_set_name, genomic_set_criteria, genomic_set_filename):
     now = clock.CLOCK.now()

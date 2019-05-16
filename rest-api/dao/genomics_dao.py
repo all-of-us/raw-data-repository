@@ -7,7 +7,7 @@ from dao.base_dao import UpdatableDao
 from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
-# from model.biobank_order import BiobankOrderIdentifier
+from model.biobank_order import BiobankOrderIdentifier
 from query import Query, Operator, FieldFilter, OrderBy
 
 class GenomicSetDao(UpdatableDao):
@@ -143,37 +143,27 @@ class GenomicSetMemberDao(UpdatableDao):
       self.update_columns_with_session(session, genomic_set_id)
 
   def update_columns_with_session(self, session, genomic_set_id):
-    query = """
-      UPDATE genomic_set_member
-      SET
-        genomic_set_member.biobank_id = (select biobank_id from participant 
-        where genomic_set_member.participant_id = participant.participant_id limit 1),
-        genomic_set_member.biobank_order_client_Id = (select value from biobank_order_identifier 
-        where genomic_set_member.biobank_order_id = biobank_order_identifier.biobank_order_id 
-        and biobank_order_identifier.system = 'https://www.pmi-ops.org' limit 1)
-      WHERE
-        genomic_set_id=:genomic_set_id_param
-    """
-    # query = (
-    #   sqlalchemy
-    #     .update(GenomicSetMember)
-    #     .where(GenomicSetMember.id == sqlalchemy.bindparam('genomic_set_id_param'))
-    #     .values({
-    #     GenomicSetMember.biobankId.name:
-    #       sqlalchemy.select([Participant.biobankId])
-    #         .where(Participant.participantId == GenomicSetMember.participantId)
-    #         .limit(1),
-    #     GenomicSetMember.biobankOrderClientId.name:
-    #       sqlalchemy.select([BiobankOrderIdentifier.value])
-    #         .where(
-    #         (BiobankOrderIdentifier.biobankOrderId == GenomicSetMember.biobankOrderId) &
-    #         (BiobankOrderIdentifier.system == 'https://www.pmi-ops.org')
-    #       )
-    #         .limit(1)
-    #   })
-    # )
 
-    return session.execute(query, [{'genomic_set_id_param': genomic_set_id}])
+    query = (
+      sqlalchemy
+        .update(GenomicSetMember)
+        .where(GenomicSetMember.genomicSetId == sqlalchemy.bindparam('genomic_set_id_param'))
+        .values({
+        GenomicSetMember.biobankId.name:
+          sqlalchemy.select([Participant.biobankId])
+            .where(Participant.participantId == GenomicSetMember.participantId)
+            .limit(1),
+        GenomicSetMember.biobankOrderClientId.name:
+          sqlalchemy.select([BiobankOrderIdentifier.value])
+            .where(
+            (BiobankOrderIdentifier.biobankOrderId == GenomicSetMember.biobankOrderId) &
+            (BiobankOrderIdentifier.system == 'https://www.pmi-ops.org')
+          )
+            .limit(1)
+      })
+    )
+
+    return session.execute(query, {'genomic_set_id_param': genomic_set_id})
 
   def bulk_update_validation_status(self, member_id_status_pair_iterable):
     """
