@@ -164,7 +164,7 @@ def _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp):
     if members:
       member_dao.upsert_all(members)
 
-    member_dao.update_columns(genomic_set_id)
+    member_dao.update_biobank_order_client_id(genomic_set_id)
 
     return genomic_set_id
   except ValueError, e:

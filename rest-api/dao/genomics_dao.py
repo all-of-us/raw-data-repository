@@ -138,11 +138,11 @@ class GenomicSetMemberDao(UpdatableDao):
       return written
     return self._database.autoretry(upsert)
 
-  def update_columns(self, genomic_set_id):
+  def update_biobank_order_client_id(self, genomic_set_id):
     with self.session() as session:
-      self.update_columns_with_session(session, genomic_set_id)
+      self.update_biobank_order_client_id_with_session(session, genomic_set_id)
 
-  def update_columns_with_session(self, session, genomic_set_id):
+  def update_biobank_order_client_id_with_session(self, session, genomic_set_id):
 
     query = (
       sqlalchemy
