@@ -47,10 +47,6 @@
     "valueString": "IN_TRANSIT"
   },
   {
-    "url": "http://joinallofus.org/fhir/expected-delivery-date",
-    "valueDateTime": "2019-04-01T00:00:00+00:00"
-  },
-  {
     "url": "http://joinallofus.org/fhir/order-type",
     "valueString": "Salivary Order"
   },
