@@ -1,8 +1,8 @@
 """update genomic set member table
 
-Revision ID: 3287e49de23f
-Revises: 397974e4d58d
-Create Date: 2019-05-14 15:14:42.616896
+Revision ID: 80327f136364
+Revises: 3c91f6fd0585
+Create Date: 2019-05-21 14:59:05.168532
 
 """
 from alembic import op
@@ -20,8 +20,8 @@ from model.code import CodeType
 from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
-revision = '3287e49de23f'
-down_revision = '397974e4d58d'
+revision = '80327f136364'
+down_revision = '3c91f6fd0585'
 branch_labels = None
 depends_on = None
 
