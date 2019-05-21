@@ -46,6 +46,7 @@ class BiobankOrderDaoTest(SqlTestBase):
         ('samples', [BiobankOrderedSample(
             biobankOrderId='1',
             test=self._A_TEST,
+            finalized=self.TIME_2,
             description='description',
             processingRequired=True)])):
       if k not in kwargs:
@@ -207,8 +208,8 @@ class BiobankOrderDaoTest(SqlTestBase):
     cancelled_request = self._get_cancel_patch()
     ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
 
-    self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.CREATED)
-    self.assertEqual(ps_dao.sampleOrderStatus1ED10Time, self.TIME_1)
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.FINALIZED)
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10Time, self.TIME_2)
     self.assertEqual(ps_dao.sampleOrderStatus2ED10, OrderStatus.CREATED)
     self.assertEqual(ps_dao.sampleOrderStatus2ED10Time, self.TIME_2)
 
@@ -237,7 +238,7 @@ class BiobankOrderDaoTest(SqlTestBase):
     self.dao.update_with_patch(order_1.biobankOrderId, restore_request,
                                cancelled_order.version)
     ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
-    self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.FINALIZED)
     self.assertEqual(ps_dao.biospecimenStatus, OrderStatus.FINALIZED)
     self.assertEqual(ps_dao.biospecimenSourceSiteId, 1)
     self.assertEqual(ps_dao.biospecimenCollectedSiteId, 1)
@@ -253,14 +254,14 @@ class BiobankOrderDaoTest(SqlTestBase):
       test=self._B_TEST, processingRequired=True, description=u'new sample')]
     amended_info.samples = samples
     with self.dao.session() as session:
-      self.dao._do_update(session, order_1, amended_info)
+      self.dao._do_update(session, amended_info, order_1)
 
     amended_order = self.dao.get(1)
     self.assertEqual(amended_order.version, 2)
 
     ps_dao = ParticipantSummaryDao().get(self.participant.participantId)
     self.assertEqual(ps_dao.sampleOrderStatus2ED10, OrderStatus.CREATED)
-    self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.CREATED)
+    self.assertEqual(ps_dao.sampleOrderStatus1ED10, OrderStatus.FINALIZED)
     self.assertEqual(ps_dao.numberDistinctVisits, 1)
 
   def test_cancelling_an_order_missing_reason(self):
