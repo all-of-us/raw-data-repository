@@ -18,10 +18,13 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
 from offline import genomic_pipeline
 from participant_enums import SampleStatus
+from genomic.genomic_set_file_handler import DataError
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
+_FAKE_BIOBANK_SAMPLE_BUCKET = 'rdr_fake_biobank_sample_bucket'
 _FAKE_BUCKET_FOLDER = 'rdr_fake_sub_folder'
+_FAKE_BUCKET_RESULT_FOLDER = 'rdr_fake_sub_result_folder'
 _OUTPUT_CSV_TIME_FORMAT = '%Y-%m-%d-%H-%M-%S'
 _US_CENTRAL = pytz.timezone('US/Central')
 _UTC = pytz.utc
@@ -33,14 +36,21 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     TestBase.setup_fake(self)
     # Everything is stored as a list, so override bucket name as a 1-element list.
     config.override_setting(config.GENOMIC_SET_BUCKET_NAME, [_FAKE_BUCKET])
-    config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BUCKET])
+    config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BIOBANK_SAMPLE_BUCKET])
     config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME, [_FAKE_BUCKET_FOLDER])
+    config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME,
+                            [_FAKE_BUCKET_RESULT_FOLDER])
     self.participant_dao = ParticipantDao()
     self.summary_dao = ParticipantSummaryDao()
     self._participant_i = 1
 
-  def _write_cloud_csv(self, file_name, contents_str):
-    with cloudstorage_api.open('/%s/%s' % (_FAKE_BUCKET, file_name), mode='w') as cloud_file:
+  def _write_cloud_csv(self, file_name, contents_str, bucket=None, folder=None):
+    bucket = _FAKE_BUCKET if bucket is None else bucket
+    if folder is None:
+      path = '/%s/%s' % (bucket, file_name)
+    else:
+      path = '/%s/%s/%s' % (bucket, folder, file_name)
+    with cloudstorage_api.open(path, mode='w') as cloud_file:
       cloud_file.write(contents_str.encode('utf-8'))
 
   def _make_participant(self, **kwargs):
@@ -143,6 +153,15 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
     self._write_cloud_csv(input_filename, samples_file)
 
+    manifest_result_file = test_data.open_genomic_set_file('Genomic-Manifest-Result-test.csv')
+
+    manifest_result_filename = 'Genomic-Manifest-Result-AoU-1-v1%s.csv' % self \
+      ._naive_utc_to_naive_central(clock.CLOCK.now()) \
+      .strftime(genomic_set_file_handler.INPUT_CSV_TIME_FORMAT)
+
+    self._write_cloud_csv(manifest_result_filename, manifest_result_file, bucket=_FAKE_BIOBANK_SAMPLE_BUCKET,
+                          folder=_FAKE_BUCKET_RESULT_FOLDER)
+
     genomic_pipeline.process_genomic_water_line()
 
     # verify result file
@@ -214,7 +233,6 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
       ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
 
-    # for genome type aou_array
     path = self._find_latest_genomic_set_csv(bucket_name, 'Manifest')
     csv_file = cloudstorage_api.open(path)
     csv_reader = csv.DictReader(csv_file, delimiter=',')
@@ -237,6 +255,95 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[2][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[2][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[2][ExpectedCsvColumns.NY_FLAG], 'N')
+
+    # verify manifest result files
+    bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
+
+    class ExpectedCsvColumns(object):
+      VALUE = 'value'
+      BIOBANK_ID = 'biobank_id'
+      SEX_AT_BIRTH = 'sex_at_birth'
+      GENOME_TYPE = 'genome_type'
+      NY_FLAG = 'ny_flag'
+      REQUEST_ID = 'request_id'
+      PACKAGE_ID = 'package_id'
+
+      ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
+
+    path = self._find_latest_genomic_set_csv(bucket_name, 'Manifest-Result')
+    csv_file = cloudstorage_api.open(path)
+    csv_reader = csv.DictReader(csv_file, delimiter=',')
+
+    missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
+    self.assertEqual(len(missing_cols), 0)
+    rows = list(csv_reader)
+    self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], '12345678')
+    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ID], '1')
+    self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
+    self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_wgs')
+    self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'Y')
+    self.assertEqual(rows[0][ExpectedCsvColumns.PACKAGE_ID], 'PKG-XXXX-XXXX1')
+
+    self.assertEqual(rows[1][ExpectedCsvColumns.VALUE], '12345679')
+    self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ID], '2')
+    self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
+    self.assertEqual(rows[1][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
+    self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], 'N')
+    self.assertEqual(rows[1][ExpectedCsvColumns.PACKAGE_ID], 'PKG-XXXX-XXXX2')
+
+    self.assertEqual(rows[2][ExpectedCsvColumns.VALUE], '12345680')
+    self.assertEqual(rows[2][ExpectedCsvColumns.BIOBANK_ID], '3')
+    self.assertEqual(rows[2][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
+    self.assertEqual(rows[2][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
+    self.assertEqual(rows[2][ExpectedCsvColumns.NY_FLAG], 'N')
+    self.assertEqual(rows[2][ExpectedCsvColumns.PACKAGE_ID], 'PKG-XXXX-XXXX3')
+
+    # verify package id in database
+    member_dao = GenomicSetMemberDao()
+    members = member_dao.get_all()
+    for member in members:
+      self.assertIn(member.packageId, ['PKG-XXXX-XXXX1', 'PKG-XXXX-XXXX2', 'PKG-XXXX-XXXX3'])
+
+  def test_wrong_file_name_case(self):
+    samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-3.csv')
+
+    input_filename = 'Genomic-Test-Set-v1%swrong-name.csv' % self \
+      ._naive_utc_to_naive_central(clock.CLOCK.now()) \
+      .strftime(genomic_set_file_handler.INPUT_CSV_TIME_FORMAT)
+
+    self._write_cloud_csv(input_filename, samples_file)
+
+    with self.assertRaises(DataError):
+      genomic_pipeline.process_genomic_water_line()
+
+    manifest_result_file = test_data.open_genomic_set_file('Genomic-Manifest-Result-test.csv')
+
+    manifest_result_filename = 'Genomic-Manifest-Result-AoU-1-v1%swrong-name.csv' % self \
+      ._naive_utc_to_naive_central(clock.CLOCK.now()) \
+      .strftime(genomic_set_file_handler.INPUT_CSV_TIME_FORMAT)
+
+    self._write_cloud_csv(manifest_result_filename, manifest_result_file, bucket=_FAKE_BIOBANK_SAMPLE_BUCKET,
+                          folder=_FAKE_BUCKET_RESULT_FOLDER)
+
+    with self.assertRaises(DataError):
+      genomic_pipeline.process_genomic_water_line()
+
+  def test_over_24hours_genomic_set_file_case(self):
+    samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-3.csv')
+
+    over_24hours_time = clock.CLOCK.now() - datetime.timedelta(hours=25)
+
+    input_filename = 'Genomic-Test-Set-v1%s.csv' % self \
+      ._naive_utc_to_naive_central(over_24hours_time) \
+      .strftime(genomic_set_file_handler.INPUT_CSV_TIME_FORMAT)
+
+    self._write_cloud_csv(input_filename, samples_file)
+
+    genomic_pipeline.process_genomic_water_line()
+
+    member_dao = GenomicSetMemberDao()
+    members = member_dao.get_all()
+    self.assertEqual(len(members), 0)
 
   def test_end_to_end_invalid_case(self):
     participant = self._make_participant()

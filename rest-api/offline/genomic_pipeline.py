@@ -22,3 +22,5 @@ def process_genomic_water_line():
     genomic_set_file_handler.create_genomic_set_status_result_file(genomic_set_id)
   else:
     logging.info('No file found or nothing read from genomic set file')
+
+  genomic_biobank_menifest_handler.process_genomic_manifest_result_file_from_bucket()

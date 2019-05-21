@@ -70,11 +70,11 @@ def get_last_genomic_set_file_info():
   """Finds the latest CSV & updates/inserts relevant genomic tables from its rows."""
   bucket_name = config.getSetting(config.GENOMIC_SET_BUCKET_NAME)  # raises if missing
   csv_file, csv_filename = _open_latest_genomic_set_file(bucket_name)
-  timestamp = _timestamp_from_filename(csv_filename)
+  timestamp = timestamp_from_filename(csv_filename)
 
   return csv_file, csv_filename, timestamp
 
-def _timestamp_from_filename(csv_filename):
+def timestamp_from_filename(csv_filename):
   if len(csv_filename) < _INPUT_CSV_TIME_FORMAT_LENGTH + _CSV_SUFFIX_LENGTH:
     raise DataError("Can't parse time from CSV filename: %s" % csv_filename)
   time_suffix = csv_filename[len(csv_filename) - (_INPUT_CSV_TIME_FORMAT_LENGTH +
