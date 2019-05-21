@@ -118,8 +118,10 @@ class DvOrderDao(UpdatableDao):
         url=VIBRENT_FHIR_URL + 'tracking-status').valueString
       existing_obj.shipmentCarrier = fhir_resource.extension.get(
         url=VIBRENT_FHIR_URL + 'carrier').valueString
-      existing_obj.shipmentEstArrival = parse_date(fhir_resource.extension.get(
+      if hasattr(fhir_resource['extension'], VIBRENT_FHIR_URL + 'expected-delivery-date'):
+        existing_obj.shipmentEstArrival = parse_date(fhir_resource.extension.get(
         url=VIBRENT_FHIR_URL + 'expected-delivery-date').valueDateTime)
+
       existing_obj.trackingId = fhir_resource.identifier.get(
         system=VIBRENT_FHIR_URL + 'trackingId').value
       # USPS status
