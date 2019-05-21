@@ -7,6 +7,7 @@ from dao.base_dao import UpdatableDao
 from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
+from model.biobank_order import BiobankOrderIdentifier
 from query import Query, Operator, FieldFilter, OrderBy
 
 class GenomicSetDao(UpdatableDao):
@@ -137,6 +138,33 @@ class GenomicSetMemberDao(UpdatableDao):
       return written
     return self._database.autoretry(upsert)
 
+  def update_biobank_order_client_id(self, genomic_set_id):
+    with self.session() as session:
+      self.update_biobank_order_client_id_with_session(session, genomic_set_id)
+
+  def update_biobank_order_client_id_with_session(self, session, genomic_set_id):
+
+    query = (
+      sqlalchemy
+        .update(GenomicSetMember)
+        .where(GenomicSetMember.genomicSetId == sqlalchemy.bindparam('genomic_set_id_param'))
+        .values({
+        GenomicSetMember.biobankId.name:
+          sqlalchemy.select([Participant.biobankId])
+            .where(Participant.participantId == GenomicSetMember.participantId)
+            .limit(1),
+        GenomicSetMember.biobankOrderClientId.name:
+          sqlalchemy.select([BiobankOrderIdentifier.value])
+            .where(
+            (BiobankOrderIdentifier.biobankOrderId == GenomicSetMember.biobankOrderId) &
+            (BiobankOrderIdentifier.system == 'https://www.pmi-ops.org')
+          )
+            .limit(1)
+      })
+    )
+
+    return session.execute(query, {'genomic_set_id_param': genomic_set_id})
+
   def bulk_update_validation_status(self, member_id_status_pair_iterable):
     """
     Perform a bulk update of validation statuses.
@@ -182,5 +210,50 @@ class GenomicSetMemberDao(UpdatableDao):
         'time': now if status == GenomicValidationStatus.VALID else None,
       }
       for member_id, status in member_id_status_pair_iterable
+    ]
+    return session.execute(query, parameter_sets)
+
+  def bulk_update_package_id(self, genomic_set_id, client_id_package_id_pair_iterable):
+    """
+    Perform a bulk update of package id.
+
+    :param genomic_set_id
+    :param client_id_package_id_pair_iterable: pairs of GenomicSetMember.biobankOrderClientId and
+                                               package_id
+    :type client_id_package_id_pair_iterable: collections.Iterable of (string, string)
+    :rtype: sqlalchemy.engine.ResultProxy
+    """
+    with self.session() as session:
+      return self.bulk_update_package_id_with_session(session, genomic_set_id,
+                                                      client_id_package_id_pair_iterable)
+
+  def bulk_update_package_id_with_session(self, session, genomic_set_id, client_id_package_id_pair_iterable):
+    """
+    Perform a bulk update of package id in a given session.
+
+    :param session: sqlalchemy session
+    :param genomic_set_id
+    :param client_id_package_id_pair_iterable: pairs of GenomicSetMember.biobankOrderClientId and
+                                               package_id
+    :type client_id_package_id_pair_iterable: collections.Iterable of (string, string)
+    :rtype: sqlalchemy.engine.ResultProxy
+    """
+
+    query = (
+      sqlalchemy
+        .update(GenomicSetMember)
+        .where((GenomicSetMember.genomicSetId == genomic_set_id) &
+               (GenomicSetMember.biobankOrderClientId == sqlalchemy.bindparam('client_id')))
+        .values({
+          GenomicSetMember.packageId.name: sqlalchemy.bindparam('package_id')
+        })
+    )
+
+    parameter_sets = [
+      {
+        'client_id': client_id,
+        'package_id': package_id
+      }
+      for client_id, package_id in client_id_package_id_pair_iterable
     ]
     return session.execute(query, parameter_sets)

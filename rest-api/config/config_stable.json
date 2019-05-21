@@ -140,6 +140,9 @@
   "genomic_biobank_manifest_folder_name": [
     "genomic_water_line_test"
   ],
+  "genomic_biobank_manifest_result_folder_name": [
+    "genomic_water_line_test_results"
+  ],
   "ghost_id_bucket": [
     "all-of-us-rdr-stable-ghost-accounts"
   ],
