@@ -27,6 +27,7 @@ from api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical
 from api.public_metrics_api import PublicMetricsApi
 from api.questionnaire_api import QuestionnaireApi
 from api.questionnaire_response_api import QuestionnaireResponseApi, ParticipantQuestionnaireAnswers
+from api.patient_status import PatientStatusApi, PatientStatusHistoryApi
 from config import get_config, get_db_config
 from flask import Flask, got_request_exception
 from flask_restful import Api
@@ -90,6 +91,16 @@ api.add_resource(ParticipantSummaryApi,
 api.add_resource(ParticipantSummaryModifiedApi,
                  PREFIX + 'ParticipantSummary/Modified',
                  endpoint='participant.summary.modified',
+                 methods=['GET'])
+
+api.add_resource(PatientStatusApi,
+                 PREFIX + 'PatientStatus/<participant_id:p_id>/Organization/<string:org_id>',
+                 endpoint='patient.status',
+                 methods=['GET', 'POST', 'PUT'])
+
+api.add_resource(PatientStatusHistoryApi,
+                 PREFIX + 'PatientStatus/<participant_id:p_id>/Organization/<string:org_id>/History',
+                 endpoint='patient.status.history',
                  methods=['GET'])
 
 api.add_resource(PhysicalMeasurementsApi,
