@@ -19,8 +19,8 @@ class PatientStatusDao(UpsertableDao):
     super(PatientStatusDao, self).__init__(PatientStatus)
 
 
-  def from_client_json(self, resource_json, id_=None, expected_version=None,
-                       participant_id=None, client_id=None): #pylint: disable=unused-argument
+  def from_client_json(self, resource_json, id_=None, expected_version=None, # pylint: disable=unused-argument
+                       participant_id=None, client_id=None): # pylint: disable=unused-argument
 
     if str(participant_id) not in resource_json['subject']:
       raise BadRequest('Participant ID does not match participant ID in request.')
@@ -29,7 +29,8 @@ class PatientStatusDao(UpsertableDao):
       p = session.query(Participant.participantId).filter_by(participantId=participant_id).first()
       if not p:
         raise BadRequest('invalid participant id')
-      site = session.query(Site.siteId, Site.organizationId, Site.hpoId).filter_by(googleGroup=resource_json['site']).first()
+      site = session.query(Site.siteId, Site.organizationId, Site.hpoId).\
+                            filter_by(googleGroup=resource_json['site']).first()
       if not site:
         raise BadRequest('Invalid site value.')
 
@@ -130,7 +131,8 @@ class PatientStatusDao(UpsertableDao):
 
   def get_id(self, obj):
     with self.session() as session:
-      query = session.query(PatientStatus.id).filter_by(participantId=obj.participantId,  organizationId=obj.organizationId)
+      query = session.query(PatientStatus.id).\
+                filter_by(participantId=obj.participantId, organizationId=obj.organizationId)
       return query.first()
 
   def get(self, p_id, org_name):

@@ -9,7 +9,7 @@ class PatientStatusApi(UpdatableApi):
     super(PatientStatusApi, self).__init__(PatientStatusDao(), get_returns_children=True)
 
   @auth_required(HEALTHPRO)
-  def post(self, p_id, org_id=None):
+  def post(self, p_id, org_id=None): # pylint: disable=unused-argument
     return super(PatientStatusApi, self).post(participant_id=p_id), 201
 
   @auth_required(HEALTHPRO)

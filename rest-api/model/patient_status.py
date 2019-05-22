@@ -19,7 +19,8 @@ class PatientStatus(Base, ModelMixin):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'), nullable=False)
   patientStatus = Column('patient_status', Enum(PatientStatusFlag), nullable=False)
   hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
-  organizationId = Column('organization_id', Integer, ForeignKey('organization.organization_id'), nullable=False, index=True)
+  organizationId = Column('organization_id', Integer, ForeignKey('organization.organization_id'),
+                                nullable=False, index=True)
   siteId = Column('site_id', Integer, ForeignKey('site.site_id'), nullable=False)
   comment = Column('comment', Text, nullable=True)
   authored = Column('authored', UTCDateTime)
