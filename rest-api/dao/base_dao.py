@@ -458,12 +458,12 @@ class BaseDao(object):
     """
     raise NotImplementedError()
 
-  def dump_query(self, query, reindent=True):
+  def query_to_text(self, query, reindent=True):
     """
-    Print the SQL statement from a sqlalchemy query object.
+    Return the SQL statement text from a sqlalchemy query object.
     :param query: sqlalchemy query object
-    :param reindent: pretty format
-    :return: query string
+    :param reindent: True if pretty format
+    :return: string
     """
     return sqlparse.format(str(query), reindent=reindent)
 

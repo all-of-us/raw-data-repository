@@ -170,7 +170,7 @@ class PatientStatusDao(UpsertableDao):
 
       # Setup query for 'patient_status' table and then convert it to history table sql.
       query = self._build_response_query(session, p_id, org_obj.organizationId)
-      sql = self.dump_query(query).\
+      sql = self.query_to_text(query).\
                 replace('concat(%s', 'concat(:p1').\
                 replace('.participant_id = %s', '.participant_id = :p2').\
                 replace('.organization_id = %s', '.organization_id = :p3').\

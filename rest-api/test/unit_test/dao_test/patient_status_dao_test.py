@@ -62,4 +62,11 @@ class PatientStatusTestBase(FlaskTestBase):
     self.assertEqual(parse(result['authored']), parse(data['authored']).replace(tzinfo=None))
     self.assertEqual(result['comment'], data['comment'])
 
+  def test_patient_status_query(self):
+
+    with self.dao.session() as session:
+      query = self.dao._build_response_query(session, self.participant.participantId, 3)
+      sql = self.dao.query_to_text(query)
+      self.assertIsNotNone(sql)
+
   # TODO: When new style history tables and triggers have been added to unit tests, test dao.get_history().
