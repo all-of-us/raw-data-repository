@@ -113,7 +113,7 @@ class ParticipantDao(UpdatableDao):
     # Once a participant marks their withdrawal status as NO_USE, it can't be changed back.
     # TODO: Consider the future ability to un-withdraw.
     if (existing_obj.withdrawalStatus == WithdrawalStatus.NO_USE
-      and obj.withdrawalStatus != WithdrawalStatus.NO_USE):
+        and obj.withdrawalStatus != WithdrawalStatus.NO_USE):
       raise Forbidden('Participant %d has withdrawn, cannot unwithdraw' % obj.participantId)
 
   def get_for_update(self, session, obj_id):
