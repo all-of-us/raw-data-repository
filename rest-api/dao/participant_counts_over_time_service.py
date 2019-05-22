@@ -52,7 +52,7 @@ class ParticipantCountsOverTimeService(BaseDao):
       session.execute(sql, params)
 
   def get_filtered_results(self, stratification, start_date, end_date, history, awardee_ids,
-                           enrollment_statuses, sample_time_def):
+                           enrollment_statuses, sample_time_def, version):
     """Queries DB, returns results in format consumed by front-end
 
     :param start_date: Start date object
@@ -62,6 +62,7 @@ class ParticipantCountsOverTimeService(BaseDao):
     :param sample_time_def: indicate how to filter the core participant
     :param history: query for history data from metrics cache table
     :param stratification: How to stratify (layer) results, as in a stacked bar chart
+    :param version: indicate the version of the result filter
     :return: Filtered, stratified results by date
     """
 
