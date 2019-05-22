@@ -31,3 +31,4 @@ xmltodict==0.12
 # https://cloud.google.com/appengine/docs/standard/python/issue-requests#issuing_an_http_request
 requests
 requests_toolbelt
+sqlparse
