@@ -28,10 +28,11 @@ TEST_LOGIN_PHONE_NUMBER_PREFIX = '444'
 
 class PatientStatusFlag(messages.Enum):
   """Site patient status"""
-  NO = 0
-  YES = 1
-  NO_ACCESS = 2
-  UNKNOWN = 3
+  UNSET = 0
+  NO = 1
+  YES = 2
+  NO_ACCESS = 3
+  UNKNOWN = 4
 
 class PhysicalMeasurementsStatus(messages.Enum):
   """The state of the participant's physical measurements."""
