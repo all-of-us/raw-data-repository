@@ -89,6 +89,8 @@ class GenomicSetValidationBaseTestCase(SqlTestBase):
       genomicSetId = genomic_set.id,
       participantId = participant.participantId,
       sexAtBirth = 'F',
+      biobankId = participant.biobankId,
+      biobankOrderClientId = '12345678'
     )
     kwargs = dict(valid_kwargs, **override_kwargs)
     member = GenomicSetMember(**kwargs)
@@ -145,6 +147,18 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     current_member = self.genomic_member_dao.get(member.id)
     self.assertEqual(current_member.validationStatus,
                      GenomicValidationStatus.INVALID_CONSENT)
+    current_set = self.genomic_set_dao.get(genomic_set.id)
+    self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
+
+  def test_biobank_order_client_id_null(self):
+    participant = self.make_participant()
+    self.make_summary(participant)
+    genomic_set = self.make_genomic_set()
+    member = self.make_genomic_member(genomic_set, participant, biobankOrderClientId=None)
+    validate_and_update_genomic_set_by_id(genomic_set.id)
+    current_member = self.genomic_member_dao.get(member.id)
+    self.assertEqual(current_member.validationStatus,
+                     GenomicValidationStatus.INVALID_BIOBANK_ORDER_CLIENT_ID)
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
