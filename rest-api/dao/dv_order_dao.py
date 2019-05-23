@@ -10,10 +10,11 @@ from dao.biobank_order_dao import BiobankOrderDao
 from dao.code_dao import CodeDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from fhir_utils import SimpleFhirR4Reader
+from model.config_utils import to_client_biobank_id
 from model.biobank_dv_order import BiobankDVOrder
 from model.biobank_order import BiobankOrderedSample, BiobankOrderIdentifier, BiobankOrder
 from model.utils import to_client_participant_id
-from participant_enums import BiobankOrderStatus, OrderShipmentTrackingStatus
+from participant_enums import BiobankOrderStatus, OrderShipmentTrackingStatus, OrderShipmentStatus
 from sqlalchemy.orm import load_only
 from werkzeug.exceptions import Conflict, NotFound, BadRequest
 
@@ -48,9 +49,9 @@ class DvOrderDao(UpdatableDao):
         'collected': fhir_resource.authoredOn,
         'account': '',
         'number': fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString,
-        'patient': {'medical_record_number': str(summary.biobankId),
+        'patient': {'medical_record_number': str(to_client_biobank_id(summary.biobankId)),
                     'first_name': '*',
-                    'last_name': str(summary.biobankId),
+                    'last_name': str(to_client_biobank_id(summary.biobankId)),
                     'middle_name': '',
                     'birth_date': '3/3/1933',
                     'gender': code_dict['genderIdentity'],
@@ -114,8 +115,8 @@ class DvOrderDao(UpdatableDao):
       if not existing_obj:
         raise NotFound('existing order record not found')
 
-      existing_obj.shipmentStatus = fhir_resource.extension.get(
-        url=VIBRENT_FHIR_URL + 'tracking-status').valueString
+      existing_obj.shipmentStatus = self._enumerate_order_tracking_status(fhir_resource.extension.get(
+        url=VIBRENT_FHIR_URL + 'tracking-status').valueString)
       existing_obj.shipmentCarrier = fhir_resource.extension.get(
         url=VIBRENT_FHIR_URL + 'carrier').valueString
       if hasattr(fhir_resource['extension'], VIBRENT_FHIR_URL + 'expected-delivery-date'):
@@ -125,7 +126,7 @@ class DvOrderDao(UpdatableDao):
       existing_obj.trackingId = fhir_resource.identifier.get(
         system=VIBRENT_FHIR_URL + 'trackingId').value
       # USPS status
-      existing_obj.shipmentStatus = self._enumerate_order_shipment_tracking_status(
+      existing_obj.orderStatus = self._enumerate_order_shipping_status(
                                     fhir_resource.status)
       # USPS status time
       existing_obj.shipmentLastUpdate = parse_date(fhir_resource.occurrenceDateTime)
@@ -268,8 +269,18 @@ class DvOrderDao(UpdatableDao):
                                                  .filter_by(order_id=order.order_id)
       return query.first()
 
-  def _enumerate_order_shipment_tracking_status(self, status):
-    # @TODO: Get all possible status from PTSC
-    if status.lower() == 'in progress':
-      return OrderShipmentTrackingStatus.ENROUTE
+  def _enumerate_order_shipping_status(self, status):
+    if status.lower() == 'in-progress':
+      return OrderShipmentStatus.SHIPPED
+    elif status.lower() == 'completed':
+      return OrderShipmentStatus.FULFILLMENT
+    else:
+      return OrderShipmentStatus.UNSET
 
+  def _enumerate_order_tracking_status(self, value):
+    if value.lower() == 'enroute':
+      return OrderShipmentTrackingStatus.ENROUTE
+    elif value.lower() == 'delivered':
+      return OrderShipmentTrackingStatus.DELIVERED
+    else:
+      return OrderShipmentTrackingStatus.UNSET
