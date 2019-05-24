@@ -115,7 +115,10 @@
       "roles": ["ptc", "healthpro", "rdr"]
     },
     "security-testing@pmi-hpo-test.iam.gserviceaccount.com": {
-      "roles": ["ptc", "healthpro"]
+      "roles": ["ptc", "healthpro"],
+      "whitelisted_ip_ranges" : {
+        "ip4": ["160.129.251.78"]
+      }
     },
     "pentest@all-of-us-rdr-stable.iam.gserviceaccount.com": {
       "comment": "Penetration testing for Coalfire, PD-334.",

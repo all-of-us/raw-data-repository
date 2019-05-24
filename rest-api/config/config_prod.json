@@ -118,6 +118,12 @@
       "whitelisted_ip_ranges" : {
         "ip4": ["128.195.50.121"]
       }
+    },
+    "vumc-appscan@all-of-us-rdr-prod.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"],
+      "whitelisted_ip_ranges" : {
+        "ip4": ["160.129.251.78"]
+      }
     }
   }
 }
