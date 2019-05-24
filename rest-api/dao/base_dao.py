@@ -4,14 +4,18 @@ import json
 import logging
 import datetime
 import random
+import sqlparse
 from contextlib import closing
 
+from collections import OrderedDict
 from fhirclient.models.domainresource import DomainResource
 from fhirclient.models.fhirabstractbase import FHIRValidationError
 from protorpc import messages
 from query import Operator, PropertyType, FieldFilter, Results
 from sqlalchemy import or_, and_
+from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.engine.result import ResultProxy
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
 import api_util
@@ -453,6 +457,54 @@ class BaseDao(object):
       expected_version: For updates, require this to match the existing model's version.
     """
     raise NotImplementedError()
+
+  def query_to_text(self, query, reindent=True):
+    """
+    Return the SQL statement text from a sqlalchemy query object.
+    :param query: sqlalchemy query object
+    :param reindent: True if pretty format
+    :return: string
+    """
+    return sqlparse.format(str(query), reindent=reindent)
+
+  def to_dict(self, obj, result_proxy=None):
+    """
+    Dump a sqlalchemy model or query result object to python dict. Converts
+    Enums columns from integer to enum value string.
+    Note: See patient_status_dao.py for example usage.
+    :param obj: Model object, Query Result object or Row Proxy object.
+    :param result_proxy: ResultProxy object if obj=RowProxy object.
+    :return: ordered dict
+    """
+    if not obj:
+      return None
+
+    data = OrderedDict()
+
+    # Get the list of columns returned in the query.
+    if result_proxy and isinstance(result_proxy, ResultProxy):  # this is a ResultProxy object
+      columns = list()
+      for column in result_proxy.cursor.description:
+        columns.append(column[0])
+    elif hasattr(obj, '_fields'):  # This is a custom query result object.
+      columns = obj._fields
+    else:
+      mapper = inspect(obj)  # Simple model object
+      columns = mapper.attrs
+
+    for column in columns:
+      key = str(column.key) if hasattr(column, 'key') else column
+      value = getattr(obj, key)
+
+      if isinstance(value, (datetime.datetime, datetime.date)):
+        data[key] = value.isoformat()
+      # Check for Enum
+      elif hasattr(value, 'name'):
+        data[key] = value.name
+      else:
+        data[key] = value
+
+    return data
 
 
 class UpsertableDao(BaseDao):

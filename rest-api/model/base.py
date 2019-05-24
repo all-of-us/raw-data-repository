@@ -1,7 +1,10 @@
 """Defines the declarative base. Import this and extend from Base for all rdr
 tables. Extend MetricsBase for all metrics tables."""
 import clock
-from sqlalchemy import MetaData
+from collections import OrderedDict
+from datetime import datetime, date
+import json
+from sqlalchemy import MetaData, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from dictalchemy import DictableModel
 
@@ -22,6 +25,73 @@ Base = declarative_base(cls=DictableModel)
 # MetricsBase is the parent for all models in the "metrics" DB. These are
 # collected separately for DB migration purposes.
 MetricsBase = declarative_base(cls=DictableModel, metadata=MetaData(schema='metrics'))
+
+
+class ModelMixin(object):
+  """
+  Mixin for models, includes methods for importing/exporting JSON data.
+  """
+  def from_json(self, *args, **kwargs):
+    """
+    If parameter values in args, then the value is expected to be a dictionary from a json response
+    from the server. If parameter values are in kwargs, then they are named parameters passed
+    when the object is instantiated.
+    # TODO: Needs to identify ModelEnum fields and set the Enum value from a string. See to_dict().
+    """
+    if args is not None and len(args) is not 0 and args[0] is not None:
+      for key, value in args[0].items():
+        self.__dict__[key] = value
+        # print('{0} : {1}'.format(key, value))
+
+    else:
+      for key, value in kwargs.items():
+        self.__dict__[key] = value
+        # print('{0} : {1}'.format(key, value))
+
+  def to_json(self, pretty=False):
+    """
+    Dump class to json string. Enhanced version of `to_client_json()`
+    :return: json string
+    """
+    def json_serial(obj):
+      """JSON serializer for objects not serializable by default json code"""
+      if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+      return obj.__repr__()
+
+    data = self.to_dict()
+
+    if pretty:
+      output = json.dumps(data, default=json_serial, indent=4)
+    else:
+      output = json.dumps(data, default=json_serial)
+
+    return output
+
+  def to_dict(self):
+    """
+    Dump class to python dict
+    :return: dict
+    """
+    data = OrderedDict()
+    mapper = inspect(self)
+
+    for column in mapper.attrs:
+      key = str(column.key)
+      value = getattr(self, key)
+
+      if isinstance(value, (datetime, date)):
+        data[key] = value.isoformat()
+      # Check for Enum and return name
+      elif hasattr(value, 'name'):
+        data[key] = value.name
+      else:
+        data[key] = value
+
+    return data
+
+  def __repr__(self):
+    return self.to_json()
 
 # pylint: disable=unused-argument
 def model_insert_listener(mapper, connection, target):

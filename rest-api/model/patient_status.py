@@ -1,10 +1,10 @@
-from model.base import Base, model_insert_listener, model_update_listener
-from model.utils import Enum
+from model.base import Base, model_insert_listener, model_update_listener, ModelMixin
+from model.utils import Enum, UTCDateTime
 from participant_enums import PatientStatusFlag
-from sqlalchemy import Column, DateTime, Integer, ForeignKey, UniqueConstraint, Text, event
+from sqlalchemy import Column, DateTime, Integer, ForeignKey, UniqueConstraint, Text, event, String
 
 
-class PatientStatus(Base):
+class PatientStatus(Base, ModelMixin):
   """
   Site patient status
   """
@@ -19,8 +19,12 @@ class PatientStatus(Base):
   participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'), nullable=False)
   patientStatus = Column('patient_status', Enum(PatientStatusFlag), nullable=False)
   hpoId = Column('hpo_id', Integer, ForeignKey('hpo.hpo_id'), nullable=False)
-  organizationId = Column('organization_id', Integer, ForeignKey('organization.organization_id'), nullable=False)
+  organizationId = Column('organization_id', Integer, ForeignKey('organization.organization_id'),
+                                nullable=False, index=True)
+  siteId = Column('site_id', Integer, ForeignKey('site.site_id'), nullable=False)
   comment = Column('comment', Text, nullable=True)
+  authored = Column('authored', UTCDateTime)
+  user = Column('user', String(80), nullable=False)
 
   __table_args__ = (
     UniqueConstraint('participant_id', 'organization_id', name='uidx_patient_status'),
