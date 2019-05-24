@@ -23,7 +23,7 @@
     },
     "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
       "roles": ["ptc", "healthpro", "rdr"]
-    },
+    }
   },
   "biobank_samples_bucket_name": [
     "all-of-us-rdr-ptsc-1-test-biobank-samples-upload"
