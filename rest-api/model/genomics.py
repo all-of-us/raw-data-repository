@@ -23,7 +23,6 @@ class GenomicValidationStatus(messages.Enum):
   INVALID_WITHDRAW_STATUS = 7
   INVALID_AGE = 8
   INVALID_DUP_PARTICIPANT = 9
-  INVALID_BIOBANK_ORDER_CLIENT_ID = 10
 
 class GenomicSet(Base):
   """

@@ -164,7 +164,7 @@ def _save_genomic_set_from_csv(csv_reader, csv_filename, timestamp):
     if members:
       member_dao.upsert_all(members)
 
-    member_dao.update_biobank_order_client_id(genomic_set_id)
+    member_dao.update_biobank_id(genomic_set_id)
 
     return genomic_set_id
   except ValueError, e:
@@ -252,7 +252,6 @@ def _create_and_upload_result_file(genomic_set):
         WHEN validation_status=7 THEN :status_invalid_withdraw_status
         WHEN validation_status=8 THEN :status_invalid_age
         WHEN validation_status=9 THEN :status_invalid_dup_participant
-        WHEN validation_status=10 THEN :status_invalid_biobank_order_client_id
         ELSE :status_unknown
       END AS invalid_reason
     FROM genomic_set_member
@@ -275,8 +274,6 @@ def _create_and_upload_result_file(genomic_set):
                   'status_invalid_age': str(GenomicValidationStatus.INVALID_AGE),
                   'status_invalid_dup_participant':
                     str(GenomicValidationStatus.INVALID_DUP_PARTICIPANT),
-                  'status_invalid_biobank_order_client_id':
-                    str(GenomicValidationStatus.INVALID_BIOBANK_ORDER_CLIENT_ID),
                   'status_unknown': 'UNKNOWN'
                   }
   exporter.run_export(result_filename, export_sql, query_params)
