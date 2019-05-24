@@ -65,7 +65,7 @@ then
   UPDATE_TRACKER=echo
 elif [ "${PROJECT}" == "all-of-us-rdr-ptsc-1-test" ]
 then
-  CONFIG="config/config_ptsc_1.json"
+  CONFIG="config/config_test_ptsc_1.json"
   echo "Skipping JIRA tracker updates for PTSC Test 1."
   UPDATE_TRACKER=echo
 else
