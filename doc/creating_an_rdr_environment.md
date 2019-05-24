@@ -4,7 +4,7 @@ As of now, `raw-data-repository` (RDR) is a Google App Engine application that m
 
 These are the steps to stand up a new RDR environment:
 
-0. Create a Google Cloud Project for the environment
+0. Create a Google Cloud Project (`PROJECT`) for the environment
 0. Create required service accounts
     * `configurator@<PROJECT>.iam.gserviceaccount.com`
         * `Storage Admin`
@@ -24,12 +24,14 @@ These are the steps to stand up a new RDR environment:
     0. Update `rest-api/tools/auth_setup.sh` to know how to handle the new project
     0. Update `rest-api/tools/deploy_app.sh` to know how to handle the new project
     0. Update `rest-api/tools/build_cron_yaml.py` to know how to handle the new project
-0. From Google Cloud Console, Create new App Engine application
-0. (?) run `tools/deploy_app.sh --target app --project <PROJECT> --account <USER>@pmi-ops.org`
-0. (?) run `tools/setup_database.sh --create_instance --project <PROJECT> --account <USER>@pmi-ops.org`
-0. (?) run `tools/deploy_app.sh --target all --project <PROJECT> --account <USER>@pmi-ops.org`
-0. (?) run `tools/import_data.sh --project <PROJECT> --account <USER>@pmi-ops.org`
+0. commit changes and create local tag (`TAG`) `<PROJECT>-initial`. _Do **not** push this tag to github._
+0. From Google Cloud Console, Create new App Engine application (just enable it for the project)
+0. run `tools/deploy_app.sh --target app --version <TAG> --project <PROJECT> --account <USER>@pmi-ops.org`
+0. run `tools/setup_database.sh --create_instance --project <PROJECT> --account <USER>@pmi-ops.org`
+    * If this command fails because the database operations take too long:
+        * wait until the database is available in the Google Cloud Console web interface
+        * then run `tools/setup_database.sh --continue_creating_instance --project <PROJECT> --account <USER>@pmi-ops.org`
+0. run `tools/setup_database.sh --project <PROJECT> --account <USER>@pmi-ops.org`
+0. run `tools/deploy_app.sh --target all --version <TAG> --project <PROJECT> --account <USER>@pmi-ops.org`
+0. run `tools/import_data.sh --project <PROJECT> --account <USER>@pmi-ops.org`
 0. set up circle-ci deployment (if needed)
-    0. use dark magics
-    0. ...
-    0. profit!
