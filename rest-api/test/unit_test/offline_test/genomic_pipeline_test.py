@@ -233,25 +233,26 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
       ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
 
-    path = self._find_latest_genomic_set_csv(bucket_name, 'Manifest')
+    path = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_FOLDER)
+
     csv_file = cloudstorage_api.open(path)
     csv_reader = csv.DictReader(csv_file, delimiter=',')
 
     missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
     self.assertEqual(len(missing_cols), 0)
     rows = list(csv_reader)
-    self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], '12345678')
-    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ID], '1')
+    self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], '')
+    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ID], 'T1')
     self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_wgs')
     self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'Y')
-    self.assertEqual(rows[1][ExpectedCsvColumns.VALUE], '12345679')
-    self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ID], '2')
+    self.assertEqual(rows[1][ExpectedCsvColumns.VALUE], '')
+    self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ID], 'T2')
     self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
     self.assertEqual(rows[1][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], 'N')
-    self.assertEqual(rows[2][ExpectedCsvColumns.VALUE], '12345680')
-    self.assertEqual(rows[2][ExpectedCsvColumns.BIOBANK_ID], '3')
+    self.assertEqual(rows[2][ExpectedCsvColumns.VALUE], '')
+    self.assertEqual(rows[2][ExpectedCsvColumns.BIOBANK_ID], 'T3')
     self.assertEqual(rows[2][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[2][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[2][ExpectedCsvColumns.NY_FLAG], 'N')
@@ -270,7 +271,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
       ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
 
-    path = self._find_latest_genomic_set_csv(bucket_name, 'Manifest-Result')
+    path = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_RESULT_FOLDER)
     csv_file = cloudstorage_api.open(path)
     csv_reader = csv.DictReader(csv_file, delimiter=',')
 
@@ -278,21 +279,21 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(len(missing_cols), 0)
     rows = list(csv_reader)
     self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], '12345678')
-    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ID], '1')
+    self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ID], 'T1')
     self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], 'aou_wgs')
     self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], 'Y')
     self.assertEqual(rows[0][ExpectedCsvColumns.PACKAGE_ID], 'PKG-XXXX-XXXX1')
 
     self.assertEqual(rows[1][ExpectedCsvColumns.VALUE], '12345679')
-    self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ID], '2')
+    self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ID], 'T2')
     self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], 'F')
     self.assertEqual(rows[1][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], 'N')
     self.assertEqual(rows[1][ExpectedCsvColumns.PACKAGE_ID], 'PKG-XXXX-XXXX2')
 
     self.assertEqual(rows[2][ExpectedCsvColumns.VALUE], '12345680')
-    self.assertEqual(rows[2][ExpectedCsvColumns.BIOBANK_ID], '3')
+    self.assertEqual(rows[2][ExpectedCsvColumns.BIOBANK_ID], 'T3')
     self.assertEqual(rows[2][ExpectedCsvColumns.SEX_AT_BIRTH], 'M')
     self.assertEqual(rows[2][ExpectedCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[2][ExpectedCsvColumns.NY_FLAG], 'N')
@@ -303,6 +304,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     members = member_dao.get_all()
     for member in members:
       self.assertIn(member.packageId, ['PKG-XXXX-XXXX1', 'PKG-XXXX-XXXX2', 'PKG-XXXX-XXXX3'])
+      self.assertIn(member.biobankOrderClientId, ['12345678', '12345679', '12345680'])
 
   def test_wrong_file_name_case(self):
     samples_file = test_data.open_genomic_set_file('Genomic-Test-Set-test-3.csv')
@@ -437,16 +439,6 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[2][ResultCsvColumns.NY_FLAG], 'N')
     self.assertEqual(rows[2][ResultCsvColumns.GENOME_TYPE], 'aou_array')
     self.assertEqual(rows[2][ResultCsvColumns.SEX_AT_BIRTH], 'M')
-
-    self.assertEqual(rows[3][ResultCsvColumns.GENOMIC_SET_NAME], 'name_xxx')
-    self.assertEqual(rows[3][ResultCsvColumns.GENOMIC_SET_CRITERIA], 'criteria_xxx')
-    self.assertEqual(rows[3][ResultCsvColumns.STATUS], 'invalid')
-    self.assertEqual(rows[3][ResultCsvColumns.INVALID_REASON], 'INVALID_BIOBANK_ORDER_CLIENT_ID')
-    self.assertEqual(rows[3][ResultCsvColumns.PID], '4')
-    self.assertEqual(rows[3][ResultCsvColumns.BIOBANK_ORDER_ID], '4')
-    self.assertEqual(rows[3][ResultCsvColumns.NY_FLAG], 'Y')
-    self.assertEqual(rows[3][ResultCsvColumns.GENOME_TYPE], 'aou_wgs')
-    self.assertEqual(rows[3][ResultCsvColumns.SEX_AT_BIRTH], 'F')
 
   def _create_fake_genomic_set(self, genomic_set_name, genomic_set_criteria, genomic_set_filename):
     now = clock.CLOCK.now()

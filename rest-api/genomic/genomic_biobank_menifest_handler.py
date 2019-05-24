@@ -24,6 +24,8 @@ _MAX_INPUT_AGE = datetime.timedelta(hours=24)
 # sample suffix: -v12019-04-05-00-30-10.csv
 _RESULT_CSV_FILE_SUFFIX_LENGTH = 26
 
+BIOBANK_ID_PREFIX = 'T'
+
 
 def process_genomic_manifest_result_file_from_bucket():
   bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
@@ -90,6 +92,7 @@ def update_package_id_from_manifest_result_file(genomic_set_id, csv_file):
       'CSV is missing columns %s, had columns %s.' % (missing_cols, csv_reader.fieldnames))
 
   ClientIdPackageIdPair = collections.namedtuple('ClientIdPackageIdPair', [
+    'biobank_id',
     'client_id',
     'package_id',
   ])
@@ -100,9 +103,12 @@ def update_package_id_from_manifest_result_file(genomic_set_id, csv_file):
   try:
     rows = list(csv_reader)
     for row in rows:
-      if row[CsvColumns.VALUE] and row[CsvColumns.PACKAGE_ID]:
+      if row[CsvColumns.VALUE] and row[CsvColumns.PACKAGE_ID] and row[CsvColumns.BIOBANK_ID]:
+        biobank_id = row[CsvColumns.BIOBANK_ID][len(BIOBANK_ID_PREFIX):] \
+          if row[CsvColumns.BIOBANK_ID].startswith(BIOBANK_ID_PREFIX) \
+          else row[CsvColumns.BIOBANK_ID]
         update_queue.append(ClientIdPackageIdPair(
-          row[CsvColumns.VALUE], row[CsvColumns.PACKAGE_ID]
+           biobank_id, row[CsvColumns.VALUE], row[CsvColumns.PACKAGE_ID]
         ))
 
     dao.bulk_update_package_id(genomic_set_id, update_queue)
@@ -117,8 +123,8 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
   exporter = SqlExporter(bucket_name)
   export_sql = """
       SELECT 
-        biobank_order_client_Id as value,
-        biobank_id,
+        '' as value,
+        CONCAT(:prefix, biobank_id) as biobank_id,
         sex_at_birth,
         genome_type,
         CASE
@@ -130,7 +136,7 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
       WHERE genomic_set_id=:genomic_set_id
       ORDER BY id
     """
-  query_params = {'genomic_set_id': genomic_set_id}
+  query_params = {'genomic_set_id': genomic_set_id, 'prefix': BIOBANK_ID_PREFIX}
   exporter.run_export(result_filename, export_sql, query_params)
 
 

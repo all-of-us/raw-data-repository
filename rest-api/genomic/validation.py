@@ -96,7 +96,5 @@ def _get_validation_status(row, date_of_birth_cutoff):
     return GenomicValidationStatus.INVALID_BIOBANK_ORDER
   elif not row.zip_code:
     return GenomicValidationStatus.INVALID_NY_ZIPCODE
-  elif not row.biobank_order_client_Id:
-    return GenomicValidationStatus.INVALID_BIOBANK_ORDER_CLIENT_ID
   else:
     return GenomicValidationStatus.VALID
