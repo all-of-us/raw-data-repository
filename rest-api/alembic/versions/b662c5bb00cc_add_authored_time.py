@@ -1,7 +1,7 @@
 """add authored time
 
 Revision ID: b662c5bb00cc
-Revises: f512f8ca07c2
+Revises: d1f67196215e
 Create Date: 2019-05-16 15:43:49.473126
 
 """
@@ -22,7 +22,7 @@ from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatu
 
 # revision identifiers, used by Alembic.
 revision = 'b662c5bb00cc'
-down_revision = 'f512f8ca07c2'
+down_revision = 'd1f67196215e'
 branch_labels = None
 depends_on = None
 
