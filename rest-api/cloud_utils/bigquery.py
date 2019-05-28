@@ -4,97 +4,92 @@ from googleapiclient.discovery import build
 from google.appengine.api import app_identity
 
 
-SOCKET_TIMEOUT = 600000
-BQ_DEFAULT_RETRY_COUNT = 10
-
-
-def create_service():
-  return build('bigquery', 'v2')
-
-
-def bigquery(
-  q, app_id=None, dataset_id=None,
-  use_legacy_sql=False,
-  destination_dataset_id=None, destination_table_id=None,
-  retry_count=BQ_DEFAULT_RETRY_COUNT,
-  write_disposition='WRITE_EMPTY'
-):
+class BigQueryJob(object):
   """
-  Execute a SQL query on BigQuery dataset
+  Executes a BigQuery Job and handles iterating over result pages.
 
-  NOTE: this was reworked from
-        https://github.com/all-of-us/curation/blob/develop/data_steward/bq_utils.py
-
-  :param q: SQL statement
-  :param app_id: Default App for the query
-  :param dataset_id: Default Dataset for the query
-  :param use_legacy_sql: True if using legacy syntax, False by default
-  :param destination_table_id: if set, output is saved in a table with the specified id
-  :param retry_count: number of times to retry with randomized exponential backoff
-  :param write_disposition: WRITE_TRUNCATE, WRITE_APPEND or WRITE_EMPTY (default)
-  :param destination_dataset_id: dataset ID of destination table (EHR dataset by default)
-  :return: if destination_table_id is supplied then job info, otherwise job query response
-           (see https://goo.gl/AoGY6P and https://goo.gl/bQ7o2t)
+  DESIGNED FOR READ-ONLY USE AS OF 2019-05-28
   """
-  bq_service = create_service()
-  app_id = app_id or app_identity.get_application_id()
 
-  if destination_table_id:
-    raise NotImplemented("Writing to BigQuery has not been fleshed out yet.")
-    job_body = {
-      'configuration':
-        {
-          'query': {
-            'query': q,
-            'useLegacySql': use_legacy_sql,
-            'defaultDataset': {
-              'projectId': app_id,
-              'datasetId': dataset_id
-            },
-            'destinationTable': {
-              'projectId': app_id,
-              'datasetId': destination_dataset_id,
-              'tableId': destination_table_id
-            },
-            'writeDisposition': write_disposition
-          }
-        }
-    }
-    return (
-      bq_service.jobs()
-        .insert(projectId=app_id, body=job_body)
-        .execute(num_retries=retry_count)
-    )
-  else:
-    job_body = {
+  def __init__(
+    self,
+    query,
+    project_id=None,
+    dataset_id=None,
+    use_legacy_sql=False,
+    retry_count=10,
+    socket_timeout=10 * 60 * 1000,  # 10 minutes
+    page_size=1000
+  ):
+    self.query = query
+    self.project_id = project_id or app_identity.get_application_id()
+    self.dataset_id = dataset_id
+    self.use_legacy_sql = use_legacy_sql
+    self.retry_count = retry_count
+    self.socket_timeout = socket_timeout
+    self.page_size = page_size
+    self._service = build('bigquery', 'v2')
+
+  def _make_job_body(self):
+    return {
       'defaultDataset': {
-        'projectId': app_id,
-        'datasetId': dataset_id
+        'projectId': self.project_id,
+        'datasetId': self.dataset_id
       },
-      'query': q,
-      'timeoutMs': SOCKET_TIMEOUT,
-      'useLegacySql': use_legacy_sql
+      'query': self.query,
+      'timeoutMs': self.socket_timeout,
+      'useLegacySql': self.use_legacy_sql,
+      'maxResults': self.page_size,
     }
-    return (
-      bq_service.jobs()
-        .query(projectId=app_id, body=job_body)
-        .execute(num_retries=retry_count)
+
+  def execute_and_iter_pages(self):
+    service = build('bigquery', 'v2')
+    job_body = self._make_job_body()
+    result = (
+      service.jobs()
+        .query(projectId=self.project_id, body=job_body)
+        .execute(num_retries=self.retry_count)
     )
+    return self.iter_pages(service, result)
 
+  def iter_pages(self, service, result):
+    job_reference = result['jobReference']
+    project_id = job_reference['projectId']
+    job_id = job_reference['jobId']
 
-def get_row_dicts_from_bigquery_response(response):
-  """
-  Make a `list` of `OrderedDict` objects representing the bigquery response dict structure.
-  This list allows for cleaner usage of common result access patterns.
+    page = result
+    while page:
+      yield self._get_rows_from_response(page)
+      page_token = page.get('pageToken')
+      if page_token:
+        page = (
+          service.jobs()
+            .getQueryResults(projectId=project_id, jobId=job_id,
+                             pageToken=page_token, maxResults=self.page_size)
+            .execute()
+        )
+      else:
+        page = None
 
-  :param response: Response `dict` structure from a call to `bigquery()`
-  :rtype: list
-  """
-  return [
-    collections.OrderedDict(
-      (field['name'], row['f'][i]['v'])
-      for i, field
-      in enumerate(response['schema']['fields'])
-    )
-    for row in response['rows']
-  ]
+  @staticmethod
+  def _get_rows_from_response(response):
+    """
+    Make a `list` of `Row` (namedtuple) objects representing the bigquery response dict structure.
+    This list allows for cleaner usage of common result access patterns.
+
+    :param response: Response `dict` structure from a call to `bigquery()`
+    :rtype: list
+    """
+    field_names = [f['name'] for f in response['schema']['fields']]
+    Row = collections.namedtuple('Row', field_names)
+    return [
+      Row(
+        *[
+          field['v']
+          for field
+          in row['f']
+        ]
+      )
+      for row
+      in response['rows']
+    ]

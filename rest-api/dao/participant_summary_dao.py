@@ -1,5 +1,6 @@
 import datetime
 import re
+import sqlalchemy
 import threading
 
 import clock
@@ -630,6 +631,30 @@ class ParticipantSummaryDao(UpdatableDao):
       summary.ehrReceiptTime = update_time
     summary.ehrUpdateTime = update_time
     return summary
+
+  def bulk_update_ehr_status(self, participant_id_iterable):
+    with self.session() as session:
+      self.bulk_update_ehr_status_with_session(session, participant_id_iterable)
+
+  @staticmethod
+  def bulk_update_ehr_status_with_session(session, participant_id_iterable):
+    query = (
+      sqlalchemy
+        .update(ParticipantSummary)
+        .where(
+          (ParticipantSummary.ehrStatus != EhrStatus.PRESENT)
+          and (ParticipantSummary.participantId == sqlalchemy.bindparam('participant_id'))
+        )
+        .values({
+          ParticipantSummary.ehrStatus.name: EhrStatus.PRESENT,
+          ParticipantSummary.ehrReceiptTime: clock.CLOCK.now()
+        })
+    )
+    parameter_sets = [
+      {'participant_id': participant_id}
+      for participant_id in participant_id_iterable
+    ]
+    return session.execute(query, parameter_sets)
 
 
 def _initialize_field_type_sets():
