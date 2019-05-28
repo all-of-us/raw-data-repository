@@ -151,7 +151,6 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ] || [ "${CON
     cat tools/update_passwords.sql | envsubst >> $UPDATE_DB_FILE
 
 	echo "applying database changes..."
-	FAILURE_MESSAGE=
 	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE} & echo "done" | handle_mysql_failed
 	echo "Setting database configuration..."
 	tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
