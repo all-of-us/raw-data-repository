@@ -127,7 +127,7 @@
     },
     "awardee-newyork@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
-      "awardee": "newyork",
+      "awardee": "COLUMBIA",
       "whitelisted_ip_ranges" : {
         "ip4": [
           "157.139.237.172",
