@@ -35,7 +35,7 @@
     },
     "awardee-arizona@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
-      "awardee": "arizona",
+      "awardee": "AZ_TUCSON",
       "whitelisted_ip_ranges" : {
         "ip4": ["206.213.43.100"]
       }
@@ -113,9 +113,16 @@
     },
     "awardee-broad@all-of-us-rdr-stable.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
-      "awardee": "Broad",
+      "awardee": "no_awardee",
       "whitelisted_ip_ranges" : {
         "ip4": ["69.173.70.24", "69.173.64.125"]
+      }
+    },
+    "awardee-ngc@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "QTC",
+      "whitelisted_ip_ranges" : {
+        "ip4": ["128.208.8.51", "128.208.25.58", "198.48.92.38"]
       }
     },
     "configurator@all-of-us-rdr-stable.iam.gserviceaccount.com": {
