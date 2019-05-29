@@ -23,7 +23,7 @@ def update_ehr_status():
   job = cloud_utils.bigquery.BigQueryJob(
     query,
     project_id='all-of-us-rdr-sandbox',
-    dataset_id='operations_analytics',
+    default_dataset_id='operations_analytics',
     page_size=1000
   )
 
@@ -33,19 +33,25 @@ def update_ehr_status():
 
 def individual_update(job):
   summary_dao = ParticipantSummaryDao()
-  for page in job.execute_and_iter_pages():
+  now = clock.CLOCK.now()
+  for page in job:
     for row in page:
       summary = summary_dao.get(row.person_id)
       if summary.ehrStatus != EhrStatus.PRESENT:
         summary.ehrStatus = EhrStatus.PRESENT
-        summary.ehrReciptTime = clock.CLOCK.now()
+        summary.ehrReceiptTime = now
         summary_dao.update(summary)
 
 
 def batched_update(job):
   summary_dao = ParticipantSummaryDao()
-  for page in job.execute_and_iter_pages():
-    participant_ids = set()
-    for row in page:
-      participant_ids.add(row.person_id)
-    summary_dao.bulk_update_ehr_status(participant_ids)
+  now = clock.CLOCK.now()
+  for page in job:
+    parameter_sets = [
+      {
+        'pid': row.person_id,
+        'receipt_time': now,
+      }
+      for row in page
+    ]
+    summary_dao.bulk_update_ehr_status(parameter_sets)

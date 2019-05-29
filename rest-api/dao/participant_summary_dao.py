@@ -632,28 +632,26 @@ class ParticipantSummaryDao(UpdatableDao):
     summary.ehrUpdateTime = update_time
     return summary
 
-  def bulk_update_ehr_status(self, participant_id_iterable):
+  def bulk_update_ehr_status(self, parameter_sets):
     with self.session() as session:
-      self.bulk_update_ehr_status_with_session(session, participant_id_iterable)
+      self.bulk_update_ehr_status_with_session(session, parameter_sets)
 
   @staticmethod
-  def bulk_update_ehr_status_with_session(session, participant_id_iterable):
+  def bulk_update_ehr_status_with_session(session, parameter_sets):
     query = (
       sqlalchemy
         .update(ParticipantSummary)
         .where(
-          (ParticipantSummary.ehrStatus != EhrStatus.PRESENT)
-          and (ParticipantSummary.participantId == sqlalchemy.bindparam('participant_id'))
+          sqlalchemy.and_(
+            ParticipantSummary.ehrStatus != EhrStatus.PRESENT,
+            ParticipantSummary.participantId == sqlalchemy.bindparam('pid')
+          )
         )
         .values({
           ParticipantSummary.ehrStatus.name: EhrStatus.PRESENT,
-          ParticipantSummary.ehrReceiptTime: clock.CLOCK.now()
+          ParticipantSummary.ehrReceiptTime: sqlalchemy.bindparam('receipt_time'),
         })
     )
-    parameter_sets = [
-      {'participant_id': participant_id}
-      for participant_id in participant_id_iterable
-    ]
     return session.execute(query, parameter_sets)
 
 

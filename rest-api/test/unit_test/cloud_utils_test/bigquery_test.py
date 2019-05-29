@@ -1,29 +1,32 @@
 import unittest
 
 import cloud_utils.bigquery
-from unit_test_util import CloudStorageSqlTestBase
+from test.unit_test.unit_test_util import CloudStorageSqlTestBase
 
 
-class BigQueryTest(CloudStorageSqlTestBase):
+class BigQueryJobTest(CloudStorageSqlTestBase):
   """
   This test suite tests querying against real BigQuery datasets.
   """
 
-  @unittest.skip("Authentication to actual BigQuery not properly set up for tests")
+  @unittest.skip("Only used for manual testing, should not be included in automated test suite")
   def test_query(self):
     """
-    Test that the `bigquery` helper method returns results in the expected format.
+    Test an actual query with pagination
     """
-
-    query = 'select * from ehr_upload_pids limit 3'
-    response = cloud_utils.bigquery.bigquery(
+    query = 'SELECT * FROM `bigquery-public-data.usa_names.usa_1910_2013` LIMIT 10'
+    job = cloud_utils.bigquery.BigQueryJob(
       query,
-      app_id='all-of-us-rdr-sandbox',
-      dataset_id='curation_test'
+      project_id='all-of-us-rdr-sandbox',
+      default_dataset_id='usa_names',
+      page_size=3
     )
-    self.assertEqual(response['totalRows'], u'3')
+    pages = list(job)
+    self.assertEqual(len(pages), 4)
+    row = pages[0][0]
+    self.assertTrue(isinstance(row.name, basestring))
+    self.assertTrue(isinstance(row.year, int))
 
-  @unittest.skip("Authentication to actual BigQuery not properly set up for tests")
   def test_response_transformation(self):
     """
     Test the transformation function to make bigquery responses easier to use practically.
@@ -60,14 +63,14 @@ class BigQueryTest(CloudStorageSqlTestBase):
                                          u'type': u'INTEGER'}]},
                 u'totalBytesProcessed': u'0',
                 u'totalRows': u'3'}
-    rows = cloud_utils.bigquery.get_row_dicts_from_bigquery_response(response)
+    rows = cloud_utils.bigquery.BigQueryJob.get_rows_from_response(response)
     self.assertEqual(len(rows), 3)
     first_row = rows[0]
-    self.assertEqual(first_row.keys(), [
+    self.assertEqual(first_row._asdict().keys(), [
       'word',
       'word_count',
       'corpus',
       'corpus_date',
     ])
-    self.assertEqual(type(first_row['word']), type(u'some unicode string'))
-    self.assertEqual(type(first_row['word_count']), type(u'12345'))
+    self.assertEqual(type(first_row.word), type(u'some unicode string'))
+    self.assertEqual(type(first_row.word_count), type(12345))
