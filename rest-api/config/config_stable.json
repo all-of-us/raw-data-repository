@@ -97,6 +97,13 @@
           "ip4": ["156.145.115.47", "156.145.115.138", "156.145.115.188", "157.139.21.56", "157.139.237.172", "157.139.9.228"]
         }
     },
+    "awardee-newyork@all-of-us-ops-data-api-stable.iam.gserviceaccount.com": {
+        "roles": ["awardee_sa"],
+        "awardee": "newyork",
+        "whitelisted_ip_ranges" : {
+          "ip4": ["157.139.21.56", "157.139.237.172", "157.139.9.228"]
+        }
+    },
     "vibrent-drc-stable@vibrent-drc-stable-165017.iam.gserviceaccount.com": {
       "roles": ["ptc"],
       "whitelisted_ip_ranges": {
