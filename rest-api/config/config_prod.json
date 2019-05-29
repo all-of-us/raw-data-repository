@@ -124,6 +124,19 @@
       "whitelisted_ip_ranges" : {
         "ip4": ["160.129.251.78"]
       }
+    },
+    "awardee-newyork@all-of-us-ops-data-api-prod.iam.gserviceaccount.com": {
+      "roles": ["awardee_sa"],
+      "awardee": "COLUMBIA",
+      "whitelisted_ip_ranges" : {
+        "ip4": [
+          "157.139.237.172",
+          "157.139.9.22",
+          "140.251.21.110",
+          "157.139.9.228",
+          "157.139.21.56"
+        ]
+      }
     }
   }
 }
