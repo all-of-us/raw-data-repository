@@ -12,7 +12,7 @@ import offline.update_ehr_status
 from model.hpo import HPO
 from model.organization import Organization
 from participant_enums import EhrStatus
-from test.unit_test.unit_test_util import FlaskTestBase, run_deferred_tasks
+from test.unit_test.unit_test_util import FlaskTestBase
 
 
 class UpdateEhrStatusTestCase(FlaskTestBase):
