@@ -41,6 +41,15 @@ PMI_OTHER_CODE = 'PMI_Other'
 PMI_FREE_TEXT_CODE = 'PMI_FreeText'
 PMI_UNANSWERED_CODE = 'PMI_Unanswered'
 
+#Gender answer codes
+GENDER_MAN_CODE = 'GenderIdentity_Man'
+GENDER_WOMAN_CODE = 'GenderIdentity_Woman'
+GENDER_NONBINARY_CODE = 'GenderIdentity_NonBinary'
+GENDER_TRANSGENDER_CODE = 'GenderIdentity_Transgender'
+GENDER_OTHER_CODE = 'GenderIdentity_AdditionalOptions'
+GENDER_PREFER_NOT_TO_ANSWER_CODE = 'PMI_PreferNotToAnswer'
+GENDER_NO_GENDER_IDENTITY_CODE = 'PMI_skip'
+
 # Race answer codes
 RACE_AIAN_CODE = 'WhatRaceEthnicity_AIAN'
 RACE_ASIAN_CODE = 'WhatRaceEthnicity_Asian'

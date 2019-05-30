@@ -13,7 +13,7 @@ from werkzeug.exceptions import BadRequest
 
 from code_constants import PPI_SYSTEM, RACE_QUESTION_CODE, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, \
   DVEHR_SHARING_QUESTION_CODE, CONSENT_FOR_DVEHR_MODULE, DVEHRSHARING_CONSENT_CODE_NOT_SURE, \
-  LANGUAGE_OF_CONSENT
+  LANGUAGE_OF_CONSENT, GENDER_IDENTITY_QUESTION_CODE
 from code_constants import EHR_CONSENT_QUESTION_CODE, CONSENT_PERMISSION_YES_CODE
 from code_constants import CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE, PPI_EXTRA_SYSTEM
 from code_constants import CABOR_SIGNATURE_QUESTION_CODE, DVEHRSHARING_CONSENT_CODE_YES
@@ -28,7 +28,7 @@ from model.code import CodeType
 from model.questionnaire import QuestionnaireQuestion
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from participant_enums import QuestionnaireStatus, get_race, QuestionnaireDefinitionStatus, \
-  TEST_LOGIN_PHONE_NUMBER_PREFIX
+  TEST_LOGIN_PHONE_NUMBER_PREFIX, get_gender_identity
 
 _QUESTIONNAIRE_PREFIX = 'Questionnaire/'
 _QUESTIONNAIRE_HISTORY_SEGMENT = '/_history/'
@@ -242,6 +242,7 @@ class QuestionnaireResponseDao(BaseDao):
     code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
     question_map = {question.questionnaireQuestionId: question for question in questions}
     race_code_ids = []
+    gender_code_ids = []
     ehr_consent = False
     dvehr_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
     # Set summary fields for answers that have questions with codes found in QUESTION_CODE_TO_FIELD
@@ -259,6 +260,9 @@ class QuestionnaireResponseDao(BaseDao):
                                                      summary_field[1], answer)
           elif code.value == RACE_QUESTION_CODE:
             race_code_ids.append(answer.valueCodeId)
+
+          elif code.value == GENDER_IDENTITY_QUESTION_CODE:
+            gender_code_ids.append(answer.valueCodeId)
 
           elif code.value == DVEHR_SHARING_QUESTION_CODE:
             code = code_dao.get(answer.valueCodeId)
@@ -285,6 +289,13 @@ class QuestionnaireResponseDao(BaseDao):
       race = get_race(race_codes)
       if race != participant_summary.race:
         participant_summary.race = race
+        something_changed = True
+
+    if gender_code_ids:
+      gender_codes = [code_dao.get(code_id) for code_id in gender_code_ids]
+      gender = get_gender_identity(gender_codes)
+      if gender != participant_summary.genderIdentity:
+        participant_summary.genderIdentity = gender
         something_changed = True
 
     # Set summary fields to SUBMITTED for questionnaire concepts that are found in
