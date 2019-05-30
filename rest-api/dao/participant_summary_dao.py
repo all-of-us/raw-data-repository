@@ -634,7 +634,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
   def bulk_update_ehr_status(self, parameter_sets):
     with self.session() as session:
-      self.bulk_update_ehr_status_with_session(session, parameter_sets)
+      return self.bulk_update_ehr_status_with_session(session, parameter_sets)
 
   @staticmethod
   def bulk_update_ehr_status_with_session(session, parameter_sets):
