@@ -16,7 +16,7 @@ _logger = logging.getLogger('rdr_logger')
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
-tool_cmd = 'tool-name'
+tool_cmd = 'template'
 tool_desc = 'put tool help description here'
 
 
