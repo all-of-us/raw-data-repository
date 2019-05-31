@@ -9,8 +9,8 @@ from api_util import get_awardee_id_from_name
 from app_util import auth_required
 from dao.hpo_dao import HPODao
 from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
-from participant_enums import EnrollmentStatus
-from participant_enums import Stratifications
+from participant_enums import EnrollmentStatus, EnrollmentStatusV2, Stratifications, \
+  MetricsAPIVersion
 
 DATE_FORMAT = '%Y-%m-%d'
 DAYS_LIMIT_FOR_REALTIME_DATA = 100  # provisional, per design doc
@@ -100,14 +100,22 @@ class ParticipantCountsOverTimeApi(Resource):
           awardee_ids.append(awardee_id)
     filters['awardee_ids'] = awardee_ids
 
+    try:
+      filters['version'] = MetricsAPIVersion(int(params['version'])) if params['version'] else None
+    except ValueError:
+      filters['version'] = None
+
     # Validate enrollment statuses
     enrollment_status_strs = []
     if params['enrollment_statuses'] is not None:
       enrollment_statuses = params['enrollment_statuses'].split(',')
       try:
-        enrollment_status_strs = [str(EnrollmentStatus(val)) for val in enrollment_statuses]
+        enrollment_status_strs = [str(EnrollmentStatusV2(val))
+                                  if filters['version'] == MetricsAPIVersion.V2
+                                  else str(EnrollmentStatus(val)) for val in enrollment_statuses]
       except TypeError:
-        valid_enrollment_statuses = EnrollmentStatus.to_dict()
+        valid_enrollment_statuses = EnrollmentStatusV2.to_dict() \
+          if filters['version'] == MetricsAPIVersion.V2 else EnrollmentStatus.to_dict()
         for enrollment_status in enrollment_statuses:
           if enrollment_status != '':
             if enrollment_status not in valid_enrollment_statuses:
@@ -123,9 +131,6 @@ class ParticipantCountsOverTimeApi(Resource):
       raise BadRequest('Invalid value for parameter history: %s' % params['history'])
     else:
       filters['history'] = params['history']
-
-    if params['version']:
-      filters['version'] = params['version']
 
     return filters
 

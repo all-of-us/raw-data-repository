@@ -60,6 +60,13 @@ class EnrollmentStatus(messages.Enum):
   MEMBER = 2
   FULL_PARTICIPANT = 3
 
+class EnrollmentStatusV2(messages.Enum):
+  """A status reflecting how fully enrolled a participant is(Version 2)"""
+  REGISTERED = 0
+  PARTICIPANT = 1
+  FULLY_CONSENTED = 2
+  CORE_PARTICIPANT = 3
+
 class SampleStatus(messages.Enum):
   """Status of biobank samples"""
   UNSET = 0
@@ -282,6 +289,12 @@ AGE_BUCKETS_METRICS_V2_API = ['0-17', '18-25', '26-35', '36-45', '46-55', '56-65
 AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API = ['18-29', '30-39', '40-49', '50-59', '60-69', '70-79',
                                          '80-89', '90-']
 
+
+class MetricsAPIVersion(messages.Enum):
+  """M2API version history"""
+  V1 = 1  # M2API version 1
+  V2 = 2  # change participant status to 4 tiers
+  V3 = 3  # support multiple gender selection
 
 # The lower bounds of the age buckets.
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]

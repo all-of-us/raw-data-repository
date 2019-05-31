@@ -1,8 +1,9 @@
 from werkzeug.exceptions import BadRequest
 import datetime
 from model.participant_summary import ParticipantSummary
-from participant_enums import EnrollmentStatus, TEST_HPO_NAME, TEST_EMAIL_PATTERN
-from participant_enums import WithdrawalStatus, MetricsCacheType, Stratifications
+from participant_enums import EnrollmentStatus, EnrollmentStatusV2, TEST_HPO_NAME, \
+  TEST_EMAIL_PATTERN
+from participant_enums import WithdrawalStatus, MetricsCacheType, Stratifications, MetricsAPIVersion
 from dao.hpo_dao import HPODao
 from dao.base_dao import BaseDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
@@ -70,7 +71,9 @@ class ParticipantCountsOverTimeService(BaseDao):
     # filters_sql_ps is used in the general case when we're querying participant_summary
     # filters_sql_p is used when also LEFT OUTER JOINing p and ps
     facets = {
-      'enrollment_statuses': [EnrollmentStatus(val) for val in enrollment_statuses],
+      'enrollment_statuses': [EnrollmentStatusV2(val)
+                              if version == MetricsAPIVersion.V2 else EnrollmentStatus(val)
+                              for val in enrollment_statuses],
       'awardee_ids': awardee_ids
     }
     filters_sql_ps = self.get_facets_sql(facets, stratification)
@@ -113,6 +116,9 @@ class ParticipantCountsOverTimeService(BaseDao):
     elif stratification == Stratifications.TOTAL:
       strata = ['TOTAL']
       sql = self.get_total_sql(filters_sql_ps)
+    elif version == MetricsAPIVersion.V2 and stratification == Stratifications.ENROLLMENT_STATUS:
+      strata = [str(val) for val in EnrollmentStatusV2]
+      sql = self.get_enrollment_status_sql(filters_sql_p, sample_time_def, version)
     elif stratification == Stratifications.ENROLLMENT_STATUS:
       strata = [str(val) for val in EnrollmentStatus]
       sql = self.get_enrollment_status_sql(filters_sql_p, sample_time_def)
@@ -289,62 +295,128 @@ class ParticipantCountsOverTimeService(BaseDao):
       order by calendar.day;
     """ % {'filters': filters_sql}
 
-  def get_enrollment_status_sql(self, filters_sql_p, filter_by='ORDERED'):
+  def get_enrollment_status_sql(self, filters_sql_p, filter_by='ORDERED', version=None):
 
     core_sample_time_field_name = 'enrollment_status_core_ordered_sample_time'
     if filter_by == 'STORED':
       core_sample_time_field_name = 'enrollment_status_core_stored_sample_time'
 
-    sql = """
-      SELECT
-      IFNULL((
-        SELECT SUM(results.enrollment_count)
-        FROM
-        (
-          SELECT DATE(p.sign_up_time) AS sign_up_time,
-                 DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
-                 DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
-                 count(*) enrollment_count
-          FROM participant p
-                 LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-          %(filters_p)s
-          GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
-        ) AS results
-        WHERE c.day>=DATE(sign_up_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
-      ),0) AS registered_participants,
-      IFNULL((
-        SELECT SUM(results.enrollment_count)
-        FROM
-        (
-          SELECT DATE(p.sign_up_time) AS sign_up_time,
-                 DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
-                 DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
-                 count(*) enrollment_count
-          FROM participant p
-                 LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-          %(filters_p)s
-          GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
-        ) AS results
-        WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (%(core_sample_time_field_name)s IS NULL OR day < DATE(%(core_sample_time_field_name)s))
-      ),0) AS member_participants,
-      IFNULL((
-        SELECT SUM(results.enrollment_count)
-        FROM
-        (
-          SELECT DATE(p.sign_up_time) AS sign_up_time,
-                 DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
-                 DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
-                 count(*) enrollment_count
-          FROM participant p
-                 LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
-          %(filters_p)s
-          GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
-        ) AS results
-        WHERE %(core_sample_time_field_name)s IS NOT NULL AND day>=DATE(%(core_sample_time_field_name)s)
-      ),0) AS full_participants,
-      day
-      FROM calendar c
-      WHERE c.day BETWEEN :start_date AND :end_date
-      """ % {'filters_p': filters_sql_p, 'core_sample_time_field_name': core_sample_time_field_name}
+    if version == MetricsAPIVersion.V2:
+      sql = """
+        SELECT
+        IFNULL((
+          SELECT SUM(results.enrollment_count)
+          FROM
+          (
+            SELECT DATE(p.sign_up_time) AS sign_up_time,
+                   DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                   count(*) enrollment_count
+            FROM participant p
+                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+            %(filters_p)s
+            GROUP BY DATE(p.sign_up_time), DATE(ps.consent_for_study_enrollment_time)
+          ) AS results
+          WHERE c.day>=DATE(sign_up_time) AND consent_for_study_enrollment_time IS NULL
+        ),0) AS registered,
+        IFNULL((
+          SELECT SUM(results.enrollment_count)
+          FROM
+          (
+            SELECT DATE(p.sign_up_time) AS sign_up_time,
+                   DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                   count(*) enrollment_count
+            FROM participant p
+                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+            %(filters_p)s
+            GROUP BY DATE(p.sign_up_time), DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time)
+          ) AS results
+          WHERE c.day>=DATE(sign_up_time) AND consent_for_study_enrollment_time IS NOT NULL AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+        ),0) AS participant,
+        IFNULL((
+          SELECT SUM(results.enrollment_count)
+          FROM
+          (
+            SELECT DATE(p.sign_up_time) AS sign_up_time,
+                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                   DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
+                   count(*) enrollment_count
+            FROM participant p
+                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+            %(filters_p)s
+            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+          ) AS results
+          WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (%(core_sample_time_field_name)s IS NULL OR day < DATE(%(core_sample_time_field_name)s))
+        ),0) AS fully_consented,
+        IFNULL((
+          SELECT SUM(results.enrollment_count)
+          FROM
+          (
+            SELECT DATE(p.sign_up_time) AS sign_up_time,
+                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                   DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
+                   count(*) enrollment_count
+            FROM participant p
+                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+            %(filters_p)s
+            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+          ) AS results
+          WHERE %(core_sample_time_field_name)s IS NOT NULL AND day>=DATE(%(core_sample_time_field_name)s)
+        ),0) AS core_participant,
+        day
+        FROM calendar c
+        WHERE c.day BETWEEN :start_date AND :end_date
+        """ % {'filters_p': filters_sql_p, 'core_sample_time_field_name': core_sample_time_field_name}
+    else:
+      sql = """
+        SELECT
+        IFNULL((
+          SELECT SUM(results.enrollment_count)
+          FROM
+          (
+            SELECT DATE(p.sign_up_time) AS sign_up_time,
+                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                   count(*) enrollment_count
+            FROM participant p
+                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+            %(filters_p)s
+            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time)
+          ) AS results
+          WHERE c.day>=DATE(sign_up_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+        ),0) AS registered_participants,
+        IFNULL((
+          SELECT SUM(results.enrollment_count)
+          FROM
+          (
+            SELECT DATE(p.sign_up_time) AS sign_up_time,
+                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                   DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
+                   count(*) enrollment_count
+            FROM participant p
+                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+            %(filters_p)s
+            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+          ) AS results
+          WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (%(core_sample_time_field_name)s IS NULL OR day < DATE(%(core_sample_time_field_name)s))
+        ),0) AS member_participants,
+        IFNULL((
+          SELECT SUM(results.enrollment_count)
+          FROM
+          (
+            SELECT DATE(p.sign_up_time) AS sign_up_time,
+                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                   DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
+                   count(*) enrollment_count
+            FROM participant p
+                   LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+            %(filters_p)s
+            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+          ) AS results
+          WHERE %(core_sample_time_field_name)s IS NOT NULL AND day>=DATE(%(core_sample_time_field_name)s)
+        ),0) AS full_participants,
+        day
+        FROM calendar c
+        WHERE c.day BETWEEN :start_date AND :end_date
+        """ % {'filters_p': filters_sql_p, 'core_sample_time_field_name': core_sample_time_field_name}
 
     return sql
