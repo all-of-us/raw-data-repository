@@ -49,6 +49,11 @@ def upgrade_rdr():
     op.create_index(op.f('ix_bigquery_sync_created'), 'bigquery_sync', ['created'], unique=False)
     op.create_index(op.f('ix_bigquery_sync_modified'), 'bigquery_sync', ['modified'], unique=False)
     op.create_index('ix_ds_table', 'bigquery_sync', ['dataset', 'table'], unique=False)
+
+    op.execute(
+      'ALTER TABLE patient_status CHANGE COLUMN `created` `created` DATETIME(6) NULL;')
+    op.execute(
+      'ALTER TABLE patient_status CHANGE COLUMN `modified` `modified` DATETIME(6) NULL')
     # ### end Alembic commands ###
 
 
