@@ -148,6 +148,10 @@ class UpdateEhrStatusTestCase(SqlTestBase):
       [
         self.TableCountsRow(
           org_id='FOO_A',
+          person_upload_time=datetime.datetime(2019, 1, 1).replace(tzinfo=pytz.UTC)
+        ),
+        self.TableCountsRow(
+          org_id='FOO_A',
           person_upload_time=datetime.datetime(2019, 1, 2).replace(tzinfo=pytz.UTC)
         ),
         self.TableCountsRow(

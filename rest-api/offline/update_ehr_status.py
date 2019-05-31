@@ -1,13 +1,12 @@
 import logging
 
-import pytz
-
 import clock
 import cloud_utils.bigquery
+from app_util import datetime_as_naive_utc
 from dao.ehr_dao import EhrReceiptDao
 from dao.organization_dao import OrganizationDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from model.ehr import EhrReceipt
+
 
 LOG = logging.getLogger(__name__)
 
@@ -73,8 +72,8 @@ def update_organizations():
   for page in job:
     for row in page:
       org = organization_dao.get_by_external_id(row.org_id)
-      receipt = EhrReceipt(
+      receipt_dao.get_or_create(
+        insert_if_created=True,
         organizationId=org.organizationId,
-        receiptTime=row.person_upload_time.astimezone(pytz.UTC).replace(tzinfo=None)
+        receiptTime=datetime_as_naive_utc(row.person_upload_time)
       )
-      receipt_dao.insert(receipt)
