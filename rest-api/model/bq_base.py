@@ -238,13 +238,13 @@ class BQSchema(object):
       fld_type = BQFieldTypeEnum[field['type']]
       fld_mode = BQFieldModeEnum[field['mode']]
       fld_descr = field['description'] if 'description' in field else None
-      enum = None
+      fld_enum = None
 
       if fld_descr and fld_type != BQFieldTypeEnum.RECORD:
         try:
           mod_path, mod_name = fld_descr.rsplit('.', 1)
           mod_name = 'crap'
-          enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
+          fld_enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
           fld_descr = None
         except AttributeError:
           pass
@@ -257,7 +257,7 @@ class BQSchema(object):
         rec_obj = BQRecordField(fld_name, fld_descr=fld_descr)
         self.__dict__[fld_name] = self._add_fields(rec_obj, field['fields'])
       else:
-        obj.__dict__[fld_name] = BQField(fld_name, fld_type, fld_mode, enum, fld_descr)
+        obj.__dict__[fld_name] = BQField(fld_name, fld_type, fld_mode, fld_enum, fld_descr)
 
     return obj
 
