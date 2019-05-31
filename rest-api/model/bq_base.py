@@ -243,7 +243,6 @@ class BQSchema(object):
       if fld_descr and fld_type != BQFieldTypeEnum.RECORD:
         try:
           mod_path, mod_name = fld_descr.rsplit('.', 1)
-          mod_name = 'crap'
           fld_enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
           fld_descr = None
         except AttributeError:
