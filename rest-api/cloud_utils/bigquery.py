@@ -1,6 +1,8 @@
 import collections
 import datetime
+import re
 
+import pytz
 from googleapiclient.discovery import build
 from google.appengine.api import app_identity
 
@@ -149,6 +151,22 @@ class BigQueryJob(object):
   def _parse_bool(value):
     return value.lower() == 'true'
 
+  @staticmethod
+  def _parse_timestamp(value):
+    try:
+      date = datetime.datetime.strptime(
+        re.sub(r'\bT\b', '', value),
+        '%Y-%m-%d %H:%M:%S.%f %Z'
+      )
+      if date.tzinfo is None:
+        date = date.replace(tzinfo=pytz.UTC)
+      return date
+    except ValueError:
+      try:
+        return datetime.datetime.utcfromtimestamp(float(value)).replace(tzinfo=pytz.UTC)
+      except ValueError:
+        raise ValueError("Could not parse {} as TIMESTAMP".format(value))
+
   @classmethod
   def get_parsers_by_typename_map(cls):
     return {
@@ -160,8 +178,7 @@ class BigQueryJob(object):
       'FLOAT64': cls._parse_float,
       'BOOLEAN': cls._parse_bool,
       'BOOL': cls._parse_bool,
-      'TIMESTAMP': lambda v: datetime.datetime.strptime(v.replace('T', ' '),
-                                                        '%Y-%m-%d %H:%M:%S.%f %z'),
+      'TIMESTAMP': cls._parse_timestamp,
       'DATE': lambda v: datetime.datetime.strptime(v, '%Y-%m-%d').date(),
       'TIME': lambda v: datetime.datetime.strptime(v, '%H:%M:%S.%f').time(),
       'DATETIME': lambda v: datetime.datetime.strptime(v.replace('T', ' '), '%Y-%m-%d %H:%M:%S.%f'),

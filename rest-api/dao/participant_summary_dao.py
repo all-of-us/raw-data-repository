@@ -641,15 +641,17 @@ class ParticipantSummaryDao(UpdatableDao):
     query = (
       sqlalchemy
         .update(ParticipantSummary)
-        .where(
-          sqlalchemy.and_(
-            ParticipantSummary.ehrStatus != EhrStatus.PRESENT,
-            ParticipantSummary.participantId == sqlalchemy.bindparam('pid')
-          )
-        )
+        .where(ParticipantSummary.participantId == sqlalchemy.bindparam('pid'))
         .values({
           ParticipantSummary.ehrStatus.name: EhrStatus.PRESENT,
-          ParticipantSummary.ehrReceiptTime: sqlalchemy.bindparam('receipt_time'),
+          ParticipantSummary.ehrUpdateTime: sqlalchemy.bindparam('receipt_time'),
+          ParticipantSummary.ehrReceiptTime: sqlalchemy.case(
+            [(
+              ParticipantSummary.ehrReceiptTime == None,
+              sqlalchemy.bindparam('receipt_time')
+            )],
+            else_=ParticipantSummary.ehrReceiptTime
+          ),
         })
     )
     return session.execute(query, parameter_sets)

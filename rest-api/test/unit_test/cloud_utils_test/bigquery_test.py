@@ -1,10 +1,12 @@
+import datetime
 import unittest
 
+import pytz
+
 import cloud_utils.bigquery
-from test.unit_test.unit_test_util import CloudStorageSqlTestBase
 
 
-class BigQueryJobTest(CloudStorageSqlTestBase):
+class BigQueryJobTest(unittest.TestCase):
   """
   This test suite tests querying against real BigQuery datasets.
   """
@@ -14,18 +16,24 @@ class BigQueryJobTest(CloudStorageSqlTestBase):
     """
     Test an actual query with pagination
     """
-    query = 'SELECT * FROM `bigquery-public-data.usa_names.usa_1910_2013` LIMIT 10'
+    query = (
+      'SELECT gameId, gameNumber, created FROM `bigquery-public-data.baseball.schedules` LIMIT 3'
+    )
     job = cloud_utils.bigquery.BigQueryJob(
       query,
       project_id='all-of-us-rdr-sandbox',
-      default_dataset_id='usa_names',
-      page_size=3
+      default_dataset_id='baseball',
+      page_size=2
     )
     pages = list(job)
-    self.assertEqual(len(pages), 4)
+    self.assertEqual(len(pages), 2)
     row = pages[0][0]
-    self.assertTrue(isinstance(row.name, basestring))
-    self.assertTrue(isinstance(row.year, int))
+    self.assertTrue(isinstance(row.gameId, basestring))
+    self.assertTrue(isinstance(row.gameNumber, int))
+    self.assertTrue(isinstance(row.created, datetime.datetime))
+
+
+class BigQueryJobTransformationTest(unittest.TestCase):
 
   def test_response_transformation(self):
     """
@@ -74,3 +82,23 @@ class BigQueryJobTest(CloudStorageSqlTestBase):
     ])
     self.assertEqual(type(first_row.word), type(u'some unicode string'))
     self.assertEqual(type(first_row.word_count), type(12345))
+
+  def test_type_timestamp(self):
+    response = {
+      u'rows': [
+        {u'f': [{u'v': u'2019-05-25 04:22:16.052 UTC'}]},
+        {u'f': [{u'v': u'1.475735115E9'}]},
+      ],
+      u'schema': {
+        u'fields': [
+          {
+            u'mode': u'NULLABLE',
+            u'name': u'timestamp',
+            u'type': u'TIMESTAMP',
+          }
+        ]
+      }
+    }
+    rows = cloud_utils.bigquery.BigQueryJob.get_rows_from_response(response)
+    self.assertEqual(rows[0].timestamp, datetime.datetime(2019, 5, 25, 4, 22, 16, 52000, pytz.UTC))
+    self.assertEqual(rows[1].timestamp, datetime.datetime(2016, 10, 6, 6, 25, 15, 0, pytz.UTC))
