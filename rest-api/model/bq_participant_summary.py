@@ -32,8 +32,7 @@ class BQParticipantSummary(BQTable):
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     biobank_id = BQField('biobank_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
-    first_name= BQField('first_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.REQUIRED)
+    first_name = BQField('first_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.REQUIRED)
     middle_name = BQField('middle_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     last_name = BQField('last_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.REQUIRED)
     addresses = BQAddressRecord('addresses')
-    

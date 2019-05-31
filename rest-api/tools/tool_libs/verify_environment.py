@@ -12,7 +12,7 @@ import sys
 import argparse
 from tools.tool_libs import GCPProcessContext
 from services.gcp_utils import gcp_get_app_host_name, gcp_get_app_access_token
-from services.system_utils import setup_logging, setup_unicode, make_api_request, which
+from services.system_utils import setup_logging, setup_unicode, make_api_request
 
 _logger = logging.getLogger('rdr_logger')
 

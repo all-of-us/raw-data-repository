@@ -2,7 +2,6 @@
 # BigQuery table schema support
 #
 import collections
-from exceptions import Exception
 import importlib
 import itertools
 import json
@@ -87,11 +86,11 @@ class BQField(object):
   """
   A BigQuery table schema field
   """
-  _fld_name=None
-  _fld_type=None
-  _fld_mode=None
-  _fld_enum=None
-  _fld_descr=None
+  _fld_name = None
+  _fld_type = None
+  _fld_mode = None
+  _fld_enum = None
+  _fld_descr = None
   _counter = itertools.count()
 
   def __init__(self, fld_name, fld_type, fld_mode=BQFieldModeEnum.REQUIRED, fld_enum=None, fld_descr=None):
@@ -235,29 +234,30 @@ class BQSchema(object):
     :return: object
     """
     for field in fields:
-      name = field['name']
-      type = BQFieldTypeEnum[field['type']]
-      mode = BQFieldModeEnum[field['mode']]
-      descr = field['description'] if 'description' in field else None
+      fld_name = field['name']
+      fld_type = BQFieldTypeEnum[field['type']]
+      fld_mode = BQFieldModeEnum[field['mode']]
+      fld_descr = field['description'] if 'description' in field else None
       enum = None
 
-      if descr and type != BQFieldTypeEnum.RECORD:
+      if fld_descr and fld_type != BQFieldTypeEnum.RECORD:
         try:
-          mod_path, mod_name = descr.rsplit('.', 1)
+          mod_path, mod_name = fld_descr.rsplit('.', 1)
+          mod_name = 'crap'
           enum = getattr(importlib.import_module(mod_path, mod_name), mod_name)
-          descr = None
-        except Exception as e:
+          fld_descr = None
+        except AttributeError:
           pass
 
-      if type == BQFieldTypeEnum.RECORD:
+      if fld_type == BQFieldTypeEnum.RECORD:
         # Note: instantiating the subclass in descr here causes local and remote
         #       comparisons to fail.  This is because the instantiated subclass
         #       will always have any new fields as properties, regardless to
         #       what fields the remote BQ server has.
-        rec_obj = BQRecordField(name, fld_descr=descr)
-        self.__dict__[name] = self._add_fields(rec_obj, field['fields'])
+        rec_obj = BQRecordField(fld_name, fld_descr=fld_descr)
+        self.__dict__[fld_name] = self._add_fields(rec_obj, field['fields'])
       else:
-        obj.__dict__[name] = BQField(name, type, mode, enum, descr)
+        obj.__dict__[fld_name] = BQField(fld_name, fld_type, fld_mode, enum, fld_descr)
 
     return obj
 

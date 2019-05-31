@@ -47,14 +47,15 @@ class ProgramTemplateClass(object):
     :param schema: json string
     :return: True if successful otherwise False
     """
-    # bq mk --table --expiration [INTEGER] --description [DESCRIPTION] --label [KEY:VALUE, KEY:VALUE] [PROJECT_ID]:[DATASET].[TABLE] [SCHEMA]
+    # bq mk --table --expiration [INTEGER] --description [DESCRIPTION]
+    #             --label [KEY:VALUE, KEY:VALUE] [PROJECT_ID]:[DATASET].[TABLE] [SCHEMA]
     tf = tempfile.NamedTemporaryFile(delete=False)
     tf.write(schema)
     tf.close()
 
     args = '{0} {1}'.format(self.get_table_uri(table), tf.name)
     cflags = '--table --label organization:rdr'
-    pcode, so, se = gcp_bq_command('mk', args=args, command_flags=cflags)
+    pcode, so, se = gcp_bq_command('mk', args=args, command_flags=cflags)  # pylint: disable=unused-variable
 
     os.unlink(tf.name)
 
@@ -79,7 +80,7 @@ class ProgramTemplateClass(object):
 
     # bq update [PROJECT_ID]:[DATASET].[TABLE] [SCHEMA]
     args = '{0} {1}'.format(self.get_table_uri(table), tf.name)
-    pcode, so, se = gcp_bq_command('update', args=args)
+    pcode, so, se = gcp_bq_command('update', args=args)  # pylint: disable=unused-variable
 
     os.unlink(tf.name)
 
@@ -105,7 +106,7 @@ class ProgramTemplateClass(object):
     """
     # bq rm --force --table [PROJECT_ID]:[DATASET].[TABLE]
     table_uri = self.get_table_uri(table)
-    pcode, so, se = gcp_bq_command('rm', args=table_uri, command_flags='--force --table')
+    pcode, so, se = gcp_bq_command('rm', args=table_uri, command_flags='--force --table')  # pylint: disable=unused-variable
 
     if pcode != 0:
       raise BQException(so)
@@ -120,7 +121,7 @@ class ProgramTemplateClass(object):
     """
     # bq show --schema --format=prettyjson [PROJECT_ID]:[DATASET].[TABLE]
     table_uri = self.get_table_uri(table)
-    pcode, so, se = gcp_bq_command('show', args=table_uri, command_flags='--schema --format=prettyjson')
+    pcode, so, se = gcp_bq_command('show', args=table_uri, command_flags='--schema --format=prettyjson')  # pylint: disable=unused-variable
 
     if pcode != 0:
       if 'Not found' in so:
