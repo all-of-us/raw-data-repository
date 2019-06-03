@@ -30,6 +30,7 @@ from model.questionnaire_response import QuestionnaireResponse, QuestionnaireRes
 from model.site import Site
 from model.genomics import GenomicSet, GenomicSetMember
 from model.patient_status import PatientStatus
+from model.bigquery_sync import BigQuerySync
 
 RETRY_CONNECTION_LIMIT = 10
 
