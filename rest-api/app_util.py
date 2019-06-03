@@ -1,3 +1,4 @@
+import datetime
 import email.utils
 import logging
 import time
@@ -247,3 +248,11 @@ class ObjDict(dict):
     else:
       raise AttributeError("No such attribute: " + name)
 
+
+def datetime_as_naive_utc(value):
+  if not isinstance(value, datetime.datetime):
+    raise TypeError("datetime_as_naive_utc() only works on datetime.datetime values")
+  if value.tzinfo is None:
+    return value
+  else:
+    return value.astimezone(pytz.UTC).replace(tzinfo=None)

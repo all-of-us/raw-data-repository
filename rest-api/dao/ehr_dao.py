@@ -12,6 +12,13 @@ class EhrReceiptDao(BaseDao):
   def get_id(self, obj):
     return obj.ehrReceiptId
 
+  def get_by_organization_id(self, organization_id):
+    with self.session() as session:
+      return self.get_by_organization_id_with_session(session, organization_id)
+
+  def get_by_organization_id_with_session(self, session, organization_id):
+    return session.query(EhrReceipt).filter(EhrReceipt.organizationId == organization_id).all()
+
   def get_active_organization_counts_in_interval(self, start_date, end_date, interval,
                                                  organization_ids=None):
     """

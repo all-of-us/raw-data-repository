@@ -198,6 +198,54 @@ class BaseDao(object):
     with self.session() as session:
       return session.query(self.model_type).all()
 
+  def get_or_create(self, insert_if_created=False, default_values=None, **properties):
+    """
+    Creates a new session and executes get or create queries.
+
+    See get_or_create_with_session() docstring.
+    """
+    with self.session() as session:
+      return self.get_or_create_with_session(session,
+                                             insert_if_created=insert_if_created,
+                                             default_values=default_values,
+                                             **properties)
+
+  def get_or_create_with_session(self, session, insert_if_created=False, default_values=None,
+                                 **properties):
+    """
+    Given a set of properties, get an item that matches or create a new one. Optionally inserting
+    the new item.
+
+    :param session: the session to execute the queries
+    :param insert_if_created: If creating a new instance, insert or just return?
+    :type insert_if_created: bool
+    :param default_values: If creating a new instance, also fill in these values
+    :type default_values: dict
+    :param properties: The values to search for
+    :return: The instance, was it created, was it inserted
+    :rtype: tuple[object, bool, bool]
+    """
+    filter_args = [
+      getattr(self.model_type, key) == value
+      for key, value in properties.items()
+    ]
+    existing_results = session.query(self.model_type).filter(*filter_args).limit(2).all()
+    if len(existing_results) > 1:
+      raise ValueError("More than one row matched the given parameters for get_or_create")
+    elif len(existing_results) == 1:
+      instance = existing_results[0]
+      created = False
+    else:
+      instance_kwargs = dict(properties, **(default_values or {}))
+      instance = self.model_type(**instance_kwargs)
+      created = True
+    if created and insert_if_created:
+      self.insert_with_session(session, instance)
+      inserted = True
+    else:
+      inserted = False
+    return instance, created, inserted
+
   def make_query_filter(self, field_name, value):
     """Attempts to make a query filter for the model property with the specified name, matching
     the specified value. If no such property exists, None is returned.
