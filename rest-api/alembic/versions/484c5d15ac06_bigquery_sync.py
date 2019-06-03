@@ -43,12 +43,14 @@ def upgrade_rdr():
     sa.Column('modified', mysql.DATETIME(fsp=6), nullable=True),
     sa.Column('dataset', sa.String(length=80), nullable=False),
     sa.Column('table', sa.String(length=80), nullable=False),
+    sa.Column('participant_id', sa.Integer(), nullable=False),
     sa.Column('resource', mysql.JSON(), nullable=False),
+    sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_bigquery_sync_created'), 'bigquery_sync', ['created'], unique=False)
     op.create_index(op.f('ix_bigquery_sync_modified'), 'bigquery_sync', ['modified'], unique=False)
-    op.create_index('ix_ds_table', 'bigquery_sync', ['dataset', 'table'], unique=False)
+    op.create_index('ix_participant_ds_table', 'bigquery_sync', ['participant_id', 'dataset', 'table'], unique=False)
 
     op.execute(
       'ALTER TABLE patient_status CHANGE COLUMN `created` `created` DATETIME(6) NULL;')

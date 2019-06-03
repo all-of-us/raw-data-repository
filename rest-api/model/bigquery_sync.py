@@ -1,5 +1,5 @@
 from model.base import Base, model_insert_listener, model_update_listener
-from sqlalchemy import Column, DateTime, Integer, String, Index, event
+from sqlalchemy import Column, DateTime, Integer, String, Index, event, ForeignKey
 from sqlalchemy.dialects.mysql import JSON
 
 
@@ -19,10 +19,12 @@ class BigQuerySync(Base):
   dataSet = Column('dataset', String(80), nullable=False)
   # BigQuery table name
   table = Column('table', String(80), nullable=False)
+  participantId = Column('participant_id', Integer, ForeignKey('participant.participant_id'),
+                         nullable=False)
   # data resource hold the data to be transferred to BigQuery
   resource = Column('resource', JSON, nullable=False)
 
-Index('ix_ds_table', BigQuerySync.dataSet, BigQuerySync.table)
+Index('ix_participant_ds_table', BigQuerySync.participantId, BigQuerySync.dataSet, BigQuerySync.table)
 
 event.listen(BigQuerySync, 'before_insert', model_insert_listener)
 event.listen(BigQuerySync, 'before_update', model_update_listener)
