@@ -10,13 +10,14 @@ import datetime
 import json
 from sqlalchemy import func, or_
 from participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
-  AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType
+  AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType, MetricsAPIVersion
 
 class MetricsEnrollmentStatusCacheDao(BaseDao):
-  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
+  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
     super(MetricsEnrollmentStatusCacheDao, self).__init__(MetricsEnrollmentStatusCache)
     self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
     self.test_email_pattern = TEST_EMAIL_PATTERN
+    self.version = version
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
     except TypeError:
@@ -38,6 +39,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
         query = session.query(MetricsEnrollmentStatusCache.date,
                               func.sum(MetricsEnrollmentStatusCache.registeredCount)
                               .label('registeredCount'),
+                              func.sum(MetricsEnrollmentStatusCache.participantCount)
+                              .label('participantCount'),
                               func.sum(MetricsEnrollmentStatusCache.consentedCount)
                               .label('consentedCount'),
                               func.sum(MetricsEnrollmentStatusCache.coreCount)
@@ -90,17 +93,31 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
 
   def to_metrics_client_json(self, result_set):
     client_json = []
-    for record in result_set:
-      new_item = {
-        'date': record.date.isoformat(),
-        'hpo': record.hpoName,
-        'metrics': {
-          'registered': record.registeredCount,
-          'consented': record.consentedCount,
-          'core': record.coreCount
+    if self.version == MetricsAPIVersion.V2:
+      for record in result_set:
+        new_item = {
+          'date': record.date.isoformat(),
+          'hpo': record.hpoName,
+          'metrics': {
+            'registered': record.registeredCount,
+            'participant': record.participantCount,
+            'consented': record.consentedCount,
+            'core': record.coreCount
+          }
         }
-      }
-      client_json.append(new_item)
+        client_json.append(new_item)
+    else:
+      for record in result_set:
+        new_item = {
+          'date': record.date.isoformat(),
+          'hpo': record.hpoName,
+          'metrics': {
+            'registered': record.registeredCount + record.participantCount,
+            'consented': record.consentedCount,
+            'core': record.coreCount
+          }
+        }
+        client_json.append(new_item)
     return client_json
 
   def to_public_metrics_client_json(self, result_set):
@@ -109,7 +126,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
       new_item = {
         'date': record.date.isoformat(),
         'metrics': {
-          'registered': int(record.registeredCount),
+          # research hub still use 3 tiers status
+          'registered': int(record.registeredCount) + int(record.participantCount),
           'consented': int(record.consentedCount),
           'core': int(record.coreCount)
         }
@@ -129,7 +147,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
       else:
         filters_hpo = ''
       sql = """
-        SELECT (SUM(registered_count) + SUM(consented_count) + SUM(core_count)) AS registered_count,
+        SELECT (SUM(registered_count) + SUM(participant_count) + SUM(consented_count) + SUM(core_count)) AS registered_count,
         date AS start_date
         FROM metrics_enrollment_status_cache
         WHERE %(filters_hpo)s
@@ -171,8 +189,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                   FROM
                   (
                     SELECT DATE(p.sign_up_time) AS sign_up_time,
-                           DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
-                           DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                           DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
                            count(*) enrollment_count
                     FROM participant p
                            LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
@@ -180,10 +197,28 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                       AND p.is_ghost_id IS NOT TRUE
                       AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
                       AND p.withdrawal_status = :not_withdraw
-                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                    GROUP BY DATE(p.sign_up_time), DATE(ps.consent_for_study_enrollment_time)
                   ) AS results
-                  WHERE c.day>=DATE(sign_up_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+                  WHERE c.day>=DATE(sign_up_time) AND consent_for_study_enrollment_time IS NULL
                 ),0) AS registered_count,
+                IFNULL((
+                  SELECT SUM(results.enrollment_count)
+                  FROM
+                  (
+                    SELECT DATE(p.sign_up_time) AS sign_up_time,
+                           DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+                           DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                           count(*) enrollment_count
+                    FROM participant p
+                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                      AND p.is_ghost_id IS NOT TRUE
+                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                      AND p.withdrawal_status = :not_withdraw
+                    GROUP BY DATE(p.sign_up_time), DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time)
+                  ) AS results
+                  WHERE c.day>=DATE(sign_up_time) AND consent_for_study_enrollment_time IS NOT NULL AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+                ),0) AS participant_count,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
                   FROM

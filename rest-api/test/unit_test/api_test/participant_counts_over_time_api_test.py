@@ -17,7 +17,7 @@ from model.participant import Participant
 from concepts import Concept
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
-  WithdrawalStatus, make_primary_provider_link_for_name, MetricsCacheType
+  WithdrawalStatus, make_primary_provider_link_for_name, MetricsCacheType, MetricsAPIVersion
 from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
   MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
@@ -754,7 +754,7 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     qs = ''.join(qs.split())  # Remove all whitespace
 
     response = self.send_get('ParticipantCountsOverTime', query_string=qs)
-    
+
     registered_count_day_1 = response[0]['metrics']['REGISTERED']
     registered_count_day_2 = response[1]['metrics']['REGISTERED']
     registered_count_day_3 = response[2]['metrics']['REGISTERED']
@@ -1109,8 +1109,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
-                 time_fp_stored=self.time4)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time3, time_fp_stored=self.time4)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao()
@@ -1138,6 +1138,46 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({'date': '2018-01-06', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
                    'hpo': u'UNSET'}, results)
 
+  def test_refresh_metrics_enrollment_status_cache_data_v2(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time3)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', time_int=self.time1,
+                 time_study=self.time1, time_mem=self.time3, time_fp_stored=self.time4)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsEnrollmentStatusCacheDao(version=MetricsAPIVersion.V2)
+    service.refresh_data_for_metrics_cache(dao)
+    results = dao.get_latest_version_from_cache('2018-01-01', '2018-01-08')
+
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L,
+                                                     'participant': 2L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-02', 'metrics': {'consented': 2L, 'core': 0L, 'registered': 1L,
+                                                     'participant': 0L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-03', 'metrics': {'consented': 1L, 'core': 1L, 'registered': 1L,
+                                                     'participant': 0L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 1L, 'core': 1L, 'registered': 1L,
+                                                     'participant': 0L},
+                   'hpo': u'AZ_TUCSON'}, results)
+    self.assertIn({'date': '2018-01-01', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L,
+                                                     'participant': 0L},
+                   'hpo': u'UNSET'}, results)
+    self.assertIn({'date': '2018-01-04', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L,
+                                                     'participant': 0L},
+                   'hpo': u'UNSET'}, results)
+
   def test_refresh_metrics_enrollment_status_cache_data_for_public_metrics_api(self):
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -1147,8 +1187,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
-                 time_fp_stored=self.time4)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time3, time_fp_stored=self.time4)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -1170,8 +1210,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
-                 time_fp_stored=self.time4)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time3, time_fp_stored=self.time4)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=4, biobankId=7, isGhostId=True)
@@ -1214,6 +1254,71 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({'date': '2018-01-06', 'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L},
                    'hpo': u'UNSET'}, response)
 
+  def test_get_history_enrollment_status_api_v2(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time3, time_fp_stored=self.time4)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=4, biobankId=7, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
+                 time_fp_stored=self.time4)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsEnrollmentStatusCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+
+    qs = """
+          &stratification=ENROLLMENT_STATUS
+          &startDate=2018-01-01
+          &endDate=2018-01-08
+          &history=TRUE
+          &version=2
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({u'date': u'2018-01-01', u'metrics': {u'consented': 0, u'core': 0,
+                                                        u'registered': 1, u'participant': 1},
+                   u'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({u'date': u'2018-01-02', u'metrics': {u'consented': 1, u'core': 0,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 0, u'core': 1,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 1,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({u'date': u'2018-01-05', u'metrics': {u'consented': 0, u'core': 1,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'AZ_TUCSON'}, response)
+
+    self.assertIn({u'date': u'2018-01-01', u'metrics': {u'consented': 0, u'core': 0,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'UNSET'}, response)
+    self.assertIn({u'date': u'2018-01-02', u'metrics': {u'consented': 0, u'core': 0,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'UNSET'}, response)
+    self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 0, u'core': 0,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'UNSET'}, response)
+    self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 0,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'UNSET'}, response)
+    self.assertIn({u'date': u'2018-01-05', u'metrics': {u'consented': 0, u'core': 0,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'UNSET'}, response)
+
   def test_get_history_enrollment_status_api_filtered_by_awardee(self):
 
     p1 = Participant(participantId=1, biobankId=4)
@@ -1223,8 +1328,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'PITT', time_int=self.time3, time_mem=self.time4,
-                 time_fp_stored=self.time5)
+    self._insert(p3, 'Chad', 'Caterpillar', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time4, time_fp_stored=self.time5)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=4, biobankId=7, isGhostId=True)
@@ -1265,6 +1370,65 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
                    'hpo': 'AZ_TUCSON'}, response)
     self.assertIn({'date': '2018-01-08', 'metrics': {'consented': 0, 'core': 0, 'registered': 1},
                    'hpo': 'AZ_TUCSON'}, response)
+
+  def test_get_history_enrollment_status_api_filtered_by_awardee_v2(self):
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', unconsented=True, time_int=self.time1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time4, time_fp_stored=self.time5)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=4, biobankId=7, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time3,
+                 time_fp_stored=self.time4)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsEnrollmentStatusCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+
+    qs = """
+          &stratification=ENROLLMENT_STATUS
+          &startDate=2018-01-01
+          &endDate=2018-01-08
+          &history=TRUE
+          &awardee=AZ_TUCSON,PITT
+          &version=2
+          """
+
+    qs = ''.join(qs.split())  # Remove all whitespace
+
+    response = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertNotIn({'date': '2018-01-01',
+                      'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L, 'participant': 0L},
+                      'hpo': u'UNSET'}, response)
+    self.assertNotIn({'date': '2018-01-06',
+                      'metrics': {'consented': 0L, 'core': 0L, 'registered': 1L, 'participant': 0L},
+                      'hpo': u'UNSET'}, response)
+    self.assertIn({u'date': u'2018-01-02', u'metrics': {u'consented': 0, u'core': 0,
+                                                        u'registered': 0, u'participant': 1},
+                   u'hpo': u'PITT'}, response)
+    self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 1, u'core': 0,
+                                                        u'registered': 0, u'participant': 0},
+                   u'hpo': u'PITT'}, response)
+    self.assertIn({u'date': u'2018-01-04', u'metrics': {u'consented': 0, u'core': 1,
+                                                        u'registered': 0, u'participant': 0},
+                   u'hpo': u'PITT'}, response)
+    self.assertIn({u'date': u'2018-01-01', u'metrics': {u'consented': 0, u'core': 0,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({u'date': u'2018-01-03', u'metrics': {u'consented': 0, u'core': 0,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'AZ_TUCSON'}, response)
+    self.assertIn({u'date': u'2018-01-07', u'metrics': {u'consented': 0, u'core': 0,
+                                                        u'registered': 1, u'participant': 0},
+                   u'hpo': u'AZ_TUCSON'}, response)
 
   def test_refresh_metrics_gender_cache_data(self):
 
@@ -1850,8 +2014,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time4,
-                 time_fp_stored=self.time5)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time4, time_fp_stored=self.time5)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
@@ -1886,8 +2050,8 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'PITT', time_int=self.time3, time_mem=self.time4,
-                 time_fp_stored=self.time5)
+    self._insert(p3, 'Chad', 'Caterpillar', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time4, time_fp_stored=self.time5)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
