@@ -793,15 +793,36 @@ Passed as a string. Can be one of the values from the table below.
 
 Passed as a string. Comma-separated list of valid awardee codes, e.g. `PITT,VA`.
 
+### `version` (optional)
+
+Passed as a number, e.g. `2`.
+
+| Version Number      | Description                                             |
+| ------------------- | ------------------------------------------------------- |
+| 1                   | return 3 tiers participant status                       |
+| 2                   | return 4 tiers participant status for `ENROLLMENT_STATUS`, `GEO_STATE`, `GEO_CENSUS` and `GEO_AWARDEE`|
+
 ### `enrollmentStatus` (optional)
 
-Passed as a string. Comma-separated list of valid enrollment statuses, e.g. `FULL_PARTICIPANT,INTERESTED`
+Passed as a string. Comma-separated list of valid enrollment statuses.
+
+**When version=1 or version not present:**
 
 | Enrollment Status  | Description                                             |
 | ------------------ | ------------------------------------------------------- |
 | INTERESTED         | Correlates to the `registered` tier.                    |
 | MEMBER             | Correlates to the `consented` tier.                     |
 | FULL_PARTICIPANT   | Correlates to the `core` participant tier.              |
+
+
+**When version=2:**
+
+| Enrollment Status  | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| REGISTERED         | Correlates to the `registered` tier.                    |
+| PARTICIPANT        | Correlates to the `participant` tier.                   |
+| FULLY_CONSENTED    | Correlates to the `fully consented` tier.               |
+| CORE_PARTICIPANT   | Correlates to the `core` participant tier.              |
 
 ### `history` (optional)
 

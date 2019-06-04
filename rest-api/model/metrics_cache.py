@@ -14,6 +14,7 @@ class MetricsEnrollmentStatusCache(Base):
   hpoName = Column('hpo_name', String(255), primary_key=True)
   date = Column('date', Date, nullable=False, primary_key=True)
   registeredCount = Column('registered_count', Integer, nullable=False)
+  participantCount = Column('participant_count', Integer, nullable=False)
   consentedCount = Column('consented_count', Integer, nullable=False)
   coreCount = Column('core_count', Integer, nullable=False)
 
