@@ -1,6 +1,4 @@
-import functools
-
-from dao.calendar_dao import INTERVALS
+import clock
 from dao.metrics_ehr_service import MetricsEhrService
 from dao.organization_dao import OrganizationDao
 
@@ -12,24 +10,29 @@ from api_util import HEALTHPRO, parse_date
 import app_util
 
 
-DATE_FORMAT = '%Y-%m-%d'
-
-
 class MetricsEhrApiBaseResource(Resource):
 
-  def parse_input(self):
-    validators = {
-      'start_date': self._parse_date,
-      'end_date': self._parse_date,
-      'organizations': self._parse_comma_separated,
-      'interval': functools.partial(self._parse_choice, INTERVALS)
+  def get_input_validators(self):
+    return {
+      'organization': self._make_parse_with_default(self._parse_organizations, []),
     }
-    return self._parse_input(validators, {
-      'start_date': request.args.get('start_date'),
-      'end_date': request.args.get('end_date'),
-      'organizations': request.args.get('organization'),
-      'interval': request.args.get('interval'),
-    })
+
+  def parse_input(self):
+    return self._parse_input(self.get_input_validators(), request.args)
+
+  def _parse_organizations(self, params, key):
+    return self._get_organization_ids_from_organizations(
+      self._parse_comma_separated(params, key)
+    )
+
+  @staticmethod
+  def _make_parse_with_default(parser, default=None):
+    def wrapped(params, key):
+      if key not in params:
+        return default
+      else:
+        return parser(params, key)
+    return wrapped
 
   @staticmethod
   def _parse_input(validators, params):
@@ -53,29 +56,14 @@ class MetricsEhrApiBaseResource(Resource):
 
   @staticmethod
   def _parse_comma_separated(params, key):
-    try:
-      return params[key].upper().split(',')
-    except (KeyError, AttributeError):
-      return []
-
-  @staticmethod
-  def _parse_choice(choices, params, key):
-    try:
-      if params[key] in choices:
-        return params[key]
-      raise BadRequest('Invalid choice for {key}. Must be one of {choices}'.format(
-        key=key,
-        choices=', '.join(choices)
-      ))
-    except KeyError:
-      raise BadRequest('Missing {key}'.format(key=key))
+    return params[key].split(',')
 
   @staticmethod
   def _get_organization_ids_from_organizations(organizations):
     dao = OrganizationDao()
     try:
       return [
-        dao.get_by_external_id(name).organizationId
+        dao.get_by_external_id(name.upper()).organizationId
         for name in organizations
       ]
     except AttributeError:
@@ -85,67 +73,46 @@ class MetricsEhrApiBaseResource(Resource):
 class MetricsEhrApi(MetricsEhrApiBaseResource):
   """
   A combined view of:
-  - Participant EHR Consented vs EHR Received Over Time
-  - Organizations Active Over Time
-  - Organization Participant Status Counts At Specific Time (end_date)
+  - Participant EHR Consented vs EHR Received
+  - Organization Participant Status Counts
   """
 
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
-    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
-    return MetricsEhrService().get_metrics(
-      start_date=valid_arguments['start_date'],
-      end_date=valid_arguments['end_date'],
-      interval=valid_arguments['interval'],
-      organization_ids=org_ids
+    return MetricsEhrService().get_current_metrics(
+      organization_ids=valid_arguments['organization']
     )
 
 
 class ParticipantEhrMetricsOverTimeApi(MetricsEhrApiBaseResource):
   """
-  Participant EHR Consented vs EHR Received Over Time
+  Participant EHR Consented vs EHR Received
   """
 
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
-    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
-    return MetricsEhrService().get_participant_ehr_metrics_over_time_data(
-      start_date=valid_arguments['start_date'],
-      end_date=valid_arguments['end_date'],
-      interval=valid_arguments['interval'],
-      organization_ids=org_ids
-    )
-
-
-class OrganizationsActiveMetricsOverTimeApi(MetricsEhrApiBaseResource):
-  """
-  Organizations Active Over Time
-  """
-
-  @app_util.auth_required(HEALTHPRO)
-  def get(self):
-    valid_arguments = self.parse_input()
-    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
-    return MetricsEhrService().get_organizations_active_over_time_data(
-      start_date=valid_arguments['start_date'],
-      end_date=valid_arguments['end_date'],
-      interval=valid_arguments['interval'],
-      organization_ids=org_ids
+    return MetricsEhrService().get_current_ehr_data(
+      organization_ids=valid_arguments['organization']
     )
 
 
 class OrganizationMetricsApi(MetricsEhrApiBaseResource):
   """
-  Organization Participant Status Counts At Specific Time (end_date)
+  Organization Participant Status Counts as of date
   """
+
+  def get_input_validators(self):
+    return dict(
+      super(OrganizationMetricsApi, self).get_input_validators(),
+      end_date=self._make_parse_with_default(self._parse_date, clock.CLOCK.now())
+    )
 
   @app_util.auth_required(HEALTHPRO)
   def get(self):
     valid_arguments = self.parse_input()
-    org_ids = self._get_organization_ids_from_organizations(valid_arguments['organizations'])
     return MetricsEhrService().get_organization_metrics_data(
       end_date=valid_arguments['end_date'],
-      organization_ids=org_ids
+      organization_ids=valid_arguments['organization']
     )

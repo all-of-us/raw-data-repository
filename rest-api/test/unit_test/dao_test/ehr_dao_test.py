@@ -1,4 +1,5 @@
 import datetime
+import unittest
 
 from dao.calendar_dao import CalendarDao, INTERVAL_DAY, INTERVAL_WEEK, INTERVAL_MONTH, INTERVAL_QUARTER
 from dao.ehr_dao import EhrReceiptDao
@@ -13,6 +14,7 @@ from model.organization import Organization
 from test.unit_test.unit_test_util import SqlTestBase
 
 
+@unittest.skip("Not used currently")
 class EhrReceiptDaoTest(SqlTestBase):
 
   def setUp(self, with_data=True, use_mysql=True):

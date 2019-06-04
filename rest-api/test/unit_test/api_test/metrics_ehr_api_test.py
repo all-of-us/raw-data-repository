@@ -20,8 +20,6 @@ from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME,
 from test.unit_test.unit_test_util import FlaskTestBase
 
 
-TIME_1 = datetime.datetime(2017, 12, 31)
-
 REQUIRED_PPI_MODULE_COUNT = 3  # NOTE: could not import from config in test runner
 
 
@@ -230,34 +228,15 @@ class MetricsEhrMultiEndpointTest(MetricsEhrApiTestBase):
     )
 
   def test_combined_endpoint_matches_parts(self):
-    query_string = urllib.urlencode({
-      'start_date': '2018-01-01',
-      'end_date': '2018-01-06',
-      'interval': 'day'
-    })
-    combined_response = self.send_get('MetricsEHR', query_string=query_string)
+    combined_response = self.send_get('MetricsEHR')
     participants_over_time_response = self.send_get(
       'MetricsEHR/ParticipantsOverTime',
-      query_string=query_string
-    )
-    organizations_active_over_time_response = self.send_get(
-      'MetricsEHR/OrganizationsActiveOverTime',
-      query_string=query_string
     )
     organizations_response = self.send_get(
       'MetricsEHR/Organizations',
-      query_string=query_string
     )
-
+    self.assertEqual(combined_response['metrics'], participants_over_time_response)
     self.assertEqual(combined_response['organization_metrics'], organizations_response)
-    for combined_row, participants_row, organizations_active_row in zip(
-      combined_response['metrics_over_time'],
-      participants_over_time_response,
-      organizations_active_over_time_response
-    ):
-      for other_row in (participants_row, organizations_active_row):
-        for key, value in other_row['metrics'].items():
-          self.assertEqual(combined_row['metrics'][key], value)
 
 
 class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
@@ -290,43 +269,14 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
     )
 
     # Begin testing
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
-      'start_date': '2018-01-01',
-      'end_date': '2018-01-06',
-      'interval': 'day'
-    }))
-    counts_by_date = {
-      day['date']: day['metrics']['EHR_CONSENTED']
-      for day in response['metrics_over_time']
-    }
-    self.assertEqual(counts_by_date, {
-      u'2018-01-01': 0,
-      u'2018-01-02': 0,
-      u'2018-01-03': 1,
-      u'2018-01-04': 2,
-      u'2018-01-05': 2,
-      u'2018-01-06': 2,
-    })
+    response = self.send_get('MetricsEHR')
+    self.assertEqual(response['metrics']['EHR_CONSENTED'], 2)
 
     # test with organization filtering
     response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
-      'start_date': '2018-01-01',
-      'end_date': '2018-01-06',
-      'interval': 'day',
       'organization': 'foo_a',
     }))
-    counts_by_date = {
-      day['date']: day['metrics']['EHR_CONSENTED']
-      for day in response['metrics_over_time']
-    }
-    self.assertEqual(counts_by_date, {
-      u'2018-01-01': 0,
-      u'2018-01-02': 0,
-      u'2018-01-03': 1,
-      u'2018-01-04': 1,
-      u'2018-01-05': 1,
-      u'2018-01-06': 1,
-    })
+    self.assertEqual(response['metrics']['EHR_CONSENTED'], 1)
 
 
   def test_received_counts(self):
@@ -347,6 +297,10 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       time_fp=datetime.datetime(2018, 1, 4)
     )
 
+    self._update_ehr(summary_1, update_time=datetime.datetime(2018, 1, 5))
+    response = self.send_get('MetricsEHR')
+    self.assertEqual(response['metrics']['EHR_CONSENTED'], 1)
+
     # noinspection PyArgumentList
     participant_2 = Participant(participantId=2, biobankId=5)
     summary_2 = self._make_participant(
@@ -356,215 +310,18 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       time_fp=datetime.datetime(2018, 1, 5)
     )
 
-
-
-    # Begin testing
-
-    self._update_ehr(
-      summary_1,
-      update_time=datetime.datetime(2018, 1, 5)
-    )
-
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
-      'start_date': '2018-01-01',
-      'end_date': '2018-01-08',
-      'interval': 'day'
-    }))
-    counts_by_date = {
-      day['date']: day['metrics']['EHR_RECEIVED']
-      for day in response['metrics_over_time']
-    }
-    self.assertEqual(counts_by_date, {
-      u'2018-01-01': 0,
-      u'2018-01-02': 0,
-      u'2018-01-03': 0,
-      u'2018-01-04': 0,
-      u'2018-01-05': 1,
-      u'2018-01-06': 1,
-      u'2018-01-07': 1,
-      u'2018-01-08': 1,
-    })
-
-    self._update_ehr(
-      summary_2,
-      update_time=datetime.datetime(2018, 1, 6)
-    )
-
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
-      'start_date': '2018-01-01',
-      'end_date': '2018-01-08',
-      'interval': 'day'
-    }))
-    counts_by_date = {
-      day['date']: day['metrics']['EHR_RECEIVED']
-      for day in response['metrics_over_time']
-    }
-    self.assertEqual(counts_by_date, {
-      u'2018-01-01': 0,
-      u'2018-01-02': 0,
-      u'2018-01-03': 0,
-      u'2018-01-04': 0,
-      u'2018-01-05': 1,
-      u'2018-01-06': 2,
-      u'2018-01-07': 2,
-      u'2018-01-08': 2,
-    })
+    self._update_ehr(summary_2, update_time=datetime.datetime(2018, 1, 6))
+    response = self.send_get('MetricsEHR')
+    self.assertEqual(response['metrics']['EHR_CONSENTED'], 2)
 
     # test with organization filtering
     response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
-      'start_date': '2018-01-01',
-      'end_date': '2018-01-08',
-      'interval': 'day',
       'organization': 'FOO_A',
     }))
-    counts_by_date = {
-      day['date']: day['metrics']['EHR_RECEIVED']
-      for day in response['metrics_over_time']
-    }
-    self.assertEqual(counts_by_date, {
-      u'2018-01-01': 0,
-      u'2018-01-02': 0,
-      u'2018-01-03': 0,
-      u'2018-01-04': 0,
-      u'2018-01-05': 1,
-      u'2018-01-06': 1,
-      u'2018-01-07': 1,
-      u'2018-01-08': 1,
-    })
-
-  def test_organization_counts(self):
-    # Set up data
-    for date in iter_dates(
-      datetime.date(2017, 12, 30),
-      datetime.date(2018, 2, 1)
-    ):
-      calendar_day = Calendar(day=date)
-      CalendarDao().insert(calendar_day)
-
-    # noinspection PyArgumentList
-    participant_1 = Participant(participantId=1, biobankId=4)
-    summary_1 = self._make_participant(
-      participant_1, 'A', 'Aardvark', self.hpo_foo, self.org_foo_a,
-      time_int=datetime.datetime(2018, 1, 2),
-      time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4)
-    )
-    self._update_ehr(
-      summary_1,
-      update_time=datetime.datetime(2018, 1, 5)
-    )
-
-    # noinspection PyArgumentList
-    participant_2 = Participant(participantId=2, biobankId=5)
-    summary_2 = self._make_participant(
-      participant_2, 'B', 'Badger', self.hpo_foo, self.org_foo_a,
-      time_int=datetime.datetime(2018, 1, 2),
-      time_mem=datetime.datetime(2018, 1, 3),
-      time_fp=datetime.datetime(2018, 1, 4)
-    )
-    self._update_ehr(
-      summary_2,
-      update_time=datetime.datetime(2018, 1, 5)
-    )
-
-    # noinspection PyArgumentList
-    participant_3 = Participant(participantId=3, biobankId=6)
-    summary_3 = self._make_participant(
-      participant_3, 'C', 'Chicken', self.hpo_foo, self.org_foo_a,
-      time_int=datetime.datetime(2018, 1, 3),
-      time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5)
-    )
-    self._update_ehr(
-      summary_3,
-      update_time=datetime.datetime(2018, 1, 6)
-    )
-
-    # noinspection PyArgumentList
-    participant_4 = Participant(participantId=4, biobankId=7)
-    summary_4 = self._make_participant(
-      participant_4, 'D', 'Dog', self.hpo_bar, self.org_bar_a,
-      time_int=datetime.datetime(2018, 1, 3),
-      time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5)
-    )
-    self._update_ehr(
-      summary_4,
-      update_time=datetime.datetime(2018, 1, 6)
-    )
-    self._update_ehr(
-      summary_4,
-      update_time=datetime.datetime(2018, 1, 7)
-    )
-
-    # Begin testing
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
-      'start_date': '2018-01-01',
-      'end_date': '2018-01-08',
-      'interval': 'day'
-    }))
-    counts_by_date = {
-      day['date']: day['metrics']['ORGANIZATIONS_ACTIVE']
-      for day in response['metrics_over_time']
-    }
-    self.assertEqual(counts_by_date, {
-      u'2018-01-01': 0,
-      u'2018-01-02': 0,
-      u'2018-01-03': 0,
-      u'2018-01-04': 0,
-      u'2018-01-05': 1,
-      u'2018-01-06': 2,
-      u'2018-01-07': 1,
-      u'2018-01-08': 0,
-    })
-
-    # test with organization filtering
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
-      'start_date': '2018-01-01',
-      'end_date': '2018-01-08',
-      'interval': 'day',
-      'organization': 'FOO_A',
-    }))
-    counts_by_date = {
-      day['date']: day['metrics']['ORGANIZATIONS_ACTIVE']
-      for day in response['metrics_over_time']
-    }
-    self.assertEqual(counts_by_date, {
-      u'2018-01-01': 0,
-      u'2018-01-02': 0,
-      u'2018-01-03': 0,
-      u'2018-01-04': 0,
-      u'2018-01-05': 1,
-      u'2018-01-06': 1,
-      u'2018-01-07': 0,
-      u'2018-01-08': 0,
-    })
-
-    # test organization filter multiple
-    response = self.send_get('MetricsEHR', query_string=urllib.urlencode({
-      'start_date': '2018-01-01',
-      'end_date': '2018-01-08',
-      'interval': 'day',
-      'organization': 'FOO_A,BAR_A',
-    }))
-    counts_by_date = {
-      day['date']: day['metrics']['ORGANIZATIONS_ACTIVE']
-      for day in response['metrics_over_time']
-    }
-    self.assertEqual(counts_by_date, {
-      u'2018-01-01': 0,
-      u'2018-01-02': 0,
-      u'2018-01-03': 0,
-      u'2018-01-04': 0,
-      u'2018-01-05': 1,
-      u'2018-01-06': 2,
-      u'2018-01-07': 1,
-      u'2018-01-08': 0,
-    })
+    self.assertEqual(response['metrics']['EHR_CONSENTED'], 1)
 
 
 class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):
-
 
   def test_cutoff_date_filtering(self):
     # noinspection PyArgumentList
@@ -605,7 +362,6 @@ class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):
 
     # Begin testing
     response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
-      'start_date': '2018-01-01',
       'end_date': '2018-01-01',
       'interval': 'day'
     }))
@@ -637,7 +393,6 @@ class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):
     )
 
     response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
-      'start_date': '2018-01-02',
       'end_date': '2018-01-02',
       'interval': 'day'
     }))
@@ -656,7 +411,6 @@ class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):
     )
 
     response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
-      'start_date': '2018-01-03',
       'end_date': '2018-01-03',
       'interval': 'day'
     }))
@@ -675,7 +429,6 @@ class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):
     )
 
     response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
-      'start_date': '2018-01-04',
       'end_date': '2018-01-04',
       'interval': 'day'
     }))
@@ -694,7 +447,6 @@ class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):
     )
 
     response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
-      'start_date': '2018-01-05',
       'end_date': '2018-01-05',
       'interval': 'day'
     }))
@@ -713,7 +465,6 @@ class MetricsEhrApiOrganizationTest(MetricsEhrApiTestBase):
     )
 
     response = self.send_get('MetricsEHR/Organizations', query_string=urllib.urlencode({
-      'start_date': '2018-01-06',
       'end_date': '2018-01-06',
       'interval': 'day'
     }))

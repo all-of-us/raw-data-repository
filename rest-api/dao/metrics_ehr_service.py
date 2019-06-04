@@ -1,3 +1,4 @@
+import clock
 import config
 import sqlalchemy
 
@@ -24,6 +25,55 @@ class MetricsEhrService(BaseDao):
     with self.session() as session:
       result = session.execute(query)
     return list(row[0] for row in result)
+
+  def get_current_metrics(
+    self,
+    organization_ids=None,
+    hpo_ids=None
+  ):
+    now = clock.CLOCK.now()
+    if organization_ids is None and hpo_ids is not None:
+      organization_ids = self._get_organization_ids_from_hpo_ids(hpo_ids)
+    with self.session() as session:
+      ehr_data = self._get_current_ehr_data_with_session(session, organization_ids)
+      org_data = self._get_organization_metrics_data_with_session(session, now, organization_ids)
+    return {
+      'date': now,
+      'metrics': ehr_data,
+      'organization_metrics': org_data,
+    }
+
+  def _get_current_ehr_query(self, organization_ids=None):
+    where_conditions = [
+      ParticipantSummary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
+    ]
+    if organization_ids:
+      where_conditions.append(
+        ParticipantSummary.organizationId.in_(organization_ids)
+      )
+    return (
+      sqlalchemy
+        .select([
+          sqlalchemy.func.count().label('consented_count'),
+          sqlalchemy.func.sum(
+            ParticipantSummary.ehrStatus == EhrStatus.PRESENT
+          ).label('received_count'),
+        ])
+          .where(reduce(sqlalchemy.and_, where_conditions))
+    )
+
+  def get_current_ehr_data(self, organization_ids=None):
+    with self.session() as session:
+      return self._get_current_ehr_data_with_session(session, organization_ids)
+
+  def _get_current_ehr_data_with_session(self, session, organization_ids=None):
+    query = self._get_current_ehr_query(organization_ids)
+    cursor = session.execute(query)
+    consented_count, received_count = cursor.fetchone()
+    return {
+      'EHR_CONSENTED': consented_count,
+      'EHR_RECEIVED': received_count,
+    }
 
   def get_metrics(
     self,
@@ -166,9 +216,12 @@ class MetricsEhrService(BaseDao):
     """
     Get organization participant status metrics as of end_date
     """
-    q = self._get_organization_metrics_query(end_date, organization_ids)
     with self.session() as session:
-      cursor = session.execute(q)
+      return self._get_organization_metrics_data_with_session(session, end_date, organization_ids)
+
+  def _get_organization_metrics_data_with_session(self, session, end_date, organization_ids=None):
+    q = self._get_organization_metrics_query(end_date, organization_ids)
+    cursor = session.execute(q)
     return {
       row_dict['organization_id']: row_dict
       for row_dict
