@@ -2555,29 +2555,29 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code3)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_mem=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time2,
-                 time_fp_stored=self.time2, state_id=2)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time2, time_fp_stored=self.time2, state_id=2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=3)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=3)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=2)
 
     p5 = Participant(participantId=6, biobankId=9)
-    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_mem=self.time2,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time3, state_id=2)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
@@ -2824,6 +2824,191 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
     self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
 
+  def test_refresh_metrics_region_cache_data_v2(self):
+
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+                 codeType=CodeType.MODULE, mapped=True)
+    code3 = Code(codeId=3, system="c", value="PIIState_CA", display=u"PIIState_CA", topic=u"c",
+                 codeType=CodeType.MODULE, mapped=True)
+
+    self.code_dao.insert(code1)
+    self.code_dao.insert(code2)
+    self.code_dao.insert(code3)
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time2, time_fp_stored=self.time2, state_id=2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=3)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=2)
+
+    p5 = Participant(participantId=6, biobankId=9)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time3, state_id=2)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsRegionCacheDao(version=MetricsAPIVersion.V2)
+    service.refresh_data_for_metrics_cache(dao)
+
+    results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_STATE')
+    results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_STATE')
+    results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_STATE')
+
+    self.assertIn({'date': '2017-12-31',
+                   'hpo': u'UNSET',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results1)
+    self.assertIn({'date': '2017-12-31',
+                   'hpo': u'PITT',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results1)
+
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'PITT',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'UNSET',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results2)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'UNSET',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'PITT',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results3)
+
+    results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_CENSUS')
+    results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_CENSUS')
+    results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_CENSUS')
+    self.assertIn({'date': '2017-12-31',
+                   'hpo': u'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results1)
+    self.assertIn({'date': '2017-12-31',
+                   'hpo': u'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results1)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results2)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                   }, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results3)
+
+    results1 = dao.get_latest_version_from_cache('2017-12-31', 'GEO_AWARDEE')
+    results2 = dao.get_latest_version_from_cache('2018-01-01', 'GEO_AWARDEE')
+    results3 = dao.get_latest_version_from_cache('2018-01-02', 'GEO_AWARDEE')
+    self.assertIn({'date': '2017-12-31', 'hpo': u'UNSET', 'count': 1L}, results1)
+    self.assertIn({'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}, results1)
+    self.assertIn({'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': u'UNSET', 'count': 1L}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': u'AZ_TUCSON', 'count': 1L}, results2)
+
+    self.assertIn({'date': '2018-01-02', 'hpo': u'UNSET', 'count': 1L}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
+
   def test_refresh_metrics_region_cache_data_for_public_metrics_api(self):
 
     code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
@@ -2838,29 +3023,29 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code3)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_mem=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time2,
-                 time_fp_stored=self.time2, state_id=2)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time2, time_fp_stored=self.time2, state_id=2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=3)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=3)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=2)
 
     p5 = Participant(participantId=6, biobankId=9)
-    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_mem=self.time2,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time3, state_id=2)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -2900,29 +3085,29 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code3)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_mem=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time2,
-                 time_fp_stored=self.time2, state_id=2)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time2, time_fp_stored=self.time2, state_id=2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=3)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=3)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=2)
 
     p5 = Participant(participantId=6, biobankId=9)
-    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_mem=self.time2,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time3, state_id=2)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_fp=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_fp=self.time1, time_fp_stored=self.time1, state_id=1)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
@@ -3324,6 +3509,278 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
     self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
 
+  def test_get_metrics_region_data_api_v2(self):
+
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+                 codeType=CodeType.MODULE, mapped=True)
+    code3 = Code(codeId=3, system="c", value="PIIState_CA", display=u"PIIState_CA", topic=u"c",
+                 codeType=CodeType.MODULE, mapped=True)
+
+    self.code_dao.insert(code1)
+    self.code_dao.insert(code2)
+    self.code_dao.insert(code3)
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time2, time_fp_stored=self.time2, state_id=2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=3)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=2)
+
+    p5 = Participant(participantId=6, biobankId=9)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time3, state_id=2)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_fp=self.time1, time_fp_stored=self.time1, state_id=1)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsRegionCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+
+    qs1 = """
+                      &stratification=GEO_STATE
+                      &endDate=2017-12-31
+                      &history=TRUE
+                      &enrollmentStatus=PARTICIPANT,CORE_PARTICIPANT
+                      &version=2
+                      """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                          &stratification=GEO_STATE
+                          &endDate=2018-01-01
+                          &history=TRUE
+                          &version=2
+                          """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                              &stratification=GEO_STATE
+                              &endDate=2018-01-02
+                              &history=TRUE
+                              &version=2
+                              """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertIn({'date': '2017-12-31',
+                   'hpo': u'UNSET',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results1)
+    self.assertIn({'date': '2017-12-31',
+                   'hpo': u'PITT',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results1)
+
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'PITT',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'UNSET',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results2)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'UNSET',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 1L, 'GA': 0,
+                               'IN': 0, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'PITT',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results3)
+
+    qs1 = """
+                          &stratification=GEO_CENSUS
+                          &endDate=2017-12-31
+                          &history=TRUE
+                          &version=2
+                          """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                              &stratification=GEO_CENSUS
+                              &endDate=2018-01-01
+                              &history=TRUE
+                              &version=2
+                              """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                                  &stratification=GEO_CENSUS
+                                  &endDate=2018-01-02
+                                  &history=TRUE
+                                  &version=2
+                                  """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertIn({'date': '2017-12-31',
+                   'hpo': u'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results1)
+    self.assertIn({'date': '2017-12-31',
+                   'hpo': u'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results1)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results2)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'UNSET',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                   }, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results3)
+
+    qs1 = """
+                              &stratification=GEO_AWARDEE
+                              &endDate=2017-12-31
+                              &history=TRUE
+                              &version=2
+                              """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                                  &stratification=GEO_AWARDEE
+                                  &endDate=2018-01-01
+                                  &history=TRUE
+                                  &version=2
+                                  """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                                      &stratification=GEO_AWARDEE
+                                      &endDate=2018-01-02
+                                      &history=TRUE
+                                      &version=2
+                                      """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertIn({'date': '2017-12-31', 'hpo': u'UNSET', 'count': 1L}, results1)
+    self.assertIn({'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}, results1)
+    self.assertIn({'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': u'UNSET', 'count': 1L}, results2)
+    self.assertIn({'date': '2018-01-01', 'hpo': u'AZ_TUCSON', 'count': 1L}, results2)
+
+    self.assertIn({'date': '2018-01-02', 'hpo': u'UNSET', 'count': 1L}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
+
   def test_get_metrics_region_data_api_filter_by_enrollment_status(self):
 
     code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
@@ -3335,21 +3792,21 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code2)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_mem=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=2)
 
     p5 = Participant(participantId=6, biobankId=9)
-    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_mem=self.time2,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time3, state_id=2)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_fp=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_fp=self.time1, time_fp_stored=self.time1, state_id=1)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
@@ -3404,6 +3861,101 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
 
     self.assertEquals(results, [{'date': '2017-12-31', 'hpo': u'UNSET', 'count': 1L}])
 
+  def test_get_metrics_region_data_api_filter_by_enrollment_status_v2(self):
+
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+                 codeType=CodeType.MODULE, mapped=True)
+
+    self.code_dao.insert(code1)
+    self.code_dao.insert(code2)
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=2)
+
+    p5 = Participant(participantId=6, biobankId=9)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time3, state_id=2)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_fp=self.time1, time_fp_stored=self.time1, state_id=1)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsRegionCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+
+    qs = """
+          &stratification=GEO_STATE
+          &endDate=2017-12-31
+          &history=TRUE
+          &enrollmentStatus=PARTICIPANT,CORE_PARTICIPANT
+          &version=2
+         """
+
+    qs = ''.join(qs.split())
+    results = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({u'date': u'2017-12-31',
+                   u'metrics': {u'WA': 0, u'DE': 0, u'DC': 0, u'WI': 0, u'WV': 0, u'HI': 0,
+                                u'FL': 0, u'WY': 0, u'NH': 0, u'NJ': 0, u'NM': 0, u'TX': 0,
+                                u'LA': 0, u'NC': 0, u'ND': 0, u'NE': 0, u'TN': 0, u'NY': 0,
+                                u'PA': 0, u'RI': 0, u'NV': 0, u'VA': 0, u'CO': 0, u'AK': 0,
+                                u'AL': 0, u'AR': 0, u'VT': 0, u'IL': 1, u'GA': 0, u'IN': 0,
+                                u'IA': 0, u'OK': 0, u'AZ': 0, u'CA': 0, u'ID': 0, u'CT': 0,
+                                u'ME': 0, u'MD': 0, u'MA': 0, u'OH': 0, u'UT': 0, u'MO': 0,
+                                u'MN': 0, u'MI': 0, u'KS': 0, u'MT': 0, u'MS': 0, u'SC': 0,
+                                u'KY': 0, u'OR': 0, u'SD': 0}, u'hpo': u'UNSET'}, results)
+    self.assertIn({u'date': u'2017-12-31',
+                   u'metrics': {u'WA': 0, u'DE': 0, u'DC': 0, u'WI': 0, u'WV': 0, u'HI': 0,
+                                u'FL': 0, u'WY': 0, u'NH': 0, u'NJ': 0, u'NM': 0, u'TX': 0,
+                                u'LA': 0, u'NC': 0, u'ND': 0, u'NE': 0, u'TN': 0, u'NY': 0,
+                                u'PA': 0, u'RI': 0, u'NV': 0, u'VA': 0, u'CO': 0, u'AK': 0,
+                                u'AL': 0, u'AR': 0, u'VT': 0, u'IL': 0, u'GA': 0, u'IN': 1,
+                                u'IA': 0, u'OK': 0, u'AZ': 0, u'CA': 0, u'ID': 0, u'CT': 0,
+                                u'ME': 0, u'MD': 0, u'MA': 0, u'OH': 0, u'UT': 0, u'MO': 0,
+                                u'MN': 0, u'MI': 0, u'KS': 0, u'MT': 0, u'MS': 0, u'SC': 0,
+                                u'KY': 0, u'OR': 0, u'SD': 0}, u'hpo': u'PITT'}, results)
+
+    qs = """
+          &stratification=GEO_CENSUS
+          &endDate=2017-12-31
+          &history=TRUE
+          &enrollmentStatus=PARTICIPANT,CORE_PARTICIPANT
+          &version=2
+         """
+
+    qs = ''.join(qs.split())
+    results = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({u'date': u'2017-12-31',
+                   u'metrics': {u'WEST': 0, u'NORTHEAST': 0, u'MIDWEST': 1, u'SOUTH': 0},
+                   u'hpo': u'UNSET'}, results)
+    self.assertIn({u'date': u'2017-12-31',
+                   u'metrics': {u'WEST': 0, u'NORTHEAST': 0, u'MIDWEST': 1, u'SOUTH': 0},
+                   u'hpo': u'PITT'}, results)
+
+    qs = """
+          &stratification=GEO_AWARDEE
+          &endDate=2017-12-31
+          &history=TRUE
+          &enrollmentStatus=PARTICIPANT,CORE_PARTICIPANT
+          &awardee=PITT,AZ_TUCSON
+          &version=2
+         """
+
+    qs = ''.join(qs.split())
+    results = self.send_get('ParticipantCountsOverTime', query_string=qs)
+
+    self.assertIn({u'date': u'2017-12-31', u'count': 1, u'hpo': u'PITT'}, results)
+
   def test_get_metrics_region_data_api_filter_by_awardee(self):
 
     code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
@@ -3418,29 +3970,29 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code3)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_mem=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time2,
-                 time_fp_stored=self.time2, state_id=2)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time2, time_fp_stored=self.time2, state_id=2)
 
     p3 = Participant(participantId=3, biobankId=6)
-    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=3)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=3)
 
     p4 = Participant(participantId=4, biobankId=7)
-    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_mem=self.time3,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=2)
 
     p5 = Participant(participantId=6, biobankId=9)
-    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_mem=self.time2,
-                 time_fp_stored=self.time3, state_id=2)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time3, state_id=2)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
-    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_fp=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_fp=self.time1, time_fp_stored=self.time1, state_id=1)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()
@@ -3781,6 +4333,248 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
     self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
 
+  def test_get_metrics_region_data_api_filter_by_awardee_v2(self):
+
+    code1 = Code(codeId=1, system="a", value="PIIState_IL", display=u"PIIState_IL", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    code2 = Code(codeId=2, system="b", value="PIIState_IN", display=u"PIIState_IN", topic=u"b",
+                 codeType=CodeType.MODULE, mapped=True)
+    code3 = Code(codeId=3, system="c", value="PIIState_CA", display=u"PIIState_CA", topic=u"c",
+                 codeType=CodeType.MODULE, mapped=True)
+
+    self.code_dao.insert(code1)
+    self.code_dao.insert(code2)
+    self.code_dao.insert(code3)
+
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time2,
+                 time_mem=self.time2, time_fp_stored=self.time2, state_id=2)
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=3)
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'PITT', time_int=self.time3, time_study=self.time3,
+                 time_mem=self.time3, time_fp_stored=self.time3, state_id=2)
+
+    p5 = Participant(participantId=6, biobankId=9)
+    self._insert(p5, 'Chad3', 'Caterpillar3', 'PITT', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time3, state_id=2)
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
+                 time_fp=self.time1, time_fp_stored=self.time1, state_id=1)
+
+    service = ParticipantCountsOverTimeService()
+    dao = MetricsRegionCacheDao()
+    service.refresh_data_for_metrics_cache(dao)
+
+    qs1 = """
+                          &stratification=GEO_STATE
+                          &endDate=2017-12-31
+                          &history=TRUE
+                          &awardee=PITT,AZ_TUCSON
+                          &version=2
+                          """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                              &stratification=GEO_STATE
+                              &endDate=2018-01-01
+                              &history=TRUE
+                              &awardee=PITT,AZ_TUCSON
+                              &version=2
+                              """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                                  &stratification=GEO_STATE
+                                  &endDate=2018-01-02
+                                  &history=TRUE
+                                  &awardee=PITT,AZ_TUCSON
+                                  &version=2
+                                  """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertEquals(results1, [{'date': '2017-12-31',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                                              'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                                              'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                                              'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                                              'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                                              'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                                              'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                                              'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                                              'KY': 0, 'OR': 0, 'SD': 0}}])
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'PITT',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results2)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'PITT',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'PITT',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 0, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 2L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WA': 0, 'DE': 0, 'DC': 0, 'WI': 0, 'WV': 0, 'HI': 0,
+                               'FL': 0, 'WY': 0, 'NH': 0, 'NJ': 0, 'NM': 0, 'TX': 0,
+                               'LA': 0, 'AK': 0, 'NC': 0, 'ND': 0, 'NE': 0, 'TN': 0,
+                               'NY': 0, 'PA': 0, 'RI': 0, 'NV': 0, 'VA': 0, 'CO': 0,
+                               'CA': 1L, 'AL': 0, 'AR': 0, 'VT': 0, 'IL': 0, 'GA': 0,
+                               'IN': 1L, 'IA': 0, 'MA': 0, 'AZ': 0, 'ID': 0, 'CT': 0,
+                               'ME': 0, 'MD': 0, 'OK': 0, 'OH': 0, 'UT': 0, 'MO': 0,
+                               'MN': 0, 'MI': 0, 'KS': 0, 'MT': 0, 'MS': 0, 'SC': 0,
+                               'KY': 0, 'OR': 0, 'SD': 0}}, results3)
+
+    qs1 = """
+                              &stratification=GEO_CENSUS
+                              &endDate=2017-12-31
+                              &history=TRUE
+                              &awardee=PITT,AZ_TUCSON
+                              &version=2
+                              """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                                  &stratification=GEO_CENSUS
+                                  &endDate=2018-01-01
+                                  &history=TRUE
+                                  &awardee=PITT,AZ_TUCSON
+                                  &version=2
+                                  """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                                      &stratification=GEO_CENSUS
+                                      &endDate=2018-01-02
+                                      &history=TRUE
+                                      &awardee=PITT,AZ_TUCSON
+                                      &version=2
+                                      """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertEquals(results1, [{'date': '2017-12-31',
+                                  'hpo': u'PITT',
+                                  'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                                  }])
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results2)
+    self.assertIn({'date': '2018-01-01',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results2)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'PITT',
+                   'metrics': {'WEST': 0, 'NORTHEAST': 0, 'MIDWEST': 2L, 'SOUTH': 0}
+                   }, results3)
+    self.assertIn({'date': '2018-01-02',
+                   'hpo': u'AZ_TUCSON',
+                   'metrics': {'WEST': 1L, 'NORTHEAST': 0, 'MIDWEST': 1L, 'SOUTH': 0}
+                   }, results3)
+
+    qs1 = """
+                                  &stratification=GEO_AWARDEE
+                                  &endDate=2017-12-31
+                                  &history=TRUE
+                                  &awardee=PITT,AZ_TUCSON
+                                  &version=2
+                                  """
+
+    qs1 = ''.join(qs1.split())
+    results1 = self.send_get('ParticipantCountsOverTime', query_string=qs1)
+
+    qs2 = """
+                                      &stratification=GEO_AWARDEE
+                                      &endDate=2018-01-01
+                                      &history=TRUE
+                                      &awardee=PITT,AZ_TUCSON
+                                      &version=2
+                                      """
+
+    qs2 = ''.join(qs2.split())
+
+    results2 = self.send_get('ParticipantCountsOverTime', query_string=qs2)
+
+    qs3 = """
+                                          &stratification=GEO_AWARDEE
+                                          &endDate=2018-01-02
+                                          &history=TRUE
+                                          &awardee=PITT,AZ_TUCSON
+                                          &version=2
+                                          """
+
+    qs3 = ''.join(qs3.split())
+
+    results3 = self.send_get('ParticipantCountsOverTime', query_string=qs3)
+
+    self.assertEquals(results1, [{'date': '2017-12-31', 'hpo': u'PITT', 'count': 1L}
+                                 ])
+    self.assertIn({'date': '2018-01-01', 'hpo': u'PITT', 'count': 1L}, results2)
+    self.assertIn({'date': '2018-01-01',  'hpo': u'AZ_TUCSON', 'count': 1L}, results2)
+    self.assertIn({'date': '2018-01-02', 'hpo': u'PITT', 'count': 2L}, results3)
+    self.assertIn({'date': '2018-01-02', 'hpo': u'AZ_TUCSON', 'count': 2L}, results3)
+
   def test_unrecognized_state_value(self):
     # PW is not in the state list
     code1 = Code(codeId=1, system="a", value="PIIState_PW", display=u"PIIState_PW", topic=u"a",
@@ -3792,12 +4586,12 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self.code_dao.insert(code2)
 
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1, time_mem=self.time1,
-                 time_fp_stored=self.time1, state_id=1)
+    self._insert(p1, 'Alice', 'Aardvark', 'PITT', time_int=self.time1, time_study=self.time1,
+                 time_mem=self.time1, time_fp_stored=self.time1, state_id=1)
 
     p2 = Participant(participantId=2, biobankId=5)
-    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_mem=self.time2,
-                 time_fp_stored=self.time2, state_id=2)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', time_int=self.time2, time_study=self.time1,
+                 time_mem=self.time2, time_fp_stored=self.time2, state_id=2)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsRegionCacheDao()

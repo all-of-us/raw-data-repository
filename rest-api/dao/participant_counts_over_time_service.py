@@ -103,7 +103,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                                                        Stratifications.GEO_STATE,
                                                        Stratifications.GEO_CENSUS,
                                                        Stratifications.GEO_AWARDEE]:
-      dao = MetricsRegionCacheDao()
+      dao = MetricsRegionCacheDao(version=version)
       return dao.get_latest_version_from_cache(end_date, stratification, awardee_ids,
                                                enrollment_statuses)
     elif str(history) == 'TRUE' and stratification == Stratifications.LANGUAGE:
@@ -322,29 +322,27 @@ class ParticipantCountsOverTimeService(BaseDao):
           SELECT SUM(results.enrollment_count)
           FROM
           (
-            SELECT DATE(p.sign_up_time) AS sign_up_time,
-                   DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
+            SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
                    DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
                    count(*) enrollment_count
             FROM participant p
                    LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
             %(filters_p)s
-            GROUP BY DATE(p.sign_up_time), DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time)
+            GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time)
           ) AS results
-          WHERE c.day>=DATE(sign_up_time) AND consent_for_study_enrollment_time IS NOT NULL AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+          WHERE consent_for_study_enrollment_time IS NOT NULL AND c.day>=DATE(consent_for_study_enrollment_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
         ),0) AS participant,
         IFNULL((
           SELECT SUM(results.enrollment_count)
           FROM
           (
-            SELECT DATE(p.sign_up_time) AS sign_up_time,
-                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+            SELECT DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
                    DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
                    count(*) enrollment_count
             FROM participant p
                    LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
             %(filters_p)s
-            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+            GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
           ) AS results
           WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (%(core_sample_time_field_name)s IS NULL OR day < DATE(%(core_sample_time_field_name)s))
         ),0) AS fully_consented,
@@ -352,14 +350,12 @@ class ParticipantCountsOverTimeService(BaseDao):
           SELECT SUM(results.enrollment_count)
           FROM
           (
-            SELECT DATE(p.sign_up_time) AS sign_up_time,
-                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
-                   DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
+            SELECT DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
                    count(*) enrollment_count
             FROM participant p
                    LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
             %(filters_p)s
-            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+            GROUP BY DATE(ps.%(core_sample_time_field_name)s)
           ) AS results
           WHERE %(core_sample_time_field_name)s IS NOT NULL AND day>=DATE(%(core_sample_time_field_name)s)
         ),0) AS core_participant,
@@ -388,14 +384,13 @@ class ParticipantCountsOverTimeService(BaseDao):
           SELECT SUM(results.enrollment_count)
           FROM
           (
-            SELECT DATE(p.sign_up_time) AS sign_up_time,
-                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+            SELECT DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
                    DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
                    count(*) enrollment_count
             FROM participant p
                    LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
             %(filters_p)s
-            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+            GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
           ) AS results
           WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (%(core_sample_time_field_name)s IS NULL OR day < DATE(%(core_sample_time_field_name)s))
         ),0) AS member_participants,
@@ -403,14 +398,12 @@ class ParticipantCountsOverTimeService(BaseDao):
           SELECT SUM(results.enrollment_count)
           FROM
           (
-            SELECT DATE(p.sign_up_time) AS sign_up_time,
-                   DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
-                   DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
+            SELECT DATE(ps.%(core_sample_time_field_name)s) AS %(core_sample_time_field_name)s,
                    count(*) enrollment_count
             FROM participant p
                    LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
             %(filters_p)s
-            GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.%(core_sample_time_field_name)s)
+            GROUP BY DATE(ps.%(core_sample_time_field_name)s)
           ) AS results
           WHERE %(core_sample_time_field_name)s IS NOT NULL AND day>=DATE(%(core_sample_time_field_name)s)
         ),0) AS full_participants,
