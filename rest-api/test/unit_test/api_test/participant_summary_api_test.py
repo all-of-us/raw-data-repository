@@ -1756,7 +1756,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
     self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
-    self.assertEquals('MAN', ps_1['genderIdentity'])
+    self.assertEquals('GenderIdentity_Man', ps_1['genderIdentity'])
     self.assertEquals('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
     self.assertEquals('NOT_SUSPENDED', ps_1['suspensionStatus'])
     self.assertEquals('email_code', ps_1['recontactMethod'])
@@ -1793,7 +1793,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_2['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
-    self.assertEquals('WOMAN', ps_2['genderIdentity'])
+    self.assertEquals('GenderIdentity_Woman', ps_2['genderIdentity'])
     self.assertEquals('NO_USE', ps_2['withdrawalStatus'])
     self.assertEquals('DUPLICATE', ps_2['withdrawalReason'])
     self.assertEquals('NOT_SUSPENDED', ps_2['suspensionStatus'])
@@ -1832,7 +1832,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
-    self.assertEquals('NON_BINARY', ps_3['genderIdentity'])
+    self.assertEquals('GenderIdentity_NonBinary', ps_3['genderIdentity'])
     self.assertEquals('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
     self.assertEquals('NO_CONTACT', ps_3['suspensionStatus'])
     self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
@@ -1900,7 +1900,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
           [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=UNSET',
                            [[]])
-      self.assertResponses('ParticipantSummary?_count=2&genderIdentity=MAN',
+      self.assertResponses('ParticipantSummary?_count=2&genderIdentity=GenderIdentity_Man',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
                            [[ps_1]])
@@ -2181,7 +2181,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
     self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
-    self.assertEquals('MAN', ps_1['genderIdentity'])
+    self.assertEquals('GenderIdentity_Man', ps_1['genderIdentity'])
     self.assertEquals('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
     self.assertEquals('NOT_SUSPENDED', ps_1['suspensionStatus'])
     self.assertEquals('email_code', ps_1['recontactMethod'])
@@ -2218,7 +2218,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_2['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
-    self.assertEquals('WOMAN', ps_2['genderIdentity'])
+    self.assertEquals('GenderIdentity_Woman', ps_2['genderIdentity'])
     self.assertEquals('NO_USE', ps_2['withdrawalStatus'])
     self.assertEquals('DUPLICATE', ps_2['withdrawalReason'])
     self.assertEquals('NOT_SUSPENDED', ps_2['suspensionStatus'])
@@ -2257,7 +2257,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
-    self.assertEquals('MAN', ps_3['genderIdentity'])
+    self.assertEquals('GenderIdentity_Man', ps_3['genderIdentity'])
     self.assertEquals('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
     self.assertEquals('NO_CONTACT', ps_3['suspensionStatus'])
     self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
@@ -2325,7 +2325,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=UNSET',
                            [[]])
-      self.assertResponses('ParticipantSummary?_count=2&genderIdentity=MAN',
+      self.assertResponses('ParticipantSummary?_count=2&genderIdentity=GenderIdentity_Man',
                            [[ps_1, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
                            [[ps_1]])

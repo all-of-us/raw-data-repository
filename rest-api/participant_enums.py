@@ -225,12 +225,12 @@ class Race(messages.Enum):
 class GenderIdentity(messages.Enum):
   PMI_PREFER_NOT_TO_ANSWER_CODE = 0
   NO_GENDER_IDENTITY_CHECKED = 1 #pmi_skip
-  MAN = 2
-  WOMAN = 3
-  NON_BINARY = 4
-  TRANSGENDER = 5
-  OTHER_ADDITIONAL_OPTIONS = 6
-  MORE_THAN_ONE_GENDER_IDENTITY = 7
+  GenderIdentity_Man = 2
+  GenderIdentity_Woman = 3
+  GenderIdentity_NonBinary = 4
+  GenderIdentity_Transgender = 5
+  GenderIdentity_OtherAdditionalOptions = 6
+  GenderIdentity_MoreThanOne = 7
 
 
 # A type of organization responsible for signing up participants.
@@ -263,11 +263,11 @@ ANSWER_CODE_TO_RACE = {
 }
 
 ANSWER_CODE_TO_GENDER = {
-  GENDER_MAN_CODE: GenderIdentity.MAN,
-  GENDER_WOMAN_CODE: GenderIdentity.WOMAN,
-  GENDER_NONBINARY_CODE: GenderIdentity.NON_BINARY,
-  GENDER_TRANSGENDER_CODE: GenderIdentity.TRANSGENDER,
-  GENDER_OTHER_CODE: GenderIdentity.OTHER_ADDITIONAL_OPTIONS,
+  GENDER_MAN_CODE: GenderIdentity.GenderIdentity_Man,
+  GENDER_WOMAN_CODE: GenderIdentity.GenderIdentity_Woman,
+  GENDER_NONBINARY_CODE: GenderIdentity.GenderIdentity_NonBinary,
+  GENDER_TRANSGENDER_CODE: GenderIdentity.GenderIdentity_Transgender,
+  GENDER_OTHER_CODE: GenderIdentity.GenderIdentity_OtherAdditionalOptions,
   GENDER_PREFER_NOT_TO_ANSWER_CODE: GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE,
   GENDER_NO_GENDER_IDENTITY_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED,
   PMI_SKIP_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED
@@ -372,10 +372,14 @@ def get_gender_identity(gender_codes):
       if i in multiple_genders:
           multiple_genders.remove(i)
     if len(multiple_genders) > 1:
-      return GenderIdentity.MORE_THAN_ONE_GENDER_IDENTITY
+      return GenderIdentity.GenderIdentity_MoreThanOne
     else:
       # you can't have your cake and eat it too
-      return map_single_gender(multiple_genders.pop())
+      gender = multiple_genders.pop()
+      for code in gender_codes:
+        if gender.name == code.value:
+          return map_single_gender(code)
+      # return map_single_gender(multiple_genders)
 
 
 

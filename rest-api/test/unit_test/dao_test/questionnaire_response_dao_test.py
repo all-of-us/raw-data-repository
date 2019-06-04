@@ -20,7 +20,7 @@ from model.code import Code, CodeType
 from model.participant import Participant
 from model.questionnaire import Questionnaire, QuestionnaireQuestion, QuestionnaireConcept
 from model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from participant_enums import QuestionnaireStatus, WithdrawalStatus
+from participant_enums import QuestionnaireStatus, WithdrawalStatus, GenderIdentity
 import test_data
 from test_data import consent_code, first_name_code, last_name_code, email_code, \
   login_phone_number_code
@@ -421,7 +421,8 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.check_response(expected_qr)
 
     expected_ps = self._participant_summary_with_defaults(
-      genderIdentityId=self.skip_code.codeId,
+      genderIdentity=GenderIdentity.NO_GENDER_IDENTITY_CHECKED,
+      genderIdentityId=8,
       participantId=1, biobankId=2, signUpTime=TIME,
       numCompletedBaselinePPIModules=1, numCompletedPPIModules=1,
       questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
