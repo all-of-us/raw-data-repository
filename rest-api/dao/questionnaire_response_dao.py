@@ -251,6 +251,9 @@ class QuestionnaireResponseDao(BaseDao):
       if question:
         code = code_map.get(question.codeId)
         if code:
+          if code.value == GENDER_IDENTITY_QUESTION_CODE:
+            gender_code_ids.append(answer.valueCodeId)
+
           summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
           if summary_field:
             if something_changed:
@@ -261,8 +264,6 @@ class QuestionnaireResponseDao(BaseDao):
           elif code.value == RACE_QUESTION_CODE:
             race_code_ids.append(answer.valueCodeId)
 
-          elif code.value == GENDER_IDENTITY_QUESTION_CODE:
-            gender_code_ids.append(answer.valueCodeId)
 
           elif code.value == DVEHR_SHARING_QUESTION_CODE:
             code = code_dao.get(answer.valueCodeId)

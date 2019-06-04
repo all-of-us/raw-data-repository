@@ -178,7 +178,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     participant = self.send_get('Participant/%s' % participant_id)
     summary = self.send_get('Participant/%s/Summary' % participant_id)
     expected = {'ageRange': 'UNSET',
-                'genderIdentity': 'UNMAPPED',
+                'genderIdentity': 'NON_BINARY',
                 'firstName': self.first_name,
                 'lastName': self.last_name,
                 'email': self.email,

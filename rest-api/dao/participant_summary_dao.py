@@ -29,7 +29,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 _ORDER_BY_ENDING = ('lastName', 'firstName', 'dateOfBirth', 'participantId')
 # The default ordering of results for queries for withdrawn participants.
 _WITHDRAWN_ORDER_BY_ENDING = ('withdrawalTime', 'participantId')
-_CODE_FILTER_FIELDS = ('genderIdentity', 'organization', 'site', 'awardee')
+_CODE_FILTER_FIELDS = ('organization', 'site', 'awardee')
 _SITE_FIELDS = ('physicalMeasurementsCreatedSite', 'physicalMeasurementsFinalizedSite',
                 'biospecimenSourceSite', 'biospecimenCollectedSite',
                 'biospecimenProcessedSite', 'biospecimenFinalizedSite', 'site')
@@ -591,6 +591,9 @@ class ParticipantSummaryDao(UpdatableDao):
       del result['organizationId']
       format_json_org(result, self.organization_dao, 'organization')
 
+    if result.get('genderIdentityId'):
+      del result['genderIdentityId']  #deprecated in favor of genderIdentity
+
     format_json_hpo(result, self.hpo_dao, 'hpoId')
     result['awardee'] = result['hpoId']
     _initialize_field_type_sets()
@@ -645,6 +648,8 @@ def _initialize_field_type_sets():
       return
     for prop_name in dir(ParticipantSummary):
       if prop_name.startswith("_"):
+        continue
+      if prop_name == 'genderIdentityId':  # deprecated
         continue
       prop = getattr(ParticipantSummary, prop_name)
       if callable(prop):

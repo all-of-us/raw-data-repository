@@ -7,7 +7,7 @@ from clock import FakeClock
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, DVEHRSHARING_CONSENT_CODE_YES,
                             DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
-                            CONSENT_PERMISSION_NO_CODE)
+                            CONSENT_PERMISSION_NO_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_NONBINARY_CODE)
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -15,7 +15,7 @@ from model.biobank_stored_sample import BiobankStoredSample
 from model.code import CodeType
 from model.hpo import HPO
 from dao.hpo_dao import HPODao
-from participant_enums import ANSWER_CODE_TO_RACE, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType
+from participant_enums import ANSWER_CODE_TO_RACE, TEST_HPO_ID, TEST_HPO_NAME, OrganizationType, ANSWER_CODE_TO_GENDER
 from test_data import load_measurement_json, load_biobank_order_json, to_client_participant_id
 from unit_test_util import FlaskTestBase, make_questionnaire_response_json, SqlTestBase,\
   get_restore_or_cancel_info
@@ -124,6 +124,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       expected['dateOfBirth'] = '{}-{:02d}-{:02d}'.format(dob.year, dob.month, dob.day)
     if 'race' in answers:
       expected['race'] = str(ANSWER_CODE_TO_RACE.get(answers['race']))
+
+    if 'genderIdentity' in answers:
+      expected['genderIdentity'] = str(ANSWER_CODE_TO_GENDER.get(answers['genderIdentity']))
 
     if consent_language:
       expected.update({'primaryLanguage': consent_language})
@@ -966,7 +969,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # Populate some answers to the questionnaire
     answers = {
       'race': RACE_WHITE_CODE,
-      'genderIdentity': 'male',
+      'genderIdentity': GENDER_MAN_CODE,
       'firstName': self.fake.first_name(),
       'middleName': self.fake.first_name(),
       'lastName': self.fake.last_name(),
@@ -1010,7 +1013,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     # Populate some answers to the questionnaire
     answers = {
       'race': RACE_WHITE_CODE,
-      'genderIdentity': 'male',
+      'genderIdentity': GENDER_MAN_CODE,
       'firstName': self.fake.first_name(),
       'middleName': self.fake.first_name(),
       'lastName': self.fake.last_name(),
@@ -1675,19 +1678,19 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_consent(participant_id_2)
       self.send_consent(participant_id_3)
 
-    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, GENDER_MAN_CODE,
                                      "Bob", "Q", "Jones", "78751", "PIIState_VA",
                                      self.streetAddress, self.streetAddress2, "Austin", "male_sex",
                                      "215-222-2222", "straight", "512-555-5555", "email_code",
                                      "en", "highschool", "lotsofmoney",
                                      datetime.date(1978, 10, 9), "signature.pdf")
-    self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "female",
+    self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, GENDER_WOMAN_CODE,
                                      "Mary", "Q", "Jones", "78751", None,
                                      self.streetAddress, self.streetAddress2, None, None, None,
                                      None, None, None, None, None, None,
                                      datetime.date(1978, 10, 8), None)
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_NONE_OF_THESE_CODE,
-                                     "male", "Fred", "T", "Smith", "78752", None,
+                                     GENDER_NONBINARY_CODE, "Fred", "T", "Smith", "78752", None,
                                      self.streetAddress, self.streetAddress2, None, None, None,
                                      None, None, None, None, None, None,
                                      datetime.date(1978, 10, 10), None)
@@ -1753,7 +1756,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
     self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
-    self.assertEquals('male', ps_1['genderIdentity'])
+    self.assertEquals('MAN', ps_1['genderIdentity'])
     self.assertEquals('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
     self.assertEquals('NOT_SUSPENDED', ps_1['suspensionStatus'])
     self.assertEquals('email_code', ps_1['recontactMethod'])
@@ -1790,7 +1793,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_2['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
-    self.assertEquals('UNMAPPED', ps_2['genderIdentity'])
+    self.assertEquals('WOMAN', ps_2['genderIdentity'])
     self.assertEquals('NO_USE', ps_2['withdrawalStatus'])
     self.assertEquals('DUPLICATE', ps_2['withdrawalReason'])
     self.assertEquals('NOT_SUSPENDED', ps_2['suspensionStatus'])
@@ -1829,7 +1832,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
-    self.assertEquals('male', ps_3['genderIdentity'])
+    self.assertEquals('NON_BINARY', ps_3['genderIdentity'])
     self.assertEquals('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
     self.assertEquals('NO_CONTACT', ps_3['suspensionStatus'])
     self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
@@ -1855,9 +1858,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=dateOfBirth',
                            [[ps_3, ps_1], [ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=genderIdentity',
-                           [[ps_1, ps_3], [ps_2]])
+                           [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=genderIdentity',
-                           [[ps_2, ps_1], [ps_3]])
+                           [[ps_3, ps_2], [ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
@@ -1897,8 +1900,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
           [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=UNSET',
                            [[]])
-      self.assertResponses('ParticipantSummary?_count=2&genderIdentity=male',
-                           [[ps_1, ps_3]])
+      self.assertResponses('ParticipantSummary?_count=2&genderIdentity=MAN',
+                           [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
                            [[ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&race=OTHER_RACE',
@@ -2048,9 +2051,9 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=dateOfBirth',
                            [[ps_3, ps_1], [new_ps_2]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=genderIdentity',
-                           [[ps_1, ps_3], [new_ps_2]])
+                           [[ps_1, new_ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort:desc=genderIdentity',
-                           [[new_ps_2, ps_1], [ps_3]])
+                           [[ps_3, new_ps_2], [ps_1]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=questionnaireOnTheBasics',
                            [[ps_1, new_ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&_sort=hpoId',
@@ -2095,19 +2098,19 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_consent(participant_id_2)
       self.send_consent(participant_id_3)
 
-    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "male",
+    self.submit_questionnaire_response(participant_id_1, questionnaire_id, RACE_WHITE_CODE, "GenderIdentity_Man",
                                      "Bob", "Q", "Jones", "78751", "PIIState_VA",
                                      self.streetAddress, self.streetAddress2, "Austin", "male_sex",
                                      "215-222-2222", "straight", "512-555-5555", "email_code",
                                      "en", "highschool", "lotsofmoney",
                                      datetime.date(1978, 10, 9), "signature.pdf")
-    self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "female",
+    self.submit_questionnaire_response(participant_id_2, questionnaire_id, None, "GenderIdentity_Woman",
                                      "Mary", "Q", "Jones", "78751", None,
                                      self.streetAddress, self.streetAddress2, None, None, None,
                                      None, None, None, None, None, None,
                                      datetime.date(1978, 10, 8), None)
     self.submit_questionnaire_response(participant_id_3, questionnaire_id, RACE_NONE_OF_THESE_CODE,
-                                     "male", "Fred", "T", "Smith", "78752", None,
+                                     "GenderIdentity_Man", "Fred", "T", "Smith", "78752", None,
                                      self.streetAddress, self.streetAddress2, None, None, None,
                                      None, None, None, None, None, None,
                                      datetime.date(1978, 10, 10), None)
@@ -2178,7 +2181,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('INTERESTED', ps_1['enrollmentStatus'])
     self.assertEquals('UNSET', ps_1['physicalMeasurementsStatus'])
     self.assertIsNone(ps_1.get('physicalMeasurementsTime'))
-    self.assertEquals('male', ps_1['genderIdentity'])
+    self.assertEquals('MAN', ps_1['genderIdentity'])
     self.assertEquals('NOT_WITHDRAWN', ps_1['withdrawalStatus'])
     self.assertEquals('NOT_SUSPENDED', ps_1['suspensionStatus'])
     self.assertEquals('email_code', ps_1['recontactMethod'])
@@ -2215,7 +2218,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('MEMBER', ps_2['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_2['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_2['physicalMeasurementsTime'])
-    self.assertEquals('UNMAPPED', ps_2['genderIdentity'])
+    self.assertEquals('WOMAN', ps_2['genderIdentity'])
     self.assertEquals('NO_USE', ps_2['withdrawalStatus'])
     self.assertEquals('DUPLICATE', ps_2['withdrawalReason'])
     self.assertEquals('NOT_SUSPENDED', ps_2['suspensionStatus'])
@@ -2254,7 +2257,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     self.assertEquals('FULL_PARTICIPANT', ps_3['enrollmentStatus'])
     self.assertEquals('COMPLETED', ps_3['physicalMeasurementsStatus'])
     self.assertEquals(TIME_2.isoformat(), ps_3['physicalMeasurementsTime'])
-    self.assertEquals('male', ps_3['genderIdentity'])
+    self.assertEquals('MAN', ps_3['genderIdentity'])
     self.assertEquals('NOT_WITHDRAWN', ps_3['withdrawalStatus'])
     self.assertEquals('NO_CONTACT', ps_3['suspensionStatus'])
     self.assertEquals('NO_CONTACT', ps_3['recontactMethod'])
@@ -2322,7 +2325,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
                            [[ps_1, ps_2], [ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&hpoId=UNSET',
                            [[]])
-      self.assertResponses('ParticipantSummary?_count=2&genderIdentity=male',
+      self.assertResponses('ParticipantSummary?_count=2&genderIdentity=MAN',
                            [[ps_1, ps_3]])
       self.assertResponses('ParticipantSummary?_count=2&race=WHITE',
                            [[ps_1]])

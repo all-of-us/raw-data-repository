@@ -269,7 +269,8 @@ ANSWER_CODE_TO_GENDER = {
   GENDER_TRANSGENDER_CODE: GenderIdentity.TRANSGENDER,
   GENDER_OTHER_CODE: GenderIdentity.OTHER_ADDITIONAL_OPTIONS,
   GENDER_PREFER_NOT_TO_ANSWER_CODE: GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE,
-  GENDER_NO_GENDER_IDENTITY_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED
+  GENDER_NO_GENDER_IDENTITY_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED,
+  PMI_SKIP_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED
 }
 
 
@@ -364,7 +365,7 @@ def get_gender_identity(gender_codes):
     return map_single_gender(gender_codes[0])
   else:
     multiple_genders = set([map_single_gender(gender_code) for gender_code in gender_codes])
-    if len(multiple_genders.difference(GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE, GenderIdentity.NO_GENDER_IDENTITY_CHECKED)) == 0:
+    if len(multiple_genders.difference([GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE, GenderIdentity.NO_GENDER_IDENTITY_CHECKED])) == 0:
       return GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE
     # ignore pmi_prefer_not_to_answer and pmi_skip if in set with more values
     for i in [GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE, GenderIdentity.NO_GENDER_IDENTITY_CHECKED]:

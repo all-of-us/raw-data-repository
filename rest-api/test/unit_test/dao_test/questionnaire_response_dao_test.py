@@ -541,6 +541,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     # The question on the second questionnaire has the same concept as the first question on the
     # first questionnaire; answers to it will thus set endTime for answers to the first question.
     q2.questions.append(self.CODE_1_QUESTION_2)
+    q2.questions.append(self.CODE_1_QUESTION_1)
 
     self.questionnaire_dao.insert(q2)
 
