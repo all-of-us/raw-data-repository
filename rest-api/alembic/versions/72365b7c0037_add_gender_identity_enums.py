@@ -1,8 +1,8 @@
 """add gender identity enums
 
-Revision ID: e641a660ce9e
-Revises: b662c5bb00cc
-Create Date: 2019-05-30 15:58:36.271528
+Revision ID: 72365b7c0037
+Revises: 9c957ce496bf
+Create Date: 2019-06-05 08:56:34.278852
 
 """
 from alembic import op
@@ -20,8 +20,8 @@ from model.code import CodeType
 from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
-revision = 'e641a660ce9e'
-down_revision = 'b662c5bb00cc'
+revision = '72365b7c0037'
+down_revision = '9c957ce496bf'
 branch_labels = None
 depends_on = None
 
