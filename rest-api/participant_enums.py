@@ -8,7 +8,10 @@ from code_constants import (
   PMI_PREFER_NOT_TO_ANSWER_CODE,
   # Race Codes
   RACE_AIAN_CODE, RACE_ASIAN_CODE, RACE_BLACK_CODE, RACE_MENA_CODE, RACE_NHDPI_CODE,
-  RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_FREETEXT_CODE, RACE_NONE_OF_THESE_CODE
+  RACE_WHITE_CODE, RACE_HISPANIC_CODE, RACE_FREETEXT_CODE, RACE_NONE_OF_THESE_CODE,
+  # Gender Codes
+  GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_NONBINARY_CODE, GENDER_TRANSGENDER_CODE,
+  GENDER_OTHER_CODE, GENDER_PREFER_NOT_TO_ANSWER_CODE, GENDER_NO_GENDER_IDENTITY_CODE
   )
 from dateutil.relativedelta import relativedelta
 from protorpc import messages
@@ -226,6 +229,17 @@ class Race(messages.Enum):
   OTHER_RACE = 15
   PREFER_NOT_TO_SAY = 16
 
+class GenderIdentity(messages.Enum):
+  PMI_PREFER_NOT_TO_ANSWER_CODE = 0
+  NO_GENDER_IDENTITY_CHECKED = 1 #pmi_skip
+  GenderIdentity_Man = 2
+  GenderIdentity_Woman = 3
+  GenderIdentity_NonBinary = 4
+  GenderIdentity_Transgender = 5
+  GenderIdentity_OtherAdditionalOptions = 6
+  GenderIdentity_MoreThanOne = 7
+
+
 # A type of organization responsible for signing up participants.
 class OrganizationType(messages.Enum):
   UNSET = 0
@@ -253,6 +267,17 @@ ANSWER_CODE_TO_RACE = {
   PMI_FREE_TEXT_CODE: Race.OTHER_RACE,
   PMI_UNANSWERED_CODE: Race.UNSET,
   PMI_SKIP_CODE: Race.PMI_Skip,
+}
+
+ANSWER_CODE_TO_GENDER = {
+  GENDER_MAN_CODE: GenderIdentity.GenderIdentity_Man,
+  GENDER_WOMAN_CODE: GenderIdentity.GenderIdentity_Woman,
+  GENDER_NONBINARY_CODE: GenderIdentity.GenderIdentity_NonBinary,
+  GENDER_TRANSGENDER_CODE: GenderIdentity.GenderIdentity_Transgender,
+  GENDER_OTHER_CODE: GenderIdentity.GenderIdentity_OtherAdditionalOptions,
+  GENDER_PREFER_NOT_TO_ANSWER_CODE: GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE,
+  GENDER_NO_GENDER_IDENTITY_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED,
+  PMI_SKIP_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED
 }
 
 
@@ -337,6 +362,40 @@ def get_race(race_codes):
       return Race.HLS_AND_ONE_OTHER_RACE
     else:
       return Race.MORE_THAN_ONE_RACE
+
+def map_single_gender(code):
+  if code is None:
+    return
+  gender_value = ANSWER_CODE_TO_GENDER.get(code.value)
+  if gender_value:
+    return gender_value
+  return ANSWER_CODE_TO_GENDER.get(code.parent)
+
+def get_gender_identity(gender_codes):
+  if not gender_codes:
+    return None
+  if len(gender_codes) == 1:
+    return map_single_gender(gender_codes[0])
+  else:
+    multiple_genders = set([map_single_gender(gender_code) for gender_code in gender_codes])
+    if len(multiple_genders.difference([GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE,
+      GenderIdentity.NO_GENDER_IDENTITY_CHECKED])) == 0:
+      return GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE
+    # ignore pmi_prefer_not_to_answer and pmi_skip if in set with more values
+    for i in [GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE, GenderIdentity.NO_GENDER_IDENTITY_CHECKED]:
+      if i in multiple_genders:
+        multiple_genders.remove(i)
+    if len(multiple_genders) > 1:
+      return GenderIdentity.GenderIdentity_MoreThanOne
+    else:
+      # you can't have your cake and eat it too
+      gender = multiple_genders.pop()
+      for code in gender_codes:
+        if gender.name == code.value:
+          return map_single_gender(code)
+      # return map_single_gender(multiple_genders)
+
+
 
 def make_primary_provider_link_for_id(hpo_id):
   from dao.hpo_dao import HPODao

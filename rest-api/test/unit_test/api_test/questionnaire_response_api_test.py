@@ -178,7 +178,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     participant = self.send_get('Participant/%s' % participant_id)
     summary = self.send_get('Participant/%s/Summary' % participant_id)
     expected = {'ageRange': 'UNSET',
-                'genderIdentity': 'UNMAPPED',
+                'genderIdentity': 'GenderIdentity_NonBinary',
                 'firstName': self.first_name,
                 'lastName': self.last_name,
                 'email': self.email,
@@ -447,3 +447,236 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
     # invalid link ids.
     # self.send_post(_questionnaire_response_url(participant_id), resource,
     #                           expected_status=httplib.BAD_REQUEST)
+
+  def test_multiple_genders(self):
+    with FakeClock(TIME_1):
+      participant_id = self.create_participant()
+      self.send_consent(participant_id)
+
+    questionnaire_id = self.create_questionnaire('questionnaire_the_basics.json')
+
+    with open(data_path('questionnaire_the_basics_resp_multiple_gender.json')) as f:
+      resource = json.load(f)
+
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    resource['questionnaire']['reference'] = \
+      resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+
+    with FakeClock(TIME_2):
+      resource['authored'] = TIME_2.isoformat()
+      self.send_post(_questionnaire_response_url(participant_id), resource)
+
+    participant = self.send_get('Participant/%s' % participant_id)
+    summary = self.send_get('Participant/%s/Summary' % participant_id)
+    expected = {'ageRange': 'UNSET',
+                'genderIdentity': 'GenderIdentity_MoreThanOne',
+                'firstName': self.first_name,
+                'lastName': self.last_name,
+                'email': self.email,
+                'streetAddress': self.streetAddress,
+                'streetAddress2': self.streetAddress2,
+                'race': 'UNSET',
+                'hpoId': 'UNSET',
+                'awardee': 'UNSET',
+                'site': 'UNSET',
+                'organization': 'UNSET',
+                'education': 'UNSET',
+                'income': 'UNSET',
+                'language': 'UNSET',
+                "primaryLanguage": "UNSET",
+                'sex': 'UNSET',
+                'sexualOrientation': 'UNSET',
+                'state': 'UNSET',
+                'recontactMethod': 'UNSET',
+                'enrollmentStatus': 'INTERESTED',
+                'samplesToIsolateDNA': 'UNSET',
+                'numBaselineSamplesArrived': 0,
+                'numCompletedPPIModules': 1,
+                'numCompletedBaselinePPIModules': 1,
+                'biobankId': participant['biobankId'],
+                'participantId': participant_id,
+                'physicalMeasurementsStatus': 'UNSET',
+                'consentForDvElectronicHealthRecordsSharing': 'UNSET',
+                'consentForElectronicHealthRecords': 'UNSET',
+                'consentForStudyEnrollment': 'SUBMITTED',
+                'consentForStudyEnrollmentTime': TIME_1.isoformat(),
+                'consentForStudyEnrollmentAuthored': TIME_1.isoformat(),
+                'consentForCABoR': 'UNSET',
+                'questionnaireOnFamilyHealth': 'UNSET',
+                'questionnaireOnHealthcareAccess': 'UNSET',
+                'questionnaireOnMedicalHistory' : 'UNSET',
+                'questionnaireOnMedications': 'UNSET',
+                'questionnaireOnOverallHealth': 'UNSET',
+                'questionnaireOnLifestyle': 'UNSET',
+                'questionnaireOnTheBasics': 'SUBMITTED',
+                'questionnaireOnTheBasicsTime': TIME_2.isoformat(),
+                'questionnaireOnTheBasicsAuthored': TIME_2.isoformat(),
+                'biospecimenCollectedSite': 'UNSET',
+                'biospecimenFinalizedSite': 'UNSET',
+                'biospecimenProcessedSite': 'UNSET',
+                'biospecimenSourceSite': 'UNSET',
+                'physicalMeasurementsCreatedSite': 'UNSET',
+                'physicalMeasurementsFinalizedSite': 'UNSET',
+                'biospecimenStatus': 'UNSET',
+                'sampleOrderStatus1ED04': 'UNSET',
+                'sampleOrderStatus1ED10': 'UNSET',
+                'sampleOrderStatus1HEP4': 'UNSET',
+                'sampleOrderStatus1PST8': 'UNSET',
+                'sampleOrderStatus1PS08': 'UNSET',
+                'sampleOrderStatus2PST8': 'UNSET',
+                'sampleOrderStatus1SAL': 'UNSET',
+                'sampleOrderStatus1SAL2': 'UNSET',
+                'sampleOrderStatus1SST8': 'UNSET',
+                'sampleOrderStatus2SST8': 'UNSET',
+                'sampleOrderStatus1SS08': 'UNSET',
+                'sampleOrderStatus1UR10': 'UNSET',
+                'sampleOrderStatus1UR90': 'UNSET',
+                'sampleOrderStatus2ED10': 'UNSET',
+                'sampleOrderStatus1CFD9': 'UNSET',
+                'sampleOrderStatus1PXR2': 'UNSET',
+                'sampleOrderStatus1ED02': 'UNSET',
+                'sampleOrderStatusDV1SAL2': 'UNSET',
+                'sampleStatus1ED04': 'UNSET',
+                'sampleStatus1ED10': 'UNSET',
+                'sampleStatus1HEP4': 'UNSET',
+                'sampleStatus1PST8': 'UNSET',
+                'sampleStatus2PST8': 'UNSET',
+                'sampleStatus1PS08': 'UNSET',
+                'sampleStatus1SAL': 'UNSET',
+                'sampleStatus1SAL2': 'UNSET',
+                'sampleStatus1SST8': 'UNSET',
+                'sampleStatus2SST8': 'UNSET',
+                'sampleStatus1SS08': 'UNSET',
+                'sampleStatus1UR10': 'UNSET',
+                'sampleStatus1UR90': 'UNSET',
+                'sampleStatus2ED10': 'UNSET',
+                'sampleStatus1CFD9': 'UNSET',
+                'sampleStatus1ED02': 'UNSET',
+                'sampleStatus1PXR2': 'UNSET',
+                'sampleStatusDV1SAL2': 'UNSET',
+                'signUpTime': TIME_1.isoformat(),
+                'withdrawalStatus': 'NOT_WITHDRAWN',
+                'withdrawalReason': 'UNSET',
+                'suspensionStatus': 'NOT_SUSPENDED',
+                'numberDistinctVisits': 0,
+                'ehrStatus': 'UNSET',
+                }
+    self.assertJsonResponseMatches(expected, summary)
+
+  def test_gender_plus_skip_equals_gender(self):
+    with FakeClock(TIME_1):
+      participant_id = self.create_participant()
+      self.send_consent(participant_id)
+
+    questionnaire_id = self.create_questionnaire('questionnaire_the_basics.json')
+
+    with open(data_path('questionnaire_the_basics_resp_multiple_gender.json')) as f:
+      resource = json.load(f)
+
+    resource['subject']['reference'] = \
+      resource['subject']['reference'].format(participant_id=participant_id)
+    resource['questionnaire']['reference'] = \
+      resource['questionnaire']['reference'].format(questionnaire_id=questionnaire_id)
+    resource['group']['question'][2]['answer'][1]['valueCoding']['code'] = 'PMI_Skip'
+
+    with FakeClock(TIME_2):
+      resource['authored'] = TIME_2.isoformat()
+      self.send_post(_questionnaire_response_url(participant_id), resource)
+
+    participant = self.send_get('Participant/%s' % participant_id)
+    summary = self.send_get('Participant/%s/Summary' % participant_id)
+    expected = {'ageRange': 'UNSET',
+                'genderIdentity': 'GenderIdentity_Man',
+                'firstName': self.first_name,
+                'lastName': self.last_name,
+                'email': self.email,
+                'streetAddress': self.streetAddress,
+                'streetAddress2': self.streetAddress2,
+                'race': 'UNSET',
+                'hpoId': 'UNSET',
+                'awardee': 'UNSET',
+                'site': 'UNSET',
+                'organization': 'UNSET',
+                'education': 'UNSET',
+                'income': 'UNSET',
+                'language': 'UNSET',
+                "primaryLanguage": "UNSET",
+                'sex': 'UNSET',
+                'sexualOrientation': 'UNSET',
+                'state': 'UNSET',
+                'recontactMethod': 'UNSET',
+                'enrollmentStatus': 'INTERESTED',
+                'samplesToIsolateDNA': 'UNSET',
+                'numBaselineSamplesArrived': 0,
+                'numCompletedPPIModules': 1,
+                'numCompletedBaselinePPIModules': 1,
+                'biobankId': participant['biobankId'],
+                'participantId': participant_id,
+                'physicalMeasurementsStatus': 'UNSET',
+                'consentForDvElectronicHealthRecordsSharing': 'UNSET',
+                'consentForElectronicHealthRecords': 'UNSET',
+                'consentForStudyEnrollment': 'SUBMITTED',
+                'consentForStudyEnrollmentTime': TIME_1.isoformat(),
+                'consentForStudyEnrollmentAuthored': TIME_1.isoformat(),
+                'consentForCABoR': 'UNSET',
+                'questionnaireOnFamilyHealth': 'UNSET',
+                'questionnaireOnHealthcareAccess': 'UNSET',
+                'questionnaireOnMedicalHistory' : 'UNSET',
+                'questionnaireOnMedications': 'UNSET',
+                'questionnaireOnOverallHealth': 'UNSET',
+                'questionnaireOnLifestyle': 'UNSET',
+                'questionnaireOnTheBasics': 'SUBMITTED',
+                'questionnaireOnTheBasicsTime': TIME_2.isoformat(),
+                'questionnaireOnTheBasicsAuthored': TIME_2.isoformat(),
+                'biospecimenCollectedSite': 'UNSET',
+                'biospecimenFinalizedSite': 'UNSET',
+                'biospecimenProcessedSite': 'UNSET',
+                'biospecimenSourceSite': 'UNSET',
+                'physicalMeasurementsCreatedSite': 'UNSET',
+                'physicalMeasurementsFinalizedSite': 'UNSET',
+                'biospecimenStatus': 'UNSET',
+                'sampleOrderStatus1ED04': 'UNSET',
+                'sampleOrderStatus1ED10': 'UNSET',
+                'sampleOrderStatus1HEP4': 'UNSET',
+                'sampleOrderStatus1PST8': 'UNSET',
+                'sampleOrderStatus1PS08': 'UNSET',
+                'sampleOrderStatus2PST8': 'UNSET',
+                'sampleOrderStatus1SAL': 'UNSET',
+                'sampleOrderStatus1SAL2': 'UNSET',
+                'sampleOrderStatus1SST8': 'UNSET',
+                'sampleOrderStatus2SST8': 'UNSET',
+                'sampleOrderStatus1SS08': 'UNSET',
+                'sampleOrderStatus1UR10': 'UNSET',
+                'sampleOrderStatus1UR90': 'UNSET',
+                'sampleOrderStatus2ED10': 'UNSET',
+                'sampleOrderStatus1CFD9': 'UNSET',
+                'sampleOrderStatus1PXR2': 'UNSET',
+                'sampleOrderStatus1ED02': 'UNSET',
+                'sampleOrderStatusDV1SAL2': 'UNSET',
+                'sampleStatus1ED04': 'UNSET',
+                'sampleStatus1ED10': 'UNSET',
+                'sampleStatus1HEP4': 'UNSET',
+                'sampleStatus1PST8': 'UNSET',
+                'sampleStatus2PST8': 'UNSET',
+                'sampleStatus1PS08': 'UNSET',
+                'sampleStatus1SAL': 'UNSET',
+                'sampleStatus1SAL2': 'UNSET',
+                'sampleStatus1SST8': 'UNSET',
+                'sampleStatus2SST8': 'UNSET',
+                'sampleStatus1SS08': 'UNSET',
+                'sampleStatus1UR10': 'UNSET',
+                'sampleStatus1UR90': 'UNSET',
+                'sampleStatus2ED10': 'UNSET',
+                'sampleStatus1CFD9': 'UNSET',
+                'sampleStatus1ED02': 'UNSET',
+                'sampleStatus1PXR2': 'UNSET',
+                'sampleStatusDV1SAL2': 'UNSET',
+                'signUpTime': TIME_1.isoformat(),
+                'withdrawalStatus': 'NOT_WITHDRAWN',
+                'withdrawalReason': 'UNSET',
+                'suspensionStatus': 'NOT_SUSPENDED',
+                'numberDistinctVisits': 0,
+                'ehrStatus': 'UNSET',
+                }
+    self.assertJsonResponseMatches(expected, summary)

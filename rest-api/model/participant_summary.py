@@ -4,7 +4,7 @@ from model.base import Base
 from model.utils import Enum, UTCDateTime, UTCDateTime6
 from participant_enums import EnrollmentStatus, Race, SampleStatus, OrderStatus, \
   PhysicalMeasurementsStatus, QuestionnaireStatus, WithdrawalStatus, SuspensionStatus, \
-  WithdrawalReason, EhrStatus
+  WithdrawalReason, EhrStatus, GenderIdentity
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Index, SmallInteger, \
   UnicodeText
 from sqlalchemy.ext.declarative import declared_attr
@@ -59,6 +59,7 @@ class ParticipantSummary(Base):
   languageId = Column('language_id', Integer, ForeignKey('code.code_id'))
   dateOfBirth = Column('date_of_birth', Date)
   genderIdentityId = Column('gender_identity_id', Integer, ForeignKey('code.code_id'))
+  genderIdentity = Column('gender_identity', Enum(GenderIdentity))
   sexId = Column('sex_id', Integer, ForeignKey('code.code_id'))
   sexualOrientationId = Column('sexual_orientation_id', Integer, ForeignKey('code.code_id'))
   educationId = Column('education_id', Integer, ForeignKey('code.code_id'))
