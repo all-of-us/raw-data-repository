@@ -21,7 +21,7 @@ from model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatu
 
 # revision identifiers, used by Alembic.
 revision = '9c957ce496bf'
-down_revision = 'b662c5bb00cc'
+down_revision = '484c5d15ac06'
 branch_labels = None
 depends_on = None
 
