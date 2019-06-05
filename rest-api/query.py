@@ -31,7 +31,7 @@ class OrderBy(object):
 
 class Query(object):
   def __init__(self, field_filters, order_by, max_results, pagination_token, a_id=None,
-               always_return_token=False, include_total=False, offset=False):
+               always_return_token=False, include_total=False, offset=False, options=None):
     self.field_filters = field_filters
     self.order_by = order_by
     self.offset = offset
@@ -40,6 +40,7 @@ class Query(object):
     self.ancestor_id = a_id
     self.always_return_token = always_return_token
     self.include_total = include_total
+    self.options = options
 
 class Results(object):
   def __init__(self, items, pagination_token=None, more_available=False, total=None):

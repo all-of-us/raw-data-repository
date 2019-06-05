@@ -351,6 +351,8 @@ class BaseDao(object):
     query = query.limit(query_def.max_results + 1)
     if query_def.offset:
       query = query.offset(query_def.offset)
+    if query_def.options:
+      query = query.options(query_def.options)
     return query, order_by_field_names
 
   def _set_filters(self, query, filters):

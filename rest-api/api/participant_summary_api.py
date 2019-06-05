@@ -10,7 +10,10 @@ from werkzeug.exceptions import Forbidden, InternalServerError, BadRequest
 
 class ParticipantSummaryApi(BaseApi):
   def __init__(self):
-    super(ParticipantSummaryApi, self).__init__(ParticipantSummaryDao())
+    super(ParticipantSummaryApi, self).__init__(
+      ParticipantSummaryDao(),
+      get_returns_children=True
+    )
 
   @auth_required(PTC_HEALTHPRO_AWARDEE)
   def get(self, p_id=None):
@@ -43,6 +46,7 @@ class ParticipantSummaryApi(BaseApi):
     query = super(ParticipantSummaryApi, self)._make_query()
     query.always_return_token = self._get_request_arg_bool('_sync')
     query.backfill_sync = self._get_request_arg_bool('_backfill', True)
+    query.options = self.dao.get_eager_child_loading_query_options()
     return query
 
   def _make_bundle(self, results, id_field, participant_id):

@@ -1,6 +1,7 @@
 import datetime
 import re
 import sqlalchemy
+import sqlalchemy.orm
 import threading
 
 import clock
@@ -13,6 +14,7 @@ from dao.code_dao import CodeDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
+from dao.patient_status_dao import PatientStatusDao
 from dao.site_dao import SiteDao
 from model.config_utils import to_client_biobank_id, from_client_biobank_id
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
@@ -254,10 +256,20 @@ class ParticipantSummaryDao(UpdatableDao):
     self.code_dao = CodeDao()
     self.site_dao = SiteDao()
     self.organization_dao = OrganizationDao()
+    self.patient_status_dao = PatientStatusDao()
 
   def get_id(self, obj):
     return obj.participantId
 
+  def get_eager_child_loading_query_options(self):
+    return [
+      sqlalchemy.orm.subqueryload(self.model_type.patientStatus)
+    ]
+
+  def get_with_children(self, obj_id):
+    with self.session() as session:
+      return self.get_with_session(session, obj_id,
+                                   options=self.get_eager_child_loading_query_options())
 
   def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
     """Participant summaries don't have a version value; drop it from validation logic."""
@@ -594,6 +606,15 @@ class ParticipantSummaryDao(UpdatableDao):
 
     if result.get('genderIdentityId'):
       del result['genderIdentityId']  #deprecated in favor of genderIdentity
+
+    def format_patient_status_record(status_obj):
+      status_dict = self.patient_status_dao.to_client_json(status_obj)
+      return {
+        'organization': status_dict['organization'],
+        'status': status_dict['patient_status'],
+      }
+
+    result['patientStatus'] = map(format_patient_status_record, model.patientStatus)
 
     format_json_hpo(result, self.hpo_dao, 'hpoId')
     result['awardee'] = result['hpoId']
