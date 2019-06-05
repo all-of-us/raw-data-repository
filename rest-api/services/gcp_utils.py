@@ -24,7 +24,7 @@ def gcp_test_environment():
   Make sure the local environment is good
   :return: True if yes, False if not.
   """
-  progs = ['gcloud', 'gsutil', 'cloud_sql_proxy', 'grep']
+  progs = ['gcloud', 'gsutil', 'cloud_sql_proxy', 'bq', 'grep']
 
   for prog in progs:
 
@@ -169,9 +169,9 @@ def gcp_gcloud_command(group, args, flags=None):
     return False
 
   prog = which('gcloud')
-  args = shlex.split('{0} {1} {2} {3}'.format(prog, group, args, flags if flags else ''))
+  p_args = shlex.split('{0} {1} {2} {3}'.format(prog, group, args, flags if flags else ''))
 
-  return run_external_program(args)
+  return run_external_program(p_args)
 
 def gcp_gsutil_command(cmd, args, flags=None):
   """
@@ -186,9 +186,9 @@ def gcp_gsutil_command(cmd, args, flags=None):
     return False
 
   prog = which('gsutil')
-  args = shlex.split('{0} {1} {2} {3}'.format(prog, flags if flags else '', cmd, args))
+  p_args = shlex.split('{0} {1} {2} {3}'.format(prog, flags if flags else '', cmd, args))
 
-  return run_external_program(args)
+  return run_external_program(p_args)
 
 def gcp_set_config(prop, value, flags=None):
   """
@@ -216,7 +216,7 @@ def gcp_set_config(prop, value, flags=None):
   pcode, so, se = gcp_gcloud_command('config', args, flags)
 
   if pcode != 0:
-    _logger.error('failed to set gcp config property. ({0}: {1}).'.format(pcode, so))
+    _logger.error('failed to set gcp config property. ({0}: {1}).'.format(pcode, se))
     return False
 
   _logger.debug('successfully set gcp config property.')
@@ -248,7 +248,7 @@ def gcp_unset_config(prop, value, flags=None):
   pcode, so, se = gcp_gcloud_command('config', args, flags)
 
   if pcode != 0:
-    _logger.error('failed to unset gcp config property. ({0}: {1}).'.format(pcode, so))
+    _logger.error('failed to unset gcp config property. ({0}: {1}).'.format(pcode, se))
     return False
 
   _logger.debug('successfully unset gcp config property.')
@@ -274,7 +274,7 @@ def gcp_get_config(prop, flags=None):
   pcode, so, se = gcp_gcloud_command('config', args, flags)
 
   if pcode != 0:
-    _logger.error('failed to get gcp config property. ({0}: {1}).'.format(pcode, so))
+    _logger.error('failed to get gcp config property. ({0}: {1}).'.format(pcode, se))
     return None
 
   _logger.debug('successfully unset gcp config property.')
@@ -299,7 +299,7 @@ def gcp_activate_account(account, flags=None):
   pcode, so, se = gcp_gcloud_command('auth', args, flags)
 
   if pcode != 0:
-    _logger.error('failed to set gcp auth login account. ({0}: {1}).'.format(pcode, so))
+    _logger.error('failed to set gcp auth login account. ({0}: {1}).'.format(pcode, se))
     return False
 
   _logger.debug('successfully set account to active.')
@@ -524,3 +524,26 @@ def gcp_activate_sql_proxy(instances):
 
   return p
 
+def gcp_bq_command(cmd, args, global_flags=None, command_flags=None, headless=True):
+  """
+  Run a bq command
+  :param cmd: bq command name
+  :param args: command arguments
+  :param global_flags: global flags to pass to bq executable
+  :param command_flags: command flags to pass to bq executable
+  :param headless: run the 'bq' command in headless mode
+  :return: (exit code, stdout, stderr)
+  """
+  if not cmd or not args or not isinstance(args, str):
+    _logger.error('invalid parameters passed to gcp_bq_command.')
+    return False
+
+  p_args = shlex.split('{0} {1} {2} {3} {4} {5}'.format(
+            which('bq'),
+            '--headless' if headless else '',
+            global_flags if global_flags else '',
+            cmd,
+            command_flags if command_flags else '',
+            args))
+
+  return run_external_program(p_args)
