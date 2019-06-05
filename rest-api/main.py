@@ -140,11 +140,6 @@ api.add_resource(metrics_ehr_api.ParticipantEhrMetricsOverTimeApi,
                  endpoint='metrics_ehr.participants_over_time',
                  methods=['GET'])
 
-api.add_resource(metrics_ehr_api.OrganizationsActiveMetricsOverTimeApi,
-                 PREFIX + 'MetricsEHR/OrganizationsActiveOverTime',
-                 endpoint='metrics_ehr.sites_active_over_time',
-                 methods=['GET'])
-
 api.add_resource(metrics_ehr_api.OrganizationMetricsApi,
                  PREFIX + 'MetricsEHR/Organizations',
                  endpoint='metrics_ehr.sites',
