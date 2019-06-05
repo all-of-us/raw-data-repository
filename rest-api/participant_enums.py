@@ -236,7 +236,7 @@ class GenderIdentity(messages.Enum):
   GenderIdentity_Woman = 3
   GenderIdentity_NonBinary = 4
   GenderIdentity_Transgender = 5
-  GenderIdentity_OtherAdditionalOptions = 6
+  GenderIdentity_AdditionalOptions = 6
   GenderIdentity_MoreThanOne = 7
 
 
@@ -274,7 +274,7 @@ ANSWER_CODE_TO_GENDER = {
   GENDER_WOMAN_CODE: GenderIdentity.GenderIdentity_Woman,
   GENDER_NONBINARY_CODE: GenderIdentity.GenderIdentity_NonBinary,
   GENDER_TRANSGENDER_CODE: GenderIdentity.GenderIdentity_Transgender,
-  GENDER_OTHER_CODE: GenderIdentity.GenderIdentity_OtherAdditionalOptions,
+  GENDER_OTHER_CODE: GenderIdentity.GenderIdentity_AdditionalOptions,
   GENDER_PREFER_NOT_TO_ANSWER_CODE: GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE,
   GENDER_NO_GENDER_IDENTITY_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED,
   PMI_SKIP_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED
