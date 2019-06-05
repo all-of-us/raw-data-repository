@@ -109,7 +109,7 @@ class DvOrderDao(UpdatableDao):
     order = BiobankDVOrder(participantId=participant_id)
     order.participantId = participant_id
 
-    if resource_json['resourceType'] == 'SupplyDelivery':
+    if resource_json['resourceType'].lower() == 'supplydelivery':
       order.order_id = int(fhir_resource.basedOn[0].identifier.value)
       existing_obj = self.get(self.get_id(order))
       if not existing_obj:
@@ -140,7 +140,7 @@ class DvOrderDao(UpdatableDao):
       if existing_obj.streetAddress2 is not None and existing_obj.streetAddress2 != '':
         existing_obj.address['line'].append(existing_obj.streetAddress2)
 
-      if address_use == 'home':
+      if address_use.lower() == 'home':
         existing_obj.city = order_address.city
         existing_obj.stateId = order_address.stateId
         existing_obj.streetAddress1 = order_address.line[0]
@@ -152,7 +152,7 @@ class DvOrderDao(UpdatableDao):
           except IndexError:
             pass
 
-      elif address_use == 'work':
+      elif address_use.lower() == 'work':
         existing_obj.biobankCity = order_address.city
         existing_obj.biobankStateId = order_address.stateId
         existing_obj.biobankStreetAddress1 = order_address.line[0]
@@ -160,7 +160,7 @@ class DvOrderDao(UpdatableDao):
 
       return existing_obj
 
-    if resource_json['resourceType'] == 'SupplyRequest':
+    if resource_json['resourceType'].lower() == 'supplyrequest':
       order.order_id = int(fhir_resource.identifier.get(
                           system=VIBRENT_FHIR_URL + 'orderId').value)
       if id_ and int(id_) != order.order_id:
@@ -228,10 +228,10 @@ class DvOrderDao(UpdatableDao):
     order.identifiers = []
     for i in resource.identifier:
       try:
-        if i['system'] == 'orderId':
+        if i['system'].lower() == 'orderid':
           order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM,
                                                           value=i['value']))
-        if i['system'] == 'fulfillmentId':
+        if i['system'].lower() == 'fulfillmentid':
           order.identifiers.append(BiobankOrderIdentifier(system=BiobankDVOrder._VIBRENT_ID_SYSTEM
                                                           + '/fulfillmentId', value=i['value']))
       except AttributeError:

@@ -1,3 +1,4 @@
+import logging
 import dateutil
 from api.base_api import UpdatableApi
 from api_util import PTC, PTC_AND_HEALTHPRO, VIBRENT_FHIR_URL, VIBRENT_BARCODE_URL,\
@@ -118,10 +119,10 @@ class DvOrderApi(UpdatableApi):
     try:
       fhir_resource = SimpleFhirR4Reader(resource)
       barcode_url = None
-      if fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString == 'shipped':
+      if fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString.lower() == 'shipped':
         barcode_url = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).url
       pid = fhir_resource.contained.get(
-        resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
+          resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
       p_id = from_client_participant_id(pid.value)
     except AttributeError as e:
       raise BadRequest(e.message)
@@ -131,7 +132,7 @@ class DvOrderApi(UpdatableApi):
     merged_resource = None
     if not p_id:
       raise BadRequest('Request must include participant id and must be of type int')
-    if str(barcode_url) == VIBRENT_BARCODE_URL:
+    if str(barcode_url).lower() == VIBRENT_BARCODE_URL:
       _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
       ex_obj = self.dao.get(_id)
       if not ex_obj.barcode:
@@ -139,6 +140,7 @@ class DvOrderApi(UpdatableApi):
         response = self.dao.send_order(resource, p_id)
         merged_resource = merge_dicts(response, resource)
         merged_resource['id'] = _id
+        logging.info('Sending salivary order to biobank for participant: %s', pid)
         self.dao.insert_biobank_order(p_id, merged_resource)
 
     if merged_resource:
@@ -146,7 +148,9 @@ class DvOrderApi(UpdatableApi):
                                              resource=merged_resource)
     else:
       response = super(DvOrderApi, self).put(bo_id, participant_id=p_id, skip_etag=True)
-
+    if not barcode_url:
+      logging.info('No barcode given for supply request, no biobank order sent. participant_id: %s',
+                   pid)
     return response
 
   def _put_supply_delivery(self, resource, bo_id):

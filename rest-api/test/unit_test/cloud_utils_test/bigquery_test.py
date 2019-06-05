@@ -1,29 +1,40 @@
+import datetime
 import unittest
 
+import pytz
+
 import cloud_utils.bigquery
-from unit_test_util import CloudStorageSqlTestBase
 
 
-class BigQueryTest(CloudStorageSqlTestBase):
+class BigQueryJobTest(unittest.TestCase):
   """
   This test suite tests querying against real BigQuery datasets.
   """
 
-  @unittest.skip("Authentication to actual BigQuery not properly set up for tests")
+  @unittest.skip("Only used for manual testing, should not be included in automated test suite")
   def test_query(self):
     """
-    Test that the `bigquery` helper method returns results in the expected format.
+    Test an actual query with pagination
     """
-
-    query = 'select * from ehr_upload_pids limit 3'
-    response = cloud_utils.bigquery.bigquery(
-      query,
-      app_id='all-of-us-rdr-sandbox',
-      dataset_id='curation_test'
+    query = (
+      'SELECT gameId, gameNumber, created FROM `bigquery-public-data.baseball.schedules` LIMIT 3'
     )
-    self.assertEqual(response['totalRows'], u'3')
+    job = cloud_utils.bigquery.BigQueryJob(
+      query,
+      project_id='all-of-us-rdr-sandbox',
+      default_dataset_id='baseball',
+      page_size=2
+    )
+    pages = list(job)
+    self.assertEqual(len(pages), 2)
+    row = pages[0][0]
+    self.assertTrue(isinstance(row.gameId, basestring))
+    self.assertTrue(isinstance(row.gameNumber, int))
+    self.assertTrue(isinstance(row.created, datetime.datetime))
 
-  @unittest.skip("Authentication to actual BigQuery not properly set up for tests")
+
+class BigQueryJobTransformationTest(unittest.TestCase):
+
   def test_response_transformation(self):
     """
     Test the transformation function to make bigquery responses easier to use practically.
@@ -60,14 +71,34 @@ class BigQueryTest(CloudStorageSqlTestBase):
                                          u'type': u'INTEGER'}]},
                 u'totalBytesProcessed': u'0',
                 u'totalRows': u'3'}
-    rows = cloud_utils.bigquery.get_row_dicts_from_bigquery_response(response)
+    rows = cloud_utils.bigquery.BigQueryJob.get_rows_from_response(response)
     self.assertEqual(len(rows), 3)
     first_row = rows[0]
-    self.assertEqual(first_row.keys(), [
+    self.assertEqual(first_row._asdict().keys(), [
       'word',
       'word_count',
       'corpus',
       'corpus_date',
     ])
-    self.assertEqual(type(first_row['word']), type(u'some unicode string'))
-    self.assertEqual(type(first_row['word_count']), type(u'12345'))
+    self.assertEqual(type(first_row.word), type(u'some unicode string'))
+    self.assertEqual(type(first_row.word_count), type(12345))
+
+  def test_type_timestamp(self):
+    response = {
+      u'rows': [
+        {u'f': [{u'v': u'2019-05-25 04:22:16.052 UTC'}]},
+        {u'f': [{u'v': u'1.475735115E9'}]},
+      ],
+      u'schema': {
+        u'fields': [
+          {
+            u'mode': u'NULLABLE',
+            u'name': u'timestamp',
+            u'type': u'TIMESTAMP',
+          }
+        ]
+      }
+    }
+    rows = cloud_utils.bigquery.BigQueryJob.get_rows_from_response(response)
+    self.assertEqual(rows[0].timestamp, datetime.datetime(2019, 5, 25, 4, 22, 16, 52000, pytz.UTC))
+    self.assertEqual(rows[1].timestamp, datetime.datetime(2016, 10, 6, 6, 25, 15, 0, pytz.UTC))

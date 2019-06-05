@@ -3,7 +3,7 @@ from dao.metrics_ehr_service import MetricsEhrService
 from dao.organization_dao import OrganizationDao
 from model.hpo import HPO
 from model.organization import Organization
-from unit_test_util import SqlTestBase
+from test.unit_test.unit_test_util import SqlTestBase
 
 
 class MetricsEhrServiceTest(SqlTestBase):

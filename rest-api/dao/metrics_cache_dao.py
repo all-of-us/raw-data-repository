@@ -10,13 +10,15 @@ import datetime
 import json
 from sqlalchemy import func, or_
 from participant_enums import Stratifications, AGE_BUCKETS_METRICS_V2_API, \
-  AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType
+  AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API, MetricsCacheType, MetricsAPIVersion, EnrollmentStatus, \
+  EnrollmentStatusV2
 
 class MetricsEnrollmentStatusCacheDao(BaseDao):
-  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
+  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
     super(MetricsEnrollmentStatusCacheDao, self).__init__(MetricsEnrollmentStatusCache)
     self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
     self.test_email_pattern = TEST_EMAIL_PATTERN
+    self.version = version
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
     except TypeError:
@@ -38,6 +40,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
         query = session.query(MetricsEnrollmentStatusCache.date,
                               func.sum(MetricsEnrollmentStatusCache.registeredCount)
                               .label('registeredCount'),
+                              func.sum(MetricsEnrollmentStatusCache.participantCount)
+                              .label('participantCount'),
                               func.sum(MetricsEnrollmentStatusCache.consentedCount)
                               .label('consentedCount'),
                               func.sum(MetricsEnrollmentStatusCache.coreCount)
@@ -90,17 +94,31 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
 
   def to_metrics_client_json(self, result_set):
     client_json = []
-    for record in result_set:
-      new_item = {
-        'date': record.date.isoformat(),
-        'hpo': record.hpoName,
-        'metrics': {
-          'registered': record.registeredCount,
-          'consented': record.consentedCount,
-          'core': record.coreCount
+    if self.version == MetricsAPIVersion.V2:
+      for record in result_set:
+        new_item = {
+          'date': record.date.isoformat(),
+          'hpo': record.hpoName,
+          'metrics': {
+            'registered': record.registeredCount,
+            'participant': record.participantCount,
+            'consented': record.consentedCount,
+            'core': record.coreCount
+          }
         }
-      }
-      client_json.append(new_item)
+        client_json.append(new_item)
+    else:
+      for record in result_set:
+        new_item = {
+          'date': record.date.isoformat(),
+          'hpo': record.hpoName,
+          'metrics': {
+            'registered': record.registeredCount + record.participantCount,
+            'consented': record.consentedCount,
+            'core': record.coreCount
+          }
+        }
+        client_json.append(new_item)
     return client_json
 
   def to_public_metrics_client_json(self, result_set):
@@ -109,7 +127,8 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
       new_item = {
         'date': record.date.isoformat(),
         'metrics': {
-          'registered': int(record.registeredCount),
+          # research hub still use 3 tiers status
+          'registered': int(record.registeredCount) + int(record.participantCount),
           'consented': int(record.consentedCount),
           'core': int(record.coreCount)
         }
@@ -129,7 +148,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
       else:
         filters_hpo = ''
       sql = """
-        SELECT (SUM(registered_count) + SUM(consented_count) + SUM(core_count)) AS registered_count,
+        SELECT (SUM(registered_count) + SUM(participant_count) + SUM(consented_count) + SUM(core_count)) AS registered_count,
         date AS start_date
         FROM metrics_enrollment_status_cache
         WHERE %(filters_hpo)s
@@ -171,8 +190,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                   FROM
                   (
                     SELECT DATE(p.sign_up_time) AS sign_up_time,
-                           DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
-                           DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                           DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
                            count(*) enrollment_count
                     FROM participant p
                            LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
@@ -180,16 +198,32 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                       AND p.is_ghost_id IS NOT TRUE
                       AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
                       AND p.withdrawal_status = :not_withdraw
-                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                    GROUP BY DATE(p.sign_up_time), DATE(ps.consent_for_study_enrollment_time)
                   ) AS results
-                  WHERE c.day>=DATE(sign_up_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+                  WHERE c.day>=DATE(sign_up_time) AND consent_for_study_enrollment_time IS NULL
                 ),0) AS registered_count,
                 IFNULL((
                   SELECT SUM(results.enrollment_count)
                   FROM
                   (
-                    SELECT DATE(p.sign_up_time) AS sign_up_time,
+                    SELECT DATE(ps.consent_for_study_enrollment_time) AS consent_for_study_enrollment_time,
                            DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
+                           count(*) enrollment_count
+                    FROM participant p
+                           LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
+                    WHERE p.hpo_id = :hpo_id AND p.hpo_id <> :test_hpo_id
+                      AND p.is_ghost_id IS NOT TRUE
+                      AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+                      AND p.withdrawal_status = :not_withdraw
+                    GROUP BY DATE(ps.consent_for_study_enrollment_time), DATE(ps.enrollment_status_member_time)
+                  ) AS results
+                  WHERE consent_for_study_enrollment_time IS NOT NULL AND c.day>=DATE(consent_for_study_enrollment_time) AND (enrollment_status_member_time IS NULL OR c.day < DATE(enrollment_status_member_time))
+                ),0) AS participant_count,
+                IFNULL((
+                  SELECT SUM(results.enrollment_count)
+                  FROM
+                  (
+                    SELECT DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
                            DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
                            count(*) enrollment_count
                     FROM participant p
@@ -198,7 +232,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                       AND p.is_ghost_id IS NOT TRUE
                       AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
                       AND p.withdrawal_status = :not_withdraw
-                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                    GROUP BY DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
                   ) AS results
                   WHERE enrollment_status_member_time IS NOT NULL AND day>=DATE(enrollment_status_member_time) AND (enrollment_status_core_stored_sample_time IS NULL OR day < DATE(enrollment_status_core_stored_sample_time))
                 ),0) AS consented_count,
@@ -206,9 +240,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                   SELECT SUM(results.enrollment_count)
                   FROM
                   (
-                    SELECT DATE(p.sign_up_time) AS sign_up_time,
-                           DATE(ps.enrollment_status_member_time) AS enrollment_status_member_time,
-                           DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
+                    SELECT DATE(ps.enrollment_status_core_stored_sample_time) AS enrollment_status_core_stored_sample_time,
                            count(*) enrollment_count
                     FROM participant p
                            LEFT JOIN participant_summary ps ON p.participant_id = ps.participant_id
@@ -216,7 +248,7 @@ class MetricsEnrollmentStatusCacheDao(BaseDao):
                       AND p.is_ghost_id IS NOT TRUE
                       AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
                       AND p.withdrawal_status = :not_withdraw
-                    GROUP BY DATE(p.sign_up_time), DATE(ps.enrollment_status_member_time), DATE(ps.enrollment_status_core_stored_sample_time)
+                    GROUP BY DATE(ps.enrollment_status_core_stored_sample_time)
                   ) AS results
                   WHERE enrollment_status_core_stored_sample_time IS NOT NULL AND day>=DATE(enrollment_status_core_stored_sample_time)
                 ),0) AS core_count
@@ -255,11 +287,11 @@ class MetricsGenderCacheDao(BaseDao):
       if enrollment_statuses:
         status_filter_list = []
         for status in enrollment_statuses:
-          if status == 'INTERESTED':
+          if status == str(EnrollmentStatus.INTERESTED):
             status_filter_list.append('registered')
-          if status == 'MEMBER':
+          elif status == str(EnrollmentStatus.MEMBER):
             status_filter_list.append('consented')
-          if status == 'FULL_PARTICIPANT':
+          elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
             status_filter_list.append('core')
         filters_hpo += ' (' + ' OR '.join('enrollment_status=\'' + str(x)
                                           for x in status_filter_list) + '\') AND '
@@ -522,11 +554,11 @@ class MetricsAgeCacheDao(BaseDao):
       if enrollment_statuses:
         status_filter_list = []
         for status in enrollment_statuses:
-          if status == 'INTERESTED':
+          if status == str(EnrollmentStatus.INTERESTED):
             status_filter_list.append('registered')
-          if status == 'MEMBER':
+          elif status == str(EnrollmentStatus.MEMBER):
             status_filter_list.append('consented')
-          if status == 'FULL_PARTICIPANT':
+          elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
             status_filter_list.append('core')
         filters_hpo += ' (' + ' OR '.join('enrollment_status=\'' + str(x)
                                           for x in status_filter_list) + '\') AND '
@@ -902,11 +934,11 @@ class MetricsRaceCacheDao(BaseDao):
         if enrollment_statuses:
           param_list = []
           for status in enrollment_statuses:
-            if status == 'INTERESTED':
+            if status == str(EnrollmentStatus.INTERESTED):
               param_list.append(MetricsRaceCache.registeredFlag == 1)
-            elif status == 'MEMBER':
+            elif status == str(EnrollmentStatus.MEMBER):
               param_list.append(MetricsRaceCache.consentedFlag == 1)
-            elif status == 'FULL_PARTICIPANT':
+            elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
               param_list.append(MetricsRaceCache.coreFlag == 1)
           if param_list:
             query = query.filter(or_(*param_list))
@@ -924,11 +956,11 @@ class MetricsRaceCacheDao(BaseDao):
         if enrollment_statuses:
           param_list = []
           for status in enrollment_statuses:
-            if status == 'INTERESTED':
+            if status == str(EnrollmentStatus.INTERESTED):
               param_list.append(MetricsRaceCache.registeredFlag == 1)
-            elif status == 'MEMBER':
+            elif status == str(EnrollmentStatus.MEMBER):
               param_list.append(MetricsRaceCache.consentedFlag == 1)
-            elif status == 'FULL_PARTICIPANT':
+            elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
               param_list.append(MetricsRaceCache.coreFlag == 1)
           if param_list:
             query = query.filter(or_(*param_list))
@@ -1154,8 +1186,9 @@ class MetricsRaceCacheDao(BaseDao):
 
 class MetricsRegionCacheDao(BaseDao):
 
-  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API):
+  def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
     super(MetricsRegionCacheDao, self).__init__(MetricsRegionCache)
+    self.version = version
     try:
       self.cache_type = MetricsCacheType(str(cache_type))
     except TypeError:
@@ -1186,39 +1219,68 @@ class MetricsRegionCacheDao(BaseDao):
         if enrollment_statuses:
           status_filter_list = []
           for status in enrollment_statuses:
-            if status == 'INTERESTED':
+            if status == str(EnrollmentStatus.INTERESTED):
               status_filter_list.append('registered')
-            if status == 'MEMBER':
+              status_filter_list.append('participant')
+            elif status == str(EnrollmentStatus.MEMBER):
               status_filter_list.append('consented')
-            if status == 'FULL_PARTICIPANT':
+            elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
               status_filter_list.append('core')
           query = query.filter(MetricsRegionCache.enrollmentStatus.in_(status_filter_list))
 
         return query.group_by(MetricsRegionCache.date, MetricsRegionCache.stateName).all()
       else:
-        query = session.query(MetricsRegionCache.date, MetricsRegionCache.hpoName,
-                              MetricsRegionCache.stateName,
-                              func.sum(MetricsRegionCache.stateCount).label('total'))
-        query = query.filter(MetricsRegionCache.dateInserted == last_inserted_date)
-        query = query.filter(MetricsRegionCache.date == cutoff)
-        if stratification in [Stratifications.FULL_STATE, Stratifications.FULL_CENSUS,
-                              Stratifications.FULL_AWARDEE]:
-          query = query.filter(MetricsRegionCache.enrollmentStatus == 'core')
-        if hpo_ids:
-          query = query.filter(MetricsRegionCache.hpoId.in_(hpo_ids))
-        if enrollment_statuses:
-          status_filter_list = []
-          for status in enrollment_statuses:
-            if status == 'INTERESTED':
-              status_filter_list.append('registered')
-            if status == 'MEMBER':
-              status_filter_list.append('consented')
-            if status == 'FULL_PARTICIPANT':
-              status_filter_list.append('core')
-          query = query.filter(MetricsRegionCache.enrollmentStatus.in_(status_filter_list))
+        if self.version == MetricsAPIVersion.V2:
+          query = session.query(MetricsRegionCache.date, MetricsRegionCache.hpoName,
+                                MetricsRegionCache.stateName,
+                                func.sum(MetricsRegionCache.stateCount).label('total'))
+          query = query.filter(MetricsRegionCache.dateInserted == last_inserted_date)
+          query = query.filter(MetricsRegionCache.date == cutoff)
+          if stratification in [Stratifications.FULL_STATE, Stratifications.FULL_CENSUS,
+                                Stratifications.FULL_AWARDEE]:
+            query = query.filter(MetricsRegionCache.enrollmentStatus == 'core')
+          if hpo_ids:
+            query = query.filter(MetricsRegionCache.hpoId.in_(hpo_ids))
+          if enrollment_statuses:
+            status_filter_list = []
+            for status in enrollment_statuses:
+              if status == str(EnrollmentStatusV2.REGISTERED):
+                status_filter_list.append('registered')
+              elif status == str(EnrollmentStatusV2.PARTICIPANT):
+                status_filter_list.append('participant')
+              elif status == str(EnrollmentStatusV2.FULLY_CONSENTED):
+                status_filter_list.append('consented')
+              elif status == str(EnrollmentStatusV2.CORE_PARTICIPANT):
+                status_filter_list.append('core')
+            query = query.filter(MetricsRegionCache.enrollmentStatus.in_(status_filter_list))
 
-        return query.group_by(MetricsRegionCache.date, MetricsRegionCache.hpoName,
-                              MetricsRegionCache.stateName).all()
+          return query.group_by(MetricsRegionCache.date, MetricsRegionCache.hpoName,
+                                MetricsRegionCache.stateName).all()
+        else:
+          query = session.query(MetricsRegionCache.date, MetricsRegionCache.hpoName,
+                                MetricsRegionCache.stateName,
+                                func.sum(MetricsRegionCache.stateCount).label('total'))
+          query = query.filter(MetricsRegionCache.dateInserted == last_inserted_date)
+          query = query.filter(MetricsRegionCache.date == cutoff)
+          if stratification in [Stratifications.FULL_STATE, Stratifications.FULL_CENSUS,
+                                Stratifications.FULL_AWARDEE]:
+            query = query.filter(MetricsRegionCache.enrollmentStatus == 'core')
+          if hpo_ids:
+            query = query.filter(MetricsRegionCache.hpoId.in_(hpo_ids))
+          if enrollment_statuses:
+            status_filter_list = []
+            for status in enrollment_statuses:
+              if status == str(EnrollmentStatus.INTERESTED):
+                status_filter_list.append('registered')
+                status_filter_list.append('participant')
+              elif status == str(EnrollmentStatus.MEMBER):
+                status_filter_list.append('consented')
+              elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
+                status_filter_list.append('core')
+            query = query.filter(MetricsRegionCache.enrollmentStatus.in_(status_filter_list))
+
+          return query.group_by(MetricsRegionCache.date, MetricsRegionCache.hpoName,
+                                MetricsRegionCache.stateName).all()
 
   def get_latest_version_from_cache(self, cutoff, stratification, hpo_ids=None,
                                     enrollment_statuses=None):
@@ -1409,7 +1471,7 @@ class MetricsRegionCacheDao(BaseDao):
           IFNULL(ps.value,'UNSET') AS state_name,
           count(p.participant_id) AS state_count
         FROM participant p INNER JOIN
-          (SELECT participant_id, email, value, sign_up_time, enrollment_status_member_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
+          (SELECT participant_id, email, value, sign_up_time, consent_for_study_enrollment_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
           calendar c
         WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
         AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
@@ -1417,6 +1479,27 @@ class MetricsRegionCacheDao(BaseDao):
         AND p.is_ghost_id IS NOT TRUE
         AND ps.sign_up_time IS NOT NULL
         AND DATE(ps.sign_up_time) <= c.day
+        AND ps.consent_for_study_enrollment_time IS NULL
+        AND c.day BETWEEN :start_date AND :end_date
+        GROUP BY c.day, p.hpo_id ,ps.value
+        union 
+        SELECT
+          :date_inserted AS date_inserted,
+          'participant' as enrollment_status,
+          :hpo_id AS hpo_id,
+          (SELECT name FROM hpo WHERE hpo_id=:hpo_id) AS hpo_name,
+          c.day,
+          IFNULL(ps.value,'UNSET') AS state_name,
+          count(p.participant_id) AS state_count
+        FROM participant p INNER JOIN
+          (SELECT participant_id, email, value, consent_for_study_enrollment_time, enrollment_status_member_time FROM participant_summary, code WHERE state_id=code_id) ps ON p.participant_id=ps.participant_id,
+          calendar c
+        WHERE p.hpo_id=:hpo_id AND p.hpo_id <> :test_hpo_id
+        AND (ps.email IS NULL OR NOT ps.email LIKE :test_email_pattern)
+        AND p.withdrawal_status = :not_withdraw
+        AND p.is_ghost_id IS NOT TRUE
+        AND ps.consent_for_study_enrollment_time IS NOT NULL
+        AND DATE(ps.consent_for_study_enrollment_time) <= c.day
         AND (ps.enrollment_status_member_time is null or DATE(ps.enrollment_status_member_time)>c.day)
         AND c.day BETWEEN :start_date AND :end_date
         GROUP BY c.day, p.hpo_id ,ps.value
@@ -1772,11 +1855,11 @@ class MetricsLanguageCacheDao(BaseDao):
       if enrollment_statuses:
         status_filter_list = []
         for status in enrollment_statuses:
-          if status == 'INTERESTED':
+          if status == str(EnrollmentStatus.INTERESTED):
             status_filter_list.append('registered')
-          if status == 'MEMBER':
+          elif status == str(EnrollmentStatus.MEMBER):
             status_filter_list.append('consented')
-          if status == 'FULL_PARTICIPANT':
+          elif status == str(EnrollmentStatus.FULL_PARTICIPANT):
             status_filter_list.append('core')
         query = query.filter(MetricsLanguageCache.enrollmentStatus.in_(status_filter_list))
 

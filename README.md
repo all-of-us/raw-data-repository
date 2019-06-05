@@ -793,15 +793,36 @@ Passed as a string. Can be one of the values from the table below.
 
 Passed as a string. Comma-separated list of valid awardee codes, e.g. `PITT,VA`.
 
+### `version` (optional)
+
+Passed as a number, e.g. `2`.
+
+| Version Number      | Description                                             |
+| ------------------- | ------------------------------------------------------- |
+| 1                   | return 3 tiers participant status                       |
+| 2                   | return 4 tiers participant status for `ENROLLMENT_STATUS`, `GEO_STATE`, `GEO_CENSUS` and `GEO_AWARDEE`|
+
 ### `enrollmentStatus` (optional)
 
-Passed as a string. Comma-separated list of valid enrollment statuses, e.g. `FULL_PARTICIPANT,INTERESTED`
+Passed as a string. Comma-separated list of valid enrollment statuses.
+
+**When version=1 or version not present:**
 
 | Enrollment Status  | Description                                             |
 | ------------------ | ------------------------------------------------------- |
 | INTERESTED         | Correlates to the `registered` tier.                    |
 | MEMBER             | Correlates to the `consented` tier.                     |
 | FULL_PARTICIPANT   | Correlates to the `core` participant tier.              |
+
+
+**When version=2:**
+
+| Enrollment Status  | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| REGISTERED         | Correlates to the `registered` tier.                    |
+| PARTICIPANT        | Correlates to the `participant` tier.                   |
+| FULLY_CONSENTED    | Correlates to the `fully consented` tier.               |
+| CORE_PARTICIPANT   | Correlates to the `core` participant tier.              |
 
 ### `history` (optional)
 
@@ -1031,19 +1052,28 @@ Uses FHIR R4 spec. See spec [here](https://www.hl7.org/fhir/)
 Create a new DV BiobankOrder for a given participant. Request body is a
 FHIR SupplyRequest resource to be created. Response is 201 CREATED and header contains location of resource with orderId for future `PUT` requests
 
+example: [post_supply_request](rest-api/test/test-data/dv_order_api_post_supply_request.json)
+
 #### `PUT /SupplyRequest/:orderId`
 Update an existing SupplyRequest with supplier updates.
 `PUT` should contain a barcode-url, this is used as the Biobank order id.
 The RDR sends a `POST` request to Biobank through the MayoLink API, 
 informing the Biobank that a biosample has been shipped to Participant.
 Update should contain fulfillment status.
+fulfillment-status url should equal 'shipped' for RDR to send the order to biobank.
+
+example: [put_supply_request](rest-api/test/test-data/dv_order_api_put_supply_request.json)
 
 #### `POST /SupplyDelivery`
 A FHIR protocol "update" for an existing SupplyRequest.
 Captures delivery information for a previous `SupplyRequest`
 
+example: [post_supply_delivery](rest-api/test/test-data/dv_order_api_post_supply_delivery.json)
+
 #### `PUT /SupplyDelivery/:orderId`
 Update SupplyDelivery with shipment information to Participant and Biobank.
+
+example: [put_supply_delivery](rest-api/test/test-data/dv_order_api_put_supply_delivery.json)
 
 #### Example payloads
 [payloads](rest-api/test/test-data)
