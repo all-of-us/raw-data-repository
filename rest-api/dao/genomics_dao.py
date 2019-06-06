@@ -234,20 +234,24 @@ class GenomicSetMemberDao(UpdatableDao):
     query = (
       sqlalchemy
         .update(GenomicSetMember)
-        .where((GenomicSetMember.genomicSetId == genomic_set_id) &
-               (GenomicSetMember.biobankId == sqlalchemy.bindparam('biobank_id_param')))
+        .where(
+                (GenomicSetMember.genomicSetId == genomic_set_id) &
+                (GenomicSetMember.biobankId == sqlalchemy.bindparam('biobank_id_param')) &
+                (GenomicSetMember.genomeType == sqlalchemy.bindparam('genome_type_param'))
+              )
         .values({
-          GenomicSetMember.packageId.name: sqlalchemy.bindparam('package_id'),
-          GenomicSetMember.biobankOrderClientId.name: sqlalchemy.bindparam('client_id')
+          GenomicSetMember.packageId.name: sqlalchemy.bindparam('package_id_param'),
+          GenomicSetMember.biobankOrderClientId.name: sqlalchemy.bindparam('client_id_param')
         })
     )
 
     parameter_sets = [
       {
         'biobank_id_param': biobank_id,
-        'client_id': client_id,
-        'package_id': package_id
+        'genome_type_param': genome_type,
+        'client_id_param': client_id,
+        'package_id_param': package_id
       }
-      for biobank_id, client_id, package_id in client_id_package_id_pair_iterable
+      for biobank_id, genome_type, client_id, package_id in client_id_package_id_pair_iterable
     ]
     return session.execute(query, parameter_sets)
