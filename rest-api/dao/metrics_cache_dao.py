@@ -400,7 +400,7 @@ class MetricsGenderCacheDao(BaseDao):
       ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_Transgender.number) + ' ',
       ' ps.gender_identity=' + str(GenderIdentity.NO_GENDER_IDENTITY_CHECKED.number) + ' ',
       ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_NonBinary.number) + ' ',
-      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_OtherAdditionalOptions.number) + ' ',
+      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_AdditionalOptions.number) + ' ',
       ' ps.gender_identity=' + str(GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE.number) + ' ',
       ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_MoreThanOne.number) + ' ',
     ]

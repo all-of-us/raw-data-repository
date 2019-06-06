@@ -822,7 +822,7 @@ Passed as a string. Comma-separated list of valid enrollment statuses.
 | REGISTERED         | Correlates to the `registered` tier.                    |
 | PARTICIPANT        | Correlates to the `participant` tier.                   |
 | FULLY_CONSENTED    | Correlates to the `fully consented` tier.               |
-| CORE_PARTICIPANT   | Correlates to the `core` participant tier.              |
+| CORE_PARTICIPANT   | Correlates to the `core participant` tier.              |
 
 ### `history` (optional)
 
