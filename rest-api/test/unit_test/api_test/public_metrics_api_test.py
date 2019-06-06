@@ -82,7 +82,8 @@ class PublicMetricsApiTest(FlaskTestBase):
 
   def _insert(self, participant, first_name=None, last_name=None, hpo_name=None, org_name=None,
               unconsented=False, time_int=None, time_study=None, time_mem=None, time_fp=None,
-              time_fp_stored=None, gender_id=None, dob=None, state_id=None, primary_language=None):
+              time_fp_stored=None, gender_id=None, dob=None, state_id=None, primary_language=None,
+              gender_identity=None):
     """
     Create a participant in a transient test database.
 
@@ -125,6 +126,8 @@ class PublicMetricsApiTest(FlaskTestBase):
 
     if gender_id:
       summary.genderIdentityId = gender_id
+    if gender_identity:
+      summary.genderIdentity = gender_identity
     if dob:
       summary.dateOfBirth = dob
     else:
@@ -277,36 +280,25 @@ class PublicMetricsApiTest(FlaskTestBase):
 
   def test_public_metrics_get_gender_api(self):
 
-    code1 = Code(codeId=354, system="a", value="a", display=u"a", topic=u"a",
-                 codeType=CodeType.MODULE, mapped=True)
-    code2 = Code(codeId=356, system="b", value="b", display=u"b", topic=u"b",
-                 codeType=CodeType.MODULE, mapped=True)
-    code3 = Code(codeId=355, system="c", value="c", display=u"c", topic=u"c",
-                 codeType=CodeType.MODULE, mapped=True)
-
-    self.code_dao.insert(code1)
-    self.code_dao.insert(code2)
-    self.code_dao.insert(code3)
-
     p1 = Participant(participantId=1, biobankId=4)
-    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, gender_id=354)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, gender_identity=3)
 
     p2 = Participant(participantId=2, biobankId=5)
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
-                 time_mem=self.time3, gender_id=356)
+                 time_mem=self.time3, gender_identity=2)
 
     p3 = Participant(participantId=3, biobankId=6)
     self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time3, time_mem=self.time5, gender_id=355)
+                 time_int=self.time3, time_mem=self.time5, gender_identity=5)
 
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time4, time_mem=self.time5, gender_id=355)
+                 time_int=self.time4, time_mem=self.time5, gender_identity=5)
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
     self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
-                 time_int=self.time1, gender_id=355)
+                 time_int=self.time1, gender_identity=5)
 
     service = ParticipantCountsOverTimeService()
     dao = MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
@@ -322,19 +314,23 @@ class PublicMetricsApiTest(FlaskTestBase):
     self.assertIn({'date': '2017-12-31',
                    'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
+                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 1,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-03',
                    'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
 
     qs = (
           '&stratification=GENDER_IDENTITY'
@@ -347,19 +343,23 @@ class PublicMetricsApiTest(FlaskTestBase):
     self.assertIn({'date': '2017-12-31',
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
+                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 1,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-03',
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
 
     qs = (
       '&stratification=GENDER_IDENTITY'
@@ -373,19 +373,23 @@ class PublicMetricsApiTest(FlaskTestBase):
     self.assertIn({'date': '2017-12-31',
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
+                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-01',
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
+                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-02',
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
     self.assertIn({'date': '2018-01-04',
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
-                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1}}, results)
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
 
   def test_public_metrics_get_age_range_api(self):
 

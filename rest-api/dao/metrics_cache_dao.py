@@ -3,7 +3,7 @@ from model.metrics_cache import MetricsEnrollmentStatusCache, MetricsGenderCache
 from dao.base_dao import BaseDao
 from dao.hpo_dao import HPODao
 from dao.code_dao import CodeDao
-from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN
+from participant_enums import TEST_HPO_NAME, TEST_EMAIL_PATTERN, GenderIdentity
 from code_constants import PPI_SYSTEM
 from census_regions import census_regions
 import datetime
@@ -390,33 +390,19 @@ class MetricsGenderCacheDao(BaseDao):
 
   def get_metrics_cache_sql(self):
 
-    gender_code_dict = {
-      'GenderIdentity_Woman': 354,
-      'GenderIdentity_Man': 356,
-      'GenderIdentity_Transgender': 355,
-      'PMI_Skip': 930,
-      'GenderIdentity_NonBinary': 358,
-      'GenderIdentity_AdditionalOptions': 357,
-      'PMI_PreferNotToAnswer': 924
-    }
-
-    for k in gender_code_dict:
-      code = CodeDao().get_code(PPI_SYSTEM, k)
-      if code is not None:
-        gender_code_dict[k] = code.codeId
-
     sql = """insert into metrics_gender_cache """
     gender_names = ['UNSET', 'Woman', 'Man', 'Transgender', 'PMI_Skip', 'Non-Binary',
-                    'Other/Additional Options', 'Prefer not to say']
+                    'Other/Additional Options', 'Prefer not to say', 'More than one gender identity']
     gender_conditions = [
-      ' ps.gender_identity_id IS NULL ',
-      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_Woman']) + ' ',
-      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_Man']) + ' ',
-      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_Transgender']) + ' ',
-      ' ps.gender_identity_id=' + str(gender_code_dict['PMI_Skip']) + ' ',
-      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_NonBinary']) + ' ',
-      ' ps.gender_identity_id=' + str(gender_code_dict['GenderIdentity_AdditionalOptions']) + ' ',
-      ' ps.gender_identity_id=' + str(gender_code_dict['PMI_PreferNotToAnswer']) + ' ',
+      ' ps.gender_identity IS NULL ',
+      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_Woman.number) + ' ',
+      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_Man.number) + ' ',
+      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_Transgender.number) + ' ',
+      ' ps.gender_identity=' + str(GenderIdentity.NO_GENDER_IDENTITY_CHECKED.number) + ' ',
+      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_NonBinary.number) + ' ',
+      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_OtherAdditionalOptions.number) + ' ',
+      ' ps.gender_identity=' + str(GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE.number) + ' ',
+      ' ps.gender_identity=' + str(GenderIdentity.GenderIdentity_MoreThanOne.number) + ' ',
     ]
     sub_queries = []
     sql_template = """
