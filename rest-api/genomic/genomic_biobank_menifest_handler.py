@@ -93,6 +93,7 @@ def update_package_id_from_manifest_result_file(genomic_set_id, csv_file):
 
   ClientIdPackageIdPair = collections.namedtuple('ClientIdPackageIdPair', [
     'biobank_id',
+    'genome_type',
     'client_id',
     'package_id',
   ])
@@ -108,7 +109,10 @@ def update_package_id_from_manifest_result_file(genomic_set_id, csv_file):
           if row[CsvColumns.BIOBANK_ID].startswith(BIOBANK_ID_PREFIX) \
           else row[CsvColumns.BIOBANK_ID]
         update_queue.append(ClientIdPackageIdPair(
-           biobank_id, row[CsvColumns.VALUE], row[CsvColumns.PACKAGE_ID]
+          biobank_id,
+          row[CsvColumns.GENOME_TYPE],
+          row[CsvColumns.VALUE],
+          row[CsvColumns.PACKAGE_ID]
         ))
 
     dao.bulk_update_package_id(genomic_set_id, update_queue)
