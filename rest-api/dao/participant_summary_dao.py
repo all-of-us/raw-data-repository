@@ -378,8 +378,9 @@ class ParticipantSummaryDao(UpdatableDao):
           'Invalid patientStatus parameter: `{}`. It must be in the format `ORGANIZATION:VALUE`'
         ).format(value)
       )
-    status = PatientStatusFlag.to_dict().get(status_text)
-    if status is None:
+    try:
+      status = PatientStatusFlag(status_text)
+    except (KeyError, TypeError):
       raise BadRequest(
         (
           'Invalid patientStatus parameter: `{}`. `VALUE` must be one of {}'
@@ -755,10 +756,15 @@ class PatientStatusFieldFilter(FieldFilter):
 
   def add_to_sqlalchemy_query(self, query, field):
     if self.operator == Operator.EQUALS:
-      criterion = sqlalchemy.and_(
-        PatientStatus.organizationId == self.organization.organizationId,
-        PatientStatus.patientStatus == self.status
-      )
-      return query.filter(field.any(criterion))
+      if self.status == PatientStatusFlag.UNSET:
+        criterion = sqlalchemy.not_(field.any(
+          PatientStatus.organizationId == self.organization.organizationId
+        ))
+      else:
+        criterion = field.any(sqlalchemy.and_(
+          PatientStatus.organizationId == self.organization.organizationId,
+          PatientStatus.patientStatus == self.status
+        ))
+      return query.filter(criterion)
     else:
       raise ValueError('Invalid operator: %r.' % self.operator)

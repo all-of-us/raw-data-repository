@@ -26,7 +26,7 @@ class FieldFilter(object):
 
   def add_to_sqlalchemy_query(self, query, field):
     if self.value is None:
-      return query.filter(f.is_(None))
+      return query.filter(field.is_(None))
     query = {Operator.EQUALS: query.filter(field == self.value),
              Operator.LESS_THAN: query.filter(field < self.value),
              Operator.GREATER_THAN: query.filter(field > self.value),

@@ -2650,8 +2650,8 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     }
 
     self.assertBundle(
-      map(_make_entry, [summary_2, summary_1]),
-      self.send_get('ParticipantSummary')
+      map(_make_entry, [summary_1, summary_2]),
+      self.send_get('ParticipantSummary?{}'.format(urlencode(default_query_params)))
     )
 
     query_params = dict(default_query_params, **{
@@ -2679,6 +2679,24 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     url = 'ParticipantSummary?{}'.format(urlencode(query_params))
     self.assertBundle(
       [],
+      self.send_get(url)
+    )
+
+    query_params = dict(default_query_params, **{
+      'patientStatus': '{}:UNSET'.format(status_org_name)
+    })
+    url = 'ParticipantSummary?{}'.format(urlencode(query_params))
+    self.assertBundle(
+      [],
+      self.send_get(url)
+    )
+
+    query_params = dict(default_query_params, **{
+      'patientStatus': 'AZ_TUCSON_BANNER_HEALTH:UNSET'
+    })
+    url = 'ParticipantSummary?{}'.format(urlencode(query_params))
+    self.assertBundle(
+      map(_make_entry, [summary_1, summary_2]),
       self.send_get(url)
     )
 
