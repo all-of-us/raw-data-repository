@@ -397,6 +397,10 @@ For enumeration fields, the following values are defined:
         `MIDDLE_EASTERN_OR_NORTH_AFRICAN`, `HLS_AND_WHITE`, `HLS_AND_BLACK`,
         `HLS_AND_ONE_OTHER_RACE`, `HLS_AND_MORE_THAN_ONE_OTHER_RACE`, `MORE_THAN_ONE_RACE`,
   		`OTHER_RACE`, `PREFER_NOT_TO_SAY`
+  		
+`genderIdentity`: `PMI_OPREFER_NOT_TO_ANSWER`, `NO_GENDER_IDENTITY_CHECKED`, `GenderIdentity_Man`,
+                  `GenderIdentity_Woman`, `GenderIdentity_NonBinary`, `GenderIdentity_Transgender`,
+                  `GenderIdentity_AdditionalOptions`, `GenderIdentity_MoreThanOne`
 
 Note: hpoId maps to awardee. If awardee is set in a request, hpoId is updated and vice versa.
 
