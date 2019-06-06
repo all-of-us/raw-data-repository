@@ -366,17 +366,10 @@ class BaseDao(object):
     return query
 
   def _add_filter(self, query, field_filter, f):
-    if field_filter.value is None:
-      return query.filter(f.is_(None))
-    query = {Operator.EQUALS: query.filter(f == field_filter.value),
-             Operator.LESS_THAN: query.filter(f < field_filter.value),
-             Operator.GREATER_THAN: query.filter(f > field_filter.value),
-             Operator.LESS_THAN_OR_EQUALS: query.filter(f <= field_filter.value),
-             Operator.GREATER_THAN_OR_EQUALS: query.filter(f >= field_filter.value),
-             Operator.NOT_EQUALS: query.filter(f != field_filter.value)}.get(field_filter.operator)
-    if not query:
-      raise BadRequest('Invalid operator: %r.' % field_filter.operator)
-    return query
+    try:
+      return field_filter.add_to_sqlalchemy_query(query, f)
+    except ValueError as e:
+      raise BadRequest(e.message)
 
   def _add_pagination_filter(self, query, query_def, fields, first_descending):
     """Adds a pagination filter for the decoded values in the pagination token based on

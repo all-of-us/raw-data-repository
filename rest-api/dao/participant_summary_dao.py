@@ -19,11 +19,12 @@ from dao.site_dao import SiteDao
 from model.config_utils import to_client_biobank_id, from_client_biobank_id
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
   WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
+from model.patient_status import PatientStatus
 from model.utils import to_client_participant_id, get_property_type
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
   EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age, EhrStatus, \
-  BiobankOrderStatus
-from query import OrderBy, PropertyType
+  BiobankOrderStatus, PatientStatusFlag
+from query import OrderBy, PropertyType, FieldFilter, Operator
 from sqlalchemy import or_
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -362,7 +363,34 @@ class ParticipantSummaryDao(UpdatableDao):
       if not code:
         raise BadRequest('No code found: %s' % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', code.codeId)
+
+    if field_name == 'patientStatus':
+      return self._make_patient_status_field_filter(field_name, value)
+
     return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
+
+  def _make_patient_status_field_filter(self, field_name, value):
+    try:
+      organization_external_id, status_text = value.split(':')
+    except ValueError:
+      raise BadRequest(
+        (
+          'Invalid patientStatus parameter: `{}`. It must be in the format `ORGANIZATION:VALUE`'
+        ).format(value)
+      )
+    status = PatientStatusFlag.to_dict().get(status_text)
+    if status is None:
+      raise BadRequest(
+        (
+          'Invalid patientStatus parameter: `{}`. `VALUE` must be one of {}'
+        ).format(value, PatientStatusFlag.to_dict().keys())
+      )
+    organization = self.organization_dao.get_by_external_id(organization_external_id)
+    if not organization:
+      raise BadRequest('No organization found with name %s' % organization_external_id)
+    return PatientStatusFieldFilter(field_name, Operator.EQUALS, value,
+                                    organization=organization,
+                                    status=status)
 
   def update_from_biobank_stored_samples(self, participant_id=None):
     """Rewrites sample-related summary data. Call this after updating BiobankStoredSamples.
@@ -713,3 +741,24 @@ def _initialize_field_type_sets():
               if fk._get_colspec() == 'code.code_id':
                 _CODE_FIELDS.add(prop_name)
                 break
+
+
+class PatientStatusFieldFilter(FieldFilter):
+  """
+  FieldFilter class for patientStatus relationship field
+  """
+
+  def __init__(self, field_name, operator, value, organization, status):
+    super(PatientStatusFieldFilter, self).__init__(field_name, operator, value)
+    self.organization = organization
+    self.status = status
+
+  def add_to_sqlalchemy_query(self, query, field):
+    if self.operator == Operator.EQUALS:
+      criterion = sqlalchemy.and_(
+        PatientStatus.organizationId == self.organization.organizationId,
+        PatientStatus.patientStatus == self.status
+      )
+      return query.filter(field.any(criterion))
+    else:
+      raise ValueError('Invalid operator: %r.' % self.operator)

@@ -24,6 +24,20 @@ class FieldFilter(object):
     self.operator = operator
     self.value = value
 
+  def add_to_sqlalchemy_query(self, query, field):
+    if self.value is None:
+      return query.filter(f.is_(None))
+    query = {Operator.EQUALS: query.filter(field == self.value),
+             Operator.LESS_THAN: query.filter(field < self.value),
+             Operator.GREATER_THAN: query.filter(field > self.value),
+             Operator.LESS_THAN_OR_EQUALS: query.filter(field <= self.value),
+             Operator.GREATER_THAN_OR_EQUALS: query.filter(field >= self.value),
+             Operator.NOT_EQUALS: query.filter(field != self.value)}.get(self.operator)
+    if not query:
+      raise ValueError('Invalid operator: %r.' % self.operator)
+    return query
+
+
 class OrderBy(object):
   def __init__(self, field_name, ascending):
     self.field_name = field_name

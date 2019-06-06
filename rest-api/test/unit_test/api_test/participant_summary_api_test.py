@@ -2646,7 +2646,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     summary_2 = self.send_get('Participant/{}/Summary'.format(participant_2_id))
 
     default_query_params = {
-      'sort': 'lastModified',
+      '_sort': 'lastModified',
     }
 
     self.assertBundle(
@@ -2655,11 +2655,30 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     )
 
     query_params = dict(default_query_params, **{
-      'patientStatus[{}]'.format(status_org_name): 'YES'
+      'patientStatus': '{}:YES'.format(status_org_name)
     })
     url = 'ParticipantSummary?{}'.format(urlencode(query_params))
     self.assertBundle(
       map(_make_entry, [summary_1]),
+      self.send_get(url)
+    )
+
+    query_params = dict(default_query_params, **{
+      'patientStatus': '{}:NO_ACCESS'.format(status_org_name)
+    })
+    url = 'ParticipantSummary?{}'.format(urlencode(query_params))
+    self.assertBundle(
+      map(_make_entry, [summary_2]),
+      self.send_get(url)
+    )
+
+    query_params = default_query_params.items() + [
+      ('patientStatus', '{}:YES'.format(status_org_name)),
+      ('patientStatus', '{}:NO_ACCESS'.format(status_org_name)),
+    ]
+    url = 'ParticipantSummary?{}'.format(urlencode(query_params))
+    self.assertBundle(
+      [],
       self.send_get(url)
     )
 
