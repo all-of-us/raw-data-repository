@@ -319,7 +319,6 @@ class MetricsAPIVersion(messages.Enum):
   """M2API version history"""
   V1 = 1  # M2API version 1
   V2 = 2  # change participant status to 4 tiers
-  V3 = 3  # support multiple gender selection
 
 # The lower bounds of the age buckets.
 _AGE_LB = [0, 18, 26, 36, 46, 56, 66, 76, 86]
