@@ -16,7 +16,7 @@ from model.organization import Organization
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID, \
-  make_primary_provider_link_for_name, QuestionnaireStatus
+  make_primary_provider_link_for_name, QuestionnaireStatus, WithdrawalStatus
 from test.unit_test.unit_test_util import FlaskTestBase
 
 
@@ -203,28 +203,74 @@ class MetricsEhrMultiEndpointTest(MetricsEhrApiTestBase):
       calendar_day = Calendar(day=date)
       CalendarDao().insert(calendar_day)
     # noinspection PyArgumentList
-    participant_1 = Participant(participantId=1, biobankId=4)
+    participant_1 = Participant(participantId=1, biobankId=1)
     summary_1 = self._make_participant(
       participant_1, 'Alice', 'Aardvark', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
+      time_study=datetime.datetime(2018, 1, 3),
       time_fp=datetime.datetime(2018, 1, 4)
-    )
-    # noinspection PyArgumentList
-    participant_2 = Participant(participantId=2, biobankId=5)
-    summary_2 = self._make_participant(
-      participant_2, 'Bo', 'Badger', self.hpo_bar, self.org_bar_a,
-      time_int=datetime.datetime(2018, 1, 3),
-      time_mem=datetime.datetime(2018, 1, 4),
-      time_fp=datetime.datetime(2018, 1, 5)
     )
     self._update_ehr(
       summary_1,
       update_time=datetime.datetime(2018, 1, 5)
     )
+
+    # noinspection PyArgumentList
+    participant_2 = Participant(participantId=2, biobankId=2)
+    summary_2 = self._make_participant(
+      participant_2, 'Bo', 'Badger', self.hpo_bar, self.org_bar_a,
+      time_int=datetime.datetime(2018, 1, 3),
+      time_mem=datetime.datetime(2018, 1, 4),
+      time_study=datetime.datetime(2018, 1, 4),
+      time_fp=datetime.datetime(2018, 1, 5)
+    )
     self._update_ehr(
       summary_2,
       update_time=datetime.datetime(2018, 1, 6)
+    )
+
+    # noinspection PyArgumentList
+    participant_3 = Participant(participantId=3, biobankId=3)
+    self._make_participant(
+      participant_3, 'Cheryl', 'Caterpillar', self.hpo_bar, self.org_bar_a,
+      time_int=datetime.datetime(2018, 1, 3),
+      time_mem=datetime.datetime(2018, 1, 4),
+      time_study=datetime.datetime(2018, 1, 4),
+      time_fp=datetime.datetime(2018, 1, 5)
+    )
+    participant_3.withdrawalStatus = WithdrawalStatus.NO_USE
+    self.dao.update(participant_3)
+
+    # noinspection PyArgumentList
+    participant_4 = Participant(participantId=4, biobankId=4)
+    self._make_participant(
+      participant_4, 'Dan', 'Donkey', self.hpo_bar, self.org_bar_a,
+      time_int=datetime.datetime(2018, 1, 3),
+      time_mem=datetime.datetime(2018, 1, 4),
+      time_study=datetime.datetime(2018, 1, 4),
+      time_fp=datetime.datetime(2018, 1, 5)
+    )
+    participant_4.isGhostId = True
+    self.dao.update(participant_4)
+
+    # noinspection PyArgumentList
+    participant_5 = Participant(participantId=5, biobankId=5)
+    self._make_participant(
+      participant_5, 'Elia', 'Elephant', self.hpo_bar, self.org_bar_a,
+      time_int=datetime.datetime(2018, 1, 3),
+      time_mem=datetime.datetime(2018, 1, 4),
+      time_study=datetime.datetime(2018, 1, 4),
+      time_fp=datetime.datetime(2018, 1, 5)
+    )
+
+    # noinspection PyArgumentList
+    participant_6 = Participant(participantId=6, biobankId=6)
+    self._make_participant(
+      participant_6, 'Elia', 'Elephant', self.hpo_bar, self.org_bar_a,
+      time_int=datetime.datetime(2018, 1, 3),
+      time_mem=datetime.datetime(2018, 1, 4),
+      time_fp=datetime.datetime(2018, 1, 5)
     )
 
   def test_combined_endpoint_matches_parts(self):
@@ -235,6 +281,8 @@ class MetricsEhrMultiEndpointTest(MetricsEhrApiTestBase):
     organizations_response = self.send_get(
       'MetricsEHR/Organizations',
     )
+    self.assertEqual(3, participants_over_time_response['EHR_CONSENTED'])
+    self.assertEqual(2, participants_over_time_response['EHR_RECEIVED'])
     self.assertEqual(combined_response['metrics'], participants_over_time_response)
     self.assertEqual(combined_response['organization_metrics'], organizations_response)
 
@@ -256,6 +304,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       participant_1, 'Alice', 'Aardvark', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
+      time_study=datetime.datetime(2018, 1, 3),
       time_fp=datetime.datetime(2018, 1, 4),
     )
 
@@ -265,6 +314,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       participant_2, 'Bo', 'Badger', self.hpo_bar, self.org_bar_a,
       time_int=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
+      time_study=datetime.datetime(2018, 1, 4),
       time_fp=datetime.datetime(2018, 1, 5)
     )
 
@@ -294,6 +344,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       participant_1, 'Alice', 'Aardvark', self.hpo_foo, self.org_foo_a,
       time_int=datetime.datetime(2018, 1, 2),
       time_mem=datetime.datetime(2018, 1, 3),
+      time_study=datetime.datetime(2018, 1, 3),
       time_fp=datetime.datetime(2018, 1, 4)
     )
 
@@ -307,6 +358,7 @@ class MetricsEhrApiOverTimeTest(MetricsEhrApiTestBase):
       participant_2, 'Bo', 'Badger', self.hpo_bar, self.org_bar_a,
       time_int=datetime.datetime(2018, 1, 3),
       time_mem=datetime.datetime(2018, 1, 4),
+      time_study=datetime.datetime(2018, 1, 4),
       time_fp=datetime.datetime(2018, 1, 5)
     )
 

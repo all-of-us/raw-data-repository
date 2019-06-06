@@ -45,6 +45,9 @@ class MetricsEhrService(BaseDao):
 
   def _get_current_ehr_query(self, organization_ids=None):
     where_conditions = [
+      ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+      Participant.isGhostId.isnot(True),
+      ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
       ParticipantSummary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED
     ]
     if organization_ids:
@@ -55,11 +58,24 @@ class MetricsEhrService(BaseDao):
       sqlalchemy
         .select([
           sqlalchemy.func.count().label('consented_count'),
-          sqlalchemy.func.sum(
-            ParticipantSummary.ehrStatus == EhrStatus.PRESENT
+          sqlalchemy.func.cast(
+            sqlalchemy.func.sum(
+              sqlalchemy.func.if_(
+                ParticipantSummary.ehrStatus == EhrStatus.PRESENT,
+                1, 0
+              )
+            ),
+            sqlalchemy.Integer
           ).label('received_count'),
         ])
-          .where(reduce(sqlalchemy.and_, where_conditions))
+        .select_from(
+          sqlalchemy.join(
+            ParticipantSummary,
+            Participant,
+            ParticipantSummary.participantId == Participant.participantId
+          )
+        )
+        .where(reduce(sqlalchemy.and_, where_conditions))
     )
 
   def get_current_ehr_data(self, organization_ids=None):
