@@ -47,7 +47,7 @@ class DvOrderApiTestBase(FlaskTestBase):
     resp = self.send_post(url, data, expected_status=httplib.CREATED)
 
     # test that our test_data dict is in the resp.response dict.
-    resp_data = json.loads(resp.response[0])[0]
+    resp_data = json.loads(resp.response[0])
     self.assertDictContainsSubset(data, resp_data)
 
     # attempt to insert again, should fail with duplicate.
@@ -63,16 +63,22 @@ class DvOrderApiTestBase(FlaskTestBase):
     # insert patient status
     url = os.path.join('PatientStatus', 'P{0}'.format(self.participant.participantId), 'Organization',
                        'PITT_BANNER_HEALTH')
-    self.send_post(url, data, expected_status=httplib.CREATED)
+    resp = self.send_post(url, data, expected_status=httplib.CREATED)
 
     data['authored'] = '2019-04-27T16:32:01'
     data['comment'] = 'saw patient at new site'
     data['site'] = 'hpo-site-bannerphoenix'
 
-    self.send_put(url, data, expected_status=httplib.OK)
+    resp = self.send_put(url, data, expected_status=httplib.OK)
+    self.assertDictContainsSubset(data, resp)
 
     # Get record and test that our test_data dict is in the resp.response dict.
     resp = self.send_get(url)
     self.assertDictContainsSubset(data, resp)
 
-  # TODO: When new style history tables and triggers have been added to unit tests, test history URL.
+    # TODO: When new style history tables and triggers have been added to unit tests, test history URL.
+    # # make call for participant patient status history
+    # url = os.path.join('PatientStatus', 'P{0}'.format(self.participant.participantId), 'Organization',
+    #                    'PITT_BANNER_HEALTH', 'History')
+    # resp = self.send_get(url)
+    # self.assertEqual(2, len(resp))
