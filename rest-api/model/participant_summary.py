@@ -284,6 +284,17 @@ class ParticipantSummary(Base):
   suspensionTime = Column('suspension_time', UTCDateTime)
 
   participant = relationship("Participant", back_populates="participantSummary")
+  #patientStatuses = relationship("PatientStatus", back_populates="participantSummary")
+
+  patientStatus = relationship(
+    "PatientStatus",
+    primaryjoin="PatientStatus.participantId == ParticipantSummary.participantId",
+    foreign_keys=participantId,
+    remote_side="PatientStatus.participantId",
+    viewonly=True,
+    lazy='raise',
+    uselist=True
+  )
 
   @declared_attr
   def hpoId(cls):

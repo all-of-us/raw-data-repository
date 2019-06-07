@@ -1,6 +1,7 @@
 import datetime
 import re
 import sqlalchemy
+import sqlalchemy.orm
 import threading
 
 import clock
@@ -13,15 +14,17 @@ from dao.code_dao import CodeDao
 from dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
 from dao.hpo_dao import HPODao
 from dao.organization_dao import OrganizationDao
+from dao.patient_status_dao import PatientStatusDao
 from dao.site_dao import SiteDao
 from model.config_utils import to_client_biobank_id, from_client_biobank_id
 from model.participant_summary import ParticipantSummary, WITHDRAWN_PARTICIPANT_FIELDS, \
   WITHDRAWN_PARTICIPANT_VISIBILITY_TIME, SUSPENDED_PARTICIPANT_FIELDS
+from model.patient_status import PatientStatus
 from model.utils import to_client_participant_id, get_property_type
 from participant_enums import QuestionnaireStatus, PhysicalMeasurementsStatus, SampleStatus, \
   EnrollmentStatus, SuspensionStatus, WithdrawalStatus, get_bucketed_age, EhrStatus, \
-  BiobankOrderStatus
-from query import OrderBy, PropertyType
+  BiobankOrderStatus, PatientStatusFlag
+from query import OrderBy, PropertyType, FieldFilter, Operator
 from sqlalchemy import or_
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -254,10 +257,20 @@ class ParticipantSummaryDao(UpdatableDao):
     self.code_dao = CodeDao()
     self.site_dao = SiteDao()
     self.organization_dao = OrganizationDao()
+    self.patient_status_dao = PatientStatusDao()
 
   def get_id(self, obj):
     return obj.participantId
 
+  def get_eager_child_loading_query_options(self):
+    return [
+      sqlalchemy.orm.subqueryload(self.model_type.patientStatus)
+    ]
+
+  def get_with_children(self, obj_id):
+    with self.session() as session:
+      return self.get_with_session(session, obj_id,
+                                   options=self.get_eager_child_loading_query_options())
 
   def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
     """Participant summaries don't have a version value; drop it from validation logic."""
@@ -350,7 +363,35 @@ class ParticipantSummaryDao(UpdatableDao):
       if not code:
         raise BadRequest('No code found: %s' % value)
       return super(ParticipantSummaryDao, self).make_query_filter(field_name + 'Id', code.codeId)
+
+    if field_name == 'patientStatus':
+      return self._make_patient_status_field_filter(field_name, value)
+
     return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
+
+  def _make_patient_status_field_filter(self, field_name, value):
+    try:
+      organization_external_id, status_text = value.split(':')
+    except ValueError:
+      raise BadRequest(
+        (
+          'Invalid patientStatus parameter: `{}`. It must be in the format `ORGANIZATION:VALUE`'
+        ).format(value)
+      )
+    try:
+      status = PatientStatusFlag(status_text)
+    except (KeyError, TypeError):
+      raise BadRequest(
+        (
+          'Invalid patientStatus parameter: `{}`. `VALUE` must be one of {}'
+        ).format(value, PatientStatusFlag.to_dict().keys())
+      )
+    organization = self.organization_dao.get_by_external_id(organization_external_id)
+    if not organization:
+      raise BadRequest('No organization found with name %s' % organization_external_id)
+    return PatientStatusFieldFilter(field_name, Operator.EQUALS, value,
+                                    organization=organization,
+                                    status=status)
 
   def update_from_biobank_stored_samples(self, participant_id=None):
     """Rewrites sample-related summary data. Call this after updating BiobankStoredSamples.
@@ -595,6 +636,15 @@ class ParticipantSummaryDao(UpdatableDao):
     if result.get('genderIdentityId'):
       del result['genderIdentityId']  #deprecated in favor of genderIdentity
 
+    def format_patient_status_record(status_obj):
+      status_dict = self.patient_status_dao.to_client_json(status_obj)
+      return {
+        'organization': status_dict['organization'],
+        'status': status_dict['patient_status'],
+      }
+
+    result['patientStatus'] = map(format_patient_status_record, model.patientStatus)
+
     format_json_hpo(result, self.hpo_dao, 'hpoId')
     result['awardee'] = result['hpoId']
     _initialize_field_type_sets()
@@ -692,3 +742,29 @@ def _initialize_field_type_sets():
               if fk._get_colspec() == 'code.code_id':
                 _CODE_FIELDS.add(prop_name)
                 break
+
+
+class PatientStatusFieldFilter(FieldFilter):
+  """
+  FieldFilter class for patientStatus relationship field
+  """
+
+  def __init__(self, field_name, operator, value, organization, status):
+    super(PatientStatusFieldFilter, self).__init__(field_name, operator, value)
+    self.organization = organization
+    self.status = status
+
+  def add_to_sqlalchemy_query(self, query, field):
+    if self.operator == Operator.EQUALS:
+      if self.status == PatientStatusFlag.UNSET:
+        criterion = sqlalchemy.not_(field.any(
+          PatientStatus.organizationId == self.organization.organizationId
+        ))
+      else:
+        criterion = field.any(sqlalchemy.and_(
+          PatientStatus.organizationId == self.organization.organizationId,
+          PatientStatus.patientStatus == self.status
+        ))
+      return query.filter(criterion)
+    else:
+      raise ValueError('Invalid operator: %r.' % self.operator)

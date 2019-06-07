@@ -269,6 +269,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'suspensionStatus': 'NOT_SUSPENDED',
                 'numberDistinctVisits': 0,
                 'ehrStatus': 'UNSET',
+                'patientStatus': [],
               }
     self.assertJsonResponseMatches(expected, summary)
 
@@ -370,6 +371,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'suspensionStatus': 'NOT_SUSPENDED',
                 'numberDistinctVisits': 0,
                 'ehrStatus': 'UNSET',
+                'patientStatus': [],
                 }
     self.assertJsonResponseMatches(expected, summary)
 
@@ -561,6 +563,7 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'suspensionStatus': 'NOT_SUSPENDED',
                 'numberDistinctVisits': 0,
                 'ehrStatus': 'UNSET',
+                'patientStatus': [],
                 }
     self.assertJsonResponseMatches(expected, summary)
 
@@ -678,5 +681,6 @@ class QuestionnaireResponseApiTest(FlaskTestBase):
                 'suspensionStatus': 'NOT_SUSPENDED',
                 'numberDistinctVisits': 0,
                 'ehrStatus': 'UNSET',
+                'patientStatus': [],
                 }
     self.assertJsonResponseMatches(expected, summary)
