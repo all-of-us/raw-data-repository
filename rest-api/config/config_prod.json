@@ -49,6 +49,9 @@
         "healthpro-prod"
       ]
     },
+    "aou-res-storefront-prod@appspot.gserviceaccount.com": {
+      "roles": ["storefront"]
+    },
     "vibrent-drc-prod@vibrent-drc-prod-165017.iam.gserviceaccount.com": {
       "roles": [
         "ptc"
