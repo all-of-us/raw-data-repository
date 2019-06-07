@@ -24,7 +24,7 @@ _logger = logging.getLogger('rdr_logger')
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
-tool_cmd = 'time_api'
+tool_cmd = 'time-api'
 tool_desc = 'Get timing metrics for a specific set of APIs'
 
 
@@ -57,7 +57,6 @@ class ProgramTemplateClass(object):
         self._host = '{}:{}'.format(self._hostname, 8080)
       else:
         self._host = self._hostname
-        #self._oauth_token = gcp_get_app_access_token()
 
   def run(self):
     """
@@ -92,10 +91,13 @@ class ProgramTemplateClass(object):
 
   def do_request(self, spec):
     start = time.time()
-    code, _ = make_api_request(self._host, spec.path, req_type='GET',
+    code, response = make_api_request(self._host, spec.path, req_type='GET',
                                       headers=gcp_make_auth_header())
     duration = time.time() - start
-    _logger.info("{} {} ({} seconds)".format(code, spec.path, duration))
+    if code != 200:
+      _logger.warn("{} {} ({} seconds): {}".format(code, spec.path, duration, response))
+    else:
+      _logger.info("{} {} ({} seconds)".format(code, spec.path, duration))
     return self.Result(self.PathStatus(spec.path, code), duration)
 
   def write_metrics(self, results, outfile):
@@ -107,10 +109,17 @@ class ProgramTemplateClass(object):
         'count': 0,
         'total_time': 0,
         'average_time': 0,
+        'max_time': 0,
+        'min_time': None,
       }
       m['count'] += 1
       m['total_time'] += result.total_time
       m['average_time'] = m['total_time'] / m['count']
+      m['max_time'] = max(result.total_time, m['max_time'])
+      if m['min_time'] is None:
+        m['min_time'] = result.total_time
+      else:
+        m['min_time'] = min(result.total_time, m['min_time'])
       return collector
     metrics = reduce(reduce_result, results, {})
     json.dump(metrics, outfile, indent=2)
