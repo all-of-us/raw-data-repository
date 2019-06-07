@@ -22,7 +22,7 @@ class PatientStatusApi(UpdatableApi):
 
   def _make_response(self, obj):
     result = super(UpdatableApi, self)._make_response(obj)
-    return result, 200
+    return result
 
 
 class PatientStatusHistoryApi(BaseApi):
