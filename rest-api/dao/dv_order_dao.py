@@ -30,9 +30,9 @@ class DvOrderDao(UpdatableDao):
 
 
   def send_order(self, resource, pid):
-    m = MayoLinkApi()
+    mayo = MayoLinkApi()
     order = self._filter_order_fields(resource, pid)
-    response = m.post(order)
+    response = mayo.post(order)
     return self.to_client_json(response, for_update=True)
 
   def _filter_order_fields(self, resource, pid):
@@ -45,39 +45,39 @@ class DvOrderDao(UpdatableDao):
     format_json_code(code_dict, self.code_dao, 'stateId')
     # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
     order = {
-      'order': {
-        'collected': fhir_resource.authoredOn,
-        'account': '',
-        'number': fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString,
-        'patient': {'medical_record_number': str(to_client_biobank_id(summary.biobankId)),
-                    'first_name': '*',
-                    'last_name': str(to_client_biobank_id(summary.biobankId)),
-                    'middle_name': '',
-                    'birth_date': '3/3/1933',
-                    'gender': code_dict['genderIdentity'],
-                    'address1': summary.streetAddress,
-                    'address2': summary.streetAddress2,
-                    'city': summary.city,
-                    'state': code_dict['state'],
-                    'postal_code': str(summary.zipCode),
-                    'phone': str(summary.phoneNumber),
-                    'account_number': None,
-                    'race': summary.race,
-                    'ethnic_group': None
-                    },
-        'physician': {'name': None,
-                      'phone': None,
-                      'npi': None
-                      },
-        'report_notes': fhir_resource.extension.get(
-          url=VIBRENT_ORDER_URL).valueString,
-        'tests': {'test': {'code': '1SAL2',
-                           'name': 'PMI Saliva, FDA Kit',
-                           'comments': None
-                           }
-                  },
-        'comments': 'Salivary Kit Order, direct from participant'
-       }}
+        'order': {
+            'collected': fhir_resource.authoredOn,
+            'account': '',
+            'number': fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).valueString,
+            'patient': {'medical_record_number': str(to_client_biobank_id(summary.biobankId)),
+                        'first_name': '*',
+                        'last_name': str(to_client_biobank_id(summary.biobankId)),
+                        'middle_name': '',
+                        'birth_date': '3/3/1933',
+                        'gender': code_dict['genderIdentity'],
+                        'address1': summary.streetAddress,
+                        'address2': summary.streetAddress2,
+                        'city': summary.city,
+                        'state': code_dict['state'],
+                        'postal_code': str(summary.zipCode),
+                        'phone': str(summary.phoneNumber),
+                        'account_number': None,
+                        'race': summary.race,
+                        'ethnic_group': None
+                       },
+            'physician': {'name': None,
+                          'phone': None,
+                          'npi': None
+                         },
+            'report_notes': fhir_resource.extension.get(
+                url=VIBRENT_ORDER_URL).valueString,
+            'tests': {'test': {'code': '1SAL2',
+                               'name': 'PMI Saliva, FDA Kit',
+                               'comments': None
+                              }
+                     },
+            'comments': 'Salivary Kit Order, direct from participant'
+        }}
     return order
 
   def to_client_json(self, model, for_update=False):
@@ -116,18 +116,18 @@ class DvOrderDao(UpdatableDao):
         raise NotFound('existing order record not found')
 
       existing_obj.shipmentStatus = self._enumerate_order_tracking_status(fhir_resource.extension.get(
-        url=VIBRENT_FHIR_URL + 'tracking-status').valueString)
+          url=VIBRENT_FHIR_URL + 'tracking-status').valueString)
       existing_obj.shipmentCarrier = fhir_resource.extension.get(
-        url=VIBRENT_FHIR_URL + 'carrier').valueString
+          url=VIBRENT_FHIR_URL + 'carrier').valueString
       if hasattr(fhir_resource['extension'], VIBRENT_FHIR_URL + 'expected-delivery-date'):
         existing_obj.shipmentEstArrival = parse_date(fhir_resource.extension.get(
-        url=VIBRENT_FHIR_URL + 'expected-delivery-date').valueDateTime)
+            url=VIBRENT_FHIR_URL + 'expected-delivery-date').valueDateTime)
 
       existing_obj.trackingId = fhir_resource.identifier.get(
-        system=VIBRENT_FHIR_URL + 'trackingId').value
+          system=VIBRENT_FHIR_URL + 'trackingId').value
       # USPS status
       existing_obj.orderStatus = self._enumerate_order_shipping_status(
-                                    fhir_resource.status)
+          fhir_resource.status)
       # USPS status time
       existing_obj.shipmentLastUpdate = parse_date(fhir_resource.occurrenceDateTime)
       order_address = fhir_resource.contained.get(resourceType='Location').get('address')
@@ -162,7 +162,7 @@ class DvOrderDao(UpdatableDao):
 
     if resource_json['resourceType'].lower() == 'supplyrequest':
       order.order_id = int(fhir_resource.identifier.get(
-                          system=VIBRENT_FHIR_URL + 'orderId').value)
+          system=VIBRENT_FHIR_URL + 'orderId').value)
       if id_ and int(id_) != order.order_id:
         raise Conflict('url order id param does not match document order id')
 
@@ -176,7 +176,7 @@ class DvOrderDao(UpdatableDao):
       fhir_device = fhir_resource.contained.get(resourceType='Device')
       order.itemName = fhir_device.deviceName.get(type='manufacturer-name').name
       order.itemSKUCode = fhir_device.identifier.get(
-                          system=VIBRENT_FHIR_URL + 'SKU').value
+          system=VIBRENT_FHIR_URL + 'SKU').value
       order.itemQuantity = fhir_resource.quantity.value
 
       fhir_patient = fhir_resource.contained.get(resourceType='Patient')
@@ -188,7 +188,7 @@ class DvOrderDao(UpdatableDao):
       order.zipCode = fhir_address.postalCode
 
       order.orderType = fhir_resource.extension.get(
-        url=VIBRENT_ORDER_URL).valueString
+          url=VIBRENT_ORDER_URL).valueString
       if id_ is None:
         order.version = 1
       else:
@@ -220,7 +220,7 @@ class DvOrderDao(UpdatableDao):
 
     bod = BiobankOrderDao()
     obj.samples = [BiobankOrderedSample(
-      test='1SAL2', processingRequired=False, description=u'salivary pilot kit')]
+        test='1SAL2', processingRequired=False, description=u'salivary pilot kit')]
     self._add_identifiers_and_main_id(obj, ObjectView(resource))
     bod.insert(obj)
 
@@ -236,14 +236,14 @@ class DvOrderDao(UpdatableDao):
                                                           + '/fulfillmentId', value=i['value']))
       except AttributeError:
         raise BadRequest(
-          'No identifier for system %r, required for primary key.' %
-            BiobankDVOrder._VIBRENT_ID_SYSTEM)
+            'No identifier for system %r, required for primary key.' %
+             BiobankDVOrder._VIBRENT_ID_SYSTEM)
 
   def get_etag(self, id_, pid):
     with self.session() as session:
       query = session.query(BiobankDVOrder.version).filter_by(
-        participantId=pid).filter_by(
-        order_id=id_)
+          participantId=pid).filter_by(
+              order_id=id_)
       result = query.first()
       if result:
         return result[0]
@@ -257,14 +257,14 @@ class DvOrderDao(UpdatableDao):
   def get_id(self, obj):
     with self.session() as session:
       query = session.query(BiobankDVOrder.id).filter_by(
-        participantId=obj.participantId).filter_by(
-        order_id=obj.order_id)
+          participantId=obj.participantId).filter_by(
+              order_id=obj.order_id)
       return query.first()
 
   def get_biobank_info(self, order):
     with self.session() as session:
       query = session.query(BiobankDVOrder).options(
-        load_only("barcode", "biobankOrderId", "biobankStatus", "biobankReceived"))\
+          load_only("barcode", "biobankOrderId", "biobankStatus", "biobankReceived"))\
                                        .filter_by(participantId=order.participantId)\
                                                  .filter_by(order_id=order.order_id)
       return query.first()
