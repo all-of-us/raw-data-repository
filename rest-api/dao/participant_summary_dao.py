@@ -634,7 +634,7 @@ class ParticipantSummaryDao(UpdatableDao):
       format_json_org(result, self.organization_dao, 'organization')
 
     if result.get('genderIdentityId'):
-      del result['genderIdentityId']  #deprecated in favor of genderIdentity
+      del result['genderIdentityId']  # deprecated in favor of genderIdentity
 
     def format_patient_status_record(status_obj):
       status_dict = self.patient_status_dao.to_client_json(status_obj)

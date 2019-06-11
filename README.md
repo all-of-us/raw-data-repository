@@ -398,7 +398,7 @@ For enumeration fields, the following values are defined:
         `HLS_AND_ONE_OTHER_RACE`, `HLS_AND_MORE_THAN_ONE_OTHER_RACE`, `MORE_THAN_ONE_RACE`,
   		`OTHER_RACE`, `PREFER_NOT_TO_SAY`
   		
-`genderIdentity`: `PMI_OPREFER_NOT_TO_ANSWER`, `NO_GENDER_IDENTITY_CHECKED`, `GenderIdentity_Man`,
+`genderIdentity`: `PMI_PreferNotToAnswer`, `PMI_Skip`, `GenderIdentity_Man`,
                   `GenderIdentity_Woman`, `GenderIdentity_NonBinary`, `GenderIdentity_Transgender`,
                   `GenderIdentity_AdditionalOptions`, `GenderIdentity_MoreThanOne`
 
