@@ -2778,9 +2778,6 @@ class ParticipantSummaryApiTest(FlaskTestBase):
 
     summary = self.send_get('Participant/{0}/Summary'.format(participant_id))
     self.assertEqual(summary['genderIdentity'], 'PMI_PreferNotToAnswer')
-    last_modified = summary['lastModified']
-
-    results = self.send_get('ParticipantSummary/Modified')
 
 def _add_code_answer(code_answers, link_id, code):
   if code:
