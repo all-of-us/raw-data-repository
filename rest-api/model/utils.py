@@ -1,5 +1,6 @@
 from dateutil.tz import tzutc
 from query import PropertyType
+from sqlalchemy import String
 from sqlalchemy.types import SmallInteger, TypeDecorator, DateTime
 from sqlalchemy.dialects.mysql import DATETIME
 from werkzeug.exceptions import BadRequest
@@ -32,6 +33,39 @@ class Enum(TypeDecorator):
 
   def process_result_value(self, value, dialect):  # pylint: disable=unused-argument
     return self.enum_type(value) if value else None
+
+
+class MultiEnum(TypeDecorator):
+  """
+  A multi-value Enum type for simple uses.
+
+  Data in this format cannot be searched easily and in most cases it is preferable to use a
+  relationship table.
+  """
+  impl = String
+
+  def __init__(self, enum_type, delimiter=',', max_length=80):
+    super(MultiEnum, self).__init__(max_length)
+    self.enum_type = enum_type
+    self.delimiter = delimiter
+
+  def __repr__(self):
+    return "MultiEnum({})".format(self.enum_type.__name__)
+
+  def process_bind_param(self, value, dialect):  # pylint: disable=unused-argument
+    return self.delimiter.join([
+      str(int(item))
+      for item in value
+    ]) if value else None
+
+  def process_result_value(self, value, dialect):  # pylint: disable=unused-argument
+    return [
+      self.enum_type(int(raw_value))
+      for raw_value
+      in value.split(self.delimiter)
+      if len(raw_value)
+    ] if value else None
+
 
 class UTCDateTime(TypeDecorator):
   impl = DateTime

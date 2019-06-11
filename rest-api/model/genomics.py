@@ -1,20 +1,28 @@
 from model.base import Base, model_insert_listener, model_update_listener
-from model.utils import Enum
+from model.utils import Enum, MultiEnum
 from protorpc import messages
 from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, UniqueConstraint, event
 from sqlalchemy.orm import relationship
 
 
 class GenomicSetStatus(messages.Enum):
-  """ Status of Genomic Set"""
+  """Status of Genomic Set"""
   UNSET = 0
   VALID = 1
   INVALID = 2
 
-class GenomicValidationStatus(messages.Enum):
-  """ Validation Status """
+
+class GenomicSetMemberStatus(messages.Enum):
+  """Status of Genomic Set Member"""
   UNSET = 0
   VALID = 1
+  INVALID = 2
+
+
+class GenomicValidationFlag(messages.Enum):
+  """Validation Status Flags"""
+  UNSET = 0
+  #VALID = 1
   INVALID_BIOBANK_ORDER = 2
   INVALID_NY_ZIPCODE = 3
   INVALID_SEX_AT_BIRTH = 4
@@ -23,6 +31,7 @@ class GenomicValidationStatus(messages.Enum):
   INVALID_WITHDRAW_STATUS = 7
   INVALID_AGE = 8
   INVALID_DUP_PARTICIPANT = 9
+
 
 class GenomicSet(Base):
   """
@@ -89,8 +98,10 @@ class GenomicSetMember(Base):
 
   packageId = Column('package_id', String(250), nullable=True)
 
-  validationStatus = Column('validation_status', Enum(GenomicValidationStatus),
-                            default=GenomicValidationStatus.UNSET)
+  validationStatus = Column('validation_status', Enum(GenomicSetMemberStatus),
+                            default=GenomicSetStatus.UNSET)
+  validationFlags = Column('validation_flags', MultiEnum(GenomicValidationFlag),
+                           nullable=True)
 
   validatedTime = Column('validated_time', DateTime, nullable=True)
 
