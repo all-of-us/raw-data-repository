@@ -230,14 +230,15 @@ class Race(messages.Enum):
   PREFER_NOT_TO_SAY = 16
 
 class GenderIdentity(messages.Enum):
-  PMI_PREFER_NOT_TO_ANSWER_CODE = 0
-  NO_GENDER_IDENTITY_CHECKED = 1 #pmi_skip
+  UNSET = 0
+  PMI_Skip = 1
   GenderIdentity_Man = 2
   GenderIdentity_Woman = 3
   GenderIdentity_NonBinary = 4
   GenderIdentity_Transgender = 5
   GenderIdentity_AdditionalOptions = 6
   GenderIdentity_MoreThanOne = 7
+  PMI_PreferNotToAnswer = 8
 
 
 # A type of organization responsible for signing up participants.
@@ -275,9 +276,9 @@ ANSWER_CODE_TO_GENDER = {
   GENDER_NONBINARY_CODE: GenderIdentity.GenderIdentity_NonBinary,
   GENDER_TRANSGENDER_CODE: GenderIdentity.GenderIdentity_Transgender,
   GENDER_OTHER_CODE: GenderIdentity.GenderIdentity_AdditionalOptions,
-  GENDER_PREFER_NOT_TO_ANSWER_CODE: GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE,
-  GENDER_NO_GENDER_IDENTITY_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED,
-  PMI_SKIP_CODE: GenderIdentity.NO_GENDER_IDENTITY_CHECKED
+  PMI_PREFER_NOT_TO_ANSWER_CODE: GenderIdentity.PMI_PreferNotToAnswer,
+  GENDER_NO_GENDER_IDENTITY_CODE: GenderIdentity.PMI_Skip,
+  PMI_SKIP_CODE: GenderIdentity.PMI_Skip
 }
 
 
@@ -377,11 +378,11 @@ def get_gender_identity(gender_codes):
     return map_single_gender(gender_codes[0])
   else:
     multiple_genders = set([map_single_gender(gender_code) for gender_code in gender_codes])
-    if len(multiple_genders.difference([GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE,
-      GenderIdentity.NO_GENDER_IDENTITY_CHECKED])) == 0:
-      return GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE
+    if len(multiple_genders.difference([GenderIdentity.PMI_PreferNotToAnswer,
+      GenderIdentity.PMI_Skip])) == 0:
+      return GenderIdentity.PMI_PreferNotToAnswer
     # ignore pmi_prefer_not_to_answer and pmi_skip if in set with more values
-    for i in [GenderIdentity.PMI_PREFER_NOT_TO_ANSWER_CODE, GenderIdentity.NO_GENDER_IDENTITY_CHECKED]:
+    for i in [GenderIdentity.PMI_PreferNotToAnswer, GenderIdentity.PMI_Skip]:
       if i in multiple_genders:
         multiple_genders.remove(i)
     if len(multiple_genders) > 1:
