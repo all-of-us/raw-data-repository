@@ -26,7 +26,7 @@ branch_labels = None
 depends_on = None
 
 
-# The `genomic_set_member.validation_tatus` has been split into two columns now
+# The `genomic_set_member.validation_status` has been split into two columns now
 
 # first populate the new column from the old values
 COPY_VALIDATION_FLAGS = '''
