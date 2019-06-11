@@ -12,6 +12,20 @@ class GenomicSetStatus(messages.Enum):
   INVALID = 2
 
 
+class GenomicValidationStatus(messages.Enum):
+  """Original Specification needed by older database migrations"""
+  UNSET = 0
+  VALID = 1
+  INVALID_BIOBANK_ORDER = 2
+  INVALID_NY_ZIPCODE = 3
+  INVALID_SEX_AT_BIRTH = 4
+  INVALID_GENOME_TYPE = 5
+  INVALID_CONSENT = 6
+  INVALID_WITHDRAW_STATUS = 7
+  INVALID_AGE = 8
+  INVALID_DUP_PARTICIPANT = 9
+
+
 class GenomicSetMemberStatus(messages.Enum):
   """Status of Genomic Set Member"""
   UNSET = 0
