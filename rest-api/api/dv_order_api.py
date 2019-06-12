@@ -119,10 +119,14 @@ class DvOrderApi(UpdatableApi):
     try:
       fhir_resource = SimpleFhirR4Reader(resource)
       barcode_url = None
+      cancel_order = False
       if fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString.lower() == 'shipped':
         barcode_url = fhir_resource.extension.get(url=VIBRENT_BARCODE_URL).url
+      if fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString.lower() == 'tracking_cancelled':
+        cancel_order = True
+        logging.info('Tracking status changed to cancelled for order: %s', bo_id)
       pid = fhir_resource.contained.get(
-          resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
+           resourceType='Patient').identifier.get(system=VIBRENT_FHIR_URL + 'participantId')
       p_id = from_client_participant_id(pid.value)
     except AttributeError as e:
       raise BadRequest(e.message)
@@ -135,7 +139,7 @@ class DvOrderApi(UpdatableApi):
     if str(barcode_url).lower() == VIBRENT_BARCODE_URL:
       _id = self.dao.get_id(ObjDict({'participantId': p_id, 'order_id': int(bo_id)}))
       ex_obj = self.dao.get(_id)
-      if not ex_obj.barcode:
+      if not ex_obj.barcode and not cancel_order:
         # Send to mayolink and create internal biobank order
         response = self.dao.send_order(resource, p_id)
         merged_resource = merge_dicts(response, resource)

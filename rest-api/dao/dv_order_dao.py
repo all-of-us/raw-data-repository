@@ -3,7 +3,7 @@ import datetime
 import clock
 from api.mayolink_api import MayoLinkApi
 from api_util import format_json_code, get_code_id, format_json_enum, parse_date, \
-  VIBRENT_BARCODE_URL, VIBRENT_FHIR_URL, VIBRENT_ORDER_URL
+  VIBRENT_BARCODE_URL, VIBRENT_FHIR_URL, VIBRENT_ORDER_URL, VIBRENT_FULFILLMENT_URL
 from app_util import ObjectView
 from dao.base_dao import UpdatableDao
 from dao.biobank_order_dao import BiobankOrderDao
@@ -171,7 +171,7 @@ class DvOrderDao(UpdatableDao):
 
       order.supplier = fhir_resource.contained.get(resourceType='Organization').id
       order.created = clock.CLOCK.now()
-      order.supplierStatus = fhir_resource.status
+      order.supplierStatus = fhir_resource.extension.get(url=VIBRENT_FULFILLMENT_URL).valueString
 
       fhir_device = fhir_resource.contained.get(resourceType='Device')
       order.itemName = fhir_device.deviceName.get(type='manufacturer-name').name
@@ -270,7 +270,7 @@ class DvOrderDao(UpdatableDao):
       return query.first()
 
   def _enumerate_order_shipping_status(self, status):
-    if status.lower() == 'in-progress':
+    if status.lower() == 'in-progress' or status.lower() == 'active':
       return OrderShipmentStatus.SHIPPED
     elif status.lower() == 'completed':
       return OrderShipmentStatus.FULFILLMENT

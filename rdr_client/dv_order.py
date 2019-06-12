@@ -77,7 +77,7 @@ def main():
         "valueString": "salivary pilot"
         },
       {
-        "url": "http://vibrenthealth.com/fhir/fullfilment-status",
+        "url": "http://vibrenthealth.com/fhir/fulfillment-status",
         "valueString": "shipped"
         }
       ],
