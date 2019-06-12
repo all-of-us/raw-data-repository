@@ -26,8 +26,8 @@ def main():
   client = Client()
   awardee = 'PITT'  # Change to the awardee ID you're requesting data for.
   sync_time = 300  # Number of seconds before next sync.
-  response = client.request_json('ParticipantSummary?participantId=132516909'
-                                 ,'GET')
+  response = client.request_json('ParticipantSummary?_count=1000&_sync=true&_sort=lastModified'
+                                 '&awardee={}'.format(awardee), 'GET')
 
   logging.info(pprint.pformat(response))
   sync_url = response['link'][0]['url']
