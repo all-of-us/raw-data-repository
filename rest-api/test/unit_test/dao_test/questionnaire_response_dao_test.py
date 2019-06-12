@@ -421,7 +421,7 @@ class QuestionnaireResponseDaoTest(FlaskTestBase):
     self.check_response(expected_qr)
 
     expected_ps = self._participant_summary_with_defaults(
-      genderIdentity=GenderIdentity.NO_GENDER_IDENTITY_CHECKED,
+      genderIdentity=GenderIdentity.PMI_Skip,
       genderIdentityId=8,
       participantId=1, biobankId=2, signUpTime=TIME,
       numCompletedBaselinePPIModules=1, numCompletedPPIModules=1,

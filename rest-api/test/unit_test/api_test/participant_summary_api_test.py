@@ -11,7 +11,8 @@ from clock import FakeClock
 from code_constants import (PPI_SYSTEM, RACE_WHITE_CODE, CONSENT_PERMISSION_YES_CODE,
                             RACE_NONE_OF_THESE_CODE, PMI_SKIP_CODE, DVEHRSHARING_CONSENT_CODE_YES,
                             DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
-                            CONSENT_PERMISSION_NO_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_NONBINARY_CODE)
+                            CONSENT_PERMISSION_NO_CODE, GENDER_MAN_CODE, GENDER_WOMAN_CODE, GENDER_NONBINARY_CODE,
+                            GENDER_PREFER_NOT_TO_ANSWER_CODE)
 from concepts import Concept
 from dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from dao.participant_summary_dao import ParticipantSummaryDao
@@ -1080,7 +1081,7 @@ class ParticipantSummaryApiTest(FlaskTestBase):
     response = self.send_get('ParticipantSummary')
     self.assertBundle([_make_entry(actual)], response)
 
-  def testQuery_oneParticipantStringConse(self):
+  def testQuery_oneParticipantStringConsent(self):
     # Set up the codes so they are mapped later.
     SqlTestBase.setup_codes(["PIIState_VA", "male_sex", "male", "straight", "email_code", "en",
                              "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
@@ -2700,6 +2701,83 @@ class ParticipantSummaryApiTest(FlaskTestBase):
       self.send_get(url)
     )
 
+  def test_gender_identity_pmi_skip(self):
+    SqlTestBase.setup_codes(["PIIState_VA", "male_sex", PMI_SKIP_CODE, "straight", "email_code", "en",
+                             "highschool", "lotsofmoney"], code_type=CodeType.ANSWER)
+    participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id = participant['participantId']
+    with FakeClock(TIME_1):
+      self.send_consent(participant_id)
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+
+    # Populate some answers to the questionnaire
+    answers = {
+      'race': RACE_WHITE_CODE,
+      'genderIdentity': 'PMI_Skip',
+      'firstName': self.fake.first_name(),
+      'middleName': self.fake.first_name(),
+      'lastName': self.fake.last_name(),
+      'zipCode': '78751',
+      'state': 'PIIState_VA',
+      'streetAddress': self.streetAddress,
+      'streetAddress2': self.streetAddress2,
+      'city': 'Austin',
+      'sex': 'male_sex',
+      'sexualOrientation': 'straight',
+      'phoneNumber': '512-555-5555',
+      'recontactMethod': 'email_code',
+      'language': 'en',
+      'education': 'highschool',
+      'income': 'lotsofmoney',
+      'dateOfBirth': datetime.date(1978, 10, 9),
+      'CABoRSignature': 'signature.pdf',
+    }
+
+    self.post_demographics_questionnaire(participant_id, questionnaire_id, cabor_signature_string=True,
+                                          **answers)
+
+    with FakeClock(TIME_2):
+      actual = self.send_get('Participant/%s/Summary' % participant_id)
+
+    expected = self.create_expected_response(participant, answers)
+
+    self.assertJsonResponseMatches(expected, actual)
+    response = self.send_get('ParticipantSummary')
+    self.assertBundle([_make_entry(actual)], response)
+    self.assertEqual(actual['genderIdentity'], 'PMI_Skip')
+
+  def test_gender_prefer_not_to_answer(self):
+    participant = self.send_post('Participant', {"providerLink": [self.provider_link]})
+    participant_id = participant['participantId']
+    questionnaire_id = self.create_questionnaire('questionnaire3.json')
+    with FakeClock(TIME_1):
+      self.send_consent(participant_id)
+    # Populate some answers to the questionnaire
+    answers = {
+      'race': RACE_WHITE_CODE,
+      'genderIdentity': GENDER_PREFER_NOT_TO_ANSWER_CODE,
+      'firstName': self.fake.first_name(),
+      'middleName': self.fake.first_name(),
+      'lastName': self.fake.last_name(),
+      'zipCode': '78751',
+      'state': PMI_SKIP_CODE,
+      'streetAddress': self.streetAddress,
+      'streetAddress2': self.streetAddress2,
+      'city': 'Austin',
+      'sex': PMI_SKIP_CODE,
+      'sexualOrientation': PMI_SKIP_CODE,
+      'phoneNumber': '512-555-5555',
+      'recontactMethod': PMI_SKIP_CODE,
+      'language': PMI_SKIP_CODE,
+      'education': PMI_SKIP_CODE,
+      'income': PMI_SKIP_CODE,
+      'dateOfBirth': datetime.date(1978, 10, 9),
+      'CABoRSignature': 'signature.pdf',
+    }
+    self.post_demographics_questionnaire(participant_id, questionnaire_id, **answers)
+
+    summary = self.send_get('Participant/{0}/Summary'.format(participant_id))
+    self.assertEqual(summary['genderIdentity'], 'PMI_PreferNotToAnswer')
 
 def _add_code_answer(code_answers, link_id, code):
   if code:
