@@ -1,8 +1,10 @@
 import json
+import unittest
 
 from test.unit_test.unit_test_util import TestbedTestBase
 from cloud_utils.google_sheets import GoogleSheetCSVReader
 
+@unittest.skip("Only for local testing. do not include in automated test suite")
 class GoogleSheetCSVReaderTest(TestbedTestBase):
   EXAMPLE_SHEET_ID = '1ZY6KMtnMZ_5-dv8cqRgVWHOH9j23GcMZTC61UMXisuE' # https://docs.google.com/spreadsheets/d/1ZY6KMtnMZ_5-dv8cqRgVWHOH9j23GcMZTC61UMXisuE/edit?usp=sharing
 
