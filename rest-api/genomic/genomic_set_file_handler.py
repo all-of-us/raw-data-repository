@@ -2,7 +2,7 @@
 Reads a CSV that analyst uploads to genomic_set_upload bucket.
 And insert to relevant genomic tables.
 """
-
+import collections
 import csv
 import datetime
 import logging
@@ -12,7 +12,7 @@ import clock
 import config
 from offline.sql_exporter import SqlExporter
 from dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
+from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
 
 _US_CENTRAL = pytz.timezone('US/Central')
 _BATCH_SIZE = 1000
@@ -206,7 +206,7 @@ def _create_genomic_set_member_from_row(genomic_set_id, row):
   """
   kwargs = dict(
     genomicSetId=genomic_set_id,
-    validationStatus=GenomicValidationStatus.UNSET,
+    validationStatus=GenomicSetMemberStatus.UNSET,
     participantId=row[CsvColumns.PID],
     sexAtBirth=row[CsvColumns.SEX_AT_BIRTH],
     genomeType=row[CsvColumns.GENOME_TYPE],
@@ -223,6 +223,20 @@ def create_genomic_set_status_result_file(genomic_set_id):
   genomic_set = set_dao.get(genomic_set_id)
   _create_and_upload_result_file(genomic_set)
 
+
+def _transform_result_row_for_export(row):
+  Row = collections.namedtuple('Row', row.keys())
+  original = Row(*row)
+  status = GenomicSetMemberStatus(original.status)
+  flags = GenomicSetMember.validationFlags.type.process_result_value(original.invalid_reason, None)
+  kwargs = dict(
+    dict(row.items()),
+    status=str(status).lower(),
+    invalid_reason=', '.join(map(str, flags)) if flags else ''
+  )
+  return Row(**kwargs)
+
+
 def _create_and_upload_result_file(genomic_set):
   result_filename = genomic_set.genomicSetFile.replace('.', '-'+_RESULT_FILE_SUFFIX+'.')
   bucket_name = config.getSetting(config.GENOMIC_SET_BUCKET_NAME)
@@ -238,22 +252,8 @@ def _create_and_upload_result_file(genomic_set):
       END AS ny_flag,
       sex_at_birth,
       genome_type,
-      CASE
-        WHEN validation_status=1 THEN 'valid' ELSE 'invalid'
-      END AS status,
-      CASE
-        WHEN validation_status=0 OR validation_status IS NULL THEN :status_unset
-        WHEN validation_status=1 THEN :status_valid
-        WHEN validation_status=2 THEN :status_invalid_biobank_order
-        WHEN validation_status=3 THEN :status_invalid_ny_zipcode
-        WHEN validation_status=4 THEN :status_invalid_sex_at_birth
-        WHEN validation_status=5 THEN :status_invalid_genome_type
-        WHEN validation_status=6 THEN :status_invalid_consent
-        WHEN validation_status=7 THEN :status_invalid_withdraw_status
-        WHEN validation_status=8 THEN :status_invalid_age
-        WHEN validation_status=9 THEN :status_invalid_dup_participant
-        ELSE :status_unknown
-      END AS invalid_reason
+      validation_status as status,
+      validation_flags as invalid_reason
     FROM genomic_set_member
     WHERE genomic_set_id=:genomic_set_id
     ORDER BY id
@@ -261,20 +261,7 @@ def _create_and_upload_result_file(genomic_set):
   query_params = {'genomic_set_name': genomic_set.genomicSetName,
                   'genomic_set_criteria': genomic_set.genomicSetCriteria,
                   'genomic_set_id': genomic_set.id,
-                  'status_unset': str(GenomicValidationStatus.UNSET),
-                  'status_valid': '',
-                  'status_invalid_biobank_order':
-                    str(GenomicValidationStatus.INVALID_BIOBANK_ORDER),
-                  'status_invalid_ny_zipcode': str(GenomicValidationStatus.INVALID_NY_ZIPCODE),
-                  'status_invalid_sex_at_birth': str(GenomicValidationStatus.INVALID_SEX_AT_BIRTH),
-                  'status_invalid_genome_type': str(GenomicValidationStatus.INVALID_GENOME_TYPE),
-                  'status_invalid_consent': str(GenomicValidationStatus.INVALID_CONSENT),
-                  'status_invalid_withdraw_status':
-                    str(GenomicValidationStatus.INVALID_WITHDRAW_STATUS),
-                  'status_invalid_age': str(GenomicValidationStatus.INVALID_AGE),
-                  'status_invalid_dup_participant':
-                    str(GenomicValidationStatus.INVALID_DUP_PARTICIPANT),
-                  'status_unknown': 'UNKNOWN'
                   }
-  exporter.run_export(result_filename, export_sql, query_params)
+  exporter.run_export(result_filename, export_sql, query_params,
+                      transformf=_transform_result_row_for_export)
 

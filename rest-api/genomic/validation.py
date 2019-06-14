@@ -1,11 +1,12 @@
 import collections
 import datetime
 import functools
+import itertools
 import operator
 
 import clock
 from dao.genomics_dao import GenomicSetDao
-from model.genomics import GenomicValidationStatus, GenomicSetStatus
+from model.genomics import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
 from participant_enums import WithdrawalStatus, SampleStatus
 
 
@@ -29,27 +30,24 @@ def validate_and_update_genomic_set_by_id(genomic_set_id, dao=None):
                                        day=now.day)
   dao = dao or GenomicSetDao()
 
-  MemberIdStatusPair = collections.namedtuple('MemberIdStatusPair', [
-    'member_id',
-    'status',
-  ])
   update_queue = collections.deque()
 
   with dao.member_dao.session() as session:
     try:
       for row in dao.iter_validation_data_for_genomic_set_id_with_session(session, genomic_set_id):
-        update_queue.append(MemberIdStatusPair(
-          row.id,
-          _get_validation_status(row, date_of_birth_cutoff),
-        ))
+        flags = list(_iter_validation_flags(row, date_of_birth_cutoff))
+        status = GenomicSetMemberStatus.INVALID if len(flags) > 0 else GenomicSetMemberStatus.VALID
+        update_queue.append(dao.member_dao.BulkUpdateValidationParams(row.id, status, flags))
 
       dao.member_dao.bulk_update_validation_status_with_session(session, update_queue)
 
       genomic_set = dao.get_with_session(session, genomic_set_id)
-      for task in update_queue:
-        if task.status != GenomicValidationStatus.VALID:
-          genomic_set.genomicSetStatus = GenomicSetStatus.INVALID
-      if genomic_set.genomicSetStatus != GenomicSetStatus.INVALID:
+      if any(itertools.imap(
+        lambda task: task.status == GenomicSetMemberStatus.INVALID,
+        update_queue
+      )):
+        genomic_set.genomicSetStatus = GenomicSetStatus.INVALID
+      else:
         genomic_set.genomicSetStatus = GenomicSetStatus.VALID
         genomic_set.validatedTime = now
       dao.update_with_session(session, genomic_set)
@@ -58,43 +56,32 @@ def validate_and_update_genomic_set_by_id(genomic_set_id, dao=None):
       raise
 
 
-def _get_validation_status(row, date_of_birth_cutoff):
+def _iter_validation_flags(row, date_of_birth_cutoff):
   """
-  Get the correct GenomicValidationStatus for the given row.
-
-  invalid if ANY of the following fail
-  - Previous consent (prior to 3/1/18)
-  - Withdrawn(withdraw date populated)
-  - Sex at Birth not SexAtBirth_Female or SexAtBirth_Male
-  - Participant younger than 18 yo (DOB)
-  - Missing test order (1ED04 or 1SAL2)
-  - Missing zip code
+  Iterate all GenomicValidationFlag that apply to the given row
 
   :param row: a Row from GenomicSet.iter_validation_data_for_genomic_set_id_with_session().
               Rows contain all fields of GenomicSetMember along with any calculated fields necessary
               for this validation.
   :param date_of_birth_cutoff: any birth date before dob_cutoff will be invalid
-  :rtype: GenomicValidationStatus
   """
   if row.existing_valid_genomic_count != 0:
-    return GenomicValidationStatus.INVALID_DUP_PARTICIPANT
-  elif not row.consent_time or row.consent_time < GENOMIC_VALID_CONSENT_CUTOFF:
-    return GenomicValidationStatus.INVALID_CONSENT
-  elif row.withdrawal_status != WithdrawalStatus.NOT_WITHDRAWN:
-    return GenomicValidationStatus.INVALID_WITHDRAW_STATUS
-  elif row.sex_at_birth not in GENOMIC_VALID_SEX_AT_BIRTH_VALUES:
-    return GenomicValidationStatus.INVALID_SEX_AT_BIRTH
-  elif not row.birth_date or row.birth_date > date_of_birth_cutoff:
-    return GenomicValidationStatus.INVALID_AGE
-  elif not (
+    yield GenomicValidationFlag.INVALID_DUP_PARTICIPANT
+  if not row.consent_time or row.consent_time < GENOMIC_VALID_CONSENT_CUTOFF:
+    yield GenomicValidationFlag.INVALID_CONSENT
+  if row.withdrawal_status != WithdrawalStatus.NOT_WITHDRAWN:
+    yield GenomicValidationFlag.INVALID_WITHDRAW_STATUS
+  if row.sex_at_birth not in GENOMIC_VALID_SEX_AT_BIRTH_VALUES:
+    yield GenomicValidationFlag.INVALID_SEX_AT_BIRTH
+  if not row.birth_date or row.birth_date > date_of_birth_cutoff:
+    yield GenomicValidationFlag.INVALID_AGE
+  if not (
     row.samples_to_isolate_dna in GENOMIC_VALID_SAMPLE_STATUSES
     and any(map(
       functools.partial(operator.contains, GENOMIC_VALID_SAMPLE_STATUSES),
       [row.sample_status_1ED04, row.sample_status_1SAL2]
     ))
   ):
-    return GenomicValidationStatus.INVALID_BIOBANK_ORDER
-  elif not row.zip_code:
-    return GenomicValidationStatus.INVALID_NY_ZIPCODE
-  else:
-    return GenomicValidationStatus.VALID
+    yield GenomicValidationFlag.INVALID_BIOBANK_ORDER
+  if not row.zip_code:
+    yield GenomicValidationFlag.INVALID_NY_ZIPCODE

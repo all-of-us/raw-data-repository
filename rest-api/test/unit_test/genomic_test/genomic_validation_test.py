@@ -7,7 +7,8 @@ from dao.genomics_dao import GenomicSetDao, GenomicSetMemberDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
 from genomic.validation import validate_and_update_genomic_set_by_id
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
+from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, \
+  GenomicSetMemberStatus, GenomicValidationFlag
 from model.participant import Participant
 from participant_enums import WithdrawalStatus, SampleStatus
 from unit_test_util import SqlTestBase
@@ -107,7 +108,7 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     member = self.make_genomic_member(genomic_set, participant)
     validate_and_update_genomic_set_by_id(genomic_set.id)
     current_member = self.genomic_member_dao.get(member.id)
-    self.assertEqual(current_member.validationStatus, GenomicValidationStatus.VALID)
+    self.assertEqual(current_member.validationStatus, GenomicSetMemberStatus.VALID)
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.VALID)
 
@@ -121,8 +122,8 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     member_b = self.make_genomic_member(genomic_set_b, participant)
     validate_and_update_genomic_set_by_id(genomic_set_b.id)
     current_member = self.genomic_member_dao.get(member_b.id)
-    self.assertEqual(current_member.validationStatus,
-                     GenomicValidationStatus.INVALID_DUP_PARTICIPANT)
+    self.assertEqual(current_member.validationStatus, GenomicSetMemberStatus.INVALID)
+    self.assertIn(GenomicValidationFlag.INVALID_DUP_PARTICIPANT, current_member.validationFlags)
     current_set = self.genomic_set_dao.get(genomic_set_b.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
@@ -133,8 +134,8 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     member = self.make_genomic_member(genomic_set, participant)
     validate_and_update_genomic_set_by_id(genomic_set.id)
     current_member = self.genomic_member_dao.get(member.id)
-    self.assertEqual(current_member.validationStatus,
-                     GenomicValidationStatus.INVALID_CONSENT)
+    self.assertEqual(current_member.validationStatus, GenomicSetMemberStatus.INVALID)
+    self.assertIn(GenomicValidationFlag.INVALID_CONSENT, current_member.validationFlags)
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
@@ -145,8 +146,8 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     member = self.make_genomic_member(genomic_set, participant)
     validate_and_update_genomic_set_by_id(genomic_set.id)
     current_member = self.genomic_member_dao.get(member.id)
-    self.assertEqual(current_member.validationStatus,
-                     GenomicValidationStatus.INVALID_CONSENT)
+    self.assertEqual(current_member.validationStatus, GenomicSetMemberStatus.INVALID)
+    self.assertIn(GenomicValidationFlag.INVALID_CONSENT, current_member.validationFlags)
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
@@ -157,8 +158,8 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     member = self.make_genomic_member(genomic_set, participant)
     validate_and_update_genomic_set_by_id(genomic_set.id)
     current_member = self.genomic_member_dao.get(member.id)
-    self.assertEqual(current_member.validationStatus,
-                     GenomicValidationStatus.INVALID_WITHDRAW_STATUS)
+    self.assertEqual(current_member.validationStatus, GenomicSetMemberStatus.INVALID)
+    self.assertIn(GenomicValidationFlag.INVALID_WITHDRAW_STATUS, current_member.validationFlags)
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
@@ -169,7 +170,8 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     member = self.make_genomic_member(genomic_set, participant, sexAtBirth='foo')
     validate_and_update_genomic_set_by_id(genomic_set.id)
     current_member = self.genomic_member_dao.get(member.id)
-    self.assertEqual(current_member.validationStatus, GenomicValidationStatus.INVALID_SEX_AT_BIRTH)
+    self.assertEqual(current_member.validationStatus, GenomicSetMemberStatus.INVALID)
+    self.assertIn(GenomicValidationFlag.INVALID_SEX_AT_BIRTH, current_member.validationFlags)
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
@@ -188,8 +190,9 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
       validate_and_update_genomic_set_by_id(genomic_set.id)
     current_member_a = self.genomic_member_dao.get(member_a.id)
     current_member_b = self.genomic_member_dao.get(member_b.id)
-    self.assertNotEqual(current_member_a.validationStatus, GenomicValidationStatus.INVALID_AGE)
-    self.assertEqual(current_member_b.validationStatus, GenomicValidationStatus.INVALID_AGE)
+    self.assertEqual(current_member_a.validationStatus, GenomicSetMemberStatus.VALID)
+    self.assertEqual(current_member_b.validationStatus, GenomicSetMemberStatus.INVALID)
+    self.assertIn(GenomicValidationFlag.INVALID_AGE, current_member_b.validationFlags)
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
@@ -199,14 +202,15 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
       self.make_summary(participant, **summary_kwargs)
       return self.make_genomic_member(genomic_set, participant)
 
-    kwargs_and_expected_statuses = [
+    kwargs_with_expected_status_and_flags = [
       (
         {
           'sampleStatus1ED04': SampleStatus.UNSET,
           'sampleStatus1SAL2': SampleStatus.UNSET,
           'samplesToIsolateDNA': SampleStatus.UNSET,
         },
-        GenomicValidationStatus.INVALID_BIOBANK_ORDER
+        GenomicSetMemberStatus.INVALID,
+        [GenomicValidationFlag.INVALID_BIOBANK_ORDER]
       ),
       (
         {
@@ -214,7 +218,8 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
           'sampleStatus1SAL2': SampleStatus.UNSET,
           'samplesToIsolateDNA': SampleStatus.UNSET,
         },
-        GenomicValidationStatus.INVALID_BIOBANK_ORDER
+        GenomicSetMemberStatus.INVALID,
+        [GenomicValidationFlag.INVALID_BIOBANK_ORDER]
       ),
       (
         {
@@ -222,7 +227,8 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
           'sampleStatus1SAL2': SampleStatus.RECEIVED,
           'samplesToIsolateDNA': SampleStatus.UNSET,
         },
-        GenomicValidationStatus.INVALID_BIOBANK_ORDER
+        GenomicSetMemberStatus.INVALID,
+        [GenomicValidationFlag.INVALID_BIOBANK_ORDER]
       ),
       (
         {
@@ -230,7 +236,8 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
           'sampleStatus1SAL2': SampleStatus.UNSET,
           'samplesToIsolateDNA': SampleStatus.RECEIVED,
         },
-        GenomicValidationStatus.INVALID_BIOBANK_ORDER
+        GenomicSetMemberStatus.INVALID,
+        [GenomicValidationFlag.INVALID_BIOBANK_ORDER]
       ),
       (
         {
@@ -238,7 +245,8 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
           'sampleStatus1SAL2': SampleStatus.UNSET,
           'samplesToIsolateDNA': SampleStatus.RECEIVED,
         },
-        GenomicValidationStatus.VALID
+        GenomicSetMemberStatus.VALID,
+        []
       ),
       (
         {
@@ -246,29 +254,24 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
           'sampleStatus1SAL2': SampleStatus.RECEIVED,
           'samplesToIsolateDNA': SampleStatus.RECEIVED,
         },
-        GenomicValidationStatus.VALID
+        GenomicSetMemberStatus.VALID,
+        []
       ),
     ]
 
     genomic_set = self.make_genomic_set()
-    members_kwargs_and_expected_statuses = [
-      (make_member(genomic_set, **kwargs), kwargs, status)
-      for kwargs, status
-      in kwargs_and_expected_statuses
+    runs = [
+      (make_member(genomic_set, **kwargs), kwargs, status, flags)
+      for kwargs, status, flags
+      in kwargs_with_expected_status_and_flags
     ]
 
     validate_and_update_genomic_set_by_id(genomic_set.id)
-    for member, kwargs, expected_validation_status in members_kwargs_and_expected_statuses:
+    for member, kwargs, expected_status, expected_flags in runs:
       current_member = self.genomic_member_dao.get(member.id)
-      self.assertEqual(
-        current_member.validationStatus,
-        expected_validation_status,
-        "Expected ParticipantSummary(**{}) to have {} but got {}".format(
-          kwargs,
-          expected_validation_status,
-          current_member.validationStatus
-        )
-      )
+      self.assertEqual(current_member.validationStatus, expected_status)
+      for flag in expected_flags:
+        self.assertIn(flag, current_member.validationFlags)
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 
@@ -288,9 +291,11 @@ class GenomicSetMemberValidationTestCase(GenomicSetValidationBaseTestCase):
     current_member_a = self.genomic_member_dao.get(member_a.id)
     current_member_b = self.genomic_member_dao.get(member_b.id)
     current_member_c = self.genomic_member_dao.get(member_c.id)
-    self.assertEqual(current_member_a.validationStatus, GenomicValidationStatus.INVALID_NY_ZIPCODE)
-    self.assertEqual(current_member_b.validationStatus, GenomicValidationStatus.INVALID_NY_ZIPCODE)
-    self.assertEqual(current_member_c.validationStatus, GenomicValidationStatus.VALID)
+    self.assertEqual(current_member_a.validationStatus, GenomicSetMemberStatus.INVALID)
+    self.assertIn(GenomicValidationFlag.INVALID_NY_ZIPCODE, current_member_a.validationFlags)
+    self.assertEqual(current_member_b.validationStatus, GenomicSetMemberStatus.INVALID)
+    self.assertIn(GenomicValidationFlag.INVALID_NY_ZIPCODE, current_member_a.validationFlags)
+    self.assertEqual(current_member_c.validationStatus, GenomicSetMemberStatus.VALID)
     current_set = self.genomic_set_dao.get(genomic_set.id)
     self.assertEqual(current_set.genomicSetStatus, GenomicSetStatus.INVALID)
 

@@ -15,7 +15,7 @@ from model.biobank_dv_order import BiobankDVOrder
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
+from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
 from offline import genomic_pipeline
 from participant_enums import SampleStatus
 from genomic.genomic_set_file_handler import DataError
@@ -349,7 +349,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
 
   def test_end_to_end_invalid_case(self):
     participant = self._make_participant()
-    self._make_summary(participant, dateOfBirth='2018-02-14')
+    self._make_summary(participant, dateOfBirth='2018-02-14', zipCode='')
     self._make_biobank_order(participantId=participant.participantId,
                              biobankOrderId=participant.participantId,
                              identifiers=[BiobankOrderIdentifier(system=u'https://www.pmi-ops.org',
@@ -413,7 +413,7 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     self.assertEqual(rows[0][ResultCsvColumns.GENOMIC_SET_NAME], 'name_xxx')
     self.assertEqual(rows[0][ResultCsvColumns.GENOMIC_SET_CRITERIA], 'criteria_xxx')
     self.assertEqual(rows[0][ResultCsvColumns.STATUS], 'invalid')
-    self.assertEqual(rows[0][ResultCsvColumns.INVALID_REASON], 'INVALID_AGE')
+    self.assertEqual(rows[0][ResultCsvColumns.INVALID_REASON], 'INVALID_AGE, INVALID_NY_ZIPCODE')
     self.assertEqual(rows[0][ResultCsvColumns.PID], '1')
     self.assertEqual(rows[0][ResultCsvColumns.BIOBANK_ORDER_ID], '1')
     self.assertEqual(rows[0][ResultCsvColumns.NY_FLAG], 'Y')
@@ -457,11 +457,13 @@ class GenomicPipelineTest(CloudStorageSqlTestBase, NdbTestBase):
     return genomic_set
 
   def _create_fake_genomic_member(self, genomic_set_id, participant_id, biobank_order_id,
-                                  validation_status=GenomicValidationStatus.VALID,
+                                  validation_status=GenomicSetMemberStatus.VALID,
+                                  validation_flags=None,
                                   sex_at_birth='F', genome_type='aou_array', ny_flag='Y'):
     genomic_set_member = GenomicSetMember()
     genomic_set_member.genomicSetId = genomic_set_id
     genomic_set_member.validationStatus = validation_status
+    genomic_set_member.validationFlags = validation_flags
     genomic_set_member.participantId = participant_id
     genomic_set_member.sexAtBirth = sex_at_birth
     genomic_set_member.genomeType = genome_type

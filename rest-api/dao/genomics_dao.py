@@ -4,7 +4,7 @@ import sqlalchemy
 
 import clock
 from dao.base_dao import UpdatableDao
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
+from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus
 from model.participant import Participant
 from model.participant_summary import ParticipantSummary
 from query import Query, Operator, FieldFilter, OrderBy
@@ -157,32 +157,36 @@ class GenomicSetMemberDao(UpdatableDao):
 
     return session.execute(query, {'genomic_set_id_param': genomic_set_id})
 
-  def bulk_update_validation_status(self, member_id_status_pair_iterable):
+  BulkUpdateValidationParams = collections.namedtuple('BulkUpdateValidationParams', [
+    'member_id',
+    'status',
+    'flags'
+  ])
+
+  def bulk_update_validation_status(self, member_update_params_iterable):
     """
     Perform a bulk update of validation statuses.
 
-    :param member_id_status_pair_iterable: pairs of GenomicSetMember.id and GenomicValidationStatus
-                                           to include in this update
-    :type member_id_status_pair_iterable: collections.Iterable of (int, GenomicValidationStatus)
+    :param member_update_params_iterable: iterable of BulkUpdateValidationParams objects
+    :type member_update_params_iterable: collections.Iterable of BulkUpdateValidationParams
     :rtype: sqlalchemy.engine.ResultProxy
     """
     with self.session() as session:
       return self.bulk_update_validation_status_with_session(session,
-                                                             member_id_status_pair_iterable)
+                                                             member_update_params_iterable)
 
-  def bulk_update_validation_status_with_session(self, session, member_id_status_pair_iterable):
+  def bulk_update_validation_status_with_session(self, session, member_update_params_iterable):
     """
     Perform a bulk update of validation statuses in a given session.
 
     :param session: sqlalchemy session
-    :param member_id_status_pair_iterable: pairs of GenomicSetMember.id and GenomicValidationStatus
-                                           to include in this update
-    :type member_id_status_pair_iterable: collections.Iterable of (int, GenomicValidationStatus)
+    :param member_update_params_iterable: iterable of BulkUpdateValidationParams objects
+    :type member_update_params_iterable: collections.Iterable of BulkUpdateValidationParams
     :rtype: sqlalchemy.engine.ResultProxy
     """
     now = clock.CLOCK.now()
     status_case = sqlalchemy.case(
-      {int(GenomicValidationStatus.VALID): now},
+      {int(GenomicSetMemberStatus.VALID): now},
       value=sqlalchemy.bindparam('status'),
       else_=None
     )
@@ -192,6 +196,7 @@ class GenomicSetMemberDao(UpdatableDao):
         .where(GenomicSetMember.id == sqlalchemy.bindparam('member_id'))
         .values({
           GenomicSetMember.validationStatus.name: sqlalchemy.bindparam('status'),
+          GenomicSetMember.validationFlags.name: sqlalchemy.bindparam('flags'),
           GenomicSetMember.validatedTime.name: status_case
         })
     )
@@ -199,9 +204,10 @@ class GenomicSetMemberDao(UpdatableDao):
       {
         'member_id': member_id,
         'status': int(status),
-        'time': now if status == GenomicValidationStatus.VALID else None,
+        'flags': flags,
+        'time': now,
       }
-      for member_id, status in member_id_status_pair_iterable
+      for member_id, status, flags in member_update_params_iterable
     ]
     return session.execute(query, parameter_sets)
 

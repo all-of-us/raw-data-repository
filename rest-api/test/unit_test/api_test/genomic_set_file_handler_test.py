@@ -16,7 +16,7 @@ from model.biobank_dv_order import BiobankDVOrder
 from dao.biobank_order_dao import BiobankOrderDao
 from dao.participant_dao import ParticipantDao
 from dao.participant_summary_dao import ParticipantSummaryDao
-from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicValidationStatus
+from model.genomics import GenomicSet, GenomicSetMember, GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = 'rdr_fake_bucket'
@@ -151,17 +151,19 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
                                                 'Genomic-Test-Set-v12019-04-05-00-30-10.CSV')
     self._create_fake_genomic_member(genomic_set.id, participant.participantId, bo.biobankOrderId,
                                      participant.biobankId, bo.identifiers[0].value,
-                                     validation_status=GenomicValidationStatus.VALID,
+                                     validation_status=GenomicSetMemberStatus.VALID,
                                      sex_at_birth='F', genome_type='aou_array', ny_flag='Y')
 
     self._create_fake_genomic_member(genomic_set.id, participant2.participantId, bo2.biobankOrderId,
                                      participant2.biobankId, bo2.identifiers[0].value,
-                                     validation_status=GenomicValidationStatus.INVALID_AGE,
+                                     validation_status=GenomicSetMemberStatus.INVALID,
+                                     validation_flags=[GenomicValidationFlag.INVALID_AGE],
                                      sex_at_birth='M', genome_type='aou_array', ny_flag='N')
 
     self._create_fake_genomic_member(genomic_set.id, participant3.participantId, bo3.biobankOrderId,
                                      participant3.biobankId, bo3.identifiers[0].value,
-                                     validation_status=GenomicValidationStatus.INVALID_CONSENT,
+                                     validation_status=GenomicSetMemberStatus.INVALID,
+                                     validation_flags=[GenomicValidationFlag.INVALID_CONSENT],
                                      sex_at_birth='F', genome_type='aou_wgs', ny_flag='Y')
 
     genomic_set_file_handler.create_genomic_set_status_result_file(genomic_set.id)
@@ -248,17 +250,19 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
                                                 'Genomic-Test-Set-v12019-04-05-00-30-10.CSV')
     self._create_fake_genomic_member(genomic_set.id, participant.participantId, bo.biobankOrderId,
                                      participant.biobankId, bo.identifiers[0].value,
-                                     validation_status=GenomicValidationStatus.VALID,
+                                     validation_status=GenomicSetMemberStatus.VALID,
                                      sex_at_birth='F', genome_type='aou_array', ny_flag='Y')
 
     self._create_fake_genomic_member(genomic_set.id, participant2.participantId, bo2.biobankOrderId,
                                      participant2.biobankId, bo2.identifiers[0].value,
-                                     validation_status=GenomicValidationStatus.INVALID_AGE,
+                                     validation_status=GenomicSetMemberStatus.INVALID,
+                                     validation_flags=[GenomicValidationFlag.INVALID_AGE],
                                      sex_at_birth='M', genome_type='aou_array', ny_flag='N')
 
     self._create_fake_genomic_member(genomic_set.id, participant3.participantId, bo3.biobankOrderId,
                                      participant3.biobankId, bo3.identifiers[0].value,
-                                     validation_status=GenomicValidationStatus.INVALID_CONSENT,
+                                     validation_status=GenomicSetMemberStatus.INVALID,
+                                     validation_flags=[GenomicValidationFlag.INVALID_CONSENT],
                                      sex_at_birth='F', genome_type='aou_wgs', ny_flag='Y')
 
     now = clock.CLOCK.now()
@@ -326,7 +330,8 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
 
   def _create_fake_genomic_member(self, genomic_set_id, participant_id, biobank_order_id,
                                   biobank_id, biobank_order_client_id,
-                                  validation_status=GenomicValidationStatus.VALID,
+                                  validation_status=GenomicSetMemberStatus.VALID,
+                                  validation_flags=None,
                                   sex_at_birth='F', genome_type='aou_array', ny_flag='Y'):
     now = clock.CLOCK.now()
     genomic_set_member = GenomicSetMember()
@@ -334,6 +339,7 @@ class GenomicSetFileHandlerTest(CloudStorageSqlTestBase, NdbTestBase):
     genomic_set_member.created = now
     genomic_set_member.modified = now
     genomic_set_member.validationStatus = validation_status
+    genomic_set_member.validationFlags = validation_flags
     genomic_set_member.participantId = participant_id
     genomic_set_member.sexAtBirth = sex_at_birth
     genomic_set_member.genomeType = genome_type
