@@ -1,0 +1,45 @@
+{
+  "allow_nonprod_requests": true,
+  "biobank_id_prefix": ["Y"],
+  "biobank_samples_shards": [
+    "2"
+  ],
+  "user_info": {
+    "configurator@all-of-us-rdr-ptsc-1-test.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro", "rdr"]
+    },
+    "exporter@all-of-us-rdr-ptsc-1-test.iam.gserviceaccount.com": {
+      "roles": ["exporter"]
+    },
+    "vibrent-drc-qa@vibrent-drc-qa-165017.iam.gserviceaccount.com": {
+      "roles": ["ptc"]
+    },
+    "vibrent@pmi-ptc-drc-test-harness.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro"],
+      "whitelisted_ip_ranges": {
+        "ip6": ["::0/0"],
+        "ip4": ["0.0.0.0/0"]
+      }
+    },
+    "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com": {
+      "roles": ["ptc", "healthpro", "rdr"]
+    }
+  },
+  "biobank_samples_bucket_name": [
+    "all-of-us-rdr-ptsc-1-test-biobank-samples-upload"
+  ],
+  "ghost_id_bucket": [
+    "all-of-us-rdr-ptsc-1-test-ghost-id"
+  ],
+  "consent_pdf_bucket": [
+    "all-of-us-rdr-ptsc-1-test-consent-upload"
+  ],
+  "metrics_shards": [
+    "10"
+  ],
+  "service_accounts_with_long_lived_keys":[
+    "circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
+  ],
+  "mayolink_creds": ["rdr-mayolink-creds-test.json"],
+  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"]
+}

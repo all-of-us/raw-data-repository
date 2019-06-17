@@ -18,13 +18,15 @@
 
 CREATE_INSTANCE=
 UPDATE_PASSWORDS=
-USAGE="tools/setup_database.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>] [--create_instance | --update_passwords]"
+CONTINUE_CREATING_INSTANCE=
+USAGE="tools/setup_database.sh --account <ACCOUNT> --project <PROJECT> [--creds_account <ACCOUNT>] [--create_instance | --continue_creating_instance| --update_passwords]"
 while true; do
   case "$1" in
     --account) ACCOUNT=$2; shift 2;;
     --creds_account) CREDS_ACCOUNT=$2; shift 2;;
     --project) PROJECT=$2; shift 2;;
     --create_instance) CREATE_INSTANCE=Y; shift 1;;
+    --continue_creating_instance) CONTINUE_CREATING_INSTANCE=Y; shift 1;;
     --update_passwords) UPDATE_PASSWORDS=Y; shift 1;;
     -- ) shift; break ;;
     * ) break ;;
@@ -71,6 +73,18 @@ then
   sleep 3
 fi
 
+if [ "${CREATE_INSTANCE}" = "Y" ] || [ "${CONTINUE_CREATING_INSTANCE}" = "Y" ]
+then
+    # NOTE (from tanner on 2019-05-24): This command does not seem to trigger a database restart *if* the flag value
+    #                                   is already at the correct value.
+    #                                   This has not been tested thoroughly and may need to be revisited.
+    echo "Applying correct database flags..."
+    gcloud sql instances patch ${INSTANCE_NAME} --database-flags log_bin_trust_function_creators=on \
+        --project $PROJECT
+    echo "Waiting for database restart..."
+    sleep 3
+fi
+
 INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe $INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
 BACKUP_INSTANCE_NAME=$(gcloud sql instances describe $FAILOVER_INSTANCE_NAME | grep connectionName | cut -f2 -d' ')
 
@@ -87,8 +101,18 @@ function finish {
 }
 trap finish EXIT
 
+function handle_mysql_failed {
+    echo 'MySQL command failed to execute.'
+    echo 'Setting the root user password back to the previous value...'
+    gcloud sql users set-password root --host % --instance ${INSTANCE_NAME} --password ${OLD_ROOT_PASSWORD}
+    exit 1
+}
+
+get_db_password root
+OLD_ROOT_PASSWORD=PASSWORD
+
 run_cloud_sql_proxy
-if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ]
+if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ] || [ "${CONTINUE_CREATING_INSTANCE}" = "Y" ]
   then
  	echo "Updating database user passwords..."
 	randpw
@@ -112,22 +136,22 @@ if [ "${UPDATE_PASSWORDS}" = "Y" ] || [ "${CREATE_INSTANCE}" = "Y" ]
 	     ' "db_name": "'$DB_NAME'" }' > $TMP_DB_INFO_FILE
 
 	echo "Setting root password..."
-	gcloud sql users set-password root % --instance $INSTANCE_NAME --password $ROOT_PASSWORD
+	gcloud sql users set-password root --host % --instance $INSTANCE_NAME --password $ROOT_PASSWORD
 
-	if [ "${UPDATE_PASSWORDS}" = "Y" ]
-	    then
-		echo "updating passwords for database"
-		cat tools/update_passwords.sql | envsubst > $UPDATE_DB_FILE
-	else
-		echo "creating new database"
+	if [ "${CREATE_INSTANCE}" = "Y" ] || [ "${CONTINUE_CREATING_INSTANCE}" = "Y" ]
+    then
+		echo "Queueing database creation commands"
 		for db_name in "rdr" "metrics"; do
-		   cat tools/create_db.sql | envsubst > $UPDATE_DB_FILE
+		   cat tools/create_db.sql | envsubst >> $UPDATE_DB_FILE
 		   cat tools/grant_permissions.sql | envsubst >> $UPDATE_DB_FILE
 		done
 	fi
 
+    echo "Queueing password change commands"
+    cat tools/update_passwords.sql | envsubst >> $UPDATE_DB_FILE
 
-	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE}
+	echo "applying database changes..."
+	mysql -u "$ROOT_DB_USER" -p"$ROOT_PASSWORD" --host 127.0.0.1 --port ${PORT} < ${UPDATE_DB_FILE} & echo "done" | handle_mysql_failed
 	echo "Setting database configuration..."
 	tools/install_config.sh --key db_config --config ${TMP_DB_INFO_FILE} --instance $INSTANCE --update --creds_file ${CREDS_FILE}
 else

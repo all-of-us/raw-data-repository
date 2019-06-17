@@ -55,13 +55,18 @@ then
 elif [ "${PROJECT}" == "pmi-drc-api-test" ]
 then
   CONFIG="config/config_test.json"
-  echo "Skipping JIRA tracker updates for Sandbox."
+  echo "Skipping JIRA tracker updates for Test."
   UPDATE_TRACKER=echo
 
 elif [ "${PROJECT}" == "all-of-us-rdr-sandbox" ]
 then
   CONFIG="config/config_sandbox.json"
   echo "Skipping JIRA tracker updates for Sandbox."
+  UPDATE_TRACKER=echo
+elif [ "${PROJECT}" == "all-of-us-rdr-ptsc-1-test" ]
+then
+  CONFIG="config/config_test_ptsc_1.json"
+  echo "Skipping JIRA tracker updates for PTSC Test 1."
   UPDATE_TRACKER=echo
 else
   echo "Unsupported project: ${PROJECT}; exiting."

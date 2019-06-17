@@ -30,11 +30,14 @@ else
   INSTANCE=https://${PROJECT}.appspot.com
   if [ -z "${SERVICE_ACCOUNT}" ]
   then
-    SERVICE_ACCOUNT="circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
-    if [ "${PROJECT}" != "pmi-drc-api-test" ] && [ "${PROJECT}" != "all-of-us-rdr-staging" ]
-    then
-      SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
-    fi
+    case "${PROJECT}" in
+        "pmi-drc-api-test" | "all-of-us-rdr-staging")
+            SERVICE_ACCOUNT="circle-deploy@all-of-us-rdr-staging.iam.gserviceaccount.com"
+            ;;
+        *)
+            SERVICE_ACCOUNT="configurator@${PROJECT}.iam.gserviceaccount.com"
+            ;;
+    esac
   fi
   CREDS_FILE=${TMP_DIR}/creds.json
   TMP_CREDS_FILE=$CREDS_FILE
