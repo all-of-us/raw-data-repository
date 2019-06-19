@@ -21,7 +21,8 @@ from config_api import is_config_admin
 from dao.base_dao import BaseDao
 from dao.code_dao import CodeDao
 from dao.participant_dao import ParticipantDao, raise_if_withdrawn
-from dao.participant_summary_dao import ParticipantSummaryDao
+from dao.participant_summary_dao import ParticipantSummaryDao, ParticipantGenderAnswersDao, \
+  ParticipantRaceAnswersDao
 from dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from field_mappings import FieldType, QUESTION_CODE_TO_FIELD, QUESTIONNAIRE_MODULE_CODE_TO_FIELD
 from model.code import CodeType
@@ -360,6 +361,18 @@ class QuestionnaireResponseDao(BaseDao):
       if participant_summary.loginPhoneNumber is not None and \
         participant_summary.loginPhoneNumber.startswith(TEST_LOGIN_PHONE_NUMBER_PREFIX):
         ParticipantDao().switch_to_test_account(session, participant_summary.participantId)
+
+      # update participant gender/race answers table
+      if race_code_ids:
+        participant_race_answer_dao = ParticipantRaceAnswersDao()
+        participant_race_answer_dao.update_race_answers_with_session(session,
+                                                                     participant.participantId,
+                                                                     race_code_ids)
+      if gender_code_ids:
+        participant_gender_race_dao = ParticipantGenderAnswersDao()
+        participant_gender_race_dao.update_gender_answers_with_session(session,
+                                                                       participant.participantId,
+                                                                       gender_code_ids)
 
   def insert(self, obj):
     if obj.questionnaireResponseId:

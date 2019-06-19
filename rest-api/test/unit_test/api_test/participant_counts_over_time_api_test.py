@@ -19,6 +19,7 @@ from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
   WithdrawalStatus, make_primary_provider_link_for_name, MetricsCacheType, MetricsAPIVersion
 from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
+from dao.participant_summary_dao import ParticipantRaceAnswersDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
   MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
   MetricsLanguageCacheDao
@@ -1512,8 +1513,11 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, gender_identity=5)
 
     service = ParticipantCountsOverTimeService()
+    service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
+    service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(
+      MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
     dao = MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-    service.refresh_data_for_metrics_cache(dao)
+
     results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
     self.assertIn({'date': '2017-12-31',
                    'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
@@ -2211,8 +2215,10 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
     service = ParticipantCountsOverTimeService()
+    service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
+    service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(
+      MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
     dao = MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-    service.refresh_data_for_metrics_cache(dao)
 
     results = dao.get_latest_version_from_cache('2017-12-31', '2018-01-08')
     self.assertIn({'date': '2017-12-31',
@@ -2291,7 +2297,6 @@ class ParticipantCountsOverTimeApiTest(FlaskTestBase):
     setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
     setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
     setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
-
     setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
     setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 

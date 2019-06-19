@@ -12,7 +12,8 @@ from dao.participant_summary_dao import ParticipantSummaryDao
 from test.unit_test.unit_test_util import FlaskTestBase, make_questionnaire_response_json
 from model.participant import Participant
 from concepts import Concept
-from model.participant_summary import ParticipantSummary
+from model.participant_summary import ParticipantSummary, ParticipantGenderAnswers
+from dao.participant_summary_dao import ParticipantGenderAnswersDao
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
   make_primary_provider_link_for_name, MetricsCacheType
 from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
@@ -280,29 +281,81 @@ class PublicMetricsApiTest(FlaskTestBase):
 
   def test_public_metrics_get_gender_api(self):
 
+    self.init_gender_codes()
+    gender_code_dict = {
+      'GenderIdentity_Woman': 1,
+      'GenderIdentity_Transgender': 2,
+      'GenderIdentity_Man': 3,
+      'GenderIdentity_AdditionalOptions': 4,
+      'GenderIdentity_NonBinary': 5,
+      'PMI_PreferNotToAnswer': 6,
+      'PMI_Skip': 7
+    }
+
+    participant_gender_answer_dao = ParticipantGenderAnswersDao()
     p1 = Participant(participantId=1, biobankId=4)
     self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, gender_identity=3)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=1,
+                                      created=self.time1,
+                                      modified=self.time1,
+                                      codeId=gender_code_dict['GenderIdentity_Woman'])))
 
     p2 = Participant(participantId=2, biobankId=5)
     self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
                  time_mem=self.time3, gender_identity=2)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=2,
+                                      created=self.time2,
+                                      modified=self.time2,
+                                      codeId=gender_code_dict['GenderIdentity_Man'])))
 
     p3 = Participant(participantId=3, biobankId=6)
     self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
                  time_int=self.time3, time_mem=self.time5, gender_identity=5)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=3,
+                                      created=self.time3,
+                                      modified=self.time3,
+                                      codeId=gender_code_dict['GenderIdentity_Transgender'])))
 
     p4 = Participant(participantId=4, biobankId=7)
     self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
                  time_int=self.time4, time_mem=self.time5, gender_identity=5)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=4,
+                                      created=self.time4,
+                                      modified=self.time4,
+                                      codeId=gender_code_dict['GenderIdentity_Transgender'])))
+
+    p6 = Participant(participantId=6, biobankId=9)
+    self._insert(p6, 'Chad3', 'Caterpillar3', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time5, time_mem=self.time5, gender_identity=7)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=6,
+                                      created=self.time5,
+                                      modified=self.time5,
+                                      codeId=gender_code_dict['GenderIdentity_Woman'])))
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=6,
+                                      created=self.time5,
+                                      modified=self.time5,
+                                      codeId=gender_code_dict['GenderIdentity_Man'])))
 
     # ghost participant should be filtered out
     p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
     self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
                  time_int=self.time1, gender_identity=5)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=5,
+                                      created=self.time1,
+                                      modified=self.time1,
+                                      codeId=gender_code_dict['GenderIdentity_Transgender'])))
 
     service = ParticipantCountsOverTimeService()
-    dao = MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-    service.refresh_data_for_metrics_cache(dao)
+    service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
+    service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(
+      MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
 
     qs = (
           '&stratification=GENDER_IDENTITY'
@@ -331,6 +384,11 @@ class PublicMetricsApiTest(FlaskTestBase):
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
                                u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
                                'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-04',
+                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 1}}, results)
 
     qs = (
           '&stratification=GENDER_IDENTITY'
@@ -360,6 +418,11 @@ class PublicMetricsApiTest(FlaskTestBase):
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
                                u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
                                'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-04',
+                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 1}}, results)
 
     qs = (
       '&stratification=GENDER_IDENTITY'
@@ -389,7 +452,184 @@ class PublicMetricsApiTest(FlaskTestBase):
                    'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
                                u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
                                u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 1}}, results)
+
+  def test_public_metrics_get_gender_api_v2(self):
+
+    self.init_gender_codes()
+    gender_code_dict = {
+      'GenderIdentity_Woman': 1,
+      'GenderIdentity_Transgender': 2,
+      'GenderIdentity_Man': 3,
+      'GenderIdentity_AdditionalOptions': 4,
+      'GenderIdentity_NonBinary': 5,
+      'PMI_PreferNotToAnswer': 6,
+      'PMI_Skip': 7
+    }
+
+    participant_gender_answer_dao = ParticipantGenderAnswersDao()
+    p1 = Participant(participantId=1, biobankId=4)
+    self._insert(p1, 'Alice', 'Aardvark', 'UNSET', time_int=self.time1, gender_identity=3)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=1,
+                                      created=self.time1,
+                                      modified=self.time1,
+                                      codeId=gender_code_dict['GenderIdentity_Woman'])))
+
+    p2 = Participant(participantId=2, biobankId=5)
+    self._insert(p2, 'Bob', 'Builder', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH', time_int=self.time2,
+                 time_mem=self.time3, gender_identity=2)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=2,
+                                      created=self.time2,
+                                      modified=self.time2,
+                                      codeId=gender_code_dict['GenderIdentity_Man'])))
+
+    p3 = Participant(participantId=3, biobankId=6)
+    self._insert(p3, 'Chad', 'Caterpillar', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time3, time_mem=self.time5, gender_identity=5)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=3,
+                                      created=self.time3,
+                                      modified=self.time3,
+                                      codeId=gender_code_dict['GenderIdentity_Transgender'])))
+
+    p4 = Participant(participantId=4, biobankId=7)
+    self._insert(p4, 'Chad2', 'Caterpillar2', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time4, time_mem=self.time5, gender_identity=5)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=4,
+                                      created=self.time4,
+                                      modified=self.time4,
+                                      codeId=gender_code_dict['GenderIdentity_Transgender'])))
+    p6 = Participant(participantId=6, biobankId=9)
+    self._insert(p6, 'Chad3', 'Caterpillar3', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time5, time_mem=self.time5, gender_identity=7)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=6,
+                                      created=self.time5,
+                                      modified=self.time5,
+                                      codeId=gender_code_dict['GenderIdentity_Woman'])))
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=6,
+                                      created=self.time5,
+                                      modified=self.time5,
+                                      codeId=gender_code_dict['GenderIdentity_Man'])))
+
+    # ghost participant should be filtered out
+    p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
+    self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', 'AZ_TUCSON_BANNER_HEALTH',
+                 time_int=self.time1, gender_identity=5)
+    participant_gender_answer_dao.insert(
+      ParticipantGenderAnswers(**dict(participantId=5,
+                                      created=self.time1,
+                                      modified=self.time1,
+                                      codeId=gender_code_dict['GenderIdentity_Transgender'])))
+
+    service = ParticipantCountsOverTimeService()
+    service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
+    service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(
+      MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
+
+    qs = (
+          '&stratification=GENDER_IDENTITY'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          '&version=2'
+          )
+
+    results = self.send_get('PublicMetrics', query_string=qs)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
                                'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 1,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-03',
+                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-04',
+                   'metrics': {u'Woman': 2, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 2,
+                               'More than one gender identity': 1}}, results)
+
+    qs = (
+          '&stratification=GENDER_IDENTITY'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          '&awardee=AZ_TUCSON'
+          '&version=2'
+          )
+
+    results = self.send_get('PublicMetrics', query_string=qs)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
+                               'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 1,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-03',
+                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-04',
+                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 2,
+                               'More than one gender identity': 1}}, results)
+
+    qs = (
+      '&stratification=GENDER_IDENTITY'
+      '&startDate=2017-12-31'
+      '&endDate=2018-01-08'
+      '&awardee=AZ_TUCSON'
+      '&enrollmentStatus=MEMBER'
+      '&version=2'
+    )
+
+    results = self.send_get('PublicMetrics', query_string=qs)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
+                               'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 0,
+                               'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {u'Woman': 0, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 0,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 1,
+                               'More than one gender identity': 0}}, results)
+    self.assertIn({'date': '2018-01-04',
+                   'metrics': {u'Woman': 1, u'PMI_Skip': 0, u'Other/Additional Options': 0,
+                               u'Non-Binary': 0, 'UNMAPPED': 0, u'Transgender': 2,
+                               u'Prefer not to say': 0, u'UNSET': 0, u'Man': 2,
+                               'More than one gender identity': 1}}, results)
 
   def test_public_metrics_get_age_range_api(self):
 
@@ -590,8 +830,9 @@ class PublicMetricsApiTest(FlaskTestBase):
     setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
     service = ParticipantCountsOverTimeService()
-    dao = MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-    service.refresh_data_for_metrics_cache(dao)
+    service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
+    service.refresh_data_for_metrics_cache(
+      MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
 
     qs = (
           '&stratification=RACE'
@@ -701,6 +942,174 @@ class PublicMetricsApiTest(FlaskTestBase):
                                'White': 0,
                                'Prefer_Not_To_Answer': 0,
                                'Hispanic_Latino_Spanish': 0,
+                               'Native_Hawaiian_other_Pacific_Islander': 0,
+                               'Asian': 0}}, results)
+
+  def test_public_metrics_get_race_api_v2(self):
+
+    questionnaire_id = self.create_demographics_questionnaire()
+
+    def setup_participant(when, race_code_list, providerLink=self.provider_link):
+      # Set up participant, questionnaire, and consent
+      with FakeClock(when):
+        participant = self.send_post('Participant', {"providerLink": [providerLink]})
+        participant_id = participant['participantId']
+        self.send_consent(participant_id)
+        # Populate some answers to the questionnaire
+        answers = {
+          'race': race_code_list,
+          'genderIdentity': PMI_SKIP_CODE,
+          'firstName': self.fake.first_name(),
+          'middleName': self.fake.first_name(),
+          'lastName': self.fake.last_name(),
+          'zipCode': '78751',
+          'state': PMI_SKIP_CODE,
+          'streetAddress': '1234 Main Street',
+          'city': 'Austin',
+          'sex': PMI_SKIP_CODE,
+          'sexualOrientation': PMI_SKIP_CODE,
+          'phoneNumber': '512-555-5555',
+          'recontactMethod': PMI_SKIP_CODE,
+          'language': PMI_SKIP_CODE,
+          'education': PMI_SKIP_CODE,
+          'income': PMI_SKIP_CODE,
+          'dateOfBirth': datetime.date(1978, 10, 9),
+          'CABoRSignature': 'signature.pdf',
+        }
+      self.post_demographics_questionnaire(participant_id, questionnaire_id, time=when, **answers)
+      return participant
+
+    p1 = setup_participant(self.time1, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
+    self.update_participant_summary(p1['participantId'][1:], time_mem=self.time2)
+    p2 = setup_participant(self.time2, [RACE_NONE_OF_THESE_CODE], self.provider_link)
+    self.update_participant_summary(p2['participantId'][1:], time_mem=self.time3,
+                                    time_fp_stored=self.time5)
+    p3 = setup_participant(self.time3, [RACE_AIAN_CODE], self.provider_link)
+    self.update_participant_summary(p3['participantId'][1:], time_mem=self.time4)
+    p4 = setup_participant(self.time4, [PMI_SKIP_CODE], self.provider_link)
+    self.update_participant_summary(p4['participantId'][1:], time_mem=self.time5)
+    p5 = setup_participant(self.time4, [RACE_WHITE_CODE, RACE_HISPANIC_CODE], self.provider_link)
+    self.update_participant_summary(p5['participantId'][1:], time_mem=self.time4,
+                                    time_fp_stored=self.time5)
+    setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
+    setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
+
+    service = ParticipantCountsOverTimeService()
+    service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
+    service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(
+      MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
+
+    qs = (
+          '&stratification=RACE'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          '&version=2'
+          )
+
+    results = self.send_get('PublicMetrics', query_string=qs)
+    self.assertIn({'date': '2017-12-31',
+                   'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                               'Middle_Eastern_North_African': 0,
+                               'Multi_Ancestry': 1,
+                               'American_Indian_Alaska_Native': 0,
+                               'No_Ancestry_Checked': 0,
+                               'Black_African_American': 0,
+                               'White': 1,
+                               'Prefer_Not_To_Answer': 0,
+                               'Hispanic_Latino_Spanish': 1,
+                               'Native_Hawaiian_other_Pacific_Islander': 0,
+                               'Asian': 0}}, results)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'None_Of_These_Fully_Describe_Me': 1,
+                               'Middle_Eastern_North_African': 0,
+                               'Multi_Ancestry': 1,
+                               'American_Indian_Alaska_Native': 1,
+                               'No_Ancestry_Checked': 0,
+                               'Black_African_American': 0,
+                               'White': 1,
+                               'Prefer_Not_To_Answer': 0,
+                               'Hispanic_Latino_Spanish': 1,
+                               'Native_Hawaiian_other_Pacific_Islander': 0,
+                               'Asian': 0}}, results)
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {'None_Of_These_Fully_Describe_Me': 1,
+                               'Middle_Eastern_North_African': 1,
+                               'Multi_Ancestry': 2,
+                               'American_Indian_Alaska_Native': 3,
+                               'No_Ancestry_Checked': 0,
+                               'Black_African_American': 0,
+                               'White': 1,
+                               'Prefer_Not_To_Answer': 0,
+                               'Hispanic_Latino_Spanish': 1,
+                               'Native_Hawaiian_other_Pacific_Islander': 0,
+                               'Asian': 0}}, results)
+
+    qs = (
+          '&stratification=RACE'
+          '&startDate=2017-12-31'
+          '&endDate=2018-01-08'
+          '&awardee=AZ_TUCSON'
+          '&version=2'
+          )
+
+    results = self.send_get('PublicMetrics', query_string=qs)
+    self.assertIn({'date': '2018-01-01',
+                   'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                               'Middle_Eastern_North_African': 0,
+                               'Multi_Ancestry': 0,
+                               'American_Indian_Alaska_Native': 1,
+                               'No_Ancestry_Checked': 0,
+                               'Black_African_American': 0,
+                               'White': 0,
+                               'Prefer_Not_To_Answer': 0,
+                               'Hispanic_Latino_Spanish': 0,
+                               'Native_Hawaiian_other_Pacific_Islander': 0,
+                               'Asian': 0}}, results)
+    self.assertIn({'date': '2018-01-02',
+                   'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                               'Middle_Eastern_North_African': 1,
+                               'Multi_Ancestry': 1,
+                               'American_Indian_Alaska_Native': 2,
+                               'No_Ancestry_Checked': 0,
+                               'Black_African_American': 0,
+                               'White': 0,
+                               'Prefer_Not_To_Answer': 0,
+                               'Hispanic_Latino_Spanish': 0,
+                               'Native_Hawaiian_other_Pacific_Islander': 0,
+                               'Asian': 0}}, results)
+
+    qs = (
+      '&stratification=RACE'
+      '&startDate=2017-12-31'
+      '&endDate=2018-01-08'
+      '&awardee=PITT'
+      '&enrollmentStatus=MEMBER'
+      '&version=2'
+    )
+
+    results = self.send_get('PublicMetrics', query_string=qs)
+    self.assertIn({'date': '2018-01-03',
+                   'metrics': {'None_Of_These_Fully_Describe_Me': 1,
+                               'Middle_Eastern_North_African': 0,
+                               'Multi_Ancestry': 2,
+                               'American_Indian_Alaska_Native': 1,
+                               'No_Ancestry_Checked': 0,
+                               'Black_African_American': 0,
+                               'White': 2,
+                               'Prefer_Not_To_Answer': 0,
+                               'Hispanic_Latino_Spanish': 2,
+                               'Native_Hawaiian_other_Pacific_Islander': 0,
+                               'Asian': 0}}, results)
+    self.assertIn({'date': '2018-01-04',
+                   'metrics': {'None_Of_These_Fully_Describe_Me': 0,
+                               'Middle_Eastern_North_African': 0,
+                               'Multi_Ancestry': 1,
+                               'American_Indian_Alaska_Native': 1,
+                               'No_Ancestry_Checked': 1,
+                               'Black_African_American': 0,
+                               'White': 1,
+                               'Prefer_Not_To_Answer': 0,
+                               'Hispanic_Latino_Spanish': 1,
                                'Native_Hawaiian_other_Pacific_Islander': 0,
                                'Asian': 0}}, results)
 
@@ -1069,3 +1478,34 @@ class PublicMetricsApiTest(FlaskTestBase):
     with FakeClock(time):
       url = 'Participant/%s/QuestionnaireResponse' % participant_id
       return self.send_post(url, request_data=response_data)
+
+  def init_gender_codes(self):
+    code1 = Code(codeId=1, system=PPI_SYSTEM, value="GenderIdentity_Woman",
+                 display=u"GenderIdentity_Woman", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    self.code_dao.insert(code1)
+    code2 = Code(codeId=2, system=PPI_SYSTEM, value="GenderIdentity_Transgender",
+                 display=u"GenderIdentity_Transgender", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    self.code_dao.insert(code2)
+    code3 = Code(codeId=3, system=PPI_SYSTEM, value="GenderIdentity_Man",
+                 display=u"GenderIdentity_Man", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    self.code_dao.insert(code3)
+    code4 = Code(codeId=4, system=PPI_SYSTEM, value="GenderIdentity_AdditionalOptions",
+                 display=u"GenderIdentity_AdditionalOptions", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    self.code_dao.insert(code4)
+    code5 = Code(codeId=5, system=PPI_SYSTEM, value="GenderIdentity_NonBinary",
+                 display=u"GenderIdentity_NonBinary", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    self.code_dao.insert(code5)
+    code6 = Code(codeId=6, system=PPI_SYSTEM, value="PMI_PreferNotToAnswer",
+                 display=u"PMI_PreferNotToAnswer", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    self.code_dao.insert(code6)
+    code7 = Code(codeId=7, system=PPI_SYSTEM, value="PMI_Skip",
+                 display=u"PMI_Skip", topic=u"a",
+                 codeType=CodeType.MODULE, mapped=True)
+    self.code_dao.insert(code7)
+
