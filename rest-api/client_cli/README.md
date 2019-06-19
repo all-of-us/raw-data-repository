@@ -23,7 +23,7 @@ python rdr.py [tool name] OR rdr.py [tool name]
 ```
 
 
-To get get a list of available commands run: 
+To get a list of available commands run: 
 
 ```
 rdr.py --help
