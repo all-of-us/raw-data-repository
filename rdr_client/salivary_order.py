@@ -19,7 +19,6 @@ def main(client):
   request = make_request_body(client.args.file)
 
   resource = SimpleFhirR4Reader(request)
-  patient = resource.contained.get(resourceType='Patient')
   order_id = resource.identifier.get(system='http://joinallofus.org/fhir/orderId').value
 
   if not client.args.endpoint:
@@ -39,7 +38,7 @@ def main(client):
 
   if verb == 'PUT':
     path = path + '/{}'.format(order_id)
- 
+
   response = client.request_json(path, verb, request, check_status=False)
   pprint.pprint(response)
 
