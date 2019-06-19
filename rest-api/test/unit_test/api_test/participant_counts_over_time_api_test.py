@@ -19,7 +19,6 @@ from model.participant_summary import ParticipantSummary
 from participant_enums import EnrollmentStatus, OrganizationType, TEST_HPO_NAME, TEST_HPO_ID,\
   WithdrawalStatus, make_primary_provider_link_for_name, MetricsCacheType, MetricsAPIVersion
 from dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
-from dao.participant_summary_dao import ParticipantRaceAnswersDao
 from dao.metrics_cache_dao import MetricsEnrollmentStatusCacheDao, MetricsGenderCacheDao, \
   MetricsAgeCacheDao, MetricsRaceCacheDao, MetricsRegionCacheDao, MetricsLifecycleCacheDao, \
   MetricsLanguageCacheDao
