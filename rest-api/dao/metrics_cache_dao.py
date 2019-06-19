@@ -469,7 +469,7 @@ class MetricsGenderCacheDao(BaseDao):
         ' pga.GenderIdentity_NonBinary=1 ',
         ' pga.GenderIdentity_AdditionalOptions=1 ',
         ' pga.PMI_PreferNotToAnswer=1 ',
-        ' pga.Number_of_Answer>1 AND pga.PMI_Skip=0 AND pga.PMI_PreferNotToAnswer=0',
+        ' pga.Number_of_Answer>1 AND pga.PMI_Skip=0 AND pga.PMI_PreferNotToAnswer=0 ',
       ]
       sub_queries = []
       sql_template = """
